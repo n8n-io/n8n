@@ -1,6 +1,23 @@
-import type { ResolvedCredential } from '@n8n/agents';
+import { isAzureEntraCredential, hasAzureApiKey, type ResolvedCredential } from '@n8n/agents';
 
 type CredMapper = (raw: ResolvedCredential) => Record<string, unknown>;
+
+/**
+ * The optional custom header on a credential (`header`, `headerName`,
+ * `headerValue`), applied with the same rule as the credential types'
+ * `authenticate` and `getCustomCredentialHeader` in `@n8n/n8n-nodes-langchain`.
+ */
+function customCredentialHeaders(c: ResolvedCredential): Record<string, string> | undefined {
+	if (
+		c.header === true &&
+		typeof c.headerName === 'string' &&
+		c.headerName &&
+		typeof c.headerValue === 'string'
+	) {
+		return { [c.headerName]: c.headerValue };
+	}
+	return undefined;
+}
 
 /**
  * Maps a raw n8n credential record onto the shape expected by the AI SDK
@@ -14,12 +31,18 @@ type CredMapper = (raw: ResolvedCredential) => Record<string, unknown>;
  * and optionally `baseURL`, which are already present in most credential types.
  */
 const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
-	// OpenAiApi.credentials.ts        → apiKey, url (base URL)
-	openai: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
-	// AnthropicApi.credentials.ts     → apiKey, url (base URL)
-	anthropic: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	// OpenAiApi.credentials.ts        → apiKey, url (base URL), header/headerName/headerValue
+	openai: (c) => ({ apiKey: c.apiKey, baseURL: c.url, headers: customCredentialHeaders(c) }),
+	// AnthropicApi.credentials.ts     → apiKey, url (base URL), header/headerName/headerValue
+	anthropic: (c) => ({ apiKey: c.apiKey, baseURL: c.url, headers: customCredentialHeaders(c) }),
 	// GooglePalmApi.credentials.ts    → apiKey, host (base URL)
 	google: (c) => ({ apiKey: c.apiKey, baseURL: c.host }),
+	'google-vertex': (c) => ({
+		project: (c.project ?? '__custom__') === '__custom__' ? c.projectId : c.project,
+		clientEmail: c.email,
+		privateKey: c.privateKey,
+		location: c.region,
+	}),
 	// XAiApi.credentials.ts           → apiKey, url (hidden, base URL)
 	xai: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// GroqApi.credentials.ts          → apiKey only
@@ -31,7 +54,14 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	// MistralCloudApi.credentials.ts  → apiKey only
 	mistral: (c) => ({ apiKey: c.apiKey }),
 	// VercelAiGatewayApi.credentials.ts → apiKey, url (base URL)
-	vercel: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	vercel: (c) => ({
+		apiKey: c.apiKey,
+		// The credential URL serves the OpenAI-compatible API. Let the SDK select its native URL.
+		baseURL:
+			typeof c.url === 'string' && /^https:\/\/ai-gateway\.vercel\.sh\/v1\/?$/i.test(c.url)
+				? undefined
+				: c.url,
+	}),
 	// OpenRouterApi.credentials.ts → apiKey, url (hidden, base URL)
 	openrouter: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// NvidiaApi.credentials.ts → apiKey, url (base URL)
@@ -45,17 +75,33 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 
 	// AzureOpenAiApi.credentials.ts            → apiKey, resourceName, apiVersion, endpoint, foundryEndpoint, endpointType
 	// AzureEntraCognitiveServicesOAuth2Api.credentials.ts → resourceName, apiVersion, endpoint, foundryEndpoint, endpointType
+	// Entra credentials carry no `apiKey`; the model factory mints a Bearer token
+	// from the OAuth2 fields below. Omit `apiKey` when empty so it does not shadow
+	// the Entra path or trip `@ai-sdk/azure`'s apiKey+tokenProvider rejection.
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'azure-openai': (c) => ({
-		apiKey: c.apiKey,
-		resourceName: c.resourceName,
-		apiVersion: c.apiVersion,
-		// Foundry stores its full base URL in `foundryEndpoint`; classic uses the
-		// optional `endpoint` (or derives from `resourceName`). Distinct field names
-		// avoid duplicate-key render glitches in the credential modal.
-		baseURL: c.endpointType === 'foundry' ? c.foundryEndpoint : c.endpoint,
-		endpointType: c.endpointType,
-	}),
+	'azure-openai': (c) => {
+		const isEntra = isAzureEntraCredential(c);
+		return {
+			...(hasAzureApiKey(c) ? { apiKey: c.apiKey } : {}),
+			resourceName: c.resourceName,
+			apiVersion: c.apiVersion,
+			// Foundry stores its full base URL in `foundryEndpoint`; classic uses the
+			// optional `endpoint` (or derives from `resourceName`). Distinct field names
+			// avoid duplicate-key render glitches in the credential modal.
+			baseURL: c.endpointType === 'foundry' ? c.foundryEndpoint : c.endpoint,
+			endpointType: c.endpointType,
+			...(isEntra
+				? {
+						oauthClientId: c.clientId,
+						oauthClientSecret: c.clientSecret,
+						oauthAccessTokenUrl: c.accessTokenUrl,
+						oauthScope: c.scope,
+						oauthAuthentication: c.authentication,
+						oauthTokenData: c.oauthTokenData,
+					}
+				: {}),
+		};
+	},
 
 	// Aws.credentials.ts → region, accessKeyId, secretAccessKey, sessionToken
 	// eslint-disable-next-line @typescript-eslint/naming-convention

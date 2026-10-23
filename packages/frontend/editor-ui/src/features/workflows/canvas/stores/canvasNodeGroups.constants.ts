@@ -19,7 +19,7 @@ export const GROUP_DESCRIPTION_MIN_ZOOM = 0.66;
  *   expanded frame + title bar (-10000)
  *     < sticky notes (-100 + i, see `useWorkflowDocumentRenderData`)
  *     < collapsed group chip (-1)
- *     < edges / regular nodes (0)
+ *     < edges / regular nodes (0) / collapsed empty-group chip (0)
  *     < sticky in edit mode (1) / unconnected-node hover (2, see `_vueflow.scss`)
  *
  * The expanded frame sits below stickies so sticky members render crisp inside
@@ -30,3 +30,8 @@ export const GROUP_DESCRIPTION_MIN_ZOOM = 0.66;
  */
 export const GROUP_NODE_Z_INDEX_EXPANDED = -10000;
 export const GROUP_NODE_Z_INDEX_COLLAPSED = -1;
+/**
+ * Empty collapsed groups expose handles, which must paint above their edges.
+ * Keep them in the regular node layer instead of below the edge layer.
+ */
+export const GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED = 0;

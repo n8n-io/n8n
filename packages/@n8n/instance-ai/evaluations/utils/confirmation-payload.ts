@@ -28,7 +28,7 @@ export interface InfrastructureResponseOptions {
  * web search, resource decisions, standalone credential requests. The eval
  * grants all access, has no credentials, and picks the most-permissive option
  * for resource gates. Returns `undefined` for events that need caller-specific
- * handling: setup wizards, ask-user questions, plan reviews.
+ * handling: setup wizards, workflow_builder_ask_user questions, plan reviews.
  */
 export function tryInfrastructureResponse(
 	event: CapturedEvent,
@@ -52,6 +52,14 @@ export function tryInfrastructureResponse(
 			kind: 'resourceDecision',
 			resourceDecision: parsed.success ? parsed.data : 'allowOnce',
 		};
+	}
+
+	// The product asks the user to review where a new generic-auth credential will be
+	// used before it opens the credential card. A user who means to set the credential
+	// up approves the destination; the card that follows is governed by the usual rules.
+	const destination = getNestedRecord(payload, 'credentialDestination');
+	if (destination && typeof destination.origin === 'string') {
+		return { kind: 'credentialDestination', origin: destination.origin, approved: true };
 	}
 
 	// Standalone credential request only — when setupRequests is also present,

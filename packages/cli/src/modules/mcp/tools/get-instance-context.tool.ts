@@ -31,8 +31,8 @@ export const EMPTY_INSTANCE_CONTEXT_TEXT = 'Nothing has been built on this insta
  * confused with an empty instance, which would send a client off to rebuild what it cannot see.
  */
 export const NOTHING_EXPOSED_TEXT =
-	'No workflows on this instance are exposed to MCP, so there is nothing to report here. ' +
-	'Ask the user to expose one in Settings, under MCP.';
+	'No workflows on this instance are available in MCP, so there is nothing to report here. ' +
+	'Ask the user to enable MCP access for a workflow in Settings, under Instance-level MCP.';
 
 const DESCRIPTION =
 	'Read the opening picture of this n8n instance: which workflows exist, what has recently been ' +
@@ -65,7 +65,7 @@ const outputSchema = {
 		.boolean()
 		.optional()
 		.describe(
-			'Present when the answer is empty. True means workflows exist here but none are exposed to MCP, so the estate is real and simply out of reach — do not treat it as a fresh instance. False means the instance genuinely holds nothing yet.',
+			'Present when the answer is empty. True means workflows exist here but none are available in MCP, so the estate is real and simply out of reach — do not treat it as a fresh instance. False means the instance genuinely holds nothing yet.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -90,7 +90,7 @@ export async function readInstanceContext(
 	const scope = buildScope(options.executionGranted, projectId);
 	// Registration has already checked the shared instance flag.
 	const built = await instanceContext.buildBlock({ user, scope, cursor: null, enabled: true });
-	if (built) return { kind: 'context', text: built.block };
+	if (built.state === 'injected') return { kind: 'context', text: built.block };
 
 	// An empty block has two very different causes, and the client acts on them differently.
 	return (await instanceContext.hasWithheldWorkflows(user, scope))

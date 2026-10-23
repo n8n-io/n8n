@@ -2,8 +2,7 @@ import type { Request, Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import type { ResolveCredentialRequest } from '../engine-credentials.contract';
 import { EngineCredentialsController } from '../engine-credentials.controller';

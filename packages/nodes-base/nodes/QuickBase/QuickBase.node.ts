@@ -13,6 +13,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { fieldFields, fieldOperations } from './FieldDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import {
+	applyWhereParameters,
 	getFieldsObject,
 	quickbaseApiRequest,
 	quickbaseApiRequestAllItems,
@@ -301,14 +302,22 @@ export class QuickBase implements INodeType {
 			}
 
 			if (operation === 'delete') {
+				// Build every filter first, so an invalid item fails the run before any record is deleted.
+				const wheres = items.map((_item, i) =>
+					applyWhereParameters.call(
+						this,
+						this.getNodeParameter('where', i) as string,
+						this.getNodeParameter('whereParameters.values', i, []) as IDataObject[],
+						i,
+					),
+				);
+
 				for (let i = 0; i < length; i++) {
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
-					const where = this.getNodeParameter('where', i) as string;
-
 					const body: IDataObject = {
 						from: tableId,
-						where,
+						where: wheres[i],
 					};
 
 					responseData = await quickbaseApiRequest.call(this, 'DELETE', '/records', body);
@@ -335,6 +344,16 @@ export class QuickBase implements INodeType {
 					};
 
 					Object.assign(body, options);
+
+					if (options.where) {
+						body.where = applyWhereParameters.call(
+							this,
+							options.where as string,
+							((options.whereParameters as IDataObject)?.values as IDataObject[]) ?? [],
+							i,
+						);
+					}
+					delete body.whereParameters;
 
 					if (options.sortByUi) {
 						const sort = (options.sortByUi as IDataObject).sortByValues as IDataObject[];

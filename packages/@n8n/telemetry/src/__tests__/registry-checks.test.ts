@@ -82,6 +82,35 @@ describe('validateEntrySchemas', () => {
 		expect(errors).toEqual([]);
 	});
 
+	it('accepts a union of object schemas', () => {
+		const UNION_FIXTURE = defineTelemetryEvents({
+			USER_FINISHED_ACTION: {
+				name: 'User finished action',
+				description: 'Fires when an action ends.',
+				properties: z.discriminatedUnion('status', [
+					z.object({ status: z.literal('success'), count: z.number() }),
+					z.object({ status: z.literal('error'), reason: z.string() }),
+				]),
+			},
+		});
+
+		expect(validateEntrySchemas({ ACTIONS: UNION_FIXTURE })).toEqual([]);
+	});
+
+	it('rejects a union with a non-object member', () => {
+		const UNION_FIXTURE = defineTelemetryEvents({
+			USER_FINISHED_ACTION: {
+				name: 'User finished action',
+				description: 'Fires when an action ends.',
+				properties: z.union([z.object({ count: z.number() }), z.string()]),
+			},
+		});
+
+		expect(validateEntrySchemas({ ACTIONS: UNION_FIXTURE })).toEqual([
+			expect.stringContaining('must be a zod object schema or a union of object schemas'),
+		]);
+	});
+
 	it('rejects an entry whose properties are not an object schema', () => {
 		const BROKEN_FIXTURE = defineTelemetryEvents({
 			BAD_ENTRY: {
@@ -138,6 +167,74 @@ describe('TELEMETRY_EVENT', () => {
 
 	it('has a documented, JSON-Schema-representable schema on every entry', () => {
 		expect(validateEntrySchemas(TELEMETRY_EVENT)).toEqual([]);
+	});
+
+	it.each([
+		TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT,
+		TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
+	])('requires an agent id and editor push ref for $name', (event) => {
+		const payload = { agent_id: 'agent-1', push_ref: 'editor-session' };
+		expect(event.properties.parse(payload)).toEqual(payload);
+		expect(event.properties.safeParse({ agent_id: 'agent-1' }).success).toBe(false);
+		expect(event.properties.safeParse({ push_ref: 'editor-session' }).success).toBe(false);
+		expect(event.properties.safeParse({ ...payload, push_ref: 42 }).success).toBe(false);
+		expect(
+			event.properties.safeParse({ agent_id: 'agent-1', session_id: 'editor-session' }).success,
+		).toBe(false);
+		expect(event.getValidationError({ ...payload, session_id: 'editor-session' })).not.toBeNull();
+	});
+
+	it.each([
+		{ payload: { agent_id: 'agent-1' }, valid: true },
+		{ payload: { agent_id: 'agent-1', source: 'icon' }, valid: true },
+		{ payload: { agent_id: 'agent-1', source: 'primary' }, valid: true },
+		{ payload: { agent_id: 'agent-1', source: 'unknown' }, valid: false },
+	])('validates preview button attribution: $payload', ({ payload, valid }) => {
+		const result = TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW.properties.safeParse(payload);
+		expect(result.success).toBe(valid);
+		if (result.success) expect(result.data).toEqual(payload);
+	});
+
+	it('validates user setting changes and keeps legacy modification payloads valid', () => {
+		const schema = TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT.properties;
+		const legacyPayload = {
+			agent_id: 'agent-1',
+			project_id: 'project-1',
+			user_id: 'user-1',
+			changed_parts: ['config'],
+			capability_kinds: [],
+			capability_count: 0,
+			tool_count: 0,
+			skill_count: 0,
+			sub_agent_count: 0,
+			mcp_server_count: 0,
+			vector_store_count: 0,
+			task_count: 0,
+			trigger_count: 0,
+			model: null,
+			tool_types: [],
+			has_published_version: false,
+			event_version: '2',
+		};
+		const changedSettings = [
+			'monthly_budget',
+			'budget_alert',
+			'session_cost_cap',
+			'custom_model_routing',
+			'memory_model',
+			'cache_duration',
+			'tool_concurrency',
+			'max_iterations',
+		];
+
+		expect(schema.safeParse(legacyPayload).success).toBe(true);
+		expect(schema.safeParse({ ...legacyPayload, changed_settings: [] }).success).toBe(true);
+		expect(schema.safeParse({ ...legacyPayload, changed_settings: changedSettings }).success).toBe(
+			true,
+		);
+		expect(
+			schema.safeParse({ ...legacyPayload, changed_settings: ['unknown_setting'] }).success,
+		).toBe(false);
 	});
 
 	it('composes every domain file under src/events/', () => {

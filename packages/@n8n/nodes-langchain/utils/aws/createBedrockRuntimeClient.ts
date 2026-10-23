@@ -3,13 +3,15 @@ import {
 	type BedrockRuntimeClientConfig,
 } from '@aws-sdk/client-bedrock-runtime';
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
-import { NodeHttpHandler, type NodeHttpHandlerOptions } from '@smithy/node-http-handler';
+import type { NodeHttpHandlerOptions } from '@smithy/node-http-handler';
 import type { AwsCredentialIdentity, AwsCredentialIdentityProvider } from '@smithy/types';
 import {
 	getAwsDomain,
 	validateBedrockEndpointOverride,
 	type AWSRegion,
 } from 'n8n-nodes-base/aws-credentials';
+
+import { ResponseLimitedNodeHttpHandler } from './ResponseLimitedNodeHttpHandler';
 
 // Arm TCP keepalive well before common NAT/LB idle timeouts reap the socket
 // (Azure SNAT defaults to 4 minutes); probes keep the flow alive during long generations.
@@ -63,7 +65,7 @@ export function createBedrockRuntimeClient(params: {
 		// only this flag makes it destroy the request and reject with a TimeoutError.
 		requestHandlerOptions.throwOnRequestTimeout = true;
 	}
-	clientConfig.requestHandler = new NodeHttpHandler(requestHandlerOptions);
+	clientConfig.requestHandler = new ResponseLimitedNodeHttpHandler(requestHandlerOptions);
 
 	return new BedrockRuntimeClient(clientConfig);
 }

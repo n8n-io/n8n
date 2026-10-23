@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useAgentVersionHistory } from '../../composables/useAgentVersionHistory';
 import { useAgentPermissions } from '../../composables/useAgentPermissions';
 import { useAgentPublish } from '../../composables/useAgentPublish';
+import { useAgentCollaborationStore } from '../../stores/agentCollaboration.store';
 import type { AgentResource } from '../../types';
 import AgentVersionList from './AgentVersionList.vue';
 import type { AgentVersionAction } from './AgentVersionListItem.vue';
@@ -18,6 +19,10 @@ const props = defineProps<{
 	hasUnpublishedChanges?: boolean;
 	// Used only for the unpublish confirmation modal copy.
 	agentName?: string;
+	// True when the collaboration write lock or artifact lock prevents
+	// edits — disables revert/publish/unpublish actions to avoid requests
+	// that can only fail with 409/423.
+	editingLocked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -41,22 +46,25 @@ const {
 const { unpublish } = useAgentPublish();
 
 const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(toRef(props, 'projectId'));
+const agentCollaborationStore = useAgentCollaborationStore();
 
-// Hide actions the user can't perform server-side.
+// Hide actions the user can't perform server-side. Disable them while the
+// collaboration write lock prevents edits so the user sees the button is
+// unavailable rather than getting a 409/423 on click.
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const result: Array<UserAction<IUser>> = [];
 	if (canUpdate.value) {
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.revert'),
 			value: 'revert',
-			disabled: false,
+			disabled: props.editingLocked,
 		});
 	}
 	if (canPublish.value) {
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.publish'),
 			value: 'publish',
-			disabled: false,
+			disabled: props.editingLocked,
 		});
 	}
 	return result;
@@ -97,6 +105,10 @@ watch(
 );
 
 async function onAction({ action, versionId }: { action: AgentVersionAction; versionId: string }) {
+	// Acquire the write lock before any mutating version action — the lock
+	// is lazy (acquired on first edit, released on inactivity), matching
+	// the workflow collaboration pattern.
+	agentCollaborationStore.requestWriteAccess();
 	if (action === 'revert') {
 		const result = await revertToVersion(props.projectId, props.agentId, versionId);
 		if (result) emit('reverted', result);

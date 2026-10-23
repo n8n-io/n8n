@@ -7,12 +7,13 @@ import upperFirst from 'lodash/upperFirst';
 import { type ExecutionStatus } from 'n8n-workflow';
 import { computed } from 'vue';
 
-import { N8nText } from '@n8n/design-system';
-const { status, consumedTokens, startTime, timeTook } = defineProps<{
+import { N8nText, N8nTooltip } from '@n8n/design-system';
+const { status, consumedTokens, startTime, timeTook, respondingModel } = defineProps<{
 	status: ExecutionStatus;
 	consumedTokens: LlmTokenUsageData;
 	startTime: number;
 	timeTook?: number;
+	respondingModel?: string;
 }>();
 
 const locale = useI18n();
@@ -43,6 +44,16 @@ const executionStatusText = computed(() =>
 			v-if="consumedTokens.totalTokens > 0"
 			:consumed-tokens="consumedTokens"
 		/>
+		<N8nTooltip v-if="respondingModel" :enterable="false">
+			<span>{{
+				locale.baseText('runData.aiContentBlock.model', {
+					interpolate: { model: respondingModel },
+				})
+			}}</span>
+			<template #content>
+				{{ locale.baseText('runData.aiContentBlock.model.tooltip') }}
+			</template>
+		</N8nTooltip>
 	</N8nText>
 </template>
 

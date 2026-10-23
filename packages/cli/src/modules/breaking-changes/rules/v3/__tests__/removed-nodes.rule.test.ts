@@ -10,6 +10,7 @@ const removedNodeTypes = [
 	'@n8n/n8n-nodes-langchain.vectorStoreZep',
 	'@n8n/n8n-nodes-langchain.vectorStoreZepInsert',
 	'@n8n/n8n-nodes-langchain.vectorStoreZepLoad',
+	'@n8n/n8n-nodes-langchain.code',
 ];
 
 describe('RemovedNodesV3Rule', () => {
@@ -25,7 +26,7 @@ describe('RemovedNodesV3Rule', () => {
 			title: 'Removed nodes',
 			description: 'Several nodes have been removed and will no longer work',
 			category: BreakingChangeCategory.workflow,
-			severity: 'low',
+			impact: 'executionsFail',
 		});
 		await expect(rule.getRecommendations([])).resolves.toEqual([
 			{

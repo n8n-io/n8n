@@ -46,14 +46,8 @@ function makeGenerateSuccess(text: string) {
 	return {
 		finishReason: 'stop',
 		usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
-		response: {
-			messages: [
-				{
-					role: 'assistant',
-					content: [{ type: 'text', text }],
-				},
-			],
-		},
+		responseMessages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
+		finalStep: { providerMetadata: undefined },
 		toolCalls: [],
 	};
 }

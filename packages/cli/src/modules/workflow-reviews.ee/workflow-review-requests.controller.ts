@@ -6,10 +6,7 @@ import {
 	ListWorkflowReviewActivityQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
-	type GetWorkflowReviewInboxSummaryResponse,
 	type ListWorkflowReviewActivityResponse,
-	type ListWorkflowReviewInboxResponse,
-	ListWorkflowReviewInboxQueryDto,
 	type WorkflowReviewActivityEntry,
 	type WorkflowReviewRequestDetail,
 } from '@n8n/api-types';
@@ -94,26 +91,6 @@ export class WorkflowReviewRequestsController {
 			workflowReviewRequestId,
 			dto,
 		);
-	}
-
-	/** Cross-project inbox. `GET /` remains the workflow-specific list used by LIGO-838. */
-	@Get('/inbox')
-	@Licensed('feat:workflowReviews')
-	async listInbox(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Query query: ListWorkflowReviewInboxQueryDto,
-	): Promise<ListWorkflowReviewInboxResponse> {
-		return await this.workflowReviewInboxService.listForInbox(req.user, query);
-	}
-
-	@Get('/summary')
-	@Licensed('feat:workflowReviews')
-	async getSummary(
-		req: AuthenticatedRequest,
-		_res: Response,
-	): Promise<GetWorkflowReviewInboxSummaryResponse> {
-		return await this.workflowReviewInboxService.getInboxSummaryForUser(req.user);
 	}
 
 	@Get('/:workflowReviewRequestId/activity')

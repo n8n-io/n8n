@@ -1,5 +1,10 @@
 import { buildSchemaContexts, findOutputParserTargets } from './context';
 import { buildDateAnchors } from './date-anchors';
+import {
+	describeDataTableRead,
+	readDataTableLocator,
+	readDataTableReadParameters,
+} from './data-table-read';
 import { workflowToMermaid } from './mermaid';
 import { parsePinDataResponse, repairStructuredOutput } from './parse';
 import { buildNodeSchemaSection, buildPinDataUserPrompt } from './prompt';
@@ -87,6 +92,7 @@ describe('buildSchemaContexts', () => {
 			resource: 'row',
 			operation: 'get',
 			hasOutputParser: false,
+			parameters: workflow.nodes[0].parameters,
 		});
 		expect(contexts[0].schema).toEqual({ type: 'object', properties: { id: {} } });
 	});
@@ -107,6 +113,142 @@ describe('buildSchemaContexts', () => {
 			resource: 'row',
 			operation: 'get',
 			schema: undefined,
+		});
+	});
+});
+
+describe('Data Table read parameters', () => {
+	const lookup = {
+		name: 'Zone Lookup',
+		type: 'n8n-nodes-base.dataTable',
+		typeVersion: 1.1,
+		parameters: {
+			resource: 'row',
+			operation: 'get',
+			matchType: 'allConditions',
+			filters: {
+				conditions: [{ keyName: 'country', condition: 'eq', keyValue: '={{ $json.country }}' }],
+			},
+			returnAll: false,
+			limit: 1,
+		},
+	} as unknown as NodeJSON;
+
+	it('derives the filter, match type and limit of a get node into its context', () => {
+		expect(buildSchemaContexts([lookup])[0].dataTableRead).toEqual({
+			matchType: 'allConditions',
+			conditions: [{ keyName: 'country', condition: 'eq', keyValue: '={{ $json.country }}' }],
+			returnAll: false,
+			limit: 1,
+		});
+	});
+
+	it('leaves other nodes and Data Table writes without read parameters', () => {
+		const insert = { ...lookup, parameters: { resource: 'row', operation: 'insert' } };
+		expect(buildSchemaContexts([insert])[0].dataTableRead).toBeUndefined();
+		expect(buildSchemaContexts([workflow.nodes[3]])[0].dataTableRead).toBeUndefined();
+	});
+
+	it('tells the generator to pin the rows the node returns, resolving expression values', () => {
+		const prompt = buildPinDataUserPrompt(
+			{ nodes: [lookup], connections: {} } as unknown as WorkflowJSON,
+			buildSchemaContexts([lookup]),
+			{ dateAnchors: 'anchors' },
+		);
+
+		expect(prompt).toContain(
+			'OUTPUTS only the table rows its filter selects — `country` eq "={{ $json.country }}"; at most 1 row(s)',
+		);
+		expect(prompt).toContain('resolve it from the Test Scenario');
+		expect(prompt).toContain('never the whole table');
+	});
+
+	it('reads an expression-filled match type, returnAll or limit as the widest setting', () => {
+		const dynamic = {
+			...lookup,
+			parameters: {
+				...lookup.parameters,
+				matchType: '={{ $json.mode }}',
+				returnAll: '={{ $json.all }}',
+				limit: '={{ $json.n }}',
+			},
+		};
+
+		expect(readDataTableReadParameters(dynamic)).toEqual({
+			matchType: 'anyCondition',
+			conditions: [{ keyName: 'country', condition: 'eq', keyValue: '={{ $json.country }}' }],
+			returnAll: true,
+		});
+	});
+
+	it('reads the order the node applies and leaves an expression-filled limit open', () => {
+		const ordered = {
+			...lookup,
+			parameters: {
+				...lookup.parameters,
+				orderBy: true,
+				orderByColumn: 'employees',
+				limit: '={{ $json.n }}',
+			},
+		};
+
+		expect(readDataTableReadParameters(ordered)).toMatchObject({ sortBy: ['employees', 'DESC'] });
+		expect(readDataTableReadParameters(ordered)?.limit).toBeUndefined();
+		expect(
+			describeDataTableRead({
+				matchType: 'anyCondition',
+				conditions: [],
+				returnAll: false,
+				sortBy: ['createdAt', 'DESC'],
+			}),
+		).toBe('no filter (every row); ordered by `createdAt` DESC; the row limit is an expression');
+	});
+
+	it('describes the read filter in the node section', () => {
+		const section = buildNodeSchemaSection({
+			nodeName: 'Zone Lookup',
+			nodeType: 'n8n-nodes-base.dataTable',
+			typeVersion: 1.1,
+			dataTableRead: {
+				matchType: 'allConditions',
+				conditions: [{ keyName: 'country', condition: 'eq', keyValue: 'FR' }],
+				returnAll: false,
+				limit: 1,
+			},
+		}).join('\n');
+
+		expect(section).toContain(
+			'OUTPUTS only the table rows its filter selects — `country` eq "FR"; at most 1 row(s)',
+		);
+	});
+});
+
+describe('readDataTableLocator', () => {
+	it('reads an id, a name and the name an id locator caches', () => {
+		expect(readDataTableLocator('dt-1')).toEqual({ mode: 'id', value: 'dt-1' });
+		expect(
+			readDataTableLocator({ __rl: true, mode: 'list', value: 'dt-1', cachedResultName: 'Posts' }),
+		).toEqual({ mode: 'id', value: 'dt-1', cachedName: 'Posts' });
+		expect(readDataTableLocator({ __rl: true, mode: 'name', value: 'posts' })).toEqual({
+			mode: 'name',
+			value: 'posts',
+		});
+	});
+
+	it('reads nothing from a locator without a value', () => {
+		expect(readDataTableLocator(undefined)).toBeUndefined();
+		expect(readDataTableLocator('')).toBeUndefined();
+		expect(readDataTableLocator({ __rl: true, mode: 'id', value: '' })).toBeUndefined();
+	});
+
+	it('reads nothing from an expression, and the literal from a bare `=` value', () => {
+		expect(readDataTableLocator('={{ $json.tableId }}')).toBeUndefined();
+		expect(
+			readDataTableLocator({ __rl: true, mode: 'name', value: '={{ $json.name }}' }),
+		).toBeUndefined();
+		expect(readDataTableLocator({ __rl: true, mode: 'name', value: '=posts' })).toEqual({
+			mode: 'name',
+			value: 'posts',
 		});
 	});
 });
@@ -364,8 +506,6 @@ describe('information extractor own-schema enrichment', () => {
 		expect(ctx.declaredFields).toEqual({
 			keys: ['invoice_number', 'total_amount'],
 			envelopeKey: 'output',
-			exact: false,
-			source: 'declared-schema',
 		});
 	});
 
@@ -444,52 +584,8 @@ describe('information extractor own-schema enrichment', () => {
 	});
 });
 
-describe('data table column contracts', () => {
-	const dataTableNode = workflow.nodes[0]; // Get Rows
-
-	it('builds an exact contract including the system columns', () => {
-		const [ctx] = buildSchemaContexts([dataTableNode], undefined, undefined, {
-			'Get Rows': [
-				{ name: 'contact_email', type: 'string' },
-				{ name: 'contact_name', type: 'string' },
-			],
-		});
-
-		expect(ctx.declaredFields).toEqual({
-			keys: ['id', 'createdAt', 'updatedAt', 'contact_email', 'contact_name'],
-			exact: true,
-			source: 'data-table-columns',
-		});
-	});
-
-	it('renders the real columns as the authoritative row shape in the prompt', () => {
-		const [ctx] = buildSchemaContexts(
-			[dataTableNode],
-			() => ({ type: 'object', properties: { id: {} } }),
-			undefined,
-			{ 'Get Rows': [{ name: 'contact_email', type: 'string' }] },
-		);
-		const section = buildNodeSchemaSection(ctx).join('\n');
-
-		expect(section).toContain('REAL Data Table columns');
-		expect(section).toContain('contact_email (string)');
-		// The static `__schema__` (system columns only) is superseded, not embedded.
-		expect(section).not.toContain('Output JSON Schema');
-	});
-});
-
 describe('collectPinFieldViolations', () => {
 	const contexts = [
-		{
-			nodeName: 'Get Rows',
-			nodeType: 'n8n-nodes-base.dataTable',
-			typeVersion: 1,
-			declaredFields: {
-				keys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
-				exact: true,
-				source: 'data-table-columns',
-			},
-		},
 		{
 			nodeName: 'Extract',
 			nodeType: '@n8n/n8n-nodes-langchain.informationExtractor',
@@ -497,59 +593,21 @@ describe('collectPinFieldViolations', () => {
 			declaredFields: {
 				keys: ['total_amount', 'po_number'],
 				envelopeKey: 'output',
-				exact: false,
-				source: 'declared-schema',
 			},
 		},
 	] satisfies NodeSchemaContext[];
 
-	it('flags renamed and missing keys on exact contracts', () => {
-		const violations = collectPinFieldViolations(
-			{
-				'Get Rows': [{ json: { id: 1, createdAt: 'x', updatedAt: 'x', email: 'a@example.com' } }],
-			},
-			contexts,
-		);
-
-		expect(violations).toEqual([
-			{
-				nodeName: 'Get Rows',
-				unknownKeys: ['email'],
-				missingKeys: ['contact_email'],
-				declaredKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
-				envelopeKey: undefined,
-			},
-		]);
-	});
-
 	it('checks fields inside the declared envelope and allows subsets there', () => {
 		const drifted = { Extract: [{ json: { output: { invoice_amount: 5 } } }] };
 		expect(collectPinFieldViolations(drifted, contexts)).toMatchObject([
-			{ nodeName: 'Extract', unknownKeys: ['invoice_amount'], missingKeys: [] },
+			{ nodeName: 'Extract', unknownKeys: ['invoice_amount'] },
 		]);
 
 		const subset = { Extract: [{ json: { output: { total_amount: 5 } } }] };
 		expect(collectPinFieldViolations(subset, contexts)).toEqual([]);
 	});
 
-	it.each([
-		['a non-object json payload', 'not a row'],
-		['an array json payload', [] as unknown],
-	])('flags %s under an exact contract as missing every declared key', (_label, json) => {
-		// Skipping malformed items let the pin pass with rows no downstream column
-		// expression can resolve — it must take the correction/failure path instead.
-		expect(collectPinFieldViolations({ 'Get Rows': [{ json }] }, contexts)).toEqual([
-			{
-				nodeName: 'Get Rows',
-				unknownKeys: [],
-				missingKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
-				declaredKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
-				envelopeKey: undefined,
-			},
-		]);
-	});
-
-	it('leaves malformed items alone when the contract is not exact', () => {
+	it('leaves malformed items alone', () => {
 		// A plain-text agent answer is a legitimate non-object payload.
 		expect(collectPinFieldViolations({ Extract: [{ json: 'plain answer' }] }, contexts)).toEqual(
 			[],
@@ -571,7 +629,6 @@ describe('collectPinFieldViolations', () => {
 			{
 				nodeName: 'Get Rows',
 				unknownKeys: ['email'],
-				missingKeys: ['contact_email'],
 				declaredKeys: ['id', 'contact_email'],
 				envelopeKey: undefined,
 			},
@@ -579,7 +636,6 @@ describe('collectPinFieldViolations', () => {
 
 		expect(message).toContain('Get Rows');
 		expect(message).toContain('remove/rename these unknown fields: email');
-		expect(message).toContain('every item must also carry: contact_email');
 	});
 });
 
@@ -636,6 +692,38 @@ describe('ai-root shapes', () => {
 		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.textClassifier')).toContain(
 			'passed through',
 		);
+	});
+
+	it('describes the classifier by what its options ask for', async () => {
+		const { describeAiRootShape } = await import('./ai-root-shapes.js');
+		const classifier = '@n8n/n8n-nodes-langchain.textClassifier';
+
+		const on = describeAiRootShape(classifier, { classifierReportsConfidence: true });
+		const off = describeAiRootShape(classifier, { classifierReportsConfidence: false });
+
+		expect(on).not.toBe(off);
+		expect(off).toBe(describeAiRootShape(classifier));
+		expect(on).toContain('`classification` object');
+		expect(off).toContain('no classification wrapper key');
+	});
+
+	it('carries the classifier option into the rendered prompt section', async () => {
+		const { buildSchemaContexts } = await import('./context.js');
+		const { buildNodeSchemaSection } = await import('./prompt.js');
+		const node = (options: Record<string, unknown>) => ({
+			id: 'classifier-1',
+			name: 'Classifier',
+			type: '@n8n/n8n-nodes-langchain.textClassifier',
+			typeVersion: 1.1,
+			position: [0, 0] as [number, number],
+			parameters: { options },
+		});
+
+		const [on] = buildSchemaContexts([node({ includeConfidenceScores: true })]);
+		const [off] = buildSchemaContexts([node({})]);
+
+		expect(buildNodeSchemaSection(on).join('\n')).toContain('`classification` object');
+		expect(buildNodeSchemaSection(off).join('\n')).toContain('no classification wrapper key');
 	});
 
 	it('derives the structured envelope key from a with-parser schema', async () => {
@@ -725,7 +813,9 @@ describe('ai-root shapes', () => {
 	});
 
 	it('classifies the assistant and vendor LLM nodes as AI roots', async () => {
-		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes.js');
+		const { isAiRootNodeType, describeAiRootShape, buildAiRootPlaceholder } = await import(
+			'./ai-root-shapes.js'
+		);
 
 		// Mirrors the editor's canonical AI_ROOT_NODE_TYPES list
 		// (evaluation.ee/evaluation.constants.ts).
@@ -746,6 +836,13 @@ describe('ai-root shapes', () => {
 		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.anthropic')).toContain(
 			'vendor API response',
 		);
+
+		// The Databricks AI Agent runs the shared Agent, so it keeps the `output` envelope.
+		expect(isAiRootNodeType('@n8n/n8n-nodes-langchain.databricksAiAgent')).toBe(true);
+		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.databricksAiAgent')).toContain('"output"');
+		expect(buildAiRootPlaceholder('@n8n/n8n-nodes-langchain.databricksAiAgent', 'x')).toEqual({
+			output: 'x',
+		});
 	});
 });
 

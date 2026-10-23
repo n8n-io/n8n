@@ -29,6 +29,10 @@ export class AgentMcpAccessController {
 		_res: Response,
 		@Body dto: UpdateAgentsMcpAvailabilityDto,
 	) {
-		return await this.agentMcpAccessService.bulkSetAvailableInMCP(req.user, dto);
+		return await this.agentMcpAccessService.bulkSetAvailableInMCP(
+			req.user,
+			dto,
+			req.headers?.['push-ref'],
+		);
 	}
 }

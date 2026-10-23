@@ -5,7 +5,7 @@ import type {
 	IConnection,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { isUsableObjectKey, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 
 import type {
 	ConnectionValidationResult,
@@ -137,6 +137,13 @@ export function createConnection(
 	sourceOutputIndex: number = 0,
 	targetInputIndex: number = 0,
 ): IConnections {
+	// Connection maps are keyed by node name and connection type. A key that names an
+	// inherited object property resolves to a slot that is not the map's own, so refuse
+	// it instead of writing through it.
+	if (!isUsableObjectKey(sourceNodeName) || !isUsableObjectKey(connectionType)) {
+		return connections;
+	}
+
 	// Ensure source node exists in connections
 	if (!connections[sourceNodeName]) {
 		connections[sourceNodeName] = {};
@@ -194,6 +201,10 @@ export function removeConnection(
 	sourceOutputIndex?: number,
 	targetInputIndex?: number,
 ): IConnections {
+	if (!isUsableObjectKey(sourceNodeName) || !isUsableObjectKey(connectionType)) {
+		return connections;
+	}
+
 	if (!connections[sourceNodeName]?.[connectionType]) {
 		return connections;
 	}

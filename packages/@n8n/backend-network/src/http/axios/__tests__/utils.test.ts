@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import FormData from 'form-data';
+import { PassThrough } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import { makeSsrfBridge } from '../../../ssrf/__tests__/mock-ssrf-bridge';
@@ -10,6 +11,7 @@ import {
 	buildAgentOptions,
 	buildTargetUrl,
 	createFormDataObject,
+	destroyRequestBody,
 	digestAuthAxiosConfig,
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
@@ -397,6 +399,27 @@ describe('createFormDataObject', () => {
 		const header = String(streams[0]);
 		expect(header).toContain('filename="test.txt"');
 		expect(header).toContain('Content-Type: text/plain');
+	});
+});
+
+describe('destroyRequestBody', () => {
+	it('should destroy the streams in form fields', () => {
+		const file = new PassThrough();
+		const listed = new PassThrough();
+
+		destroyRequestBody({ file: { value: file, options: {} }, files: [listed], name: 'n8n' });
+
+		expect(file.destroyed).toBe(true);
+		expect(listed.destroyed).toBe(true);
+	});
+
+	it('should not read a Buffer body as form fields', () => {
+		const stream = new PassThrough();
+		const body = Object.assign(Buffer.alloc(4), { file: stream });
+
+		destroyRequestBody(body);
+
+		expect(stream.destroyed).toBe(false);
 	});
 });
 

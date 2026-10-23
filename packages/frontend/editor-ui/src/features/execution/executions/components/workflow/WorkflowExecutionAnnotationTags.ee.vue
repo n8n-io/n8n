@@ -99,11 +99,10 @@ const onTagsEditEsc = () => {
 			/>
 			<div v-else-if="tagIds.length === 0">
 				<N8nButton
-					variant="ghost"
+					variant="outline"
 					:class="[$style.addTagButton, 'clickable']"
 					:label="locale.baseText('executionAnnotationView.addTag')"
 					size="xsmall"
-					:outline="false"
 					data-test-id="new-tag-link"
 					icon="plus"
 					@click="onTagsEditEnable"
@@ -126,10 +125,11 @@ const onTagsEditEsc = () => {
 				</span>
 				<span :class="$style.addTagWrapper">
 					<N8nButton
-						variant="ghost"
+						variant="outline"
 						:class="[$style.addTagButton, $style.addTagButtonIconOnly, 'clickable']"
 						size="xsmall"
-						:outline="false"
+						icon-only
+						:aria-label="locale.baseText('executionAnnotationView.addTag')"
 						data-test-id="new-tag-link"
 						icon="plus"
 						@click="onTagsEditEnable"
@@ -157,18 +157,7 @@ const onTagsEditEsc = () => {
 	font-size: var(--font-size--2xs);
 	white-space: nowrap;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
-	background-color: var(--button--color--background--secondary);
-	border: 1px solid var(--color--foreground--tint-1);
-	border-radius: var(--radius);
 	font-weight: var(--font-weight--regular);
-
-	&:hover {
-		color: $color-primary;
-		text-decoration: none;
-		background-color: var(--button--color--background--secondary--hover);
-		border: 1px solid var(--button--border-color--secondary--hover-active-focus);
-		border-radius: var(--radius);
-	}
 
 	span + span {
 		margin-left: var(--spacing--4xs);

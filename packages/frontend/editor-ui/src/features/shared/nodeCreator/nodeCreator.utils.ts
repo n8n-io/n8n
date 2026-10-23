@@ -1,6 +1,7 @@
 import type {
 	ActionCreateElement,
 	ActionTypeDescription,
+	CommandCreateElement,
 	INodeCreateElement,
 	LinkCreateElement,
 	NodeCreateElement,
@@ -42,19 +43,29 @@ import type { NodeViewItemSection } from './views/viewsData';
 
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { toPolicyNodeType } from '@/app/utils/credentialOnlyNodes';
-import { getNodeTypeRestriction } from '@n8n/frontend-module-type-availability-policies';
+import {
+	getNodeTypeRestriction,
+	type TypeRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
-import type { NodeTypeAvailability } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
+
+const NODE_CREATOR_COMMAND_SEARCH_KEYS = [
+	{ key: 'properties.title', weight: 1.3 },
+	{ key: 'properties.description', weight: 0.8 },
+];
+
+function isCommandCreateElement(item: { type: string }): item is CommandCreateElement {
+	return item.type === 'command';
+}
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -75,6 +86,18 @@ export function transformNodeType(
 	return type === 'action'
 		? (createElement as ActionCreateElement)
 		: (createElement as NodeCreateElement);
+}
+
+/**
+ * Build one search collection from raw nodes and executable commands.
+ * The additional items can be raw view definitions or existing create elements;
+ * navigation views are intentionally excluded in both cases.
+ */
+export function getNodeCreatorSearchItems(
+	nodes: SimplifiedNodeType[],
+	items: ReadonlyArray<{ type: string }>,
+): INodeCreateElement[] {
+	return [...nodes.map((node) => transformNodeType(node)), ...items.filter(isCommandCreateElement)];
 }
 
 export function subcategorizeItems(items: SimplifiedNodeType[]) {
@@ -238,16 +261,31 @@ export function searchNodes(
 
 	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
 	// Please update the snapshots per the README next to the snapshots if you modify items significantly.
-	const searchResults = sublimeSearch<INodeCreateElement>(trimmedFilter, items) || [];
+	const searchResultsByKey = new Map<string, { score: number; item: INodeCreateElement }>();
+	const searchResults = [
+		...sublimeSearch<INodeCreateElement>(trimmedFilter, items),
+		...sublimeSearch<INodeCreateElement>(
+			trimmedFilter,
+			items.filter((item) => item.type === 'command'),
+			NODE_CREATOR_COMMAND_SEARCH_KEYS,
+		),
+	];
+
+	for (const result of searchResults) {
+		const existingResult = searchResultsByKey.get(result.item.key);
+		if (!existingResult || result.score > existingResult.score) {
+			searchResultsByKey.set(result.item.key, result);
+		}
+	}
 
 	// Any alias-prefix match is also a fuzzy match, so scanning the results
 	// (instead of all items) can never miss a boostable node.
 	const aiGatewayBoost = getAiGatewaySearchBoosts(
 		trimmedFilter,
-		searchResults.map(({ item }) => item),
+		[...searchResultsByKey.values()].map(({ item }) => item),
 	);
 
-	const reRankedResults = reRankSearchResults(searchResults, {
+	const reRankedResults = reRankSearchResults([...searchResultsByKey.values()], {
 		...additionalFactors,
 		aiGatewayBoost,
 		messageAnAgentBoost: { [MESSAGE_AN_AGENT_NODE_TYPE]: MESSAGE_AN_AGENT_SEARCH_BOOST },
@@ -259,13 +297,16 @@ export function searchNodes(
 export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateElement[] {
 	return items.map((item) => (item.type === 'section' ? item.children : item)).flat();
 }
-/** Restriction lookups for node creator items, with credential-only nodes following HTTP Request. */
-export function getNodeItemRestriction(nodeTypeName: string): NodeTypeAvailability | null {
-	return getNodeTypeRestriction(toPolicyNodeType(nodeTypeName));
+/**
+ * Restriction lookups for node creator items. The policy module composes the answer for a
+ * credential-only node from HTTP Request and the credential type it wraps.
+ */
+export function getNodeItemRestriction(nodeTypeName: string): TypeRestriction | undefined {
+	return getNodeTypeRestriction(nodeTypeName) ?? undefined;
 }
 
 export function isNodeItemRestricted(nodeTypeName: string): boolean {
-	return getNodeItemRestriction(nodeTypeName) !== null;
+	return getNodeItemRestriction(nodeTypeName) !== undefined;
 }
 
 type IsRestricted = (nodeTypeName: string) => boolean;

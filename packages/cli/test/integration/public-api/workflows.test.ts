@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -9,7 +10,7 @@ import {
 	linkUserToProject,
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, NodesConfig } from '@n8n/config';
 import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
 import {
 	WorkflowRepository,
@@ -28,7 +29,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -832,6 +832,34 @@ describe('GET /workflows', () => {
 		]);
 	});
 
+	test('should not return parentFolder unless includeParentFolder is set', async () => {
+		const folder = await createFolder(memberPersonalProject, { name: 'List Folder' });
+		await createWorkflowWithHistory({}, member);
+		await createWorkflowWithHistory({ parentFolder: folder }, member);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(2);
+		for (const item of response.body.data) {
+			expect(item).not.toHaveProperty('parentFolder');
+		}
+	});
+
+	test('should return only the parent folder id when includeParentFolder is true', async () => {
+		const folder = await createFolder(memberPersonalProject, { name: 'List Folder' });
+		const rootWorkflow = await createWorkflowWithHistory({}, member);
+		const folderWorkflow = await createWorkflowWithHistory({ parentFolder: folder }, member);
+
+		const response = await authMemberAgent.get('/workflows?includeParentFolder=true');
+
+		expect(response.statusCode).toBe(200);
+		const rootItem = response.body.data.find((w: { id: string }) => w.id === rootWorkflow.id);
+		const folderItem = response.body.data.find((w: { id: string }) => w.id === folderWorkflow.id);
+		expect(rootItem.parentFolder).toBeNull();
+		expect(folderItem.parentFolder).toEqual({ id: folder.id });
+	});
+
 	test('should return activeVersion when filtering by active=true', async () => {
 		await createWorkflowWithHistory({}, member);
 		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
@@ -1056,6 +1084,72 @@ describe('GET /workflows/:id', () => {
 			}),
 		]);
 	});
+
+	test('should return every publish event of the active version in order', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		const events = (
+			response.body.activeVersion.workflowPublishHistory as Array<{ event: string }>
+		).map(({ event }) => event);
+		expect(events).toEqual(['activated', 'deactivated', 'activated']);
+	});
+
+	test('should return a null parentFolder for a workflow at the project root', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.parentFolder).toBeNull();
+	});
+
+	test('should return the parent folder of a workflow in a folder', async () => {
+		const folder = await createFolder(memberPersonalProject, { name: 'Read Folder' });
+		const workflow = await createWorkflowWithHistory({ parentFolder: folder }, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(Object.keys(response.body.parentFolder).sort()).toEqual([
+			'createdAt',
+			'id',
+			'name',
+			'parentFolderId',
+			'updatedAt',
+		]);
+		expect(response.body.parentFolder).toEqual({
+			id: folder.id,
+			name: 'Read Folder',
+			parentFolderId: null,
+			createdAt: folder.createdAt.toISOString(),
+			updatedAt: folder.updatedAt.toISOString(),
+		});
+	});
+
+	test('should return the immediate parent folder for a workflow in a subfolder', async () => {
+		const outerFolder = await createFolder(memberPersonalProject, { name: 'Outer Folder' });
+		const innerFolder = await createFolder(memberPersonalProject, {
+			name: 'Inner Folder',
+			parentFolder: outerFolder,
+		});
+		const workflow = await createWorkflowWithHistory({ parentFolder: innerFolder }, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.parentFolder).toMatchObject({
+			id: innerFolder.id,
+			name: 'Inner Folder',
+			parentFolderId: outerFolder.id,
+		});
+	});
 });
 
 describe('GET /workflows/:id/:versionId', () => {
@@ -1073,6 +1167,7 @@ describe('GET /workflows/:id/:versionId', () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
 
 		expect(response.statusCode).toBe(404);
+		expect(response.headers.deprecation).toBe('@1787702400');
 		// The deprecated path keeps one message for both cases. Callers may match on it.
 		expect(response.body.message).toBe('Version not found');
 	});
@@ -1109,6 +1204,9 @@ describe('GET /workflows/:id/:versionId', () => {
 		await createWorkflowHistoryItem(workflow.id, versionData);
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBe('@1787702400');
 
 		const body = response.body as Partial<WorkflowHistory>;
 		expect(body).toEqual({
@@ -2202,6 +2300,19 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
+	test('should create a workflow with a description', async () => {
+		const description = 'What this workflow does';
+		const response = await authMemberAgent.post('/workflows').send({
+			...mockPostWorkflowPayload(),
+			description,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.description).toBe(description);
+		const stored = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(stored?.description).toBe(description);
+	});
+
 	test.each([
 		{ key: 'binaryMode', value: 'combined' },
 		{ key: 'credentialResolverId', value: 'some-resolver-id' },
@@ -2722,6 +2833,15 @@ describe('POST /workflows redaction floor enforcement', () => {
 		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
 	});
 
+	test('persists and returns the setting that stops redacting calling executions', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'all', redactCallerExecutions: false });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.redactCallerExecutions).toBe(false);
+		const saved = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(saved?.settings?.redactCallerExecutions).toBe(false);
+	});
+
 	test('reports the floor violation even when the payload is also otherwise invalid', async () => {
 		const response = await authOwnerAgent.post('/workflows').send({
 			name: 'redaction-floor-precedence',
@@ -2803,6 +2923,20 @@ describe('PUT /workflows/:id redaction floor enforcement', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(await savedRedactionPolicy(workflow.id)).toBe('all');
+	});
+
+	test('persists and returns the setting that stops redacting calling executions', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, {
+			redactionPolicy: 'all',
+			redactCallerExecutions: false,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.redactCallerExecutions).toBe(false);
+		const saved = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(saved?.settings?.redactCallerExecutions).toBe(false);
 	});
 });
 
@@ -4359,5 +4493,94 @@ return [{ json: result }];
 		expect(retrievedUpdatedNode.parameters.jsCode).toBe(updatedCode);
 		expect(retrievedUpdatedNode.parameters.mode).toBe('runOnceForEachItem');
 		expect(retrievedUpdatedNode.parameters.language).toBe('javaScript');
+	});
+});
+
+describe('deprecated nodes', () => {
+	const nodesConfig = Container.get(NodesConfig);
+	let previousBlockDeprecated: boolean;
+	beforeAll(() => {
+		previousBlockDeprecated = nodesConfig.blockDeprecated;
+		nodesConfig.blockDeprecated = true;
+	});
+	afterAll(() => {
+		nodesConfig.blockDeprecated = previousBlockDeprecated;
+	});
+
+	const deprecatedNode: INode = {
+		id: uuid(),
+		name: 'Function',
+		type: 'n8n-nodes-base.function',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: { functionCode: 'return items;' },
+	};
+
+	test('POST /workflows rejects a workflow with a deprecated node', async () => {
+		const response = await authOwnerAgent.post('/workflows').send({
+			name: 'has deprecated',
+			nodes: [deprecatedNode],
+			connections: {},
+			settings: {},
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toMatch(/deprecated/i);
+	});
+
+	test('PUT /workflows/:id rejects editing a deprecated node', async () => {
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [{ ...deprecatedNode, parameters: { functionCode: 'return [];' } }],
+			connections: workflow.connections,
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toMatch(/deprecated/i);
+	});
+
+	test('PUT /workflows/:id allows editing other nodes while a deprecated node stays unchanged', async () => {
+		const otherNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+		};
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode, otherNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [deprecatedNode, { ...otherNode, notes: 'edited' }],
+			connections: workflow.connections,
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('PUT /workflows/:id allows removing a deprecated node', async () => {
+		const otherNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+		};
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode, otherNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [otherNode],
+			connections: {},
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
 	});
 });

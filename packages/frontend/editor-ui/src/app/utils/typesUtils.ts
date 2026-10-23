@@ -60,10 +60,6 @@ export function convertToDisplayDate(epochTime: number) {
 	return dateformat(epochTime, 'yyyy-mm-dd HH:MM:ss');
 }
 
-export function convertToHumanReadableDate(epochTime: number) {
-	return dateformat(epochTime, 'd mmmm, yyyy @ HH:MM Z');
-}
-
 export function stringSizeInBytes(input: string | IDataObject | IDataObject[] | undefined): number {
 	if (input === undefined) return 0;
 

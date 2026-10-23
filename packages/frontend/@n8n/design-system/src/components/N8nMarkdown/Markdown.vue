@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { Options as MarkdownOptions } from 'markdown-it';
+import type { Options as MarkdownOptions, PluginSimple } from 'markdown-it';
 import Markdown from 'markdown-it';
 import markdownEmoji from 'markdown-it-emoji';
 import markdownLink from 'markdown-it-link-attributes';
@@ -17,11 +17,15 @@ interface IImage {
 	url: string;
 }
 
-interface Options {
-	markdown: MarkdownOptions;
-	linkAttributes: markdownLink.Config;
-	tasklists: markdownTaskLists.Config;
-	youtube: YoutubeEmbedConfig;
+interface Options extends MarkdownOptions {
+	/** Parser options for consumers that use the nested format. */
+	markdown?: MarkdownOptions;
+	/** Attributes to add to rendered links. */
+	linkAttributes?: markdownLink.Config;
+	/** Settings for task list checkboxes. */
+	tasklists?: markdownTaskLists.Config;
+	/** Settings for YouTube embeds. */
+	youtube?: YoutubeEmbedConfig;
 }
 
 interface MarkdownProps {
@@ -32,7 +36,10 @@ interface MarkdownProps {
 	loadingBlocks?: number;
 	loadingRows?: number;
 	theme?: string;
+	/** Parser options and optional settings for built-in plugins. */
 	options?: Options;
+	/** Additional plugins, applied after the built-in plugins. */
+	plugins?: PluginSimple[];
 }
 
 const props = withDefaults(defineProps<MarkdownProps>(), {
@@ -43,6 +50,7 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 	loadingBlocks: 2,
 	loadingRows: 3,
 	theme: 'markdown',
+	plugins: () => [],
 	options: () => ({
 		markdown: {
 			html: false,
@@ -72,12 +80,27 @@ const editor = ref<HTMLDivElement | undefined>(undefined);
 // notes in saved workflows don't clip or overlap nodes (ADO-5800).
 const applyGlobalMarkdownStyles = computed(() => props.theme !== 'sticky');
 
-const { options } = props;
-const md = new Markdown(options.markdown)
-	.use(markdownLink, options.linkAttributes)
-	.use(markdownEmoji)
-	.use(markdownTaskLists, options.tasklists)
-	.use(markdownYoutubeEmbed, options.youtube);
+const md = computed(() => {
+	const { options } = props;
+	const parser = new Markdown({
+		html: false,
+		linkify: true,
+		typographer: true,
+		breaks: true,
+		...options,
+		...options.markdown,
+	})
+		.use(markdownLink, options.linkAttributes ?? { attrs: { target: '_blank', rel: 'noopener' } })
+		.use(markdownEmoji)
+		.use(markdownTaskLists, options.tasklists ?? { enabled: true, label: true, labelAfter: false })
+		.use(markdownYoutubeEmbed, options.youtube ?? {});
+
+	for (const plugin of props.plugins) {
+		parser.use(plugin);
+	}
+
+	return parser;
+});
 
 // `xss` is CJS with no `exports` map. Node's lexer cannot see `whiteList` as a
 // named export, so `import { whiteList }` throws at link time under native ESM
@@ -88,6 +111,9 @@ const { whiteList } = xss as unknown as { whiteList: IWhiteList };
 const xssWhiteList = {
 	...whiteList,
 	label: ['class', 'for'],
+	/** Keep plugin markers for code actions, table containers, and footnotes. */
+	div: [...(whiteList.div ?? []), 'class', 'data-markdown-token-idx'],
+	span: [...(whiteList.span ?? []), 'class', 'title'],
 	iframe: ['width', 'height', 'src', 'title', 'frameborder', 'allow', 'referrerpolicy'],
 };
 
@@ -161,7 +187,7 @@ const htmlContent = computed(() => {
 			)
 			.join('\n');
 	}
-	const html = md.render(contentToRender);
+	const html = md.value.render(contentToRender);
 
 	const safeHtml = xss(html, {
 		onTagAttr(tag, name, value) {
@@ -300,10 +326,10 @@ const onCheckboxChange = (index: number) => {
 
 <style lang="scss" module>
 .markdown {
-	color: var(--color--text);
+	color: color-mix(in oklch, var(--color--text), transparent 8%);
 
 	* {
-		font-size: var(--font-size--md);
+		font-size: var(--n8n-markdown--base-font-size, var(--font-size--md));
 		line-height: var(--line-height--xl);
 	}
 
@@ -313,12 +339,7 @@ const onCheckboxChange = (index: number) => {
 	h4 {
 		margin-bottom: var(--spacing--sm);
 		font-size: var(--font-size--md);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h3,
-	h4 {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	p,
@@ -392,7 +413,7 @@ input[type='checkbox'] + label {
 	h3,
 	h4 {
 		margin-bottom: var(--spacing--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		line-height: var(--line-height--lg);
 	}
 

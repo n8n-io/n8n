@@ -200,7 +200,7 @@ $border: light-dark(
 
 .th {
 	font-size: 10px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.03em;

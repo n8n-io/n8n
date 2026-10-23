@@ -13,7 +13,7 @@ import {
 import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { CanvasConnection } from './canvas.types';
-import { CanvasConnectionMode } from './canvas.types';
+import { CANVAS_NODE_GROUP_OUTPUT_HANDLE, CanvasConnectionMode } from './canvas.types';
 import type { INodeUi } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
 import { createTestNode } from '@/__tests__/mocks';
@@ -810,7 +810,7 @@ describe('resolveCanonicalConnection', () => {
 		const result = resolveCanonicalConnection({
 			source: 'group:g1',
 			target: 'node-b',
-			sourceHandle: 'right',
+			sourceHandle: CANVAS_NODE_GROUP_OUTPUT_HANDLE,
 			targetHandle: 'inputs/main/0',
 			data: {
 				source: { node: 'A', type: NodeConnectionTypes.Main, index: 0 },

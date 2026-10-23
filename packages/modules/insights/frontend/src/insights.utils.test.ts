@@ -316,9 +316,10 @@ describe('Insights Transformers', () => {
 		});
 
 		it('should return null for custom range', () => {
+			const end = today(getLocalTimeZone());
 			const result = getMatchingPreset({
-				start: new CalendarDate(2025, 10, 20),
-				end: today(getLocalTimeZone()),
+				start: end.subtract({ days: 10 }),
+				end,
 			});
 
 			expect(result).toBeNull();

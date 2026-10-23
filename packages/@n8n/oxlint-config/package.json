@@ -33,7 +33,8 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "node -e \"process.exit(0)\"",
-    "test": "node -e \"process.exit(0)\"",
+    "test": "node ../../../scripts/lint-parity/verify-raw-enum-bridge.mjs",
+    "test:unit": "node ../../../scripts/lint-parity/verify-raw-enum-bridge.mjs",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch"
   },

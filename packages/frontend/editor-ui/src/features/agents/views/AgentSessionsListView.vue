@@ -6,6 +6,10 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import {
+	useAgentTelemetry,
+	type AgentSessionFilterName,
+} from '@/features/agents/composables/useAgentTelemetry';
 import type {
 	AgentExecutionThread,
 	AgentSessionFilters,
@@ -20,7 +24,7 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nCheckbox,
-	N8nIcon,
+	N8nBadge,
 	N8nTableBase,
 	N8nText,
 } from '@n8n/design-system';
@@ -29,6 +33,13 @@ import { ElSkeletonItem } from 'element-plus';
 
 type TraceTarget = { agentId: string; threadId: string };
 type OriginPresentation = { icon: IconName; label: string };
+
+const sessionFilterFields: Array<[keyof AgentSessionFilters, AgentSessionFilterName]> = [
+	['status', 'status'],
+	['origin', 'origin'],
+	['startDate', 'start_date'],
+	['endDate', 'end_date'],
+];
 
 const props = withDefaults(
 	defineProps<{
@@ -52,6 +63,7 @@ const router = useRouter();
 const toast = useToast();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
+const agentTelemetry = useAgentTelemetry();
 let disposed = false;
 let managesStoreLifecycle = false;
 
@@ -151,11 +163,18 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 			return { icon: 'flask-conical', label: i18n.baseText('agentSessions.origin.mcp') };
 		case 'workflow':
 			return { icon: 'workflow', label: i18n.baseText('agentSessions.origin.workflow') };
+		case 'n8n_chat_production':
+			return { icon: 'message-square', label: i18n.baseText('agentSessions.origin.n8nChat') };
 		case 'slack':
 		case 'telegram':
 		case 'linear':
 		case 'discord':
+		case 'teams':
 			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
+		case 'whatsapp':
+			// The generic capitalize-first-letter above would produce "Whatsapp",
+			// misspelling the brand name — WhatsApp has an internal capital.
+			return { icon: source, label: 'WhatsApp' };
 		case 'chat':
 		case 'n8n_chat':
 		case undefined:
@@ -250,6 +269,14 @@ function onAutoRefreshChange(enabled: boolean) {
 }
 
 async function onFiltersChange(value: AgentSessionFilters) {
+	const filterNames = sessionFilterFields
+		.filter(
+			([field]) => JSON.stringify(sessionsStore.filters[field]) !== JSON.stringify(value[field]),
+		)
+		.map(([, name]) => name);
+	if (filterNames.length > 0) {
+		agentTelemetry.trackAppliedSessionFilter({ agentId: agentId.value, filterNames });
+	}
 	try {
 		await sessionsStore.setFilters(projectId.value, agentId.value, value);
 	} catch (error) {
@@ -311,10 +338,12 @@ async function onFiltersChange(value: AgentSessionFilters) {
 							</button>
 						</td>
 						<td :class="$style.originCell" data-test-id="agent-session-origin">
-							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
-								<N8nIcon :icon="originPresentation(thread).icon" size="large" />
-								<span>{{ originPresentation(thread).label }}</span>
-							</span>
+							<N8nBadge
+								:leading-icon="originPresentation(thread).icon"
+								data-test-id="agent-session-origin-pill"
+							>
+								{{ originPresentation(thread).label }}
+							</N8nBadge>
 						</td>
 						<td :class="$style.dateCell" data-test-id="agent-session-updated-at">
 							{{ formatDate(thread.updatedAt) }}
@@ -393,6 +422,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg);
 	height: 100%;
+	min-width: 0;
 	min-height: 0;
 	overflow-y: auto;
 	scrollbar-width: thin;
@@ -407,6 +437,8 @@ async function onFiltersChange(value: AgentSessionFilters) {
 
 .tableContainer {
 	width: 100%;
+	min-width: 0;
+	container: sessions / inline-size;
 	overflow-x: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
@@ -599,5 +631,86 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	max-width: 100%;
 	color: var(--text-color--subtler);
 	white-space: normal;
+}
+
+// No token covers the width needed by this five-column table.
+@container sessions (max-width: 44rem) {
+	.wrapper .sessionsTable table,
+	.wrapper .sessionsTable tbody {
+		display: block;
+		width: 100%;
+	}
+
+	.wrapper .sessionsTable .clickableRow {
+		display: grid;
+		grid-template-areas:
+			'title action'
+			'origin origin'
+			'date token';
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: var(--spacing--3xs) var(--spacing--xs);
+		padding: var(--spacing--xs);
+		border-left: var(--spacing--4xs) var(--border-style)
+			var(--execution-card--border-color--unknown);
+
+		&[data-status='succeeded'] {
+			border-left-color: var(--execution-card--border-color--success);
+		}
+
+		&[data-status='error'] {
+			border-left-color: var(--execution-card--border-color--error);
+		}
+
+		&[data-status='cancelled'],
+		&[data-status='interrupted'] {
+			border-left-color: var(--border-color--warning);
+		}
+
+		td {
+			display: block;
+			width: auto;
+			min-width: 0;
+			height: auto;
+			padding: 0;
+		}
+
+		.titleCell {
+			grid-area: title;
+			max-width: none;
+			border-left: 0;
+		}
+
+		.originCell {
+			grid-area: origin;
+			overflow: hidden;
+		}
+
+		.dateCell {
+			grid-area: date;
+		}
+
+		.tokenCell {
+			grid-area: token;
+			text-align: right;
+		}
+
+		.actionCell {
+			grid-area: action;
+		}
+	}
+
+	.wrapper .sessionsTable .skeletonRow,
+	.wrapper .sessionsTable .lastRow {
+		display: block;
+
+		td {
+			display: block;
+			width: 100%;
+		}
+	}
+
+	.wrapper .sessionsTable .skeletonRow td:not(:first-child) {
+		display: none;
+	}
 }
 </style>

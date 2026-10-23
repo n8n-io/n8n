@@ -1,14 +1,24 @@
-import type { NodeTypeAvailability } from '@n8n/api-types';
+import type { CredentialTypeAvailability, NodeTypeAvailability } from '@n8n/api-types';
+import { getProject, type Project } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
 
-import { fetchAvailableTypes } from './type-availability-policies.api';
+import {
+	fetchAvailableCredentialTypes,
+	fetchAvailableTypes,
+} from './type-availability-policies.api';
 import {
 	TYPE_AVAILABILITY_POLICIES_MODULE_ID,
 	TYPE_AVAILABILITY_POLICIES_STORE_ID,
 } from './type-availability-policies.constants';
+
+function unavailableByName<T extends { name: string; available: boolean }>(
+	entries: T[],
+): ReadonlyMap<string, T> {
+	return new Map(entries.filter((entry) => !entry.available).map((entry) => [entry.name, entry]));
+}
 
 export const useTypeAvailabilityPoliciesStore = defineStore(
 	TYPE_AVAILABILITY_POLICIES_STORE_ID,
@@ -17,9 +27,14 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		const settingsStore = useSettingsStore();
 
 		const restrictedNodeTypes = shallowRef<ReadonlyMap<string, NodeTypeAvailability>>(new Map());
+		const restrictedCredentialTypes = shallowRef<ReadonlyMap<string, CredentialTypeAvailability>>(
+			new Map(),
+		);
 		const loadedProjectId = ref<string | null>(null);
+		const policyProject = shallowRef<Project | null>(null);
 		const requestedProjectId = ref<string | null>(null);
 		const isLoading = ref(false);
+		let latestRequest = 0;
 
 		const isEnabled = computed(
 			() => settingsStore.isModuleActive(TYPE_AVAILABILITY_POLICIES_MODULE_ID) ?? false,
@@ -29,29 +44,53 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			if (!isEnabled.value) return;
 
 			requestedProjectId.value = projectId;
+			latestRequest++;
 
 			if (projectId === loadedProjectId.value) {
 				isLoading.value = false;
 				return;
 			}
 
+			await load(projectId);
+		}
+
+		/** Refetches the current project after the server's node set changed. */
+		async function reload(): Promise<void> {
+			if (!isEnabled.value || requestedProjectId.value === null) return;
+
+			await load(requestedProjectId.value);
+		}
+
+		/**
+		 * Loads both kinds together. A credential-only node's answer composes the two, so they
+		 * must describe the same project at the same time: either both maps are the project's or
+		 * neither is.
+		 */
+		async function load(projectId: string): Promise<void> {
+			const request = ++latestRequest;
 			isLoading.value = true;
 			try {
-				const entries = await fetchAvailableTypes(rootStore.restApiContext, projectId);
-				if (requestedProjectId.value !== projectId) return;
+				const [nodeTypes, credentialTypes, project] = await Promise.all([
+					fetchAvailableTypes(rootStore.restApiContext, projectId),
+					fetchAvailableCredentialTypes(rootStore.restApiContext, projectId),
+					getProject(rootStore.restApiContext, projectId).catch(() => null),
+				]);
+				if (request !== latestRequest) return;
 
-				restrictedNodeTypes.value = new Map(
-					entries.filter((entry) => !entry.available).map((entry) => [entry.name, entry]),
-				);
+				restrictedNodeTypes.value = unavailableByName(nodeTypes);
+				restrictedCredentialTypes.value = unavailableByName(credentialTypes);
+				policyProject.value = project;
 				loadedProjectId.value = projectId;
 			} catch (error) {
-				if (requestedProjectId.value !== projectId) return;
+				if (request !== latestRequest) return;
 
 				console.error('Failed to fetch available types for project', projectId, error);
 				restrictedNodeTypes.value = new Map();
+				restrictedCredentialTypes.value = new Map();
+				policyProject.value = null;
 				loadedProjectId.value = null;
 			} finally {
-				if (requestedProjectId.value === projectId) isLoading.value = false;
+				if (request === latestRequest) isLoading.value = false;
 			}
 		}
 
@@ -65,8 +104,17 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			return getNodeTypeAvailability(name).available;
 		}
 
+		function getCredentialTypeAvailability(name: string): CredentialTypeAvailability {
+			if (loadedProjectId.value !== requestedProjectId.value) return { name, available: true };
+
+			return restrictedCredentialTypes.value.get(name) ?? { name, available: true };
+		}
+
 		function reset(): void {
+			latestRequest++;
 			restrictedNodeTypes.value = new Map();
+			restrictedCredentialTypes.value = new Map();
+			policyProject.value = null;
 			loadedProjectId.value = null;
 			requestedProjectId.value = null;
 			isLoading.value = false;
@@ -76,9 +124,12 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			isEnabled,
 			isLoading,
 			loadedProjectId,
+			policyProject,
 			fetchForProject,
+			reload,
 			getNodeTypeAvailability,
 			isNodeTypeAvailable,
+			getCredentialTypeAvailability,
 			reset,
 		};
 	},

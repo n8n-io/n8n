@@ -1,5 +1,4 @@
-import type { ExecutionRepository } from '@n8n/db';
-import { Container } from '@n8n/di';
+import type { IExecutionResponse } from '@n8n/db';
 import {
 	Expression,
 	type IConnections,
@@ -9,10 +8,9 @@ import {
 	type IRunExecutionData,
 	type ITaskData,
 } from 'n8n-workflow';
-import type { Mocked, MockInstance } from 'vitest';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeTypes } from '@/node-types';
 
 import { extractResolvedNodeParameters } from '../extract-resolved-node-parameters';
@@ -21,15 +19,9 @@ import { extractResolvedNodeParameters } from '../extract-resolved-node-paramete
 // Helpers
 // ---------------------------------------------------------------------------
 
-function createMockExecutionRepository(
-	execution?: ReturnType<typeof makeResolutionExecution>,
-): Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
-	const executionPersistence = mock<ExecutionPersistence>();
-	executionPersistence.findSingleExecution.mockResolvedValue(execution as never);
-	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence as never);
-	return {
-		findSingleExecution: vi.fn().mockResolvedValue(execution),
-	};
+/** Type a fixture as the loaded execution the extractor takes. */
+function asExecution(execution: ReturnType<typeof makeResolutionExecution>): IExecutionResponse {
+	return execution as unknown as IExecutionResponse;
 }
 
 /** Build a task data entry with the given output items. */
@@ -158,7 +150,7 @@ describe('extractResolvedNodeParameters', () => {
 			},
 		};
 		const set = makeNode('Set', 'n8n-nodes-base.set', params);
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, set],
 				connections: connect('Trigger', 'Set'),
@@ -168,7 +160,7 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'Set');
 
 		expect(result.nodeName).toBe('Set');
 		expect(result.runIndex).toBe(0);
@@ -198,7 +190,7 @@ describe('extractResolvedNodeParameters', () => {
 			fromSecrets: '={{ $secrets.token }}',
 			realBug: '={{ $json.missing }}',
 		});
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, set],
 				connections: connect('Trigger', 'Set'),
@@ -208,7 +200,7 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'Set');
 
 		const byPath = new Map(result.emptyResolutions.map((e) => [e.path, e]));
 		expect(byPath.get('fromVars')?.reason).toBe('unreconstructable-context');
@@ -229,7 +221,7 @@ describe('extractResolvedNodeParameters', () => {
 				bar: '={{ $json.missing }}',
 			},
 		});
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, set],
 				connections: connect('Trigger', 'Set'),
@@ -239,7 +231,7 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'Set');
 
 		expect(result.failedExpressions).toEqual([]);
 		expect(result.emptyResolutions.map((e) => e.path).sort()).toEqual(['baz', 'nested.bar']);
@@ -264,7 +256,7 @@ describe('extractResolvedNodeParameters', () => {
 				alsoGood: '={{ $json.value }}',
 			},
 		});
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, set],
 				connections: connect('Trigger', 'Set'),
@@ -274,7 +266,7 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'Set');
 
 		const resolved = parseResolved(result.resolved);
 		const nested = resolved.nested as Record<string, unknown>;
@@ -288,19 +280,11 @@ describe('extractResolvedNodeParameters', () => {
 		}
 	});
 
-	it('throws when the execution does not exist', async () => {
-		createMockExecutionRepository(undefined);
-
-		await expect(extractResolvedNodeParameters(nodeTypes, 'missing', 'Anything')).rejects.toThrow(
-			'Execution missing not found',
-		);
-	});
-
 	it('throws when the node is not in the execution snapshot', async () => {
 		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
-		createMockExecutionRepository(makeResolutionExecution({ nodes: [trigger], runData: {} }));
+		const execution = asExecution(makeResolutionExecution({ nodes: [trigger], runData: {} }));
 
-		await expect(extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Unknown')).rejects.toThrow(
+		await expect(extractResolvedNodeParameters(nodeTypes, execution, 'Unknown')).rejects.toThrow(
 			'Node "Unknown" not found in execution exec-1',
 		);
 	});
@@ -308,7 +292,7 @@ describe('extractResolvedNodeParameters', () => {
 	it('defaults runIndex to the last run of the queried node and honors an explicit runIndex', async () => {
 		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
 		const set = makeNode('Set', 'n8n-nodes-base.set', { value: '={{ $json.tag }}' });
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, set],
 				connections: connect('Trigger', 'Set'),
@@ -324,11 +308,11 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const last = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
+		const last = await extractResolvedNodeParameters(nodeTypes, execution, 'Set');
 		expect(last.runIndex).toBe(2);
 		expect(parseResolved(last.resolved)).toEqual({ value: 'third' });
 
-		const first = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set', { runIndex: 0 });
+		const first = await extractResolvedNodeParameters(nodeTypes, execution, 'Set', { runIndex: 0 });
 		expect(first.runIndex).toBe(0);
 		expect(parseResolved(first.resolved)).toEqual({ value: 'first' });
 	});
@@ -336,7 +320,7 @@ describe('extractResolvedNodeParameters', () => {
 	it('captures item-index-out-of-range expressions as failed without throwing', async () => {
 		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
 		const set = makeNode('Set', 'n8n-nodes-base.set', { value: '={{ $json.value }}' });
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, set],
 				connections: connect('Trigger', 'Set'),
@@ -346,7 +330,7 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set', {
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'Set', {
 			itemIndex: 99,
 		});
 
@@ -365,7 +349,7 @@ describe('extractResolvedNodeParameters', () => {
 				stopOn: '={{ $pageCount > 5 }}',
 			},
 		});
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, http],
 				connections: connect('Trigger', 'HTTP Request'),
@@ -375,7 +359,7 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'HTTP Request');
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'HTTP Request');
 
 		// Non-paginated parameters resolve fine; paginated ones either succeed (using
 		// the stubbed empty $response/$pageCount) or fail. What we care about: any
@@ -395,7 +379,7 @@ describe('extractResolvedNodeParameters', () => {
 		const huge = 'x'.repeat(20_000);
 		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
 		const set = makeNode('Set', 'n8n-nodes-base.set', { body: '={{ $json.payload }}' });
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, set],
 				connections: connect('Trigger', 'Set'),
@@ -405,7 +389,7 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'Set');
 
 		const body = parseResolved(result.resolved).body as Record<string, unknown>;
 		expect(body._truncated).toBe(true);
@@ -422,7 +406,7 @@ describe('extractResolvedNodeParameters', () => {
 		const set = makeNode('Set', 'n8n-nodes-base.set', {
 			fromUpstream: '={{ $("Trigger").item.json.greeting }}',
 		});
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, set],
 				connections: connect('Trigger', 'Set'),
@@ -437,7 +421,7 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'Set');
 
 		expect(result.failedExpressions).toEqual([]);
 		expect(parseResolved(result.resolved)).toEqual({ fromUpstream: 'hello' });
@@ -451,7 +435,7 @@ describe('extractResolvedNodeParameters', () => {
 		const switchNode = makeNode('Switch', 'n8n-nodes-base.switch');
 		const branchB = makeNode('Branch B', 'n8n-nodes-base.set', { value: '={{ $json.label }}' });
 
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, switchNode, branchB],
 				connections: {
@@ -471,7 +455,7 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Branch B');
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'Branch B');
 
 		// Resolves against the Switch's output 1, not output 0.
 		expect(parseResolved(result.resolved)).toEqual({ value: 'went-to-B' });
@@ -487,7 +471,7 @@ describe('extractResolvedNodeParameters', () => {
 		const loopHead = makeNode('Loop', 'n8n-nodes-base.splitInBatches');
 		const body = makeNode('Body', 'n8n-nodes-base.set', { value: '={{ $json.iter }}' });
 
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [loopHead, body],
 				connections: connect('Loop', 'Body'),
@@ -513,7 +497,7 @@ describe('extractResolvedNodeParameters', () => {
 		);
 
 		// Inspect the second body run (runIndex=1) — its source points at Loop run 1 ("B").
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Body', {
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'Body', {
 			runIndex: 1,
 		});
 
@@ -527,7 +511,7 @@ describe('extractResolvedNodeParameters', () => {
 		// saved workflow snapshot — that would shadow the recorded reality.
 		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
 		const set = makeNode('Set', 'n8n-nodes-base.set', { value: '={{ $json.source }}' });
-		createMockExecutionRepository(
+		const execution = asExecution(
 			makeResolutionExecution({
 				nodes: [trigger, set],
 				connections: connect('Trigger', 'Set'),
@@ -540,7 +524,7 @@ describe('extractResolvedNodeParameters', () => {
 			}),
 		);
 
-		const result = await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
+		const result = await extractResolvedNodeParameters(nodeTypes, execution, 'Set');
 
 		expect(parseResolved(result.resolved)).toEqual({ value: 'from-runData' });
 	});
@@ -562,7 +546,7 @@ describe('extractResolvedNodeParameters', () => {
 		it('acquires and releases the isolate around parameter resolution', async () => {
 			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
 			const set = makeNode('Set', 'n8n-nodes-base.set', { value: '={{ $json.tag }}' });
-			createMockExecutionRepository(
+			const execution = asExecution(
 				makeResolutionExecution({
 					nodes: [trigger, set],
 					connections: connect('Trigger', 'Set'),
@@ -572,7 +556,7 @@ describe('extractResolvedNodeParameters', () => {
 				}),
 			);
 
-			await extractResolvedNodeParameters(nodeTypes, 'exec-1', 'Set');
+			await extractResolvedNodeParameters(nodeTypes, execution, 'Set');
 
 			expect(acquireSpy).toHaveBeenCalledTimes(1);
 			expect(releaseSpy).toHaveBeenCalledTimes(1);

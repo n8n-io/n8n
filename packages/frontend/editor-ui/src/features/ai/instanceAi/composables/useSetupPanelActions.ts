@@ -1,7 +1,14 @@
 import { computed, ref, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import isEqual from 'lodash/isEqual';
 
-import type { InstanceAiSetupItem } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	instanceAiSetupCredentialAppliedKey,
+	instanceAiSetupCredentialSelectionKey,
+	readPendingInstanceAiSetupCredentialSelections,
+	type InstanceAiSetupCredentialSelection,
+	type InstanceAiSetupItem,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { NodeHelpers } from 'n8n-workflow';
@@ -11,6 +18,7 @@ import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { getWorkflow } from '@/app/api/workflows';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeCredentialTypes } from '@/features/setupPanel/setupPanel.utils';
 import { GENERIC_AUTH_CREDENTIAL_TYPES } from '@n8n/api-types';
 import {
@@ -18,6 +26,9 @@ import {
 	useExistingWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useInstanceAiStore } from '../instanceAi.store';
+import { fetchThread, updateThreadMetadata } from '../instanceAi.memory.api';
 import {
 	applySetupParameterChanges,
 	getSetupParameterChanges,
@@ -29,6 +40,27 @@ import {
 export type SetupCredentialItem = Extract<InstanceAiSetupItem, { kind: 'credential' }>;
 
 export type SetupCredentialRef = INodeCredentialsDetails;
+
+export function resolveSetupCredentialItem(
+	item: SetupCredentialItem,
+	nodes: INodeUi[],
+	nodeTypeProvider: NodeTypeProvider,
+): SetupCredentialItem {
+	if (!item.nodeBindings?.length && GENERIC_AUTH_CREDENTIAL_TYPES.has(item.credentialType))
+		return item;
+	return {
+		...item,
+		nodeBindings: nodes
+			.filter(
+				(node) =>
+					!node.disabled &&
+					(!item.nodeBindings?.length ||
+						item.nodeBindings.some(({ nodeName }) => nodeName === node.name)) &&
+					getNodeCredentialTypes(nodeTypeProvider, node).includes(item.credentialType),
+			)
+			.map((node) => ({ nodeName: node.name })),
+	};
+}
 
 export type SetupPanelApplyResult =
 	/** The workflow PATCH landed. */
@@ -43,12 +75,13 @@ export type SetupPanelApplyResult =
 	/** Two consecutive version conflicts — gave up, rows re-derive. */
 	| 'conflict'
 	| 'error'
-	/** Agent lock held — stashed, flushed when the build settles. */
+	/** Saved selection waits for workflow nodes or for the agent to finish. */
 	| 'queued';
 
 interface CredentialBind {
 	item: SetupCredentialItem;
 	credential: SetupCredentialRef;
+	selectionId: string;
 }
 
 interface ParameterApply {
@@ -118,20 +151,15 @@ function applyDeltaToNodes(nodes: INodeUi[], delta: NodesDelta): 'changed' | 'no
 	return sawTarget ? 'noop' : 'dropped';
 }
 
-/**
- * Setup panel apply paths (T6 of setup panel v2): bind credentials and submit
- * parameter values through the normal versionId/checksum-guarded workflow
- * PATCH.
- *
- * The agent lock rule: no user-initiated workflow write while the agent is
- * editing. Writes requested mid-build queue up (latest wins per item/node)
- * and flush once `isAgentBuilding` settles — one attempt, then the queue is
- * dropped and done-ness re-derives from the saved workflow.
- */
+/** Save credential choices before applying setup values through a guarded workflow PATCH. */
 export function useSetupPanelActions(options: {
+	threadId: string;
 	/** The thread's active artifact workflow — same source as `useSetupPanelState`. */
 	workflowId: MaybeRefOrGetter<string | undefined>;
 	isAgentBuilding: MaybeRefOrGetter<boolean>;
+	workflowNodes: MaybeRefOrGetter<INodeUi[] | undefined>;
+	/** Retry early selections when a saved workflow gains nodes. */
+	savedWorkflowChecksum?: MaybeRefOrGetter<string | undefined>;
 	/**
 	 * Receives the outcome of the automatic settle flush (queued writes
 	 * draining when the agent lock releases) — the one apply path with no
@@ -139,34 +167,101 @@ export function useSetupPanelActions(options: {
 	 * their return value instead.
 	 */
 	onFlushResult?: (result: SetupPanelApplyResult, workflowId: string) => void;
+	onSaved?: (workflow: IWorkflowDb) => void;
 }) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
+	const instanceAiStore = useInstanceAiStore();
+	const credentialsStore = useCredentialsStore();
 
 	const activeApplyCount = ref(0);
 	const isApplying = computed(() => activeApplyCount.value > 0);
 	const pendingCredentialBinds = shallowReactive(new Map<string, CredentialBind>());
+	const credentialSaves = new Map<string, Promise<void>>();
 	const pendingParameterApplies = shallowReactive(new Map<string, SetupParameterChange[]>());
 	const applyingDeltas = shallowReactive(new Map<NodesDelta, string>());
-	/**
-	 * The workflow the queued writes were captured for. A build settling and a
-	 * re-anchor can land in the same flush (the settle watcher runs first), so
-	 * the flush checks ownership instead of trusting the current anchor.
-	 */
+	const savedCredentialBinds = computed(() => {
+		const workflowId = toValue(options.workflowId);
+		if (!workflowId) return [];
+		return readPendingInstanceAiSetupCredentialSelections(
+			instanceAiStore.getThreadMetadata(options.threadId),
+			workflowId,
+		).map(({ itemId, selection }): CredentialBind => {
+			const cached = pendingCredentialBinds.get(itemId);
+			if (cached?.selectionId === selection.selectionId) return cached;
+			const credential =
+				credentialsStore.getUsableCredentialById(selection.credentialId) ??
+				credentialsStore.getCredentialById(selection.credentialId);
+			return {
+				item: {
+					id: itemId,
+					kind: 'credential',
+					credentialType: selection.credentialType,
+					nodeBindings: selection.nodeNames?.map((nodeName) => ({ nodeName })),
+				},
+				credential:
+					selection.credentialId === AI_GATEWAY_MANAGED_TAG
+						? { id: null, name: '', __aiGatewayManaged: true }
+						: { id: selection.credentialId, name: credential?.name ?? '' },
+				selectionId: selection.selectionId,
+			};
+		});
+	});
+
+	async function persistMetadata(metadata: Record<string, unknown>) {
+		await updateThreadMetadata(rootStore.restApiContext, options.threadId, metadata);
+		instanceAiStore.setThreadMetadata(options.threadId, {
+			...instanceAiStore.getThreadMetadata(options.threadId),
+			...metadata,
+		});
+	}
+
+	async function markCredentialsApplied(delta: NodesDelta) {
+		if (delta.credentialBinds.length === 0) return;
+		await persistMetadata(
+			Object.fromEntries(
+				delta.credentialBinds.map(({ item, selectionId }) => [
+					instanceAiSetupCredentialAppliedKey(item.id, selectionId),
+					true,
+				]),
+			),
+		);
+		for (const { item, selectionId } of delta.credentialBinds) {
+			if (pendingCredentialBinds.get(item.id)?.selectionId === selectionId)
+				pendingCredentialBinds.delete(item.id);
+		}
+	}
+	/** Parameter drafts belong to the workflow that queued them. */
 	let queuedWorkflowId: string | undefined;
 
-	/** Queued writes awaiting the agent lock release. */
-	const pendingApplyCount = computed(
-		() => pendingCredentialBinds.size + pendingParameterApplies.size,
-	);
+	function resolveCredentialBinds(binds: CredentialBind[], nodes: INodeUi[]): CredentialBind[] {
+		return binds
+			.map((bind) => ({
+				...bind,
+				item: resolveSetupCredentialItem(bind.item, nodes, nodeTypesStore),
+			}))
+			.filter(({ item }) => item.nodeBindings?.length);
+	}
+
+	/** Choices for absent services stay saved without blocking the current workflow. */
+	const pendingApplyCount = computed(() => {
+		const nodes = toValue(options.workflowNodes);
+		const binds = savedCredentialBinds.value;
+		return (
+			(nodes ? resolveCredentialBinds(binds, nodes).length : binds.length) +
+			pendingParameterApplies.size
+		);
+	});
 
 	function getPendingCredential(itemId: string, nodeName?: string): SetupCredentialRef | undefined {
 		const workflowId = toValue(options.workflowId);
 		const scopedId = nodeName ? `${itemId}:${nodeName}` : itemId;
-		const queued = pendingCredentialBinds.get(scopedId) ?? pendingCredentialBinds.get(itemId);
-		if (queuedWorkflowId === workflowId && queued) return queued.credential;
+		const queued =
+			savedCredentialBinds.value.find(({ item }) => item.id === scopedId) ??
+			savedCredentialBinds.value.find(({ item }) => item.id === itemId);
+		if (queued) return queued.credential;
 		for (const [delta, targetId] of [...applyingDeltas].reverse()) {
 			if (targetId !== workflowId) continue;
 			const bind =
@@ -325,6 +420,31 @@ export function useSetupPanelActions(options: {
 		activeApplyCount.value++;
 		applyingDeltas.set(delta, workflowId);
 		try {
+			if (delta.credentialBinds.length > 0) {
+				const before = instanceAiStore.getThreadMetadata(options.threadId);
+				const { thread } = await fetchThread(rootStore.restApiContext, options.threadId);
+				const current = instanceAiStore.getThreadMetadata(options.threadId);
+				// Keep choices saved locally while the server read was in flight.
+				instanceAiStore.setThreadMetadata(options.threadId, {
+					...current,
+					...Object.fromEntries(
+						Object.entries(thread.metadata ?? {}).filter(([key]) =>
+							isEqual(before?.[key], current?.[key]),
+						),
+					),
+				});
+				const pendingIds = new Set(
+					readPendingInstanceAiSetupCredentialSelections(
+						instanceAiStore.getThreadMetadata(options.threadId),
+						workflowId,
+					).map(({ selection }) => selection.selectionId),
+				);
+				delta.credentialBinds = delta.credentialBinds.filter(({ selectionId }) =>
+					pendingIds.has(selectionId),
+				);
+				if (delta.credentialBinds.length === 0 && delta.parameterApplies.length === 0)
+					return 'noop';
+			}
 			for (let attempt = 0; attempt < 2; attempt++) {
 				let fresh: IWorkflowDb;
 				try {
@@ -337,8 +457,9 @@ export function useSetupPanelActions(options: {
 				if (!fresh.checksum) return 'error';
 
 				const nodes = fresh.nodes;
-				// An early announcement can arrive before its workflow nodes exist.
-				if (delta.credentialBinds.some((bind) => !bind.item.nodeBindings?.length)) {
+				if (nodes.length === 0 && delta.credentialBinds.length > 0) return 'queued';
+				// Resolve choices against the node's current credential requirements.
+				if (delta.credentialBinds.length > 0) {
 					try {
 						await nodeTypesStore.loadNodeTypesIfNotLoaded();
 					} catch {
@@ -347,28 +468,7 @@ export function useSetupPanelActions(options: {
 				}
 				const resolvedDelta: NodesDelta = {
 					...delta,
-					credentialBinds: delta.credentialBinds.map((bind) => {
-						if (
-							bind.item.nodeBindings?.length ||
-							GENERIC_AUTH_CREDENTIAL_TYPES.has(bind.item.credentialType)
-						)
-							return bind;
-						return {
-							...bind,
-							item: {
-								...bind.item,
-								nodeBindings: nodes
-									.filter(
-										(node) =>
-											!node.disabled &&
-											getNodeCredentialTypes(nodeTypesStore, node).includes(
-												bind.item.credentialType,
-											),
-									)
-									.map((node) => ({ nodeName: node.name })),
-							},
-						};
-					}),
+					credentialBinds: resolveCredentialBinds(delta.credentialBinds, nodes),
 				};
 				// applyDeltaToNodes mutates these nodes — snapshot the pre-PATCH
 				// values first so the mirror can spot newer local edits.
@@ -379,7 +479,6 @@ export function useSetupPanelActions(options: {
 					]),
 				);
 				const outcome = applyDeltaToNodes(nodes, resolvedDelta);
-				if (outcome !== 'changed') return outcome;
 
 				// The anchor and the agent lock can both move while the fetch was
 				// awaited. A re-anchored panel no longer owns this write — drop it
@@ -391,6 +490,11 @@ export function useSetupPanelActions(options: {
 					requeueDelta(workflowId, delta);
 					return 'queued';
 				}
+				if (outcome !== 'changed') {
+					if (outcome === 'noop') options.onSaved?.(fresh);
+					await markCredentialsApplied(resolvedDelta);
+					return outcome;
+				}
 
 				try {
 					const updated = await workflowsStore.updateWorkflow(workflowId, {
@@ -399,6 +503,8 @@ export function useSetupPanelActions(options: {
 						expectedChecksum: fresh.checksum,
 					});
 					syncHydratedDocument(workflowId, resolvedDelta, baseline, updated);
+					options.onSaved?.(updated);
+					await markCredentialsApplied(resolvedDelta);
 					return 'applied';
 				} catch (error) {
 					const isConflict = error instanceof ResponseError && error.httpStatusCode === 409;
@@ -406,6 +512,8 @@ export function useSetupPanelActions(options: {
 				}
 			}
 			return 'conflict';
+		} catch {
+			return 'error';
 		} finally {
 			applyingDeltas.delete(delta);
 			activeApplyCount.value--;
@@ -422,15 +530,40 @@ export function useSetupPanelActions(options: {
 		item: SetupCredentialItem,
 		credential: SetupCredentialRef,
 	): Promise<SetupPanelApplyResult> {
+		const workflowId = toValue(options.workflowId);
+		if (!workflowId || !item.id.startsWith(`${workflowId}:credential:`)) return 'error';
+		const selection: InstanceAiSetupCredentialSelection = {
+			selectionId: crypto.randomUUID(),
+			credentialType: item.credentialType,
+			credentialId: credential.__aiGatewayManaged ? AI_GATEWAY_MANAGED_TAG : (credential.id ?? ''),
+			nodeNames: item.nodeBindings?.length
+				? item.nodeBindings.map(({ nodeName }) => nodeName)
+				: undefined,
+		};
+		if (!selection.credentialId) return 'error';
+		// Preserve selection order when consecutive metadata requests overlap.
+		const save = (credentialSaves.get(item.id) ?? Promise.resolve())
+			.catch(() => {})
+			.then(
+				async () =>
+					await persistMetadata({ [instanceAiSetupCredentialSelectionKey(item.id)]: selection }),
+			);
+		credentialSaves.set(item.id, save);
+		try {
+			await save;
+		} catch {
+			return 'error';
+		} finally {
+			if (credentialSaves.get(item.id) === save) credentialSaves.delete(item.id);
+		}
+		const bind = { item, credential, selectionId: selection.selectionId };
+		pendingCredentialBinds.set(item.id, bind);
+		if (toValue(options.workflowId) !== workflowId) return 'queued';
 		if (toValue(options.isAgentBuilding)) {
-			queuedWorkflowId = toValue(options.workflowId);
-			pendingCredentialBinds.set(item.id, { item, credential });
 			return 'queued';
 		}
-		const workflowId = toValue(options.workflowId);
-		if (!workflowId) return 'error';
 		return await patchWorkflowNodes(workflowId, {
-			credentialBinds: [{ item, credential }],
+			credentialBinds: [bind],
 			parameterApplies: [],
 		});
 	}
@@ -468,49 +601,45 @@ export function useSetupPanelActions(options: {
 		});
 	}
 
-	/**
-	 * Lands every queued write in one guarded PATCH. One attempt — leftovers
-	 * drop. Returns the apply outcome, or undefined when there was nothing to
-	 * flush or the lock is still held.
-	 */
+	/** Apply queued values after the agent finishes. Failed credential choices stay saved. */
 	async function flushPendingApplies(): Promise<SetupPanelApplyResult | undefined> {
 		// The lock rule holds for manual flushes too — the queue stays intact.
 		if (toValue(options.isAgentBuilding)) return undefined;
-		if (pendingApplyCount.value === 0) return undefined;
+		if (savedCredentialBinds.value.length === 0 && pendingParameterApplies.size === 0)
+			return undefined;
 		const workflowId = toValue(options.workflowId);
-		// Queued writes belong to the workflow they were captured for; if the
-		// panel re-anchored since (even in this same flush), drop them.
-		if (!workflowId || workflowId !== queuedWorkflowId) {
-			pendingCredentialBinds.clear();
+		if (!workflowId || [...applyingDeltas.values()].includes(workflowId)) return undefined;
+		if (workflowId !== queuedWorkflowId) {
 			pendingParameterApplies.clear();
-			return 'dropped';
 		}
 		const delta: NodesDelta = {
-			credentialBinds: [...pendingCredentialBinds.values()],
+			credentialBinds: savedCredentialBinds.value,
 			parameterApplies: [...pendingParameterApplies.entries()].map(([nodeName, changes]) => ({
 				nodeName,
 				changes,
 			})),
 		};
-		pendingCredentialBinds.clear();
 		pendingParameterApplies.clear();
 		return await patchWorkflowNodes(workflowId, delta);
 	}
 
 	watch(
-		() => toValue(options.isAgentBuilding),
-		(building, wasBuilding) => {
-			const workflowId = toValue(options.workflowId);
-			if (wasBuilding && !building && workflowId) {
+		[
+			() => toValue(options.workflowId),
+			() => toValue(options.isAgentBuilding),
+			() => toValue(options.savedWorkflowChecksum),
+		],
+		([workflowId, building]) => {
+			if (!building && workflowId) {
 				void flushPendingApplies().then((result) => {
 					if (result) options.onFlushResult?.(result, workflowId);
 				});
 			}
 		},
+		{ immediate: true },
 	);
 
-	// Queued writes are workflow-scoped (item ids embed the workflow id) — a
-	// panel re-anchoring to another artifact must not flush them there.
+	// Credential choices remain in thread metadata when the active workflow changes.
 	watch(
 		() => toValue(options.workflowId),
 		() => {

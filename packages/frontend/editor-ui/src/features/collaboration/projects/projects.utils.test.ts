@@ -1,10 +1,29 @@
 import { createPinia, setActivePinia } from 'pinia';
 import {
+	compareSharingEntries,
 	splitName,
 	useRemoteProjectSearch,
 	DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
 } from './projects.utils';
 import { useProjectsStore } from './projects.store';
+
+describe('compareSharingEntries', () => {
+	it('puts people before projects, and orders each by name', () => {
+		const entries = [
+			{ type: 'team', name: 'Sales' },
+			{ type: 'personal', name: 'Zoe Adams <zoe@acme.io>' },
+			{ type: 'team', name: 'Marketing' },
+			{ type: 'personal', name: 'Anna Berg <anna@acme.io>' },
+		];
+
+		expect([...entries].sort(compareSharingEntries).map(({ name }) => name)).toEqual([
+			'Anna Berg <anna@acme.io>',
+			'Zoe Adams <zoe@acme.io>',
+			'Marketing',
+			'Sales',
+		]);
+	});
+});
 
 describe('splitName', () => {
 	test.each([

@@ -29,6 +29,11 @@ export type TagsInputSlots = {
 		disabled?: boolean;
 		class: string;
 	}) => unknown;
+	/**
+	 * Content at the end of the field, outside the scrolling tags.
+	 * The slot is unstyled. The caller positions it.
+	 */
+	trailing?: () => unknown;
 	tag?: (props: {
 		value: TagsInputValue;
 		displayValue: string;

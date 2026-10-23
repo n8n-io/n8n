@@ -19,6 +19,9 @@
         "sender": {
             "type": "object",
             "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
                 "displayName": {
                     "type": "string"
                 },
@@ -76,5 +79,5 @@
             }
         }
     },
-    "version": 7
+    "version": 8
 }

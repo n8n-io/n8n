@@ -19,6 +19,7 @@
 | status | varchar |  | false |  |  | Per-case lifecycle |
 | toolCalls | json |  | true |  |  | Tool-call timeline captured during the run |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| verdict | json |  | true |  |  |  |
 
 ## Constraints
 
@@ -64,6 +65,7 @@ erDiagram
   varchar status
   json toolCalls
   timestamp_3__with_time_zone updatedAt
+  json verdict
 }
 "public.agent_eval_rating" {
   text comment

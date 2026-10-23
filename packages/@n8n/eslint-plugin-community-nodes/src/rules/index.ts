@@ -31,6 +31,7 @@ import { NodeClassDescriptionIconMissingRule } from './node-class-description-ic
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
+import { OpenEndedNodeFieldsRule } from './open-ended-node-fields.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireHomepageRule } from './require-homepage.js';
@@ -42,6 +43,7 @@ import { TriggerNodeConventionsRule } from './trigger-node-conventions.js';
 import { ValidAuthorRule } from './valid-author.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
 import { ValidDescriptionRule } from './valid-description.js';
+import { ValidNodeCategoriesRule } from './valid-node-categories.js';
 import { ValidPeerDependenciesRule } from './valid-peer-dependencies.js';
 import { WebhookLifecycleCompleteRule } from './webhook-lifecycle-complete.js';
 
@@ -53,6 +55,7 @@ export const rules = {
 	'no-deprecated-workflow-functions': NoDeprecatedWorkflowFunctionsRule,
 	'no-emoji-in-options': NoEmojiInOptionsRule,
 	'node-usable-as-tool': NodeUsableAsToolRule,
+	'open-ended-node-fields': OpenEndedNodeFieldsRule,
 	'package-name-convention': PackageNameConventionRule,
 	'credential-test-required': CredentialTestRequiredRule,
 	'credential-unnecessary-password': CredentialUnnecessaryPasswordRule,
@@ -88,6 +91,7 @@ export const rules = {
 	'valid-author': ValidAuthorRule,
 	'valid-credential-references': ValidCredentialReferencesRule,
 	'valid-description': ValidDescriptionRule,
+	'valid-node-categories': ValidNodeCategoriesRule,
 	'valid-peer-dependencies': ValidPeerDependenciesRule,
 	'webhook-lifecycle-complete': WebhookLifecycleCompleteRule,
 } satisfies Record<string, AnyRuleModule>;

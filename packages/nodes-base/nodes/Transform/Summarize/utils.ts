@@ -122,6 +122,11 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 
 		//numerical operations
 		case 'average':
+			// No numeric values to average: report null like min and max do,
+			// instead of the NaN that 0 / 0 would give.
+			if (data.length === 0) {
+				return null;
+			}
 			return (
 				data.reduce((acc, item) => {
 					return acc + (getValue(item, field) as number);

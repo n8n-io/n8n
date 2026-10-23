@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient, { Counter } from 'prom-client';
 
-import { EventMessageTypes } from '@/eventbus';
+import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import type { PrometheusMetricsCollector } from './base';

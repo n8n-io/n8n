@@ -242,7 +242,7 @@ export const entryFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'JSON query to filter the data. <a href="https://strapi.io/documentation/developer-docs/latest/developer-resources/content-api/content-api.html#filters">More info</a>.',
+					'JSON query to filter the data. <a href="https://docs.strapi.io/cms/api/rest/filters">More info</a>.',
 			},
 		],
 	},

@@ -575,7 +575,7 @@ describe('Kafka Utils', () => {
 
 				const result = await resultPromise;
 
-				expect(mockedSleep).toHaveBeenCalledWith(5000); // DEFAULT_ERROR_RETRY_DELAY_MS
+				expect(mockedSleep).toHaveBeenCalledWith(5000, expect.any(AbortSignal)); // DEFAULT_ERROR_RETRY_DELAY_MS
 				expect(ctx.logger.error).toHaveBeenCalled();
 				expect(result).toEqual({ success: false });
 			});
@@ -594,7 +594,7 @@ describe('Kafka Utils', () => {
 
 				await resultPromise;
 
-				expect(mockedSleep).toHaveBeenCalledWith(10000);
+				expect(mockedSleep).toHaveBeenCalledWith(10000, expect.any(AbortSignal));
 			});
 		});
 
@@ -751,7 +751,7 @@ describe('Kafka Utils', () => {
 
 				const result = await resultPromise;
 
-				expect(mockedSleep).toHaveBeenCalledWith(5000);
+				expect(mockedSleep).toHaveBeenCalledWith(5000, expect.any(AbortSignal));
 				expect(ctx.logger.error).toHaveBeenCalledWith('Execution failed', expect.any(Object));
 				expect(result).toEqual({ success: false });
 			});
@@ -865,24 +865,22 @@ describe('Kafka Utils', () => {
 				expect(ctx.emit).not.toHaveBeenCalled();
 			});
 
-			it('should cut the error retry backoff short when the close signal aborts mid-backoff', async () => {
+			// The backoff is cut short by handing the close signal to `sleep`, which
+			// rejects on abort and clears its timer. That behaviour is covered in
+			// @n8n/utils; here we pin that the signal reaches it.
+			it('should hand the close signal to the error retry backoff', async () => {
 				const deferredPromise = createDeferredPromise<IRun>();
 				const ctx = createMockContext({ resolveOffset: 'onSuccess' }, 'trigger', deferredPromise);
 				const closeController = new AbortController();
-				// Never-ending backoff: the test hangs here unless abort cuts it short
-				mockedSleep.mockReturnValueOnce(new Promise<void>(() => {}));
 
 				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
 				const resultPromise = emitter([{ json: { message: 'test' } }]);
 
 				deferredPromise.resolveWith({ status: 'error' } as unknown as IRun);
 				await vi.advanceTimersByTimeAsync(0);
-				expect(mockedSleep).toHaveBeenCalled();
 
-				closeController.abort();
-
-				const result = await resultPromise;
-				expect(result).toEqual({ success: false });
+				expect(mockedSleep).toHaveBeenCalledWith(expect.any(Number), closeController.signal);
+				expect(await resultPromise).toEqual({ success: false });
 			});
 
 			it('should not accumulate abort listeners across messages', async () => {
@@ -901,7 +899,7 @@ describe('Kafka Utils', () => {
 				await emitter([{ json: { message: 'two' } }]);
 				await emitter([{ json: { message: 'three' } }]);
 
-				expect(getEventListeners(closeController.signal, 'abort')).toHaveLength(1);
+				expect(getEventListeners(closeController.signal, 'abort')).toHaveLength(0);
 			});
 		});
 	});

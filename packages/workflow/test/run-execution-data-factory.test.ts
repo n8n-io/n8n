@@ -89,6 +89,13 @@ describe('RunExecutionDataFactory', () => {
 			expect(result.resultData.runData).toEqual({});
 		});
 
+		it('preserves the sub-workflow output policy through serialization and reconstruction', () => {
+			const data = createRunExecutionData({ subWorkflowOutput: { lastRunOnly: true } });
+			const saved: CreateFullRunExecutionDataOptions = JSON.parse(JSON.stringify(data));
+			expect(createRunExecutionData(saved).subWorkflowOutput).toEqual({ lastRunOnly: true });
+			expect(createRunExecutionData().subWorkflowOutput).toBeUndefined();
+		});
+
 		it('should omit `resultData.runData` if null is passed', () => {
 			const result = createRunExecutionData({
 				resultData: {

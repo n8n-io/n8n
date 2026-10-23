@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { isReactive } from 'vue';
+import { deepCopy } from 'n8n-workflow';
 import {
 	handleEvent,
 	findMessageByRunId,
@@ -8,7 +9,7 @@ import {
 	createRunStateFromTree,
 } from '../instanceAi.reducer';
 import type { InstanceAiReducerState } from '../instanceAi.reducer';
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 
 // ---------------------------------------------------------------------------
 // Factory helpers
@@ -244,6 +245,70 @@ describe('instanceAi.reducer', () => {
 			expect(state.messages[0].agentTree!.status).toBe('cancelled');
 		});
 
+		test('ignores delayed errors and starts for a cancelled run', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			state.activeRunId = handleEvent(
+				state,
+				makeRunFinishEvent('run-1', 'agent-root', 'cancelled'),
+			);
+			const before = JSON.stringify(state.messages);
+			handleEvent(state, {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { content: 'late error' },
+			});
+			expect(handleEvent(state, makeRunStartEvent('run-1', 'agent-root'))).toBeNull();
+			expect(JSON.stringify(state.messages)).toBe(before);
+		});
+
+		test('uses the known group when a delayed start omits its group ID', () => {
+			const state = makeState();
+			const start = makeRunStartEvent('run-1', 'agent-root');
+			state.activeRunId = handleEvent(state, {
+				...start,
+				payload: { ...start.payload, messageGroupId: 'group-1' },
+			});
+			state.activeRunId = handleEvent(
+				state,
+				makeRunFinishEvent('run-1', 'agent-root', 'cancelled'),
+			);
+			const before = JSON.stringify(state.messages);
+			expect(handleEvent(state, start)).toBeNull();
+			expect(JSON.stringify(state.messages)).toBe(before);
+		});
+
+		test.each([false, true])(
+			'ignores delayed deltas after cancellation (restored: %s)',
+			(restore) => {
+				const state = stateWithRun('run-1', 'agent-root');
+				handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'search-workflows'));
+				state.activeRunId = handleEvent(
+					state,
+					makeRunFinishEvent('run-1', 'agent-root', 'cancelled'),
+				);
+				if (restore) {
+					const tree = deepCopy(state.messages[0].agentTree!);
+					const runState = createRunStateFromTree(tree)!;
+					state.runStateByGroupId.set('run-1', runState);
+					state.messages[0].agentTree = runState.agentsById['agent-root'];
+				}
+				const before = JSON.stringify(state.messages);
+				const events: InstanceAiEvent[] = [
+					makeTextDeltaEvent('run-1', 'agent-root', 'late text'),
+					makeReasoningDeltaEvent('run-1', 'agent-root', 'late reasoning'),
+					{
+						type: 'status',
+						runId: 'run-1',
+						agentId: 'agent-root',
+						payload: { message: 'Still working' },
+					},
+				];
+				for (const event of events) expect(handleEvent(state, event)).toBeNull();
+				expect(JSON.stringify(state.messages)).toBe(before);
+			},
+		);
+
 		test('run-finish(error) sets agentTree status to error', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'error'));
@@ -317,6 +382,7 @@ describe('instanceAi.reducer', () => {
 
 		test('a live text-block with a fresh responseId renders as appended text (durable outcome lines)', () => {
 			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
 			handleEvent(state, {
 				type: 'text-block',
 				runId: 'run-1',
@@ -389,12 +455,24 @@ describe('instanceAi.reducer', () => {
 	describe('tool execution', () => {
 		test('tool-call adds entry with isLoading=true and correct renderHint', () => {
 			const state = stateWithRun('run-1', 'agent-root');
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'task-control'));
+			handleEvent(
+				state,
+				makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'workflow_builder_task_control'),
+			);
 
 			const tc = state.messages[0].agentTree!.toolCalls[0];
 			expect(tc.toolCallId).toBe('tc-1');
-			expect(tc.toolName).toBe('task-control');
+			expect(tc.toolName).toBe('workflow_builder_task_control');
 			expect(tc.isLoading).toBe(true);
+			expect(tc.renderHint).toBe('tasks');
+		});
+
+		test('tool-call stores the current name for a legacy builder tool name', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'task-control'));
+
+			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc.toolName).toBe('workflow_builder_task_control');
 			expect(tc.renderHint).toBe('tasks');
 		});
 
@@ -468,6 +546,58 @@ describe('instanceAi.reducer', () => {
 			expect(child.status).toBe('completed');
 			expect(child.result).toBe('done');
 			expect(child.error).toBeUndefined();
+		});
+	});
+
+	// Test live event dispatch, not only shared history replay.
+	describe('instance context', () => {
+		const injected = {
+			injection: {
+				state: 'injected' as const,
+				isUpdate: false,
+				legs: { inventory: 8, events: 0, runs: 0 },
+				chars: 512,
+			},
+		};
+
+		const makeContextEvent = (
+			runId: string,
+			agentId: string,
+		): Extract<InstanceAiEvent, { type: 'instance-context' }> => ({
+			type: 'instance-context',
+			runId,
+			agentId,
+			payload: injected,
+		});
+
+		const contextEntries = (state: InstanceAiReducerState, runId = 'run-1') => {
+			const runState = state.runStateByGroupId.get(runId);
+			const root = runState?.agentsById[runState.rootAgentId];
+			return (root?.timeline ?? []).filter((e) => e.type === 'instance-context');
+		};
+
+		it('applies the event live, without waiting for a reload', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+
+			handleEvent(state, makeContextEvent('run-1', 'agent-root'));
+
+			expect(contextEntries(state)).toHaveLength(1);
+		});
+
+		it('completes the entry with the surfaces reached, on run-finish', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeContextEvent('run-1', 'agent-root'));
+
+			handleEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'completed', contextReach: { surfaces: ['activity-list'] } },
+			});
+
+			const entry = contextEntries(state)[0];
+			if (entry?.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toEqual({ surfaces: ['activity-list'] });
 		});
 	});
 
@@ -591,6 +721,78 @@ describe('instanceAi.reducer', () => {
 			expect(state.messages).toHaveLength(1);
 			expect(state.messages[0].agentTree!.agentId).toBe('parent-agent');
 		});
+
+		// The opening turn refines the thread title and publishes the result with an
+		// empty runId, because the title belongs to the thread and not to a run. That
+		// fact must not invent a turn: a placeholder here would sit after the real
+		// message and make the transcript tail the wrong one.
+		test('a thread-level fact with no runId creates no placeholder message', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+
+			handleEvent(state, {
+				type: 'thread-title-updated',
+				runId: '',
+				agentId: 'orchestrator',
+				payload: { title: 'Trigger node naming' },
+			});
+
+			expect(state.messages).toHaveLength(1);
+			expect(state.messages.at(-1)?.id).toBe('run-1');
+		});
+	});
+
+	describe('preference-card', () => {
+		function stateWithSavedPreference(): InstanceAiReducerState {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'save_user_preference'));
+			handleEvent(
+				state,
+				makeToolResultEvent('run-1', 'agent-root', 'tc-1', {
+					ok: true,
+					preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+				}),
+			);
+			return state;
+		}
+
+		test('an undone fact reaches the rendered tool call of a finished run', () => {
+			const state = stateWithSavedPreference();
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+			const rendered = state.messages[0].agentTree!.toolCalls[0];
+
+			handleEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			// In-place update: the card renders the mutated object, so no reload is needed.
+			expect(rendered).toBe(state.messages[0].agentTree!.toolCalls[0]);
+			expect(rendered.preferenceCard).toEqual({ state: 'undone', content: undefined });
+		});
+
+		test('applying the same fact twice sets the same fields', () => {
+			const state = stateWithSavedPreference();
+			const fact: InstanceAiEvent = {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies brief.',
+				},
+			};
+
+			handleEvent(state, fact);
+			const afterFirst = { ...state.messages[0].agentTree!.toolCalls[0].preferenceCard };
+			handleEvent(state, fact);
+
+			expect(state.messages[0].agentTree!.toolCalls[0].preferenceCard).toEqual(afterFirst);
+			expect(state.messages).toHaveLength(1);
+		});
 	});
 
 	describe('unsafe identifiers', () => {
@@ -660,6 +862,69 @@ describe('instanceAi.reducer', () => {
 			});
 
 			expect(runState).toBeUndefined();
+		});
+
+		test('createRunStateFromTree rewrites legacy builder tool names in a snapshot', () => {
+			const tree = {
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'completed' as const,
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-1',
+						toolName: 'build-workflow',
+						args: {},
+						isLoading: false,
+						renderHint: 'builder' as const,
+					},
+				],
+				children: [
+					{
+						agentId: 'agent-child',
+						role: 'agent-builder',
+						status: 'completed' as const,
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'tc-2',
+								toolName: 'write_config',
+								args: {},
+								isLoading: false,
+							},
+						],
+						children: [],
+						timeline: [],
+					},
+				],
+				timeline: [],
+			};
+
+			const runState = createRunStateFromTree(tree);
+
+			expect(runState?.toolCallsById['tc-1']?.toolName).toBe('workflow_builder_build_workflow');
+			expect(tree.toolCalls[0].toolName).toBe('workflow_builder_build_workflow');
+			expect(tree.children[0].toolCalls[0].toolName).toBe('agent_builder_write_config');
+		});
+
+		test('createRunStateFromTree tolerates malformed collections in a snapshot', () => {
+			const tree = {
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: { broken: true },
+				children: [null, { agentId: 'agent-child', role: 'agent-builder', status: 'completed' }],
+				timeline: [],
+			} as unknown as InstanceAiAgentNode;
+
+			const runState = createRunStateFromTree(tree);
+
+			expect(runState?.agentsById['agent-root']?.toolCalls).toEqual([]);
+			expect(runState?.agentsById['agent-child']?.toolCalls).toEqual([]);
 		});
 
 		test('createRunStateFromTree preserves planItems', () => {

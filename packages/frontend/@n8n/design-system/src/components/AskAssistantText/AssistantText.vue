@@ -15,7 +15,7 @@ withDefaults(defineProps<{ text: string; size?: 'small' | 'medium' | 'large' | '
 	-webkit-background-clip: text;
 	background-clip: text;
 	-webkit-text-fill-color: transparent;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .small {

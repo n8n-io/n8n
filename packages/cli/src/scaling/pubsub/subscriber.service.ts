@@ -7,7 +7,7 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { LogMetadata } from 'n8n-workflow';
 
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 
 import { PubSubEventBus } from './pubsub.eventbus';
 import type { PubSub } from './pubsub.types';
@@ -197,7 +197,10 @@ export class Subscriber {
 			this.logger.error('Failed to resubscribe to pubsub channels after Redis reconnect', {
 				error,
 			});
+			return;
 		}
+
+		this.pubsubEventBus.emit('pubsub-reconnected');
 	}
 
 	/**

@@ -1,0 +1,221 @@
+oneOf:
+  - type: object
+    properties:
+      id:
+        type: string
+        minLength: 1
+        maxLength: 36
+      name:
+        type: string
+      scope:
+        type: string
+        enum:
+          - instance
+          - projects
+      remote:
+        type: object
+        properties:
+          schemaVersion:
+            type: number
+            enum:
+              - 1
+          remoteUrl:
+            type: string
+            minLength: 1
+          repositoryPath:
+            type: string
+            description: The stored repository path of a Git host remote. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.
+        required:
+          - schemaVersion
+          - remoteUrl
+        additionalProperties: false
+      provider:
+        type: object
+        properties:
+          id:
+            type: string
+            minLength: 1
+            maxLength: 36
+          name:
+            type: string
+          type:
+            type: string
+            enum:
+              - git
+              - gitlab
+          authType:
+            type: string
+            enum:
+              - ssh-key
+              - token
+          createdAt:
+            type: string
+            format: date-time
+          updatedAt:
+            type: string
+            format: date-time
+        required:
+          - id
+          - name
+          - type
+          - authType
+          - createdAt
+          - updatedAt
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      direction:
+        type: string
+        enum:
+          - apply
+      settings:
+        type: object
+        properties:
+          schemaVersion:
+            type: number
+            enum:
+              - 1
+          branchName:
+            type: string
+            minLength: 1
+            maxLength: 255
+        required:
+          - schemaVersion
+          - branchName
+        additionalProperties: false
+      checkout:
+        type: object
+        properties:
+          hasCheckout:
+            type: boolean
+          matchesEnvironment:
+            type: boolean
+        required:
+          - hasCheckout
+          - matchesEnvironment
+    required:
+      - id
+      - name
+      - scope
+      - remote
+      - provider
+      - createdAt
+      - updatedAt
+      - direction
+      - settings
+      - checkout
+  - type: object
+    properties:
+      id:
+        type: string
+        minLength: 1
+        maxLength: 36
+      name:
+        type: string
+      scope:
+        type: string
+        enum:
+          - instance
+          - projects
+      remote:
+        type: object
+        properties:
+          schemaVersion:
+            type: number
+            enum:
+              - 1
+          remoteUrl:
+            type: string
+            minLength: 1
+          repositoryPath:
+            type: string
+            description: The stored repository path of a Git host remote. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.
+        required:
+          - schemaVersion
+          - remoteUrl
+        additionalProperties: false
+      provider:
+        type: object
+        properties:
+          id:
+            type: string
+            minLength: 1
+            maxLength: 36
+          name:
+            type: string
+          type:
+            type: string
+            enum:
+              - git
+              - gitlab
+          authType:
+            type: string
+            enum:
+              - ssh-key
+              - token
+          createdAt:
+            type: string
+            format: date-time
+          updatedAt:
+            type: string
+            format: date-time
+        required:
+          - id
+          - name
+          - type
+          - authType
+          - createdAt
+          - updatedAt
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+      direction:
+        type: string
+        enum:
+          - promote
+      settings:
+        type: object
+        properties:
+          schemaVersion:
+            type: number
+            enum:
+              - 1
+          baseBranchName:
+            type: string
+            minLength: 1
+            maxLength: 255
+          createBranchOnPromotion:
+            type: boolean
+        required:
+          - schemaVersion
+          - baseBranchName
+          - createBranchOnPromotion
+        additionalProperties: false
+      checkout:
+        type: object
+        properties:
+          hasCheckout:
+            type: boolean
+          matchesEnvironment:
+            type: boolean
+        required:
+          - hasCheckout
+          - matchesEnvironment
+    required:
+      - id
+      - name
+      - scope
+      - remote
+      - provider
+      - createdAt
+      - updatedAt
+      - direction
+      - settings
+      - checkout
+type: object

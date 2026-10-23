@@ -14,6 +14,11 @@ frontend, and extensible node-based workflow engine.
 - Write all technical text (code comments, PR descriptions, issue and ticket
   descriptions, docs) in ASD-STE100 Simplified Technical English: use short
   sentences, the active voice, and one instruction for each sentence
+- **JSDoc on `@Env(...)` config properties is public documentation.** The
+  docs team exports these comments into the environment variable reference on
+  docs.n8n.io. Write them for a self-hosting operator and follow the
+  `n8n:env-var-docs` skill, which applies the n8n docs style guide and
+  overrides the ASD-STE100 rule above for these comments
 - **Secrets on the command line:** if a developer opted into anonymous dev
   metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
   of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a
@@ -35,6 +40,10 @@ frontend, and extensible node-based workflow engine.
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+- Write an ADR only when asked. When a change makes a decision that an
+  engineer could challenge in 12 months, say so in one line and let the
+  human decide. Read [docs/adr/README.md](docs/adr/README.md) before you
+  write one. CI enforces its conventions
 - **Developing v3 features:** land normal feature work on `master` behind an
   opt-in flag; introduce breaking changes only on the `3.x` branch. See
   [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
@@ -43,7 +52,8 @@ frontend, and extensible node-based workflow engine.
   comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
 - **Shared utilities:** before you hand-roll a utility (`isRecord`, secret or
   PII redaction, JSON extraction from LLM output, Zod to JSON Schema, model-id
-  parsing, …), you MUST check the shared packages for an existing
+  parsing, AI client HTTP transport and response-size limiting, …), you MUST
+  check the shared packages for an existing
   implementation and use it: `@n8n/utils` (generic helpers, redaction),
   `@n8n/ai-utilities` (AI- and LLM-specific helpers) and `n8n-workflow`
   (workflow graph and traversal). A new shared helper usually belongs in one of
@@ -63,6 +73,16 @@ are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
 [plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
+
+For routine pre-commit checks, follow [Verify changes](#verify-changes).
+For focused tests, use `pnpm agent:test` or `pnpm agent:playwright`.
+Pass test files and worker limits after `--`. Run each command with `--help`
+for its options.
+
+`pnpm agent:lint` and `pnpm agent:typecheck` run full-repo checks by default.
+With `--filter <package>`, they still check the whole package. These wrappers
+save logs and reduce console output. They do not reduce CPU or memory use.
+Do not use them as routine pre-commit checks.
 
 ### Fresh checkout / agent setup
 
@@ -101,18 +121,6 @@ by default) for a fast recovery: it cleans build outputs and force-rebuilds
 use `pnpm reset --full`, which also wipes untracked files and reinstalls
 dependencies.
 
-### Testing
-- `pnpm test` - Run all tests
-- `pnpm test:affected` - Runs tests based on what has changed since the last
-  commit
-
-Running a particular test file requires going to the directory of that test
-and running: `pnpm test <test-file>`.
-
-When changing directories, use `pushd` to navigate into the directory and
-`popd` to return to the previous directory. When in doubt, use `pwd` to check
-your current directory.
-
 ### Seeding a local instance
 
 An empty instance is a bad place to test anything that reads a user's work.
@@ -132,22 +140,6 @@ unauthenticated and serves the whole table: keep it on loopback.
 
 See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
 profiles, tokens, determinism, and the other commands.
-
-### Code Quality
-- `pnpm lint` - Lint code
-- `pnpm typecheck` - Run type checks
-- `pnpm knip` - Report declared dependencies that no file in the package uses.
-  CI runs it on every PR as the "Unused Dependencies" check. To resolve a
-  finding, remove the dependency from the manifest. If the dependency is used
-  in a way knip cannot see, add an `ignoreDependencies` entry for the package
-  in `knip.ts` with a one-line reason
-
-Always run lint and typecheck before committing code to ensure quality.
-Execute these commands from within the specific package directory you're
-working on (e.g., `cd packages/cli && pnpm lint`). Run the full repository
-check only when preparing the final PR. When your changes affect type
-definitions, interfaces in `@n8n/api-types`, or cross-package dependencies,
-build the system before running lint and typecheck.
 
 ## Architecture Overview
 
@@ -237,12 +229,16 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 
 ### Persistence layer & the TypeORM boundary
 
-TypeORM (`@n8n/typeorm`) must stay in the **persistence layer** — the `@n8n/db`
-package or a backend module's own `database/` folder (entity/repository files).
+TypeORM (`@n8n/typeorm`) must stay in the **persistence layer**. The shared
+`@n8n/db` package and backend persistence adapters can import it. A module can
+colocate or group its entities and repositories according to its domain.
 Business logic — services, controllers, handlers, commands, factories — must not
-import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). In
-`packages/cli` this is enforced by the `misplaced-n8n-typeorm-import` lint rule;
-a new import (or an inline `eslint-disable` of the rule) fails CI.
+import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). The
+`typeorm-persistence-boundary` Code Health rule recognizes entity and repository
+declarations. It scans backend packages that depend on `@n8n/db` or
+`@n8n/typeorm`. Tests, migrations, and explicit helper-only adapters are
+exceptions. Existing business-logic imports stay in the shrink-only Code Health
+baseline. A new business-logic import fails CI.
 
 - **Pattern:** when a query needs operators (`In`, `IsNull`, `LessThan`,
   `FindOptionsWhere`, …), put it behind a **use-case-named repository method**
@@ -257,18 +253,36 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
   repository methods you call. `run` **requires** a context — pass an empty `{}`
   at the operation entry point, and reuse the one you were handed everywhere
   below it (a context that already carries a transaction is joined, not nested).
-  Repositories extend `BaseRepository` and resolve the right `EntityManager` with
-  `this.managerFor(ctx)`; the `Transaction` handle is opaque and never exposes a
-  driver type to business logic. See `oauth-token.service.ts` +
-  `oauth-*-token.repository.ts` for a worked example.
+  The `Transaction` handle is opaque and never exposes a driver type to
+  business logic. See `oauth-token.service.ts` for a worked service example
+  (its repositories predate the composition rule below; do not copy their shape).
+- **Repositories compose, they don't extend.** A repository is the boundary
+  that keeps TypeORM out of business logic. If it extended `BaseRepository`,
+  every service that injects it would also get `find`, `save`, `delete`,
+  `createQueryBuilder` and `.manager` for free, and TypeORM would leak through
+  inferred types that no lint rule can see. So a repository is a plain
+  `@Service()` class that holds a **file-private `BaseRepository` subclass (the
+  table)** as a private field and resolves the manager with
+  `this.table.managerFor(ctx)`. The table is never exported or registered with
+  DI. Every data access is a named use-case method on the repository that
+  calls the table internally; there is no generic `find`/`save`/`delete`
+  unless you write it for one operation. See
+  `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts`
+  for a worked example. The existing `extends BaseRepository` / `extends
+  Repository` repositories are legacy. Do not copy them, and do not convert them
+  in unrelated PRs. This rule is not yet lint-enforced.
 - **Anti-patterns reviewers reject** — they hide the dependency instead of
   removing it:
   - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
   - Relabeling the import from `@n8n/typeorm` to `@n8n/db` to silence the rule
     (`@n8n/db` re-exports several operators/types, but this relabels the
     dependency rather than removing it).
-  - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
-    operator import — trades a visible leak for an invisible one.
+  - Pushing `.manager` / `createQueryBuilder` / `repo.managerFor(ctx)` into
+    business logic to avoid an operator import — trades a visible leak for an
+    invisible one.
+  - A repository that `extends BaseRepository` / `extends Repository`, or that
+    exposes its table (public property, getter, or a `find(options)`
+    passthrough) — the inherited TypeORM surface must stay private to the table.
 
 ### ESLint configuration layers
 
@@ -326,37 +340,35 @@ extends one of those layers):
 - **data-testid must be a single value** (no spaces or multiple values)
 - Always use the `design-system` skill in reviews
 
-### Testing and Local Development
+### Verify changes
 
-Choose the smallest runner that owns the behavior:
+- Before committing, run formatting and lint checks on changed files. Use
+  the package's configured tools through `pnpm exec` with explicit file paths.
+  Do not append file paths to `pnpm lint`; package scripts can still check
+  the whole package.
+- Run tests that cover the changed behavior from the owning package:
+  `pnpm test <test-file> --maxWorkers=1`. Or use the root wrapper:
+  `pnpm agent:test --filter <package> -- <test-file> --maxWorkers=1`.
+  For Playwright, use `pnpm agent:playwright -- <spec-file> --workers=1`.
+- For routine commits, run checks one at a time. Use one test worker by
+  default. Do not run full frontend typechecks locally. Use CI for
+  comprehensive lint, typechecks, and test suites.
+- For documentation-only changes, review the diff and run `git diff --check`.
+  Skip code tests when no behavior changed.
+- Report which checks ran and which checks were left to CI.
+- Use Vitest for unit tests. Use
+  [Playwright](packages/quality/testing/playwright/AGENTS.md) when a test needs its
+  browser, fixtures, or managed containers.
+- For Vitest packages with `@n8n/di` decorators, use
+  `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`.
+- Check import and mock side effects before running tests. Keep tests out of
+  user-owned directories. Set `N8N_USER_FOLDER` to a test-owned directory before
+  importing n8n settings. Clean up only paths that the test created.
+- CI runs [`@n8n/code-health`](packages/quality/policy/code-health/README.md) static
+  analysis on PRs. It checks monorepo rules, including dependency hygiene and
+  encryption-boundary coverage.
 
-| Need | Use |
-|------|-----|
-| Unit or component behavior | Vitest from the owning package |
-| UI, API, lifecycle, topology, or performance orchestration | Playwright; read `packages/testing/playwright/AGENTS.md` |
-| Add a test service, capability, or managed stack | Read `packages/testing/containers/README.md` |
-
-Testing rules:
-
-- Run tests and `pnpm typecheck` from the owning package.
-- Confirm unit test cases with the user before you write them.
-- Mock external dependencies. Use `nock` for HTTP services.
-- Trace side effects from imports, constructors, hooks, and mocked branches before
-  you run a new or changed test.
-- Do not let tests read from or write to the developer's home directory,
-  `~/.n8n`, or other user-owned locations.
-- Use a test-owned temporary directory for filesystem tests. Set
-+  `N8N_USER_FOLDER` before you import modules that resolve it. n8n writes to `${N8N_USER_FOLDER}/.n8n`, so expect the `.n8n` subfolder there.
-- When a mock changes a state check such as `existsSync()`, inspect the branch
-  that it activates. Mock every reachable filesystem mutation unless filesystem
-  behavior is under test.
-- Run tests that can initialize n8n settings with an isolated
-  `N8N_USER_FOLDER` first. Clean up only paths that the test created.
-- Reuse immutable hoisted `mock<T>(...)` fixtures. Do not replace typed entity mocks with `as unknown as T`.
-- Use `createVitestConfigWithDecorators` for Vitest packages that use `@n8n/di` decorators.
-- Check for unused computed properties after you change a Pinia store.
-
-Choose a local development path:
+### Local development
 
 | Goal | Command |
 |------|---------|
@@ -366,7 +378,7 @@ Choose a local development path:
 | Start a Codespace backend and share its port | `pnpm dev:up` |
 
 The root `pnpm dev` command does not start a server. See the
-[Playwright guide](packages/testing/playwright/README.md) and the
+[Playwright guide](packages/quality/testing/playwright/README.md) and the
 [Codespaces guide](.devcontainer/codespaces/README.md) for details.
 
 ### Common Development Tasks
@@ -380,7 +392,6 @@ When implementing features:
    frontend feature module, obey
    `packages/@n8n/module-cli/frontend-module-guide.md`
 5. Write tests with proper mocks
-6. Run `pnpm typecheck` to verify types
 
 ## Design Principles
 

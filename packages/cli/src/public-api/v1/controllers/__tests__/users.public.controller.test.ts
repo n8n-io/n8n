@@ -1,9 +1,9 @@
 import type { GetUserQueryDto, ListUsersQueryDto } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UserService } from '@/services/user.service';
 

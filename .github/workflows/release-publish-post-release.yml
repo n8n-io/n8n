@@ -27,6 +27,10 @@ on:
         description: 'Release type acquired from determine-version-info. (stable or rc)'
         required: true
         type: string
+      prerelease:
+        description: 'Whether this is a standalone v3 prerelease.'
+        required: true
+        type: boolean
 
 jobs:
   push-new-release-to-channel:
@@ -83,9 +87,8 @@ jobs:
     # Also runs on beta patches: standalone packages pin `latest` to the newest
     # beta, so every beta publish needs a re-pin, not just stable promotions.
     if: |
-      inputs.bump == 'minor' ||
-      (inputs.track == 'stable' && inputs.release_type != 'rc') ||
-      (inputs.track == 'beta' && inputs.release_type != 'rc')
+      inputs.release_type != 'rc' &&
+      (inputs.bump == 'minor' || inputs.track == 'stable' || inputs.track == 'beta')
     uses: ./.github/workflows/release-set-stable-npm-packages-to-latest.yml
     secrets: inherit
 
@@ -95,7 +98,7 @@ jobs:
     with:
       previous-version: ${{ inputs.previous_version }}
       version: ${{ inputs.version }}
-      experimental: ${{ inputs.release_type == 'rc' }}
+      experimental: ${{ inputs.release_type == 'rc' && !inputs.prerelease }}
     secrets: inherit
 
   send-version-release-notification:

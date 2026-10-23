@@ -6,7 +6,7 @@
  * LangSmith LLM-run outputs, not forwarded over SSE.
  */
 
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import { resolveBuilderToolName, type InstanceAiConfirmRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { redactSecrets, redactSecretsInText, redactSecretsInTextDeep } from '../harness/redact';
@@ -24,6 +24,7 @@ import type {
 } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { splitEventsIntoTurns } from './event-parser';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 
 type ProxyResponses = Map<string, InstanceAiConfirmRequest>;
@@ -95,7 +96,7 @@ function extractUserTurnText(event: CapturedEvent): string | undefined {
 // ---------------------------------------------------------------------------
 // Per-turn assembly
 //
-// Each tool can emit two events for one logical interaction (e.g. ask-user
+// Each tool can emit two events for one logical interaction (e.g. workflow_builder_ask_user
 // fires both a tool-call and a confirmation-request). To render it once,
 // only the variant carrying the richer payload handles it; the other is
 // skipped. This relies on both events arriving in the same turn — which
@@ -199,13 +200,13 @@ function interpretToolCall(
 	outcomeByCallId: Map<string, ToolOutcome>,
 ): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
-	const toolName = getString(payload, 'toolName') ?? '';
+	const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '');
 	const args = getRecord(payload, 'args') ?? {};
 
-	// ask-user is rendered from the confirmation-request (which has the answers).
-	if (toolName === 'ask-user') return null;
+	// workflow_builder_ask_user is rendered from the confirmation-request (which has the answers).
+	if (toolName === DOMAIN_TOOL_IDS.ASK_USER) return null;
 
-	if (toolName === 'create-tasks') {
+	if (toolName === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) {
 		const tasks = Array.isArray(args.tasks) ? extractPlanTasks(args.tasks) : [];
 		if (tasks.length > 0) return { kind: 'plan', tasks };
 		// Empty plan: fall through and render as a plain tool-call so the call
@@ -216,8 +217,8 @@ function interpretToolCall(
 	if (!toolName) return null;
 	const callId = getString(payload, 'toolCallId');
 	const outcome = callId ? outcomeByCallId.get(callId) : undefined;
-	// `workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
-	const result = toolName === 'workflows' ? undefined : outcome?.result;
+	// `workflow_builder_workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
+	const result = toolName === DOMAIN_TOOL_IDS.WORKFLOWS ? undefined : outcome?.result;
 	return {
 		kind: 'tool-call',
 		toolName,
@@ -234,10 +235,10 @@ function interpretToolCall(
 
 function interpretToolResult(event: CapturedEvent): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
-	const toolName = getString(payload, 'toolName') ?? '';
+	const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '');
 	const result = payload.result;
 
-	if (toolName === 'workflows' && isRecord(result)) {
+	if (toolName === DOMAIN_TOOL_IDS.WORKFLOWS && isRecord(result)) {
 		return extractSetupWizardOutcome(result);
 	}
 	return null;

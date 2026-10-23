@@ -42,7 +42,7 @@
 		"@n8n/node-cli": "*",
 		"eslint": "9.32.0",
 		"prettier": "3.6.2",
-		"release-it": "^19.0.4",
+		"release-it": "^21.1.0",
 		"typescript": "5.9.2"
 	},
 	"peerDependencies": {

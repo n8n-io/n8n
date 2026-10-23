@@ -80,7 +80,7 @@ jobs:
       cancel-in-progress: false
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -147,6 +147,8 @@ jobs:
           DOCKER_BASE: ${{ secrets.DOCKER_USERNAME }}
           N8N_IMAGE: ${{ needs.build.outputs.n8n_image }}
           N8N_DIGEST: ${{ needs.build.outputs.n8n_digest }}
+          N8N_PC_IMAGE: ${{ needs.build.outputs.n8n_pc_image }}
+          N8N_PC_DIGEST: ${{ needs.build.outputs.n8n_pc_digest }}
           RUNNERS_IMAGE: ${{ needs.build.outputs.runners_image }}
           RUNNERS_DIGEST: ${{ needs.build.outputs.runners_digest }}
           DISTROLESS_IMAGE: ${{ needs.build.outputs.runners_distroless_image }}
@@ -195,5 +197,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           promote "$N8N_IMAGE" "$N8N_DIGEST" "${DOCKER_BASE}/n8n" ""
+          promote "$N8N_PC_IMAGE" "$N8N_PC_DIGEST" "${DOCKER_BASE}/n8n" "-pc"
           promote "$RUNNERS_IMAGE" "$RUNNERS_DIGEST" "${DOCKER_BASE}/runners" ""
           promote "$DISTROLESS_IMAGE" "$DISTROLESS_DIGEST" "${DOCKER_BASE}/runners" "-distroless"

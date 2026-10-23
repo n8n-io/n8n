@@ -1,5 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
-import type { DataSource } from '@n8n/typeorm';
+import { In, type DataSource } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowStatistics } from '../../entities';
@@ -49,6 +49,26 @@ describe('WorkflowStatisticsRepository', () => {
 					firstEventMs: 1_784_651_580_000,
 				},
 			],
+		});
+	});
+
+	describe('findByWorkflowIds', () => {
+		it('returns no rows and runs no query for an empty id list', async () => {
+			expect(await repository.findByWorkflowIds([])).toEqual([]);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('loads the rows of the given workflows', async () => {
+			const row = { workflowId: 'wf-1', count: 3 } as WorkflowStatistics;
+			entityManager.find.mockResolvedValueOnce([row]);
+
+			const rows = await repository.findByWorkflowIds(['wf-1', 'wf-2']);
+
+			expect(rows).toEqual([row]);
+			expect(entityManager.find).toHaveBeenCalledWith(WorkflowStatistics, {
+				where: { workflowId: In(['wf-1', 'wf-2']) },
+			});
 		});
 	});
 });

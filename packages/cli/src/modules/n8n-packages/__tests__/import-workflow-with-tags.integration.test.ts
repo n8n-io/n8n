@@ -10,8 +10,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createOwner } from '@test-integration/db/users';
@@ -252,7 +251,7 @@ describe('workflow package import — with tags', () => {
 							sourceId: tag.id,
 							name: 'prod',
 							existingName: 'production',
-							usedByWorkflows: [workflow.id],
+							usedBy: [{ kind: 'workflow', id: workflow.id }],
 						}),
 					],
 				},
@@ -412,8 +411,8 @@ describe('workflow package import — with tags', () => {
 				manifestExtras: {
 					requirements: {
 						tags: [
-							{ id: 'tag-a', name: 'prod', usedByWorkflows: ['wf-0'] },
-							{ id: 'tag-b', name: ' prod ', usedByWorkflows: ['wf-0'] },
+							{ id: 'tag-a', name: 'prod', usedBy: [{ kind: 'workflow', id: 'wf-0' }] },
+							{ id: 'tag-b', name: ' prod ', usedBy: [{ kind: 'workflow', id: 'wf-0' }] },
 						],
 					},
 				},
@@ -434,14 +433,14 @@ describe('workflow package import — with tags', () => {
 							kind: 'name-collision',
 							sourceId: 'tag-a',
 							name: 'prod',
-							usedByWorkflows: ['wf-0'],
+							usedBy: [{ kind: 'workflow', id: 'wf-0' }],
 						}),
 						expect.objectContaining({
 							type: 'tag-unresolved',
 							kind: 'name-collision',
 							sourceId: 'tag-b',
 							name: 'prod',
-							usedByWorkflows: ['wf-0'],
+							usedBy: [{ kind: 'workflow', id: 'wf-0' }],
 						}),
 					],
 				},
@@ -652,7 +651,9 @@ describe('workflow package import — with tags', () => {
 			const packageBuffer = await buildEntityPackageBuffer({
 				workflows: [{ target: 'workflows/wf-0', workflow }],
 				manifestExtras: {
-					requirements: { tags: [{ id: 'tag-1', name: 'prod', usedByWorkflows: ['wf-0'] }] },
+					requirements: {
+						tags: [{ id: 'tag-1', name: 'prod', usedBy: [{ kind: 'workflow', id: 'wf-0' }] }],
+					},
 				},
 			});
 			const targetProject = await createTeamProject('Target', owner);

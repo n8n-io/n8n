@@ -48,7 +48,7 @@ const swatch = computed(() => versionColorVar(props.index));
 	align-items: center;
 	justify-content: center;
 	color: var(--color--white);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	border-radius: var(--radius--md);
 	line-height: 1;
 	font-variant-numeric: tabular-nums;

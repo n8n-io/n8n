@@ -12,18 +12,14 @@ import {
 } from '../entities/workflow-review-request.ee';
 import { TransactionRunner } from '../services/transaction';
 
-/** The cursor carries its boundary values so deleting the previous page's last row is safe. */
-export type InboxCursor = {
-	createdAt: Date;
-	id: string;
-};
+export type WorkflowReviewInboxBoundary =
+	| { mode: 'beforeTime'; updatedAt: Date }
+	| { mode: 'beforeOrAtTime'; updatedAt: Date }
+	| { mode: 'afterItem'; updatedAt: Date; id: string };
 
-/**
- * Reviewers belong in `waiting`, even when they are also authors. All other authors belong in
- * `authored`. The requester always has an author row, so this does not use `createdById`.
- */
 type InboxCategoryFilter = {
 	userId: string;
+	// Assigned reviewers belong in waiting, even when they also authored the review.
 	category: 'waiting' | 'authored';
 };
 
@@ -43,7 +39,7 @@ type FindInboxRequestsOptions = {
 	state?: WorkflowReviewRequestState;
 	category?: InboxCategoryFilter;
 	limit: number;
-	cursor?: InboxCursor;
+	boundary?: WorkflowReviewInboxBoundary;
 };
 
 export type InboxStateCounts = {
@@ -183,9 +179,9 @@ export class WorkflowReviewInboxRepository extends BaseRepository<WorkflowReview
 	}
 
 	async findRequests(options: FindInboxRequestsOptions): Promise<WorkflowReviewRequest[]> {
-		const { visibility, state, category, limit, cursor } = options;
+		const { visibility, state, category, limit, boundary } = options;
 		const queryBuilder = this.createQueryBuilder('review')
-			.orderBy('review.createdAt', 'DESC')
+			.orderBy('review.updatedAt', 'DESC')
 			.addOrderBy('review.id', 'ASC');
 
 		applyInboxVisibility(queryBuilder, visibility);
@@ -193,11 +189,16 @@ export class WorkflowReviewInboxRepository extends BaseRepository<WorkflowReview
 		if (state !== undefined) {
 			queryBuilder.andWhere('review.state = :state', { state });
 		}
-		if (cursor) {
+		if (boundary?.mode === 'afterItem') {
 			queryBuilder.andWhere(
-				'(review.createdAt < :createdAt OR (review.createdAt = :createdAt AND review.id > :id))',
-				{ createdAt: cursor.createdAt, id: cursor.id },
+				'(review.updatedAt < :updatedAt OR (review.updatedAt = :updatedAt AND review.id > :id))',
+				{ updatedAt: boundary.updatedAt, id: boundary.id },
 			);
+		} else if (boundary) {
+			const operator = boundary.mode === 'beforeOrAtTime' ? '<=' : '<';
+			queryBuilder.andWhere(`review.updatedAt ${operator} :updatedAt`, {
+				updatedAt: boundary.updatedAt,
+			});
 		}
 
 		queryBuilder.take(limit);

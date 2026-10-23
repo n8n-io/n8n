@@ -1,4 +1,3 @@
-import type { Mock } from 'vitest';
 import type { TagEntity, TagRepository, TransactionRunner } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -25,49 +24,30 @@ describe('TagService', () => {
 	});
 
 	describe('listWithUsageCount', () => {
-		test('builds a limited ordered query and returns data + totalCount in parallel', async () => {
-			const limitFn = vi.fn().mockReturnThis();
-			const orderByFn = vi.fn().mockReturnThis();
-			const orderByCallOrder: Mock = orderByFn;
-			const limitCallOrder: Mock = limitFn;
-			const getMany = vi.fn().mockResolvedValue([makeTag()]);
-			const builder = {
-				select: vi.fn().mockReturnThis(),
-				loadRelationCountAndMap: vi.fn().mockReturnThis(),
-				orderBy: orderByFn,
-				limit: limitFn,
-				getMany,
-			};
-			tagRepository.createQueryBuilder.mockReturnValue(builder as never);
+		test('forwards limit and ordering, and returns data + totalCount in parallel', async () => {
+			tagRepository.findAllWithUsageCount.mockResolvedValue([makeTag() as never]);
 			tagRepository.count.mockResolvedValue(42);
 
 			const result = await tagService.listWithUsageCount({ limit: 10 });
 
-			expect(orderByFn).toHaveBeenCalledWith('tag.name', 'ASC');
-			expect(limitFn).toHaveBeenCalledWith(10);
-			// orderBy must run before limit, or generated SQL is invalid
-			expect(orderByCallOrder.mock.invocationCallOrder[0]).toBeLessThan(
-				limitCallOrder.mock.invocationCallOrder[0],
-			);
+			expect(tagRepository.findAllWithUsageCount).toHaveBeenCalledWith({
+				orderByName: true,
+				limit: 10,
+			});
 			expect(tagRepository.count).toHaveBeenCalledTimes(1);
 			expect(result.totalCount).toBe(42);
 			expect(result.data).toHaveLength(1);
 		});
 
-		test('does not order when called via getAll without orderByName', async () => {
-			const orderByFn = vi.fn().mockReturnThis();
-			const builder = {
-				select: vi.fn().mockReturnThis(),
-				loadRelationCountAndMap: vi.fn().mockReturnThis(),
-				orderBy: orderByFn,
-				limit: vi.fn().mockReturnThis(),
-				getMany: vi.fn().mockResolvedValue([]),
-			};
-			tagRepository.createQueryBuilder.mockReturnValue(builder as never);
+		test('does not request ordering when called via getAll without orderByName', async () => {
+			tagRepository.findAllWithUsageCount.mockResolvedValue([]);
 
 			await tagService.getAll({ withUsageCount: true });
 
-			expect(orderByFn).not.toHaveBeenCalled();
+			expect(tagRepository.findAllWithUsageCount).toHaveBeenCalledWith({
+				orderByName: undefined,
+				limit: undefined,
+			});
 		});
 	});
 

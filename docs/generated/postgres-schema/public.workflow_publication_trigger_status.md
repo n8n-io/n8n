@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | errorMessage | text |  | true |  |  |  |
-| nodeId | varchar(36) |  | false |  |  |  |
+| nodeId | varchar(64) |  | false |  |  |  |
 | status | varchar(20) |  | false |  |  |  |
 | triggerKind | varchar(20) |  | false |  |  | Where the trigger lives once activated: in-memory (registered on the owning instance) vs persisted (webhook row in webhook_entity) |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -47,7 +47,7 @@ erDiagram
 "public.workflow_publication_trigger_status" {
   timestamp_3__with_time_zone createdAt
   text errorMessage
-  varchar_36_ nodeId
+  varchar_64_ nodeId
   varchar_20_ status
   varchar_20_ triggerKind
   timestamp_3__with_time_zone updatedAt

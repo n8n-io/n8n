@@ -76,8 +76,10 @@ export function useDependencyMenu() {
 			workflowCall: [],
 			workflowParent: [],
 		};
+		// Dependencies the user can see but not open go in a disabled group of their own.
+		const unavailable = filtered.filter((dep) => dep.unavailable);
 		for (const dep of filtered) {
-			groups[dep.type].push(dep);
+			if (!dep.unavailable) groups[dep.type].push(dep);
 		}
 
 		const items: Array<DropdownMenuItemProps<string>> = [];
@@ -103,6 +105,19 @@ export function useDependencyMenu() {
 			}
 		}
 
+		if (unavailable.length > 0) {
+			items.push({
+				id: 'header-unavailable',
+				label: i18n.baseText('workflows.dependencies.unavailable.header'),
+				icon: { type: 'icon', value: 'user-lock' },
+				disabled: true,
+				divided: items.length > 0,
+			});
+			for (const dep of unavailable) {
+				items.push({ id: `${dep.type}:${dep.id}`, label: dep.name, disabled: true });
+			}
+		}
+
 		return items;
 	}
 
@@ -113,11 +128,12 @@ export function useDependencyMenu() {
 	): ResolvedDependency | undefined {
 		const [type, id] = value.split(':');
 		if (!type || !id) return undefined;
-		return deps.find((dep) => dep.type === type && dep.id === id);
+		return deps.find((dep) => dep.type === type && dep.id === id && !dep.unavailable);
 	}
 
 	/** Open the resource behind a dependency (credential modal, or a new tab). */
 	function openDependency(dep: ResolvedDependency): void {
+		if (dep.unavailable) return;
 		switch (dep.type) {
 			case 'credentialId':
 				uiStore.openExistingCredential(dep.id);

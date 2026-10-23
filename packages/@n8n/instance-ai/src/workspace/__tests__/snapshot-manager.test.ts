@@ -60,11 +60,6 @@ vi.mock('../builder-templates-service', () => {
 	};
 });
 
-import {
-	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-	type RuntimeSkillLinkedFiles,
-	type RuntimeSkillSource,
-} from '@n8n/agents';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -72,8 +67,6 @@ import type { Logger } from '../../logger';
 import { SnapshotManager } from '../snapshot-manager';
 
 const SNAPSHOT_NAME = 'n8n/instance-ai:1.123.0';
-const SKILLS_HASH_A = 'aaaaaaaaaaaa';
-const SKILLS_HASH_B = 'bbbbbbbbbbbb';
 
 const NOOP_LOGGER: Logger = {
 	info: () => {},
@@ -112,42 +105,6 @@ interface FakeSnapshotApi {
 
 interface FakeDaytona {
 	snapshot: FakeSnapshotApi;
-}
-
-function emptyLinkedFiles(): RuntimeSkillLinkedFiles {
-	return {
-		references: [],
-		templates: [],
-		scripts: [],
-		assets: [],
-		examples: [],
-		other: [],
-	};
-}
-
-function createRuntimeSkillSource(skillsHash: string): RuntimeSkillSource {
-	return {
-		registry: {
-			schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-			skillsHash,
-			skills: [
-				{
-					id: 'snapshot-skill',
-					name: 'snapshot-skill',
-					description: 'Snapshot skill',
-					hash: skillsHash,
-					linkedFiles: emptyLinkedFiles(),
-				},
-			],
-		},
-		loadSkill: async () =>
-			await Promise.resolve({
-				id: 'snapshot-skill',
-				name: 'snapshot-skill',
-				description: 'Snapshot skill',
-				instructions: 'Use baked skills.',
-			}),
-	};
 }
 
 function makeFakeDaytona(): FakeDaytona {
@@ -207,21 +164,6 @@ describe('SnapshotManager.ensureImage', () => {
 		);
 		expect(stagingDir).toContain('n8n-snapshot-context-1.123.0');
 		await expect(
-			readFile(join(stagingDir, 'skills/data-table-manager/SKILL.md'), 'utf-8'),
-		).resolves.toContain('data-table');
-		await expect(
-			readFile(
-				join(stagingDir, 'skills/data-table-manager/references/data-table-playbook.md'),
-				'utf-8',
-			),
-		).resolves.toBeDefined();
-		await expect(
-			readFile(join(stagingDir, 'skills/registry.json'), 'utf-8'),
-		).resolves.toBeDefined();
-		await expect(
-			readFile(join(stagingDir, 'skills/.manifest.json'), 'utf-8'),
-		).resolves.toBeDefined();
-		await expect(
 			readFile(join(stagingDir, 'knowledge-base/best-practices/scheduling.md'), 'utf-8'),
 		).resolves.toBeDefined();
 		await expect(
@@ -240,32 +182,7 @@ describe('SnapshotManager.ensureImage', () => {
 
 		expect(stagingDir).toBeDefined();
 		expect(stagingDir).not.toContain('n8n-snapshot-context-temp-');
-		expect(stagingDir).toMatch(/n8n-snapshot-context-.+-/);
-	});
-
-	it('uses the same snapshot name regardless of runtime skills hash', async () => {
-		const daytonaA = makeFakeDaytona();
-		const daytonaB = makeFakeDaytona();
-		daytonaA.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
-		daytonaB.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
-		const managerA = new SnapshotManager(
-			undefined,
-			NOOP_LOGGER,
-			'1.123.0',
-			createRuntimeSkillSource(SKILLS_HASH_A),
-		);
-		const managerB = new SnapshotManager(
-			undefined,
-			NOOP_LOGGER,
-			'1.123.0',
-			createRuntimeSkillSource(SKILLS_HASH_B),
-		);
-
-		const snapshotA = await managerA.createSnapshot(daytonaA as never);
-		const snapshotB = await managerB.createSnapshot(daytonaB as never);
-
-		expect(snapshotA).toBe(SNAPSHOT_NAME);
-		expect(snapshotB).toBe(SNAPSHOT_NAME);
+		expect(stagingDir).toMatch(/n8n-snapshot-context-[0-9a-f]+$/);
 	});
 
 	it('keeps the snapshot name stable when the base image changes', async () => {
@@ -273,18 +190,8 @@ describe('SnapshotManager.ensureImage', () => {
 		const daytonaB = makeFakeDaytona();
 		daytonaA.snapshot.create.mockResolvedValue({ name: 'ignored-a' });
 		daytonaB.snapshot.create.mockResolvedValue({ name: 'ignored-b' });
-		const managerA = new SnapshotManager(
-			'daytonaio/sandbox:0.5.0',
-			NOOP_LOGGER,
-			'1.123.0',
-			createRuntimeSkillSource(SKILLS_HASH_A),
-		);
-		const managerB = new SnapshotManager(
-			'node:24',
-			NOOP_LOGGER,
-			'1.123.0',
-			createRuntimeSkillSource(SKILLS_HASH_A),
-		);
+		const managerA = new SnapshotManager('daytonaio/sandbox:0.5.0', NOOP_LOGGER, '1.123.0');
+		const managerB = new SnapshotManager('node:24', NOOP_LOGGER, '1.123.0');
 
 		const snapshotA = await managerA.createSnapshot(daytonaA as never);
 		const snapshotB = await managerB.createSnapshot(daytonaB as never);

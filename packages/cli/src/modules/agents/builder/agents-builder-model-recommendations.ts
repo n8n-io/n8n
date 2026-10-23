@@ -1,6 +1,8 @@
 import { fetchProviderCatalog, type ModelInfo, type ProviderCatalog } from '@n8n/agents/catalog';
 
 const MODEL_RECOMMENDATION_FETCH_TIMEOUT_MS = 5000;
+/** After a failed fetch, skip retries for this long so each builder turn does not wait on the timeout. */
+const MODEL_RECOMMENDATION_RETRY_AFTER_MS = 10 * 60 * 1000;
 const MAX_RECOMMENDED_MODELS_PER_PROVIDER = 3;
 
 interface RecommendedProvider {
@@ -18,6 +20,7 @@ const RECOMMENDED_PROVIDERS: RecommendedProvider[] = [
 
 let modelRecommendationsSection: string | null | undefined;
 let modelRecommendationsPromise: Promise<string | null> | undefined;
+let modelRecommendationsRetryAt = 0;
 
 function getReleaseTime(model: ModelInfo): number | null {
 	if (!model.releaseDate) return null;
@@ -81,13 +84,13 @@ tool-capable models when the catalog marks any models for that provider as
 tool-capable.
 Treat this list as authoritative for model recommendations. Use these models
 when the user does not know what model to pick. Prefer a recommended model for
-a provider the user has credentials for; then call resolve_llm with that
+a provider the user has credentials for; then call agent_builder_resolve_llm with that
 provider and model. During an initial build, if the user still needs to
 choose a provider or credential, do not ask: include the model choice in the
-trailing finish_setup call instead.
+trailing agent_builder_finish_setup call instead.
 Do not mention models outside this list unless the user explicitly names one
-and resolve_llm validates it. Never write a non-empty model or credential
-without a resolve_llm result; drafts carry model "" while LLM setup is
+and agent_builder_resolve_llm validates it. Never write a non-empty model or credential
+without a agent_builder_resolve_llm result; drafts carry model "" while LLM setup is
 pending.
 
 ${rows.join('\n')}`;
@@ -110,6 +113,7 @@ async function fetchProviderCatalogWithTimeout(): Promise<ProviderCatalog | null
 
 export async function getModelRecommendationsSection(): Promise<string | null> {
 	if (modelRecommendationsSection !== undefined) return modelRecommendationsSection;
+	if (!modelRecommendationsPromise && Date.now() < modelRecommendationsRetryAt) return null;
 
 	modelRecommendationsPromise ??= fetchProviderCatalogWithTimeout()
 		.then((catalog) => (catalog ? buildModelRecommendationsSection(catalog) : null))
@@ -119,6 +123,17 @@ export async function getModelRecommendationsSection(): Promise<string | null> {
 		});
 
 	const section = await modelRecommendationsPromise;
-	if (section) modelRecommendationsSection = section;
+	if (section) {
+		modelRecommendationsSection = section;
+	} else {
+		modelRecommendationsRetryAt = Date.now() + MODEL_RECOMMENDATION_RETRY_AFTER_MS;
+	}
 	return section;
+}
+
+/** Test-only: clear the module-level cache. */
+export function resetModelRecommendationsCacheForTest(): void {
+	modelRecommendationsSection = undefined;
+	modelRecommendationsPromise = undefined;
+	modelRecommendationsRetryAt = 0;
 }

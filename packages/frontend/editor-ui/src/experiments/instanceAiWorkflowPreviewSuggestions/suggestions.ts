@@ -42,7 +42,7 @@ export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS: readonly WorkflowPreviewS
 	{
 		type: 'prompt',
 		id: 'telegram-agent',
-		icon: 'bot' as IconName,
+		icon: 'robot-12' as IconName,
 		labelKey:
 			'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.telegramAgent.label' as BaseTextKey,
 		promptKey:

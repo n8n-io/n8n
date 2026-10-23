@@ -6,7 +6,17 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FeatureFlagPayloads, FeatureFlags, IDataObject } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
+import {
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT,
+	// EOF Experiment cleanup
+	EXPERIMENTS_TO_TRACK,
+	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
+} from '@/app/constants';
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
+import { CLOUD_ONLY } from '@/experiments/surfaceAssistantOnWorkflowError/cloudOnly';
+// EOF Experiment cleanup
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -27,6 +37,9 @@ export const usePostHog = defineStore('posthog', () => {
 	const rootStore = useRootStore();
 	const { debounce } = useDebounce();
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	const mcpDiscoveryEligible = ref(false);
+	// EOF Experiment cleanup
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const featureFlagPayloads: Ref<FeatureFlagPayloads | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
@@ -55,6 +68,9 @@ export const usePostHog = defineStore('posthog', () => {
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		mcpDiscoveryEligible.value = false;
+		// EOF Experiment cleanup
 		featureFlagPayloads.value = null;
 		trackedDemoExp.value = {};
 		trackedExposures.value = {};
@@ -159,7 +175,21 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
-		const variant = featFlags[name];
+		// Experiment cleanup (119_surface_assistant_on_workflow_error)
+		if (
+			CLOUD_ONLY &&
+			name === SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name &&
+			!settingsStore.isCloudDeployment
+		) {
+			return;
+		}
+		// EOF Experiment cleanup
+
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		if (name === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
+		// EOF Experiment cleanup
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore const variant = featFlags[name].
+		const variant = name === MCP_DISCOVERY_EXPERIMENT.name ? getVariant(name) : featFlags[name];
 		if (!variant || trackedDemoExp.value[name] === variant) {
 			return;
 		}
@@ -171,6 +201,13 @@ export const usePostHog = defineStore('posthog', () => {
 
 		trackedDemoExp.value[name] = variant;
 	};
+
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	const setMcpDiscoveryEligible = (eligible: boolean) => {
+		mcpDiscoveryEligible.value = eligible;
+		if (eligible) trackExperiment(featureFlags.value ?? {}, MCP_DISCOVERY_EXPERIMENT.name);
+	};
+	// EOF Experiment cleanup
 
 	const trackExperiments = (featFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
@@ -305,6 +342,9 @@ export const usePostHog = defineStore('posthog', () => {
 	 * flag+variant; cleared on reset().
 	 */
 	const trackExposure = (experiment: string) => {
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		if (experiment === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
+		// EOF Experiment cleanup
 		const variant = getVariant(experiment);
 		if (variant === undefined || variant === false) return;
 		if (trackedExposures.value[experiment] === variant) return;
@@ -317,6 +357,9 @@ export const usePostHog = defineStore('posthog', () => {
 
 	return {
 		init,
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		setMcpDiscoveryEligible,
+		// EOF Experiment cleanup
 		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
@@ -332,3 +375,23 @@ export const usePostHog = defineStore('posthog', () => {
 		overrides,
 	};
 });
+
+/**
+ * Waits for a pending client-side flag evaluation, capped at `timeoutMs` so a
+ * route guard that depends on it never hangs a deep link. Takes the store
+ * instance (rather than calling `usePostHog()` itself) so callers that pass
+ * the same instance they hold elsewhere keep a single source of truth.
+ */
+export async function waitForFeatureFlagsWithTimeout(
+	posthogStore: ReturnType<typeof usePostHog>,
+	timeoutMs: number,
+): Promise<void> {
+	let timeoutId: number | undefined;
+	await Promise.race([
+		posthogStore.waitForFeatureFlags(),
+		new Promise<void>((resolve) => {
+			timeoutId = window.setTimeout(resolve, timeoutMs);
+		}),
+	]);
+	if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+}

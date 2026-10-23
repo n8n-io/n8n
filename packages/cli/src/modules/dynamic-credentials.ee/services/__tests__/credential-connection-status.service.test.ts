@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
 	ProjectRelationRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	User,
 	UserRepository,
@@ -9,7 +10,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 
 import { SYSTEM_RESOLVER_ID } from '../../constants';
 import { DynamicCredentialUserEntry } from '../../database/entities/dynamic-credential-user-entry';
@@ -37,6 +38,7 @@ describe('CredentialConnectionStatusService', () => {
 	const cipher = mock<Cipher>();
 	const logger = mock<Logger>();
 	const em = mock<EntityManager>();
+	const roleRepository = mock<RoleRepository>();
 
 	const service = new CredentialConnectionStatusService(
 		repository,
@@ -46,6 +48,7 @@ describe('CredentialConnectionStatusService', () => {
 		projectRelationRepository,
 		cipher,
 		logger,
+		roleRepository,
 	);
 
 	const CRED_ID = 'cred-1';
@@ -202,7 +205,7 @@ describe('CredentialConnectionStatusService', () => {
 			expect(roleService.rolesWithScope).toHaveBeenCalledWith(
 				'credential',
 				'credential:connect',
-				em,
+				expect.any(Function),
 			);
 			expect(sharedCredentialsRepository.findPairsWithCredentialAccess).toHaveBeenCalledWith(
 				[{ credentialId: CRED_ID, userId: 'sharee-1' }],

@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
+import { aiClientFetch } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -112,6 +113,7 @@ describe('EmbeddingsNvidia', () => {
 					apiKey: 'test-key',
 					model: 'nvidia/llama-3.2-nv-embedqa-1b-v2',
 					configuration: expect.objectContaining({
+						fetch: aiClientFetch,
 						baseURL: 'https://integrate.api.nvidia.com/v1',
 						fetchOptions: { dispatcher: expect.any(MockProxyAgent) },
 					}),

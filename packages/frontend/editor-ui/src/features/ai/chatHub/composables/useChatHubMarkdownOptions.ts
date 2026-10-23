@@ -223,8 +223,8 @@ export function useChatHubMarkdownOptions(
 				return `<span class="${footnoteRefClassName}" title="${escapedFull}">${escapedTruncated}</span>`;
 			};
 
-			// Hide the footnote block — the pill is the only UI for footnote content
-			md.renderer.rules.footnote_block_open = () => '<div style="display:none" aria-hidden="true">';
+			/** The sanitizer preserves this class. The chat hides the block with CSS. */
+			md.renderer.rules.footnote_block_open = () => '<div class="n8n-markdown-footnote-block">';
 			md.renderer.rules.footnote_block_close = () => '</div>';
 			md.renderer.rules.footnote_open = () => '';
 			md.renderer.rules.footnote_close = () => '';

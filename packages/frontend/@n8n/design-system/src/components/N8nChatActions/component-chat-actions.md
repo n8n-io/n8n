@@ -58,7 +58,9 @@ The component only shows the read-aloud action when all these conditions are tru
 
 Selecting the action starts speech for `content`. Selecting it again while speech is active stops speech. If `content` changes during speech, the component stops the current speech. It also stops active speech when it unmounts.
 
-The component uses the browser speech defaults with pitch, rate, and volume set to `1`.
+The component checks the available voices when the user selects Read aloud. It selects the voice that the browser marks as the default and uses that voice's language. This respects the system voice when the browser exposes it as the default. It does not select voices by name or platform.
+
+If the browser does not expose a default voice, the component leaves the voice unset and uses `en-US`. The browser then selects a suitable voice. The browser and operating system control the available voices and audio quality. Pitch, rate, and volume are set to `1`.
 
 ## Presentation
 

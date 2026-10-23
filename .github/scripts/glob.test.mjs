@@ -30,9 +30,9 @@ describe('matchesGlob', () => {
 	});
 
 	it('matches a prefix pattern', () => {
-		assert.equal(matchesGlob('packages/testing/playwright/a.ts', 'packages/testing/**'), true);
-		assert.equal(matchesGlob('packages/testing', 'packages/testing/**'), false);
-		assert.equal(matchesGlob('packages/cli/a.ts', 'packages/testing/**'), false);
+		assert.equal(matchesGlob('packages/quality/testing/playwright/a.ts', 'packages/quality/**'), true);
+		assert.equal(matchesGlob('packages/quality', 'packages/quality/**'), false);
+		assert.equal(matchesGlob('packages/cli/a.ts', 'packages/quality/**'), false);
 	});
 
 	it('matches a literal path only exactly', () => {
@@ -55,8 +55,8 @@ describe('matchesGlob', () => {
 			'packages/cli/__snapshots__/a.ts.snap',
 			'packages/nodes-base/nodes/Foo/test/fixtures/a.json',
 			'packages/frontend/editor-ui/src/__mocks__/a.ts',
-			'packages/testing/playwright/a.ts',
-			'packages/testing',
+			'packages/quality/testing/playwright/a.ts',
+			'packages/quality',
 			'.github/scripts/glob.test.mjs',
 			'.github/workflows/ci.yml',
 			'a/.hidden/b.spec.js',

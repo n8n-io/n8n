@@ -2,6 +2,10 @@ import { createHash } from 'node:crypto';
 
 import type { JSONObject } from '@n8n/agents';
 
+/**
+ * Cache-scope key for an agent sandbox. It is not the caller identity: for that, see
+ * `Principal` in `@n8n/permissions`.
+ */
 export type AgentSandboxPrincipal =
 	| { type: 'n8n-user'; userId: string }
 	| {

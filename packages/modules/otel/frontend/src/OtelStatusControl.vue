@@ -14,11 +14,9 @@ withDefaults(
 	defineProps<{
 		enabled: boolean;
 		disabled?: boolean;
-		loading?: boolean;
 	}>(),
 	{
 		disabled: false,
-		loading: false,
 	},
 );
 
@@ -52,7 +50,7 @@ function onSelect(id: string) {
 		v-if="enabled"
 		:items="menuItems"
 		placement="bottom-end"
-		:disabled="disabled || loading"
+		:disabled="disabled"
 		data-test-id="otel-enabled-menu"
 		@select="onSelect"
 	>
@@ -61,7 +59,6 @@ function onSelect(id: string) {
 				variant="outline"
 				size="medium"
 				:disabled="disabled"
-				:loading="loading"
 				:aria-label="i18n.baseText('settings.opentelemetry.enable.action.enabledAriaLabel')"
 				data-test-id="otel-enabled-toggle"
 			>
@@ -77,7 +74,6 @@ function onSelect(id: string) {
 		variant="outline"
 		size="medium"
 		:disabled="disabled"
-		:loading="loading"
 		:aria-label="i18n.baseText('settings.opentelemetry.enable.action.enableAriaLabel')"
 		data-test-id="otel-enabled-toggle"
 		@click="emit('update:enabled', true)"

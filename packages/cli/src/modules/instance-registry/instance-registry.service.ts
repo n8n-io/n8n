@@ -7,21 +7,19 @@ import { randomUUID } from 'node:crypto';
 
 import { N8N_VERSION } from '@/constants';
 import { resolveWorkerPoolName } from '@/scaling/queue-name';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 
-import { REGISTRY_CONSTANTS } from './instance-registry.types';
 import type { InstanceStorage } from './storage/instance-storage.interface';
 
 /**
  * Core service for instance lifecycle management in the Instance Registry.
  *
  * Handles backend selection (Redis vs memory), instance registration,
- * periodic heartbeat, and graceful shutdown/unregistration.
+ * the heartbeat write, and graceful shutdown/unregistration.
  */
 @Service()
 export class InstanceRegistryService {
 	private storage!: InstanceStorage;
-
-	private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
 	private readonly instanceKey = randomUUID();
 
@@ -42,19 +40,41 @@ export class InstanceRegistryService {
 
 		const registration = this.buildRegistration();
 		await this.storage.register(registration);
-		this.startHeartbeat();
 
 		this.logger.info('Instance registered', {
 			instanceKey: this.instanceKey,
 			backend: this.storage.kind,
 			instanceType: this.instanceSettings.instanceType,
 		});
+
+		await this.logClusterVersions();
+	}
+
+	private async logClusterVersions(): Promise<void> {
+		try {
+			const registrations = await this.storage.getAllRegistrations();
+			const versions = [...new Set(registrations.map((instance) => instance.version))].sort();
+			const instances = registrations.map(({ hostId, instanceType, instanceRole, version }) => ({
+				hostId,
+				instanceType,
+				instanceRole,
+				version,
+			}));
+
+			if (versions.length > 1) {
+				this.logger.warn(`Cluster is running multiple n8n versions: ${versions.join(', ')}`, {
+					instances,
+				});
+			} else if (versions.length === 1) {
+				this.logger.info(`Cluster aligned on version ${versions[0]}`, { instances });
+			}
+		} catch (error) {
+			this.logger.warn('Failed to inspect cluster versions after registration', { error });
+		}
 	}
 
 	async shutdown() {
 		if (!this.storage) return;
-
-		this.stopHeartbeat();
 
 		try {
 			await this.storage.unregister(this.instanceKey);
@@ -71,16 +91,42 @@ export class InstanceRegistryService {
 		this.logger.debug('Instance unregistered');
 	}
 
+	async heartbeat(): Promise<void> {
+		await this.storage.heartbeat(this.buildRegistration());
+	}
+
+	/** Returns an empty list when the storage read fails. */
 	async getAllInstances(): Promise<InstanceRegistration[]> {
-		return await this.storage.getAllRegistrations();
+		try {
+			return await this.storage.getAllRegistrations();
+		} catch (error) {
+			this.logger.warn('Failed to get all registrations', { error });
+			return [];
+		}
 	}
 
 	getLocalInstance(): InstanceRegistration {
 		return this.buildRegistration();
 	}
 
+	/** Returns an empty map when the storage read fails. */
 	async getLastKnownState(): Promise<Map<string, InstanceRegistration>> {
-		return await this.storage.getLastKnownState();
+		try {
+			return await this.storage.getLastKnownState();
+		} catch (error) {
+			this.logger.warn('Failed to get last known state', { error });
+			return new Map();
+		}
+	}
+
+	/** Reads the live registrations and the reconciliation baseline, and rejects when either read fails. */
+	async readClusterState(): Promise<{
+		instances: InstanceRegistration[];
+		lastKnownState: Map<string, InstanceRegistration>;
+	}> {
+		const instances = await this.storage.getAllRegistrations();
+		const lastKnownState = await this.storage.getLastKnownState();
+		return { instances, lastKnownState };
 	}
 
 	async saveLastKnownState(state: Map<string, InstanceRegistration>): Promise<void> {
@@ -105,6 +151,8 @@ export class InstanceRegistryService {
 			version: N8N_VERSION,
 			registeredAt: this.registeredAt,
 			lastSeen: Date.now(),
+			memoryLimit: getMemoryLimit(),
+			cpuLimit: getCpuLimit().limit,
 		};
 
 		if (this.instanceSettings.instanceType === 'worker') {
@@ -125,23 +173,5 @@ export class InstanceRegistryService {
 
 		const { MemoryInstanceStorage } = await import('./storage/memory-storage.js');
 		return new MemoryInstanceStorage();
-	}
-
-	private startHeartbeat() {
-		this.heartbeatInterval = setInterval(async () => {
-			try {
-				await this.storage.heartbeat(this.buildRegistration());
-				this.logger.debug('Heartbeat updated');
-			} catch (error) {
-				this.logger.warn('Heartbeat failed', { error });
-			}
-		}, REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
-	}
-
-	private stopHeartbeat() {
-		if (this.heartbeatInterval) {
-			clearInterval(this.heartbeatInterval);
-			this.heartbeatInterval = null;
-		}
 	}
 }

@@ -16,6 +16,8 @@ export interface AiModelSelectorMenuItemData {
 	loading?: boolean;
 	/** Trailing "✓ <label>" marker, e.g. for the provider currently in use. */
 	connectedLabel?: string;
+	/** A policy blocks this item; the label is the scope line rendered under the item label. */
+	restrictedLabel?: string;
 }
 
 export type AiModelSelectorMenuItem<

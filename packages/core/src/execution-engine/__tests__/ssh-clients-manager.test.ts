@@ -239,6 +239,52 @@ describe('abort controller', () => {
 		// ASSERT 1
 		expect(endSpy).toHaveBeenCalledTimes(1);
 	});
+
+	test('does not close a shared client while another caller still uses it', async () => {
+		// ARRANGE
+		const firstAbortController = new AbortController();
+		const secondAbortController = new AbortController();
+		await sshClientsManager.getClient(credentials, firstAbortController);
+		await sshClientsManager.getClient(credentials, secondAbortController);
+
+		// ACT 1
+		firstAbortController.abort();
+
+		// ASSERT 1
+		expect(endSpy).not.toHaveBeenCalled();
+		expect(secondAbortController.signal.aborted).toBe(false);
+	});
+
+	test('closes a shared client once every caller has aborted', async () => {
+		// ARRANGE
+		const firstAbortController = new AbortController();
+		const secondAbortController = new AbortController();
+		await sshClientsManager.getClient(credentials, firstAbortController);
+		await sshClientsManager.getClient(credentials, secondAbortController);
+
+		// ACT 1
+		firstAbortController.abort();
+		secondAbortController.abort();
+
+		// ASSERT 1
+		expect(endSpy).toHaveBeenCalledTimes(1);
+	});
+
+	test('aborts every caller when a shared client closes', async () => {
+		// ARRANGE
+		const firstAbortController = new AbortController();
+		const secondAbortController = new AbortController();
+		const client = await sshClientsManager.getClient(credentials, firstAbortController);
+		await sshClientsManager.getClient(credentials, secondAbortController);
+
+		// ACT 1
+		client.emit('close');
+
+		// ASSERT 1
+		expect(firstAbortController.signal.aborted).toBe(true);
+		expect(secondAbortController.signal.aborted).toBe(true);
+		expect(endSpy).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('SSHClientsConfig', () => {

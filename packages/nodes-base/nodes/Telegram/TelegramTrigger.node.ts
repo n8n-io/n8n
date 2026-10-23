@@ -323,7 +323,9 @@ export class TelegramTrigger implements INodeType {
 			}
 		}
 
-		if (bodyData.callback_query?.data?.startsWith(HITL_CALLBACK_PREFIX)) {
+		// Only versions that verified the secret above may forward, because forwarding
+		// attaches the HITL secret token to the request.
+		if (nodeVersion > 1 && bodyData.callback_query?.data?.startsWith(HITL_CALLBACK_PREFIX)) {
 			// Forward the raw update to the fixed HITL endpoint instead of starting this
 			// trigger's workflow. This trigger never learns HITL internals; the endpoint
 			// and the Telegram node's own webhook handler do all verification. Best-effort:

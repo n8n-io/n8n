@@ -386,6 +386,44 @@ describe('reshapeLangSmithRuns', () => {
 		expect(result[0][0]?.runDebug).toHaveLength(1);
 		expect(result[0][0]?.runDebug?.[0]?.runId).toBe('run-1');
 	});
+
+	it('attaches each iteration its own harness model usage by iteration:fileSlug', () => {
+		const cases = [withFile('airtable', [scenario('s1')])];
+		const rows = [0, 1].map((iteration) =>
+			row(
+				{ testCaseFile: 'airtable', scenarioName: 's1', _iteration: iteration },
+				{ buildSuccess: true, passed: true, score: 1, reasoning: 'ok' },
+			),
+		);
+		const usage = (calls: number) => [
+			{
+				agent: 'eval-checklist-verifier',
+				model: 'anthropic/claude-sonnet-4-6',
+				calls,
+				uncachedInputTokens: 1000 * calls,
+				cacheReadTokens: 0,
+				cacheWriteTokens: 0,
+				outputTokens: 100 * calls,
+			},
+		];
+		const harnessUsageByKey = new Map([
+			['0:airtable', usage(1)],
+			['1:airtable', usage(2)],
+		]);
+
+		const result = reshapeLangSmithRuns(
+			rows,
+			cases,
+			2,
+			new Map(),
+			new Map(),
+			undefined,
+			new Map(),
+			harnessUsageByKey,
+		);
+
+		expect(result.map((iteration) => iteration[0]?.harnessUsage)).toEqual([usage(1), usage(2)]);
+	});
 });
 
 describe('sentinelOutcomeFromVerdicts', () => {

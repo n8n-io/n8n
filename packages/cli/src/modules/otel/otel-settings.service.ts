@@ -207,6 +207,8 @@ export class OtelSettingsService {
 			tracesSampleRate: pick('tracesSampleRate'),
 			startupConnectivityTimeoutMs: pick('startupConnectivityTimeoutMs'),
 			includeNodeSpans: pick('includeNodeSpans'),
+			emitWorkflowStartSpan: pick('emitWorkflowStartSpan'),
+			emitNodeStartSpan: pick('emitNodeStartSpan'),
 			injectOutbound: pick('injectOutbound'),
 			productionExecutionsOnly: pick('productionExecutionsOnly'),
 		};

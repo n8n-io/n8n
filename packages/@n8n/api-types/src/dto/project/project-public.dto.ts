@@ -9,9 +9,13 @@ import {
 	projectIconOpenApi,
 	projectListFieldDocs,
 } from './project-public.openapi';
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { nullableObjectGuardSchema } from '../../schemas/object-guard.schema';
 import {
 	projectNameSchema,
+	projectIconSchema,
+	projectDescriptionSchema,
+	projectCustomTelemetryTagsSchema,
 	projectTypeSchema,
 	type ProjectIcon,
 } from '../../schemas/project.schema';
@@ -60,7 +64,17 @@ export class CreatedProjectPublicDto extends Z.class({
 export class CreateProjectPublicDto extends Z.class(
 	{
 		name: projectNameSchema.openapi(projectFieldDocs.name),
-		id: readOnlyPublicSchema(createProjectReadOnlyFieldDocs.id),
+		id: n8nIdSchema.optional().openapi({
+			description:
+				'Project ID. The server generates an ID when omitted. An ID that is in use returns HTTP 409.',
+			example: projectFieldDocs.id.example,
+		}),
+		icon: projectIconSchema.nullable().optional(),
+		description: projectDescriptionSchema
+			.nullable()
+			.optional()
+			.openapi(projectFieldDocs.description),
+		customTelemetryTags: projectCustomTelemetryTagsSchema.optional(),
 		type: readOnlyPublicSchema(createProjectReadOnlyFieldDocs.type),
 	},
 	{ strict: true },

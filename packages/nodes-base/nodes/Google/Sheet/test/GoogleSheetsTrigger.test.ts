@@ -1,5 +1,6 @@
 import * as XLSX from '@e965/xlsx';
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
+import { NodeOperationError } from 'n8n-workflow';
 import nock from 'nock';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -356,6 +357,100 @@ describe('GoogleSheetsTrigger', () => {
 			XLSX.utils.book_append_sheet(workbook, worksheet, 'testSheetName');
 			return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
 		};
+
+		// NODE-5842: A poll must preserve its saved revision when Drive returns no revisions.
+		it('should return no data and preserve the saved revision for an empty revisions list', async () => {
+			const sheetsScope = nock(baseUrl)
+				.get('/v4/spreadsheets/testDocumentId')
+				.query({ fields: 'sheets.properties' })
+				.reply(200, {
+					sheets: [{ properties: { sheetId: 1, title: 'testSheetName' } }],
+				});
+			const driveScope = nock(driveBaseUrl)
+				.get('/drive/v3/files/testDocumentId/revisions')
+				.query({ fields: 'revisions(id, exportLinks), nextPageToken', pageSize: 1000 })
+				.reply(200, { revisions: [] });
+			const workflowStaticData = {
+				documentId: 'testDocumentId',
+				sheetId: 1,
+				lastRevision: 1,
+				lastRevisionLink: previousExportUrl,
+			};
+			const previousState = { ...workflowStaticData };
+
+			const { response } = await testPollingTriggerNode(GoogleSheetsTrigger, {
+				credential: mockDeep(),
+				mode: 'trigger',
+				workflowStaticData,
+				node: {
+					parameters: {
+						authentication: 'triggerOAuth2',
+						documentId: 'testDocumentId',
+						sheetName: 1,
+						event: 'anyUpdate',
+						options: { dataLocationOnSheet: null },
+					},
+				},
+			});
+
+			sheetsScope.done();
+			driveScope.done();
+			expect(response).toBeNull();
+			expect(workflowStaticData).toEqual(previousState);
+		});
+
+		it.each([
+			{ name: 'no revisions field', body: {} },
+			{ name: 'a null revisions field', body: { revisions: null } },
+			{ name: 'an object revisions field', body: { revisions: { length: 1 } } },
+			{ name: 'a string revisions field', body: { revisions: 'invalid' } },
+		])(
+			'should explain credential setup and preserve the saved revision for $name',
+			async ({ body }) => {
+				const sheetsScope = nock(baseUrl)
+					.get('/v4/spreadsheets/testDocumentId')
+					.query({ fields: 'sheets.properties' })
+					.reply(200, {
+						sheets: [{ properties: { sheetId: 1, title: 'testSheetName' } }],
+					});
+				const driveScope = nock(driveBaseUrl)
+					.get('/drive/v3/files/testDocumentId/revisions')
+					.query({ fields: 'revisions(id, exportLinks), nextPageToken', pageSize: 1000 })
+					.reply(200, body);
+				const workflowStaticData = {
+					documentId: 'testDocumentId',
+					sheetId: 1,
+					lastRevision: 1,
+					lastRevisionLink: previousExportUrl,
+				};
+				const previousState = { ...workflowStaticData };
+
+				const poll = testPollingTriggerNode(GoogleSheetsTrigger, {
+					credential: mockDeep(),
+					mode: 'trigger',
+					workflowStaticData,
+					node: {
+						parameters: {
+							authentication: 'serviceAccount',
+							documentId: 'testDocumentId',
+							sheetName: 1,
+							event: 'anyUpdate',
+							options: { dataLocationOnSheet: null },
+						},
+					},
+				});
+
+				await expect(poll).rejects.toBeInstanceOf(NodeOperationError);
+				await expect(poll).rejects.toMatchObject({
+					message: 'Could not retrieve document revisions',
+					description:
+						'Use OAuth2 authentication, or enable "Impersonate a User" in your service account credential. For impersonation, configure domain-wide delegation in Google Workspace.',
+				});
+				sheetsScope.done();
+				driveScope.done();
+				expect(workflowStaticData).toEqual(previousState);
+			},
+		);
 
 		it('should diff revisions via service account authentication and forward per-call scopes', async () => {
 			const sheetsScope = nock(baseUrl);

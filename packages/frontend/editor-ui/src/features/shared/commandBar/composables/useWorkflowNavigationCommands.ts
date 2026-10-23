@@ -1,207 +1,58 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
-import debounce from 'lodash/debounce';
 import { VIEWS } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { CommandGroup, CommandBarItem } from '../types';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useFoldersStore } from '@/features/core/folders/folders.store';
-import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { getResourcePermissions } from '@n8n/permissions';
+import type {
+	CommandBarItem,
+	CommandBarSearchRequest,
+	CommandBarSearchResult,
+	CommandGroup,
+} from '../types';
 
 const ITEM_ID = {
 	CREATE_WORKFLOW: 'create-workflow',
-	OPEN_WORKFLOW: 'open-workflow',
 };
 
+const WORKFLOW_FIELDS = ['id', 'name', 'updatedAt', 'ownedBy', 'parentFolder'];
+
 export function useWorkflowNavigationCommands(options: {
-	lastQuery: Ref<string>;
-	activeNodeId: Ref<string | null>;
 	currentProjectName: Ref<string>;
 }): CommandGroup {
 	const i18n = useI18n();
-	const { lastQuery, activeNodeId, currentProjectName } = options;
+	const { currentProjectName } = options;
 	const nodeTypesStore = useNodeTypesStore();
-	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const projectsStore = useProjectsStore();
 	const tagsStore = useTagsStore();
 	const sourceControlStore = useSourceControlStore();
-	const foldersStore = useFoldersStore();
 
 	const router = useRouter();
 	const route = useRoute();
 
-	const { generateMergedNodesAndActions } = useActionsGenerator();
-
-	const workflowResults = ref<IWorkflowDb[]>([]);
-	const workflowKeywords = ref<Map<string, string[]>>(new Map());
-	const workflowMatchedNodeTypes = ref<Map<string, string>>(new Map());
-	const isLoading = ref(false);
-
 	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
-	function orderResultByCurrentProjectFirst<T extends IWorkflowDb>(results: T[]) {
-		return results.sort((a, b) => {
-			if (a.homeProject?.id === projectsStore.currentProjectId) return -1;
-			if (b.homeProject?.id === projectsStore.currentProjectId) return 1;
-			return 0;
-		});
-	}
-
-	const fetchWorkflowsImpl = async (query: string) => {
-		try {
-			const trimmed = (query || '').trim();
-			const trimmedLower = trimmed.toLowerCase();
-
-			// Find matching node types from available nodes
-			const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
-			const visibleNodeTypes = nodeTypesStore.allNodeTypes;
-			const { mergedNodes } = generateMergedNodesAndActions(visibleNodeTypes, httpOnlyCredentials);
-			const matchedNodes = mergedNodes.filter(
-				(node) => node.displayName?.toLowerCase() === trimmedLower,
-			);
-			const matchedNodeTypeNames = Array.from(new Set(matchedNodes.map((node) => node.name)));
-
-			// Check if search query matches any existing tag names
-			const matchedTag = tagsStore.allTags.find((tag) => tag.name.toLowerCase() === trimmedLower);
-
-			// Search workflows by name with minimal fields
-			const nameSearchPromise = workflowsListStore.searchWorkflows({
-				query: trimmed,
-				select: ['id', 'name', 'versionId', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
-			});
-
-			const nodeTypeSearchPromise =
-				matchedNodeTypeNames.length > 0
-					? workflowsListStore.searchWorkflows({
-							nodeTypes: matchedNodeTypeNames,
-							select: [
-								'id',
-								'name',
-								'versionId',
-								'nodes',
-								'ownedBy',
-								'parentFolder',
-								'isArchived',
-								'description',
-							],
-						})
-					: Promise.resolve([]);
-
-			const tagSearchPromise = matchedTag
-				? workflowsListStore.searchWorkflows({
-						tags: [matchedTag.name],
-						select: [
-							'id',
-							'name',
-							'versionId',
-							'ownedBy',
-							'tags',
-							'parentFolder',
-							'isArchived',
-							'description',
-						],
-					})
-				: Promise.resolve([]);
-
-			const [byName, byNodeTypes, byTags] = await Promise.all([
-				nameSearchPromise,
-				nodeTypeSearchPromise,
-				tagSearchPromise,
-			]);
-
-			// Build keywords and node type maps for workflows found by node types
-			const keywordsMap = new Map<string, string[]>();
-			const nodeTypesMap = new Map<string, string>();
-			const matchedNodeDisplayNames = new Map(
-				matchedNodes.map((node) => [node.name, node.displayName]),
-			);
-
-			byNodeTypes.forEach((workflow) => {
-				if (!workflow.nodes) return;
-
-				const matchedWorkflowNodes = workflow.nodes.filter((node) =>
-					matchedNodeTypeNames.includes(node.type),
-				);
-
-				if (matchedWorkflowNodes.length === 0) return;
-
-				// Store the first matched node type for icon display
-				nodeTypesMap.set(workflow.id, matchedWorkflowNodes[0].type);
-
-				// Store all matched display names as keywords
-				const matchedDisplayNames = matchedWorkflowNodes
-					.map((node) => matchedNodeDisplayNames.get(node.type))
-					.filter((name): name is string => !!name);
-
-				if (matchedDisplayNames.length > 0) {
-					keywordsMap.set(workflow.id, matchedDisplayNames);
-				}
-			});
-
-			workflowKeywords.value = keywordsMap;
-			workflowMatchedNodeTypes.value = nodeTypesMap;
-
-			// Merge and dedupe by id, filter out archived workflows
-			const merged = [...byName, ...byNodeTypes, ...byTags];
-			const uniqueById = Array.from(new Map(merged.map((w) => [w.id, w])).values());
-			const nonArchivedWorkflows = uniqueById.filter((w) => !w.isArchived);
-			workflowResults.value = orderResultByCurrentProjectFirst(nonArchivedWorkflows);
-
-			// Cache parent folders for breadcrumb building
-			const parentFolders = nonArchivedWorkflows
-				.map((w) => w.parentFolder)
-				.filter((pf) => pf !== undefined && pf !== null);
-
-			if (parentFolders.length > 0) {
-				foldersStore.cacheFolders(
-					parentFolders.map((pf) => ({
-						id: pf.id,
-						name: pf.name,
-						parentFolder: undefined, // We don't have the parent's parent info yet
-					})),
-				);
-			}
-		} catch {
-			workflowResults.value = [];
-			workflowKeywords.value.clear();
-			workflowMatchedNodeTypes.value.clear();
-		} finally {
-			isLoading.value = false;
+	const nodeTypeNamesByDisplayName = computed(() => {
+		const result = new Map<string, Set<string>>();
+		for (const nodeType of nodeTypesStore.allNodeTypes) {
+			const key = nodeType.displayName.toLowerCase();
+			const names = result.get(key) ?? new Set<string>();
+			names.add(nodeType.name);
+			result.set(key, names);
 		}
-	};
-
-	const fetchWorkflowsDebounced = debounce(fetchWorkflowsImpl, 300);
-
-	const buildFolderPath = (folderId: string): string[] => {
-		const path: string[] = [];
-		let currentFolderId: string | undefined = folderId;
-
-		// Traverse up the folder hierarchy using the cache
-		while (currentFolderId) {
-			const folder = foldersStore.getCachedFolder(currentFolderId);
-			if (!folder) break;
-
-			path.unshift(folder.name);
-			currentFolderId = folder.parentFolder;
-		}
-
-		return path;
-	};
+		return result;
+	});
 
 	const getProjectIcon = (workflow: IWorkflowDb): IconOrEmoji => {
 		if (workflow.homeProject?.type === ProjectTypes.Personal) {
@@ -217,199 +68,156 @@ export function useWorkflowNavigationCommands(options: {
 		return { type: 'icon', value: 'house' };
 	};
 
-	const getWorkflowProjectSuffix = (workflow: IWorkflowDb) => {
-		const parts: string[] = [];
+	const getLocation = (workflow: IWorkflowDb) => {
+		const projectName =
+			workflow.homeProject?.type === ProjectTypes.Personal
+				? i18n.baseText('projects.menu.personal')
+				: workflow.homeProject?.name;
 
-		if (workflow.homeProject && workflow.homeProject.type === ProjectTypes.Personal) {
-			parts.push(i18n.baseText('projects.menu.personal'));
-		} else if (workflow.homeProject?.name) {
-			parts.push(workflow.homeProject.name);
-		}
-
-		if (workflow.parentFolder?.id) {
-			const folderPath = buildFolderPath(workflow.parentFolder.id);
-			// If there are more than 2 folders, show first, "...", and last
-			if (folderPath.length > 2) {
-				parts.push(folderPath[0], '...', folderPath[folderPath.length - 1]);
-			} else {
-				parts.push(...folderPath);
-			}
-		}
-
-		return parts.join(' / ');
+		return [projectName, workflow.parentFolder?.name].filter(Boolean).join(' / ');
 	};
 
-	const openWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
-		let keywords = workflowKeywords.value.get(workflow.id) ?? [];
-		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
-
-		// // Get node icon if this workflow matched by node type
-		let icon: CommandBarItem['icon'] | undefined;
-		if (matchedNodeType) {
-			const nodeType = nodeTypesStore.getNodeType(matchedNodeType);
-			if (nodeType) {
-				icon = {
-					component: NodeIcon,
-					props: {
-						nodeType,
-						size: 24,
-					},
-				};
-			}
-		}
-
-		// Add workflow name to keywords since we're using a custom component for the title
-		const workflowName = workflow.name;
-		keywords = [...keywords, workflowName];
-
-		if (workflow.description) {
-			keywords = [...keywords, workflow.description];
-		}
-
-		if (workflow.tags && workflow.tags.length > 0) {
-			keywords = [
-				...keywords,
-				...workflow.tags.map((tag) => (typeof tag === 'string' ? tag : tag.name)),
-			];
-		}
-
-		const suffix = getWorkflowProjectSuffix(workflow);
-
-		const name = workflow.name || i18n.baseText('commandBar.workflows.unnamed');
-		const title = isRoot
-			? i18n.baseText('generic.openResource', {
-					interpolate: { resource: name },
-				})
-			: name;
-		const section = isRoot
-			? i18n.baseText('commandBar.sections.workflows')
-			: i18n.baseText('commandBar.workflows.open');
+	const toCommandBarItem = (workflow: IWorkflowDb, matchedNodeType?: string): CommandBarItem => {
+		const nodeType = matchedNodeType ? nodeTypesStore.getNodeType(matchedNodeType) : null;
+		const location = getLocation(workflow);
+		const { href } = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId: workflow.id },
+		});
 
 		return {
 			id: workflow.id,
-			matchAnySearchTerm: !isRoot,
-			title: {
-				component: CommandBarItemTitle,
-				props: {
-					title,
-					suffix,
-					...(suffix ? { suffixIcon: getProjectIcon(workflow) } : {}),
-				},
-			},
-			section,
-			...(keywords.length > 0 ? { keywords } : {}),
-			...(icon ? { icon } : {}),
+			title: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
+			description: location,
+			...(location ? { descriptionIcon: getProjectIcon(workflow) } : {}),
+			icon: nodeType
+				? { component: NodeIcon, props: { nodeType, size: 16 } }
+				: { type: 'icon', value: 'workflow' },
+			timestamp: workflow.updatedAt ? String(workflow.updatedAt) : undefined,
+			href,
 			handler: () => {
-				const targetRoute = router.resolve({
-					name: VIEWS.WORKFLOW,
-					params: { workflowId: workflow.id },
-				});
-				window.location.href = targetRoute.fullPath;
+				window.location.href = href;
 			},
 		};
 	};
 
-	const openWorkflowCommands = computed<CommandBarItem[]>(() => {
-		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, false));
-	});
+	const findMatchedNodeType = (workflow: IWorkflowDb, nodeTypeNames: Set<string>) =>
+		workflow.nodes?.find((node) => nodeTypeNames.has(node.type))?.type;
 
-	const rootWorkflowItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2 || !workflowsStore.canViewWorkflows) {
-			return [];
+	async function search({
+		query,
+		offset,
+		limit,
+	}: CommandBarSearchRequest): Promise<CommandBarSearchResult> {
+		const trimmed = query.trim();
+		const lowerCased = trimmed.toLowerCase();
+		const matchedNodeTypeNames = nodeTypeNamesByDisplayName.value.get(lowerCased);
+		const matchedTag = tagsStore.allTags.find((tag) => tag.name.toLowerCase() === lowerCased);
+		const listOptions = {
+			sortBy: 'updatedAt:desc',
+			includeScopes: false,
+			skip: offset,
+			take: limit + 1,
+		};
+
+		const [byName, byNodeType, byTag] = await Promise.all([
+			workflowsListStore.searchWorkflows({
+				query: trimmed || undefined,
+				isArchived: false,
+				select: WORKFLOW_FIELDS,
+				options: listOptions,
+			}),
+			matchedNodeTypeNames
+				? workflowsListStore.searchWorkflows({
+						nodeTypes: [...matchedNodeTypeNames],
+						isArchived: false,
+						select: [...WORKFLOW_FIELDS, 'nodes'],
+						options: listOptions,
+					})
+				: Promise.resolve([]),
+			matchedTag
+				? workflowsListStore.searchWorkflows({
+						tags: [matchedTag.name],
+						isArchived: false,
+						select: WORKFLOW_FIELDS,
+						options: listOptions,
+					})
+				: Promise.resolve([]),
+		]);
+
+		const items = new Map<string, CommandBarItem>();
+		for (const workflow of byNodeType.slice(0, limit)) {
+			const matchedNodeType = matchedNodeTypeNames
+				? findMatchedNodeType(workflow, matchedNodeTypeNames)
+				: undefined;
+			items.set(workflow.id, toCommandBarItem(workflow, matchedNodeType));
 		}
-		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, true));
-	});
+		for (const workflow of [...byTag.slice(0, limit), ...byName.slice(0, limit)]) {
+			if (!items.has(workflow.id)) items.set(workflow.id, toCommandBarItem(workflow));
+		}
+
+		const updatedAtById = new Map(
+			[...byNodeType, ...byTag, ...byName].map((workflow) => [
+				workflow.id,
+				new Date(workflow.updatedAt).getTime(),
+			]),
+		);
+
+		return {
+			items: [...items.values()].sort(
+				(a, b) => (updatedAtById.get(b.id) ?? 0) - (updatedAtById.get(a.id) ?? 0),
+			),
+			hasMore: [byName, byNodeType, byTag].some((page) => page.length > limit),
+		};
+	}
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
 		const hasCreatePermission =
 			!sourceControlStore.preferences.branchReadOnly &&
 			getResourcePermissions(homeProject.value?.scopes).workflow.create;
 
-		const newWorkflowCommand: CommandBarItem = {
-			id: ITEM_ID.CREATE_WORKFLOW,
-			title: i18n.baseText('commandBar.workflows.create', {
-				interpolate: { projectName: currentProjectName.value },
-			}),
-			keywords: [i18n.baseText('workflows.add')],
-			section: i18n.baseText('commandBar.sections.workflows'),
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'plus',
-					color: 'text-light',
+		if (!hasCreatePermission) return [];
+
+		return [
+			{
+				id: ITEM_ID.CREATE_WORKFLOW,
+				title: i18n.baseText('commandBar.workflows.create', {
+					interpolate: { projectName: currentProjectName.value },
+				}),
+				keywords: [i18n.baseText('workflows.add')],
+				section: i18n.baseText('commandBar.sections.workflows'),
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'plus',
+						color: 'text-light',
+					},
+				},
+				handler: () => {
+					const targetRoute = router.resolve({
+						name: VIEWS.NEW_WORKFLOW,
+						query: {
+							projectId: projectsStore.currentProjectId,
+							parentFolderId: route.params.folderId,
+						},
+					});
+					window.location.href = targetRoute.fullPath;
 				},
 			},
-			handler: () => {
-				const targetRoute = router.resolve({
-					name: VIEWS.NEW_WORKFLOW,
-					query: {
-						projectId: projectsStore.currentProjectId,
-						parentFolderId: route.params.folderId,
-					},
-				});
-				window.location.href = targetRoute.fullPath;
-			},
-		};
-		return [
-			...(hasCreatePermission ? [newWorkflowCommand] : []),
-			...(workflowsStore.canViewWorkflows
-				? [
-						{
-							id: ITEM_ID.OPEN_WORKFLOW,
-							title: i18n.baseText('commandBar.workflows.open'),
-							section: i18n.baseText('commandBar.sections.workflows'),
-							placeholder: i18n.baseText('commandBar.workflows.searchPlaceholder'),
-							children: openWorkflowCommands.value,
-							icon: {
-								component: N8nIcon,
-								props: {
-									icon: 'arrow-right',
-									color: 'text-light',
-								},
-							},
-						},
-					]
-				: []),
-			...rootWorkflowItems.value,
 		];
 	});
 
-	function onCommandBarChange(query: string) {
-		const trimmed = query.trim();
-		const isInWorkflowParent = activeNodeId.value === ITEM_ID.OPEN_WORKFLOW;
-		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
-
-		if (isInWorkflowParent || isRootWithQuery) {
-			isLoading.value = true;
-			void fetchWorkflowsDebounced(trimmed);
-		}
-	}
-
-	function onCommandBarNavigateTo(to: string | null) {
-		activeNodeId.value = to;
-
-		if (to === ITEM_ID.OPEN_WORKFLOW) {
-			isLoading.value = true;
-			void fetchWorkflowsImpl('');
-		} else if (to === null) {
-			isLoading.value = false;
-			workflowResults.value = [];
-			workflowKeywords.value.clear();
-			workflowMatchedNodeTypes.value.clear();
-		}
-	}
-
-	async function initialize() {
-		await tagsStore.fetchAll();
-	}
-
 	return {
 		commands: workflowNavigationCommands,
-		handlers: {
-			onCommandBarChange,
-			onCommandBarNavigateTo,
+		source: {
+			id: 'workflows',
+			title: i18n.baseText('commandBar.sections.workflows'),
+			isRemote: true,
+			isAvailable: () => workflowsStore.canViewWorkflows,
+			search,
 		},
-		isLoading,
-		initialize,
+		async initialize() {
+			await tagsStore.fetchAll();
+		},
 	};
 }

@@ -29,6 +29,7 @@ export interface InputProps {
 	autofocus?: boolean;
 	autocomplete?: InputAutocomplete;
 	name?: string;
+	appendClass?: string;
 }
 
 export interface InputEmits {

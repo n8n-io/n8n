@@ -1,10 +1,7 @@
+import { type SerializedVariable, serializedVariableSchema } from '@n8n/api-types';
 import type { Variables } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import {
-	serializedVariableSchema,
-	type SerializedVariable,
-} from '../../spec/serialized/variable.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 
 type VariablePackageKeyHandling = {

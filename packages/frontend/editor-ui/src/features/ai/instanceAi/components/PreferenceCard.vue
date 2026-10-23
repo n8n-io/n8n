@@ -1,0 +1,292 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import type { InstanceAiToolCallState } from '@n8n/api-types';
+import {
+	N8nAiActivityStepChevron,
+	N8nAnimatedCollapsibleContent,
+	N8nCallout,
+	N8nIcon,
+	N8nText,
+} from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+
+import { aiPreferenceTargetOf } from '@n8n/api-types';
+
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useContextStore } from '@/features/settings/context/context.store';
+
+import { useThread } from '../instanceAi.store';
+import { resolvePreferenceCard, resolvePreferenceRejection } from '../preferenceCard.utils';
+import { preferenceSavedLabel } from '../preferenceScope.utils';
+import PreferenceEditModal from './PreferenceEditModal.vue';
+
+const props = defineProps<{
+	toolCall: InstanceAiToolCallState;
+	runId: string;
+	/** True unless the card belongs to the latest turn. */
+	readOnly: boolean;
+}>();
+
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
+const card = computed(() => resolvePreferenceCard(props.toolCall));
+// A refused write renders too, so the person does not depend on the assistant's account.
+const rejection = computed(() => resolvePreferenceRejection(props.toolCall));
+// The call ended before it answered, so the row may or may not exist.
+const isUnconfirmed = computed(() => rejection.value?.reason === 'interrupted');
+
+const projectsStore = useProjectsStore();
+const contextStore = useContextStore();
+const thread = useThread();
+
+/**
+ * The card's fact says where its own last write put the row. A move made on the settings
+ * page or over MCP never reaches that fact, so the row itself is read here and wins. An
+ * unresolved id leaves the fact in place: it is the newest thing this card knows.
+ */
+watch(
+	() => card.value?.preferenceId,
+	(preferenceId) => {
+		if (preferenceId) void contextStore.resolveRows([preferenceId]);
+	},
+	{ immediate: true },
+);
+
+const liveTarget = computed(() => {
+	const preferenceId = card.value?.preferenceId;
+	if (!preferenceId) return null;
+	const row = contextStore.rowById.get(preferenceId);
+	return row ? aiPreferenceTargetOf(row) : null;
+});
+
+/** Where the row is, and who owns it: the row when it is known, else the card's fact. */
+const target = computed(() => {
+	if (!card.value) return null;
+	const live = liveTarget.value;
+	if (!live) {
+		const { scope, projectId, userId } = card.value;
+		return { scope, projectId, userId };
+	}
+	return {
+		scope: live.scope,
+		projectId: live.scope === 'project' ? live.projectId : null,
+		userId: live.scope === 'user' ? live.userId : null,
+	};
+});
+
+const isRemoved = computed(() => card.value?.state === 'undone');
+// Only the latest turn may correct a preference, and a removed one has nothing to correct.
+const isEditable = computed(() => card.value !== null && !props.readOnly && !isRemoved.value);
+
+const rowLabel = computed(() => {
+	if (isUnconfirmed.value) return i18n.baseText('instanceAi.preferenceCard.notConfirmed');
+	if (rejection.value) return i18n.baseText('instanceAi.preferenceCard.notSaved');
+	if (isRemoved.value) return i18n.baseText('instanceAi.preferenceCard.removed');
+	// The header names where the preference applies, so it follows the row, not the fact.
+	const fact = card.value;
+	const live = target.value;
+	if (!fact) return '';
+	return preferenceSavedLabel(
+		i18n,
+		live?.scope ?? fact.scope,
+		live?.projectId ?? null,
+		projectsStore.myProjects,
+		thread.projectId,
+	);
+});
+
+/** The saved text, or the text the assistant tried to save. */
+const text = computed(() => rejection.value?.content ?? card.value?.content);
+
+/** Prefer the server's explanation over the generic line. */
+const rejectionMessage = computed(() => {
+	if (isUnconfirmed.value) return i18n.baseText('instanceAi.preferenceCard.notConfirmedMessage');
+	return rejection.value?.message ?? i18n.baseText('instanceAi.preferenceCard.notSavedFallback');
+});
+
+// The card starts collapsed on every turn: the assistant already said what it saved.
+// The chevron overrides the default, turn by turn.
+const userToggled = ref<boolean | null>(null);
+const expanded = computed(() => userToggled.value ?? false);
+// A later turn moves the card into history, and history collapses whatever the
+// chevron did on the active turn.
+watch(
+	() => props.readOnly,
+	(readOnly) => {
+		if (readOnly) userToggled.value = null;
+	},
+);
+
+const modalOpen = ref(false);
+
+// Seen, not offered: `Preference confirmation shown` already fired with the write, and a write
+// whose card never reaches the screen still counts there. Only the latest turn reports, so
+// reopening an old thread does not report the same card again.
+const reportedSeen = ref(false);
+watch(
+	[card, () => props.readOnly],
+	([value, readOnly]) => {
+		if (reportedSeen.value || !value || readOnly) return;
+		reportedSeen.value = true;
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD, {
+			// What the card shows, which is the row when it is known. Reporting the fact would
+			// name a scope the person on the screen is not looking at.
+			scope_type: target.value?.scope ?? value.scope,
+			state: value.state,
+		});
+	},
+	{ immediate: true },
+);
+</script>
+
+<template>
+	<CollapsibleRoot
+		v-if="card || rejection"
+		:open="expanded"
+		data-test-id="instance-ai-preference-card"
+		@update:open="(value) => (userToggled = value)"
+	>
+		<CollapsibleTrigger as-child>
+			<button
+				type="button"
+				:class="$style.header"
+				:aria-expanded="expanded"
+				data-test-id="instance-ai-preference-card-header"
+			>
+				<!-- Only a refused save keeps an icon: the warning carries state. A saved row
+				     reads like the thinking traces above it: a plain muted title. -->
+				<N8nIcon v-if="rejection" icon="triangle-alert" size="small" />
+				<span :class="$style.title">{{ rowLabel }}</span>
+				<N8nAiActivityStepChevron :open="expanded" />
+			</button>
+		</CollapsibleTrigger>
+
+		<N8nAnimatedCollapsibleContent>
+			<div :class="$style.card">
+				<N8nText
+					v-if="text"
+					tag="p"
+					size="small"
+					:class="[
+						$style.text,
+						{ [$style.removedText]: isRemoved, [$style.attemptedText]: rejection },
+					]"
+					data-test-id="instance-ai-preference-card-text"
+				>
+					&ldquo;{{ text }}&rdquo;
+				</N8nText>
+
+				<N8nCallout
+					v-if="rejection"
+					:theme="isUnconfirmed ? 'warning' : 'danger'"
+					data-test-id="instance-ai-preference-card-error"
+				>
+					{{ rejectionMessage }}
+				</N8nCallout>
+
+				<button
+					v-if="isEditable"
+					type="button"
+					:class="$style.link"
+					data-test-id="instance-ai-preference-card-edit"
+					@click="modalOpen = true"
+				>
+					{{ i18n.baseText('instanceAi.preferenceCard.edit') }}
+				</button>
+			</div>
+		</N8nAnimatedCollapsibleContent>
+
+		<PreferenceEditModal
+			v-if="card && isEditable && target"
+			v-model:open="modalOpen"
+			:preference-id="card.preferenceId"
+			:content="card.content"
+			:scope="target.scope"
+			:project-id="target.projectId"
+			:user-id="target.userId"
+			:run-id="props.runId"
+			:tool-call-id="props.toolCall.toolCallId"
+		/>
+	</CollapsibleRoot>
+</template>
+
+<style lang="scss" module>
+/* Same row as "Finished thinking" (AiThinkingBlock.vue): one muted line, an
+   inline chevron, and no surface of its own. */
+.header {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	max-width: 90%;
+	border: 0;
+	background: transparent;
+	padding: var(--spacing--4xs) 0;
+	cursor: pointer;
+	text-align: left;
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--lg);
+
+	&:hover {
+		color: var(--text-color--subtle);
+	}
+}
+
+.title {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Same content rule as the thinking traces (AiThinkingBlock.vue): inline text with
+   a left rule, and no surface of its own. */
+.card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) 0 var(--spacing--3xs) var(--spacing--2xs);
+	border-left: var(--border);
+	margin-left: var(--spacing--xs);
+}
+
+/* The same color the thinking trace above it uses for its text (ThinkingBlock.vue). */
+.text {
+	color: var(--color--text--tint-1);
+}
+
+.link {
+	border: 0;
+	background: transparent;
+	padding: 0;
+	cursor: pointer;
+	/* A button stretches to the row width and centers its label: keep it at the text's edge. */
+	align-self: flex-start;
+	text-align: left;
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
+
+	&:hover {
+		color: var(--text-color--subtle);
+	}
+}
+
+.removedText {
+	text-decoration: line-through;
+}
+
+/* A refused text can be far over the cap, so clamp it. */
+.attemptedText {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	overflow: hidden;
+}
+</style>

@@ -1,44 +1,35 @@
 <script setup lang="ts">
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
-import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
+import ContactAdminModal from './ContactAdminModal.vue';
+import {
+	describeNodeTypeRestriction,
+	useRestrictionContact,
+	type OptionalVerdict,
+} from '../composables/useNodeTypeRestriction';
 
 const {
 	nodeTypeName,
-	scope,
+	restriction,
 	showReplace = true,
 } = defineProps<{
 	nodeTypeName: string;
-	scope?: NodeTypeAvailabilityScope;
+	restriction?: OptionalVerdict;
 	showReplace?: boolean;
 }>();
 
 const emit = defineEmits<{ replaceNode: [] }>();
 
-const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedNode.description.instance',
-	project: 'typeAvailabilityPolicies.restrictedNode.description.project',
-};
-
 const i18n = useI18n();
 
 const isContactAdminOpen = ref(false);
 
-// The next step is interpolated into the description, so each locale controls the sentence order.
-const description = computed(() => {
-	const nextStep = i18n.baseText(
-		showReplace
-			? 'typeAvailabilityPolicies.restrictedNode.nextStep.replace'
-			: 'typeAvailabilityPolicies.restrictedNode.nextStep.contact',
-	);
-	return i18n.baseText(
-		scope ? DESCRIPTION_KEY[scope] : 'typeAvailabilityPolicies.restrictedNode.description.generic',
-		{ interpolate: { nodeType: nodeTypeName, nextStep } },
-	);
-});
+const { copy: contactCopy } = useRestrictionContact(() => restriction);
+const description = computed(() =>
+	describeNodeTypeRestriction(nodeTypeName, restriction, showReplace ? 'replace' : 'contact'),
+);
 </script>
 
 <template>
@@ -56,11 +47,11 @@ const description = computed(() => {
 				data-test-id="node-restricted-contact-admin"
 				@click="isContactAdminOpen = true"
 			>
-				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
+				{{ i18n.baseText(contactCopy.action) }}
 			</N8nButton>
 			<N8nButton
 				v-if="showReplace"
-				variant="subtle"
+				variant="outline"
 				size="small"
 				icon="arrow-left-right"
 				data-test-id="node-restricted-replace"
@@ -69,7 +60,11 @@ const description = computed(() => {
 				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.replaceNode') }}
 			</N8nButton>
 		</div>
-		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
+		<ContactAdminModal
+			v-model:open="isContactAdminOpen"
+			:node-type-name="nodeTypeName"
+			:audience="contactCopy.audience"
+		/>
 	</div>
 </template>
 

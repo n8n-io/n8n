@@ -16,10 +16,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { NodeConnectionTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
-import {
-	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
-	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
-} from '@n8n/api-types';
+import { isChatHubToolTypeAllowed } from '@n8n/api-types';
 import type { ChatHubToolDto } from '@n8n/api-types';
 import { computed, onMounted, ref, watch } from 'vue';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -33,10 +30,15 @@ import { useInstallNode } from '@/features/settings/communityNodes/composables/u
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
+	isNodeItemRestricted,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { partitionLast } from '@n8n/utils/sort/partition-last';
 
 const props = defineProps<{
 	modalName: string;
@@ -75,8 +77,20 @@ const chatStore = useChatStore();
 const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
+const projectsStore = useProjectsStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const { installNode: installCommunityNode } = useInstallNode();
+const { warnIfRestricted } = useRestrictedNodeWarning();
 const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
+
+// Chat tools run as workflows in the personal project, so that project's policy applies.
+watch(
+	() => projectsStore.personalProject?.id,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
@@ -104,13 +118,11 @@ const settingsIsValid = ref(false);
 
 const tools = computed<ChatHubToolDto[]>(() => chatStore.configuredTools);
 
-const excludedToolTypes = computed(() => {
-	const blocked = [...ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES];
-	if (hasRole(['global:chatUser'])) {
-		blocked.push(...CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES);
-	}
-	return blocked;
-});
+const isChatUser = computed(() => hasRole(['global:chatUser']));
+
+function isToolTypeExcluded(type: string): boolean {
+	return !isChatHubToolTypeAllowed(type, { isChatUser: isChatUser.value });
+}
 
 function resolveToolNodeType(name: string): INodeTypeDescription | null {
 	return (
@@ -142,9 +154,7 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 		.map((name) => resolveToolNodeType(name))
 		.filter(
 			(nodeType): nodeType is INodeTypeDescription =>
-				nodeType !== null &&
-				!excludedToolTypes.value.includes(nodeType.name) &&
-				!hasInputs(nodeType),
+				nodeType !== null && !isToolTypeExcluded(nodeType.name) && !hasInputs(nodeType),
 		)
 		.sort((a, b) => {
 			const popA = nodePopularityMap.get(a.name) ?? 0;
@@ -171,7 +181,7 @@ const filteredConfiguredTools = computed(() => {
 	});
 });
 
-const filteredAvailableTools = computed(() => {
+const matchingAvailableTools = computed(() => {
 	const base = !debouncedSearchQuery.value
 		? availableToolTypes.value
 		: availableToolTypes.value.filter((nodeType) => {
@@ -196,7 +206,7 @@ const filteredAvailableTools = computed(() => {
 		if (
 			!resolved ||
 			seen.has(resolved.name) ||
-			excludedToolTypes.value.includes(resolved.name) ||
+			isToolTypeExcluded(resolved.name) ||
 			hasInputs(resolved)
 		) {
 			continue;
@@ -206,6 +216,10 @@ const filteredAvailableTools = computed(() => {
 	}
 	return [...base, ...previews];
 });
+
+const filteredAvailableTools = computed(() =>
+	partitionLast(matchingAvailableTools.value, (nodeType) => isNodeItemRestricted(nodeType.name)),
+);
 
 function getNodeType(tool: ChatHubToolDto): INodeTypeDescription | null {
 	return nodeTypesStore.getNodeType(tool.definition.type, tool.definition.typeVersion);
@@ -292,6 +306,9 @@ function openSettingsFor(nodeType: INodeTypeDescription) {
 		},
 		existingNames,
 		async (configuredNode: INode) => {
+			// The policy can finish loading while the settings view is open.
+			if (warnIfRestricted(configuredNode.type)) return;
+
 			try {
 				await chatStore.addConfiguredTool(configuredNode);
 			} catch (error) {
@@ -302,6 +319,8 @@ function openSettingsFor(nodeType: INodeTypeDescription) {
 }
 
 async function handleAddTool(nodeType: INodeTypeDescription) {
+	if (isNodeItemRestricted(nodeType.name)) return;
+
 	if (isCommunityPreviewTool(nodeType)) {
 		const packageName = communityPackageNameFor(nodeType);
 		const baseName = stripToolSuffix(nodeType.name);
@@ -311,12 +330,14 @@ async function handleAddTool(nodeType: INodeTypeDescription) {
 				type: 'verified',
 				packageName,
 				nodeType: baseName,
+				selectedNodeType: nodeType.name,
 				telemetry: { source: 'chat hub tools manager', hasQuickConnect: false },
 			});
 			if (!result.success) return;
 
 			const installedName = removePreviewToken(nodeType.name);
 			const installed = nodeTypesStore.getNodeType(installedName) ?? nodeType;
+			if (result.restricted) return;
 			openSettingsFor(installed);
 		} finally {
 			installingToolName.value = null;
@@ -416,6 +437,7 @@ function handleSettingsChangeName(name: string) {
 							:node-type="getNodeType(tool)!"
 							:configured-node="tool.definition"
 							:enabled="agentToolIds ? agentToolIds.includes(tool.definition.id) : tool.enabled"
+							:role-blocked="isToolTypeExcluded(tool.definition.type)"
 							mode="configured"
 							@configure="handleConfigureTool(tool)"
 							@remove="handleRemoveTool(tool.definition.id)"

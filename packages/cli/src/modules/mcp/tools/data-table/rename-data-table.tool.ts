@@ -7,6 +7,7 @@ import type { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { dataTableProjectIdSchema, successMessageOutputSchema } from '../schemas';
+import { trackAndReturnToolError } from '../tool-error.utils';
 
 const inputSchema = {
 	dataTableId: z.string().describe('The ID of the data table to rename'),
@@ -62,16 +63,10 @@ export const createRenameDataTableTool = (
 				structuredContent: output,
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			telemetryPayload.results = { success: false, error: errorMessage };
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output = { success: false, message: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return trackAndReturnToolError(telemetry, telemetryPayload, error, (message) => ({
+				success: false,
+				message,
+			}));
 		}
 	},
 });

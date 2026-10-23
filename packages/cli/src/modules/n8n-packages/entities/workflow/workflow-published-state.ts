@@ -1,4 +1,4 @@
-import type { SerializedWorkflowMetadata } from '../../spec/serialized/workflow-metadata.schema';
+import type { SerializedWorkflowMetadata } from '@n8n/api-types';
 
 /**
  * `true` when the source published the version this package carries, `false` when the source

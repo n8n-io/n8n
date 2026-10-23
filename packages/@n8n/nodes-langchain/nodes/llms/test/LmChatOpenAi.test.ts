@@ -1,7 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getProxyAgent,
+	aiClientFetch,
+} from '@n8n/ai-utilities';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
@@ -30,6 +35,7 @@ const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedCommon = vi.mocked(common);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 const mockedWrapChatModelMessageInput = vi.mocked(wrapChatModelMessageInput);
 const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
@@ -142,6 +148,7 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
+						fetch: mockedAiClientFetch,
 						defaultHeaders,
 						fetchOptions: {
 							dispatcher: {},
@@ -178,6 +185,7 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
+						fetch: mockedAiClientFetch,
 						defaultHeaders,
 						fetchOptions: {
 							dispatcher: {},
@@ -215,6 +223,7 @@ describe('LmChatOpenAi', () => {
 					timeout: 30000,
 					maxRetries: 5,
 					configuration: {
+						fetch: mockedAiClientFetch,
 						baseURL: customBaseURL,
 						fetchOptions: {
 							dispatcher: {},
@@ -251,6 +260,7 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
+						fetch: mockedAiClientFetch,
 						baseURL: customURL,
 						fetchOptions: {
 							dispatcher: {},
@@ -288,6 +298,7 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
+						fetch: mockedAiClientFetch,
 						defaultHeaders: {
 							...defaultHeaders,
 							'X-Custom-Header': 'custom-value',
@@ -337,6 +348,7 @@ describe('LmChatOpenAi', () => {
 					timeout: 45000,
 					maxRetries: 3,
 					configuration: {
+						fetch: mockedAiClientFetch,
 						defaultHeaders,
 						fetchOptions: {
 							dispatcher: {},
@@ -488,6 +500,7 @@ describe('LmChatOpenAi', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					configuration: {
+						fetch: mockedAiClientFetch,
 						baseURL: optionsBaseURL,
 						fetchOptions: {
 							dispatcher: {},
@@ -646,6 +659,25 @@ describe('LmChatOpenAi', () => {
 				await expect(result).rejects.toThrow(NodeOperationError);
 			},
 		);
+
+		// Reserved names, refused whatever the caller does with them: this node merges with
+		// `Object.assign`, so `__proto__` would repoint the prototype of the options object.
+		it.each([
+			['{"__proto__":{"polluted":true}}', '__proto__'],
+			['{"constructor":{"x":1}}', 'constructor'],
+		])('should reject a reserved extraBody key: %s', async (extraBody, key) => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return { extraBody };
+				return undefined;
+			});
+
+			const result = lmChatOpenAi.supplyData.call(mockContext, 0);
+			await expect(result).rejects.toThrow(`The "Extra Body" field cannot set "${key}"`);
+			await expect(result).rejects.toThrow(NodeOperationError);
+		});
 
 		it('should wrap Chat Completions models to normalize empty tool-call content', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.2 });

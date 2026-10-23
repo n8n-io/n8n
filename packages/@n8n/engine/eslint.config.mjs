@@ -5,8 +5,10 @@ export default defineConfig(
 	{ ignores: ['compiled/**', 'vitest.integration.config.ts'] },
 	backendConfig,
 	{
-		// Debt: the base layer enforces kebab-case filenames and this package has
-		// 2 files that predate it. Rename them, then delete this block.
+		files: [
+			'src/database/migrations/1778529600000-CreateWorkflowExecution.ts',
+			'src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts',
+		],
 		rules: {
 			'unicorn/filename-case': 'off',
 		},

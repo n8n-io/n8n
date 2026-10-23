@@ -88,6 +88,32 @@ describe('computeChangedNodeNames', () => {
 		expect(computeChangedNodeNames(built, saved).sort()).toEqual(['Compose', 'Send a message']);
 	});
 
+	it.each([
+		[
+			'after',
+			{
+				Compose: { main: [[{ node: 'Send a message', type: 'main', index: 0 }]] },
+				'Send a message': { main: [[{ node: 'Log', type: 'main', index: 0 }]] },
+			},
+		],
+		[
+			'before',
+			{
+				Compose: { main: [[{ node: 'Log', type: 'main', index: 0 }]] },
+				Log: { main: [[{ node: 'Send a message', type: 'main', index: 0 }]] },
+			},
+		],
+	])('does not report connected nodes when a new node is added %s them', (_side, connections) => {
+		const saved = makeWorkflow([makeComposeNode(), makeNode()], {
+			Compose: { main: [[{ node: 'Send a message', type: 'main', index: 0 }]] },
+		});
+		const built = makeWorkflow(
+			[makeComposeNode(), makeNode(), makeComposeNode({ id: 'node-3', name: 'Log' })],
+			connections,
+		);
+		expect(computeChangedNodeNames(built, saved)).toEqual(['Log']);
+	});
+
 	it('does not treat a neighbour rename as a connection change (id-space signatures)', () => {
 		const saved = makeWorkflow([makeComposeNode(), makeNode()], {
 			Compose: { main: [[{ node: 'Send a message', type: 'main', index: 0 }]] },

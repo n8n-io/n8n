@@ -1,8 +1,8 @@
-import type { Folder, Project } from '@n8n/db';
+import type { Folder } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { WorkflowNodeTypeSource } from './node-type-usage';
+import type { NodeTypeSource } from './node-type-usage';
 import type { AutoIncludedWorkflow } from './auto-included-workflow-resolver';
 import { WorkflowSerializer } from './workflow.serializer';
 import {
@@ -17,8 +17,11 @@ import type { WorkflowCredentialRequirement } from '../credential/credential.typ
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import { FolderSerializer } from '../folder/folder.serializer';
-import { ProjectSerializer } from '../project/project.serializer';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import {
+	ProjectShellExporter,
+	type ProjectShellExportContext,
+} from '../project/project-shell.exporter';
+import type { ExportRequirements } from '../requirements.types';
 import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
 import type { WorkflowTagUsage } from '../tag/tag.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
@@ -38,7 +41,7 @@ export interface AutoIncludedWorkflowExportResult {
 	workflowEntries: ManifestEntry[];
 	folderEntries: ManifestEntry[];
 	projectEntries: ManifestEntry[];
-	requirements: WorkflowExportRequirements;
+	requirements: ExportRequirements;
 	projectTargetsById: Map<string, string>;
 }
 
@@ -47,14 +50,10 @@ export interface AutoIncludedWorkflowExportResult {
  * exporters already wrote, plus the ones this exporter adds. Keyed by id so a
  * shell is written once however many workflows land in it.
  */
-interface ShellRegistry {
-	writer: PackageWriter;
+interface ShellRegistry extends ProjectShellExportContext {
 	folderEntriesById: Map<string, ManifestEntry>;
-	projectEntriesById: Map<string, ManifestEntry>;
-	projectTargetsById: Map<string, string>;
 	/** Only the shells this exporter wrote, reported back for the manifest. */
 	folderEntries: ManifestEntry[];
-	projectEntries: ManifestEntry[];
 }
 
 /**
@@ -66,7 +65,7 @@ export class AutoIncludedWorkflowExporter {
 	constructor(
 		private readonly workflowSerializer: WorkflowSerializer,
 		private readonly folderSerializer: FolderSerializer,
-		private readonly projectSerializer: ProjectSerializer,
+		private readonly projectShellExporter: ProjectShellExporter,
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
@@ -82,7 +81,6 @@ export class AutoIncludedWorkflowExporter {
 		const shells: ShellRegistry = {
 			writer: request.writer,
 			folderEntriesById: new Map(request.existingFolderEntries.map((entry) => [entry.id, entry])),
-			projectEntriesById: new Map(request.existingProjectEntries.map((entry) => [entry.id, entry])),
 			projectTargetsById: new Map([
 				...(request.projectTargetsById ?? []),
 				...request.existingProjectEntries.map((entry) => [entry.id, entry.target] as const),
@@ -96,7 +94,7 @@ export class AutoIncludedWorkflowExporter {
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
 		const tags: WorkflowTagUsage[] = [];
-		const nodeTypes: WorkflowNodeTypeSource[] = [];
+		const nodeTypes: NodeTypeSource[] = [];
 
 		for (const included of request.workflows) {
 			if (workflowEntriesById.has(included.workflow.id)) continue;
@@ -110,7 +108,9 @@ export class AutoIncludedWorkflowExporter {
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);
-			credentials.push(...this.credentialRequirementsExtractor.extract(included.workflow));
+			credentials.push(
+				...this.credentialRequirementsExtractor.extractFromWorkflow(included.workflow),
+			);
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(included.workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(included.workflow));
 			tags.push(...this.tagRequirementsExtractor.extract(included.workflow));
@@ -139,7 +139,7 @@ export class AutoIncludedWorkflowExporter {
 	): Promise<string> {
 		const scope =
 			included.placement === 'project'
-				? await this.ensureProjectShell(included.ownerProject, shells)
+				? await this.projectShellExporter.export(included.ownerProject, shells)
 				: undefined;
 
 		// The resolver fills the chain for every placement; a top-level workflow ignores it.
@@ -150,24 +150,6 @@ export class AutoIncludedWorkflowExporter {
 				: scope;
 
 		return packageDirectory('workflows', container);
-	}
-
-	private async ensureProjectShell(project: Project, shells: ShellRegistry): Promise<string> {
-		const existing = shells.projectEntriesById.get(project.id);
-		if (existing) return existing.target;
-
-		const entry = await writeManifestEntry(
-			shells.writer,
-			'projects',
-			packageDirectory('projects'),
-			project,
-			this.projectSerializer.serialize(project),
-		);
-
-		shells.projectEntries.push(entry);
-		shells.projectEntriesById.set(entry.id, entry);
-		shells.projectTargetsById.set(entry.id, entry.target);
-		return entry.target;
 	}
 
 	/** Writes the chain folders missing from the package and returns the innermost target. */

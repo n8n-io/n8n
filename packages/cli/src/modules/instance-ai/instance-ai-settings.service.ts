@@ -1,3 +1,5 @@
+import { isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { isDeepStrictEqual } from 'node:util';
 
 import {
@@ -13,16 +15,16 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiConnectionUpdate,
 	InstanceAiUserPreferencesResponse,
-	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
+	McpToolPermissions,
 	InstanceAiSandboxProvider,
 	InstanceAiSetupState,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
-import { DbLock, DbLockService, SettingsRepository, UserRepository } from '@n8n/db';
+import { DbLock, DbLockService, SettingsRepository } from '@n8n/db';
 import type { CredentialsEntity, ICredentialsDb, OperationContext, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
@@ -35,27 +37,23 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	InstanceCredentialBroker,
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
+import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 	SandboxSettingsService,
 } from '@/services/sandbox-settings.service';
-import { UserService } from '@/services/user.service';
 
 export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
+import { withModelName } from './model-config-name';
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
@@ -245,7 +243,6 @@ interface PersistedAdminSettings {
 	modelName?: string | null;
 	searchDisabled?: boolean;
 	n8nSandboxServiceUrl?: string | null;
-	localGatewayDisabled?: boolean;
 	browserUseEnabled?: boolean;
 }
 
@@ -306,8 +303,6 @@ export class InstanceAiSettingsService {
 		globalConfig: GlobalConfig,
 		private readonly dbLockService: DbLockService,
 		private readonly settingsRepository: SettingsRepository,
-		private readonly userRepository: UserRepository,
-		private readonly userService: UserService,
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
@@ -480,7 +475,6 @@ export class InstanceAiSettingsService {
 					url: Boolean(c.searxngUrl.trim()),
 				},
 			},
-			localGatewayDisabled: this.isLocalGatewayDisabled(),
 			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
 	}
@@ -1056,27 +1050,7 @@ export class InstanceAiSettingsService {
 			credentialType,
 			credentialName,
 			modelName: prefs.modelName || this.extractModelName(this.config.model),
-			localGatewayDisabled: prefs.localGatewayDisabled ?? false,
 		};
-	}
-
-	async updateUserPreferences(
-		user: User,
-		update: InstanceAiUserPreferencesUpdateRequest,
-	): Promise<InstanceAiUserPreferencesResponse> {
-		this.rejectManagedFields(
-			update,
-			InstanceAiSettingsService.MANAGED_PREFERENCE_FIELDS,
-			this.deploymentLabel(),
-		);
-		const prefs: UserInstanceAiPreferences = { ...this.readUserPreferences(user) };
-		if (update.credentialId !== undefined) prefs.credentialId = update.credentialId;
-		if (update.modelName !== undefined) prefs.modelName = update.modelName;
-		if (update.localGatewayDisabled !== undefined)
-			prefs.localGatewayDisabled = update.localGatewayDisabled;
-		await this.userService.updateSettings(user.id, { instanceAi: prefs });
-		user.settings = { ...(user.settings ?? {}), instanceAi: prefs };
-		return await this.getUserPreferences(user);
 	}
 
 	// ── Shared accessors ──────────────────────────────────────────────────
@@ -1249,18 +1223,18 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
+	getMcpToolPermissions(): McpToolPermissions {
+		return {
+			categories: {
+				read: this.permissions.mcpRead,
+				write: this.permissions.mcpWrite,
+			},
+		};
+	}
+
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	isMcpAccessEnabled(): boolean {
 		return this.mcpAccessEnabled;
-	}
-
-	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
-	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
-		if (!this.enabled) return true;
-		if (this.config.localGatewayDisabled) return true;
-		const user = await this.userRepository.findOneBy({ id: userId });
-		if (!user) return true;
-		return this.readUserPreferences(user).localGatewayDisabled ?? false;
 	}
 
 	/** Whether the n8n Agent is enabled by the admin. */
@@ -1268,28 +1242,8 @@ export class InstanceAiSettingsService {
 		return this.enabled;
 	}
 
-	/** Whether the local gateway is disabled globally by the admin. */
-	isLocalGatewayDisabled(): boolean {
-		return this.config.localGatewayDisabled;
-	}
-
 	isBrowserUseEnabled(): boolean {
 		return this.config.browserUseEnabled;
-	}
-
-	/** Whether the non-blocking setup panel replaces the suspending setup wizard. */
-	isInstanceAiSetupPanelEnabled(): boolean {
-		return this.config.instanceAiSetupPanelEnabled;
-	}
-
-	/** Whether this instance is in the activation-capped trial cohort. */
-	isActivationCapped(): boolean {
-		return this.config.activationCapped;
-	}
-
-	/** How many assistant messages must precede the activation lock. `0` means activation alone. */
-	getActivationLockMessageThreshold(): number {
-		return this.config.activationLockMessageThreshold;
 	}
 
 	/** Whether workflow building can use the required sandbox workspace. */
@@ -1355,6 +1309,11 @@ export class InstanceAiSettingsService {
 		return this.config.model.trim();
 	}
 
+	/** Model name for the Observer and Reflector memory tasks; empty when unset. */
+	getConfiguredMemoryModelName(): string {
+		return this.config.memoryModel.trim();
+	}
+
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
@@ -1401,18 +1360,7 @@ export class InstanceAiSettingsService {
 	async resolveModelConfigForVerification(user: User, modelName?: string): Promise<ModelConfig> {
 		const config = await this.resolveModelConfig(user);
 		if (!modelName) return config;
-		if (typeof config === 'string') {
-			const provider = config.includes('/') ? config.slice(0, config.indexOf('/')) : 'custom';
-			return `${provider}/${modelName}`;
-		}
-		if ('id' in config && typeof config.id === 'string' && 'url' in config) {
-			const provider = config.id.includes('/')
-				? config.id.slice(0, config.id.indexOf('/'))
-				: 'custom';
-			const id: `${string}/${string}` = `${provider}/${modelName}`;
-			return { ...config, id };
-		}
-		return config;
+		return withModelName(config, modelName) ?? config;
 	}
 
 	buildModelConfigForConnection(
@@ -1476,8 +1424,8 @@ export class InstanceAiSettingsService {
 		data: Record<string, unknown>,
 		modelName: string,
 	): ModelConfig | null {
-		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
-		if (!provider) {
+		const credentialProvider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
+		if (!credentialProvider) {
 			return null;
 		}
 
@@ -1485,10 +1433,22 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credentialType];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
+		// The UI saves its self-hosted option as an OpenAI credential with a custom URL.
+		// These servers speak /chat/completions, so build them like an env `custom/` model.
+		const provider =
+			credentialType === 'openAiApi' && baseUrl && isOpenAiCustomEndpoint(baseUrl)
+				? 'custom'
+				: credentialProvider;
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
-		return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}), ...(headers ? { headers } : {}) };
+		return {
+			id,
+			url: baseUrl,
+			...(apiKey ? { apiKey } : {}),
+			...(headers ? { headers } : {}),
+			...this.customModelOptionsFor(id),
+		};
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────
@@ -1512,12 +1472,6 @@ export class InstanceAiSettingsService {
 		'modelConnection',
 		'sandboxConnection',
 		'searchConnection',
-	];
-
-	/** User preference fields sourced from environment variables only. */
-	private static readonly MANAGED_PREFERENCE_FIELDS: readonly string[] = [
-		'credentialId',
-		'modelName',
 	];
 
 	private rejectEnvironmentManagedFields(update: InstanceAiAdminSettingsUpdateRequest): void {
@@ -1762,8 +1716,6 @@ export class InstanceAiSettingsService {
 			this.config.n8nSandboxServiceUrl =
 				this.environmentN8nSandboxServiceUrl || persisted.n8nSandboxServiceUrl || '';
 		}
-		if (persisted.localGatewayDisabled !== undefined)
-			c.localGatewayDisabled = persisted.localGatewayDisabled;
 		if (persisted.browserUseEnabled !== undefined)
 			c.browserUseEnabled = persisted.browserUseEnabled;
 	}
@@ -1786,7 +1738,6 @@ export class InstanceAiSettingsService {
 			modelName: this.adminModelName,
 			searchDisabled: this.searchDisabled,
 			n8nSandboxServiceUrl: this.adminN8nSandboxServiceUrl,
-			localGatewayDisabled: c.localGatewayDisabled,
 			browserUseEnabled: c.browserUseEnabled,
 		};
 	}
@@ -1858,7 +1809,9 @@ export class InstanceAiSettingsService {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
-					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+					current.mcpAccessEnabled !== previous.mcpAccessEnabled ||
+					current.permissions?.mcpRead !== previous.permissions?.mcpRead ||
+					current.permissions?.mcpWrite !== previous.permissions?.mcpWrite,
 				credentialSelections,
 			});
 		} catch (error) {

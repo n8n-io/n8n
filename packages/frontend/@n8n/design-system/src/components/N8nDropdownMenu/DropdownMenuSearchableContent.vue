@@ -30,12 +30,19 @@ const props = withDefaults(
 		searchDebounce?: number;
 		searchMode?: DropdownMenuSearchMode;
 		isSubMenu?: boolean;
+		/**
+		 * Highlights the first navigable item when the content opens, as a keyboard-opened
+		 * sub-menu must. The intent survives until an item can take it, so children that
+		 * arrive after opening (async loading) still get the highlight.
+		 */
+		highlightFirstItemOnOpen?: boolean;
 	}>(),
 	{
 		searchPlaceholder: 'Search...',
 		searchDebounce: 0,
 		searchMode: 'internal',
 		isSubMenu: false,
+		highlightFirstItemOnOpen: false,
 	},
 );
 
@@ -70,6 +77,8 @@ let searchSequence = 0;
 let unregisterExternalNavigation: (() => void) | undefined;
 
 const highlightedIndex = ref(-1);
+// A first-item highlight that found no navigable item yet; applied when items change.
+let firstItemHighlightPending = false;
 
 const refocusNavigationTarget = () => {
 	if (props.searchMode === 'external') {
@@ -91,6 +100,7 @@ const scrollHighlightedItem = () => {
 
 const navigate = async (direction: 'up' | 'down') => {
 	closeOpenSubMenu();
+	firstItemHighlightPending = false;
 
 	if (direction === 'down') {
 		highlightedIndex.value = getNextValidIndex(props.items, highlightedIndex.value, 1);
@@ -152,11 +162,17 @@ const resetSearch = () => {
 
 const resetNavigation = () => {
 	resetHighlightedItem();
+	firstItemHighlightPending = false;
 	openSubMenuIndex.value = -1;
 };
 
 const highlightFirstItem = () => {
 	highlightedIndex.value = getNextValidIndex(props.items, -1, 1);
+};
+
+const highlightFirstItemWhenAvailable = () => {
+	highlightFirstItem();
+	firstItemHighlightPending = highlightedIndex.value < 0;
 };
 
 const handleSubMenuOpenChange = (index: number, open: boolean) => {
@@ -203,6 +219,7 @@ const handleItemHover = (index: number) => {
 	const item = props.items[index];
 	if (!isNavigableItem(item)) return;
 
+	firstItemHighlightPending = false;
 	highlightedIndex.value = index;
 	externalNavigation?.activate(externalNavigationController);
 
@@ -321,6 +338,7 @@ watch(
 	() => props.open,
 	(open) => {
 		if (open) {
+			if (props.highlightFirstItemOnOpen) highlightFirstItemWhenAvailable();
 			void nextTick(() => {
 				refocusNavigationTarget();
 			});
@@ -354,6 +372,7 @@ watch(
 	() => props.items,
 	(newItems, oldItems) => {
 		updateHighlightedItem(newItems, oldItems);
+		if (firstItemHighlightPending && highlightedIndex.value < 0) highlightFirstItemWhenAvailable();
 	},
 );
 

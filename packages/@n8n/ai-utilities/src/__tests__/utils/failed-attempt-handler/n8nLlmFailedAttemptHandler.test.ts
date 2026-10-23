@@ -1,3 +1,4 @@
+import { AsyncCaller } from '@langchain/core/utils/async_caller';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeApiError, UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -9,17 +10,17 @@ describe('makeN8nLlmFailedAttemptHandler', () => {
 		getNode: vi.fn(),
 	});
 
-	it('should throw a wrapped error, when NO custom handler is provided', () => {
+	it('should not throw a retryable error, when NO custom handler is provided', () => {
 		const handler = makeN8nLlmFailedAttemptHandler(ctx);
 
-		expect(() => handler(new Error('Test error'))).toThrow(NodeApiError);
+		expect(() => handler(new Error('Test error'))).not.toThrow();
 	});
 
-	it('should wrapped error when custom handler is provided', () => {
+	it('should not throw a retryable error when custom handler is provided', () => {
 		const customHandler = vi.fn();
 		const handler = makeN8nLlmFailedAttemptHandler(ctx, customHandler);
 
-		expect(() => handler(new Error('Test error'))).toThrow(NodeApiError);
+		expect(() => handler(new Error('Test error'))).not.toThrow();
 		expect(customHandler).toHaveBeenCalled();
 	});
 
@@ -33,33 +34,78 @@ describe('makeN8nLlmFailedAttemptHandler', () => {
 		expect(customHandler).toHaveBeenCalled();
 	});
 
-	it('should not throw if retries are left', () => {
-		const customHandler = vi.fn();
-		const handler = makeN8nLlmFailedAttemptHandler(ctx, customHandler);
+	it('should throw NodeApiError when the default handler rejects and the custom one does not', () => {
+		const handler = makeN8nLlmFailedAttemptHandler(ctx, vi.fn());
 
-		const error = new Error('Test error');
-		(error as any).retriesLeft = 1;
-
-		expect(() => handler(error)).not.toThrow();
+		expect(() => handler(Object.assign(new Error('Bad request'), { status: 400 }))).toThrow(
+			NodeApiError,
+		);
 	});
 
-	it('should throw NodeApiError if no retries are left', () => {
-		const handler = makeN8nLlmFailedAttemptHandler(ctx);
+	describe('through AsyncCaller', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
 
-		const error = new Error('Test error');
-		(error as any).retriesLeft = 0;
+		afterEach(() => {
+			vi.useRealTimers();
+		});
 
-		expect(() => handler(error)).toThrow(NodeApiError);
-	});
+		const rateLimited = () => Object.assign(new Error('429'), { status: 429 });
 
-	it('should throw NodeApiError if no retries are left with custom handler', () => {
-		const customHandler = vi.fn();
-		const handler = makeN8nLlmFailedAttemptHandler(ctx, customHandler);
+		it('should retry through AsyncCaller up to maxRetries', async () => {
+			const caller = new AsyncCaller({
+				maxRetries: 2,
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(ctx),
+			});
+			const callable = vi
+				.fn()
+				.mockRejectedValueOnce(rateLimited())
+				.mockRejectedValueOnce(rateLimited())
+				.mockResolvedValueOnce('ok');
 
-		const error = new Error('Test error');
-		(error as any).retriesLeft = 0;
+			const pending = caller.call(callable);
+			await vi.runAllTimersAsync();
 
-		expect(() => handler(error)).toThrow(NodeApiError);
-		expect(customHandler).toHaveBeenCalled();
+			await expect(pending).resolves.toBe('ok');
+			expect(callable).toHaveBeenCalledTimes(3);
+		});
+
+		it('should surface the last error when retries are spent', async () => {
+			const caller = new AsyncCaller({
+				maxRetries: 2,
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(ctx),
+			});
+			const error = rateLimited();
+			const callable = vi.fn().mockRejectedValue(error);
+
+			const pending = caller.call(callable);
+			// Attach the rejection handler before the timers drain so the rejection is not unhandled
+			const result = expect(pending).rejects.toBe(error);
+			await vi.runAllTimersAsync();
+
+			await result;
+			expect(callable).toHaveBeenCalledTimes(3);
+		});
+
+		it('should honour retryAfterMs in the delay', async () => {
+			const caller = new AsyncCaller({
+				maxRetries: 2,
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(ctx),
+			});
+			const error = Object.assign(new Error('429'), {
+				status: 429,
+				headers: new Headers({ 'retry-after': '5' }),
+			});
+			const callable = vi.fn().mockRejectedValueOnce(error).mockResolvedValueOnce('ok');
+
+			const pending = caller.call(callable);
+			await vi.advanceTimersByTimeAsync(4999);
+			expect(callable).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(callable).toHaveBeenCalledTimes(2);
+			await expect(pending).resolves.toBe('ok');
+		});
 	});
 });

@@ -1,0 +1,14 @@
+diff --git a/dist/pdf-parse/esm/PDFParse.js b/dist/pdf-parse/esm/PDFParse.js
+index c7db69f699ac425e7fab7c2bb35422270e6b9699..36ea71b340258ba1101dee46fb2bf1822b64ccfa 100644
+--- a/dist/pdf-parse/esm/PDFParse.js
++++ b/dist/pdf-parse/esm/PDFParse.js
+@@ -32,7 +32,8 @@ export class PDFParse {
+     }
+     async destroy() {
+         if (this.doc) {
+-            await this.doc.destroy();
++            // pdfjs-dist 6 removed PDFDocumentProxy.destroy(); destroy the loading task instead.
++            await this.doc.loadingTask.destroy();
+             this.doc = undefined;
+         }
+     }

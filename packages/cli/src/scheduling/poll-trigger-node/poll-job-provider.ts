@@ -28,6 +28,7 @@ export class PollJobProvider {
 		const active = isDurablePollerChainEnabled(this.globalConfig.scheduler, this.workflowsConfig);
 
 		if (
+			// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 			this.globalConfig.scheduler.enabled &&
 			!this.workflowsConfig.useWorkflowPublicationService
 		) {

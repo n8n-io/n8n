@@ -1,8 +1,9 @@
 /**
- * Consolidated executions tool — list, get, run, debug, get-node-output,
+ * Consolidated workflow_builder_executions tool — list, get, run, debug, get-node-output,
  * get-resolved-node-parameters, stop.
  */
 import {
+	getLegacyBuilderToolNames,
 	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	instanceAiApprovalDetailsSchema,
@@ -14,9 +15,11 @@ import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
+import { restrictToolActions } from './restrict-tool-actions';
+import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -86,8 +89,8 @@ const runAction = z.object({
 			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
 				'more than one trigger: without it a single trigger is auto-detected and the other ' +
 				"triggers' branches never run. To run each branch, call run once per trigger. " +
-				"Trigger names come from build-workflow's `triggerNodes` or " +
-				'workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
+				"Trigger names come from workflow_builder_build_workflow's `triggerNodes` or " +
+				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
 				'workflow to reach a branch — use this instead.',
 		),
 	timeout: z
@@ -112,7 +115,9 @@ const runStepAction = z.object({
 				'that writes (create/update/delete/send/append, non-GET HTTP) — that ' +
 				'performs the effect again. Read the failed execution with action="debug" ' +
 				'and action="get-resolved-node-parameters" instead. When unsure, treat the ' +
-				'node as a write.',
+				'node as a write. A tool runs through the node that owns it (the Agent), so ' +
+				"mockInput and reuseExecutionId feed that node and the tool's own " +
+				'arguments come from toolArguments. No other sub-node kind can run.',
 		),
 	workflowId: z.string().describe('Workflow ID'),
 	nodeName: z.string().describe('Name of the node, as named in the workflow the action targets'),
@@ -136,6 +141,16 @@ const runStepAction = z.object({
 				'produces, so use reuseExecutionId or a chain run when that is the ' +
 				'question. This does not make a write node safe: the node still runs for ' +
 				'real, only its input is invented.',
+		),
+	toolArguments: z
+		.union([z.string(), z.record(z.unknown())])
+		.optional()
+		.describe(
+			'Only for a tool node: the arguments an agent would pass it. Keys are the ' +
+				"tool's $fromAI argument names. Pass a plain string for a tool that takes " +
+				'one free-text input (Wikipedia, Code Tool, a vector store used as a ' +
+				'tool). Required when the node declares $fromAI arguments, because the ' +
+				'tool runs with empty arguments otherwise.',
 		),
 	versionId: z
 		.string()
@@ -210,20 +225,23 @@ const stopAction = z.object({
 	executionId: z.string().describe('Execution ID'),
 });
 
-const inputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		getAction,
-		runAction,
-		runStepAction,
-		debugAction,
-		getNodeOutputAction,
-		getResolvedNodeParametersAction,
-		stopAction,
-	]),
-);
+const actions = [
+	listAction,
+	getAction,
+	runAction,
+	runStepAction,
+	debugAction,
+	getNodeOutputAction,
+	getResolvedNodeParametersAction,
+	stopAction,
+] as const;
 
-type Input = z.infer<typeof inputSchema>;
+type Input = z.infer<(typeof actions)[number]>;
+
+interface ExecutionsToolOptions {
+	allowedActions?: ReadonlyArray<Input['action']>;
+	description?: string;
+}
 
 // ── Suspend / resume schemas (used by `run`) ───────────────────────────────
 
@@ -383,6 +401,7 @@ async function handleRun(
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: workflowId });
 		const workflowName = (await getWorkflowName()) ?? input.workflowId;
 		return await suspend({
 			requestId: nanoid(),
@@ -416,11 +435,20 @@ async function handleRun(
 	}
 
 	// Approved or always_allow — execute
-	return await context.executionService.run(workflowId, input.inputData, {
+	const result = await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
 		triggerNodeName: input.triggerNodeName,
 		abortSignal,
 	});
+	// A live test is the evidence verification cannot produce itself. Record it
+	// so the publish gate stops disclosing simulations that this run replaced.
+	const verificationClaim = await recordLiveRunVerification({
+		context,
+		workflowId,
+		triggerNodeName: input.triggerNodeName,
+		result,
+	});
+	return verificationClaim ? { ...result, verificationClaim } : result;
 }
 
 /**
@@ -481,6 +509,7 @@ async function handleRunStep(
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName =
 			(await context.workflowService
 				.get(input.workflowId)
@@ -509,6 +538,7 @@ async function handleRunStep(
 	return await context.executionService.runStep(input.workflowId, input.nodeName, {
 		reuseExecutionId: input.reuseExecutionId,
 		mockInput: input.mockInput,
+		toolArguments: input.toolArguments,
 		versionId: input.versionId,
 		timeout: input.timeout,
 		abortSignal,
@@ -549,21 +579,38 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-export function createExecutionsTool(context: InstanceAiContext) {
-	return new Tool('executions')
+/**
+ * Appended to every description, a custom one too: each caller reads
+ * executions redacted for its user.
+ */
+const REDACTED_RESULT_GUIDANCE =
+	' A result with `redaction` set carries no output items: n8n hides that ' +
+	"execution's data from this user, for example because a node uses a colleague's " +
+	'personal credential. Tell the user so. Do not read the empty result as a bug, ' +
+	'and do not try to get the data another way.';
+
+export function createExecutionsTool(
+	context: InstanceAiContext,
+	options: ExecutionsToolOptions = {},
+) {
+	const inputSchema = restrictToolActions(actions, options.allowedActions);
+
+	return new Tool(DOMAIN_TOOL_IDS.EXECUTIONS)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTIONS))
 		.description(
-			'Manage workflow executions — list, inspect, run, run one node, debug, ' +
-				'get node output, get resolved node parameters for a past run, and stop. ' +
-				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
-				'do not treat such a request as a request to build something. ' +
-				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
-				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
-				'action="run-step" runs a single node of the saved workflow, like the canvas ' +
-				'"Execute step" button. Use it to see what one node really returns — when ' +
-				'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
-				'the node re-runs on the data it actually received. It runs for real, so do ' +
-				'not point it at a node that writes.',
+			(options.description ??
+				'Manage workflow executions — list, inspect, run, run one node, debug, ' +
+					'get node output, get resolved node parameters for a past run, and stop. ' +
+					'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
+					'workflow_builder_workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+					'do not treat such a request as a request to build something. ' +
+					'To verify a workflow you built, use workflow_builder_verify_built_workflow, not action="run". ' +
+					'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
+					'action="run-step" runs a single node of the saved workflow, like the canvas ' +
+					'"Execute step" button. Use it to see what one node really returns — when ' +
+					'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
+					'the node re-runs on the data it actually received. It runs for real, so do ' +
+					'not point it at a node that writes.') + REDACTED_RESULT_GUIDANCE,
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

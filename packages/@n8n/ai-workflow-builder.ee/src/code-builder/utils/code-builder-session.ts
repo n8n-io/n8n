@@ -77,7 +77,7 @@ function isSessionCheckpoint(value: unknown): value is SessionCheckpoint {
 	const obj = value as SessionCheckpoint;
 	// New format
 	if ('conversationEntries' in obj && Array.isArray(obj.conversationEntries)) return true;
-	// Legacy format
+	// oxlint-disable-next-line typescript/no-deprecated - Legacy Format
 	if ('userMessages' in obj && Array.isArray(obj.userMessages)) return true;
 	return false;
 }
@@ -118,9 +118,11 @@ export async function loadCodeBuilderSession(
 					sdkSessionId: sessionData.sdkSessionId,
 				};
 			}
-			// Legacy format — migrate each string to build-request
+			//
+			// oxlint-disable-next-line typescript/no-deprecated - Legacy format — migrate each string to build-request
 			if (sessionData.userMessages) {
 				return {
+					// oxlint-disable-next-line typescript/no-deprecated - Legacy format
 					conversationEntries: sessionData.userMessages.map((msg) => ({
 						type: 'build-request' as const,
 						message: msg,

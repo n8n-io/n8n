@@ -20,6 +20,7 @@ const claimedTask: ClaimedTask = {
 	status: 'running',
 	attempts: 1,
 	maxAttempts: 3,
+	timeoutSeconds: 300,
 	leaseEpoch: 2,
 };
 

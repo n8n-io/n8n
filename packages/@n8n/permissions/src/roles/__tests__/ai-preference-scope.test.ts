@@ -19,6 +19,12 @@ describe('aiPreference scope', () => {
 		expect(RESOURCES.aiPreference).toContain('read');
 	});
 
+	// `aiPreference:write` is an OAuth consent scope, not an RBAC operation: like `workflow:write`
+	// it unlocks tools, and the service then applies these three operations to the row.
+	it('offers the create, update and delete operations the MCP write grant maps to', () => {
+		expect(RESOURCES.aiPreference).toEqual(expect.arrayContaining(['create', 'update', 'delete']));
+	});
+
 	it("is granted to the roles that may see other users' rows", () => {
 		expect(GLOBAL_OWNER_SCOPES).toContain('aiPreference:read');
 		expect(GLOBAL_ADMIN_SCOPES).toContain('aiPreference:read');

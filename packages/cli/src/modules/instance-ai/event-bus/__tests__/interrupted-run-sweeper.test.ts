@@ -1,9 +1,8 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import { DurableLogMetrics } from '../durable-log-metrics';
 import {
@@ -281,9 +280,10 @@ describe('InterruptedRunSweeper', () => {
 		expect(metrics.sweep.runsMarkedInterrupted).toBe(1);
 	});
 
-	it('multi-main: recent durable activity is a liveness heartbeat and skips the run', async () => {
+	it('multi-main: recent durable activity keeps a run live without checkpoints', async () => {
 		const { sweeper, published } = buildSweeper({
 			events: [runStart()],
+			checkpoints: [],
 			isMultiMain: true,
 			lastFactAt: new Date(), // written seconds ago: a sibling is driving it
 		});

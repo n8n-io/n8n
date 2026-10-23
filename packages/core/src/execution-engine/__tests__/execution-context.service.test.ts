@@ -376,10 +376,12 @@ describe('ExecutionContextService', () => {
 		it('keeps the token as identity and seals the subject + establishedAt in metadata', async () => {
 			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
 
+			const grant = { audiences: ['https://api.example.com/resource'] };
+
 			const result = await service.buildTriggerIdentityCredentials(
 				'oauth-token-jwt',
 				'https://api.example.com/resource',
-				undefined,
+				grant,
 				'user-123',
 			);
 
@@ -388,10 +390,12 @@ describe('ExecutionContextService', () => {
 				identity: 'oauth-token-jwt',
 				metadata: {
 					source: 'n8n-oauth',
+					version: 2,
 					subject: 'user-123',
 					resource: 'https://api.example.com/resource',
 					establishedAt: expect.any(Number),
 					executionPath: [],
+					grant,
 				},
 			});
 			expect(result).toBe('encrypted-credential-blob');
@@ -416,6 +420,7 @@ describe('ExecutionContextService', () => {
 				identity: 'oauth-token-jwt',
 				metadata: {
 					source: 'n8n-oauth',
+					version: 2,
 					resource: 'https://api.example.com/resource',
 					establishedAt: expect.any(Number),
 					executionPath: [],
@@ -424,19 +429,32 @@ describe('ExecutionContextService', () => {
 			});
 		});
 
-		it('omits the subject and grant when neither is provided (legacy token-only carrier)', async () => {
+		it('seals the trusted-source binding the caller came through', async () => {
 			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
 
-			await service.buildTriggerIdentityCredentials('oauth-token-jwt', 'https://api/r');
+			const grant = { audiences: ['https://api/r'], executeAccessWorkflowId: 'workflow-1' };
+			const binding = { sourceId: 'source-1', subject: 'idp-alice' };
+
+			await service.buildTriggerIdentityCredentials(
+				'oauth-token-jwt',
+				'https://api/r',
+				grant,
+				'user-123',
+				binding,
+			);
 
 			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
 				version: 1,
 				identity: 'oauth-token-jwt',
 				metadata: {
 					source: 'n8n-oauth',
+					version: 2,
 					resource: 'https://api/r',
 					establishedAt: expect.any(Number),
 					executionPath: [],
+					grant,
+					subject: 'user-123',
+					binding,
 				},
 			});
 		});
@@ -445,7 +463,12 @@ describe('ExecutionContextService', () => {
 			mockCipher.encryptV2.mockRejectedValue(new Error('encryption key missing'));
 
 			await expect(
-				service.buildTriggerIdentityCredentials('token', 'resource', undefined, 'user-123'),
+				service.buildTriggerIdentityCredentials(
+					'token',
+					'resource',
+					{ audiences: ['resource'] },
+					'user-123',
+				),
 			).rejects.toThrow('encryption key missing');
 		});
 	});
@@ -476,6 +499,55 @@ describe('ExecutionContextService', () => {
 			);
 
 			expect(pathOf(bound)).toEqual(['exec-root']);
+		});
+
+		it('keeps the version, the grant and the binding through the bind', async () => {
+			const grant = { audiences: ['r'], executeAccessWorkflowId: 'wf-1' };
+			const binding = { sourceId: 'source-1', subject: 'idp-alice' };
+
+			const bound = await service.maybeBindExecutionId(
+				contextWith({
+					source: 'n8n-oauth',
+					version: 2,
+					resource: 'r',
+					subject: 'user-123',
+					grant,
+					binding,
+				}),
+				'exec-root',
+			);
+
+			expect(JSON.parse(bound.credentials as string).metadata).toMatchObject({
+				version: 2,
+				executionPath: ['exec-root'],
+				grant,
+				binding,
+			});
+		});
+
+		it('binds a legacy seal without a version, and adds no version to it', async () => {
+			const bound = await service.maybeBindExecutionId(
+				contextWith({ source: 'n8n-oauth', resource: 'r', subject: 'user-123' }),
+				'exec-root',
+			);
+
+			const metadata = JSON.parse(bound.credentials as string).metadata;
+			expect(metadata.executionPath).toEqual(['exec-root']);
+			expect(metadata).not.toHaveProperty('version');
+		});
+
+		it('leaves a version 2 seal without a grant unbound', async () => {
+			const context = contextWith({
+				source: 'n8n-oauth',
+				version: 2,
+				resource: 'r',
+				subject: 'user-123',
+			});
+
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
 		});
 
 		it('appends a child execution id, preserving the inherited path', async () => {

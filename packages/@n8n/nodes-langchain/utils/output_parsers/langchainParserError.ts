@@ -1,4 +1,5 @@
 import { OutputParserException } from '@langchain/core/output_parsers';
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import type { INode } from 'n8n-workflow';
 import { BaseError, NodeOperationError } from 'n8n-workflow';
 
@@ -10,8 +11,9 @@ const LANGCHAIN_PARSER_ERROR_MESSAGES = ['Failed to parse. Text:', 'Unable to pa
 
 const AGENT_FAILURE_FALLBACK_MESSAGE = 'Agent execution failed';
 
-function getErrorProperty(error: unknown, property: 'message' | 'name') {
-	if (error instanceof Error) return error[property];
+const MAX_CAUSE_DETAIL_LENGTH = 500;
+
+function getErrorProperty(error: unknown, property: 'message' | 'name' | 'description') {
 	if (typeof error !== 'object' || error === null || !(property in error)) return undefined;
 
 	const value = (error as Record<string, unknown>)[property];
@@ -47,6 +49,11 @@ export function isLangChainParserError(error: unknown) {
  * underlying error class.
  */
 export function getFailureType(error: unknown): string {
+	const root = getRootCause(error);
+	return resolveErrorName(root) ?? (root instanceof Error ? 'Error' : typeof root);
+}
+
+function getRootCause(error: unknown): unknown {
 	let current: unknown = error;
 	const seen = new Set<Error>();
 	while (current instanceof Error && current.cause instanceof Error) {
@@ -54,13 +61,33 @@ export function getFailureType(error: unknown): string {
 		if (seen.has(current.cause)) break;
 		current = current.cause;
 	}
-	return resolveErrorName(current) ?? (current instanceof Error ? 'Error' : typeof current);
+	return current;
 }
 
 function isUselessMessage(message: string | undefined, className: string | undefined): boolean {
 	if (!message) return true;
 	if (className && message === className) return true;
 	return message === 'Error';
+}
+
+/**
+ * Names the original error class and, when there is one, the deepest error in the
+ * `cause` chain, for example the socket or TLS error under an SDK "Connection error.".
+ */
+function describeOriginalError(error: unknown, className: string | undefined) {
+	const original = className ? `Original error: ${className}` : undefined;
+	const root = getRootCause(error);
+	if (root === error || !(root instanceof Error)) return original;
+
+	const code = 'code' in root && typeof root.code === 'string' ? root.code : undefined;
+	const detail =
+		code && !root.message.includes(code)
+			? [code, root.message].filter(Boolean).join(': ')
+			: root.message;
+	if (!detail) return original;
+	// The root message can come from any library, so remove secrets and URL queries.
+	const cause = `Cause: ${sanitizeErrorDetail(detail, MAX_CAUSE_DETAIL_LENGTH)}`;
+	return original ? `${original}. ${cause}` : cause;
 }
 
 function wrapAsNodeOperationError(
@@ -78,7 +105,7 @@ function wrapAsNodeOperationError(
 
 	const options = {
 		message,
-		description: className ? `Original error: ${className}` : undefined,
+		description: getErrorProperty(error, 'description') ?? describeOriginalError(error, className),
 		level: 'error' as const,
 		...(itemIndex !== undefined ? { itemIndex } : {}),
 	};

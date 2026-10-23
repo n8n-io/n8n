@@ -1,4 +1,9 @@
-import type { InstanceAiEvent, InstanceAiSetupItem } from '@n8n/api-types';
+import type {
+	AiPreferencesAppliedPayload,
+	InstanceAiEvent,
+	InstanceAiPreferencesAppliedEvent,
+	InstanceAiSetupItem,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { DataSource, MoreThan, Repository } from '@n8n/typeorm';
@@ -80,6 +85,30 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 			.orderBy('e.seq', 'ASC')
 			.getMany();
 		return rows.map((r) => this.toEvent(r));
+	}
+
+	async getRunFinish(threadId: string, runId: string) {
+		const row = await this.findOne({
+			where: { threadId, runId, type: 'run-finish' },
+			order: { seq: 'DESC' },
+		});
+		if (!row) return null;
+		const event = this.toEvent(row);
+		return event.type === 'run-finish'
+			? { status: event.payload.status, reason: event.payload.reason }
+			: null;
+	}
+
+	/** Read terminal facts before a writer admits more activity for these runs. */
+	async getActivityTerminalEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
+		if (runIds.length === 0) return [];
+		const rows = await this.createQueryBuilder('e')
+			.where('e.threadId = :threadId', { threadId })
+			.andWhere('e.runId IN (:...runIds)', { runIds })
+			.andWhere('e.type IN (:...types)', { types: ['run-finish', 'agent-completed'] })
+			.orderBy('e.seq', 'ASC')
+			.getMany();
+		return rows.map((row) => this.toEvent(row));
 	}
 
 	/** Facts for specific runs in seq order, with the run and write-time context
@@ -214,14 +243,32 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 * (which includes a block injected before the event existed).
 	 */
 	async getLastPreferencesInjectionRunId(threadId: string): Promise<string | undefined> {
+		const event = await this.findLastPreferencesApplied(threadId);
+		if (!event) return undefined;
+		return event.payload.injectedThisTurn ? event.runId : event.payload.carriedFromRunId;
+	}
+
+	/**
+	 * What the thread's latest turn reported as applied, for a reader that opens the thread
+	 * later. `undefined` when no turn has reported preferences, which differs from a turn
+	 * that reported an empty list.
+	 */
+	async getLastAppliedPreferences(
+		threadId: string,
+	): Promise<AiPreferencesAppliedPayload | undefined> {
+		return (await this.findLastPreferencesApplied(threadId))?.payload;
+	}
+
+	private async findLastPreferencesApplied(
+		threadId: string,
+	): Promise<InstanceAiPreferencesAppliedEvent | undefined> {
 		const row = await this.findOne({
 			where: { threadId, type: 'preferences-applied' },
 			order: { seq: 'DESC' },
 		});
 		if (!row) return undefined;
 		const event = this.toEvent(row);
-		if (event.type !== 'preferences-applied') return undefined;
-		return event.payload.injectedThisTurn ? event.runId : event.payload.carriedFromRunId;
+		return event.type === 'preferences-applied' ? event : undefined;
 	}
 
 	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */

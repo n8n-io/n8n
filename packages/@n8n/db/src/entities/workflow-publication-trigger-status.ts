@@ -1,3 +1,4 @@
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, Relation } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
@@ -28,7 +29,7 @@ export class WorkflowPublicationTriggerStatus extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	workflowId: string;
 
-	@PrimaryColumn({ type: 'varchar', length: 36 })
+	@PrimaryColumn({ type: 'varchar', length: NODE_ID_MAX_LENGTH })
 	nodeId: string;
 
 	/** The `workflow_history` version these statuses were recorded for. */

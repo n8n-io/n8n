@@ -1,4 +1,5 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Message, MessageSubject, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
@@ -113,6 +114,8 @@ function toIntegrationMessageSubject(
 	const assignee = toIntegrationSubjectPerson(subject.assignee);
 	const author = toIntegrationSubjectPerson(subject.author);
 	const labels = subject.labels?.filter((label) => typeof label === 'string');
+	const projectId = isRecord(subject.raw) ? subject.raw.projectId : undefined;
+	const teamId = isRecord(subject.raw) ? subject.raw.teamId : undefined;
 
 	return {
 		type: subject.type,
@@ -121,6 +124,8 @@ function toIntegrationMessageSubject(
 		...(typeof subject.description === 'string' ? { description: subject.description } : {}),
 		...(typeof subject.url === 'string' ? { url: subject.url } : {}),
 		...(typeof subject.status === 'string' ? { status: subject.status } : {}),
+		...(typeof projectId === 'string' ? { projectId } : {}),
+		...(typeof teamId === 'string' ? { teamId } : {}),
 		...(labels && labels.length > 0 ? { labels } : {}),
 		...(assignee ? { assignee } : {}),
 		...(author ? { author } : {}),

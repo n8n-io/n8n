@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { ref, shallowRef } from 'vue';
+import { defineComponent, h, ref, shallowRef } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 
-import { createTestNode, createTestWorkflow, mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import NodeSettings from './NodeSettings.vue';
@@ -24,6 +25,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
@@ -241,6 +243,77 @@ describe('NodeSettings', () => {
 		);
 	});
 
+	it('marks the workflow dirty after each nested custom span attribute edit', async () => {
+		const { findByTestId, findAllByTestId, workflowDocumentStore } = renderNodeSettings({
+			node: freshHttpNode(),
+			props: { readOnly: false },
+			stubs: {
+				ParameterInputList: defineComponent({
+					props: ['nodeValues'],
+					emits: ['valueChanged'],
+					setup(props, { emit }) {
+						return () =>
+							h('button', {
+								'data-test-id': 'add-attribute',
+								onClick: () => {
+									const tags = (
+										props.nodeValues as {
+											customTelemetryTags: { tag: Array<{ key: string; value: string }> };
+										}
+									).customTelemetryTags.tag;
+									tags.push({ key: '', value: '' });
+									emit('valueChanged', { name: 'customTelemetryTags.tag', value: tags });
+								},
+							});
+					},
+				}),
+			},
+		});
+		await findByTestId('tab-params');
+		const markStateDirty = vi.mocked(useUIStore().markStateDirty);
+		markStateDirty.mockClear();
+
+		ndvEventBus.emit('updateParameterValue', {
+			name: 'customTelemetryTags.tag',
+			value: [{ key: '', value: '' }],
+		});
+		expect(markStateDirty).toHaveBeenCalledTimes(1);
+
+		ndvEventBus.emit('updateParameterValue', {
+			name: 'customTelemetryTags.tag[0].key',
+			value: 'userIdentifier',
+		});
+		expect(markStateDirty).toHaveBeenCalledTimes(2);
+
+		ndvEventBus.emit('updateParameterValue', {
+			name: 'customTelemetryTags.tag[0].value',
+			value: '={{ $json.foo }}',
+		});
+		expect(markStateDirty).toHaveBeenCalledTimes(3);
+
+		const addButtons = await findAllByTestId('add-attribute');
+		await fireEvent.click(addButtons[addButtons.length - 1]);
+		expect(markStateDirty).toHaveBeenCalledTimes(4);
+
+		ndvEventBus.emit('updateParameterValue', {
+			name: 'customTelemetryTags.tag[1].key',
+			value: 'region',
+		});
+		expect(markStateDirty).toHaveBeenCalledTimes(5);
+
+		ndvEventBus.emit('updateParameterValue', {
+			name: 'customTelemetryTags.tag[1].value',
+			value: 'eu',
+		});
+		expect(markStateDirty).toHaveBeenCalledTimes(6);
+		expect(workflowDocumentStore.getNodeByName(httpNode.name)?.customTelemetryTags).toEqual({
+			tag: [
+				{ key: 'userIdentifier', value: '={{ $json.foo }}' },
+				{ key: 'region', value: 'eu' },
+			],
+		});
+	});
+
 	it('defaults to the Parameters tab when read-only and the active node has execution data', async () => {
 		const runData: IRunData = {
 			[httpNode.name]: [
@@ -418,6 +491,63 @@ describe('NodeSettings', () => {
 			expect(queryByTestId('node-restricted-replace')).not.toBeInTheDocument();
 			expect(getByTestId('embedded-ndv-header')).toHaveAttribute('data-read-only', 'true');
 			expect(getByTestId('embedded-ndv-header')).toHaveAttribute('data-hide-tabs', 'true');
+		});
+	});
+
+	it('ignores a parameter update from the event bus for a deprecated node', async () => {
+		const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+			node: freshHttpNode(),
+			nodeType: { ...httpNodeType, deprecated: true },
+			props: { readOnly: false },
+		});
+		await findByTestId('tab-params');
+
+		ndvEventBus.emit('updateParameterValue', urlUpdate);
+
+		expect(workflowDocumentStore.getNodeByName(httpNode.name)?.parameters.url).toBeUndefined();
+	});
+
+	describe('a node on a credential the user cannot use', () => {
+		const exposeReadOnlyStubs = {
+			ParameterInputList: {
+				props: ['isReadOnly'],
+				template: '<div data-test-id="parameters-stub" :data-read-only="isReadOnly"><slot /></div>',
+			},
+			NodeCredentials: {
+				props: ['readonly'],
+				template: '<div data-test-id="credentials-stub" :data-read-only="readonly" />',
+			},
+		};
+
+		/** Every rendered instance: the params and settings tabs each hold a parameter list. */
+		const readOnlyStates = async (
+			findAllByTestId: (id: string) => Promise<HTMLElement[]>,
+			testId: string,
+		) => (await findAllByTestId(testId)).map((element) => element.getAttribute('data-read-only'));
+
+		const renderOnForeignCredential = (readOnly = false) =>
+			renderNodeSettings({
+				props: { readOnly, foreignCredentials: ['alice-cred'] },
+				stubs: exposeReadOnlyStubs,
+			});
+
+		it('keeps the parameters locked but the picker usable', async () => {
+			const { findAllByTestId, getByText } = renderOnForeignCredential();
+
+			expect(new Set(await readOnlyStates(findAllByTestId, 'parameters-stub'))).toEqual(
+				new Set(['true']),
+			);
+			expect(await readOnlyStates(findAllByTestId, 'credentials-stub')).toEqual(['false']);
+			expect(getByText(/Switch to a credential you can use/)).toBeInTheDocument();
+		});
+
+		it('locks the picker on a read-only canvas', async () => {
+			const { findAllByTestId } = renderOnForeignCredential(true);
+
+			expect(new Set(await readOnlyStates(findAllByTestId, 'parameters-stub'))).toEqual(
+				new Set(['true']),
+			);
+			expect(await readOnlyStates(findAllByTestId, 'credentials-stub')).toEqual(['true']);
 		});
 	});
 });

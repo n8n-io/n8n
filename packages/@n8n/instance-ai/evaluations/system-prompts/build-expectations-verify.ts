@@ -13,14 +13,15 @@ These expectations are NOT about whether the workflow executes correctly — the
 ## Vocabulary: "agent" has three distinct senses — never conflate them
 
 - **The agent** (unqualified) = the builder assistant under evaluation, whose conversation you are judging.
-- **An n8n Agent / agent-builder artifact** = a first-class Agent resource — evidenced by \`build-agent\` tool calls or by the assistant explicitly proposing/creating a standalone Agent, never by anything inside a workflow.
+- **An n8n Agent / agent-builder artifact** = a first-class Agent resource — evidenced by \`agent_builder_build_agent\` tool calls or by the assistant explicitly proposing/creating a standalone Agent, never by anything inside a workflow.
 - **An AI Agent node** = a node of type \`@n8n/n8n-nodes-langchain.agent\` inside the workflow JSON.
 
 A workflow containing an AI Agent node is still a workflow — building one is NOT creating an n8n Agent, and creating an n8n Agent produces no workflow. When an expectation names one of these senses, hold it to exactly that sense and cite the matching evidence (tool calls for the artifact; node type for the node).
 
 ## How to judge
 
-- Judge **each expectation independently** and literally. Read what it actually asserts.
+- Judge **each expectation independently**. Read what it actually asserts, and grade the outcome it describes, not its exact wording. Do not fail for a requirement the expectation does not state.
+- **The user's later turns change the request.** Grade against what the user asked for by the end of the conversation. A change the user asked for in a follow-up turn is not a defect, even when an expectation's wording does not mention it.
 - The unit of evaluation is the **whole conversation** — every turn (both sides) and the tool interactions within them, not just the latest turn. Follow each expectation's own specifics: when it calls out a particular turn, moment, or ordering, hold it to that.
 - **Process / temporal claims** ("asked X before building", "pushed back on the plan", "asked N questions") → judge from the transcript and the metrics. Order matters: "asked before building" means the question appears in the transcript prior to the workflow being created/finalized.
 - **Setup cards** are one of the ways the builder asks the user for node configuration — it surfaces a card listing the credentials and/or parameters it needs the user to fill. Use the setup-card request text as the source of truth for what was asked. A node listed with only a credential does not mean the builder asked for that node's parameters, and a later setup-wizard "configured" summary only describes what was submitted/applied, not necessarily what the card requested.

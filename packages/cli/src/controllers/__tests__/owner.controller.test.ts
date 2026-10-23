@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OwnerController } from '@/controllers/owner.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import type { PostHogClient } from '@/posthog';
 import type { BannerService } from '@/services/banner.service';
 import type { OwnershipService } from '@/services/ownership.service';

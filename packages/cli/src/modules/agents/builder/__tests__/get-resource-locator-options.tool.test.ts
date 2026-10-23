@@ -54,7 +54,7 @@ function makeTool(nodeType: INodeType) {
 	return { tool, dynamicNodeParametersService, nodeTypes };
 }
 
-describe('get_resource_locator_options tool', () => {
+describe('agent_builder_get_resource_locator_options tool', () => {
 	it('returns missing_credentials for credentialed dynamic fields without credentials', async () => {
 		const { tool, dynamicNodeParametersService } = makeTool(
 			makeNodeType({
@@ -84,7 +84,7 @@ describe('get_resource_locator_options tool', () => {
 		expect(result).toEqual({
 			ok: false,
 			code: 'missing_credentials',
-			message: expect.stringContaining('ask_credential'),
+			message: expect.stringContaining('agent_builder_ask_credential'),
 			credentialSlots: [
 				{
 					credentialType: 'linearOAuth2Api',

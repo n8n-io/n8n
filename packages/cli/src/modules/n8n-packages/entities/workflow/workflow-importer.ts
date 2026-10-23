@@ -1,7 +1,7 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import {
 	WorkflowCreationService,
 	type WorkflowCreateBatchContext,
@@ -15,7 +15,6 @@ import {
 	type WorkflowArchiveTransition,
 } from './workflow-archive-transition';
 import { decideWorkflowConflictAction } from './workflow-conflict-policy';
-import { decideWorkflowId } from './workflow-id-policy';
 import {
 	WorkflowImportMatchService,
 	type WorkflowIdConflict,
@@ -40,6 +39,7 @@ import type {
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { decideImportId } from '../import-id-policy';
 
 export interface WorkflowImportResult {
 	outcomes: PersistedWorkflowOutcome[];
@@ -64,6 +64,7 @@ export class WorkflowImporter {
 		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
+		{ checkRootPlacement }: { checkRootPlacement: boolean },
 	): Promise<WorkflowImportPlan> {
 		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
@@ -114,8 +115,10 @@ export class WorkflowImporter {
 			}
 
 			// Only an update writes the workflow in place, so only an update can clash on location.
+			// A `null` target is the project root. It is a location only when the package sets the
+			// layout. Otherwise no location was asked for, and the update keeps the current folder.
 			const targetFolderId = workflow.parentFolderId ?? context.folderId;
-			if (targetFolderId && item.action === 'update') {
+			if (item.action === 'update' && (targetFolderId !== null || checkRootPlacement)) {
 				const existingParentFolderId = item.existing.parentFolder?.id ?? null;
 				if (existingParentFolderId !== targetFolderId) {
 					folderConflicts.push({
@@ -286,6 +289,11 @@ export class WorkflowImporter {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: item.existing.isArchived,
+			// `settings.errorWorkflow` is a package reference this importer rebinds. The
+			// handler it now points at can still be unwritten (later in this loop) and is
+			// unpublished until the package-wide sweep, so the write-time check on that
+			// reference cannot apply here.
+			allowUnresolvedErrorWorkflow: true,
 			...(tagIds !== undefined ? { tagIds } : {}),
 		});
 
@@ -380,7 +388,7 @@ function toPlanItem(
 	if (existing === null) {
 		return {
 			action: 'create',
-			decidedId: decideWorkflowId(idPolicy, prepared.sourceWorkflowId),
+			decidedId: decideImportId(idPolicy, prepared.sourceWorkflowId),
 			...prepared,
 		};
 	}
@@ -403,7 +411,7 @@ function toPlanItem(
 			// Only `fail` reaches here with a match; it records a conflict the gate rejects first.
 			return {
 				action,
-				decidedId: decideWorkflowId(idPolicy, prepared.sourceWorkflowId),
+				decidedId: decideImportId(idPolicy, prepared.sourceWorkflowId),
 				...prepared,
 			};
 	}

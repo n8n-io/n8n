@@ -1,24 +1,25 @@
-import type { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
-import type { AgentExecution } from '../../agents/entities/agent-execution.entity';
+import type {
+	AgentSessionThread,
+	AgentSessionTurn,
+} from '@/modules/agents/agent-context.contracts';
 import { resolveAgentPreviewHandoff } from '../agent-preview-handoff';
 import {
 	AGENT_PREVIEW_CONTEXT_OPEN_TAG,
 	AGENT_PREVIEW_CONTEXT_CLOSE_TAG,
 } from '../internal-messages';
 
-function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
+function makeThread(overrides: Partial<AgentSessionThread> = {}): AgentSessionThread {
 	return {
 		id: 'preview-thread-1',
 		title: 'Support triage test',
 		sessionNumber: 3,
 		...overrides,
-	} as AgentExecutionThread;
+	} as AgentSessionThread;
 }
 
-function makeExecution(overrides: Partial<AgentExecution> = {}): AgentExecution {
+function makeExecution(overrides: Partial<AgentSessionTurn> = {}): AgentSessionTurn {
 	return {
 		id: 'exec-1',
-		threadId: 'preview-thread-1',
 		status: 'success',
 		userMessage: 'Hello agent',
 		model: 'gpt-test',
@@ -27,7 +28,7 @@ function makeExecution(overrides: Partial<AgentExecution> = {}): AgentExecution 
 		error: null,
 		timeline: [],
 		...overrides,
-	} as AgentExecution;
+	} as AgentSessionTurn;
 }
 
 const handoff = {

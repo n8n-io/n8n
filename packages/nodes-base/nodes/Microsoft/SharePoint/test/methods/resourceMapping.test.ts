@@ -1,8 +1,10 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { getMappingColumns } from '../../v1/methods/resourceMapping';
+import { LIST_COLUMNS_REPLY } from '../fixtures/listColumnsReply';
 
 describe('Microsoft SharePoint Node', () => {
 	describe('Resource mapping', () => {
@@ -847,6 +849,50 @@ describe('Microsoft SharePoint Node', () => {
 					},
 				],
 			});
+		});
+
+		it('should map columns from the columns endpoint when the content types read is refused', async () => {
+			loadOptionsFunctions.getCredentials.mockResolvedValue({ subdomain: 'tenant' });
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('list');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('create');
+			loadOptionsFunctions.helpers.httpRequestWithAuthentication = vi
+				.fn()
+				.mockRejectedValueOnce(new NodeApiError(mock<INode>(), {}, { httpCode: '403' }))
+				.mockResolvedValueOnce(LIST_COLUMNS_REPLY);
+
+			const fields = await getMappingColumns.call(loadOptionsFunctions);
+
+			expect(loadOptionsFunctions.helpers.httpRequestWithAuthentication).toHaveBeenLastCalledWith(
+				'microsoftSharePointOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					url: 'https://tenant.sharepoint.com/_api/v2.0/sites/site/lists/list/columns',
+				}),
+			);
+			expect(fields.fields.map(({ id, type, readOnly }) => ({ id, type, readOnly }))).toEqual([
+				{ id: 'Title', type: 'string', readOnly: false },
+				{ id: 'NumberCol', type: 'number', readOnly: false },
+				{ id: 'Choice', type: 'options', readOnly: false },
+				{ id: 'DateAndTime', type: 'dateTime', readOnly: false },
+				{ id: 'MultipleLines', type: 'string', readOnly: false },
+				{ id: 'currency', type: 'number', readOnly: false },
+				{ id: 'YesNo', type: 'boolean', readOnly: false },
+				{ id: 'Person', type: 'string', readOnly: false },
+				{ id: 'lookup', type: 'string', readOnly: false },
+				{ id: 'MultiChoice', type: 'string', readOnly: false },
+			]);
+		});
+
+		it('should not fall back when the content types read fails for another reason', async () => {
+			loadOptionsFunctions.getCredentials.mockResolvedValue({ subdomain: 'tenant' });
+			const notFound = new NodeApiError(mock<INode>(), {}, { httpCode: '404' });
+			loadOptionsFunctions.helpers.httpRequestWithAuthentication = vi
+				.fn()
+				.mockRejectedValueOnce(notFound);
+
+			await expect(getMappingColumns.call(loadOptionsFunctions)).rejects.toBe(notFound);
+			expect(loadOptionsFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 		});
 
 		it('should map columns with id for update', async () => {

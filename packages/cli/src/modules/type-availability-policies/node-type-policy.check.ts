@@ -5,7 +5,6 @@ import type {
 	CredentialDecryptContext,
 	PolicedWorkflow,
 	PolicyCheckResult,
-	PolicyViolation,
 	RegisteredPolicyCheck,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
@@ -15,10 +14,8 @@ import type {
 import { PolicyCheck } from '@n8n/decorators';
 
 import { NODE_TYPES_KIND } from './constants';
-import {
-	TypeAvailabilityPolicyService,
-	type ComposedTypeVerdict,
-} from './type-availability-policy.service';
+import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
+import { NODE_TYPE_SUBJECT, toTypeViolation } from './type-violation';
 
 const NO_VIOLATIONS: PolicyCheckResult = { violations: [] };
 
@@ -28,21 +25,6 @@ const NOTHING_GRANDFATHERED: ReadonlySet<string> = new Set();
 function distinctTypes(nodes: PolicedWorkflow['nodes']): string[] {
 	// A Set keeps first-encounter order, so violations and audit lines stay deterministic.
 	return [...new Set(nodes.map((node) => node.type))];
-}
-
-function toViolation(checkId: string, verdict: ComposedTypeVerdict): PolicyViolation {
-	const by = verdict.scope === 'instance' ? 'an instance policy' : "this project's policy";
-
-	return {
-		kind: 'node-type-unavailable',
-		checkId,
-		message: `Node type "${verdict.name}" is blocked by ${by}`,
-		subject: verdict.name,
-		subjectType: 'nodeType',
-		scope: verdict.scope,
-		// The scope's default action decided when no rule matched, and there is no id to report.
-		...(verdict.matchedRuleId !== null && { matchedRuleId: verdict.matchedRuleId }),
-	};
 }
 
 /**
@@ -101,9 +83,13 @@ export class NodeTypePolicyCheck implements RegisteredPolicyCheck {
 	 * never vetted, so an import is judged on its whole content. `transport` is not read: an
 	 * unattended sync and a hand-run import are held to the same policy, and each host already
 	 * picks its own fail posture.
+	 *
+	 * A credential import has no node types to check — this point has nothing to say about it.
 	 */
-	async onContentImport({ workflow, projectId }: ContentImportContext): Promise<PolicyCheckResult> {
-		return await this.check(workflow, projectId, NOTHING_GRANDFATHERED);
+	async onContentImport(context: ContentImportContext): Promise<PolicyCheckResult> {
+		if (!('workflow' in context)) return NO_VIOLATIONS;
+
+		return await this.check(context.workflow, context.projectId, NOTHING_GRANDFATHERED);
 	}
 
 	/**
@@ -139,7 +125,8 @@ export class NodeTypePolicyCheck implements RegisteredPolicyCheck {
 	private async checkTypes(types: string[], projectId: string | null): Promise<PolicyCheckResult> {
 		// An expired license stops enforcing, matching the `@Licensed` routes that author the
 		// policy: a customer who cannot edit the policy must not keep being blocked by it.
-		if (!this.licenseState.isLicensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)) return NO_VIOLATIONS;
+		if (!this.licenseState.isLicensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES))
+			return NO_VIOLATIONS;
 
 		if (types.length === 0) return NO_VIOLATIONS;
 
@@ -152,7 +139,7 @@ export class NodeTypePolicyCheck implements RegisteredPolicyCheck {
 		return {
 			violations: verdicts
 				.filter((verdict) => verdict.action === 'deny')
-				.map((verdict) => toViolation(this.id, verdict)),
+				.map((verdict) => toTypeViolation(this.id, NODE_TYPE_SUBJECT, verdict, projectId)),
 			// Reported even when nothing is denied: the audit line records what a partial run read.
 			policyVersions: versions,
 		};

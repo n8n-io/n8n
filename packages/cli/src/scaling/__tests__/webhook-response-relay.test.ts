@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
-import { FileLocation, FileTooLargeError } from 'n8n-core';
+import { decodeBufferBody, ENCODED_BUFFER_KEY, FileLocation, FileTooLargeError } from 'n8n-core';
 import type { BinaryDataConfig, BinaryDataService } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import type { IBinaryData, IExecuteResponsePromiseData } from 'n8n-workflow';
@@ -9,12 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { WebhookResponseTooLargeError } from '@/errors/webhook-response-too-large.error';
 
-import {
-	decodeRelayedWebhookResponse,
-	ENCODED_BUFFER_KEY,
-	OFFLOADED_BODY_KIND_KEY,
-	WebhookResponseRelay,
-} from '../webhook-response-relay';
+import { OFFLOADED_BODY_KIND_KEY, WebhookResponseRelay } from '../webhook-response-relay';
 
 const ONE_MIB = 1024 * 1024;
 const SIZE_MAX_IN_MIB = 2;
@@ -751,11 +746,11 @@ describe('WebhookResponseRelay', () => {
 	});
 });
 
-describe('decodeRelayedWebhookResponse', () => {
+describe('decodeBufferBody on a relayed response', () => {
 	it('restores a base64 envelope to a Buffer', () => {
 		const response = fullResponse({ [ENCODED_BUFFER_KEY]: 'aGVsbG8=' });
 
-		const decoded = decodeRelayedWebhookResponse(response);
+		const decoded = decodeBufferBody(response);
 
 		expect(decoded).toBe(response);
 		expect(bodyOf(decoded)).toEqual(Buffer.from('hello'));
@@ -765,7 +760,7 @@ describe('decodeRelayedWebhookResponse', () => {
 		const { relay } = buildRelay();
 		const body = Buffer.from([0x00, 0xff, 0x10]);
 
-		const decoded = decodeRelayedWebhookResponse(await relay.prepare(fullResponse(body), ctx));
+		const decoded = decodeBufferBody(await relay.prepare(fullResponse(body), ctx));
 
 		expect(bodyOf(decoded)).toEqual(body);
 	});
@@ -780,7 +775,7 @@ describe('decodeRelayedWebhookResponse', () => {
 		],
 		['an envelope whose payload is not a string', { [ENCODED_BUFFER_KEY]: 42 }],
 	])('leaves %s untouched', (_label, body) => {
-		const decoded = decodeRelayedWebhookResponse(fullResponse(body));
+		const decoded = decodeBufferBody(fullResponse(body));
 
 		expect(bodyOf(decoded)).toEqual(body);
 	});
@@ -788,6 +783,6 @@ describe('decodeRelayedWebhookResponse', () => {
 	it('leaves a payload that is not a full response untouched', () => {
 		const payload = { toolResult: 'done' };
 
-		expect(decodeRelayedWebhookResponse(payload)).toBe(payload);
+		expect(decodeBufferBody(payload)).toBe(payload);
 	});
 });

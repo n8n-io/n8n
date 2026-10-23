@@ -6,7 +6,7 @@ nodes. They are a runtime checklist, not extra user-facing output.
 
 Code-node runtime limits (no network, forbidden imports, nested template
 literals) and unsolicited stickies are enforced by `workflow-sdk validate` —
-fix those findings before `build-workflow`. Use built-in nodes (Edit Fields
+fix those findings before `workflow_builder_build_workflow`. Use built-in nodes (Edit Fields
 (Set), Filter, IF / Switch, Sort, Remove Duplicates, Aggregate, Split Out, Merge)
 for shaping, filtering, routing, sorting, de-duplicating and aggregating work; a
 Code node is only for the reserved cases the workflow-builder skill lists.
@@ -27,7 +27,7 @@ and create failure records with explicit source fields only on real error paths.
 ## Preserve Node Identity
 
 `config.id` is a node's stable identity in n8n, not a cosmetic field. Two nodes may
-never share one `id`; `build-workflow` rejects the save with `DUPLICATE_NODE_ID`
+never share one `id`; `workflow_builder_build_workflow` rejects the save with `DUPLICATE_NODE_ID`
 when they do, and the fix is to delete the `id` line from the node you added, not to
 invent a new value.
 

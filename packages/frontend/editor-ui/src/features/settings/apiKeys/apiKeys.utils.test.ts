@@ -16,6 +16,9 @@ const availableScopes: ApiKeyScope[] = [
 	'folder:read',
 	'tag:read',
 	'user:list',
+	'sourceControl:read',
+	'sourceControl:pull',
+	'sourceControl:push',
 	'securityAudit:generate',
 ];
 
@@ -53,6 +56,7 @@ describe('getReadOnlyScopes', () => {
 			'folder:read',
 			'tag:read',
 			'user:list',
+			'sourceControl:read',
 		]);
 	});
 });
@@ -68,6 +72,7 @@ describe('groupScopes', () => {
 			'projects',
 			'foldersTags',
 			'members',
+			'environments',
 			'instanceOperations',
 		]);
 
@@ -80,6 +85,12 @@ describe('groupScopes', () => {
 			'execution:read',
 		]);
 		expect(groups[4].scopes).toEqual(['folder:read', 'tag:read']);
+		expect(groups[6].scopes).toEqual([
+			'sourceControl:read',
+			'sourceControl:pull',
+			'sourceControl:push',
+		]);
+		expect(groups[7].scopes).toEqual(['securityAudit:generate']);
 	});
 
 	it('omits groups without available scopes', () => {

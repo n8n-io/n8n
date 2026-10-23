@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Scenario seed data tables (TRUST-311)
+// Scenario seed data tables
 //
 // A case's execution scenarios share one pre-created data table per declared
 // name; rows are reset + seeded per scenario. These helpers dedupe the
@@ -7,6 +7,8 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvalSeedDataTable } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
+import { readDataTableLocator } from '@n8n/workflow-sdk';
 
 import {
 	freshSeedNameSuffix,
@@ -19,7 +21,7 @@ import type { N8nClient } from '../clients/n8n-client';
 import type { ExecutionScenario } from '../types';
 
 /** Per-scenario row-seeding context: the run's thread and the name→real-id map
- *  of the tables created empty before the build turn (TRUST-311 follow-up). */
+ *  of the tables created empty before the build turn. */
 export interface ScenarioSeedContext {
 	threadId: string;
 	tableIdsByName: Record<string, string>;
@@ -31,8 +33,8 @@ const MAX_SEED_DATA_TABLES = 20;
 
 /**
  * Deduplicate the data tables an execution-scenario case declares
- * (`seedDataTables`) into the union a case shares across its scenarios
- * (TRUST-311). A table name is unique per project and the built workflow binds
+ * (`seedDataTables`) into the union a case shares across its scenarios.
+ * A table name is unique per project and the built workflow binds
  * it by name, so a case shares ONE table per name across its scenarios; the
  * first declaration wins. A later same-name declaration with a different shape
  * (columns/rows) is dropped with a warning — the by-name binding can only
@@ -74,7 +76,7 @@ export function dedupeScenarioSeedTables(
  * already exist in the workspace (created empty before the build turn) so the
  * agent discovers and binds the REAL table (via the Data Table node's
  * list/schema) instead of creating a duplicate — the production-faithful flow
- * where the user's table pre-exists (TRUST-311 follow-up). Empty when the case
+ * where the user's table pre-exists. Empty when the case
  * declares no scenario seed tables.
  */
 export function buildSeededTablesNote(tables: InstanceAiEvalSeedDataTable[]): string {
@@ -90,7 +92,7 @@ export function buildSeededTablesNote(tables: InstanceAiEvalSeedDataTable[]): st
  *  project, so under the declared name two iterations of one case collide — they
  *  overlap on a lane, which is released when the build returns while the tables
  *  live to the last scenario row. Callers keep the declared name as the map key. */
-export function uniquifyScenarioTableNames(
+export function uniquifySeedTableNames(
 	tables: InstanceAiEvalSeedDataTable[],
 ): InstanceAiEvalSeedDataTable[] {
 	const suffix = freshSeedNameSuffix();
@@ -151,9 +153,44 @@ export function scenariosRequireSerialSeeding(scenarios: ExecutionScenario[]): b
 	return scenarios.some((scenario) => (scenario.seedDataTables?.length ?? 0) > 0);
 }
 
+const REMOVE_DUPLICATES_NODE_TYPE = 'n8n-nodes-base.removeDuplicates';
+
+/** Remove Duplicates keeps its seen keys per workflow (n8n's processed_data), and the
+ *  eval resets them around every run, so scenarios of such a workflow must not interleave. */
+export function workflowDeduplicates(
+	workflow: { nodes?: Array<{ type: string }> } | undefined,
+): boolean {
+	return workflow?.nodes?.some((node) => node.type === REMOVE_DUPLICATES_NODE_TYPE) ?? false;
+}
+
+const DATA_TABLE_NODE_TYPES = new Set(['n8n-nodes-base.dataTable', 'n8n-nodes-base.dataTableTool']);
+
+/** The Data Tables a workflow binds, as `name:<lower-cased name>`. An id-mode node
+ *  carries the table name in `cachedResultName`, so the id is the key only when that
+ *  name is missing. The server empties and refills these tables before every run, so
+ *  two runs that bind one table must not interleave. Two tables of one name in two
+ *  projects share a key, which only makes their runs wait. */
+export function workflowDataTableKeys(
+	workflow:
+		| { nodes?: Array<{ type: string; disabled?: boolean; parameters?: unknown }> }
+		| undefined,
+): string[] {
+	const keys = new Set<string>();
+	for (const node of workflow?.nodes ?? []) {
+		if (node.disabled || !DATA_TABLE_NODE_TYPES.has(node.type)) continue;
+		const locator = readDataTableLocator(
+			isRecord(node.parameters) ? node.parameters.dataTableId : undefined,
+		);
+		if (!locator) continue;
+		const name = locator.mode === 'name' ? locator.value : locator.cachedName;
+		keys.add(name ? `name:${name.toLowerCase()}` : `id:${locator.value}`);
+	}
+	return [...keys].sort();
+}
+
 /**
  * Reset + row-seed a scenario's declared data tables into their pre-seeded real
- * ids, just before that scenario executes (TRUST-311). Clears whatever rows a
+ * ids, just before that scenario executes. Clears whatever rows a
  * prior scenario — or a build-time self-verification execution — left, then
  * inserts this scenario's declared rows, so each scenario runs against exactly
  * the state it declared (and scenarios may carry different rows for the same
@@ -197,17 +234,4 @@ function sameSeedTableShape(
 		JSON.stringify({ columns: a.columns, rows: a.rows }) ===
 		JSON.stringify({ columns: b.columns, rows: b.rows })
 	);
-}
-
-/** Agent scenarios don't seed data-table rows (tables exist but stay empty) — shared warning for both orchestration paths. */
-export function warnAgentSeedDataTablesIgnored(
-	logger: EvalLogger,
-	scenarioName: string,
-	seedDataTables: unknown[] | undefined,
-): void {
-	if ((seedDataTables?.length ?? 0) > 0) {
-		logger.warn(
-			`    [${scenarioName}] seedDataTables are not seeded on the agent execution path — tables exist but stay empty`,
-		);
-	}
 }

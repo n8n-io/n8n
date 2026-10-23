@@ -1,7 +1,7 @@
 /**
  * Trace-only `agent-snapshot` event — an agent's config + skills at a point in a
  * conversation, so eval seeding can reconstruct it. Sibling of
- * `build-workflow`'s `compiled-workflow` event: the agents-module builder is a
+ * `workflow_builder_build_workflow`'s `compiled-workflow` event: the agents-module builder is a
  * separate service, so no tool I/O in the trace carries the config.
  *
  * Payload is shaped for `instanceAiEvalSeedAgentSchema` — the consumer maps

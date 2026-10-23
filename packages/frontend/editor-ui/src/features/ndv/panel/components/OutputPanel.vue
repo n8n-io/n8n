@@ -118,7 +118,14 @@ const node = computed(() => {
 
 const { hasNodeRun, workflowExecution, workflowRunData, nodeRunData } = useExecutionData({ node });
 
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const {
+	canReveal,
+	isDynamicCredentials,
+	isSubWorkflowRedaction,
+	revealData,
+	credentialToShare,
+	openCredentialSharing,
+} = useExecutionRedaction();
 
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
@@ -393,7 +400,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							<NodeExecuteButton
 								hide-icon
 								transparent
-								variant="subtle"
+								variant="outline"
 								:node-name="activeNode?.name ?? ''"
 								:label="noOutputActionLabel"
 								telemetry-source="inputs"
@@ -406,7 +413,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<NodeExecuteButton
 							hide-icon
 							transparent
-							variant="subtle"
+							variant="outline"
 							:node-name="activeNode?.name ?? ''"
 							:label="noOutputActionLabel"
 							telemetry-source="inputs"
@@ -423,7 +430,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					<NodeExecuteButton
 						icon-only
 						hide-label
-						variant="subtle"
+						variant="outline"
 						size="medium"
 						:node-name="activeNode?.name ?? ''"
 						:aria-label="noOutputActionLabel"
@@ -464,7 +471,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<RedactedDataState
 				:title="i18n.baseText('ndv.output.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
+				:is-sub-workflow-redaction="isSubWorkflowRedaction"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
@@ -474,7 +484,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<RedactedDataState
 				:title="i18n.baseText('ndv.output.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
+				:is-sub-workflow-redaction="isSubWorkflowRedaction"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
@@ -514,7 +527,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	text-transform: uppercase;
 	color: var(--color--text--tint-1);
 	letter-spacing: 2px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--xs);
 }
 

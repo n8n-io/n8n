@@ -195,6 +195,8 @@ describe('useAgentToolRefAdapter', () => {
 			const original: AgentJsonToolRef = {
 				type: 'node',
 				name: 'Slack',
+				enabled: false,
+				requireApproval: true,
 				description: 'Send a Slack message',
 				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
 			};
@@ -213,6 +215,8 @@ describe('useAgentToolRefAdapter', () => {
 			expect(updated).toEqual({
 				type: 'node',
 				name: 'Slack v2',
+				enabled: false,
+				requireApproval: true,
 				description: 'Send a Slack message',
 				node: {
 					nodeType: 'n8n-nodes-base.slack',

@@ -5,6 +5,7 @@ import type {
 	ResourceMapperFields,
 } from 'n8n-workflow';
 
+import { isForbiddenError, withColumnTypes } from '../../helpers/utils';
 import type { IListColumnType } from '../helpers/interfaces';
 import { microsoftSharePointApiRequest } from '../transport';
 
@@ -33,6 +34,29 @@ function mapType(column: IListColumnType): FieldType | undefined {
 	return mappedType;
 }
 
+async function loadListColumns(
+	this: ILoadOptionsFunctions,
+	listPath: string,
+): Promise<IListColumnType[]> {
+	try {
+		const response = await microsoftSharePointApiRequest.call(
+			this,
+			'GET',
+			`${listPath}/contentTypes`,
+			{},
+			{ expand: 'columns' },
+		);
+		return response.value[0].columns;
+	} catch (error) {
+		if (!isForbiddenError(error)) {
+			throw error;
+		}
+	}
+
+	const response = await microsoftSharePointApiRequest.call(this, 'GET', `${listPath}/columns`);
+	return withColumnTypes<IListColumnType>(response.value ?? []);
+}
+
 export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
@@ -40,15 +64,7 @@ export async function getMappingColumns(
 	const list = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
 	const operation = this.getNodeParameter('operation') as string;
 
-	const response = await microsoftSharePointApiRequest.call(
-		this,
-		'GET',
-		`/sites/${site}/lists/${list}/contentTypes`,
-		{},
-		{ expand: 'columns' },
-	);
-
-	const columns: IListColumnType[] = response.value[0].columns;
+	const columns = await loadListColumns.call(this, `/sites/${site}/lists/${list}`);
 
 	const fields: ResourceMapperField[] = [];
 

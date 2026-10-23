@@ -28,7 +28,7 @@ describe('WaitNodeSubworkflowRule', () => {
 				title: 'Sub-workflow waiting node output behavior change',
 				description: expect.stringContaining('Parent workflows calling sub-workflows'),
 				category: BreakingChangeCategory.workflow,
-				severity: 'medium',
+				impact: 'behaviorChanges',
 			});
 		});
 	});

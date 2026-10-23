@@ -1,22 +1,36 @@
-import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
+import { setActivePinia } from 'pinia';
 import { createApp, shallowRef } from 'vue';
 
 import { useSelectionValidation } from './useSelectionValidation';
+
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { mockedStore } from '@/__tests__/utils';
 
 const TEST_WF_ID = 'test-wf-validation';
 const INJECTED_WF_ID = 'injected-wf-validation';
+
+const allowTriggerInGroup = shallowRef(false);
+const allowMultipleBoundaryNodes = shallowRef(false);
+
+vi.mock('@/app/composables/useNodeGroupRules', () => ({
+	useNodeGroupRules: () => ({ allowTriggerInGroup, allowMultipleBoundaryNodes }),
+}));
 
 function makeNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return {
@@ -49,6 +63,58 @@ type LinearGraphFixture = {
 	nodes: Record<string, INodeUi>;
 	connections: IConnections;
 };
+
+const triggerNodeTypes: Record<string, INodeTypeDescription> = {
+	'n8n-nodes-base.manualTrigger': makeNodeType({
+		name: 'n8n-nodes-base.manualTrigger',
+		group: ['trigger'],
+	}),
+	'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+};
+
+/** A feeds B and C, which each leave the selection: two exit nodes. */
+function makeTwoExitGraph(): LinearGraphFixture {
+	const connections: IConnections = {
+		A: {
+			main: [
+				[
+					{ node: 'B', type: 'main', index: 0 },
+					{ node: 'C', type: 'main', index: 0 },
+				],
+			],
+		},
+		B: { main: [[{ node: 'OutsideOne', type: 'main', index: 0 }]] },
+		C: { main: [[{ node: 'OutsideTwo', type: 'main', index: 0 }]] },
+	};
+
+	return {
+		nodes: {
+			a: makeNode({ id: 'a', name: 'A' }),
+			b: makeNode({ id: 'b', name: 'B' }),
+			c: makeNode({ id: 'c', name: 'C' }),
+		},
+		connections,
+	};
+}
+
+/** Outside reaches A and B, which both join at C: two entry nodes. */
+function makeTwoEntryGraph(): LinearGraphFixture {
+	const connections: IConnections = {
+		OutsideOne: { main: [[{ node: 'A', type: 'main', index: 0 }]] },
+		OutsideTwo: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+		A: { main: [[{ node: 'C', type: 'main', index: 0 }]] },
+		B: { main: [[{ node: 'C', type: 'main', index: 0 }]] },
+	};
+
+	return {
+		nodes: {
+			a: makeNode({ id: 'a', name: 'A' }),
+			b: makeNode({ id: 'b', name: 'B' }),
+			c: makeNode({ id: 'c', name: 'C' }),
+		},
+		connections,
+	};
+}
 
 function makeLinearGraph(): LinearGraphFixture {
 	const a = makeNode({ id: 'a', name: 'A' });
@@ -116,6 +182,9 @@ describe('useSelectionValidation', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		useWorkflowsStore().workflowId = TEST_WF_ID;
+		allowTriggerInGroup.value = false;
+		allowMultipleBoundaryNodes.value = false;
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 	});
 
 	afterEach(() => {
@@ -204,6 +273,92 @@ describe('useSelectionValidation', () => {
 				expect(result.triggers).toEqual(['A']);
 			}
 		}
+	});
+
+	describe('with the trigger rule on alone', () => {
+		beforeEach(() => {
+			allowTriggerInGroup.value = true;
+		});
+
+		it('accepts a selection that holds a trigger', () => {
+			const graph = makeLinearGraph();
+			graph.nodes.a.type = 'n8n-nodes-base.manualTrigger';
+			setupGraph(graph, triggerNodeTypes);
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b']).valid).toBe(true);
+		});
+
+		it('still refuses a selection with two entry nodes', () => {
+			const graph = makeTwoEntryGraph();
+			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(false);
+		});
+	});
+
+	describe('with the boundary rule on alone', () => {
+		beforeEach(() => {
+			allowMultipleBoundaryNodes.value = true;
+		});
+
+		it('accepts a selection with two entry nodes', () => {
+			const graph = makeTwoEntryGraph();
+			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(true);
+		});
+
+		it('accepts a selection with two exit nodes', () => {
+			const graph = makeTwoExitGraph();
+			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(true);
+		});
+
+		it('still refuses a selection that holds a trigger', () => {
+			const graph = makeLinearGraph();
+			graph.nodes.a.type = 'n8n-nodes-base.manualTrigger';
+			setupGraph(graph, triggerNodeTypes);
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b']).valid).toBe(false);
+		});
+
+		it('still refuses to extract a selection with two entry nodes', () => {
+			const graph = makeTwoEntryGraph();
+			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+			const { isSelectionExtractable } = useSelectionValidation();
+
+			expect(isSelectionExtractable(['a', 'b', 'c']).valid).toBe(false);
+		});
+	});
+
+	it('refuses a selection with two entry nodes while both rules are off', () => {
+		const graph = makeTwoEntryGraph();
+		setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+		const { isSelectionGroupable } = useSelectionValidation();
+
+		expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(false);
+	});
+
+	it('refuses a selection with two exit nodes while both rules are off', () => {
+		const graph = makeTwoExitGraph();
+		setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+		const { isSelectionGroupable } = useSelectionValidation();
+
+		expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(false);
 	});
 
 	it('returns invalid-subgraph when the selection skips an intermediate node', () => {
@@ -405,11 +560,9 @@ describe('useSelectionValidation', () => {
 			expect(resolveGroupableNodeIds(['sticky', 'sticky2'])).toBeNull();
 		});
 
-		it('returns null for selections with fewer than two connectable members', () => {
-			// Single-member groups are pointless, so creating one is not offered.
-			// A sticky does not count toward the minimum: a lone node plus its
-			// annotation sticky is still a "one-node group". Creation-only rule —
-			// deletion can still degenerate an existing group below the minimum.
+		it('accepts a single connectable member', () => {
+			// A sticky does not count as a connectable member, but a lone real node
+			// is a valid group member.
 			const graph = makeLinearGraph();
 			graph.nodes.sticky = makeNode({ id: 'sticky', name: 'Sticky', type: STICKY_NODE_TYPE });
 			setupGraph(graph, {
@@ -419,8 +572,20 @@ describe('useSelectionValidation', () => {
 
 			const { resolveGroupableNodeIds } = useSelectionValidation();
 
+			expect(resolveGroupableNodeIds(['a'])).toEqual(['a']);
+			expect(resolveGroupableNodeIds(['a', 'sticky'])).toEqual(['a', 'sticky']);
+		});
+
+		it('rejects a single connectable member when empty groups are disabled', () => {
+			const graph = makeLinearGraph();
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
 			expect(resolveGroupableNodeIds(['a'])).toBeNull();
-			expect(resolveGroupableNodeIds(['a', 'sticky'])).toBeNull();
 		});
 
 		it('counts connectable members after sub-node expansion for the minimum', () => {
@@ -660,5 +825,24 @@ describe('useSelectionValidation', () => {
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-output-branches');
 		}
+	});
+
+	describe('isSubworkflowConversionDisabled', () => {
+		it.each([EXECUTE_WORKFLOW_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE])(
+			'returns true when %s is not loaded',
+			(missingType) => {
+				vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+					(type) => type === missingType,
+				);
+
+				expect(useSelectionValidation().isSubworkflowConversionDisabled()).toBe(true);
+			},
+		);
+
+		it('returns false when both sub-workflow node types are loaded', () => {
+			vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
+
+			expect(useSelectionValidation().isSubworkflowConversionDisabled()).toBe(false);
+		});
 	});
 });

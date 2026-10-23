@@ -280,6 +280,9 @@ describe('Dynamic Credentials API', () => {
 			});
 		});
 
+		// `authSource=cookie` makes the caller's own n8n session token the identity the
+		// resolver is asked to validate. The resolver here keys on an external subject
+		// (`credential-resolver.oauth2-1.0`), so it must not be handed that identity.
 		describe('when the identity is taken from the session cookie', () => {
 			it('should refuse to authorize against a resolver that does not resolve n8n users', async () => {
 				const response = await testServer

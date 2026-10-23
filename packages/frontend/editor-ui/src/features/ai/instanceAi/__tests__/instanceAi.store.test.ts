@@ -9,15 +9,14 @@ import {
 	renameThread as renameThreadApi,
 } from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
-import {
-	UNLIMITED_CREDITS,
-	type InstanceAiThreadHistoryResponse,
-	type InstanceAiThreadSummary,
-} from '@n8n/api-types';
+import type { InstanceAiThreadHistoryResponse, InstanceAiThreadSummary } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
 		restApiContext: { baseUrl: 'http://localhost:5678/api' },
+		instanceId: 'instance-1',
 	}),
 }));
 
@@ -305,81 +304,29 @@ describe('useInstanceAiStore - credits', () => {
 			expect(store.creditsClaimed).toBe(5);
 			expect(store.threadCreditsUsed('t1')).toBe(2.5);
 		});
-
-		it('picks up the quota lock from the push payload', () => {
-			const store = useInstanceAiStore();
-
-			// What the activation-capped cohort receives: no usable figures, just the lock.
-			store.handleCreditsPush({
-				creditsQuota: UNLIMITED_CREDITS,
-				creditsClaimed: 0,
-				quotaLocked: true,
-			});
-
-			expect(store.quotaLocked).toBe(true);
-			expect(store.showCreditWarning).toBe(true);
-		});
-
-		// A claim push carries no lock state, and claims can land after the lock — a background
-		// memory task, or a fire-and-forget HITL segment claim from an earlier run. Treating the
-		// absent field as `false` would clear the warning the lock had just raised.
-		it('keeps the quota lock when a later push omits it', () => {
-			const store = useInstanceAiStore();
-
-			store.handleCreditsPush({
-				creditsQuota: UNLIMITED_CREDITS,
-				creditsClaimed: 0,
-				quotaLocked: true,
-			});
-			expect(store.showCreditWarning).toBe(true);
-
-			// What a claim pushes: figures only, no lock state.
-			store.handleCreditsPush({ creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 });
-
-			expect(store.quotaLocked).toBe(true);
-			expect(store.showCreditWarning).toBe(true);
-		});
-
-		// Absence means "no opinion", but an explicit false is still an answer — an upgraded
-		// account must be able to get its balance back.
-		it('clears the quota lock when a push says so explicitly', () => {
-			const store = useInstanceAiStore();
-
-			store.handleCreditsPush({
-				creditsQuota: UNLIMITED_CREDITS,
-				creditsClaimed: 0,
-				quotaLocked: true,
-			});
-			store.handleCreditsPush({ creditsQuota: 800, creditsClaimed: 12.5, quotaLocked: false });
-
-			expect(store.quotaLocked).toBe(false);
-			expect(store.showCreditWarning).toBe(false);
-		});
 	});
 
-	// For the activation-capped cohort the balance is masked, so `isLowCredits` can never fire.
-	describe('showCreditWarning', () => {
-		it('is false with no credit information', () => {
+	describe('isOutOfCredits', () => {
+		it('is false when the balance is still loading', () => {
 			const store = useInstanceAiStore();
-			expect(store.showCreditWarning).toBe(false);
+			expect(store.isOutOfCredits).toBe(false);
 		});
 
-		it('is true when credits are running low', () => {
+		it('is false while credits remain, including a low balance', () => {
 			const store = useInstanceAiStore();
 			store.creditsQuota = 100;
 			store.creditsClaimed = 95;
 
-			expect(store.showCreditWarning).toBe(true);
+			expect(store.creditsRemaining).toBe(5);
+			expect(store.isOutOfCredits).toBe(false);
 		});
 
-		it('is true when the pool is locked despite a masked balance', () => {
+		it('is true when no credits remain', () => {
 			const store = useInstanceAiStore();
-			store.creditsQuota = UNLIMITED_CREDITS;
-			store.creditsClaimed = 0;
-			store.quotaLocked = true;
+			store.creditsQuota = 800;
+			store.creditsClaimed = 800;
 
-			expect(store.isLowCredits).toBe(false);
-			expect(store.showCreditWarning).toBe(true);
+			expect(store.isOutOfCredits).toBe(true);
 		});
 	});
 
@@ -457,6 +404,41 @@ describe('useInstanceAiStore - credits', () => {
 			store.creditsQuota = 100;
 			store.creditsClaimed = 75;
 			expect(store.creditsPercentageRemaining).toBe(25);
+		});
+	});
+});
+
+describe('useInstanceAiStore - onboarding exit', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+	});
+
+	it('leaveOnboarding keeps the exit in the thread metadata and tracks the end once', () => {
+		const store = useInstanceAiStore();
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Onboarding',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				metadata: { source: 'onboarding', origin: 'external' },
+			},
+		];
+
+		store.leaveOnboarding('thread-1', 'left', 'stop');
+		// A second exit (the failed run after the leave call) is a no-op.
+		store.leaveOnboarding('thread-1', 'run_failed');
+
+		expect(store.threads[0].metadata).toMatchObject({ onboardingLeft: true });
+		expect(store.isOnboardingChromeHidden('thread-1')).toBe(false);
+		const { track } = useTelemetry();
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED, {
+			thread_id: 'thread-1',
+			instance_id: 'instance-1',
+			outcome: 'left',
+			leave_reason: 'stop',
 		});
 	});
 });

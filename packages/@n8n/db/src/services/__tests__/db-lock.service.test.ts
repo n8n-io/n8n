@@ -185,6 +185,17 @@ describe('DbLockService', () => {
 	});
 
 	describe('withLockContext', () => {
+		it('forwards the lock subkey', async () => {
+			databaseConfig.type = 'postgresdb';
+
+			await service.withLockContext(1001, async () => undefined, { subKey: -12345 });
+
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SELECT pg_advisory_xact_lock($1, $2)',
+				[1001, -12345],
+			);
+		});
+
 		it('provides an opaque context for the locked transaction', async () => {
 			databaseConfig.type = 'sqlite';
 			const fn = vi.fn().mockResolvedValue('result');

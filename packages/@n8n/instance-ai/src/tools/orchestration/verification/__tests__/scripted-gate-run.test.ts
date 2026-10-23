@@ -78,6 +78,20 @@ function makeArgs(runMock: ReturnType<typeof vi.fn>): ScriptedGateRunArgs {
 }
 
 describe('runScriptedGateVerification', () => {
+	it('does not start another decision pass after cancellation', async () => {
+		const controller = new AbortController();
+		const run = vi.fn().mockImplementationOnce(async () => {
+			controller.abort();
+			return approvePassResult;
+		});
+
+		await expect(
+			runScriptedGateVerification({ ...makeArgs(run), abortSignal: controller.signal }),
+		).rejects.toThrow();
+
+		expect(run).toHaveBeenCalledTimes(1);
+	});
+
 	it('runs one pass per decision with the gate pin swapped and the loop edge cut', async () => {
 		const run = vi
 			.fn()
@@ -107,6 +121,17 @@ describe('runScriptedGateVerification', () => {
 		expect(analysis.coverageNote).toContain('"decline" ended at "Revise"');
 		expect(analysis.coverageNote).toContain('"Revise" → "Format"');
 		expect(result.executedNodeNames).toEqual(expect.arrayContaining(['Publish', 'Revise']));
+	});
+
+	it('keeps the file-output nodes of every pass', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({ ...approvePassResult, binaryOutputNodeNames: ['Publish'] })
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { result } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(result.binaryOutputNodeNames).toEqual(['Publish']);
 	});
 
 	it('starts every decision pass from the named trigger', async () => {
@@ -155,6 +180,24 @@ describe('runScriptedGateVerification — merge consistency', () => {
 
 		expect(analysis.success).toBe(false);
 		expect(result.status).toBe('error');
+		expect(analysis.nodeErrors).toEqual([
+			{ nodeName: 'Revise', message: '[decision: decline] expression error' },
+		]);
+	});
+
+	it('discloses that a redacted pass was not inspected, whichever pass it was', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({
+				...approvePassResult,
+				redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+			})
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(analysis.success).toBe(true);
+		expect(analysis.redactionNote).toContain('output was not inspected');
 	});
 
 	it('discloses simulated nodes reached only in an earlier pass', async () => {

@@ -1,7 +1,7 @@
 /**
- * Pins the `contentImport` wiring on the package import path through the real policy decision
- * pipeline. Unit tests mock `PolicyEnforcementService`, so they prove the gate is called with
- * the right arguments but not that a registered check actually runs.
+ * Pins the `contentImport` and `credentialSave` wiring on the package import path through the real
+ * policy decision pipeline. Unit tests mock `PolicyEnforcementService`, so they prove the gates are
+ * called with the right arguments but not that a registered check actually runs.
  *
  * A refusal takes down the whole package on both transports, unlike a source-control pull, which
  * skips the blocked workflow and lets the rest land.
@@ -14,10 +14,18 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	FolderRepository,
+	TagRepository,
+	WorkflowHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import type {
 	ContentImportContext,
+	CredentialSaveContext,
 	PolicyCheckResult,
+	PolicyViolation,
 	RegisteredPolicyCheck,
 } from '@n8n/decorators';
 import { PolicyCheck, PolicyCheckMetadata } from '@n8n/decorators';
@@ -27,16 +35,27 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { CredentialTypes } from '@/credential-types';
+import { UnprocessableRequestError } from '@n8n/errors';
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
-import { buildImportPackageBuffer, serializedWorkflow } from './fixtures/package-fixtures';
+import {
+	buildEntityPackageBuffer,
+	buildImportPackageBuffer,
+	credentialRequirementsFromWorkflows,
+	githubCredentialPayload,
+	serializedCredential,
+	serializedFolder,
+	serializedWorkflow,
+	serializedWorkflowWithCredential,
+} from './fixtures/package-fixtures';
 import type { BlockingIssue, ImportPackageRequest, ImportRequest } from '../n8n-packages.types';
 
 const CHECK_ID = 'test-package-content-import-deny';
@@ -47,23 +66,43 @@ const deniedMessage = (name: string) => `Workflow "${name}" is denied on import`
 /** The decorator registers once per process, so each test names the workflow it wants denied. */
 const deniedWorkflowNames = new Set<string>();
 const seenTransports: string[] = [];
+const deniedImportedCredentialIds = new Set<string>();
+const seenImportedCredentials: ContentImportContext[] = [];
+
+const importDenial = (credentialId: string): PolicyViolation => ({
+	kind: VIOLATION_KIND,
+	checkId: CHECK_ID,
+	message: `Credential "${credentialId}" is denied on import`,
+	subject: credentialId,
+	subjectType: 'credential',
+});
 
 @PolicyCheck()
 class PackageContentImportDenyCheck implements RegisteredPolicyCheck {
 	readonly id = CHECK_ID;
 
-	async onContentImport({ workflow, transport }: ContentImportContext): Promise<PolicyCheckResult> {
-		seenTransports.push(transport);
+	async onContentImport(context: ContentImportContext): Promise<PolicyCheckResult> {
+		seenTransports.push(context.transport);
 
-		if (!deniedWorkflowNames.has(workflow.name)) return { violations: [] };
+		if ('credential' in context) {
+			seenImportedCredentials.push(context);
+			const { id } = context.credential;
+			return {
+				violations: id !== null && deniedImportedCredentialIds.has(id) ? [importDenial(id)] : [],
+			};
+		}
+
+		if (!deniedWorkflowNames.has(context.workflow.name)) {
+			return { violations: [] };
+		}
 
 		return {
 			violations: [
 				{
 					kind: VIOLATION_KIND,
 					checkId: this.id,
-					message: deniedMessage(workflow.name),
-					subject: workflow.name,
+					message: deniedMessage(context.workflow.name),
+					subject: context.workflow.name,
 					subjectType: 'workflow',
 					scope: 'instance',
 				},
@@ -72,9 +111,39 @@ class PackageContentImportDenyCheck implements RegisteredPolicyCheck {
 	}
 }
 
+const CREDENTIAL_CHECK_ID = 'test-package-credential-save-deny';
+
+const credentialDenial = (type: string): PolicyViolation => ({
+	kind: 'test-package-credential-save-denied',
+	checkId: CREDENTIAL_CHECK_ID,
+	message: `Credential type "${type}" is denied`,
+	subject: type,
+	subjectType: 'credentialType',
+});
+
+const deniedCredentialTypes = new Set<string>();
+const seenCredentialSaves: CredentialSaveContext[] = [];
+
+@PolicyCheck()
+class PackageCredentialSaveDenyCheck implements RegisteredPolicyCheck {
+	readonly id = CREDENTIAL_CHECK_ID;
+
+	async onCredentialSave(context: CredentialSaveContext): Promise<PolicyCheckResult> {
+		seenCredentialSaves.push(context);
+
+		const { type } = context.credential;
+		return await Promise.resolve({
+			violations: deniedCredentialTypes.has(type) ? [credentialDenial(type)] : [],
+		});
+	}
+}
+
 const licenseMocker = new LicenseMocker();
 
 mockInstance(ActiveWorkflowManager);
+const credentialTypes = mockInstance(CredentialTypes);
+credentialTypes.recognizes.mockReturnValue(true);
+credentialTypes.getParentTypes.mockReturnValue([]);
 
 async function importPackage(
 	params: Pick<ImportPackageRequest, 'user' | 'packageBuffer'> & Partial<ImportPackageRequest>,
@@ -95,18 +164,28 @@ beforeAll(async () => {
 	});
 
 	expect(Container.get(PolicyCheckMetadata).getClasses()).toContain(PackageContentImportDenyCheck);
+	expect(Container.get(PolicyCheckMetadata).getClasses()).toContain(PackageCredentialSaveDenyCheck);
 
 	Container.get(PolicyEnforcementService).setImplementation(Container.get(PolicyDecisionService));
 });
 
 beforeEach(() => {
+	licenseMocker.reset();
 	deniedWorkflowNames.clear();
 	seenTransports.length = 0;
+	deniedCredentialTypes.clear();
+	seenCredentialSaves.length = 0;
+	deniedImportedCredentialIds.clear();
+	seenImportedCredentials.length = 0;
 });
 
 afterEach(async () => {
 	await testDb.truncate([
 		'Folder',
+		'TagEntity',
+		'WorkflowTagMapping',
+		'CredentialsEntity',
+		'SharedCredentials',
 		'WorkflowEntity',
 		'SharedWorkflow',
 		'WorkflowHistory',
@@ -253,5 +332,225 @@ describe('contentImport on a git pull', () => {
 				},
 			],
 		} satisfies BlockingIssue);
+	});
+});
+
+describe('credentialSave on a package import that creates stubs', () => {
+	const stubbingWorkflows = [
+		serializedWorkflowWithCredential({
+			id: 'wf-github',
+			name: 'GitHub Workflow',
+			credentialId: 'cred-github',
+			credentialName: 'Prod GitHub',
+			credentialType: 'githubApi',
+		}),
+		serializedWorkflowWithCredential({
+			id: 'wf-slack',
+			name: 'Slack Workflow',
+			credentialId: 'cred-slack',
+			credentialName: 'Prod Slack',
+			credentialType: 'slackApi',
+		}),
+	];
+
+	/** A tag and a folder too: both are written before the stubs, so they show a halfway import. */
+	const buildStubbingPackage = async () =>
+		await buildEntityPackageBuffer({
+			workflows: stubbingWorkflows.map((workflow) => ({
+				target: `workflows/${workflow.id}`,
+				workflow: { ...workflow, tagIds: ['tag-prod'] },
+			})),
+			folders: [{ target: 'folders/F1', folder: serializedFolder({ id: 'F1', name: 'Shipped' }) }],
+			manifestExtras: {
+				requirements: {
+					credentials: credentialRequirementsFromWorkflows(stubbingWorkflows),
+					tags: [
+						{
+							id: 'tag-prod',
+							name: 'prod',
+							usedBy: [
+								{ kind: 'workflow', id: 'wf-github' },
+								{ kind: 'workflow', id: 'wf-slack' },
+							],
+						},
+					],
+				},
+			},
+		});
+
+	it('refuses the package before anything is written, listing every refused stub', async () => {
+		const owner = await createOwner();
+		deniedCredentialTypes.add('githubApi');
+		deniedCredentialTypes.add('slackApi');
+
+		const error = await importPackage({
+			user: owner,
+			packageBuffer: await buildStubbingPackage(),
+			credentialMissingMode: 'create-stub',
+		}).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+		const issues = (error as UnprocessableRequestError).meta?.issues;
+		expect(issues).toContainEqual({
+			type: 'credential-policy-violation',
+			sourceId: 'cred-github',
+			name: 'Prod GitHub',
+			credentialType: 'githubApi',
+			usedBy: [{ kind: 'workflow', id: 'wf-github' }],
+			violations: [credentialDenial('githubApi')],
+		} satisfies BlockingIssue);
+		expect(issues).toContainEqual({
+			type: 'credential-policy-violation',
+			sourceId: 'cred-slack',
+			name: 'Prod Slack',
+			credentialType: 'slackApi',
+			usedBy: [{ kind: 'workflow', id: 'wf-slack' }],
+			violations: [credentialDenial('slackApi')],
+		} satisfies BlockingIssue);
+
+		await expect(Container.get(TagRepository).count()).resolves.toBe(0);
+		await expect(Container.get(FolderRepository).count()).resolves.toBe(0);
+		await expect(Container.get(CredentialsRepository).count()).resolves.toBe(0);
+		await expect(Container.get(WorkflowRepository).count()).resolves.toBe(0);
+	});
+
+	it('creates the stubs when the check admits them', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildStubbingPackage(),
+			credentialMissingMode: 'create-stub',
+		});
+
+		expect(result.credentials.stubbed.sort()).toEqual(['cred-github', 'cred-slack']);
+		await expect(Container.get(CredentialsRepository).count()).resolves.toBe(2);
+		// Proves the refusal case above would have seen these writes.
+		await expect(Container.get(TagRepository).count()).resolves.toBe(1);
+		await expect(Container.get(FolderRepository).count()).resolves.toBe(1);
+		// The plan checks each stub once, and the insert checks it again as a backstop.
+		expect(seenCredentialSaves.map(({ credential }) => credential.type).sort()).toEqual([
+			'githubApi',
+			'githubApi',
+			'slackApi',
+			'slackApi',
+		]);
+		expect(seenCredentialSaves).toContainEqual({
+			credential: { id: null, type: 'githubApi' },
+			storedCredential: null,
+			projectId: result.workflows[0].projectId,
+		});
+	});
+
+	it('never asks the check under must-preexist, which creates no stub', async () => {
+		const owner = await createOwner();
+		deniedCredentialTypes.add('githubApi');
+
+		const error = await importPackage({
+			user: owner,
+			packageBuffer: await buildStubbingPackage(),
+			credentialMissingMode: 'must-preexist',
+		}).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+		const issues = (error as UnprocessableRequestError).meta?.issues as BlockingIssue[];
+		expect(issues.map(({ type }) => type)).toEqual([
+			'credential-unresolved',
+			'credential-unresolved',
+		]);
+		expect(seenCredentialSaves).toEqual([]);
+	});
+});
+
+describe('credentialSave and contentImport on a package import that updates a credential', () => {
+	const saveOwnedCredential = affixRoleToSaveCredential('credential:owner');
+
+	const setUp = async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Target', owner);
+		const credential = await saveOwnedCredential(githubCredentialPayload({ name: 'GitHub' }), {
+			project,
+		});
+		const packageBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-source',
+					name: 'Uses credential',
+					credentialId: credential.id,
+					credentialName: credential.name,
+				}),
+			],
+			{ credentials: [serializedCredential({ id: credential.id, name: 'Renamed' })] },
+		);
+		const params = {
+			user: owner,
+			projectId: project.id,
+			credentialConflictPolicy: 'overwrite' as const,
+			packageBuffer,
+		};
+		return { project, credential, params };
+	};
+
+	it('refuses the package before anything is written when credentialSave refuses the update', async () => {
+		const { credential, params } = await setUp();
+		deniedCredentialTypes.add('githubApi');
+
+		const error = await importPackage(params).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+		expect((error as UnprocessableRequestError).meta?.issues).toEqual([
+			{
+				type: 'credential-policy-violation',
+				sourceId: credential.id,
+				targetId: credential.id,
+				name: 'Renamed',
+				credentialType: 'githubApi',
+				usedBy: [{ kind: 'workflow', id: 'wf-source' }],
+				violations: [credentialDenial('githubApi')],
+			} satisfies BlockingIssue,
+		]);
+		await expect(Container.get(WorkflowRepository).count()).resolves.toBe(0);
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: credential.id,
+		});
+		expect(stored.name).toBe('GitHub');
+	});
+
+	it('refuses the package before anything is written when contentImport refuses the update', async () => {
+		const { credential, params } = await setUp();
+		deniedImportedCredentialIds.add(credential.id);
+
+		const error = await importPackage(params).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+		expect((error as UnprocessableRequestError).meta?.issues).toEqual([
+			expect.objectContaining({
+				type: 'credential-policy-violation',
+				targetId: credential.id,
+				violations: [importDenial(credential.id)],
+			}),
+		]);
+		await expect(Container.get(WorkflowRepository).count()).resolves.toBe(0);
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: credential.id,
+		});
+		expect(stored.name).toBe('GitHub');
+	});
+
+	it('updates the credential when both checks admit it', async () => {
+		const { project, credential, params } = await setUp();
+
+		const result = await importPackage(params);
+
+		expect(result.credentials.updated).toEqual([credential.id]);
+		const policed = { id: credential.id, type: 'githubApi' };
+		// The plan checks the update once, and the write checks it again as a backstop.
+		expect(seenCredentialSaves).toEqual([
+			{ credential: policed, storedCredential: policed, projectId: project.id },
+			{ credential: policed, storedCredential: policed, projectId: project.id },
+		]);
+		expect(seenImportedCredentials).toEqual([
+			{ credential: policed, projectId: project.id, transport: 'package' },
+		]);
 	});
 });

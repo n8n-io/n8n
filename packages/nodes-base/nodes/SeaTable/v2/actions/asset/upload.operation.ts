@@ -6,8 +6,8 @@ import {
 	updateDisplayOptions,
 } from 'n8n-workflow';
 
-import { seaTableApiRequest } from '../../GenericFunctions';
-import type { IUploadLink, IRowObject } from '../Interfaces';
+import { resolveBaseUri, seaTableApiRequest } from '../../GenericFunctions';
+import type { ICtx, IUploadLink, IRowObject } from '../Interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -108,9 +108,10 @@ export async function execute(
 	const dataPropertyName = this.getNodeParameter('dataPropertyName', index);
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const rowId = this.getNodeParameter('rowId', index) as string;
+	const ctx: ICtx = {};
 	const uploadLink = (await seaTableApiRequest.call(
 		this,
-		{},
+		ctx,
 		'GET',
 		'/api/v2.1/dtable/app-upload-link/',
 	)) as IUploadLink;
@@ -119,22 +120,8 @@ export async function execute(
 
 	const options = this.getNodeParameter('options', index);
 
-	// get server url
-	const credentials: any = await this.getCredentials('seaTableApi');
-	const serverURL: string = credentials.domain
-		? credentials.domain.replace(/\/$/, '')
-		: 'https://cloud.seatable.io';
-
-	// get workspaceId
-	const workspaceId = (
-		await this.helpers.httpRequest({
-			headers: {
-				Authorization: `Token ${credentials.token}`,
-			},
-			url: `${serverURL}/api/v2.1/dtable/app-access-token/`,
-			json: true,
-		})
-	).workspace_id;
+	const serverURL = resolveBaseUri(ctx);
+	const workspaceId = ctx.base?.workspace_id;
 
 	// if there are already assets attached to the column
 	let existingAssetArray = [];

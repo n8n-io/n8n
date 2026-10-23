@@ -182,7 +182,7 @@ onMounted(() => {
 				<Transition name="fade" mode="out-in">
 					<div v-if="scope.row.create" :class="$style.ops">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							:label="i18n.baseText('tagsTable.cancel')"
 							:disabled="isSaving"
 							@click.stop="cancel"
@@ -195,7 +195,7 @@ onMounted(() => {
 					</div>
 					<div v-else-if="scope.row.update" :class="$style.ops">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							:label="i18n.baseText('tagsTable.cancel')"
 							:disabled="isSaving"
 							@click.stop="cancel"
@@ -208,7 +208,7 @@ onMounted(() => {
 					</div>
 					<div v-else-if="scope.row.delete" :class="$style.ops">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							:label="i18n.baseText('tagsTable.cancel')"
 							:disabled="isSaving"
 							@click.stop="cancel"

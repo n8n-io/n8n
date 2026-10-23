@@ -5,7 +5,7 @@ import type { INodeExecutionData, PlaintextExecutionContext } from 'n8n-workflow
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutingUserIdentifierProxy } from '@/credentials/executing-user-identifier-proxy';
+import type { ExecutingUserIdentifierProxy } from '@n8n/backend-services';
 
 import { ChatHubExtractor } from '../chat-hub-extractor';
 

@@ -54,6 +54,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 	const fullExecutionData: UpdateExecutionPayload = {
 		data: runData.data,
 		mode: runData.mode,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: runData.finished ? runData.finished : false,
 		startedAt: runData.startedAt,
 		stoppedAt: runData.stoppedAt,
@@ -103,6 +104,7 @@ export async function updateExistingExecution(parameters: {
 	logger.debug(`Save execution data to database for execution ID ${executionId}`, {
 		executionId,
 		workflowId,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: executionData.finished,
 		stoppedAt: executionData.stoppedAt,
 	});
@@ -122,6 +124,7 @@ export async function updateExistingExecution(parameters: {
 		return updated;
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	if (executionData.finished === true && executionData.retryOf !== undefined) {
 		await executionPersistence.updateExistingExecution(executionData.retryOf, {
 			retrySuccessId: executionId,

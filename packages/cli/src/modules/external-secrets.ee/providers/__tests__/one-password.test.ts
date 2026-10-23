@@ -219,7 +219,12 @@ describe('OnePasswordProvider', () => {
 			});
 			expect(provider.getSecret('API Key')).toEqual({ key: 'sk-abc123' });
 			expect(provider.getSecret('SSH Key')).toEqual({ private_key: 'ssh-rsa AAAA...' });
-			expect(provider.getSecretNames()).toHaveLength(3);
+			expect(provider.getSecretNames()).toEqual([
+				'Database Credentials.username',
+				'Database Credentials.password',
+				'API Key.key',
+				'SSH Key.private_key',
+			]);
 		});
 
 		it('should skip items without fields', async () => {
@@ -341,6 +346,10 @@ describe('OnePasswordProvider', () => {
 
 		it('should return false for non-existent secrets', () => {
 			expect(provider.hasSecret('non-existent')).toBe(false);
+		});
+
+		it('should return no field names before secrets are loaded', () => {
+			expect(provider.getSecretNames()).toEqual([]);
 		});
 	});
 });

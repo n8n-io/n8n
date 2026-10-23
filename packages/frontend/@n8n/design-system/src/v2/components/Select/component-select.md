@@ -86,7 +86,8 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `dir?: 'ltr' | 'rtl'` Reading direction. When omitted, inherits from `ConfigProvider` or defaults to LTR.
 - `icon?: IconName` Fallback leading icon on the trigger when nothing is selected, or the selected item has no leading visual. In single select, a selected item's `#item-leading` (or its `icon`) is shown on the trigger instead.
 - `clearable?: boolean` When `true`, shows a clear button when a value is selected. Hidden when `disabled` or the value is empty. Default: `false`. The button's accessible name is `t('nds.select.clear')` (`Clear selection`).
-- `sideOffset?: number` Distance in pixels from the trigger. Default: `4`. The dropdown always opens below the trigger at trigger width (`side` / `align` are not exposed).
+- `sideOffset?: number` Distance in pixels from the trigger. Default: `4`. The dropdown always opens below the trigger (`side` is not exposed).
+- `align?: 'start' | 'center' | 'end'` Alignment of the dropdown against the trigger. Default: `start`. Use `end` to line the menu up with the trigger's end edge (the right edge in LTR).
 - `contentClass?: string` Additional CSS class(es) applied to the dropdown content container (portaled).
 
 

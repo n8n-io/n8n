@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { inject } from 'vue';
 import { N8nIcon, N8nNodeIcon } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
-import type { ToolIconSource } from './types';
+import { TOOL_ICON_AVATAR_RENDERER_KEY, type ToolIconSource } from './types';
 
 withDefaults(
 	defineProps<{
@@ -11,13 +12,22 @@ withDefaults(
 	{ source: null, fallbackIcon: 'toolbox' },
 );
 
+const avatarRenderer = inject(TOOL_ICON_AVATAR_RENDERER_KEY, null);
+
 const INNER_SIZE = 20;
+const AVATAR_SIZE = 40;
 </script>
 
 <template>
-	<span :class="$style.wrapper" aria-hidden="true">
+	<component
+		:is="avatarRenderer"
+		v-if="source?.type === 'avatar' && avatarRenderer"
+		:personalisation="source.personalisation"
+		:size="AVATAR_SIZE"
+	/>
+	<span v-else :class="$style.wrapper" aria-hidden="true">
 		<N8nNodeIcon
-			v-if="source"
+			v-if="source && source.type !== 'avatar'"
 			:type="source.type"
 			:src="source.type === 'file' ? source.src : undefined"
 			:name="source.type === 'icon' ? source.name : undefined"

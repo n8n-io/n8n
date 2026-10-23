@@ -69,7 +69,7 @@ export class ChatHubToolRepository extends Repository<ChatHubTool> {
 		const em = trx ?? this.manager;
 		const session = await em
 			.createQueryBuilder(ChatHubSession, 'session')
-			.innerJoinAndSelect('session.tools', 'tool')
+			.innerJoinAndSelect('session.tools', 'tool', 'tool.ownerId = session.ownerId')
 			.where('session.id = :sessionId', { sessionId })
 			.orderBy('tool.createdAt', 'ASC')
 			.getOne();
@@ -80,7 +80,7 @@ export class ChatHubToolRepository extends Repository<ChatHubTool> {
 		const em = trx ?? this.manager;
 		const agent = await em
 			.createQueryBuilder(ChatHubAgent, 'agent')
-			.innerJoinAndSelect('agent.tools', 'tool')
+			.innerJoinAndSelect('agent.tools', 'tool', 'tool.ownerId = agent.ownerId')
 			.where('agent.id = :agentId', { agentId })
 			.orderBy('tool.createdAt', 'ASC')
 			.getOne();
@@ -91,7 +91,7 @@ export class ChatHubToolRepository extends Repository<ChatHubTool> {
 		const em = trx ?? this.manager;
 		const rows = await em
 			.createQueryBuilder(ChatHubSession, 'session')
-			.innerJoin('session.tools', 'tool')
+			.innerJoin('session.tools', 'tool', 'tool.ownerId = session.ownerId')
 			.select('tool.id', 'toolId')
 			.where('session.id = :sessionId', { sessionId })
 			.getRawMany<{ toolId: string }>();
@@ -102,7 +102,7 @@ export class ChatHubToolRepository extends Repository<ChatHubTool> {
 		const em = trx ?? this.manager;
 		const rows = await em
 			.createQueryBuilder(ChatHubAgent, 'agent')
-			.innerJoin('agent.tools', 'tool')
+			.innerJoin('agent.tools', 'tool', 'tool.ownerId = agent.ownerId')
 			.select('tool.id', 'toolId')
 			.where('agent.id = :agentId', { agentId })
 			.getRawMany<{ toolId: string }>();
@@ -110,22 +110,28 @@ export class ChatHubToolRepository extends Repository<ChatHubTool> {
 	}
 
 	async setSessionTools(sessionId: string, toolIds: string[], trx?: EntityManager): Promise<void> {
-		const em = trx ?? this.manager;
-		const currentToolIds = await this.getToolIdsForSession(sessionId, em);
-		await em
-			.createQueryBuilder()
-			.relation(ChatHubSession, 'tools')
-			.of(sessionId)
-			.addAndRemove(toolIds, currentToolIds);
+		await this.replaceLinkedTools(ChatHubSession, sessionId, toolIds, trx ?? this.manager);
 	}
 
 	async setAgentTools(agentId: string, toolIds: string[], trx?: EntityManager): Promise<void> {
-		const em = trx ?? this.manager;
-		const currentToolIds = await this.getToolIdsForAgent(agentId, em);
-		await em
-			.createQueryBuilder()
-			.relation(ChatHubAgent, 'tools')
-			.of(agentId)
-			.addAndRemove(toolIds, currentToolIds);
+		await this.replaceLinkedTools(ChatHubAgent, agentId, toolIds, trx ?? this.manager);
+	}
+
+	/**
+	 * Replaces every link row, including rows to tools that the owner does not own,
+	 * so that a save also removes those rows.
+	 */
+	private async replaceLinkedTools(
+		entity: typeof ChatHubSession | typeof ChatHubAgent,
+		id: string,
+		toolIds: string[],
+		em: EntityManager,
+	): Promise<void> {
+		const relation = em.createQueryBuilder().relation(entity, 'tools').of(id);
+		const currentTools = await relation.loadMany<ChatHubTool>();
+		await relation.addAndRemove(
+			toolIds,
+			currentTools.map((t) => t.id),
+		);
 	}
 }

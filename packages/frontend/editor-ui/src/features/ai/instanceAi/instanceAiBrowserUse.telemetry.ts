@@ -1,6 +1,6 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
-import { isBrowserUseSupportedForBrowser } from '@/experiments/instanceAiBrowserUse';
+import { isBrowserUseSupportedForBrowser } from './utils/browserUseSupport';
 
 export type BrowserUseModalSource = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_MODAL_OPENED

@@ -8,6 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 
 import AgentDuplicateModal from '../components/AgentDuplicateModal.vue';
 import type { AgentDuplicateModalData } from '../components/AgentDuplicateModal.vue';
+import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
 // Components use `data-testid`; the global setup configures `data-test-id`.
 configure({ testIdAttribute: 'data-testid' });
@@ -18,11 +19,7 @@ vi.mock('@n8n/i18n', () => {
 });
 
 const stubs = {
-	Modal: {
-		props: ['name', 'width', 'closeOnClickModal', 'closeOnPressEscape', 'showClose'],
-		template:
-			'<div role="dialog" :data-close-on-click-modal="closeOnClickModal" :data-close-on-press-escape="closeOnPressEscape" :data-show-close="showClose"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
-	},
+	AgentModal: AgentModalTestStub,
 	N8nHeading: { template: '<h2><slot /></h2>' },
 	N8nText: { template: '<span v-bind="$attrs"><slot /></span>' },
 	N8nButton: {
@@ -80,21 +77,23 @@ describe('AgentDuplicateModal', () => {
 		expect(getByTestId('agent-duplicate-name-input')).toHaveValue('Support Agent (copy)');
 	});
 
-	it('disables confirm and shows a name-taken error when the name matches an existing agent', async () => {
+	it('keeps confirm available and shows a name-taken error when the name matches', async () => {
 		const { getByTestId, getByText } = renderModal();
 
 		await fireEvent.update(getByTestId('agent-duplicate-name-input'), 'Support Agent');
 
 		expect(getByText('agents.duplicate.modal.button.nameTaken')).toBeInTheDocument();
-		expect(getByTestId('agent-duplicate-confirm')).toBeDisabled();
+		expect(getByTestId('agent-duplicate-confirm')).not.toBeDisabled();
 	});
 
-	it('disables confirm when the name is empty', async () => {
-		const { getByTestId } = renderModal();
+	it('reveals the error when confirming an empty name', async () => {
+		const { getByTestId, getByText, onConfirm } = renderModal();
 
 		await fireEvent.update(getByTestId('agent-duplicate-name-input'), '   ');
+		await fireEvent.click(getByTestId('agent-duplicate-confirm'));
 
-		expect(getByTestId('agent-duplicate-confirm')).toBeDisabled();
+		expect(getByText('agents.duplicate.modal.nameRequired')).toBeInTheDocument();
+		expect(onConfirm).not.toHaveBeenCalled();
 	});
 
 	it('calls onConfirm with the trimmed name and closes the modal', async () => {
@@ -133,16 +132,13 @@ describe('AgentDuplicateModal', () => {
 		const { getByTestId, getByRole } = renderModal({ onConfirm });
 
 		const dialog = getByRole('dialog');
-		// Before submit, dismissal is allowed.
-		expect(dialog).toHaveAttribute('data-show-close', 'true');
+		expect(dialog).toHaveAttribute('data-busy', 'false');
 
 		await fireEvent.update(getByTestId('agent-duplicate-name-input'), 'Triage Bot');
 		await fireEvent.click(getByTestId('agent-duplicate-confirm'));
 
 		await waitFor(() => expect(onConfirm).toHaveBeenCalled());
-		// While submitting, all dismissal paths are disabled.
-		expect(dialog).toHaveAttribute('data-show-close', 'false');
-		expect(dialog).toHaveAttribute('data-close-on-click-modal', 'false');
-		expect(dialog).toHaveAttribute('data-close-on-press-escape', 'false');
+		expect(dialog).toHaveAttribute('data-busy', 'true');
+		expect(getByTestId('dialog-close-button')).toBeDisabled();
 	});
 });

@@ -109,7 +109,7 @@ describe('useWorkflowSetupApply', () => {
 		const h = setupHarness();
 		h.thread.confirmAction.mockResolvedValueOnce(false);
 
-		await h.applyMachine.apply({});
+		expect(await h.applyMachine.apply({})).toBeUndefined();
 
 		expect(h.applyMachine.terminalState.value).toBeNull();
 		expect(toast.showError).not.toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe('useWorkflowSetupApply', () => {
 	it('sets applied terminal state and resolves confirmation on success', async () => {
 		const h = setupHarness({ success: true });
 
-		await h.applyMachine.apply({});
+		expect(await h.applyMachine.apply({})).toEqual({ success: true });
 
 		expect(h.applyMachine.terminalState.value).toBe('applied');
 		expect(h.thread.resolveConfirmation).toHaveBeenCalledWith('req-1', 'approved');
@@ -128,7 +128,7 @@ describe('useWorkflowSetupApply', () => {
 	it('sets partial terminal state when the result is partial', async () => {
 		const h = setupHarness({ success: true, partial: true });
 
-		await h.applyMachine.apply({});
+		expect(await h.applyMachine.apply({})).toEqual({ success: true, partial: true });
 
 		expect(h.applyMachine.terminalState.value).toBe('partial');
 		expect(h.thread.resolveConfirmation).toHaveBeenCalledWith('req-1', 'approved');
@@ -137,7 +137,7 @@ describe('useWorkflowSetupApply', () => {
 	it('shows an error and resets state when apply result fails', async () => {
 		const h = setupHarness({ success: false, error: 'Could not apply credentials' });
 
-		await h.applyMachine.apply({});
+		expect(await h.applyMachine.apply({})).toBeUndefined();
 
 		expect(h.applyMachine.terminalState.value).toBeNull();
 		expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), 'Setup failed');
@@ -177,7 +177,7 @@ describe('useWorkflowSetupApply', () => {
 
 		const pendingApply = h.applyMachine.apply({});
 		await vi.advanceTimersByTimeAsync(60_000);
-		await pendingApply;
+		expect(await pendingApply).toBeUndefined();
 
 		expect(h.applyMachine.terminalState.value).toBeNull();
 		expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), 'Setup failed');
@@ -192,7 +192,7 @@ describe('useWorkflowSetupApply', () => {
 		expect(h.applyMachine.terminalState.value).toBe('applying');
 
 		h.unmount();
-		await pendingApply;
+		expect(await pendingApply).toBeUndefined();
 
 		expect(h.applyMachine.terminalState.value).toBeNull();
 		expect(toast.showError).not.toHaveBeenCalled();

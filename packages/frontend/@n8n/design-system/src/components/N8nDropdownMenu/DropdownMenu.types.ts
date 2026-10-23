@@ -76,6 +76,8 @@ export interface DropdownMenuExposed {
 	highlightFirstItem: () => void;
 	/** Handles menu navigation from an external text control. */
 	handleExternalKeydown: (event: KeyboardEvent) => boolean;
+	/** Moves focus to the rendered trigger element. */
+	focusTrigger: () => void;
 }
 
 export type DropdownMenuItemProps<T = string, D = never> = {
@@ -95,6 +97,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	checked?: boolean;
 	/** Keep the menu open after this item is selected (e.g. toggle rows). */
 	keepOpen?: boolean;
+	/** Prevent the menu from returning focus to its trigger after this item closes it. */
+	suppressCloseAutoFocus?: boolean;
 	/** Render as a non-interactive section header label instead of a selectable item. */
 	header?: boolean;
 	/** Whether to expose the item as a menu item checkbox */
@@ -134,6 +138,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	reference?: DropdownMenuContentProps['reference'];
 	/** When true (default), blocks interaction with the rest of the page while open (reka-ui sets pointer-events:none on body and locks scroll). */
 	modal?: boolean;
+	/** Prevents the menu from returning focus to its trigger when it closes. */
+	suppressCloseAutoFocus?: boolean;
 	/** Array of menu items to display */
 	items: Array<DropdownMenuItemProps<T, D>>;
 	/** The controlled open state of the dropdown. Can be bind as `v-model` */
@@ -194,7 +200,7 @@ export interface DropdownMenuEmits<T = string, D = never> {
 type SlotUiProps = { class: string };
 
 export interface DropdownMenuSlots<T = string, D = never> {
-	/** Custom trigger element (replaces default button) */
+	/** Replaces the default button with one focusable root that forwards attributes and listeners. */
 	trigger?: () => void;
 	/** Complete custom dropdown content (replaces item list) */
 	content?: () => void;

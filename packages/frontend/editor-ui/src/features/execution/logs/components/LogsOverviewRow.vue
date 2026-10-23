@@ -13,6 +13,7 @@ import {
 	getGroupTiming,
 	getSubtreeTotalConsumedTokens,
 	hasSubExecution,
+	isEmptyGroupLog,
 } from '@/features/execution/logs/logs.utils';
 import { useTimestamp } from '@vueuse/core';
 import {
@@ -22,7 +23,14 @@ import {
 	isNodeLog,
 } from '@/features/execution/logs/logs.types';
 
-import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 const props = defineProps<{
 	data: LogEntry;
@@ -48,6 +56,7 @@ const now = useTimestamp({ interval: 1000 });
 const nodeTypeStore = useNodeTypesStore();
 const nodeData = computed(() => (isNodeLog(props.data) ? props.data : undefined));
 const groupData = computed(() => (isGroupLog(props.data) ? props.data : undefined));
+const isEmptyGroup = computed(() => isEmptyGroupLog(props.data));
 const runData = computed(() => nodeData.value?.runData);
 const type = computed(() =>
 	nodeData.value ? nodeTypeStore.getNodeType(nodeData.value.node.type) : null,
@@ -128,7 +137,9 @@ const subtreeConsumedTokens = computed(() =>
 	props.shouldShowTokenCountColumn ? getSubtreeTotalConsumedTokens(props.data, false) : undefined,
 );
 
-const hasChildren = computed(() => props.data.children.length > 0 || hasSubExecution(props.data));
+const hasChildren = computed(
+	() => !isEmptyGroup.value && (props.data.children.length > 0 || hasSubExecution(props.data)),
+);
 
 const indents = computed(() => {
 	const ret: Array<{ straight: boolean; curved: boolean }> = [];
@@ -173,7 +184,7 @@ watch(
 		ref="containerRef"
 		role="treeitem"
 		tabindex="-1"
-		:aria-expanded="props.data.children.length > 0 && props.expanded"
+		:aria-expanded="isEmptyGroup ? undefined : props.data.children.length > 0 && props.expanded"
 		:aria-selected="props.isSelected"
 		:class="{
 			[$style.container]: true,
@@ -200,6 +211,15 @@ watch(
 			:is-error="isError"
 			:is-deleted="latestInfo?.deleted ?? false"
 		/>
+		<N8nBadge
+			v-if="isEmptyGroup"
+			theme="tertiary"
+			size="xsmall"
+			:class="$style.emptyGroupBadge"
+			data-test-id="logs-empty-group-badge"
+		>
+			{{ locale.baseText('logs.overview.body.emptyGroup') }}
+		</N8nBadge>
 		<N8nText v-if="!isCompact" tag="div" color="text-light" size="small" :class="$style.timeTook">
 			<I18nT v-if="timeText !== undefined" :keypath="statusTextKeyPath" scope="global">
 				<template #status>
@@ -400,6 +420,12 @@ watch(
 /* Groups have no icon, so inset the label to match where node labels start */
 .groupName {
 	padding-inline-start: var(--spacing--2xs);
+}
+
+.emptyGroupBadge {
+	flex-grow: 0;
+	flex-shrink: 0;
+	padding: 0 var(--spacing--4xs);
 }
 
 .timeTook {

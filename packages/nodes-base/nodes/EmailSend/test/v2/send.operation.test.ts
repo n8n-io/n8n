@@ -644,5 +644,41 @@ describe('Test EmailSendV2, send operation', () => {
 				}),
 			);
 		});
+
+		it('should send to every recipient when recipient fields are arrays', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce(['to1@example.com', 'to2@example.com'])
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({
+					appendAttribution: false,
+					ccEmail: ['cc1@example.com', 'cc2@example.com'],
+					bccEmail: ['bcc@example.com'],
+					replyTo: ['reply1@example.com', 'reply2@example.com'],
+				})
+				.mockReturnValueOnce('<p>Test HTML</p>');
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					to: 'to1@example.com, to2@example.com',
+					cc: 'cc1@example.com, cc2@example.com',
+					bcc: 'bcc@example.com',
+					replyTo: 'reply1@example.com, reply2@example.com',
+				}),
+			);
+		});
 	});
 });

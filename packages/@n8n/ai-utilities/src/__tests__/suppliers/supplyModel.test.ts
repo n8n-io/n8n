@@ -20,6 +20,7 @@ vi.mock('@langchain/openai', () => ({
 
 vi.mock('src/utils/http-proxy-agent', () => ({
 	getProxyAgent: vi.fn().mockReturnValue({ __agent: true }),
+	aiClientFetch: vi.fn(),
 }));
 
 vi.mock('src/utils/n8n-llm-tracing', () => ({
@@ -41,6 +42,7 @@ vi.mock('src/adapters/langchain-chat-model', () => ({
 const ChatOpenAI = vi.mocked(openai.ChatOpenAI);
 const LangchainChatModelAdapter = vi.mocked(langchainChatModelAdapter.LangchainChatModelAdapter);
 const getProxyAgent = vi.mocked(httpProxyAgent.getProxyAgent);
+const aiClientFetch = vi.mocked(httpProxyAgent.aiClientFetch);
 const makeN8nLlmFailedAttemptHandler = vi.mocked(
 	failedAttemptHandler.makeN8nLlmFailedAttemptHandler,
 );
@@ -82,6 +84,7 @@ describe('supplyModel', () => {
 					model: 'gpt-4',
 					apiKey: 'test-key',
 					configuration: expect.objectContaining({
+						fetch: aiClientFetch,
 						baseURL: 'https://api.openai.com',
 					}),
 					onFailedAttempt: expect.any(Function),

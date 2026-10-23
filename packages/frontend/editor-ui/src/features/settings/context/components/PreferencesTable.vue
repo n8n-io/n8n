@@ -1,14 +1,16 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nDataTableServer, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nDataTableServer, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
+
+import TimeAgo from '@/app/components/TimeAgo.vue';
 
 import PreferenceContentCell from './PreferenceContentCell.vue';
 import PreferenceScopeBadge from './PreferenceScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import type { Preference } from '../context.types';
-import { preferenceScope, toPreferencePermissions } from '../context.utils';
+import { preferenceCreatorLabel, preferenceScope, toPreferencePermissions } from '../context.utils';
 
 const props = defineProps<{
 	preferences: Preference[];
@@ -40,12 +42,13 @@ function isSelectable(preference: Preference) {
 
 const readOnlyHint = computed(() => i18n.baseText('settings.context.preferences.readOnly.tooltip'));
 
-// Sorting is off until the endpoints support ORDER BY. The widths act as ratios.
+// The widths are pixel sizes that sum to the table's minimum width, so a new column takes its
+// room from the others, not from the page.
 const headers = computed<Array<TableHeader<Preference>>>(() => [
 	{
 		title: i18n.baseText('settings.context.preferences.columns.preference'),
 		key: 'content',
-		width: 560,
+		width: 430,
 		disableSort: true,
 		resize: false,
 	},
@@ -54,8 +57,23 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 		// Not a column on the row: derived from the userId/projectId tri-state.
 		key: 'scope',
 		value: (row) => preferenceScope(row),
-		width: 400,
+		width: 220,
 		disableSort: true,
+		resize: false,
+	},
+	{
+		// Names the surface that wrote the row, so a person can recognise what a connected AI
+		// tool saved on their behalf and take it back.
+		title: i18n.baseText('settings.context.preferences.columns.createdBy'),
+		key: 'createdBy',
+		width: 180,
+		disableSort: true,
+		resize: false,
+	},
+	{
+		title: i18n.baseText('settings.context.preferences.columns.updatedAt'),
+		key: 'updatedAt',
+		width: 130,
 		resize: false,
 	},
 	{
@@ -75,6 +93,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 		<N8nDataTableServer
 			v-model:page="tableOptions.page"
 			v-model:items-per-page="tableOptions.itemsPerPage"
+			:sort-by="tableOptions.sortBy"
 			v-model:selection="selection"
 			:headers="headers"
 			:items="props.preferences"
@@ -96,6 +115,18 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 
 			<template #[`item.scope`]="{ item }">
 				<PreferenceScopeBadge :preference="item" />
+			</template>
+
+			<template #[`item.createdBy`]="{ item }">
+				<N8nText size="small" color="text-base" data-test-id="preference-created-by">
+					{{ preferenceCreatorLabel(i18n, item) }}
+				</N8nText>
+			</template>
+
+			<template #[`item.updatedAt`]="{ item }">
+				<N8nText size="small" color="text-base" data-test-id="preference-updated-at">
+					<TimeAgo :date="item.updatedAt" />
+				</N8nText>
 			</template>
 
 			<template #[`item.actions`]="{ item }">

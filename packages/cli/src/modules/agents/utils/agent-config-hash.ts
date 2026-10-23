@@ -1,4 +1,4 @@
-import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
 
@@ -25,6 +25,9 @@ export function getAgentConfigHash(config: AgentJsonConfig | null): string | nul
 	return getHash(config);
 }
 
-export function getAgentSkillHash(skill: AgentSkill): string {
-	return getHash(skill);
+export function isSameAgentConfig(a: unknown, b: unknown): boolean {
+	return getHash(a) === getHash(b);
 }
+
+/** The skills module owns the skill hash, so agents and skills APIs return the same value. */
+export { getSkillHash as getAgentSkillHash } from '@/modules/skills/skill-hash';

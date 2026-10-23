@@ -1,4 +1,8 @@
 import {
+	FavoriteResourceResolverRegistry,
+	type FavoriteResourceResolver,
+} from '@n8n/backend-services';
+import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	type FolderRepository,
@@ -9,15 +13,10 @@ import {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import type { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';
-import {
-	FavoriteResourceResolverRegistry,
-	type FavoriteResourceResolver,
-} from '../favorite-resource-resolver.registry';
 import { FavoritesService } from '../favorites.service';
 
 const makeUserFavorite = (overrides: Partial<UserFavorite> = {}): UserFavorite =>

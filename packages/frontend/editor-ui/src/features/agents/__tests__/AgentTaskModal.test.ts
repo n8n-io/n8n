@@ -6,12 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import AgentTaskModal from '../components/AgentTaskModal.vue';
 import { formatScheduleDateTime } from '../utils/scheduleBuilder';
+import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
 // Components use `data-testid`; the global setup configures `data-test-id`.
 configure({ testIdAttribute: 'data-testid' });
@@ -57,11 +57,6 @@ vi.mock('../composables/useAgentApi', () => ({
 	createAgentTask: (...args: unknown[]) => createAgentTaskSpy(...args),
 	deleteAgentTask: (...args: unknown[]) => deleteAgentTaskSpy(...args),
 	updateAgentTask: (...args: unknown[]) => updateAgentTaskSpy(...args),
-}));
-
-const confirmSpy = vi.fn();
-vi.mock('../composables/useAgentConfirmationModal', () => ({
-	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirmSpy }),
 }));
 
 const MODAL_NAME = 'AgentTaskModal';
@@ -124,11 +119,7 @@ const N8nFormInputStub = defineComponent({
 
 // Modal + Select/Option use filename-inferred names (no N8n prefix).
 const stubs = {
-	Modal: {
-		props: ['name', 'width'],
-		template:
-			'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
-	},
+	AgentModal: AgentModalTestStub,
 	N8nHeading: { template: '<h2><slot /></h2>' },
 	N8nText: { template: '<span v-bind="$attrs"><slot /></span>' },
 	N8nTooltip: { template: '<span><slot /></span>' },
@@ -146,10 +137,10 @@ const stubs = {
 			'<button v-bind="$attrs" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
 	},
 	AgentPreviewButton: {
-		props: ['isRunnable', 'testId', 'validationIssues'],
+		props: ['isRunnable', 'testId', 'validationIssues', 'variant'],
 		emits: ['open-preview'],
 		template:
-			'<button :data-testid="testId" :disabled="!isRunnable" @click="isRunnable && $emit(\'open-preview\')">Preview</button>',
+			'<button :data-testid="testId" :data-variant="variant" :disabled="!isRunnable" @click="isRunnable && $emit(\'open-preview\')">Preview</button>',
 	},
 	N8nInput: {
 		props: ['modelValue'],
@@ -213,7 +204,6 @@ describe('AgentTaskModal', () => {
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
-		confirmSpy.mockResolvedValue(MODAL_CONFIRM);
 	});
 
 	afterEach(() => {
@@ -229,7 +219,7 @@ describe('AgentTaskModal', () => {
 			'data-show-toolbar',
 			'floating',
 		);
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'My Task');
 		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
 		await fireEvent.click(getByTestId('agent-task-save'));
 
@@ -253,7 +243,7 @@ describe('AgentTaskModal', () => {
 		createAgentTaskSpy.mockResolvedValue({});
 		const { getByTestId } = renderModal({ isPublished: false });
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'My Task');
 		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
 		await fireEvent.click(getByTestId('agent-task-save'));
 
@@ -278,7 +268,7 @@ describe('AgentTaskModal', () => {
 			ensureAgentPersisted,
 		});
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'My Task');
 		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
 		await fireEvent.click(getByTestId('agent-task-save'));
 
@@ -309,7 +299,7 @@ describe('AgentTaskModal', () => {
 			ensureAgentPersisted,
 		});
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'My Task');
 		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
 		await fireEvent.click(getByTestId('agent-task-save'));
 
@@ -334,7 +324,7 @@ describe('AgentTaskModal', () => {
 	it('does not save when objective exceeds the maximum length', async () => {
 		const { getByTestId, getByText } = renderModal();
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'My Task');
 		await fireEvent.update(
 			getByTestId('agent-task-objective-input'),
 			'x'.repeat(AGENT_TASK_OBJECTIVE_MAX_LENGTH + 1),
@@ -373,7 +363,7 @@ describe('AgentTaskModal', () => {
 		updateAgentTaskSpy.mockResolvedValue({});
 		const { getByTestId } = renderModal({ task: makeTask() });
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'Renamed');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Renamed');
 		await fireEvent.click(getByTestId('agent-task-save'));
 
 		await waitFor(() => expect(updateAgentTaskSpy).toHaveBeenCalled());
@@ -386,30 +376,20 @@ describe('AgentTaskModal', () => {
 		);
 	});
 
-	it('pauses and unpauses an existing task with the inline toggle', async () => {
-		const onToggle = vi.fn();
-		const { getByTestId, getByText, queryByText } = renderModal({
+	it('allows manual Preview of a deactivated schedule without a modal toggle', async () => {
+		const onPreview = vi.fn();
+		const { getByTestId, queryByTestId, getByText } = renderModal({
 			task: makeTask(),
-			taskState: { enabled: true },
-			onToggle,
+			taskState: { enabled: false },
+			isRunnable: true,
+			onPreview,
 		});
 
-		expect(getByTestId('agent-task-pause-control')).toHaveTextContent('agents.builder.tasks.pause');
-		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
-		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
+		expect(queryByTestId('agent-task-toggle')).not.toBeInTheDocument();
+		expect(getByText(/agents\.builder\.capabilities\.deactivated/)).toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-task-preview'));
 
-		await fireEvent.click(getByTestId('agent-task-toggle'));
-
-		expect(onToggle).toHaveBeenCalledWith({ id: 'task-9', enabled: false });
-		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'true');
-		expect(queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).not.toBeInTheDocument();
-		expect(getByText('agents.builder.tasks.schedule.executionPaused')).toBeInTheDocument();
-
-		await fireEvent.click(getByTestId('agent-task-toggle'));
-
-		expect(onToggle).toHaveBeenLastCalledWith({ id: 'task-9', enabled: true });
-		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
-		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
+		expect(onPreview).toHaveBeenCalledWith('Obj');
 	});
 
 	describe('schedule timezone', () => {
@@ -490,7 +470,7 @@ describe('AgentTaskModal', () => {
 
 			const { getByTestId } = renderModal({ task: makeTask({ timezone: null }) });
 
-			await fireEvent.update(getByTestId('agent-task-name-input'), 'Renamed');
+			await fireEvent.update(getByTestId('agent-modal-title-input'), 'Renamed');
 			await fireEvent.click(getByTestId('agent-task-save'));
 
 			// Editing anything else must not pin the task, or a later change to the
@@ -573,7 +553,7 @@ describe('AgentTaskModal', () => {
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
 	});
 
-	it('deletes an existing task after confirmation', async () => {
+	it('removes an existing task immediately', async () => {
 		deleteAgentTaskSpy.mockResolvedValue({ success: true });
 		const { getByTestId, onSaved } = renderModal({
 			task: makeTask(),
@@ -594,11 +574,16 @@ describe('AgentTaskModal', () => {
 			isRunnable: true,
 		});
 
-		expect(getByTestId('agent-task-delete')).toHaveTextContent('generic.delete');
-		expect(getByTestId('agent-task-pause-control')).toBeInTheDocument();
-		expect(getByTestId('agent-task-toggle')).toBeInTheDocument();
+		expect(getByTestId('agent-task-delete')).toHaveTextContent('agents.builder.tasks.delete');
+		expect(queryByTestId('agent-task-toggle')).not.toBeInTheDocument();
 		expect(getByTestId('agent-task-preview')).toHaveTextContent('Preview');
+		expect(getByTestId('agent-task-preview')).toHaveAttribute('data-variant', 'ghost');
 		expect(getByTestId('agent-task-save')).toHaveTextContent('generic.save');
+		expect(
+			Array.from(getByTestId('agent-modal-footer-actions').querySelectorAll('button')).map(
+				(button) => button.dataset.testid,
+			),
+		).toEqual(['agent-task-preview', 'agent-modal-cancel', 'agent-task-save']);
 		expect(queryByTestId('agent-task-run')).not.toBeInTheDocument();
 
 		await rerender({

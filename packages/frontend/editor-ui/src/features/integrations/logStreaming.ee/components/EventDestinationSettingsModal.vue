@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, useTemplateRef, watch } from 'vue';
 import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
@@ -29,7 +30,8 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
-import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { LOG_STREAM_MODAL_KEY } from '../modals';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
@@ -40,6 +42,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/app/components/SaveButton.vue';
 import EventSelection from './EventSelection.vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
@@ -78,6 +81,7 @@ const { modalName, destination, isNew, eventBus } = props;
 
 const i18n = useI18n();
 const { confirm } = useMessage();
+const { showError } = useToast();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
 // The log-streaming settings modal can open outside the workflow editor, where
@@ -92,6 +96,10 @@ const unchanged = ref(!isNew);
 const activeTab = ref('settings');
 const hasOnceBeenSaved = ref(!isNew);
 const isSaving = ref(false);
+let modalClosed = false;
+onBeforeUnmount(() => {
+	modalClosed = true;
+});
 const isDeleting = ref(false);
 const loading = ref(false);
 const typeSelectValue = ref('');
@@ -328,9 +336,11 @@ async function removeThis() {
 }
 
 function onModalClose() {
+	modalClosed = true;
 	if (!hasOnceBeenSaved.value) {
 		workflowDocumentStore.value.removeNode(node.value);
-		if (nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
+		// A pending first save decides whether the new destination stays in the list.
+		if (!isSaving.value && nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
@@ -340,20 +350,30 @@ function onModalClose() {
 }
 
 async function saveDestination() {
-	if (unchanged.value || !destination.id || !isFormValid.value) {
+	if (modalClosed || isSaving.value || unchanged.value || !destination.id || !isFormValid.value) {
 		return;
 	}
-	const saveResult = await logStreamingStore.saveDestination(nodeParameters.value);
-	if (saveResult) {
-		hasOnceBeenSaved.value = true;
-		testMessageSent.value = false;
-		unchanged.value = true;
+	const submittedParameters = deepCopy(nodeParameters.value);
+	const submittedEvents = logStreamingStore.getSelectedEvents(destination.id);
+	isSaving.value = true;
+	try {
+		const saveResult = await logStreamingStore.saveDestination(submittedParameters);
+		if (!saveResult) return;
+
+		// Cards refresh their copy from this event, so it must fire even after close.
 		callEventBus('destinationWasSaved', destination.id);
-		uiStore.markStateClean();
+		if (!modalClosed) {
+			hasOnceBeenSaved.value = true;
+			testMessageSent.value = false;
+			unchanged.value =
+				isEqual(nodeParameters.value, submittedParameters) &&
+				isEqual(logStreamingStore.getSelectedEvents(destination.id), submittedEvents);
+			if (unchanged.value) uiStore.markStateClean();
+		}
 
 		const destinationType = (
-			nodeParameters.value.__type && typeof nodeParameters.value.__type !== 'object'
-				? `${nodeParameters.value.__type}`
+			submittedParameters.__type && typeof submittedParameters.__type !== 'object'
+				? `${submittedParameters.__type}`
 				: 'unknown'
 		)
 			.replace('$MessageEventBusDestination', '')
@@ -362,9 +382,19 @@ async function saveDestination() {
 		telemetry.track('User updated log streaming destination', {
 			instance_id: useRootStore().instanceId,
 			destination_type: destinationType,
-			is_complete: isDestinationComplete(nodeParameters.value),
-			is_active: destination.enabled,
+			is_complete: isDestinationComplete(submittedParameters),
+			is_active: submittedParameters.enabled,
 		});
+	} catch (error) {
+		// A reopened modal or the card swaps the stored object, so then the item is no longer ours.
+		const ownsStoreItem =
+			toRaw(logStreamingStore.items[destination.id]?.destination) === toRaw(nodeParameters.value);
+		if (modalClosed && !hasOnceBeenSaved.value && ownsStoreItem) {
+			logStreamingStore.removeDestination(destination.id);
+		}
+		showError(error, i18n.baseText('settings.log-streaming.destinationSave.error'));
+	} finally {
+		isSaving.value = false;
 	}
 }
 
@@ -414,7 +444,7 @@ const { width } = useElementSize(defNameRef);
 					</div>
 					<div :class="$style.destinationActions">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
 							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
 							:title="
@@ -429,7 +459,7 @@ const { width } = useElementSize(defNameRef);
 						/>
 						<template v-if="canManageLogStreaming">
 							<N8nIconButton
-								variant="subtle"
+								variant="outline"
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="i18n.baseText('settings.log-streaming.delete')"
 								icon="trash-2"
@@ -440,6 +470,7 @@ const { width } = useElementSize(defNameRef);
 							/>
 							<SaveButton
 								:saved="unchanged && hasOnceBeenSaved"
+								:is-saving="isSaving"
 								:disabled="unchanged || !isFormValid"
 								:saving-label="i18n.baseText('settings.log-streaming.saving')"
 								data-test-id="destination-save-button"
@@ -599,7 +630,7 @@ const { width } = useElementSize(defNameRef);
 
 .cardTitle {
 	font-size: 14px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .header {

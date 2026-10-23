@@ -165,6 +165,7 @@ function toNewOccurrences(planned: PlannedJob[], now: Date): NewOccurrence[] {
 				scheduledFor: when,
 				runAt,
 				maxAttempts: job.maxAttempts,
+				timeoutSeconds: job.timeoutSeconds,
 				missedAfter: new Date(visibleAt + job.misfireGraceSeconds * Time.seconds.toMilliseconds),
 			};
 		}),

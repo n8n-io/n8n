@@ -16,9 +16,8 @@ import { generateSchemaFromExample } from './generateSchemaFromExample';
 /** Description fields that are identical across versions. */
 export const sharedVersionDescription: Pick<
 	INodeTypeDescription,
-	'hidden' | 'defaults' | 'codex' | 'usableAsTool' | 'inputs' | 'outputs'
+	'defaults' | 'codex' | 'usableAsTool' | 'inputs' | 'outputs'
 > = {
-	hidden: true,
 	defaults: {
 		name: 'Message an Agent',
 	},

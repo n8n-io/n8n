@@ -27,7 +27,7 @@ describe('workflowHandler', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							args: {},
 							result: { workflowId: 'wf-from-tool-call' },
 							isLoading: false,

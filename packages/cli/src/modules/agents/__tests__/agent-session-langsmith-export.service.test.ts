@@ -4,7 +4,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { AiService } from '@/services/ai.service';
 
 import { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
@@ -229,6 +229,27 @@ describe('AgentSessionLangSmithExportService', () => {
 				name: 'Background task results received',
 				run_type: 'chain',
 				inputs: { tasks },
+			}),
+		);
+	});
+
+	it('exports additional input from its canonical message reference', async () => {
+		const message = {
+			id: 'steered',
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'Use the newer file' }],
+		};
+		const { service } = setupSession(
+			makeExecution({
+				inputMessages: [message],
+				timeline: [{ type: 'input', messageId: message.id, timestamp: 100 }],
+			}),
+		);
+		await service.exportSession(input);
+		expect(submittedRuns()).toContainEqual(
+			expect.objectContaining({
+				name: 'Additional user input',
+				inputs: { message },
 			}),
 		);
 	});

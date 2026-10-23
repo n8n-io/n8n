@@ -1,12 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { DynamicTool } from '@langchain/core/tools';
-import {
-	CredentialsRepository,
-	SharedCredentialsRepository,
-	type CredentialsEntity,
-	type SharedCredentials,
-} from '@n8n/db';
+import { CredentialAccessRepository, CredentialsRepository, type CredentialsEntity } from '@n8n/db';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	Expression,
@@ -21,6 +16,8 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import {
 	AGENT_PROVIDER_NODE_WHITELIST,
@@ -95,8 +92,9 @@ describe('isAgentProviderNode', () => {
 describe('EphemeralNodeExecutor', () => {
 	const nodeTypes = mockInstance(NodeTypes);
 	const credentialsRepository = mockInstance(CredentialsRepository);
-	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
+	const credentialAccessRepository = mockInstance(CredentialAccessRepository);
 	const logger = mockInstance(Logger);
+	const policyEnforcementService = mockInstance(PolicyEnforcementService);
 	// Node execution constructs `SSHClientsManager` via DI, whose constructor does
 	// `logger.scoped(...)` and registers a `process.on('exit')` shutdown handler. Without a real
 	// return here, `scoped()` is undefined and the handler throws at worker teardown — an uncaught
@@ -106,8 +104,9 @@ describe('EphemeralNodeExecutor', () => {
 	const executor = new EphemeralNodeExecutor(
 		nodeTypes,
 		credentialsRepository,
-		sharedCredentialsRepository,
 		logger,
+		policyEnforcementService,
+		credentialAccessRepository,
 	);
 
 	const toolDescription: INodeTypeDescription = {
@@ -126,6 +125,7 @@ describe('EphemeralNodeExecutor', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockGetBase.mockResolvedValue({});
+		credentialAccessRepository.findCredentialNames.mockResolvedValue([]);
 	});
 
 	describe('validateNodeForExecution (via executeInline)', () => {
@@ -151,6 +151,30 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.error).toContain('Node is not usable as a tool');
 			expect(result.error).toContain('n8n-nodes-base.notATool');
 			expect(result.data).toEqual([]);
+		});
+
+		it('formats a non-Error validation failure', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw 'unknown node';
+			});
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.missing',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result).toEqual({
+				status: 'error',
+				data: [],
+				error: 'Cannot execute node "n8n-nodes-base.missing": unknown node',
+			});
+			expect(logger.debug).toHaveBeenCalledWith('Node execution validation failed', {
+				nodeType: 'n8n-nodes-base.missing',
+				error: 'unknown node',
+			});
 		});
 
 		it('returns a structured error when the node is a trigger', async () => {
@@ -287,7 +311,7 @@ describe('EphemeralNodeExecutor', () => {
 
 		it('throws when no matching credential is found for the project', async () => {
 			mockToolNodeWithSupplyData();
-			credentialsRepository.findAllCredentialsForProject.mockResolvedValue([]);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
 
 			await expect(
 				executor.executeInline({
@@ -303,7 +327,7 @@ describe('EphemeralNodeExecutor', () => {
 
 		it('throws when multiple credentials match the same type + name (case-insensitive)', async () => {
 			mockToolNodeWithSupplyData();
-			credentialsRepository.findAllCredentialsForProject.mockResolvedValue([
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
 				mock<CredentialsEntity>({ id: 'c1', name: 'Prod Slack', type: 'slackApi' }),
 				mock<CredentialsEntity>({ id: 'c2', name: 'prod slack', type: 'slackApi' }),
 			]);
@@ -320,6 +344,33 @@ describe('EphemeralNodeExecutor', () => {
 			).rejects.toThrow(/Multiple credentials match/);
 		});
 
+		it('resolves a usable credential by type and name', async () => {
+			let observedCredentials: Record<string, INodeCredentialsDetails> | undefined;
+			const supplyData = vi.fn(function (this: ISupplyDataFunctions) {
+				observedCredentials = this.getNode().credentials;
+				return { response: { invoke: vi.fn().mockResolvedValue('ok') } };
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
+				{ id: 'c1', name: 'Global Slack', type: 'slackApi' },
+			]);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentials: { slackApi: 'global slack' },
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+			expect(credentialsRepository.findCredentialsUsableInProject).toHaveBeenCalledWith('p-1');
+			expect(observedCredentials).toEqual({ slackApi: { id: 'c1', name: 'Global Slack' } });
+		});
+
 		it('skips resolution when no credentials are requested', async () => {
 			mockToolNodeWithSupplyData();
 
@@ -331,7 +382,7 @@ describe('EphemeralNodeExecutor', () => {
 				projectId: 'p-1',
 			});
 
-			expect(credentialsRepository.findAllCredentialsForProject).not.toHaveBeenCalled();
+			expect(credentialsRepository.findCredentialsUsableInProject).not.toHaveBeenCalled();
 		});
 	});
 
@@ -346,6 +397,36 @@ describe('EphemeralNodeExecutor', () => {
 				}),
 			);
 		}
+
+		it('executes an accessible credential by ID and uses its current name', async () => {
+			let observedCredentials: Record<string, INodeCredentialsDetails> | undefined;
+			const supplyData = vi.fn(function (this: ISupplyDataFunctions) {
+				observedCredentials = this.getNode().credentials;
+				return { response: { invoke: vi.fn().mockResolvedValue('ok') } };
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
+				{ id: 'c1', name: 'Current Slack', type: 'slackApi' },
+			]);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentialDetails: { slackApi: { id: 'c1', name: 'Old Slack' } },
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+			expect(credentialsRepository.findCredentialsUsableInProject).toHaveBeenCalledWith('p-1', [
+				'c1',
+			]);
+			expect(observedCredentials).toEqual({ slackApi: { id: 'c1', name: 'Current Slack' } });
+			expect(credentialAccessRepository.findCredentialNames).not.toHaveBeenCalled();
+		});
 
 		it('throws when credentialDetails are missing an id', async () => {
 			mockToolNodeWithSupplyData();
@@ -363,33 +444,53 @@ describe('EphemeralNodeExecutor', () => {
 			).rejects.toThrow(/missing an id/);
 		});
 
-		it('throws when the credential is not shared with the project', async () => {
+		it('reports only the credential ID when the credential no longer exists', async () => {
 			mockToolNodeWithSupplyData();
-			sharedCredentialsRepository.findOne.mockResolvedValue(null);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
 
 			await expect(
 				executor.executeInline({
 					nodeType: 'n8n-nodes-base.slack',
 					nodeTypeVersion: 1,
 					nodeParameters: {},
-					credentialDetails: { slackApi: { id: 'c1', name: 'Prod Slack' } },
+					credentialDetails: { slackApi: { id: 'c1', name: 'Old Slack' } },
 					inputData: [],
 					projectId: 'p-1',
 				}),
-			).rejects.toThrow(/not accessible or does not exist/);
+			).rejects.toThrow('Credential with ID "c1" is not accessible or does not exist.');
+		});
+
+		it('reports the current name and ID when a renamed credential is not accessible', async () => {
+			mockToolNodeWithSupplyData();
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
+			credentialAccessRepository.findCredentialNames.mockResolvedValue([
+				{ id: 'c1', name: 'Current Slack' },
+			]);
+
+			await expect(
+				executor.executeInline({
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					credentialDetails: { slackApi: { id: 'c1', name: 'Old Slack' } },
+					inputData: [],
+					projectId: 'p-1',
+				}),
+			).rejects.toThrow(
+				'Credential "Current Slack" with ID "c1" is not accessible or does not exist.',
+			);
+			expect(credentialAccessRepository.findCredentialNames).toHaveBeenCalledWith(['c1']);
 		});
 
 		it('throws when the resolved credential has a different type than the slot', async () => {
 			mockToolNodeWithSupplyData();
-			sharedCredentialsRepository.findOne.mockResolvedValue(
-				mock<SharedCredentials>({
-					credentials: mock<CredentialsEntity>({
-						id: 'c1',
-						name: 'Prod Slack',
-						type: 'gmailOAuth2', // wrong type for slackApi slot
-					}),
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
+				mock<CredentialsEntity>({
+					id: 'c1',
+					name: 'Prod Slack',
+					type: 'gmailOAuth2', // wrong type for slackApi slot
 				}),
-			);
+			]);
 
 			await expect(
 				executor.executeInline({
@@ -420,7 +521,7 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.status).toBe('success');
 			// Managed credentials are minted per execution (CredentialsHelper.getDecrypted),
 			// so there is no stored row to resolve — the project lookup must be skipped.
-			expect(sharedCredentialsRepository.findOne).not.toHaveBeenCalled();
+			expect(credentialsRepository.findCredentialsUsableInProject).not.toHaveBeenCalled();
 		});
 	});
 
@@ -449,26 +550,30 @@ describe('EphemeralNodeExecutor', () => {
 			});
 		});
 
-		it('returns an error result when the supplyData tool invocation throws', async () => {
-			const invoke = vi.fn().mockRejectedValue(new Error('upstream 500'));
-			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mockNodeType({
-					description: toolDescription,
-					supplyData: vi.fn().mockResolvedValue({ response: { invoke } }),
-				}),
-			);
+		it.each([new Error('upstream 500'), 'upstream 500'])(
+			'returns an error result when the supplyData tool invocation throws %s',
+			async (error) => {
+				const invoke = vi.fn().mockRejectedValue(error);
+				nodeTypes.getByNameAndVersion.mockReturnValue(
+					mockNodeType({
+						description: toolDescription,
+						supplyData: vi.fn().mockResolvedValue({ response: { invoke } }),
+					}),
+				);
 
-			const result = await executor.executeInline({
-				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
-				nodeTypeVersion: 1,
-				nodeParameters: {},
-				inputData: [{ json: {} }],
-				projectId: 'p-1',
-			});
+				const result = await executor.executeInline({
+					nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					inputData: [{ json: {} }],
+					projectId: 'p-1',
+				});
 
-			expect(result.status).toBe('error');
-			expect(result.error).toBe('upstream 500');
-		});
+				expect(result.status).toBe('error');
+				expect(result.error).toBe('upstream 500');
+				expect(result).not.toHaveProperty('violations');
+			},
+		);
 
 		it('returns an error result when the node does not expose a valid LangChain tool', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
@@ -612,24 +717,28 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result).toEqual({ status: 'success', data: [{ json: { ok: true, count: 3 } }] });
 		});
 
-		it('returns an error result when nodeType.execute throws', async () => {
-			const execute = vi.fn().mockRejectedValue(new Error('upstream 500'));
-			nodeTypes.getByNameAndVersion.mockReturnValue({
-				description: toolDescription,
-				execute,
-			} as unknown as INodeType);
+		it.each([new Error('upstream 500'), 'upstream 500'])(
+			'returns an error result when nodeType.execute throws %s',
+			async (error) => {
+				const execute = vi.fn().mockRejectedValue(error);
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: toolDescription,
+					execute,
+				} as unknown as INodeType);
 
-			const result = await executor.executeInline({
-				nodeType: 'n8n-nodes-base.slack',
-				nodeTypeVersion: 1,
-				nodeParameters: {},
-				inputData: [],
-				projectId: 'p-1',
-			});
+				const result = await executor.executeInline({
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					inputData: [],
+					projectId: 'p-1',
+				});
 
-			expect(result.status).toBe('error');
-			expect(result.error).toBe('upstream 500');
-		});
+				expect(result.status).toBe('error');
+				expect(result.error).toBe('upstream 500');
+				expect(result).not.toHaveProperty('violations');
+			},
+		);
 
 		it('returns an error when execute resolves without an output array', async () => {
 			// Downstream consumers expect NodeExecutionData[] — resolving with
@@ -673,6 +782,136 @@ describe('EphemeralNodeExecutor', () => {
 		});
 	});
 
+	describe('node type policy', () => {
+		const blocked = () =>
+			new PolicyViolationError([
+				{
+					kind: 'node-type-unavailable',
+					checkId: 'node-type-availability',
+					message: 'Node type "n8n-nodes-base.dateTimeTool" is blocked by an instance policy',
+					subject: 'n8n-nodes-base.dateTimeTool',
+					subjectType: 'nodeType',
+					scope: 'instance',
+				},
+			]);
+
+		// The workflow it calls is policed when it starts; the stand-in node never runs.
+		it('does not police an expression evaluation, which runs no node', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+			} as unknown as INodeType);
+
+			await expect(
+				executor.evaluateExpressions(
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.toolWorkflow',
+						nodeTypeVersion: 2.2,
+						nodeParameters: {},
+						projectId: 'p-1',
+					},
+					{},
+					[],
+				),
+			).resolves.toEqual({});
+			expect(policyEnforcementService.enforceWorkflowStart).not.toHaveBeenCalled();
+		});
+
+		it('polices the node as a one-node workflow in the tool project', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute: vi.fn().mockResolvedValue([[{ json: { ok: true } }]]),
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.dateTimeTool',
+				nodeTypeVersion: 2,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(policyEnforcementService.enforceWorkflowStart).toHaveBeenCalledWith(
+				{
+					workflow: {
+						id: null,
+						name: 'Target Node',
+						nodes: [
+							expect.objectContaining({ type: 'n8n-nodes-base.dateTimeTool', typeVersion: 2 }),
+						],
+						artifactKind: 'agent',
+					},
+					projectId: 'p-1',
+				},
+				{ kind: 'system', reason: 'execution' },
+			);
+		});
+
+		it("returns a tool error carrying the refusal's violations, and never runs a blocked node", async () => {
+			const execute = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+			const refusal = blocked();
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(refusal);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.dateTimeTool',
+				nodeTypeVersion: 2,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(result).toEqual({
+				status: 'error',
+				data: [],
+				error: expect.stringContaining('is blocked by an instance policy'),
+				violations: refusal.violations,
+			});
+			expect(execute).not.toHaveBeenCalled();
+		});
+
+		it("never runs supplyData for a blocked native tool node, and carries the refusal's violations", async () => {
+			const supplyData = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			const refusal = blocked();
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(refusal);
+
+			const result = await executor.executeInline({
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [{ json: { input: 'n8n' } }],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('error');
+			expect(result.violations).toEqual(refusal.violations);
+			expect(supplyData).not.toHaveBeenCalled();
+		});
+
+		it('skips schema introspection for a blocked node instead of failing the agent build', async () => {
+			const supplyData = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(blocked());
+
+			const result = await executor.introspectSupplyDataToolSchema({
+				projectId: 'p-1',
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+			});
+
+			expect(result).toBeNull();
+			expect(supplyData).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('introspectSupplyDataToolSchema', () => {
 		it('returns the schema a structured tool exposes', async () => {
 			const schema = { type: 'object', properties: { query: { type: 'string' } } };
@@ -700,7 +939,29 @@ describe('EphemeralNodeExecutor', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mockNodeType({ description: toolDescription, supplyData }),
 			);
-			sharedCredentialsRepository.findOne.mockResolvedValue(null);
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
+			credentialAccessRepository.findCredentialNames.mockResolvedValue([
+				{ id: 'c1', name: 'Current Slack' },
+			]);
+
+			const result = await executor.introspectSupplyDataToolSchema({
+				projectId: 'p-1',
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentials: { slackApi: { id: 'c1', name: 'Old Slack' } },
+			});
+
+			expect(result).toBeNull();
+			expect(supplyData).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith('supplyData tool introspection failed', {
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				error: 'Credential "Current Slack" with ID "c1" is not accessible or does not exist.',
+			});
+		});
+
+		it('logs a non-Error credential lookup failure during introspection', async () => {
+			credentialsRepository.findCredentialsUsableInProject.mockRejectedValue('lookup failed');
 
 			const result = await executor.introspectSupplyDataToolSchema({
 				projectId: 'p-1',
@@ -711,10 +972,9 @@ describe('EphemeralNodeExecutor', () => {
 			});
 
 			expect(result).toBeNull();
-			expect(supplyData).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith('supplyData tool introspection failed', {
 				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
-				error: expect.stringMatching(/not accessible or does not exist/),
+				error: 'lookup failed',
 			});
 		});
 
@@ -728,15 +988,13 @@ describe('EphemeralNodeExecutor', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mockNodeType({ description: toolDescription, supplyData }),
 			);
-			sharedCredentialsRepository.findOne.mockResolvedValue(
-				mock<SharedCredentials>({
-					credentials: mock<CredentialsEntity>({
-						id: 'c1',
-						name: 'Prod Slack',
-						type: 'slackApi',
-					}),
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([
+				mock<CredentialsEntity>({
+					id: 'c1',
+					name: 'Prod Slack',
+					type: 'slackApi',
 				}),
-			);
+			]);
 
 			const result = await executor.introspectSupplyDataToolSchema({
 				projectId: 'p-1',
@@ -899,7 +1157,7 @@ describe('EphemeralNodeExecutor', () => {
 		});
 	});
 
-	it('resolves expressions when invoking a supplyData tool with the VM engine', async () => {
+	it('resolves expressions in standalone tool contexts with the VM engine', async () => {
 		await Expression.initExpressionEngine({
 			engine: 'vm',
 			bridgeTimeout: 1000,
@@ -945,6 +1203,38 @@ describe('EphemeralNodeExecutor', () => {
 				status: 'success',
 				data: [{ json: { response: 2 } }],
 			});
+
+			mockGetBase.mockResolvedValue({ variables: { increment: '3' } });
+			const tool = {
+				nodeType: '@n8n/n8n-nodes-langchain.toolWorkflow',
+				nodeTypeVersion: 2.2,
+				nodeParameters: {},
+				projectId: 'p-1',
+			};
+			await expect(
+				executor.evaluateExpressions(
+					tool,
+					{
+						count: '={{ $json.count + Number($vars.increment) }}',
+						options: '={{ { enabled: true, items: [1, 2] } }}',
+						date: '={{ $now.toISODate() }}',
+					},
+					[{ json: { count: 4 } }],
+				),
+			).resolves.toEqual({
+				count: 7,
+				options: { enabled: true, items: [1, 2] },
+				date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+			});
+			await expect(
+				executor.evaluateExpressions(tool, { broken: '={{ 1 + }}' }, []),
+			).rejects.toThrow('Cannot resolve input "broken"');
+			// A failed expression must release the single isolate for the next call.
+			await expect(
+				executor.evaluateExpressions(tool, { count: '={{ $json.count }}' }, [
+					{ json: { count: 9 } },
+				]),
+			).resolves.toEqual({ count: 9 });
 		} finally {
 			await Expression.disposeExpressionEngine();
 		}

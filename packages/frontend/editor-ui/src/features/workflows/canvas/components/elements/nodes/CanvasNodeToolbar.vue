@@ -10,6 +10,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -42,7 +43,7 @@ const $style = useCssModule();
 const i18n = useI18n();
 
 const { isExecuting, isExperimentalNdvActive } = useCanvas();
-const { isDisabled, render, name } = useCanvasNode();
+const { isDisabled, render, name, isDeprecated } = useCanvasNode();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -54,6 +55,11 @@ const focusedNodesStore = useFocusedNodesStore();
 const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
 const isNodeContextEnabled = useIsNodeContextEnabled();
 
+const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	() => workflowDocumentStore?.value?.usedCredentials,
+	() => workflowDocumentStore?.value?.allNodes,
+);
+
 const node = computed(() =>
 	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,
 );
@@ -61,6 +67,14 @@ const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node
 
 const nodeDisabledTitle = computed(() => {
 	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
+});
+
+const executeNodeTooltip = computed(() => {
+	if (unusableCredentialReason.value) return unusableCredentialReason.value;
+
+	return isDisabled.value
+		? i18n.baseText('ndv.execute.deactivated')
+		: i18n.baseText('node.testStep');
 });
 
 const isStickyColorSelectorOpen = ref(false);
@@ -75,6 +89,10 @@ const classes = computed(() => ({
 
 const isExecuteNodeVisible = computed(() => {
 	if (props.readOnly && !props.canExecute) {
+		return false;
+	}
+
+	if (isDeprecated.value) {
 		return false;
 	}
 
@@ -94,6 +112,7 @@ const isExecuteNodeVisible = computed(() => {
 const isDisableNodeVisible = computed(
 	() =>
 		!props.readOnly &&
+		!isDeprecated.value &&
 		(render.value.type === CanvasNodeRenderType.Default ||
 			render.value.type === CanvasNodeRenderType.Agent),
 );
@@ -183,19 +202,13 @@ function onAddToChat() {
 		@click.stop
 	>
 		<div :class="[$style.canvasNodeToolbarItems, itemsClass]">
-			<N8nTooltip
-				v-if="isExecuteNodeVisible"
-				placement="top"
-				:content="
-					isDisabled ? i18n.baseText('ndv.execute.deactivated') : i18n.baseText('node.testStep')
-				"
-			>
+			<N8nTooltip v-if="isExecuteNodeVisible" placement="top" :content="executeNodeTooltip">
 				<N8nIconButton
 					variant="ghost"
 					data-test-id="execute-node-button"
 					size="small"
 					icon="node-play"
-					:disabled="isExecuting || isDisabled"
+					:disabled="isExecuting || isDisabled || !!unusableCredentialReason"
 					:aria-label="i18n.baseText('node.testStep')"
 					@click.stop="executeNode"
 				/>
@@ -228,7 +241,7 @@ function onAddToChat() {
 				v-if="isFocusNodeVisible"
 				variant="ghost"
 				size="small"
-				icon="crosshair"
+				icon="node-focus"
 				:aria-label="i18n.baseText('node.focusNode')"
 				@click.stop="onFocusNode"
 			/>
@@ -243,7 +256,7 @@ function onAddToChat() {
 					variant="ghost"
 					size="small"
 					text
-					icon="sparkles"
+					icon="node-sparkle"
 					:aria-label="i18n.baseText('node.addToAi')"
 					@click.stop="onAddToAi"
 				/>
@@ -258,7 +271,7 @@ function onAddToChat() {
 					variant="ghost"
 					size="small"
 					text
-					icon="sparkles"
+					icon="node-sparkle"
 					:aria-label="i18n.baseText('node.addToChat')"
 					@click.stop="onAddToChat"
 				/>

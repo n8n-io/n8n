@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+// EOF Experiment cleanup
+
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -94,7 +98,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
 		position: 'bottom',
-		label: 'Admin Panel',
+		label: i18n.baseText('mainSidebar.cloudConsole'),
 		icon: 'cloud',
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
@@ -110,7 +114,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to in-app templates, available if custom templates are enabled and resource center is disabled
 		id: 'templates',
-		icon: 'package-open',
+		icon: 'grid-2x2',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
@@ -122,7 +126,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to website templates, available if custom templates host is not configured and resource center is disabled
 		id: 'templates',
-		icon: 'package-open',
+		icon: 'grid-2x2',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
@@ -162,7 +166,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 			{
 				id: 'docs',
-				icon: 'book',
+				icon: 'book-open',
 				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
 				link: {
 					href: EXTERNAL_LINKS.DOCUMENTATION,
@@ -171,7 +175,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 			{
 				id: 'forum',
-				icon: 'users',
+				icon: 'book',
 				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
 				link: {
 					href: EXTERNAL_LINKS.FORUM,
@@ -217,7 +221,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'settings',
 		label: i18n.baseText('mainSidebar.settings'),
-		icon: 'settings',
+		icon: 'wrench',
 		available: true,
 		children: settingsItems.value,
 	},
@@ -396,6 +400,9 @@ useKeybindings({
 				/>
 			</N8nScrollArea>
 		</div>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<ClaudeEntryPoint placement="sidebar" :collapsed="isCollapsed" />
+		<!-- EOF Experiment cleanup -->
 		<BottomMenu
 			:items="visibleMenuItems"
 			:is-collapsed="isCollapsed"

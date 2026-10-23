@@ -58,6 +58,7 @@ describe('AgentsCredentialProvider', () => {
 				currentUserHasAccess: true,
 				homeProject: null,
 				sharedWithProjects: [],
+				sharedRoute: 'project',
 			},
 		]);
 
@@ -68,6 +69,7 @@ describe('AgentsCredentialProvider', () => {
 		]);
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: 'project-1',
+			excludePersonalRoute: true,
 		});
 		expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
 	});
@@ -218,6 +220,7 @@ describe('AgentsCredentialProvider', () => {
 				currentUserHasAccess: true,
 				homeProject: null,
 				sharedWithProjects: [],
+				sharedRoute: 'project',
 			},
 		]);
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([projectCred]);

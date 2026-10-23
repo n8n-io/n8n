@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService, RoleService } from '@n8n/backend-services';
 import {
 	AuthIdentity,
 	AuthIdentityRepository,
@@ -10,8 +11,6 @@ import { Service } from '@n8n/di';
 import { GLOBAL_OWNER_ROLE_SLUG, isBuiltInRole } from '@n8n/permissions';
 import { createHash } from 'node:crypto';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 
 import { TokenExchangeConfig } from '../token-exchange.config';
@@ -390,6 +389,7 @@ export class IdentityResolutionService {
 		}
 
 		if (Object.keys(profileUpdates).length > 0) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			await this.userRepository.update(user.id, profileUpdates);
 			needsReload = true;
 		}

@@ -142,6 +142,20 @@ describe('credentials.utils', () => {
 			).not.toThrow();
 		});
 
+		it('does not require a field that has a default value', () => {
+			const credentialsHelper = credentialsHelperWithProperties([
+				{ name: 'host', type: 'string', required: true, displayName: 'Host', default: '' },
+				{ name: 'port', type: 'number', required: true, displayName: 'Port', default: 21 },
+			]);
+
+			expect(() =>
+				validateCredentialData(credentialsHelper, 'someType', { host: 'ftp.example.com' }),
+			).not.toThrow();
+			expect(() => validateCredentialData(credentialsHelper, 'someType', { port: 21 })).toThrow(
+				/request\.body\.data/,
+			);
+		});
+
 		it('enforces conditionally-required fields when partialData is not set', () => {
 			const credentialsHelper = credentialsHelperWithProperties(CONDITIONAL_PROPERTIES);
 
@@ -411,7 +425,7 @@ describe('credentials.utils', () => {
 
 			const schema = toJsonSchema(properties);
 
-			expect(schema.required).toEqual(expect.arrayContaining(['apiKey', 'authType']));
+			expect(schema.required).toEqual(['apiKey']);
 			expect(schema.required).not.toContain('username');
 			expect(schema.required).not.toContain('password');
 			expect(schema.required).not.toContain('clientId');
@@ -532,7 +546,7 @@ describe('credentials.utils', () => {
 			});
 			expect(props.field3).toEqual({ type: 'string' });
 
-			expect(schema.required).toEqual(expect.arrayContaining(['field1', 'field2']));
+			expect(schema.required).toEqual(['field1']);
 			expect(schema.required).not.toContain('field3');
 
 			const allOf = schema.allOf as GenericValue[] | IDataObject[];

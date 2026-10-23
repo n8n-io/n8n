@@ -4,10 +4,12 @@ import { TestCaseExecutionErrorCode } from '@n8n/db';
 import type {
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
+	OperationContext,
 	Project,
 	TestRun,
 	TestCaseExecutionRepository,
 	TestRunRepository,
+	TransactionRunner,
 	WorkflowRepository,
 } from '@n8n/db';
 import { readFileSync } from 'fs';
@@ -16,11 +18,11 @@ import {
 	createRunExecutionData,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
+	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
-import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -75,6 +77,10 @@ describe('TestRunnerService', () => {
 	const evaluationConfigRepository = mock<EvaluationConfigRepository>();
 	const workflowCompiler = mock<WorkflowCompilerService>();
 	const ownershipService = mock<OwnershipService>();
+	const txRunner = mock<TransactionRunner>();
+	// Sentinel the mocked runner hands to every `run` callback. Asserting it on
+	// repository calls proves the service threads the transaction ctx through.
+	const TRX_CTX = { trx: { id: 'trx-sentinel' } } as unknown as OperationContext;
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -82,6 +88,7 @@ describe('TestRunnerService', () => {
 	});
 
 	beforeEach(() => {
+		txRunner.run.mockImplementation(async (ctx, fn) => await fn({ ...ctx, ...TRX_CTX }));
 		testRunnerService = new TestRunnerService(
 			logger,
 			telemetry,
@@ -102,6 +109,7 @@ describe('TestRunnerService', () => {
 			evaluationConfigRepository,
 			workflowCompiler,
 			ownershipService,
+			txRunner,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -595,6 +603,7 @@ describe('TestRunnerService', () => {
 				evaluationConfigRepository,
 				workflowCompiler,
 				ownershipService,
+				txRunner,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -920,6 +929,7 @@ describe('TestRunnerService', () => {
 					evaluationConfigRepository,
 					workflowCompiler,
 					ownershipService,
+					txRunner,
 				);
 			});
 
@@ -2150,16 +2160,6 @@ describe('TestRunnerService', () => {
 			);
 			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
 			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
-			// `manager` is a TypeORM EntityManager not auto-deep-mocked by mock<T>().
-			// Provide a transaction stub that just invokes the callback so cancel
-			// paths run end-to-end.
-			Object.assign(testRunRepository, {
-				manager: {
-					transaction: vi
-						.fn()
-						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
-				},
-			});
 
 			let runCallIndex = 0;
 			const inFlightTracker = { inFlight: 0, max: 0, perCaseStarted: 0 };
@@ -2425,6 +2425,7 @@ describe('TestRunnerService', () => {
 				evaluationConfigRepository,
 				workflowCompiler,
 				ownershipService,
+				txRunner,
 			);
 			setupHappyPathMocks(2);
 			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
@@ -2505,6 +2506,7 @@ describe('TestRunnerService', () => {
 				evaluationConfigRepository,
 				workflowCompiler,
 				ownershipService,
+				txRunner,
 			);
 
 			const { inFlightTracker } = setupHappyPathMocks(6);
@@ -2575,8 +2577,15 @@ describe('TestRunnerService', () => {
 			);
 			expect(errorRows).toHaveLength(0);
 
-			// Run is marked cancelled, not completed.
-			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
+			// Run is marked cancelled (inside the runner's transaction), not completed.
+			expect(testRunRepository.markAsCancelled).toHaveBeenCalledWith(
+				'test-run-id',
+				expect.objectContaining(TRX_CTX),
+			);
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).toHaveBeenCalledWith(
+				'test-run-id',
+				expect.objectContaining(TRX_CTX),
+			);
 			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
 
@@ -2605,6 +2614,7 @@ describe('TestRunnerService', () => {
 				evaluationConfigRepository,
 				workflowCompiler,
 				ownershipService,
+				txRunner,
 			);
 
 			setupHappyPathMocks(4);
@@ -2619,8 +2629,37 @@ describe('TestRunnerService', () => {
 			await multiMainService.runTest(USER as never, WORKFLOW_ID, 1);
 
 			expect(testRunRepository.isCancellationRequested).toHaveBeenCalled();
-			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
+			expect(testRunRepository.markAsCancelled).toHaveBeenCalledWith(
+				'test-run-id',
+				expect.objectContaining(TRX_CTX),
+			);
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).toHaveBeenCalledWith(
+				'test-run-id',
+				expect.objectContaining(TRX_CTX),
+			);
 			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		test('a cancelled dataset execution marks the run cancelled inside one transaction', async () => {
+			setupHappyPathMocks(1);
+			// The dataset trigger awaits its execution with no abort listener, so a
+			// cancelled execution surfaces as a rejection and takes the
+			// `ExecutionCancelledError` branch, not the error branch.
+			activeExecutions.getPostExecutePromise.mockRejectedValueOnce(
+				new ManualExecutionCancelledError('dataset-exec'),
+			);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			expect(testRunRepository.markAsCancelled).toHaveBeenCalledWith(
+				'test-run-id',
+				expect.objectContaining(TRX_CTX),
+			);
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).toHaveBeenCalledWith(
+				'test-run-id',
+				expect.objectContaining(TRX_CTX),
+			);
+			expect(testRunRepository.markAsError).not.toHaveBeenCalled();
 		});
 
 		// Cache-invalidation hook (TRUST-80). When a run that belongs to an
@@ -2888,6 +2927,7 @@ describe('TestRunnerService', () => {
 				evaluationConfigRepository,
 				workflowCompiler,
 				ownershipService,
+				txRunner,
 			);
 
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-running' } as never]);
@@ -2936,24 +2976,12 @@ describe('TestRunnerService', () => {
 				testRunnerService as unknown as { abortControllers: Map<string, AbortController> }
 			).abortControllers.set('tr-new-local', newRunAbort);
 
-			// Provide a no-op dbManager so the DB-fallback path doesn't throw
-			// on the pre-fix code path that *would* take it for this run.
-			// Without this, the test would fail on a transaction TypeError
-			// before reaching the abort assertions, hiding the actual bug.
-			const dbManager = mock<{ transaction: Mock }>();
-			dbManager.transaction.mockImplementation(async (cb: (trx: unknown) => Promise<void>) => {
-				await cb({});
-			});
-			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
-
 			await testRunnerService.cancelCollection('col-new-window');
 
 			expect(newRunAbort.signal.aborted).toBe(true);
 			// Local abort wins — no DB-cancel fallback needed for this run.
-			expect(testRunRepository.markAsCancelled).not.toHaveBeenCalledWith(
-				'tr-new-local',
-				expect.anything(),
-			);
+			expect(txRunner.run).not.toHaveBeenCalled();
+			expect(testRunRepository.markAsCancelledIfActive).not.toHaveBeenCalled();
 		});
 
 		test('falls back to DB cancel for runs not held locally', async () => {
@@ -2964,35 +2992,24 @@ describe('TestRunnerService', () => {
 			(
 				testRunnerService as unknown as { abortControllers: Map<string, AbortController> }
 			).abortControllers.set('tr-mine', new AbortController());
-
-			const trxUpdate = vi.fn().mockResolvedValue({ affected: 1 });
-			const dbManager = mock<{ transaction: Mock }>();
-			dbManager.transaction.mockImplementation(
-				async (cb: (trx: { update: Mock }) => Promise<void>) => {
-					await cb({ update: trxUpdate });
-				},
-			);
-			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
+			testRunRepository.markAsCancelledIfActive.mockResolvedValue(true);
 
 			await testRunnerService.cancelCollection('col-2');
 
-			// `tr-foreign` is the run we don't hold locally → fallback fires.
-			// Assert the update is scoped to `id` AND `status: In([...])` so a
-			// run that completed between the initial find and this update is
-			// not clobbered. We don't lock down the exact entity ref — the
-			// shape of the where clause is the contract.
-			expect(trxUpdate).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({
-					id: 'tr-foreign',
-					status: expect.anything(),
-				}),
-				expect.objectContaining({ status: 'cancelled' }),
+			// `tr-foreign` is the run we don't hold locally → fallback fires in
+			// one transaction, and its ctx reaches both repository calls.
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			expect(testRunRepository.markAsCancelledIfActive).toHaveBeenCalledWith(
+				'tr-foreign',
+				expect.objectContaining(TRX_CTX),
+			);
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).toHaveBeenCalledWith(
+				'tr-foreign',
+				expect.objectContaining(TRX_CTX),
 			);
 			// `tr-mine` was held locally → no fallback update should fire.
-			expect(trxUpdate).not.toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({ id: 'tr-mine' }),
+			expect(testRunRepository.markAsCancelledIfActive).not.toHaveBeenCalledWith(
+				'tr-mine',
 				expect.anything(),
 			);
 		});
@@ -3001,35 +3018,39 @@ describe('TestRunnerService', () => {
 			// `activeRuns` is sampled before the requestCancellation loop and
 			// pubsub broadcast. By the time the fallback transaction runs, a
 			// foreign main may have completed (or errored) the run naturally.
-			// The status-scoped update should affect 0 rows in that case, and
-			// the test-case sweep must be skipped — otherwise we'd silently
+			// The status-scoped guard then reports no row flipped, and the
+			// test-case sweep must be skipped — otherwise we'd silently
 			// re-mark a `completed` run as `cancelled` and corrupt the record.
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-just-finished' } as never]);
-
-			const trxUpdate = vi.fn().mockResolvedValue({ affected: 0 }); // race: row no longer 'new'/'running'
-			const dbManager = mock<{ transaction: Mock }>();
-			dbManager.transaction.mockImplementation(
-				async (cb: (trx: { update: Mock }) => Promise<void>) => {
-					await cb({ update: trxUpdate });
-				},
-			);
-			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
+			testRunRepository.markAsCancelledIfActive.mockResolvedValue(false);
 
 			await testRunnerService.cancelCollection('col-race');
 
-			// Update was attempted with status filter — the filter is what
-			// makes the in-DB WHERE narrow so the row stays untouched.
-			expect(trxUpdate).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({ id: 'tr-just-finished', status: expect.anything() }),
-				expect.objectContaining({ status: 'cancelled' }),
-			);
-			// Update affected 0 → don't sweep cases. (The sweep has its own
-			// status filter so this is also a redundant check, but it makes
-			// the "winner takes all" intent explicit at the run level.)
-			expect(testCaseExecutionRepository.markAllPendingAsCancelled).not.toHaveBeenCalledWith(
+			expect(testRunRepository.markAsCancelledIfActive).toHaveBeenCalledWith(
 				'tr-just-finished',
 				expect.anything(),
+			);
+			// Guard reported no flip → don't sweep cases. (The sweep has its own
+			// status filter so this is also a redundant check, but it makes
+			// the "winner takes all" intent explicit at the run level.)
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).not.toHaveBeenCalled();
+		});
+
+		test('sweeps cases only for the runs the guard actually flipped', async () => {
+			testRunRepository.find.mockResolvedValue([
+				{ id: 'tr-still-active' } as never,
+				{ id: 'tr-just-finished' } as never,
+			]);
+			testRunRepository.markAsCancelledIfActive.mockImplementation(
+				async (id) => id === 'tr-still-active',
+			);
+
+			await testRunnerService.cancelCollection('col-mixed');
+
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).toHaveBeenCalledTimes(1);
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).toHaveBeenCalledWith(
+				'tr-still-active',
+				expect.objectContaining(TRX_CTX),
 			);
 		});
 	});
@@ -3126,13 +3147,6 @@ describe('TestRunnerService', () => {
 			);
 			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
 			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
-			Object.assign(testRunRepository, {
-				manager: {
-					transaction: vi
-						.fn()
-						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
-				},
-			});
 
 			let runCallIndex = 0;
 			workflowRunner.run.mockImplementation(async () => {
@@ -3319,13 +3333,6 @@ describe('TestRunnerService', () => {
 			);
 			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
 			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
-			Object.assign(testRunRepository, {
-				manager: {
-					transaction: vi
-						.fn()
-						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
-				},
-			});
 
 			let runCallIndex = 0;
 			workflowRunner.run.mockImplementation(async () =>
@@ -3467,13 +3474,6 @@ describe('TestRunnerService', () => {
 			});
 			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
 			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
-			Object.assign(testRunRepository, {
-				manager: {
-					transaction: vi
-						.fn()
-						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
-				},
-			});
 
 			let runCallIndex = 0;
 			workflowRunner.run.mockImplementation(async () => {
@@ -3597,36 +3597,50 @@ describe('TestRunnerService', () => {
 	});
 
 	describe('cancelTestRun', () => {
+		test('falls back to a DB cancel in one transaction when the run is not held locally', async () => {
+			// No abort controller registered → `cancelTestRunLocally` returns
+			// false → fallback path fires.
+			testRunRepository.markAsCancelledIfActive.mockResolvedValue(true);
+
+			await testRunnerService.cancelTestRun('tr-foreign');
+
+			expect(testRunRepository.requestCancellation).toHaveBeenCalledWith('tr-foreign');
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			expect(testRunRepository.markAsCancelledIfActive).toHaveBeenCalledWith(
+				'tr-foreign',
+				expect.objectContaining(TRX_CTX),
+			);
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).toHaveBeenCalledWith(
+				'tr-foreign',
+				expect.objectContaining(TRX_CTX),
+			);
+		});
+
 		test('fallback update does not clobber a run that completed between requestCancellation and update', async () => {
 			// Mirrors the collection-level race: between `requestCancellation`
 			// (the DB-flag pass) and this fallback update, a foreign main can
-			// finish the run naturally. The update must be scoped by status
-			// so the terminal state wins.
-			// No abort controller registered → `cancelTestRunLocally` returns
-			// false → fallback path fires.
-			const trxUpdate = vi.fn().mockResolvedValue({ affected: 0 });
-			const dbManager = mock<{ transaction: Mock }>();
-			dbManager.transaction.mockImplementation(
-				async (cb: (trx: { update: Mock }) => Promise<void>) => {
-					await cb({ update: trxUpdate });
-				},
-			);
-			(testRunRepository as unknown as { manager: typeof dbManager }).manager = dbManager;
+			// finish the run naturally. The status-scoped guard reports no
+			// flip, so the terminal state wins and no cases are swept.
+			testRunRepository.markAsCancelledIfActive.mockResolvedValue(false);
 
 			await testRunnerService.cancelTestRun('tr-just-finished');
 
-			expect(trxUpdate).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({
-					id: 'tr-just-finished',
-					status: expect.anything(),
-				}),
-				expect.objectContaining({ status: 'cancelled' }),
-			);
-			expect(testCaseExecutionRepository.markAllPendingAsCancelled).not.toHaveBeenCalledWith(
+			expect(testRunRepository.markAsCancelledIfActive).toHaveBeenCalledWith(
 				'tr-just-finished',
 				expect.anything(),
 			);
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).not.toHaveBeenCalled();
+		});
+
+		test('skips the DB fallback when the run is held locally', async () => {
+			(
+				testRunnerService as unknown as { abortControllers: Map<string, AbortController> }
+			).abortControllers.set('tr-mine', new AbortController());
+
+			await testRunnerService.cancelTestRun('tr-mine');
+
+			expect(txRunner.run).not.toHaveBeenCalled();
+			expect(testRunRepository.markAsCancelledIfActive).not.toHaveBeenCalled();
 		});
 	});
 });

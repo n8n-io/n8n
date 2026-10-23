@@ -172,7 +172,7 @@ describe('Memory builder — observation log memory', () => {
 		expect(runtimeConfig.observationalMemory?.midRunObservation).toBe(false);
 	});
 
-	it('rejects backends that do not implement the observation-log store', () => {
+	it.each(['minimal', 'non-atomic'])('rejects %s observation-log backends', (kind) => {
 		const minimalBackend = {
 			getThread: vi.fn().mockResolvedValue(null),
 			saveThread: vi.fn().mockResolvedValue({}),
@@ -187,7 +187,11 @@ describe('Memory builder — observation log memory', () => {
 			}),
 		} as unknown as BuiltMemory;
 
-		expect(() => new Memory().storage(minimalBackend).observationalMemory().build()).toThrow(
+		let backend: BuiltMemory = minimalBackend;
+		if (kind === 'non-atomic') {
+			backend = Object.assign(new InMemoryMemory(), { commitObservationLogBatch: undefined });
+		}
+		expect(() => new Memory().storage(backend).observationalMemory().build()).toThrow(
 			/BuiltObservationLogStore/,
 		);
 	});

@@ -14,6 +14,7 @@ const {
 	getUsers,
 	oidcLogout,
 	updateCurrentUser,
+	updateCurrentUserSettings,
 	requestEmailChange,
 	resolveEmailChangeToken,
 	confirmEmailChange,
@@ -27,6 +28,7 @@ const {
 		getUsers: vi.fn(),
 		oidcLogout: vi.fn(),
 		updateCurrentUser: vi.fn(),
+		updateCurrentUserSettings: vi.fn(),
 		requestEmailChange: vi.fn(),
 		resolveEmailChangeToken: vi.fn(),
 		confirmEmailChange: vi.fn(),
@@ -39,6 +41,7 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	logout,
 	getUsers,
 	updateCurrentUser,
+	updateCurrentUserSettings,
 	requestEmailChange,
 	resolveEmailChangeToken,
 	confirmEmailChange,
@@ -120,6 +123,43 @@ describe('users.store', () => {
 				}),
 			);
 		});
+	});
+
+	describe('updateUserSettings', () => {
+		it.each(['same user', 'different user', 'logged out'] as const)(
+			'applies a delayed response only to the initiating user: %s',
+			async (session) => {
+				const usersStore = useUsersStore();
+				const initialSettings = { dismissedCallouts: { existing: true } };
+				const updatedSettings = { dismissedCallouts: { existing: true, newCallout: true } };
+				usersStore.addUsers([
+					{ ...mockUser, settings: initialSettings },
+					{ ...mockUser, id: '2', settings: { dismissedCallouts: { other: true } } },
+				]);
+				usersStore.currentUserId = mockUser.id;
+				const response = Promise.withResolvers<typeof updatedSettings>();
+				updateCurrentUserSettings.mockReturnValueOnce(response.promise);
+
+				const update = usersStore.updateUserSettings(updatedSettings);
+				expect(updateCurrentUserSettings).toHaveBeenCalledWith(
+					{ baseUrl: 'http://localhost', pushRef: '' },
+					updatedSettings,
+				);
+				if (session === 'different user') usersStore.currentUserId = '2';
+				if (session === 'logged out') usersStore.currentUserId = null;
+
+				response.resolve(updatedSettings);
+				await update;
+
+				expect(usersStore.usersById[mockUser.id].settings).toEqual(
+					session === 'same user' ? updatedSettings : initialSettings,
+				);
+				expect(usersStore.usersById['2'].settings).toEqual({
+					dismissedCallouts: { other: true },
+				});
+				if (session === 'logged out') expect(usersStore.currentUser).toBeNull();
+			},
+		);
 	});
 
 	describe('isCalloutDismissed', () => {

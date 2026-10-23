@@ -53,12 +53,18 @@
         "createdDateTime": {
             "type": "string"
         },
+        "deletedDateTime": {
+            "type": "null"
+        },
         "etag": {
             "type": "string"
         },
         "from": {
             "type": "object",
             "properties": {
+                "application": {
+                    "type": "null"
+                },
                 "device": {
                     "type": "null"
                 },
@@ -111,21 +117,7 @@
                         "type": "object",
                         "properties": {
                             "application": {
-                                "type": "object",
-                                "properties": {
-                                    "@odata.type": {
-                                        "type": "string"
-                                    },
-                                    "applicationIdentityType": {
-                                        "type": "string"
-                                    },
-                                    "displayName": {
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "type": "string"
-                                    }
-                                }
+                                "type": "null"
                             },
                             "conversation": {
                                 "type": "null"
@@ -137,7 +129,24 @@
                                 "type": "null"
                             },
                             "user": {
-                                "type": "null"
+                                "type": "object",
+                                "properties": {
+                                    "@odata.type": {
+                                        "type": "string"
+                                    },
+                                    "displayName": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "tenantId": {
+                                        "type": "string"
+                                    },
+                                    "userIdentityType": {
+                                        "type": "string"
+                                    }
+                                }
                             }
                         }
                     },
@@ -204,6 +213,9 @@
         "replyToId": {
             "type": "null"
         },
+        "subject": {
+            "type": "null"
+        },
         "summary": {
             "type": "null"
         },
@@ -211,5 +223,5 @@
             "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }

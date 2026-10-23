@@ -95,7 +95,10 @@ describe('WorkflowVerificationObligationService setup panel policy', () => {
 		async (enabled) => {
 			const getThread = vi.fn<TypeORMAgentMemory['getThread']>();
 			const memory = mock<TypeORMAgentMemory>({ getThread });
-			const service = new WorkflowVerificationObligationService(memory, () => enabled);
+			const service = new WorkflowVerificationObligationService(
+				memory,
+				(threadId) => threadId === 'thread-1' && enabled,
+			);
 			const outcome = makeOutcome({
 				needsUserInput: true,
 				nodeSimulationPlan: [],

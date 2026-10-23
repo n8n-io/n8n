@@ -34,7 +34,10 @@ export const subWorkflowNodeReference: EntityReference<WorkflowSubWorkflowRequir
 	},
 };
 
-export function getStaticSubworkflowId(node: INode): string | undefined {
+export function getStaticSubworkflowId(node: {
+	type: string;
+	parameters: Record<string, unknown>;
+}): string | undefined {
 	if (!isNodeWithWorkflowSelector(node)) return undefined;
 
 	const { source = 'database' } = node.parameters;

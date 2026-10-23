@@ -4,7 +4,7 @@ import { AuthRolesService, RoleRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 
-import { RoleCacheService } from '@/services/role-cache.service';
+import { RoleCacheService } from '@n8n/backend-services';
 
 import { createMemberWithApiKey } from './shared/db/users';
 import * as utils from './shared/utils/';

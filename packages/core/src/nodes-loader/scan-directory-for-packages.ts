@@ -49,7 +49,7 @@ export async function scanDirectoryForPackages(
 				const requirement =
 					check.reason === 'malformed'
 						? `an invalid n8nNodesApiVersion (${JSON.stringify(check.declared)})`
-						: `node API version ${String(check.declared)}, but this n8n version supports up to ${N8N_NODES_API_VERSION}`;
+						: `node API version ${check.required}, but this n8n version supports up to ${N8N_NODES_API_VERSION}`;
 				logger.warn(
 					`Skipping package "${loader.packageName}": it requires ${requirement}. Upgrade n8n to use this package, or uninstall it in Settings > Community nodes.`,
 				);

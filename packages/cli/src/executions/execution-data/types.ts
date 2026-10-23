@@ -30,7 +30,7 @@ export function toWorkflowSnapshot(workflow: WorkflowSnapshot): WorkflowSnapshot
 }
 
 /**
- * The same projection, shaped for the engine 2.0 start request. The data plane
+ * The same projection, shaped for the engine v2 start request. The data plane
  * stores it beside the execution and reports it back, without reading into it,
  * so it crosses the boundary as plain JSON. The cast is unavoidable: the engine
  * has no `n8n-workflow` dependency, and `INode` and friends are interfaces, so

@@ -1,6 +1,7 @@
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import type {
+	IExecuteFunctions,
 	INode,
 	ISupplyDataFunctions,
 	ILoadOptionsFunctions,
@@ -29,7 +30,7 @@ export type DatabricksOAuth2Credential = {
  * one-time-use refresh token, so it has to go through core to persist the rotation.
  */
 export function getDatabricksTokenProvider(
-	ctx: ISupplyDataFunctions | ILoadOptionsFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	credential: DatabricksOAuth2Credential,
 	egressFilter?: NodeEgressFilter,
 ): RefreshingTokenSource {

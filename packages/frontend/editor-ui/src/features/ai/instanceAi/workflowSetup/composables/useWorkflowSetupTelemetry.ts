@@ -1,6 +1,9 @@
 import { watch, type ComputedRef, type Ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
+import { isRecord } from '@n8n/utils/is-record';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 import type { ThreadRuntime } from '../../instanceAi.store';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 
@@ -9,6 +12,7 @@ type SkippedSetupInput = { label: string; options: string[] };
 type SetupStepOutcome = 'completed' | 'skipped';
 
 type WorkflowSetupStepTelemetryInput = {
+	node_ids: string[];
 	input_type: 'credential' | 'parameter';
 	node_type: string;
 	credential_type?: string;
@@ -16,6 +20,8 @@ type WorkflowSetupStepTelemetryInput = {
 };
 
 type WorkflowSetupStepTelemetryPayload = {
+	session_id: string;
+	workflow_id?: string;
 	thread_id: string;
 	input_thread_id: string;
 	instance_id: string;
@@ -29,7 +35,7 @@ type WorkflowSetupStepTelemetryPayload = {
 
 type SetupTelemetryContext = Pick<
 	WorkflowSetupStepTelemetryPayload,
-	'thread_id' | 'input_thread_id' | 'instance_id' | 'type'
+	'session_id' | 'workflow_id' | 'thread_id' | 'input_thread_id' | 'instance_id' | 'type'
 >;
 
 interface WorkflowSetupTelemetryInputAccessors {
@@ -39,6 +45,7 @@ interface WorkflowSetupTelemetryInputAccessors {
 
 export function useWorkflowSetupTelemetry(deps: {
 	requestId: Ref<string>;
+	workflowId?: Ref<string | undefined>;
 	sections: ComputedRef<WorkflowSetupSection[]>;
 	activeSection: ComputedRef<WorkflowSetupSection | undefined>;
 	isReady: Ref<boolean>;
@@ -47,6 +54,7 @@ export function useWorkflowSetupTelemetry(deps: {
 }) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
+	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
 
 	const shownStepKeys = new Set<string>();
 	const handledStepKeys = new Set<string>();
@@ -54,6 +62,9 @@ export function useWorkflowSetupTelemetry(deps: {
 	function getSetupTelemetryContext(): SetupTelemetryContext {
 		const tc = deps.thread.findToolCallByRequestId(deps.requestId.value);
 		return {
+			...getTelemetryPayload(),
+			session_id: rootStore.pushRef,
+			workflow_id: deps.workflowId?.value,
 			thread_id: deps.thread.id,
 			input_thread_id: tc?.confirmation?.inputThreadId ?? '',
 			instance_id: rootStore.instanceId,
@@ -77,6 +88,7 @@ export function useWorkflowSetupTelemetry(deps: {
 		const inputs: WorkflowSetupStepTelemetryInput[] = [];
 		if (section.credentialType) {
 			inputs.push({
+				node_ids: section.credentialTargetNodes.map((node) => node.id),
 				input_type: 'credential',
 				node_type: section.node.type,
 				credential_type: section.credentialType,
@@ -85,12 +97,94 @@ export function useWorkflowSetupTelemetry(deps: {
 
 		for (const parameterName of section.parameterNames) {
 			inputs.push({
+				node_ids: [section.node.id],
 				input_type: 'parameter',
 				node_type: section.node.type,
 				parameter_name: parameterName,
 			});
 		}
 		return inputs;
+	}
+
+	function trackSetupSaved(result: Record<string, unknown>): void {
+		const workflowId = deps.workflowId?.value;
+		if (!workflowId || result.success !== true) return;
+		const report = (value: unknown) => (Array.isArray(value) ? value.filter(isRecord) : []);
+		const completedNodes = report(result.completedNodes);
+		if (!completedNodes.length) return;
+		const failedNodes = new Set(report(result.failedNodes).map((node) => node.nodeName));
+		const pendingNodes = report(result.nodesStillNeedingSetup);
+		const savedNodes = report(result.updatedNodes);
+		const items: InferTelemetryProps<typeof TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED>['items'] = [];
+		const parameters = new Set<string>();
+		for (const section of deps.sections.value) {
+			if (section.credentialType) {
+				for (const node of section.credentialTargetNodes) {
+					const savedNode = savedNodes.find((saved) => saved.id === node.id);
+					const credential = isRecord(savedNode?.credentials)
+						? savedNode.credentials[section.credentialType]
+						: undefined;
+					items.push({
+						node_id: node.id,
+						node_type: node.type,
+						kind: 'credential',
+						credential_type: section.credentialType,
+						completed:
+							!failedNodes.has(node.name) &&
+							(completedNodes.some(
+								(completed) =>
+									completed.nodeName === node.name &&
+									completed.credentialType === section.credentialType,
+							) ||
+								(isRecord(credential) &&
+									((typeof credential.id === 'string' && credential.id.length > 0) ||
+										credential.__aiGatewayManaged === true))),
+					});
+				}
+			}
+			for (const parameterName of section.parameterNames) {
+				const key = JSON.stringify([section.node.id, parameterName]);
+				if (parameters.has(key)) continue;
+				parameters.add(key);
+				items.push({
+					node_id: section.node.id,
+					node_type: section.node.type,
+					kind: 'parameter',
+					parameter_name: parameterName,
+					completed:
+						!failedNodes.has(section.node.name) &&
+						!pendingNodes.some(
+							(pending) =>
+								pending.nodeName === section.node.name &&
+								isRecord(pending.parameterIssues) &&
+								Object.hasOwn(pending.parameterIssues, parameterName),
+						) &&
+						completedNodes.some(
+							(completed) =>
+								completed.nodeName === section.node.name &&
+								Array.isArray(completed.parametersSet) &&
+								completed.parametersSet.includes(parameterName),
+						),
+				});
+			}
+		}
+		if (!items.some((item) => item.completed)) return;
+		telemetry.track(TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED, {
+			...getTelemetryPayload(),
+			instance_id: rootStore.instanceId,
+			workflow_id: workflowId,
+			thread_id: deps.thread.id,
+			session_id: rootStore.pushRef,
+			source: 'instance_ai_setup_wizard',
+			request_id: deps.requestId.value,
+			items,
+			setup_complete:
+				(result.partial === undefined || result.partial === false) &&
+				[result.failedNodes, result.nodesStillNeedingSetup, result.skippedByUser].every(
+					(value) => value === undefined || (Array.isArray(value) && value.length === 0),
+				) &&
+				items.every((item) => item.completed),
+		});
 	}
 
 	function getStepTelemetryPayload(
@@ -202,5 +296,6 @@ export function useWorkflowSetupTelemetry(deps: {
 	return {
 		trackSetupInput,
 		trackStepHandled,
+		trackSetupSaved,
 	};
 }

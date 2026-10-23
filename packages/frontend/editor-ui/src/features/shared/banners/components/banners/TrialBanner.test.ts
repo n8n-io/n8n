@@ -218,6 +218,23 @@ describe('TrialBanner', () => {
 			expect(button?.getAttribute('style')).toBeNull();
 		});
 
+		it('should map the subtle variant to outline without legacy style overrides', () => {
+			cloudPlanStore.state.data = {
+				bannerConfig: {
+					cta: {
+						text: 'Upgrade',
+						style: 'success',
+						variant: 'subtle',
+					},
+				},
+			} as never;
+
+			const { container } = renderComponent();
+			const button = container.querySelector('button');
+			expect(button?.className).toContain('outline');
+			expect(button?.getAttribute('style')).toBeNull();
+		});
+
 		it('should apply legacy style overrides when backend sends style without variant', () => {
 			cloudPlanStore.state.data = {
 				bannerConfig: {

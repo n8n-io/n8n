@@ -1,4 +1,6 @@
 import { ref, computed } from 'vue';
+import type { CallableSubworkflow } from '@n8n/api-types';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useWorkflowsListStore, type WorkflowListFilters } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Router } from 'vue-router';
@@ -25,6 +27,9 @@ export function useWorkflowResourcesLocator(router: Router) {
 	const currentPage = ref(0);
 	const PAGE_SIZE = 40;
 	const totalCount = ref(0);
+	// Rows from the callable sub-workflows endpoint. Some of them can belong to
+	// workflows the user cannot read, so they stay out of the workflows cache.
+	const callableWorkflowsById = ref<Record<string, CallableSubworkflow>>({});
 
 	const hasMoreWorkflowsToLoad = computed(() => totalCount.value > workflowsResources.value.length);
 
@@ -37,16 +42,24 @@ export function useWorkflowResourcesLocator(router: Router) {
 		return workflow.name;
 	}
 
+	function constructCallableName(workflow: CallableSubworkflow) {
+		return workflow.projectName ? `${workflow.projectName} — ${workflow.name}` : workflow.name;
+	}
+
 	function getWorkflowName(id: string): string {
 		const workflow = workflowsListStore.getWorkflowById(id);
 		if (workflow) {
 			return constructName(workflow);
 		}
+		const callableWorkflow = callableWorkflowsById.value[id];
+		if (callableWorkflow) {
+			return constructCallableName(callableWorkflow);
+		}
 		return id;
 	}
 
 	function getWorkflowBaseName(id: string): string | null {
-		const workflow = workflowsListStore.getWorkflowById(id);
+		const workflow = workflowsListStore.getWorkflowById(id) ?? callableWorkflowsById.value[id];
 		if (workflow) {
 			return workflow.name;
 		}
@@ -68,24 +81,45 @@ export function useWorkflowResourcesLocator(router: Router) {
 		};
 	}
 
-	async function populateNextWorkflowsPage(reset = false) {
-		if (reset) {
-			currentPage.value = 0;
+	function callableWorkflowToResourceMapper(workflow: CallableSubworkflow) {
+		return {
+			name: constructCallableName(workflow),
+			value: workflow.id,
+			url: getWorkflowUrl(workflow.id),
+			isArchived: workflow.isArchived,
+			active: workflow.active,
+		};
+	}
+
+	// The callable list also holds workflows whose caller policy allows this
+	// parent. The backend serves it only to users who can edit a saved parent.
+	function canListCallableSubworkflows() {
+		return (
+			!workflowsStore.isNewWorkflow &&
+			getResourcePermissions(workflowDocumentStore.value.scopes).workflow.update === true
+		);
+	}
+
+	async function fetchNextResources() {
+		if (canListCallableSubworkflows()) {
+			const { count, data } = await workflowsListStore.fetchCallableSubworkflowsPage(
+				workflowsStore.workflowId,
+				currentPage.value,
+				PAGE_SIZE,
+				searchFilter.value || undefined,
+			);
+			for (const workflow of data) {
+				callableWorkflowsById.value[workflow.id] = workflow;
+			}
+			totalCount.value = count;
+			return data.map(callableWorkflowToResourceMapper);
 		}
-
-		currentPage.value++;
-
-		const parentWorkflowId = workflowsStore.workflowId;
 
 		const filters: WorkflowListFilters = {
 			triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
 		};
 		if (searchFilter.value) {
 			filters.query = searchFilter.value;
-		}
-		if (parentWorkflowId) {
-			filters.includeCallableSubworkflows = true;
-			filters.parentWorkflowId = parentWorkflowId;
 		}
 
 		const workflows = await workflowsListStore.fetchWorkflowsPage(
@@ -96,11 +130,22 @@ export function useWorkflowResourcesLocator(router: Router) {
 			filters,
 		);
 		totalCount.value = workflowsListStore.totalWorkflowCount;
+		return workflows.map(workflowDbToResourceMapper);
+	}
+
+	async function populateNextWorkflowsPage(reset = false) {
+		if (reset) {
+			currentPage.value = 0;
+		}
+
+		currentPage.value++;
+
+		const resources = await fetchNextResources();
 
 		if (reset) {
-			workflowsResources.value = workflows.map(workflowDbToResourceMapper);
+			workflowsResources.value = resources;
 		} else {
-			workflowsResources.value.push(...workflows.map(workflowDbToResourceMapper));
+			workflowsResources.value.push(...resources);
 		}
 	}
 
@@ -140,6 +185,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 		getWorkflowUrl,
 		onSearchFilter,
 		getWorkflowName,
+		getWorkflowBaseName,
 		applyDefaultExecuteWorkflowNodeName,
 		populateNextWorkflowsPage,
 		setWorkflowsResources,

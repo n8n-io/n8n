@@ -11,6 +11,7 @@ import type { LemonadeApiCredentialsType } from '../../../credentials/LemonadeAp
 
 import { lemonadeDescription, lemonadeModel, lemonadeOptions } from './description';
 import {
+	aiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -83,6 +84,7 @@ export class LmLemonade implements INodeType {
 
 		// Build configuration object separately like official OpenAI node
 		const configuration: any = {
+			fetch: aiClientFetch,
 			baseURL: credentials.baseUrl,
 		};
 

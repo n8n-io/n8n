@@ -57,7 +57,5 @@ export class AgentTestChatService {
 		const threadId = chatThreadId(agentId);
 		const memory = this.n8nMemory.getImplementation(agentId);
 		await memory.deleteThreadsByPrefix(threadId);
-		await memory.deleteMessagesByThread(threadId);
-		await memory.deleteThread(threadId);
 	}
 }

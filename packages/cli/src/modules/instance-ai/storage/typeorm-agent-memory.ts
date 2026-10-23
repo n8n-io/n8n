@@ -7,6 +7,8 @@ import {
 	type MemoryDescriptor,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -31,8 +33,7 @@ import { In, LessThan, Like } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -565,6 +566,12 @@ export class TypeORMAgentMemory
 				metadata: { scope: params.scope },
 			}),
 		);
+	}
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationLog.commitObservationLogBatch(batch);
 	}
 
 	async appendObservationLogEntries(

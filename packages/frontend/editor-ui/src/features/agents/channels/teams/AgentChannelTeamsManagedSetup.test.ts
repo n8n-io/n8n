@@ -1,0 +1,1488 @@
+import { createComponentRenderer } from '@/__tests__/render';
+import type {
+	TeamsAgentSetupState,
+	TeamsCatalogState,
+	TeamsManagedSetupState,
+} from '@n8n/api-types';
+import { createTestingPinia } from '@pinia/testing';
+import { configure, fireEvent, waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { computed, defineComponent, ref } from 'vue';
+
+const copySpy = vi.fn();
+
+import AgentChannelTeamsManagedSetup from './AgentChannelTeamsManagedSetup.vue';
+import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
+import { entraApiPermissionsUrl } from './constants';
+import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
+import { AGENT_PERSONALISATION_KEY } from '../agentPersonalisation';
+
+vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
+
+const confirm = vi.fn();
+vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
+
+vi.mock('./api', () => ({
+	fetchTeamsAppPackage: vi.fn().mockResolvedValue(new Blob()),
+}));
+
+vi.mock('@n8n/composables/useClipboard', () => ({
+	useClipboard: () => ({ copy: copySpy }),
+}));
+
+const showMessage = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage }),
+}));
+
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal()),
+	useI18n: () => ({
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
+			options?.interpolate ? `${key} ${Object.values(options.interpolate).join(' ')}` : key,
+	}),
+}));
+
+// The shared default is `data-test-id`; these components use `data-testid`.
+configure({ testIdAttribute: 'data-testid' });
+
+const renderComponent = createComponentRenderer(AgentChannelTeamsManagedSetup);
+
+const connectedCredential = {
+	id: 'cred-1',
+	name: 'Microsoft organization',
+	connected: true,
+	reconnectRequired: false,
+	organizationName: 'Acme Corp',
+	tenantId: 'tenant-1',
+};
+
+const setupState = (overrides: Partial<TeamsManagedSetupState> = {}): TeamsManagedSetupState => ({
+	managedSetupAvailable: true,
+	managerCredentials: [],
+	adminConsentUrl: 'https://login.microsoftonline.com/organizations/v2.0/adminconsent?client_id=x',
+	...overrides,
+});
+
+const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChannelRuntime => ({
+	managedSetup: ref(setupState()),
+	setupKind: ref('managed'),
+	nextSetupKind: ref(null),
+	managerCredentialId: ref(''),
+	loading: computed(() => false),
+	load: vi.fn(),
+	connectManagerCredential: vi.fn().mockResolvedValue(true),
+	editManagerCredential: vi.fn(),
+	provisionedApp: ref(null),
+	botSetupState: ref(null),
+	provisionedBot: ref(null),
+	subscriptions: ref([]),
+	catalogState: ref(null),
+	connectedCredentialId: ref(''),
+	provisionApp: vi.fn().mockResolvedValue(true),
+	loadSubscriptions: vi.fn().mockResolvedValue(true),
+	provisionBot: vi.fn().mockResolvedValue(true),
+	reportManualBotRoute: vi.fn().mockResolvedValue(undefined),
+	publishApp: vi.fn().mockResolvedValue(true),
+	refreshCatalogState: vi.fn(),
+	reset: vi.fn(),
+	...overrides,
+});
+
+const props = (overrides: Record<string, unknown> = {}) => {
+	const { runtime, ...rest } = overrides as { runtime?: TeamsChannelRuntime };
+	return {
+		modelValue: '',
+		setup: setupState(),
+		loading: false,
+		credentialPermissions: { create: true, update: true },
+		projectId: 'project-1',
+		agentId: 'agent-1',
+		runtime: runtime ?? buildRuntime(),
+		...rest,
+	};
+};
+
+/**
+ * The real menu hides its items behind a popper. Stubbed flat so a test can
+ * click the route it means, the way the other dropdown tests here do.
+ */
+const stubs = {
+	ActionDropdown: ActionDropdownTestStub,
+};
+
+const render = (overrides: Record<string, unknown> = {}, provide: Record<symbol, unknown> = {}) =>
+	renderComponent({
+		props: props(overrides),
+		pinia: createTestingPinia(),
+		global: { stubs, provide },
+	});
+
+describe('AgentChannelTeamsManagedSetup', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	// The install wait polls on a timer; anything that leaves them faked would
+	// stall every test after it.
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('shows all six steps of the recommended flow', () => {
+		const { getByText } = render();
+
+		expect(getByText('agents.channels.teams.managed.connect.title')).toBeVisible();
+		expect(getByText('agents.channels.teams.managed.createApp.title')).toBeVisible();
+		expect(getByText('agents.channels.teams.managed.createBot.title')).toBeVisible();
+		expect(getByText('agents.channels.teams.setup.availability.title')).toBeVisible();
+		expect(getByText('agents.channels.teams.managed.install.title')).toBeVisible();
+		expect(getByText('agents.channels.teams.managed.finish.title')).toBeVisible();
+	});
+
+	it('offers a Microsoft sign-in when nothing is connected yet', () => {
+		const { getByTestId, queryByTestId } = render();
+
+		expect(getByTestId('teams-manager-connect')).toBeVisible();
+		expect(queryByTestId('teams-manager-credential-select')).not.toBeInTheDocument();
+	});
+
+	/**
+	 * A sign-in cannot ask for Graph and Azure together — a code is redeemed for
+	 * one resource — so the single prompt covering both is the administrator
+	 * consent, offered here.
+	 */
+	it('copies one administrator prompt covering both Microsoft APIs', async () => {
+		const { getByTestId } = render();
+
+		await fireEvent.click(getByTestId('teams-admin-consent'));
+
+		expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('adminconsent'));
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'success',
+				title: 'agents.channels.teams.managed.fileAccess.copied',
+			}),
+		);
+	});
+
+	it('offers no administrator prompt where the setup cannot run', () => {
+		const { queryByTestId } = render({ setup: setupState({ adminConsentUrl: null }) });
+
+		expect(queryByTestId('teams-admin-consent')).not.toBeInTheDocument();
+	});
+
+	it('previews the steps after Connect, greyed out, until signed in', async () => {
+		const { getByTestId, getByText, queryByTestId } = render({
+			runtime: buildRuntime({
+				botSetupState: ref<TeamsAgentSetupState | null>({
+					defaultDisplayName: 'Support Agent',
+					defaultDescription: 'Chat with Support Agent, an agent powered by n8n.',
+				} as TeamsAgentSetupState),
+			}),
+		});
+
+		expect(queryByTestId('teams-create-app')).not.toBeInTheDocument();
+		expect(queryByTestId('teams-install-menu')).not.toBeInTheDocument();
+		for (const id of ['create-app', 'create-bot', 'availability', 'install']) {
+			expect(getByTestId(`teams-managed-preview-${id}`).querySelector('[inert]')).not.toBeNull();
+		}
+		await waitFor(() =>
+			expect(getByTestId('teams-managed-preview-install')).toHaveTextContent('Support Agent'),
+		);
+		expect(
+			within(getByTestId('teams-managed-preview-create-app')).getByRole('button', {
+				name: 'agents.channels.teams.managed.createApp.button',
+			}),
+		).toBeDisabled();
+		expect(getByText('agents.channels.teams.managed.finish.locked')).toBeVisible();
+		expect(getByTestId('teams-managed-done')).toBeDisabled();
+	});
+
+	it('collapses the Connect step to the sign-in once signed in', async () => {
+		const { getByTestId, queryByTestId } = render({
+			modelValue: 'cred-1',
+			setup: setupState({ managerCredentials: [connectedCredential] }),
+		});
+
+		await waitFor(() => {
+			expect(getByTestId('teams-manager-credential-edit')).toBeVisible();
+		});
+		expect(queryByTestId('teams-manager-connect')).not.toBeInTheDocument();
+	});
+
+	it('unlocks the next step once signed in', async () => {
+		const { queryByTestId } = render({
+			modelValue: 'cred-1',
+			setup: setupState({ managerCredentials: [connectedCredential] }),
+		});
+
+		await waitFor(() => {
+			expect(queryByTestId('teams-create-app')).toBeInTheDocument();
+		});
+		// The steps after it stay blocked until their own work is done.
+		expect(queryByTestId('teams-create-bot')).not.toBeInTheDocument();
+	});
+
+	describe('switching the sign-in once the channel is saved', () => {
+		const PickerStub = {
+			props: ['disabled'],
+			emits: ['credential-selected', 'new-credential'],
+			template: `<div data-testid="teams-manager-credential-select" :data-disabled="String(disabled)">
+				<button data-testid="pick-sign-in" @click="$emit('credential-selected', 'cred-2')" />
+				<button data-testid="add-sign-in" @click="$emit('new-credential')" />
+			</div>`,
+		};
+		const renderSaved = (overrides: Record<string, unknown> = {}) =>
+			renderComponent({
+				props: props({
+					modelValue: 'cred-1',
+					setup: setupState({
+						managerCredentials: [connectedCredential, { ...connectedCredential, id: 'cred-2' }],
+					}),
+					channelConnected: true,
+					...overrides,
+				}),
+				pinia: createTestingPinia(),
+				global: { stubs: { ...stubs, CredentialsDropdown: PickerStub } },
+			});
+
+		it('locks the sign-in while a step is running', async () => {
+			const runtime = buildRuntime({
+				provisionApp: vi.fn(async () => await new Promise<boolean>(() => {})),
+			});
+			const { getByTestId } = renderSaved({ runtime, channelConnected: false });
+
+			await fireEvent.click(getByTestId('teams-create-app'));
+
+			await waitFor(() =>
+				expect(getByTestId('teams-manager-credential-select')).toHaveAttribute(
+					'data-disabled',
+					'true',
+				),
+			);
+		});
+
+		it('switches without asking while nothing is saved', async () => {
+			const { getByTestId, emitted } = renderSaved({ channelConnected: false });
+
+			await fireEvent.click(getByTestId('pick-sign-in'));
+			await flushPromises();
+
+			expect(confirm).not.toHaveBeenCalled();
+			expect(emitted()['update:modelValue']).toEqual([['cred-2']]);
+			expect(emitted()).not.toHaveProperty('restart');
+		});
+
+		it('sets up again with the new sign-in once the user confirms', async () => {
+			confirm.mockResolvedValue('confirm');
+			const { getByTestId, emitted } = renderSaved();
+
+			await fireEvent.click(getByTestId('pick-sign-in'));
+
+			await waitFor(() =>
+				expect(emitted().restart).toEqual([[{ credentialId: '', signInCredentialId: 'cred-2' }]]),
+			);
+			// The switch waits for the channel to be removed, so a failed removal changes nothing.
+			expect(emitted()).not.toHaveProperty('update:modelValue');
+		});
+
+		it('keeps the sign-in when the user cancels', async () => {
+			confirm.mockResolvedValue('cancel');
+			const { getByTestId, emitted } = renderSaved();
+
+			await fireEvent.click(getByTestId('pick-sign-in'));
+			await flushPromises();
+
+			expect(emitted()).not.toHaveProperty('update:modelValue');
+			expect(emitted()).not.toHaveProperty('restart');
+		});
+
+		it('sets up again after a new sign-in', async () => {
+			confirm.mockResolvedValue('confirm');
+			const runtime = buildRuntime({
+				connectManagerCredential: vi.fn().mockResolvedValue('cred-new'),
+			});
+			const { getByTestId, emitted } = renderSaved({ runtime });
+
+			await fireEvent.click(getByTestId('add-sign-in'));
+
+			await waitFor(() =>
+				expect(emitted().restart).toEqual([[{ credentialId: '', signInCredentialId: 'cred-new' }]]),
+			);
+			expect(runtime.connectManagerCredential).toHaveBeenCalledWith(undefined, { select: false });
+		});
+
+		it('keeps the channel when the new sign-in does not finish', async () => {
+			confirm.mockResolvedValue('confirm');
+			const runtime = buildRuntime({ connectManagerCredential: vi.fn().mockResolvedValue(null) });
+			const { getByTestId, emitted } = renderSaved({ runtime });
+
+			await fireEvent.click(getByTestId('add-sign-in'));
+			await flushPromises();
+
+			expect(runtime.connectManagerCredential).toHaveBeenCalled();
+			expect(emitted()).not.toHaveProperty('restart');
+		});
+	});
+
+	it('offers a picker when the project already has a sign-in', () => {
+		const { getByTestId } = render({
+			setup: setupState({
+				managerCredentials: [{ ...connectedCredential, connected: false }],
+			}),
+		});
+
+		expect(getByTestId('teams-manager-credential-select')).toBeVisible();
+	});
+
+	/**
+	 * A sign-in can go stale after the steps that ran on it succeeded. The work
+	 * already done stays done, but nothing may run on a sign-in that cannot be
+	 * used -- including the question Azure is asked, which would otherwise wait
+	 * for an answer nobody went to fetch.
+	 */
+	it('locks the rest behind a sign-in that has to be redone', async () => {
+		const loadSubscriptions = vi.fn();
+		const { getByTestId, queryByTestId } = render({
+			modelValue: 'cred-1',
+			setup: setupState({
+				managerCredentials: [{ ...connectedCredential, reconnectRequired: true }],
+			}),
+			runtime: buildRuntime({
+				loadSubscriptions,
+				provisionedApp: ref({
+					credentialId: 'bot-cred-1',
+					appId: 'app-1',
+					appName: 'Support Bot (n8n)',
+					organizationName: 'Acme Corp',
+					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl: null,
+					secretExpiresAt: '2028-09-17T00:00:00Z',
+				}),
+			}),
+		});
+
+		await waitFor(() =>
+			expect(getByTestId('teams-managed-locked-create-bot')).toHaveTextContent(
+				'agents.channels.teams.managed.connect.lockedBySignIn',
+			),
+		);
+		// Never asked, so it must not claim to be asking.
+		expect(loadSubscriptions).not.toHaveBeenCalled();
+		expect(queryByTestId('teams-bot-checking')).not.toBeInTheDocument();
+	});
+
+	it('asks for a reconnect when the grant is missing a scope', async () => {
+		const connectManagerCredential = vi.fn().mockResolvedValue(true);
+		const { getByTestId } = render({
+			modelValue: 'cred-1',
+			setup: setupState({
+				managerCredentials: [{ ...connectedCredential, reconnectRequired: true }],
+			}),
+			runtime: buildRuntime({ connectManagerCredential }),
+		});
+
+		expect(getByTestId('teams-manager-reconnect')).toBeVisible();
+
+		await fireEvent.click(getByTestId('teams-manager-connect'));
+		// Re-consents the same credential rather than creating a second one.
+		await waitFor(() => expect(connectManagerCredential).toHaveBeenCalledWith('cred-1', undefined));
+	});
+
+	it('signs in with a new credential when there is none to reuse', async () => {
+		const connectManagerCredential = vi.fn().mockResolvedValue(true);
+		const { getByTestId } = render({ runtime: buildRuntime({ connectManagerCredential }) });
+
+		await fireEvent.click(getByTestId('teams-manager-connect'));
+
+		await waitFor(() =>
+			expect(connectManagerCredential).toHaveBeenCalledWith(undefined, undefined),
+		);
+	});
+
+	it('reports a sign-in that did not finish', async () => {
+		const { getByTestId } = render({
+			runtime: buildRuntime({ connectManagerCredential: vi.fn().mockResolvedValue(false) }),
+		});
+
+		await fireEvent.click(getByTestId('teams-manager-connect'));
+
+		await waitFor(() => {
+			expect(getByTestId('teams-manager-error')).toHaveTextContent(
+				'agents.channels.teams.managed.connect.failed',
+			);
+		});
+	});
+
+	it('offers the admin link inside the error once a sign-in did not finish', async () => {
+		const { getByTestId, queryByTestId } = render({
+			runtime: buildRuntime({ connectManagerCredential: vi.fn().mockResolvedValue(false) }),
+		});
+
+		await fireEvent.click(getByTestId('teams-manager-connect'));
+		await waitFor(() => expect(getByTestId('teams-manager-error')).toBeVisible());
+
+		expect(queryByTestId('teams-admin-consent')).not.toBeInTheDocument();
+		await fireEvent.click(getByTestId('teams-manager-error-admin-consent'));
+		expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('adminconsent'));
+	});
+
+	it('reports a sign-in that threw', async () => {
+		const { getByTestId } = render({
+			runtime: buildRuntime({
+				connectManagerCredential: vi.fn().mockRejectedValue(new Error('popup blocked')),
+			}),
+		});
+
+		await fireEvent.click(getByTestId('teams-manager-connect'));
+
+		// A thrown sign-in reports what actually failed, rather than the generic
+		// "did not finish" that a plain `false` gets — and it reports it at the
+		// Connect step rather than at the foot of the stepper.
+		await waitFor(() =>
+			expect(getByTestId('teams-managed-error-connect')).toHaveTextContent('popup blocked'),
+		);
+	});
+
+	describe('the steps after Connect', () => {
+		const signedIn = (overrides: Partial<Parameters<typeof buildRuntime>[0]> = {}) => ({
+			modelValue: 'cred-1',
+			setup: setupState({ managerCredentials: [connectedCredential] }),
+			runtime: buildRuntime(overrides),
+		});
+
+		/**
+		 * The last step often waits on Microsoft for hours, so leaving is the
+		 * ordinary ending. A Done button at the foot of the stepper sits below the
+		 * fold and under the scrollbar, so the modal draws it in its own footer
+		 * and this only reports when one is due.
+		 */
+		it('leaves the Done button to the modal footer', async () => {
+			const Host = defineComponent({
+				components: { AgentChannelTeamsManagedSetup },
+				props: { hostProps: { type: Object, required: true } },
+				setup: () => ({ view: ref<{ canFinish?: boolean }>() }),
+				template: `
+					<div>
+						<AgentChannelTeamsManagedSetup ref="view" v-bind="hostProps" />
+						<span data-testid="can-finish">{{ String(view?.canFinish) }}</span>
+					</div>
+				`,
+			});
+			const hostProps = props(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref<TeamsCatalogState | null>(null),
+					publishApp: vi.fn().mockResolvedValue(true),
+				}),
+			);
+			const { getByTestId } = createComponentRenderer(Host, {
+				global: { stubs },
+			})({ props: { hostProps }, pinia: createTestingPinia() });
+
+			await waitFor(() => expect(getByTestId('can-finish')).toHaveTextContent('false'));
+
+			await fireEvent.click(getByTestId('teams-publish'));
+
+			await waitFor(() => expect(getByTestId('can-finish')).toHaveTextContent('true'));
+		});
+
+		/** Done saves what the view holds, so it has to hold the credential. */
+		it('hands over the credential without waiting to be told to save', async () => {
+			const { emitted } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+				}),
+			);
+
+			await waitFor(() => expect(emitted().provisioned).toEqual([['bot-cred-1']]));
+			// Saving is the Done button's job, not something the open does.
+			expect(emitted().persist).toBeUndefined();
+		});
+
+		it('reports a failed step beside that step', async () => {
+			const provisionApp = vi
+				.fn()
+				.mockRejectedValue(
+					new Error('This Microsoft sign-in is no longer valid. Sign in again to continue.'),
+				);
+			const { getByTestId, queryByTestId } = render(signedIn({ provisionApp }));
+
+			await fireEvent.click(getByTestId('teams-create-app'));
+
+			await waitFor(() =>
+				expect(getByTestId('teams-managed-error-create-app')).toHaveTextContent('no longer valid'),
+			);
+			// Not duplicated at the foot of the stepper.
+			expect(queryByTestId('teams-managed-error')).not.toBeInTheDocument();
+		});
+
+		/**
+		 * Nothing about the answer depends on the app, and an account that cannot
+		 * reach a subscription cannot finish here. Asking at sign-in is what lets
+		 * the app step say so before it registers anything.
+		 */
+		/**
+		 * A tenant that will not let this account register an app is the other
+		 * wall this step can hit, and the way past it is the same: somebody with
+		 * the rights hands over a registration, and the manual flow takes it.
+		 */
+		it('offers the manual flow when the app cannot be registered', async () => {
+			const runtime = buildRuntime({
+				provisionApp: vi
+					.fn()
+					.mockRejectedValue(
+						new Error('This account is not allowed to register applications in the organisation.'),
+					),
+			});
+			const { getByTestId } = render({
+				modelValue: 'cred-1',
+				setup: setupState({ managerCredentials: [connectedCredential] }),
+				runtime,
+			});
+
+			await fireEvent.click(getByTestId('teams-create-app'));
+
+			await waitFor(() => expect(getByTestId('teams-managed-error-create-app')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-use-own-app-from-app-step'));
+			expect(runtime.setupKind.value).toBe('manual');
+		});
+
+		it('looks for a subscription on sign-in, before anything is created', async () => {
+			const loadSubscriptions = vi.fn();
+			const provisionApp = vi.fn();
+			render(signedIn({ provisionApp, loadSubscriptions }));
+
+			await waitFor(() => expect(loadSubscriptions).toHaveBeenCalled());
+			expect(provisionApp).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * The app, the bot and the subscriptions all belong to the tenant that was
+		 * signed in to. Keeping them across a change of sign-in would offer the bot
+		 * step a subscription the new account cannot use.
+		 */
+		it('forgets what the previous sign-in produced when the account changes', async () => {
+			const otherCredential = { ...connectedCredential, id: 'cred-2', name: 'Other organization' };
+			const runtime = buildRuntime({
+				subscriptions: ref([{ id: 'sub-1', name: 'Production' }]),
+				provisionedApp: ref({
+					credentialId: 'bot-cred-1',
+					appId: 'app-1',
+					appName: 'Support Bot (n8n)',
+					organizationName: 'Acme Corp',
+					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl: null,
+					secretExpiresAt: '2028-09-17T00:00:00Z',
+				}),
+			});
+			const { rerender } = render({
+				modelValue: 'cred-1',
+				setup: setupState({ managerCredentials: [connectedCredential, otherCredential] }),
+				runtime,
+			});
+			await waitFor(() => expect(runtime.loadSubscriptions).toHaveBeenCalledTimes(1));
+
+			await rerender(
+				props({
+					modelValue: 'cred-2',
+					setup: setupState({ managerCredentials: [connectedCredential, otherCredential] }),
+					runtime,
+				}),
+			);
+
+			await waitFor(() => expect(runtime.subscriptions.value).toEqual([]));
+			expect(runtime.provisionedApp.value).toBeNull();
+			expect(runtime.loadSubscriptions).toHaveBeenCalledTimes(2);
+		});
+
+		/**
+		 * `refreshCatalogState` refuses to let an `unknown` read overwrite a known
+		 * state, so a verdict left over from the previous tenant does not merely
+		 * flicker -- it survives the new tenant's read.
+		 */
+		it('forgets where the app stood when the account changes', async () => {
+			const otherCredential = { ...connectedCredential, id: 'cred-2', name: 'Other organization' };
+			const runtime = buildRuntime({
+				catalogState: ref<TeamsCatalogState | null>({
+					status: 'published',
+					teamsAppId: 'teams-app-1',
+				}),
+			});
+			const { rerender } = render({
+				modelValue: 'cred-1',
+				setup: setupState({ managerCredentials: [connectedCredential, otherCredential] }),
+				runtime,
+			});
+			await waitFor(() => expect(runtime.loadSubscriptions).toHaveBeenCalled());
+
+			await rerender(
+				props({
+					modelValue: 'cred-2',
+					setup: setupState({ managerCredentials: [connectedCredential, otherCredential] }),
+					runtime,
+				}),
+			);
+
+			await waitFor(() => expect(runtime.catalogState.value).toBeNull());
+		});
+
+		/** The subscription is the bot step's problem, and it says so there. */
+		it('says nothing about Azure before the app is registered', async () => {
+			const { getByTestId, queryByTestId } = render(signedIn({ subscriptions: ref([]) }));
+
+			await waitFor(() => expect(getByTestId('teams-create-app')).toBeVisible());
+			expect(queryByTestId('teams-app-needs-azure')).not.toBeInTheDocument();
+		});
+
+		it('offers a subscription picker when Azure has one to use', async () => {
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					subscriptions: ref([{ id: 'sub-1', name: 'Production' }]),
+				}),
+			);
+
+			await waitFor(() => expect(getByTestId('teams-bot-subscription')).toBeVisible());
+			expect(getByTestId('teams-create-bot')).toBeVisible();
+		});
+
+		it('pre-selects a subscription, so the picker never reads as an unfinished step', async () => {
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					subscriptions: ref([
+						{ id: 'sub-1', name: 'Production' },
+						{ id: 'sub-2', name: 'Sandbox' },
+					]),
+				}),
+			);
+
+			// Selected, so the create button is usable without touching the picker.
+			await waitFor(() => expect(getByTestId('teams-create-bot')).not.toBeDisabled());
+		});
+
+		/**
+		 * Reopening a setup whose app already exists puts the bot step on screen
+		 * with no run in flight. Without asking Azure first it would show the
+		 * no-subscription fallback and then correct itself, which reads as a bug.
+		 */
+		it('asks Azure before deciding anything, on a setup reopened later', async () => {
+			// Held open, so the state before Azure answers is observable at all.
+			let answer: () => void = () => {};
+			// Resolves `true`: the step waits for an answer that was kept.
+			const loadSubscriptions = vi.fn(
+				async () => await new Promise<boolean>((resolve) => (answer = () => resolve(true))),
+			);
+			const { getByTestId, queryByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					subscriptions: ref([]),
+					loadSubscriptions,
+				}),
+			);
+
+			await waitFor(() => expect(loadSubscriptions).toHaveBeenCalled());
+
+			// Nothing claimed about subscriptions until Azure has answered.
+			expect(getByTestId('teams-bot-checking')).toBeVisible();
+			expect(queryByTestId('teams-bot-no-subscription')).not.toBeInTheDocument();
+
+			answer();
+			await waitFor(() => expect(getByTestId('teams-bot-no-subscription')).toBeVisible());
+		});
+
+		/**
+		 * A sign-in that never covered Azure answers the same way as an account
+		 * with nothing in it. Reporting the refusal as "no subscription" sends the
+		 * user off to build a bot by hand over a sign-in they could just redo.
+		 */
+		it('reports a refused Azure lookup instead of inventing an empty account', async () => {
+			const loadSubscriptions = vi
+				.fn()
+				.mockRejectedValue(
+					new Error('This Microsoft sign-in is no longer valid. Sign in again to continue.'),
+				);
+			const { getByTestId, queryByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					subscriptions: ref([]),
+					loadSubscriptions,
+				}),
+			);
+
+			await waitFor(() =>
+				expect(getByTestId('teams-managed-error-create-bot')).toHaveTextContent('no longer valid'),
+			);
+			expect(queryByTestId('teams-bot-no-subscription')).not.toBeInTheDocument();
+		});
+
+		/**
+		 * Azure is the only place left that registers a bot, so this account cannot
+		 * reach the end of the recommended setup. It is told which access would
+		 * unblock it, and offered the manual flow instead.
+		 */
+		it('stops at the bot step when there is no subscription', async () => {
+			const { getByTestId, queryByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					subscriptions: ref([]),
+					botSetupState: ref({
+						messagingEndpointUrl: 'https://n8n.example.com/webhook',
+						botId: 'app-1',
+						deployToAzureUrl: 'https://portal.azure.com/template',
+						credentialClaimedBy: null,
+						provisionedByN8n: true,
+						azureBot: null,
+						appOutdated: false,
+						fileAccessConsentUrl: null,
+						defaultDisplayName: 'Support Bot',
+						defaultDescription: 'An agent',
+					}),
+				}),
+			);
+
+			await waitFor(() => expect(getByTestId('teams-bot-no-subscription')).toBeVisible());
+			expect(getByTestId('teams-bot-no-subscriptions-select')).toBeVisible();
+			expect(getByTestId('teams-use-own-app-from-bot-step')).toBeVisible();
+			expect(queryByTestId('teams-create-bot')).not.toBeInTheDocument();
+			// Microsoft stopped allowing new Bot Channels Registrations, so the
+			// portal that used to make one without Azure cannot any more.
+			expect(queryByTestId('teams-bot-dev-portal')).not.toBeInTheDocument();
+			// Nothing here finishes the bot, so the step after it stays out of reach.
+			expect(queryByTestId('teams-install-download-package')).not.toBeInTheDocument();
+		});
+
+		/**
+		 * n8n cannot see the upload, so the last step is the instructions and the
+		 * user saying they are finished -- not a claim that it worked.
+		 */
+		it('moves the upload instructions to the last step once the package is out', async () => {
+			const { getByTestId, getByText, queryByText, emitted } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+				}),
+			);
+
+			// Locked until there is something to upload.
+			await waitFor(() => expect(getByTestId('teams-managed-done')).toBeDisabled());
+			expect(
+				queryByText('agents.channels.teams.setup.install.description'),
+			).not.toBeInTheDocument();
+
+			await fireEvent.click(getByTestId('teams-install-download-package'));
+
+			await waitFor(() =>
+				expect(getByText('agents.channels.teams.setup.install.description')).toBeVisible(),
+			);
+			expect(getByTestId('teams-finish-upload-hint')).toBeVisible();
+
+			await fireEvent.click(getByTestId('teams-managed-done'));
+			expect(emitted().done).toHaveLength(1);
+		});
+
+		/**
+		 * The upload is what is left to do on a channel that was saved and left,
+		 * so the step holding those instructions has to show them on a revisit --
+		 * not only in the session that downloaded.
+		 */
+		it('shows the upload instructions again on a setup reopened over a saved channel', async () => {
+			const { getByTestId, getByText } = render({
+				...signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+				}),
+				channelConnected: true,
+			});
+
+			await waitFor(() =>
+				expect(getByText('agents.channels.teams.setup.install.description')).toBeVisible(),
+			);
+			expect(getByTestId('teams-managed-done')).toBeEnabled();
+		});
+
+		/** A sign-in that has to be redone locks the steps above it, and this one. */
+		it('locks the last step behind a sign-in that has to be redone', async () => {
+			const { getByTestId, getAllByText, queryByText } = render({
+				modelValue: 'cred-1',
+				setup: setupState({
+					managerCredentials: [{ ...connectedCredential, reconnectRequired: true }],
+				}),
+				channelConnected: true,
+			});
+
+			await waitFor(() => expect(getByTestId('teams-managed-done')).toBeDisabled());
+			// The step says why it is locked once, and not that the app is missing.
+			expect(
+				getAllByText('agents.channels.teams.managed.connect.lockedBySignIn').length,
+			).toBeGreaterThan(0);
+			expect(queryByText('agents.channels.teams.managed.finish.locked')).not.toBeInTheDocument();
+		});
+
+		it('says what to do when Teams has no Upload an app option', async () => {
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref({ status: 'submitted', teamsAppId: 'teams-app-1' }),
+				}),
+			);
+
+			// Only once the upload is the thing being attempted.
+			await waitFor(() => expect(getByTestId('teams-install-download-package')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-install-download-package'));
+
+			await waitFor(() => expect(getByTestId('teams-finish-upload-hint')).toBeVisible());
+		});
+
+		/** Nothing else asserts the button actually provisions what was chosen. */
+		it('creates the bot against the subscription the user picked', async () => {
+			const provisionBot = vi.fn();
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					subscriptions: ref([{ id: 'sub-1', name: 'Production' }]),
+					provisionBot,
+				}),
+			);
+
+			await waitFor(() => expect(getByTestId('teams-create-bot')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-create-bot'));
+
+			await waitFor(() => expect(provisionBot).toHaveBeenCalledWith('sub-1'));
+		});
+
+		const botUp = () =>
+			signedIn({
+				provisionedApp: ref({
+					credentialId: 'bot-cred-1',
+					appId: 'app-1',
+					appName: 'Support Bot (n8n)',
+					organizationName: 'Acme Corp',
+					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl: null,
+					secretExpiresAt: '2028-09-17T00:00:00Z',
+				}),
+				provisionedBot: ref({
+					botName: 'support-bot-1',
+					resourceGroup: 'n8n-agents',
+					subscriptionId: 'sub-1',
+				}),
+			});
+
+		it('keeps the availability panel editable once the bot is up', async () => {
+			const { getByTestId } = render(botUp());
+
+			// Settings stay editable once the bot is up, and the install step opens
+			// beside them rather than behind a gate.
+			await waitFor(() => expect(getByTestId('teams-availability')).toBeVisible());
+			expect(getByTestId('teams-install-download-package')).toBeVisible();
+		});
+
+		it("shows the agent's own icon on the install card", async () => {
+			const personalisation = computed(() => ({
+				icon: 'zap',
+				gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+			}));
+			const { getByTestId } = render(botUp(), { [AGENT_PERSONALISATION_KEY]: personalisation });
+
+			await waitFor(() => expect(getByTestId('teams-identity')).toBeVisible());
+			const tile = getByTestId('teams-identity').querySelector<HTMLElement>(
+				'[data-test-id="agent-personalisation-icon-tile"]',
+			);
+			expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#2563EB');
+			expect(tile?.querySelector('[data-icon="zap"]')).toBeInTheDocument();
+		});
+
+		// The secret's expiry belongs to the connected channel's settings, not here:
+		// at this point it is years away and says nothing about whether setup worked.
+		it('names the organization the app is registered in once created', async () => {
+			const { getByText, queryByText } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+				}),
+			);
+
+			await waitFor(() =>
+				expect(
+					getByText('agents.channels.teams.managed.createApp.summary Acme Corp'),
+				).toBeVisible(),
+			);
+			expect(
+				queryByText('agents.channels.teams.managed.createApp.description'),
+			).not.toBeInTheDocument();
+		});
+
+		it('names the bot once Azure has created it', async () => {
+			const { getByText, queryByText } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+				}),
+			);
+
+			await waitFor(() =>
+				expect(
+					getByText('agents.channels.teams.managed.createBot.summary support-bot-1'),
+				).toBeVisible(),
+			);
+			expect(
+				queryByText('agents.channels.teams.managed.createBot.description'),
+			).not.toBeInTheDocument();
+		});
+
+		it('offers the same availability controls as the manual setup', async () => {
+			const { getByTestId, queryByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+				}),
+			);
+
+			// The manual stepper's own component, not a second copy of the choices,
+			// and collapsed to its summary exactly as the manual one is.
+			await waitFor(() => expect(getByTestId('teams-availability')).toBeVisible());
+			expect(queryByTestId('teams-scope-channels')).not.toBeInTheDocument();
+
+			await fireEvent.click(
+				within(getByTestId('teams-availability')).getByLabelText(
+					'Toggle agents.channels.teams.setup.availability.whereTitle',
+				),
+			);
+
+			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
+			expect(getByTestId('teams-scope-groups')).toBeVisible();
+		});
+
+		/**
+		 * No Azure subscription is a wall this flow cannot climb, and the manual
+		 * flow is the one that takes what an admin hands back. Offering the switch
+		 * beside the warning beats leaving the user to find the header picker.
+		 */
+		it('offers the manual flow when the bot cannot be created here', async () => {
+			const runtime = buildRuntime({
+				provisionedApp: ref({
+					credentialId: 'bot-cred-1',
+					appId: 'app-1',
+					appName: 'Support Bot (n8n)',
+					organizationName: 'Acme Corp',
+					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl: null,
+					secretExpiresAt: '2028-09-17T00:00:00Z',
+				}),
+				subscriptions: ref([]),
+			});
+			const { getByTestId } = render({
+				modelValue: 'cred-1',
+				setup: setupState({ managerCredentials: [connectedCredential] }),
+				runtime,
+			});
+
+			await waitFor(() => expect(getByTestId('teams-use-own-app-from-bot-step')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-use-own-app-from-bot-step'));
+
+			expect(runtime.setupKind.value).toBe('manual');
+			// Leaving from here is the rung the ladder counts.
+			expect(runtime.reportManualBotRoute).toHaveBeenCalled();
+		});
+
+		/**
+		 * Leaving from the app step is a different answer: the app could not be
+		 * registered, so the setup never reached the bot rung at all.
+		 */
+		it('counts no bot rung when the app step is the one that sent them away', async () => {
+			const runtime = buildRuntime({
+				provisionApp: vi
+					.fn()
+					.mockRejectedValue(
+						new Error('This account is not allowed to register applications in the organisation.'),
+					),
+			});
+			const { getByTestId } = render({
+				modelValue: 'cred-1',
+				setup: setupState({ managerCredentials: [connectedCredential] }),
+				runtime,
+			});
+
+			await fireEvent.click(getByTestId('teams-create-app'));
+			await waitFor(() => expect(getByTestId('teams-managed-error-create-app')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-use-own-app-from-app-step'));
+
+			expect(runtime.setupKind.value).toBe('manual');
+			expect(runtime.reportManualBotRoute).not.toHaveBeenCalled();
+		});
+
+		it('sends a rejected app to the Teams admin centre, inventing no reason', async () => {
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref({ status: 'rejected', teamsAppId: 'teams-app-1' }),
+				}),
+			);
+
+			// Microsoft supplies no reason field, so the copy must point at the
+			// admin centre rather than guess at one.
+			await waitFor(() =>
+				expect(getByTestId('teams-catalog-state')).toHaveTextContent(
+					'agents.channels.teams.managed.install.rejected',
+				),
+			);
+		});
+
+		/**
+		 * Publishing and installing are sequential, not alternatives. Once the app
+		 * is in the catalogue the only thing left is adding it, so that is the only
+		 * thing the step offers.
+		 */
+		/**
+		 * The catalogue answers "not listed yet" about an app it is still being
+		 * given, so that line beside a running publish reads as the answer to
+		 * that publish -- and it was shown before the user had published at all.
+		 */
+		it('says nothing about the catalogue while it is being asked', async () => {
+			let finishPublish = () => {};
+			const { getByTestId, queryByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref<TeamsCatalogState | null>({ status: 'unknown', teamsAppId: null }),
+					publishApp: vi.fn(
+						async () =>
+							await new Promise<boolean>((resolve) => (finishPublish = () => resolve(true))),
+					),
+				}),
+			);
+
+			await fireEvent.click(getByTestId('teams-publish'));
+
+			await waitFor(() => expect(getByTestId('teams-install-progress')).toBeVisible());
+			expect(getByTestId('teams-install-menu')).toHaveAttribute('aria-busy', 'true');
+			expect(queryByTestId('teams-catalog-state')).not.toBeInTheDocument();
+
+			finishPublish();
+			await waitFor(() => expect(getByTestId('teams-catalog-state')).toBeVisible());
+		});
+
+		/**
+		 * Publishing is the end of n8n's part, so the step closes on it. The
+		 * package stays reachable because the published app is in nobody's Teams
+		 * until Microsoft lets it be added.
+		 */
+		/**
+		 * Microsoft keeps the app through a disconnect, so a re-run publishes
+		 * nothing and hands over no package -- neither of the routes that writes
+		 * the channel runs. Without Done the credential can never be bound back
+		 * to the agent, which is the state this lands in.
+		 */
+		it('offers Done for an app the catalogue already has', async () => {
+			const Host = defineComponent({
+				components: { AgentChannelTeamsManagedSetup },
+				props: { hostProps: { type: Object, required: true } },
+				setup: () => ({ view: ref<{ canFinish?: boolean }>() }),
+				template: `
+					<div>
+						<AgentChannelTeamsManagedSetup ref="view" v-bind="hostProps" />
+						<span data-testid="can-finish">{{ String(view?.canFinish) }}</span>
+					</div>
+				`,
+			});
+			const hostProps = props(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref({ status: 'published', teamsAppId: 'teams-app-1' }),
+				}),
+			);
+			const { getByTestId } = createComponentRenderer(Host, { global: { stubs } })({
+				props: { hostProps },
+				pinia: createTestingPinia(),
+			});
+
+			// Nothing was downloaded and nothing published in this session.
+			await waitFor(() => expect(getByTestId('can-finish')).toHaveTextContent('true'));
+		});
+
+		it('moves to the last step on a publish, and keeps the package reachable', async () => {
+			const catalogState = ref<TeamsCatalogState | null>({ status: 'unknown', teamsAppId: null });
+			const { getByTestId, getByText, queryByText } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState,
+					publishApp: vi.fn(async () => {
+						catalogState.value = { status: 'published', teamsAppId: 'teams-app-1' };
+						return true;
+					}),
+				}),
+			);
+
+			await fireEvent.click(getByTestId('teams-publish'));
+
+			// The last step says where the app stands, and keeps the package on
+			// offer: a published app is in nobody's Teams until Microsoft lists it.
+			await waitFor(() =>
+				expect(getByText('agents.channels.teams.managed.finish.published Acme Corp')).toBeVisible(),
+			);
+			expect(getByTestId('teams-finish-download-package')).toBeVisible();
+			expect(getByTestId('teams-install-menu')).toBeVisible();
+			expect(getByTestId('teams-publish')).toBeDisabled();
+			// Nothing was added to anyone's Teams, so nothing says it was.
+			expect(
+				queryByText('agents.channels.teams.setup.install.description'),
+			).not.toBeInTheDocument();
+		});
+
+		it('copies an approval request once the app is in for review', async () => {
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref({ status: 'submitted', teamsAppId: 'teams-app-1' }),
+				}),
+			);
+
+			await fireEvent.click(getByTestId('teams-copy-approval-request'));
+
+			await waitFor(() => expect(copySpy).toHaveBeenCalled());
+			const [copied] = copySpy.mock.calls[0] as [string];
+			expect(copied).toContain('Support Bot (n8n)');
+			expect(copied).toContain('https://admin.teams.microsoft.com/policies/manage-apps');
+		});
+
+		it('shows where the app stands in the catalogue', async () => {
+			const { getByTestId } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					catalogState: ref({ status: 'submitted', teamsAppId: 'teams-app-1' }),
+				}),
+			);
+
+			await waitFor(() =>
+				expect(getByTestId('teams-catalog-state')).toHaveTextContent(
+					'agents.channels.teams.managed.install.submitted',
+				),
+			);
+		});
+	});
+
+	it('selects a connected sign-in by itself', async () => {
+		const { emitted } = render({
+			setup: setupState({
+				managerCredentials: [
+					{ ...connectedCredential, id: 'cred-unconnected', connected: false },
+					connectedCredential,
+				],
+			}),
+		});
+
+		await waitFor(() => {
+			expect(emitted()['update:modelValue']).toEqual([['cred-1']]);
+		});
+	});
+
+	describe('file access', () => {
+		const deployed = (fileAccessConsentUrl: string | null, settings = { teamChannels: true }) => ({
+			modelValue: 'cred-1',
+			setup: setupState({ managerCredentials: [connectedCredential] }),
+			savedSettings: settings,
+			runtime: buildRuntime({
+				provisionedApp: ref({
+					credentialId: 'bot-cred-1',
+					appId: 'app-1',
+					appName: 'Support Bot (n8n)',
+					organizationName: 'Acme Corp',
+					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl,
+					secretExpiresAt: '2028-09-17T00:00:00Z',
+				}),
+				provisionedBot: ref({
+					botName: 'support-bot-1',
+					resourceGroup: 'n8n-agents',
+					subscriptionId: 'sub-1',
+				}),
+			}),
+		});
+		const CONSENT_URL = 'https://login.microsoftonline.com/tenant-1/adminconsent?client_id=app-1';
+
+		const renderWith = (overrides: Record<string, unknown>) =>
+			renderComponent({ props: props(overrides), pinia: createTestingPinia(), global: { stubs } });
+
+		it('keeps the step when the agent works only in direct chats, to find people by email', () => {
+			const { getByText } = renderWith(deployed(CONSENT_URL, { teamChannels: false }));
+
+			expect(getByText('agents.channels.teams.managed.fileAccess.title')).toBeInTheDocument();
+			expect(
+				getByText('agents.channels.teams.managed.fileAccess.description.directOnly'),
+			).toBeInTheDocument();
+		});
+
+		it('describes what the approval unlocks for the surfaces that are on', () => {
+			const { getByText } = renderWith(deployed(CONSENT_URL));
+
+			expect(
+				getByText('agents.channels.teams.managed.fileAccess.description.teamChannels'),
+			).toBeInTheDocument();
+		});
+
+		it('asks for file access in its own step, before the last one', async () => {
+			const { getByText, getByTestId, queryByTestId } = renderWith(deployed(CONSENT_URL));
+
+			const title = getByText('agents.channels.teams.managed.fileAccess.title');
+			expect(
+				title.compareDocumentPosition(getByText('agents.channels.teams.managed.finish.title')) &
+					Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+			await waitFor(() => expect(getByTestId('teams-file-access-menu')).toBeVisible());
+			expect(queryByTestId('teams-file-access')).not.toBeInTheDocument();
+		});
+
+		it('opens the approval in a new tab', async () => {
+			const open = vi.spyOn(window, 'open').mockReturnValue(null);
+			const { getByTestId } = renderWith(deployed(CONSENT_URL));
+
+			await fireEvent.click(getByTestId('teams-file-access-approve'));
+
+			expect(open).toHaveBeenCalledWith(CONSENT_URL, '_blank', 'noopener');
+		});
+
+		it('copies the link for an admin and says so', async () => {
+			const { getByTestId } = renderWith(deployed(CONSENT_URL));
+
+			await fireEvent.click(getByTestId('teams-file-access-copy'));
+
+			expect(copySpy).toHaveBeenCalledWith(CONSENT_URL);
+			expect(showMessage).toHaveBeenCalledWith({
+				type: 'success',
+				title: 'agents.channels.teams.managed.fileAccess.copied',
+				message: 'agents.channels.teams.managed.fileAccess.copiedHint Acme Corp',
+			});
+		});
+
+		it('falls back to the app permissions in Entra without a consent link', async () => {
+			const { getByTestId } = renderWith(deployed(null));
+
+			await fireEvent.click(getByTestId('teams-file-access-copy'));
+
+			expect(copySpy).toHaveBeenCalledWith(entraApiPermissionsUrl('app-1'));
+		});
+	});
+});

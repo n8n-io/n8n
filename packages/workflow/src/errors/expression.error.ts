@@ -22,6 +22,7 @@ export interface ExpressionErrorOptions {
 		| 'paired_item_no_info'
 		| 'paired_item_multiple_matches'
 		| 'paired_item_no_connection'
+		| 'paired_item_not_on_branch'
 		| 'paired_item_intermediate_nodes';
 }
 

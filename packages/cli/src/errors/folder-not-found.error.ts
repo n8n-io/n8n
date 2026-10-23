@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 export class FolderNotFoundError extends OperationalError {
 	constructor(folderId: string) {

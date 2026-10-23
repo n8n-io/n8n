@@ -296,7 +296,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'workflow_builder_ask_user',
 				input: { prompt: 'Confirm?' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -362,7 +362,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'workflow_builder_ask_user',
 				args: { prompt: 'Confirm?' },
 				severity: 'destructive',
 				message: 'Need approval',
@@ -481,16 +481,15 @@ describe('mapAgentChunkToEvent', () => {
 		expect(
 			map({
 				type: 'tool-call-suspended',
-				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
-				input: { agentRef: 'support-agent' },
+				toolCallId: 'call-agent-call',
+				toolName: 'agent_builder_call_agent',
+				input: { message: 'Delete record-1' },
 				suspendPayload: {
 					type: 'approval',
 					requestId: 'approval-1',
 					toolName: 'delete_record',
 					displayName: 'Delete record',
 					args: { id: 'record-1' },
-					builderCheckpoint: { runId: 'builder-run', toolCallId: 'call-agent' },
 				},
 			}),
 		).toEqual({
@@ -499,9 +498,9 @@ describe('mapAgentChunkToEvent', () => {
 			agentId,
 			payload: {
 				requestId: 'approval-1',
-				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
-				args: { agentRef: 'support-agent' },
+				toolCallId: 'call-agent-call',
+				toolName: 'agent_builder_call_agent',
+				args: { message: 'Delete record-1' },
 				severity: 'warning',
 				message: 'Confirmation required',
 				targetApproval: {
@@ -667,6 +666,97 @@ describe('mapAgentChunkToEvent', () => {
 
 		expect(event).toMatchObject({ type: 'confirmation-request' });
 		expect(event).not.toHaveProperty('payload.mcpConnectRequest');
+	});
+
+	it('maps confirmations with a testListener payload', () => {
+		const testListener = {
+			workflowId: 'wf-1',
+			triggers: [
+				{
+					nodeName: 'Webhook',
+					url: 'http://localhost:5678/webhook-test/abc/intake',
+					method: 'POST',
+				},
+			],
+			deadlineAt: '2026-01-01T00:10:00.000Z',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'workflow_builder_executions',
+				input: { action: 'listen', workflowId: 'wf-1' },
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'info',
+					message: 'Waiting for a test request to Intake',
+					testListener,
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'workflow_builder_executions',
+				args: { action: 'listen', workflowId: 'wf-1' },
+				severity: 'info',
+				message: 'Waiting for a test request to Intake',
+				testListener,
+			},
+		});
+	});
+
+	it.each([
+		['without triggers', { workflowId: 'wf-1' }],
+		[
+			'with an empty workflowId',
+			{
+				workflowId: '',
+				triggers: [
+					{ nodeName: 'Webhook', url: 'http://localhost:5678/webhook-test/abc', method: 'POST' },
+				],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+		[
+			'with an empty triggers list',
+			{ workflowId: 'wf-1', triggers: [], deadlineAt: '2026-01-01T00:10:00.000Z' },
+		],
+		[
+			'with an empty trigger URL',
+			{
+				workflowId: 'wf-1',
+				triggers: [{ nodeName: 'Webhook', url: '', method: 'POST' }],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+		[
+			'with a relative trigger URL',
+			{
+				workflowId: 'wf-1',
+				triggers: [{ nodeName: 'Webhook', url: 'webhook-test/abc/intake', method: 'POST' }],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+	])('drops a malformed testListener payload %s', (_, testListener) => {
+		const event = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'workflow_builder_executions',
+			suspendPayload: {
+				requestId: 'request-1',
+				severity: 'info',
+				message: 'Waiting for a test request to Intake',
+				testListener,
+			},
+		});
+
+		expect(event).toMatchObject({ type: 'confirmation-request' });
+		expect(event).not.toHaveProperty('payload.testListener');
 	});
 
 	it('returns null for suspensions without a tool call id', () => {

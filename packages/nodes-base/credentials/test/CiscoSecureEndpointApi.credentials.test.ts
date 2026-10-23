@@ -85,6 +85,41 @@ describe('CiscoSecureEndpointApi Credential', () => {
 			expect(requestsMock).toHaveBeenCalledWith();
 		});
 
+		it('rejects a region outside the supported list without issuing a request', async () => {
+			await expect(
+				credential.authenticate({ ...baseCredentials, region: 'not-a-region' }, requestOptions),
+			).rejects.toThrow('Unsupported Cisco Secure Endpoint region');
+
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it("applies the credential's allowed domains to the token requests", async () => {
+			await credential.authenticate(
+				{
+					...baseCredentials,
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: '*.amp.cisco.com',
+				},
+				requestOptions,
+			);
+
+			expect(requestMock).toHaveBeenCalledTimes(2);
+			for (const [options] of requestMock.mock.calls) {
+				expect(options).toEqual(expect.objectContaining({ allowedDomains: '*.amp.cisco.com' }));
+			}
+		});
+
+		it('rejects a domains restriction with an empty allow-list before issuing a request', async () => {
+			await expect(
+				credential.authenticate(
+					{ ...baseCredentials, allowedHttpRequestDomains: 'domains', allowedDomains: '' },
+					requestOptions,
+				),
+			).rejects.toThrow('No allowed domains specified');
+
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
 		it('attaches the Secure Endpoint access token to the outgoing request', async () => {
 			const result = await credential.authenticate(baseCredentials, requestOptions);
 

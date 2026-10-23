@@ -19,7 +19,6 @@ import type {
 } from 'n8n-workflow';
 
 import type { ItemContext } from './prepareItemContext';
-import { isExecuteFunctions } from '../../../utils';
 import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult } from '../types';
 
@@ -37,7 +36,12 @@ export function appendToolAttributions(
 ): string {
 	// A reply with no text would show as the label alone, which reads as a glitch
 	if (output.trim() === '') return output;
-	const calledTools = new Set(steps.map((step) => step.action.tool));
+	// A denied or failed call produced no partner result, so it earns no label
+	const calledTools = new Set(
+		steps
+			.filter((step) => !step.action.hitlDenied && !step.action.errored)
+			.map((step) => step.action.tool),
+	);
 	const attributions = new Set<string>();
 	for (const tool of tools) {
 		const attribution = tool.metadata?.attribution;
@@ -94,10 +98,9 @@ export async function runAgent(
 	if (Object.keys(additionalMetadata).length > 0 && logger) {
 		ctx.logger.debug('Tracing metadata', { additionalMetadata });
 	}
-	const tracingConfig = isExecuteFunctions(ctx)
-		? getTracingConfig(ctx, { additionalMetadata })
-		: undefined;
-	const executorWithTracing = tracingConfig ? executor.withConfig(tracingConfig) : executor;
+	// `getTracingConfig` supports both context types, so sub-agents keep their LangSmith
+	// run name and execution id.
+	const executorWithTracing = executor.withConfig(getTracingConfig(ctx, { additionalMetadata }));
 
 	// Check if streaming is actually available
 	const isStreamingAvailable = 'isStreaming' in ctx ? ctx.isStreaming?.() : undefined;

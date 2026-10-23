@@ -4,9 +4,13 @@ import {
 	buildAgentConfigurationTelemetry,
 	buildAgentConfigurationTelemetryFromConfig,
 } from '../agent-telemetry';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
+import { storedRunSource } from './test-utils/stored-agent-config';
 
-function makeAgent(schema: AgentJsonConfig | null, overrides: Partial<Agent> = {}): Agent {
+function makeAgent(
+	schema: AgentJsonConfig | null,
+	overrides: Partial<ProjectAgent> = {},
+): ProjectAgent {
 	return {
 		id: 'agent-1',
 		schema,
@@ -14,7 +18,7 @@ function makeAgent(schema: AgentJsonConfig | null, overrides: Partial<Agent> = {
 		tools: {},
 		skills: {},
 		...overrides,
-	} as Agent;
+	} as ProjectAgent;
 }
 
 describe('agent telemetry', () => {
@@ -55,7 +59,9 @@ describe('agent telemetry', () => {
 
 		expect(
 			buildAgentConfigurationTelemetry(
-				makeAgent(schema, { integrations: [{ type: 'linear', credentialId: 'linear-cred' }] }),
+				storedRunSource(
+					makeAgent(schema, { integrations: [{ type: 'linear', credentialId: 'linear-cred' }] }),
+				),
 			),
 		).toEqual({
 			model: 'anthropic/claude-sonnet-4-5',

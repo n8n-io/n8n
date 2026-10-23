@@ -15,6 +15,8 @@ import type {
 /** The execution row, with its steps aggregated into one column. */
 type ExecutionWithStepsRow = ExecutionView & { steps: StepView[] };
 
+const HOST_MODE = "execution.caller_context->>'hostMode'";
+
 /**
  * The cursor compares `(created_at, id)`, so it only walks that order. A
  * status-bucket sort puts newer rows behind the top bucket, and the next page
@@ -50,6 +52,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect('execution.workflow_id', 'workflowId')
 			.addSelect('execution.status', 'status')
 			.addSelect('execution.mode', 'mode')
+			.addSelect(HOST_MODE, 'hostMode')
 			.addSelect('execution.created_at', 'createdAt')
 			.addSelect('execution.updated_at', 'updatedAt')
 			.addSelect('execution.finished_at', 'finishedAt');
@@ -76,7 +79,9 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			qb.andWhere('execution.workflow_id = ANY(:workflowIds)', { workflowIds: query.workflowIds });
 		}
 		if (query.status) qb.andWhere('execution.status = ANY(:statuses)', { statuses: query.status });
-		if (query.mode) qb.andWhere('execution.mode = :mode', { mode: query.mode });
+		if (query.hostMode) {
+			qb.andWhere(`${HOST_MODE} = :hostMode`, { hostMode: query.hostMode });
+		}
 		if (query.createdAfter)
 			qb.andWhere('execution.created_at >= :createdAfter', { createdAfter: query.createdAfter });
 		if (query.createdBefore)
@@ -133,6 +138,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect('execution.workflow_id', 'workflowId')
 			.addSelect('execution.status', 'status')
 			.addSelect('execution.mode', 'mode')
+			.addSelect(HOST_MODE, 'hostMode')
 			.addSelect('execution.graph', 'graph')
 			.addSelect('execution.workflow', 'workflow')
 			.addSelect('execution.created_at', 'createdAt')

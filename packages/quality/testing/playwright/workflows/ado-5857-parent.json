@@ -1,0 +1,129 @@
+{
+	"name": "Parent output check",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"parameters": {
+				"path": "subworkflow-output",
+				"responseMode": "onReceived",
+				"options": {}
+			},
+			"position": [0, 0],
+			"webhookId": "subworkflow-output"
+		},
+		{
+			"id": "items",
+			"name": "Items",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{\"items\": [{\"id\": 55}, {\"id\": 56}, {\"id\": 57}]}",
+				"options": {}
+			},
+			"position": [200, 0]
+		},
+		{
+			"id": "input",
+			"name": "Input",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"parameters": {
+				"fieldToSplitOut": "items",
+				"options": {}
+			},
+			"position": [400, 0]
+		},
+		{
+			"id": "call-child",
+			"name": "Call child",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.3,
+			"parameters": {
+				"source": "database",
+				"workflowId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "CHILD_ID"
+				},
+				"options": {
+					"waitForSubWorkflow": true
+				}
+			},
+			"position": [600, 0]
+		},
+		{
+			"id": "result",
+			"name": "Result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"parameters": {
+				"includeOtherFields": true,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "parent-id",
+							"name": "parentId",
+							"type": "number",
+							"value": "={{ $('Input').item.json.id }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"position": [800, 0]
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Items": {
+			"main": [
+				[
+					{
+						"node": "Input",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Input": {
+			"main": [
+				[
+					{
+						"node": "Call child",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Call child": {
+			"main": [
+				[
+					{
+						"node": "Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

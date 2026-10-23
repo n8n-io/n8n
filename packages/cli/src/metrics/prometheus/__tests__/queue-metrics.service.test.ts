@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
@@ -6,8 +7,6 @@ import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
 import { PrometheusQueueMetricsService } from '../queue-metrics.service';
-
-import type { EventService } from '@/events/event.service';
 
 vi.mock('prom-client');
 
@@ -129,6 +128,30 @@ describe('PrometheusQueueMetricsService', () => {
 				'job-counts-updated',
 				expect.any(Function),
 			]);
+		});
+	});
+
+	describe('job-completion-missed event handler', () => {
+		it('should create the completion-missed counter with a status label', () => {
+			service.init();
+
+			expect(promClient.Counter).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: 'n8n_scaling_mode_queue_jobs_completion_missed',
+					labelNames: ['status'],
+				}),
+			);
+		});
+
+		it('should count a missed completion under its execution status', () => {
+			service.init();
+			const handler = getEventHandler('job-completion-missed');
+			vi.clearAllMocks();
+
+			expect(handler).toBeDefined();
+			handler!({ status: 'deleted' });
+
+			expect(mockCounterInc).toHaveBeenCalledWith({ status: 'deleted' }, 1);
 		});
 	});
 

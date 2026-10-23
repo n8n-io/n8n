@@ -7,7 +7,7 @@ import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
-import { UnexpectedError } from './errors';
+import { UnexpectedError, UserError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { isExpression } from './expressions/expression-helpers';
 import { getGlobalState } from './global-state';
@@ -31,6 +31,7 @@ import type {
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import { IS_FRONTEND } from './runtime-environment';
 import { safeRegex } from './safe-regex';
 import { isResourceLocatorValue } from './type-guards';
 import {
@@ -932,6 +933,19 @@ export class WorkflowDataProxy {
 			});
 		};
 
+		// The node is upstream on the canvas, but the current item came through a
+		// different branch, e.g. the other input of an appending Merge.
+		const createNotOnBranchError = (nodeCause: string) => {
+			return createExpressionError('Invalid expression', {
+				messageTemplate: "Referenced node is not on this item's branch",
+				functionality: 'pairedItem',
+				descriptionKey: 'pairedItemNotOnBranch',
+				type: 'paired_item_not_on_branch',
+				moreInfoLink: true,
+				nodeCause,
+			});
+		};
+
 		function createBranchNotFoundError(node: string, item: number, cause?: string) {
 			return createExpressionError('Branch not found', {
 				messageTemplate: 'Paired item references non-existent branch',
@@ -1128,15 +1142,25 @@ export class WorkflowDataProxy {
 				}
 			});
 
-			if (results.every((result) => !result.ok)) {
+			if (results.length > 0 && results.every((result) => !result.ok)) {
 				throw results[0].error;
 			}
 
 			const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
 
+			// No paired item leads to an input of this node. The graph check before the
+			// walk already found the node upstream, so it is on a different branch.
 			if (matchedItems.length === 0) {
-				if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
-				throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
+				const error =
+					sourceArray.length === 0
+						? createNotOnBranchError(destinationNodeName)
+						: createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
+
+				// An expression error here would fail executions that resolve this case
+				// to null today. The expression engines swallow other errors, so the
+				// backend throws a UserError and only the editor shows the error.
+				if (IS_FRONTEND) throw error;
+				throw new UserError(error.message);
 			}
 
 			const [first, ...rest] = matchedItems;

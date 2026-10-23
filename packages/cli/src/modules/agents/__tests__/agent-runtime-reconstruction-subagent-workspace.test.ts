@@ -6,11 +6,13 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import type { WorkflowRepository } from '@n8n/db';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -80,6 +82,8 @@ function makeService() {
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<CredentialsService>(),
+		makeKnowledgeAvailabilityService(),
 	);
 
 	return { service, workspaceService };
@@ -120,6 +124,13 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 		expect(workspaceService.getDelegatedAgentWorkspace).toHaveBeenCalledWith(handle, 'thread-1');
 		expect(workspaceService.getAgentWorkspace).not.toHaveBeenCalled();
 		expect(builtAgent.workspace).toHaveBeenCalledWith(delegatedWorkspace);
+		expect(builtAgent.nativeToolDeferral).toHaveBeenCalledWith({
+			eagerToolNames: expect.arrayContaining([
+				'workspace_read_file',
+				'load_skill',
+				'mark_session_failed',
+			]),
+		});
 	});
 
 	it('attaches no workspace for sub-agent runs without a parent handle', async () => {

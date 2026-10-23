@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import {
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
@@ -62,6 +61,7 @@ const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(
 	(Object.keys(roles) as T[]).map((role) => ({
 		slug: role,
 		displayName: ROLE_NAMES[role],
+		// oxlint-disable-next-line typescript/no-deprecated
 		scopes: getRoleScopes(role),
 		description: ROLE_DESCRIPTIONS[role],
 		licensed: false,

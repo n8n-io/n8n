@@ -1,5 +1,6 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { returnAllOrLimit } from '../../descriptions';
@@ -98,9 +99,11 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		const filterString: string[] = [];
 
 		if (filters.emailAddress) {
-			const emails = (filters.emailAddress as string)
+			// A `string` parameter is a UI control, not a runtime guarantee: an expression
+			// can resolve one to any value, and `as string` would not convert it.
+			const emails = String(filters.emailAddress)
 				.split(',')
-				.map((email) => `emailAddresses/any(a:a/address eq '${email.trim()}')`);
+				.map((email) => `emailAddresses/any(a:a/address eq '${escapeODataValue(email.trim())}')`);
 			filterString.push(emails.join(' and '));
 		}
 

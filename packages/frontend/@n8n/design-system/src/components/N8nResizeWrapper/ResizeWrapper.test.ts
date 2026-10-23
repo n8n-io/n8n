@@ -69,6 +69,29 @@ describe('N8nResizeWrapper', () => {
 		expect(emitted('resizeend')).toHaveLength(1);
 	});
 
+	it('emits the reset width after both click cycles and accepts parent size feedback', async () => {
+		const { getByTestId, emitted, rerender } = renderComponent({
+			width: 640,
+			defaultWidth: 480,
+		});
+		const handle = getByTestId('resize-handle');
+
+		for (let detail = 1; detail <= 2; detail++) {
+			await fireEvent.mouseDown(handle, { clientX: 640, detail });
+			await fireEvent.mouseUp(window, { clientX: 640, detail });
+		}
+		await fireEvent.doubleClick(handle, { clientX: 640 });
+
+		expect(emitted('resize')).toEqual([
+			[expect.objectContaining({ width: 480, direction: 'right' })],
+		]);
+		await rerender({ width: 480, defaultWidth: 560 });
+		await fireEvent.doubleClick(handle);
+		expect(emitted('resize')?.[1]).toEqual([
+			expect.objectContaining({ width: 560, direction: 'right' }),
+		]);
+	});
+
 	it('marks a right handle at the minimum width', () => {
 		const { getByTestId } = renderComponent({ width: 100, minWidth: 100 });
 

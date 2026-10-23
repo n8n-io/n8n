@@ -17,6 +17,7 @@ import { WORKFLOW_PUBLISH_MODAL_KEY, EnterpriseEditionFeature } from '@/app/cons
 import { MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { STORES } from '@n8n/stores';
 import type { INodeUi } from '@/Interface';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import {
@@ -24,6 +25,8 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { nodeViewEventBus } from '@/app/event-bus';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import {
@@ -44,8 +47,8 @@ import { ResponseError } from '@n8n/rest-api-client';
 // Hoisted: the vue-router mock factory runs before module-level consts initialize
 const { mockRouterPush, mockRouterResolve } = vi.hoisted(() => ({
 	mockRouterPush: vi.fn(),
-	mockRouterResolve: vi.fn(({ params }: { params: { reviewRequestId: string } }) => ({
-		href: `/reviews/${params.reviewRequestId}`,
+	mockRouterResolve: vi.fn(({ params }: { params: { reviewId: string } }) => ({
+		href: `/inbox/reviews/${params.reviewId}`,
 	})),
 }));
 
@@ -709,7 +712,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Latest changes submitted to the existing review',
-				message: '<a href="/reviews/req-1">Open review</a>',
+				message: '<a href="/inbox/reviews/req-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 			const toastConfig = mockShowToast.mock.calls.at(-1)?.[0];
@@ -722,7 +725,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(preventDefault).toHaveBeenCalledOnce();
 			expect(mockRouterPush).toHaveBeenCalledWith({
 				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-				params: { reviewRequestId: 'req-1' },
+				params: { reviewId: 'req-1' },
 			});
 		});
 
@@ -816,7 +819,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Workflow version submitted for review',
-				message: '<a href="/reviews/review-1">Open review</a>',
+				message: '<a href="/inbox/reviews/review-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 		});
@@ -842,7 +845,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				expect(mockShowToast).toHaveBeenCalledWith({
 					type: 'success',
 					title: 'Workflow version submitted for review',
-					message: '<a href="/reviews/review-1">Open review</a>',
+					message: '<a href="/inbox/reviews/review-1">Open review</a>',
 					onClick: expect.any(Function),
 				});
 			});
@@ -895,6 +898,122 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should name the restricted node before its parameter issues', () => {
+			const restrictedNodeWithIssues: INodeUi = {
+				id: 'http-1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [200, 0],
+				parameters: {},
+				disabled: false,
+				issues: { parameters: { url: ['Parameter "URL" is required.'] } },
+			};
+			workflowDocumentStore.setNodes([triggerNode, restrictedNodeWithIssues]);
+			workflowDocumentStore.setConnections({
+				[triggerNode.name]: {
+					main: [[{ node: restrictedNodeWithIssues.name, type: 'main', index: 0 }]],
+				},
+			});
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: restrictedNodeWithIssues.type,
+					displayName: 'HTTP Request',
+				}),
+			]);
+			mockRestrictedNodeTypes({ [restrictedNodeWithIssues.type]: 'instance' });
+
+			const { getByTestId, getByText, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(
+				getByText(/An administrator blocked 'HTTP Request' on this instance/),
+			).toBeInTheDocument();
+			expect(queryByText(/node has issues/)).not.toBeInTheDocument();
+		});
+
+		const restrictedNode: INodeUi = {
+			id: 'slack-1',
+			name: 'Slack',
+			type: 'n8n-nodes-base.slack',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+			disabled: false,
+		};
+
+		const setupRestrictedWorkflow = (node: INodeUi = restrictedNode) => {
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: restrictedNode.type, displayName: 'Slack' }),
+			]);
+			workflowDocumentStore.setNodes([triggerNode, node]);
+			mockRestrictedNodeTypes({ [restrictedNode.type]: 'instance' });
+		};
+
+		const restrictionText = /An administrator blocked 'Slack' on this instance/;
+
+		it('should disable publish and name the restricted node in the tooltip', () => {
+			setupRestrictedWorkflow();
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByText(restrictionText)).toBeInTheDocument();
+		});
+
+		it('should disable publish for a published workflow with a restricted node', () => {
+			setupRestrictedWorkflow();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+			uiStore.markStateDirty();
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should disable publish when the restricted node is disabled', () => {
+			setupRestrictedWorkflow({ ...restrictedNode, disabled: true });
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByText(restrictionText)).toBeInTheDocument();
+		});
+
+		it('should keep publish enabled when no node type is restricted', () => {
+			mockRestrictedNodeTypes({});
+			workflowDocumentStore.setNodes([triggerNode]);
+
+			const { getByTestId, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+			expect(queryByText(/An administrator blocked/)).not.toBeInTheDocument();
+		});
+
+		it('should list restricted node types of different scopes in the tooltip', () => {
+			const jiraNode: INodeUi = {
+				...restrictedNode,
+				id: 'jira-1',
+				name: 'Jira',
+				type: 'n8n-nodes-base.jira',
+			};
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: restrictedNode.type, displayName: 'Slack' }),
+				mockNodeTypeDescription({ name: jiraNode.type, displayName: 'Jira' }),
+			]);
+			workflowDocumentStore.setNodes([triggerNode, restrictedNode, jiraNode]);
+			mockRestrictedNodeTypes({ [restrictedNode.type]: 'instance', [jiraNode.type]: 'project' });
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByText(/Restricted on this instance: 'Slack'\./)).toBeInTheDocument();
+			expect(getByText(/Restricted in this project: 'Jira'\./)).toBeInTheDocument();
 		});
 
 		it('should show publish button enabled when there are unpublished changes (versionId mismatch)', () => {
@@ -1058,6 +1177,133 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			});
 
 			expect(getByText("You don't have permission to publish this workflow")).toBeInTheDocument();
+		});
+	});
+
+	describe('Unusable credential', () => {
+		const foreignCredential: IUsedCredential = {
+			id: 'c1',
+			name: "Alice's Gmail",
+			credentialType: 'gmailOAuth2',
+			currentUserCanUse: false,
+			homeProject: {
+				id: 'p1',
+				name: 'Alice Chen <alice@acme.io>',
+				type: 'personal',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			},
+		};
+
+		const useCredential = (credential: IUsedCredential) => {
+			workflowDocumentStore.setUsedCredentials([credential]);
+			workflowDocumentStore.setNodes([
+				{
+					...triggerNode,
+					credentials: { gmailOAuth2: { id: credential.id, name: credential.name } },
+				},
+			]);
+		};
+
+		// The file-wide stub always renders the tooltip content. This one honours
+		// `disabled`, so a suppressed tooltip is visible as a missing reason.
+		const tooltipStubs = {
+			N8nTooltip: {
+				props: { disabled: Boolean },
+				template: '<div><slot v-if="!disabled" name="content" /><slot /></div>',
+			},
+		};
+
+		it('should disable publish and name the credential and its owner', () => {
+			useCredential(foreignCredential);
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByText(/Only Alice Chen can run or publish with it/)).toBeInTheDocument();
+		});
+
+		it('should not open the publish modal', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			useCredential(foreignCredential);
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
+
+			expect(openModalSpy).not.toHaveBeenCalled();
+			expect(mockSaveCurrentWorkflow).not.toHaveBeenCalled();
+		});
+
+		// No permission makes the workflow publishable, so this reason is the useful one.
+		it('should give the credential reason before the permission one', () => {
+			useCredential(foreignCredential);
+
+			const { getByText, queryByText } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: { ...defaultWorkflowProps.workflowPermissions, publish: false },
+				},
+			});
+
+			expect(getByText(/Only Alice Chen can run or publish with it/)).toBeInTheDocument();
+			expect(
+				queryByText("You don't have permission to publish this workflow"),
+			).not.toBeInTheDocument();
+		});
+
+		// A draft that is otherwise ready to publish hides the tooltip, and that is
+		// the state a colleague opening someone else's workflow lands in.
+		it('should still explain itself on a draft that is otherwise publishable', () => {
+			useCredential(foreignCredential);
+			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+
+			const { getByTestId, getByText } = renderComponent({
+				global: { stubs: tooltipStubs },
+			});
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByText(/Only Alice Chen can run or publish with it/)).toBeInTheDocument();
+		});
+
+		// The NDV and the command bar publish through the event bus, which never
+		// sees the button's disabled state.
+		it('should stop a publish command from the event bus', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			useCredential(foreignCredential);
+
+			renderComponent();
+			nodeViewEventBus.emit('publishWorkflow');
+			await waitFor(() => expect(mockShowMessage).toHaveBeenCalled());
+
+			expect(openModalSpy).not.toHaveBeenCalled();
+			expect(mockSaveCurrentWorkflow).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: expect.stringContaining('Only Alice Chen can run or publish with it'),
+					type: 'warning',
+				}),
+			);
+		});
+
+		it('should let a publish command through when the user can use the credential', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			useCredential({ ...foreignCredential, currentUserCanUse: true });
+
+			renderComponent();
+			nodeViewEventBus.emit('publishWorkflow');
+
+			await waitFor(() => expect(openModalSpy).toHaveBeenCalled());
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('should keep publish enabled when the user can use the credential', () => {
+			useCredential({ ...foreignCredential, currentUserCanUse: true });
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
 		});
 	});
 
@@ -1423,6 +1669,33 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
 		});
 
+		it('disables Submit changes with Publish for a restricted node type', async () => {
+			setWorkflowReviewGates();
+			seedLatestReview();
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
+			]);
+			workflowDocumentStore.setNodes([
+				triggerNode,
+				{
+					id: 'slack-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+					disabled: false,
+				},
+			]);
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': 'instance' });
+
+			const { findByTestId, getByTestId } = renderComponent({ props: defaultWorkflowProps });
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+		});
+
 		// The parity has to hold in the enabled direction too, or the assertions above
 		// would pass just as well against a permanently disabled button.
 		it('enables Submit changes with Publish for a publishable workflow', async () => {
@@ -1460,7 +1733,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(mockRouterPush).toHaveBeenCalledWith({
 				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-				params: { reviewRequestId: 'req-1' },
+				params: { reviewId: 'req-1' },
 				query: undefined,
 			});
 		});

@@ -303,7 +303,7 @@ function clearProjectFilter() {
 
 const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
 	{
-		label: 'New',
+		label: i18n.baseText('generic.new'),
 		value: SOURCE_CONTROL_FILE_STATUS.created,
 	},
 	{
@@ -947,13 +947,13 @@ onMounted(async () => {
 					>
 						<template #trigger>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon="funnel"
 								:class="$style.filterButton"
 								:active="Boolean(filterCount)"
 								data-test-id="source-control-filter-dropdown"
 							>
-								<N8nBadge v-if="filterCount" theme="primary" class="mr-4xs">
+								<N8nBadge v-if="filterCount" variant="primary" class="mr-4xs">
 									{{ filterCount }}
 								</N8nBadge>
 							</N8nButton>
@@ -1243,10 +1243,7 @@ onMounted(async () => {
 																:disabled="!renderMovedTooltip(row.file)"
 																placement="top"
 															>
-																<N8nBadge
-																	:theme="getStatusTheme(row.file.status)"
-																	style="height: 25px"
-																>
+																<N8nBadge :variant="getStatusTheme(row.file.status)" size="xsmall">
 																	{{ getStatusText(row.file.status) }}
 																</N8nBadge>
 															</N8nTooltip>
@@ -1257,7 +1254,7 @@ onMounted(async () => {
 																	placement="top"
 																>
 																	<N8nIconButton
-																		variant="subtle"
+																		variant="outline"
 																		data-test-id="source-control-workflow-diff-button"
 																		icon="file-diff"
 																		@click="openDiffModal(row.file.id, row.file.status)"

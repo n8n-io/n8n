@@ -4,6 +4,9 @@
         "finished": {
             "type": "boolean"
         },
+        "id": {
+            "type": "string"
+        },
         "mode": {
             "type": "string"
         },
@@ -17,5 +20,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

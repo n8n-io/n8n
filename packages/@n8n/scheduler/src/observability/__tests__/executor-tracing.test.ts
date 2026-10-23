@@ -19,6 +19,7 @@ const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	status: 'running',
 	attempts: 0,
 	maxAttempts: 1,
+	timeoutSeconds: 300,
 	leaseEpoch: 1,
 	...overrides,
 });
@@ -150,11 +151,12 @@ describe('withHandoffTracing', () => {
 		};
 		const task = claimedTask();
 		const report = mock<DispatchReporter>();
+		const run = { signal: new AbortController().signal, remainingMs: () => 45_000 };
 
-		await withHandoffTracing(tracer, handler).execute(task, report);
+		await withHandoffTracing(tracer, handler).execute(task, report, run);
 
-		// The wrapper adds a span, not semantics: the dispatch reporter flows through.
-		expect(handler.execute).toHaveBeenCalledWith(task, report);
+		// The wrapper adds a span, not semantics: the dispatch reporter and the run flow through.
+		expect(handler.execute).toHaveBeenCalledWith(task, report, run);
 		const options = tracer.startSpan.mock.calls[0][0];
 		expect(options.name).toBe('Scheduler handoff');
 		expect(options.op).toBe('scheduler.handoff');
@@ -171,7 +173,10 @@ describe('withHandoffTracing', () => {
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 
 		await expect(
-			withHandoffTracing(tracer, handler).execute(claimedTask(), mock<DispatchReporter>()),
+			withHandoffTracing(tracer, handler).execute(claimedTask(), mock<DispatchReporter>(), {
+				signal: new AbortController().signal,
+				remainingMs: () => 45_000,
+			}),
 		).rejects.toThrow('boom');
 
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.error, message: 'boom' });

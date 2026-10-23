@@ -12,9 +12,14 @@ const props = withDefaults(
 		skill: AgentSkill;
 		selectedPath: string;
 		addReferenceDisabled?: boolean;
+		readOnly?: boolean;
+		/** Reference files that block a save, marked so the user can find them. */
+		invalidPaths?: string[];
 	}>(),
 	{
 		addReferenceDisabled: false,
+		readOnly: false,
+		invalidPaths: () => [],
 	},
 );
 
@@ -26,6 +31,10 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const references = computed(() => props.skill.references ?? []);
+
+function isInvalid(path: string) {
+	return props.invalidPaths.includes(path);
+}
 
 function isSelected(path: string) {
 	return props.selectedPath === path;
@@ -59,6 +68,7 @@ function testIdForPath(path: string) {
 					{{ i18n.baseText('agents.builder.skills.references.title') }}
 				</N8nText>
 				<N8nButton
+					v-if="!props.readOnly"
 					:class="$style.addReference"
 					variant="ghost"
 					size="xsmall"
@@ -87,14 +97,28 @@ function testIdForPath(path: string) {
 					type="button"
 					:class="[$style.item, $style.reference]"
 					:aria-current="isSelected(reference.path) ? 'page' : undefined"
-					:aria-label="reference.path"
+					:aria-label="
+						isInvalid(reference.path)
+							? i18n.baseText('agents.builder.skills.references.invalidLabel', {
+									interpolate: { path: reference.path },
+								})
+							: reference.path
+					"
 					:data-testid="testIdForPath(reference.path)"
 					@click="emit('select', reference.path)"
 				>
-					<N8nIcon icon="file-text" :size="16" :class="$style.icon" />
+					<N8nIcon
+						:icon="isInvalid(reference.path) ? 'triangle-alert' : 'file-text'"
+						:size="16"
+						:class="[$style.icon, isInvalid(reference.path) && $style.invalidIcon]"
+						:data-testid="
+							isInvalid(reference.path) ? `${testIdForPath(reference.path)}-invalid` : undefined
+						"
+					/>
 					<N8nText size="small" :class="$style.path">{{ reference.path }}</N8nText>
 				</button>
 				<N8nButton
+					v-if="!props.readOnly"
 					:class="$style.removeReference"
 					variant="ghost"
 					size="xsmall"
@@ -206,6 +230,10 @@ function testIdForPath(path: string) {
 	flex-shrink: 0;
 }
 
+.invalidIcon {
+	color: var(--color--danger);
+}
+
 .selected {
 	background: var(--color--background--light-2);
 }
@@ -215,5 +243,15 @@ function testIdForPath(path: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+	.nav {
+		width: 100%;
+		max-height: calc(var(--height--5xl) * 2);
+		border-right: 0;
+		border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+		overflow-y: auto;
+	}
 }
 </style>

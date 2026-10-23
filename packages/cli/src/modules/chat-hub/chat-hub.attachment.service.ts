@@ -7,8 +7,7 @@ import { BinaryDataService, FileLocation, TEMP_EXECUTION_ID } from 'n8n-core';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import type Stream from 'node:stream';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { ChatHubMessageRepository } from './chat-message.repository';
 

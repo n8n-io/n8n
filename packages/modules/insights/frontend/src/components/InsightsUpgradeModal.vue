@@ -40,7 +40,7 @@ const perks = computed(() =>
 		</div>
 		<template #footer>
 			<div class="insight-modal-button-container">
-				<N8nButton variant="subtle" @click="model = false">
+				<N8nButton variant="outline" @click="model = false">
 					{{ i18n.baseText('insights.upgradeModal.button.dismiss') }}
 				</N8nButton>
 				<N8nButton variant="solid" @click="goToUpgrade">

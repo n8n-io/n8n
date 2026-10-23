@@ -8,6 +8,8 @@ import type {
 } from 'n8n-workflow';
 
 import {
+	getMcpRegistryAiGatewayCredentialTypeName,
+	getMcpRegistryCredentialOptions,
 	getMcpRegistryCredentialTypeName,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
@@ -15,8 +17,10 @@ import {
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
 import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
 	mcpRegistryExtendsCredentialSchema,
 	mcpRegistryUsesCredentialsSchema,
+	type McpRegistryAiGatewayPair,
 	type McpRegistryExtendsCredential,
 	type McpRegistryIcon,
 	type McpRegistryServer,
@@ -211,6 +215,24 @@ function serverToExtendedCredentialDescription(
 }
 
 /**
+ * Builds the credential type of an AI Gateway row. It has no base type and no
+ * fields: the node slot holds the managed marker, and the credentials helper
+ * mints the token without reading this type.
+ */
+function serverToAiGatewayCredentialDescription(server: McpRegistryServer): ICredentialType | null {
+	if (!resolveMcpRegistryConnection(server)) return null;
+
+	return {
+		name: getMcpRegistryAiGatewayCredentialTypeName(server.slug),
+		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
+		displayName: `${server.title} Gateway credits`,
+		// Nobody creates this credential: the node slot holds the managed marker.
+		hidden: true,
+		properties: [],
+	};
+}
+
+/**
  * Get the `credentials` property for node description based on the server's auth type
  */
 function getNodeDescriptionCredentials(
@@ -237,6 +259,8 @@ function getNodeDescriptionCredentials(
 				displayOptions: { show: { authentication: [value] } },
 			}));
 		}
+		case AI_GATEWAY_MANAGED_AUTH_TYPE:
+			return [{ name: getMcpRegistryAiGatewayCredentialTypeName(server.slug), required: true }];
 		default:
 			return [];
 	}
@@ -302,6 +326,71 @@ function withRemoteDefaults(
 }
 
 /**
+ * Adds the Gateway credits choice of a paired server. It goes first in the
+ * selector, but the default stays the own option, because saved workflows omit
+ * default values.
+ */
+function addAiGatewayChoice(
+	description: INodeTypeDescription,
+	server: McpRegistryServer,
+	aiGateway: McpRegistryAiGatewayPair,
+): void {
+	// The node drops registry credential types that n8n does not know. Use the first option that the
+	// node kept, so the default does not point at a credential that the node hides.
+	const declaredTypes = new Set((description.credentials ?? []).map(({ name }) => name));
+	const ownOption = getMcpRegistryCredentialOptions({ ...server, aiGateway: undefined }).find(
+		({ credentialType }) => declaredTypes.has(credentialType),
+	);
+	if (!ownOption) return;
+	const aiGatewayOption = { name: 'Gateway credits', value: 'aiGateway' };
+	description.credentials = [
+		// A single own credential has no selector yet, so it gets one.
+		...(description.credentials ?? []).map((credential) =>
+			credential.displayOptions
+				? credential
+				: { ...credential, displayOptions: { show: { authentication: [ownOption.value] } } },
+		),
+		{
+			name: getMcpRegistryAiGatewayCredentialTypeName(aiGateway.slug),
+			required: true,
+			displayOptions: { show: { authentication: [aiGatewayOption.value] } },
+		},
+	];
+
+	const authenticationProperty = description.properties.find(
+		({ name }) => name === 'authentication',
+	);
+	if (authenticationProperty) {
+		authenticationProperty.options = [aiGatewayOption, ...(authenticationProperty.options ?? [])];
+		return;
+	}
+	description.properties = [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			noDataExpression: true,
+			options: [aiGatewayOption, { name: ownOption.name, value: ownOption.value }],
+			default: ownOption.value,
+		},
+		...description.properties,
+	];
+}
+
+/** Whether the loader can load the server, by the same rules as `serverToNodeDescription`. */
+export function canLoadMcpRegistryServer(
+	server: McpRegistryServer,
+	isKnownCredentialType: IsKnownCredentialType,
+): boolean {
+	return (
+		resolveMcpRegistryConnection(server) !== null &&
+		getNodeDescriptionCredentials(server, isKnownCredentialType).length > 0 &&
+		(server.authType === 'usesCredentials' ||
+			serverToCredentialDescription(server, isKnownCredentialType) !== null)
+	);
+}
+
+/**
  * Registry MCP server → service-specific credential type depending on auth type for the server
  */
 export function serverToCredentialDescription(
@@ -313,6 +402,8 @@ export function serverToCredentialDescription(
 			return serverToOAuth2CredentialDescription(server);
 		case 'extendsCredential':
 			return serverToExtendedCredentialDescription(server, isKnownCredentialType);
+		case AI_GATEWAY_MANAGED_AUTH_TYPE:
+			return serverToAiGatewayCredentialDescription(server);
 		case 'usesCredentials':
 			return null;
 		default:
@@ -331,7 +422,8 @@ export function serverToNodeDescription(
 	if (
 		server.authType !== 'oauth2' &&
 		server.authType !== 'extendsCredential' &&
-		server.authType !== 'usesCredentials'
+		server.authType !== 'usesCredentials' &&
+		server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE
 	) {
 		return null;
 	}
@@ -344,7 +436,8 @@ export function serverToNodeDescription(
 	const displayName = `${server.title} MCP`;
 	const description = structuredClone(baseDescription);
 
-	if (server.status === 'deprecated') {
+	// A paired AI Gateway row stays loaded for saved workflows. Its twin offers it.
+	if (server.status === 'deprecated' || server.pairedSlug) {
 		description.hidden = true;
 	} else {
 		delete description.hidden;
@@ -370,6 +463,7 @@ export function serverToNodeDescription(
 	if (authenticationProperty) {
 		description.properties = [authenticationProperty, ...description.properties];
 	}
+	if (server.aiGateway) addAiGatewayChoice(description, server, server.aiGateway);
 	description.builderHint = {
 		...description.builderHint,
 		searchHint: `Agent-optimised ${server.title} integration. When wiring an ai_tool to an AI Agent for ${server.title}, use THIS node, not the native action node — this variant exposes ${server.title}'s tools in the shape AI Agents expect and ships pre-configured connection details.`,

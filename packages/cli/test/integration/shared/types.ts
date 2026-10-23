@@ -15,6 +15,7 @@ type EndpointGroup =
 	| 'auth'
 	| 'oauth1'
 	| 'oauth2'
+	| 'jwks'
 	| 'owner'
 	| 'passwordReset'
 	| 'changeEmail'
@@ -31,6 +32,7 @@ type EndpointGroup =
 	| 'license'
 	| 'variables'
 	| 'ai-preferences'
+	| 'instance-ai'
 	| 'annotationTags'
 	| 'tags'
 	| 'externalSecrets'
@@ -54,21 +56,26 @@ type EndpointGroup =
 	| 'module-settings'
 	| 'promotions'
 	| 'security-settings'
+	| 'public-api-rate-limit-settings'
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
+	| 'trusted-sources'
 	| 'encryption-keys'
 	| 'workflow-reviews'
 	| 'test-webhooks'
 	| 'type-availability-policies';
 
 type ModuleName =
+	| 'inbox'
 	| 'insights'
 	| 'external-secrets'
 	| 'community-packages'
 	| 'data-table'
+	| 'instance-ai'
 	| 'mcp'
+	| 'oauth-jwe'
 	| 'oauth-server'
 	| 'dynamic-credentials'
 	| 'log-streaming'
@@ -80,7 +87,8 @@ type ModuleName =
 	| 'token-exchange'
 	| 'policy-infrastructure'
 	| 'workflow-reviews'
-	| 'type-availability-policies';
+	| 'type-availability-policies'
+	| 'inbound-auth-core';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

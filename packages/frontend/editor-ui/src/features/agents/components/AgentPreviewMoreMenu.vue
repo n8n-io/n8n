@@ -18,6 +18,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import { useAgentSessionsStore } from '../agentSessions.store';
 import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
+import { useAgentTelemetry, type AgentPreviewMoreOption } from '../composables/useAgentTelemetry';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -59,12 +60,13 @@ const router = useRouter();
 const clipboard = useClipboard();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
+const agentTelemetry = useAgentTelemetry();
 const sessionMetadata = ref<AgentExecutionThread | null>(null);
 const canLinkSession = computed(function canLinkSession() {
 	return props.hasSession && Boolean(props.effectiveSessionId);
 });
 
-const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
+const menuItems = computed<Array<DropdownMenuItemProps<AgentPreviewMoreOption>>>(() => [
 	{
 		id: COPY_LINK,
 		label: i18n.baseText('agents.builder.preview.more.copyLink' as BaseTextKey),
@@ -101,7 +103,7 @@ const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
 					icon: { type: 'icon', value: 'bug' },
 					disabled: props.isExporting,
 				},
-			] satisfies Array<DropdownMenuItemProps<string>>)
+			] satisfies Array<DropdownMenuItemProps<AgentPreviewMoreOption>>)
 		: []),
 	...(props.canDeleteSession
 		? ([
@@ -113,7 +115,7 @@ const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
 					destructive: true,
 					disabled: !props.hasSession || !props.effectiveSessionId || props.isDeletingSession,
 				},
-			] satisfies Array<DropdownMenuItemProps<string>>)
+			] satisfies Array<DropdownMenuItemProps<AgentPreviewMoreOption>>)
 		: []),
 ]);
 
@@ -123,6 +125,7 @@ const triggerLabel = computed(() => {
 		return i18n.baseText('agentSessions.origin.preview');
 	}
 	if (source === 'instance-ai') return i18n.baseText('agentSessions.origin.instanceAi');
+	if (source === 'n8n_chat_production') return i18n.baseText('agentSessions.origin.n8nChat');
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -132,12 +135,16 @@ const triggerIcon = computed<IconName>(() => {
 		case 'telegram':
 		case 'linear':
 		case 'discord':
+		case 'whatsapp':
+		case 'teams':
 		case 'mcp':
 		case 'workflow':
 		case 'webhook':
 			return sessionMetadata.value.source;
 		case 'instance-ai':
 			return 'sparkles';
+		case 'n8n_chat_production':
+			return 'message-square';
 		default:
 			return 'bolt-filled';
 	}
@@ -201,17 +208,22 @@ async function copyConversation() {
 	}
 }
 
-function selectMenuItem(itemId: string) {
+function selectMenuItem(itemId: AgentPreviewMoreOption) {
+	const item = menuItems.value.find((menuItem) => menuItem.id === itemId);
+	if (!item || item.disabled) return;
+	agentTelemetry.trackClickedPreviewMoreOption({ agentId: props.agentId, option: item.id });
+	dispatchMenuAction(item.id);
+}
+
+function dispatchMenuAction(itemId: AgentPreviewMoreOption) {
 	switch (itemId) {
 		case COPY_LINK:
-			if (!canLinkSession.value) return;
 			void copyLink();
 			break;
 		case COPY_CONVERSATION:
 			void copyConversation();
 			break;
 		case OPEN_IN_NEW_TAB: {
-			if (!canLinkSession.value) return;
 			const route = router.resolve({
 				name: AGENT_PREVIEW_VIEW,
 				params: { projectId: props.projectId, agentId: props.agentId },
@@ -224,19 +236,10 @@ function selectMenuItem(itemId: string) {
 			emit('toggle-full-width');
 			break;
 		case EXPORT_SESSION:
-			if (props.hasSession && props.effectiveSessionId && !props.isExporting) {
-				emit('export-session');
-			}
+			emit('export-session');
 			break;
 		case DELETE_SESSION:
-			if (
-				props.canDeleteSession &&
-				props.hasSession &&
-				props.effectiveSessionId &&
-				!props.isDeletingSession
-			) {
-				emit('delete-session');
-			}
+			emit('delete-session');
 			break;
 	}
 }
@@ -265,7 +268,9 @@ async function loadSessionMetadata() {
 }
 
 function onMenuOpenChange(isOpen: boolean) {
-	if (isOpen) void loadSessionMetadata();
+	if (!isOpen) return;
+	agentTelemetry.trackClickedPreviewMoreOptions({ agentId: props.agentId });
+	void loadSessionMetadata();
 }
 
 watch(

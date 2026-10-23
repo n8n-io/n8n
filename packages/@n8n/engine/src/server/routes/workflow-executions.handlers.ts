@@ -3,12 +3,14 @@ import { z } from 'zod';
 
 import {
 	ExecutionNotFoundError,
+	type CancelExecutionResult,
+	type CancelExecutionService,
 	type ExecutionQueryService,
 	type ExecutionView,
 	type ExecutionWithStepsView,
 	type StepView,
 } from '../../execution';
-import type { ExecutionSnapshot, StepDetail } from '../api.types';
+import type { CancelExecutionResponse, ExecutionSnapshot, StepDetail } from '../api.types';
 import { fail } from '../error-response';
 
 const ExecutionIdParams = z.object({ id: z.string().uuid() });
@@ -22,13 +24,20 @@ const GetExecutionQuery = z.object({ includeSteps: z.enum(['true', 'false']).opt
 
 const datetimeStringWithOffset = () => z.string().datetime({ offset: true });
 
-const ExecutionStatusSchema = z.enum(['queued', 'running', 'completed', 'failed', 'cancelled']);
+const ExecutionStatusSchema = z.enum([
+	'queued',
+	'running',
+	'waiting',
+	'completed',
+	'failed',
+	'cancelled',
+]);
 
 const SearchExecutionsBody = z
 	.object({
 		workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
 		status: z.array(ExecutionStatusSchema).min(1).optional(),
-		mode: z.string().min(1).max(32).optional(),
+		hostMode: z.string().min(1).max(32).optional(),
 		createdAfter: datetimeStringWithOffset().optional(),
 		createdBefore: datetimeStringWithOffset().optional(),
 		before: z
@@ -80,6 +89,7 @@ function toExecutionSnapshot(record: ExecutionView | ExecutionWithStepsView): Ex
 		workflowId: record.workflowId,
 		status: record.status,
 		mode: record.mode,
+		hostMode: record.hostMode,
 		graph: record.graph,
 		workflow: record.workflow,
 		createdAt: record.createdAt.toISOString(),
@@ -132,5 +142,42 @@ export function createGetExecutionHandler(executionQuery: ExecutionQueryService)
 		}
 
 		res.status(200).json(toExecutionSnapshot(execution));
+	};
+}
+
+export function createCancelExecutionHandler(
+	cancelExecution: CancelExecutionService,
+): RequestHandler {
+	return async (req, res) => {
+		const id = parseExecutionId(req, res);
+		if (id === null) return;
+
+		let result: CancelExecutionResult;
+		try {
+			result = await cancelExecution.cancel(id);
+		} catch (error) {
+			if (error instanceof ExecutionNotFoundError) {
+				fail(res, 404, { error: 'not_found' });
+				return;
+			}
+			throw error;
+		}
+
+		// A repeated cancel answers like the first, so a retried request is safe.
+		if (result.status !== 'cancelled' || result.finishedAt === null) {
+			fail(res, 409, {
+				error: 'not_cancellable',
+				reason: `The execution has already ${result.status}`,
+				details: { status: result.status },
+			});
+			return;
+		}
+
+		const body: CancelExecutionResponse = {
+			executionId: id,
+			status: result.status,
+			finishedAt: result.finishedAt.toISOString(),
+		};
+		res.status(200).json(body);
 	};
 }

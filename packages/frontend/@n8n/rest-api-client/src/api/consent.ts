@@ -42,14 +42,23 @@ export interface ConsentApprovalResponse {
 	redirectUrl: string;
 }
 
-export async function getConsentDetails(context: IRestApiContext): Promise<ConsentDetails> {
-	return await makeRestApiRequest(context, 'GET', '/consent/details');
+/**
+ * `flow` is the id the /authorize redirect put in this page's URL. It names the
+ * pending authorization request, so the screen reads and decides the one
+ * request it was opened for, even when the browser holds several.
+ */
+export async function getConsentDetails(
+	context: IRestApiContext,
+	flow: string,
+): Promise<ConsentDetails> {
+	return await makeRestApiRequest(context, 'GET', '/consent/details', { flow });
 }
 
 export async function approveConsent(
 	context: IRestApiContext,
+	flow: string,
 	approved: boolean,
 	scopes?: string[],
 ): Promise<ConsentApprovalResponse> {
-	return await makeRestApiRequest(context, 'POST', '/consent/approve', { approved, scopes });
+	return await makeRestApiRequest(context, 'POST', '/consent/approve', { flow, approved, scopes });
 }

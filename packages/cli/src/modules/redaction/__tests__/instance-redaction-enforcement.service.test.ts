@@ -8,7 +8,7 @@ import { UserError } from 'n8n-workflow';
 
 import { SELF_SEND_COMMANDS } from '@/scaling/constants';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
 

@@ -262,4 +262,104 @@ describe('AgentChatAttachmentService', () => {
 			expect(repository.delete).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('deleteFromSourceCreatedBefore', () => {
+		const BATCH_SIZE = 500;
+		const scope = { agentId: 'agent-1', source: 'whatsapp' };
+		const before = new Date('2026-01-01T00:00:00.000Z');
+
+		const attachments = (count: number, prefix: string) =>
+			Array.from({ length: count }, (_, i) => ({
+				id: `${prefix}-${i}`,
+				binaryDataId: `filesystem-v2:${prefix}-${i}`,
+			})) as AgentChatAttachment[];
+
+		beforeEach(() => {
+			binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
+		});
+
+		it('deletes in batches until a batch is smaller than the batch size', async () => {
+			repository.findFromSourceCreatedBefore
+				.mockResolvedValueOnce(attachments(BATCH_SIZE, 'a'))
+				.mockResolvedValueOnce(attachments(BATCH_SIZE, 'b'))
+				.mockResolvedValueOnce(attachments(3, 'c'));
+
+			const deleted = await service.deleteFromSourceCreatedBefore(scope, before);
+
+			expect(deleted).toBe(BATCH_SIZE * 2 + 3);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(3);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledWith(
+				scope,
+				before,
+				BATCH_SIZE,
+			);
+			expect(repository.delete).toHaveBeenCalledTimes(3);
+			expect(repository.delete).toHaveBeenLastCalledWith(['c-0', 'c-1', 'c-2']);
+			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenLastCalledWith([
+				'filesystem-v2:c-0',
+				'filesystem-v2:c-1',
+				'filesystem-v2:c-2',
+			]);
+		});
+
+		it('queries again after a full batch and stops at an empty one', async () => {
+			repository.findFromSourceCreatedBefore
+				.mockResolvedValueOnce(attachments(BATCH_SIZE, 'a'))
+				.mockResolvedValueOnce([]);
+
+			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(BATCH_SIZE);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(2);
+			expect(repository.delete).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns 0 and deletes nothing when no file is overdue', async () => {
+			repository.findFromSourceCreatedBefore.mockResolvedValueOnce([]);
+
+			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(0);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(1);
+			expect(repository.delete).not.toHaveBeenCalled();
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
+		});
+
+		it('deletes the bytes before the rows', async () => {
+			repository.findFromSourceCreatedBefore.mockResolvedValueOnce(attachments(2, 'a'));
+
+			await service.deleteFromSourceCreatedBefore(scope, before);
+
+			expect(binaryDataService.deleteManyByBinaryDataId.mock.invocationCallOrder[0]).toBeLessThan(
+				repository.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the rows and throws when the bytes cannot be deleted', async () => {
+			repository.findFromSourceCreatedBefore.mockResolvedValueOnce(attachments(2, 'a'));
+			binaryDataService.deleteManyByBinaryDataId.mockRejectedValueOnce(new Error('storage down'));
+
+			await expect(service.deleteFromSourceCreatedBefore(scope, before)).rejects.toThrow(
+				'storage down',
+			);
+			expect(repository.delete).not.toHaveBeenCalled();
+		});
+
+		it('stops between batches when the signal aborts', async () => {
+			const controller = new AbortController();
+			repository.findFromSourceCreatedBefore.mockImplementationOnce(async () => {
+				controller.abort();
+				return attachments(BATCH_SIZE, 'a');
+			});
+
+			const deleted = await service.deleteFromSourceCreatedBefore(scope, before, controller.signal);
+
+			expect(deleted).toBe(BATCH_SIZE);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(1);
+		});
+
+		it('deletes nothing when the signal is already aborted', async () => {
+			const controller = new AbortController();
+			controller.abort();
+
+			expect(await service.deleteFromSourceCreatedBefore(scope, before, controller.signal)).toBe(0);
+			expect(repository.findFromSourceCreatedBefore).not.toHaveBeenCalled();
+		});
+	});
 });

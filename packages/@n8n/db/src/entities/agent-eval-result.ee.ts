@@ -53,6 +53,16 @@ export class AgentEvalResult extends WithTimestampsAndStringId {
 	@JsonColumn({ nullable: true })
 	metrics: IDataObject | null;
 
+	/**
+	 * LLM-as-judge verdict against the case's rule (`criteria`) or gold answer
+	 * (`expectedOutput`), set after a successful execution. `null` means "never
+	 * judged" — rows with no persisted verdict, including every row from before
+	 * this column shipped. A case with nothing to grade against stores a
+	 * `skipped` verdict instead. See `AgentEvalVerdict` in `@n8n/api-types`.
+	 */
+	@JsonColumn({ nullable: true })
+	verdict: JsonObject | null;
+
 	@DateTimeColumn({ nullable: true })
 	runAt: Date | null;
 

@@ -64,6 +64,28 @@ export type ShortenCallback = (
 	label?: string,
 ) => Promise<{ id: string; value: string }>;
 
+/**
+ * Passed to {@link AgentChatIntegration.normalizeComponents} so a platform
+ * that folds several buttons into one native control (e.g. WhatsApp's list,
+ * see `WhatsAppIntegration.normalizeComponents`) can give each folded option
+ * the same resume encoding a real button would get, instead of a select's —
+ * see `wrapResumeValue`'s doc for why that distinction matters.
+ */
+export interface NormalizeComponentsContext {
+	runId: string;
+	toolCallId: string;
+	/**
+	 * Wraps a raw resume value exactly as `makeButton` below does
+	 * (`JSON.stringify(wrapValueForSchema(rawValue, resumeSchema))`). A
+	 * native select's resume value is never schema-wrapped this way — its
+	 * decode path always produces a fixed `{ type: 'select', id, value }`
+	 * shape — so a button folded into a select without this would resume
+	 * with the wrong shape for a tool whose schema is `{ approved }` or
+	 * `{ type, value }`.
+	 */
+	wrapResumeValue: (rawValue: string) => string;
+}
+
 /** Shared state threaded through per-component render helpers. */
 interface ComponentRenderContext {
 	component: SuspendComponent;
@@ -73,6 +95,24 @@ interface ComponentRenderContext {
 	children: unknown[];
 	buttons: unknown[];
 	makeButton: (label: string, rawValue: string, style?: string) => Promise<unknown>;
+}
+
+/**
+ * Shared by the platforms whose rich cards have no select control. Telegram
+ * keeps its own override because it also rewrites images.
+ */
+export function expandSelectsToButtons(components: SuspendComponent[]): SuspendComponent[] {
+	const normalized: SuspendComponent[] = [];
+	for (const c of components) {
+		if (c.type === 'select' || c.type === 'radio_select') {
+			for (const opt of c.options ?? []) {
+				normalized.push({ type: 'button', label: opt.label, value: opt.value });
+			}
+			continue;
+		}
+		normalized.push(c);
+	}
+	return normalized;
 }
 
 /**
@@ -105,7 +145,13 @@ export class ComponentMapper {
 
 		// Delegate per-platform normalization to the Integration implementation.
 		const integration = platform ? Container.get(ChatIntegrationRegistry).get(platform) : undefined;
-		const components = integration?.normalizeComponents?.(payload.components) ?? payload.components;
+		const components =
+			integration?.normalizeComponents?.(payload.components, {
+				runId,
+				toolCallId,
+				wrapResumeValue: (rawValue) =>
+					JSON.stringify(this.wrapValueForSchema(rawValue, resumeSchema)),
+			}) ?? payload.components;
 
 		const children: unknown[] = [];
 		const buttons: unknown[] = [];
@@ -259,7 +305,7 @@ export class ComponentMapper {
 		children.push(
 			sdk.Actions([
 				sdk.Select({
-					id: `ri-sel:${component.id ?? 'select'}:${runId}:${toolCallId}`,
+					id: selectComponentId(component, 'select', runId, toolCallId),
 					label: component.label ?? 'Select',
 					placeholder: component.placeholder,
 					options: this.toSelectOptions(component),
@@ -278,7 +324,7 @@ export class ComponentMapper {
 		children.push(
 			sdk.Actions([
 				sdk.RadioSelect({
-					id: `ri-sel:${component.id ?? 'radio'}:${runId}:${toolCallId}`,
+					id: selectComponentId(component, 'radio', runId, toolCallId),
 					label: component.label ?? 'Select',
 					options: this.toSelectOptions(component),
 				}),
@@ -309,7 +355,7 @@ export class ComponentMapper {
 	 * tool's resume schema.
 	 *
 	 * Inspects the JSON Schema top-level properties to determine the shape:
-	 * - Schema has `approved` (boolean) → `{ approved: value === 'true' }`
+	 * - Schema has `approved` → an approval decision, including an optional session scope
 	 * - Schema has `values` (object) → `{ values: { action: value } }`
 	 * - No schema / unknown → try JSON.parse, fall back to `{ value }`
 	 */
@@ -331,6 +377,7 @@ export class ComponentMapper {
 		const props = schema.properties ?? {};
 
 		if ('approved' in props) {
+			if (rawValue === 'session') return { approved: true, scope: 'session' };
 			return { approved: rawValue === 'true' };
 		}
 
@@ -418,7 +465,7 @@ export class ComponentMapper {
 	}
 }
 
-function componentTextToString(text: unknown): string | undefined {
+export function componentTextToString(text: unknown): string | undefined {
 	if (typeof text === 'string') return text;
 	if (text && typeof text === 'object' && 'text' in text) {
 		const value = (text as { text?: unknown }).text;
@@ -429,4 +476,30 @@ function componentTextToString(text: unknown): string | undefined {
 
 function isButtonStyle(style: unknown): style is ButtonStyle {
 	return style === 'primary' || style === 'danger' || style === 'default';
+}
+
+/**
+ * A platform's `normalizeComponents` can pre-build a `resume:{runId}:{toolCallId}:{index}`
+ * id (see `NormalizeComponentsContext`) for a select folded from buttons, so its
+ * options resume like buttons instead of through the generic `ri-sel:` select
+ * decode path. Passed through verbatim when present; otherwise built as usual.
+ */
+function selectComponentId(
+	component: SuspendComponent,
+	kind: 'select' | 'radio',
+	runId: string,
+	toolCallId: string,
+): string {
+	// Only an id matching the exact generated shape for *this* run/tool call
+	// passes through — a user-supplied id that merely starts with "resume:"
+	// (a different run, or not one of ours at all) would otherwise be parsed
+	// as button data and resume with the wrong shape.
+	const generatedResumePrefix = `resume:${runId}:${toolCallId}:`;
+	if (
+		component.id?.startsWith(generatedResumePrefix) &&
+		/^\d+$/.test(component.id.slice(generatedResumePrefix.length))
+	) {
+		return component.id;
+	}
+	return `ri-sel:${component.id ?? kind}:${runId}:${toolCallId}`;
 }

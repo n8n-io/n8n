@@ -395,7 +395,7 @@ onMounted(async () => {
 				<div :class="$style.resolverInfo">
 					<div :class="$style.resolverIcon">
 						<N8nIconButton
-							variant="subtle"
+							variant="outline"
 							icon="database"
 							size="large"
 							:disabled="true"
@@ -416,7 +416,7 @@ onMounted(async () => {
 				</div>
 				<div :class="$style.resolverActions">
 					<N8nIconButton
-						variant="subtle"
+						variant="outline"
 						v-if="isEditMode"
 						:title="i18n.baseText('credentialResolverEdit.delete')"
 						icon="trash-2"
@@ -633,7 +633,7 @@ onMounted(async () => {
 
 .label {
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 

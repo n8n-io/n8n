@@ -40,7 +40,7 @@ function makeGraph(overrides: Partial<PlannedTaskGraph> = {}): PlannedTaskGraph 
 				id: 'verify-1',
 				title: "Verify 'build-1' workflow runs successfully",
 				kind: 'checkpoint',
-				spec: 'Call verify-built-workflow with the build outcome.',
+				spec: 'Call workflow_builder_verify_built_workflow with the build outcome.',
 				deps: ['build-1'],
 				status: 'planned',
 			},

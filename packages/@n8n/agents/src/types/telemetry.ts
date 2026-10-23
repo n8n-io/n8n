@@ -28,6 +28,8 @@ export interface OpaqueTracerProvider {
 
 export interface BuiltTelemetry {
 	readonly enabled: boolean;
+	/** Opt in to metadata-only HTTP attempt spans; token usage stays on generation spans. */
+	readonly traceModelRequests?: boolean;
 	readonly functionId?: string;
 	readonly metadata?: Record<string, AttributeValue>;
 	readonly recordInputs: boolean;

@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { WorkflowsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
-
-import { EventService } from '@/events/event.service';
 
 import { AgentDependencyIndexListener } from '../agent-dependency-index.listener';
 import { AgentDependencyIndexService } from '../agent-dependency-index.service';
@@ -14,12 +13,13 @@ import type { AgentRepository } from '../repositories/agent.repository';
 
 describe('AgentDependencyIndexListener', () => {
 	const eventService = new EventService();
+	const credentialDependencyRepository = mock<AgentCredentialDependencyRepository>();
 	const workflowDependencyRepository = mock<AgentWorkflowDependencyRepository>();
 	const runtimeCache = mock<AgentRuntimeCacheService>();
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 	const indexService = new AgentDependencyIndexService(
-		mock<AgentCredentialDependencyRepository>(),
+		credentialDependencyRepository,
 		workflowDependencyRepository,
 		mock<AgentRepository>(),
 		runtimeCache,
@@ -63,6 +63,20 @@ describe('AgentDependencyIndexListener', () => {
 			expect(runtimeCache.clearRuntimes).toHaveBeenCalledWith('agent-b');
 		},
 	);
+
+	it('clears the runtimes of every dependent agent on credentials-updated', async () => {
+		credentialDependencyRepository.findByCredentialIds.mockResolvedValue([
+			{ agentId: 'agent-a', credentialId: 'cred-1' },
+			{ agentId: 'agent-b', credentialId: 'cred-1' },
+		]);
+
+		eventService.emit('credentials-updated', { credentialId: 'cred-1' } as never);
+		await new Promise(setImmediate);
+
+		expect(credentialDependencyRepository.findByCredentialIds).toHaveBeenCalledWith(['cred-1']);
+		expect(runtimeCache.clearRuntimes).toHaveBeenCalledWith('agent-a');
+		expect(runtimeCache.clearRuntimes).toHaveBeenCalledWith('agent-b');
+	});
 
 	it('logs and swallows a failing dependency lookup', async () => {
 		workflowDependencyRepository.findByWorkflowIds.mockRejectedValue(new Error('db down'));

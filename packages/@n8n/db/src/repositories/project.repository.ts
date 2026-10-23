@@ -1,14 +1,69 @@
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { Brackets, DataSource, In, Not, Repository } from '@n8n/typeorm';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
-import { Project } from '../entities';
+import { BaseRepository } from './base-repository';
+import { Project, ProjectRelation } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
+
+export class ProjectIdConflictError extends UserError {
+	constructor() {
+		super('A project with this ID already exists');
+	}
+}
 
 @Service()
-export class ProjectRepository extends Repository<Project> {
-	constructor(dataSource: DataSource) {
-		super(Project, dataSource.manager);
+export class ProjectRepository extends BaseRepository<Project> {
+	constructor(
+		dataSource: DataSource,
+		private readonly txRunner: TransactionRunner,
+	) {
+		super(Project, dataSource.manager, txRunner);
+	}
+
+	/** Returns null when the team project quota is full. */
+	async insertTeamProjectWithAdmin(
+		data: Pick<Project, 'name'> &
+			Partial<Pick<Project, 'id' | 'icon' | 'description' | 'customTelemetryTags'>>,
+		creatorId: string,
+		limit: number,
+	): Promise<Project | null> {
+		// Keep the quota check and both inserts in one serializable transaction.
+		return await this.txRunner.run(
+			{},
+			async (ctx) => {
+				const manager = this.managerFor(ctx);
+				if (limit !== UNLIMITED_LICENSE_QUOTA) {
+					const count = await manager.count(Project, { where: { type: 'team' } });
+					if (count >= limit) {
+						if (data.id && (await manager.existsBy(Project, { id: data.id }))) {
+							throw new ProjectIdConflictError();
+						}
+						return null;
+					}
+				}
+
+				const project = this.create({ ...data, type: 'team', creatorId });
+				try {
+					await manager.insert(Project, project);
+				} catch (error) {
+					if (isUniqueConstraintError(error)) throw new ProjectIdConflictError();
+					throw error;
+				}
+				await manager.insert(ProjectRelation, {
+					projectId: project.id,
+					userId: creatorId,
+					role: { slug: 'project:admin' },
+				});
+				return await manager.findOneByOrFail(Project, { id: project.id });
+			},
+			{ isolationLevel: 'SERIALIZABLE' },
+		);
 	}
 
 	async getPersonalProjectForUser(userId: string, entityManager?: EntityManager) {
@@ -53,11 +108,105 @@ export class ProjectRepository extends Repository<Project> {
 		return rows;
 	}
 
+	/**
+	 * Id, name, type and description of the team projects among these ids.
+	 * Personal projects are excluded, because a rule must never grant access to one.
+	 */
+	async findTeamProjectInfoByIds(
+		ids: string[],
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>>> {
+		const manager = this.managerFor(ctx);
+		const rows: Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>> = [];
+		for (const batch of chunkIds(ids)) {
+			rows.push(
+				...(await manager.find(Project, {
+					where: { id: In(batch), type: 'team' },
+					select: ['id', 'name', 'type', 'description'],
+				})),
+			);
+		}
+		return rows;
+	}
+
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
 			where: {
 				projectRelations: {
 					userId,
+				},
+			},
+		});
+	}
+
+	/** An undefined role list allows global access. An empty list matches no projects. */
+	async findOneWithUserRoles(
+		projectId: string,
+		userId: string,
+		roleSlugs: string[] | undefined,
+		ctx: OperationContext = {},
+	): Promise<Project | null> {
+		return await this.managerFor(ctx).findOne(Project, {
+			where: {
+				id: projectId,
+				...(roleSlugs !== undefined && {
+					projectRelations: { userId, role: { slug: In(roleSlugs) } },
+				}),
+			},
+		});
+	}
+
+	async findIdsWithUserRoles(
+		userId: string,
+		roleSlugs: string[] | undefined,
+		projectIds?: string[],
+	): Promise<string[]> {
+		const where: FindOptionsWhere<Project> = {};
+		if (projectIds) where.id = In(projectIds);
+		if (roleSlugs !== undefined) {
+			// Without explicit IDs, scoped users can list only team projects.
+			if (!projectIds) where.type = 'team';
+			where.projectRelations = { userId, role: { slug: In(roleSlugs) } };
+		}
+
+		const projects = await this.find({
+			where,
+			select: ['id'],
+		});
+		return projects.map(({ id }) => id);
+	}
+
+	async findExistingIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const projects = await this.find({ select: ['id'], where: { id: In(ids) } });
+		return projects.map(({ id }) => id);
+	}
+
+	async findByIdsWithUserRoles(
+		ids: string[],
+		userId: string,
+		roleSlugs: string[] | undefined,
+	): Promise<Project[]> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			where: {
+				id: In(ids),
+				...(roleSlugs !== undefined && {
+					projectRelations: { userId, role: { slug: In(roleSlugs) } },
+				}),
+			},
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	async findOwnedOrAdminByUser(userId: string): Promise<Project[]> {
+		return await this.find({
+			where: {
+				projectRelations: {
+					userId,
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]) },
 				},
 			},
 		});
@@ -234,11 +383,34 @@ export class ProjectRepository extends Repository<Project> {
 		}
 	}
 
+	async deleteByIds(ids: string[]): Promise<void> {
+		if (ids.length === 0) return;
+
+		await this.delete({ id: In(ids) });
+	}
+
 	async getProjectCounts() {
 		return {
 			personal: await this.count({ where: { type: 'personal' } }),
 			team: await this.count({ where: { type: 'team' } }),
 		};
+	}
+
+	/**
+	 * Email of the user who created the project.
+	 * Returns null when the project or the creator is gone, or the creator has no email.
+	 */
+	async findCreatorContact(
+		projectId: string,
+	): Promise<{ email: string; firstName: string | null } | null> {
+		const row = await this.createQueryBuilder('project')
+			.innerJoin('project.creator', 'creator')
+			.select('creator.email', 'email')
+			.addSelect('creator.firstName', 'firstName')
+			.where('project.id = :projectId', { projectId })
+			.getRawOne<{ email: string | null; firstName: string | null }>();
+		if (!row?.email) return null;
+		return { email: row.email, firstName: row.firstName ?? null };
 	}
 }
 

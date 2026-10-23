@@ -23,10 +23,14 @@ import {
 import {
 	buildDispatcher,
 	dispatchedFetch,
+	limitResponseBody,
+	type ResponseSizeLimit,
 	type TransportSsrfPolicy,
 } from '@n8n/backend-network/transport';
 import type { AgentOptions } from 'node:https';
+import { pipeline, type Readable, Transform } from 'node:stream';
 import type { Dispatcher } from 'undici';
+import { OperationalError } from 'n8n-workflow';
 
 /**
  * Options for configuring HTTP agent timeouts.
@@ -44,6 +48,40 @@ export type EgressFilter = TransportSsrfPolicy;
 // Aligned with EXECUTIONS_TIMEOUT_MAX to ensure AI requests don't exceed workflow execution limits
 // Configurable via N8N_AI_TIMEOUT_MAX environment variable to support custom timeout requirements
 const DEFAULT_TIMEOUT = parseInt(process.env.N8N_AI_TIMEOUT_MAX ?? '3600000', 10);
+
+// Bound the response body every AI client may buffer, so a hostile or
+// misbehaving endpoint cannot stream an unbounded body until the heap runs
+// out. The count is of decoded bytes, so a compressed body cannot expand past
+// the cap. Real completions are far below this 100 MB default.
+const DEFAULT_MAX_RESPONSE_SIZE = 100 * 1024 * 1024;
+
+/**
+ * Resolve the cap from `N8N_AI_MAX_RESPONSE_SIZE` (in bytes). Set it to 0 to
+ * disable the cap; a blank, malformed or negative value falls back to the
+ * default.
+ */
+function resolveMaxResponseSize(): number {
+	const configured = process.env.N8N_AI_MAX_RESPONSE_SIZE?.trim();
+	if (!configured) return DEFAULT_MAX_RESPONSE_SIZE;
+
+	const parsed = Number(configured);
+	const isValid = Number.isSafeInteger(parsed) && parsed >= 0;
+	return isValid ? parsed : DEFAULT_MAX_RESPONSE_SIZE;
+}
+
+const MAX_RESPONSE_SIZE = resolveMaxResponseSize();
+
+function responseSizeError(maxBytes: number): OperationalError {
+	return new OperationalError(
+		`Response body exceeded the maximum allowed size of ${maxBytes} bytes`,
+	);
+}
+
+/** The AI response-size limit, in the shape `@n8n/backend-network` consumes. */
+const responseSizeLimit: ResponseSizeLimit = {
+	maxBytes: MAX_RESPONSE_SIZE,
+	createError: responseSizeError,
+};
 
 /**
  * Stand-in target used when the real target URL is unknown in advance (e.g. when providing a proxy agent to ChatAwsBedrock).
@@ -151,16 +189,32 @@ export async function proxyFetch({
 	// fetch only recognizes its own Request class and stringifies any other, so
 	// a Request (the Mistral SDK builds one with the global class) is passed
 	// as url + init instead.
-	if (!isRequest) return await dispatchedFetch(dispatcher, input, init);
+	if (!isRequest) return await dispatchedFetch(dispatcher, input, init, responseSizeLimit);
 
-	return await dispatchedFetch(dispatcher, targetUrl, {
-		method: input.method,
-		headers: [...input.headers],
-		body: input.body === null ? undefined : await input.arrayBuffer(),
-		signal: input.signal,
-		redirect: input.redirect,
-		...init,
-	});
+	return await dispatchedFetch(
+		dispatcher,
+		targetUrl,
+		{
+			method: input.method,
+			headers: [...input.headers],
+			body: input.body === null ? undefined : await input.arrayBuffer(),
+			signal: input.signal,
+			redirect: input.redirect,
+			...init,
+		},
+		responseSizeLimit,
+	);
+}
+
+/**
+ * A drop-in for an SDK's `fetch` option that applies n8n's AI transport
+ * policy. Today that policy bounds the decoded response body; wrap the SDK's
+ * fetch through this instead of using the SDK default. It stays global `fetch`
+ * (with the dispatcher passed through `fetchOptions`), so HTTP mocks that patch
+ * the global undici still see the request.
+ */
+export async function aiClientFetch(...args: Parameters<typeof fetch>): Promise<Response> {
+	return limitResponseBody(await fetch(...args), responseSizeLimit);
 }
 
 /**
@@ -179,4 +233,28 @@ export function getNodeProxyAgent(targetUrl?: string, agentOptions?: AgentOption
 	}
 
 	return createHttpsProxyAgent(targetUrl ?? PROXY_FALLBACK_TARGET, proxyUrl, agentOptions);
+}
+
+/**
+ * A Node `Transform` that errors once the bytes it has passed through exceed
+ * the cap. Its own function so it can be unit-tested in isolation. This is the
+ * Node-stream counterpart of `@n8n/backend-network`'s web-stream limiter, for
+ * SDKs (AWS Bedrock) that hand back a Node `Readable` instead of a fetch body.
+ */
+export function createResponseStreamLimit(maxBytes: number): Transform {
+	let received = 0;
+	return new Transform({
+		transform(chunk: Buffer, _encoding, done) {
+			received += chunk.length;
+			done(received > maxBytes ? responseSizeError(maxBytes) : null, chunk);
+		},
+	});
+}
+
+/** Bound a response body that arrives as a Node `Readable`. */
+export function limitAiResponseStream(body: Readable): Readable {
+	if (MAX_RESPONSE_SIZE === 0) return body;
+	return pipeline(body, createResponseStreamLimit(MAX_RESPONSE_SIZE), () => {
+		// The SDK reads errors off the returned stream; pipeline closes the source too.
+	});
 }

@@ -21,11 +21,15 @@ import {
 	vectorSearchParameters,
 	jobOperations,
 	jobParameters,
+	lakebaseOperations,
+	lakebaseParameters,
 } from './resources';
 
 import { router } from './actions/router';
 import { authenticationProperty, databricksCredentials } from './authentication';
 import { DATABRICKS_NODE_VERSION } from './constants';
+import * as loadOptions from './methods/loadOptions';
+import * as resourceMapping from './methods/resourceMapping';
 import * as listSearch from './methods/listSearch';
 
 export class Databricks implements INodeType {
@@ -66,10 +70,16 @@ export class Databricks implements INodeType {
 							'Manage files in Unity Catalog volumes. <a href="https://docs.databricks.com/api/workspace/files" target="_blank">Learn more</a>.',
 					},
 					{
-						name: 'Genie',
+						name: 'Genie Agent',
 						value: 'genie',
 						description:
-							'AI-powered data assistant. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>.',
+							'Ask a Genie agent questions about your data. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Job',
+						value: 'job',
+						description:
+							'Run and inspect Databricks jobs. <a href="https://docs.databricks.com/jobs/index.html" target="_blank">Learn more</a>.',
 					},
 					{
 						name: 'Model Serving',
@@ -99,6 +109,7 @@ export class Databricks implements INodeType {
 			modelServingOperations,
 			vectorSearchOperations,
 			jobOperations,
+			lakebaseOperations,
 			...filesParameters,
 			...genieParameters,
 			...unityCatalogParameters,
@@ -106,10 +117,11 @@ export class Databricks implements INodeType {
 			...modelServingParameters,
 			...vectorSearchParameters,
 			...jobParameters,
+			...lakebaseParameters,
 		],
 	};
 
-	methods = { listSearch };
+	methods = { listSearch, loadOptions, resourceMapping };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return await router.call(this);

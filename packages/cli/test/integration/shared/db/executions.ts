@@ -47,6 +47,7 @@ export async function createExecution(
 		jsonSizeBytes,
 		binaryDataSizeBytes,
 		workflowVersionId,
+		tracingContext,
 	} = attributes;
 
 	const execution = await Container.get(ExecutionRepository).save({
@@ -62,6 +63,7 @@ export async function createExecution(
 		...(jsonSizeBytes !== undefined && { jsonSizeBytes }),
 		...(binaryDataSizeBytes !== undefined && { binaryDataSizeBytes }),
 		...(workflowVersionId !== undefined && { workflowVersionId }),
+		...(tracingContext !== undefined && { tracingContext }),
 	});
 
 	if (metadata?.length) {

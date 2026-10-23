@@ -70,6 +70,14 @@ describe('SSEPush', () => {
 		});
 	});
 
+	it('reports the current connection count after a client disconnects', () => {
+		expect(ssePush.getDiagnosticCounts()).toEqual({ connections: 2 });
+
+		req.emit('close');
+
+		expect(ssePush.getDiagnosticCounts()).toEqual({ connections: 1 });
+	});
+
 	describe('does not remove replaced connection when old connection closes', () => {
 		test.each([
 			['end', 'req'],

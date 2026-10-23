@@ -35,6 +35,10 @@ const { validHookPath } = vi.hoisted(() => {
 	return { validHookPath: p as string };
 });
 
+vi.mock('/path/to/non-existent-hook.js', () => {
+	throw new Error('File not found');
+});
+
 describe('ExternalHooks', () => {
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
@@ -66,7 +70,6 @@ describe('ExternalHooks', () => {
 
 	describe('init()', () => {
 		it('should not load hooks if no external hook files are configured', async () => {
-			// @ts-expect-error private method
 			const loadHooksSpy = vi.spyOn(externalHooks, 'loadHooks');
 			await externalHooks.init();
 			expect(loadHooksSpy).not.toHaveBeenCalled();
@@ -74,10 +77,6 @@ describe('ExternalHooks', () => {
 
 		it('should throw an error if hook file cannot be loaded', async () => {
 			globalConfig.externalHooks.files = ['/path/to/non-existent-hook.js'];
-
-			vi.mock('/path/to/non-existent-hook.js', () => {
-				throw new Error('File not found');
-			});
 
 			await expect(externalHooks.init()).rejects.toThrow(UnexpectedError);
 		});

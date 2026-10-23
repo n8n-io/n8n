@@ -1,0 +1,49 @@
+import { MAX_TIMER_DELAY_SECONDS } from '@n8n/constants';
+import { mock } from 'vitest-mock-extended';
+
+import type { InsightsCompactionService } from '../insights-compaction.service';
+import { InsightsCompactionTask } from '../insights-compaction.task';
+import { InsightsConfig } from '../insights.config';
+
+describe('InsightsCompactionTask', () => {
+	const insightsConfig = new InsightsConfig();
+	const compactionService = mock<InsightsCompactionService>();
+	const task = new InsightsCompactionTask(insightsConfig, compactionService);
+
+	it('should declare the configured compaction cadence', () => {
+		expect(task.name).toBe('insights-compaction');
+		expect(task.schedule).toEqual({
+			kind: 'interval',
+			intervalSeconds: insightsConfig.compactionIntervalMinutes * 60,
+		});
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true, timeoutSeconds: 600 },
+		});
+	});
+
+	it.each([
+		{ maxRuntimeSeconds: 300, timeoutSeconds: 600 },
+		{ maxRuntimeSeconds: 1800, timeoutSeconds: 2100 },
+		{ maxRuntimeSeconds: 0, timeoutSeconds: MAX_TIMER_DELAY_SECONDS },
+	])(
+		'should time out 5 minutes after a compaction budget of $maxRuntimeSeconds s',
+		({ maxRuntimeSeconds, timeoutSeconds }) => {
+			const config = Object.assign(new InsightsConfig(), {
+				compactionMaxRuntimeSeconds: maxRuntimeSeconds,
+			});
+
+			expect(
+				new InsightsCompactionTask(config, compactionService).target.scheduler.timeoutSeconds,
+			).toBe(timeoutSeconds);
+		},
+	);
+
+	it('should compact insights on run, handing it the run signal', async () => {
+		const { signal } = new AbortController();
+
+		await task.run(signal);
+
+		expect(compactionService.compactInsights).toHaveBeenCalledExactlyOnceWith(signal);
+	});
+});

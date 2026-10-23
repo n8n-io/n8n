@@ -11,7 +11,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { ExternalHooks } from '@/external-hooks';
 import { OauthService, type OauthFlowState } from '@/oauth/oauth.service';
 import { MAX_CSRF_AGE } from '@/oauth/types';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import {
 	decryptCredentialData,
 	getCredentialById,

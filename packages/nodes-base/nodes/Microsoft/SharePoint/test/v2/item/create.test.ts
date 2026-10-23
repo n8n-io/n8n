@@ -6,11 +6,11 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
-import * as transport from '../../../v2/transport';
-import type * as _importType0 from '../../../v2/transport';
+import * as transport from '../../../transport';
+import type * as _importType0 from '../../../transport';
 
-vi.mock('../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
@@ -152,6 +152,16 @@ describe('Microsoft SharePoint v2 — Item: Create', () => {
 			undefined,
 			{},
 		);
+	});
+
+	it('fails instead of creating an empty item when auto-map has no columns', async () => {
+		setParams({ ...baseParams, 'columns.mappingMode': 'autoMapInputData', 'columns.schema': [] });
+		ctx.getInputData.mockReturnValue([{ json: { Title: 'Mapped' } }]);
+
+		await expect(node.execute.call(ctx)).rejects.toThrow(
+			'Could not map the input data to the list columns',
+		);
+		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
 	it('creates the item with server defaults when the mapper value is its shipped default null', async () => {

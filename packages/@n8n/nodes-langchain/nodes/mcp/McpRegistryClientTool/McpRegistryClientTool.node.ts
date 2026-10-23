@@ -8,7 +8,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
-	type McpOAuth2CredentialType,
+	type McpRegistryCredentialType,
 	type McpRegistryRuntime,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
@@ -241,7 +241,7 @@ function resolveConfig(
 function getCredentialType(
 	ctx: Pick<ILoadOptionsFunctions | ISupplyDataFunctions | IExecuteFunctions, 'getNode'>,
 	resolved: ResolvedMcpRegistryConnection,
-): McpOAuth2CredentialType {
+): McpRegistryCredentialType {
 	const node = ctx.getNode();
 	const { credentialType } = resolved.binding;
 	if (!Object.hasOwn(node.credentials ?? {}, credentialType)) {

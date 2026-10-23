@@ -23,7 +23,7 @@ describe('McpServerApiKeyService.verifyApiKey with public API disabled', () => {
 
 		const result = await service.verifyApiKey(apiKey);
 
-		expect(result.user?.id).toBe(owner.id);
-		expect(result.context).toBeUndefined();
+		expect(result?.user?.id).toBe(owner.id);
+		expect(result?.context).toBeUndefined();
 	});
 });

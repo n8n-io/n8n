@@ -14,13 +14,14 @@ const renderComponent = createComponentRenderer(AgentToolConfigNodeContent, {
 		stubs: {
 			NodeToolSettingsContent: {
 				template:
-					'<div data-test-id="node-tool-settings" :data-refresh-empty-schema="refreshEmptySchemaEnabled" :data-schema-auto-refresh="schemaAutoRefreshEnabled" :data-sync-node-to-ndv="syncNodeToNdv">{{ JSON.stringify(hiddenOperations) }}</div>',
+					'<div data-test-id="node-tool-settings" :data-refresh-empty-schema="refreshEmptySchemaEnabled" :data-schema-auto-refresh="schemaAutoRefreshEnabled" :data-sync-node-to-ndv="syncNodeToNdv" :data-read-only="readOnly">{{ JSON.stringify(hiddenOperations) }}</div>',
 				props: [
 					'initialNode',
 					'existingToolNames',
 					'projectId',
 					'hiddenOperations',
 					'syncNodeToNdv',
+					'readOnly',
 				],
 				setup() {
 					return {
@@ -71,5 +72,13 @@ describe('AgentToolConfigNodeContent', () => {
 		});
 
 		expect(getByTestId('node-tool-settings')).toHaveAttribute('data-sync-node-to-ndv', 'true');
+	});
+
+	it('forwards the read-only state', () => {
+		const { getByTestId } = renderComponent({
+			props: { initialNode: node, contentTestId: 'node-tool-settings', readOnly: true },
+		});
+
+		expect(getByTestId('node-tool-settings')).toHaveAttribute('data-read-only', 'true');
 	});
 });

@@ -33,6 +33,12 @@ export class OtelConfig {
 	@Env(OTEL_ENV_VARS.includeNodeSpans)
 	includeNodeSpans: boolean = true;
 
+	@Env(OTEL_ENV_VARS.emitWorkflowStartSpan)
+	emitWorkflowStartSpan: boolean = false;
+
+	@Env(OTEL_ENV_VARS.emitNodeStartSpan)
+	emitNodeStartSpan: boolean = false;
+
 	@Env(OTEL_ENV_VARS.injectOutbound)
 	injectOutbound: boolean = true;
 

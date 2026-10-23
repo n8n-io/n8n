@@ -3,8 +3,15 @@ import type { Mock } from 'vitest';
 import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
+import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
 import { createExecutionsTool } from '../executions.tool';
+import { recordLiveRunVerification } from '../orchestration/verification/record-live-run';
+
+vi.mock('../orchestration/verification/record-live-run', () => ({
+	recordLiveRunVerification: vi.fn().mockResolvedValue(undefined),
+}));
 
 // ── Mock helpers ───────────────────────────────────────────────────────────────
 
@@ -461,6 +468,63 @@ describe('executions tool', () => {
 			);
 		});
 
+		describe('live run verification', () => {
+			const runResult = { executionId: 'exec-1', status: 'success' as const };
+
+			function createAllowedContext() {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					aiCreatedWorkflowIds: new Set(['wf-1']),
+				});
+				(context.executionService.run as Mock).mockResolvedValue(runResult);
+				return context;
+			}
+
+			it('returns the recorded claim with the run result', async () => {
+				const context = createAllowedContext();
+				const claim: VerificationClaim = {
+					level: 'verified',
+					plannedNodeCount: 1,
+					reachedNodeCount: 1,
+					nodesNotReached: [],
+					simulatedNodes: [],
+					pinnedNodes: [],
+					unprovenTargets: [],
+					publishReady: true,
+					liveTestRecommended: false,
+				};
+				vi.mocked(recordLiveRunVerification).mockResolvedValueOnce(claim);
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1', triggerNodeName: 'Every Morning' },
+					createAgentCtx() as never,
+				);
+
+				expect(result).toEqual({ ...runResult, verificationClaim: claim });
+				expect(recordLiveRunVerification).toHaveBeenCalledWith({
+					context,
+					workflowId: 'wf-1',
+					triggerNodeName: 'Every Morning',
+					result: runResult,
+				});
+			});
+
+			it('returns the plain run result when no claim was recorded', async () => {
+				const context = createAllowedContext();
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx() as never,
+				);
+
+				expect(result).toEqual(runResult);
+			});
+		});
+
 		describe('session grant (always allow)', () => {
 			it('runs without HITL when the workflow has a session grant', async () => {
 				const context = createMockContext({
@@ -848,6 +912,25 @@ describe('executions tool', () => {
 
 	// ── run-step ────────────────────────────────────────────────────────────
 
+	it.each([
+		{ action: 'run' as const, workflowId: 'wf-1' },
+		{ action: 'run-step' as const, workflowId: 'wf-1', nodeName: 'Send Slack message' },
+	])('rejects $action outside the thread project before asking for approval', async (input) => {
+		const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
+		const suspendFn = vi.fn();
+		const context = createMockContext({ permissions: {}, assertInThreadProject });
+
+		const tool = createExecutionsTool(context);
+		await expect(
+			executeTool(tool, input, createAgentCtx({ suspend: suspendFn }) as never),
+		).rejects.toThrow(OutsideThreadProjectError);
+
+		expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-1' });
+		expect(suspendFn).not.toHaveBeenCalled();
+		expect(context.executionService.run).not.toHaveBeenCalled();
+		expect(context.executionService.runStep).not.toHaveBeenCalled();
+	});
+
 	describe('run-step action', () => {
 		const stepInput = {
 			action: 'run-step' as const,
@@ -932,6 +1015,7 @@ describe('executions tool', () => {
 					...stepInput,
 					reuseExecutionId: 'exec-9',
 					mockInput: [{ text: 'hi' }],
+					toolArguments: { title: 'Login fails' },
 					versionId: 'v-2',
 					timeout: 30_000,
 				},
@@ -944,9 +1028,28 @@ describe('executions tool', () => {
 				expect.objectContaining({
 					reuseExecutionId: 'exec-9',
 					mockInput: [{ text: 'hi' }],
+					toolArguments: { title: 'Login fails' },
 					versionId: 'v-2',
 					timeout: 30_000,
 				}),
+			);
+		});
+
+		it('accepts a bare string as the tool arguments', async () => {
+			const context = createMockContext({ permissions: {} });
+
+			const tool = createExecutionsTool(context);
+			await executeTool(
+				tool,
+				{ ...stepInput, toolArguments: 'Napoleon' },
+				createAgentCtx({ resumeData: { approved: true } }) as never,
+			);
+
+			// A tool with one free-text input takes the query directly, not wrapped.
+			expect(context.executionService.runStep).toHaveBeenCalledWith(
+				'wf-1',
+				'Send Slack message',
+				expect.objectContaining({ toolArguments: 'Napoleon' }),
 			);
 		});
 

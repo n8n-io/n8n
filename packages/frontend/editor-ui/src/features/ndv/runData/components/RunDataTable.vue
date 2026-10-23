@@ -534,7 +534,7 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
-								variant="subtle"
+								variant="outline"
 								v-show="showExecutionLink(index1)"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
@@ -698,7 +698,7 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
-								variant="subtle"
+								variant="outline"
 								v-show="showExecutionLink(index1)"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
@@ -944,7 +944,7 @@ th.isCollapsingColumn + th {
 .dataKey {
 	color: var(--color--text--shade-1);
 	line-height: 1.7;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	border-radius: var(--radius);
 	padding: 0 var(--spacing--5xs) 0 var(--spacing--5xs);
 	margin-right: var(--spacing--5xs);

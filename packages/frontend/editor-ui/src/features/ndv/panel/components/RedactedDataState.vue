@@ -8,12 +8,17 @@ import { EXECUTION_DATA_REDACTION_DOCS_URL } from '@/app/constants';
 defineProps<{
 	title: string;
 	isDynamicCredentials: boolean;
+	/** The execution is redacted because a sub-workflow it called has a redaction policy. */
+	isSubWorkflowRedaction?: boolean;
 	canReveal: boolean;
+	/** A credential the viewer cannot use but can share with themselves to see the data. */
+	credentialToShare?: { id: string; name: string };
 }>();
 
 const emit = defineEmits<{
 	openSettings: [];
 	reveal: [];
+	shareCredential: [];
 }>();
 
 const i18n = useI18n();
@@ -27,6 +32,9 @@ const i18n = useI18n();
 		<template v-if="isDynamicCredentials">
 			{{ i18n.baseText('ndv.redacted.dynamicCredentials.description') }}
 		</template>
+		<template v-else-if="isSubWorkflowRedaction">
+			{{ i18n.baseText('ndv.redacted.subWorkflow.description') }}
+		</template>
 		<template v-else-if="canReveal">
 			{{ i18n.baseText('ndv.redacted.description.sentence1') }}<br />
 			<I18nT keypath="ndv.redacted.description.sentence2" tag="span" scope="global">
@@ -36,6 +44,22 @@ const i18n = useI18n();
 					}}</N8nLink>
 				</template>
 			</I18nT>
+		</template>
+		<template v-else-if="credentialToShare">
+			{{ i18n.baseText('ndv.redacted.shareCredential.description') }}<br />
+			<N8nLink
+				size="medium"
+				data-test-id="redacted-data-share-credential"
+				@click="emit('shareCredential')"
+			>
+				{{
+					credentialToShare.name
+						? i18n.baseText('ndv.redacted.shareCredential.link', {
+								interpolate: { credential: credentialToShare.name },
+							})
+						: i18n.baseText('ndv.redacted.shareCredential.linkNoName')
+				}}
+			</N8nLink>
 		</template>
 		<template v-else>
 			{{ i18n.baseText('ndv.redacted.noPermission.description') }}

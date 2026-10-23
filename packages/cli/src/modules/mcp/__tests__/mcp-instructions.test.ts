@@ -1,6 +1,20 @@
 import { getMcpInstructions } from '../tools/workflow-builder/mcp-instructions';
 
 describe('getMcpInstructions', () => {
+	test.each([true, false, undefined])(
+		'gates credential description guidance when the flag is %s',
+		(credentialDescriptionsEnabled) => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: true,
+				credentialDescriptionsEnabled,
+			});
+			expect(instructions).toContain('list_credentials');
+			expect(instructions.includes('read their descriptions')).toBe(
+				credentialDescriptionsEnabled === true,
+			);
+		},
+	);
+
 	test('returns intro-only string when builder is disabled', () => {
 		const instructions = getMcpInstructions({ isBuilderEnabled: false });
 		expect(instructions).toContain('official MCP server for n8n');

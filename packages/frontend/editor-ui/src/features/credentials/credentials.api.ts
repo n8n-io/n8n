@@ -1,5 +1,12 @@
 import type {
+	CreateCredentialPublicDto,
+	CredentialPublicDto,
+	CredentialOptionsRequestDto,
+} from '@n8n/api-types';
+import { request, type PublicApiContext } from '@n8n/rest-api-client';
+import type {
 	CredentialFetchScope,
+	CredentialPayload,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
 } from './credentials.types';
@@ -7,11 +14,11 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { sleep } from '@n8n/utils/sleep';
 import type {
-	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentialTestRequest,
 	INodeCredentialTestResult,
+	INodeListSearchResult,
 } from 'n8n-workflow';
 import axios from 'axios';
 import type { CreateCredentialDto } from '@n8n/api-types';
@@ -77,6 +84,20 @@ export async function getAllCredentials(
 	});
 }
 
+export async function searchCredentials(
+	context: IRestApiContext,
+	options: { name: string; skip: number; take: number },
+): Promise<ICredentialsResponse[]> {
+	const { name, skip, take } = options;
+
+	return await makeRestApiRequest(context, 'GET', '/credentials', {
+		...(name ? { filter: { name } } : {}),
+		skip,
+		take,
+		includeGlobal: true,
+	});
+}
+
 export async function getUsableCredentials(
 	context: IRestApiContext,
 	options: CredentialFetchScope,
@@ -108,7 +129,7 @@ export async function disconnectOauthToken(context: IRestApiContext, id: string)
 export async function updateCredential(
 	context: IRestApiContext,
 	id: string,
-	data: ICredentialsDecrypted,
+	data: CredentialPayload,
 ): Promise<ICredentialsResponse> {
 	return await makeRestApiRequest(
 		context,
@@ -161,6 +182,29 @@ export async function testCredential(
 	);
 }
 
+export type CredentialOptionsDestination =
+	| { kind: 'stored'; credentialId: string }
+	| { kind: 'project'; projectId: string }
+	| { kind: 'instance' };
+
+export async function getCredentialOptions(
+	context: IRestApiContext,
+	destination: CredentialOptionsDestination,
+	data: CredentialOptionsRequestDto,
+): Promise<INodeListSearchResult> {
+	let path = '/credentials/options/instance';
+	if (destination.kind === 'stored') {
+		path = `/credentials/${destination.credentialId}/options`;
+	} else if (destination.kind === 'project') {
+		path = `/credentials/options/projects/${destination.projectId}`;
+	}
+	const requestData = { ...data, data: { ...data.data } };
+	if (requestData.data.oauthTokenData === null) {
+		delete requestData.data.oauthTokenData;
+	}
+	return await makeRestApiRequest(context, 'POST', path, requestData);
+}
+
 /**
  * Auth-probe a stored credential against the test URL persisted in the
  * credential itself (Templated Custom Auth) — for types `/credentials/test`
@@ -171,4 +215,16 @@ export async function probeCredential(
 	credentialId: string,
 ): Promise<INodeCredentialTestResult> {
 	return await makeRestApiRequest(context, 'POST', `/credentials/${credentialId}/probe`);
+}
+
+export async function createPublicCredential(
+	context: PublicApiContext,
+	data: CreateCredentialPublicDto,
+): Promise<CredentialPublicDto> {
+	return await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: '/credentials',
+		data,
+	});
 }

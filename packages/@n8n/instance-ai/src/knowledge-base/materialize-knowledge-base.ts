@@ -25,6 +25,7 @@ import { computeWorkspaceContentHash } from '../workspace/compute-workspace-cont
 import {
 	loadPrebakedWorkspaceBundle,
 	materializeWorkspaceBundle,
+	type VerifiedWorkspaceBundles,
 } from '../workspace/prebaked-workspace-bundle';
 import type { SandboxWorkspace } from '../workspace/sandbox-fs';
 import { stringifyWorkspaceJson, withTrailingNewline } from '../workspace/workspace-file-content';
@@ -100,6 +101,7 @@ export interface BuildKnowledgeBaseWorkspaceBundleOptions {
 
 interface MaterializeKnowledgeBaseOptions extends BuildKnowledgeBaseWorkspaceBundleOptions {
 	workspace: SandboxWorkspace;
+	verifiedBundles?: VerifiedWorkspaceBundles;
 }
 
 function addTemplatesToKnowledgeBaseFiles(
@@ -142,7 +144,7 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 	{
 		id: 'trigger-input-data-shapes',
 		description:
-			'Per-trigger inputData shapes for verify-built-workflow and executions(action="run")',
+			'Per-trigger inputData shapes for workflow_builder_verify_built_workflow and workflow_builder_executions(action="run")',
 		fileName: 'trigger-input-data-shapes.md',
 	},
 	{
@@ -307,25 +309,13 @@ export async function loadPrebakedKnowledgeBaseBundle(
 
 	return await loadPrebakedWorkspaceBundle({
 		workspace: options.workspace,
+		verifiedBundles: options.verifiedBundles,
 		manifestPath: bundle.manifestPath,
 		expectedHash: bundle.contentHash,
 		hashField: 'contentHash',
 		schemaVersion: KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION,
 		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
 		logger: options.logger,
-		invalidManifestLogMessage: 'Ignoring invalid prebaked knowledge base manifest',
-		staleManifestLogMessage: 'Ignoring stale prebaked knowledge base manifest',
-		staleManifestLogKeys: {
-			expected: 'expectedContentHash',
-			actual: 'actualContentHash',
-		},
-		successLogMessage: 'Using prebaked knowledge base from workspace',
-		successLogContext: (loadedBundle) => ({
-			root: options.root,
-			knowledgeBaseRoot: loadedBundle.rootDir,
-			contentHash: loadedBundle.contentHash,
-			fileCount: loadedBundle.files.size,
-		}),
 		buildBundle: () => bundle,
 	});
 }
@@ -343,17 +333,12 @@ export async function materializeKnowledgeBaseIntoWorkspace(
 		async () => {
 			return await materializeWorkspaceBundle({
 				workspace: options.workspace,
+				verifiedBundles: options.verifiedBundles,
 				resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
 				logger: options.logger,
 				loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
 				buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
-				materializedLogMessage: 'Materialized knowledge base into workspace',
-				materializedLogContext: (bundle) => ({
-					root: options.root,
-					knowledgeBaseRoot: bundle.rootDir,
-					contentHash: bundle.contentHash,
-					fileCount: bundle.files.size,
-				}),
+				bundleHash: (bundle) => bundle.contentHash,
 			});
 		},
 	);

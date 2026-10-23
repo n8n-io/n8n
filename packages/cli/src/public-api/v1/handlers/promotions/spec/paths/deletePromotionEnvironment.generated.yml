@@ -1,0 +1,25 @@
+operationId: deletePromotionEnvironment
+tags:
+  - Promotions
+summary: Delete a promotion environment
+description: Deletes the environment with its project links and local checkout. Its provider is kept. Nothing in Git changes.
+x-required-scope: gitConnection:delete
+parameters:
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+responses:
+  '204':
+    description: Operation successful.
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

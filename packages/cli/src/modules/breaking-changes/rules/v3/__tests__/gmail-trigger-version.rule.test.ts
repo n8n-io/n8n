@@ -70,4 +70,10 @@ describe('GmailTriggerVersionRule', () => {
 			expect(recommendations[0].description).toContain('Schedule Trigger');
 		});
 	});
+
+	describe('getMetadata()', () => {
+		it('should report a behaviorChanges impact because older versions alias 1.4', () => {
+			expect(rule.getMetadata().impact).toBe('behaviorChanges');
+		});
+	});
 });

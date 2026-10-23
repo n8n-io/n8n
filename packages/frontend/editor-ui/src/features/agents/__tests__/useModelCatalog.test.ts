@@ -135,6 +135,33 @@ describe('useModelCatalog', () => {
 		);
 	});
 
+	it('lists models with a priority first and the rest by name', async () => {
+		mocks.getModelCatalog.mockResolvedValue({});
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'google',
+			verified: true,
+			models: [
+				model('gemini-2.5-pro', 'Gemini 2.5 Pro'),
+				{ ...model('gemini-featured', 'Gemini Featured'), priority: 10 },
+				model('gemini-2.5-flash', 'Gemini 2.5 Flash'),
+			],
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+		await ensureLoaded('project-1');
+		const credentials = { google: 'google-credential-id' };
+
+		getModelsForPicker(credentials);
+		await flushAsync();
+
+		expect(modelIds(getModelsForPicker(credentials).google?.models ?? [])).toEqual([
+			'gemini-featured',
+			'gemini-2.5-flash',
+			'gemini-2.5-pro',
+		]);
+	});
+
 	it('returns a verified provider default only when it remains in the picker list', async () => {
 		mocks.getModelCatalog.mockResolvedValue({
 			anthropic: provider('anthropic', {

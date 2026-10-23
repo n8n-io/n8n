@@ -1,5 +1,5 @@
 import type { CredentialListItem } from '@n8n/agents';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../../builder-session';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -21,8 +21,8 @@ function makeCtx(overrides?: { resumeData?: unknown; suspendPayload?: unknown })
 	};
 }
 
-function makeCredentialService(creds: CredentialListItem[]): InstanceAiCredentialService {
-	const credentialService = mock<InstanceAiCredentialService>();
+function makeCredentialService(creds: CredentialListItem[]): BuilderCredentialService {
+	const credentialService = mock<BuilderCredentialService>();
 	credentialService.list.mockImplementation(async (options) =>
 		options?.type ? creds.filter((c) => c.type === options.type) : creds,
 	);
@@ -41,7 +41,7 @@ const BASE_DEPS = {
 	track: vi.fn(),
 };
 
-describe('finish_setup tool', () => {
+describe('agent_builder_finish_setup tool', () => {
 	afterEach(() => {
 		(BASE_DEPS.track as Mock).mockClear();
 	});
@@ -407,6 +407,165 @@ describe('finish_setup tool', () => {
 		});
 		expect(BASE_DEPS.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
 			trigger_type: 'telegram',
+		});
+	});
+
+	describe('config writes on completion', () => {
+		it('writes resolved credentials and path-bound answers, and keeps configPath off the card', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({
+				credentialTypes: ['gmailOAuth2'],
+				paths: ['/tools/2/node/nodeParameters/sendTo'],
+				configHash: 'hash-2',
+			});
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+				]),
+				applySetupToConfig,
+			});
+			const input = {
+				questions: [
+					{
+						id: 'escalation_email',
+						question: 'Which address receives escalations?',
+						type: 'text' as const,
+						configPath: '/tools/2/node/nodeParameters/sendTo',
+					},
+					{ id: 'tone', question: 'Which tone?', type: 'single' as const, options: ['Formal'] },
+				],
+				credentialRequests: [{ credentialType: 'gmailOAuth2', purpose: 'Read order emails' }],
+			};
+
+			const questionsPayload = (await tool.handler!(input, makeCtx() as never)) as {
+				questions: Array<Record<string, unknown>>;
+			};
+			expect(questionsPayload.questions[0]).not.toHaveProperty('configPath');
+
+			const result = await tool.handler!(
+				input,
+				makeCtx({
+					resumeData: {
+						answers: [
+							{
+								questionId: 'escalation_email',
+								selectedOptions: [],
+								customText: ' support@acme.test ',
+							},
+							{ questionId: 'tone', selectedOptions: ['Formal'] },
+						],
+					},
+					suspendPayload: questionsPayload,
+				}) as never,
+			);
+
+			expect(applySetupToConfig).toHaveBeenCalledWith({
+				credentials: [{ credentialType: 'gmailOAuth2', id: 'g1', name: 'Gmail account' }],
+				values: [{ path: '/tools/2/node/nodeParameters/sendTo', value: 'support@acme.test' }],
+			});
+			expect(result).toMatchObject({
+				completed: true,
+				appliedToConfig: {
+					credentialTypes: ['gmailOAuth2'],
+					paths: ['/tools/2/node/nodeParameters/sendTo'],
+				},
+				configHash: 'hash-2',
+			});
+		});
+
+		it('writes both selected options and custom text for a multi-select answer', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({
+				credentialTypes: [],
+				paths: ['/channels'],
+			});
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([]),
+				applySetupToConfig,
+			});
+			const input = {
+				questions: [
+					{
+						id: 'channels',
+						question: 'Which channels?',
+						type: 'multi' as const,
+						options: ['#alerts', '#ops'],
+						configPath: '/channels',
+					},
+				],
+			};
+
+			const questionsPayload = await tool.handler!(input, makeCtx() as never);
+			await tool.handler!(
+				input,
+				makeCtx({
+					resumeData: {
+						answers: [
+							{
+								questionId: 'channels',
+								selectedOptions: ['#alerts', '#ops'],
+								customText: ' #support ',
+							},
+						],
+					},
+					suspendPayload: questionsPayload,
+				}) as never,
+			);
+
+			expect(applySetupToConfig).toHaveBeenCalledWith({
+				credentials: [],
+				values: [{ path: '/channels', value: '#alerts, #ops, #support' }],
+			});
+		});
+
+		it('does not write skipped answers or skipped credentials', async () => {
+			const applySetupToConfig = vi.fn();
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([]),
+				applySetupToConfig,
+			});
+			const input = {
+				questions: [{ id: 'to', question: 'Recipient?', type: 'text' as const, configPath: '/x' }],
+				credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }],
+			};
+
+			const questionsPayload = await tool.handler!(input, makeCtx() as never);
+			const credentialsPayload = await tool.handler!(
+				input,
+				makeCtx({
+					resumeData: { answers: [{ questionId: 'to', selectedOptions: [], skipped: true }] },
+					suspendPayload: questionsPayload,
+				}) as never,
+			);
+			const result = await tool.handler!(
+				input,
+				makeCtx({ resumeData: { skipped: true }, suspendPayload: credentialsPayload }) as never,
+			);
+
+			expect(applySetupToConfig).not.toHaveBeenCalled();
+			expect(result).not.toHaveProperty('appliedToConfig');
+		});
+
+		it('reports a failed config write without failing the setup flow', async () => {
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'c1', name: 'My Airtable', type: 'airtableApi' },
+				]),
+				applySetupToConfig: vi.fn().mockRejectedValue(new Error('locked')),
+			});
+
+			const result = await tool.handler!(
+				{ credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }] },
+				makeCtx() as never,
+			);
+
+			expect(result).toEqual({
+				completed: true,
+				credentials: { airtableApi: { id: 'c1', name: 'My Airtable' } },
+				configApplyErrors: [{ path: '(root)', message: 'locked' }],
+			});
 		});
 	});
 

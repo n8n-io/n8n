@@ -14,7 +14,7 @@ const baseDescription: INodeTypeBaseDescription = {
 	name: 'kafkaTrigger',
 	icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 	group: ['trigger'],
-	defaultVersion: 1.3,
+	defaultVersion: 2,
 	description: 'Consume messages from a Kafka topic',
 };
 

@@ -1,4 +1,4 @@
-/* eslint-disable no-restricted-syntax */
+/* eslint-disable n8n-local-rules/no-raw-enum */
 /* We want the runtime overhead here */
 
 /**
@@ -19,8 +19,7 @@ export enum Facility {
 	User = 1,
 	Mail = 2,
 	System = 3,
-	// eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
-	Daemon = 3,
+	Daemon = System,
 	Auth = 4,
 	Syslog = 5,
 	Lpr = 6,

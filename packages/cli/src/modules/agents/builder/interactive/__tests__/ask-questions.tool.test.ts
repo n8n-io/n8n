@@ -16,7 +16,7 @@ function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 	};
 }
 
-describe('ask_questions tool', () => {
+describe('agent_builder_ask_questions tool', () => {
 	const track: Mock = vi.fn();
 	const tool = buildAskQuestionsTool({ track });
 

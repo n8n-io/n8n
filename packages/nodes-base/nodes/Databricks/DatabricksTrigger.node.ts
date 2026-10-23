@@ -33,7 +33,6 @@ export class DatabricksTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Databricks Trigger',
 		name: 'databricksTrigger',
-		hidden: true,
 		icon: { light: 'file:databricks.svg', dark: 'file:databricks.dark.svg' },
 		group: ['trigger'],
 		version: DATABRICKS_TRIGGER_NODE_VERSION,

@@ -10,14 +10,18 @@
 | error | text |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
-| notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent agent consumed this settled job |
+| notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent received the latest result or approval request |
 | parentAgentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | parentPrincipalHash | varchar(64) |  | false |  |  | Sandbox principal hash of the parent agent run |
 | parentResourceId | varchar(255) |  | false |  |  | Memory resource of the parent agent run |
 | parentThreadId | varchar(128) |  | false |  |  |  |
+| pauseRequestId | uuid |  | true |  |  | Groups jobs stopped by one user request |
+| planId | uuid |  | true |  | [public.agent_plan](public.agent_plan.md) | Plan that owns this work |
+| planTaskId | uuid |  | true |  |  | Task ID in the saved plan document |
 | result | text |  | true |  |  | Final answer of a settled sub-agent job |
 | settledAt | timestamp(3) with time zone |  | true |  |  |  |
-| status | varchar(16) |  | false |  |  |  |
+| sourceExecutionId | varchar(36) |  | true |  | [public.agent_execution](public.agent_execution.md) | Execution that dispatched this job |
+| status | varchar(16) |  | false |  |  | running: child works; suspended: child awaits approval; paused: user stopped the child; completed, failed, cancelled: terminal |
 | subAgentId | varchar(36) |  | true |  |  | Sub-agent jobs only |
 | timeoutAt | timestamp(3) with time zone |  | true |  |  | When reconciliation fails the job as timed out; NULL means no timeout |
 | title | varchar(255) |  | false |  |  | Task name or workflow name, echoed in status-check listings |
@@ -29,7 +33,9 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_agent_background_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['subagent'::character varying, 'workflow'::character varying])::text[]))) |
-| CHK_agent_background_job_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]))) |
+| CHK_agent_background_job_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'suspended'::character varying, 'paused'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]))) |
+| FK_4db3b7ebea4ed4f69649982018c | FOREIGN KEY | FOREIGN KEY ("sourceExecutionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
+| FK_ce131bff629d89015893e350e9c | FOREIGN KEY | FOREIGN KEY ("planId") REFERENCES agent_plan(id) ON DELETE SET NULL |
 | FK_d46c6f00730c2ef8bcb6ee24b67 | FOREIGN KEY | FOREIGN KEY ("parentAgentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_6e0db58281aa2b4c956dc0d58e9 | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_background_job_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -49,8 +55,10 @@
 | ---- | ---------- |
 | IDX_93d62baabe9858816b5adafb44 | CREATE INDEX "IDX_93d62baabe9858816b5adafb44" ON public.agent_background_job USING btree ("parentThreadId", status) |
 | IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON public.agent_background_job USING btree ("childExecutionId") WHERE ("childExecutionId" IS NOT NULL) |
-| IDX_agent_background_job_parentThreadId | CREATE INDEX "IDX_agent_background_job_parentThreadId" ON public.agent_background_job USING btree ("parentThreadId") WHERE (("settledAt" IS NOT NULL) AND ("notifiedAt" IS NULL)) |
-| IDX_agent_background_job_timeoutAt | CREATE INDEX "IDX_agent_background_job_timeoutAt" ON public.agent_background_job USING btree ("timeoutAt") WHERE ((status)::text = 'running'::text) |
+| IDX_agent_background_job_parentThreadId | CREATE INDEX "IDX_agent_background_job_parentThreadId" ON public.agent_background_job USING btree ("parentThreadId") WHERE (((status)::text <> 'running'::text) AND ("notifiedAt" IS NULL)) |
+| IDX_agent_background_job_planId_planTaskId | CREATE INDEX "IDX_agent_background_job_planId_planTaskId" ON public.agent_background_job USING btree ("planId", "planTaskId") |
+| IDX_agent_background_job_sourceExecutionId | CREATE INDEX "IDX_agent_background_job_sourceExecutionId" ON public.agent_background_job USING btree ("sourceExecutionId") |
+| IDX_agent_background_job_timeoutAt | CREATE INDEX "IDX_agent_background_job_timeoutAt" ON public.agent_background_job USING btree ("timeoutAt") WHERE ((status)::text = ANY ((ARRAY['running'::character varying, 'suspended'::character varying])::text[])) |
 | IDX_d46c6f00730c2ef8bcb6ee24b6 | CREATE INDEX "IDX_d46c6f00730c2ef8bcb6ee24b6" ON public.agent_background_job USING btree ("parentAgentId") |
 | IDX_e43e630272995a93dfeb94ab3e | CREATE INDEX "IDX_e43e630272995a93dfeb94ab3e" ON public.agent_background_job USING btree ("settledAt") |
 | PK_6e0db58281aa2b4c956dc0d58e9 | CREATE UNIQUE INDEX "PK_6e0db58281aa2b4c956dc0d58e9" ON public.agent_background_job USING btree (id) |
@@ -61,6 +69,8 @@
 erDiagram
 
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_background_job" }o--o| "public.agent_plan" : "FOREIGN KEY (#quot;planId#quot;) REFERENCES agent_plan(id) ON DELETE SET NULL"
+"public.agent_background_job" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;sourceExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
 
 "public.agent_background_job" {
   varchar_36_ childExecutionId
@@ -74,8 +84,12 @@ erDiagram
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
   varchar_128_ parentThreadId
+  uuid pauseRequestId
+  uuid planId FK
+  uuid planTaskId
   text result
   timestamp_3__with_time_zone settledAt
+  varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
   timestamp_3__with_time_zone timeoutAt
@@ -93,11 +107,52 @@ erDiagram
   varchar_255_ projectId FK
   integer revision
   json schema
+  varchar_16_ scope
   timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
+}
+"public.agent_plan" {
+  timestamp_3__with_time_zone closedAt
+  timestamp_3__with_time_zone createdAt
+  json data
+  integer formatVersion
+  uuid id
+  integer revision
+  varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_execution" {
+  boolean acceptsSteering
+  json attachments
+  json author
+  integer cacheReadTokens
+  integer cacheWriteTokens
+  integer completionTokens
+  double_precision cost
+  timestamp_3__with_time_zone createdAt
+  integer duration
+  text error
+  json failureSummary
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
+  varchar_16_ hitlStatus
+  varchar_36_ id
+  varchar_255_ model
+  varchar_36_ parentExecutionId FK
+  integer promptTokens
+  varchar_32_ source
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
+  timestamp_3__with_time_zone stoppedAt
+  varchar_2_ storedAt
+  varchar_128_ threadId FK
+  json timeline
+  integer totalTokens
+  timestamp_3__with_time_zone updatedAt
+  text userMessage
 }
 ```
 

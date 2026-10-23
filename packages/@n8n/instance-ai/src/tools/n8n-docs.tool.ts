@@ -89,7 +89,7 @@ type N8nDocsToolContext = Pick<InstanceAiContext, 'logger'> &
  * Fill in `documentationUrl` from the credential type when the caller named a type
  * but no URL. Ranking scores an exact docs-URL match far above query tokens, so
  * without this the answer depends on the model first chaining
- * `credentials(action="search-types")` to fetch the URL itself — which it often
+ * `workflow_builder_credentials(action="search-types")` to fetch the URL itself — which it often
  * skips, landing on the wrong pages and then answering from memory (AGENT-743).
  */
 async function withResolvedDocumentationUrl<

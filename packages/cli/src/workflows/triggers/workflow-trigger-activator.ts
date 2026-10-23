@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import assert from 'node:assert/strict';
 
 import { Logger } from '@n8n/backend-common';
@@ -33,7 +34,6 @@ import {
 	TRIGGER_TEARDOWN_MAX_ATTEMPTS,
 	TRIGGER_TEARDOWN_RETRY_INITIAL_DELAY_MS,
 } from '@/constants';
-import { EventService } from '@/events/event.service';
 import type {
 	PublicationOperationResult,
 	PublicationTriggerOperation,

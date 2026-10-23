@@ -11,6 +11,7 @@ import { useThread } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 import {
 	collectActiveBuilderAgents,
+	getAgentActivityKey,
 	getAgentSectionTitle,
 	isActiveBuilderAgent,
 } from '../builderAgents';
@@ -40,8 +41,10 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 	// Check active children first (sub-agents)
 	const activeChild = tree.children.find((c: InstanceAiAgentNode) => c.status === 'active');
 	if (activeChild) {
+		const activityKey = getAgentActivityKey(activeChild);
 		const roleLabel =
-			getAgentSectionTitle(activeChild) ?? i18n.baseText('instanceAi.statusBar.thinking');
+			getAgentSectionTitle(activeChild, activityKey ? i18n.baseText(activityKey) : undefined) ??
+			i18n.baseText('instanceAi.statusBar.thinking');
 		const activeTool = activeChild.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
 		if (activeTool) {
 			const toolLabel = getToolLabel(activeTool.toolName, activeTool.args);

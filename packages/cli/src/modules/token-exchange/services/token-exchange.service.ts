@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import { TokenExchangeConfig } from '../token-exchange.config';
 import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';
@@ -93,8 +93,7 @@ export class TokenExchangeService {
 		let payload: jwt.JwtPayload;
 		try {
 			const result = jwt.verify(subjectToken, resolvedKey.key, {
-				// EdDSA is valid at runtime but missing from @types/jsonwebtoken
-				algorithms: resolvedKey.algorithms as jwt.Algorithm[],
+				algorithms: resolvedKey.algorithms,
 				issuer: resolvedKey.issuer,
 				audience: resolvedKey.expectedAudience,
 				ignoreExpiration: false,
@@ -202,7 +201,7 @@ export class TokenExchangeService {
 			jti: randomUUID(),
 		};
 
-		const accessToken = this.jwtService.sign(payload);
+		const accessToken = this.jwtService.sign('tokenExchange', payload);
 
 		return {
 			accessToken,

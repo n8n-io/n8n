@@ -6,18 +6,24 @@ export type Collaborator = {
 	lastSeen: Iso8601DateTimeString;
 };
 
+/**
+ * Exclusive union: exactly one of `workflowId` or `agentId` is set,
+ * never both, never neither.
+ */
+export type CollaborationTarget =
+	| { workflowId: string; agentId?: never }
+	| { agentId: string; workflowId?: never };
+
 export type CollaboratorsChanged = {
 	type: 'collaboratorsChanged';
-	data: {
-		workflowId: string;
+	data: CollaborationTarget & {
 		collaborators: Collaborator[];
 	};
 };
 
 export type WriteAccessAcquired = {
 	type: 'writeAccessAcquired';
-	data: {
-		workflowId: string;
+	data: CollaborationTarget & {
 		userId: string;
 		clientId: string;
 	};
@@ -25,9 +31,7 @@ export type WriteAccessAcquired = {
 
 export type WriteAccessReleased = {
 	type: 'writeAccessReleased';
-	data: {
-		workflowId: string;
-	};
+	data: CollaborationTarget;
 };
 
 export type CollaborationPushMessage =

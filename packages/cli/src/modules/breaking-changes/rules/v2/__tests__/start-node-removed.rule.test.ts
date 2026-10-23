@@ -20,7 +20,7 @@ describe('StartNodeRemovedRule', () => {
 				description:
 					'The Start node is no longer supported. Replace it with a Manual Trigger for manual executions, or with an Execute Workflow Trigger if used as a sub-workflow.',
 				category: BreakingChangeCategory.workflow,
-				severity: 'medium',
+				impact: 'executionsFail',
 			});
 		});
 	});

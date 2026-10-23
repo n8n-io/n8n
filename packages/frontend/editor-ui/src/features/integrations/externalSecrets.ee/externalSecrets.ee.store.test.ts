@@ -232,6 +232,26 @@ describe('externalSecretsStore', () => {
 	});
 
 	describe('secretsAsObject', () => {
+		it.each(['secrets', 'projectSecrets'] as const)(
+			'should expose masked 1Password fields from %s for preview and autocomplete',
+			(scope) => {
+				setModuleSettings({ forProjects: true });
+				const store = useExternalSecretsStore();
+				store.state[scope] = {
+					onePassword: ['testing.credential', 'testing.username'],
+				};
+
+				expect(store.secretsAsObject).toEqual({
+					onePassword: {
+						testing: {
+							credential: '*********',
+							username: '*********',
+						},
+					},
+				});
+			},
+		);
+
 		it('should only contain the global secrets if forProjects is disabled', () => {
 			setLegacyMode();
 			const store = useExternalSecretsStore();

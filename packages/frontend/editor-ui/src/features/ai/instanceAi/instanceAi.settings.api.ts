@@ -4,8 +4,6 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiModelCatalogResponse,
-	InstanceAiUserPreferencesResponse,
-	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
 	InstanceAiVerificationResponse,
 	InstanceAiVerifyModelRequest,
@@ -24,19 +22,6 @@ export async function updateSettings(
 	body: InstanceAiAdminSettingsUpdateRequest,
 ): Promise<InstanceAiAdminSettingsResponse> {
 	return await makeRestApiRequest(context, 'PUT', '/instance-ai/settings', body);
-}
-
-export async function fetchPreferences(
-	context: IRestApiContext,
-): Promise<InstanceAiUserPreferencesResponse> {
-	return await makeRestApiRequest(context, 'GET', '/instance-ai/preferences');
-}
-
-export async function updatePreferences(
-	context: IRestApiContext,
-	body: InstanceAiUserPreferencesUpdateRequest,
-): Promise<InstanceAiUserPreferencesResponse> {
-	return await makeRestApiRequest(context, 'PUT', '/instance-ai/preferences', body);
 }
 
 export async function fetchServiceCredentials(

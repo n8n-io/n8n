@@ -2,6 +2,9 @@
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
+	N8nDialogDescription,
+	N8nDialogFooter,
 	N8nIcon,
 	N8nInput,
 	N8nOption,
@@ -264,13 +267,15 @@ const onSubmit = async () => {
 <template>
 	<N8nDialog
 		:open="open"
-		size="2xlarge"
+		size="xlarge"
 		:show-close-button="true"
 		:header="i18n.baseText('evaluation.setup.title')"
-		:description="i18n.baseText('evaluation.setup.subtitle')"
 		@update:open="emit('update:open', $event)"
 	>
-		<div :class="$style.body" data-test-id="setup-collection-wizard">
+		<N8nDialogBody :class="$style.body" data-test-id="setup-collection-wizard">
+			<N8nDialogDescription :class="$style.description">
+				{{ i18n.baseText('evaluation.setup.subtitle') }}
+			</N8nDialogDescription>
 			<div :class="$style.field">
 				<N8nText size="small" color="text-base" bold>
 					{{ i18n.baseText('evaluation.setup.collectionName') }}
@@ -401,9 +406,8 @@ const onSubmit = async () => {
 					</N8nText>
 				</div>
 			</div>
-		</div>
-
-		<footer :class="$style.footer">
+		</N8nDialogBody>
+		<N8nDialogFooter :class="$style.footer">
 			<div :class="$style.footerSummary">
 				<N8nText size="small" color="text-base" bold>{{ footerSummaryText }}</N8nText>
 				<N8nText v-if="footerExplainText" size="xsmall" color="text-light">
@@ -412,7 +416,7 @@ const onSubmit = async () => {
 			</div>
 			<div :class="$style.footerActions">
 				<N8nButton
-					variant="ghost"
+					variant="outline"
 					:label="i18n.baseText('evaluation.setup.footer.cancel')"
 					data-test-id="setup-collection-wizard-cancel"
 					@click="close"
@@ -426,20 +430,18 @@ const onSubmit = async () => {
 					@click="onSubmit"
 				/>
 			</div>
-		</footer>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style module lang="scss">
+.description {
+	// The body gap already separates this from the fields below.
+	margin-bottom: 0;
+}
+
 .body {
-	display: flex;
-	flex-direction: column;
 	gap: var(--spacing--md);
-	padding: var(--spacing--sm) 0;
-	// N8nDialog has no intrinsic max-height, so a tall table pushes the footer off-screen.
-	// Cap and scroll the body, leaving room for the dialog chrome so the CTA stays visible.
-	max-height: calc(100dvh - 16rem);
-	overflow-y: auto;
 }
 
 .field {
@@ -511,9 +513,6 @@ const onSubmit = async () => {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--md);
-	padding-top: var(--spacing--sm);
-	border-top: 1px solid var(--border-color--subtle);
-	margin-top: var(--spacing--sm);
 }
 
 .footerSummary {

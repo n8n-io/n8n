@@ -63,6 +63,7 @@ describe('SessionCookieAuthStrategy', () => {
 		expect(req.tokenGrant?.subject.id).toBe(owner.id);
 		expect(req.tokenGrant?.scopes.length).toBeGreaterThan(0);
 		expect(req.tokenGrant?.apiKeyScopes?.length).toBeGreaterThan(0);
+		expect(req.tokenGrant?.apiKeyId).toBeUndefined();
 	});
 
 	it('returns false for an invalid session cookie', async () => {

@@ -691,6 +691,43 @@ describe('nodes tool', () => {
 		});
 	});
 
+	describe('type-definition unavailable notice', () => {
+		it('passes through why a node cannot run on this instance', async () => {
+			const notice = 'Agents are disabled on this instance, so this node cannot run.';
+			const context = createMockContext({
+				nodeService: {
+					listAvailable: vi.fn(),
+					getDescription: vi.fn(),
+					listSearchable: vi.fn(),
+					exploreResources: vi.fn(),
+					getNodeTypeDefinition: vi.fn().mockResolvedValue({
+						content: 'export type MessageAnAgentNode = unknown;',
+						version: 'v31',
+						unavailable: notice,
+					}),
+				},
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.messageAnAgent'] } as never,
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				definitions: [
+					{
+						nodeType: 'n8n-nodes-base.messageAnAgent',
+						version: 'v31',
+						content: 'export type MessageAnAgentNode = unknown;',
+						unavailable: notice,
+					},
+				],
+			});
+		});
+	});
+
 	describe('describe action', () => {
 		it('should return found: false when node type is not found', async () => {
 			const context = createMockContext();

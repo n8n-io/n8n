@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { EventService, UrlService, RoleCacheService, JwtService } from '@n8n/backend-services';
 import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
@@ -7,7 +8,7 @@ import {
 	ExecutionRepository,
 	SettingsRepository,
 } from '@n8n/db';
-import { Command, SystemTaskMetadata } from '@n8n/decorators';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import { sleep } from '@n8n/utils/sleep';
@@ -29,7 +30,6 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -38,14 +38,8 @@ import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
-import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { Server } from '@/server';
-import { JwtService } from '@/services/jwt.service';
-import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
-import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { RoleCacheService } from '@/services/role-cache.service';
-import { UrlService } from '@/services/url.service';
-import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
+
 import { WaitTracker } from '@/wait-tracker';
 
 import { BaseCommand } from './base-command';
@@ -287,14 +281,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
+		await this.initMemoryGuard();
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
 		await this.initDataDeduplicationService();
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		this.initWorkflowHistory();
-		this.logger.debug('Workflow history init complete');
 
 		if (!isMultiMainEnabled) {
 			await this.cleanupTestRunner();
@@ -317,6 +310,23 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	private async initMemoryGuard() {
+		if (!this.globalConfig.memoryGuard.enabled) return;
+
+		if (this.globalConfig.executions.mode === 'queue') {
+			this.logger.warn('Memory guard supports only regular mode, so it stays off');
+			return;
+		}
+
+		// Importing the tracker registers its lifecycle handlers. Resolve it now, so
+		// that a wiring error stops startup instead of the first execution.
+		const { RunDataTracker } = await import('@/memory-guard/run-data-tracker.js');
+		Container.get(RunDataTracker);
+		const { MemoryGuardService } = await import('@/memory-guard/memory-guard.service.js');
+		Container.get(MemoryGuardService).init();
+		this.logger.debug('Memory guard init complete');
 	}
 
 	private async initInstanceSettingsLoader(): Promise<void> {
@@ -363,6 +373,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 * database yet when the follower starts up.
 	 */
 	private async ensureMultiMainLicensed() {
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isMultiMainLicensed()) return;
 
 		if (!this.instanceSettings.isLeader) {
@@ -374,6 +385,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				);
 				await sleep(delayMs);
 				await this.license.reload();
+				// oxlint-disable-next-line typescript/no-deprecated
 				if (this.license.isMultiMainLicensed()) return;
 			}
 		}
@@ -422,18 +434,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.server.start();
 
-		Container.get(ExecutionsPruningService).init();
-		Container.get(WorkflowHistoryCompactionService).init();
-		Container.get(WorkflowStatisticsRollupService).init();
-
-		const systemTaskMetadata = Container.get(SystemTaskMetadata);
-		for (const taskClass of await mainSystemTasks(this.globalConfig)) {
-			systemTaskMetadata.register(taskClass);
-		}
-
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.
-		await Container.get(SystemTaskRunner).init();
+		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
 		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {

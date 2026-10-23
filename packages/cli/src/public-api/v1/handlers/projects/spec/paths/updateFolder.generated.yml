@@ -4,9 +4,6 @@ tags:
 summary: Update a folder
 description: Update folder name or parent folder.
 x-required-scope: folder:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -30,6 +27,7 @@ requestBody:
           name:
             type: string
             example: Renamed Folder
+            maxLength: 128
           parentFolderId:
             type: string
             description: ID of the parent folder to move this folder into. Set to "0" to move the folder to the project root.

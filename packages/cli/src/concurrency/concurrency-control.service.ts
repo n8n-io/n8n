@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -7,8 +8,8 @@ import type { WorkflowExecuteMode } from 'n8n-workflow';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
+import { ProductionHold } from '@/memory-guard/production-hold';
 import { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from './concurrency-queue';
@@ -49,6 +50,7 @@ export class ConcurrencyControlService {
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
+		private readonly productionHold: ProductionHold,
 	) {
 		this.logger = this.logger.scoped('concurrency');
 
@@ -156,6 +158,8 @@ export class ConcurrencyControlService {
 	 * Check whether an execution is in any of the queues.
 	 */
 	has(executionId: string) {
+		if (this.productionHold.has(executionId)) return true;
+
 		if (!this.isEnabled) return false;
 
 		for (const queue of this.queues.values()) {
@@ -172,9 +176,12 @@ export class ConcurrencyControlService {
 	 */
 	async throttle({ mode, executionId }: CapacityTarget) {
 		if (mode === 'evaluation') this.ensureEvalQueueResolved();
-		if (!this.isEnabled || this.isUnlimited(mode)) return;
+		if (this.isEnabled && !this.isUnlimited(mode)) {
+			await this.getQueue(mode)?.enqueue(executionId);
+		}
 
-		await this.getQueue(mode)?.enqueue(executionId);
+		// After the queue, so that executions the queue lets through during a hold also wait.
+		if (this.productionHold.shouldHold(mode)) await this.productionHold.wait(executionId);
 	}
 
 	/**
@@ -192,6 +199,13 @@ export class ConcurrencyControlService {
 	 */
 	remove({ mode, executionId }: CapacityTarget) {
 		if (mode === 'evaluation') this.ensureEvalQueueResolved();
+
+		if (this.productionHold.remove(executionId)) {
+			// A held execution already took a place in the concurrency queue.
+			if (this.isEnabled && !this.isUnlimited(mode)) this.getQueue(mode)?.dequeue();
+			return;
+		}
+
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		this.getQueue(mode)?.remove(executionId);

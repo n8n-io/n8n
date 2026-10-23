@@ -83,11 +83,13 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const isTeamProjectLimitExceeded = computed<boolean>(
 		() => projectsCount.value.team >= teamProjectsLimit.value,
 	);
-	const canCreateProjects = computed<boolean>(
+	const hasTeamProjectQuota = computed<boolean>(
 		() =>
-			(hasUnlimitedProjects.value ||
-				(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value)) &&
-			!sourceControlStore.preferences.branchReadOnly,
+			hasUnlimitedProjects.value ||
+			(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value),
+	);
+	const canCreateProjects = computed<boolean>(
+		() => hasTeamProjectQuota.value && !sourceControlStore.preferences.branchReadOnly,
 	);
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
@@ -357,8 +359,8 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				setCurrentProject(null);
 			}
 
-			if (newRoute?.path?.includes('/reviews')) {
-				projectNavActiveId.value = 'workflow-reviews';
+			if (newRoute?.path?.includes('/inbox')) {
+				projectNavActiveId.value = 'inbox';
 				setCurrentProject(null);
 			}
 
@@ -391,6 +393,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		teamProjects,
 		teamProjectsLimit,
 		hasUnlimitedProjects,
+		hasTeamProjectQuota,
 		canCreateProjects,
 		canViewProjects,
 		hasPermissionToCreateProjects,

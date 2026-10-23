@@ -1,25 +1,39 @@
+import type { SerializedCredentialData, SerializedCredentialDataValue } from '@n8n/api-types';
+import { containsExpression } from '@n8n/utils/string/contains-expression';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { containsExpression, isObject } from '@/utils';
+import { isObject } from '@/utils';
 
 import type { CredentialExportPolicy } from '../../n8n-packages.types';
-import type {
-	SerializedCredentialData,
-	SerializedCredentialDataValue,
-} from '../../spec/serialized/credential.schema';
 
 // oauthTokenData never travels, at any depth — tokens are secrets and the target must reconnect.
 const NEVER_EXPORTED_KEYS = new Set(['oauthTokenData']);
+
+// Whether every leaf inside the value is an expression, so filtering strips nothing.
+function isExpressionOnly(value: unknown): boolean {
+	if (typeof value === 'string') return containsExpression(value);
+	if (Array.isArray(value)) return value.length > 0 && value.every(isExpressionOnly);
+	if (isObject(value)) {
+		const values = Object.entries(value)
+			.filter(([key]) => !NEVER_EXPORTED_KEYS.has(key))
+			.map(([, entry]) => entry);
+		return values.length > 0 && values.every(isExpressionOnly);
+	}
+	return false;
+}
 
 function filterValue(value: unknown): SerializedCredentialDataValue | undefined {
 	if (typeof value === 'string') {
 		return containsExpression(value) ? value : undefined;
 	}
 	if (Array.isArray(value)) {
-		const kept = value
+		// Array positions carry meaning and filtering strips literals, so an entry that is
+		// only partly expressions cannot be reproduced at its slot. The array travels only
+		// when every entry is expressions end to end; otherwise it is dropped whole.
+		if (!isExpressionOnly(value)) return undefined;
+		return value
 			.map(filterValue)
 			.filter((entry): entry is SerializedCredentialDataValue => entry !== undefined);
-		return kept.length > 0 ? kept : undefined;
 	}
 	if (isObject(value)) {
 		const kept = filterObject(value);

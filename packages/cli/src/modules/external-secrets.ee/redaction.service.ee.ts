@@ -1,8 +1,7 @@
 import { Service } from '@n8n/di';
+import { containsExpression } from '@n8n/utils/string/contains-expression';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { CREDENTIAL_BLANKING_VALUE, deepCopy } from 'n8n-workflow';
-
-import { containsExpression } from '@/utils';
 
 @Service()
 export class RedactionService {

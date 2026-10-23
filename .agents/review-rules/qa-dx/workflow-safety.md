@@ -35,7 +35,7 @@ fed from a `needs:` list. Flag:
 Jobs gated on a `ci-filter` filter only run when a matching file changed, so a
 filter that is too narrow means the test quietly stops covering new code. When
 a PR adds a directory that an existing filter was meant to cover — a new package
-under `packages/testing/`, a new script under `.github/scripts/` — check the
+under `packages/quality/`, a new script under `.github/scripts/` — check the
 filter still matches it.
 
 ## Least privilege

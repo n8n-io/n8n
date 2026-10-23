@@ -1,4 +1,10 @@
-import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
+import type {
+	AuthenticationMethod,
+	BreakingChangeLightReportResult,
+	BreakingChangeVersion,
+	ProjectRelation,
+	RedactionFloor,
+} from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
@@ -7,6 +13,7 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	IWorkflowSettings,
 	JsonValue,
 	WorkflowExecuteMode,
 	WorkflowSettings,
@@ -25,11 +32,17 @@ import type {
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
 import type {
+	AuditedActor,
+	PolicyDecisionAudit,
+} from '@/modules/policy-infrastructure/policy-decision-audit';
+import type {
 	PolicyAction,
 	PolicyAttachment,
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
-import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { TracingContext } from '@/modules/otel/tracing-context';
+import type { McpCallerAuth } from '@n8n/backend-services/auth';
+import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -41,15 +54,7 @@ export type WorkflowActionSource =
 	| 'import'
 	| 'review-approval';
 
-export type UserLike = {
-	id: string;
-	email?: string;
-	firstName?: string;
-	lastName?: string;
-	role?: {
-		slug: string;
-	};
-};
+export type { UserLike };
 
 /**
  * Which write path produced a policy document event. A composed save emits a document event
@@ -57,6 +62,13 @@ export type UserLike = {
  * instead of counting one save twice.
  */
 export type PolicyWriteOrigin = 'composed-save' | 'document-api';
+
+export type CrashDetector =
+	| 'stall'
+	| 'queue-recovery'
+	| 'startup-recovery'
+	| 'start-failure'
+	| 'workflow-deactivation';
 
 export type ProjectSummary = {
 	id: string;
@@ -134,6 +146,7 @@ export type RelayEventMap = {
 
 	'n8n-package-exported': {
 		user: UserLike;
+		agentIds?: string[];
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
@@ -145,6 +158,7 @@ export type RelayEventMap = {
 	'n8n-package-export-failed': {
 		user: UserLike;
 		reason: PackageFailureReason;
+		agentIds?: string[];
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
@@ -212,7 +226,8 @@ export type RelayEventMap = {
 
 	'workflow-pre-execute': {
 		executionId: string;
-		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		userId?: string;
+		data: IWorkflowBase;
 		mode: WorkflowExecuteMode;
 		projectId?: string;
 		projectName?: string;
@@ -261,6 +276,11 @@ export type RelayEventMap = {
 		versionId: string;
 		versionName?: string | null;
 		versionDescription?: string | null;
+	};
+
+	/** A source-control pull wrote a workflow, which happens outside the save path. */
+	'workflow-imported': {
+		workflowId: string;
 	};
 
 	// #endregion
@@ -345,6 +365,12 @@ export type RelayEventMap = {
 		userEmail: string;
 		authenticationMethod: AuthenticationMethod;
 		reason?: string;
+	};
+
+	'user-login-email-conflict': {
+		user: UserLike;
+		authenticationMethod: AuthenticationMethod;
+		assertedEmail: string;
 	};
 
 	'user-changed-role': {
@@ -480,7 +506,7 @@ export type RelayEventMap = {
 		credentialType: string;
 		credentialId: string;
 		credentialName: string;
-		credentialDescriptionLength: number;
+		credentialDescriptionLength?: number;
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
@@ -506,7 +532,7 @@ export type RelayEventMap = {
 		credentialType: string;
 		credentialId: string;
 		credentialName: string;
-		credentialDescriptionLength: number;
+		credentialDescriptionLength?: number;
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
@@ -639,6 +665,22 @@ export type RelayEventMap = {
 		workflowId?: string;
 		workflowName?: string;
 		reason: CancellationReason;
+	};
+
+	'execution-crashed': {
+		executionId: string;
+		workflowId: string;
+		workflowName?: string;
+		mode: WorkflowExecuteMode;
+		startedAt?: Date;
+		stoppedAt: Date;
+		detector: CrashDetector;
+		hostId: string;
+		tracingContext?: TracingContext;
+		workflowVersionId?: string;
+		retryOf?: string;
+		workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
+		project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 	};
 
 	'execution-deleted': {
@@ -911,7 +953,7 @@ export type RelayEventMap = {
 	'expression-mapping-roles-resolved': {
 		userId: string;
 		userEmail: string;
-		provider: 'oidc' | 'saml' | 'ldap';
+		provider: 'oidc' | 'saml' | 'ldap' | 'oauth2';
 		instanceRole: {
 			role: string;
 			previousRole: string;
@@ -956,6 +998,44 @@ export type RelayEventMap = {
 		ruleType: 'instance' | 'project';
 		count: number;
 		reason: 'strategy-switch';
+	};
+
+	// #endregion
+
+	// #region Trusted sources
+
+	'trusted-source-identity-linked': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+		subject: string;
+		provenance: 'claim-match';
+	};
+
+	'trusted-source-user-provisioned': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+		subject: string;
+		role: string;
+	};
+
+	'trusted-source-created': {
+		user: UserLike;
+		sourceId: string;
+		issuer: string;
+	};
+
+	'trusted-source-updated': {
+		user: UserLike;
+		sourceId: string;
+		issuer: string;
+	};
+
+	'trusted-source-deleted': {
+		user: UserLike;
+		sourceId: string;
+		issuer: string;
 	};
 
 	// #endregion
@@ -1076,6 +1156,19 @@ export type RelayEventMap = {
 	// #endregion
 
 	// #region workflow history compaction
+	// #region Migration report
+
+	/** The overview was served to a user. `report` is what they saw; telemetry keeps its counts only. */
+	'migration-report-viewed': {
+		user: UserLike;
+		targetVersion: BreakingChangeVersion;
+		/** The request was a Refresh click, which re-scanned every workflow first. */
+		refreshed: boolean;
+		report: BreakingChangeLightReportResult;
+	};
+
+	// #endregion
+
 	'history-compacted': {
 		workflowsProcessed: number;
 		totalVersionsSeen: number;
@@ -1124,7 +1217,8 @@ export type RelayEventMap = {
 					| '2fa_enforcement'
 					| 'workflow_publishing'
 					| 'workflow_sharing'
-					| 'workflow_reviews';
+					| 'workflow_reviews'
+					| 'public_api_rate_limit';
 				value: boolean;
 		  }
 		| {
@@ -1364,7 +1458,8 @@ export type RelayEventMap = {
 		after: { defaultAction: PolicyAction; version: number };
 		rulesBefore: readonly PolicyRule[] | null;
 		rulesAfter: readonly PolicyRule[];
-		warningCount: number;
+		shadowWarningCount: number;
+		notLoadedWarningCount: number;
 	};
 
 	'node-type-policy-attachments-updated': {
@@ -1375,6 +1470,12 @@ export type RelayEventMap = {
 		before: { attachments: readonly PolicyAttachment[]; version: number };
 		after: { attachments: readonly PolicyAttachment[]; version: number };
 	};
+
+	// #endregion
+
+	// #region Policy enforcement
+
+	'policy-decision-blocked': PolicyDecisionAudit & AuditedActor;
 
 	// #endregion
 } & AiEventMap;

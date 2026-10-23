@@ -2,6 +2,7 @@ import {
 	Agent,
 	createObservationLogObserveFn,
 	createObservationLogReflectFn,
+	extendRuntimeSkillSource,
 	Memory,
 } from '@n8n/agents';
 
@@ -11,17 +12,15 @@ import {
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
-import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
-import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
 	createOrchestrationTools,
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
-import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
+import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
 import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
@@ -96,16 +95,12 @@ export async function createInstanceAgent(
 		orchestrationContext.modelId = modelId;
 	}
 
-	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
+	// Thread the trace handle in so domain tools (e.g. workflow_builder_build_workflow) can emit
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
 	const domainContext: InstanceAiContext = {
 		...context,
 		tracing: orchestrationContext?.tracing,
-		runtimeSkillCatalog:
-			orchestrationContext?.runtimeSkillCatalog ??
-			context.runtimeSkillCatalog ??
-			orchestrationContext?.runtimeSkills,
 	};
 	if (orchestrationContext) {
 		orchestrationContext.domainContext = domainContext;
@@ -115,9 +110,8 @@ export async function createInstanceAgent(
 	// returns per-server connection failures alongside the tools so they travel
 	// with this call (not shared mutable state) — concurrent runs with different
 	// configs can't read each other's failures.
-	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
 	const { tools: mcpTools, connectionFailures: managerMcpFailures } =
-		await mcpManager.getRegularTools(mcpServers, context.logger, requireMcpToolApproval);
+		await mcpManager.getRegularTools(mcpServers, context.logger, context.permissions);
 	// Map manager-reported connection failures to the generic SDK event type so
 	// the runtime can inject a model-facing note into the orchestrator's system
 	// message. The adapter owns the n8n-specific server config → plain SDK event
@@ -162,7 +156,7 @@ export async function createInstanceAgent(
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
 	const safeLocalMcpTools = createToolRegistry();
 	addSafeMcpTools(safeLocalMcpTools, rawLocalMcpTools, {
-		source: 'local gateway MCP',
+		source: 'Browser Use MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
 	});
@@ -204,17 +198,17 @@ export async function createInstanceAgent(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
-			webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-			formBaseUrl: orchestrationContext?.formBaseUrl,
-			computerUseState: context.computerUseState,
+			browserUseState: context.browserUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,
 			branchReadOnly: context.branchReadOnly,
+			parameterValuesHidden: context.allowSendingParameterValues === false,
 			projectId: context.projectId,
 			// Presence of the service IS the experiment gate — the host only wires it
 			// for flagged-in users on project-bound runs.
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
+			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
@@ -252,32 +246,39 @@ export async function createInstanceAgent(
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}
-	const runtimeSkills = orchestrationContext?.runtimeSkills;
-	if (hasRuntimeSkills(runtimeSkills)) {
-		agent.skills(runtimeSkills);
-	}
+	// The agents module owns the builder skills that are generated from its config schema.
+	const builderSkills = context.builderDelegate?.getRuntimeSkills() ?? [];
+	const baseSkills = orchestrationContext?.skills;
+	const skills =
+		baseSkills && builderSkills.length > 0
+			? extendRuntimeSkillSource(baseSkills, builderSkills)
+			: baseSkills;
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}
-	attachRuntimeWorkspaceCapabilities(agent, {
-		workspace: orchestrationContext?.workspace,
-		runtimeSkills: orchestrationContext?.runtimeSkills,
-	});
+	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
+	if (skills) agent.skills(skills);
 
 	if (options.memory) {
 		const mem = new Memory().storage(options.memory);
 
 		if (memoryConfig.observationalMemory) {
-			const { observerThresholdTokens, reflectorThresholdTokens, midRunObservation, onTaskUsage } =
-				memoryConfig.observationalMemory;
+			const {
+				observerThresholdTokens,
+				reflectorThresholdTokens,
+				midRunObservation,
+				onTaskUsage,
+				model: memoryModel,
+			} = memoryConfig.observationalMemory;
+			const taskModel = memoryModel ?? modelId;
 			mem.observationalMemory({
 				observerThresholdTokens,
 				reflectorThresholdTokens,
 				...(midRunObservation !== undefined ? { midRunObservation } : {}),
-				...(onTaskUsage
+				...(onTaskUsage || memoryModel
 					? {
-							observe: createObservationLogObserveFn(modelId, { onUsage: onTaskUsage }),
-							reflect: createObservationLogReflectFn(modelId, { onUsage: onTaskUsage }),
+							observe: createObservationLogObserveFn(taskModel, { onUsage: onTaskUsage }),
+							reflect: createObservationLogReflectFn(taskModel, { onUsage: onTaskUsage }),
 						}
 					: {}),
 			});
@@ -313,7 +314,7 @@ export async function createInstanceAgent(
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,
 			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
-			runtimeSkills: runtimeSkills?.registry,
+			skills: skills?.registry,
 		}),
 	);
 

@@ -161,7 +161,7 @@ const tag = computed(() => {
 	if (props.nodeType.tag) {
 		return props.nodeType.tag;
 	}
-	if (description.value.toLowerCase().includes('deprecated')) {
+	if (props.nodeType.deprecated || description.value.toLowerCase().includes('deprecated')) {
 		return { text: i18n.baseText('nodeCreator.nodeItem.deprecated'), type: 'info' };
 	}
 	return undefined;
@@ -265,7 +265,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		<template v-if="restriction" #trailing>
 			<RestrictedNodePopover
 				:node-type-name="displayName"
-				:scope="restriction.scope"
+				:restriction="restriction"
 				:anchor="rowRef"
 				:active="active"
 			/>

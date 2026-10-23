@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { N8nButton, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import Modal from '@/app/components/Modal.vue';
+import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
+import AgentModal from './modals/AgentModal.vue';
 
 export type AgentDuplicateModalData = {
 	projectId: string;
@@ -21,9 +21,11 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const name = ref('');
 const submitting = ref(false);
+const submitted = ref(false);
 
 const trimmedName = computed(() => name.value.trim());
 
@@ -33,6 +35,16 @@ const isNameTaken = computed(
 
 const canConfirm = computed(
 	() => trimmedName.value.length > 0 && !isNameTaken.value && !submitting.value,
+);
+const nameError = computed(() => {
+	if (!trimmedName.value) {
+		return i18n.baseText('agents.duplicate.modal.nameRequired' as BaseTextKey);
+	}
+	if (isNameTaken.value) return i18n.baseText('agents.duplicate.modal.button.nameTaken');
+	return '';
+});
+const visibleNameError = computed(() =>
+	submitted.value || isNameTaken.value ? nameError.value : '',
 );
 
 watch(
@@ -48,6 +60,7 @@ function closeModal() {
 }
 
 async function onConfirm() {
+	submitted.value = true;
 	if (!canConfirm.value) return;
 	submitting.value = true;
 	try {
@@ -62,51 +75,39 @@ async function onConfirm() {
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		width="420px"
+	<AgentModal
+		:open="modalOpen"
+		:title="i18n.baseText('agents.duplicate.modal.name')"
+		:busy="submitting"
+		size="medium"
 		data-testid="agent-duplicate-modal"
-		:close-on-click-modal="!submitting"
-		:close-on-press-escape="!submitting"
-		:show-close="!submitting"
+		@update:open="!$event && closeModal()"
 	>
-		<template #header>
-			<N8nHeading tag="h2" size="xlarge">
-				{{ i18n.baseText('agents.duplicate.modal.name') }}
-			</N8nHeading>
+		<div :class="$style.content">
+			<N8nInput
+				v-model="name"
+				:placeholder="i18n.baseText('agents.duplicate.modal.enterName')"
+				:label="i18n.baseText('agents.duplicate.modal.enterName')"
+				:required="true"
+				data-testid="agent-duplicate-name-input"
+				@enter="onConfirm"
+			/>
+			<N8nText v-if="visibleNameError" :class="$style.error" size="small">
+				{{ visibleNameError }}
+			</N8nText>
+		</div>
+		<template #footerActions>
+			<N8nButton
+				variant="solid"
+				:disabled="submitting"
+				:loading="submitting"
+				data-testid="agent-duplicate-confirm"
+				@click="onConfirm"
+			>
+				{{ i18n.baseText('agents.duplicate.modal.button.confirm') }}
+			</N8nButton>
 		</template>
-		<template #content>
-			<div :class="$style.content">
-				<N8nInput
-					v-model="name"
-					:placeholder="i18n.baseText('agents.duplicate.modal.enterName')"
-					:label="i18n.baseText('agents.duplicate.modal.enterName')"
-					:required="true"
-					data-testid="agent-duplicate-name-input"
-					@enter="onConfirm"
-				/>
-				<N8nText v-if="isNameTaken" :class="$style.error" size="small">
-					{{ i18n.baseText('agents.duplicate.modal.button.nameTaken') }}
-				</N8nText>
-			</div>
-		</template>
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton variant="subtle" :disabled="submitting" @click="closeModal">
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
-				<N8nButton
-					variant="solid"
-					:disabled="!canConfirm"
-					:loading="submitting"
-					data-testid="agent-duplicate-confirm"
-					@click="onConfirm"
-				>
-					{{ i18n.baseText('agents.duplicate.modal.button.confirm') }}
-				</N8nButton>
-			</div>
-		</template>
-	</Modal>
+	</AgentModal>
 </template>
 
 <style module lang="scss">
@@ -118,11 +119,5 @@ async function onConfirm() {
 
 .error {
 	color: var(--color--danger);
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
 }
 </style>

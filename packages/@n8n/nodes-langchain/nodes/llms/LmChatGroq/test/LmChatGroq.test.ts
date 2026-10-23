@@ -2,11 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatGroq } from '@langchain/groq';
-import {
-	getNodeProxyAgent,
-	getProxyAgent,
-	makeN8nLlmFailedAttemptHandler,
-} from '@n8n/ai-utilities';
+import { proxyFetch, makeN8nLlmFailedAttemptHandler } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -18,8 +14,7 @@ vi.mock('@n8n/ai-utilities');
 
 const MockedChatGroq = vi.mocked(ChatGroq);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
-const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
-const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedProxyFetch = vi.mocked(proxyFetch);
 
 describe('LmChatGroq', () => {
 	let node: LmChatGroq;
@@ -47,7 +42,7 @@ describe('LmChatGroq', () => {
 		});
 
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
-		mockedGetNodeProxyAgent.mockReturnValue(undefined);
+		ctx.helpers.getSecureEgressFilter = vi.fn().mockReturnValue({ policy: 'test' });
 		return ctx;
 	};
 
@@ -57,20 +52,18 @@ describe('LmChatGroq', () => {
 	});
 
 	describe('supplyData', () => {
-		// groq-sdk hands `httpAgent` straight to node-fetch's `agent` option, which requires a Node
-		// http(s).Agent — an undici Agent/ProxyAgent (from getProxyAgent) throws a TypeError there.
-		it('should build the http agent with getNodeProxyAgent, not getProxyAgent', async () => {
+		it('uses the capped fetch with the execution egress filter', async () => {
 			const ctx = setupMockContext();
-			const nodeAgent = { fake: 'node-agent' };
-			mockedGetNodeProxyAgent.mockReturnValue(nodeAgent as never);
 
 			await node.supplyData.call(ctx, 0);
 
-			expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith('https://api.groq.com/openai/v1');
-			expect(mockedGetProxyAgent).not.toHaveBeenCalled();
-			expect(MockedChatGroq).toHaveBeenCalledWith(
-				expect.objectContaining({ httpAgent: nodeAgent }),
-			);
+			const options = MockedChatGroq.mock.calls[0][0];
+			await options?.fetch?.('https://api.groq.com/openai/v1', { method: 'POST' });
+			expect(mockedProxyFetch).toHaveBeenCalledWith({
+				input: 'https://api.groq.com/openai/v1',
+				init: { method: 'POST' },
+				egressFilter: ctx.helpers.getSecureEgressFilter(),
+			});
 		});
 
 		it('should create ChatGroq with credentials and node parameters', async () => {

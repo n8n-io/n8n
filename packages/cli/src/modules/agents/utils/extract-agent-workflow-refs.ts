@@ -6,7 +6,7 @@ import type { AgentJsonConfig, AgentJsonWorkflowToolConfig } from '@n8n/api-type
  * dependency index pick it up together.
  */
 export function extractAgentWorkflowRefs(
-	config: AgentJsonConfig | null | undefined,
+	config: Pick<AgentJsonConfig, 'tools'> | null | undefined,
 ): AgentJsonWorkflowToolConfig[] {
 	return (config?.tools ?? []).filter(
 		(tool): tool is AgentJsonWorkflowToolConfig => tool.type === 'workflow',

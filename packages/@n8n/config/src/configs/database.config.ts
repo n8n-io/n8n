@@ -6,6 +6,8 @@ import { Config, Env, Nested } from '../decorators';
 const dbLoggingOptionsSchema = z.enum(['query', 'error', 'schema', 'warn', 'info', 'log', 'all']);
 type DbLoggingOptions = z.infer<typeof dbLoggingOptionsSchema>;
 
+const DEFAULT_STATEMENT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
+
 @Config
 class LoggingConfig {
 	/** Whether database logging is enabled. */
@@ -98,7 +100,7 @@ class PostgresConfig {
 
 	/** Maximum time in milliseconds for a single query. Queries exceeding this are cancelled. Set to 0 to disable. */
 	@Env('DB_POSTGRESDB_STATEMENT_TIMEOUT')
-	statementTimeoutMs: number = 5 * Time.minutes.toMilliseconds;
+	statementTimeoutMs: number = DEFAULT_STATEMENT_TIMEOUT_MS;
 
 	/** Maximum lifetime in milliseconds of a pooled Postgres connection before it is recycled. Set to 0 to disable. */
 	@Env('DB_POSTGRESDB_MAX_CONNECTION_LIFETIME_MS')
@@ -265,4 +267,15 @@ export class DatabaseConfig {
 
 	@Nested
 	sqlite: SqliteConfig;
+}
+
+/**
+ * How long one statement may run before a second one can overlap it. On Postgres
+ * this is the statement timeout, and 0 means no limit. SQLite runs one write at a
+ * time, so a second write cannot overlap. It gets the Postgres default.
+ */
+export function statementTimeoutSeconds(config: DatabaseConfig): number {
+	return config.type === 'postgresdb'
+		? config.postgresdb.statementTimeoutMs / Time.seconds.toMilliseconds
+		: DEFAULT_STATEMENT_TIMEOUT_MS / Time.seconds.toMilliseconds;
 }

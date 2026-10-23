@@ -1,14 +1,14 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ScheduledJob } from '@n8n/db';
 import { ScheduledJobRepository } from '@n8n/db';
-import type { SystemTask } from '@n8n/decorators';
-import { resolveSystemTaskRunOptions, resolveSystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTask, SystemTaskRunOptions, SystemTaskSchedule } from '@n8n/decorators';
+import { resolveSystemTask } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { computeFirstRunAt, scheduleFromDefinition } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
-
-import { EventService } from '@/events/event.service';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import type { ProvisionRequest } from '../durable-job-provisioner';
@@ -20,21 +20,48 @@ import { versionStamp } from './system-task-version-stamp';
 /** A system task's stored job as listed, pinned to the payload read at the time. */
 export type StaleSystemTaskJob = Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'>;
 
+/** A system task that runs on the durable scheduler, with what it resolved to. */
+export interface DurableSystemTask {
+	readonly task: SystemTask;
+	readonly schedule: SystemTaskSchedule;
+	readonly runOptions: SystemTaskRunOptions;
+}
+
+/**
+ * Resolves a task that runs on the durable scheduler.
+ *
+ * @throws {UnexpectedError} when the task does not run on the scheduler
+ * @throws {UnexpectedError} when the task declares an out-of-range option
+ */
+export function durableSystemTask(task: SystemTask): DurableSystemTask {
+	const { schedule, runOptions } = resolveSystemTask(task);
+	if (runOptions === undefined) {
+		throw new UnexpectedError('A system task does not run on the durable scheduler', {
+			extra: { name: task.name },
+		});
+	}
+	return { task, schedule, runOptions };
+}
+
 /**
  * The one durable job a system task owns, ready to provision. The schedule is
  * stored as declared, so `defaultTimezone` seeds the first run only: baking it
  * into the row would redefine every task whenever the instance timezone changes.
+ * An interval task seeds at `now`; a cron task seeds at its next fire.
  */
 export function systemTaskProvisionRequest(
-	task: SystemTask,
+	{ task, schedule, runOptions }: DurableSystemTask,
 	systemTaskOwner: SystemTaskScheduledJobOwner,
 	defaultTimezone: string,
 	now: Date,
 ): ProvisionRequest {
-	const schedule = resolveSystemTaskSchedule(task);
-	const firstRunAt = computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
+	const firstRunAt =
+		schedule.kind === 'interval'
+			? now
+			: computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
 	const name = systemTaskType(task.name);
-	const { misfirePolicy, misfireGraceSeconds, maxAttempts } = resolveSystemTaskRunOptions(task);
+	const { misfirePolicy, misfireGraceSeconds, maxAttempts, concurrencyLimit, timeoutSeconds } =
+		runOptions;
 
 	return {
 		owner: systemTaskOwner.owner(task.name),
@@ -44,6 +71,8 @@ export function systemTaskProvisionRequest(
 		misfirePolicy,
 		misfireGraceSeconds,
 		maxAttempts,
+		concurrencyLimit,
+		timeoutSeconds,
 	};
 }
 
@@ -68,11 +97,12 @@ export class SystemTaskJobRegistrar {
 	}
 
 	/** Never throws: one task that cannot be provisioned must not stop the rest. */
-	async provision(task: SystemTask): Promise<void> {
+	async provision(durableTask: DurableSystemTask): Promise<void> {
+		const { task } = durableTask;
 		try {
 			const summary = await this.durableJobProvisioner.provision(
 				systemTaskProvisionRequest(
-					task,
+					durableTask,
 					this.systemTaskOwner,
 					this.globalConfig.generic.timezone,
 					new Date(),

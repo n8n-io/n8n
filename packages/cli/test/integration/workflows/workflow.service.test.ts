@@ -10,6 +10,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
+	TransactionRunner,
 	SharedWorkflowRepository,
 	type WorkflowEntity,
 	WorkflowHistoryRepository,
@@ -18,36 +19,48 @@ import {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationOutboxStatus,
 	WorkflowRepository,
+	WorkflowTagMappingRepository,
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import {
+	RoleService,
+	RestrictedNodeTypesProviderProxy,
+	type WorkflowPublishGuardProxy,
+} from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
+
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import { createTag } from '../shared/db/tags';
 
 /**
  * A node type that classifies as a trigger. `properties` must be a real array:
@@ -93,7 +106,7 @@ beforeAll(async () => {
 		loggerMock,
 		Container.get(SharedWorkflowRepository),
 		workflowRepository,
-		mock(),
+		Container.get(WorkflowTagMappingRepository),
 		Container.get(OwnershipService), // ownershipService
 		mock(),
 		workflowHistoryService,
@@ -127,6 +140,10 @@ beforeAll(async () => {
 		// publish, so these tests also prove behavior is unchanged with the module off.
 		Container.get(PolicyEnforcementService), // policyEnforcementService
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
+		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
+		Container.get(ErrorWorkflowValidationService), // errorWorkflowValidationService
+		Container.get(RestrictedNodeTypesProviderProxy), // restrictedNodeTypesProvider
+		mock(),
 	);
 });
 
@@ -140,8 +157,9 @@ beforeEach(() => {
 	nodeTypes.getByNameAndVersion.mockReset();
 	workflowValidationService.validateTriggerNodeIds.mockReset();
 	workflowValidationService.validateTriggerNodeIds.mockReturnValue({ isValid: true });
-	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
+	workflowValidationService.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
 	webhookServiceMock.findWebhookConflicts.mockReset();
@@ -150,9 +168,12 @@ beforeEach(() => {
 
 afterEach(async () => {
 	await testDb.truncate([
+		'WorkflowTagMapping',
+		'TagEntity',
 		'SharedWorkflow',
 		'ProjectRelation',
 		'WorkflowPublishedVersion',
+		'WorkflowPublicationRetryState',
 		'WorkflowPublicationOutbox',
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -165,6 +186,107 @@ afterEach(async () => {
 });
 
 describe('update()', () => {
+	function candidateNode(name: string): INode {
+		return {
+			id: name,
+			name,
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+	}
+
+	test('rolls back the workflow, history, and tags when the caller transaction fails', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ nodes: [], connections: {} }, owner);
+		const originalTag = await createTag({}, workflow);
+		const replacementTag = await createTag();
+		const history = Container.get(WorkflowHistoryRepository);
+		const original = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		const previousVersions = await history.findBy({ workflowId: workflow.id });
+		const prepared = await workflowService.prepareUpdate(
+			owner,
+			Object.assign(workflowRepository.create(), {
+				nodes: [candidateNode('Suggested')],
+				connections: {},
+			}),
+			workflow.id,
+			{ source: 'n8n-ai', tagIds: [replacementTag.id] },
+		);
+		externalHooks.run.mockClear();
+		await expect(
+			Container.get(TransactionRunner).run({}, async (ctx) => {
+				const saved = await workflowService.savePreparedUpdate(prepared, ctx, {
+					propagateVersionHistoryErrors: true,
+				});
+				expect(saved.nodes).toEqual([candidateNode('Suggested')]);
+				expect(saved.tags?.map(({ id }) => id)).toEqual([replacementTag.id]);
+				throw new Error('Related state failed');
+			}),
+		).rejects.toThrow('Related state failed');
+		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toEqual(original);
+		expect(await history.findBy({ workflowId: workflow.id })).toEqual(previousVersions);
+		const restored = await workflowRepository.findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['tags'],
+		});
+		expect(restored.tags?.map(({ id }) => id)).toEqual([originalTag.id]);
+		expect(externalHooks.run).not.toHaveBeenCalled();
+	});
+
+	test('completes an ordinary save that resumes after a transactional save', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ nodes: [], connections: {} }, owner);
+		const prepared = createDeferredPromise();
+		const resume = createDeferredPromise();
+		const updateContent = workflowRepository.updateContent.bind(workflowRepository);
+		vi.spyOn(workflowRepository, 'updateContent').mockImplementation(async (...args) => {
+			if (args[1].name === 'Ordinary edit') {
+				prepared.resolve();
+				await resume.promise;
+			}
+			return await updateContent(...args);
+		});
+		const ordinarySave = workflowService.update(
+			owner,
+			Object.assign(workflowRepository.create(), { name: 'Ordinary edit' }),
+			workflow.id,
+		);
+		try {
+			await Promise.race([
+				prepared.promise,
+				ordinarySave.then(() => {
+					throw new Error('The ordinary save did not pause before the write.');
+				}),
+			]);
+			const update = await workflowService.prepareUpdate(
+				owner,
+				Object.assign(workflowRepository.create(), {
+					nodes: [candidateNode('Suggested')],
+					connections: {},
+				}),
+				workflow.id,
+				{ source: 'n8n-ai' },
+			);
+			const saved = await Container.get(TransactionRunner).run(
+				{},
+				async (ctx) => await workflowService.savePreparedUpdate(update, ctx),
+			);
+			await workflowService.finishUpdate(update, saved);
+			resume.resolve();
+			await ordinarySave;
+			const current = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.nodes).toEqual([candidateNode('Suggested')]);
+			expect(current.versionId).toBe(workflow.versionId);
+			expect(current.nodes).toEqual([candidateNode('Suggested')]);
+			expect(current.name).toBe('Ordinary edit');
+		} finally {
+			resume.resolve();
+			await Promise.allSettled([ordinarySave]);
+		}
+	});
+
 	test('publishes the newly saved version when an active workflow is updated through the API', async () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
@@ -256,6 +378,7 @@ describe('update()', () => {
 		expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
 			versionId: workflow.activeVersionId,
 			source: 'ui',
+			publishHistory: 'none',
 		});
 	});
 
@@ -368,14 +491,17 @@ describe('activateWorkflow()', () => {
 
 		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
 
-		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith({
-			workflow: {
-				id: workflow.id,
-				name: workflow.name,
-				nodes: expect.any(Array),
+		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith(
+			{
+				workflow: {
+					id: workflow.id,
+					name: workflow.name,
+					nodes: expect.any(Array),
+				},
+				projectId: expect.any(String),
 			},
-			projectId: expect.any(String),
-		});
+			{ kind: 'user', user: expect.objectContaining({ id: owner.id }) },
+		);
 		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
 	});
 
@@ -608,7 +734,7 @@ describe('activateWorkflow()', () => {
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
 		// Mock validation to fail
-		workflowValidationService.validateForActivation.mockReturnValue({
+		workflowValidationService.validateForActivation.mockResolvedValue({
 			isValid: false,
 			error: 'Workflow cannot be activated because it has no trigger node.',
 		});
@@ -1337,5 +1463,229 @@ describe('publishAsSystem()', () => {
 		).toBe(versionRowsBefore);
 		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
 		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
+	});
+});
+
+describe('delete() and the workflowsFromAList caller policy', () => {
+	test('denies a caller whose allowlist entry no longer refers to a live workflow', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		const allowlistedCaller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: { callerPolicy: 'workflowsFromAList', callerIds: allowlistedCaller.id },
+			},
+			owner,
+		);
+
+		await workflowService.archive(owner, allowlistedCaller.id);
+		await workflowService.delete(owner, allowlistedCaller.id);
+
+		const reusedIdWorkflow = await createWorkflow({ id: allowlistedCaller.id }, member);
+
+		const storedSubworkflow = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		await expect(
+			Container.get(SubworkflowPolicyChecker).check(
+				{ id: storedSubworkflow.id, settings: storedSubworkflow.settings },
+				reusedIdWorkflow.id,
+			),
+		).rejects.toThrowError(SubworkflowPolicyDenialError);
+	});
+
+	test('keeps the allowlist entry while the caller is only archived', async () => {
+		const owner = await createOwner();
+
+		const allowlistedCaller = await createWorkflow({}, owner);
+		const callerIds = `keepMe,\n${allowlistedCaller.id}`;
+		const subworkflow = await createWorkflow(
+			{ settings: { callerPolicy: 'workflowsFromAList', callerIds } },
+			owner,
+		);
+
+		await workflowService.archive(owner, allowlistedCaller.id);
+
+		const afterArchive = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(afterArchive.settings).toEqual({ callerPolicy: 'workflowsFromAList', callerIds });
+
+		await workflowService.delete(owner, allowlistedCaller.id);
+
+		const afterDelete = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(afterDelete.settings).toEqual({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'keepMe',
+		});
+	});
+
+	test('allows a live allowlisted caller owned by another project', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		const allowlistedCaller = await createWorkflow({}, member);
+		const subworkflow = await createWorkflow(
+			{
+				settings: { callerPolicy: 'workflowsFromAList', callerIds: allowlistedCaller.id },
+			},
+			owner,
+		);
+
+		const storedSubworkflow = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		await expect(
+			Container.get(SubworkflowPolicyChecker).check(
+				{ id: storedSubworkflow.id, settings: storedSubworkflow.settings },
+				allowlistedCaller.id,
+			),
+		).resolves.toBeUndefined();
+	});
+
+	test('keeps the other settings of an allowlist it rewrites', async () => {
+		const owner = await createOwner();
+
+		const caller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${caller.id},another-caller`,
+					executionOrder: 'v1',
+					timezone: 'Europe/Berlin',
+				},
+			},
+			owner,
+		);
+
+		await workflowService.archive(owner, caller.id);
+		await workflowService.delete(owner, caller.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'another-caller',
+			executionOrder: 'v1',
+			timezone: 'Europe/Berlin',
+		});
+	});
+
+	test('leaves an allowlist alone when the deleted id only appears inside another entry', async () => {
+		const owner = await createOwner();
+
+		const caller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${caller.id}-suffix, ${caller.id}-other`,
+				},
+			},
+			owner,
+		);
+		const before = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		await workflowService.archive(owner, caller.id);
+		await workflowService.delete(owner, caller.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual(before.settings);
+		expect(after.updatedAt).toEqual(before.updatedAt);
+	});
+
+	test('takes several deleted ids out of one allowlist', async () => {
+		const owner = await createOwner();
+
+		const first = await createWorkflow({}, owner);
+		const second = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${first.id},keepMe,${second.id}`,
+				},
+			},
+			owner,
+		);
+
+		await workflowRepository.removeFromCallerAllowlists([first.id, second.id], {});
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual({ callerPolicy: 'workflowsFromAList', callerIds: 'keepMe' });
+	});
+
+	test('leaves every allowlist untouched when the deleted workflow is on none of them', async () => {
+		const owner = await createOwner();
+
+		const allowlistedCaller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${allowlistedCaller.id},another-caller`,
+				},
+			},
+			owner,
+		);
+		const before = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		const unrelatedWorkflow = await createWorkflow({}, owner);
+		await workflowService.archive(owner, unrelatedWorkflow.id);
+		await workflowService.delete(owner, unrelatedWorkflow.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual(before.settings);
+		expect(after.updatedAt).toEqual(before.updatedAt);
+	});
+
+	// A character the `json` column keeps but the binary JSON form cannot hold.
+	const NO_BINARY_JSON_FORM = String.fromCharCode(0);
+
+	test('deletes a workflow while an allowlist elsewhere holds a value json alone can carry', async () => {
+		const owner = await createOwner();
+
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `another-caller${NO_BINARY_JSON_FORM}`,
+				},
+			},
+			owner,
+		);
+		const before = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		const unrelatedWorkflow = await createWorkflow({}, owner);
+		await workflowService.archive(owner, unrelatedWorkflow.id);
+		await workflowService.delete(owner, unrelatedWorkflow.id);
+
+		await expect(workflowRepository.findOneBy({ id: unrelatedWorkflow.id })).resolves.toBeNull();
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual(before.settings);
+	});
+
+	test('rewrites an allowlist that holds a value json alone can carry', async () => {
+		const owner = await createOwner();
+
+		const caller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${caller.id},another-caller`,
+					errorWorkflow: `error-workflow${NO_BINARY_JSON_FORM}`,
+				},
+			},
+			owner,
+		);
+
+		await workflowService.archive(owner, caller.id);
+		await workflowService.delete(owner, caller.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'another-caller',
+			errorWorkflow: `error-workflow${NO_BINARY_JSON_FORM}`,
+		});
 	});
 });

@@ -23,6 +23,10 @@ function parseErrorResponseWorkflowMetadata(response: unknown): ISubWorkflowMeta
 	};
 }
 
+function usableCount(value: unknown): number {
+	return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
 export function accumulateTokenUsage(
 	context: IExecuteFunctions,
 	inputTokens: number,
@@ -31,8 +35,8 @@ export function accumulateTokenUsage(
 	const prev = context.getExecuteData()?.metadata?.tokenUsage;
 	context.setMetadata({
 		tokenUsage: {
-			inputTokens: (prev?.inputTokens ?? 0) + inputTokens,
-			outputTokens: (prev?.outputTokens ?? 0) + outputTokens,
+			inputTokens: usableCount(prev?.inputTokens) + usableCount(inputTokens),
+			outputTokens: usableCount(prev?.outputTokens) + usableCount(outputTokens),
 		},
 	});
 }

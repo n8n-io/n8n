@@ -157,7 +157,7 @@ export class GSuiteAdmin implements INodeType {
 
 			try {
 				if (resource === 'device') {
-					//https://developers.google.com/admin-sdk/directory/v1/customer/my_customer/devices/chromeos/deviceId
+					//https://developers.google.com/workspace/admin/directory/reference/rest/v1/chromeosdevices/get
 					if (operation === 'get') {
 						const deviceId = this.getNodeParameter('deviceId', i, undefined, {
 							extractValue: true,

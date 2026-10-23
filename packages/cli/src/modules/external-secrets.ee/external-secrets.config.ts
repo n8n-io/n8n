@@ -7,7 +7,7 @@ const timeoutSeconds = z.coerce.number().int().gte(1).lte(2_147_483);
 @Config
 export class ExternalSecretsConfig {
 	/** How often (in seconds) to check for secret updates */
-	@Env('N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL')
+	@Env('N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL', timeoutSeconds)
 	updateInterval: number = 300;
 
 	/** How long (in seconds) to wait for a provider to connect before it is marked errored and retried in the background */

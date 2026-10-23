@@ -65,6 +65,7 @@ describe('Brevo - email validation', () => {
 	it('applies content access restrictions when validating addresses', async () => {
 		const context = {
 			getNodeParameter: vi.fn().mockReturnValue('recipient@example.com'),
+			getNode: vi.fn().mockReturnValue({ typeVersion: 1 }),
 		} as unknown as IExecuteSingleFunctions;
 
 		await BrevoNode.Validators.validateAndCompileRecipientEmails.call(context, {
@@ -77,6 +78,93 @@ describe('Brevo - email validation', () => {
 			disableFileAccess: true,
 			disableUrlAccess: true,
 		});
+	});
+});
+
+function makeVersionedContext(typeVersion: number, params: Record<string, unknown>) {
+	return {
+		getNode: vi.fn().mockReturnValue({ typeVersion }),
+		getNodeParameter: vi.fn((name: string) => params[name]),
+	} as unknown as IExecuteSingleFunctions;
+}
+
+describe('Brevo - recipients/CC/BCC spelling by node version (NODE-5367)', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('validateAndCompileRecipientEmails reads the legacy "receipients" key on v1', async () => {
+		const context = makeVersionedContext(1, { receipients: 'legacy@example.com' });
+
+		await BrevoNode.Validators.validateAndCompileRecipientEmails.call(context, {
+			url: '',
+			body: {},
+		});
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'legacy@example.com' }),
+		);
+	});
+
+	it('validateAndCompileRecipientEmails reads the corrected "recipients" key on v1.1', async () => {
+		const context = makeVersionedContext(1.1, { recipients: 'correct@example.com' });
+
+		await BrevoNode.Validators.validateAndCompileRecipientEmails.call(context, {
+			url: '',
+			body: {},
+		});
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'correct@example.com' }),
+		);
+	});
+
+	it('validateAndCompileCCEmails reads the legacy nested CC path on v1', async () => {
+		const context = makeVersionedContext(1, {
+			'additionalFields.receipientsCC.receipientCc': { cc: 'legacy-cc@example.com' },
+		});
+
+		await BrevoNode.Validators.validateAndCompileCCEmails.call(context, { url: '', body: {} });
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ cc: 'legacy-cc@example.com' }),
+		);
+	});
+
+	it('validateAndCompileCCEmails reads the corrected nested CC path on v1.1', async () => {
+		const context = makeVersionedContext(1.1, {
+			'additionalFields.recipientsCC.recipientCc': { cc: 'correct-cc@example.com' },
+		});
+
+		await BrevoNode.Validators.validateAndCompileCCEmails.call(context, { url: '', body: {} });
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ cc: 'correct-cc@example.com' }),
+		);
+	});
+
+	it('validateAndCompileBCCEmails reads the legacy nested BCC path on v1', async () => {
+		const context = makeVersionedContext(1, {
+			'additionalFields.receipientsBCC.receipientBcc': { bcc: 'legacy-bcc@example.com' },
+		});
+
+		await BrevoNode.Validators.validateAndCompileBCCEmails.call(context, { url: '', body: {} });
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ bcc: 'legacy-bcc@example.com' }),
+		);
+	});
+
+	it('validateAndCompileBCCEmails reads the corrected nested BCC path on v1.1', async () => {
+		const context = makeVersionedContext(1.1, {
+			'additionalFields.recipientsBCC.recipientBcc': { bcc: 'correct-bcc@example.com' },
+		});
+
+		await BrevoNode.Validators.validateAndCompileBCCEmails.call(context, { url: '', body: {} });
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ bcc: 'correct-bcc@example.com' }),
+		);
 	});
 });
 

@@ -1,0 +1,11 @@
+{
+	"name": "n8n-nodes-compat-legacy",
+	"version": "1.0.0",
+	"description": "Compatibility fixture: no n8nNodesApiVersion, a legacy package",
+	"license": "MIT",
+	"keywords": ["n8n-community-node-package"],
+	"files": ["dist"],
+	"n8n": {
+		"nodes": ["dist/CompatProbe.node.js"]
+	}
+}

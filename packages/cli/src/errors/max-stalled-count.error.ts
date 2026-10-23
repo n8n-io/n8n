@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 /**
  * @docs https://docs.bullmq.io/guide/workers/stalled-jobs

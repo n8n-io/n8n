@@ -25,7 +25,8 @@ import {
 
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
-import { SIMULATE_NODE_TYPE } from '@/app/constants';
+import { EXECUTE_WORKFLOW_NODE_TYPE, NO_OP_NODE_TYPE, SIMULATE_NODE_TYPE } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
@@ -177,6 +178,7 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {
 	const pinia = createPinia();
 	setActivePinia(pinia);
+	vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 	workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-test'));
 
 	renderComponent = createComponentRenderer(Canvas, {
@@ -231,6 +233,64 @@ describe('Canvas', () => {
 		expect(container.querySelector(`[data-id="${nodes[0].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${nodes[1].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${connections[0].id}"]`)).toBeInTheDocument();
+	});
+
+	it('places an added sticky at the canvas right-click after the canvas is panned', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+
+		const { container, emitted, getByTestId } = renderComponent({
+			props: { nodes: [], connections: [] },
+		});
+		const { setViewport } = useVueFlow(canvasId);
+		await setViewport({ x: 400, y: 0, zoom: 1 });
+
+		const pane = container.querySelector('.vue-flow__pane');
+		expect(pane).not.toBeNull();
+		await fireEvent.contextMenu(pane!, { clientX: 80, clientY: 64 });
+
+		const cursorPosition = emitted<[{ x: number; y: number }]>()['cursor:position']?.at(-1)?.[0];
+		expect(cursorPosition?.x).toBeLessThan(0);
+
+		await waitFor(() => expect(getByTestId('context-menu-item-add_sticky')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('context-menu-item-add_sticky'));
+
+		expect(emitted()['create:sticky']?.at(-1)).toEqual([cursorPosition]);
+		useContextMenu().close();
+	});
+
+	it('clears the selection and opens the canvas menu on an empty-canvas right-click', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+		workflowDocumentStore.setNodes([createTestNode({ id: 'sticky-1', name: 'Note' })]);
+		const note = createCanvasNodeElement({
+			id: 'sticky-1',
+			label: 'Note',
+			position: { x: 400, y: 200 },
+		});
+		const { container, emitted, getByTestId, queryByTestId } = renderComponent({
+			props: { nodes: [note], connections: [] },
+		});
+		await waitFor(() =>
+			expect(container.querySelector(`[data-id="${note.id}"]`)).toBeInTheDocument(),
+		);
+
+		const vueFlow = useVueFlow(canvasId);
+		vueFlow.addSelectedNodes([vueFlow.findNode(note.id)!]);
+		await waitFor(() => expect(vueFlow.getSelectedNodes.value).toHaveLength(1));
+
+		const pane = container.querySelector('.vue-flow__pane');
+		expect(pane).not.toBeNull();
+		await fireEvent.contextMenu(pane!);
+
+		await waitFor(() => expect(vueFlow.getSelectedNodes.value).toHaveLength(0));
+		expect(emitted()['update:node:selected']?.at(-1)).toEqual([undefined]);
+		await waitFor(() => expect(getByTestId('context-menu-item-add_sticky')).toBeInTheDocument());
+		expect(useContextMenu().target.value).toEqual(
+			expect.objectContaining({ source: 'canvas', nodeIds: [] }),
+		);
+		expect(queryByTestId('context-menu-item-open')).not.toBeInTheDocument();
+		useContextMenu().close();
 	});
 
 	it('tidies hidden members when using the context menu on a collapsed group', async () => {
@@ -1008,6 +1068,39 @@ describe('Canvas', () => {
 			return { group, groupNode, ...rendered };
 		};
 
+		it('selects an expanded empty group when its anchor is selected', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({
+					id: 'anchor',
+					type: NO_OP_NODE_TYPE,
+					parameters: { emptyGroupAnchor: true },
+				}),
+			]);
+			const group = workflowDocumentStore.createGroup(['anchor'], 'Empty group');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['anchor'],
+				isCollapsed: false,
+			});
+			groupNode.data!.isEmptyGroup = true;
+			const rendered = renderComponent({
+				props: {
+					nodes: [groupNode, createCanvasNodeElement({ id: 'anchor', position: { x: 40, y: 40 } })],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			const vueFlow = useVueFlow(canvasId);
+
+			await waitFor(() => expect(vueFlow.findNode('anchor')).toBeDefined());
+			vueFlow.addSelectedNodes([vueFlow.findNode('anchor')!]);
+
+			await waitFor(() => expect(getSelectionRing(rendered.container)).toBeInTheDocument());
+		});
+
 		it('hides the selection toolbar when the selection is exactly one group', async () => {
 			const { groupNode, queryByTestId } = await setupExpandedGroupWithLooseNodes();
 			const vueFlow = useVueFlow(canvasId);
@@ -1047,7 +1140,9 @@ describe('Canvas', () => {
 		});
 
 		it('hides the convert button when executeWorkflow is excluded', async () => {
-			vi.spyOn(useSettingsStore(), 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+			vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+				(type) => type === EXECUTE_WORKFLOW_NODE_TYPE,
+			);
 
 			const rendered = await setupExpandedGroupWithLooseNodes();
 
@@ -1128,6 +1223,32 @@ describe('Canvas', () => {
 			vueFlow.addSelectedNodes([vueFlow.findNode('node-1')!]);
 
 			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['node-1']));
+		});
+
+		it('keeps a sole expanded group member selectable without selecting the title bar', async () => {
+			workflowDocumentStore.setNodeGroups([{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }]);
+			const rendered = renderComponent({
+				props: {
+					nodes: [
+						createCanvasNodeElement({ id: 'node-1', label: 'Node 1' }),
+						createCanvasGroupNode({ nodeIds: ['node-1'] }),
+					],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(2),
+			);
+
+			const vueFlow = useVueFlow(canvasId);
+			vueFlow.addSelectedNodes([vueFlow.findNode('node-1')!]);
+
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(['node-1']),
+			);
 		});
 
 		it('extends the selection to members when a selected group is expanded', async () => {
@@ -1605,11 +1726,110 @@ describe('Canvas', () => {
 			await fireEvent.keyDown(document, { key: 'Backspace' });
 			await fireEvent.keyUp(document, { key: 'Backspace' });
 
-			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b']]);
+			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b'], [group.id]]);
+		});
+
+		it('only suppresses anchor preservation for explicitly selected groups', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a1', name: 'Node A1' }),
+				createTestNode({ id: 'a2', name: 'Node A2' }),
+				createTestNode({ id: 'b1', name: 'Node B1' }),
+			]);
+			workflowDocumentStore.setNodeGroups([
+				{ id: 'g1', name: 'Group 1', nodeIds: ['a1', 'a2'] },
+				{ id: 'g2', name: 'Group 2', nodeIds: ['b1'] },
+			]);
+
+			const rendered = renderComponent({
+				props: {
+					nodes: [
+						createCanvasGroupElement({ id: 'g1', nodeIds: ['a1', 'a2'] }),
+						createCanvasGroupElement({ id: 'g2', nodeIds: ['b1'], position: { x: 400, y: 0 } }),
+						createCanvasNodeElement({ id: 'a1', label: 'Node A1' }),
+						createCanvasNodeElement({ id: 'a2', label: 'Node A2' }),
+						createCanvasNodeElement({ id: 'b1', label: 'Node B1', position: { x: 400, y: 120 } }),
+					],
+				},
+				global: {
+					provide: {
+						[NodeGroupViewKey as symbol]: createNodeGroupViewMock(false),
+					},
+				},
+			});
+
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(5),
+			);
+
+			const vueFlow = useVueFlow(canvasId);
+			vueFlow.addSelectedNodes([vueFlow.findNode('group:g1')!, vueFlow.findNode('b1')!]);
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(
+					expect.arrayContaining(['group:g1', 'a1', 'a2', 'b1']),
+				),
+			);
+
+			await fireEvent.keyDown(document, { key: 'Backspace' });
+			await fireEvent.keyUp(document, { key: 'Backspace' });
+
+			const deleteEvent = rendered.emitted()['delete:nodes']?.at(-1) as
+				| [string[], string[]?]
+				| undefined;
+			const [ids, deleteWholeGroupIds] = deleteEvent ?? [];
+			expect(ids).toEqual(expect.arrayContaining(['a1', 'a2', 'b1']));
+			expect(deleteWholeGroupIds).toEqual(['g1']);
 		});
 	});
 
 	describe('group selection reconciliation', () => {
+		it('replaces the node clicked inside a fully selected regular group', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a', name: 'Node A' }),
+				createTestNode({ id: 'b', name: 'Node B' }),
+			]);
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
+			const memberA = createCanvasNodeElement({ id: 'a', label: 'Node A' });
+			const memberB = createCanvasNodeElement({
+				id: 'b',
+				label: 'Node B',
+				position: { x: 300, y: 100 },
+			});
+			const rendered = renderComponent({
+				props: {
+					nodes: [
+						createCanvasGroupElement({ id: group.id, name: group.name, nodeIds: ['a', 'b'] }),
+						memberA,
+						memberB,
+					],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(3),
+			);
+
+			const vueFlow = useVueFlow(canvasId);
+			vueFlow.addSelectedNodes([
+				vueFlow.findNode(`group:${group.id}`)!,
+				vueFlow.findNode('a')!,
+				vueFlow.findNode('b')!,
+			]);
+			await waitFor(() => expect(vueFlow.getSelectedNodes.value).toHaveLength(3));
+
+			await fireEvent.click(rendered.container.querySelector('[data-id="b"]')!);
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(['b']),
+			);
+			await fireEvent.keyDown(document, { key: 'r' });
+			await fireEvent.keyUp(document, { key: 'r' });
+
+			expect(rendered.emitted()['replace:node']).toEqual([['b']]);
+		});
+
 		it('folds the selection into the group when one is created around fully selected nodes', async () => {
 			workflowDocumentStore.setScopes(['workflow:update']);
 			workflowDocumentStore.setNodes([
@@ -1658,6 +1878,40 @@ describe('Canvas', () => {
 			);
 			// The selection now folds into a single element — the box goes away
 			expect(nodesSelectionActive.value).toBe(false);
+		});
+
+		it('folds an already-selected single node into a newly created group', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([createTestNode({ id: 'a', name: 'Node A' })]);
+			const member = createCanvasNodeElement({ id: 'a', label: 'Node A' });
+			const rendered = renderComponent({
+				props: { nodes: [member] },
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(1),
+			);
+
+			const { addSelectedNodes, findNode, getSelectedNodes } = useVueFlow(canvasId);
+			addSelectedNodes([findNode('a')!]);
+			await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).toEqual(['a']));
+
+			const group = workflowDocumentStore.createGroup(['a'], 'My Group');
+			await rendered.rerender({
+				nodes: [
+					createCanvasGroupElement({ id: group.id, name: group.name, nodeIds: ['a'] }),
+					member,
+				],
+			});
+
+			await waitFor(() =>
+				expect([...getSelectedNodes.value.map(({ id }) => id)].sort()).toEqual([
+					'a',
+					`group:${group.id}`,
+				]),
+			);
 		});
 	});
 
@@ -1785,6 +2039,24 @@ describe('Canvas', () => {
 			expect([...useContextMenu().targetNodeIds.value].sort()).toEqual(['a', 'b', 'node-3']);
 		});
 
+		it('only deletes explicitly selected groups from a mixed context-menu selection', async () => {
+			const { group, groupNode, looseNode, getByTestId, emitted } = await renderWithGroup();
+
+			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(groupNode.id)!, findNode(looseNode.id)!]);
+			await waitFor(() => expect(findNode(groupNode.id)?.selected).toBe(true));
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+			await waitFor(() => expect(useContextMenu().isOpen.value).toBe(true));
+			await waitFor(() => expect(getByTestId('context-menu-item-delete')).toBeInTheDocument());
+			await fireEvent.click(getByTestId('context-menu-item-delete'));
+
+			const deleteEvent = emitted()['delete:nodes']?.at(-1) as [string[], string[]?] | undefined;
+			const [ids, deleteWholeGroupIds] = deleteEvent ?? [];
+			expect(ids).toEqual(expect.arrayContaining(['a', 'b', 'node-3']));
+			expect(deleteWholeGroupIds).toEqual([group.id]);
+		});
+
 		it('copies the group members through the copy action', async () => {
 			const { getByTestId, emitted } = await renderWithGroup();
 
@@ -1794,6 +2066,21 @@ describe('Canvas', () => {
 			await fireEvent.click(getByTestId('context-menu-item-copy'));
 
 			expect(emitted()['copy:nodes']).toEqual([[['a', 'b']]]);
+		});
+
+		it('passes explicitly selected groups through the cut action', async () => {
+			const { group, groupNode, emitted } = await renderWithGroup();
+			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(groupNode.id)!]);
+			await waitFor(() => expect(findNode(groupNode.id)?.selected).toBe(true));
+
+			await fireEvent.keyDown(document, { key: 'x', ctrlKey: true, metaKey: true });
+			await fireEvent.keyUp(document, { key: 'x', ctrlKey: true, metaKey: true });
+
+			const cutEvent = emitted()['cut:nodes']?.at(-1) as [string[], string[]?] | undefined;
+			const [ids, deleteWholeGroupIds] = cutEvent ?? [];
+			expect(ids).toEqual(['a', 'b']);
+			expect(deleteWholeGroupIds).toEqual([group.id]);
 		});
 
 		it('opens the group context menu on a read-only canvas, like node menus, with mutating items disabled', async () => {

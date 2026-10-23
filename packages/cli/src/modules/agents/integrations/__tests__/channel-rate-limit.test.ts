@@ -89,6 +89,10 @@ describe('channel-rate-limit', () => {
 			expect(channelRateLimitMessage('slack')).toContain('Slack');
 			expect(channelRateLimitMessage('discord')).toContain('Discord');
 		});
+
+		it('uses the WhatsApp override instead of capitalize-first-letter', () => {
+			expect(channelRateLimitMessage('whatsapp')).toContain('WhatsApp');
+		});
 	});
 
 	describe('rateLimitMessageFromError', () => {
@@ -150,6 +154,28 @@ describe('channel-rate-limit', () => {
 	});
 
 	describe('caughtIntegrationError', () => {
+		it('does not block the connection for a recipient-scoped 429', () => {
+			const guard = new ChannelRateLimitGuard();
+			const error = Object.assign(new Error('recipient limited'), {
+				response: { status: 429 },
+				rateLimitScope: 'recipient',
+			});
+			const result = caughtIntegrationError(error, {
+				connectionId: 'whatsapp:cred-a',
+				platform: 'whatsapp',
+				guard,
+				failedCode: INTEGRATION_ERROR_CODES.ACTION_FAILED,
+			});
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.RATE_LIMIT_EXCEEDED,
+					message: 'recipient limited',
+				},
+			});
+			expect(guard.isBlocked('whatsapp:cred-a')).toBe(false);
+		});
+
 		it('records the guard and returns RATE_LIMIT_EXCEEDED on a 429', () => {
 			const guard = new ChannelRateLimitGuard();
 			const error = Object.assign(new Error('rate limited'), {

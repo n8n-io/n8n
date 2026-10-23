@@ -86,17 +86,43 @@ export class WebhookResponseHeaders {
 	}
 }
 
-/** Set the sandbox CSP header on a webhook response, unless explicitly disabled. */
-export function applySandboxCSP(res: Response): void {
-	if (isWebhookHtmlSandboxingDisabled()) return;
+/** The operator setting that controls the sandbox CSP on the responses of a route. */
+export type WebhookSandboxSetting = 'webhook' | 'form';
+
+const SANDBOX_SETTING_LOCAL = 'webhookSandboxSetting';
+
+/** Record which operator setting controls the sandbox CSP on this response. */
+export function setRouteSandboxSetting(res: Response, setting: WebhookSandboxSetting): void {
+	res.locals[SANDBOX_SETTING_LOCAL] = setting;
+}
+
+function getRouteSandboxSetting(res: Response): WebhookSandboxSetting | undefined {
+	const setting: unknown = res.locals?.[SANDBOX_SETTING_LOCAL];
+	return setting === 'webhook' || setting === 'form' ? setting : undefined;
+}
+
+/**
+ * Set the sandbox CSP header on a webhook or form route response, unless an operator
+ * disabled it. The setting of the route decides, so every writer of a route follows the
+ * same setting. `fallback` applies when the response is not on a webhook or form route.
+ */
+export function applySandboxCSP(res: Response, fallback: WebhookSandboxSetting = 'webhook'): void {
+	const setting = getRouteSandboxSetting(res) ?? fallback;
+	const disabled =
+		setting === 'form' ? isFormHtmlSandboxingDisabled() : isWebhookHtmlSandboxingDisabled();
+	if (disabled) return;
 	res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 }
 
 /**
- * Set the sandbox CSP header on a form page response, unless an operator disabled it.
+ * Set the sandbox CSP header on a form page response. If an operator disabled it, remove
+ * the header instead, because the request handler sets it for the whole route.
  * Call this for every HTML page a form endpoint serves, error and status pages included.
  */
 export function applyFormSandboxCSP(res: Response): void {
-	if (isFormHtmlSandboxingDisabled()) return;
+	if (isFormHtmlSandboxingDisabled()) {
+		res.removeHeader('Content-Security-Policy');
+		return;
+	}
 	res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 }

@@ -7,15 +7,15 @@ import { WorkflowSerializer } from './workflow.serializer';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
 import { packageDirectory, writeWorkflowManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import type { ExportVersionPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
-import type { WorkflowNodeTypeSource } from './node-type-usage';
+import type { NodeTypeSource } from './node-type-usage';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import type { ExportRequirements } from '../requirements.types';
 import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
 import type { WorkflowTagUsage } from '../tag/tag.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
@@ -26,7 +26,7 @@ export interface WorkflowExportRequest {
 	workflowIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
-	workflowVersionPolicy: WorkflowVersionPolicy;
+	versionPolicy: ExportVersionPolicy;
 
 	/**
 	 * Target of the folder or project holding the workflows, which are written
@@ -37,7 +37,7 @@ export interface WorkflowExportRequest {
 
 export interface WorkflowExportResult {
 	entries: ManifestEntry[];
-	requirements: WorkflowExportRequirements;
+	requirements: ExportRequirements;
 }
 
 @Service()
@@ -59,7 +59,7 @@ export class WorkflowExporter {
 			{
 				includeParentFolder: true,
 				includeTags: request.includeTags,
-				includeActiveVersion: needsActiveVersion(request.workflowVersionPolicy),
+				includeActiveVersion: needsActiveVersion(request.versionPolicy),
 			},
 		);
 
@@ -72,14 +72,14 @@ export class WorkflowExporter {
 
 		const workflowsForExport = this.orderWorkflowsByRequest(
 			request.workflowIds,
-			applyWorkflowVersionPolicy(workflows, request.workflowVersionPolicy),
+			applyWorkflowVersionPolicy(workflows, request.versionPolicy),
 		);
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
 		const tags: WorkflowTagUsage[] = [];
-		const nodeTypes: WorkflowNodeTypeSource[] = [];
+		const nodeTypes: NodeTypeSource[] = [];
 		const workflowsDir = packageDirectory('workflows', request.basePrefix);
 
 		for (const workflow of workflowsForExport) {
@@ -93,7 +93,7 @@ export class WorkflowExporter {
 				),
 			);
 
-			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
+			credentials.push(...this.credentialRequirementsExtractor.extractFromWorkflow(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(workflow));
 			tags.push(...this.tagRequirementsExtractor.extract(workflow));

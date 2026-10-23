@@ -70,9 +70,8 @@ function makeStreamSuccess(text = 'Hello') {
 		stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text }]),
 		finishReason: Promise.resolve('stop'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
-		response: Promise.resolve({
-			messages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
-		}),
+		responseMessages: Promise.resolve([{ role: 'assistant', content: [{ type: 'text', text }] }]),
+		finalStep: Promise.resolve({ providerMetadata: undefined }),
 		toolCalls: Promise.resolve([]),
 	};
 }
@@ -82,14 +81,13 @@ function makeStreamWithToolCall(toolCallId: string, args: Record<string, unknown
 		stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'working...' }]),
 		finishReason: Promise.resolve('tool-calls'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
-		response: Promise.resolve({
-			messages: [
-				{
-					role: 'assistant',
-					content: [{ type: 'tool-call', toolCallId, toolName: 'lookup', args }],
-				},
-			],
-		}),
+		responseMessages: Promise.resolve([
+			{
+				role: 'assistant',
+				content: [{ type: 'tool-call', toolCallId, toolName: 'lookup', input: args }],
+			},
+		]),
+		finalStep: Promise.resolve({ providerMetadata: undefined }),
 		toolCalls: Promise.resolve([{ toolCallId, toolName: 'lookup', input: args }]),
 	};
 }
@@ -172,6 +170,18 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 		streamText.mockReset();
 	});
 
+	it('writes no step checkpoint for a tool call that ends the turn', async () => {
+		const store = new RecordingCheckpointStore();
+		const runtime = createRuntime(store, [{ ...lookupTool, endsTurn: () => true }]);
+		streamText.mockReturnValueOnce(makeStreamWithToolCall('tc-1', { value: 'first' }));
+
+		const result = await runtime.stream('find things', { stepCheckpoints: true });
+		await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(store.saves.filter((s) => s.state.status === 'running')).toEqual([]);
+	});
+
 	it('persists a running checkpoint at every step boundary and resumes after a crash', async () => {
 		const store = new RecordingCheckpointStore();
 		const runtime = createRuntime(store);
@@ -201,6 +211,20 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 		const secondJson = JSON.stringify(stepSaves[1].state.messageList);
 		expect(secondJson).toContain('tc-1');
 		expect(secondJson).toContain('tc-2');
+		for (const [toolCallId, value] of [
+			['tc-1', 'first'],
+			['tc-2', 'second'],
+		]) {
+			expect(stepSaves[1].state.messageList.messages).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						content: expect.arrayContaining([
+							expect.objectContaining({ toolCallId, input: { value } }),
+						]),
+					}),
+				]),
+			);
+		}
 		// The completed run deleted its checkpoint (no leak).
 		expect(store.deletes).toContain(result.runId);
 
@@ -256,21 +280,20 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'asking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
-			response: Promise.resolve({
-				messages: [
-					{
-						role: 'assistant',
-						content: [
-							{
-								type: 'tool-call',
-								toolCallId: 'tc-hitl',
-								toolName: 'approve',
-								args: { question: 'ok?' },
-							},
-						],
-					},
-				],
-			}),
+			responseMessages: Promise.resolve([
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-hitl',
+							toolName: 'approve',
+							input: { question: 'ok?' },
+						},
+					],
+				},
+			]),
+			finalStep: Promise.resolve({ providerMetadata: undefined }),
 			toolCalls: Promise.resolve([
 				{ toolCallId: 'tc-hitl', toolName: 'approve', input: { question: 'ok?' } },
 			]),

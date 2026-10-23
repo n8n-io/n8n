@@ -125,7 +125,7 @@ defineExpose({ credentialId, currentSettings, validationError });
 						v-if="step.id === 'create-oauth-application'"
 						:href="LINEAR_APP_SETUP_URL"
 						target="_blank"
-						variant="subtle"
+						variant="outline"
 						size="medium"
 						icon="linear"
 						data-testid="linear-app-setup-link"
@@ -213,7 +213,7 @@ defineExpose({ credentialId, currentSettings, validationError });
 							@edit="emit('edit')"
 						/>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="medium"
 							:loading="loading"
 							:disabled="!canConnect"

@@ -18,6 +18,7 @@ import { configDefaults } from 'vitest/config';
 const REWRITE_REQUIRE_TARGETS = [
 	'/src/runtime/model/lazy-ai.ts',
 	'/src/runtime/model/model-factory.ts',
+	'/src/runtime/model/google-vertex.ts',
 ];
 
 function rewriteSourceRequire(): Plugin {

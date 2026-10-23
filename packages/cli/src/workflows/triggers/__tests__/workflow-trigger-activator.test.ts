@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import type { EventService } from '@n8n/backend-services';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -15,7 +16,6 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS, TRIGGER_TEARDOWN_MAX_ATTEMPTS } from '@/constants';
-import type { EventService } from '@/events/event.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type {
 	NonWebhookTriggerRegistrar,

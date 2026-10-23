@@ -1,4 +1,5 @@
-import EventSource from 'eventsource';
+import { buildDispatcher, dispatchedFetch } from '@n8n/backend-network/transport';
+import { EventSource, type ErrorEvent } from 'eventsource';
 import type {
 	IDataObject,
 	ITriggerFunctions,
@@ -6,7 +7,26 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, OperationalError, jsonParse } from 'n8n-workflow';
+
+// These statuses reconnect and resend `Last-Event-ID`, as eventsource v2 did.
+// eventsource v3 closes the stream on any non-200 status.
+const RECONNECT_STATUSES = new Set([500, 502, 503, 504]);
+
+/**
+ * The fetch API rejects a URL that contains credentials, so move them to a
+ * Basic auth header.
+ */
+function splitCredentials(rawUrl: string) {
+	const url = new URL(rawUrl);
+	if (!url.username && !url.password) return { url, authorization: undefined };
+
+	const credentials = `${decodeURIComponent(url.username)}:${decodeURIComponent(url.password)}`;
+	const authorization = `Basic ${Buffer.from(credentials).toString('base64')}`;
+	url.username = '';
+	url.password = '';
+	return { url, authorization };
+}
 
 export class SseTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,13 +71,65 @@ export class SseTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const url = this.getNodeParameter('url') as string;
 
-		const eventSource = new EventSource(url);
+		const egressFilter = this.helpers.getSecureEgressFilter();
+		const validation = await egressFilter.validateUrl(url);
+		if (!validation.ok) {
+			throw new NodeOperationError(this.getNode(), validation.error);
+		}
+
+		const { url: connectUrl, authorization } = splitCredentials(url);
+
+		// An SSE stream can stay idle for long periods, so no body timeout applies.
+		// The headers timeout bounds how long activation waits for a hanging server.
+		const dispatcher = buildDispatcher('env', egressFilter, {
+			timeouts: { bodyTimeout: 0, headersTimeout: 10_000 },
+		});
+		const eventSource = new EventSource(connectUrl, {
+			fetch: async (input, init) => {
+				const response = await dispatchedFetch(dispatcher, input, {
+					...init,
+					headers: { ...init?.headers, ...(authorization && { Authorization: authorization }) },
+				});
+				if (!RECONNECT_STATUSES.has(response.status)) return response;
+
+				// eventsource treats a rejected fetch as a network error and reconnects.
+				await response.body?.cancel();
+				throw new OperationalError(`HTTP ${response.status}`);
+			},
+		});
 
 		eventSource.onmessage = (event) => {
 			const eventData = jsonParse<IDataObject>(event.data as string, {
 				errorMessage: 'Invalid JSON for event data',
 			});
 			this.emit([this.helpers.returnJsonArray([eventData])]);
+		};
+
+		const connectionError = (event: ErrorEvent) => {
+			const status = event.code === undefined ? '' : ` (HTTP ${event.code})`;
+			return new NodeOperationError(this.getNode(), `The SSE connection failed${status}`, {
+				description: event.message,
+			});
+		};
+
+		// Wait for the first outcome so a permanent failure throws here, where
+		// activation retries it with backoff. Reporting it through `emitError` instead
+		// makes n8n re-register the trigger at once, which loops while the failure
+		// persists. A temporary failure reconnects on its own, so activation continues.
+		await new Promise<void>((resolve, reject) => {
+			eventSource.onopen = () => resolve();
+			eventSource.onerror = (event) => {
+				if (eventSource.readyState !== EventSource.CLOSED) return resolve();
+				eventSource.close();
+				reject(connectionError(event));
+			};
+		});
+
+		// Temporary failures reconnect on their own. A closed stream (e.g. a 4xx
+		// response) does not, so report it instead of going quiet.
+		eventSource.onerror = (event) => {
+			if (eventSource.readyState !== EventSource.CLOSED) return;
+			this.emitError(connectionError(event));
 		};
 
 		async function closeFunction() {

@@ -87,7 +87,7 @@ function handleNodeNameUpdate(name: string) {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="handleCancel">
+				<N8nButton variant="outline" @click="handleCancel">
 					{{ i18n.baseText('chatHub.toolSettings.cancel') }}
 				</N8nButton>
 				<N8nButton variant="solid" :disabled="!isValid" @click="handleConfirm">

@@ -6,7 +6,9 @@ import {
 	SourceControlPushResponsePublicDto,
 	SourceControlStatusPublicDto,
 	SourceControlStatusQueryPublicDto,
+	type SourceControlledFile,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -25,9 +27,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError } from '@n8n/errors';
 import { getTrackingInformationFromPullResult } from '@/modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
@@ -146,8 +146,7 @@ export class SourceControlPublicController {
 		req: AuthenticatedRequest,
 		res: Response,
 		@Body({ required: true }) body: PullWorkFolderRequestDto,
-	): Promise<void> {
-		// Writes the response directly preserving migrated endpoints contract
+	): Promise<SourceControlledFile[] | undefined> {
 		if (!this.sourceControlPreferencesService.isSourceControlConnected()) {
 			res
 				.status(400)
@@ -163,13 +162,14 @@ export class SourceControlPublicController {
 					...getTrackingInformationFromPullResult(req.user.id, result.statusResult),
 					forced: body.force ?? false,
 				});
-				res.status(200).json(result.statusResult);
-				return;
+				return result.statusResult;
 			}
 
 			res.status(409).json(result.statusResult);
+			return;
 		} catch (error) {
 			res.status(400).send((error as { message: string }).message);
+			return;
 		}
 	}
 }

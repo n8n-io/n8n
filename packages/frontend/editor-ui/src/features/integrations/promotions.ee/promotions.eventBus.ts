@@ -3,6 +3,7 @@ import type { Project } from '@/features/collaboration/projects/projects.types';
 
 export interface PromotionEventBusEvents {
 	applied: { projectId: string; project?: Project };
+	promoted: { projectId: string };
 	projectRemoved: { projectId: string };
 }
 

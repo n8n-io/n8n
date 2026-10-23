@@ -1,0 +1,1063 @@
+{
+	"tools": [
+		{
+			"name": "agent_builder_write_config",
+			"description": "Create or update the agent configuration. Pass the config as an object, not as a JSON string. Send only the top-level fields you set or change: every top-level field you omit (including model and credential) keeps its stored value, and a field you send replaces the stored field whole. A fresh agent with no stored config needs name, model, and instructions. Requires baseConfigHash: the configHash from the latest agent-context with type \"config\" result, or from the latest builder result that returned one (agent_builder_write_config, agent_builder_patch_config, agent_builder_create_skills, agent_builder_create_tasks, agent_builder_finish_setup, agent_builder_configure_channel, agent_builder_verify_mcp_server with credentialApplied: true, or a stale failure), whichever came last. Returns { ok: true, configMutated: true, agentId, configHash } on success. The result also carries `config` when the saved config differs from what you sent (for example applied defaults or kept omitted fields); treat that `config` as the current state. On failure returns { ok: false, stage, errors } and nothing is saved, so on a parse, patch, or schema error fix the payload and retry with the same baseConfigHash. On stage: \"stale\", the result carries the current config and configHash: re-apply your change to it and retry once. Failure errors carry path, message, expected, and received fields.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"config": {
+						"type": "object",
+						"additionalProperties": {},
+						"description": "Agent configuration object with the top-level fields to set"
+					},
+					"baseConfigHash": {
+						"type": ["string", "null"],
+						"description": "Latest configHash from agent-context with type \"config\" or from the latest builder result that returned one; null only if no config exists"
+					}
+				},
+				"required": ["config", "baseConfigHash"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_patch_config",
+			"description": "Apply RFC 6902 JSON Patch operations to the current agent configuration. Pass the patch operations as an array of objects, not as a JSON string. Requires baseConfigHash: the configHash from the latest agent-context with type \"config\" result, or from the latest builder result that returned one (agent_builder_write_config, agent_builder_patch_config, agent_builder_create_skills, agent_builder_create_tasks, agent_builder_finish_setup, agent_builder_configure_channel, agent_builder_verify_mcp_server with credentialApplied: true, or a stale failure), whichever came last. Supported ops: add, remove, replace, move, copy, test. Returns { ok: true, configMutated: true, agentId, configHash } on success. The result also carries `config` when the saved config differs from what you sent (for example applied defaults or kept omitted fields); treat that `config` as the current state. On failure returns { ok: false, stage, errors } and nothing is saved, so on a parse, patch, or schema error fix the payload and retry with the same baseConfigHash. On stage: \"stale\", the result carries the current config and configHash: re-apply your change to it and retry once. stage is \"locked\", \"parse\", \"stale\", \"patch\", or \"schema\". On stage: \"locked\", stop and tell the user to close their editing session in the n8n builder.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"operations": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"op": {
+									"type": "string",
+									"enum": ["add", "remove", "replace", "move", "copy", "test"]
+								},
+								"path": {
+									"type": "string",
+									"description": "JSON Pointer, e.g. \"/instructions\" or \"/tools/-\""
+								},
+								"from": {
+									"type": "string",
+									"description": "Source JSON Pointer for move and copy"
+								},
+								"value": {
+									"description": "New value for add, replace, and test"
+								}
+							},
+							"required": ["op", "path"],
+							"additionalProperties": false
+						},
+						"description": "RFC 6902 JSON Patch operations"
+					},
+					"baseConfigHash": {
+						"type": ["string", "null"],
+						"description": "Latest configHash from agent-context with type \"config\" or from the latest builder result that returned one; null only if no config exists"
+					}
+				},
+				"required": ["operations", "baseConfigHash"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_publish_agent",
+			"description": "Publish this target agent so it becomes live: integrations sync and scheduled tasks start running. Idempotent when the draft is already the active published version. Pass optional `versionId` to activate an existing history row instead of publishing the current draft. Call only when the user asks to publish, activate, or make the agent live/usable — never tell them to click Publish in the editor. Returns { ok: true, configMutated: true, agentId, activeVersionId, versionId } or { ok: false, errors }.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"versionId": {
+						"type": "string",
+						"minLength": 1,
+						"description": "Optional history version ID to activate. Omit to publish the current draft."
+					}
+				},
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_unpublish_agent",
+			"description": "Unpublish this target agent: clears the live version while preserving the draft, disconnects chat integrations, and stops scheduled tasks. Call when the user asks to unpublish or take the agent offline. Returns { ok: true, configMutated: true, agentId, activeVersionId: null } or { ok: false, errors }.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {},
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_call_agent",
+			"description": "Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. Omit sessionId to start a new conversation. To continue one, pass the exact sessionId from an earlier agent_builder_call_agent result; never make one up. If the sessionId is not found, the test starts a new conversation and the result has a sessionNote. The draft uses its real configured tools and credentials, so external side effects are possible. Standard tool approvals pause this test until the user approves or rejects them in chat. Unsupported interactive requests return approval_required with a Preview path.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"minLength": 1,
+						"description": "Message to send to the target agent"
+					},
+					"sessionId": {
+						"type": "string",
+						"description": "Exact sessionId from an earlier agent_builder_call_agent result. Omit it to start a new conversation."
+					}
+				},
+				"required": ["message"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_resolve_llm",
+			"description": "Resolve the agent main LLM without showing a picker. A fresh agent may already have a model and credential persisted by the system at creation (a sensible default was auto-selected). Before calling this tool on a fresh agent, call agent-context with type \"config\" first: if model and credential are already set, keep them, mention the choice in your summary as changeable, and do not call agent_builder_resolve_llm. Only when model is empty call agent_builder_resolve_llm once, silently, before the first config write to detect existing credentials — with provider/model when the user named them, otherwise without arguments. Also call it whenever the user names or changes a provider or model. If provider is given, resolves only that provider; if model is omitted, uses the provider default model. Every model it returns — the default included — is checked against the list the chosen credential can actually reach, so reason \"unknown_model\" (carrying availableModels) can come back even when you passed no model: retry with a value from availableModels, never the id that just failed. availableModels is capped: when availableModelsTruncated is true, it is a sample of totalAvailableModels — ask the user with agent_builder_ask_questions instead of treating it as the full list. For \"Anthropic via OpenRouter\", pass provider=\"openrouter\" and omit model unless the user named a concrete OpenRouter model id. Returns ok=false when credentials are missing, unsupported, or ambiguous — during an initial build, do not ask; keep building with model \"\" and include the model choice in the trailing agent_builder_finish_setup call, then call agent_builder_resolve_llm again with the answer. For a model change on an existing agent, ask immediately and keep the current model and credential until the new one resolves. When no matching credential exists and the user is eligible for free OpenAI credits, the tool claims them automatically and resolves to an OpenAI model the new key can reach (normally gpt-5-mini) — the result carries claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When the provider has no own credential but Gateway credits (the managed option) serve it, the tool resolves to the managed credential — the result credentialName is \"Gateway credits\"; persist it like any credential and tell the user the model runs on Gateway credits. When the user explicitly asks to use Gateway credits, pass useGatewayCredits: true (with provider when named): the tool resolves Gateway credits for that provider without a picker even if the user has their own credential for it, and returns ok=false with reason \"gateway_credits_unsupported_provider\", \"ambiguous_gateway_credits_provider\" (with providers), or \"gateway_credits_unavailable\" (Gateway credits serve no provider on this instance) when it cannot. When multiple providers each have one credential, the tool auto-picks the recommended provider — the result carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it. When the user picks between multiple credentials of one provider, pass the picked credentialId from the earlier ambiguous result.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"provider": {
+						"type": "string",
+						"description": "Requested provider, e.g. \"anthropic\", \"openai\", or \"openrouter\"."
+					},
+					"model": {
+						"type": "string",
+						"description": "Requested model without the selected provider prefix. For OpenRouter use the routed id, e.g. \"anthropic/claude-sonnet-5\"."
+					},
+					"credentialId": {
+						"type": "string",
+						"description": "Credential id picked by the user from an earlier ambiguous agent_builder_resolve_llm result."
+					},
+					"useGatewayCredits": {
+						"type": "boolean",
+						"description": "Set true when the user explicitly asked to use Gateway credits for the main model. Resolves Gateway credits for the requested provider even if the user already has their own credential for it, and never asks. Pass `provider` when the user named one."
+					}
+				},
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_ask_credential",
+			"description": "Show a credential picker card in the chat UI and suspend until the user selects a credential. Call ONCE per credential slot. For an addition to an existing agent, call it before the agent_builder_write_config / agent_builder_patch_config that introduces the tool. Never call this during an initial build — follow the Initial Build rules in the agent-builder skill; use it for additions to an existing agent and follow-up setup turns. Returns { credentialId, credentialName, credentials } on success or { skipped: true } if the user skips credential setup so the tool can be added without credentials. For node tools, copy the returned `credentials` object into `node.credentials`. Auto-resolves without rendering a card when the agent has a chat channel configured whose credential matches the requested type (the channel credential is reused so tools act through the same connection), or when the user has exactly one credential of the requested type — except for generic auth types (bearer, header, query, basic, digest, custom, OAuth), which always render the card.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"purpose": {
+						"type": "string",
+						"description": "One short sentence describing what this credential is used for"
+					},
+					"nodeType": {
+						"type": "string",
+						"description": "The n8n node type requiring this credential, e.g. \"n8n-nodes-base.slack\""
+					},
+					"credentialType": {
+						"type": "string",
+						"description": "The credential type name to request, e.g. \"slackApi\""
+					},
+					"credentialSlot": {
+						"type": "string",
+						"description": "Credential key on node.credentials, e.g. \"slackApi\""
+					}
+				},
+				"required": ["purpose", "credentialType"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_ask_embedding_credential",
+			"description": "Resolve the OpenAI embedding credential for Episodic Memory. Tries to resolve n8n managed credential. Otherwise behaves like agent_builder_ask_credential: show a credential picker card in the chat UI and suspend until the user selects a credential. Returns { credentialId, credentialName, credentials } on success or { skipped: true } if the user skips credential setup.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"purpose": {
+						"type": "string",
+						"description": "One short sentence describing what this credential is used for"
+					},
+					"nodeType": {
+						"type": "string",
+						"description": "The n8n node type requiring this credential, e.g. \"n8n-nodes-base.slack\""
+					},
+					"credentialType": {
+						"type": "string",
+						"description": "The credential type name to request, e.g. \"slackApi\""
+					},
+					"credentialSlot": {
+						"type": "string",
+						"description": "Credential key on node.credentials, e.g. \"slackApi\""
+					}
+				},
+				"required": ["purpose", "credentialType"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_ask_questions",
+			"description": "Ask the user one or more questions in a single batched card; the run suspends until they respond. ALWAYS use this instead of calling it multiple times when you have more than one question — batch them into one call. Questions are single-select, multi-select, or free-text. A question is asked at most once — a dismissal or empty answer means \"proceed without this\": assume a sensible default and never re-present it. Returns { answered: false } on dismissal, or { answered: true, answers } otherwise.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"questions": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"description": "Unique question identifier; defaults to q1, q2, ..."
+								},
+								"question": {
+									"type": "string",
+									"description": "The question text to display to the user"
+								},
+								"type": {
+									"type": "string",
+									"enum": ["single", "multi", "text"],
+									"description": "single = pick one option, multi = pick many, text = free-form input"
+								},
+								"options": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									},
+									"description": "Suggested answers (required for single/multi, ignored for text)"
+								}
+							},
+							"required": ["question", "type"],
+							"additionalProperties": false
+						},
+						"minItems": 1,
+						"description": "All questions to ask the user, batched into a single card"
+					},
+					"introMessage": {
+						"type": "string",
+						"description": "Brief intro text shown above the questions"
+					}
+				},
+				"required": ["questions"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_configure_channel",
+			"description": "Configure one available chat channel for the target agent. First call agent-context with type \"integrations\" and pass a returned `type` as `integrationType`; do not infer channel names. Shows setup UI in chat where the user creates a new channel credential or skips. The setup UI persists the channel configuration and does not publish the agent, so use this for channel credentials instead of the credentials tool or config writes. Returns { configured: boolean } (plus configMutated/agentId refresh metadata when configured); false means the user skipped, so continue without the channel and do not re-prompt.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"integrationType": {
+						"type": "string",
+						"description": "Chat platform type from agent-context integrations"
+					}
+				},
+				"required": ["integrationType"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_finish_setup",
+			"description": "Collect everything still needed to finish the initial build in ONE guided flow: open questions (including the model choice), credential slots, and chat-channel setup. Call it at most once, only in the trailing step of an initial build when only pending setup remains, and never together with another interactive tool. It shows setup cards back-to-back without returning control between them: questions, then credentials, then one card per requested channel. Channel cards always run last after every credential phase, including when earlier setup was skipped or dismissed. Pass `channels` with a returned `type` from agent-context integrations, one entry per channel to configure; do not infer channel names. Each channel card persists the configuration or skips it, so channel outcomes are `\"configured\"` or `\"skipped\"`. Do not call agent_builder_configure_channel again for a channel handled by this flow. When a question answers a value that already has a place in the config (a recipient, a channel id, a sheet id), give it `configPath`: the answer is written there as a string. Write that config field empty beforehand, never skip the tool. Returns { completed, answers, credentials, channels, appliedToConfig, configHash } (plus configMutated/agentId refresh metadata when completed). The tool already wrote each resolved credential into every empty node-tool slot of its type, and each configPath answer; `appliedToConfig` lists them. Do not patch those again. Resolve only what is left: the model answer with agent_builder_resolve_llm, MCP servers with agent_builder_verify_mcp_server, and any entry in `configApplyErrors`. Auto-resolves credential slots that match an existing single credential or configured channel credential.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"questions": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string"
+								},
+								"question": {
+									"type": "string"
+								},
+								"type": {
+									"type": "string",
+									"enum": ["single", "multi", "text"]
+								},
+								"options": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								},
+								"configPath": {
+									"type": "string",
+									"pattern": "^\\/",
+									"description": "JSON Pointer into the agent config, e.g. \"/tools/2/node/nodeParameters/sendTo\". The answer is written there as a string when the flow completes."
+								}
+							},
+							"required": ["id", "question", "type"],
+							"additionalProperties": false
+						}
+					},
+					"credentialRequests": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"credentialType": {
+									"type": "string",
+									"minLength": 1
+								},
+								"purpose": {
+									"type": "string",
+									"minLength": 1
+								},
+								"credentialSlot": {
+									"type": "string"
+								}
+							},
+							"required": ["credentialType", "purpose"],
+							"additionalProperties": false
+						}
+					},
+					"channels": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"integrationType": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"required": ["integrationType"],
+							"additionalProperties": false
+						}
+					}
+				},
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_verify_mcp_server",
+			"description": "Test connectivity to an MCP server before adding it to the agent config. Establishes a temporary connection, lists the available tools, then closes the connection. Returns { ok: true, tools: [{ name, description, category }] } on success, or { ok: false, error: string } on failure. Tool names are the original MCP names without the model-facing server prefix. When a credential is provided and a matching mcpServers entry already exists, a successful verify also writes the credential into that entry ({ credentialApplied: true, configMutated: true, agentId, config, configHash }) — no agent-context/agent_builder_patch_config follow-up. Treat the returned config as the current state and use its configHash as baseConfigHash for your next config write. Call this after agent_builder_ask_credential when authentication is not \"none\".",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 64,
+						"description": "The user-facing server name; it is normalized for model-facing tool names"
+					},
+					"url": {
+						"type": "string",
+						"minLength": 1,
+						"description": "The MCP server endpoint URL"
+					},
+					"transport": {
+						"type": "string",
+						"enum": ["sse", "streamableHttp"],
+						"default": "streamableHttp",
+						"description": "Transport type. Defaults to streamableHttp"
+					},
+					"authentication": {
+						"anyOf": [
+							{
+								"type": "string",
+								"enum": ["none", "bearerAuth", "headerAuth", "multipleHeadersAuth", "mcpOAuth2Api"]
+							},
+							{
+								"type": "string",
+								"pattern": "^(?:oAuth2Api|.*OAuth2(?:Api)?)$"
+							}
+						],
+						"default": "none",
+						"description": "Authentication scheme"
+					},
+					"credential": {
+						"type": "string",
+						"description": "Credential id returned by agent_builder_ask_credential. Required when authentication is not \"none\""
+					},
+					"metadata": {
+						"type": "object",
+						"properties": {
+							"nodeTypeName": {
+								"type": "string"
+							}
+						},
+						"additionalProperties": false
+					},
+					"connectionTimeoutMs": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 120000,
+						"description": "Timeout in milliseconds for the whole verification (connect + list tools). Defaults to 10000ms"
+					}
+				},
+				"required": ["name", "url"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_build_custom_tool",
+			"description": "Compile and store a custom tool. Pass the complete TypeScript source using `export default new Tool(...)` builder chain. The code is validated in a sandbox and saved against the agent. The returned `id` equals the tool name declared in the code (e.g. `new Tool(\"my_tool\")` → id `\"my_tool\"`). This does NOT register the tool in the agent config — follow up with agent_builder_patch_config (or agent_builder_write_config) to add `{ type: \"custom\", id: \"<tool name>\" }` to `tools`.Returns { ok: true, id, name } or { ok: false, errors }.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"code": {
+						"type": "string",
+						"description": "Complete TypeScript source using export default new Tool(...)"
+					}
+				},
+				"required": ["code"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_create_skills",
+			"description": "Create and store one or more agent skills (reusable, load-on-demand capabilities) in a single call. Pass every skill you currently know how to write in one `skills` array — do not spread multiple fully-specified skills across separate calls; each skill's instructions field carries its own structured template. The whole batch is all-or-nothing: an invalid or duplicate-named skill rejects every skill in the call. It also attaches a `{ type: \"skill\", id }` ref per skill to the agent config (config.skills), so do not patch them in yourself; the agent config must already exist. Returns { ok: true, configMutated: true, agentId, configHash, skills: [{ id, name }, ...] } (same order as input, bodies are not echoed back) or { ok: false, errors }. Use the returned configHash as baseConfigHash for your next config write.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"skills": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"name": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 128,
+									"description": "Human-readable skill name. It must be unique in the project: no other skill of this project may have a name like it (case, spaces, hyphens and underscores do not count)."
+								},
+								"description": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 512,
+									"description": "The description is the routing contract — the only text the agent sees when deciding whether to load this skill, so it must be specific: state what the skill does AND the concrete situations or keywords that should trigger it (e.g. \"Use when the user asks to …\"), plus when NOT to use it where helpful. A vague description means the skill never loads."
+								},
+								"instructions": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 65536,
+									"description": "The body is loaded only after the skill triggers, so it must be a self-contained, actionable operating manual. Follow this exact Markdown structure, filling each applicable section with concrete, specific content — no placeholders or angle-bracket text. Do NOT put \"when to use\" triggers here; those belong in the description:\n\n## Overview\n<1-2 sentences: what the agent should do when this skill is loaded, and the outcome it produces.>\n\n## Inputs\n<What the agent needs before starting — required inputs, tools, credentials, or context — and how to obtain them. Write \"None\" if there are no prerequisites.>\n\n## Steps\n1. <First action — specific and actionable.>\n2. <Next action.>\n\n## Rules\n- <A constraint or guideline the agent must always follow.>\n\n## Example\n<A concrete, representative example: the input and the expected output or result.>\n\n## Gotchas\n<Common mistakes or edge cases, and how to handle them.>"
+								},
+								"references": {
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"path": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 512
+											},
+											"content": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 65536
+											}
+										},
+										"required": ["path", "content"],
+										"additionalProperties": false
+									},
+									"maxItems": 20,
+									"description": "Markdown-only supporting files under references/... paths. References are not automatically loaded; instructions must say exactly when to load each reference by path."
+								}
+							},
+							"required": ["name", "description", "instructions"],
+							"additionalProperties": false
+						},
+						"minItems": 1,
+						"maxItems": 20,
+						"description": "Every skill to create, in the order they should be created."
+					}
+				},
+				"required": ["skills"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_update_skill",
+			"description": "Update selected fields of an existing target-agent skill in place, preserving its id and agent config reference. Requires baseSkillHash from the immediately preceding agent-context with type \"skill\" result. To change part of the body, pass instructionEdits with oldText/newText pairs instead of rewriting instructions. Pass null for references to remove all references; an empty array is invalid. The skill is shared: the update saves its next version, and every agent draft that follows the latest version runs that version. Published versions keep the version they pinned. Returns { ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit saves nothing: fix oldText so it matches exactly one place and retry with the same baseSkillHash. On a stale skill error, call agent-context with type \"skill\" and retry once with its fresh skillHash.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"skillId": {
+						"type": "string",
+						"minLength": 1,
+						"description": "Persisted target-agent skill id to update."
+					},
+					"baseSkillHash": {
+						"type": "string",
+						"minLength": 1,
+						"description": "skillHash from the immediately preceding agent-context with type \"skill\" result for this skill."
+					},
+					"updates": {
+						"type": "object",
+						"properties": {
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 128
+							},
+							"description": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 512
+							},
+							"instructions": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 65536,
+								"description": "Complete replacement body. Use only for a rewrite of most of the body."
+							},
+							"instructionEdits": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"oldText": {
+											"type": "string",
+											"minLength": 1,
+											"description": "Exact text from the current instructions. It must match exactly one place."
+										},
+										"newText": {
+											"type": "string",
+											"description": "Replacement text. Use an empty string to delete."
+										}
+									},
+									"required": ["oldText", "newText"],
+									"additionalProperties": false
+								},
+								"minItems": 1,
+								"maxItems": 20,
+								"description": "Targeted replacements in the current instructions, applied in order. Prefer this to `instructions` for a partial change. Do not pass both."
+							},
+							"references": {
+								"anyOf": [
+									{
+										"type": "array",
+										"items": {
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string",
+													"minLength": 1,
+													"maxLength": 512
+												},
+												"content": {
+													"type": "string",
+													"minLength": 1,
+													"maxLength": 65536
+												}
+											},
+											"required": ["path", "content"],
+											"additionalProperties": false
+										},
+										"maxItems": 20
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						},
+						"additionalProperties": false,
+						"description": "Only the fields to change. Pass null for references to remove them; an empty array is invalid."
+					}
+				},
+				"required": ["skillId", "baseSkillHash", "updates"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_create_tasks",
+			"description": "Create one or more recurring scheduled tasks for the target agent (name + objective + cron schedule per task) in a single call. Pass every task you currently know how to write in one `tasks` array — do not spread multiple fully-specified tasks across separate calls; each task's objective field carries its own structured template. The whole batch is all-or-nothing: an invalid cron or objective rejects every task in the call. This adds a `{ type: \"task\", id, enabled }` ref per task to the agent config (config.tasks) and each task starts running once the agent is (re)published via `agent_builder_publish_agent`. Returns { ok: true, configMutated: true, agentId, configHash, tasks: [{ id, name, enabled }, ...] } (same order as input, objectives and crons are not echoed back) or { ok: false, errors }. Use the returned configHash as baseConfigHash for your next config write.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"tasks": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"name": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 128,
+									"description": "Short, human-readable task name."
+								},
+								"objective": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 10000,
+									"description": "The objective is the run-specific user message for each unattended run. Agent Instructions still apply and configured Skills remain available, so do not repeat universal rules or copy reusable procedures into the objective. The schedule is separate metadata in cronExpression and must never be repeated in the objective. It must be self-contained from the current builder chat and follow this exact Markdown structure, with every section filled in with concrete, specific content — no placeholders or angle-bracket text:\n\n## Objective\n<One sentence: the run-specific outcome to achieve and why it matters. Do not repeat the agent's overall purpose.>\n\n## Context\n<Run-specific inputs, data sources, and data lookback window, such as \"items created since the previous run\". Do not state when the task runs; its cadence belongs only in cronExpression.>\n\n## Steps\n1. <First task-specific action or configured skill/capability to use.>\n2. <Next task-specific action. Do not copy reusable procedures from Agent Instructions or Skills.>\n\n## Output\n<The exact format of the result AND where to deliver it (e.g. \"email a summary to ops@example.com\", \"post to Slack #alerts\", \"append a row to the tracking sheet\"). The run is unattended, so the agent must actively deliver the result somewhere.>\n\n## Constraints\n<Task-specific scope limits, what to avoid, and what to do when there is nothing to act on, such as \"if there are no new items, do nothing\".>\n\n## Success criteria\n<A verifiable definition of done for a single run.>"
+								},
+								"cronExpression": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 128,
+									"description": "A 5-field cron expression for when the task runs, e.g. \"0 9 * * 1-5\" = weekdays at 09:00."
+								},
+								"timezone": {
+									"anyOf": [
+										{
+											"type": "string",
+											"minLength": 1,
+											"maxLength": 50,
+											"pattern": "^[A-Za-z0-9_/+-]+$",
+											"description": "IANA timezone the cron is evaluated in, for example \"Europe/London\". Omit to use the instance timezone."
+										},
+										{
+											"type": "null"
+										}
+									],
+									"description": "IANA timezone the cron runs in, e.g. \"Europe/London\". Set it when the user names a timezone or a location; omit it to use the instance timezone."
+								}
+							},
+							"required": ["name", "objective", "cronExpression"],
+							"additionalProperties": false
+						},
+						"minItems": 1,
+						"maxItems": 20,
+						"description": "Every task to create, in the order they should be created."
+					}
+				},
+				"required": ["tasks"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_update_task",
+			"description": "Update selected body fields of an existing target-agent scheduled task in place, preserving its id and config reference. Returns { ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"taskId": {
+						"type": "string",
+						"minLength": 1,
+						"description": "Persisted target-agent task id to update."
+					},
+					"updates": {
+						"type": "object",
+						"properties": {
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 128
+							},
+							"objective": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 10000,
+								"description": "The objective is the run-specific user message for each unattended run. Agent Instructions still apply and configured Skills remain available, so do not repeat universal rules or copy reusable procedures into the objective. The schedule is separate metadata in cronExpression and must never be repeated in the objective. It must be self-contained from the current builder chat and follow this exact Markdown structure, with every section filled in with concrete, specific content — no placeholders or angle-bracket text:\n\n## Objective\n<One sentence: the run-specific outcome to achieve and why it matters. Do not repeat the agent's overall purpose.>\n\n## Context\n<Run-specific inputs, data sources, and data lookback window, such as \"items created since the previous run\". Do not state when the task runs; its cadence belongs only in cronExpression.>\n\n## Steps\n1. <First task-specific action or configured skill/capability to use.>\n2. <Next task-specific action. Do not copy reusable procedures from Agent Instructions or Skills.>\n\n## Output\n<The exact format of the result AND where to deliver it (e.g. \"email a summary to ops@example.com\", \"post to Slack #alerts\", \"append a row to the tracking sheet\"). The run is unattended, so the agent must actively deliver the result somewhere.>\n\n## Constraints\n<Task-specific scope limits, what to avoid, and what to do when there is nothing to act on, such as \"if there are no new items, do nothing\".>\n\n## Success criteria\n<A verifiable definition of done for a single run.>"
+							},
+							"cronExpression": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 128,
+								"description": "Standard five-field cron expression, for example \"0 9 * * *\""
+							},
+							"timezone": {
+								"anyOf": [
+									{
+										"type": "string",
+										"minLength": 1,
+										"maxLength": 50,
+										"pattern": "^[A-Za-z0-9_/+-]+$",
+										"description": "IANA timezone the cron is evaluated in, for example \"Europe/London\". Omit to use the instance timezone."
+									},
+									{
+										"type": "null"
+									}
+								],
+								"description": "IANA zone the cron runs in. Pass null to move the task back to the instance timezone."
+							}
+						},
+						"additionalProperties": false,
+						"description": "Only the task fields to change."
+					}
+				},
+				"required": ["taskId", "updates"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_get_resource_locator_options",
+			"description": "Fetch live options for a node parameter that is configured through a resourceLocator, loadOptionsMethod, or loadOptions routing. Use this for stable IDs such as Linear teamId, Slack channel, calendar, project, board, model, database, or table selectors before writing nodeParameters. Call agent_builder_ask_credential first when the node needs credentials, then pass the returned credentials map. The response includes parameterValue for each result; write that exact value into nodeParameters instead of using $fromAI for stable resource IDs.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"nodeType": {
+						"type": "string",
+						"description": "Tool node type identifier from agent_builder_search_nodes"
+					},
+					"nodeTypeVersion": {
+						"type": "number",
+						"description": "Tool node type version from agent_builder_search_nodes"
+					},
+					"parameterPath": {
+						"type": "string",
+						"description": "Parameter path to resolve, e.g. \"teamId\", \"calendarId\", or \"additionalFields.teamId\""
+					},
+					"nodeParameters": {
+						"type": "object",
+						"additionalProperties": {},
+						"description": "Current static nodeParameters for the node, including resource/operation/mode selections and any dependency fields already resolved."
+					},
+					"credentials": {
+						"type": "object",
+						"additionalProperties": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								}
+							},
+							"required": ["id", "name"],
+							"additionalProperties": false
+						},
+						"description": "Node credentials map returned by agent_builder_ask_credential. Do not copy from agent_builder_list_credentials."
+					},
+					"filter": {
+						"type": "string",
+						"description": "Optional search string to narrow the returned options"
+					},
+					"paginationToken": {
+						"type": "string",
+						"description": "Optional pagination token from a previous lookup"
+					}
+				},
+				"required": ["nodeType", "nodeTypeVersion", "parameterPath"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_search_nodes",
+			"description": "Search for n8n nodes by name or service. Use this to find nodes that can be executed. Returns tool node IDs, display names, versions, and descriptions. After finding a node, call agent_builder_get_node_types to get its parameter schema. Also consider n8n Connect covered services relevant to the task (they run on Gateway credits, no API key needed) — e.g. web search, scraping, or document parsing services.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"queries": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"minItems": 1,
+						"description": "Search queries (e.g., [\"gmail\", \"slack\", \"http\"])"
+					}
+				},
+				"required": ["queries"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_get_node_types",
+			"description": "Get detailed parameter schema for specific n8n nodes. Use the node IDs from node discovery results (agent_builder_search_nodes or agent-context integrations with kind \"node\"). Returns parameter definitions needed to configure a node for execution. Use the tool node IDs from discovery, usually ending in Tool. You can optionally filter by resource/operation/mode.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"nodeIds": {
+						"type": "array",
+						"items": {
+							"anyOf": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "object",
+									"properties": {
+										"nodeId": {
+											"type": "string"
+										},
+										"version": {
+											"type": "number",
+											"description": "Tool node type version from agent_builder_search_nodes or agent-context integration results with kind \"node\""
+										},
+										"resource": {
+											"type": "string"
+										},
+										"operation": {
+											"type": "string"
+										},
+										"mode": {
+											"type": "string"
+										}
+									},
+									"required": ["nodeId"],
+									"additionalProperties": false
+								}
+							]
+						},
+						"minItems": 1,
+						"description": "Tool node IDs from agent_builder_search_nodes or agent-context integration results with kind \"node\"; e.g., [\"n8n-nodes-base.gmailTool\"]"
+					}
+				},
+				"required": ["nodeIds"],
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		},
+		{
+			"name": "agent_builder_list_credentials",
+			"description": "List the credentials available to the user. Returns an array of credential names and types. Accepts an optional `types` filter to return only credentials matching the given types. Read-only inspection of available credentials. Use agent_builder_ask_credential to let the user pick the credential to wire into a node tool — never copy ids from this list directly into the config.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"types": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Optional credential types to filter by (e.g., [\"gmailOAuth2\", \"httpHeaderAuth\"]). When omitted, returns all credentials. Use the credential types declared in the node schema from agent_builder_get_node_types to narrow the results."
+					}
+				},
+				"additionalProperties": false,
+				"$schema": "http://json-schema.org/draft-07/schema#"
+			}
+		}
+	],
+	"skills": [
+		{
+			"id": "agent-builder-config",
+			"name": "Agent Builder Config",
+			"description": "Load before the first agent_builder_write_config or agent_builder_patch_config call in a conversation. Contains the Agent config rules, the config schema reference, and recipes for config writes.",
+			"recommendedTools": [
+				"agent-context",
+				"agent_builder_write_config",
+				"agent_builder_patch_config"
+			],
+			"instructions": "## Config Mutation Guidance\n\n### Purpose\n\nUse this after deciding a config change is needed and before calling\n`agent-context({ type: \"config\" })`, `agent_builder_write_config`, or `agent_builder_patch_config`.\n\n### Workflow\n\nFollow Config Freshness for authoritative reads, hashes, and stale recovery.\n- For `agent_builder_write_config`, send a `config` object with only the top-level fields\n  you set or change, plus `baseConfigHash`. Omitted top-level fields keep\n  their stored value, so do not copy `model`, `credential`, `memory`,\n  `personalisation`, `config`, or `integrations` back unless you change them.\n- For `agent_builder_patch_config`, send an array of RFC 6902 operation objects plus `baseConfigHash`.\n- Send objects and arrays, not JSON strings.\n- Pass the `configHash` from your latest config read or from your latest\n  write result as `baseConfigHash`; do not read the config again between your\n  own writes.\n- Put every change you already know into one write. Do not split known changes\n  across several `agent_builder_patch_config` calls.\n- Use JSON Pointer paths like `/field`, `/nested/field`, `/array/0`, and `/array/-`.\n- On parse, patch, or schema errors, nothing was saved: fix the payload and\n  retry with the same `baseConfigHash`.\n\n### Rules\n\n#### Agent Config Rules\n\n- `model` must be \"provider/model-name\", or `\"\"` while LLM setup is pending.\n- A non-empty `credential` must be the id returned by `agent_builder_resolve_llm`.\n- Sub-agent configuration lives at top level under `subAgents`. Load\n  `agent-builder-sub-agents` before adding refs or changing\n  `subAgents.maxChildren`.\n- For OpenAI, Anthropic, and Claude models on OpenRouter or Google Vertex, always include\n  `config.promptCaching: { \"enabled\": true }` — this is mandatory and must\n  never be disabled, even if the user asks. Omit `config.promptCaching`\n  entirely for other models. For Anthropic and routed Claude models, you may set\n  `config.promptCaching.anthropic.ttl` to `\"5m\"` or `\"1h\"` (default\n  `\"1h\"`) when the user asks to tune cache duration; OpenAI has no\n  sub-config.\n- `config.maxIterations` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.\n- Fresh agents need real `instructions` before config is written. `model`\n  may be `\"\"` and `credential` omitted in a draft while LLM setup is\n  pending; fill both from a `agent_builder_resolve_llm` result before publishing.\n\n#### Config Schema Reference\n\n```text\n  name: string [1..128 chars] (required)\n  description?: string [max 512 chars]\n  model: \"\" | string [min 1 chars, pattern: ^[a-z0-9-]+\\/(?:[a-z0-9._:@-]+\\/)*[a-z0-9._:@-]+$] (required)\n  credential?: string\n  modelDeploymentName?: string\n  instructions: string (required)\n  personalisation?: object\n    icon: string [1..64 chars] (required)\n    gradient?: object\n      from: string [pattern: ^#[0-9A-Fa-f]{6}$] (required)\n      to: unknown (required)\n      angle?: integer [0..359] (default: 135)\n      fromStop?: integer [0..45] (default: 0)\n      toStop?: integer [55..100] (default: 100)\n  memory?: object\n    enabled: boolean (required)\n    storage: \"n8n\" (required)\n    observationalMemory?: object\n      enabled?: boolean\n      observerModel?: object\n        model: unknown (required)\n        credential: string [min 1 chars] (required)\n      reflectorModel?: unknown\n      observerThresholdTokens?: integer [min 1]\n      reflectorThresholdTokens?: integer [min 1]\n      renderTokenBudget?: integer [min 1]\n      observationLogTailLimit?: integer [min 1]\n      lockTtlMs?: integer [min 0]\n    episodicMemory?: one of <discriminated by \"enabled\">\n      | enabled = false: { enabled: false }\n      | enabled = true: { enabled: true, credential: string [min 1 chars], reflectorModel?: unknown, topK?: integer [1..100], maxEntriesPerRun?: integer [1..50] }\n  subAgents?: object\n    maxChildren?: integer [1..20] — Maximum number of child sub-agent runs this parent agent may run in parallel. Defaults to 10 when unset.\n    agents?: array of <{ agentId: string [min 1 chars], useWhen?: string [max 512 chars], enabled?: boolean }>\n    modelsByDifficulty?: object\n      low?: object\n        model: unknown (required)\n        credential: string (required)\n      medium?: unknown\n      high?: unknown\n  tools?: array with items any of:\n    | (type = \"custom\")\n      enabled?: boolean\n      id: string [min 1 chars, pattern: ^[A-Za-z0-9_]+$] (required)\n      requireApproval?: boolean\n    | (type = \"workflow\")\n      enabled?: boolean\n      workflowId?: string [min 1 chars] — The workflow's stable ID.\n      workflow: string [min 1 chars] (required) — The workflow's display name and legacy lookup key.\n      name?: string\n      description?: string\n      requireApproval?: boolean\n      allOutputs?: boolean — Whether to return all node outputs instead of just the last node\n      inputs?: Record<string, { mode: \"ai\", description?: string } | { mode: \"fixed\", value: string | number | boolean | unknown | Record<string, unknown> | array of <unknown> } | { mode: \"expression\", value: string [pattern: ^=\\s*\\S] }>\n    | (type = \"node\")\n      enabled?: boolean\n      name: string [min 1 chars] (required)\n      description?: string\n      inputSchema?: unknown\n      node: object (required)\n        nodeType: string [min 1 chars] (required)\n        nodeTypeVersion: number (required)\n        nodeParameters?: Record<string, unknown>\n        credentials?: Record<string, { id: string, name: string } | { id: unknown, name: string, __aiGatewayManaged: true }>\n      requireApproval?: boolean\n  skills?: array of <{ type: \"skill\", versionId?: string, id: string [min 1 chars, pattern: ^[A-Za-z0-9_-]+$] }>\n  tasks?: array of <{ type: \"task\", id: string [min 1 chars, pattern: ^[A-Za-z0-9_-]+$], enabled: boolean }>\n  providerTools?: Record<string, Record<string, unknown>>\n  integrations?: array with items any of:\n    | (type = \"telegram\")\n      credentialId: string (required)\n      settings?: object\n        accessMode: \"private\" | \"public\" (required)\n        allowedUsers?: array of <string [pattern: ^@?[a-zA-Z0-9_]+$]> (default: [])\n        sessionIdleTimeoutMinutes?: integer | unknown\n      approval?: one of <discriminated by \"mode\"> — Channel actions that need approval before they run. Absent = no approval required\n        | mode = \"global\": { mode: \"global\" }\n        | mode = \"selected\": { mode: \"selected\", tools: array of <string [min 1 chars]> }\n    | (type = \"slack\")\n      credentialId: string (required)\n      settings?: object\n        messagingExperience: \"assistant\" | \"agent\" (required)\n        sessionIdleTimeoutMinutes?: unknown\n      approval?: unknown\n    | (type = \"linear\")\n      credentialId: string (required)\n      settings?: object\n        sessionIdleTimeoutMinutes?: unknown\n      approval?: unknown\n    | (type = \"discord\")\n      credentialId: string (required)\n      settings?: unknown\n      approval?: unknown\n    | (type = \"whatsapp\")\n      credentialId: string (required)\n      settings?: object\n        sessionIdleTimeoutMinutes?: unknown\n        typingIndicator?: boolean\n        downloadMedia?: boolean\n        mediaRetentionDays?: integer [1..365]\n      approval?: unknown\n    | (type = \"teams\")\n      credentialId: string (required)\n      settings?: object\n        sessionIdleTimeoutMinutes?: unknown\n        displayName?: string [1..30 chars]\n        description?: string [1..80 chars]\n        teamChannels?: boolean\n        groupChats?: boolean\n        readAllChannelMessages?: boolean\n        readAllGroupMessages?: boolean\n      approval?: unknown\n    | (type = \"n8n_chat\")\n      credentialId?: \"\" (default: \"\")\n  mcpServers?: array of <{ name: string [1..64 chars], description?: string [max 512 chars], url: string, transport?: \"sse\" | \"streamableHttp\", authentication?: \"none\" | \"bearerAuth\" | \"headerAuth\" | \"multipleHeadersAuth\" | \"mcpOAuth2Api\" | string [pattern: ^(?:oAuth2Api|.*OAuth2(?:Api)?)$], credential?: string, metadata?: { nodeTypeName?: string }, toolPermissions?: { categories: { read: \"always_allow\" | \"require_approval\" | \"blocked\", write: unknown }, tools?: Record<string, unknown> }, connectionTimeoutMs?: integer [1..120000] }>\n  vectorStores?: array with items any of:\n    | (provider = \"pinecone\")\n      name: string [1..64 chars, pattern: ^[a-zA-Z0-9_-]+$] (required) — Unique connection name, also used as the SDK tool-name suffix: search_<name>\n      credential: string (required)\n      useWhen: string [1..512 chars] (required)\n      embedding: object (required)\n        model: unknown (required)\n        credential: unknown (required)\n      indexName: string [min 1 chars] (required)\n      namespace?: string\n    | (provider = \"qdrant\")\n      name: unknown (required)\n      credential: unknown (required)\n      useWhen: unknown (required)\n      embedding: unknown (required)\n      collectionName: string [min 1 chars] (required)\n    | (provider = \"supabase\")\n      name: unknown (required)\n      credential: unknown (required)\n      useWhen: unknown (required)\n      embedding: unknown (required)\n      tableName: string [min 1 chars] (required)\n      queryName?: string\n    | (provider = \"postgres\")\n      name: unknown (required)\n      credential: unknown (required)\n      useWhen: unknown (required)\n      embedding: unknown (required)\n      tableName: string [min 1 chars] (required)\n  config?: object\n    reasoning?: \"low\" | \"medium\" | \"high\"\n    promptCaching?: object\n      enabled: boolean (required)\n      anthropic?: object\n        ttl?: \"5m\" | \"1h\"\n    webSearch?: object\n      enabled: boolean (required)\n      provider?: \"auto\" | \"native\" | \"brave\" | \"searxng\"\n      credential?: string\n    toolCallConcurrency?: integer [1..100]\n    maxIterations?: integer [1..200] — Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.\n    guardrails?: object\n      budget?: object\n        enabled: boolean (required)\n        monthlyBudgetUsd?: number\n        alertThresholdPercent?: integer [1..100]\n        sessionCostCapUsd?: unknown\n```\n\n- Follow the Config schema reference exactly; do not invent top-level fields.\n- Keep each feature in the schema path where it belongs.\n- Preserve unrelated existing config unless the user asked to change it.\n- Never write placeholder instructions, tool descriptions, or skill descriptions.\n- Never copy credential IDs from `agent_builder_list_credentials`; use `agent_builder_resolve_llm` or `agent_builder_ask_credential`.\n- Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.\n- `providerTools` keys must be complete provider tool IDs from the valid key list.\n\n### Recipes\n\n#### Create A Fresh Agent Draft\n\n- Requires `name` and `instructions`.\n- Use the model and credential from `agent_builder_resolve_llm` when resolved; while LLM\n  setup is pending, write `model: \"\"` and omit `credential`.\n- Keep `tools` and `skills` arrays if present.\n\nGood minimal shape:\n```json\n{\n  \"name\": \"Support assistant\",\n  \"model\": \"\",\n  \"instructions\": \"Help the user with support questions.\",\n  \"tools\": [],\n  \"skills\": []\n}\n```\n\n#### Update Only Instructions\n\nUse `agent_builder_patch_config` with:\n```json\n[{ \"op\": \"replace\", \"path\": \"/instructions\", \"value\": \"New instructions\" }]\n```\n\n#### Add A Target-Agent Skill Ref\n\n- `agent_builder_create_skills` attaches its new skills itself; do not patch those refs in.\n- To attach an existing, unattached skill: if `skills` exists, append to\n  `/skills/-`; if `skills` is missing, add `/skills` with an array.\n- Ref shape: `{ \"type\": \"skill\", \"id\": \"<skill-id>\" }`.\n- A ref with `versionId` pins that saved version of the skill. To use the latest\n  version, remove `versionId` from the ref with `patch_config`. Do not remove\n  the skill and add it again.\n\n#### Remove An Existing Chat Integration\n\n- Chat-channel removal is a config edit, not a `agent_builder_configure_channel` action.\n- Call `agent-context({ type: \"config\" })` first and inspect `config.integrations`.\n- If you know the exact array index to remove, prefer:\n```json\n[{ \"op\": \"remove\", \"path\": \"/integrations/1\" }]\n```\n- If replacing the whole list is clearer, replace `/integrations` with the\n  filtered array of surviving entries.\n- Omitting `integrations` preserves existing channels. To remove one, send an\n  explicit `remove` op or an explicit filtered `integrations` array.\n\n#### Configure Native Provider Features\n\n- Reasoning effort lives under `config.reasoning` (`low`, `medium`, or `high`).\n- Prompt caching follows Agent Config Rules above; the write path enforces it\n  automatically.\n- Web search lives under `config.webSearch`.\n- Do not enable `config.webSearch` before the model is resolved. Set it in the\n  same mutation that writes the resolved model. If `config.webSearch` is\n  already enabled, keep it enabled unless the user asked to turn it off. An\n  unresolved model is not a reason to disable it.\n- Only OpenAI and Anthropic models support native web search. For those models, set\n  `config.webSearch = { \"enabled\": true, \"provider\": \"native\" }` unless the\n  user asks to disable web search. Omitting `provider` also means native.\n  Use native search by default only for a fresh agent or an agent with no\n  existing `config.webSearch`.\n- For every other provider, never use `provider: \"native\"` or omit\n  `provider` for enabled web search.\n- For Brave or SearXNG search, call `agent_builder_ask_credential`, then set\n  `config.webSearch = { \"enabled\": true, \"provider\": \"brave\" | \"searxng\", \"credential\": \"<credentialId>\" }`.\n- Brave and SearXNG remain fallback tools even when the model provider also supports native search.\n- When patching only `/model` and `/credential`, do not patch\n  `/config/webSearch` if the existing provider is `\"brave\"` or `\"searxng\"`\n  unless the user explicitly asked to change the web-search method.\n- Never write `{ \"enabled\": true }` alone for fallback search.\n- The write path fills native provider tool defaults only for native search. Do not invent provider tool keys.\n\n#### Configure Fallback Services\n\n- Services that require credentials must call `agent_builder_ask_credential` first and persist only its returned credential id.\n- If credential selection is skipped, do not enable the feature unless it supports missing credentials.\n- For fallback web search, use exact credential type names: `braveSearchApi` for `provider: \"brave\"`, and `searXngApi` for `provider: \"searxng\"`.\n\n#### Add Node Or Workflow Tools\n\n- Node and workflow tools live in `tools[]`.\n- Use Tool Guidance for node/workflow details.\n- Do not mix node tool config into `config.*` fields.\n\n### Do Not Do This\n\nBad: inventing top-level fields\n```json\n{ \"webSearch\": { \"enabled\": true } }\n```\n\nBad: provider namespace as provider tool\n```json\n{ \"providerTools\": { \"anthropic\": {} } }\n```\n\nBad: copying credential IDs from `agent_builder_list_credentials`\n```json\n{ \"credential\": \"<id-from-agent_builder_list_credentials>\" }\n```\n\nBad: replacing `config` while dropping unrelated settings\n```json\n{ \"config\": { \"webSearch\": { \"enabled\": true } } }\n```\n\n### Gotchas\n\n- `agent_builder_write_config` keeps every top-level field you omit. A top-level field you\n  send replaces the stored field whole: to change one key inside `config`\n  (for example `config.webSearch`), use `agent_builder_patch_config` on that path instead.\n- `agent_builder_patch_config` cannot create a config when none exists; use `agent_builder_write_config` first.\n- `/array/-` appends to an array; `/array/0` inserts before the current first item.\n- Removing an integration means deleting its entry from `integrations[]`; do\n  not call `agent_builder_configure_channel` for removal.\n- Model-only changes must preserve existing Brave or SearXNG `config.webSearch`.\n- Empty or placeholder `instructions` values are rejected; derive real instructions from the stated goal instead.\n\n### Verify\n\n- The final payload validates against the Config schema reference.\n- Existing unrelated config, tools, skills, integrations, and memory remain present unless intentionally changed.\n- Existing Brave or SearXNG web search remains present on model-only changes.\n- Credential fields use ids returned by the correct interactive credential tools.\n- Provider tool keys are valid and match the selected model provider.\n\n### Error Recovery\n\n- `stage: \"stale\"`: the result carries the current `config` and `configHash`;\n  re-apply your change to that config and retry once.\n- `stage: \"parse\"`: fix JSON syntax and retry with the same `baseConfigHash`.\n- `stage: \"patch\"`: fix JSON Pointer paths or operation shape and retry with the same `baseConfigHash`.\n- `stage: \"schema\"`: compare the payload against the Config schema reference and retry with the same `baseConfigHash`.\n- `agent_builder_ask_credential` skipped: omit or disable the feature that required it.",
+			"parents": ["agent-builder"],
+			"reference": {
+				"owner": "agent-builder",
+				"path": "references/agent-builder-config.md"
+			}
+		},
+		{
+			"id": "agent-builder-custom-tools",
+			"name": "Agent Builder Custom Tools",
+			"description": "Use when building, updating, or registering a pure computation, validation, formatting, or planning tool with agent_builder_build_custom_tool. Not for HTTP, API, crawling, filesystem, or other live integrations — use node or workflow tools for those.",
+			"recommendedTools": [
+				"agent_builder_build_custom_tool",
+				"agent-context",
+				"agent_builder_patch_config"
+			],
+			"allowedTools": [
+				"agent_builder_build_custom_tool",
+				"agent_builder_ask_questions",
+				"agent-context",
+				"agent_builder_patch_config",
+				"agent_builder_write_config"
+			],
+			"instructions": "## Purpose\n\nUse this to write and register a custom code tool for pure computation logic\nthat no node, workflow, or MCP tool covers.\n\n## Workflow\n\n- Use `agent_builder_build_custom_tool` with `export default new Tool(...)` and imports only from `@n8n/agents` and `zod`.\n- Do not use custom tools for live website crawling, HTTP fetching, API calls, SEO crawlers, or scraping. Use workflow or node tools for those.\n- The returned `id` is the tool name from the code (e.g. `new Tool(\"my_tool\")` → id `\"my_tool\"`).\n- Register the returned id in config: `{ \"type\": \"custom\", \"id\": \"<tool name>\" }`.\n- Tool names must be unique per agent and use only letters, digits, and underscores.\n- To update an existing custom tool (fix a bug, change logic, or rename it): call `agent_builder_build_custom_tool` again with the revised code, then update the config.\n- If the tool name changed since the last build: register the new id AND remove the old `{ type: \"custom\", id: \"<old name>\" }` entry from config.\n- Custom handlers are pure functions: take validated `input`, compute, and return a JSON-serializable value. Do not call `.build()`.\n- Follow this pattern:\n```typescript\nimport { Tool } from '@n8n/agents';\nimport { z } from 'zod';\n\nexport default new Tool('tool_name')\n  .description('What the tool does')\n  .input(z.object({ query: z.string() }))\n  .handler(async ({ query }, ctx) => {\n    return { result: query.toUpperCase() };\n  });\n```\n- Custom handlers run in a V8 isolate. No network, filesystem, process, Buffer, fetch, timers, wall-clock waiting, or host I/O.\n- Some globals may exist as stubs: `setTimeout` fires synchronously, `console.log` goes nowhere, and `TextEncoder.encode` returns its input unchanged.\n- Safe globals include `Math`, `Date`, `JSON`, `RegExp`, `Array`, `Object`, `Map`, `Set`, `Promise`, typed arrays, and methods on provided values.\n- The handler receives `(input, ctx)`; `ctx.suspend(payload)` pauses for human-in-the-loop flows. Ignore `ctx` otherwise.\n- Execution is capped at 5 seconds and about 32 MB memory. If runtime fails, fix the code from the returned error and call `agent_builder_build_custom_tool` again.\n\n## Gotchas\n\n- `agent_builder_build_custom_tool` stores code only; the config still needs a `{ \"type\": \"custom\", \"id\": \"<tool name>\" }` tool ref.\n- When a tool is renamed, update the config to use the new name and remove the old entry.\n\n## Verify\n\n- Custom tools: returned id equals the tool name; it is registered in config as `{ type: \"custom\", id: \"<tool name>\" }`.",
+			"parents": ["agent-builder"],
+			"reference": {
+				"owner": "agent-builder",
+				"path": "references/agent-builder-custom-tools.md"
+			}
+		},
+		{
+			"id": "agent-builder-external-services",
+			"name": "Agent Builder External Services",
+			"description": "Use when connecting the target agent to an external product: deciding whether Slack, Discord, Linear, Telegram, or another platform is a chat integration/trigger versus a callable service, and adding, removing, or updating chat integrations or MCP servers.",
+			"recommendedTools": [
+				"agent-context",
+				"agent_builder_configure_channel",
+				"agent_builder_ask_credential",
+				"agent_builder_verify_mcp_server",
+				"agent_builder_patch_config"
+			],
+			"allowedTools": [
+				"agent-context",
+				"agent_builder_configure_channel",
+				"agent_builder_ask_credential",
+				"agent_builder_verify_mcp_server",
+				"agent_builder_ask_questions",
+				"agent_builder_patch_config",
+				"agent_builder_write_config",
+				"report_required_artifact",
+				"load_skill"
+			],
+			"instructions": "## Purpose\n\nUse this to connect the target agent to external products across chat\nintegrations (the `integrations` array), MCP servers (`mcpServers`), and\nn8n node tools. Decide the right surface first. For a node tool, load\n`agent-builder-node-tools` and follow that skill.\n\n## Integration vs Callable Tool Decision\n\nUse an integration when the product is the agent's conversation or trigger\nsurface: humans will mention, message, comment to, or resume the agent there,\nor the agent needs to respond in that same platform conversation context.\n\nNative Agent chat integrations are bidirectional within their conversation\ncontext. The integration both receives the triggering message and delivers the\nAgent's replies. Do not add a same-platform node, MCP, or workflow tool merely\nso the Agent can reply, send a normal conversational message, or use interaction\nfeatures already listed in that integration's capabilities.\n\nConfigured integrations also generate their listed context and action tools for\nevery top-level Agent run, including scheduled tasks. A scheduled task can use\nactions such as `send_dm` or `send_channel_message` without an inbound\nmessage. Being proactive, scheduled, or outside an open conversation is never\nby itself a reason to add a same-platform node, MCP, or workflow tool.\n\nUse an MCP, node, or workflow tool when the product is only something the agent\noperates on: searching records, creating tickets, updating objects, or sending a\nbusiness-process notification while the conversation happens elsewhere.\n\nWhen building an agent that should interact with Slack, Discord, Telegram, or\nLinear, use the matching chat integration instead of an MCP, node, or workflow\ntool when the platform is the conversation surface. Add a callable tool only\nfor an explicitly requested operation that is absent from the selected\nintegration's returned capabilities. Compare the exact operation; do not infer\nthat the integration is unavailable merely because the run starts from a task.\n\nExamples:\n\n- Slack integration: the agent should be chatted with in Slack, respond in\n  Slack threads, DM users, message channels, add reactions, or render rich UI\n  to Slack users.\n- Discord integration: the agent should be mentioned or messaged in Discord,\n  respond in Discord threads or DMs, or render approval buttons there.\n- Telegram integration: the agent should receive or send Telegram messages,\n  continue conversations there, render supported interactive messages, or use\n  `send_dm` to initiate a scheduled message to a known Telegram user ID. The\n  native integration sends incoming photos to the Agent. It also provides\n  `chat_id` and attachment `file_id` values in the message context. Do not\n  create an agent-entrypoint workflow only to access these values.\n- Linear integration: the agent should be triggered from Linear issues/comments,\n  understand the current Linear subject, or reply in the same Linear\n  conversation.\n- Linear callable tools: the agent is triggered from Slack, Preview, a task, or a\n  workflow and only needs to search/create/update Linear tickets via MCP or node\n  tools.\n\nIf `agent-context({ type: \"integrations\" })` does not return the requested conversation\nplatform, do not substitute a platform messaging node as an Agent tool. The\nAgent needs an external channel-bridge workflow instead:\n\n1. Finish the Agent without a native integration for that platform.\n2. When `report_required_artifact` is available, call it once with an\n   `artifact` whose `type` is `\"workflow\"` and `relationship` is\n   `\"agent-entrypoint\"`. Require the\n   platform trigger, Message an Agent using the incoming message and a stable\n   platform conversation/sender identifier as its custom session key, and the\n   platform send action using the Agent's text response.\n3. The bridge invokes the Agent. Never add it to the Agent's `tools` array and\n   never report it as `relationship: \"agent-tool\"`.\n4. If the reporting tool is unavailable, state the same workflow requirement\n   clearly in the final reply so the calling surface can create it.\n\nFor callable (non-chat) services, call `agent-context` with\n`type: \"integrations\"` and `queries` separately per service. Read `kind`\nfrom its `context` data: `\"mcp\"` -> MCP Servers section\nbelow, `\"node\"` -> load `agent-builder-node-tools`.\n\n### Correcting a redundant channel tool\n\nIf the user questions why a same-platform tool exists, inspect the current\nconfig and the integration's returned capabilities before answering. When the\nintegration supplies the tool's purpose, remove the redundant node, MCP, or\nworkflow tool and explain the correction. Do not defend it merely because the\nmessage is proactive, scheduled, or has no current conversation; generated\nactions such as `send_dm` are available without inbound message context.\n\n## Chat Integrations\n\nThe `integrations` array controls how the target agent is triggered.\n\n- These are configured external chat platforms, not built-in Preview chat.\n- Call `agent-context({ type: \"integrations\" })` first.\n- Read the returned `capabilities`, `useIntegrationWhen`, and\n  `useNodeToolWhen` fields before deciding to add an integration.\n- Pick one returned `type` and pass it to `agent_builder_configure_channel` as\n  `integrationType`. ALWAYS use `agent_builder_configure_channel` for chat-channel\n  credentials — never `agent_builder_ask_credential` or a raw config write. The setup UI it\n  shows creates and persists the channel configuration without publishing the\n  agent; do not follow up with `agent_builder_patch_config`/`agent_builder_write_config` to write the\n  credential.\n- During an initial build, never suspend mid-build: defer pending setup to the end of the build, per the Initial Build rules in the `agent-builder` skill. Instead of `agent_builder_configure_channel`: after\n  `agent-context({ type: \"integrations\" })` returns the matching type, add\n  `{ \"type\": \"<integrationType>\", \"credentialId\": \"\" }` to `integrations`\n  in your single initial config write (include a minimal valid draft\n  `settings` object for telegram) so the channel appears in the agent panel\n  as needing setup. If the config is already written, `agent_builder_patch_config` (with\n  the `configHash` from your latest config read or write) adding it to\n  `/integrations/-` instead. Pass\n  the same `integrationType` in the trailing `agent_builder_finish_setup` call's\n  `channels` array — its card configures or skips the channel itself. Do not\n  call `agent_builder_configure_channel` again after `agent_builder_finish_setup` handles the card. If\n  skipped, list it in the closing setup checklist pointing at the channel\n  chip in the agent panel.\n- Preserve existing chat integrations unless the user asked to remove them.\n- To remove an existing chat integration, call `agent-context({ type: \"config\" })` and inspect\n  `config.integrations`.\n- If exactly one existing integration matches the requested platform, remove\n  that entry with `agent_builder_patch_config` by index (or replace `/integrations` with a\n  filtered array when clearer).\n- If multiple existing integrations match the requested platform, ask which one\n  to remove before editing `integrations`.\n- Removing a chat integration means deleting its entry from\n  `integrations[]`. Do not call `agent_builder_configure_channel` to remove a channel.\n\n### Gotchas\n\n- Chat integration types must come from `agent-context({ type: \"integrations\" })`. A channel\n  absent from its result is unsupported for agents — never invent a type, never\n  draft or configure it, and never substitute a workflow node (e.g. a\n  Twilio node) to fake an unsupported chat channel. Instead, explain\n  the channel is unsupported, offer the supported alternatives the tool\n  returned with their `capabilities`, and ask which to use (or whether the\n  user wants a workflow path after the limitation is stated).\n- Do not add a chat integration just because the agent needs CRUD or notifications\n  for that product. Resolve the callable capability through `agent-context`\n  unless the product itself is the chat/trigger context.\n- For recurring or scheduled runs, create a task (`agent_builder_create_tasks`) for the\n  cadence. Keep a requested chat integration, and use its generated action\n  tools when the task sends through that same platform.\n- Omitting `integrations` from a config write preserves the current channels.\n  To remove one, write an explicit filtered array or remove the exact array\n  entry.\n\n## MCP Servers\n\nMCP servers expose external tool catalogs to the target agent over HTTP. They\nlive on the top-level `mcpServers` array, and each entry maps 1:1 to a\nconnected MCP server. Use this section when `agent-context` returned\n`kind: \"mcp\"`, the user explicitly asks to add or edit an MCP server, or the\nuser provides or asks to configure a custom MCP server.\n\n### Discovery and setup\n\nFor a generic external-service request, search integrations before MCP setup.\nIf no result is available yet, call `agent-context` with\n`type: \"integrations\"` and queries matching the requested service.\nResolve one requested service per call; use `queries` only for alternative\nsearch terms for that service.\n\n- If it returns `kind: \"node\"` for a generic service request, load\n  `agent-builder-node-tools` and follow it with the returned node results.\n  Stop this MCP workflow.\n- If it returns `kind: \"node\"` but the user explicitly requested an MCP server,\n  do not silently substitute a node tool. Continue with manual MCP setup by\n  asking for the URL and transport/authentication decision through\n  `agent_builder_ask_questions`.\n- For MCP matches, the `context` data contains\n  `{ kind: \"mcp\", results: [...] }`. Select a result first:\n  - If `results[]` contains one entry, use it as `selectedResult`.\n  - If the request uniquely identifies one entry by `name` or `title`, use\n    that entry as `selectedResult`.\n  - If multiple candidates remain, call `agent_builder_ask_questions` with the candidate\n    titles and descriptions; never choose by array order. During an initial\n    build, do not call `agent_builder_ask_questions` for this: pick the best candidate by\n    title/description relevance yourself, and list the pick as an assumption\n    in your summary. Use the chosen entry as `selectedResult`. If\n    `agent_builder_ask_questions` returns `{ answered: false }`, stop MCP setup without\n    selecting a server, asking for credentials, verifying a connection, or\n    mutating config. Do not re-present the question.\n- Use `name`, `url`, `transport`, `authentication`, `credentialType`,\n  `tools`, and optional `metadata` and `credential` only from `selectedResult`.\n- When `selectedResult.credential` is set, the server runs on Gateway credits and\n  needs no credential: skip the credential step, and use that `credential` unchanged\n  in `agent_builder_verify_mcp_server` and in the `mcpServers` entry.\n- When `selectedResult.aiGatewayCredential` is set, the server can also run on Gateway\n  credits. Use them when the user asks for Gateway credits, or when\n  `agent_builder_list_credentials` with `types: [selectedResult.credentialType]` returns\n  none: set `authentication` to `\"none\"` and `credential` to\n  `selectedResult.aiGatewayCredential`, and skip the credential step. Otherwise follow\n  the steps below.\n\nFollow these steps for the selected MCP result:\n\n1. Credential: call `agent_builder_ask_credential` with a short `purpose`, using\n   `selectedResult.credentialType` as `credentialType`. Never invent\n   credential IDs.\n2. Verify: call `agent_builder_verify_mcp_server` with the selected result's `name`, `url`,\n   `transport`, `authentication`, and optional `metadata`, plus the returned\n   `credentialId` as `credential` when authentication is required.\n3. Capability check: confirm the verified tool names and descriptions cover the\n   capability the user requested.\n4. Write config: call `agent-context({ type: \"config\" })`, then `agent_builder_patch_config` to add the entry to\n   `mcpServers[]` using the patch pattern below. When the entry already\n   exists and verify returned `credentialApplied: true`, skip this step — the\n   credential is already persisted.\n\nDuring an initial build, never suspend mid-build: defer pending setup to the end of the build, per the Initial Build rules in the `agent-builder` skill. For MCP that means: pick the best candidate as an\nassumption (above), then add a draft `mcpServers` entry to your single\ninitial config write (or `agent_builder_patch_config` it to `/mcpServers/-`, with the\n`configHash` from your latest config read or write, if the config is\nalready written) using `name`, `url`, `transport`,\n`authentication`, and `metadata.nodeTypeName` from `selectedResult` with\n`credential` omitted, and skip `agent_builder_verify_mcp_server` — there is nothing to\nauthenticate yet. Include the credential in the trailing `agent_builder_finish_setup` call;\nverify with the returned credential id — on success the tool writes the\ncredential into the matching entry itself (`credentialApplied: true`); no\n`agent-context({ type: \"config\" })`/`agent_builder_patch_config` follow-up for the credential. Existing-agent\nadditions keep the immediate ask + verify flow above unchanged.\n\nIf verification succeeds but the tools do not cover the requested capability\nfor a generic service request, load `agent-builder-node-tools`, call\n`agent_builder_search_nodes` with the same service queries, and follow that skill. Do not\nadd the MCP server merely because its registry entry matched.\n\nFull schema reference:\n\n  name: string [1..64 chars] (required) — Unique display name. The SDK normalizes it when building model-facing tool names\n  description?: string [max 512 chars] — Human-readable server description\n  url: string (required) — MCP server endpoint URL. Empty string means setup is incomplete\n  transport?: \"sse\" | \"streamableHttp\" (default: \"streamableHttp\") — Transport protocol\n  authentication?: \"none\" | \"bearerAuth\" | \"headerAuth\" | \"multipleHeadersAuth\" | \"mcpOAuth2Api\" | string [pattern: ^(?:oAuth2Api|.*OAuth2(?:Api)?)$] (default: \"none\") — Auth method. Named variants or an OAuth2 credential type returned by the registry\n  credential?: string — Credential id from agent_builder_ask_credential. Required when authentication is not \"none\"\n  metadata?: object\n    nodeTypeName?: string — Source node type for registry servers (e.g. @n8n/mcp-registry.github). Enables correct UI form\n  toolPermissions?: object\n    categories: object (required)\n      read: \"always_allow\" | \"require_approval\" | \"blocked\" (required)\n      write: unknown (required)\n    tools?: Record<string, unknown>\n  connectionTimeoutMs?: integer [1..120000] — Connection timeout in milliseconds\n\n### Tool exposure and approval\n\n- Omit `toolPermissions` unless the user explicitly asks to require approval,\n  block a tool or category, or restrict which tools are exposed. Omission\n  allows all MCP tools without approval.\n- Treat requests to expose or allow only named tools as an allowlist. Set both\n  `toolPermissions.categories.read` and\n  `toolPermissions.categories.write` to `\"blocked\"`, then add each selected\n  tool to `toolPermissions.tools` as an `\"always_allow\"` override.\n- For other permission controls, set both\n  `toolPermissions.categories.read` and\n  `toolPermissions.categories.write`. Use `\"always_allow\"` for categories\n  the user did not restrict.\n- Use `\"require_approval\"` when the user asks to approve a category or tool\n  before execution. Use `\"blocked\"` when the user asks to hide or disable it.\n- Use category policies for broad read/write rules. Add `toolPermissions.tools`\n  overrides only for exceptions to those category rules.\n- For an exact tool override, use only an unprefixed `name` from\n  `selectedResult.tools` or a successful\n  `agent_builder_verify_mcp_server` result. Never\n  prepend the server name and never invent MCP tool names.\n\n### Credential flow\n\n- For `bearerAuth`, call `agent_builder_ask_credential` with\n  `credentialType: \"httpBearerAuth\"`.\n- For `headerAuth`, call `agent_builder_ask_credential` with\n  `credentialType: \"httpHeaderAuth\"`.\n- For `multipleHeadersAuth`, call `agent_builder_ask_credential` with\n  `credentialType: \"httpMultipleHeadersAuth\"`.\n- For `mcpOAuth2Api`, call `agent_builder_ask_credential` with\n  `credentialType: \"mcpOAuth2Api\"`.\n\n### Testing the connection\n\nBefore writing to config, call `agent_builder_verify_mcp_server` with server `name`,\n`url`, `transport`, optional registry `metadata`, and (if applicable) the\ncredential id from `agent_builder_ask_credential`.\n\n- Success returns `{ ok: true, tools: [{ name, description }] }`, and when a\n  matching `mcpServers` entry exists, also `credentialApplied: true,\n  configMutated: true, agentId` — the credential is written automatically; do\n  not follow with `agent-context({ type: \"config\" })`/`agent_builder_patch_config` for the credential.\n- When verify succeeds but `credentialApplied: false` and the entry already\n  exists, fall back to `agent-context({ type: \"config\" })` then `agent_builder_patch_config` for the credential.\n- For an explicitly requested filter or selected approval list, copy exact names\n  from the returned tool list following Tool exposure and approval above.\n- Failure returns `{ ok: false, error: \"...\" }`.\n- If verification fails, explain the error and ask the user to check the URL\n  or credentials before proceeding.\n\n### Incomplete setup\n\nThe user can skip the credential prompt, the URL question, or both. Never\ninvent a credential ID or a placeholder URL to fill the gap, and never abort\nthe server addition — always persist what is known and let the user finish\nsetup later:\n\n- Credential skipped (`agent_builder_ask_credential` returned `{ skipped: true }`): omit\n  only the `credential` field.\n- URL skipped: persist `url: \"\"`.\n- Either case: skip `agent_builder_verify_mcp_server` (there is nothing to authenticate or\n  connect to), then `agent-context({ type: \"config\" })` and `agent_builder_patch_config` the entry, preserving\n  every other known field — `name`, `transport`, `authentication`, an\n  already-selected credential, registry `metadata`, and any explicitly\n  configured `toolPermissions`.\n\n### Selecting credentials\n\nWhen using a registry-backed server, always use the `credentialType` returned\nby `selectedResult`.\n\nFor custom MCP servers, if credential type is unknown, ask the user which\ncredential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers\nAuth, or None) via `agent_builder_ask_questions`. Then map to:\n\n- `bearerAuth` -> `agent_builder_ask_credential` with `credentialType: \"httpBearerAuth\"`\n- `headerAuth` -> `agent_builder_ask_credential` with `credentialType: \"httpHeaderAuth\"`\n- `multipleHeadersAuth` -> `agent_builder_ask_credential` with\n  `credentialType: \"httpMultipleHeadersAuth\"`\n- `mcpOAuth2Api` -> `agent_builder_ask_credential` with `credentialType: \"mcpOAuth2Api\"`\n\n### Patch pattern\n\n1. Initialize the array if missing:\n   `{ \"op\": \"add\", \"path\": \"/mcpServers\", \"value\": [] }`\n2. Append each server:\n   `{ \"op\": \"add\", \"path\": \"/mcpServers/-\", \"value\": { ... } }`\n\n### Gotchas\n\n- Server `name` must be unique across `mcpServers` within an agent.\n- Never fabricate `metadata.nodeTypeName`.\n- When `selectedResult` includes `metadata.nodeTypeName`, include\n  `metadata: { nodeTypeName: <selectedResult.metadata.nodeTypeName> }` in the\n  entry so the UI can render the correct server form.\n- A registry match proves server availability, not support for the requested\n  capability; use the verified live tool list for that decision.\n- Describe an MCP server only by its name, or by text the user or the registry\n  gave. If you cannot identify it, do not state what it does.\n\n## Verify\n\n- Configured chat integrations were set up through `agent_builder_configure_channel` or the\n  initial-build `agent_builder_finish_setup` channel card, not `agent_builder_ask_credential` or a manual\n  config write.\n- The chosen integration matches `useIntegrationWhen`; otherwise resolve the\n  callable capability through `agent-context` and use MCP, node, or\n  workflow tools.\n- No node, MCP, or workflow tool duplicates an action listed by a configured\n  chat integration, including for proactive scheduled tasks.\n- Generic non-chat external services were routed through `agent-context`\n  before MCP or node setup.\n- The final `integrations` array keeps unrelated integrations intact and\n  removes only the requested channel entries.",
+			"parents": ["agent-builder"],
+			"reference": {
+				"owner": "agent-builder",
+				"path": "references/agent-builder-external-services.md"
+			}
+		},
+		{
+			"id": "agent-builder-memory",
+			"name": "Agent Builder Memory",
+			"description": "Use for explicit memory changes: Episodic/long-term/cross-session memory, observer/reflector worker models, threshold/budget tuning, or disabling memory. Not for ordinary fresh-agent creation, which uses the default memory config in Memory Guidance.",
+			"recommendedTools": [
+				"agent_builder_ask_embedding_credential",
+				"agent_builder_resolve_llm",
+				"agent_builder_ask_credential",
+				"agent-context",
+				"agent_builder_patch_config"
+			],
+			"allowedTools": [
+				"agent_builder_ask_embedding_credential",
+				"agent_builder_resolve_llm",
+				"agent_builder_ask_credential",
+				"agent_builder_ask_questions",
+				"agent-context",
+				"agent_builder_patch_config",
+				"agent_builder_write_config"
+			],
+			"instructions": "## Purpose\n\nUse this to tune or disable the target agent's memory, or to enable Episodic\nMemory (long-term, cross-session recall).\n\n## Use when\n\n- The user asks to enable, configure, or disable Episodic Memory, long-term\n  memory, prior conversations, remembered decisions, exact artifacts, or\n  cross-session memory.\n- The user asks to tune observer/reflector worker models, token\n  thresholds, render budgets, or the observation log tail limit.\n- The user asks to disable session memory or observational memory.\n\n## Observational Memory Tuning\n\n- Supported observational memory tuning fields: `enabled`, `observerModel`, `reflectorModel`, `observerThresholdTokens`, `reflectorThresholdTokens`, `renderTokenBudget`, `observationLogTailLimit`, and `lockTtlMs`.\n- Memory worker model fields must use object shape: `{ \"model\": \"provider/model-name\", \"credential\": \"<credentialId>\" }`.\n- Only set `observerModel`, `reflectorModel`, or `episodicMemory.reflectorModel` when the user explicitly asks to use a specific model for memory work.\n- Use only credential IDs returned by `agent_builder_resolve_llm` or `agent_builder_ask_credential` for memory worker model fields. Do not invent IDs or copy a main-model credential unless one of those tools returned it for that worker model provider.\n\n## Episodic Memory\n\n- Enable `memory.episodicMemory` only when the user asks for Episodic Memory, long-term memory, prior conversations, remembered decisions, exact artifacts, or cross-session memory.\n- Before enabling it, call `agent_builder_ask_embedding_credential({ credentialType: \"openAiApi\", purpose: \"OpenAI credential for Episodic Memory embeddings\" })`. Without the assistant proxy: During an initial build, never suspend mid-build: defer pending setup to the end of the build, per the Initial Build rules in the `agent-builder` skill. Leave Episodic Memory disabled, include an `openAiApi` entry in the trailing `agent_builder_finish_setup` call, and enable it with the returned credential id — the draft schema requires a credential to enable it.\n- On success, set `memory.episodicMemory = { \"enabled\": true, \"credential\": \"<credentialId>\" }`, using the returned `credentialId` value. This can be a real credential id or `\"managed\"` when the assistant proxy is available. Preserve existing `topK` or `maxEntriesPerRun`.\n- `memory.episodicMemory.credential` is only for OpenAI embeddings. It is separate from the optional `reflectorModel` worker credential.\n- If credential selection is skipped, do not enable Episodic Memory; explain that it needs an OpenAI credential for embeddings.\n- Do not add instructions saying the agent should remember, store, save, or decide what context matters. The runtime handles memory extraction and indexing.\n- If instructions mention Episodic Memory, phrase it as retrieval/use only, e.g. \"Use recalled prior context when relevant to the user's request.\"\n- Do not invent Episodic Memory credential IDs or reuse the main model credential unless `agent_builder_ask_embedding_credential` returned it for this purpose.\n\n## Gotchas\n\n- Session memory and Episodic Memory are different features; do not use one as a substitute for the other.\n- Observational memory is runtime-managed session memory behavior; do not add target-agent instructions telling it how to save observations.\n- A skipped Episodic Memory credential means Episodic Memory stays disabled.\n\n## Verify\n\n- Episodic Memory has an OpenAI credential or `\"managed\"` returned by `agent_builder_ask_embedding_credential`.\n- Existing memory tuning is preserved unless the user asked to change it.",
+			"parents": ["agent-builder"],
+			"reference": {
+				"owner": "agent-builder",
+				"path": "references/agent-builder-memory.md"
+			}
+		},
+		{
+			"id": "agent-builder-node-tools",
+			"name": "Agent Builder Node Tools",
+			"description": "Use whenever adding, removing, or updating an n8n node-backed tool, including agent_builder_search_nodes/agent_builder_get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions, and HTTP Request Tool configuration.",
+			"recommendedTools": [
+				"agent-context",
+				"agent_builder_search_nodes",
+				"agent_builder_get_node_types",
+				"agent_builder_ask_credential",
+				"agent_builder_patch_config"
+			],
+			"allowedTools": [
+				"agent-context",
+				"agent_builder_search_nodes",
+				"agent_builder_get_node_types",
+				"agent_builder_ask_credential",
+				"agent_builder_get_resource_locator_options",
+				"agent_builder_ask_questions",
+				"agent_builder_patch_config",
+				"agent_builder_write_config",
+				"load_skill"
+			],
+			"instructions": "## Purpose\n\nUse this to discover, configure, and wire node tools into the target agent's\n`tools[]`, including `nodeParameters`, credentials, and n8n expressions.\n\n## Web Search vs Direct HTTP Requests\n\nGeneric web search, browsing, research, current-information, and source-finding\nrequests must use `config.webSearch` according to the `agent-builder-config` skill's\nweb-search rules. Do not search integrations or nodes for\nthese requests.\n\nNever add the retired `@n8n/n8n-nodes-langchain.toolHttpRequest`. When the\nuser explicitly requests the HTTP Request Tool or direct HTTP, API, or\nspecific-page fetching, use only `n8n-nodes-base.httpRequestTool`.\n\n### Mandatory HTTP Request URL Gate\n\nUse only an exact URL explicitly supplied by the user for\n`n8n-nodes-base.httpRequestTool`. If the user has not supplied one, you MUST\nask which URL the tool should fetch. During an initial build, add this to the\npending setup and include the URL question in the single trailing `agent_builder_finish_setup`\ncall; add the tool with the returned URL after the user answers. On later\nturns, call `agent_builder_ask_questions` and wait for the answer before\nmutating the config. Do not search for, derive, infer, guess, or invent a URL\nfrom a service name, requested action, documentation, or common API\nconventions. Never add an incomplete tool or use a placeholder URL.\n\n## Workflow\n\n- For a generic external-service request, call `agent-context` with\n  `type: \"integrations\"` and `queries` before node discovery unless an\n  integration search result is already available.\n- If it returns `kind: \"mcp\"`, load `agent-builder-external-services`,\n  follow its MCP Servers section, and stop this node-tool workflow.\n- If it returns `kind: \"node\"`, use its returned node results and call\n  `agent_builder_get_node_types`; do not repeat the same search with `agent_builder_search_nodes`.\n- Fetch every node definition that the build needs in one\n  `agent_builder_get_node_types` call, with all nodes and operations together.\n  Do not fetch one service per call.\n- Call `agent_builder_search_nodes` directly only when the user explicitly requests an n8n\n  node, when refining node results, or when a verified MCP server lacks the\n  requested capability.\n- Never guess node type names.\n- Use the tool node id from discovery, usually ending in `Tool`.\n- Put fixed values in `nodeParameters`; use complete n8n expressions for values the agent should decide at runtime:\n  `={{ $fromAI('message', 'The message to send', 'string') }}`.\n- `n8n-nodes-base.httpRequestTool` requires a fixed `nodeParameters.url`; it\n  does not work with a dynamic or model-selected URL. Never use `$fromAI` in\n  the URL; use it only in other request fields.\n- For stable dynamic selectors, load `agent-builder-resource-locators` and\n  follow it.\n- Never write literal `\"$fromAI\"` or bare `$fromAI`; the node will treat it as the actual value.\n- Do not pipe AI-chosen fields through `$json`.\n- Do not include `inputSchema` or `toolDescription` for node tools.\n- Gateway credits cover many services, including some community nodes. Adding a node tool with its credential slot omitted triggers server-side assignment: for a covered service the server attaches the managed `Gateway credits` credential (`{ id: null, name: \"Gateway credits\", __aiGatewayManaged: true }`) to each required, eligible slot on write — but only when the project has no credential of that type; an existing credential of the type wins and the slot stays empty for the normal credential flow below. Add the tool with the credential slot omitted, then check the slot in the write result: when the server assigned a credential, the result carries the saved `config`; when the result has no `config`, the slot stayed empty.\n- Exception — when the user explicitly asks to run a tool on Gateway credits, write `{ \"id\": null, \"name\": \"Gateway credits\", \"__aiGatewayManaged\": true }` into that credential slot yourself: the server keeps it when the service is covered (even if the user has their own credential of the type) and removes it when not covered — check the `config` in the write result (it is present when the server removed the slot) and resolve a real credential if it was removed.\n- The `Gateway credits` managed credential IS the real, working credential — the tool executes through n8n's gateway on Gateway credits, so NO separate API key is needed. It is NOT a placeholder and NOT \"invalid for the service\", even for a community node. For a slot that the config (from `agent-context({ type: \"config\" })` or a write result) shows populated with it: the slot is fully connected and the tool WILL run. Do NOT call `agent_builder_ask_credential` for it; do NOT include it in `agent_builder_finish_setup`; NEVER clear, remove, or replace it via `agent_builder_patch_config`; and NEVER seek a \"real\" API key to swap in for it. Report the tool as ready, running on Gateway credits — exactly like a managed model. Never tell the user the credential is \"not connected\"/\"not set up\" or that the tool \"won't run until a credential is added\".\n- Only for a required slot that is still empty after the write (a service Gateway credits do not cover) do you resolve a real credential: call `agent_builder_ask_credential` once before the config mutation for an addition to an existing agent. During an initial build, never suspend mid-build: defer pending setup to the end of the build, per the Initial Build rules in the `agent-builder` skill. The trailing `agent_builder_finish_setup` writes the resolved credential into every empty node-tool slot of that type, so do not patch it in yourself, unless the `agent_builder_finish_setup` result lists that slot in `configApplyErrors`. In that case the write failed, so patch the resolved credential into the slot yourself. For resource-locator resolution, follow `agent-builder-resource-locators` after `agent_builder_finish_setup`. Pass the node's credential key as `credentialSlot`. On success, copy the returned `credentials` object directly to `node.credentials`. If skipped, still add the tool and omit only that credential slot.\n- When the agent already has a chat channel configured and the tool needs the same\n  credential type, `agent_builder_ask_credential` reuses the channel's credential automatically —\n  do not ask the user to pick a different one.\n\n## n8n Expressions\n\nNode tool parameters inside `nodeParameters` can use n8n expressions.\nPrefer `$fromAI` whenever the target agent should decide a value at runtime,\nexcept where this skill requires a fixed value, especially the HTTP Request\nTool URL.\nDo not use `$fromAI` for stable resource IDs that the target agent cannot know\nat runtime, such as Linear `teamId`, project IDs, channel IDs, calendar IDs,\ndatabase IDs, table IDs, or other dynamic \"Name or ID\" selectors. Resolve those\nwith the `agent-builder-resource-locators` skill, `agent_builder_ask_credential`, and\n`agent_builder_get_resource_locator_options`; write the returned `parameterValue` into\n`nodeParameters`.\n\n- `={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}`\n- `={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}`\n- `={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('enabled', 'Whether to enable this option', 'boolean') }}`\n- `={{ $now.toISO() }}` for current date/time.\n- `={{ $today }}` for the start of today.\n\nAlways wrap expressions in `={{ }}`. Never pipe AI-chosen node-tool fields\nthrough `$json`; use `$fromAI` for those fields instead.\n\n## Gotchas\n\n- Do not include `inputSchema` or `toolDescription` for node tools.\n- `$fromAI(...)` placeholders define the node tool input schema; do not add it manually.\n- Follow `agent-builder-resource-locators` for dynamic selector lookup,\n  credentials, and `parameterValue` handling.\n- If a required node-tool credential is skipped, add the tool and omit only that credential slot.\n- Node tools execute inline, so never use waiting operations such as `sendAndWait`\n  or `dispatchAndWait`. When the user requests human approval, configure the\n  intended non-waiting operation and set `requireApproval: true` on the tool.\n\n## Verify\n\n- Generic external-service requests were routed through `agent-context`\n  before node setup.\n- Node tools use discovered tool node ids and valid node parameters.\n- HTTP Request Tools use a fixed URL supplied by the user.",
+			"parents": ["agent-builder"],
+			"reference": {
+				"owner": "agent-builder",
+				"path": "references/agent-builder-node-tools.md"
+			}
+		},
+		{
+			"id": "agent-builder-resource-locators",
+			"name": "Agent Builder Resource Locators",
+			"description": "Use when adding or changing node tools with stable dynamic selector fields: resourceLocator, loadOptionsMethod, loadOptions routing, \"Name or ID\" parameters, teamId, channelId, projectId, calendarId, databaseId, tableId, model selectors, or when agent_builder_write_config/agent_builder_patch_config rejects $fromAI on a dynamic selector.",
+			"recommendedTools": [
+				"agent_builder_search_nodes",
+				"agent_builder_get_node_types",
+				"agent_builder_ask_credential",
+				"agent_builder_get_resource_locator_options",
+				"agent-context",
+				"agent_builder_patch_config"
+			],
+			"allowedTools": [
+				"agent_builder_search_nodes",
+				"agent_builder_get_node_types",
+				"agent_builder_ask_credential",
+				"agent_builder_get_resource_locator_options",
+				"agent_builder_ask_questions",
+				"agent-context",
+				"agent_builder_patch_config",
+				"agent_builder_write_config"
+			],
+			"instructions": "## Purpose\n\nUse this to set node-tool parameters that must be resolved at build time through\nnode metadata and live options. These fields represent stable IDs or resource\nlocator values that the target agent cannot reliably guess at runtime.\n\n## Use when\n\n- You are adding or changing a node tool and a parameter is a stable resource\n  selector, such as Linear `teamId`, Slack channel, project, calendar, board,\n  database, table, model, folder, or another \"Name or ID\" field.\n- `agent_builder_get_node_types` shows a parameter with `type: \"resourceLocator\"`,\n  `typeOptions.loadOptionsMethod`, or `typeOptions.loadOptions`.\n- `agent_builder_write_config` or `agent_builder_patch_config` rejects a node parameter with a dynamic\n  selector / `agent_builder_get_resource_locator_options` error.\n\n## Initial-build timing\n\nDuring an initial build, never suspend mid-build: defer pending setup to the end of the build, per the Initial Build rules in the `agent-builder` skill. If the tool needs a credential to resolve a stable\nselector, skip adding that tool for now instead of blocking the rest of the\nbuild. Include the credential in the trailing `agent_builder_finish_setup` call, then run\nthe option lookup with the returned credential in the same turn and write the\nconfig mutation only when the result is unambiguous (an exact or single\nfiltered match). If options remain ambiguous, do not call `agent_builder_ask_questions` —\nleave the tool deferred and add a one-line setup checklist item naming the\npending selection; resolve it in a later turn. In an addition to an existing\nagent, resolve the credential and any ambiguity immediately instead.\n\n## Workflow\n\n1. Inspect the node with `agent_builder_get_node_types`. Use the node results\n   from the `agent-context` integration lookup and the definitions you already\n   fetched. Call `agent_builder_search_nodes` only when no lookup returned the node.\n2. Identify dynamic selectors from node metadata. Treat these as build-time\n   lookup fields:\n   - `type: \"resourceLocator\"`\n   - `typeOptions.loadOptionsMethod`\n   - `typeOptions.loadOptions`\n   - labels such as \"Name or ID\" when they map to stable resource IDs\n3. Build the current static `nodeParameters` first: `resource`,\n   `operation`, authentication mode, and any parent selectors already known.\n   Dynamic lookups often depend on those values.\n4. If the node needs credentials, call `agent_builder_ask_credential` before resolving the\n   selector. Pass the returned `credentials` object to\n   `agent_builder_get_resource_locator_options`.\n5. Call `agent_builder_get_resource_locator_options` with:\n   - `nodeType` and `nodeTypeVersion` from discovery\n   - `parameterPath`, for example `teamId` or `additionalFields.teamId`\n   - current `nodeParameters`\n   - returned `credentials`, when available\n   - `filter` when the user named a specific team, channel, project, or object\n6. If results are ambiguous, use `agent_builder_ask_questions` with the returned option\n   names (existing agents only — during an initial build, defer per\n   Initial-build timing above). If there are many pages, retry with\n   `paginationToken` or a narrower `filter`.\n7. Write the selected result's `parameterValue` exactly into\n   `nodeParameters`. For resource locators this is an object with `__rl`,\n   `mode`, and `value`; for classic dynamic options this is the raw ID/value.\n\n## Rules\n\n- Do not use `$fromAI` for stable dynamic selectors. The target agent usually\n  cannot know private workspace IDs such as Linear team IDs.\n- Use `$fromAI` for runtime content values the target agent should decide,\n  such as issue title, message body, description, query text, priority chosen\n  from user context, date ranges, counts, or booleans.\n- Never invent resource IDs, credential IDs, node type names, parameter paths,\n  or provider tool keys.\n- If `agent_builder_get_resource_locator_options` returns `missing_credentials`, call\n  `agent_builder_ask_credential` for one of the returned credential slots and retry. Do not\n  fall back to `$fromAI` for a required stable selector.\n- If the user skips credentials and no exact ID is otherwise available, explain\n  that the selector cannot be resolved yet. Ask for the credential or exact ID\n  instead of hiding the problem behind `$fromAI`.\n- Resolve parent selectors before child selectors. For example, resolve a\n  workspace/team/project before fields that depend on it.\n\n## Recovery From Config Errors\n\nWhen `agent_builder_write_config` or `agent_builder_patch_config` rejects a dynamic selector using\n`$fromAI`:\n\n1. Read the error path to find the offending node parameter.\n2. Inspect the node metadata if needed.\n3. Resolve the parameter with `agent_builder_get_resource_locator_options`.\n4. Patch the config by replacing only that parameter with the returned\n   `parameterValue`.\n\n## Example\n\nFor a Linear \"Create Issue\" node tool:\n\n1. Use `resource: \"issue\"`, `operation: \"create\"`, and the selected\n   authentication mode in `nodeParameters`.\n2. Call `agent_builder_ask_credential` for the Linear credential slot.\n3. Call `agent_builder_get_resource_locator_options` for `parameterPath: \"teamId\"` with\n   those `nodeParameters` and credentials.\n4. Write the selected team's `parameterValue` to `teamId`.\n5. Use `$fromAI` for runtime issue content such as `title` and\n   `additionalFields.description`.\n\n## Verify\n\n- Every required stable selector has a resolved `parameterValue`, not\n  `$fromAI`.\n- Runtime content fields still use `$fromAI` where the target agent should\n  decide them.\n- Node credentials come from `agent_builder_ask_credential`; no credential IDs are invented.\n- A validation error about dynamic selectors has been fixed by replacing the\n  rejected field, not by changing unrelated config.",
+			"parents": ["agent-builder"],
+			"reference": {
+				"owner": "agent-builder",
+				"path": "references/agent-builder-resource-locators.md"
+			}
+		},
+		{
+			"id": "agent-builder-sub-agents",
+			"name": "Agent Builder Sub-Agents",
+			"description": "Use when configuring inline or saved sub-agent delegation for the target agent, selecting same-project sub-agents, or changing subAgents.maxChildren.",
+			"recommendedTools": [
+				"agent-context",
+				"agent_builder_ask_questions",
+				"agent_builder_patch_config"
+			],
+			"allowedTools": [
+				"agent-context",
+				"agent_builder_ask_questions",
+				"agent_builder_patch_config",
+				"agent_builder_write_config"
+			],
+			"instructions": "## Purpose\n\nUse this to configure how the target agent delegates focused subtasks through\n`delegate_subagent`.\n\nThe target agent can always delegate bounded subtasks through `delegate_subagent`.\nDo not write a flag to enable or disable delegation.\n\n## Inline vs saved sub-agents\n\nThe target agent can call `delegate_subagent` with `subAgentId: \"inline\"`\nwithout any saved-agent refs. Inline subagents are ad-hoc child agents for\none-off focused tasks.\n\n`subAgents.agents` is only for optional saved n8n Agent specialists that the\ntarget agent may select by id when they are a better fit than an inline subagent.\n\n## When to configure\n\n- Use `subAgents.maxChildren` only when the user asks to limit or increase how\n  many child sub-agent runs can execute at the same time.\n- `subAgents.maxChildren` must be an integer from 1 to 20. When unset, it defaults to 10.\n- `subAgents.maxChildren` limits delegate parallelism, not the total number of\n  delegated tasks in a run. It is not the same as `config.toolCallConcurrency`.\n- Do not create fields such as `subAgents.maxConcurrentDelegations`,\n  `delegationConcurrency`, or `delegateConcurrency`.\n- Add saved subagent refs only when the user asks to use specific agents,\n  reusable specialists, named helper agents, or saved-agent delegation.\n\n## Saved sub-agent workflow\n\n1. Call `agent-context({ type: \"config\" })` to get the target agent's id.\n   Then call `agent-context({ type: \"agents\" })` to discover same-project agents.\n   Exclude the target id from the result. Do not write agent ids\n   from memory, prose, or user-entered free text.\n2. If other agents are available and the user has not named exact agents,\n   call `agent_builder_ask_questions` with one `type: \"multi\"` question whose `options`\n   are the returned agent names. Map each selected option back to the\n   matching `agentId` from the `agent-context({ type: \"agents\" })` result.\n3. If no other agents are available, do not configure saved subagents. Inline\n   delegation still works without saved-agent refs.\n4. Determine the parent-owned routing guidance for each selected saved\n   subagent. Store it as `useWhen`, for example\n   `{ \"agentId\": \"<returned-agent-id>\", \"useWhen\": \"Use for billing-policy questions and invoice investigations.\" }`.\n5. If it is unclear when a selected saved subagent should be used, ask the user\n   a follow-up before patching `subAgents.agents`. Do not invent vague routing\n   guidance.\n6. Call `agent-context({ type: \"config\" })`.\n7. Patch selected saved agents into `subAgents.agents`. Avoid duplicates.\n\nExample patch flow:\n\n1. `agent-context({ type: \"config\" })`, then `agent-context({ type: \"agents\" })`.\n2. If it returns one or more other agents and the user has not named exact ones, call\n   `agent_builder_ask_questions({ questions: [{ type: \"multi\", ... }] })` with those agents\n   as options.\n3. If the user's request does not make the routing rule clear, ask when each\n   selected saved subagent should be used.\n4. `agent-context({ type: \"config\" })`.\n5. `agent_builder_patch_config(...)` adding selected\n   `{ \"agentId\": \"<returned-agent-id>\", \"useWhen\": \"Use for ...\" }` refs to\n   `/subAgents/agents`.\n\n## Rules\n\n- Saved subagents use their current draft in Preview and test sessions, and their\n  published version in production sessions. Delegating to a never-published agent\n  fails in production, so tell the user to publish saved subagents the target\n  agent relies on before production use.\n- If the resumed values include text that is not one of the listed agent ids,\n  do not persist it as an agent id; ask a follow-up.\n- `useWhen` is relationship-specific routing guidance owned by this parent\n  config. It is not the child agent's global description.\n- Write `useWhen` only when the intended routing is clear from the user's\n  request or an explicit follow-up answer.\n- Every new or updated saved subagent ref must include `useWhen`.\n- Good `useWhen` values are concrete and intent-oriented, such as\n  \"Use for invoice investigations and payment status checks.\"\n- Do not write vague values such as \"Use when helpful\", \"Use for tasks\", or\n  \"Use for this agent.\"\n- Do not add custom tools, custom instructions, or custom schema fields to\n  simulate subagents.\n- Preserve existing `subAgents.agents` refs unless the user explicitly asks to\n  change saved subagents. Preserve existing `useWhen` values when keeping refs.\n\n## Inline model mappings\n\n`subAgents.modelsByDifficulty` is only for inline subagents. Saved subagents\nkeep using their own saved model and credential.\n\n- Valid difficulty keys are only `low`, `medium`, and `high`.\n- Each configured mapping must include both `model` and `credential`.\n- Missing difficulty mappings fall back to the parent agent model at runtime.\n- Do not add display labels, provider names, unknown difficulty keys, or extra\n  fields inside difficulty mappings.\n\nExample shape:\n\n```json\n\"subAgents\": {\n  \"modelsByDifficulty\": {\n    \"low\": { \"model\": \"openai/gpt-4o-mini\", \"credential\": \"credential-id\" },\n    \"high\": { \"model\": \"anthropic/claude-sonnet-4-5\", \"credential\": \"credential-id\" }\n  }\n}\n```\n\n## Verify\n\n- Inline delegation still works even when `subAgents.agents` is absent.\n- Saved refs use only returned same-project agent ids.\n- New or updated saved refs include concrete `useWhen` guidance.\n- Any `subAgents.maxChildren` value stays within 1 to 20.",
+			"parents": ["agent-builder"],
+			"reference": {
+				"owner": "agent-builder",
+				"path": "references/agent-builder-sub-agents.md"
+			}
+		},
+		{
+			"id": "agent-builder-target-skills",
+			"name": "Agent Builder Target Skills",
+			"description": "Use when creating or editing target-agent skills: the user asks for skills, the agent has two or more separate jobs with their own procedures, or an existing skill needs a change; not for an agent with one job, builder guidance, or universal target-agent instructions.",
+			"recommendedTools": [
+				"agent-context",
+				"agent_builder_update_skill",
+				"agent_builder_create_skills",
+				"agent_builder_ask_questions",
+				"agent_builder_patch_config"
+			],
+			"allowedTools": [
+				"agent-context",
+				"agent_builder_update_skill",
+				"agent_builder_create_skills",
+				"agent_builder_ask_questions",
+				"agent_builder_patch_config",
+				"agent_builder_write_config"
+			],
+			"instructions": "## Purpose\n\nUse this to create and edit load-on-demand instructions for the target agent.\nBy default, the target agent's behavior lives in its main instructions. Skills\nare for agents whose jobs are too separate or too long to share one set of\ninstructions.\n\n## Use when\n\n- The user asks for skills.\n- The target agent has two or more separate jobs with their own procedures,\n  for example creating tickets, reviewing images, and generating reports.\n  Create one skill per job; infer this split without asking the user to label\n  anything a skill.\n- The target agent has two or more jobs, and one job's procedure is long or\n  conditional enough that it would bury the general rules in the main\n  instructions.\n- The user asks to change how the target agent performs a function that an\n  attached skill already owns.\n\n## Don't use when:\n\n- The target agent has one job. Put its rules and steps in the main\n  instructions, even when they run to several paragraphs.\n- The behavior is the target agent's identity, overall purpose, or a rule that\n  truly applies to every operation; keep that in the main instructions.\n- The request changes only a tool, integration, model, or memory setting and\n  does not add or change how the target agent performs a function.\n\n## Description (routing contract)\n\nThe description is the routing contract — the only text the agent sees when deciding whether to load this skill, so it must be specific: state what the skill does AND the concrete situations or keywords that should trigger it (e.g. \"Use when the user asks to …\"), plus when NOT to use it where helpful. A vague description means the skill never loads.\n\n## Skill body format (required)\n\nThe body is loaded only after the skill triggers, so it must be a self-contained, actionable operating manual. Follow this exact Markdown structure, filling each applicable section with concrete, specific content — no placeholders or angle-bracket text. Do NOT put \"when to use\" triggers here; those belong in the description:\n\n## Overview\n<1-2 sentences: what the agent should do when this skill is loaded, and the outcome it produces.>\n\n## Inputs\n<What the agent needs before starting — required inputs, tools, credentials, or context — and how to obtain them. Write \"None\" if there are no prerequisites.>\n\n## Steps\n1. <First action — specific and actionable.>\n2. <Next action.>\n\n## Rules\n- <A constraint or guideline the agent must always follow.>\n\n## Example\n<A concrete, representative example: the input and the expected output or result.>\n\n## Gotchas\n<Common mistakes or edge cases, and how to handle them.>\n\n## Fill the template with assumptions (required)\n\nDo NOT create or update a skill until you have enough concrete domain detail to\nwrite a genuinely useful skill: a specific routing description and a body whose\napplicable sections are filled with real content (the actual steps, rules,\nexamples, and edge cases). Derive missing domain detail from the user's\nstated goal as stated assumptions, and list them in your summary. Use\n`agent_builder_ask_questions` only when even a reasonable assumption is impossible — never\nduring an initial build: add the open decision to the pending setup\ninstead, per the Initial Build rules in the `agent-builder` skill. Never create a\nplaceholder or vague skill.\n\n## Workflow\n\n- Classify requested behavior before writing: identity, overall purpose,\n  universal rules, and the procedure of a single-job agent stay in main\n  instructions; each separate job of a multi-job agent becomes a skill.\n- Call `agent-context({ type: \"config\" })` and use its `skills` refs as the authoritative set of\n  skills attached to the target agent.\n- Call `agent-context({ type: \"skills\" })` once and compare its metadata with the attached ids from\n  the config. Use each description as the routing contract to identify whether\n  an attached skill already owns the capability. Do not read every skill body.\n- Call `agent-context({ type: \"skill\", skillId: \"<id>\" })` only for the relevant attached skill. Its default response\n  includes reference paths and sizes but omits reference content; request\n  specific `referencePaths` only when that content is needed.\n- Call `agent_builder_update_skill` for an existing capability, changing only the supplied\n  fields and preserving its id and existing config reference. Pass the\n  `skillHash` from the `agent-context({ type: \"skill\", skillId: \"<id>\" })` result you based the change on as\n  `baseSkillHash`; on a stale skill error, read the skill again and retry once.\n  To change part of the body, pass `instructionEdits` with exact `oldText`\n  copied from the current body and its `newText`. Send `instructions` only\n  when you rewrite most of the body. If an edit fails, nothing changed: fix\n  `oldText` so it matches exactly one place and retry with the same\n  `baseSkillHash`.\n  Do not create a replacement skill. Pass `null` for `references` to remove\n  all references; do not pass an empty array. The skill can be shared with other\n  agents: an update saves its next version for every agent that uses it. When replacing `references`, first read the content of every existing\n  reference that must be preserved, because the field is replaced as a whole.\n- Only call `agent_builder_create_skills` when no attached skill owns the capability. Fill the\n  domain detail you need, deriving missing detail from the goal as stated\n  assumptions so each description and applicable body section is concrete.\n- Write each skill's `description` as the routing contract and `instructions`\n  using the template above. Put all \"when to use\" / \"when not to use\" guidance\n  in the description, never in the body (the body is invisible until the skill\n  loads).\n- For new skills, call `agent_builder_create_skills` once with a `skills` array containing every skill you\n  currently know how to write — do not spread multiple fully-specified skills\n  across separate calls. A single skill is still a one-item array.\n- `agent_builder_create_skills` stores the skill bodies and attaches a\n  `{ \"type\": \"skill\", \"id\": \"<returned id>\" }` ref per skill to `skills`. Do\n  not patch those refs in yourself. The agent config must already exist. The\n  batch is all-or-nothing: an invalid or duplicate-named skill rejects the\n  whole call.\n- It returns the new `configHash`. Use it as the `baseConfigHash` of your\n  next config write; do not read the config again first.\n\n## Extended fields\n\n- Add `references` for longer markdown-only supporting files under\n  `references/...`, such as rubrics, examples, policies, templates, or\n  checklists. References are not automatically loaded when the skill loads.\n  If you add references, the main `instructions` must say exactly when to load\n  each reference by path.\n- Example reference load rules: \"Before scoring renewal risk, load\n  `references/risk-rubric.md`\"; \"Before drafting negotiation copy, load\n  `references/negotiation-playbook.md`\"; \"Before asking intake questions, load\n  `references/intake-checklist.md`\".\n- Omit fields you cannot fill confidently. Do not invent tool names or file paths.\n- Scripts are not supported in this phase. Do not pass scripts or non-markdown\n  linked files to `agent_builder_create_skills` or `agent_builder_update_skill`.\n\n## Rules\n\n- Write descriptions as intent-oriented \"Use when...\" guidance with concrete\n  triggers, contexts, and boundaries.\n- Keep skill bodies narrow, operational, and verifiable.\n- Do not rely on a body \"Use when\" section to trigger the skill; the body is\n  not visible until after the skill is selected.\n- Include concrete gotchas that prevent predictable target-agent mistakes.\n- Do not use target-agent skill tools for builder instructions. These skills\n  belong to the target agent.\n\n## Gotchas\n\n- `agent_builder_create_skills` already attaches its skills; do not add a second ref for the\n  same id with `agent_builder_patch_config`.\n- `agent_builder_update_skill` edits the existing body in place and needs no config patch.\n- A skill that is useful for every request probably belongs in instructions, not in `skills`.\n- A vague description creates a vague skill, even if the body is excellent.\n- Do not create placeholder or vague skills; derive missing domain details from\n  the stated goal as assumptions instead.\n- Do not call `agent_builder_create_skills` once per skill when several are ready — batch them\n  into one call so the whole set is stored in a single round trip.\n\n## Verify\n\n- `agent_builder_create_skills` returned `ok: true`, so every new skill id is attached in\n  config.\n- Each skill description clearly states when it should load.\n- Each body follows the template, with each applicable section filled with\n  concrete content (no placeholders), and tells the target agent what to do when\n  the skill is loaded.",
+			"parents": ["agent-builder"],
+			"reference": {
+				"owner": "agent-builder",
+				"path": "references/agent-builder-target-skills.md"
+			}
+		},
+		{
+			"id": "agent-builder-target-tasks",
+			"name": "Agent Builder Target Tasks",
+			"description": "Use when the user wants to create or change something the target agent runs on a recurring schedule (a \"task\"). Not for one-off requests, chat/event triggers, or config/tool/skill/model edits.",
+			"recommendedTools": [
+				"agent_builder_create_tasks",
+				"agent-context",
+				"agent_builder_update_task",
+				"agent_builder_ask_questions",
+				"agent_builder_patch_config",
+				"agent_builder_publish_agent"
+			],
+			"allowedTools": [
+				"agent_builder_create_tasks",
+				"agent-context",
+				"agent_builder_update_task",
+				"agent_builder_ask_questions",
+				"agent_builder_patch_config",
+				"agent_builder_write_config",
+				"agent_builder_search_nodes",
+				"agent_builder_get_node_types",
+				"agent_builder_ask_credential",
+				"agent_builder_publish_agent"
+			],
+			"instructions": "## Purpose\n\nUse this to create recurring scheduled tasks with `agent_builder_create_tasks`, discover\nthem with `agent-context({ type: \"tasks\" })`, and edit their saved bodies with `agent_builder_update_task`.\nA task = a name + an objective (what the agent does each run) + a cron schedule,\nstored as a `{ type: \"task\", id, enabled }` ref in the agent config\n(`config.tasks`) plus a saved body. The config is the source of truth for\nmembership and enabled state.\n\n## Use when\n\n- The user wants the agent to do something automatically on a schedule\n  (\"every morning\", \"each Monday\", \"hourly\", etc.).\n- There is a clear, repeatable objective the agent can carry out unattended.\n- The user wants to rename, reschedule, or change the objective of an existing\n  scheduled task.\n\n## Don't use when\n\n- The request is a one-off action, a chat/event trigger, or a\n  config/tool/skill/model edit.\n\n## Objective format (required)\n\nThe objective is the run-specific user message for each unattended run. Agent Instructions still apply and configured Skills remain available, so do not repeat universal rules or copy reusable procedures into the objective. The schedule is separate metadata in cronExpression and must never be repeated in the objective. It must be self-contained from the current builder chat and follow this exact Markdown structure, with every section filled in with concrete, specific content — no placeholders or angle-bracket text:\n\n## Objective\n<One sentence: the run-specific outcome to achieve and why it matters. Do not repeat the agent's overall purpose.>\n\n## Context\n<Run-specific inputs, data sources, and data lookback window, such as \"items created since the previous run\". Do not state when the task runs; its cadence belongs only in cronExpression.>\n\n## Steps\n1. <First task-specific action or configured skill/capability to use.>\n2. <Next task-specific action. Do not copy reusable procedures from Agent Instructions or Skills.>\n\n## Output\n<The exact format of the result AND where to deliver it (e.g. \"email a summary to ops@example.com\", \"post to Slack #alerts\", \"append a row to the tracking sheet\"). The run is unattended, so the agent must actively deliver the result somewhere.>\n\n## Constraints\n<Task-specific scope limits, what to avoid, and what to do when there is nothing to act on, such as \"if there are no new items, do nothing\".>\n\n## Success criteria\n<A verifiable definition of done for a single run.>\n\n## Fill the template with assumptions (required)\n\nDo NOT call `agent_builder_create_tasks`, or replace an objective with `agent_builder_update_task`, until\nBOTH of these are true for it:\n\n1. You can fill EVERY section of the objective template above with concrete,\n   specific content — no placeholders, nothing left to \"refine\n   later\". The objective must stand on its own from the current builder chat,\n   but the target Agent Instructions still apply and its configured Skills\n   remain available. Do not repeat universal rules or copy reusable procedures.\n   When the user did not specify a detail, derive it from the goal as a stated\n   assumption and list it in your summary.\n2. The schedule is concrete — how often and at what time it should run. If\n   the user did not specify a cadence, pick a sensible default and state it\n   as an assumption.\n\nUse `agent_builder_ask_questions` only when even a reasonable assumption is impossible —\nnever during an initial build: add the open decision to the pending setup\ninstead, per the Initial Build rules in the `agent-builder` skill. Never create a\nplaceholder or \"refine-it-later\" task.\n\n## Workflow\n\n- For an existing task, call `agent-context({ type: \"tasks\" })` to resolve its current id and body.\n  Then call `agent_builder_update_task` with only the fields the user asked to change. Never\n  rewrite the objective for a name-only or schedule-only edit.\n- For each new or replacement objective, fill every template section with\n  run-specific details. Do not duplicate Agent Instructions or Skill bodies;\n  name a configured capability only when it helps route the work.\n- Make sure the agent already has every capability the steps need (an\n  integration, node/workflow tool, or web search). Configured chat integrations\n  automatically generate their context and action tools in scheduled runs too.\n  If the task sends through a configured platform and the integration lists the\n  needed action (for example `send_dm`), use that action; do not add a\n  same-platform node, MCP, or workflow tool. Add a tool only when the exact\n  operation is not supplied by an existing integration.\n- Translate each cadence into a valid 5-field cron expression (e.g. daily 09:00\n  -> \"0 9 * * *\"; weekdays 08:30 -> \"30 8 * * 1-5\"; hourly -> \"0 * * * *\").\n  Keep this cadence out of the objective; only a data lookback window belongs\n  in its Context.\n- Set `timezone` to the IANA zone whenever the user names a timezone or a\n  location (\"9am in Tokyo\" -> \"Asia/Tokyo\"); omit it to run on the instance\n  timezone.\n- Call `agent_builder_create_tasks` once with a `tasks` array containing every task you\n  currently know how to write — do not spread multiple fully-specified tasks\n  across separate calls. A single task is still a one-item array.\n- On `{ ok: false, errors }` (for example an invalid cron), fix the input and\n  retry the failed operation. An invalid task rejects the whole\n  `agent_builder_create_tasks` batch.\n\n## Rules\n\n- Every objective must be self-contained from the builder chat and unambiguous,\n  without repeating universal instructions or reusable skill procedures.\n- Use a short, descriptive name per task.\n- One task = one objective + one schedule. Include multiple tasks in the same\n  `agent_builder_create_tasks` call for multiple recurring jobs.\n\n## Gotchas\n\n- `agent_builder_create_tasks` adds a `{ type: \"task\", id, enabled }` ref per task to\n  `config.tasks` and creates each task body. Tasks are enabled by default and\n  only start running once the agent is (re)published via `agent_builder_publish_agent`; tell\n  the user this when relevant, and call `agent_builder_publish_agent` when they ask to publish\n  or make the agent live.\n- `agent_builder_update_task` preserves the task id and config ref. Its draft changes affect\n  scheduled runs after the agent is (re)published.\n- To disable or remove a task, edit `config.tasks` with `agent_builder_patch_config` (set\n  `enabled: false`, or drop the ref). Changes take effect on the next\n  `agent_builder_publish_agent`.\n- `agent_builder_create_tasks` does not add config tools. This does not mean a scheduled\n  message needs a messaging node: configured integrations supply their generated\n  action tools at runtime even when the task has no inbound conversation.\n- A proactive or scheduled send through a connected chat platform is not a\n  separate backend integration. Use the channel's `send_dm` or\n  `send_channel_message` action when available.\n- Never claim that a task requires a same-platform messaging node solely because\n  it starts without an inbound conversation. If such a redundant tool already\n  exists and the integration covers its action, remove it.\n- Do not call `agent_builder_create_tasks` once per task when several are ready; batch them\n  into one call so the whole set is stored in a single round trip.",
+			"parents": ["agent-builder"],
+			"reference": {
+				"owner": "agent-builder",
+				"path": "references/agent-builder-target-tasks.md"
+			}
+		}
+	]
+}

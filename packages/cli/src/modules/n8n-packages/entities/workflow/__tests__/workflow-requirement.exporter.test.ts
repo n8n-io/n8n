@@ -23,7 +23,7 @@ function makeExporter(accessibleWorkflows: Array<{ id: string; name: string }> =
 }
 
 describe('WorkflowRequirementExporter', () => {
-	it('groups requirements by referenced workflow and aggregates usedByWorkflows', async () => {
+	it('groups requirements by referenced workflow and aggregates workflow consumers', async () => {
 		const { exporter, workflowFinder } = makeExporter();
 
 		const result = await exporter.export({
@@ -46,12 +46,15 @@ describe('WorkflowRequirementExporter', () => {
 			{
 				id: 'wf-child',
 				name: 'Child',
-				usedByWorkflows: ['wf-parent-a', 'wf-parent-b'],
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-parent-a' },
+					{ kind: 'workflow', id: 'wf-parent-b' },
+				],
 			},
 			{
 				id: 'wf-grandchild',
 				name: 'Grandchild',
-				usedByWorkflows: ['wf-child'],
+				usedBy: [{ kind: 'workflow', id: 'wf-child' }],
 			},
 		]);
 		// Every referenced workflow is in the package, so no name lookup is needed.
@@ -71,8 +74,8 @@ describe('WorkflowRequirementExporter', () => {
 		});
 
 		expect(result.requirements).toEqual([
-			{ id: 'wf-known', name: 'Known Child', usedByWorkflows: ['wf-parent'] },
-			{ id: 'wf-unknown', usedByWorkflows: ['wf-parent'] },
+			{ id: 'wf-known', name: 'Known Child', usedBy: [{ kind: 'workflow', id: 'wf-parent' }] },
+			{ id: 'wf-unknown', usedBy: [{ kind: 'workflow', id: 'wf-parent' }] },
 		]);
 		expect(result.requirements[1]).not.toHaveProperty('name');
 		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(

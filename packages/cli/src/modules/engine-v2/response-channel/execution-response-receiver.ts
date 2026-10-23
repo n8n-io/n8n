@@ -7,6 +7,6 @@ export interface ExecutionResponseReceiver {
 	receive(
 		executionId: string,
 		handler: (response: ExecutionResponse) => void,
-	): UnsubscribeExecutionResponse;
+	): Promise<UnsubscribeExecutionResponse>;
 	stop(): Promise<void>;
 }

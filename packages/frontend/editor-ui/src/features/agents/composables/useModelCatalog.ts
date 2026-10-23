@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { pinPrioritizedModels } from '@n8n/api-types';
 import {
 	getModelCatalog,
 	getProviderModels,
@@ -178,9 +179,10 @@ export function useModelCatalog() {
 			}
 
 			response[provider] = {
-				models: models
-					.map((model) => toAgentModel(provider, model))
-					.sort((a, b) => a.name.localeCompare(b.name)),
+				models: pinPrioritizedModels(
+					[...models].sort((a, b) => a.name.localeCompare(b.name)),
+					(model) => model.priority,
+				).map((model) => toAgentModel(provider, model)),
 				...(unavailable ? { unavailable: true } : {}),
 			};
 		}

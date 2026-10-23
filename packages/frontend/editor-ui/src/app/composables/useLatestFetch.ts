@@ -6,5 +6,9 @@ export function useLatestFetch() {
 		return () => thisGeneration === generation;
 	}
 
-	return { next };
+	function invalidate(): void {
+		generation++;
+	}
+
+	return { invalidate, next };
 }

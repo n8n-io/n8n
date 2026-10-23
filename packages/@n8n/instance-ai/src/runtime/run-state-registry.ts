@@ -1,5 +1,4 @@
 import type {
-	ComputerUseChannel,
 	InstanceAiBuildMode,
 	InstanceAiPromptConfiguration,
 	InstanceAiCredentialDestinationDecision,
@@ -15,6 +14,7 @@ import type {
 } from './liveness-policy';
 import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
 import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
+import type { SuspendedInstanceContext } from './instance-context-state';
 
 export interface ActiveRunState {
 	runId: string;
@@ -59,6 +59,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	};
 	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
 	runHandoff?: OrchestratorRunHandoffState;
+	/** Keep the injection and gate results across suspension. Resumed segments build no new block. */
+	instanceContext?: SuspendedInstanceContext;
 }
 
 /**
@@ -126,6 +128,7 @@ export interface RunStateTimeoutDetails {
 
 export interface StartRunOptions<TUser> {
 	threadId: string;
+	runId?: string;
 	user: TUser;
 	messageGroupId?: string;
 }
@@ -150,13 +153,14 @@ export class RunStateRegistry<TUser = unknown> {
 	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
 	private readonly threadTimeZones = new Map<string, string>();
 
-	/** Computer Use entries the client reported, reused by follow-up runs. Only the
-	 *  client can see its own rollout and the device, and a resumed or background
-	 *  run has no request of its own to ask. */
-	private readonly threadComputerUseChannels = new Map<string, ComputerUseChannel[]>();
+	/** Whether the client reported the Browser Use entry, reused by follow-up runs.
+	 *  Only the client can see its own device, and a resumed or background run has
+	 *  no request of its own to ask. */
+	private readonly threadBrowserUseAvailable = new Map<string, boolean>();
 
 	/** Build mode captured at user-run entry and reused by follow-up runs. */
 	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
+	private readonly threadSetupPanelEnabled = new Map<string, boolean>();
 
 	private readonly threadObserverThresholds = new Map<string, number>();
 	private readonly threadPromptSelections = new Map<
@@ -171,7 +175,7 @@ export class RunStateRegistry<TUser = unknown> {
 	constructor(private readonly getUserId: (user: TUser) => string) {}
 
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
-		const runId = `run_${nanoid()}`;
+		const runId = options.runId ?? `run_${nanoid()}`;
 		const abortController = new AbortController();
 		const messageGroupId = options.messageGroupId ?? `mg_${nanoid()}`;
 		const now = Date.now();
@@ -495,6 +499,29 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadUsers.get(threadId);
 	}
 
+	/**
+	 * Threads with a live run for this user. Active runs come first, then
+	 * suspended runs. A thread that is both is listed once.
+	 */
+	listLiveThreadIdsForUser(userId: string): string[] {
+		const seen = new Set<string>();
+		const threadIds: string[] = [];
+		const add = (threadId: string) => {
+			if (seen.has(threadId)) return;
+			seen.add(threadId);
+			threadIds.push(threadId);
+		};
+
+		for (const run of this.activeRuns.values()) {
+			if (run.userId === userId) add(run.threadId);
+		}
+		for (const run of this.suspendedRuns.values()) {
+			const ownerId = run.userId ?? this.getUserId(run.user);
+			if (ownerId === userId) add(run.threadId);
+		}
+		return threadIds;
+	}
+
 	setTimeZone(threadId: string, timeZone: string): void {
 		this.threadTimeZones.set(threadId, timeZone);
 	}
@@ -503,14 +530,14 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadTimeZones.get(threadId);
 	}
 
-	/** An omitted list clears it, so a client that stops reporting advertises nothing. */
-	setComputerUseChannels(threadId: string, channels: ComputerUseChannel[] | undefined): void {
-		if (channels === undefined) this.threadComputerUseChannels.delete(threadId);
-		else this.threadComputerUseChannels.set(threadId, channels);
+	/** An omitted value clears it, so a client that stops reporting advertises nothing. */
+	setBrowserUseAvailable(threadId: string, available: boolean | undefined): void {
+		if (available === undefined) this.threadBrowserUseAvailable.delete(threadId);
+		else this.threadBrowserUseAvailable.set(threadId, available);
 	}
 
-	getComputerUseChannels(threadId: string): ComputerUseChannel[] | undefined {
-		return this.threadComputerUseChannels.get(threadId);
+	getBrowserUseAvailable(threadId: string): boolean | undefined {
+		return this.threadBrowserUseAvailable.get(threadId);
 	}
 
 	/** Retain the request mode for internal follow-ups. An omitted mode clears it. */
@@ -521,6 +548,14 @@ export class RunStateRegistry<TUser = unknown> {
 
 	getBuildMode(threadId: string): InstanceAiBuildMode | undefined {
 		return this.threadBuildModes.get(threadId);
+	}
+
+	setSetupPanelEnabled(threadId: string, enabled: boolean): void {
+		this.threadSetupPanelEnabled.set(threadId, enabled);
+	}
+
+	isSetupPanelEnabled(threadId: string): boolean {
+		return this.threadSetupPanelEnabled.get(threadId) === true;
 	}
 
 	/** Per-thread observer threshold; an omitted value clears it. */
@@ -700,8 +735,9 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.threadUsers.delete(threadId);
 		this.threadTimeZones.delete(threadId);
-		this.threadComputerUseChannels.delete(threadId);
+		this.threadBrowserUseAvailable.delete(threadId);
 		this.threadBuildModes.delete(threadId);
+		this.threadSetupPanelEnabled.delete(threadId);
 		this.threadObserverThresholds.delete(threadId);
 		this.threadPromptSelections.delete(threadId);
 
@@ -752,8 +788,9 @@ export class RunStateRegistry<TUser = unknown> {
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
 		this.threadTimeZones.clear();
-		this.threadComputerUseChannels.clear();
+		this.threadBrowserUseAvailable.clear();
 		this.threadBuildModes.clear();
+		this.threadSetupPanelEnabled.clear();
 		this.threadObserverThresholds.clear();
 		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();

@@ -295,6 +295,42 @@ describe('CanvasNodeStatusIcons', () => {
 		expect(queryByTestId('canvas-node-status-success')).not.toBeInTheDocument();
 	});
 
+	describe('deprecated node', () => {
+		const renderDeprecated = () =>
+			renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							data: {
+								issues: { visible: true, validation: ['Parameter "Code" is required.'] },
+								render: { type: CanvasNodeRenderType.Default, options: { deprecated: true } },
+							},
+						}),
+					},
+				},
+			});
+
+		it('should render the deprecated icon ahead of validation issues', () => {
+			const { getByTestId, queryByTestId } = renderDeprecated();
+
+			expect(getByTestId('canvas-node-status-deprecated')).toBeInTheDocument();
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+
+		it('should render execution errors ahead of the deprecated icon', () => {
+			executionIssuesByNodeId.set(
+				'node',
+				computed(() => ['Request failed']),
+			);
+
+			const { getByTestId, queryByTestId } = renderDeprecated();
+
+			expect(getByTestId('node-issues')).toBeInTheDocument();
+			expect(queryByTestId('canvas-node-status-deprecated')).not.toBeInTheDocument();
+		});
+	});
+
 	it('should render correctly for a dirty node that has run successfully', () => {
 		const { getByTestId } = renderComponent({
 			global: {

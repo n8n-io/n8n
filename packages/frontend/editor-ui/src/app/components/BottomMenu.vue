@@ -159,7 +159,7 @@ function onLogout() {
 								:item="{
 									id: 'sign-out',
 									label: i18n.baseText('auth.signout'),
-									icon: 'door-open',
+									icon: 'log-out',
 								}"
 								@click="onLogout"
 							/>

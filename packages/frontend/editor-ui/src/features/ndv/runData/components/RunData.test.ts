@@ -22,6 +22,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import {
 	createRunExecutionData,
+	jsonParse,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type ExecutionStatus,
 	type INodeExecutionData,
@@ -138,34 +139,38 @@ describe('RunData', () => {
 	});
 
 	it('should render data correctly even when "item.json" has another "json" key', async () => {
-		const { getByText, getAllByTestId, getByTestId } = render({
-			defaultRunItems: [
-				{
+		const runItems = [
+			{
+				json: {
+					id: 1,
+					name: 'Test 1',
 					json: {
-						id: 1,
-						name: 'Test 1',
-						json: {
-							data: 'Json data 1',
-						},
+						data: 'Json data 1',
 					},
 				},
-				{
+			},
+			{
+				json: {
+					id: 2,
+					name: 'Test 2',
 					json: {
-						id: 2,
-						name: 'Test 2',
-						json: {
-							data: 'Json data 2',
-						},
+						data: 'Json data 2',
 					},
 				},
-			],
+			},
+		];
+		const { getAllByTestId, getByTestId } = render({
+			defaultRunItems: runItems,
 			displayMode: 'schema',
 		});
 
 		await userEvent.click(getByTestId('ndv-pin-data'));
-		await waitFor(() => getAllByTestId('run-data-schema-item'), { timeout: 1000 });
-		expect(getByText('Test 1')).toBeInTheDocument();
-		expect(getByText('Json data 1')).toBeInTheDocument();
+		await waitFor(() => {
+			expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toEqual(runItems);
+			expect(
+				getAllByTestId('run-data-schema-item').map((item) => jsonParse(item.textContent ?? '')),
+			).toEqual(runItems.map((item) => item.json));
+		});
 	});
 
 	describe('AI-simulated output', () => {
@@ -1885,15 +1890,17 @@ describe('RunData', () => {
 							'<button data-test-id="ndv-pin-data" @click="$emit(\'togglePinData\')"></button>',
 					},
 					NodeErrorView: { template: '<div data-test-id="node-error-view"></div>' },
-					VirtualSchema: {
+					// Stub the async wrapper before Vue loads the schema module.
+					LazyRunDataSchema: {
 						template: `
 							<div data-test-id="run-data-schema-node" :preview-execution="previewExecution">
-								<div v-for="(item, index) in mockItems" :key="index" data-test-id="run-data-schema-item">
+								<div v-for="(item, index) in data" :key="index" data-test-id="run-data-schema-item">
 									{{ item }}
 								</div>
 							</div>
 						`,
 						props: [
+							'data',
 							'previewExecution',
 							'nodes',
 							'mappingEnabled',
@@ -1905,11 +1912,6 @@ describe('RunData', () => {
 							'compact',
 							'truncateLimit',
 						],
-						data() {
-							return {
-								mockItems: ['Test 1', 'Json data 1'],
-							};
-						},
 					},
 				},
 			},

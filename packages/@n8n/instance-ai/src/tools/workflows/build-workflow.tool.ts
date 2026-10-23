@@ -1,22 +1,19 @@
 import {
+	getLegacyBuilderToolNames,
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
-import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
+import { Tool, type RuntimeSkillLoader } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
-import {
-	dropInvalidWorkflowJsonGroups,
-	SDK_IMPORTABLE_FUNCTIONS,
-	type WorkflowJSON,
-} from '@n8n/workflow-sdk';
-import { makeGetNodeTypeForGrouping, UnexpectedError } from 'n8n-workflow';
+import { SDK_IMPORTABLE_FUNCTIONS, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { computeChatModelValidationIssues } from './chat-model-validation';
 import { planVerificationSimulation } from './plan-verification-simulation';
-import { preserveExistingNodePositions } from './preserve-node-positions';
+import { prepareWorkflowForSave } from './prepare-workflow-for-save';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
@@ -26,6 +23,10 @@ import {
 import { resolvedCredentialSchema } from './resolved-credential.schema';
 import { describeSavedPublishState, savedWorkflowStateSchema } from './saved-workflow-state';
 import { isSetupPanelEnabled } from './setup-items';
+import {
+	applyPendingSetupCredentialSelections,
+	markSetupCredentialSelectionsApplied,
+} from './setup-credential-selections';
 import { recordWorkflowSetupState } from './setup-panel-state';
 import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
@@ -69,14 +70,9 @@ import {
 	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
 import {
-	ensureUniqueNodeIds,
-	ensureWebhookIds,
 	getReferencedWorkflowIds,
 	hasLostAllSavedNodeIds,
-	preserveExistingNodeIds,
 	isTriggerNodeType,
-	preserveExistingNodeGroupIds,
-	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
@@ -85,15 +81,14 @@ import {
 	GROUP_DROPPED_OVER_CEILING_CODE,
 	groupingDecisionBlocker,
 	NODE_GROUP_DROPPED_CODE,
-	nodeGroupDroppedWarnings,
 	partitionWarnings,
 	summarizeWorkflowTopLevelItems,
 	topLevelItemsWarning,
 	type ValidationWarning,
 } from './workflow-validation-warnings';
 import { FolderResolutionError } from '../../errors/folder-resolution.error';
+import { isOutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
-import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
 import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
@@ -108,7 +103,7 @@ import {
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
 import { approvalSummarySchema, formatApprovalMessage } from '../approval-copy';
 import { buildChatModelProviderMismatchWarnings } from '../nodes/preferred-chat-model';
-import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
+import { COMPILED_WORKFLOW_TRACE_RUN_NAME, DOMAIN_TOOL_IDS } from '../tool-ids';
 
 /** Over this serialized length only a `truncated` marker is emitted; the seed
  *  consumer falls back to source replay. */
@@ -182,9 +177,9 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Real n8n workflow id from a prior build-workflow or workflows() tool result, used to bind this file on the first update. ' +
+				'Real n8n workflow id from a prior workflow_builder_build_workflow or workflow_builder_workflows() tool result, used to bind this file on the first update. ' +
 					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
-					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
+					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflow_builder_workflows() before inventing one.',
 			),
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
 		approvalSummary: approvalSummarySchema,
@@ -207,7 +202,7 @@ export const buildWorkflowInputSchema = z
 					'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
 					'credential whose secret is invalid or rotated, never as a default. Those slots are ' +
 					'left unresolved instead of being filled from an existing credential or Gateway credits, so ' +
-					'credential setup can offer to create one. Pass the same list to workflows(action="setup").',
+					'credential setup can offer to create one. Pass the same list to workflow_builder_workflows(action="setup").',
 			),
 		executionIntent: z
 			.enum(['one-off', 'reusable'])
@@ -266,7 +261,7 @@ function formatFolderPlacementFailure(failure: FolderResolutionFailure): string 
 			? ` Folders in this project: ${failure.candidates.map((path) => `"${path}"`).join(', ')}.`
 			: '';
 	const retry =
-		' Re-run `build-workflow` with one of those paths as `folderPath`, or ask the user which folder they mean. Do NOT guess a folder from workflow names, and do NOT drop `folderPath` to save at the project root unless the user agrees.';
+		' Re-run `workflow_builder_build_workflow` with one of those paths as `folderPath`, or ask the user which folder they mean. Do NOT guess a folder from workflow names, and do NOT drop `folderPath` to save at the project root unless the user agrees.';
 	switch (failure.reason) {
 		case 'ambiguous':
 			return `Folder "${failure.requested}" matches more than one folder, so the workflow was NOT created.${candidates}${retry}`;
@@ -344,32 +339,38 @@ export function autoImportMissingSdkSymbols(
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 const ONE_OFF_OPERATIONS_SKILL_ID = 'one-off-operations';
 
-const ONE_OFF_OPERATIONS_GUIDANCE =
-	'This one-off build is not complete yet. Follow the one-off instructions in `instructions` now (do NOT load the one-off-operations skill — they are the same instructions). Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.';
+/**
+ * An activated skill rides on this tool result. Without activation, the agent
+ * loads the skill itself.
+ */
+function followInstructionsClause(skillId: string, activated: boolean): string {
+	return activated
+		? `Follow the active ${skillId} skill instructions now (do NOT call load_skill for it — it is already active)`
+		: `Load the ${skillId} skill with load_skill now and follow it`;
+}
 
-const POST_BUILD_FLOW_GUIDANCE =
-	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after `executions(action="list")` and `executions(action="get")` confirm that it succeeded and ran the required path; the user\'s statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
+function oneOffOperationsGuidance(activated: boolean): string {
+	return `This one-off build is not complete yet. ${followInstructionsClause(ONE_OFF_OPERATIONS_SKILL_ID, activated)}. Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.`;
+}
 
-/** Tag-turn-only sections, stripped from the inline copy; follow-up turns load the full skill. */
-const INLINE_SKIPPED_SECTIONS = [
-	'## Verification follow-up',
-	'## Setup follow-up',
-	'## Credentials before build',
-];
+function postBuildFlowGuidance(activated: boolean): string {
+	return `This direct build is not complete yet. ${followInstructionsClause(POST_BUILD_FLOW_SKILL_ID, activated)} before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after \`workflow_builder_executions(action="list")\` and \`workflow_builder_executions(action="get")\` confirm that it succeeded and ran the required path; the user's statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.`;
+}
 
-async function getInlineSkillInstructions(
+/** Activates the follow-up skill, and returns whether it is active. */
+async function activateFollowUpSkill(
 	skillId: string,
-	source: RuntimeSkillSource = loadInstanceAiRuntimeSkillSource(),
-	activate?: RuntimeSkillLoader,
-): Promise<string> {
-	const skill = await (activate ?? source.loadSkill)(skillId);
-	if (!skill) throw new UnexpectedError(`Runtime skill "${skillId}" is missing`);
-	if (activate) return `Follow the active ${skillId} skill instructions.`;
-	return skill.instructions
-		.split(/\n(?=#{1,2} )/)
-		.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
-		.join('\n')
-		.trim();
+	activate: RuntimeSkillLoader | undefined,
+): Promise<boolean> {
+	if (!activate) return false;
+	if (!(await activate(skillId))) throw new UnexpectedError(`Skill "${skillId}" is missing`);
+	return true;
+}
+
+function followUpInstructions(skillId: string, activated: boolean): string {
+	return activated
+		? `Follow the active ${skillId} skill instructions.`
+		: `Load the ${skillId} skill with load_skill.`;
 }
 
 // Discriminated on skillId so a mismatched skillId/reason pair cannot validate.
@@ -379,7 +380,7 @@ const postBuildFlowOutputSchema = z.discriminatedUnion('skillId', [
 		skillId: z.literal(POST_BUILD_FLOW_SKILL_ID),
 		reason: z.literal('direct-build-succeeded'),
 		guidance: z.string(),
-		/** Full post-build instructions (the selected skill body), inlined. */
+		/** Tells the agent where the follow-up skill instructions are. */
 		instructions: z.string(),
 	}),
 	z.object({
@@ -395,7 +396,6 @@ async function directPostBuildFlowHandoff(
 	owner: ReturnType<typeof resolveBuildIdentifiers>['owner'],
 	isAuxiliarySupportingWorkflow: boolean,
 	outcome: WorkflowBuildOutcome,
-	skills?: RuntimeSkillSource,
 	activate?: RuntimeSkillLoader,
 ): Promise<z.infer<typeof postBuildFlowOutputSchema> | undefined> {
 	if (owner?.type !== 'direct' || isAuxiliarySupportingWorkflow) return undefined;
@@ -405,21 +405,23 @@ async function directPostBuildFlowHandoff(
 	// build falls back to the standard post-build flow, which handles
 	// not_verifiable outcomes.
 	if (outcome.executionIntent === 'one-off' && outcome.verificationReadiness?.status === 'ready') {
+		const activated = await activateFollowUpSkill(ONE_OFF_OPERATIONS_SKILL_ID, activate);
 		return {
 			required: true,
 			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
 			reason: 'direct-one-off-build-succeeded',
-			guidance: ONE_OFF_OPERATIONS_GUIDANCE,
-			instructions: await getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID, skills, activate),
+			guidance: oneOffOperationsGuidance(activated),
+			instructions: followUpInstructions(ONE_OFF_OPERATIONS_SKILL_ID, activated),
 		};
 	}
 
+	const activated = await activateFollowUpSkill(POST_BUILD_FLOW_SKILL_ID, activate);
 	return {
 		required: true,
 		skillId: POST_BUILD_FLOW_SKILL_ID,
 		reason: 'direct-build-succeeded',
-		guidance: POST_BUILD_FLOW_GUIDANCE,
-		instructions: await getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID, skills, activate),
+		guidance: postBuildFlowGuidance(activated),
+		instructions: followUpInstructions(POST_BUILD_FLOW_SKILL_ID, activated),
 	};
 }
 
@@ -602,7 +604,8 @@ function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
-	return new Tool('build-workflow')
+	return new Tool(DOMAIN_TOOL_IDS.BUILD_WORKFLOW)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.BUILD_WORKFLOW))
 		.description(
 			'Build and save a workflow from workflow source. ' +
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
@@ -616,6 +619,24 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
+			// Limited mode: reads omit parameter values, so a save would erase them.
+			if (context.allowSendingParameterValues === false) {
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: [
+						'n8n Assistant cannot create or edit workflows while data sharing is turned off. Nothing was saved.',
+					],
+					remediation: createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: 'parameter_values_hidden',
+						guidance:
+							'Do not retry or rewrite the workflow code. Tell the user that an instance owner or admin can turn on "Send actual data values" in Settings > AI usage.',
+					}),
+				};
+			}
+
 			const { groupingDecision, groupingReason } = input;
 			if (groupingDecision === 'not_warranted' && !groupingReason?.trim()) {
 				const guidance =
@@ -642,7 +663,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				});
 			} catch (error) {
 				const guidance =
-					'Call build-workflow again with a workspace-relative filePath like src/workflows/my-workflow.workflow.ts.';
+					'Call workflow_builder_build_workflow again with a workspace-relative filePath like src/workflows/my-workflow.workflow.ts.';
 				return {
 					success: false,
 					filePath: input.filePath,
@@ -684,6 +705,60 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
+			// Fail before compile, approval, and save when this conversation cannot save the workflow.
+			const existingWorkflowId = binding.workflowId ?? input.workflowId;
+			if (existingWorkflowId) {
+				try {
+					await context.assertInThreadProject?.({ kind: 'workflow', id: existingWorkflowId });
+				} catch (error) {
+					if (!isOutsideThreadProjectError(error)) throw error;
+					const remediation = createSaveFailureRemediation(error, !!binding.workflowId);
+					trackWorkflowSourceBuild(context, {
+						result: 'blocked',
+						stage: 'permission',
+						binding,
+						targetWorkflowId: existingWorkflowId,
+						isSupportingWorkflow: input.isSupportingWorkflow,
+						remediation,
+						errorCount: 1,
+					});
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						workflowId: existingWorkflowId,
+						errors: [error instanceof Error ? error.message : String(error)],
+						remediation,
+					};
+				}
+			}
+
+			// The source was read while parameter values were hidden. Saving it would erase them.
+			if (binding.workflowId && binding.parameterValuesIncluded === false) {
+				const remediation = createRemediation({
+					category: 'code_fixable',
+					shouldEdit: false,
+					reason: 'workflow_source_refresh_required',
+					guidance:
+						'Call workflow_builder_workflows(action="get-as-code") for this workflow before rebuilding. ' +
+						'If it reports a conflict, preserve your edits separately, remove the stale file, and read the workflow again. Then reapply your edits.',
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'blocked',
+					stage: 'source_read',
+					binding,
+					targetWorkflowId: binding.workflowId,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: binding.workflowId,
+					errors: ['This workflow source may omit saved parameter values. Nothing was saved.'],
+					remediation,
+				};
+			}
+
 			if (input.workflowId && !binding.workflowId) {
 				try {
 					binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
@@ -713,8 +788,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const targetWorkflowId = binding.workflowId;
 			// Only the folder-enabled schema carries the field; the narrowing keeps the
 			// handler valid for both shapes without a cast.
+			// Blank or "/" names no folder: OpenAI's strict tool schemas make models fill every field.
 			const folderPath =
-				'folderPath' in input && typeof input.folderPath === 'string'
+				'folderPath' in input &&
+				typeof input.folderPath === 'string' &&
+				/[^\s/]/.test(input.folderPath)
 					? input.folderPath
 					: undefined;
 			if (folderPath !== undefined && targetWorkflowId) {
@@ -860,9 +938,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			// Persist inline source first so the workspace file stays canonical for later repairs.
-			if (input.sourceCode !== undefined && context.workspace) {
+			// Blank source means "build the file as it is": OpenAI strict tool calls cannot
+			// omit optional fields and send "" instead, which must not empty the file.
+			const inlineSource = input.sourceCode?.trim() ? input.sourceCode : undefined;
+			if (inlineSource !== undefined && context.workspace) {
 				try {
-					await writeWorkspaceFile(context.workspace, filePath, input.sourceCode, {
+					await writeWorkspaceFile(context.workspace, filePath, inlineSource, {
 						logger: context.logger,
 						resourceLabel: 'Workflow source file',
 						abortSignal: ctx.abortSignal,
@@ -871,7 +952,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					const remediation = createCodeFixableRemediation({
 						reason: 'workflow_source_write_failed',
 						guidance:
-							'The inline sourceCode could not be written to filePath. Write the file with workspace file tools, then call build-workflow again with the same filePath.',
+							'The inline sourceCode could not be written to filePath. Write the file with workspace file tools, then call workflow_builder_build_workflow again with the same filePath.',
 					});
 					trackWorkflowSourceBuild(context, {
 						result: 'failure',
@@ -904,7 +985,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_source_read_failed',
 					guidance:
-						'The workflow source file could not be read. Write it with `workspace_write_file`, then call build-workflow again with the same filePath.',
+						'The workflow source file could not be read. Write it with `workspace_write_file`, then call workflow_builder_build_workflow again with the same filePath.',
 				});
 				trackWorkflowSourceBuild(context, {
 					result: 'failure',
@@ -1098,7 +1179,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					informational,
 					reason: 'workflow_source_validation_failed',
 					guidance:
-						'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
+						'Edit the workspace source file using the validation diagnostics, then call workflow_builder_build_workflow again with the same filePath.',
 					summary: 'Workflow source failed validation.',
 					binding,
 					sourceHash,
@@ -1121,7 +1202,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_name_missing',
 					guidance:
-						'Add a workflow name in the workspace source file or pass the name parameter, then call build-workflow again with the same filePath.',
+						'Add a workflow name in the workspace source file or pass the name parameter, then call workflow_builder_build_workflow again with the same filePath.',
 				});
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
@@ -1161,13 +1242,49 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const credentialMap = await buildCredentialMap(context.credentialService);
+			const setupSelections = await applyPendingSetupCredentialSelections(
+				json,
+				targetWorkflowId,
+				context,
+				credentialMap,
+			);
+			const setupPreferences =
+				isSetupPanelEnabled(context) && binding.setupPreferences?.runId === context.runId
+					? binding.setupPreferences
+					: undefined;
+			const selectedTypes = new Set(
+				Object.values(setupSelections.resolvedCredentialsByNode)
+					.flat()
+					.map((credential) => credential.type),
+			);
+			// Keep a saved choice when the model repeats setup flags during a repair.
+			const preferNewCredentialTypes = [
+				...new Set([
+					...(setupPreferences?.preferNewCredentialTypes ?? []),
+					...(input.preferNewCredentials ?? []),
+				]),
+			].filter(
+				(type) =>
+					!selectedTypes.has(type) && !setupPreferences?.satisfiedCredentialTypes.includes(type),
+			);
 			const mockResult = await resolveCredentials(
 				json,
 				targetWorkflowId,
 				context,
 				credentialMap,
-				input.preferNewCredentials,
+				[...preferNewCredentialTypes, ...setupSelections.unavailableCredentialTypes],
+				setupSelections.resolvedCredentialsByNode,
 			);
+			for (const [nodeName, selections] of Object.entries(
+				setupSelections.resolvedCredentialsByNode,
+			)) {
+				mockResult.resolvedCredentialsByNode[nodeName] = [
+					...(mockResult.resolvedCredentialsByNode[nodeName] ?? []).filter(
+						(credential) => !selections.some((selection) => selection.type === credential.type),
+					),
+					...selections,
+				];
+			}
 
 			// Deterministic backstop for a builder that never checked credentials:
 			// a chat-model node for a provider the user has no credential for gets
@@ -1214,7 +1331,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					informational,
 					reason: 'chat_model_validation_failed',
 					guidance:
-						'Fix the chat-model configuration using nodes(action="explore-resources") to pick a model the connected credential supports, then call build-workflow again.',
+						'Fix the chat-model configuration using workflow_builder_nodes(action="explore-resources") to pick a model the connected credential supports, then call workflow_builder_build_workflow again.',
 					summary: 'Workflow uses a chat model or parameter the connected credential cannot run.',
 					binding,
 					sourceHash,
@@ -1233,26 +1350,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
-				let droppedGroupCount = 0;
-				// Runs first: the passes below key off node ids, so they must be unique.
-				ensureUniqueNodeIds(json);
-				// Recovers the saved id of a surviving node whose source declared none — layered
-				// under the declared id, so a rename still follows the id.
-				await preserveExistingNodeIds(json, targetWorkflowId, context);
-				await preserveExistingSetupValues(json, targetWorkflowId, context);
-				await ensureWebhookIds(json, targetWorkflowId, context);
-				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
-				await preserveExistingNodePositions(json, targetWorkflowId, context);
-				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
-				const droppedGroupWarnings = nodeGroupDroppedWarnings(
-					dropInvalidWorkflowJsonGroups(
-						json,
-						context.nodeTypesProvider
-							? makeGetNodeTypeForGrouping(context.nodeTypesProvider)
-							: null,
-					),
-				);
-				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
+				const { groupCountBeforeDrop, droppedGroupCount, droppedGroupWarnings } =
+					await prepareWorkflowForSave(json, targetWorkflowId, context);
 				informational.push(...droppedGroupWarnings);
 
 				const topLevel = summarizeWorkflowTopLevelItems(json);
@@ -1307,7 +1406,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						: 'workflow_grouping_decision_missing';
 
 					const guidance =
-						'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ' +
+						'Edit the workspace source file so the stages form valid node groups, then call workflow_builder_build_workflow again with the same filePath. ' +
 						(groupWasDropped
 							? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
 							: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");
@@ -1381,13 +1480,28 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						(t): t is { nodeName: string; nodeType: string } =>
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
-				// Setup routing is scoped to nodes this build actually changed:
-				// pre-existing nodes the build merely round-tripped must not route
-				// the user into setup for an unrelated edit. Undefined = unscoped
-				// (new workflow, or prior state unreadable).
-				const changedNodeNames = savedWorkflowSnapshot
+				// Setup routing is scoped to nodes this work item's builds actually
+				// changed: pre-existing nodes the build merely round-tripped must not
+				// route the user into setup for an unrelated edit. Earlier builds of the
+				// same work item (or the same run) stay in scope, so a fix that leaves a
+				// new node alone keeps its pending setup. Undefined = unscoped (workflow
+				// created by this work item, or prior state unreadable).
+				const runId = buildContext?.runId ?? context.runId;
+				// The file path is the fallback work item id. It stays the same across
+				// work items, so only the run can match then.
+				const scopeWorkItemId = resolvedWorkItemId === filePath ? undefined : resolvedWorkItemId;
+				const priorScope = binding.setupScope;
+				const sameWork =
+					(scopeWorkItemId !== undefined && priorScope?.workItemId === scopeWorkItemId) ||
+					(runId !== undefined && priorScope?.runId === runId);
+				const buildChanges = savedWorkflowSnapshot
 					? computeChangedNodeNames(json, savedWorkflowSnapshot)
 					: undefined;
+				const changedNodeNames = !sameWork
+					? buildChanges
+					: priorScope?.nodeNames && buildChanges
+						? [...new Set([...priorScope.nodeNames, ...buildChanges])]
+						: undefined;
 				const isInSetupScope = (nodeName: string | undefined) =>
 					changedNodeNames === undefined ||
 					(nodeName !== undefined && changedNodeNames.includes(nodeName));
@@ -1405,15 +1519,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					},
 					operation: 'create' | 'update',
 				) => {
+					await markSetupCredentialSelectionsApplied(context, setupSelections.consumedSelections);
 					// The setup panel lists bound slots too (rendered as done), so its
 					// snapshot needs the settled requests the routing below must not see.
 					const setupItemsEmitter = isSetupPanelEnabled(context)
 						? context.setupItemsEmitter
 						: undefined;
 					const analyzedRequests = await analyzeWorkflow(context, saved.id, undefined, {
-						...(input.preferNewCredentials
-							? { preferNewCredentialTypes: input.preferNewCredentials }
-							: {}),
+						...(preferNewCredentialTypes.length > 0 ? { preferNewCredentialTypes } : {}),
 						...(setupItemsEmitter ? { includeSettled: true } : {}),
 					});
 					const setupRequests = analyzedRequests.filter((request) => !!request.needsAction);
@@ -1454,7 +1567,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						scriptedGateCount: waitGateScripts?.length ?? 0,
 						savedWorkflowId: saved.id,
 					});
-					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
 					binding = await saveWorkflowSourceFileBinding(context, {
@@ -1463,6 +1575,19 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowVersionId: saved.versionId,
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
 						sourceHash,
+						setupPending: undefined,
+						setupScope: { workItemId: scopeWorkItemId, runId, nodeNames: changedNodeNames },
+						...(setupPreferences
+							? {
+									setupPreferences: {
+										...setupPreferences,
+										preferNewCredentialTypes,
+										satisfiedCredentialTypes: [
+											...new Set([...setupPreferences.satisfiedCredentialTypes, ...selectedTypes]),
+										],
+									},
+								}
+							: {}),
 					});
 					// Trace-only compiled-JSON event for eval seed reconstruction — never part
 					// of the tool result, so it never enters the agent's context.
@@ -1486,12 +1611,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								: { outputs: { workflowId: saved.id, sourceHash, truncated: true } },
 						);
 						context.logger.debug(
-							`[build-workflow] compiled-workflow trace event: ${emittedVia}${withinSizeGate ? '' : ' (payload over size gate, emitted truncated marker)'}`,
+							`[workflow_builder_build_workflow] compiled-workflow trace event: ${emittedVia}${withinSizeGate ? '' : ' (payload over size gate, emitted truncated marker)'}`,
 						);
 					} catch (error) {
 						// Best-effort: tracing must never break a build.
 						context.logger.debug(
-							`[build-workflow] compiled-workflow trace event failed: ${error instanceof Error ? error.message : String(error)}`,
+							`[workflow_builder_build_workflow] compiled-workflow trace event failed: ${error instanceof Error ? error.message : String(error)}`,
 						);
 					}
 					const outcome = withDeterministicRouting({
@@ -1535,7 +1660,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						owner,
 						isAuxiliarySupportingWorkflow,
 						outcome,
-						context.runtimeSkillCatalog,
 						ctx.loadSkill,
 					);
 
@@ -1546,6 +1670,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 
 					failureTracker.clear(workItemKey);
+					await context.onArtifactChanged?.({
+						type: 'workflow',
+						id: saved.id,
+						...(json.name ? { name: json.name } : {}),
+					});
 
 					trackWorkflowSourceBuild(context, {
 						result: 'success',
@@ -1622,7 +1751,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						json,
 						updateOptions,
 					);
-					return await createSuccessResponse(updated, 'update');
+					return await createSuccessResponse(updated, binding.setupPending ? 'create' : 'update');
 				}
 
 				const created = await context.workflowService.createFromWorkflowJSON(json, {

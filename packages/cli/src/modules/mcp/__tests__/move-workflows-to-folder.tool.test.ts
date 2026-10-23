@@ -2,7 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
-import { FolderFinderService } from '@/services/folder-finder.service';
+import { FolderFinderService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -189,7 +189,12 @@ describe('move-workflows-to-folder MCP tool', () => {
 		expect(result.isError).toBe(true);
 		expect(mocks.workflowService.update).not.toHaveBeenCalled();
 		expect(result.structuredContent).toMatchObject({
-			failed: [expect.objectContaining({ workflowId: 'wf-1' })],
+			failed: [
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					error: expect.stringContaining('/workflow/wf-1?settings=true'),
+				}),
+			],
 		});
 	});
 });

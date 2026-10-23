@@ -3,6 +3,7 @@ import type { AgentJsonToolConfig } from '@n8n/api-types';
 import {
 	findHttpRequestToolUrlFromAiViolations,
 	validateNodeToolConfigs,
+	validateNodeToolExpressions,
 } from '../node-tool-validation';
 
 const { mockValidateNodeConfig } = vi.hoisted(() => ({
@@ -106,5 +107,21 @@ describe('validateNodeToolConfigs', () => {
 
 		expect(result).toBeNull();
 		expect(mockValidateNodeConfig).toHaveBeenCalledOnce();
+	});
+
+	it('skips disabled node tools with incomplete configuration', async () => {
+		const tools = [
+			{ ...nodeTool('sendAndWait'), enabled: false },
+			{
+				...configuredNodeTool('Broken', 'missing.node', {
+					value: "={{ $fromAI('key', '', 'invalid') }}",
+				}),
+				enabled: false,
+			},
+		];
+
+		expect(() => validateNodeToolExpressions(tools)).not.toThrow();
+		await expect(validateNodeToolConfigs(tools)).resolves.toBeNull();
+		expect(mockValidateNodeConfig).not.toHaveBeenCalled();
 	});
 });

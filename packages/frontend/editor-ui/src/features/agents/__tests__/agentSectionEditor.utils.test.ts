@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { reactive } from 'vue';
 import {
 	configToDoc,
 	getSlice,
@@ -45,10 +46,21 @@ describe('agentSectionEditor.utils', () => {
 	});
 
 	describe('setSlice', () => {
-		it('does not mutate the input', () => {
-			const next = setSlice(cfg, 'name', 'y');
+		it('does not mutate the input or remove workflow input bindings', () => {
+			const tool: NonNullable<AgentJsonConfig['tools']>[number] = {
+				type: 'workflow',
+				workflow: 'Test workflow',
+				inputs: {
+					constructor: { mode: 'ai' as const, description: 'Use the label.' },
+					hasOwnProperty: { mode: 'fixed' as const, value: '=literal' },
+				},
+			};
+			const source = reactive({ ...cfg, tools: [tool] });
+			const next = setSlice(source, 'name', 'y');
 			expect(next.name).toBe('y');
-			expect(cfg.name).toBe('x');
+			expect(source.name).toBe('x');
+			expect(next.tools).toEqual([tool]);
+			expect(next.tools?.[0]).not.toBe(tool);
 		});
 		it('replaces nested object values', () => {
 			const next = setSlice(cfg, 'config.toolCallConcurrency', 8);

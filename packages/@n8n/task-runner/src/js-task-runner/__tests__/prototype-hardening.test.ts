@@ -97,9 +97,82 @@ const PROBES = `
 		if (shadowed) Object.defineProperty(process, 'emit', { value: original, writable: true, configurable: true, enumerable: true });
 		return shadowed;
 	});
+
+	const replacement = function replacement() {};
+
+	const typedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype);
+	probe('typedarray-set', () => { typedArrayPrototype.set = replacement; return typedArrayPrototype.set === replacement; });
+	probe('typedarray-length', () => {
+		Object.defineProperty(typedArrayPrototype, 'length', { get: replacement, configurable: true });
+		return Object.getOwnPropertyDescriptor(typedArrayPrototype, 'length').get === replacement;
+	});
+
+	const timer = setTimeout(() => {}, 1_000);
+	clearTimeout(timer);
+	const timeoutPrototype = Object.getPrototypeOf(timer);
+	probe('timeout-refresh', () => { timeoutPrototype.refresh = replacement; return timeoutPrototype.refresh === replacement; });
+`;
+
+const REACHABILITY_ASSERTION = `
+	const collected = new Set();
+	const isFreezable = (value) => value !== null && (typeof value === 'object' || typeof value === 'function');
+	const collect = (value) => {
+		let current = value;
+		while (isFreezable(current) && !collected.has(current)) {
+			collected.add(current);
+			current = Object.getPrototypeOf(current);
+		}
+	};
+
+	const timeout = setTimeout(() => {}, 0);
+	clearTimeout(timeout);
+	const immediate = setImmediate(() => {});
+	clearImmediate(immediate);
+	function* generatorFunction() {}
+	async function* asyncGeneratorFunction() {}
+	async function asyncFunction() {}
+
+	const globalFunctions = Object.getOwnPropertyNames(globalThis)
+		.map((name) => Reflect.get(globalThis, name))
+		.filter((value) => typeof value === 'function');
+
+	for (const globalFunction of globalFunctions) {
+		collect(Object.getPrototypeOf(globalFunction));
+		collect(globalFunction.prototype);
+	}
+
+	const samples = [
+		timeout, immediate,
+		generatorFunction, asyncGeneratorFunction, asyncFunction,
+		[][Symbol.iterator](), [].values().map((value) => value),
+		''[Symbol.iterator](),
+		new Map()[Symbol.iterator](), new Set()[Symbol.iterator](),
+		new FormData().entries(),
+	];
+
+	for (const sample of samples) {
+		const prototype = Object.getPrototypeOf(sample);
+		collect(prototype);
+		if (isFreezable(prototype)) collect(prototype.prototype);
+	}
+
+	collected.delete(EventEmitter.prototype);
+
+	const extensible = [...collected].filter((value) => Object.isExtensible(value));
+	console.log('extensible:' + extensible.map((value) => value?.constructor?.name ?? 'anonymous').join(','));
+
+	const eventEmitterLocked = ['emit', 'on', 'once', 'addListener', 'prependListener', 'prependOnceListener']
+		.every((method) => Object.getOwnPropertyDescriptor(EventEmitter.prototype, method).writable === false);
+	console.log('ee-locked:' + eventEmitterLocked);
 `;
 
 describe('freezeGlobals', { timeout: TEST_TIMEOUT_MS }, () => {
+	let probeOutput: string;
+
+	beforeAll(async () => {
+		probeOutput = await runInChildProcess(PROBES, true);
+	}, TEST_TIMEOUT_MS);
+
 	it('serves an HTTP request in a process that has not been hardened', async () => {
 		const stdout = await runInChildProcess(SERVE_ONE_REQUEST, false);
 
@@ -115,14 +188,25 @@ describe('freezeGlobals', { timeout: TEST_TIMEOUT_MS }, () => {
 		expect(stdout).toContain('status:200');
 	});
 
-	it('keeps the shared prototypes sealed against sandboxed code', async () => {
-		const stdout = await runInChildProcess(PROBES, true);
+	it('keeps the shared prototypes sealed against sandboxed code', () => {
+		expect(probeOutput).toContain('ee-emit:blocked');
+		expect(probeOutput).toContain('ee-prepend:blocked');
+		expect(probeOutput).toContain('ee-emit-delete:blocked');
+		expect(probeOutput).toContain('process-emit:blocked');
+		expect(probeOutput).toContain('stream-prepend:blocked');
+		expect(probeOutput).toContain('socket-prepend:blocked');
+	});
 
-		expect(stdout).toContain('ee-emit:blocked');
-		expect(stdout).toContain('ee-prepend:blocked');
-		expect(stdout).toContain('ee-emit-delete:blocked');
-		expect(stdout).toContain('process-emit:blocked');
-		expect(stdout).toContain('stream-prepend:blocked');
-		expect(stdout).toContain('socket-prepend:blocked');
+	it('keeps prototypes with no globalThis binding sealed against sandboxed code', () => {
+		expect(probeOutput).toContain('typedarray-set:blocked');
+		expect(probeOutput).toContain('typedarray-length:blocked');
+		expect(probeOutput).toContain('timeout-refresh:blocked');
+	});
+
+	it('leaves no prototype reachable from a global extensible, apart from the method-locked one', async () => {
+		const stdout = await runInChildProcess(REACHABILITY_ASSERTION, true);
+
+		expect(stdout).toContain('extensible:\n');
+		expect(stdout).toContain('ee-locked:true');
 	});
 });

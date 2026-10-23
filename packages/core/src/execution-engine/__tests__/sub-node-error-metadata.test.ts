@@ -107,6 +107,7 @@ const modelNodeType: INodeType = {
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		properties: [
 			{ displayName: 'Fail Supply Data', name: 'failSupplyData', type: 'boolean', default: false },
+			{ displayName: 'Calls Per Run', name: 'callsPerRun', type: 'number', default: 0 },
 		],
 	},
 	// Covers the "supplyData throws" slice (missing credentials, bad config). Real chat models
@@ -114,6 +115,12 @@ const modelNodeType: INodeType = {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		if (this.getNodeParameter('failSupplyData', itemIndex, false) === true) {
 			throw new Error('Invalid API key');
+		}
+		// Records one run per model call, as `N8nLlmTracing` does for a real chat model
+		const calls = this.getNodeParameter('callsPerRun', itemIndex, 0) as number;
+		for (let i = 0; i < calls; i++) {
+			const { index } = this.addInputData(NodeConnectionTypes.AiLanguageModel, [[{ json: {} }]]);
+			this.addOutputData(NodeConnectionTypes.AiLanguageModel, index, [[{ json: {} }]]);
 		}
 		return { response: {} };
 	},
@@ -285,11 +292,7 @@ function stagedMetadata(result: IRun): Record<string, ITaskMetadata[]> {
 	return result.data.executionData?.metadata ?? {};
 }
 
-/**
- * The runs a node actually recorded, in order, ignoring which index they landed at. A failing
- * sub-node's record goes to its *parent's* expected index, so the engine leaves holes in the
- * array — an older bug this fix deliberately leaves alone, so nothing here pins it (CAT-4268).
- */
+/** The runs a node actually recorded, in order. */
 function runsOf(result: IRun, nodeName: string): RunOutcome[] {
 	const runs = result.data.resultData.runData[nodeName] ?? [];
 	return runs
@@ -411,18 +414,58 @@ describe('sub-node error metadata', () => {
 			expect(Object.keys(saved).sort()).toEqual(['Agent', 'Branch', 'Model', 'Trigger']);
 			expect(saved.Trigger).toEqual([{ status: 'success', error: undefined, subRun: undefined }]);
 			expect(saved.Branch).toEqual([{ status: 'success', error: undefined, subRun: undefined }]);
-			// The target follows the parent's real run count — here run 1, not 0. The entry's own
-			// `runIndex` reuses that same number, which CAT-4268 may change.
+			// The note goes on the parent's run 1, but names the model's own run 0
 			expect(saved.Agent).toEqual([
 				{ status: 'success', error: undefined, subRun: undefined },
 				{
 					status: 'error',
 					error: 'Error in sub-node Model',
-					subRun: [{ node: 'Model', runIndex: 1 }],
+					subRun: [{ node: 'Model', runIndex: 0 }],
 				},
 			]);
+			// The model recorded nothing on the agent's first run, so its error run is its first
+			expect(saved.Model).toEqual([
+				{ status: 'error', error: 'Invalid API key', subRun: undefined },
+			]);
+			expect(sourcesOf(result, 'Model')).toEqual([[{ previousNode: 'Agent', previousNodeRun: 1 }]]);
+			expect(orphanReports()).toEqual([]);
+		});
+	});
 
-			expect(runsOf(result, 'Model')).toEqual([{ status: 'error', error: 'Invalid API key' }]);
+	describe('failing sub-node run index', () => {
+		test('appends the error run after the runs the sub-node already recorded', async () => {
+			const result = await runWorkflow(
+				[
+					node('Trigger', 'test.trigger'),
+					node('Branch', 'test.branch'),
+					node('Agent', 'test.agent'),
+					// Two model calls on the agent's first run, then fails on its second
+					node('Model', 'test.model', {
+						callsPerRun: 2,
+						failSupplyData: '={{ $runIndex >= 1 }}',
+					}),
+				],
+				{
+					...connect('Trigger', 'Branch'),
+					Branch: {
+						main: [
+							[{ node: 'Agent', type: NodeConnectionTypes.Main, index: 0 }],
+							[{ node: 'Agent', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					...connect('Model', 'Agent', NodeConnectionTypes.AiLanguageModel),
+				},
+			);
+
+			expect(result.status).toBe('error');
+			const modelRuns = result.data.resultData.runData.Model;
+			expect(modelRuns).toHaveLength(3);
+			expect(Array.from(modelRuns, (run) => run?.executionStatus)).toEqual([
+				'success',
+				'success',
+				'error',
+			]);
+			expect(crossNodeSubRun(result, 'Agent', 1)).toEqual([{ node: 'Model', runIndex: 2 }]);
 			expect(orphanReports()).toEqual([]);
 		});
 	});

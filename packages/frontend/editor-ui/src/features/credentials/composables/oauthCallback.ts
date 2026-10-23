@@ -1,4 +1,6 @@
+import { getResourcePermissions } from '@n8n/permissions';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
 
 export const OAUTH_CALLBACK_SUCCESS = 'success';
 export const OAUTH_CALLBACK_ERROR = 'error';
@@ -12,6 +14,26 @@ export const OAUTH_FLOW_TIMEOUT = 5 * 60 * 1000;
 
 const POPUP_CLOSED_POLL_INTERVAL = 500;
 const VERIFY_CONNECTED_INTERVAL = 2000;
+
+/**
+ * Open the OAuth popup synchronously from the click handler, before any
+ * request. `window.open` only succeeds inside the click's transient user
+ * activation: Chrome drops it after about 5 s, Safari and mobile browsers
+ * drop it after the first await. The window opens on `about:blank`; set
+ * `location.href` once the authorization URL is known and close it on every
+ * exit. `signal` closes it on abort.
+ */
+export function openOAuthPopup(signal?: AbortSignal): Window | null {
+	const params =
+		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
+	const popup = window.open('about:blank', 'OAuth Authorization', params);
+
+	signal?.addEventListener('abort', () => {
+		popup?.close();
+	});
+
+	return popup;
+}
 
 /**
  * The OAuth callback page is served by the n8n backend and notifies the editor
@@ -69,6 +91,29 @@ export function hasOAuthTokenData(credential: unknown): boolean {
 		return false;
 	}
 	return isOAuthTokenDataSet(credential.data);
+}
+
+/**
+ * Whether a saved OAuth credential can authenticate now. `fetched` is the
+ * credential read with its data. Without data, fall back to the listing: a
+ * user who can read but not edit a shared credential counts as connected.
+ */
+export function isOAuthCredentialConnected(
+	stored: Pick<ICredentialsResponse, 'isResolvable' | 'connectedByMe' | 'scopes'> | undefined,
+	fetched?: ICredentialsDecryptedResponse | ICredentialsResponse,
+): boolean | undefined {
+	if (fetched?.isResolvable) return fetched.connectedByMe;
+	const data = fetched?.data;
+	if (data && typeof data === 'object') {
+		// Only the authorization code and PKCE grants need the user to sign in.
+		return (
+			Boolean(data.grantType && !['authorizationCode', 'pkce'].includes(String(data.grantType))) ||
+			isOAuthTokenDataSet(data)
+		);
+	}
+	if (stored?.isResolvable) return stored.connectedByMe;
+	const permissions = getResourcePermissions(stored?.scopes).credential;
+	return permissions.read === true && !permissions.update;
 }
 
 export interface WaitForOAuthCallbackOptions {

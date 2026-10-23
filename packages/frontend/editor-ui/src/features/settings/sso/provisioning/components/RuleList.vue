@@ -114,7 +114,7 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 	flex: 1;
 	padding: 0 var(--spacing--sm);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 }
 

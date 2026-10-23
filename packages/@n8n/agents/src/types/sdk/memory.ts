@@ -1,6 +1,11 @@
 import type { EmbeddingModel } from 'ai';
 
-import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from './agent';
+import type {
+	AgentExecutionCounter,
+	ModelConfig,
+	SerializableAgentState,
+	TokenUsage,
+} from './agent';
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
@@ -64,6 +69,8 @@ export interface BuiltMemory {
 		threadId: string;
 		resourceId: string;
 		messages: AgentDbMessage[];
+		/** Host context for linking persisted messages to the current run. */
+		hostMetadata?: JSONObject;
 	}): Promise<void>;
 	deleteMessages(messageIds: string[]): Promise<void>;
 	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---
@@ -78,12 +85,26 @@ export interface BuiltMemory {
 export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
 
 /**
- * Who asked and where. Stores decide the storage scope from both: a host can
- * key shared conversations by thread and still resolve recall per resource.
+ * The host's decision on who owns a turn's episodic memories. Memories are
+ * written to `writeScopeId` and recalled from `readScopeIds`.
+ */
+export interface ResolvedEpisodicScope {
+	writeScopeId: string;
+	readScopeIds: string[];
+}
+
+/** A turn's scope, or the host's decision to turn episodic memory off for it. */
+export type EpisodicScopeDecision = ResolvedEpisodicScope | { disabled: true };
+
+/**
+ * Who asked and where. When `episodic` is set, the store uses it as given.
+ * Without it, the resource is the scope. The host sets `episodic` for shared
+ * conversations, where an unresolved scope means episodic memory stays off.
  */
 export interface EpisodicMemoryScope {
 	resourceId: string;
 	threadId: string;
+	episodic?: ResolvedEpisodicScope;
 }
 
 export type EpisodicMemoryCaptureKind =
@@ -116,7 +137,10 @@ export interface EpisodicMemoryCaptureCandidate {
 export type NewEpisodicMemoryCaptureCandidate = Omit<
 	EpisodicMemoryCaptureCandidate,
 	'id' | 'status' | 'attemptCount' | 'createdAt' | 'updatedAt'
->;
+> & {
+	/** The turn's resolved scope. The store uses it to pick the storage scope. */
+	episodic?: ResolvedEpisodicScope;
+};
 
 export interface EpisodicMemoryEntry {
 	id: string;
@@ -140,6 +164,8 @@ export type NewEpisodicMemoryEntry = Omit<
 	contentHash?: string;
 	createdAt?: Date;
 	lastSeenAt?: Date;
+	/** The turn's resolved scope. The store uses it to pick the storage scope. */
+	episodic?: ResolvedEpisodicScope;
 };
 
 interface EpisodicMemoryEntrySourceBase {
@@ -220,6 +246,10 @@ export interface BuiltEpisodicMemoryStore {
 }
 
 export interface EpisodicMemoryCaptureMethods {
+	getEntriesByContentHashes(
+		scope: EpisodicMemoryScope,
+		contentHashes: string[],
+	): Promise<EpisodicMemoryEntry[]>;
 	enqueueCaptureCandidate(
 		candidate: NewEpisodicMemoryCaptureCandidate,
 	): Promise<EpisodicMemoryCaptureCandidate>;
@@ -254,9 +284,23 @@ export interface EpisodicMemoryReflectorInput {
 	executionCounter?: AgentExecutionCounter;
 }
 
+export interface EpisodicMemoryReflectResult {
+	reflection: EpisodicMemoryReflection;
+	/** Normalized token usage from the reflector LLM call, when the provider reports it. */
+	usage?: TokenUsage;
+	/** Stable model id string of the model that produced the reflection. */
+	model: string;
+}
+
+/**
+ * Reflect a cluster of episodic entries. Returns the reflection, or a
+ * `{ reflection, usage, model }` result that also carries token usage for the
+ * host to price. Bare `EpisodicMemoryReflection` returns are accepted for
+ * backward compatibility.
+ */
 export type EpisodicMemoryReflectFn = (
 	input: EpisodicMemoryReflectorInput,
-) => Promise<EpisodicMemoryReflection>;
+) => Promise<EpisodicMemoryReflection | EpisodicMemoryReflectResult>;
 
 export interface EpisodicMemoryReflectionApplyMerge {
 	supersedes: string[];
@@ -381,6 +425,6 @@ export interface CheckpointStore {
 	 * false when another process has already claimed or changed the snapshot.
 	 */
 	claimForResume?(key: string, state: SerializableAgentState): Promise<boolean>;
-	/** Delete a snapshot by key. */
-	delete(key: string): Promise<void>;
+	/** Delete a snapshot. Hosts can use the finishing state to check ownership. */
+	delete(key: string, state?: SerializableAgentState): Promise<void>;
 }

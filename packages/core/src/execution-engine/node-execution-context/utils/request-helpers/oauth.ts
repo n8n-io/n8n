@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -246,6 +247,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 			newOAuthTokenData.resource = token.data.resource;
 		}
 
+		// Salesforce requires the instance URL even when the refresh response returns an empty value.
+		if (!newOAuthTokenData.instance_url && token.data.instance_url) {
+			newOAuthTokenData.instance_url = token.data.instance_url;
+		}
+
 		const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
 			additionalData,
 			newOAuthTokenData,
@@ -340,9 +346,9 @@ const TOKEN_EXPIRY_BUFFER_MS = 60_000;
  * Whether the stored token still has time left on it. An absent or unparsable expiry counts as
  * expired, so callers fall back to refreshing when the expiry is unknown.
  */
-function isStoredTokenUnexpired(credentials: OAuth2CredentialData): boolean {
-	const expiresAt = Number(credentials.oauthTokenData?.n8n_expires_at);
-	return Number.isFinite(expiresAt) && Date.now() + TOKEN_EXPIRY_BUFFER_MS < expiresAt;
+export function isTokenExpiryInFuture(expiresAt: unknown): boolean {
+	const timestamp = Number(expiresAt);
+	return Number.isFinite(timestamp) && Date.now() + TOKEN_EXPIRY_BUFFER_MS < timestamp;
 }
 
 function isSingleUseValue(value: unknown): boolean {
@@ -503,7 +509,7 @@ export async function requestOAuth2(
 		if (shouldSkipTokenRefresh) return false;
 		if (!isTokenExpiredStatusCode(status, tokenExpiredStatusCode)) return false;
 		if (status === 401 || oAuth2Options?.skipRefreshWhileTokenIsFresh !== true) return true;
-		return !isStoredTokenUnexpired(credentials);
+		return !isTokenExpiryInFuture(credentials.oauthTokenData?.n8n_expires_at);
 	};
 
 	const refreshCtx: RefreshOAuth2TokenContext = {

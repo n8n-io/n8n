@@ -61,7 +61,7 @@ const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeV
 			data-test-id="node-execute-button"
 			:node-name="node.name"
 			:tooltip="`Execute ${node.name}`"
-			variant="subtle"
+			variant="outline"
 			size="small"
 			icon="play"
 			:square="true"

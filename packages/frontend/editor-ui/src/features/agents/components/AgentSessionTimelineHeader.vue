@@ -10,10 +10,12 @@ import {
 	TOOLTIP_DELAY_MS,
 	type DropdownMenuItemProps,
 	type IconName,
+	type IconOrEmoji,
 	type PathItem,
 } from '@n8n/design-system';
 
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
 interface SessionDropdownData {
 	date: string;
@@ -23,6 +25,7 @@ interface SessionDropdownData {
 const props = withDefaults(
 	defineProps<{
 		breadcrumbItems: PathItem[];
+		projectIcon: IconOrEmoji;
 		sessionTitle: string;
 		sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
 		showMetrics: boolean;
@@ -49,13 +52,19 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+
+const breadcrumbItems = computed(() =>
+	props.breadcrumbItems.map((item, index) =>
+		index === 0 ? { ...item, icon: props.projectIcon } : item,
+	),
+);
 </script>
 
 <template>
 	<div :class="$style.topBar">
 		<div :class="$style.topBarLeft">
 			<N8nBreadcrumbs
-				:items="props.breadcrumbItems"
+				:items="breadcrumbItems"
 				theme="medium"
 				@item-selected="emit('breadcrumb-select', $event)"
 			>

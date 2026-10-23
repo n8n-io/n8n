@@ -30,7 +30,7 @@ cannot read (TypeScript error TS2748). A plain `enum` emits a regular
 `dist` across the package boundary, and it preserves the nominal enum-member
 types the rest of the front end relies on (so relocating a value such as `VIEWS`
 here is behavior-preserving). The repo lint default prefers `const enum`, so the
-`no-restricted-syntax` rule is relaxed for these files in `eslint.config.mjs`.
+`no-raw-enum` rule is relaxed for these files in `eslint.config.mjs`.
 
 ## Contributing
 

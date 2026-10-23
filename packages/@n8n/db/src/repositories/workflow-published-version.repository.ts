@@ -129,6 +129,7 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 			id: workflow.id,
 			name: workflow.name,
 			description: workflow.description,
+			// oxlint-disable-next-line typescript/no-deprecated
 			active: workflow.active,
 			isArchived: workflow.isArchived,
 			createdAt: workflow.createdAt,

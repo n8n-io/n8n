@@ -1,0 +1,153 @@
+operationId: createPromotionEnvironment
+tags:
+  - Promotions
+summary: Create a promotion environment
+description: Creates an environment for one direction on an existing provider. The settings must match the direction. A GitLab remote URL must belong to the saved provider. The environment stores only the repository path and derives remoteUrl from the current provider base URL. Plain Git environments keep the full remote URL. The instance can have one environment for each direction.
+x-required-scope: gitConnection:create
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        oneOf:
+          - type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+                maxLength: 128
+              scope:
+                type: string
+                enum:
+                  - instance
+                  - projects
+              providerId:
+                type: string
+                minLength: 1
+                maxLength: 36
+              remote:
+                type: object
+                properties:
+                  schemaVersion:
+                    type: number
+                    enum:
+                      - 1
+                  remoteUrl:
+                    type: string
+                    minLength: 1
+                required:
+                  - schemaVersion
+                  - remoteUrl
+                additionalProperties: false
+              direction:
+                type: string
+                enum:
+                  - apply
+              settings:
+                type: object
+                properties:
+                  schemaVersion:
+                    type: number
+                    enum:
+                      - 1
+                  branchName:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+                required:
+                  - schemaVersion
+                  - branchName
+                additionalProperties: false
+            required:
+              - name
+              - scope
+              - providerId
+              - remote
+              - direction
+              - settings
+            additionalProperties: false
+          - type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+                maxLength: 128
+              scope:
+                type: string
+                enum:
+                  - instance
+                  - projects
+              providerId:
+                type: string
+                minLength: 1
+                maxLength: 36
+              remote:
+                type: object
+                properties:
+                  schemaVersion:
+                    type: number
+                    enum:
+                      - 1
+                  remoteUrl:
+                    type: string
+                    minLength: 1
+                required:
+                  - schemaVersion
+                  - remoteUrl
+                additionalProperties: false
+              direction:
+                type: string
+                enum:
+                  - promote
+              settings:
+                type: object
+                properties:
+                  schemaVersion:
+                    type: number
+                    enum:
+                      - 1
+                  baseBranchName:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+                  createBranchOnPromotion:
+                    type: boolean
+                required:
+                  - schemaVersion
+                  - baseBranchName
+                  - createBranchOnPromotion
+                additionalProperties: false
+            required:
+              - name
+              - scope
+              - providerId
+              - remote
+              - direction
+              - settings
+            additionalProperties: false
+        type: object
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionEnvironmentPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

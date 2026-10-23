@@ -342,7 +342,8 @@ export class EmailReadImapV2 implements INodeType {
 
 		connection.onArrival(async ({ count }) => await fetchNewEmails(connection, count));
 
-		if (staticData.lastMessageUid !== undefined) connection.catchUp();
+		// Mail that landed while the trigger was inactive sends no arrival event.
+		connection.catchUp();
 
 		connection.onFlags((info) => {
 			this.logger.debug(`Email Read Imap:update ${info.seq}`, { uid: info.uid });

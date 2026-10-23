@@ -1,3 +1,4 @@
+import type { OperationContext } from '@n8n/db';
 import type { Request, Response } from 'express';
 import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
 
@@ -9,6 +10,8 @@ export type WebhookOptionsRequest = Request & { method: 'OPTIONS' };
 export type WebhookRequest = Request<{ path: string }> & {
 	method: IHttpRequestMethods;
 	params: Record<string, string>;
+	/** Set by the authentication edge once the caller is identified; absent before that. */
+	ctx?: OperationContext;
 };
 
 export type WaitingWebhookRequest = WebhookRequest & {

@@ -11,10 +11,23 @@ import { ChatServer } from '@/chat/chat-server';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 const mockApp = mock<express.Application>();
+const e2eFlags = vi.hoisted(() => ({ inE2ETests: false }));
+const diagnosticsRouter = vi.hoisted(() => vi.fn());
 vi.mock('express', async () => ({ __esModule: true, default: () => mockApp }));
+vi.mock('@/constants', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/constants')>()),
+	get inE2ETests() {
+		return e2eFlags.inE2ETests;
+	},
+}));
+vi.mock('@/services/e2e-diagnostics.router', () => ({
+	createE2EDiagnosticsRouter: vi.fn(() => diagnosticsRouter),
+}));
 
 describe('WebhookServer', () => {
-	it('should mount the chat WebSocket server', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		e2eFlags.inE2ETests = false;
 		mockInstance(Logger);
 		Container.set(DbConnection, mock<DbConnection>());
 		Container.set(
@@ -41,6 +54,9 @@ describe('WebhookServer', () => {
 				},
 			}),
 		);
+	});
+
+	it('should mount the chat WebSocket server', () => {
 		const chatServer = mockInstance(ChatServer);
 
 		const webhookServer = new WebhookServer();
@@ -50,5 +66,16 @@ describe('WebhookServer', () => {
 		webhookServer['setupPushServer']();
 
 		expect(chatServer.setup).toHaveBeenCalledWith(httpServer, mockApp);
+	});
+
+	it('should mount diagnostics only during E2E tests', async () => {
+		const webhookServer = new WebhookServer();
+
+		await webhookServer.configure();
+		expect(mockApp.use).not.toHaveBeenCalled();
+
+		e2eFlags.inE2ETests = true;
+		await webhookServer.configure();
+		expect(mockApp.use).toHaveBeenCalledWith('/rest/e2e', diagnosticsRouter);
 	});
 });

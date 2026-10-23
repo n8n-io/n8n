@@ -30,6 +30,8 @@ export type InputNumberControlSlotProps = {
 };
 
 export type InputNumberSlots = {
+	/** Content shown inside the input, before the number (e.g. a currency symbol). */
+	prefix?: () => unknown;
 	/** Fully custom increment control. Default: button with plus/chevron icon. */
 	increment?: (props: InputNumberControlSlotProps) => unknown;
 	/** Fully custom decrement control. Default: button with minus/chevron icon. */

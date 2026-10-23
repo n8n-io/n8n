@@ -6,7 +6,7 @@ import { ErrorReporter } from 'n8n-core';
 import path from 'node:path';
 import type { Transporter } from 'nodemailer';
 import { createTransport } from 'nodemailer';
-import type SMTPConnection from 'nodemailer/lib/smtp-connection';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 import type { MailData, SendEmailResult } from './interfaces';
 
@@ -22,7 +22,7 @@ export class NodeMailer {
 		private readonly errorReporter: ErrorReporter,
 	) {
 		const smtpConfig = globalConfig.userManagement.emails.smtp;
-		const transportConfig: SMTPConnection.Options = pick(smtpConfig, ['host', 'port', 'secure']);
+		const transportConfig: SMTPTransport.Options = pick(smtpConfig, ['host', 'port', 'secure']);
 		transportConfig.ignoreTLS = !smtpConfig.startTLS;
 
 		const { auth } = smtpConfig;

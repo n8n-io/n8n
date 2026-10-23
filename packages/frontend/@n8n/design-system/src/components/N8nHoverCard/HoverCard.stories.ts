@@ -47,7 +47,7 @@ const WorkflowPreviewTemplate: StoryFn = (args) => ({
 									<N8nText size="small" color="text-light">Assigns setup tasks, enriches CRM data, and notifies account owners.</N8nText>
 								</div>
 							</div>
-							<N8nBadge theme="secondary" size="small">Active</N8nBadge>
+							<N8nBadge variant="secondary" size="small">Active</N8nBadge>
 						</header>
 
 						<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing--2xs);">
@@ -113,7 +113,7 @@ const EnvironmentTemplate: StoryFn = (args) => ({
 								<N8nText bold>Production environment</N8nText>
 								<N8nText size="small" color="text-light">Webhook traffic is routed to this workflow version.</N8nText>
 							</div>
-							<N8nBadge theme="secondary" size="small">Healthy</N8nBadge>
+							<N8nBadge variant="secondary" size="small">Healthy</N8nBadge>
 						</header>
 
 						<div style="padding: var(--spacing--xs); border-radius: var(--radius--xs); background: var(--color--background--light); display: flex; flex-direction: column; gap: var(--spacing--2xs);">
@@ -233,7 +233,7 @@ const SharedReferenceTemplate: StoryFn = (args) => ({
 								<N8nText bold>{{ activeStep.label }}</N8nText>
 								<N8nText size="small" color="text-light">{{ activeStep.detail }}</N8nText>
 							</div>
-							<N8nBadge size="small" theme="secondary">{{ activeStep.status }}</N8nBadge>
+							<N8nBadge size="small" variant="secondary">{{ activeStep.status }}</N8nBadge>
 						</header>
 
 						<div style="display: grid; grid-template-columns: auto 1fr; gap: var(--spacing--2xs) var(--spacing--sm);">
@@ -350,7 +350,7 @@ const ScrollableTemplate: StoryFn = (args) => ({
 									<N8nText size="small" bold>#{{ execution.id }} · {{ execution.workflowName }}</N8nText>
 									<N8nText size="xsmall" color="text-light">Started {{ execution.started }} · Runtime {{ execution.duration }}</N8nText>
 								</div>
-								<N8nBadge size="small" theme="secondary">{{ execution.status }}</N8nBadge>
+								<N8nBadge size="small" variant="secondary">{{ execution.status }}</N8nBadge>
 							</div>
 						</div>
 					</section>

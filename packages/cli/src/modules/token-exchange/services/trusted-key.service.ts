@@ -3,8 +3,8 @@ import { Time } from '@n8n/constants';
 import { DbLock, DbLockService } from '@n8n/db';
 import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { EntityManager } from '@n8n/typeorm';
 import { In, Not } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError, jsonParse } from 'n8n-workflow';
 import type { KeyObject } from 'node:crypto';
 import { createHash, createPublicKey } from 'node:crypto';
@@ -18,6 +18,7 @@ import { TokenExchangeConfig } from '../token-exchange.config';
 import type {
 	JwksKeySource,
 	JwtAlgorithm,
+	ResolvedSourceKeys,
 	ResolvedTrustedKey,
 	StaticKeySource,
 	TrustedKeyData,
@@ -26,7 +27,7 @@ import type {
 import { TrustedKeyDataSchema, TrustedKeySourceSchema } from '../token-exchange.schemas';
 import { JwksResolverService } from './jwks-resolver';
 
-type AlgorithmFamily = 'RSA' | 'EC' | 'EdDSA';
+type AlgorithmFamily = 'RSA' | 'EC';
 
 const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 	RS256: 'RSA',
@@ -38,7 +39,6 @@ const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 	ES256: 'EC',
 	ES384: 'EC',
 	ES512: 'EC',
-	EdDSA: 'EdDSA',
 };
 
 const STATIC_SOURCE_ID = 'static';
@@ -164,6 +164,7 @@ export class TrustedKeyService {
 	/**
 	 * Force-refresh a single source. Can be called from any instance —
 	 * uses an advisory lock for distributed mutual exclusion.
+	 * @throws When the source does not exist or its keys cannot be resolved.
 	 */
 	async refreshSource(sourceId: string): Promise<void> {
 		const source = await this.trustedKeySourceRepository.findOneBy({ id: sourceId });
@@ -293,13 +294,21 @@ export class TrustedKeyService {
 	// ─── Private: refresh ──────────────────────────────────────────────
 
 	/**
-	 * Refreshes all sources unconditionally. Never throws: a failed cycle is logged.
+	 * Refreshes all sources unconditionally. Logs each failure and continues.
+	 * Never throws.
 	 */
 	private async refreshAllSources(): Promise<void> {
 		try {
 			const sources = await this.trustedKeySourceRepository.find();
 			for (const source of sources) {
-				await this.refreshSourceInternal(source);
+				try {
+					await this.refreshSourceInternal(source);
+				} catch (error) {
+					this.logger.error('Failed to refresh trusted key source', {
+						sourceId: source.id,
+						error,
+					});
+				}
 			}
 		} catch (error) {
 			this.logger.error('Failed to run trusted key refresh cycle', { error });
@@ -308,13 +317,15 @@ export class TrustedKeyService {
 
 	/**
 	 * Refreshes only the sources whose `lastRefreshedAt` is older than their
-	 * configured refresh interval. A failed source is marked as error and does
-	 * not stop the cycle. Stops before the next source once `signal` aborts.
+	 * configured refresh interval. Stops at the first source that fails, and
+	 * before the next source once `signal` aborts.
 	 * @throws When the sources cannot be loaded from the database.
+	 * @throws When a source cannot be refreshed.
 	 */
 	async refreshDueSources(signal: AbortSignal): Promise<void> {
 		this.logger.debug('Refreshing due sources');
-		const sources = await this.trustedKeySourceRepository.find();
+		// A source that failed has the newest `updatedAt`, so the next run tries it last.
+		const sources = await this.trustedKeySourceRepository.find({ order: { updatedAt: 'ASC' } });
 		const now = Date.now();
 		for (const source of sources) {
 			if (signal.aborted) return;
@@ -346,76 +357,32 @@ export class TrustedKeyService {
 	/**
 	 * Per-source transactional refresh, serialized by an advisory lock.
 	 *
-	 * On success: old keys deleted, conflicts resolved, new keys inserted,
-	 * source marked healthy.
+	 * On success: old keys deleted, new keys inserted, source marked healthy.
 	 *
-	 * On error: transaction rolls back (preserving existing keys), source
-	 * marked with `status = 'error'` and `lastError` outside the transaction.
+	 * On failure: rolls back, which keeps the existing keys and `lastRefreshedAt`.
+	 * Then marks the source as error and throws.
+	 * @throws {Error} when the lock cannot be taken, or the keys cannot be resolved or written.
 	 */
 	private async refreshSourceInternal(source: TrustedKeySourceEntity): Promise<void> {
 		try {
-			await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
-				const freshSource = await tx.findOneBy(TrustedKeySourceEntity, { id: source.id });
-				if (!freshSource) return;
-				await this.refreshSourceWithinTransaction(freshSource, tx);
-			});
+			await this.dbLockService.withLockContext(
+				DbLock.TRUSTED_KEY_REFRESH,
+				async (ctx) =>
+					await this.trustedKeySourceRepository.refreshSource(
+						source.id,
+						async (freshSource) => await this.resolveKeysForSource(freshSource),
+						ctx,
+					),
+			);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.logger.error('Failed to refresh trusted key source', {
-				sourceId: source.id,
-				error: message,
-			});
+			const failure = ensureError(error);
+			// Written after the rollback: an aborted Postgres transaction rejects every later statement.
 			await this.trustedKeySourceRepository.update(source.id, {
 				status: 'error',
-				lastError: message,
-				lastRefreshedAt: new Date(),
+				lastError: failure.message,
 			});
+			throw failure;
 		}
-	}
-
-	private async refreshSourceWithinTransaction(
-		source: TrustedKeySourceEntity,
-		tx: EntityManager,
-	): Promise<void> {
-		const result = await this.resolveKeysForSource(source);
-		if (!result) {
-			// Mark as refreshed so the source is skipped until the next interval,
-			// even though no keys were resolved (e.g. unsupported source type).
-			await tx.update(TrustedKeySourceEntity, source.id, {
-				status: 'healthy',
-				lastRefreshedAt: new Date(),
-			});
-			return;
-		}
-
-		const keys = result.keys;
-		const cacheTtlSeconds = result.cacheTtlSeconds;
-
-		// 1. DELETE old keys for this source
-		await tx.delete(TrustedKeyEntity, { sourceId: source.id });
-
-		// 2. INSERT new keys
-		for (const key of keys) {
-			await tx.save(TrustedKeyEntity, {
-				sourceId: source.id,
-				kid: key.kid,
-				data: JSON.stringify(key.data),
-				createdAt: new Date(),
-			});
-		}
-
-		// 3. UPDATE source status, and persist observed cache TTL for refresh scheduling
-		const updatePayload: Partial<TrustedKeySourceEntity> = {
-			status: 'healthy' as const,
-			lastError: null,
-			lastRefreshedAt: new Date(),
-		};
-		if (cacheTtlSeconds !== undefined) {
-			const config = jsonParse<Record<string, unknown>>(source.config);
-			config.cacheTtlSeconds = cacheTtlSeconds;
-			updatePayload.config = JSON.stringify(config);
-		}
-		await tx.update(TrustedKeySourceEntity, source.id, updatePayload);
 	}
 
 	/**
@@ -427,9 +394,7 @@ export class TrustedKeyService {
 	 */
 	private async resolveKeysForSource(
 		source: TrustedKeySourceEntity,
-	): Promise<
-		{ keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds?: number } | undefined
-	> {
+	): Promise<ResolvedSourceKeys | undefined> {
 		switch (source.type) {
 			case 'static':
 				return this.resolveKeysForStaticSource(source);
@@ -446,7 +411,7 @@ export class TrustedKeyService {
 
 	private async resolveKeysForJwksSource(
 		source: TrustedKeySourceEntity,
-	): Promise<{ keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds: number }> {
+	): Promise<Required<ResolvedSourceKeys>> {
 		let jwksConfig: JwksKeySource;
 		try {
 			jwksConfig = jsonParse<JwksKeySource>(source.config);
@@ -479,10 +444,7 @@ export class TrustedKeyService {
 		};
 	}
 
-	private resolveKeysForStaticSource(source: TrustedKeySourceEntity): {
-		keys: Array<{ kid: string; data: TrustedKeyData }>;
-		cacheTtlSeconds?: number;
-	} {
+	private resolveKeysForStaticSource(source: TrustedKeySourceEntity): ResolvedSourceKeys {
 		let rawConfig: unknown;
 		try {
 			rawConfig = JSON.parse(source.config);
@@ -577,7 +539,6 @@ export class TrustedKeyService {
 		const expectedTypes: Record<AlgorithmFamily, string[]> = {
 			RSA: ['rsa'],
 			EC: ['ec'],
-			EdDSA: ['ed25519', 'ed448'],
 		};
 
 		if (!expectedTypes[family].includes(keyType ?? '')) {

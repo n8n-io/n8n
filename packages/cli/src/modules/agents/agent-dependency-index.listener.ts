@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-
-import { EventService } from '@/events/event.service';
 
 import { AgentDependencyIndexService } from './agent-dependency-index.service';
 
@@ -29,6 +28,11 @@ export class AgentDependencyIndexListener {
 		this.eventService.on('agent-deleted', async ({ agentId }) => {
 			await this.run('remove dependency index entries', async () => {
 				await this.indexService.remove(agentId);
+			});
+		});
+		this.eventService.on('credentials-updated', async ({ credentialId }) => {
+			await this.run('invalidate dependent agent runtimes', async () => {
+				await this.indexService.invalidateRuntimesForCredential(credentialId);
 			});
 		});
 		this.subscribeToWorkflowEvents();

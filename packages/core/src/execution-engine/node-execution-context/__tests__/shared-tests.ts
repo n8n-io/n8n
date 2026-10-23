@@ -46,6 +46,29 @@ export const describeCommonTests = (
 ) => {
 	const additionalData = context.additionalData as MockProxy<IWorkflowExecuteAdditionalData>;
 
+	describe('getRuntimeCredential', () => {
+		beforeEach(() => {
+			additionalData.getRuntimeCredential.mockReset();
+		});
+
+		it('forwards the alias to the additionalData callback and returns its value', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
+
+			const result = await context.getRuntimeCredential('api_key');
+
+			expect(result).toBe('Bearer xyz');
+			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
+		});
+
+		it('returns undefined when the underlying callback yields undefined', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
+
+			const result = await context.getRuntimeCredential('missing');
+
+			expect(result).toBeUndefined();
+		});
+	});
+
 	describe('getExecutionCancelSignal', () => {
 		it('should return the abort signal', () => {
 			expect(context.getExecutionCancelSignal()).toBe(abortSignal);
@@ -572,6 +595,70 @@ export const describeCommonTests = (
 				expect(additionalData.currentNodeUsedDynamicCredentials).toBe(false);
 				expect(additionalData.currentNodeAttemptedDynamicCredentials).toBe(false);
 				expect(additionalData.dynamicCredentialsResolvedUserId).toBeUndefined();
+			});
+		});
+
+		describe('sub-workflow redaction reporting', () => {
+			let executionContext: IExecutionContext;
+			const originalExecutionData = runExecutionData.executionData;
+
+			beforeEach(() => {
+				executionContext = { version: 1, establishedAt: 123, source: 'manual' };
+				runExecutionData.executionData = mock<NonNullable<IRunExecutionData['executionData']>>({
+					runtimeData: executionContext,
+				});
+			});
+
+			afterEach(() => {
+				runExecutionData.executionData = originalExecutionData;
+			});
+
+			it('escalates the execution context with the channels the sub-workflow reports', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					subWorkflowRedaction: { production: true, manual: false },
+				});
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(executionContext.subWorkflowRedaction).toEqual({ production: true, manual: false });
+				// The start snapshot keeps its meaning.
+				expect(executionContext.redaction).toBeUndefined();
+			});
+
+			it('combines the report with earlier reports and leaves the earlier object unchanged', async () => {
+				const earlier = { production: true, manual: false };
+				executionContext.subWorkflowRedaction = earlier;
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					subWorkflowRedaction: { production: false, manual: true },
+				});
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(executionContext.subWorkflowRedaction).toEqual({ production: true, manual: true });
+				expect(earlier).toEqual({ production: true, manual: false });
+			});
+
+			it('does not escalate when the sub-workflow reports nothing', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({ ...executeWorkflowData });
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(executionContext).not.toHaveProperty('subWorkflowRedaction');
+			});
+
+			it('escalates from the channels attached to a failed sub-workflow error and rethrows', async () => {
+				const error = Object.assign(new Error('sub-workflow failed'), {
+					subWorkflowRedaction: { production: true, manual: true },
+				});
+				additionalData.executeWorkflow.mockRejectedValue(error);
+
+				await expect(context.executeWorkflow(workflowInfo)).rejects.toThrow('sub-workflow failed');
+
+				expect(executionContext.subWorkflowRedaction).toEqual({ production: true, manual: true });
+				// The marker is transport-only and must not persist into the node's taskData.error.
+				expect('subWorkflowRedaction' in error).toBe(false);
 			});
 		});
 	});

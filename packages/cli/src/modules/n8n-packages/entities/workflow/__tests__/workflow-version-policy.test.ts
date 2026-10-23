@@ -1,6 +1,6 @@
 import { WorkflowEntity } from '@n8n/db';
 
-import { WorkflowVersionPolicy } from '../../../n8n-packages.types';
+import { ExportVersionPolicy } from '../../../n8n-packages.types';
 import { applyWorkflowVersionPolicy } from '../workflow-version-policy';
 
 /**
@@ -17,7 +17,7 @@ describe('applyWorkflowVersionPolicy', () => {
 		});
 
 		expect(() =>
-			applyWorkflowVersionPolicy([workflow], WorkflowVersionPolicy.PublishedStrict),
+			applyWorkflowVersionPolicy([workflow], ExportVersionPolicy.PublishedStrict),
 		).toThrow('Published version was not loaded for workflow');
 	});
 
@@ -39,7 +39,7 @@ describe('applyWorkflowVersionPolicy', () => {
 
 		const result = applyWorkflowVersionPolicy(
 			[archived, published],
-			WorkflowVersionPolicy.PublishedStrict,
+			ExportVersionPolicy.PublishedStrict,
 		);
 
 		expect(result.map(({ id }) => id)).toEqual(['wf-published', 'wf-archived']);
@@ -61,7 +61,7 @@ describe('applyWorkflowVersionPolicy', () => {
 
 		const result = applyWorkflowVersionPolicy(
 			[unpublished, archived],
-			WorkflowVersionPolicy.IgnoreUnpublished,
+			ExportVersionPolicy.IgnoreUnpublished,
 		);
 
 		expect(result.map(({ id }) => id)).toEqual(['wf-archived']);

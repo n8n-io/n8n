@@ -1,12 +1,22 @@
+import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
+import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
+import { credentialMissingModeUsesPackageData } from '../entities/credential/credential-missing-mode';
+import type { PlacedCredentialRequirement } from '../entities/credential/credential.types';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { PlacedVariableRequirement } from '../entities/variable/variable.types';
-import { VariableConflictPolicy, VariableParentPolicy } from '../n8n-packages.types';
-import type { ImportVariableProperties } from '../n8n-packages.types';
+import {
+	CredentialConflictPolicy,
+	VariableConflictPolicy,
+	VariableParentPolicy,
+} from '../n8n-packages.types';
+import type { ImportCredentialProperties, ImportVariableProperties } from '../n8n-packages.types';
 import type { ManifestEntry } from '../spec/manifest.schema';
-import type { PackageVariableRequirement } from '../spec/requirements.schema';
-import type { SerializedVariable } from '../spec/serialized/variable.schema';
+import type {
+	PackageCredentialRequirement,
+	PackageVariableRequirement,
+} from '../spec/requirements.schema';
 
 export function foldersInScope(
 	entries: ManifestEntry[] | undefined,
@@ -26,6 +36,40 @@ export function workflowsInScope(
 	);
 }
 
+export function needsBundledCredentialData(
+	request: ImportCredentialProperties,
+	hasRequirements: boolean,
+): boolean {
+	return hasRequirements && credentialMissingModeUsesPackageData(request.credentialMissingMode);
+}
+
+/**
+ * Attaches each requirement's bundled expression data. Lookup is by id: the manifest
+ * rejects duplicate credential ids, so each requirement has at most one bundle entry —
+ * scoped or top-level — regardless of which project owns the credential file.
+ */
+export function placeCredentialData({
+	requirements,
+	bundledCredentials,
+}: {
+	requirements: PackageCredentialRequirement[] | undefined;
+	/** Package credential files by credential id. */
+	bundledCredentials?: ReadonlyMap<string, SerializedCredential>;
+}): PlacedCredentialRequirement[] | undefined {
+	return requirements?.map((requirement) => {
+		const credential = bundledCredentials?.get(requirement.id);
+		const packageData = credential?.data;
+
+		return {
+			...requirement,
+			...(packageData !== undefined ? { packageData } : {}),
+			...(credential?.dataIsComplete !== undefined
+				? { packageDataIsComplete: credential.dataIsComplete }
+				: {}),
+		};
+	});
+}
+
 export function needsBundledVariableValues(
 	request: ImportVariableProperties,
 	hasRequirements: boolean,
@@ -34,6 +78,18 @@ export function needsBundledVariableValues(
 		hasRequirements &&
 		(variableMissingModeUsesPackageValue(request.variableMissingMode) ||
 			request.variableConflictPolicy !== VariableConflictPolicy.KeepExisting)
+	);
+}
+
+/** Only an update compares with the package credential files, so `keep-existing` never reads them. */
+export function needsBundledCredentialFiles(
+	request: Pick<ImportCredentialProperties, 'credentialConflictPolicy'>,
+	hasRequirements: boolean,
+): boolean {
+	return (
+		hasRequirements &&
+		resolveCredentialConflictPolicy(request.credentialConflictPolicy) !==
+			CredentialConflictPolicy.KeepExisting
 	);
 }
 

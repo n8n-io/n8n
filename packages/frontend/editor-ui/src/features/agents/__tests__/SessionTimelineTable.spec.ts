@@ -386,4 +386,30 @@ describe('SessionTimelineTable', () => {
 
 		expect(w.emitted('select')).toBeUndefined();
 	});
+	describe('notice slot', () => {
+		function mountWithNotice(visibleKinds = new Set<string>()) {
+			return mount(SessionTimelineTable, {
+				props: { items: makeItems(), selectedIndex: null, visibleKinds, noticeIndex: 2 },
+				slots: { notice: '<div data-test-id="notice-content" />' },
+				global: { plugins: [makeRouter()] },
+			});
+		}
+
+		it('renders one notice row directly below the matching event row', () => {
+			const w = mountWithNotice();
+
+			const noticeRows = w.findAll('[data-test-id="timeline-notice-row"]');
+			expect(noticeRows).toHaveLength(1);
+			expect(
+				noticeRows[0].element.previousElementSibling?.getAttribute('data-timeline-row-id'),
+			).toBe('event-2');
+			expect(noticeRows[0].find('[data-test-id="notice-content"]').exists()).toBe(true);
+		});
+
+		it('omits the notice when its event row is filtered out', () => {
+			const w = mountWithNotice(new Set<string>(['workflow']));
+
+			expect(w.find('[data-test-id="timeline-notice-row"]').exists()).toBe(false);
+		});
+	});
 });

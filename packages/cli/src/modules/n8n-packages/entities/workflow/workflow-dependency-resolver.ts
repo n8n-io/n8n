@@ -6,7 +6,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { extractWorkflowRequirements } from './references/extract-workflow-requirements';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
-import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import type { ExportVersionPolicy } from '../../n8n-packages.types';
 
 export interface WorkflowDependencyResolveRequest {
 	user: User;
@@ -17,7 +17,7 @@ export interface WorkflowDependencyResolveRequest {
 	 * workflows' own references.
 	 */
 	traversal?: 'transitive' | 'direct';
-	workflowVersionPolicy: WorkflowVersionPolicy;
+	versionPolicy: ExportVersionPolicy;
 }
 
 @Service()
@@ -28,7 +28,7 @@ export class WorkflowDependencyResolver {
 		request: WorkflowDependencyResolveRequest,
 	): Promise<WorkflowSubWorkflowRequirement[]> {
 		const traverse = (request.traversal ?? 'transitive') === 'transitive';
-		const policy = request.workflowVersionPolicy;
+		const policy = request.versionPolicy;
 		const queue = [...new Set(request.workflowIds)];
 		const seenWorkflowIds = new Set(queue);
 		const requirements: WorkflowSubWorkflowRequirement[] = [];

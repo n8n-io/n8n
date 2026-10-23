@@ -1,10 +1,19 @@
 import { Service } from '@n8n/di';
 
+/** Where the thread's connection tests for one credential type go instead of
+ *  the provider. See `InstanceAiEvalCredentialTestTargetRequest`. */
+export interface EvalCredentialTestTarget {
+	credentialType: string;
+	baseUrl: string;
+	urlField: string;
+}
+
 /**
- * Per-thread credential visibility for evaluation runs. The eval harness
+ * Per-thread credential settings for evaluation runs. The eval harness
  * declares which credentials a build thread may see; the builder context's
  * credential `list()` is filtered to that set. Threads without an entry see
- * the unfiltered instance listing.
+ * the unfiltered instance listing. The harness can also bypass a credential's
+ * connection test, or aim it at a provider stand-in.
  */
 @Service()
 export class EvalThreadCredentialAllowlistService {
@@ -13,6 +22,8 @@ export class EvalThreadCredentialAllowlistService {
 	 *  without contacting the provider — see `bypassCredentialTest` on
 	 *  `InstanceAiEvalCredentialAllowlistRequest`. */
 	private readonly testBypassByThread = new Map<string, string[]>();
+	/** Thread id → credential type → target. */
+	private readonly testTargetsByThread = new Map<string, Map<string, EvalCredentialTestTarget>>();
 
 	set(threadId: string, credentialIds: string[], bypassCredentialTest?: string[]): void {
 		this.byThread.set(threadId, [...credentialIds]);
@@ -41,8 +52,20 @@ export class EvalThreadCredentialAllowlistService {
 		return this.testBypassByThread.get(threadId)?.includes(credentialId) ?? false;
 	}
 
+	/** Replaces an earlier target for the same credential type only. */
+	setTestTarget(threadId: string, target: EvalCredentialTestTarget): void {
+		const targets = this.testTargetsByThread.get(threadId) ?? new Map();
+		targets.set(target.credentialType, { ...target });
+		this.testTargetsByThread.set(threadId, targets);
+	}
+
+	getTestTarget(threadId: string, credentialType: string): EvalCredentialTestTarget | undefined {
+		return this.testTargetsByThread.get(threadId)?.get(credentialType);
+	}
+
 	clearThread(threadId: string): void {
 		this.byThread.delete(threadId);
 		this.testBypassByThread.delete(threadId);
+		this.testTargetsByThread.delete(threadId);
 	}
 }

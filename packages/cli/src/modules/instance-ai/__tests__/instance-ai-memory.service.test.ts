@@ -167,6 +167,46 @@ describe('InstanceAiMemoryService.listThreadHistory', () => {
 	});
 });
 
+describe('InstanceAiMemoryService internal thread ownership', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+	afterEach(() => {
+		mockGetThread.mockReset();
+	});
+
+	it.each(['user-1', 'other-user'])('keeps producer threads hidden from %s', async (userId) => {
+		mockGetThread.mockResolvedValue({
+			...makeThread('internal-thread', '2026-02-01T00:00:00.000Z'),
+			resourceId: 'ia-self-healing:user-1',
+		});
+		const service = createService();
+
+		expect(await service.checkThreadOwnership(userId, 'internal-thread')).toBe('other_user');
+		expect(await service.getThreadMetadata(userId, 'internal-thread')).toBeUndefined();
+		await expect(
+			service.ensureThread(userId, 'internal-thread', 'project-1', {
+				source: 'assistant_page',
+				origin: 'internal',
+			}),
+		).rejects.toThrow('not owned');
+		expect(mockSaveThreadWithProject).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ resourceId: 'user-1', actorId: 'user-1' },
+		{ resourceId: 'ia-self-healing:user-1', actorId: 'user-1' },
+		{ resourceId: 'ia-self-healing:', actorId: undefined },
+	])('resolves the workspace cleanup actor for $resourceId', async ({ resourceId, actorId }) => {
+		mockGetThread.mockResolvedValue({
+			...makeThread('thread', '2026-02-01T00:00:00.000Z'),
+			resourceId,
+		});
+
+		expect(await createService().getThreadActorId('thread')).toBe(actorId);
+	});
+});
+
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -710,6 +750,86 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(turn1.agentTree?.toolCalls.map((tc) => tc.toolName)).toContain('bg-tool');
 		// Turn 2 pairs with its own run.
 		expect(result.messages[3].agentTree?.toolCalls.map((tc) => tc.toolName)).toEqual(['tool-1']);
+	});
+
+	it('keeps a turn paired when a preference-card fact lands after a later message', async () => {
+		// Edit and Undo append a `preference-card` fact to the run that saved the
+		// preference. A second tab, or a crafted runId, can append one after the
+		// next user message. The anchor must ignore that fact: the parser drops a
+		// snapshot anchored after the next message, which would unpair the whole
+		// turn instead of correcting one card.
+		const t = (seconds: number) => new Date(2026, 0, 1, 0, 0, seconds);
+		mockListMessages.mockResolvedValue({
+			messages: [
+				{ id: 'msg-u1', role: 'user', content: 'remember this', createdAt: t(0) },
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'saved it' }],
+					createdAt: t(8),
+				},
+				{ id: 'msg-u2', role: 'user', content: 'something else', createdAt: t(20) },
+			],
+		});
+		setLogRows([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				t(5),
+			),
+			eventRow(
+				{
+					type: 'tool-call',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', toolName: 'save_user_preference', args: {} },
+				},
+				t(6),
+			),
+			eventRow(
+				{
+					type: 'tool-result',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', result: { preferenceId: 'pref-1' } },
+				},
+				t(7),
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				t(9),
+			),
+			// The undo lands after the next user message.
+			eventRow(
+				{
+					type: 'preference-card',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+				},
+				t(30),
+			),
+		]);
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		// Three messages, no trailing orphan card.
+		expect(result.messages).toHaveLength(3);
+		const assistant = result.messages[1];
+		expect(assistant.role).toBe('assistant');
+		expect(assistant.runId).toBe('run_pref');
+		const toolCall = assistant.agentTree?.toolCalls.find((tc) => tc.toolCallId === 'tc-1');
+		expect(toolCall?.preferenceCard?.state).toBe('undone');
 	});
 
 	it('keeps interleaved runs of one group in thread order', async () => {
@@ -1266,14 +1386,15 @@ describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
 		vi.clearAllMocks();
 	});
 
-	it('delegates to the agent memory and returns the number of deleted threads', async () => {
-		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3);
+	it('deletes the actor chat and internal threads with their existing resource cleanup', async () => {
+		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3).mockResolvedValueOnce(2);
 		const service = createService();
 
 		const deleted = await service.deleteThreadsForUser('user-1');
 
-		expect(deleted).toBe(3);
+		expect(deleted).toBe(5);
 		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
+		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('ia-self-healing:user-1');
 	});
 });
 

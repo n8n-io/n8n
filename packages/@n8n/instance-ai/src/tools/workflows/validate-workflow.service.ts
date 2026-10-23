@@ -20,6 +20,7 @@ import { NodeHelpers, getParentNodes, mapConnectionsByDestination } from 'n8n-wo
 import { computeChatModelValidationIssues } from './chat-model-validation';
 import { isAiGatewayManagedCredential } from './credential-utils';
 import type { InstanceAiContext, NodeDescription } from '../../types';
+import { formatRedactedError } from '../../errors/redacted-error';
 
 const AI_GATEWAY_OPERATION_ONLY_MARKER = '__operation_only__';
 
@@ -452,12 +453,18 @@ async function computeInputIssues(
  * if none had an error. Mirrors `hasNodeExecutionIssues` (useNodeHelpers.ts:242)
  * but additionally surfaces the error text so the summary can include it — the
  * `INodeIssues.execution` boolean stays in canvas-parity.
+ *
+ * Unlike the canvas, it also counts an error that n8n redacted for the user:
+ * the run still failed, only the details are hidden.
  */
 function getFirstExecutionError(taskData: ITaskData[] | undefined): string | null {
 	if (!taskData) return null;
 	for (const task of taskData) {
 		if (task.error !== undefined) {
 			return task.error.message ?? 'Unknown error';
+		}
+		if (task.redactedError !== undefined) {
+			return formatRedactedError(task.redactedError);
 		}
 	}
 	return null;

@@ -17,6 +17,7 @@ import {
 	type IWorkflowGroup,
 	createEmptyRunExecutionData,
 	createRunExecutionData,
+	isEmptyGroupAnchor,
 } from 'n8n-workflow';
 import {
 	type GroupBoundaryRunData,
@@ -661,12 +662,21 @@ export function flattenLogEntries(
 	for (const entry of entries) {
 		ret.push(entry);
 
-		if (!collapsedEntryIds[entry.id]) {
+		if (!collapsedEntryIds[entry.id] && !isEmptyGroupLog(entry)) {
 			flattenLogEntries(entry.children, collapsedEntryIds, ret);
 		}
 	}
 
 	return ret;
+}
+
+export function isEmptyGroupLog(entry: LogEntry): entry is GroupLogEntry {
+	if (!isGroupLog(entry) || entry.group.nodeIds.length !== 1) return false;
+
+	const [anchorId] = entry.group.nodeIds;
+	return entry.children.some(
+		(child) => isNodeLog(child) && child.node.id === anchorId && isEmptyGroupAnchor(child.node),
+	);
 }
 
 export function getEntryAtRelativeIndex(

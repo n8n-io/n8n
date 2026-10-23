@@ -9,7 +9,7 @@ Mocks the **raw HTTP response a service sends over the wire**. The node then
 executes for real: its routing, pagination, response parsing, and
 post-processing (e.g. `simplify` options) all run against the mocked body.
 
-- Shape source: fetched API documentation (`api-docs.ts`) + endpoint quirks.
+- Shape source: the LLM's own knowledge of the API + endpoint quirks.
 - Used when a node executes against intercepted HTTP.
 
 ## Node-output level — pin data / simulation fixtures
@@ -25,6 +25,36 @@ executes; the data is pinned onto it.
 - Used by: Phase 1.5 bypass pin data (`pin-data-generator.ts`) and in-product
   simulated verification (`@n8n/instance-ai`
   `generate-simulation-fixtures.service.ts`).
+
+## Data Tables — real tables, prepared per scenario
+
+Data Table nodes are neither mocked nor pinned. A Data Table lives inside n8n,
+so the node runs for real: it applies its own filters, sets `pairedItem`, and
+sees the rows the same run wrote before it. A pinned read could do none of
+these things.
+
+Before each scenario, `prepareDataTables` in `execution.service.ts`:
+
+1. Finds every Data Table that the workflow's enabled Data Table nodes bind,
+   by id or by name, in the workflow's own project. A name is looked up with
+   the node's own query, so the case does not matter and a part of the name
+   matches.
+2. Skips the tables in `seededDataTableIds`. The CLI already filled them with
+   the rows from the scenario's `seedDataTables`.
+3. Asks the mock model for the starting rows of the other tables, in one call
+   (`data-table-rows.ts`). The prompt has the scenario, the Phase 1 context and
+   node hints, and each table's real columns.
+4. Empties each table and inserts its rows.
+
+Rows in a table that the workflow writes use the value formats of the
+workflow's write nodes, because such a table only holds rows that the workflow
+wrote. A node whose table does not exist runs as it is and fails, as it would
+for a user. A failure to prepare the tables is a framework issue. So is a
+scenario that gives rows a `createdAt` or `updatedAt` time: the table sets
+those columns itself, so the eval cannot start from that state.
+
+The CLI queues the runs that bind one table on one lane (`workflowDataTableKeys`
+in `harness/seed-tables.ts`), so two scenarios never reset each other's rows.
 
 ## Credential connection tests — a separate, opt-in surface
 
@@ -53,6 +83,18 @@ properties are deliberate:
 The bypass is queried per test rather than snapshotted into the adapter: the
 harness registers ids mid-run, when the simulated user creates a credential on
 a card, long after the run's context was built.
+
+## Agents a workflow calls
+
+A Message an Agent node, or its tool version, runs another agent in-process, so
+no HTTP mock reaches it by itself. In an eval run the workflow eval gives that
+agent the Agent eval's seams (`prepareCalledAgent` in `execution.service.ts`):
+its node and workflow tools, streamable-HTTP MCP servers and fallback web search
+are mocked, and each mocked call is recorded under the calling node. The agent's
+own model call stays real, so its model needs a credential with a real key. The
+eval runs the agent's draft and turns off its memory, vector stores, SSE MCP
+servers and chat integrations. A sub-agent keeps only the MCP servers its calling
+agent also has; the eval turns off the others and adds a warning.
 
 ## Agent model catalogs
 

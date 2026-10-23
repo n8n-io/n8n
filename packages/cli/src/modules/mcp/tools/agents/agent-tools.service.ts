@@ -24,19 +24,23 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
+import {
+	SkillNameTakenError,
+	skillNameTakenToolMessage,
+} from '@/modules/skills/skill-name-taken.error';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
 	AgentTestRunService,
@@ -48,7 +52,7 @@ import {
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
 import { listMcpServerTools } from '@/modules/agents/json-config/mcp-client-factory';
 import { sanitizeUnknownAgentCredentials } from '@/modules/agents/json-config/sanitize-unknown-agent-credentials';
@@ -60,11 +64,11 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
-import { UrlService } from '@/services/url.service';
+import { ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
+import { McpAgentSlackSetup, SLACK_INTEGRATION_TYPE } from './agent-slack-setup';
 import {
 	AGENT_BUILDER_GUIDE,
 	AGENT_BUILDER_REFERENCE,
@@ -82,8 +86,10 @@ import type {
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../../mcp.types';
+import { toolResult } from '../tool-result.utils';
 
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
+const MODEL_DISCOVERY_LIMIT = 50;
 
 const INTEGRATIONS_NOT_IN_CONFIG_MESSAGE =
 	"Integrations can't be changed through config.replace or config.patch. Use update_agent_integration to configure or disconnect Slack, Telegram, or Linear. Configuration never publishes the Agent; an unpublished Agent's channel stays inactive until publish_agent is called.";
@@ -101,7 +107,7 @@ function integrationsField(config: unknown): unknown {
 
 /**
  * Collects the credential IDs that `sanitizeUnknownAgentCredentials` rewrote
- * to `''` — the only change that sanitizer ever makes.
+ * to `''` вЂ” the only change that sanitizer ever makes.
  */
 function collectClearedCredentialIds(
 	original: unknown,
@@ -124,8 +130,8 @@ function collectClearedCredentialIds(
 
 /**
  * True when `next` alters the integrations array relative to `current`. Compared
- * structurally rather than by patch path so no operation — including an
- * ancestor or whole-document replace — can slip an integrations change through.
+ * structurally rather than by patch path so no operation вЂ” including an
+ * ancestor or whole-document replace вЂ” can slip an integrations change through.
  */
 function integrationsChanged(current: AgentJsonConfig, next: unknown): boolean {
 	return (
@@ -297,7 +303,7 @@ const discoverAssetsInput = {
 		.trim()
 		.min(1)
 		.optional()
-		.describe('Optional filter for workflows, subagents, or MCP servers'),
+		.describe('Optional filter for model IDs, workflows, subagents, or MCP servers'),
 	provider: z
 		.enum(AGENT_MODEL_PROVIDERS)
 		.optional()
@@ -339,7 +345,27 @@ const updateIntegrationInput = {
 	...agentIdentityShape,
 	action: z.enum(['connect', 'disconnect']),
 	type: z.string().min(1).describe('Integration type returned by discover_agent_assets'),
-	credentialId: z.string().min(1).describe('Accessible credential for this integration'),
+	credentialId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Accessible credential for this integration. Required for disconnect and for non-Slack connect operations. Omit it to connect Slack through managed setup',
+		),
+	managerCredentialId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Slack managed setup only: the managerCredentialId returned by a Slack connect call without credentialId',
+		),
+	workspaceId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Slack managed setup only: the workspaceId returned by a Slack connect call without credentialId',
+		),
 	settings: z
 		.record(z.unknown())
 		.optional()
@@ -358,7 +384,13 @@ const callAgentRequestSchema = z.discriminatedUnion('type', [
 		.object({
 			type: z.literal('message'),
 			message: z.string().trim().min(1),
-			sessionId: z.string().trim().min(1).optional(),
+			sessionId: z
+				.string()
+				.trim()
+				.optional()
+				.describe(
+					'Exact sessionId from an earlier call_agent result. Omit it to start a new conversation. An unknown sessionId starts a new conversation and the result has a sessionNote.',
+				),
 		})
 		.strict(),
 	z
@@ -383,20 +415,18 @@ type MutateAgentInput = z.infer<z.ZodObject<typeof mutateAgentInput>>;
 type DiscoverAssetsInput = z.infer<z.ZodObject<typeof discoverAssetsInput>>;
 type VerifyMcpServerInput = z.infer<z.ZodObject<typeof verifyMcpServerInput>>;
 type UpdateIntegrationInput = z.infer<z.ZodObject<typeof updateIntegrationInput>>;
+
+/** Telemetry label for the connect flow that an update_agent_integration call takes. */
+function integrationSetupPath(input: UpdateIntegrationInput) {
+	if (input.action === 'disconnect' || input.credentialId) return 'credential';
+	return input.managerCredentialId || input.workspaceId ? 'managed_install' : 'managed_discovery';
+}
 type CallAgentInput = z.infer<z.ZodObject<typeof callAgentInput>>;
 
 type MutationResource = {
 	type: 'skill' | 'task' | 'customTool';
 	id: string;
 };
-
-function toolResult(data: Record<string, unknown>, isError = false) {
-	return {
-		content: [{ type: 'text' as const, text: JSON.stringify(data) }],
-		structuredContent: data,
-		...(isError ? { isError: true } : {}),
-	};
-}
 
 @Service()
 export class McpAgentToolsService {
@@ -422,6 +452,8 @@ export class McpAgentToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly urlService: UrlService,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly slackSetup: McpAgentSlackSetup,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -575,40 +607,17 @@ export class McpAgentToolsService {
 					await this.assertScope(user, projectId, 'agent:create');
 					const initialConfig = config ? { ...config, name } : undefined;
 					if (initialConfig) {
-						const validation = await this.agentConfigService.validateConfig(initialConfig);
-						if (!validation.valid) {
-							throw new UserError(`Invalid initial Agent config: ${validation.error}`);
-						}
 						await this.assertAccessibleCredentials(initialConfig, user, projectId);
 					}
 
 					// Agents created over MCP stay operable over MCP.
-					const agent = await this.agentsService.create(projectId, name, {
+					const { agent, configHash } = await this.agentsService.createOrAdopt(projectId, name, {
+						actor: { kind: 'user', user },
+						user,
+						createdBy: 'mcp',
+						config: initialConfig,
 						availableInMCP: true,
 					});
-					let configHash: string | null;
-					let versionId = agent.versionId;
-					try {
-						if (initialConfig) {
-							const result = await this.agentConfigService.updateConfig(
-								agent.id,
-								projectId,
-								initialConfig,
-								user,
-								{
-									baseConfigHash: getAgentConfigHash(this.configFromEntity(agent)),
-									modifiedBy: 'mcp',
-								},
-							);
-							configHash = getAgentConfigHash(result.config);
-							versionId = result.versionId;
-						} else {
-							configHash = await this.fetchConfigHash(projectId, agent.id);
-						}
-					} catch (error) {
-						await this.agentsService.delete(agent.id, projectId);
-						throw error;
-					}
 
 					return {
 						ok: true,
@@ -617,7 +626,7 @@ export class McpAgentToolsService {
 							name: agent.name,
 							projectId: agent.projectId,
 							published: false,
-							versionId,
+							versionId: agent.versionId,
 							activeVersionId: agent.activeVersionId,
 						},
 						configHash,
@@ -651,7 +660,7 @@ export class McpAgentToolsService {
 						const agent = await this.resolveAgent(user, input.agentId);
 						const projectId = agent.projectId;
 						await this.assertScope(user, projectId, 'agent:update');
-						const config = this.configFromEntity(agent);
+						const config = await this.configFromEntity(agent);
 						const configHash = getAgentConfigHash(config);
 						if (configHash !== input.baseConfigHash) {
 							return {
@@ -667,6 +676,17 @@ export class McpAgentToolsService {
 						try {
 							mutation = await this.applyMutation(user, input, config, projectId, configHash);
 						} catch (error) {
+							// A taken name is a conflict too, but a retry with a fresh config would fail the same way.
+							if (error instanceof SkillNameTakenError) {
+								return {
+									ok: false,
+									code: 'skill_name_taken',
+									agentId: input.agentId,
+									// The agent may have changed meanwhile, so send the hash the next call needs.
+									configHash: await this.fetchConfigHash(projectId, input.agentId),
+									message: skillNameTakenToolMessage(error.skillName),
+								};
+							}
 							if (!(error instanceof ConflictError)) throw error;
 							const latestConfigHash = await this.fetchConfigHash(projectId, input.agentId);
 							if (latestConfigHash === configHash) throw error;
@@ -866,7 +886,7 @@ export class McpAgentToolsService {
 							agentId,
 							versionId: agent.versionId,
 							activeVersionId: agent.activeVersionId,
-							configHash: getAgentConfigHash(this.configFromEntity(agent)),
+							configHash: getAgentConfigHash(await this.configFromEntity(agent)),
 							url: this.getAgentUrl(projectId, agentId),
 						};
 					},
@@ -1026,7 +1046,7 @@ export class McpAgentToolsService {
 			name: 'update_agent_integration',
 			config: {
 				description:
-					"Configure or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called.",
+					"Configure or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called. For Slack, connect without credentialId first: n8n returns the workspaces where it can create a Slack app for the Agent, or the steps the user must take in n8n. Then call again with managerCredentialId and workspaceId after the user confirms the workspace.",
 				inputSchema: updateIntegrationInput,
 				annotations: {
 					title: 'Update Agent Integration',
@@ -1044,6 +1064,7 @@ export class McpAgentToolsService {
 						agentId: input.agentId,
 						action: input.action,
 						type: input.type,
+						setup: integrationSetupPath(input),
 					},
 					async () => await this.updateIntegration(user, input),
 				),
@@ -1075,15 +1096,20 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private async getAgentSnapshot(user: User, agent: Agent) {
+	private async getAgentSnapshot(user: User, agent: ProjectAgent) {
 		const { id: agentId, projectId } = agent;
-		const config = this.configFromEntity(agent);
+		const config = await this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
 		const [runnable, skills, tasks] = await Promise.all([
 			this.agentValidationService.validateAgentIsRunnable(agentId, projectId, credentialProvider),
 			this.agentSkillsService.listSkills(agentId, projectId),
 			this.agentTaskService.list(agentId),
 		]);
+		const outdatedSkillIds = await this.agentSkillRefs.findOutdatedSkillIds(
+			config.skills ?? [],
+			skills,
+			{},
+		);
 		const taskEnabled = new Map((config.tasks ?? []).map((task) => [task.id, task.enabled]));
 
 		// The hash covers the full persisted config (integrations included) so it
@@ -1111,6 +1137,7 @@ export class McpAgentToolsService {
 			skillHashes: Object.fromEntries(
 				Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 			),
+			outdatedSkillIds,
 			tasks: tasks.map((task) => ({ ...task, enabled: taskEnabled.get(task.id) ?? false })),
 			customTools: Object.entries(agent.tools ?? {}).map(([id, tool]) => ({
 				id,
@@ -1126,16 +1153,17 @@ export class McpAgentToolsService {
 	 * must not be usable as a mutate_agent baseConfigHash.
 	 */
 	private async getAgentVersionSnapshot(projectId: string, agentId: string, versionId: string) {
-		const { agent, version, tasks } = await this.agentPublishService.getVersion(
+		const { agent, version, definition } = await this.agentPublishService.getVersion(
 			agentId,
 			projectId,
 			versionId,
 		);
-		if (!version.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
+		if (!definition.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
 		// Integrations are managed separately and are not versioned, so omit any
 		// legacy snapshot field here for the same reason as in getAgentSnapshot.
-		const { integrations: _integrations, ...editableConfig } = version.schema;
+		const { integrations: _integrations, ...editableConfig } = definition.schema;
 
+		const enabledTasks = new Map((editableConfig.tasks ?? []).map((ref) => [ref.id, ref.enabled]));
 		return {
 			agent: {
 				id: agent.id,
@@ -1152,16 +1180,16 @@ export class McpAgentToolsService {
 				isActive: version.versionId === agent.activeVersionId,
 			},
 			config: editableConfig,
-			skills: version.skills ?? {},
-			tasks: tasks.map((task) => ({
-				id: task.taskId,
+			skills: definition.skills,
+			tasks: [...definition.tasks].map(([id, task]) => ({
+				id,
 				name: task.name,
 				objective: task.objective,
 				cronExpression: task.cronExpression,
 				timezone: task.timezone,
-				enabled: task.enabled,
+				enabled: enabledTasks.get(id) ?? false,
 			})),
-			customTools: Object.entries(version.tools ?? {}).map(([id, tool]) => ({
+			customTools: Object.entries(definition.tools).map(([id, tool]) => ({
 				id,
 				descriptor: tool.descriptor,
 			})),
@@ -1172,8 +1200,8 @@ export class McpAgentToolsService {
 		return getAgentConfigHash(await this.agentConfigService.getConfig(agentId, projectId));
 	}
 
-	private configFromEntity(agent: Agent): AgentJsonConfig {
-		const config = composeJsonConfig(agent);
+	private async configFromEntity(agent: ProjectAgent): Promise<AgentJsonConfig> {
+		const config = composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {}));
 		if (!config) throw new UserError('Agent has no JSON config yet.');
 		return config;
 	}
@@ -1184,7 +1212,7 @@ export class McpAgentToolsService {
 
 	private async callAgent(
 		user: User,
-		agent: Agent,
+		agent: ProjectAgent,
 		request: CallAgentInput['request'],
 		abortSignal?: AbortSignal,
 	): Promise<Record<string, unknown>> {
@@ -1193,17 +1221,30 @@ export class McpAgentToolsService {
 
 		try {
 			let result: AgentTestRunResult;
+			let note: { sessionNote?: string } = {};
 			if (request.type === 'message') {
-				result = await this.agentTestRunService.executeDraftRun({
-					agentId,
-					projectId,
-					message: request.message,
-					sessionId: request.sessionId,
-					credentialProvider: this.credentialProvider(user, projectId),
-					user,
-					source: 'mcp',
-					abortSignal,
-				});
+				const execute = async (sessionId: string | undefined) =>
+					await this.agentTestRunService.executeDraftRun({
+						agentId,
+						projectId,
+						message: request.message,
+						sessionId,
+						credentialProvider: this.credentialProvider(user, projectId),
+						user,
+						source: 'mcp',
+						abortSignal,
+					});
+				const sessionId = request.sessionId?.trim() || undefined;
+				result = await execute(sessionId);
+				// The session check runs before the agent, so a retry has no side effects.
+				if (result.status === 'session_not_found' && sessionId !== undefined) {
+					result = await execute(undefined);
+					note = {
+						sessionNote:
+							'The sessionId you passed was not found, so this test started a new conversation. ' +
+							'To continue this conversation, pass the sessionId from this result.',
+					};
+				}
 			} else {
 				result = await this.agentTestRunService.resumeDraftApproval({
 					agentId,
@@ -1221,7 +1262,8 @@ export class McpAgentToolsService {
 					ok: false,
 					status: 'error',
 					code: 'session_not_found',
-					message: 'Session not found.',
+					message:
+						'This test session is no longer available. Send a message request without sessionId to start a new test.',
 				};
 			}
 			if (result.status === 'agent_misconfigured') {
@@ -1233,7 +1275,7 @@ export class McpAgentToolsService {
 					missing: result.missing,
 				};
 			}
-			if (result.status === 'completed') return { ok: true, ...result };
+			if (result.status === 'completed') return { ok: true, ...result, ...note };
 
 			const approvals = collectStandardApprovals(result);
 			if (approvals) {
@@ -1245,6 +1287,7 @@ export class McpAgentToolsService {
 					sessionId: result.sessionId,
 					...(result.executionId ? { executionId: result.executionId } : {}),
 					approvals,
+					...note,
 				};
 			}
 
@@ -1269,6 +1312,7 @@ export class McpAgentToolsService {
 					sessionId: result.sessionId,
 					previewUrl,
 					...(previewAccessNote ? { previewAccessNote } : {}),
+					...note,
 				};
 			}
 
@@ -1285,6 +1329,7 @@ export class McpAgentToolsService {
 				})),
 				previewUrl,
 				...(previewAccessNote ? { previewAccessNote } : {}),
+				...note,
 			};
 		} catch (error) {
 			if (error instanceof InvalidAgentTestRunCheckpointError) {
@@ -1472,7 +1517,7 @@ export class McpAgentToolsService {
 	 * mutation itself introduced loudly instead of reporting a success that
 	 * persisted less than the client sent. Instability inherited unchanged from
 	 * the stored config (e.g. a legacy field persisted before the schema
-	 * dropped it) is tolerated — the write path cleans it up.
+	 * dropped it) is tolerated вЂ” the write path cleans it up.
 	 */
 	private assertSanitizeStable(config: unknown, baseConfig: AgentJsonConfig): void {
 		const sanitized = sanitizeAgentJsonConfig(config);
@@ -1516,8 +1561,8 @@ export class McpAgentToolsService {
 	/**
 	 * updateConfig quietly rewrites credential references the calling user
 	 * cannot use to `''` before saving. Surfacing that here turns silent
-	 * credential loss — including references already stored on the agent by
-	 * another user — into an explicit error the client can act on.
+	 * credential loss вЂ” including references already stored on the agent by
+	 * another user вЂ” into an explicit error the client can act on.
 	 */
 	private async assertAccessibleCredentials(
 		config: unknown,
@@ -1562,13 +1607,13 @@ export class McpAgentToolsService {
 	}
 
 	/**
-	 * Publish-scope validation — the same pass `publishAgent` enforces — plus
+	 * Publish-scope validation вЂ” the same pass `publishAgent` enforces вЂ” plus
 	 * the node-tool JSON-Schema checks from `validateConfig`, so validate_agent
 	 * and publish_agent cannot drift from the canonical validator.
 	 */
-	private async validateAgent(user: User, agent: Agent) {
+	private async validateAgent(user: User, agent: ProjectAgent) {
 		const projectId = agent.projectId;
-		const config = this.configFromEntity(agent);
+		const config = await this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
 		const [schema, configuration] = await Promise.all([
 			this.agentConfigService.validateConfig(config),
@@ -1589,10 +1634,18 @@ export class McpAgentToolsService {
 				),
 			),
 		];
+		const warnings = (configuration.warnings ?? []).flatMap((warning) =>
+			warning.code === 'similar_skill_names'
+				? [
+						`Skills ${warning.names.map((name) => `"${name}"`).join(', ')} have names that are hard to tell apart. Rename one of them.`,
+					]
+				: [],
+		);
 		return {
 			valid: errors.length === 0 && missing.length === 0,
 			errors,
 			missing,
+			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	}
 
@@ -1600,15 +1653,26 @@ export class McpAgentToolsService {
 		switch (input.kind) {
 			case 'models': {
 				if (input.provider) {
-					return await this.agentModelCatalogService.getProviderModels(
+					const catalog = await this.agentModelCatalogService.getProviderModels(
 						user,
 						input.projectId,
 						input.provider,
 						input.credentialId,
 					);
+					const query = input.query?.trim().toLowerCase();
+					const models = query
+						? catalog.models.filter((model) => model.id.toLowerCase().includes(query))
+						: catalog.models;
+					const truncated = models.length > MODEL_DISCOVERY_LIMIT;
+					return {
+						...catalog,
+						models: models.slice(0, MODEL_DISCOVERY_LIMIT),
+						truncated,
+						...(truncated ? { hint: 'Pass query to filter models by ID.' } : {}),
+					};
 				}
-				// The full catalog runs to hundreds of KB — far past MCP client
-				// token limits — so without a provider return a summary instead.
+				// The full catalog runs to hundreds of KB вЂ” far past MCP client
+				// token limits вЂ” so without a provider return a summary instead.
 				const catalog = filterOfferedAgentModelProviders(
 					await (await import('@n8n/agents')).fetchProviderCatalog(),
 				);
@@ -1625,6 +1689,12 @@ export class McpAgentToolsService {
 				return this.integrationPersistenceService.listChatIntegrations().map((integration) => ({
 					...integration,
 					settingsRequired: integration.type === 'telegram',
+					...(integration.type === SLACK_INTEGRATION_TYPE
+						? {
+								setupGuidance:
+									'Call update_agent_integration with action=connect and no credentialId. n8n returns the workspaces where it can create a Slack app for this Agent, or the steps the user must take in n8n. A slackApi credential from another Slack app, such as one made for a Slack Trigger, does not send events to the Agent.',
+							}
+						: {}),
 					...(integration.type === 'telegram'
 						? {
 								settingsSchema: TELEGRAM_SETTINGS_JSON_SCHEMA,
@@ -1664,28 +1734,38 @@ export class McpAgentToolsService {
 			await this.requireAccessibleCredential(credentialProvider, input.credential);
 		}
 
-		const tools = await listMcpServerTools(
-			{
-				name: input.name,
-				url: input.url,
-				transport: input.transport,
-				authentication: input.authentication,
-				credential: input.credential,
-				metadata: input.metadata,
-				...(input.connectionTimeoutMs !== undefined
-					? { connectionTimeoutMs: input.connectionTimeoutMs }
-					: {}),
-			},
-			{
-				credentialProvider,
-				oauthService: this.oauthService,
-				projectId: input.projectId,
-				proxyFetch: createAiMcpFetch(this.outboundHttp),
-				resolveRegistryConnection: async (nodeTypeName) =>
-					await this.mcpRegistryService.getConnection(nodeTypeName),
-			},
-		);
-		return { ok: true, tools };
+		try {
+			const tools = await listMcpServerTools(
+				{
+					name: input.name,
+					url: input.url,
+					transport: input.transport,
+					authentication: input.authentication,
+					credential: input.credential,
+					metadata: input.metadata,
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'always_allow' },
+					},
+					...(input.connectionTimeoutMs !== undefined
+						? { connectionTimeoutMs: input.connectionTimeoutMs }
+						: {}),
+				},
+				{
+					credentialProvider,
+					oauthService: this.oauthService,
+					projectId: input.projectId,
+					proxyFetch: createAiMcpFetch(this.outboundHttp),
+					resolveRegistryConnection: async (nodeTypeName) =>
+						await this.mcpRegistryService.getConnection(nodeTypeName),
+				},
+			);
+			return { ok: true, tools };
+		} catch (error) {
+			if (error instanceof OperationalError) {
+				return { ok: false, error: error.message };
+			}
+			throw error;
+		}
 	}
 
 	private async updateIntegration(user: User, input: UpdateIntegrationInput) {
@@ -1697,30 +1777,151 @@ export class McpAgentToolsService {
 			: await this.connectIntegration(user, input, agent);
 	}
 
-	private async disconnectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
+	private async disconnectIntegration(
+		user: User,
+		input: UpdateIntegrationInput,
+		agent: ProjectAgent,
+	) {
+		const { credentialId } = input;
+		if (!credentialId) throw new UserError('credentialId is required to disconnect');
+		if (input.managerCredentialId || input.workspaceId) {
+			throw new UserError('managerCredentialId and workspaceId apply only to connect');
+		}
 		const { savedAgent: saved, warning } = await this.integrationManagementService.disconnect({
 			agent,
 			user,
 			type: input.type,
-			credentialId: input.credentialId,
+			credentialId,
 			modifiedBy: 'mcp',
 		});
 		return {
 			ok: true,
 			agentId: input.agentId,
-			integration: { type: input.type, credentialId: input.credentialId },
+			integration: { type: input.type, credentialId },
 			connected: false,
 			...(warning ? { warning } : {}),
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
 		};
 	}
 
-	private async connectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
+	private async connectIntegration(user: User, input: UpdateIntegrationInput, agent: ProjectAgent) {
+		const managedTarget = this.managedSlackTarget(input);
+		if (managedTarget) return await this.installManagedSlackApp(user, agent, managedTarget);
+		if (!input.credentialId) {
+			if (input.type !== SLACK_INTEGRATION_TYPE) {
+				throw new UserError('credentialId is required to connect this integration');
+			}
+			return await this.slackSetup.describeSetup(
+				agent,
+				user,
+				this.getAgentUrl(agent.projectId, agent.id),
+			);
+		}
+
+		const connected = await this.connectWithCredential(user, input, agent, input.credentialId);
+		if (input.type !== SLACK_INTEGRATION_TYPE) return connected;
+		return {
+			...connected,
+			...(await this.slackSetup.describeBotCredential(agent, user, input.credentialId)),
+		};
+	}
+
+	/**
+	 * Returns the managed setup target when the input names one, after it checks
+	 * that the input does not mix managed setup with a credential connect.
+	 */
+	private managedSlackTarget(input: UpdateIntegrationInput) {
+		const { managerCredentialId, workspaceId } = input;
+		if (!managerCredentialId && !workspaceId) return undefined;
+		if (input.type !== SLACK_INTEGRATION_TYPE) {
+			throw new UserError('managerCredentialId and workspaceId apply only to Slack');
+		}
+		if (!managerCredentialId || !workspaceId) {
+			throw new UserError('Pass managerCredentialId and workspaceId together');
+		}
+		if (input.credentialId || input.replacesCredentialId || input.settings) {
+			throw new UserError(
+				'Managed Slack setup creates its own credential. Omit credentialId, replacesCredentialId, and settings',
+			);
+		}
+		return { managerCredentialId, workspaceId };
+	}
+
+	private async installManagedSlackApp(
+		user: User,
+		agent: ProjectAgent,
+		target: { managerCredentialId: string; workspaceId: string },
+	) {
+		// Managed setup stores the new bot token as a credential in the project.
+		if (
+			!(await userHasScopes(user, ['credential:create'], false, { projectId: agent.projectId }))
+		) {
+			throw new ForbiddenError('You do not have permission to create credentials in this project.');
+		}
+
+		const result = await this.slackSetup.install(agent, user, target);
+		if (result.status === 'manual_install_required') {
+			return {
+				ok: true,
+				status: 'install_approval_required',
+				agentId: agent.id,
+				configured: false,
+				appId: result.appId,
+				installUrl: result.installUrl,
+				nextStep:
+					'Give installUrl to the user. After they approve the install in Slack, n8n connects the channel. Call get_agent to confirm the Slack integration.',
+			};
+		}
+
+		// installApp returns a bot credential that this Agent already has instead of
+		// building a new app. That credential can come from another Agent's app.
+		if (!(await this.slackSetup.isAppConfiguredForAgent(agent, user, result.credentialId))) {
+			return {
+				ok: false,
+				code: 'slack_app_built_for_another_agent',
+				agentId: agent.id,
+				configured: false,
+				integration: { type: SLACK_INTEGRATION_TYPE, credentialId: result.credentialId },
+				error:
+					'This Agent already uses a Slack bot credential that n8n did not build for this Agent.',
+				nextStep:
+					'Disconnect integration.credentialId from this Agent with update_agent_integration action=disconnect. Then call the install again, and n8n builds a new Slack app for this Agent.',
+			};
+		}
+
+		const installed = {
+			ok: true,
+			agentId: agent.id,
+			integration: { type: SLACK_INTEGRATION_TYPE, credentialId: result.credentialId },
+			configured: true,
+			appId: result.appId,
+			slackApp: { configuredForAgent: true },
+		};
+		// The install is already saved, so skip the MCP access guard of resolveAgent:
+		// a concurrent change to that setting must not turn this result into an error.
+		const saved = await this.agentsService.findByIdForUser(agent.id, user);
+		if (!saved) return installed;
+		const published = saved.activeVersionId !== null;
+		return {
+			...installed,
+			connected: published,
+			published,
+			activeVersionId: saved.activeVersionId,
+			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
+		};
+	}
+
+	private async connectWithCredential(
+		user: User,
+		input: UpdateIntegrationInput,
+		agent: ProjectAgent,
+		credentialId: string,
+	) {
 		const candidate = {
 			type: input.type,
-			credentialId: input.credentialId,
+			credentialId,
 			...(input.settings ? { settings: input.settings } : {}),
 		};
 		const { savedAgent: saved } = await this.integrationManagementService.connect({
@@ -1735,11 +1936,11 @@ export class McpAgentToolsService {
 		const result = {
 			ok: true,
 			agentId: input.agentId,
-			integration: { type: input.type, credentialId: input.credentialId },
+			integration: { type: input.type, credentialId },
 			configured: true,
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
 		};
 		if (saved.activeVersionId === null) return { ...result, connected: false };
 		return {
@@ -1772,7 +1973,7 @@ export class McpAgentToolsService {
 	 * `search_agents` intentionally still sees every accessible agent so
 	 * clients can tell the user what exists.
 	 */
-	private async resolveAgent(user: User, agentId: string): Promise<Agent> {
+	private async resolveAgent(user: User, agentId: string): Promise<ProjectAgent> {
 		const agent = await this.agentsService.findByIdForUser(agentId, user);
 		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
 		if (!agent.availableInMCP) {

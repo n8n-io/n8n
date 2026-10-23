@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { onUnmounted, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -9,10 +9,15 @@ import type { InstanceAiPrefillDeclaration } from '@/features/ai/instanceAi/pref
 
 const PREVIEW_HOVER_DELAY_MS = 30;
 
-const props = defineProps<{
-	suggestions: readonly WorkflowPreviewSuggestion[];
-	disabled: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		suggestions: readonly WorkflowPreviewSuggestion[];
+		disabled: boolean;
+		/** Optional label shown above the row. */
+		label?: string;
+	}>(),
+	{ label: undefined },
+);
 
 interface InsertSuggestionPayload extends InstanceAiPrefillDeclaration {
 	promptKey: BaseTextKey;
@@ -109,6 +114,15 @@ onUnmounted(clearPreview);
 
 <template>
 	<div :class="$style.suggestions" data-test-id="instance-ai-workflow-preview-suggestions">
+		<N8nText
+			v-if="props.label"
+			size="small"
+			color="text-light"
+			:class="$style.assistantLabel"
+			data-test-id="instance-ai-workflow-preview-suggestions-assistant-label"
+		>
+			{{ props.label }}
+		</N8nText>
 		<div :class="$style.suggestionRow">
 			<button
 				v-for="(suggestion, index) in props.suggestions"
@@ -153,6 +167,12 @@ onUnmounted(clearPreview);
 
 .suggestions {
 	width: 100%;
+}
+
+.assistantLabel {
+	display: block;
+	text-align: center;
+	margin-bottom: var(--spacing--2xs);
 }
 
 .suggestionRow {

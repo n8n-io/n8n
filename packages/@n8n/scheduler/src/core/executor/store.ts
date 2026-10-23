@@ -41,6 +41,9 @@ export interface ExecutorTaskStore {
 	/**
 	 * Atomically claim up to `batchSize` due tasks of the given types: mark them
 	 * `running`, owned by `host`, with a lease of `leaseMs` and a bumped epoch.
+	 *
+	 * A job's `concurrencyLimit` caps how many of its tasks run at once. Extra tasks
+	 * stay `pending`.
 	 */
 	claimDueTasks(batch: ClaimDueTasksBatch): Promise<ClaimedTask[]>;
 
@@ -52,6 +55,15 @@ export interface ExecutorTaskStore {
 	 * not run the handler. This is the executor's at-most-once-execute-per-lease guard.
 	 */
 	beginDispatch(claim: ClaimedTaskRef, leaseMs: number): Promise<number>;
+
+	/**
+	 * Extend the lease of a claim whose handler is still running.
+	 *
+	 * @param {ClaimedTaskRef} claim the claim to renew
+	 * @param {number} expiresInMs the new lease expiry, in milliseconds from the store's now
+	 * @returns {Promise<boolean>} `true` when the lease was extended, `false` when the claim is gone
+	 */
+	renewLease(claim: ClaimedTaskRef, expiresInMs: number): Promise<boolean>;
 
 	/**
 	 * Stamp the effect-boundary marker (`dispatchedAt`) once the handler reports its

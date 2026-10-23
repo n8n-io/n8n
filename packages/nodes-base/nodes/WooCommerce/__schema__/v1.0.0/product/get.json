@@ -129,6 +129,12 @@
                 "type": "integer"
             }
         },
+        "date_created": {
+            "type": "string"
+        },
+        "date_created_gmt": {
+            "type": "string"
+        },
         "date_modified": {
             "type": "string"
         },
@@ -406,5 +412,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

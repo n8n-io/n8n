@@ -124,7 +124,7 @@ describe('createCompleteCheckpointTool', () => {
 		});
 
 		expect(res.ok).toBe(false);
-		expect(res.result).toContain('workflows(action="setup"');
+		expect(res.result).toContain('workflow_builder_workflows(action="setup"');
 		expect(res.result).toContain('saved-wf-1');
 		expect(res.result).toContain('Slack');
 		expect(service.markCheckpointSucceeded).not.toHaveBeenCalled();
@@ -223,7 +223,7 @@ describe('createCompleteCheckpointTool', () => {
 		expect(service.markCheckpointSucceeded).toHaveBeenCalled();
 		expect(res.result).toContain('Slack (slackApi)');
 		expect(res.result).toContain('skipped');
-		expect(res.result).not.toContain('workflows(action="setup"');
+		expect(res.result).not.toContain('workflow_builder_workflows(action="setup"');
 	});
 
 	it('marks a checkpoint failed via markCheckpointFailed', async () => {
@@ -304,7 +304,7 @@ describe('createCompleteCheckpointTool', () => {
 
 		expect(res.ok).toBe(false);
 		expect(res.result).toContain('not a checkpoint');
-		expect(res.result).toContain('build-workflow');
+		expect(res.result).toContain('actual kind: build-workflow');
 	});
 
 	it('returns error string on wrong-status', async () => {

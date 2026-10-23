@@ -13,12 +13,14 @@
 // `BuilderRecord` shape, joined by prompt text.
 // ---------------------------------------------------------------------------
 
+import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 import { redactSecrets } from '../harness/redact';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 
 // ---------------------------------------------------------------------------
 // Shared shape after normalization
@@ -192,7 +194,8 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 			feedback: r.feedback,
 			tokenInput: r.build.tokenUsage?.input,
 			tokenOutput: r.build.tokenUsage?.output,
-			submitCalls: tcs.filter((tc) => tc.toolName === 'submit-workflow').length,
+			submitCalls: tcs.filter((tc) => tc.toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW)
+				.length,
 			toolCallErrors: tcs.filter(isErroredIAToolCall).length,
 			toolCallsTotal: tcs.length,
 			toolCalls: tcs,
@@ -674,7 +677,8 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 	const a = redactSecrets(args) as Record<string, unknown>;
 	const str = (v: unknown): string => (typeof v === 'string' ? scrubSecretsInText(v) : '');
 	const trunc = (s: string, n = 160): string => (s.length > n ? s.slice(0, n) + '…' : s);
-	switch (toolName) {
+	// Stored runs can carry former builder tool names.
+	switch (resolveBuilderToolName(toolName)) {
 		case 'workspace_execute_command':
 			return trunc(str(a.command));
 		case 'workspace_str_replace_file':
@@ -698,14 +702,14 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 		}
 		case 'workspace_mkdir':
 			return trunc(str(a.path));
-		case 'submit-workflow':
+		case REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW:
 			return trunc(`${str(a.name)} ${str(a.filePath)}`);
-		case 'verify-built-workflow':
+		case ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW:
 			return trunc(str(a.workflowId) || str(a.workItemId));
-		case 'credentials':
-		case 'data-tables':
-		case 'nodes':
-		case 'workflows':
+		case DOMAIN_TOOL_IDS.CREDENTIALS:
+		case DOMAIN_TOOL_IDS.DATA_TABLES:
+		case DOMAIN_TOOL_IDS.NODES:
+		case DOMAIN_TOOL_IDS.WORKFLOWS:
 			return trunc(str(a.action));
 		default:
 			return trunc(scrubSecretsInText(JSON.stringify(a)), 120);

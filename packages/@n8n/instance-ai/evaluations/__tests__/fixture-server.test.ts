@@ -91,9 +91,13 @@ describe('provider fixtures', () => {
 			urlField: 'host',
 			verify: { path: '/v1beta/models', query: 'key' },
 		},
-		// No `verify`: slackApi's test hardcodes its baseURL, so the stand-in can
-		// never be aimed at it. The value check reports itself unverifiable.
-		{ type: 'slackApi', id: 'slack', host: 'api.slack.com', prefix: 'xoxb-' },
+		{
+			type: 'slackApi',
+			id: 'slack',
+			host: 'api.slack.com',
+			prefix: 'xoxb-',
+			verify: { path: '/api/users.profile.get', header: 'Authorization', scheme: 'Bearer' },
+		},
 	];
 
 	it.each(SHIPPED)('ships the $id fixture keyed on $type', async (row) => {

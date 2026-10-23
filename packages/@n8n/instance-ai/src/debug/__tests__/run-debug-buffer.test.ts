@@ -1,6 +1,7 @@
 import type { GenerateTextStepEndEvent, GenerateTextStepStartEvent } from 'ai';
 import { describe, expect, it } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import type { Logger } from '../../logger';
 import {
@@ -113,6 +114,57 @@ describe('RunDebugBuffer', () => {
 		expect(sanitized).not.toHaveProperty('abortSignal');
 	});
 
+	it('drops step-start data that repeats other captured fields', () => {
+		const stepTools = [{ type: 'function', name: 'search', inputSchema: { type: 'object' } }];
+		const sanitized = sanitizeStepStart(
+			{
+				stepNumber: 0,
+				instructions: 'system prompt',
+				messages: [{ role: 'user', content: 'hello' }],
+				tools: { search: { description: 'search', inputSchema: z.object({ q: z.string() }) } },
+				stepTools,
+				promptMessages: [{ role: 'system', content: 'system prompt' }],
+				steps: [{ stepNumber: 0, text: 'earlier step' }],
+				modelId: 'claude',
+			} as unknown as GenerateTextStepStartEvent,
+			0,
+		);
+
+		expect(sanitized.stepTools).toEqual(stepTools);
+		expect(sanitized.modelId).toBe('claude');
+		for (const key of ['tools', 'promptMessages', 'steps']) {
+			expect(sanitized).not.toHaveProperty(key);
+		}
+	});
+
+	it('drops empty step-start containers and keeps populated ones', () => {
+		const sanitized = sanitizeStepStart(
+			{
+				stepNumber: 0,
+				runtimeContext: {},
+				toolsContext: { search: { region: 'eu' } },
+				activeTools: [],
+			} as unknown as GenerateTextStepStartEvent,
+			0,
+		);
+
+		expect(sanitized).not.toHaveProperty('runtimeContext');
+		expect(sanitized).not.toHaveProperty('activeTools');
+		expect(sanitized.toolsContext).toEqual({ search: { region: 'eu' } });
+	});
+
+	it('keeps tool descriptions without Zod internals when stepTools is missing', () => {
+		const sanitized = sanitizeStepStart(
+			{
+				stepNumber: 0,
+				tools: { search: { description: 'search', inputSchema: z.object({ q: z.string() }) } },
+			} as unknown as GenerateTextStepStartEvent,
+			0,
+		);
+
+		expect(sanitized.tools).toEqual({ search: { description: 'search' } });
+	});
+
 	it('does not truncate long captured strings', () => {
 		const longSystem = 'x'.repeat(5_000);
 		const sanitized = sanitizeDebugSnapshotValue(longSystem);
@@ -127,14 +179,14 @@ describe('RunDebugBuffer', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
+						toolName: 'workflow_builder_build_workflow',
 						input: { code: 'full workflow code payload' },
 					},
 				],
 				toolResults: [
 					{
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
+						toolName: 'workflow_builder_build_workflow',
 						output: { success: true, workflowId: 'wf-1' },
 					},
 				],
@@ -153,14 +205,14 @@ describe('RunDebugBuffer', () => {
 		expect(sanitized.toolCalls).toEqual([
 			{
 				toolCallId: 'tc-1',
-				toolName: 'build-workflow',
+				toolName: 'workflow_builder_build_workflow',
 				input: { code: 'full workflow code payload' },
 			},
 		]);
 		expect(sanitized.toolResults).toEqual([
 			{
 				toolCallId: 'tc-1',
-				toolName: 'build-workflow',
+				toolName: 'workflow_builder_build_workflow',
 				output: { success: true, workflowId: 'wf-1' },
 			},
 		]);

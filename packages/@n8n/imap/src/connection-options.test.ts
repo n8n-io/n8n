@@ -47,6 +47,10 @@ describe('toImapFlowOptions', () => {
 		});
 	});
 
+	it('does not enable IMAP4rev2', () => {
+		expect(toImapFlowOptions(CREDENTIALS)).toMatchObject({ disableIMAP4rev2: true });
+	});
+
 	it('names the server for TLS so the certificate can be checked against it', () => {
 		expect(toImapFlowOptions(CREDENTIALS).tls).toEqual({ servername: 'imap.test.com' });
 	});

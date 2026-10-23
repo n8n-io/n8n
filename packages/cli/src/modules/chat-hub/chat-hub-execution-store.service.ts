@@ -7,7 +7,7 @@ import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
 import { InstanceSettings } from 'n8n-core';
 
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 
 import type { NonStreamingResponseMode } from './chat-hub.types';
 

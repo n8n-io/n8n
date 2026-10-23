@@ -176,6 +176,25 @@ describe('ExecutionsFilter', () => {
 		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
 	});
 
+	test('starts from the initial filters without emitting a change', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { initialFilters: { ...defaultFilterState, status: 'error' } },
+		});
+
+		expect(getByTestId('execution-filter-badge')).toHaveTextContent('1');
+		expect(emitted().filterChanged).toBeUndefined();
+
+		await userEvent.click(getByTestId('executions-filter-button'));
+		await userEvent.click(getByTestId('executions-filter-annotation-vote-select'));
+		await userEvent.click(
+			getByTestId('executions-filter-annotation-vote-select').querySelectorAll('li')[1],
+		);
+
+		expect(emitted().filterChanged).toEqual([
+			[{ ...defaultFilterState, status: 'error', vote: 'up' }],
+		]);
+	});
+
 	test('shows annotation filters when advanced filters are enabled', async () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 

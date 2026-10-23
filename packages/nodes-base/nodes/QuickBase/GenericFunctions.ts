@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { assertNoQueryDelimiters } from '../../utils/query-escaping';
+
 export async function quickbaseApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
@@ -133,4 +135,33 @@ export async function quickbaseApiRequestAllItems(
 	} while (returnData.length < metadata.totalRecords);
 
 	return returnData;
+}
+
+/**
+ * Replaces `$1`, `$2`, … in a Quick Base query with the matching parameter.
+ * The query language documents no way to escape a quote or a brace inside a
+ * value, so a parameter that contains one is rejected.
+ */
+export function applyWhereParameters(
+	this: IExecuteFunctions,
+	where: string,
+	parameters: IDataObject[],
+	itemIndex: number,
+) {
+	if (!where || parameters.length === 0) return where;
+
+	return where.replace(/\$(\d+)/g, (_match, index: string) => {
+		const position = Number(index) - 1;
+		if (position < 0 || position >= parameters.length) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`'Where' references parameter $${index}, but only ${parameters.length} parameter(s) were provided`,
+				{ itemIndex },
+			);
+		}
+
+		const { value } = parameters[position];
+		assertNoQueryDelimiters.call(this, 'Where Parameters', value, ["'", '"', '{', '}'], itemIndex);
+		return String(value);
+	});
 }

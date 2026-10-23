@@ -7,11 +7,12 @@ import '../controllers';
 
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
-import type { ResponseDtoClass } from '@n8n/decorators';
+import type { BinaryResponse, ResponseDtoClass } from '@n8n/decorators';
 import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { honorsIdempotencyKey } from '@/idempotency/idempotency-request';
 import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resolver';
 import {
 	isRequestBodyRequired,
@@ -20,7 +21,13 @@ import {
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 
+import { applySchemaModifiers } from './schema-modifiers';
+
 const REQUEST_BODY_COMPONENT = 'RequestBody';
+
+const IDEMPOTENCY_KEY_PARAMETER = {
+	$ref: '../../../../shared/spec/parameters/idempotencyKey.yml',
+};
 
 // Query fields backed by shared hand-written parameter files instead of being generated
 const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
@@ -37,8 +44,10 @@ export const ERROR_RESPONSE_REFS = {
 	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
+	413: { $ref: '../../../../shared/spec/responses/contentTooLarge.yml' },
 	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
 	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
+	500: { $ref: '../../../../shared/spec/responses/internalServerError.yml' },
 	503: { $ref: '../../../../shared/spec/responses/serviceUnavailable.yml' },
 } as const satisfies Record<number, { $ref: string }>;
 
@@ -59,8 +68,10 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	403: 'Forbidden',
 	404: 'The specified resource was not found.',
 	409: 'Conflict',
+	413: 'Content too large.',
 	415: 'Unsupported media type.',
 	422: 'Unprocessable Entity',
+	500: 'Internal server error.',
 	503: 'The requested service is temporarily unavailable.',
 };
 
@@ -152,18 +163,20 @@ function buildPathParams(route: ResolvedPublicApiRoute): z.AnyZodObject | undefi
 	return Object.keys(shape).length ? z.object(shape) : undefined;
 }
 
-/** A route's request body, straight from its `@Body` DTO - no field-splitting needed like query has. */
 function buildRequestBody(
 	route: ResolvedPublicApiRoute,
 ): NonNullable<RouteConfig['request']>['body'] {
-	if (!route.requestBodyDto) return undefined;
+	if (!route.requestBodyDto || !route.requestBodyHandler) {
+		return undefined;
+	}
 
 	const required = route.requestBodyRequired ?? isRequestBodyRequired(route.requestBodyDto);
+	const handler = route.requestBodyHandler;
 
 	return {
 		...(required ? { required: true } : {}),
 		content: {
-			'application/json': {
+			[handler.mediaType]: {
 				schema: route.requestBodyDto.schema,
 			},
 		},
@@ -186,7 +199,52 @@ export function buildRequestBodyJsonSchema(
 	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
 	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
 
+	applySchemaModifiers(schema);
+
 	return isRecord(schema) ? schema : undefined;
+}
+
+/** Documents a success body the controller method writes itself, with its declared headers. */
+export function buildBinarySuccessResponse({ mediaType, description, headers }: BinaryResponse) {
+	const responseHeaders: Record<
+		string,
+		{ description: string; required: true; schema: { type: 'string' } }
+	> = {};
+
+	for (const [name, header] of Object.entries(headers ?? {})) {
+		responseHeaders[name] = {
+			description: header.description,
+			required: true,
+			schema: { type: 'string' },
+		};
+	}
+
+	return {
+		description: description ?? 'Operation successful.',
+		headers: Object.keys(responseHeaders).length ? responseHeaders : undefined,
+		content: {
+			[mediaType]: { schema: { type: 'string' as const, format: 'binary' } },
+		},
+	};
+}
+
+/** Documents a JSON success body from the route's response DTO, or a bare success when it has none. */
+export function buildJsonSuccessResponse(
+	responseDto: ResponseDtoClass | undefined,
+	resolveSchema: SchemaResolver,
+) {
+	const hasResponseContent = responseDto && hasNamedSchema(responseDto);
+
+	return {
+		description: 'Operation successful.',
+		content: hasResponseContent
+			? {
+					'application/json': {
+						schema: resolveSchema(responseDto, responseDto.schema),
+					},
+				}
+			: undefined,
+	};
 }
 
 /**
@@ -195,24 +253,16 @@ export function buildRequestBodyJsonSchema(
  * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
  * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
  * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`.
+ * A binary `@ApiResponse` documents its media type, description and headers instead of a JSON DTO.
  */
 function buildResponses(
 	route: ResolvedPublicApiRoute,
 	resolveSchema: SchemaResolver,
 ): RouteConfig['responses'] {
 	const responses: RouteConfig['responses'] = {
-		[route.successStatus]: {
-			description: 'Operation successful.',
-			...(route.responseDto && hasNamedSchema(route.responseDto)
-				? {
-						content: {
-							'application/json': {
-								schema: resolveSchema(route.responseDto, route.responseDto.schema),
-							},
-						},
-					}
-				: {}),
-		},
+		[route.successStatus]: route.binaryResponse
+			? buildBinarySuccessResponse(route.binaryResponse)
+			: buildJsonSuccessResponse(route.responseDto, resolveSchema),
 	};
 
 	// If the route has a request body or query, we add an HTTP 400 as a possible response
@@ -221,8 +271,17 @@ function buildResponses(
 	if (route.requestBodyDto ?? route.requestQueryDto) {
 		responses[400] = ERROR_RESPONSE_REFS[400];
 	}
-	if (route.requestBodyDto) {
-		responses[415] = ERROR_RESPONSE_REFS[415];
+	if (route.requestBodyDto && route.requestBodyHandler) {
+		const handler = route.requestBodyHandler;
+		for (const status of handler.errorStatuses) {
+			if (!isDocumentedErrorStatus(status)) {
+				throw new UnexpectedError(
+					`Request-body media type ${handler.mediaType} declares undocumented error status ` +
+						`${status} - add a shared response file and register it in ERROR_RESPONSE_REFS.`,
+				);
+			}
+			responses[status] = ERROR_RESPONSE_REFS[status];
+		}
 	}
 	responses[401] = ERROR_RESPONSE_REFS[401];
 	if (route.apiKeyScope) {
@@ -254,6 +313,12 @@ function buildResponses(
 		}
 	}
 
+	if (honorsIdempotencyKey(route.method, route.path)) {
+		responses[400] ??= ERROR_RESPONSE_REFS[400];
+		responses[409] ??= ERROR_RESPONSE_REFS[409];
+		responses[422] ??= ERROR_RESPONSE_REFS[422];
+	}
+
 	return responses;
 }
 
@@ -267,8 +332,7 @@ export interface GeneratedDecoratorOperation {
 
 /**
  * Builds one `RouteConfig` per route discovered on a `@PublicApiController` class.
- * A new `@PublicApiController` shows up here automatically; a legacy eov-routed endpoint (still hand-written YAML)
- * is untouched until it's migrated to the controller pattern.
+ * A new `@PublicApiController` shows up here automatically.
  *
  * Output path convention: `handlers/<first-path-segment>/spec/paths/<handlerName>.generated.yml`
  */
@@ -279,7 +343,11 @@ export function getDecoratorGeneratedOperations(
 
 	return publicApiRoutes.map((route) => {
 		const pathKey = toOpenApiPathTemplate(route.path);
-		const { parameters, requestQuery } = buildQueryConfig(route);
+		const { parameters: queryParameters, requestQuery } = buildQueryConfig(route);
+		const parameters: NonNullable<RouteConfig['parameters']> = queryParameters ?? [];
+		if (honorsIdempotencyKey(route.method, route.path)) {
+			parameters.push(IDEMPOTENCY_KEY_PARAMETER);
+		}
 		const requestParams = buildPathParams(route);
 		const requestBody = buildRequestBody(route);
 		const resource = route.path.split('/').find(Boolean) ?? 'root';
@@ -295,7 +363,7 @@ export function getDecoratorGeneratedOperations(
 				? { 'x-required-scope': scopeRequirementToString(route.apiKeyScope) }
 				: {}),
 			...(route.deprecated ? { deprecated: true } : {}),
-			...(parameters ? { parameters } : {}),
+			...(parameters.length ? { parameters } : {}),
 			...((requestParams ?? requestQuery ?? requestBody)
 				? {
 						request: {
@@ -306,11 +374,6 @@ export function getDecoratorGeneratedOperations(
 					}
 				: {}),
 			responses: buildResponses(route, resolveSchema),
-			// Satisfies express-openapi-validator's operation-handler installer, which requires
-			// every operation in the spec to resolve to something.
-			'x-eov-operation-id': 'unreachable',
-			'x-eov-operation-handler': 'v1/handlers/decorator-routed.handler',
-			'x-decorator-routed': true,
 		};
 
 		return {

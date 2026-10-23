@@ -10,7 +10,6 @@ import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlow
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { BoundingBox } from '../../../canvas.types';
 
 const TOOLBAR_OFFSET_PX = 12;
@@ -35,9 +34,8 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-const settingsStore = useSettingsStore();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
-const { isSelectionExtractable } = useSelectionValidation();
+const { isSelectionExtractable, isSubworkflowConversionDisabled } = useSelectionValidation();
 const { canGroup, groupSelection } = useCanvasNodeGroupActions(() => props.selectedNodes, {
 	readOnly: () => props.readOnly,
 });
@@ -54,7 +52,7 @@ const selectedNodeIds = computed(() => props.selectedNodes.map((node) => node.id
 const canExtractWorkflow = computed(
 	() =>
 		!props.readOnly &&
-		!settingsStore.isSubworkflowConversionDisabled &&
+		!isSubworkflowConversionDisabled() &&
 		isSelectionExtractable(selectedNodeIds.value).valid,
 );
 
@@ -128,7 +126,7 @@ function onExtractWorkflowClick() {
 				<N8nIconButton
 					size="small"
 					variant="ghost"
-					icon="group"
+					icon="group-filled"
 					icon-size="large"
 					data-test-id="canvas-selection-toolbar-group"
 					:aria-label="i18n.baseText('canvas.selection.toolbar.group')"
@@ -144,8 +142,8 @@ function onExtractWorkflowClick() {
 				<N8nIconButton
 					size="small"
 					variant="ghost"
-					icon="workflow"
-					icon-size="large"
+					icon="workflow-filled-12"
+					icon-size="small"
 					data-test-id="canvas-selection-toolbar-extract"
 					:aria-label="extractWorkflowLabel"
 					@click.stop="onExtractWorkflowClick"
@@ -155,7 +153,7 @@ function onExtractWorkflowClick() {
 				<N8nIconButton
 					size="small"
 					variant="ghost"
-					icon="sparkles"
+					icon="sparkles-filled"
 					icon-size="large"
 					data-test-id="canvas-selection-toolbar-add-to-chat"
 					:aria-label="addToChatLabel"

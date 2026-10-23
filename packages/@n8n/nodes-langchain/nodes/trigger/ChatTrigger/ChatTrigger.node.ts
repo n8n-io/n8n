@@ -2,6 +2,10 @@ import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import pick from 'lodash/pick';
 import { autoSaveHighlightedDataProperty } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {
+	DEFAULT_TRUSTED_SOURCE_ID,
+	listRedirectLoginTrustedSources,
+} from 'n8n-nodes-base/dist/utils/trusted-source';
+import {
 	Node,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -31,6 +35,7 @@ import { Container } from '@n8n/di';
 
 import { buildChatShellViewModel, connectBarText } from './connect-panel';
 import { cssVariables } from './constants';
+import { ChatTriggerAuthorizationError } from './error';
 import {
 	establishChatSessionIdentity,
 	handleChatTokenRefresh,
@@ -291,6 +296,12 @@ ${cssVariables}
 ];
 
 export class ChatTrigger extends Node {
+	methods = {
+		loadOptions: {
+			listTrustedSources: listRedirectLoginTrustedSources,
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
@@ -507,6 +518,24 @@ export class ChatTrigger extends Node {
 				},
 				description:
 					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+			},
+			{
+				displayName: 'Trusted Source Name or ID',
+				name: 'trustedSource',
+				type: 'options',
+				typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+				default: DEFAULT_TRUSTED_SOURCE_ID,
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						mode: ['hostedChat'],
+						public: [true],
+					},
+				},
+				// The resolvers read the raw value without an execution context, so it must be static.
+				noDataExpression: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+				description: 'The identity provider the visitor signs in with',
 			},
 			{
 				...includeUserInOutputOption,
@@ -984,8 +1013,12 @@ export class ChatTrigger extends Node {
 					// Realm is scoped per webhook so browsers don't reuse cached credentials across chats sharing an origin
 					const webhookId = ctx.getNode().webhookId;
 					const realm = webhookId ? `Webhook ${webhookId}` : 'Webhook';
+					const challenge =
+						error instanceof ChatTriggerAuthorizationError && error.challenge
+							? error.challenge
+							: `Basic realm="${realm}"`;
 					res.writeHead((error as IDataObject).responseCode as number, {
-						'www-authenticate': `Basic realm="${realm}"`,
+						'www-authenticate': challenge,
 					});
 					res.end((error as IDataObject).message as string);
 					return { noWebhookResponse: true };
@@ -1098,6 +1131,10 @@ export class ChatTrigger extends Node {
 					// By header as well as by the iframe's attribute, so the document has no
 					// origin even if the attribute is ever stripped.
 					res.setHeader('Content-Security-Policy', `sandbox ${CHAT_FRAME_SANDBOX}`);
+				} else {
+					// The webhook route sandboxes every response. This page keeps its origin,
+					// because the widget keeps the session in `localStorage`.
+					res.removeHeader('Content-Security-Policy');
 				}
 
 				const page = createPage({
