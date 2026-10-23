@@ -311,8 +311,8 @@ interaction mode (one-shot vs chat). Clarify when the missing answer changes
 the anchor. When the request supplies enough evidence and both designs remain
 valid, apply the growth tiebreaker instead of asking a theoretical preference.
 Until the anchor is chosen, word the question in plain terms: ask about the
-result, once now vs on a repeat, and whether people chat with it. Do not call
-it a workflow or an Agent, and do not ask about triggers, nodes, or steps.
+result and whether people chat with it. Do not call it a workflow or an Agent,
+and do not ask about triggers, schedules, data sources, nodes, or steps.
 
 **False friends — not signals by themselves**:
 
