@@ -494,17 +494,11 @@ export class SubAgentRunner {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
-			this.reportDelegatedRunUsage({
-				executionId,
-				threadId,
-				executionLinks,
-				finish,
-				status: delegatedRunStatus(
-					context.abortSignal?.aborted === true,
-					recorder.suspended,
-					executionError !== undefined || recorder.getMessageRecord().error !== null,
-				),
-			});
+			const usageStatus = delegatedRunStatus(
+				context.abortSignal?.aborted === true,
+				recorder.suspended,
+				executionError !== undefined || recorder.getMessageRecord().error !== null,
+			);
 			try {
 				const record = recorder.getMessageRecord();
 				await this.turnExecutionService.finalizeExecution({
@@ -524,6 +518,14 @@ export class SubAgentRunner {
 					},
 				});
 			} finally {
+				// After the record is stored, so a provider that reads it sees the final row.
+				this.reportDelegatedRunUsage({
+					executionId,
+					threadId,
+					executionLinks,
+					finish,
+					status: usageStatus,
+				});
 				await agent?.close().catch((error) => {
 					this.logger.warn(`Failed to close subagent after ${operation.type}`, {
 						taskPath: operation.taskPath,

@@ -4631,9 +4631,12 @@ describe('AgentExecutionRepository', () => {
 		it('finds the thread of an execution', async () => {
 			const { parentThread, childThread, turn, child } = await createDelegation();
 
-			expect(await repository.findThreadIdOf(turn.id)).toBe(parentThread.id);
-			expect(await repository.findThreadIdOf(child.id)).toBe(childThread.id);
-			expect(await repository.findThreadIdOf(uuid())).toBeNull();
+			expect(await repository.findThreadOf(turn.id)).toMatchObject({
+				id: parentThread.id,
+				agentId: parentThread.agentId,
+			});
+			expect(await repository.findThreadOf(child.id)).toMatchObject({ id: childThread.id });
+			expect(await repository.findThreadOf(uuid())).toBeNull();
 		});
 
 		it('keeps delegated executions and clears their link when the parent execution is deleted', async () => {

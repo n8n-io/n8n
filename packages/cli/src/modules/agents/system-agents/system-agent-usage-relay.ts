@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
-import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
@@ -24,7 +23,6 @@ export class SystemAgentUsageRelay {
 		private readonly logger: Logger,
 		private readonly registry: SystemAgentRegistry,
 		private readonly executionRepository: AgentExecutionRepository,
-		private readonly threadRepository: AgentExecutionThreadRepository,
 	) {}
 
 	/** Report the usage in the background. A failure only logs a warning. */
@@ -61,11 +59,7 @@ export class SystemAgentUsageRelay {
 		send: (provider: SystemAgentProvider, thread: AgentExecutionThread) => Promise<void>,
 	): Promise<void> {
 		try {
-			const parentThreadId = await this.executionRepository.findThreadIdOf(
-				report.parentExecutionId,
-			);
-			if (parentThreadId === null) return;
-			const thread = await this.threadRepository.findOneBy({ id: parentThreadId });
+			const thread = await this.executionRepository.findThreadOf(report.parentExecutionId);
 			if (!thread) return;
 			// Project agents have no provider, so their delegated runs are not reported.
 			const provider = this.registry.get(thread.agentId);

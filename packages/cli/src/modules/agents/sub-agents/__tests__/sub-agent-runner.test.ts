@@ -798,6 +798,31 @@ describe('SubAgentRunner', () => {
 				});
 			});
 
+			it('reports the usage after the execution record is stored', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				streamFinishing({ type: 'finish', finishReason: 'stop', usage: finishUsage });
+
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+
+				const [finalizeOrder] = agentExecutionService.finalizeExecution.mock.invocationCallOrder;
+				const [reportOrder] = usageRelay.reportDelegatedRun.mock.invocationCallOrder;
+				expect(reportOrder).toBeGreaterThan(finalizeOrder);
+			});
+
+			it('still reports the usage when storing the execution record fails', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				streamFinishing({ type: 'finish', finishReason: 'stop', usage: finishUsage });
+				agentExecutionService.finalizeExecution.mockRejectedValue(
+					new Error('database unavailable'),
+				);
+
+				await runner
+					.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext())
+					.catch(() => {});
+
+				expect(usageRelay.reportDelegatedRun).toHaveBeenCalledTimes(1);
+			});
+
 			it('reports nothing without a parent link or without usage', async () => {
 				streamFinishing({ type: 'finish', finishReason: 'stop', usage: finishUsage });
 				await runner.run(spawnRequest, runContext());

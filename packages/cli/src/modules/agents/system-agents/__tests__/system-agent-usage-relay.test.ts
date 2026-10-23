@@ -2,7 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
-import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import { SystemAgentRegistry } from '../system-agent-registry';
 import { SystemAgentUsageRelay } from '../system-agent-usage-relay';
@@ -36,12 +35,10 @@ function setup(rootThread: Partial<AgentExecutionThread> | null = { agentId: 'as
 	const logger = mock<Logger>();
 	const registry = new SystemAgentRegistry();
 	const executionRepository = mock<AgentExecutionRepository>();
-	const threadRepository = mock<AgentExecutionThreadRepository>();
-	executionRepository.findThreadIdOf.mockResolvedValue(rootThread ? 'parent-thread-1' : null);
 	const thread = rootThread
 		? ({ id: 'parent-thread-1', ...rootThread } as AgentExecutionThread)
 		: null;
-	threadRepository.findOneBy.mockResolvedValue(thread);
+	executionRepository.findThreadOf.mockResolvedValue(thread);
 	const onDelegatedRunUsage = vi.fn();
 	const onDelegatedSideCallUsage = vi.fn();
 	const provider = mock<SystemAgentProvider>({
@@ -50,7 +47,7 @@ function setup(rootThread: Partial<AgentExecutionThread> | null = { agentId: 'as
 		onDelegatedSideCallUsage,
 	});
 	registry.register(provider);
-	const relay = new SystemAgentUsageRelay(logger, registry, executionRepository, threadRepository);
+	const relay = new SystemAgentUsageRelay(logger, registry, executionRepository);
 	return {
 		relay,
 		logger,
@@ -67,7 +64,7 @@ describe('SystemAgentUsageRelay', () => {
 
 		await relay.relay(report);
 
-		expect(executionRepository.findThreadIdOf).toHaveBeenCalledWith('turn-1');
+		expect(executionRepository.findThreadOf).toHaveBeenCalledWith('turn-1');
 		expect(onDelegatedRunUsage).toHaveBeenCalledWith(report, { thread });
 	});
 

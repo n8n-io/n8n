@@ -5,6 +5,7 @@ import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
@@ -147,10 +148,16 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return await this.managerFor(ctx).findOneBy(AgentExecution, { id: executionId });
 	}
 
-	/** The thread of an execution, without loading the execution row. */
-	async findThreadIdOf(executionId: string): Promise<string | null> {
-		const execution = await this.findOne({ select: ['threadId'], where: { id: executionId } });
-		return execution?.threadId ?? null;
+	/** The thread of an execution, in one query and without loading the execution row. */
+	async findThreadOf(
+		executionId: string,
+		ctx: OperationContext = {},
+	): Promise<AgentExecutionThread | null> {
+		return await this.managerFor(ctx)
+			.createQueryBuilder(AgentExecutionThread, 'thread')
+			.innerJoin(AgentExecution, 'execution', 'execution.threadId = thread.id')
+			.where('execution.id = :executionId', { executionId })
+			.getOne();
 	}
 
 	async findLatestByThreadId(threadId: string): Promise<AgentExecution | null> {

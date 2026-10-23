@@ -192,8 +192,9 @@ export interface SystemAgentProvider<TLease = unknown> {
 	normalizeResumeData?(resumeData: unknown): unknown;
 	/**
 	 * Called once for each execution of a run that a turn of this agent
-	 * delegated, foreground or background. `thread` is the thread of that
-	 * turn. A failing callback only logs a warning.
+	 * delegated, foreground or background, after the execution record is
+	 * stored. `thread` is the thread of that turn. A failing callback only
+	 * logs a warning. A report that is still in progress at shutdown is lost.
 	 */
 	onDelegatedRunUsage?(
 		report: SystemAgentDelegatedRunUsageReport,
@@ -220,6 +221,10 @@ export interface SystemAgentDelegatedRunUsageReport {
 	threadId: string;
 	/** The execution of the turn that delegated the run. */
 	parentExecutionId: string;
+	/**
+	 * The outcome of the execution, not of the task. A budget stop and a
+	 * paused run are `completed`, as for a top-level turn.
+	 */
 	status: AgentTurnStatus;
 	model: string | null;
 	/**
