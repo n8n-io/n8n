@@ -15,6 +15,7 @@ import {
 	isLiveExecutionStatus,
 	isSettledStatus,
 	stepKeyId,
+	type ChildResult,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
@@ -220,7 +221,63 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
+			if (!failed) await this.resumeAwaitingParent(execution);
 		}
+	}
+
+	/**
+	 * Resumes the parent step that waits for this execution, with its result.
+	 * Only the branch that won `finishExecution` gets here, so the parent is
+	 * resumed once. Resume first, announce second, as the wait sweep does: the
+	 * row is `queued` before any worker can hear of it.
+	 *
+	 * TODO(CET-342): a crash between the finish and the resume leaves a parent
+	 * step waiting on a child that has ended. The rows say so, and a redelivery
+	 * cannot repeat a finish it lost, so reconciliation re-issues the resume.
+	 */
+	private async resumeAwaitingParent(execution: ExecutionRecord): Promise<void> {
+		const { parent } = execution;
+		if (!parent?.awaited) return;
+
+		const result = await this.collectResult(execution);
+		const resumed = await this.stepStore.resumeStep(parent.stepId, {
+			kind: 'child',
+			executionId: execution.id,
+			status: 'completed',
+			result,
+		});
+		// A parent step that is not waiting any more was cancelled with its
+		// execution, and nothing is owed to it.
+		if (!resumed) return;
+
+		await this.stepQueue.publish({
+			type: 'step:ready',
+			executionId: parent.executionId,
+			stepId: parent.stepId,
+		});
+		await this.executionStore.refreshLiveStatus(parent.executionId);
+	}
+
+	/**
+	 * The outputs of every completed terminal step, in graph order and then by
+	 * pass. A terminal step is one whose node has no outgoing edge. Several
+	 * terminal branches all contribute, which is where engine v1 reports the
+	 * last node that ran instead.
+	 */
+	private async collectResult(execution: ExecutionRecord): Promise<ChildResult> {
+		const { graph } = execution;
+		const sources = new Set(graph.edges.map((edge) => edge.from));
+		const terminalOrder = new Map(
+			graph.nodes.filter((node) => !sources.has(node.id)).map((node, index) => [node.id, index]),
+		);
+		const steps = await this.stepStore.loadAllSteps(execution.id);
+		return steps
+			.filter((step) => step.status === 'completed' && terminalOrder.has(step.nodeId))
+			.sort(
+				(a, b) =>
+					terminalOrder.get(a.nodeId)! - terminalOrder.get(b.nodeId)! || a.iteration - b.iteration,
+			)
+			.map(({ nodeId, iteration, outputs }) => ({ nodeId, iteration, outputs: outputs ?? [] }));
 	}
 
 	/**
