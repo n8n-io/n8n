@@ -1,6 +1,7 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { InstanceAiConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import {
 	SharedWorkflowRepository,
 	TransactionRunner,
@@ -30,7 +31,7 @@ import {
 	type SelfHealingResultInput,
 } from './self-healing-result.service';
 
-const CANNOT_FIX_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+export const SELF_HEALING_CANNOT_FIX_COOLDOWN_MS = Time.days.toMilliseconds;
 
 type StartInvestigation = {
 	workflowId: string;
@@ -91,6 +92,14 @@ export class SelfHealingInvestigationService {
 
 		const existing = await this.findExisting(input);
 		if (existing) return existing;
+
+		// Skip a cooldown before the baseline capture and the locked claim. The claim checks again.
+		const inCooldown = await this.resultRepository.hasRecentCannotFixForActiveVersion({
+			workflowId: input.workflowId,
+			projectId: input.projectId,
+			completedAfter: this.cooldownStart(),
+		});
+		if (inCooldown) return null;
 
 		try {
 			const baseline = await this.suggestions.captureBaseline(input.workflowId, actor.id);
@@ -193,16 +202,19 @@ export class SelfHealingInvestigationService {
 	}
 
 	private async isInCooldown(baseline: WorkflowSuggestionBaseline, ctx: OperationContext) {
-		const completedAfter = new Date(Date.now() - CANNOT_FIX_COOLDOWN_MS);
 		return await this.resultRepository.hasRecentCannotFixForVersion(
 			{
 				workflowId: baseline.workflowId,
 				projectId: baseline.projectId,
 				publishedVersionId: baseline.expectedBaseline.publishedVersionId,
-				completedAfter,
+				completedAfter: this.cooldownStart(),
 			},
 			ctx,
 		);
+	}
+
+	private cooldownStart() {
+		return new Date(Date.now() - SELF_HEALING_CANNOT_FIX_COOLDOWN_MS);
 	}
 
 	private async run(investigation: SelfHealingInvestigation, user: User) {
