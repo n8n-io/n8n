@@ -19,7 +19,7 @@ import { deflateSync } from 'node:zlib';
 export type FixtureSizeHint = 'small' | 'medium' | 'large';
 
 export interface SynthesizeBinaryFixtureOptions {
-	/** Pad the synthetic fixture for size-constrained scenarios. Default `'small'` (minimum valid size). */
+	/** Pad the synthetic fixture for size-constrained scenarios. Default `'small'` (the unpadded base fixture: minimum valid size, except the 512×512 PNG canvas). */
 	sizeHint?: FixtureSizeHint;
 	/** Scenario-pinned override — when present, returned untouched (Step 4 precedence). */
 	override?: Buffer;
@@ -28,7 +28,8 @@ export interface SynthesizeBinaryFixtureOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Base fixtures — minimum byte sequences that `fileTypeFromBuffer` recognizes.
+// Base fixtures — minimum byte sequences that `fileTypeFromBuffer` recognizes
+// (PNG is the exception: a computed 512×512 canvas, see below).
 // ---------------------------------------------------------------------------
 
 // PNG is not a constant here: `image/png` serves `evalCanvasPng()` (below),
@@ -486,12 +487,13 @@ function applySizeHint(base: Buffer, hint: FixtureSizeHint, mime: string): Buffe
 // ---------------------------------------------------------------------------
 
 /**
- * Synthesize a minimal-valid binary buffer for the given content type.
+ * Synthesize a valid binary buffer for the given content type. Most fixtures
+ * are minimal; PNG is the exception, a computed 512×512 canvas.
  *
  * Precedence:
  *  1. `options.override` — scenario-pinned bytes returned untouched.
  *  2. `options.text` — a PDF with that text, or the text itself for a text MIME.
- *  3. MIME-keyed minimal fixture (PDF, PNG, OGG, …).
+ *  3. MIME-keyed fixture (PDF, OGG, …; minimal except PNG, a 512×512 canvas).
  *  4. Text MIME plaintext stub seeded with `filename`.
  *  5. Deterministic-random 256-byte payload (octet-stream fallback).
  *

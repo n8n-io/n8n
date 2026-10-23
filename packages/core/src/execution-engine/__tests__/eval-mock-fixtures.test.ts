@@ -47,8 +47,10 @@ function expectDecodablePng(png: Buffer): number {
 	const width = ihdr!.readUInt32BE(0);
 	const height = ihdr!.readUInt32BE(4);
 	const bitDepth = ihdr![8];
-	const channels = PNG_CHANNELS[ihdr![9]];
-	const rowBytes = Math.ceil((width * channels * bitDepth) / 8);
+	const channels = PNG_CHANNELS[ihdr![9]] as number | undefined;
+	expect(channels, `IHDR color type ${ihdr![9]} is a known PNG color type`).not.toBeUndefined();
+	expect(ihdr![12], 'IHDR interlace method is 0 (no interlace)').toBe(0);
+	const rowBytes = Math.ceil((width * channels! * bitDepth) / 8);
 	expect(inflateSync(Buffer.concat(idat)).length).toBe(height * (1 + rowBytes));
 
 	return offset;
