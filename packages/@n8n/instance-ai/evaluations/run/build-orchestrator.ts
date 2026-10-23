@@ -13,10 +13,10 @@ import type {
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
 import { sleep } from '@n8n/utils/sleep';
-import { randomUUID } from 'node:crypto';
 
 import type { LaneAllocator } from './lane-allocator';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
+import { prepareMcpBuildSeed, type McpBuildSeed } from './mcp-seed';
 import { collectExpectations } from '../build-expectations/collect';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
@@ -59,12 +59,7 @@ import {
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
 import type { executeScenario } from '../harness/scenario-execution';
-import {
-	buildSeededTablesNote,
-	dedupeScenarioSeedTables,
-	uniquifySeedTableNames,
-	type ScenarioSeedContext,
-} from '../harness/seed-tables';
+import type { ScenarioSeedContext } from '../harness/seed-tables';
 import {
 	extractErrorMessage,
 	findProviderOutage,
@@ -204,6 +199,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 	conversation: WorkflowTestCase['conversation'];
 	messageBudget?: number;
 	credentials?: TestCaseCredential[];
+	seed?: WorkflowTestCase['seed'];
 	executionScenarios?: ExecutionScenario[];
 	slug: string;
 	iteration: number;
@@ -215,9 +211,9 @@ async function buildWorkflowViaMcpOnLane(config: {
 }): Promise<BuildResult> {
 	const {
 		lane,
-		conversation = [],
 		messageBudget,
 		credentials,
+		seed,
 		executionScenarios,
 		slug,
 		iteration,
@@ -238,10 +234,10 @@ async function buildWorkflowViaMcpOnLane(config: {
 		return failure(`Lane ${lane.baseUrl} has no build user pool — cannot build via MCP`);
 	}
 
-	let mcpApiKey: string;
+	let buildUser: { mcpApiKey: string; userId: string };
 	const memberClient = new N8nClient(lane.baseUrl);
 	try {
-		mcpApiKey = await provisionCaseBuildUser({
+		buildUser = await provisionCaseBuildUser({
 			pool: lane.buildUserPool,
 			memberClient,
 			credentials,
@@ -252,22 +248,30 @@ async function buildWorkflowViaMcpOnLane(config: {
 		return failure(`MCP build user/credential setup failed: ${extractErrorMessage(error)}`);
 	}
 
-	let tableSeed: McpScenarioTableSeed | undefined;
+	let prepared: McpBuildSeed | undefined;
 	try {
-		tableSeed = await seedMcpScenarioTables({
+		prepared = await prepareMcpBuildSeed({
 			ownerClient: lane.client,
 			memberClient,
+			memberUserId: buildUser.userId,
+			conversation: config.conversation ?? [],
+			seed,
 			executionScenarios,
 			logger,
 		});
 	} catch (error) {
-		return failure(`MCP scenario data table setup failed: ${extractErrorMessage(error)}`);
+		// Not the builder's failure: `claude` never started.
+		return {
+			...failure(`MCP seeding failed: ${extractErrorMessage(error)}`),
+			seedingFailed: true,
+		};
 	}
+	const conversation = prepared?.conversation ?? config.conversation ?? [];
 
 	const mcpConfigPath = stageLaneMcpConfig({
 		serverName: args.mcpServerName,
 		url: `${lane.baseUrl}/mcp-server/http`,
-		apiKey: mcpApiKey,
+		apiKey: buildUser.mcpApiKey,
 	});
 
 	let result: McpBuildResult;
@@ -282,7 +286,10 @@ async function buildWorkflowViaMcpOnLane(config: {
 			log: (message) => logger.info(message),
 			// Same simulated user as the Instance AI arm, so both arms get the same follow-ups.
 			createDriver: () => new UserProxyLlm({ conversation, messageBudget, logger }),
-			openingMessageSuffix: tableSeed?.note,
+			openingMessagePrefix: prepared?.openingPrefix,
+			openingNote: prepared?.openingNote,
+			openingMessageSuffix: prepared?.openingSuffix,
+			seededWorkflowIds: prepared?.workflowIds,
 		});
 	} finally {
 		unlinkStagedMcpConfig(mcpConfigPath);
@@ -301,10 +308,31 @@ async function buildWorkflowViaMcpOnLane(config: {
 		lane.workflowIdsToDelete.add(result.workflowId);
 	}
 
-	// The Agent lives in the build user's project, so build-user cleanup deletes it.
-	const artifactRefs: ArtifactRef[] = result.agent ? [{ type: 'agent', ...result.agent }] : [];
-	const seedFields: Pick<BuildResult, 'seedThreadId' | 'seededScenarioTableIdsByName'> = tableSeed
-		? { seedThreadId: tableSeed.threadId, seededScenarioTableIdsByName: tableSeed.tableIdsByName }
+	// Agents live in the build user's project, so build-user cleanup deletes them.
+	// A seeded Agent is graded when the conversation made no new one; its ref
+	// carries the project an edit result lacks.
+	const builtAgent = result.agent;
+	const artifactRefs: ArtifactRef[] = builtAgent
+		? [
+				prepared?.agentRefs.find((ref) => ref.id === builtAgent.id) ?? {
+					type: 'agent',
+					...builtAgent,
+				},
+			]
+		: (prepared?.agentRefs ?? []);
+	const transcript = prepared?.transcriptPrefix.length
+		? [...prepared.transcriptPrefix, ...result.transcript]
+		: result.transcript;
+	const seedFields: Pick<
+		BuildResult,
+		'seedThreadId' | 'seededScenarioTableIdsByName' | 'createdProjectIds' | 'priorRunFailed'
+	> = prepared
+		? {
+				seedThreadId: prepared.threadId,
+				seededScenarioTableIdsByName: prepared.scenarioTableIdsByName,
+				createdProjectIds: prepared.projectIds,
+				...(prepared.priorRunFailed ? { priorRunFailed: prepared.priorRunFailed } : {}),
+			}
 		: {};
 
 	if (!result.workflowId) {
@@ -316,13 +344,16 @@ async function buildWorkflowViaMcpOnLane(config: {
 				createdDataTableIds: [],
 				artifactRefs,
 				...seedFields,
-				transcript: result.transcript,
+				transcript,
 			};
 		}
-		return failure(
-			`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`,
-			result.transcript,
-		);
+		return {
+			...failure(
+				`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`,
+				transcript,
+			),
+			...seedFields,
+		};
 	}
 
 	const fetched = await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
@@ -330,51 +361,8 @@ async function buildWorkflowViaMcpOnLane(config: {
 		...fetched,
 		...(artifactRefs.length > 0 ? { artifactRefs } : {}),
 		...seedFields,
-		transcript: result.transcript,
+		transcript,
 	};
-}
-
-interface McpScenarioTableSeed {
-	threadId: string;
-	tableIdsByName: Record<string, string>;
-	note: string;
-}
-
-/**
- * Create the case's scenario data tables empty in the build user's personal
- * project before `claude` starts, so the build binds the real tables, as on the
- * Instance AI arm. The server creates and reseeds tables only through a thread,
- * so the owner opens an empty thread bound to that project. Deleting the build
- * user deletes the tables.
- */
-async function seedMcpScenarioTables(opts: {
-	ownerClient: N8nClient;
-	memberClient: N8nClient;
-	executionScenarios?: ExecutionScenario[];
-	logger: EvalLogger;
-}): Promise<McpScenarioTableSeed | undefined> {
-	const declared = dedupeScenarioSeedTables(opts.executionScenarios ?? [], opts.logger);
-	if (declared.length === 0) return undefined;
-	const projectId = await opts.memberClient.getPersonalProjectId();
-	const threadId = randomUUID();
-	await opts.ownerClient.ensureThread(threadId, projectId);
-	const schemasOnly = uniquifySeedTableNames(declared).map((table) => ({
-		...table,
-		rows: undefined,
-	}));
-	const { dataTableIds } = await opts.ownerClient.restoreThread(threadId, [], [], schemasOnly, [], {
-		uniquifyNames: false,
-	});
-	if (dataTableIds.length !== declared.length) {
-		throw new Error(
-			`Created ${String(dataTableIds.length)} data table(s) but the case declares ${String(declared.length)}`,
-		);
-	}
-	const tableIdsByName: Record<string, string> = {};
-	declared.forEach((table, index) => {
-		tableIdsByName[table.name] = dataTableIds[index];
-	});
-	return { threadId, tableIdsByName, note: buildSeededTablesNote(schemasOnly) };
 }
 
 // Direct fetch (not N8nClient) so a hung lane can't stall the probe.
@@ -757,6 +745,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						conversation: entry.conversation,
 						messageBudget: entry.messageBudget,
 						credentials: entry.credentials,
+						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,
 						slug: fileSlug,
 						iteration,

@@ -157,10 +157,9 @@ describe('unsupportedMcpBuildSetupFields', () => {
 
 	// One `seed` entry covers every mode: the classification keys off the slot, not
 	// the mode, so a new arm needs no edit here.
-	it.each<[string, string, Partial<WorkflowTestCase>]>([
+	it.each<[string, Partial<WorkflowTestCase>]>([
 		[
 			'an inline seed',
-			'seed',
 			{
 				seed: {
 					mode: 'inline',
@@ -181,20 +180,9 @@ describe('unsupportedMcpBuildSetupFields', () => {
 				},
 			},
 		],
-		['a replay seed', 'seed', { seed: { mode: 'replay', threadId: 't1' } }],
-	])('flags %s', (_label, field, overrides) => {
-		expect(unsupportedMcpBuildSetupFields(testCase(overrides))).toEqual([field]);
-	});
-
-	it('flags only the seed when credentials and a seed are declared together', () => {
-		expect(
-			unsupportedMcpBuildSetupFields(
-				testCase({
-					credentials: [{ type: 'slackApi' }],
-					seed: { mode: 'replay', threadId: 't1' },
-				}),
-			),
-		).toEqual(['seed']);
+		['a replay seed', { seed: { mode: 'replay', threadId: 't1' } }],
+	])('does not flag %s (the fused path restores it per build)', (_label, overrides) => {
+		expect(unsupportedMcpBuildSetupFields(testCase(overrides))).toEqual([]);
 	});
 });
 
@@ -452,6 +440,27 @@ describe('buildWorkflowViaMcp', () => {
 		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
 	});
 
+	it('treats an existing Agent edited with mutate_agent as a build', async () => {
+		spawnReturning(() =>
+			emitting([
+				assistantEvent({
+					type: 'tool_use',
+					id: 'tu-1',
+					name: 'mcp__n8n-local__mutate_agent',
+					input: { agentId: 'agSeed', operation: { type: 'task.upsert' } },
+				}),
+				toolResultEvent('tu-1', JSON.stringify({ ok: true, agentId: 'agSeed' })),
+				resultEvent({ result: 'Added the daily task.' }),
+			]),
+		);
+
+		const result = await buildWorkflowViaMcp(buildOpts());
+
+		expect(result.agent).toEqual({ id: 'agSeed' });
+		expect(result.failureReason).toBeUndefined();
+		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
+	});
+
 	it('records a failed tool call as an error, without taking its id', async () => {
 		spawnReturning(() =>
 			emitting([
@@ -564,6 +573,66 @@ describe('buildWorkflowViaMcp', () => {
 				'Build a contact form',
 				'Use #alerts',
 			]);
+		});
+
+		it('builds the seeded workflow it edited with update_workflow', async () => {
+			spawnReturning(() =>
+				emitting([
+					initEvent('sess-1'),
+					assistantEvent({
+						type: 'tool_use',
+						id: 'tu-1',
+						name: 'mcp__n8n-local__update_workflow',
+						input: { workflowId: 'wfSeed', operations: [] },
+					}),
+					toolResultEvent('tu-1', JSON.stringify({ workflowId: 'wfSeed', nodeCount: 3 })),
+					resultEvent({ result: 'Fixed the HTTP node.' }),
+				]),
+			);
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				createDriver: () => makeDriver([]),
+			});
+
+			expect(result.workflowId).toBe('wfSeed');
+			expect(result.failureReason).toBeUndefined();
+		});
+
+		it('builds the seeded workflow when the conversation ends without saving one', async () => {
+			spawnReturning(() =>
+				emitting([initEvent('sess-1'), resultEvent({ result: 'The run failed on a timeout.' })]),
+			);
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				createDriver: () => makeDriver([]),
+				seededWorkflowIds: ['wfSeed', 'wfHelper'],
+			});
+
+			expect(result.workflowId).toBe('wfSeed');
+			expect(result.failureReason).toBeUndefined();
+			expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
+		});
+
+		it('sends the seeded context before the opening message, and records only the note', async () => {
+			spawnReturning(() => emitting([initEvent('sess-1'), resultEvent({ result: 'Done.' })]));
+
+			const result = await buildWorkflowViaMcp({
+				...buildOpts(),
+				createDriver: () => makeDriver([]),
+				openingMessagePrefix: 'EARLIER CONVERSATION',
+				openingNote: '[attached workflow: Order sync]',
+				openingMessageSuffix: '\n\nTABLES',
+			});
+
+			const [, args] = spawnCall(0);
+			expect(args[1]).toBe(
+				'EARLIER CONVERSATION\n\n[attached workflow: Order sync] Build a contact form\n\nTABLES',
+			);
+			expect(result.transcript[0]?.userMessage).toBe(
+				'[attached workflow: Order sync] Build a contact form',
+			);
 		});
 
 		it('does not retry a conversation that ended without a workflow', async () => {

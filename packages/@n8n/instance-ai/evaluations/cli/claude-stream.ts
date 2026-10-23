@@ -51,6 +51,8 @@ const toolResultBlockSchema = z.object({
 
 const CREATE_WORKFLOW_TOOL = 'create_workflow_from_code';
 const CREATE_AGENT_TOOL = 'create_agent';
+const UPDATE_WORKFLOW_TOOL = 'update_workflow';
+const MUTATE_AGENT_TOOL = 'mutate_agent';
 
 const createAgentResultSchema = z.object({
 	ok: z.literal(true),
@@ -74,6 +76,10 @@ export interface ClaudeTurnCapture {
 	createdWorkflowIds: string[];
 	/** Agents returned by successful `create_agent` calls, in order. */
 	createdAgents: CreatedAgent[];
+	/** Existing workflows changed by successful `update_workflow` calls, in order. */
+	updatedWorkflowIds: string[];
+	/** Existing Agents changed by successful `mutate_agent` calls, in order. */
+	updatedAgentIds: string[];
 }
 
 function toolResultText(content: unknown): string {
@@ -119,6 +125,8 @@ export function parseClaudeStream(stdout: string, serverName: string): ClaudeTur
 		agentText: '',
 		createdWorkflowIds: [],
 		createdAgents: [],
+		updatedWorkflowIds: [],
+		updatedAgentIds: [],
 	};
 	const textParts: string[] = [];
 	const toolCallsById = new Map<string, Extract<TranscriptStep, { kind: 'tool-call' }>>();
@@ -176,6 +184,12 @@ export function parseClaudeStream(stdout: string, serverName: string): ClaudeTur
 					typeof step.result.workflowId === 'string'
 				) {
 					capture.createdWorkflowIds.push(step.result.workflowId);
+				}
+				if (step.toolName === UPDATE_WORKFLOW_TOOL && typeof step.args?.workflowId === 'string') {
+					capture.updatedWorkflowIds.push(step.args.workflowId);
+				}
+				if (step.toolName === MUTATE_AGENT_TOOL && typeof step.args?.agentId === 'string') {
+					capture.updatedAgentIds.push(step.args.agentId);
 				}
 				if (step.toolName === CREATE_AGENT_TOOL) {
 					const created = createAgentResultSchema.safeParse(step.result);

@@ -218,7 +218,9 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// The fixture server, Chromium and the relay are booted around the build;
 	// `claude` gets the conversation only and no browser.
 	credentialFixture: 'orchestrator-only',
-	seed: 'orchestrator-only',
+	// Restored into the build user's project before `claude` starts; the earlier
+	// conversation goes to `claude` as text (see run/mcp-seed.ts).
+	seed: 'supported',
 	datasets: 'supported',
 };
 
@@ -339,6 +341,8 @@ function emptyCapture(): ClaudeTurnCapture {
 		agentText: '',
 		createdWorkflowIds: [],
 		createdAgents: [],
+		updatedWorkflowIds: [],
+		updatedAgentIds: [],
 	};
 }
 
@@ -582,6 +586,7 @@ async function runConversationAttempt(opts: {
 	logFile: string;
 	label: string;
 	log: (message: string) => void;
+	seededWorkflowIds?: string[];
 }): Promise<ConversationAttempt> {
 	const { context, driver, logFile, label, log } = opts;
 	const timeoutMs = context.settings.buildTimeoutMs ?? 0;
@@ -596,6 +601,8 @@ async function runConversationAttempt(opts: {
 		timedOut: false,
 	};
 	const createdWorkflowIds: string[] = [];
+	const updatedWorkflowIds: string[] = [];
+	const updatedAgentIds: string[] = [];
 	let trailerWorkflowId: string | null = null;
 	let sessionId: string | undefined;
 	let next: { text: string; sent: string } | undefined = opts.opening;
@@ -621,6 +628,8 @@ async function runConversationAttempt(opts: {
 		attempt.durationMs += capture.session?.duration_ms ?? 0;
 		attempt.lastSession = capture.session;
 		createdWorkflowIds.push(...capture.createdWorkflowIds);
+		updatedWorkflowIds.push(...capture.updatedWorkflowIds);
+		updatedAgentIds.push(...capture.updatedAgentIds);
 		attempt.agent = capture.createdAgents.at(-1) ?? attempt.agent;
 		trailerWorkflowId =
 			tailWorkflowId(`${capture.agentText}\n${capture.session?.result ?? ''}`) ?? trailerWorkflowId;
@@ -643,7 +652,16 @@ async function runConversationAttempt(opts: {
 	}
 
 	// The tool result is authoritative; the trailer covers a missed or unparsable result.
-	attempt.workflowId = createdWorkflowIds.at(-1) ?? trailerWorkflowId;
+	// A seeded case may edit an existing workflow, or only inspect one: a finished
+	// conversation then builds that workflow, as on the Instance AI arm.
+	const editedAgentId = updatedAgentIds.at(-1);
+	attempt.agent ??= editedAgentId === undefined ? undefined : { id: editedAgentId };
+	const finished = attempt.lastSession?.subtype === 'success';
+	attempt.workflowId =
+		createdWorkflowIds.at(-1) ??
+		trailerWorkflowId ??
+		updatedWorkflowIds.at(-1) ??
+		(finished ? (opts.seededWorkflowIds?.[0] ?? null) : null);
 	return attempt;
 }
 
@@ -678,22 +696,33 @@ export async function buildWorkflowViaMcp(opts: {
 	logDir: string;
 	log?: (message: string) => void;
 	createDriver?: () => McpConversationDriver;
+	/** Harness context sent before the opening message but kept out of the transcript. */
+	openingMessagePrefix?: string;
+	/** Sent and recorded ahead of the opening message, e.g. the attached workflow. */
+	openingNote?: string;
 	/** Harness context sent with the opening message but kept out of the transcript. */
 	openingMessageSuffix?: string;
+	/** Workflows the case seeded, the attached one first. */
+	seededWorkflowIds?: string[];
 }): Promise<McpBuildResult> {
 	const { conversation, slug, iteration, mcpConfigPath, settings, logDir, createDriver } = opts;
 	const log = opts.log ?? ((message: string) => console.log(message));
 	const allowedTools = buildAllowedTools(settings.serverName);
 	const label = `${slug}#${String(iteration)}`;
-	const openingText = createDriver
-		? (conversation.find((turn) => turn.role === 'user')?.text ?? '')
-		: buildPromptFromConversation(conversation);
+	const openingText = [
+		opts.openingNote,
+		createDriver
+			? (conversation.find((turn) => turn.role === 'user')?.text ?? '')
+			: buildPromptFromConversation(conversation),
+	]
+		.filter(Boolean)
+		.join(' ');
 	// The trailer tells `claude` to build in its first reply, which would keep it
 	// from asking a clarifying question. With a driver, the tool result gives the id.
 	const opening = {
 		text: openingText,
 		sent: withHarnessInstructions(
-			`${openingText}${opts.openingMessageSuffix ?? ''}`,
+			`${[opts.openingMessagePrefix, openingText].filter(Boolean).join('\n\n')}${opts.openingMessageSuffix ?? ''}`,
 			settings,
 			!createDriver,
 		),
@@ -727,6 +756,7 @@ export async function buildWorkflowViaMcp(opts: {
 				logFile,
 				label,
 				log,
+				seededWorkflowIds: opts.seededWorkflowIds,
 			});
 		} finally {
 			if (isolation) removeIsolatedClaudeHome(isolation);

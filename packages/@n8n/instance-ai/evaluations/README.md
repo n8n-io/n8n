@@ -514,6 +514,18 @@ How it differs from the manifest flow:
   and never reach `claude`. A conversation that ends without a workflow or an
   Agent is a build failure and is not retried. The `--build-timeout-ms` cap
   covers the whole conversation.
+- **Seeded cases.** A case `seed` (inline or replay) is restored before `claude`
+  starts, through an owner thread bound to the build user's project
+  (`run/mcp-seed.ts`). Workflows, data tables, folders and Agents land in that
+  project and are exposed to MCP (`availableInMCP`), prior runs execute, and a
+  seeded team project is shared with the build user as a viewer. The opening
+  message names an attached workflow or Agent with its id. `claude` has no n8n
+  thread, so the earlier conversation is sent as text before the opening
+  message. That is the one part that differs from the Instance AI arm, which
+  restores the history as real thread messages. The judge sees the seeded turns
+  ahead of the live ones, as on that arm. A seeded case whose conversation edits
+  a workflow with `update_workflow`, or only inspects one, builds that workflow.
+  An Agent edited with `mutate_agent` is graded the same way.
 - **Agents.** When `claude` creates an n8n Agent with `create_agent`, the build
   records it as an `agent` artifact. The case then runs its Agent scenarios and
   judges, like an Instance AI Agent build. Build-user cleanup deletes the Agent
