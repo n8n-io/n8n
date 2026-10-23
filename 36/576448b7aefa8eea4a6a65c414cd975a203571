@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_2c573839e2200b::t_28b1518019119a 609
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36576448b7aefa8eea4a6a65c414cd975a203571",
+  "prompts": {},
+  "sessions": {
+    "s_2c573839e2200b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26cfe557-3584-4ba5-95fe-b4de47de22be",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
