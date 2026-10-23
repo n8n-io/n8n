@@ -161,6 +161,21 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 	});
 
 	describe('fresh install over a pre-existing directory', () => {
+		test('loads matching files from a shared volume without downloading them again', async () => {
+			installedPackageRepository.findOne.mockResolvedValue(
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '1.0.0' }),
+			);
+
+			await communityPackagesService.handleInstallEvent({
+				packageName: PACKAGE_NAME,
+				packageVersion: '1.0.0',
+			});
+
+			expect(executeNpmCommand).not.toHaveBeenCalled();
+			expect(existsSync(markerPath())).toBe(true);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+		});
+
 		test('keeps the existing package when the download fails', async () => {
 			vi.mocked(executeNpmCommand).mockRejectedValueOnce(new Error('download failed'));
 
