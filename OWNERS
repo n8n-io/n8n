@@ -276,7 +276,16 @@ packages/@n8n/codemirror-lang/                          @n8n-io/nodes
 packages/@n8n/codemirror-lang-html/                     @n8n-io/nodes
 packages/@n8n/codemirror-lang-sql/                      @n8n-io/nodes
 packages/nodes-base/                                    @n8n-io/nodes
-packages/@n8n/decorators/                               @n8n-io/catalysts
+packages/nodes-base/nodes/Code/                         @n8n-io/nodes required
+packages/nodes-base/nodes/ExecuteCommand/               @n8n-io/nodes required
+packages/nodes-base/nodes/Ssh/                          @n8n-io/nodes required
+packages/nodes-base/nodes/HttpRequest/                  @n8n-io/nodes required
+packages/nodes-base/nodes/Webhook/                      @n8n-io/nodes required
+packages/nodes-base/nodes/RespondToWebhook/             @n8n-io/nodes required
+packages/nodes-base/nodes/Form/                         @n8n-io/nodes required
+packages/nodes-base/nodes/Wait/                         @n8n-io/nodes required
+packages/nodes-base/utils/sendAndWait/                  @n8n-io/nodes required
+packages/nodes-base/nodes/Git/                          @n8n-io/nodes required
 packages/@n8n/imap/                                     @n8n-io/nodes
 packages/@n8n/computer-use/                             @n8n-io/nodes required
 packages/@n8n/local-gateway/                            @n8n-io/nodes required
