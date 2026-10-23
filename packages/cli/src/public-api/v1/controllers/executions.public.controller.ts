@@ -49,7 +49,7 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import { ExecutionService } from '@/executions/execution.service';
-import type { StopResult } from '@/executions/execution.types';
+import type { RetriedExecution, StopResult } from '@/executions/execution.types';
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
 
@@ -401,10 +401,9 @@ export class ExecutionsPublicController {
 		@Param('executionId', executionIdParamSchema) executionId: string,
 		@Body body: RetryExecutionPublicDto,
 	): Promise<RetriedExecutionPublicDto> {
-		// A retry returns the data of the execution it continues, so it also needs `execution:read`.
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:execute', 'execution:read'],
+			['workflow:execute'],
 		);
 
 		if (!sharedWorkflowsIds.length) {
@@ -552,9 +551,7 @@ function toStoppedExecutionPublicDto(stopResult: StopResult): StoppedExecutionPu
 	};
 }
 
-function toRetriedExecutionPublicDto(
-	retried: Omit<IExecutionResponse, 'createdAt'>,
-): RetriedExecutionPublicDto {
+function toRetriedExecutionPublicDto(retried: RetriedExecution): RetriedExecutionPublicDto {
 	return replaceCircularReferences({
 		id: retried.id,
 		mode: retried.mode,

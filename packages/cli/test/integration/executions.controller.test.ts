@@ -10,17 +10,17 @@ import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ExecutionSnapshot, StepDetail } from '@n8n/engine';
-import { parse } from 'flatted';
-import type { INode } from 'n8n-workflow';
+import { parse, stringify } from 'flatted';
+import type { INode, IRun } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { ExecutionService } from '@/executions/execution.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitTracker } from '@/wait-tracker';
+import { WorkflowRunner } from '@/workflow-runner';
 
 import {
-	createErrorExecution,
 	createExecution,
 	createSuccessfulExecution,
 	createWaitingExecution,
@@ -578,36 +578,79 @@ describe('POST /executions/stop', () => {
 describe('POST /executions/:id/retry', () => {
 	const baseScopes = ['workflow:read', 'workflow:list', 'workflow:execute'];
 
+	/**
+	 * A failed execution that a retry can continue. The retry run itself is mocked,
+	 * so the test exercises the access check and the response, not the engine.
+	 */
 	const retryAs = async (scopes: string[]) => {
 		const teamProject = await createTeamProject();
 		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
 		await linkUserToProject(member, teamProject, role.slug);
 		const workflow = await createWorkflow({}, teamProject);
-		const execution = await createErrorExecution(workflow);
+		const execution = await createExecution(
+			{
+				finished: false,
+				status: 'error',
+				data: stringify({
+					resultData: { runData: { Canary: [] } },
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+				}),
+			},
+			workflow,
+		);
 
-		return await testServer.authAgentFor(member).post(`/executions/${execution.id}/retry`);
+		const run = vi.spyOn(Container.get(WorkflowRunner), 'run').mockResolvedValue('999');
+		const outcome = vi
+			.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+			.mockResolvedValue({
+				data: { resultData: { runData: {} } },
+				mode: 'retry',
+				startedAt: new Date(),
+				finished: true,
+				status: 'success',
+				waitTill: null,
+			} as unknown as IRun);
+
+		const response = await testServer
+			.authAgentFor(member)
+			.post(`/executions/${execution.id}/retry`);
+
+		const ran = run.mock.calls.length > 0;
+		run.mockRestore();
+		outcome.mockRestore();
+		return { response, ran };
 	};
 
-	test('a custom project role without execution:read cannot retry an execution', async () => {
-		const retry = vi.spyOn(Container.get(ExecutionService), 'retry');
-
-		const response = await retryAs(baseScopes);
-
-		expect(response.statusCode).toBe(404);
-		expect(retry).not.toHaveBeenCalled();
-		retry.mockRestore();
-	});
-
-	test('a custom project role with execution:read can retry an execution', async () => {
-		const retry = vi
-			.spyOn(Container.get(ExecutionService), 'retry')
-			.mockResolvedValue({ id: '2' } as Awaited<ReturnType<ExecutionService['retry']>>);
-
-		const response = await retryAs([...baseScopes, 'execution:read']);
+	test('a custom project role without execution:read retries without the execution data', async () => {
+		const { response, ran } = await retryAs(baseScopes);
 
 		expect(response.statusCode).toBe(200);
-		expect(retry).toHaveBeenCalledTimes(1);
-		retry.mockRestore();
+		expect(ran).toBe(true);
+		expect(response.body.data).toMatchObject({ id: '999', status: 'success' });
+		expect(response.body.data).not.toHaveProperty('data');
+		expect(response.body.data).not.toHaveProperty('workflowData');
+	});
+
+	test('a custom project role with execution:read retries with the execution data', async () => {
+		const { response } = await retryAs([...baseScopes, 'execution:read']);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({ id: '999', status: 'success' });
+		expect(response.body.data).toHaveProperty('data');
+		expect(response.body.data).toHaveProperty('workflowData');
+	});
+
+	test('a custom project role without workflow:execute cannot retry an execution', async () => {
+		const { response, ran } = await retryAs(['workflow:read', 'workflow:list', 'execution:read']);
+
+		expect(response.statusCode).toBe(404);
+		expect(ran).toBe(false);
 	});
 });
 

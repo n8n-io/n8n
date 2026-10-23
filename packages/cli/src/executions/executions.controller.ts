@@ -114,11 +114,7 @@ export class ExecutionsController {
 
 	@Post('/:id/retry')
 	async retry(req: ExecutionRequest.Retry) {
-		// A retry returns the data of the execution it continues, so it also needs `execution:read`.
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, [
-			'workflow:execute',
-			'execution:read',
-		]);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, ['workflow:execute']);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
