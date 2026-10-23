@@ -1484,9 +1484,13 @@ describe('WorkflowPublicationApplier', () => {
 	describe('leased triggers', () => {
 		afterEach(() => {
 			leasedTriggerPolicy.withoutLeased.mockImplementation((nodes) => nodes);
+			leasedTriggerPolicy.isLeased.mockReturnValue(false);
 		});
 
-		test('leaves leased triggers out of the leader activation', async () => {
+		test('leaves leased triggers out of the leader activation and reports them persisted', async () => {
+			leasedTriggerPolicy.isLeased.mockImplementation(
+				(node) => node.type === 'n8n-nodes-base.kafkaTrigger',
+			);
 			leasedTriggerPolicy.withoutLeased.mockImplementation((nodes) =>
 				nodes.filter((node) => node.type !== 'n8n-nodes-base.kafkaTrigger'),
 			);
@@ -1505,7 +1509,10 @@ describe('WorkflowPublicationApplier', () => {
 				abort,
 			);
 			expect(result).toMatchObject({
-				triggerStatuses: [expect.objectContaining({ nodeId: 'a' })],
+				triggerStatuses: [
+					expect.objectContaining({ nodeId: 'a', triggerKind: 'in-memory', status: 'activated' }),
+					expect.objectContaining({ nodeId: 'k', triggerKind: 'persisted', status: 'activated' }),
+				],
 			});
 		});
 

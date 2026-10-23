@@ -156,6 +156,19 @@ export class WorkflowPublicationApplier {
 	}
 
 	/**
+	 * Where each trigger lives once activated. A leased trigger runs on whichever
+	 * main holds its lease, so it is `persisted`: the reconciler never looks for it
+	 * in the leader's in-memory registry.
+	 */
+	private triggerKinds(nodes: INode[]): Map<INode['id'], WorkflowPublicationTriggerKind> {
+		const kinds = this.workflowTriggerActivator.getTriggerKinds(nodes);
+		for (const node of nodes) {
+			if (this.leasedTriggerPolicy.isLeased(node)) kinds.set(node.id, 'persisted');
+		}
+		return kinds;
+	}
+
+	/**
 	 * Publishes `newVersion`: computes a trigger-level diff between the currently
 	 * published version and the requested version, augments it with any desired
 	 * non-webhook trigger that is missing locally, and applies only the necessary
@@ -186,8 +199,9 @@ export class WorkflowPublicationApplier {
 		if (blocked !== null) return blocked;
 
 		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
-		const desiredTriggerNodes = this.leaderTriggerNodes(newVersion);
-		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+		const statusTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+		const desiredTriggerNodes = this.leasedTriggerPolicy.withoutLeased(statusTriggerNodes);
+		const triggerKinds = this.triggerKinds(statusTriggerNodes);
 
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, {
 			versionChanged: oldVersion !== null && oldVersion.versionId !== newVersion.versionId,
@@ -223,7 +237,7 @@ export class WorkflowPublicationApplier {
 			await this.advancePublishedVersion(record);
 			return {
 				type: 'completed',
-				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+				triggerStatuses: this.buildTriggerStatuses(statusTriggerNodes, triggerKinds, {
 					activated: [],
 					failures: [],
 				}),
@@ -266,7 +280,7 @@ export class WorkflowPublicationApplier {
 					abort,
 				);
 				return withTeardownFailures(
-					this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds),
+					this.classifyActivationOutcome(outcome, statusTriggerNodes, triggerKinds),
 				);
 			}
 
@@ -279,7 +293,7 @@ export class WorkflowPublicationApplier {
 
 		return withTeardownFailures({
 			type: 'completed',
-			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+			triggerStatuses: this.buildTriggerStatuses(statusTriggerNodes, triggerKinds, {
 				activated: [],
 				failures: [],
 			}),
@@ -382,8 +396,8 @@ export class WorkflowPublicationApplier {
 				unresolvable.map(({ node, error }) => ({ nodeName: node.name, message: error.message })),
 			)}`,
 		);
-		const desiredTriggerNodes = this.leaderTriggerNodes(runnable);
-		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
+		const triggerKinds = this.triggerKinds(desiredTriggerNodes);
 		const triggerStatuses: TriggerPublicationStatus[] = [
 			...this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
 				activated: [],
@@ -485,8 +499,8 @@ export class WorkflowPublicationApplier {
 
 			// Report every trigger as failed: `activated` rows left behind read as drift
 			// to the reconciler, which would then re-enqueue this forever.
-			const desiredTriggerNodes = this.leaderTriggerNodes(newVersion);
-			const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+			const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+			const triggerKinds = this.triggerKinds(desiredTriggerNodes);
 
 			return {
 				type: 'failed',
