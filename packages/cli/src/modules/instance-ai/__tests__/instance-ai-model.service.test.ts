@@ -66,6 +66,27 @@ describe('InstanceAiModelService', () => {
 				expect.objectContaining({ proxy: 'env', useDefaultSsrfPolicy: 'unsafe' }),
 			);
 		});
+
+		it('sends the feature, version, run and thread headers through the AI transport', async () => {
+			const baseFetch = vi.fn(
+				async (_input: RequestInfo | URL, _init?: RequestInit) =>
+					await Promise.resolve(new Response('{}')),
+			);
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+
+			await service.getModelFetch({ runId: 'run-1', threadId: 'thread-1' })(
+				'https://api.example.test/v1/chat/completions',
+				{ method: 'POST', headers: { authorization: 'Bearer key' } },
+			);
+
+			const headers = new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
+			expect(headers.get('authorization')).toBe('Bearer key');
+			expect(headers.get('x-n8n-feature')).toBe('instance-ai');
+			expect(headers.get('x-n8n-version')).not.toBeNull();
+			expect(headers.get('x-n8n-run-id')).toBe('run-1');
+			expect(headers.get('x-n8n-thread-id')).toBe('thread-1');
+			expect(outboundHttp.transport).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('isProxyEnabled', () => {
