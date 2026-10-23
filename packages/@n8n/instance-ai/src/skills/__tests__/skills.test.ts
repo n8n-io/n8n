@@ -461,7 +461,8 @@ describe('Instance AI skills', () => {
 			'never stop before the first\n`workflow_builder_build_workflow` call',
 		);
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
-		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
+		// workflow-sdk validate warns about MOCK_OUTPUT_JSON_ENVELOPE, so the skill does not repeat it.
+		expect(loaded?.instructions).not.toContain('SDK node `output` mocks are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
