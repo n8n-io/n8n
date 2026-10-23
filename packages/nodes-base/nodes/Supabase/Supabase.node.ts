@@ -377,8 +377,8 @@ export class Supabase implements INodeType {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				const header = getSchemaHeader(this, 'GET', 'execute');
 
-				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
+					let endpoint = `/${tableId}`;
 					qs = {}; // reset qs
 
 					if (filterType === 'manual') {
@@ -457,10 +457,10 @@ export class Supabase implements INodeType {
 
 			if (operation === 'update') {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
-				let endpoint = `/${tableId}`;
 				const header = getSchemaHeader(this, 'PATCH', 'execute');
 
 				for (let i = 0; i < length; i++) {
+					let endpoint = `/${tableId}`;
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];

@@ -252,6 +252,66 @@ describe('Test Supabase Node', () => {
 		);
 	});
 
+	describe.each([
+		{ filterSource: 'per-item expressions', useParameters: false },
+		{ filterSource: 'per-item parameters', useParameters: true },
+	])('multi-item string filters with $filterSource', ({ useParameters }) => {
+		it.each([
+			{ operation: 'getAll', method: 'GET' },
+			{ operation: 'update', method: 'PATCH' },
+			{ operation: 'delete', method: 'DELETE' },
+		])(
+			'should build an independent request URL for each item in $operation',
+			async ({ operation, method }) => {
+				// NODE-5894: Each item must use its own filter without the previous item's query.
+				const items = [{ json: { id: 1 } }, { json: { id: 2 } }];
+				const context = createMockExecuteFunction({
+					resource: 'row',
+					operation,
+					tableId: 'my_table',
+					filterType: 'string',
+					returnAll: true,
+					dataToSend: 'defineBelow',
+					fieldsUi: { fieldValues: [{ fieldId: 'status', fieldValue: 'processed' }] },
+				});
+				context.getInputData = () => items;
+				const getNodeParameter = context.getNodeParameter;
+				vi.spyOn(context, 'getNodeParameter').mockImplementation(
+					(name, itemIndex, fallbackValue, options) => {
+						if (name === 'filterString') {
+							return useParameters ? 'id=eq.$1' : `id=eq.${items[itemIndex].json.id}`;
+						}
+						if (name === 'filterStringParameters.values') {
+							return useParameters ? [{ value: String(items[itemIndex].json.id) }] : [];
+						}
+						return getNodeParameter(name, itemIndex, fallbackValue, options);
+					},
+				);
+				mockHttpRequestWithAuthentication.mockResolvedValue([]);
+
+				await node.execute.call(context);
+
+				expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+				expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+					1,
+					'supabaseApi',
+					expect.objectContaining({
+						method,
+						url: 'https://api.supabase.io/rest/v1/my_table?id=eq.1',
+					}),
+				);
+				expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+					2,
+					'supabaseApi',
+					expect.objectContaining({
+						method,
+						url: 'https://api.supabase.io/rest/v1/my_table?id=eq.2',
+					}),
+				);
+			},
+		);
+	});
+
 	describe('getAll pagination', () => {
 		it('should make exactly one request when limit is less than 1000', async () => {
 			const supabaseApiRequest = vi
