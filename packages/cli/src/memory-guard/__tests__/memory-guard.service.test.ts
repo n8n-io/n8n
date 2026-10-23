@@ -711,9 +711,15 @@ describe('MemoryGuardService', () => {
 				mode = 'webhook',
 				after = 0.5,
 				workflowId = 'repeat',
-			}: { mode?: WorkflowExecuteMode; after?: number; workflowId?: string } = {},
+				engine,
+			}: {
+				mode?: WorkflowExecuteMode;
+				after?: number;
+				workflowId?: string;
+				engine?: Promise<IRun>;
+			} = {},
 		) => {
-			addExecution(id, { megabytes: 300, mode, workflowId });
+			addExecution(id, { megabytes: 300, mode, workflowId, engine });
 			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(0.96);
 			readMemoryUsageOnce(after);
@@ -771,6 +777,18 @@ describe('MemoryGuardService', () => {
 
 			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
 			expect(mailer.notifyWorkflowAutodeactivated).toHaveBeenCalled();
+		});
+
+		it('should keep stopping executions while a deactivation is pending', async () => {
+			deactivateWorkflowAsSystem.mockReturnValueOnce(new Promise(() => {}));
+
+			await stopOnce('1');
+			await stopOnce('2');
+			await stopOnce('3');
+			await stopOnce('4');
+
+			expect(stoppedIds()).toEqual(['1', '2', '3', '4']);
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledTimes(1);
 		});
 
 		it('should push the deactivation when the email fails', async () => {
@@ -839,6 +857,56 @@ describe('MemoryGuardService', () => {
 			}
 
 			expect(stoppedIds()).toEqual(['1', '2', '3']);
+			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
+		});
+
+		it('should count a stop after a held execution waits too long when memory is at the stop level', async () => {
+			activeExecutions.stopExecution.mockImplementation((id) => {
+				executions.delete(id);
+				utilization = 0.5;
+			});
+			for (const id of ['1', '2', '3']) {
+				addExecution(id, { megabytes: 300, workflowId: 'repeat' });
+				utilization = 0.82;
+				await sample(2);
+				void concurrencyControl.throttle({ mode: 'webhook', executionId: `held-${id}` });
+				await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS - 1);
+				utilization = 0.9;
+				await sample();
+				await vi.advanceTimersByTimeAsync(0);
+				await sample(2);
+			}
+
+			expect(stopLogs()).toEqual([
+				expect.stringContaining('(hold-limit)'),
+				expect.stringContaining('(hold-limit)'),
+				expect.stringContaining('(hold-limit)'),
+			]);
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
+		});
+
+		it('should not count a stop when a successful execution of the workflow ends during it', async () => {
+			await stopOnce('1');
+			await stopOnce('2');
+			let endEngine = () => {};
+			const engine = new Promise<IRun>((resolve) => {
+				endEngine = () => resolve(mock<IRun>());
+			});
+			await stopOnce('3', { engine });
+			guard.onExecutionEnd(
+				mock<WorkflowExecuteAfterContext>({
+					workflow: { id: 'repeat' },
+					mode: 'webhook',
+					runData: { status: 'success' },
+				}),
+			);
+			endEngine();
+			await vi.advanceTimersByTimeAsync(0);
+
+			await stopOnce('4');
+			await stopOnce('5');
+
+			expect(stoppedIds()).toEqual(['1', '2', '3', '4', '5']);
 			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
 		});
 

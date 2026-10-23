@@ -80,6 +80,9 @@ export class MemoryGuardService {
 
 	private pendingStop: Promise<void> | undefined;
 
+	/** Cleared when a production run of the workflow succeeds during the stop. */
+	private pendingStopWorkflowId: string | undefined;
+
 	/**
 	 * Set when a stop frees no memory, until memory falls below the resume level. The guard
 	 * then still holds, but stops only at the critical level.
@@ -93,6 +96,8 @@ export class MemoryGuardService {
 	private isHoldSuspended = false;
 
 	private readonly stopsByWorkflow = new Map<string, number>();
+
+	private readonly deactivating = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -323,6 +328,7 @@ export class MemoryGuardService {
 		}
 
 		this.stopStreak = 0;
+		this.pendingStopWorkflowId = target.workflow.id;
 		this.pendingStop = this.finishStop(target, engines, usage, trigger)
 			.catch((error: unknown) => {
 				this.logger.error(
@@ -332,6 +338,7 @@ export class MemoryGuardService {
 			})
 			.finally(() => {
 				this.pendingStop = undefined;
+				this.pendingStopWorkflowId = undefined;
 				this.lastStopEndedAt = Date.now();
 			});
 
@@ -352,8 +359,12 @@ export class MemoryGuardService {
 	) {
 		await settleWithin(engines, RELEASE_TIMEOUT_MS);
 		const { after, freedMemory } = await this.measureAfterStop(before, target.estimatedBytes);
-		// A hold-limit stop happens below the stop level, so it says nothing about this workflow.
-		if (freedMemory && trigger !== 'hold-limit') await this.countStop(target);
+		// A stop below the stop level, for example at the hold limit, says nothing about this workflow.
+		const isCounted =
+			freedMemory &&
+			before.utilization >= STOP_LEVEL &&
+			this.pendingStopWorkflowId === target.workflow.id;
+		if (isCounted) this.countStop(target);
 
 		this.logger.warn(
 			`Stopped execution ${target.rootId} of workflow ${target.workflow.id} at ${formatBytes(before.usedBytes)} of ${formatBytes(before.limitBytes)} (${trigger}). It held an estimated ${formatBytes(target.estimatedBytes)} of run data. Memory after the stop: ${formatBytes(after.usedBytes)}`,
@@ -444,21 +455,23 @@ export class MemoryGuardService {
 	onExecutionEnd({ workflow, mode, runData }: WorkflowExecuteAfterContext) {
 		if (runData.status === 'success' && isProductionMode(mode)) {
 			this.stopsByWorkflow.delete(workflow.id);
+			if (this.pendingStopWorkflowId === workflow.id) this.pendingStopWorkflowId = undefined;
 		}
 	}
 
 	/**
 	 * Count a stop that freed memory, of production runs only, because a manual run uses the
-	 * draft. Returns whether the workflow was deactivated.
+	 * draft. The deactivation is not awaited, so that slow trigger teardown does not delay the next stop.
 	 */
-	private async countStop({ workflow, mode }: StopTarget) {
-		if (!isProductionMode(mode) || !isWorkflowIdValid(workflow.id)) return false;
+	private countStop({ workflow, mode }: StopTarget) {
+		if (!isProductionMode(mode) || !isWorkflowIdValid(workflow.id)) return;
 
 		const stops = (this.stopsByWorkflow.get(workflow.id) ?? 0) + 1;
 		this.stopsByWorkflow.set(workflow.id, stops);
-		if (stops < STOPS_TO_DEACTIVATE) return false;
+		if (stops < STOPS_TO_DEACTIVATE || this.deactivating.has(workflow.id)) return;
 
-		return await this.deactivate(workflow.id);
+		this.deactivating.add(workflow.id);
+		void this.deactivate(workflow.id).finally(() => this.deactivating.delete(workflow.id));
 	}
 
 	/** Never throws. After a failure, the count stays, so the next counted stop tries again. */
@@ -478,7 +491,6 @@ export class MemoryGuardService {
 				`Deactivated workflow ${workflowId}, because n8n stopped ${STOPS_TO_DEACTIVATE} of its executions to keep the instance from running out of memory`,
 				{ workflowId },
 			);
-			// Not awaited, so that a slow mail server does not delay the next stop.
 			void this.notifyDeactivated(workflow);
 			return true;
 		} catch (error) {
