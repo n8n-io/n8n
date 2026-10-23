@@ -1,0 +1,457 @@
+packages/@n8n/instance-ai/src/tools/orchestration/plan.tool.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 10-13,160-173,250-262
+packages/cli/src/services/__tests__/session-cookie-auth.strategy.integration.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 52-55,58,63,71-74,77,85,88,93
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 14,39,68-69,793-800,938,1000-1006,1014-1028
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 13,181-182,349-350
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,79-81,83,95-100
+packages/cli/src/executions/pre-execution-checks/index.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 21,87
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 19-22,354-386,415-417
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 42-45,123,167-168,175,277-291,305,316-319
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 645-651,654-656,658-661
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-5,29-30
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3-5,10,145-208,245-296
+packages/cli/src/modules/agents/__tests__/agent-knowledge-usage-tracker.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-225
+packages/@n8n/backend-services/src/services/auth-strategy.types.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 10-19,23-29,32-40
+packages/@n8n/telemetry/src/events/agents.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 151-159,202-213,216-230,305-340,389-413,447,474,484,914-994
+packages/cli/src/modules/inbound-auth-core/__tests__/public-api-oauth.strategy.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 87,90,92,100,105-108,110,112,114,143,153-156,164,167,173,177,179,188,192-195,214-218,231,271,278-281,285-306
+packages/cli/src/modules/agents/__tests__/agent-knowledge-snapshot.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-129
+packages/cli/src/modules/agents/llm-provider-defaults.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-2,11-16,24-28,31,97-98
+packages/cli/src/modules/otel/otel.config.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3,6-10,54-83
+packages/cli/test/integration/public-api/executions.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 13,15,26,36,516-586
+packages/cli/src/modules/agents/__tests__/agent-default-model-resolver.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 78-97
+packages/cli/src/modules/instance-ai/extract-resolved-node-parameters.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 29
+packages/frontend/editor-ui/src/features/agents/composables/useModelCatalog.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3,36,132-135,172,179,194
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 59,157,317,370-372
+packages/@n8n/agents/src/runtime/model/raw-usage.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3,72-75,78-79
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackManagedSettings.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 8,89-92,94,98,101,127
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 120,152,174-178,644,2296,2784,3923-3928,4308-4321,5163-5173,5183-5205,5207,5216-5222
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 859,951-965,1064-1065,1077-1078,1080-1083,1086,1104,1116-1119,3149
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 18,96,129,238-240,244-253,353-371,463-464,478-480
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelApprovalSetting.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 125-140
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 6-11,24,293-296,2032-2163,3026,3032,3046,3120-3150
+packages/cli/src/executions/execution.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 53,66,256,394,404-415
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackEditView.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2-5,9,22-45,66,81-118,136-150
+packages/cli/test/integration/database/repositories/agent-message.repository.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-74
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 333,336,462-463,470,476,525
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2,95-112
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-error-format.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 8,111
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 66,281
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3-11,20,122-132,155-156,163-178,232,251-321,510,513-515,526-527,541-543,551
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 420,437
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2-6,14,121,128-137
+packages/cli/src/workflow-execute-additional-data.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 17-22,396-404,630-633,636-650,656-664,690,705,779-823
+packages/cli/src/services/session-cookie-auth.strategy.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 10-14,35,37,50,52
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 111,781-786,796,808
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/verify-built-workflow.tool.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 487,1469-1518
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-origin.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,10,13-14,16,23,27-36
+packages/cli/src/modules/agents/repositories/agent-file.repository.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 6-11,34-65
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 212,351-354,365-367
+packages/cli/test/integration/public-api/oauth-bearer.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 97-118,124,128,136
+packages/@n8n/instance-ai/docs/tools.md
+  s_5785bc20fb92a9::t_ba76cc3918b49f 107-110,113-116
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 13,115-119,640-835
+packages/@n8n/agents/src/utils/model.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 21-36
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 295,304,764-768,782-791,807,1667-1668
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 114-115,410,543,553
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 238-283
+packages/cli/src/modules/agents/__tests__/agent-knowledge.controller.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-2,8-10,15-18,31,36,43,47,70-72,85,96,111,122-343,364-400
+packages/@n8n/backend-services/src/services/__tests__/auth-strategy.registry.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,15,18-19,23-28,31-33,35-37,39,42-46,51-52,60,67,75,80-84,89,94-99,103,105-106,109-118,124-129,132-143,147,149-156,158-172,175-181,183-215,217-218,222-223,228,260,273
+packages/cli/src/executions/pre-execution-checks/__tests__/credential-refusal.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-44
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3,17,128-141
+packages/cli/src/modules/agents/integrations/integration-origin.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 37-68
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 43,152
+packages/cli/src/modules/otel/README.md
+  s_5785bc20fb92a9::t_ba76cc3918b49f 90-102
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 10,91-99,107,110-111,126-131,137,148,153,172,175,190-193,205,208-211,216,238-240,242-243,248-249,252,259,263-280,304,359-364,391-393,458-459,501,505-507,542,547-548
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 8,12,15,62-63,324-411,473-483
+packages/cli/src/node-execution/execute-node.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 16,22,24-28,62-66,71-76,128-132,294,353,355,368-380,431-433
+packages/cli/src/server.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 195
+packages/cli/test/integration/database/repositories/agent-published-vector-stores.repository.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-119
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 33-35,243-244
+packages/cli/src/modules/agents/agent-knowledge-usage-tracker.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-143
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2,207,231-235
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 8,10
+packages/cli/src/modules/agents/agent-knowledge-snapshot.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-107
+packages/@n8n/instance-ai/src/constants/resource-exploration.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-6
+packages/@n8n/instance-ai/evaluations/README.md
+  s_5785bc20fb92a9::t_ba76cc3918b49f 899-900
+packages/cli/src/modules/inbound-auth-core/public-api-oauth.strategy.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 18,22,49-58,61,64-65,67-73,78,83-86,103
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 215-216,227
+packages/@n8n/backend-services/src/auth.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2-6
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 266-270
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 27,432-438,775-885
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 80,204,222-264,475,695-698,714,859
+packages/@n8n/instance-ai/src/planned-tasks/planned-task-permissions.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3,13-14,35-79
+packages/cli/src/services/node-resource-explorer.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 146-155
+packages/core/src/execution-engine/__tests__/eval-mock-fixtures.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2,6-58,108-112,222-226,313-315
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5785bc20fb92a9::t_ba76cc3918b49f 6096-6101,8763,9570-9573,9844-9845
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_5785bc20fb92a9::t_ba76cc3918b49f 108-136,153-160,179-181
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 10,18-22,44,52-79,429,607-617
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 55-60
+packages/cli/src/modules/agents/agent-upload.middleware.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 12-15,43-58,81-86
+packages/cli/src/executions/execution.types.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2-7,55-63
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,135,160,175,212-224
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 160-183
+packages/@n8n/agents/src/runtime/memory/title-generation.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 12,282-283
+packages/@n8n/agents/src/runtime/loop/__tests__/runtime-context.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3,42-54,162-193
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 54,1429
+packages/cli/src/executions/executions.controller.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 30-31,63,76,88,104-106,117,138,149
+packages/cli/src/modules/agents/__tests__/agent-run-tracing.service.otel.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 11,67
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 87-109
+packages/cli/src/modules/agents/integrations/integration-origin-support.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 7,23-28,34,41,45-46
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/synthetic-integration.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,25-142,157-171,175-176,178-217
+packages/@n8n/ai-utilities/src/agent-config/index.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3,5
+packages/cli/src/modules/agents/azure-foundry-deployments.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-154
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,5-7,11,54-89
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 54,151-182,250-255
+packages/cli/src/modules/agents/integrations/__tests__/integration-origin.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,7-13,24-25,55,70,133,165-167,169-171,173,175-180,182,285-429
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 93,4196-4201,4212-4217
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 94
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 12,33,128-129,172-176,188,195,912-950
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-execution-redaction.integration.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 11,15-16,23-25,47,53-54,61-62,96-110,114-116,125-127,136,141,143,181,355-403
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 732-807
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,46,220-225
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,221,290,318,856-898
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 11,82-83
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 21,55,270-355
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 13,238
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 12-16,32-50,61,70-97,957,1307,1476,1494-1561
+packages/@n8n/agents/src/index.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 330
+packages/cli/src/modules/otel/__tests__/otel-workflow-tracing.integration.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2,29-30,444-481
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/agentSetupTasks.registry.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 9,122
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 196-207,209-213
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 5-9,55-66,257,262-263,270-278,286-294,302-310
+packages/@n8n/api-types/src/dto/executions/retried-execution-public.openapi.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 28-30,37-38,43-45,49-51
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 41,259-264,5635-5761
+packages/cli/src/modules/agents/agent-knowledge-storage.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 5,58-61
+packages/@n8n/ai-utilities/src/model-discovery/providers/azure.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 28-57,61,65-72,93,109,124-133
+packages/frontend/editor-ui/src/features/agents/__tests__/useModelCatalog.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 138-164
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/agentSetupTasks.registry.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 7-13,20-32
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 9,155-177,184-187
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 6,15,30,851,909-960,1051-1144,1370-1371
+packages/cli/src/modules/agents/agent-knowledge-snapshot.task.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-54
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 12,111-115
+packages/cli/src/services/api-key-auth.strategy.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 10-14,88,91,95,99-103,109
+packages/cli/test/integration/database/repositories/agent-file.repository.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-104
+packages/@n8n/api-types/src/agents/__tests__/model-capabilities.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 10-11
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-origin.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,10,13-14,16,27-33
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 37-38
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3-7,46-50,998-1026
+packages/@n8n/api-types/src/dto/executions/retried-execution-public.dto.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 33-39
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 5,41,47,171-186,220-225
+packages/cli/src/modules/agents/__tests__/agent-knowledge-snapshot.task.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-97
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 24,33-34,62,77-78,83-84,190-191,262-266,379-388
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 34-39,428-437,664-668
+packages/cli/test/integration/executions.controller.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 13-14,17,21,579-657
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1763,1783-1838
+packages/cli/src/public-api/__tests__/public-api-rate-limit.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 171
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelApprovalSetting.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 11,16,96-100,104,108,116
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 92-93
+packages/cli/src/modules/agents/agent-knowledge-telemetry.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-38
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 52,554
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalSelector.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 26,32-33,48-61,135,141,143-146,149,169-171,175-177,213-215
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 735-746,757
+packages/frontend/editor-ui/src/features/agents/components/AgentFormSettingRow.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-47
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 24,106
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 75,80-86,102-109,360-366,371,398,400
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 233-247
+packages/@n8n/agents/src/runtime/model/prompt-cache.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 5,72-73
+packages/@n8n/agents/src/runtime/__tests__/title-generation-side-call.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 109-147
+packages/cli/src/executions/pre-execution-checks/credential-refusal.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-42
+packages/cli/src/modules/token-exchange/services/scoped-jwt.strategy.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 7-11,78,81,86-90,101
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigApprovalSetting.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2,4,19-23,25,28,32
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2,24
+packages/@n8n/agents/src/runtime/model/__tests__/raw-usage.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 96,101
+packages/cli/src/services/__tests__/api-key-auth.strategy.integration.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 209-210,213,218,223,232
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3,10,12,19-20,27-32,160,168,171,203-207,209-266,268-293,295-312,314-329,405-412,462-537,542,560
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 7,11,527-551
+packages/@n8n/instance-ai/src/types.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 759-760,762-767
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 40,45-48,367,406-445
+packages/@n8n/agents/src/workspace/filesystem/n8n-sandbox-filesystem.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,47
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 67-69,73
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 8,12,21-24,31,40-44,53,56,63,71,74-77,86,92-111,127-128,134,152-153,260,262,270-271,284,286,320-321,323,327-331,333-334
+packages/cli/src/modules/agents/tools/knowledge/__tests__/search-knowledge.tool.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 5-8,17-20,26,37-48,116-209
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-5,9,17,30-49,71,97-99,117,127,131-191,199
+packages/cli/src/executions/execution-viewer-reader.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 40
+packages/cli/src/modules/agents/agents.module.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2-3,234-235,240-247
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 310,315,328-331,428,436-439,441,444-445,447,450-451,454-461,464,482
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 5,17,48-50,67-83,85-99,101-107,110,112,126-127,129-130,137-143,154-160
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 86-87,95,299,1328-1438
+packages/cli/src/modules/mcp-discovery/__tests__/agent-activity.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 5,37-41
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 11,37,44,46-52,68-159
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 9,14,203,213-216,240-256
+packages/cli/src/modules/agents/__tests__/azure-foundry-deployments.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-250
+packages/@n8n/backend-services/src/services/auth-strategy.registry.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,7-10,14-17,19-21,27-28,34-35,55-57,60-64,66-94
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/types.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 78-79
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 36,179
+packages/cli/src/modules/agents/__tests__/agent-modification-telemetry.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-176
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1,144,177,198,365-385
+packages/@n8n/instance-ai/src/planned-tasks/__tests__/planned-task-permissions.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-8,47-149
+packages/cli/src/modules/agents/agent-default-model-resolver.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 46-50,86-87,89,95,138
+packages/@n8n/agents/src/sdk/agent.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 90,1143
+packages/cli/src/modules/agents/agent-knowledge.controller.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 4,11,13-14,20,24,32,55,73-77,88-89,95,103,110-112,114-122,125-171
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 330
+packages/@n8n/instance-ai/evaluations/discovery/agent-builder.json
+  s_5785bc20fb92a9::t_ba76cc3918b49f 115,121,839
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 59,299,708-709,1015
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentApprovalSelector.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 66,70,80,179,182-199,202-203,205-220
+packages/cli/src/modules/agents/builder/model-lookup.types.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 6-7
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 278,642-663
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/azure.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3-7,69-80,111-142,204
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 11,3570-3575,3578-3614,3616-3622,3624-3653,3969-4081,4122-4157,4159-4167,4169-4179,4181-4185,4267,4305,4307-4309
+packages/core/src/execution-engine/eval-mock-fixtures.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2,4-8,22,31-32,35-36,244-248,332,490-491,496
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 339,341-345
+packages/cli/src/modules/agents/agent-knowledge-upload.error.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-26
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.integration.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 127
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1717-1736
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackEditView.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3,5,9-27,29-49,51-56,58-60,63,67-129
+packages/cli/src/modules/inbound-auth-core/resource-admission.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 83-87
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 25,475
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/retryExecution.generated.yml
+  ai_agent 87,106,110,141
+packages/@n8n/instance-ai/src/__tests__/index.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 148,294-296
+packages/cli/src/modules/otel/otel.constants.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 22-29,68-69
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_5785bc20fb92a9::t_ba76cc3918b49f 24,458-462,464,466,470
+packages/@n8n/instance-ai/src/index.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 268,732-733
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 17,142-146,673,675-676,687
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 5,28,93,222
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 326-332,412,453-455,830-835,842,849,853-855
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-origin.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-2,9,12,20-27
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-integration.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 2,26,112-117
+packages/cli/src/modules/otel/__tests__/otel.config.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3-8,79-118
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 3,14,2189-2246
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/plan.tool.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 1-2,6-11,445-505
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 509-590
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_5785bc20fb92a9::t_ba76cc3918b49f 77-88,106-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a146e7cbea026ce2645aab5fa314f4ccecb9789",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
