@@ -186,15 +186,16 @@ describe('BrowserConnection extension block', () => {
 describe('BrowserConnection modes', () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it('connects the Playwright adapter straight to the given endpoint in direct CDP mode', async () => {
+	it('connects the Playwright adapter straight to the given endpoint in remote mode without a relay', async () => {
 		const connection = new BrowserConnection(
-			{ mode: 'direct_cdp' },
+			{ mode: 'remote' },
 			{ cdpEndpoint: 'wss://connect.example.com', cdpConnectHeaders: { 'X-Test': '1' } },
 		);
 
 		await connection.connect();
 
-		expect(constructed).toHaveBeenCalledWith(expect.objectContaining({ mode: 'direct_cdp' }), {
+		expect(constructed).toHaveBeenCalledWith(expect.objectContaining({ mode: 'remote' }), {
+			relay: undefined,
 			cdpEndpoint: 'wss://connect.example.com',
 			cdpConnectHeaders: { 'X-Test': '1' },
 		});

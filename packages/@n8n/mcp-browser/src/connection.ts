@@ -31,8 +31,8 @@ export interface BrowserConnectionOptions {
 	 */
 	relay?: CDPRelayServer;
 	/**
-	 * Explicit CDP endpoint. In remote mode it overrides `relay.cdpEndpoint()`.
-	 * In direct CDP mode it is the browser to connect to, and is required.
+	 * Explicit CDP endpoint. In remote mode with a relay it overrides `relay.cdpEndpoint()`.
+	 * In remote mode without a relay it is the browser to connect to, and is required.
 	 */
 	cdpEndpoint?: string;
 	/** Headers sent when connecting to {@link cdpEndpoint} (e.g. an auth token). */
@@ -258,16 +258,9 @@ export class BrowserConnection {
 	}
 
 	private async createAdapter(): Promise<Adapter> {
-		if (this.config.mode === 'direct_cdp') {
-			// Direct CDP mode is only supported by the Playwright adapter, and has no relay
-			const { PlaywrightAdapter } = await import('./adapters/playwright.js');
-			return new PlaywrightAdapter(this.config, {
-				cdpEndpoint: this.externalCdpEndpoint,
-				cdpConnectHeaders: this.cdpConnectHeaders,
-			});
-		}
 		if (this.config.mode === 'remote') {
-			// Remote mode is only supported by the Playwright adapter
+			// Remote mode is only supported by the Playwright adapter. Without a relay it
+			// connects straight to the CDP endpoint.
 			const { PlaywrightAdapter } = await import('./adapters/playwright.js');
 			return new PlaywrightAdapter(this.config, {
 				relay: this.externalRelay,

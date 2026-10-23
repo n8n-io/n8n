@@ -179,9 +179,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		});
 
 		it('allows only tools that exist in the real toolkit', () => {
-			const toolkitNames = createBrowserTools({ mode: 'direct_cdp' }).tools.map(
-				(tool) => tool.name,
-			);
+			const toolkitNames = createBrowserTools({ mode: 'remote' }).tools.map((tool) => tool.name);
 
 			expect(toolkitNames).toEqual(expect.arrayContaining([...CLOUD_BROWSER_TOOLS]));
 		});

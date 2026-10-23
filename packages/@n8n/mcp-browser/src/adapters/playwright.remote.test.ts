@@ -81,8 +81,8 @@ describe('PlaywrightAdapter remote mode', () => {
 	});
 });
 
-describe('PlaywrightAdapter direct CDP mode', () => {
-	const directConfig: ResolvedConfig = { ...config, mode: 'direct_cdp' };
+describe('PlaywrightAdapter remote mode without a relay', () => {
+	const directConfig: ResolvedConfig = { ...config, mode: 'remote' };
 
 	function fakePage(url: string) {
 		return { url: () => url, on: vi.fn(), close: vi.fn().mockResolvedValue(undefined) };
@@ -145,7 +145,7 @@ describe('PlaywrightAdapter direct CDP mode', () => {
 		const adapter = new PlaywrightAdapter(directConfig);
 
 		await expect(adapter.launch({ browser: 'chrome' })).rejects.toThrow(
-			'Direct CDP mode requires a CDP endpoint',
+			'Remote mode without a relay requires a CDP endpoint',
 		);
 		expect(connectOverCDP).not.toHaveBeenCalled();
 	});

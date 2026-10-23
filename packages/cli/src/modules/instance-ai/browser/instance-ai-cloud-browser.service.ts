@@ -71,7 +71,7 @@ export class InstanceAiCloudBrowserService {
 			scope: { userId, threadId, taskId },
 			sessionProvider: this.getSessionProvider(taskId),
 			createToolkit: (connectUrl) =>
-				createBrowserTools({ mode: 'direct_cdp' }, { cdpEndpoint: connectUrl }),
+				createBrowserTools({ mode: 'remote' }, { cdpEndpoint: connectUrl }),
 			toolContext: {
 				// No tool the cloud browser shows reads `dir`. Before you show a tool that reads
 				// or writes files, give each user a folder of their own, as the extension browser does.

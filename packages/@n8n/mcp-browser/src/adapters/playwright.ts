@@ -103,8 +103,8 @@ export interface PlaywrightAdapterOptions {
 	 */
 	relay?: CDPRelayServer;
 	/**
-	 * Explicit CDP endpoint. In remote mode it overrides `relay.cdpEndpoint()`.
-	 * In direct CDP mode it is the browser to connect to, and is required.
+	 * Explicit CDP endpoint. In remote mode with a relay it overrides `relay.cdpEndpoint()`.
+	 * In remote mode without a relay it is the browser to connect to, and is required.
 	 */
 	cdpEndpoint?: string;
 	/** Headers sent when connecting to the CDP endpoint (e.g. an auth token). */
@@ -139,6 +139,11 @@ export class PlaywrightAdapter {
 		this.cdpConnectHeaders = options?.cdpConnectHeaders;
 	}
 
+	/** Remote mode without a relay connects straight to `cdpEndpoint`, for example a cloud browser. */
+	private get isDirectCdp(): boolean {
+		return this.resolvedConfig.mode === 'remote' && !this.externalRelay;
+	}
+
 	// =========================================================================
 	// Lifecycle
 	// =========================================================================
@@ -146,7 +151,7 @@ export class PlaywrightAdapter {
 	async launch(config: ConnectConfig): Promise<void> {
 		log.debug('launch: browser =', config.browser);
 
-		if (this.resolvedConfig.mode === 'direct_cdp') {
+		if (this.isDirectCdp) {
 			await this.launchDirectCdpConnection();
 			return;
 		}
@@ -204,15 +209,15 @@ export class PlaywrightAdapter {
 	}
 
 	/**
-	 * Direct CDP mode - the endpoint is a browser of its own (e.g. a hosted
-	 * browser session), with no extension and no relay.
+	 * Remote mode without a relay - the endpoint is a browser of its own (e.g. a
+	 * hosted browser session), with no extension.
 	 */
 	private async launchDirectCdpConnection(): Promise<void> {
 		if (!this.externalCdpEndpoint) {
-			throw new McpBrowserError('Direct CDP mode requires a CDP endpoint');
+			throw new McpBrowserError('Remote mode without a relay requires a CDP endpoint');
 		}
 
-		log.debug('direct CDP mode: connecting to CDP endpoint');
+		log.debug('direct CDP connection: connecting to CDP endpoint');
 		await this.connectPlaywright(this.externalCdpEndpoint);
 
 		// With no relay there is no lazy activation, and pages that were open before
@@ -223,7 +228,7 @@ export class PlaywrightAdapter {
 		}
 		// Tools act on the first page, and with no relay nothing else can create one.
 		if (this.pageStates.size === 0) {
-			log.debug('direct CDP mode: no open page, creating one');
+			log.debug('direct CDP connection: no open page, creating one');
 			const page = await context.newPage();
 			// The 'page' event listener may have tracked it already.
 			if (!this.findPageState(page)) this.trackPage(page);
@@ -270,8 +275,8 @@ export class PlaywrightAdapter {
 			this.onDisconnect?.('browser_closed');
 		});
 
-		// Direct CDP mode has no relay to chain onto.
-		if (this.resolvedConfig.mode === 'direct_cdp') return;
+		// A direct CDP connection has no relay to chain onto.
+		if (this.isDirectCdp) return;
 
 		// In remote mode the relay outlives us, so chain onto the embedder's handlers
 		// and restore them on close. One closure so neither can be forgotten.
@@ -344,8 +349,8 @@ export class PlaywrightAdapter {
 	}
 
 	async closePage(pageId: string): Promise<void> {
-		if (this.resolvedConfig.mode === 'direct_cdp') {
-			// Every page is tracked in direct CDP mode, so Playwright closes it.
+		if (this.isDirectCdp) {
+			// Every page is tracked on a direct CDP connection, so Playwright closes it.
 			const state = this.pageStates.get(pageId);
 			this.pageStates.delete(pageId);
 			await state?.page.close();
