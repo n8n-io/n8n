@@ -622,10 +622,14 @@ export class AgentTurnExecutionService {
 		// Forward side-call model costs (title generation, observation-log
 		// observer/reflector, episodic-memory model calls) onto this execution
 		// row and its thread. The SDK prices each call; the host only adds the
-		// cost. Best-effort and idempotent per reportId.
+		// cost. Best-effort and idempotent per reportId. A caller's own callback
+		// still receives every report, for example to bill it. The SDK awaits
+		// that callback and logs its failure, so the caller decides how to handle it.
 		const threadId = config.context.threadId;
-		turn.options.onSideCallUsage = (report: SideCallUsageReport) => {
+		const callerOnSideCallUsage = turn.options.onSideCallUsage;
+		turn.options.onSideCallUsage = async (report: SideCallUsageReport) => {
 			void this.agentExecutionService.recordSideCallUsage(executionId, threadId, report);
+			await callerOnSideCallUsage?.(report);
 		};
 		return await this.startTurn(turn, config, recorder, state);
 	}

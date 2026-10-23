@@ -1,4 +1,4 @@
-import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
+import type { Agent as RuntimeAgent, SideCallUsageReport, StreamChunk } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
@@ -185,4 +185,140 @@ describe('onBeforeFinalize', () => {
 
 		expect(executions.finalizeExecution).toHaveBeenCalledTimes(1);
 	});
+});
+
+describe('onSideCallUsage', () => {
+	const report: SideCallUsageReport = {
+		task: 'observer',
+		model: 'anthropic/claude-haiku-5-5',
+		usage: { promptTokens: 1200, completionTokens: 80, totalTokens: 1280 },
+		cost: 0.0021,
+		reportId: 'report-1',
+	};
+
+	/**
+	 * Run one admitted turn. The fake runtime reports one side call while the
+	 * turn runs, through the callback that the host passes to the SDK.
+	 */
+	async function runTurn(
+		type: 'start' | 'resume',
+		callerOnSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>,
+	) {
+		const logger = mock<Logger>();
+		const executions = mock<AgentExecutionService>();
+		executions.finalizeExecution.mockResolvedValue('exec-1');
+		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
+		executions.recordSideCallUsage.mockResolvedValue();
+		const service = new AgentTurnExecutionService(
+			logger,
+			executions,
+			mock<AgentChatExecutionService>(),
+			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
+			mock<AgentToolApprovalService>(),
+		);
+		const emptyStream = () =>
+			new ReadableStream<StreamChunk>({
+				start(controller) {
+					controller.enqueue({ type: 'finish', finishReason: 'stop' });
+					controller.close();
+				},
+			});
+		const agentInstance = mock<RuntimeAgent>();
+		// The outcome of what the SDK awaits after it reports the side call.
+		let delivered: Promise<{ error?: unknown }> = Promise.resolve({});
+		const reportSideCall = (options: { onSideCallUsage?: (r: SideCallUsageReport) => unknown }) => {
+			delivered = Promise.resolve(options.onSideCallUsage?.(report)).then(
+				() => ({}),
+				(error: unknown) => ({ error }),
+			);
+		};
+		agentInstance.stream.mockImplementation(async (_input, options) => {
+			reportSideCall(options ?? {});
+			return { stream: emptyStream() } as never;
+		});
+		agentInstance.resume.mockImplementation(async (_mode, _data, options) => {
+			reportSideCall(options ?? {});
+			return { stream: emptyStream() } as never;
+		});
+		const options = {
+			abortSignal: new AbortController().signal,
+			...(callerOnSideCallUsage ? { onSideCallUsage: callerOnSideCallUsage } : {}),
+		};
+		const recording = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
+		const turn = (type === 'start'
+			? { type, input: 'hello', options, recording }
+			: {
+					type,
+					resumeData: {},
+					options: { ...options, runId: 'run-1', toolCallId: 'tc-1' },
+					recording,
+				}) as unknown as AgentTurnRequest;
+		for await (const _chunk of service.execute({
+			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
+			agentInstance,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			context: recording,
+			prepare: async () => turn,
+		})) {
+			// Read the stream to the end.
+		}
+		return { executions, delivered };
+	}
+
+	it.each(['start', 'resume'] as const)(
+		'records the cost and forwards the report to the caller on a %s turn',
+		async (type) => {
+			const callerOnSideCallUsage = vi.fn();
+
+			const { executions } = await runTurn(type, callerOnSideCallUsage);
+
+			expect(executions.recordSideCallUsage).toHaveBeenCalledWith('exec-1', 'thread-1', report);
+			expect(callerOnSideCallUsage).toHaveBeenCalledTimes(1);
+			expect(callerOnSideCallUsage).toHaveBeenCalledWith(report);
+		},
+	);
+
+	it('records the cost when the caller passes no callback', async () => {
+		const { executions } = await runTurn('start');
+
+		expect(executions.recordSideCallUsage).toHaveBeenCalledWith('exec-1', 'thread-1', report);
+	});
+
+	it('returns the caller callback promise to the SDK', async () => {
+		let finishClaim!: () => void;
+		const callerOnSideCallUsage = vi.fn(
+			async () => await new Promise<void>((resolve) => (finishClaim = resolve)),
+		);
+		let settled = false;
+
+		const { delivered } = await runTurn('start', callerOnSideCallUsage);
+		void delivered.then(() => (settled = true));
+		await new Promise((resolve) => setImmediate(resolve));
+
+		expect(settled).toBe(false);
+		finishClaim();
+		await delivered;
+		expect(settled).toBe(true);
+	});
+
+	it.each([
+		[
+			'throws',
+			() => {
+				throw new Error('claim failed');
+			},
+		],
+		['rejects', async () => await Promise.reject(new Error('claim failed'))],
+	])(
+		'records the cost and passes the error to the SDK when the caller callback %s',
+		async (_, onUsage) => {
+			const { executions, delivered } = await runTurn('start', onUsage);
+
+			expect(executions.recordSideCallUsage).toHaveBeenCalledWith('exec-1', 'thread-1', report);
+			expect(executions.finalizeExecution).toHaveBeenCalled();
+			expect((await delivered).error).toEqual(new Error('claim failed'));
+		},
+	);
 });

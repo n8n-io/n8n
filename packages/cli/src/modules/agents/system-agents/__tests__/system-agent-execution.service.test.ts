@@ -648,6 +648,15 @@ describe('SystemAgentExecutionService', () => {
 			});
 		});
 
+		it("passes the handle's side-call usage callback to the turn", async () => {
+			const { service, handle, prepared } = setup([textChunk]);
+			handle.onSideCallUsage = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(prepared[0].options.onSideCallUsage).toBe(handle.onSideCallUsage);
+		});
+
 		it('aborts the provider setup when the claim stops during setup', async () => {
 			const { service, provider, handle } = setup([textChunk]);
 			const claim = new AbortController();
@@ -1110,6 +1119,27 @@ describe('SystemAgentExecutionService', () => {
 				sessionId: 'thread-1',
 				executionId: 'exec-resume',
 			});
+		});
+
+		it("passes the handle's side-call usage callback to the resumed turn", async () => {
+			const { service, handle, checkpointStorage, prepared } = setup([textChunk]);
+			handle.onSideCallUsage = vi.fn();
+			checkpointStorage.load.mockResolvedValue({
+				persistence: { threadId: 'thread-1' },
+			} as never);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+
+			await service.resumeRun({
+				agentId: AGENT_ID,
+				user,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: {},
+				send: vi.fn(),
+			});
+
+			expect(prepared[0].type).toBe('resume');
+			expect(prepared[0].options.onSideCallUsage).toBe(handle.onSideCallUsage);
 		});
 
 		it('rejects when the resumed turn fails, so the route can report it', async () => {

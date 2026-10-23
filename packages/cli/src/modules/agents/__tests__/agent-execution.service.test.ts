@@ -195,6 +195,18 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
+		it('changes no totals for a report without cost', async () => {
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'unknown/model',
+				reportId: 'report-1',
+			});
+
+			expect(txRunner.run).not.toHaveBeenCalled();
+			expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
+			expect(agentExecutionThreadRepository.incrementUsage).not.toHaveBeenCalled();
+		});
+
 		it('claims the reportId only after the transaction commits', async () => {
 			// A failed transaction must not claim the reportId, so a later
 			// replay can reapply both totals atomically instead of being
