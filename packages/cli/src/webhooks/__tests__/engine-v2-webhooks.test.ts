@@ -138,9 +138,14 @@ describe('EngineV2Webhooks.assertSupported on a resume', () => {
 		expect(() => assertResume(mode)).not.toThrow();
 	});
 
-	it('refuses an answer from a Respond to Webhook node', () => {
-		expect(() => assertResume('responseNode')).toThrow('Respond to Webhook');
-	});
+	it.each(['responseNode', 'formPage'] as const)(
+		'refuses %s, where a later node would answer the resume request',
+		(mode) => {
+			expect(() => assertResume(mode)).toThrow(
+				'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
+			);
+		},
+	);
 
 	it('still needs the engine module', () => {
 		expect(() => assertResume('onReceived', false)).toThrow('N8N_ENABLED_MODULES');

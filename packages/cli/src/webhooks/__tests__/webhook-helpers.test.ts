@@ -3386,7 +3386,13 @@ describe('executeWebhook on engine v2', () => {
 				name: 'a resume answered by a Respond to Webhook node',
 				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'responseNode' },
 				message:
-					'Engine v2 cannot answer a resume request from a Respond to Webhook node yet. Set the waiting node to respond immediately or with the last node.',
+					'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
+			},
+			{
+				name: 'a resume answered by the next form page',
+				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'formPage' },
+				message:
+					'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
 			},
 			{
 				name: 'a trigger that takes credentials from the request',
