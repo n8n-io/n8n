@@ -36,20 +36,39 @@ describe('restoreRecordedRuns', () => {
 			.mockResolvedValueOnce({ executionId: 'restored-1' })
 			.mockResolvedValueOnce({ executionId: 'restored-2' });
 
+		const second = { ...envelope, source: { ...envelope.source, executionId: '43' } };
+
 		const ids = await restoreRecordedRuns({
 			client,
 			threadId: 'thread-1',
 			recordedRuns: [
 				{ workflow: SEED_ID, envelope },
-				{ workflow: SEED_ID, envelope },
+				{ workflow: SEED_ID, envelope: second },
 			],
 			seedWorkflows: seeded,
 			logger: mock<EvalLogger>(),
 		});
 
 		expect(ids).toEqual(['restored-1', 'restored-2']);
-		expect(client.restoreExecution).toHaveBeenCalledTimes(2);
-		expect(client.restoreExecution).toHaveBeenCalledWith('thread-1', 'wf-1', envelope);
+		expect(client.restoreExecution).toHaveBeenNthCalledWith(1, 'thread-1', 'wf-1', envelope);
+		expect(client.restoreExecution).toHaveBeenNthCalledWith(2, 'thread-1', 'wf-1', second);
+	});
+
+	it('names the recorded run whose restore failed', async () => {
+		const client = mock<N8nClient>();
+		client.restoreExecution.mockRejectedValue(new Error('Workflow not found'));
+
+		await expect(
+			restoreRecordedRuns({
+				client,
+				threadId: 'thread-1',
+				recordedRuns: [{ workflow: SEED_ID, envelope }],
+				seedWorkflows: seeded,
+				logger: mock<EvalLogger>(),
+			}),
+		).rejects.toThrow(
+			'Recorded run "Daily Sync (dS8xQ2mV6bTn4Kp1)" (source execution 42): Workflow not found',
+		);
 	});
 
 	it('throws when the seed did not create the named workflow', async () => {

@@ -644,7 +644,7 @@ before the turn:
 - `seed.messages` are earlier messages in the thread.
 - `seed.workflows` and `seed.dataTables` are on the instance.
 - `seed.priorRuns` are failed runs. `hints` is the error of the run.
-  (`seed.recordedRuns` is not served by the stub instance.)
+  The stub instance cannot serve `seed.recordedRuns`, so it skips cases that have them.
 - `attach` is the workflow or Agent (from `seed.agents`) the user has open. The
   turn sends it in the same `<thread-context>` block as production.
 - `credentials` are accounts. Each account passes its connection test, unless

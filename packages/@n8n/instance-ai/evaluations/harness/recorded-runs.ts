@@ -30,10 +30,18 @@ export async function restoreRecordedRuns(options: RecordedRunsOptions): Promise
 				`Recorded run names seed workflow id "${run.workflow}", which the seed did not create. Created: ${[...seedWorkflows.keys()].join(', ') || '(none)'}`,
 			);
 		}
-		const { executionId } = await client.restoreExecution(threadId, restored.id, run.envelope);
+		const label = `${restored.name} (${run.workflow})`;
+		let executionId: string;
+		try {
+			({ executionId } = await client.restoreExecution(threadId, restored.id, run.envelope));
+		} catch (error: unknown) {
+			throw new Error(
+				`Recorded run "${label}" (source execution ${run.envelope.source.executionId}): ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 		executionIds.push(executionId);
 		logger.info(
-			`  Recorded run "${restored.name} (${run.workflow})": restored as execution ${executionId} (${run.envelope.execution.status})${laneTag ?? ''}`,
+			`  Recorded run "${label}": restored as execution ${executionId} (${run.envelope.execution.status})${laneTag ?? ''}`,
 		);
 	}
 
