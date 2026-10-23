@@ -1664,7 +1664,8 @@ function synthesizeResourceLocatorValue(paramName: string): string {
 
 /**
  * Fill empty resource-locator values on the raw entity nodes. Must run before
- * any Workflow construction — see the call site in execute() for why.
+ * any Workflow is built over the entity's own nodes (Phase-1 lookups use
+ * `buildDetachedWorkflow`, a copy) — see the call site in execute() for why.
  */
 function fillSetupPendingResourceLocators(parameters: INodeParameters): void {
 	for (const [key, raw] of Object.entries(parameters)) {
