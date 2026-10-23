@@ -71,8 +71,9 @@ interface ExecuteTurnConfig {
 	onSettled?: (suspended: boolean) => Promise<void>;
 	/**
 	 * Called once when the outcome of the turn is known, before the runtime
-	 * stores the turn record. The runtime does not call it when the turn has
-	 * no execution record.
+	 * stores the turn record. Events that the host records here are stored
+	 * with the turn. The runtime does not call it when the turn has no
+	 * execution record.
 	 */
 	onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
 	/**
@@ -80,6 +81,8 @@ interface ExecuteTurnConfig {
 	 * `undefined` to store the raw error. Must not reject.
 	 */
 	formatError?: (error: unknown) => Promise<FormattedTurnError | undefined>;
+	/** Called once with the recorder of the turn, so that a host can record its own events. */
+	onRecorderCreated?: (recorder: ExecutionRecorder) => void;
 }
 
 interface TurnExecutionState {
@@ -143,8 +146,8 @@ export class AgentTurnExecutionService {
 			config.backgroundJobSignal,
 			config.admittedExecution?.startedAt,
 		);
-
 		try {
+			config.onRecorderCreated?.(recorder);
 			turn = await config.prepare();
 			const preparedTurn = turn;
 			if (config.chatSurface !== undefined) {

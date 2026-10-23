@@ -270,6 +270,15 @@ export type TimelineEvent =
 			type: 'guardrail';
 			code: string;
 			timestamp: number;
+	  }
+	| {
+			/** A custom event that a system-agent provider emitted during the turn. */
+			type: 'host-event';
+			name: string;
+			/** A later event with the same name and key replaces this one. */
+			key?: string;
+			payload: unknown;
+			timestamp: number;
 	  };
 
 /**
@@ -373,6 +382,46 @@ export class ExecutionRecorder {
 			response: sanitizeExecutionLogValue(response),
 			timestamp: Date.now(),
 		});
+	}
+
+	/**
+	 * Record a custom host event at its position in the turn. The payload is
+	 * sanitized like other recorded values, because history returns it to the
+	 * client as it is stored. When the turn already has an event with the same
+	 * name and key, the new payload replaces the old one in its position.
+	 * Returns the recorded event, so that the live stream can send the same
+	 * payload.
+	 */
+	recordHostEvent(
+		name: string,
+		payload: unknown,
+		key?: string,
+	): Extract<TimelineEvent, { type: 'host-event' }> {
+		const sanitized = sanitizeExecutionLogValue(payload);
+		if (key !== undefined) {
+			const index = this.timeline.findIndex(
+				(item) => item.type === 'host-event' && item.name === name && item.key === key,
+			);
+			const existing = this.timeline[index];
+			if (existing?.type === 'host-event') {
+				const replaced = { ...existing, payload: sanitized };
+				this.timeline[index] = replaced;
+				// Text or reasoning can still stream here, so keep it in the snapshot.
+				this.emitTimelineSnapshot(this.activeBlock());
+				return replaced;
+			}
+		}
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		const event: Extract<TimelineEvent, { type: 'host-event' }> = {
+			type: 'host-event',
+			name,
+			...(key !== undefined ? { key } : {}),
+			payload: sanitized,
+			timestamp: Date.now(),
+		};
+		this.appendCompletedEvent(event);
+		return event;
 	}
 
 	/** Feed a stream chunk into the recorder. */
@@ -569,24 +618,7 @@ export class ExecutionRecorder {
 		if (this.timelineSnapshotTimer) return;
 		this.timelineSnapshotTimer = setTimeout(() => {
 			this.timelineSnapshotTimer = undefined;
-			const now = Date.now();
-			if (this.textStartTime !== null && this.textBuffer.length > 0) {
-				this.emitTimelineSnapshot({
-					type: 'text',
-					content: this.textBuffer.join(''),
-					timestamp: this.textStartTime,
-					endTime: now,
-				});
-			} else if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
-				this.emitTimelineSnapshot({
-					type: 'reasoning',
-					content: this.reasoningBuffer.join(''),
-					timestamp: this.reasoningStartTime,
-					endTime: now,
-				});
-			} else {
-				this.emitTimelineSnapshot();
-			}
+			this.emitTimelineSnapshot(this.activeBlock());
 		}, TIMELINE_BLOCK_MAX_DURATION_MS);
 		this.timelineSnapshotTimer.unref();
 	}
@@ -764,6 +796,28 @@ export class ExecutionRecorder {
 	private appendCompletedEvent(event: TimelineEvent): void {
 		this.timeline.push(event);
 		this.emitTimelineSnapshot();
+	}
+
+	/** The text or reasoning block that still streams, as it would be flushed now. */
+	private activeBlock(): TimelineEvent | undefined {
+		const now = Date.now();
+		if (this.textStartTime !== null && this.textBuffer.length > 0) {
+			return {
+				type: 'text',
+				content: this.textBuffer.join(''),
+				timestamp: this.textStartTime,
+				endTime: now,
+			};
+		}
+		if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
+			return {
+				type: 'reasoning',
+				content: this.reasoningBuffer.join(''),
+				timestamp: this.reasoningStartTime,
+				endTime: now,
+			};
+		}
+		return undefined;
 	}
 
 	private emitTimelineSnapshot(activeEvent?: TimelineEvent): void {

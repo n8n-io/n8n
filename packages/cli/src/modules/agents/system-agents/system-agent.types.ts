@@ -17,6 +17,7 @@ import type {
 	AgentTurnStatus,
 	FormattedTurnError,
 } from '../types/agent-turn-outcome';
+import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
 
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
@@ -29,6 +30,16 @@ interface SystemAgentTurnBase<TLease> {
 	abortSignal: AbortSignal;
 	/** The lease from the provider's workspace source. It is not set when the provider has no source. */
 	workspace?: TLease;
+	/**
+	 * Send a custom event to the chat during this turn. The runtime streams it
+	 * as a `host-event` SSE event and records it with the turn, so history
+	 * shows it again after a reload. Pass a `key` to update an earlier event
+	 * with the same name. The provider can keep the callback for its tools
+	 * and hooks. `onSettled` can emit only when the turn has an execution
+	 * record. Events after `onSettled` returns are dropped. It throws when
+	 * the payload is larger than 64 KiB as JSON.
+	 */
+	emitHostEvent: SystemAgentHostEventEmitter;
 }
 
 export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnBase<TLease> {
@@ -81,6 +92,10 @@ export interface SystemAgentTurnHandle {
 	/**
 	 * Called once per turn with its outcome, before the runtime stores the
 	 * turn record. A turn without an execution record settles after it fails.
+	 * When the turn has an execution record, host events that the hook emits
+	 * reach the stream before `done` and are kept in history. Otherwise they
+	 * are dropped. Do not read the stored execution here, because it is not
+	 * final yet.
 	 */
 	onSettled?: (outcome: SystemAgentTurnOutcome) => Promise<void>;
 	/**

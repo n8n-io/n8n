@@ -3,11 +3,12 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
-import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentExecutionService, RecordMessageParams } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
+import type { ExecutionRecorder } from '../execution-recorder';
 import type { AgentTurnFinalizeOutcome } from '../types/agent-turn-outcome';
 
 it('ends a preview turn stopped during preparation without recording an error', async () => {
@@ -73,6 +74,7 @@ describe('onBeforeFinalize', () => {
 		options: {
 			abortController?: AbortController;
 			onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
+			onRecorderCreated?: (recorder: ExecutionRecorder) => void;
 			beforeStream?: () => void;
 		} = {},
 	) {
@@ -107,6 +109,7 @@ describe('onBeforeFinalize', () => {
 			mcpServerAttributions: new Map(),
 			context: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 			onBeforeFinalize,
+			onRecorderCreated: options.onRecorderCreated,
 			prepare: async () => turn,
 		})) {
 			// Read the stream to the end.
@@ -125,6 +128,27 @@ describe('onBeforeFinalize', () => {
 		const [hookCall] = onBeforeFinalize.mock.invocationCallOrder;
 		const [finalizeCall] = executions.finalizeExecution.mock.invocationCallOrder;
 		expect(hookCall).toBeLessThan(finalizeCall);
+	});
+
+	it('stores events that the hook records with the turn', async () => {
+		let recorder: ExecutionRecorder | undefined;
+		const { executions } = await runTurn(
+			[
+				{ type: 'text-delta', id: 't-1', delta: 'Hello' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			{
+				onRecorderCreated: (created) => {
+					recorder = created;
+				},
+				onBeforeFinalize: async () => {
+					recorder?.recordHostEvent('test.summary', { ok: true });
+				},
+			},
+		);
+
+		const params = executions.finalizeExecution.mock.calls[0][1] as RecordMessageParams;
+		expect(params.record.timeline.map((event) => event.type)).toEqual(['text', 'host-event']);
 	});
 
 	it('reports an errored turn with the error that the stream reported', async () => {
