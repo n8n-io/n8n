@@ -4,4 +4,4 @@ export {
 	buildChatGenAiAttributes,
 	isGenAiAttributeKey,
 } from './attributes';
-export type { GenAiAttributes } from './attributes';
+export type { GenAiAttributes, GenAiProviderName } from './attributes';

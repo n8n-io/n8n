@@ -1116,9 +1116,10 @@ describe('N8nLlmTracing', () => {
 				nodeType: string,
 				startMetadata: Record<string, unknown> | undefined,
 				output: LLMResult,
+				tracerOptions?: ConstructorParameters<typeof N8nLlmTracing>[1],
 			) => {
 				mockNode.type = nodeType;
-				const tracer = new N8nLlmTracing(mockExecutionFunctions);
+				const tracer = new N8nLlmTracing(mockExecutionFunctions, tracerOptions);
 				const llm: Serialized = { lc: 1, type: 'constructor', id: ['langchain'], kwargs: {} };
 
 				await tracer.handleLLMStart(
@@ -1155,13 +1156,26 @@ describe('N8nLlmTracing', () => {
 			});
 
 			it.each([
-				['@n8n/n8n-nodes-langchain.lmChatOllama', 'ollama'],
-				['n8n-nodes-community.lmChatCustom', undefined],
-			])('sets the provider name of %s to %s', async (nodeType, providerName) => {
-				const metadata = await runLlmCall(nodeType, chatModelMetadata, reportedUsageOutput);
+				['@n8n/n8n-nodes-langchain.lmChatOllama', 'ollama', undefined],
+				['n8n-nodes-community.lmChatCustom', undefined, undefined],
+				[
+					'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+					'anthropic',
+					{ genAiProviderName: 'anthropic' },
+				],
+			] as const)(
+				'sets the provider name of %s to %s',
+				async (nodeType, providerName, tracerOptions) => {
+					const metadata = await runLlmCall(
+						nodeType,
+						chatModelMetadata,
+						reportedUsageOutput,
+						tracerOptions,
+					);
 
-				expect(metadata?.tracing?.['gen_ai.provider.name']).toBe(providerName);
-			});
+					expect(metadata?.tracing?.['gen_ai.provider.name']).toBe(providerName);
+				},
+			);
 
 			it('marks usage as not reported instead of sending the estimate', async () => {
 				const metadata = await runLlmCall(

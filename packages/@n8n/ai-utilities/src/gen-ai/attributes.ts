@@ -43,7 +43,7 @@ type N8nProviderName =
 	| 'openrouter'
 	| 'vercel.ai_gateway';
 
-type GenAiProviderName = SpecProviderName | N8nProviderName;
+export type GenAiProviderName = SpecProviderName | N8nProviderName;
 
 export type GenAiAttributes = NonNullable<ITaskMetadata['tracing']>;
 
@@ -83,16 +83,19 @@ export function isGenAiAttributeKey(key: string): boolean {
 
 export function buildChatGenAiAttributes({
 	nodeType,
+	providerName,
 	requestModel,
 	responseModel,
 	usage,
 }: {
 	nodeType: string;
+	providerName?: GenAiProviderName;
 	requestModel?: string;
 	responseModel?: string;
 	usage?: { promptTokens: number; completionTokens: number };
 }): GenAiAttributes {
-	const provider = PROVIDER_BY_CHAT_MODEL_NODE[nodeType.replace(LANGCHAIN_NODE_PREFIX, '')];
+	const provider =
+		providerName ?? PROVIDER_BY_CHAT_MODEL_NODE[nodeType.replace(LANGCHAIN_NODE_PREFIX, '')];
 
 	return {
 		[GEN_AI_ATTR.OPERATION_NAME]: 'chat',

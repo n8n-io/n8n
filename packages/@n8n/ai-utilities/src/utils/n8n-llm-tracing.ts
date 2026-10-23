@@ -11,7 +11,7 @@ import type { Generation, LLMResult } from '@langchain/core/outputs';
 import type { IDataObject, ISupplyDataFunctions, ITaskMetadata, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { buildChatGenAiAttributes } from '../gen-ai';
+import { buildChatGenAiAttributes, type GenAiProviderName } from '../gen-ai';
 import { extractRespondingModel, toRunDataGeneration } from './extract-responding-model';
 import { logAiEvent } from './log-ai-event';
 import { redactHeaderValues } from './redact-headers';
@@ -114,6 +114,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		tokensUsageParser: TokensUsageParser;
 		errorDescriptionMapper: (error: NodeError) => string | null | undefined;
 		redactedHeaders?: string[];
+		genAiProviderName?: GenAiProviderName;
 	} = {
 		// Default(OpenAI format) parser
 		tokensUsageParser: (result: LLMResult) => {
@@ -140,6 +141,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			tokensUsageParser?: TokensUsageParser;
 			errorDescriptionMapper?: (error: NodeError) => string;
 			redactedHeaders?: string[];
+			genAiProviderName?: GenAiProviderName;
 		},
 	) {
 		super();
@@ -333,6 +335,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		return {
 			tracing: buildChatGenAiAttributes({
 				nodeType: this.executionFunctions.getNode().type,
+				providerName: this.options.genAiProviderName,
 				requestModel: runDetails.requestModel,
 				responseModel: generation ? extractRespondingModel(generation) : undefined,
 				usage,
