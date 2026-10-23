@@ -727,6 +727,50 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
 			});
 
+			it.each([false, true])(
+				'does not start the error workflow when the policy refuses the caller and a credential check would fail (doNotWaitToFinish: %s)',
+				async (doNotWaitToFinish) => {
+					credentialsPermissionChecker.check.mockClear();
+					failPolicyCheck();
+					failCredentialCheck();
+					// Drop the credential failure that the refused caller never reaches.
+					onTestFinished(() => {
+						credentialsPermissionChecker.check.mockReset();
+					});
+
+					const run = runSubWorkflow(doNotWaitToFinish);
+					if (doNotWaitToFinish) {
+						await expect(run).resolves.toEqual({ executionId: EXECUTION_ID, data: [null] });
+					} else {
+						await expect(run).rejects.toThrow('refuses this caller');
+					}
+
+					await vi.waitFor(() =>
+						expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1),
+					);
+					expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+					expect(executeErrorWorkflow).not.toHaveBeenCalled();
+				},
+			);
+
+			it('stores the failure when an after hook throws', async () => {
+				onTestFinished(() => {
+					eventService.emit.mockReset();
+				});
+				eventService.emit.mockImplementation((eventName) => {
+					if (eventName === 'workflow-post-execute') throw new Error('hook failed');
+					return true;
+				});
+				failCredentialCheck();
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('does not have access');
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					EXECUTION_ID,
+					expect.objectContaining({ status: 'error' }),
+				);
+			});
+
 			it('runs the before hooks without a workflow instance', async () => {
 				const runHook = vi.spyOn(ExecutionLifecycleHooks.prototype, 'runHook');
 				onTestFinished(() => runHook.mockRestore());

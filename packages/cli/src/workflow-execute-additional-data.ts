@@ -628,6 +628,7 @@ async function startExecution(
 	).getCredentialIdsForNodes(workflowData.nodes);
 
 	let hooks: ExecutionLifecycleHooks | undefined;
+	let callerAllowed = false;
 	let credentialChecksPassed = false;
 
 	let data;
@@ -651,6 +652,15 @@ async function startExecution(
 		// `WorkflowExecute` always runs as 'integrated'. Same pattern as
 		// `credentials-helper`.
 		const rootExecutionMode = additionalData.rootExecutionMode ?? options.executionMode;
+
+		// A refused caller must not start executions in this workflow's project.
+		await Container.get(SubworkflowPolicyChecker).check(
+			workflow,
+			options.parentWorkflowId,
+			options.node,
+			additionalData.userId,
+		);
+		callerAllowed = true;
 
 		if (isInlineSubworkflow && additionalData.userId && isUserInitiated(rootExecutionMode)) {
 			// Inline sub-workflow triggered by a specific user: its credentials were
@@ -678,14 +688,6 @@ async function startExecution(
 			);
 		}
 		credentialChecksPassed = true;
-
-		// A refused caller must not start executions in this workflow's project.
-		await Container.get(SubworkflowPolicyChecker).check(
-			workflow,
-			options.parentWorkflowId,
-			options.node,
-			additionalData.userId,
-		);
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -783,7 +785,7 @@ async function startExecution(
 			});
 
 		try {
-			if (hooks && !credentialChecksPassed) {
+			if (hooks && callerAllowed && !credentialChecksPassed) {
 				// `WorkflowExecute` never started, so run its hooks here, as `WorkflowRunner.failExecution`
 				// does for a top-level run. The save hook stores the failure and starts the error workflow.
 				// No workflow instance: nothing runs, so the before hooks skip their pre-run gates.
@@ -796,7 +798,20 @@ async function startExecution(
 							error: hookError,
 						}),
 					);
-				await hooks.runHook('workflowExecuteAfter', [fullRunData]);
+				await hooks
+					.runHook('workflowExecuteAfter', [fullRunData])
+					.catch(async (hookError: unknown) => {
+						// A handler that throws stops the save hook, so store the failure here.
+						Container.get(Logger).warn('An after hook failed for a failed sub-workflow execution', {
+							executionId,
+							workflowId: workflowData.id,
+							error: hookError,
+						});
+						await Container.get(ExecutionPersistence).updateExistingExecution(
+							executionId,
+							fullExecutionData,
+						);
+					});
 			} else {
 				await Container.get(ExecutionPersistence).updateExistingExecution(
 					executionId,
