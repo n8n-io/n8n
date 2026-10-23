@@ -284,6 +284,39 @@ describe('AgentChatAttachmentService', () => {
 			expect(bytes).toEqual(Buffer.from([1, 2]));
 		});
 
+		it('looks up the delegation chain once for each thread', async () => {
+			repository.findByIdInThread.mockImplementation(
+				async (id) =>
+					({
+						id,
+						binaryDataId: `filesystem-v2:${id}`,
+						mimeType: 'image/png',
+						createdByThreadId: 'grandchild',
+					}) as AgentChatAttachment,
+			);
+			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from([1]));
+
+			const store = service.getFileStore(
+				{ agentId: 'agent-1', projectId: 'project-1' },
+				'anthropic',
+			);
+			await Promise.all(
+				['att-1', 'att-2', 'att-3'].map(
+					async (id) => await store.load({ id }, { threadId: 'grandchild' }),
+				),
+			);
+			await store.load({ id: 'att-4' }, { threadId: 'grandchild' });
+
+			expect(threadRepository.findDelegationChain).toHaveBeenCalledTimes(1);
+			expect(repository.findByIdInThread).toHaveBeenCalledWith('att-4', {
+				projectId: 'project-1',
+				threadId: 'root',
+			});
+
+			await store.load({ id: 'att-1' }, { threadId: 'root' });
+			expect(threadRepository.findDelegationChain).toHaveBeenCalledTimes(2);
+		});
+
 		it('returns null for attachments outside the run thread', async () => {
 			repository.findByIdInThread.mockResolvedValue(null);
 

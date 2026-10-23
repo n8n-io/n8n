@@ -309,16 +309,35 @@ export class AgentChatAttachmentService {
 	 * hydration.
 	 */
 	getFileStore(scope: { agentId: string; projectId: string }, provider: string): BuiltFileStore {
+		// Hydration loads many files for each model call. Find the root thread
+		// one time for each thread. A thread never changes its parent, so the
+		// value stays correct. Keep one entry, because a cached runtime can
+		// live for a long time.
+		let root: { threadId: string; id: Promise<string> } | undefined;
+		const rootIdOf = async (threadId: string) => {
+			if (root?.threadId !== threadId) {
+				const id = this.findRootThread(threadId).then((thread) => thread.id);
+				root = { threadId, id };
+				// Do not keep a failed lookup.
+				id.catch(() => {
+					if (root?.id === id) root = undefined;
+				});
+			}
+			return await root.id;
+		};
+
 		return {
 			load: async (
 				ref: ContentFileRef,
 				runScope?: { threadId?: string },
 			): Promise<Uint8Array | null> => {
-				const attachment = runScope?.threadId
-					? await this.getReadable(ref.id, {
-							projectId: scope.projectId,
-							threadId: runScope.threadId,
-						})
+				const threadId = runScope?.threadId;
+				const attachment = threadId
+					? await this.findReadable(
+							ref.id,
+							{ projectId: scope.projectId, threadId },
+							await rootIdOf(threadId),
+						)
 					: await this.repository.findByIdForAgent(ref.id, scope);
 				if (!attachment) return null;
 				try {
