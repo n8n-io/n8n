@@ -30,6 +30,17 @@ export interface AzureOpenAiListModelsOptions {
 	openAiCompatibleOnly?: boolean;
 }
 
+/**
+ * Audience of the Foundry deployments-list call. Entra ID grants access per
+ * audience, so only that call requests a token for it, not every inference call.
+ */
+export const AZURE_AI_FOUNDRY_AUDIENCE = 'https://ai.azure.com';
+
+/** The deployments API lives on the origin of the Foundry inference endpoint. */
+export function getAzureFoundryOrigin(endpoint: string): string {
+	return new URL(endpoint.trim()).origin;
+}
+
 /** The deployments call returned 404 for the requested project. */
 export class AzureProjectNotFoundError extends UserError {
 	constructor(project: string) {

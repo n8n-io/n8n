@@ -16,16 +16,11 @@ vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
 	listAzureOpenAiModels: (...args: unknown[]) => listAzureOpenAiModels(...args) as unknown,
 }));
 
-const getToken = vi.fn();
-const clientOAuth2 = vi.fn();
-vi.mock('@n8n/client-oauth2', () => ({
-	ClientOAuth2: class {
-		credentials = { getToken };
-
-		constructor(options: unknown) {
-			clientOAuth2(options);
-		}
-	},
+const mintAzureFoundryDeploymentsToken = vi.fn();
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents')>()),
+	mintAzureFoundryDeploymentsToken: (...args: unknown[]) =>
+		mintAzureFoundryDeploymentsToken(...args) as unknown,
 }));
 
 const foundryEndpoint = 'https://my-resource.services.ai.azure.com/openai/v1';
@@ -49,8 +44,7 @@ describe('AzureFoundryDeploymentsService', () => {
 	beforeEach(() => {
 		listAzureOpenAiModels.mockReset();
 		listAzureOpenAiModels.mockResolvedValue([{ id: 'my-chat', name: 'my-chat (gpt-4.1)' }]);
-		getToken.mockReset();
-		clientOAuth2.mockReset();
+		mintAzureFoundryDeploymentsToken.mockReset();
 	});
 
 	it('reports a Classic credential as unsupported', async () => {
@@ -95,9 +89,9 @@ describe('AzureFoundryDeploymentsService', () => {
 		);
 	});
 
-	it('mints an Entra ID token for the Foundry audience within the outbound policy', async () => {
+	it('mints an Entra ID token from the mapped credential within the outbound policy', async () => {
 		const { service, ssrfProtectionService } = makeService();
-		getToken.mockResolvedValue({ data: { access_token: 'foundry-token' } });
+		mintAzureFoundryDeploymentsToken.mockResolvedValue('foundry-token');
 
 		await service.list({
 			endpointType: 'foundry',
@@ -109,13 +103,12 @@ describe('AzureFoundryDeploymentsService', () => {
 			oauthTokenData: { access_token: 'stored' },
 		});
 
-		expect(clientOAuth2).toHaveBeenCalledWith(
+		expect(mintAzureFoundryDeploymentsToken).toHaveBeenCalledWith(
 			expect.objectContaining({
-				clientId: 'client-id',
-				accessTokenUri: 'https://login.microsoftonline.com/tenant/oauth2/token',
-				additionalBodyProperties: { resource: 'https://ai.azure.com/' },
-				ssrfBridge: ssrfProtectionService,
+				oauthClientId: 'client-id',
+				oauthAccessTokenUrl: 'https://login.microsoftonline.com/tenant/oauth2/token',
 			}),
+			ssrfProtectionService,
 		);
 		expect(listAzureOpenAiModels).toHaveBeenCalledWith(
 			expect.objectContaining({ headers: { Authorization: 'Bearer foundry-token' } }),

@@ -64,7 +64,9 @@ export {
 export { listAlibabaModels, shouldIncludeAlibabaModel } from './providers/alibaba';
 export { listAnthropicModels } from './providers/anthropic';
 export {
+	AZURE_AI_FOUNDRY_AUDIENCE,
 	AzureProjectNotFoundError,
+	getAzureFoundryOrigin,
 	listAzureOpenAiModels,
 	shouldIncludeAzureModel,
 	type AzureOpenAiListModelsOptions,

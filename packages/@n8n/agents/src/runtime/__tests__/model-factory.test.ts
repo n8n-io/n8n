@@ -3,6 +3,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
 
 import {
+	mintAzureFoundryDeploymentsToken,
 	createEmbeddingModel,
 	createModel,
 	supportsSplitSystemMessages,
@@ -991,6 +992,32 @@ describe('createModel', () => {
 			expect(capturedHeaders?.get('Authorization')).toBe('Bearer minted-bearer');
 			expect(capturedHeaders?.get('x-foo')).toBe('bar');
 			expect(mockClientOAuth2.credentials.getToken).toHaveBeenCalledTimes(1);
+		});
+
+		it('mints a Foundry deployments token within the given outbound policy', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const ssrfBridge = {
+				validateUrl: vi.fn(),
+				validateRedirectSync: vi.fn(),
+				createSecureLookup: vi.fn(),
+			};
+
+			const token = await mintAzureFoundryDeploymentsToken(
+				{
+					endpointType: 'foundry',
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+					...entraCreds,
+				},
+				ssrfBridge,
+			);
+
+			expect(token).toBe('minted-bearer');
+			expect(ClientOAuth2).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: 'https://ai.azure.com/' },
+					ssrfBridge,
+				}),
+			);
 		});
 
 		it('rejects credentials that supply both apiKey and Entra', () => {

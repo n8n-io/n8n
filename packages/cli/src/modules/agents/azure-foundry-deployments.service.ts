@@ -1,6 +1,11 @@
-import { hasAzureApiKey, type ResolvedCredential } from '@n8n/agents';
+import {
+	hasAzureApiKey,
+	mintAzureFoundryDeploymentsToken,
+	type ResolvedCredential,
+} from '@n8n/agents';
 import {
 	AzureProjectNotFoundError,
+	getAzureFoundryOrigin,
 	listAzureOpenAiModels,
 	type ProviderModel,
 } from '@n8n/ai-utilities/model-discovery';
@@ -9,7 +14,6 @@ import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
@@ -18,17 +22,6 @@ import { mapCredentialForProvider } from './json-config/credential-field-mapping
 export type FoundryDeploymentsResult =
 	| { status: 'success'; deployments: ProviderModel[] }
 	| { status: 'unavailable'; reason?: AgentModelsUnavailableReason; error?: unknown };
-
-/** The deployments call needs a token for the Foundry audience, not the inference one. */
-const AZURE_AI_FOUNDRY_RESOURCE = 'https://ai.azure.com/';
-
-const EntraCredentialSchema = z.object({
-	clientId: z.string().min(1),
-	clientSecret: z.string().optional(),
-	accessTokenUrl: z.string().min(1),
-	scope: z.string().optional(),
-	authentication: z.enum(['body', 'header']).optional(),
-});
 
 /**
  * Lists the chat deployments of the Microsoft Foundry project on an Azure
@@ -55,7 +48,7 @@ export class AzureFoundryDeploymentsService {
 			const deployments = await listAzureOpenAiModels({
 				baseURL: foundryOrigin(mapped.baseURL),
 				project,
-				headers: await this.authHeaders(credential),
+				headers: await this.authHeaders(mapped),
 				fetch: createAiProxyFetch(this.outboundHttp),
 				openAiCompatibleOnly: true,
 			});
@@ -68,38 +61,22 @@ export class AzureFoundryDeploymentsService {
 		}
 	}
 
-	private async authHeaders(credential: ResolvedCredential): Promise<Record<string, string>> {
-		if (hasAzureApiKey(credential)) return { 'api-key': String(credential.apiKey) };
-		return { Authorization: `Bearer ${await this.mintEntraToken(credential)}` };
-	}
-
-	private async mintEntraToken(credential: ResolvedCredential): Promise<string> {
-		const parsed = EntraCredentialSchema.safeParse(credential);
-		if (!parsed.success) {
-			throw new UserError('The Microsoft Foundry credential has no API key or Entra ID client');
-		}
-		const { clientId, clientSecret, accessTokenUrl, scope, authentication } = parsed.data;
-		const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-		const client = new ClientOAuth2({
-			clientId,
-			clientSecret,
-			accessTokenUri: accessTokenUrl,
-			scopes: scope?.split(' '),
-			authentication,
-			additionalBodyProperties: { resource: AZURE_AI_FOUNDRY_RESOURCE },
-			// The token URL is stored on the credential, so keep the client secret
-			// within the instance's outbound network policy.
-			ssrfBridge: this.ssrfProtectionConfig.enabled ? this.ssrfProtectionService : undefined,
-		});
-		const token = await client.credentials.getToken();
-		return token.data.access_token;
+	/** Takes the credential mapped for `azure-openai`, as the Agents runtime uses it. */
+	private async authHeaders(mapped: Record<string, unknown>): Promise<Record<string, string>> {
+		if (hasAzureApiKey(mapped)) return { 'api-key': String(mapped.apiKey) };
+		// The token URL is stored on the credential, so keep the client secret
+		// within the instance's outbound network policy.
+		const ssrfBridge = this.ssrfProtectionConfig.enabled ? this.ssrfProtectionService : undefined;
+		return {
+			Authorization: `Bearer ${await mintAzureFoundryDeploymentsToken(mapped, ssrfBridge)}`,
+		};
 	}
 }
 
-/** The deployments API lives on the origin of the Foundry inference endpoint. */
+/** Rejects a missing or invalid endpoint with a message the picker can log. */
 function foundryOrigin(baseURL: unknown): string {
-	if (typeof baseURL !== 'string' || !URL.canParse(baseURL)) {
+	if (typeof baseURL !== 'string' || !URL.canParse(baseURL.trim())) {
 		throw new UserError('The Microsoft Foundry credential has no valid endpoint');
 	}
-	return new URL(baseURL).origin;
+	return getAzureFoundryOrigin(baseURL);
 }
