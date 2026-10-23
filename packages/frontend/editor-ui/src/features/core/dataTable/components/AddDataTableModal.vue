@@ -18,10 +18,12 @@ import {
 	N8nInputLabel,
 	N8nSelect,
 	N8nOption,
+	N8nRadioGroup,
+	N8nRadioGroupItem,
 	N8nText,
 } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
-import { ElUpload, ElRadio, ElRadioGroup } from 'element-plus';
+import { ElUpload } from 'element-plus';
 import type { UploadFile } from 'element-plus';
 
 type Props = {
@@ -199,6 +201,12 @@ const reset = (clearTableName = false) => {
 	creationMode.value = 'select';
 };
 
+function onSelectedOption(value: string) {
+	if (value === 'scratch' || value === 'import') {
+		selectedOption.value = value;
+	}
+}
+
 const deriveNameFromFileName = (fileName: string): string => {
 	return fileName
 		.replace(/\.csv$/i, '')
@@ -353,14 +361,22 @@ const redirectToDataTables = () => {
 						@keydown.enter="proceedFromSelect"
 					/>
 				</N8nInputLabel>
-				<ElRadioGroup v-model="selectedOption" :class="$style.radioGroup">
-					<ElRadio label="scratch" data-test-id="create-from-scratch-option">
-						{{ i18n.baseText('dataTable.add.fromScratch') }}
-					</ElRadio>
-					<ElRadio label="import" data-test-id="import-csv-option">
-						{{ i18n.baseText('dataTable.add.importCsv') }}
-					</ElRadio>
-				</ElRadioGroup>
+				<N8nRadioGroup
+					:model-value="selectedOption"
+					:class="$style.radioGroup"
+					@update:model-value="onSelectedOption"
+				>
+					<N8nRadioGroupItem
+						value="scratch"
+						:label="i18n.baseText('dataTable.add.fromScratch')"
+						data-test-id="create-from-scratch-option"
+					/>
+					<N8nRadioGroupItem
+						value="import"
+						:label="i18n.baseText('dataTable.add.importCsv')"
+						data-test-id="import-csv-option"
+					/>
+				</N8nRadioGroup>
 
 				<div v-if="selectedOption === 'import'" :class="$style.uploadSection">
 					<ElUpload
@@ -534,39 +550,6 @@ const redirectToDataTables = () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-
-	:global(.el-radio) {
-		height: auto;
-		margin-right: 0;
-	}
-
-	:global(.el-radio__input.is-checked .el-radio__inner) {
-		background-color: var(--color--primary);
-		border-color: var(--color--primary);
-	}
-
-	:global(.el-radio__inner) {
-		width: 16px;
-		height: 16px;
-	}
-
-	:global(.el-radio__input:hover .el-radio__inner) {
-		border-color: var(--color--foreground);
-	}
-
-	:global(.el-radio__input.is-checked:hover .el-radio__inner) {
-		border-color: var(--color--primary);
-	}
-
-	:global(.el-radio__label) {
-		font-size: var(--font-size--sm);
-		color: var(--color--text) !important;
-		padding-left: var(--spacing--xs);
-	}
-
-	:global(.el-radio.is-checked .el-radio__label) {
-		color: var(--color--text) !important;
-	}
 }
 
 .uploadSection {
