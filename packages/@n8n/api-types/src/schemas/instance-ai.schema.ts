@@ -2875,7 +2875,7 @@ export interface InstanceAiEvalExecutionResult {
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
 	/** What the scenario tests. Used only to pick the start trigger when the workflow has several. */
-	scenarioDescription: z.string().max(2000).optional(),
+	scenarioDescription: z.string().optional(),
 	/**
 	 * AI root nodes (Agent, Chain) that should stay pinned — opt-out from the
 	 * default-on wire-server interception path. Useful when the caller wants

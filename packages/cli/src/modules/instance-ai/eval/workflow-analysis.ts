@@ -727,7 +727,7 @@ async function voteStartTrigger(
 			const end = (name: string) => text.lastIndexOf(name) + name.length;
 			return triggerNodeNames
 				.filter((name) => text.includes(name))
-				.sort((a, b) => end(b) - end(a))[0];
+				.sort((a, b) => end(b) - end(a) || b.length - a.length)[0];
 		}),
 	);
 	const votes = new Map<string, number>();
@@ -852,15 +852,17 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 				// The model answers a bool as a word often enough to read both spellings.
 				const triggerEmitsNoItems =
 					parsed.triggerEmitsNoItems === true || parsed.triggerEmitsNoItems === 'true';
-				const startNodeName =
+				const answeredStart =
 					startTrigger ??
 					(typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
 						? parsed.startNodeName
 						: undefined);
-				if (
+				const startMissing =
 					triggerNodeNames.length > 1 &&
-					!(startNodeName && triggerNodeNames.includes(startNodeName))
-				) {
+					!(answeredStart && triggerNodeNames.includes(answeredStart));
+				// On the last attempt a missing start keeps the hints and runs from the default start.
+				const startNodeName = startMissing ? undefined : answeredStart;
+				if (startMissing && attempt < MAX_HINT_ATTEMPTS) {
 					reason = 'missing startNodeName';
 				} else if (
 					Object.keys(triggerContent).length === 0 &&
@@ -873,6 +875,11 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 					const nodeHints: Record<string, string> = {};
 					for (const [key, value] of Object.entries(parsed.nodeHints as Record<string, unknown>)) {
 						nodeHints[key] = typeof value === 'string' ? value : JSON.stringify(value);
+					}
+					if (startMissing) {
+						warnings.push(
+							`Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS}: missing startNodeName, using the default start node`,
+						);
 					}
 					return {
 						globalContext,
@@ -901,7 +908,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 	Container.get(Logger).error(
 		`[EvalMock] Phase 1 exhausted ${MAX_HINT_ATTEMPTS} attempts — ${warnings.join('; ')}`,
 	);
-	return { ...emptyResult, warnings };
+	return { ...emptyResult, ...(startTrigger ? { startNodeName: startTrigger } : {}), warnings };
 }
 
 function correctionFor(reason: string, triggerNodeNames: string[]): string {
