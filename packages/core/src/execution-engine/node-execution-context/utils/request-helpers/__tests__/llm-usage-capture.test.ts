@@ -28,7 +28,7 @@ describe('withLlmUsageCapture', () => {
 	const requestBody = { model: 'gpt-x', messages: [] };
 
 	let inspector: LlmResponseInspector;
-	let inspectRequest: LlmUsageHooks['inspectRequest'];
+	let inspectRequest: NonNullable<LlmUsageHooks['inspectRequest']>;
 	let additionalData: IWorkflowExecuteAdditionalData;
 
 	beforeEach(() => {
