@@ -44,6 +44,29 @@ describe('ExecutionData Node', () => {
 		expect(setAllMock).toBeCalledWith({ foo: 'bar' });
 		expect(result).toEqual([mockInputData]);
 	});
+
+	it('should keep boolean and numeric falsy values', async () => {
+		const mockInputData: INodeExecutionData[] = [{ json: { item: 0 } }];
+		const setAllMock = vi.fn();
+		const executeFns = mock<IExecuteFunctions>({
+			customData: mock({ setAll: setAllMock }),
+			getInputData: () => mockInputData,
+			getNode: () => mock<INode>({ typeVersion: 1.1 }),
+		});
+		executeFns.getNodeParameter.mockReturnValueOnce('save');
+		executeFns.getNodeParameter.mockReturnValueOnce({
+			values: [
+				{ key: 'isTrue', value: true },
+				{ key: 'isFalse', value: false },
+				{ key: 'zero', value: 0 },
+				{ key: 'count', value: 3 },
+			],
+		});
+
+		await new ExecutionData().execute.call(executeFns);
+
+		expect(setAllMock).toBeCalledWith({ isTrue: 'true', isFalse: 'false', zero: '0', count: '3' });
+	});
 });
 
 describe('ExecutionData -> Should run the workflow', () => {
