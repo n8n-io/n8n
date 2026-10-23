@@ -1580,6 +1580,27 @@ describe(mergeStartData, () => {
 		expect(mergeStartData({}, response)).toEqual(response);
 	});
 
+	it('should add runs in start data when the execution response has no run data', () => {
+		const response = createTestWorkflowExecutionResponse({ data: undefined });
+		const startData: { [nodeName: string]: ITaskStartedData[] } = {
+			A: [{ startTime: 1, executionIndex: 0, source: [] }],
+		};
+
+		const merged = mergeStartData(startData, response);
+
+		expect(merged.data?.resultData.runData.A).toEqual([
+			{ ...startData.A[0], executionStatus: 'running', executionTime: 0 },
+		]);
+	});
+
+	it('should accept an execution response whose resultData has no runData', () => {
+		const response = createTestWorkflowExecutionResponse({
+			data: { resultData: {} } as IExecutionResponse['data'],
+		});
+
+		expect(mergeStartData({}, response).data?.resultData.runData).toEqual({});
+	});
+
 	it('should add runs in start data to the execution response as running state', () => {
 		const response = createTestWorkflowExecutionResponse({
 			data: createRunExecutionData({

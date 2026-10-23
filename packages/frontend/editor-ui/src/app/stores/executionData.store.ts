@@ -1,6 +1,15 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, effectScope, inject, readonly, ref, shallowReactive } from 'vue';
+import {
+	computed,
+	effectScope,
+	inject,
+	readonly,
+	ref,
+	shallowReactive,
+	shallowReadonly,
+	shallowRef,
+} from 'vue';
 import type { ComputedRef } from 'vue';
 import { createEventHook, throttledWatch } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
@@ -11,7 +20,10 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	isIndefiniteWait,
 	type ExecutionStatus,
+	type IConnections,
 	type INode,
+	type INodeExecutionData,
+	type IPairedItemData,
 	type IPinData,
 	type IRunData,
 	type IRunExecutionData,
@@ -77,6 +89,119 @@ export function hasExecutionDataStore(id: ExecutionDataId): boolean {
 }
 
 /**
+ * Maps the items of an array. Returns the same array when `fn` changes no item,
+ * so consumers that gate on identity see no change.
+ */
+function mapArray<T>(items: T[], fn: (item: T) => T): T[] {
+	let changed = false;
+	const next = items.map((item) => {
+		const mapped = fn(item);
+		if (mapped !== item) changed = true;
+		return mapped;
+	});
+	return changed ? next : items;
+}
+
+/**
+ * Maps the values of a record. Returns the same record when `fn` changes no
+ * value, so consumers that gate on identity see no change.
+ */
+function mapRecord<T>(record: Record<string, T>, fn: (value: T) => T): Record<string, T> {
+	let changed = false;
+	const next = Object.fromEntries(
+		Object.entries(record).map(([key, value]) => {
+			const mapped = fn(value);
+			if (mapped !== value) changed = true;
+			return [key, mapped];
+		}),
+	);
+	return changed ? next : record;
+}
+
+/**
+ * Returns a copy of `record` with the `oldName` entry moved to `newName`.
+ * Returns the same record when it has no `oldName` entry.
+ */
+function renameRecordKey<T>(
+	record: Record<string, T>,
+	oldName: string,
+	newName: string,
+): Record<string, T> {
+	if (!record[oldName]) return record;
+	const { [oldName]: value, ...rest } = record;
+	return { ...rest, [newName]: value };
+}
+
+function renameTaskSources(tasks: ITaskData[], oldName: string, newName: string): ITaskData[] {
+	return mapArray(tasks, (task) => {
+		if (!task.source) return task;
+		const source = mapArray(task.source, (entry) =>
+			entry?.previousNode === oldName ? { ...entry, previousNode: newName } : entry,
+		);
+		return source === task.source ? task : { ...task, source };
+	});
+}
+
+function renamePairedItemSource(
+	pairedItem: IPairedItemData,
+	oldName: string,
+	newName: string,
+): IPairedItemData {
+	if (pairedItem.sourceOverwrite?.previousNode !== oldName) return pairedItem;
+	return {
+		...pairedItem,
+		sourceOverwrite: { ...pairedItem.sourceOverwrite, previousNode: newName },
+	};
+}
+
+function renameItemSources(
+	items: INodeExecutionData[],
+	oldName: string,
+	newName: string,
+): INodeExecutionData[] {
+	return mapArray(items, (item) => {
+		const { pairedItem } = item;
+		if (pairedItem === undefined || typeof pairedItem === 'number') return item;
+		const next = Array.isArray(pairedItem)
+			? mapArray(pairedItem, (entry) => renamePairedItemSource(entry, oldName, newName))
+			: renamePairedItemSource(pairedItem, oldName, newName);
+		return next === pairedItem ? item : { ...item, pairedItem: next };
+	});
+}
+
+function renameConnections(
+	connections: IConnections,
+	oldName: string,
+	newName: string,
+): IConnections {
+	return mapRecord(renameRecordKey(connections, oldName, newName), (outputs) =>
+		mapRecord(outputs, (buckets) =>
+			mapArray(buckets, (bucket) =>
+				bucket
+					? mapArray(bucket, (conn) => (conn.node === oldName ? { ...conn, node: newName } : conn))
+					: bucket,
+			),
+		),
+	);
+}
+
+/**
+ * Returns a copy of `execution` with new `data` and `resultData` objects.
+ * Every branch that the changes do not replace keeps its identity.
+ */
+function withResultData(
+	execution: IExecutionResponse,
+	data: IRunExecutionData,
+	resultDataChanges: Partial<IRunExecutionData['resultData']>,
+	dataChanges: Partial<IRunExecutionData> = {},
+): IExecutionResponse {
+	return {
+		...execution,
+		data: { ...data, ...dataChanges, resultData: { ...data.resultData, ...resultDataChanges } },
+	};
+}
+
+/**
  * Creates an execution data store keyed by execution id.
  *
  * Multiple instances live concurrently (active execution, displayed execution,
@@ -85,7 +210,7 @@ export function hasExecutionDataStore(id: ExecutionDataId): boolean {
 export function useExecutionDataStore(id: ExecutionDataId) {
 	return defineStore(getExecutionDataStoreId(id), () => {
 		const i18n = useI18n();
-		const execution = ref<IExecutionResponse | null>(null);
+		const execution = shallowRef<IExecutionResponse | null>(null);
 		const executionResultDataLastUpdate = ref<number>();
 		const executionStartedData = ref<ExecutionStartedDataValue>();
 		const executionPairedItemMappings = ref<Record<string, Set<string>>>({});
@@ -161,11 +286,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			applyReconcileExecutionIssuesEntries(runData ? Object.keys(runData) : []);
 		}
 
-		// Subscribe to the event hook rather than watching `executionRunData` —
-		// renameExecutionDataNode mutates runData keys in place, leaving the
-		// computed's reference unchanged. The event hook fires on every
-		// mutation (including rename), so reconcile picks up key changes
-		// regardless of reference identity.
+		// Subscribe to the event hook rather than watching `executionRunData`.
+		// The event hook fires once on every mutation (including rename), so
+		// reconcile runs in step with the per-node-id projections below.
 		void onExecutionDataChange.on(reconcileExecutionIssuesFromRunData);
 		reconcileExecutionIssuesFromRunData();
 
@@ -176,7 +299,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		// but consumers (canvas, NDV) need by-id lookup. The execution payload
 		// embeds a `workflowData.nodes` snapshot, which is the authoritative
 		// source for the name↔id mapping at execution time. `renameExecutionDataNode`
-		// updates that snapshot in place, so renames propagate naturally.
+		// replaces that snapshot with a renamed copy, so renames propagate naturally.
 		//
 		// Each map uses the same shallowReactive<Map<id, ComputedRef<T>>>
 		// pattern as `executionIssuesByNodeName`: per-entry structuralComputed,
@@ -313,9 +436,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 
 				// Plain `computed` (Object.is) rather than `structuralComputed(..., isEqual)`:
 				// per-task data can be megabytes for nodes with large outputs, and
-				// every push replaces the runData array reference with new content
-				// — so an isEqual gate would deep-compare megabytes and never
-				// short-circuit. Reference identity is the right gate here.
+				// every push replaces the node's task array with a new array — so an
+				// isEqual gate would deep-compare megabytes and never short-circuit.
+				// Reference identity is the right gate here.
 				executionRunDataByNodeId.set(
 					nodeId,
 					computed(() => computeExecutionRunData(nodeId)),
@@ -487,23 +610,21 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		}
 
 		/**
-		 * Commits an in-place mutation of `execution.value` by signaling every
-		 * change channel downstream consumers rely on. Callers perform the deep,
-		 * in-place mutation first (channel 1 — nested reactivity for deep
-		 * watchers), then call this to cover the remaining three:
-		 * 2. replaces `execution.value` identity so identity-based watchers fire,
-		 * 3. bumps `executionResultDataLastUpdate`, driving the throttled rebuild
+		 * Commits a mutation of `execution.value` by signaling every change
+		 * channel downstream consumers rely on. Callers assign a new
+		 * `execution.value` first (channel 1 — new objects along the changed
+		 * path, so identity-based watchers fire). They never write into an
+		 * object that a previous `execution.value` can reach. Then they call
+		 * this to cover the remaining two:
+		 * 2. bumps `executionResultDataLastUpdate`, driving the throttled rebuild
 		 *    of `executionRunDataOutputMapByNodeId`,
-		 * 4. emits `fireChange`, driving event-based reconciliation of the
+		 * 3. emits `fireChange`, driving event-based reconciliation of the
 		 *    per-node projection maps.
-		 * Every in-place runData mutation must end by going through this helper —
-		 * skipping a channel causes subtle staleness.
+		 * Every mutation must end by going through this helper — skipping a
+		 * channel causes subtle staleness.
 		 */
 		function commitExecutionMutation(action: ChangeAction, nodeName?: string) {
 			executionResultDataLastUpdate.value = Date.now();
-			if (execution.value) {
-				execution.value = { ...execution.value };
-			}
 			fireChange(action, nodeName);
 		}
 
@@ -529,12 +650,16 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			const { stripWaitingTaskData = true } = opts;
 			// A run parked at worker shutdown has no node waiting: its last node finished for real.
 			const isParked = value?.data?.waitReason === 'suspended';
+			let next = value;
 			if (stripWaitingTaskData && value?.data?.waitTill && !isParked) {
-				delete value.data.resultData.runData[value.data.resultData.lastNodeExecuted as string];
+				// Build a new runData: the caller still holds `value`.
+				const { resultData } = value.data;
+				const { [resultData.lastNodeExecuted ?? '']: _waiting, ...runData } = resultData.runData;
+				next = withResultData(value, value.data, { runData });
 			}
-			execution.value = value;
+			execution.value = next;
 			executionResultDataLastUpdate.value = Date.now();
-			executionPairedItemMappings.value = getPairedItemsMapping(value);
+			executionPairedItemMappings.value = getPairedItemsMapping(next);
 			executionStartedData.value = undefined;
 			fireChange(value === null ? CHANGE_ACTION.DELETE : CHANGE_ACTION.UPDATE);
 		}
@@ -568,18 +693,15 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		}
 
 		function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfterData'>) {
-			if (!execution.value?.data) return;
+			const current = execution.value;
+			if (!current?.data) return;
 
 			const { nodeName, data } = pushData;
 			const isNodeWaiting = data.executionStatus === 'waiting';
+			const { resultData } = current.data;
 
-			execution.value.data.resultData.lastNodeExecuted = nodeName;
-
-			if (execution.value.data.resultData.runData[nodeName] === undefined) {
-				execution.value.data.resultData.runData[nodeName] = [];
-			}
-
-			const tasksData = execution.value.data.resultData.runData[nodeName];
+			// A copy, so the splice and push below never reach the previous array.
+			const tasksData = [...(resultData.runData[nodeName] ?? [])];
 			if (isNodeWaiting) {
 				tasksData.push(data);
 			} else {
@@ -607,132 +729,112 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			// The full redactionInfo (with accurate canReveal) arrives later via the
 			// executionFinished REST call; this provides an early signal so the UI can
 			// show the redacted state during live execution.
-			if (!execution.value.data.redactionInfo?.isRedacted && data.data) {
+			const dataChanges: Partial<IRunExecutionData> = {};
+			if (!current.data.redactionInfo?.isRedacted && data.data) {
 				for (const connectionType of Object.keys(data.data)) {
-					for (const items of data.data[connectionType]) {
-						if (items?.some((item) => item.redaction?.redacted)) {
-							execution.value.data.redactionInfo = {
-								isRedacted: true,
-								reason:
-									items.find((item) => item.redaction?.redacted)?.redaction?.reason ??
-									'workflow_redaction_policy',
-								canReveal: false,
-								provisional: true,
-							};
-							break;
-						}
+					const redacted = data.data[connectionType]
+						.flatMap((items) => items ?? [])
+						.find((item) => item.redaction?.redacted);
+					if (redacted) {
+						dataChanges.redactionInfo = {
+							isRedacted: true,
+							reason: redacted.redaction?.reason ?? 'workflow_redaction_policy',
+							canReveal: false,
+							provisional: true,
+						};
+						break;
 					}
-					if (execution.value.data.redactionInfo?.isRedacted) break;
 				}
 			}
 
+			execution.value = withResultData(
+				current,
+				current.data,
+				{ lastNodeExecuted: nodeName, runData: { ...resultData.runData, [nodeName]: tasksData } },
+				dataChanges,
+			);
 			commitExecutionMutation(CHANGE_ACTION.UPDATE, nodeName);
 		}
 
 		function updateNodeExecutionRunData(pushData: PushPayload<'nodeExecuteAfterData'>) {
-			const tasksData = execution.value?.data?.resultData.runData[pushData.nodeName];
+			const current = execution.value;
+			const tasksData = current?.data?.resultData.runData[pushData.nodeName];
 			const existingRunIndex =
 				tasksData?.findIndex((item) => item.executionIndex === pushData.data.executionIndex) ?? -1;
 
-			if (tasksData?.[existingRunIndex]) {
-				tasksData.splice(existingRunIndex, 1, pushData.data);
+			if (current?.data && tasksData?.[existingRunIndex]) {
+				execution.value = withResultData(current, current.data, {
+					runData: {
+						...current.data.resultData.runData,
+						[pushData.nodeName]: tasksData.map((task, index) =>
+							index === existingRunIndex ? pushData.data : task,
+						),
+					},
+				});
 				commitExecutionMutation(CHANGE_ACTION.UPDATE, pushData.nodeName);
 			}
 		}
 
 		function clearNodeExecutionData(nodeName: string) {
-			if (!execution.value?.data) return;
-			const { [nodeName]: _removed, ...remaining } = execution.value.data.resultData.runData;
-			execution.value.data.resultData.runData = remaining;
+			const current = execution.value;
+			if (!current?.data) return;
+			const { [nodeName]: _removed, ...remaining } = current.data.resultData.runData;
+			execution.value = withResultData(current, current.data, { runData: remaining });
 			commitExecutionMutation(CHANGE_ACTION.DELETE, nodeName);
 		}
 
 		function renameExecutionDataNode(oldName: string, newName: string) {
-			const data = execution.value?.data;
-			if (!data) return;
+			const current = execution.value;
+			const data = current?.data;
+			if (!current || !data) return;
 
-			// runData keys
+			const changes: Partial<IRunExecutionData['resultData']> = {};
+
+			// runData keys, and task.source.previousNode in runData
 			const runData = data.resultData?.runData;
-			if (runData?.[oldName]) {
-				runData[newName] = runData[oldName];
-				delete runData[oldName];
-			}
-
-			// pinData keys (in execution result, distinct from workflow document pinData)
-			const pinData = data.resultData?.pinData;
-			if (pinData?.[oldName]) {
-				pinData[newName] = pinData[oldName];
-				delete pinData[oldName];
-			}
-
-			// pairedItem.sourceOverwrite.previousNode in pinData
-			Object.values(pinData ?? {})
-				.flatMap((items) =>
-					items.flatMap((item) =>
-						Array.isArray(item.pairedItem) ? item.pairedItem : [item.pairedItem],
-					),
-				)
-				.forEach((pairedItem) => {
-					if (
-						typeof pairedItem === 'number' ||
-						pairedItem?.sourceOverwrite?.previousNode !== oldName
-					) {
-						return;
-					}
-					pairedItem.sourceOverwrite.previousNode = newName;
-				});
-
-			// task.source.previousNode in runData
-			Object.values(runData ?? {})
-				.flatMap((tasks) => tasks.flatMap((task) => task.source))
-				.forEach((source) => {
-					if (!source || source.previousNode !== oldName) return;
-					source.previousNode = newName;
-				});
-
-			// workflowData snapshot embedded in execution: nodes, connections, pinData
-			const workflowData = execution.value?.workflowData;
-			if (workflowData) {
-				workflowData.nodes = workflowData.nodes.map((node) =>
-					node.name === oldName ? { ...node, name: newName } : node,
+			if (runData) {
+				changes.runData = mapRecord(renameRecordKey(runData, oldName, newName), (tasks) =>
+					renameTaskSources(tasks, oldName, newName),
 				);
-				if (workflowData.connections?.[oldName]) {
-					workflowData.connections[newName] = workflowData.connections[oldName];
-					delete workflowData.connections[oldName];
-				}
-				for (const sourceName of Object.keys(workflowData.connections ?? {})) {
-					const outputs = workflowData.connections[sourceName];
-					for (const connectionType of Object.keys(outputs)) {
-						const outputBuckets = outputs[connectionType];
-						for (const bucket of outputBuckets ?? []) {
-							if (!bucket) continue;
-							for (const conn of bucket) {
-								if (conn?.node === oldName) conn.node = newName;
-							}
-						}
-					}
-				}
-				if (workflowData.pinData?.[oldName]) {
-					workflowData.pinData[newName] = workflowData.pinData[oldName];
-					delete workflowData.pinData[oldName];
-				}
-
-				// The snapshot above was mutated in place, so its object reference is
-				// unchanged. Replace it so consumers that gate work on `workflowData`
-				// identity detect the rename — notably the logs panel, which only
-				// rebuilds its `Workflow` object (node names + connection topology)
-				// when this reference changes. Without this the rebuilt run-data
-				// (keyed by the new name) is matched against a stale topology (old
-				// name), dropping renamed sub-nodes from the tree.
-				if (execution.value) {
-					execution.value.workflowData = { ...workflowData };
-				}
 			}
 
-			// executedNode reference
-			if (execution.value && execution.value.executedNode === oldName) {
-				execution.value.executedNode = newName;
+			// pinData keys (in execution result, distinct from workflow document pinData),
+			// and pairedItem.sourceOverwrite.previousNode in pinData
+			const pinData = data.resultData?.pinData;
+			if (pinData) {
+				changes.pinData = mapRecord(renameRecordKey(pinData, oldName, newName), (items) =>
+					renameItemSources(items, oldName, newName),
+				);
 			}
+
+			// workflowData snapshot embedded in execution: nodes, connections, pinData.
+			// Always a new reference, so consumers that gate work on `workflowData`
+			// identity detect the rename — notably the logs panel, which only
+			// rebuilds its `Workflow` object (node names + connection topology)
+			// when this reference changes. Without this the rebuilt run-data
+			// (keyed by the new name) is matched against a stale topology (old
+			// name), dropping renamed sub-nodes from the tree.
+			const workflowData = current.workflowData;
+
+			execution.value = {
+				...withResultData(current, data, changes),
+				...(workflowData && {
+					workflowData: {
+						...workflowData,
+						nodes: workflowData.nodes.map((node) =>
+							node.name === oldName ? { ...node, name: newName } : node,
+						),
+						...(workflowData.connections && {
+							connections: renameConnections(workflowData.connections, oldName, newName),
+						}),
+						...(workflowData.pinData && {
+							pinData: renameRecordKey(workflowData.pinData, oldName, newName),
+						}),
+					},
+				}),
+				// executedNode reference
+				...(current.executedNode === oldName ? { executedNode: newName } : {}),
+			};
 
 			commitExecutionMutation(CHANGE_ACTION.UPDATE);
 		}
@@ -742,18 +844,21 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			startedAt: Date;
 			stoppedAt: Date;
 		}) {
-			if (!execution.value?.data) return;
-			const runData = execution.value.data.resultData.runData;
-			for (const nodeName in runData) {
-				runData[nodeName] = runData[nodeName].filter(
-					({ executionStatus }) => executionStatus === 'success',
-				);
-			}
-			if (stopData) {
-				execution.value.status = stopData.status;
-				execution.value.startedAt = stopData.startedAt;
-				execution.value.stoppedAt = stopData.stoppedAt;
-			}
+			const current = execution.value;
+			if (!current?.data) return;
+			execution.value = {
+				...withResultData(current, current.data, {
+					runData: mapRecord(current.data.resultData.runData, (tasks) => {
+						const kept = tasks.filter(({ executionStatus }) => executionStatus === 'success');
+						return kept.length === tasks.length ? tasks : kept;
+					}),
+				}),
+				...(stopData && {
+					status: stopData.status,
+					startedAt: stopData.startedAt,
+					stoppedAt: stopData.stoppedAt,
+				}),
+			};
 			commitExecutionMutation(CHANGE_ACTION.UPDATE);
 		}
 
@@ -768,7 +873,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		return {
 			executionId: id,
 			// Read API
-			execution: readonly(execution),
+			execution: shallowReadonly(execution),
 			executionResultDataLastUpdate: readonly(executionResultDataLastUpdate),
 			executionRunData,
 			executedNode,

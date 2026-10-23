@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { AgentNodeProgress } from '@n8n/api-types';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
-import { defineComponent, provide, shallowRef } from 'vue';
+import { defineComponent, isProxy, provide, shallowRef, watch } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -24,7 +24,12 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
-import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+} from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import {
 	createRunExecutionData,
@@ -345,6 +350,19 @@ describe('workflowExecutionState.store', () => {
 				expect(placeholder.execution?.status).toBe('canceled');
 			});
 
+			it('keeps the pending scaffold in step with the filtered IN_PROGRESS run data', () => {
+				store.markExecutionAsStopped({
+					status: 'canceled',
+					startedAt: new Date('2023-01-01T10:00:00Z'),
+					stoppedAt: new Date('2023-01-01T10:05:00Z'),
+					mode: 'manual',
+				});
+
+				const runData = store.pendingExecution?.data?.resultData.runData;
+				expect(runData?.node1).toHaveLength(1);
+				expect(runData?.node1[0].executionStatus).toBe('success');
+			});
+
 			it('mirrors stopData onto the pendingExecution ref', () => {
 				store.markExecutionAsStopped({
 					status: 'canceled',
@@ -640,6 +658,42 @@ describe('workflowExecutionState.store', () => {
 					createWorkflowDocumentId('wf-1'),
 				);
 				expect(executionStateStore.activeExecutionRunData).toBeNull();
+			});
+
+			it.each([
+				{ name: 'updateNodeExecutionStatus' as const },
+				{ name: 'updateNodeExecutionRunData' as const },
+			])('fires a sync watcher with the new run data after $name', ({ name }) => {
+				const executionStateStore = useWorkflowExecutionStateStore(
+					createWorkflowDocumentId('wf-1'),
+				);
+				const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+				executionDataStore.setExecution(
+					makeExecution({
+						id: 'exec-1',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {
+									NodeA: [createTestTaskData({ executionIndex: 0, executionStatus: 'running' })],
+								},
+							},
+						}),
+					}),
+				);
+				executionStateStore.setActiveExecutionId('exec-1');
+				const spy = vi.fn();
+				watch(() => executionStateStore.activeExecutionRunData, spy, { flush: 'sync' });
+
+				executionDataStore[name]({
+					executionId: 'exec-1',
+					nodeName: 'NodeA',
+					data: createTestTaskData({ executionIndex: 0, executionStatus: 'error' }),
+					itemCountByConnectionType: {},
+				} as never);
+
+				expect(spy).toHaveBeenCalledTimes(1);
+				expect(spy.mock.calls[0][0]).toBe(executionDataStore.executionRunData);
+				expect(spy.mock.calls[0][0].NodeA[0].executionStatus).toBe('error');
 			});
 		});
 
@@ -1314,6 +1368,39 @@ describe('workflowExecutionState.store', () => {
 			executionStateStore.renameActiveExecutionNode({ old: 'Old', new: 'New' });
 
 			expect(uiStore.lastSelectedNode).toBe('Untouched');
+		});
+
+		it('keeps a pending run renamed through promotion', () => {
+			const executionStateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+			executionStateStore.setWorkflowExecutionData(
+				makeExecution({
+					id: IN_PROGRESS_EXECUTION_ID,
+					executedNode: 'Webhook',
+					workflowData: createTestWorkflow({
+						nodes: [createTestNode({ id: 'webhook', name: 'Webhook' })],
+					}),
+					data: createRunExecutionData({
+						resultData: {
+							runData: { Webhook: [createTestTaskData({ executionStatus: 'waiting' })] },
+						},
+					}),
+				}),
+			);
+			expect(isProxy(executionStateStore.pendingExecution)).toBe(false);
+
+			executionStateStore.renameActiveExecutionNode({ old: 'Webhook', new: 'Hook' });
+
+			const pending = executionStateStore.activeExecution;
+			expect(pending?.workflowData.nodes.map((node) => node.name)).toEqual(['Hook']);
+			expect(pending?.executedNode).toBe('Hook');
+
+			executionStateStore.promotePendingExecution('exec-1');
+
+			const promoted = useExecutionDataStore(createExecutionDataId('exec-1')).execution;
+			expect(promoted?.workflowData.nodes.map((node) => node.name)).toEqual(['Hook']);
+			expect(promoted?.executedNode).toBe('Hook');
+			expect(Object.keys(promoted?.data?.resultData.runData ?? {})).toEqual(['Hook']);
+			expect(isProxy(promoted?.data)).toBe(false);
 		});
 
 		it('routes through the displayedExecutionId when active is cleared', () => {
