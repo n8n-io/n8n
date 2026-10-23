@@ -296,7 +296,7 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<ElDropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
-				<N8nIconButton variant="outline" icon="ellipsis-vertical" />
+				<N8nIconButton variant="outline" icon="ellipsis" />
 				<template #dropdown>
 					<ElDropdownMenu
 						:class="{
