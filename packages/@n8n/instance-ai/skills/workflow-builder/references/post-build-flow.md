@@ -126,84 +126,14 @@ Pick in this order:
    for a specific plain type: an explicit user choice wins (setup accepts it
    with `allowPlainGenericAuth: true`).
 
-### Credential recipes for Simplified Custom Auth
+### Credential recipes
 
-When the workflow authenticates a service through Simplified Custom Auth,
-include `credentialHints` in the same `workflow_builder_workflows(action="setup")` call so the
-setup card pre-fills the credential and the user only pastes their secret —
-instead of facing an empty JSON template they'd have to decode from the
-provider's docs. Before composing the hints, load the
-`credential-recipe-research` skill and execute its lookup procedure — the
-template, `docsUrl` and `testUrl` must come from the provider documentation
-it has you fetch, never from memory:
-
-- `template` — the auth request parts (headers/qs/body) exactly as documented,
-  with `{{placeholder}}` markers where the user's values go.
-- `placeholders` — one entry per marker: `name`, user-facing `title`, an
-  optional `info` clarifying the value itself — its format or which of the
-  provider's tokens it is (e.g. "Starts with tvly-"). Never where to obtain
-  it, and never a URL or domain: the user asks the n8n Assistant for that from
-  the credential form. `type` is `password` unless clearly non-secret (at
-  least one placeholder must stay `password`). Add `optional: true` only when
-  the provider documents the value as optional (e.g. an org/region
-  qualifier) — template entries referencing an empty optional placeholder are
-  omitted from the request.
-- `docsUrl` — the provider page where a logged-in user CREATES/COPIES the
-  secret (e.g. `https://replicate.com/account/api-tokens`) — never the API
-  reference. Not shown in the form: the n8n Assistant help thread uses it to
-  send the user to the exact page. Found via the `credential-recipe-research`
-  procedure; omit when it finds nothing conclusive.
-- `testUrl` — a documented side-effect-free GET that rejects a bad key with
-  401/403, used to verify the credential on save and later retests; never one
-  of the workflow's own endpoints, never anything billable. Found via the
-  `credential-recipe-research` procedure; omit when nothing qualifies — a
-  credential without a testUrl saves fine and honestly shows "could not be
-  verified", which beats a false green.
-- `acceptedStatusCodes` — almost always omit; the user can adjust it later on
-  the credential if a service's auth answers 401/403 to valid GETs.
-- `suggestedName` — display name for the created credential.
-
-Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
-`GET https://api.fal.ai/v1/models/usage` is a documented side-effect-free
-endpoint that rejects a bad key (the model-serving host `fal.run` is not a
-key-check endpoint):
-
-```json
-{
-	"action": "setup",
-	"workflowId": "...",
-	"credentialHints": [
-		{
-			"suggestedName": "fal.ai API Key",
-			"template": {
-				"headers": { "Authorization": "Key {{api_key}}" }
-			},
-			"placeholders": [
-				{
-					"name": "api_key",
-					"title": "fal.ai API key",
-					"info": "Key ID and secret, separated by a colon",
-					"type": "password"
-				}
-			],
-			"docsUrl": "https://fal.ai/dashboard/keys",
-			"testUrl": "https://api.fal.ai/v1/models/usage"
-		}
-	]
-}
-```
-
-Never put a real secret in a recipe — the user pastes it in the setup card and
-it is stored redacted in the credential. Add `nodeName` when several nodes use
-Simplified Custom Auth for different services. You cannot see the secret, but
-once setup reports the credential applied, treat it as fully configured — the
-`{{placeholder}}` markers live only in the template; the stored values replace
-them at request time. If a live test later fails with an auth error, that is
-the moment to have the user re-open the credential and re-paste the value.
-
-If the user defers setup instead, don't hand them manual field-by-field
-credential instructions for the n8n editor — tell them to reopen setup when
-they're ready: the card pre-fills everything except their key.
+When the workflow authenticates a service through Simplified Custom Auth
+(`httpTemplatedCustomAuth`), include `credentialHints` in the same
+`workflow_builder_workflows(action="setup")` call, so the setup card pre-fills
+the credential and the user only pastes their secret. Before you compose the
+hints, load the `credential-recipe-research` reference and follow it. It lists
+every field and its rules.
 
 ### Credentials the user skipped
 
@@ -253,27 +183,9 @@ reporting it as working.
 Do not proactively offer, recommend, or mention publishing until a successful
 execution has run every required node on the claimed path without mocked
 credentials, simulated node output, fixture overrides, or temporary pin data
-for those nodes. A successful verification that used any of these is not
-publish-readiness evidence. If the user explicitly asks to publish before a
-live execution succeeds, warn that the live path remains untested, then follow
-the requested publish flow.
-
-`workflow_builder_workflows(action="publish")` enforces this. While the latest verification left
-nodes unreached or simulated, the call is refused and returns
-`verificationDisclosure` — the coverage facts, generated from the run. Relay
-those facts to the user and offer a live end-to-end test. Publish only if they
-still ask, by calling publish again with `acknowledgeUnverified: true`. Never
-set that flag to skip the disclosure. The user also sees the same facts in the
-publish approval prompt, so a summary that contradicts them is visible to them.
-
-Execution evidence can come from a run you started or a run the user started.
-If the user says they ran the workflow manually, call
-`workflow_builder_executions(action="list", workflowId)`, identify the relevant run, and inspect
-it with `workflow_builder_executions(action="get", executionId)`. The user's statement alone is
-not execution evidence. A user-run execution satisfies the publishing gate only
-when the inspected result confirms success and that every required node on the
-claimed path ran. Do not count it if mocked, simulated, fixture, or pinned output
-was used. You may offer publishing after that confirmation.
+for those nodes. Before you publish, offer publishing, count a run the user
+started as evidence, or repair a workflow that is already published, load the
+`publishing` reference and follow it.
 
 For post-build verification of workflows produced by `workflow_builder_build_workflow`, **always verify with
 `workflow_builder_verify_built_workflow`, never with raw `workflow_builder_executions(action="run")`.** It reuses
@@ -336,31 +248,6 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
 - When the user asked for a live run, pass `triggerNodeName` to
   `workflow_builder_executions(action="run")` the same way — one run per trigger — and report
   each branch's result.
-
-### Fixing a workflow that is already published
-
-The publishing rules above assume a new workflow. A repair of a workflow that
-is already published is different. That workflow runs in production right now,
-and it runs the version published before your fix. Your save creates a draft,
-and the draft is not live. The published version keeps running, broken, until
-somebody publishes the fix.
-
-For a repair on a published workflow:
-
-- Telling the user the fix is not live yet is not an offer to publish. Say it.
-- Do NOT report the workflow as fixed, live, running, or working in production
-  while the published version is the older one. Say the fix is in the draft.
-- `workflow_builder_verify_built_workflow` returns `claim.liveState`. `live-stale` means the
-  published version is older than the draft you just verified. The result also
-  carries `liveStateNote`. Relay it.
-- Without a claim, call `workflow_builder_workflows(action="get", workflowId)` and compare
-  `versionId` (the draft) with `activeVersionId` (the published version). They
-  differ while the fix is not live. A null `activeVersionId` means the workflow
-  is not published at all.
-- Ask whether to publish the fix. Publish only after the user agrees.
-- Name the version in a retest invitation: the draft, or the published version.
-  "Send another email to test it" is wrong when the fix is still a draft — the
-  test would run the broken version and look like the fix failed.
 
 ## After workflow_builder_build_workflow succeeds
 
@@ -473,69 +360,11 @@ For a repair on a published workflow:
    wants to test the workflow. Skip this if `workflow_builder_verify_built_workflow` already
    proved it works end-to-end with full coverage.
 9. Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks to
-   publish. Never publish automatically or proactively offer publishing before
-   the publish-readiness requirement above is met. A repair of a workflow that
-   is already published is the exception — follow
-   [Fixing a workflow that is already published](#fixing-a-workflow-that-is-already-published).
-10. After a direct new primary workflow is successfully published, follow
-    [Error workflow follow-up](#error-workflow-follow-up).
+   publish, and load the `publishing` reference first.
+10. After a direct new primary workflow is successfully published, load `error-workflows` and follow its
+    error workflow follow-up.
     Do not replace this explicit opt-in with a generic "add
     anything else?", publish, or test question.
-
-## Error workflow follow-up
-
-This follow-up comes only after a direct new primary workflow is successfully published.
-
-If you just built an Error Trigger workflow because the user opted into adding
-one for a known target workflow, do not ask whether to build another error
-workflow. Continue the publish-before-assign flow for the target workflow:
-ask whether to publish the error workflow and set it on that target workflow,
-then publish and assign only after the user approves.
-
-After successfully publishing a direct new primary workflow,
-ask once whether the user wants to build an error workflow for that workflow.
-Use `workflow_builder_ask_user` with a yes/no choice or a concise visible question. Do **not**
-create an error workflow before the user opts in.
-
-The opt-in must explicitly mention an error workflow and the target workflow
-name. A generic follow-up like "Want me to add anything else?", "Want me to
-publish it?", or "Want to test it?" does not satisfy this step.
-
-Skip this follow-up when:
-
-- The workflow you just built is itself an error workflow or starts with an
-  Error Trigger.
-- The build is a supporting workflow, repair, small edit, or workflow-level
-  settings patch.
-- The user already asked for an error workflow in the original request, already
-  declined one, or the target workflow already has the desired error workflow
-  set.
-
-If the user says yes:
-
-1. Load `workflow-builder` and build a separate error workflow using the user's
-   requested notification destination. Keep the error workflow scoped to the
-   target workflow the user opted in for.
-2. Do not ask whether this new error workflow needs its own error workflow.
-3. The error workflow must be published before it can be assigned. If the user
-   has not already asked you to publish and attach it, ask whether to publish it
-   and set it as the error workflow for the named target workflow. When the user
-   agrees, call `workflow_builder_workflows(action="publish")` for the error workflow and let the
-   HITL approval card handle confirmation.
-4. After publish succeeds, set the original workflow's workflow-level
-   `settings.errorWorkflow` to the **error workflow's workflowId**. Do not use
-   the published `activeVersionId`, workflow name, a placeholder, or a local SDK
-   id. If you have the original source file, edit it; otherwise call
-   `workflow_builder_workflows(action="get-as-code", workflowId)` for the original workflow,
-   write the returned code to a `.workflow.ts` file, add
-   `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, and call
-   `workflow_builder_build_workflow` for the original workflow. The workflow edit approval card
-   is the HITL surface for this assignment.
-5. Summarize the result with explicit per-workflow language: this error
-   workflow was assigned only to the named target workflow. Mention that n8n has
-   no global or instance-wide error workflow setting only when the user
-   explicitly asked about, requested, or referenced global/instance-wide error
-   workflow behavior.
 
 ## Mocked verification live-test follow-up
 
@@ -622,8 +451,7 @@ run always executes the draft, so `verified` says nothing about production:
 
 - `live-stale` — the published version is older than the draft you verified.
   Do NOT call the workflow live, running, or working in production. Say the fix
-  is in the draft, and see
-  [Fixing a workflow that is already published](#fixing-a-workflow-that-is-already-published).
+  is in the draft, and follow the `publishing` reference.
 - `live-current` — the published version is the one you verified.
 - `unpublished` — the workflow does not run in production at all.
 
@@ -655,6 +483,40 @@ proof that an expression resolved — use `resolvedParameterWarnings` or
 failing path or inspect the artifact, say so plainly — "I couldn't verify X
 because Y" — and name what is unconfirmed. An honest "could not verify" beats an
 unverified success claim.
+
+## Trigger URL Sharing
+
+After building a workflow that uses a trigger with an HTTP endpoint, share the
+full production URL with the user. Use the Webhook base URL and Form base URL
+from the `<instance-urls>` block in the user's turn. Each trigger type has a distinct
+pattern:
+
+- **Webhook Trigger**: `{webhookBaseUrl}/{path}` (where `{path}` is the node's
+  webhook path parameter).
+- **Form Trigger**: `{formBaseUrl}/{path}` (or `{formBaseUrl}/{webhookId}` if
+  no custom path is set). Form Trigger lives under `/form/`, NOT `/webhook/` —
+  they are separate URL prefixes. Do NOT use the Webhook base URL for Form
+  Triggers.
+- **Chat Trigger**: how the end user reaches this workflow depends on the
+  node's `public` parameter — pick the right guidance for the current value,
+  do not default to sharing a URL.
+  - **`public: false` (the default)**: there is NO end-user HTTP URL. Tell the
+    user to open the workflow in the editor and click the **Open chat** button
+    on the workflow canvas — that opens the built-in test chat. Do NOT share a
+    webhook URL, and do NOT suggest flipping `public: true` just to enable
+    testing — the in-editor chat is the intended testing path for private chat
+    workflows.
+  - **`public: true`**: the public chat URL is
+    `{webhookBaseUrl}/{webhookId}/chat` — share it after the workflow is
+    published. `{webhookId}` is the node's unique webhook ID; read it from the
+    workflow JSON, never guess. End users can open this URL in a browser.
+  The `/chat` suffix is unique to Chat Trigger — do NOT append it to Form
+  Trigger or Webhook URLs. (Your own testing via `workflow_builder_executions(action="run")` and
+  `workflow_builder_verify_built_workflow` works regardless of `public` or publish state.)
+
+**These URLs are for sharing with the user only.** Do NOT hardcode them into
+workflow code or build specs unless the workflow actually needs to send or
+store its own public endpoint.
 
 ## Credentials before build
 

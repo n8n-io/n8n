@@ -118,7 +118,7 @@ describe('Instance AI skills', () => {
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'references', 'post-build-flow.md'),
 			'utf-8',
 		);
-		expect(postBuildFlow).toMatch(/load the\s+`credential-recipe-research` skill/);
+		expect(postBuildFlow).toMatch(/load the\s+`credential-recipe-research` reference/);
 	});
 
 	// Routing needs intent-recognition once per request; carrying its body for the
@@ -183,6 +183,8 @@ describe('Instance AI skills', () => {
 			'model-selection',
 			'one-off-operations',
 			'post-build-flow',
+			'publishing',
+			'service-selection',
 			'trigger-input-data-shapes',
 		]);
 
@@ -452,9 +454,11 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('n8n-docs-assistant');
 		expect(loaded?.instructions).toContain('never load `templates/index.json`');
 		expect(loaded?.instructions).toContain('node-types/index.txt');
-		expect(loaded?.instructions).toContain('## Trigger URL Sharing');
-		expect(loaded?.instructions).toContain('{formBaseUrl}/{path}');
-		expect(loaded?.instructions).toContain('**Open chat** button');
+		// URLs are shared after the build, so the rules live in post-build-flow.
+		const postBuild = (await source.loadSkill('post-build-flow'))?.instructions ?? '';
+		expect(postBuild).toContain('## Trigger URL Sharing');
+		expect(postBuild).toContain('{formBaseUrl}/{path}');
+		expect(postBuild).toContain('**Open chat** button');
 		expect(loaded?.instructions).toContain('batch\n`get_node_types`');
 		expect(loaded?.instructions).toContain('together with the `load_skill` call');
 		expect(loaded?.instructions).toContain(
@@ -504,7 +508,22 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "not_verifiable"');
 		expect(loaded?.instructions).toContain('setupRequirement.status === "required"');
 		expect(loaded?.instructions).toMatch(/inline setup card in\s+the n8n Assistant panel/);
+		expect(loaded?.instructions).toContain('Mocked verification live-test follow-up');
 		expect(loaded?.instructions).toContain(
+			'Do not proactively offer, recommend, or mention publishing until a successful',
+		);
+		expect(loaded?.instructions).toContain(
+			'Do not offer publishing as an alternative or describe the workflow as ready to\nuse or publish',
+		);
+
+		expect(loaded?.instructions).toContain('`trigger-input-data-shapes`');
+		expect(loaded?.instructions).toContain('load the `publishing` reference');
+		expect(loaded?.instructions).toContain('load `error-workflows` and follow its');
+		expect(loaded?.instructions.length).toBeLessThan(32_000);
+
+		// Step-specific sections live in the reference that owns the step.
+		const errorWorkflows = (await source.loadSkill('error-workflows'))?.instructions ?? '';
+		expect(errorWorkflows).toContain(
 			'ask once whether the user wants to build an error workflow for that workflow',
 		);
 		expect(loaded?.instructions).toContain(
@@ -513,41 +532,34 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toMatch(
 			/ask only whether the user wants the live test\. Do not\s+mention publishing or ask about the error workflow/,
 		);
-		expect(loaded?.instructions).toContain(
+		expect(errorWorkflows).toContain(
 			'The error workflow must be published before it can be assigned',
 		);
-		expect(loaded?.instructions).toContain('Continue the publish-before-assign flow');
-		expect(loaded?.instructions).toContain('settings.errorWorkflow');
-		expect(loaded?.instructions).toContain(
+		expect(errorWorkflows).toContain('Continue the publish-before-assign flow');
+		expect(errorWorkflows).toContain('settings.errorWorkflow');
+		expect(errorWorkflows).toContain(
 			'The opt-in must explicitly mention an error workflow and the target workflow\nname.',
 		);
-		expect(loaded?.instructions).toContain(
+		expect(errorWorkflows).toContain(
 			'Mention that n8n has\n   no global or instance-wide error workflow setting only when the user\n   explicitly asked about',
 		);
-		expect(loaded?.instructions).toContain('Mocked verification live-test follow-up');
-		expect(loaded?.instructions).toMatch(
-			/Do not ask whether to build now and set up\s+credentials later/,
+
+		const publishing = (await source.loadSkill('publishing'))?.instructions ?? '';
+		expect(publishing).toContain('A user-run execution satisfies the publishing gate only');
+		expect(publishing).toContain('acknowledgeUnverified: true');
+		expect(publishing).toContain('Fixing a workflow that is already published');
+		expect(publishing).toContain(
+			'Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks',
 		);
+
+		expect(loaded?.instructions).toContain('## Credentials before build');
 		expect(loaded?.instructions).toContain(
 			'Ask once when a service has multiple credentials of the same type',
 		);
-		expect(loaded?.instructions).toContain(
-			'Ask which auth type to use when a service supports more than one',
-		);
-		expect(loaded?.instructions).toContain(
-			'Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks',
-		);
-		expect(loaded?.instructions).toContain(
-			'Do not proactively offer, recommend, or mention publishing until a successful',
-		);
-		expect(loaded?.instructions).toContain(
-			'A user-run execution satisfies the publishing gate only',
-		);
-		expect(loaded?.instructions).toContain(
-			'Do not offer publishing as an alternative or describe the workflow as ready to\nuse or publish',
-		);
 
-		expect(loaded?.instructions).toContain('`trigger-input-data-shapes`');
+		const recipes = (await source.loadSkill('credential-recipe-research'))?.instructions ?? '';
+		expect(recipes).toContain('"suggestedName": "fal.ai API Key"');
+		expect(recipes).toContain('`placeholders` — one entry per marker');
 
 		const loadTool = createSkillLoadTool(source);
 		const reference = skillLoadText(
