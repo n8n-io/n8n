@@ -419,8 +419,21 @@ export class SkillService {
 	async snapshotForPublish(refs: SkillRef[], ctx: OperationContext): Promise<Map<string, string>> {
 		const refIds = [...new Set(refs.map((ref) => ref.id))];
 		await this.skillRepository.lockForPublish(refIds, ctx);
-		const rows = await this.resolveRows(refs, ctx);
-		return new Map([...rows].map(([refId, row]) => [refId, row.version.id]));
+		// The same rule as `resolveRows`, without loading the content that publish does not use.
+		const latest = await this.skillRepository.findLatestVersionIds(refIds, ctx);
+		const pinnedSkillIds = await this.skillRepository.findSkillIdsOfVersions(
+			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
+			ctx,
+		);
+		const versionByRef = new Map<string, string>();
+		for (const ref of refs) {
+			const versionId =
+				ref.versionId && pinnedSkillIds.get(ref.versionId) === ref.id
+					? ref.versionId
+					: latest.get(ref.id);
+			if (versionId) versionByRef.set(ref.id, versionId);
+		}
+		return versionByRef;
 	}
 
 	// ---------------------------------------------------------------- move

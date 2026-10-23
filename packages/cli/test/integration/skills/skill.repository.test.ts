@@ -613,6 +613,20 @@ describe('SkillRepository', () => {
 				]),
 			);
 		});
+
+		it('finds version ids without their content, for publish', async () => {
+			const id = await createSkill();
+			const v1 = await latestVersionId(id);
+			const v2 = await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
+
+			expect(await skills.findLatestVersionIds([id, 'skill_unknown'])).toEqual(new Map([[id, v2]]));
+			expect(await skills.findSkillIdsOfVersions([v1, v2, randomUUID()])).toEqual(
+				new Map([
+					[v1, id],
+					[v2, id],
+				]),
+			);
+		});
 	});
 
 	describe('updateTarget', () => {

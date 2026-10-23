@@ -84,7 +84,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:read']).toBeUndefined();
 		});
 
-		it('withholds skill scopes and tools while the agents module is off', async () => {
+		it('withholds skill scopes and tools without an agents provider', async () => {
 			Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>({ hasProvider: false }));
 
 			expect(resource.scopes).toContain('agent:read');
