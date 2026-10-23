@@ -71,6 +71,8 @@ packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
 packages/cli/src/modules/agents/json-config/model-config.ts
   s_db23049c32d561::t_c63cba51f074a8 7,11,54-55,62,65,73-89
   s_db23049c32d561::t_19c9d0d3d004b7 90
+  s_db23049c32d561::t_85901ed5292d31 56-61,63,67-68
+  s_db23049c32d561::t_55b091b52797f6 72
 packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
   s_db23049c32d561::t_766102864eab6a 54,1429
 packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
