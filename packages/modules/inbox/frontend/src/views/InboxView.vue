@@ -15,6 +15,7 @@ import { INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
 import { inboxItemLocation, isInboxRoute, selectionFromRoute } from '../inbox.routes';
 import { useInboxStore } from '../inbox.store';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
+import PromotionReviewDetail from '../promotions/PromotionReviewDetail.vue';
 import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue';
 
 const store = useInboxStore();
@@ -52,6 +53,9 @@ const selectedListItem = computed(() =>
 );
 const selectedReviewItem = computed(() =>
 	selectedListItem.value?.type === 'workflow_review' ? selectedListItem.value : undefined,
+);
+const selectedPromotionItem = computed(() =>
+	selectedListItem.value?.type === 'promotion_review' ? selectedListItem.value : undefined,
 );
 const detailTab = computed(() => (route.query.tab === 'changes' ? 'changes' : 'activity'));
 let isMounted = false;
@@ -185,6 +189,11 @@ onBeforeUnmount(() => {
 				>
 					<InboxEmptyState />
 				</WorkflowReviewDetail>
+				<PromotionReviewDetail
+					v-else-if="selectedPromotionItem && !store.disabledSources.includes('promotion_review')"
+					:item="selectedPromotionItem"
+					:on-item-change="onItemChange"
+				/>
 				<template v-else>
 					<div :class="$style.columnTitle" />
 					<div :class="$style.mainBody">
@@ -218,10 +227,8 @@ onBeforeUnmount(() => {
 .content {
 	--review-callout--max-width: 34rem;
 	--review-activity--max-width: 45rem;
-	--review-tab-bar--height: var(--height--sm);
 	/* Keep the existing Reviews tab alignment at every root font size. */
 	--review-tab-bar--indicator-overhang: 15px;
-	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
 	display: flex;
 	width: 100%;
 	min-height: 0;

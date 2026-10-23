@@ -24,6 +24,7 @@ export const AgentModelSchema = z.string().min(1).regex(
 	 * [a-z0-9-]+: Provider name (e.g. "anthropic")
 	 * (?:[a-z0-9._:@-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
 	 * [a-z0-9._:@-]+: Model name (e.g. "claude-fable-5@default")
+	 * `@` allows gateway model IDs after the provider (e.g. "openai/@OpenAI/gpt-5-mini")
 	 */
 	AGENT_MODEL_STRING_REGEX,
 	'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
@@ -99,7 +100,7 @@ export const DEFAULT_AGENT_PERSONALISATION = {
 	},
 } as const;
 
-const AgentPersonalisationGradientSchema = z
+export const AgentPersonalisationGradientSchema = z
 	.object({
 		from: HexColorSchema,
 		to: HexColorSchema,
@@ -257,7 +258,9 @@ export const McpServerConfigSchema = z
 		credential: z
 			.string()
 			.optional()
-			.describe('Credential id from ask_credential. Required when authentication is not "none"'),
+			.describe(
+				'Credential id from agent_builder_ask_credential. Required when authentication is not "none"',
+			),
 		metadata: z
 			.object({
 				nodeTypeName: z
@@ -463,15 +466,6 @@ export const AgentJsonConfigBaseSchema = z.object({
 	description: z.string().trim().max(AGENT_DESCRIPTION_MAX_LENGTH).optional(),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
-	/**
-	 * Azure OpenAI deployments are user-named in Azure and surfaced in the URL
-	 * path on both endpoint types. The catalog model id (e.g. `gpt-4o`) is not
-	 * the deployment id, so the agent flow must capture the user's deployment
-	 * name separately. Only meaningful for the `azure-openai` provider — on
-	 * classic it is required, on Foundry it is optional and overrides the model
-	 * id. An empty string is a deliberate clear of a previously stored value.
-	 */
-	modelDeploymentName: z.string().trim().optional(),
 	instructions: z.string(),
 	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),

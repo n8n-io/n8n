@@ -1,7 +1,7 @@
 import { BaseRepository, TransactionRunner } from '@n8n/db';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, Like } from '@n8n/typeorm';
 
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 
@@ -15,6 +15,14 @@ export interface AgentThreadRowPatch {
 export class AgentThreadRepository extends BaseRepository<AgentThreadEntity> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(AgentThreadEntity, dataSource.manager, transactionRunner);
+	}
+
+	async findBuilderSessionIds(prefix: string): Promise<string[]> {
+		const threads = await this.find({
+			select: { id: true },
+			where: { id: Like(`${prefix}%`) },
+		});
+		return threads.map(({ id }) => id).filter((id) => id.startsWith(prefix));
 	}
 
 	/**

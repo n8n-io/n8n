@@ -85,7 +85,7 @@ onMounted(async () => {
 			:show-docs-link="false"
 		>
 			<template #titleTrailing>
-				<N8nPreviewBadge size="medium" />
+				<N8nPreviewBadge size="xsmall" />
 			</template>
 		</N8nSettingsPageHeader>
 

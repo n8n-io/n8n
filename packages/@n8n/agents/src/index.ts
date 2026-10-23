@@ -68,6 +68,8 @@ export type {
 	EpisodicMemoryReflectionResult,
 	EpisodicMemoryReflectorInput,
 	EpisodicMemoryScope,
+	EpisodicScopeDecision,
+	ResolvedEpisodicScope,
 	EpisodicMemorySearchOptions,
 	EpisodicMemoryStatus,
 	EpisodicMemoryTaskLockHandle,
@@ -87,6 +89,7 @@ export type {
 	AgentInputBoundary,
 	SmoothStreamOptions,
 	TokenUsage,
+	PromptSizeUsage,
 	AgentExecutionCounter,
 	SideCallTask,
 	SideCallUsageReport,
@@ -94,6 +97,7 @@ export type {
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
+	NativeToolDeferralConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
@@ -102,6 +106,9 @@ export type {
 	BuiltObservationLogTaskLockStore,
 	MemoryTaskUsageReport,
 	NewObservationLogEntry,
+	ObservationLogBatch,
+	ObservationLogBatchEntry,
+	ObservationLogBatchCommitResult,
 	ObservationLogEntry,
 	ObservationLogMarker,
 	ObservationLogMerge,
@@ -198,6 +205,10 @@ export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export {
+	PROMPT_SIZE_BUCKET_THRESHOLDS,
+	withPromptSizeBreakdown,
+} from './runtime/loop/prompt-size-usage';
 export type {
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
@@ -209,6 +220,7 @@ export {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
@@ -315,7 +327,7 @@ export type {
 	VectorFilter,
 } from './types';
 
-export { createModel } from './runtime/model/model-factory';
+export { createModel, mintAzureFoundryDeploymentsToken } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
 export {
 	hasAzureApiKey,
@@ -381,6 +393,9 @@ export {
 export {
 	RECALL_MEMORY_TOOL_NAME,
 	createRecallMemoryTool,
+	EPISODIC_SCOPE_METADATA_KEY,
+	encodeEpisodicScopeMetadata,
+	readEpisodicScopeDecision,
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
@@ -415,6 +430,7 @@ export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,
 } from './runtime/memory/memory-lifecycle';
+export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,

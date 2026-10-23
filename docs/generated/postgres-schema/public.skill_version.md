@@ -72,6 +72,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -104,6 +105,7 @@ erDiagram
 }
 "public.skill" {
   varchar_36_ agentId FK
+  boolean availableToAssistant
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

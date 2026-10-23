@@ -1,22 +1,14 @@
 import type {
 	AgentIntegrationDisconnectWarning,
-	AgentPersonalisation,
 	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
-import type { Component, ComputedRef, InjectionKey, Ref, VNode } from 'vue';
+import type { Component, Ref, VNode } from 'vue';
 
 import type { AgentCredentialOption } from '../components/AgentCredentialSelect.vue';
-
-/**
- * The agent's icon and gradient, with defaults applied. Injected rather than
- * passed down, because only the views that show the agent read it.
- */
-export const AGENT_PERSONALISATION_KEY: InjectionKey<ComputedRef<AgentPersonalisation>> =
-	Symbol('agentPersonalisation');
 
 export type AgentChannelMode = 'setup' | 'edit';
 export type AgentChannelView = 'list' | `${string}_${AgentChannelMode}`;
@@ -57,15 +49,32 @@ export interface AgentChannelRuntimeContext {
 	ensureAgentPersisted?: () => Promise<void>;
 }
 
+export interface AgentChannelRestart {
+	/** The channel credential for the new setup, or '' to start without one. */
+	credentialId: string;
+	/**
+	 * The sign-in for the new setup, for a platform whose setup signs in first
+	 * (for Teams, the Microsoft account that creates the app and the bot). It is
+	 * set when the user restarts by changing the sign-in. The runtime applies it
+	 * only after the channel is removed, so a cancelled restart keeps the old
+	 * sign-in. `credentialId` is the bot's own credential.
+	 */
+	signInCredentialId?: string;
+}
+
 export interface AgentChannelRuntime {
 	load: () => Promise<void>;
 	loading: Readonly<Ref<boolean>>;
+	/** Forgets what an earlier setup left here, so the next one starts from the first step. */
+	reset?: (restart: AgentChannelRestart) => void;
 }
 
 export interface AgentChannelViewProps {
 	mode: AgentChannelMode;
 	integration: ChatIntegrationDescriptor;
 	modelValue: string;
+	/** The credential the saved channel runs on, or '' while there is none. */
+	savedCredentialId?: string;
 	credentials: AgentCredentialOption[];
 	credentialPermissions: PermissionsRecord['credential'];
 	credentialsLoading: boolean;

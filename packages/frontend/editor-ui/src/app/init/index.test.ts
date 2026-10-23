@@ -4,6 +4,7 @@ import { initializeAuthenticatedFeatures, initializeCore, state } from '@/app/in
 import { AuthenticationMethod } from '@n8n/api-types';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
@@ -86,6 +87,22 @@ vi.mock('@/experiments/quickjsExpressionShadow/init', () => ({
 	stopQuickJsExpressionShadow: vi.fn(),
 }));
 
+const dataWorker = vi.hoisted(() => ({
+	enabled: vi.fn(() => false),
+	initialize: vi.fn(async () => {}),
+	loadNodeTypes: vi.fn(async () => {}),
+}));
+
+vi.mock('@/app/workers/isDataWorkerEnabled', () => ({
+	isDataWorkerEnabled: dataWorker.enabled,
+}));
+
+// The real module spawns the SharedWorker and dedicated worker on import.
+vi.mock('@/app/workers', () => ({
+	initialize: dataWorker.initialize,
+	loadNodeTypes: dataWorker.loadNodeTypes,
+}));
+
 vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({
 		initialize: vi.fn(),
@@ -103,6 +120,7 @@ describe('Init', () => {
 	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
 	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let versionsStore: ReturnType<typeof mockedStore<typeof useVersionsStore>>;
 	let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
 	let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
@@ -121,6 +139,7 @@ describe('Init', () => {
 		cloudPlanStore = mockedStore(useCloudPlanStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
+		credentialsStore = mockedStore(useCredentialsStore);
 		usersStore = mockedStore(useUsersStore);
 		versionsStore = mockedStore(useVersionsStore);
 		versionsStore = mockedStore(useVersionsStore);
@@ -336,6 +355,8 @@ describe('Init', () => {
 			settingsStore.isTemplatesEnabled = true;
 			sourceControlStore.isEnterpriseSourceControlEnabled = true;
 			rootStore.defaultLocale = 'es';
+			credentialsStore.fetchAllCredentials.mockResolvedValue([]);
+			credentialsStore.fetchCredentialTypes.mockResolvedValue();
 		});
 
 		afterEach(() => {
@@ -355,6 +376,8 @@ describe('Init', () => {
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
 			expect(versionsSpy).not.toHaveBeenCalled();
 			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).not.toHaveBeenCalled();
+			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
+			expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
 		});
 
 		it('loads node types before authenticated pages render', async () => {
@@ -373,6 +396,90 @@ describe('Init', () => {
 			resolve();
 			await initializing;
 			expect(initialized).toBe(true);
+		});
+
+		it('initializes the data worker before loading node types', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			dataWorker.enabled.mockReturnValue(true);
+			const calls: string[] = [];
+			dataWorker.initialize.mockImplementationOnce(async () => {
+				calls.push('worker:initialize');
+			});
+			dataWorker.loadNodeTypes.mockImplementationOnce(async () => {
+				calls.push('worker:loadNodeTypes');
+			});
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockImplementationOnce(async () => {
+				calls.push('store:loadNodeTypes');
+			});
+
+			try {
+				await initializeAuthenticatedFeatures(false);
+			} finally {
+				dataWorker.enabled.mockReturnValue(false);
+			}
+
+			expect(calls).toEqual(['worker:initialize', 'worker:loadNodeTypes', 'store:loadNodeTypes']);
+		});
+
+		it('loads credential types before authenticated pages render', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const { promise, resolve } = Promise.withResolvers<void>();
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
+			let initialized = false;
+			const initializing = initializeAuthenticatedFeatures(false).then(() => {
+				initialized = true;
+			});
+
+			await flushPromises();
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
+			expect(initialized).toBe(false);
+
+			resolve();
+			await initializing;
+			expect(initialized).toBe(true);
+		});
+
+		it('loads credentials without waiting for them', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			// A request that never settles: init must still finish.
+			credentialsStore.fetchAllCredentials.mockReturnValueOnce(new Promise(() => {}));
+
+			await initializeAuthenticatedFeatures(false);
+
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledTimes(1);
+		});
+
+		it('logs type and credential loading failures without failing init', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const nodeTypesError = new Error('node types');
+			const credentialTypesError = new Error('credential types');
+			const credentialsError = new Error('credentials');
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockRejectedValueOnce(nodeTypesError);
+			credentialsStore.fetchCredentialTypes.mockRejectedValueOnce(credentialTypesError);
+			credentialsStore.fetchAllCredentials.mockRejectedValueOnce(credentialsError);
+
+			await expect(initializeAuthenticatedFeatures(false)).resolves.toBeUndefined();
+			await flushPromises();
+
+			expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(String), nodeTypesError);
+			expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(String), credentialTypesError);
+			expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(String), credentialsError);
+		});
+
+		it('fetches credentials and credential types only once across repeated calls', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+
+			await initializeAuthenticatedFeatures(false);
+			await initializeAuthenticatedFeatures();
+
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledTimes(1);
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledTimes(1);
 		});
 
 		it('should init authenticated features only once if user is logged in', async () => {

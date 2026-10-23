@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
 import AgentChannelSlackServiceLimitError from '../channels/slack/AgentChannelSlackServiceLimitError.vue';
+import AgentFormSettingRow from './AgentFormSettingRow.vue';
 
 const props = defineProps<{
 	settings: SlackManagedAppSettings | null;
@@ -85,15 +86,19 @@ defineExpose({ currentSettings, validationError });
 				:disabled="disabled || loading"
 				data-testid="slack-managed-app-description"
 			/>
-			<div :class="$style.switchRow">
+			<AgentFormSettingRow
+				control-id="slack-managed-app-always-online"
+				:title="i18n.baseText('agents.channels.slack.managed.settings.alwaysOnline')"
+			>
 				<N8nSwitch2
+					id="slack-managed-app-always-online"
 					:model-value="alwaysOnline"
 					:disabled="disabled || loading"
 					data-testid="slack-managed-app-always-online"
-					:label="i18n.baseText('agents.channels.slack.managed.settings.alwaysOnline')"
+					:aria-label="i18n.baseText('agents.channels.slack.managed.settings.alwaysOnline')"
 					@update:model-value="alwaysOnline = Boolean($event)"
 				/>
-			</div>
+			</AgentFormSettingRow>
 			<N8nLink :href="settings.appHomeUrl" target="_blank" rel="noopener noreferrer" size="small">
 				<span :class="$style.linkContent">
 					{{ i18n.baseText('agents.channels.slack.managed.settings.openSlack') }}
@@ -119,15 +124,8 @@ defineExpose({ currentSettings, validationError });
 .settings {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 	width: 100%;
-}
-
-.switchRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
 }
 
 .linkContent {

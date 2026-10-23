@@ -11,6 +11,17 @@ describe('AzureEntraCognitiveServicesOAuth2Api Credential', () => {
 		);
 	});
 
+	it('gates an optional project field behind the foundry endpoint type', () => {
+		expect(property('project')).toEqual(
+			expect.objectContaining({
+				type: 'string',
+				default: '',
+				displayOptions: expect.objectContaining({ show: { endpointType: ['foundry'] } }),
+			}),
+		);
+		expect(property('project')?.required).toBeFalsy();
+	});
+
 	it('hides the body-properties fields the node builds for itself', () => {
 		expect(property('sendAdditionalBodyProperties')).toEqual(
 			expect.objectContaining({ type: 'hidden' }),

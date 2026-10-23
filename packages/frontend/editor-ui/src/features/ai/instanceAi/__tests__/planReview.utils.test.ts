@@ -13,7 +13,7 @@ const PLANNED_TASK: PlannedTaskArg = {
 function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): InstanceAiToolCallState {
 	return {
 		toolCallId: 'tc-1',
-		toolName: 'create-tasks',
+		toolName: 'workflow_builder_create_tasks',
 		args: {},
 		isLoading: true,
 		...overrides,

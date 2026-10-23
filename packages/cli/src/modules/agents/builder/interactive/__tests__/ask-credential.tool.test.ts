@@ -1,5 +1,5 @@
 import type { CredentialListItem } from '@n8n/agents';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../../builder-session';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -20,15 +20,15 @@ function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 	return { resumeData: overrides?.resumeData, suspend: vi.fn(async (x: unknown) => x) };
 }
 
-function makeCredentialService(creds: CredentialListItem[]): InstanceAiCredentialService {
-	const credentialService = mock<InstanceAiCredentialService>();
+function makeCredentialService(creds: CredentialListItem[]): BuilderCredentialService {
+	const credentialService = mock<BuilderCredentialService>();
 	credentialService.list.mockImplementation(async (options) =>
 		options?.type ? creds.filter((c) => c.type === options.type) : creds,
 	);
 	return credentialService;
 }
 
-function expectListed(credentialService: InstanceAiCredentialService, credentialType: string) {
+function expectListed(credentialService: BuilderCredentialService, credentialType: string) {
 	expect(credentialService.list).toHaveBeenCalledWith({
 		type: credentialType,
 		projectId: 'project-1',
@@ -53,7 +53,7 @@ beforeEach(() => {
 	track = vi.fn();
 });
 
-describe('ask_credential tool', () => {
+describe('agent_builder_ask_credential tool', () => {
 	it('auto-resolves when exactly one credential of the requested type exists, without tracking a request', async () => {
 		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'My Slack', type: 'slackApi' },
@@ -365,7 +365,7 @@ describe('ask_credential tool', () => {
 	});
 });
 
-describe('ask_embedding_credential tool', () => {
+describe('agent_builder_ask_embedding_credential tool', () => {
 	it('returns managed credential when assistant proxy is enabled', async () => {
 		const credentialService = makeCredentialService([]);
 		const tool = askEmbeddingCredentialTool({

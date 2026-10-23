@@ -1,16 +1,12 @@
 import {
 	InstanceAiConfirmRequestDto,
 	InstanceAiFeedbackRequestDto,
-	InstanceAiGatewayCapabilitiesDto,
-	InstanceAiGatewayCreateCredentialDto,
-	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
 	InstanceAiThreadTabsRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
-	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
@@ -20,25 +16,15 @@ import {
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
 	InstanceAiVerifySearchRequest,
-	InstanceAiUserPreferencesUpdateRequest,
-	InstanceAiEvalExecutionRequest,
-	InstanceAiEvalAgentExecutionRequest,
-	InstanceAiEvalCredentialAllowlistRequest,
-	InstanceAiEvalCredentialTestTargetRequest,
-	InstanceAiEvalRestoreThreadRequest,
-	InstanceAiEvalSeedDataTableRowsRequest,
-	findSeedFolderIssues,
-	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
 import type {
 	InstanceAiAdminSettingsResponse,
-	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiEvent,
 	InstanceAiThreadTabsResponse,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	RestController,
@@ -56,12 +42,7 @@ import {
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { hasGlobalScope } from '@n8n/permissions';
-import {
-	buildAgentTreeFromEvents,
-	clearedAgentBuilderTargetMetadata,
-	meterEvalUsage,
-	seedAgentBuilderTargetMetadata,
-} from '@n8n/instance-ai';
+import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import {
 	OversizedAttachmentError,
 	UnsupportedAttachmentError,
@@ -69,17 +50,12 @@ import {
 	validateAttachmentSizes,
 } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
-import { EvalAgentExecutionService } from './eval/agent-execution.service';
-import { EvalExecutionService } from './eval/execution.service';
-import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
-import { EvalThreadRestoreService } from './eval/thread-restore.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
-import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
@@ -89,13 +65,10 @@ import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
-import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { UrlService } from '@n8n/backend-services';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -103,31 +76,20 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 
 @RestController('/instance-ai')
 export class InstanceAiController {
-	private readonly gatewayApiKey: string;
-
 	private readonly instanceAiConfig: GlobalConfig['instanceAi'];
 
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
-		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly onboarding: InstanceAiOnboardingService,
 		private readonly pendingAgentService: InstanceAiPendingAgentService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelCatalogService: InstanceAiModelCatalogService,
-		private readonly evalExecutionService: EvalExecutionService,
-		private readonly evalAgentExecutionService: EvalAgentExecutionService,
-		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
-		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly eventLog: DurableEventLog,
 		private readonly durableLogMetrics: DurableLogMetrics,
 		private readonly moduleRegistry: ModuleRegistry,
-		private readonly push: Push,
-		private readonly urlService: UrlService,
-		private readonly userRepository: UserRepository,
-		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
@@ -135,7 +97,6 @@ export class InstanceAiController {
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 	) {
-		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
@@ -237,13 +198,15 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
-		// The override is an eval knob. It changes how often the observer runs, so a
-		// plain chat caller must not be able to set it.
+		// The override is an eval knob that changes how often the observer runs, so it
+		// follows the same gate as the eval routes.
 		if (
 			payload.observerThresholdTokens !== undefined &&
-			!hasGlobalScope(req.user, 'instanceAi:eval')
+			(!this.instanceAiConfig.evalInstance || !hasGlobalScope(req.user, 'instanceAi:manage'))
 		) {
-			throw new ForbiddenError('observerThresholdTokens requires the instanceAi:eval scope');
+			throw new ForbiddenError(
+				'observerThresholdTokens requires an eval instance and the instanceAi:manage scope',
+			);
 		}
 
 		const runId = this.instanceAiService.startRun(
@@ -256,7 +219,7 @@ export class InstanceAiController {
 			payload.pushRef,
 			payload.mode,
 			payload.promptVersion,
-			payload.computerUseChannels,
+			payload.browserUseAvailable,
 			payload.threadArtifacts,
 			payload.observerThresholdTokens,
 		);
@@ -280,14 +243,43 @@ export class InstanceAiController {
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
-		// When the thread didn't exist at connect time, another user could create
-		// and own it before events start flowing. We re-check once on the first
-		// event and close the stream if ownership changed. Events are buffered
-		// until the check resolves to prevent leaking data during the async gap.
+		// A thread created after subscription can have a different owner.
+		// Verify ownership before sending events or a bootstrap frame.
 		let ownershipVerified = ownership === 'owned';
-		let ownershipCheckInFlight = false;
+		let ownershipCheck: Promise<boolean> | undefined;
 		const pendingEvents: StoredEvent[] = [];
 		const userId = req.user.id;
+		let closed = false;
+
+		const verifyOwnership = async () => {
+			ownershipCheck ??= this.memoryService
+				.checkThreadOwnership(userId, threadId)
+				.then((currentOwnership) => {
+					if (closed) return false;
+
+					ownershipVerified = currentOwnership === 'owned';
+					if (!ownershipVerified) {
+						pendingEvents.length = 0;
+						closed = true;
+						res.end();
+						return false;
+					}
+
+					// Drain before live delivery can observe the verified owner.
+					for (const stored of pendingEvents) this.writeSseEvent(res, stored);
+					pendingEvents.length = 0;
+
+					return true;
+				})
+				.catch(() => {
+					pendingEvents.length = 0;
+					closed = true;
+					res.end();
+					return false;
+				});
+
+			return await ownershipCheck;
+		};
 
 		// 1. Subscribe to live events before the async bootstrap below.
 		//    hasSubscribers() must be true across the awaits that follow: in
@@ -299,36 +291,15 @@ export class InstanceAiController {
 		let bootstrapping = true;
 
 		const deliver = (stored: StoredEvent) => {
+			if (closed) return;
+
 			if (ownershipVerified) {
 				this.writeSseEvent(res, stored);
 				return;
 			}
 
-			// When the thread was not_found at connect time, re-validate ownership
-			// on the first event. Buffer all events until the check resolves to
-			// avoid leaking data during the async gap.
 			pendingEvents.push(stored);
-
-			if (ownershipCheckInFlight) return;
-			ownershipCheckInFlight = true;
-
-			void this.memoryService
-				.checkThreadOwnership(userId, threadId)
-				.then((currentOwnership) => {
-					if (currentOwnership === 'other_user') {
-						res.end();
-						return;
-					}
-					ownershipVerified = true;
-					for (const buffered of pendingEvents) {
-						this.writeSseEvent(res, buffered);
-					}
-					pendingEvents.length = 0;
-				})
-				.catch(() => {
-					pendingEvents.length = 0;
-					res.end();
-				});
+			void verifyOwnership();
 		};
 
 		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
@@ -339,7 +310,6 @@ export class InstanceAiController {
 		// Cleanup is registered before the async bootstrap so a client disconnect
 		// (or an error response) during the awaits below doesn't leak the
 		// subscription.
-		let closed = false;
 		let keepAlive: NodeJS.Timeout | undefined = undefined;
 		const cleanup = () => {
 			closed = true;
@@ -416,6 +386,7 @@ export class InstanceAiController {
 			runEvents: InstanceAiEvent[],
 		) => {
 			if (runEvents.length === 0) return;
+			if (!ownershipVerified && !(await verifyOwnership())) return;
 
 			const agentTree = buildAgentTreeFromEvents(runEvents);
 			// The fold records that a confirmation was requested, not that it was
@@ -803,15 +774,11 @@ export class InstanceAiController {
 		await this.applyAdminSettingsSideEffects({
 			enabled: this.settingsService.isInstanceAiEnabled(),
 			browserUseEnabled: this.settingsService.isBrowserUseEnabled(),
-			localGatewayDisabled: this.settingsService.isLocalGatewayDisabled(),
 		});
 	}
 
 	private async applyAdminSettingsSideEffects(
-		settings: Pick<
-			InstanceAiAdminSettingsResponse,
-			'enabled' | 'browserUseEnabled' | 'localGatewayDisabled'
-		>,
+		settings: Pick<InstanceAiAdminSettingsResponse, 'enabled' | 'browserUseEnabled'>,
 	) {
 		const sideEffects: Array<() => Promise<void> | void> = [
 			async () => {
@@ -823,25 +790,6 @@ export class InstanceAiController {
 		];
 		if (!settings.enabled || !settings.browserUseEnabled) {
 			sideEffects.push(async () => await this.browserSessionService.shutdown());
-		}
-
-		if (!settings.enabled || settings.localGatewayDisabled) {
-			sideEffects.push(() => {
-				const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
-				if (disconnectedUserIds.length === 0) return;
-				this.push.sendToUsers(
-					{
-						type: 'instanceAiGatewayStateChanged',
-						data: {
-							connected: false,
-							directory: null,
-							hostIdentifier: null,
-							toolCategories: [],
-						},
-					},
-					disconnectedUserIds,
-				);
-			});
 		}
 
 		const results = await Promise.allSettled(sideEffects.map(async (apply) => await apply()));
@@ -861,20 +809,6 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:message')
 	async getUserPreferences(req: AuthenticatedRequest) {
 		return await this.settingsService.getUserPreferences(req.user);
-	}
-
-	@Put('/preferences')
-	@GlobalScope('instanceAi:message')
-	async updateUserPreferences(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiUserPreferencesUpdateRequest,
-	) {
-		const result = await this.settingsService.updateUserPreferences(req.user, payload);
-		if (payload.localGatewayDisabled !== undefined) {
-			await this.moduleRegistry.refreshModuleSettings('instance-ai');
-		}
-		return result;
 	}
 
 	@Get('/settings/service-credentials')
@@ -1025,7 +959,7 @@ export class InstanceAiController {
 	/**
 	 * Persist the pending new-agent artifact this thread has open, and bind it to
 	 * the thread in the same request. Idempotent under a concurrent writer on the
-	 * same client-minted id (the chat's build-agent tool), unlike the strict
+	 * same client-minted id (the chat's agent_builder_build_agent tool), unlike the strict
 	 * project-scoped agent create.
 	 */
 	@Post('/threads/:threadId/agent')
@@ -1038,7 +972,12 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		return await this.pendingAgentService.persistAndBind(req.user, threadId, payload);
+		return await this.pendingAgentService.persistAndBind(
+			req.user,
+			threadId,
+			payload,
+			req.headers?.['push-ref'],
+		);
 	}
 
 	@Get('/threads/:threadId/messages')
@@ -1154,489 +1093,7 @@ export class InstanceAiController {
 		};
 	}
 
-	// ── Evaluation endpoints ──────────────────────────────────────────────────
-
-	// Runs for minutes; the eval client (N8nClient) disables undici's 300s timeout for it.
-	@Post('/eval/execute-with-llm-mock/:workflowId')
-	@GlobalScope('instanceAi:eval')
-	async executeWithLlmMock(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('workflowId') workflowId: string,
-		@Body payload: InstanceAiEvalExecutionRequest,
-	) {
-		// The mocks run on the eval model; the caller adds their usage to the case's cost.
-		const { result, usage } = await meterEvalUsage(
-			async () => await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload),
-		);
-		return { ...result, llmUsage: usage };
-	}
-
-	// Runs for minutes; same client timeout handling as the workflow variant.
-	@Post('/eval/execute-agent-with-llm-mock/:agentId')
-	@GlobalScope('instanceAi:eval')
-	async executeAgentWithLlmMock(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('agentId') agentId: string,
-		@Body payload: InstanceAiEvalAgentExecutionRequest,
-	) {
-		const { result, usage } = await meterEvalUsage(
-			async () =>
-				await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload),
-		);
-		return { ...result, llmUsage: usage };
-	}
-
-	/**
-	 * Pin a build thread's credential view to a declared set. Only narrows:
-	 * `list()` results are intersected with these IDs, so the caller cannot see
-	 * anything they couldn't already access. The thread must exist — entries are
-	 * cleared with the thread's state, so pins for never-created threads would
-	 * be uncollectable.
-	 */
-	@Post('/eval/thread-credential-allowlist')
-	@GlobalScope('instanceAi:eval')
-	async setThreadCredentialAllowlist(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalCredentialAllowlistRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, payload.threadId);
-		this.evalCredentialAllowlists.set(
-			payload.threadId,
-			payload.credentialIds,
-			payload.bypassCredentialTest,
-		);
-		return { ok: true };
-	}
-
-	/**
-	 * Send the thread's connection tests for one credential type to a provider
-	 * stand-in, so the agent's own test checks the captured secret.
-	 */
-	@Post('/eval/thread-credential-test-target')
-	@GlobalScope('instanceAi:eval')
-	async setThreadCredentialTestTarget(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalCredentialTestTargetRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		// Redirecting a credential test sends its secret elsewhere, so only a
-		// throwaway eval instance offers it.
-		if (!this.instanceAiConfig.evalInstance) {
-			throw new NotFoundError('Credential test targets are only available on an eval instance');
-		}
-		await this.assertThreadAccess(req.user.id, payload.threadId);
-		const { threadId, ...target } = payload;
-		this.evalCredentialAllowlists.setTestTarget(threadId, target);
-		return { ok: true };
-	}
-
-	/**
-	 * Observational memory for a thread, for a context eval to assert on.
-	 *
-	 * Returns the observation text, an LLM-written summary of the user's conversation.
-	 * Gated like every other `/eval/` route: `instanceAi:eval` is owner/admin-only,
-	 * and `assertThreadAccess` keeps a caller to threads they can already read in full.
-	 */
-	@Get('/eval/threads/:threadId/memory')
-	@GlobalScope('instanceAi:eval')
-	async getEvalThreadMemory(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-	): Promise<InstanceAiEvalThreadMemoryResponse> {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		return await this.instanceAiService.getThreadMemory(req.user.id, threadId);
-	}
-
-	/**
-	 * Seed an existing (owned) thread with a previously exported conversation:
-	 * recreate the artifacts the history references — workflows (node credentials
-	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
-	 * and agents — publish the workflows the seed flags `published`, then write the
-	 * native message log verbatim. The thread then continues as if the
-	 * conversation really happened, so an eval can drive the next turn live.
-	 */
-	@Post('/eval/restore-thread')
-	@GlobalScope('instanceAi:eval')
-	async restoreEvalThread(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalRestoreThreadRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, payload.threadId);
-		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
-		if (!projectId) {
-			throw new BadRequestError('Thread is not bound to a project');
-		}
-
-		const workflows = payload.workflows ?? [];
-		const agents = payload.agents ?? [];
-		const folders = payload.folders ?? [];
-		// Cross-field, so the schema can't own it: a seeded agent's workflow tool is
-		// resolved by DISPLAY NAME, and a name no seeded workflow carries restores a
-		// dead tool (or binds an unrelated ambient workflow of the same name).
-		const unbacked = findUnbackedSeedWorkflowTools(payload);
-		if (unbacked.length > 0) {
-			throw new BadRequestError(
-				unbacked
-					.map(
-						({ agentId, target }: { agentId: string; target: unknown }) =>
-							`Seed agent ${agentId} has a workflow tool targeting ${JSON.stringify(target)}, which no seeded workflow's name matches`,
-					)
-					.join('; '),
-			);
-		}
-		// Also cross-field: a workflow's `parentFolderId` must name a seeded folder.
-		// Checked before anything is created, so a typo costs no rollback.
-		const folderIssues = findSeedFolderIssues({ folders, workflows });
-		if (folderIssues.length > 0) {
-			throw new BadRequestError(folderIssues.join('; '));
-		}
-		// Folders first: the workflows are created inside them. `restoreFolders`
-		// rolls its own partial work back, so nothing else exists yet if it fails.
-		const folderIdMap = await this.evalThreadRestore.restoreFolders(folders, projectId, req.user);
-		// Positional to `folders`, like `workflowIds` to `workflows`, so the harness
-		// can pair each created id with the seed folder it came from.
-		const folderIds = folders.flatMap((folder) => {
-			const id = folderIdMap.get(folder.id);
-			return id === undefined ? [] : [id];
-		});
-		// Roll back everything we created if a later step fails, so a partial
-		// restore doesn't leak folders/tables/workflows/agents into the shared eval
-		// project.
-		let restored = 0;
-		let dataTableIds: string[] = [];
-		let createdWorkflowIds: string[] = [];
-		let publishedWorkflowIds: string[] = [];
-		let createdAgentIds: string[] = [];
-		// Captured so the binding write is undoable: the message write happens after
-		// it, and without this a message failure left a binding pointing at agents the
-		// rollback had already deleted.
-		let priorMetadata: Record<string, unknown> | undefined;
-		let bindingWritten = false;
-		// Seed node credentials resolve within the thread's pinned credential view,
-		// so a same-named credential of a concurrent case is never picked.
-		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
-		try {
-			// Data tables before workflows: the workflows reference them, and their ids
-			// are rewritten to the recreated tables' ids during workflow restore.
-			const idMap = await this.evalThreadRestore.restoreDataTables(
-				payload.dataTables ?? [],
-				projectId,
-				{ uniquifyNames: payload.uniquifyNames ?? true },
-			);
-			dataTableIds = [...idMap.values()];
-			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
-				workflows,
-				projectId,
-				req.user,
-				idMap,
-				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
-				folderIdMap,
-			);
-			// BEFORE the messages, which the rollback cannot undo: a refused activation
-			// (no trigger, webhook conflict, unresolved credential) must fail while the
-			// restore is still fully rollback-able. The rollback unpublishes.
-			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
-			createdAgentIds = await this.evalThreadRestore.restoreAgents(
-				agents,
-				projectId,
-				req.user,
-				idMap,
-				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
-			);
-			// Built (and validated) BEFORE the message write: a rejected binding — two
-			// agents whose refs collide — must fail while the restore is still fully
-			// rollback-able, not after the messages have committed.
-			const binding =
-				createdAgentIds.length > 0
-					? seedAgentBuilderTargetMetadata(
-							agents.map((agent) => ({
-								agentId: agent.id,
-								projectId,
-								name: agent.config.name,
-								ref: agent.config.name,
-							})),
-							payload.messages,
-						)
-					: undefined;
-			// Bind the thread as the conversation that built these agents would have, or
-			// the live turn's first `build-agent` call is rejected as an unknown agentRef.
-			// BEFORE the messages, and undoable: the catch restores the prior metadata,
-			// so a message failure can't leave a binding pointing at deleted agents, and
-			// a binding failure can't leave messages referencing them.
-			if (binding) {
-				priorMetadata = await this.memoryService.getThreadMetadata(req.user.id, payload.threadId);
-				await this.memoryService.updateThread(payload.threadId, { metadata: binding });
-				bindingWritten = true;
-			}
-			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
-			if (payload.messages.length > 0) {
-				({ restored } = await this.memoryService.restoreThreadMessages(
-					req.user.id,
-					payload.threadId,
-					payload.messages,
-				));
-			}
-		} catch (error) {
-			if (bindingWritten) {
-				try {
-					// `updateThread` MERGES, so the prior snapshot alone would leave the
-					// binding keys standing — this names them and restores each.
-					await this.memoryService.updateThread(payload.threadId, {
-						metadata: clearedAgentBuilderTargetMetadata(priorMetadata),
-					});
-				} catch {
-					// Best-effort, like the artifact deletes: never throw over the failure
-					// that triggered the rollback.
-				}
-			}
-			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
-			// Every seed this restore published, not only the created ones: a re-applied
-			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
-			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);
-			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
-			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
-			// Last, with the contents moved to the root: a re-applied seed workflow
-			// (moved into the folder, not created) is kept by this rollback, so the
-			// folder must not take it down.
-			await this.evalThreadRestore.deleteFolders(folders, folderIdMap, projectId, req.user);
-			throw error;
-		}
-		return {
-			ok: true,
-			threadId: payload.threadId,
-			restored,
-			workflowIds: workflows.map((workflow) => workflow.id),
-			dataTableIds,
-			agentIds: createdAgentIds,
-			folderIds,
-		};
-	}
-
-	/**
-	 * Reset an existing data table's rows to exactly the supplied set
-	 * (clear-then-insert). The eval harness pre-creates a case's scenario data
-	 * tables empty before the build turn (so the agent binds the real table id),
-	 * then calls this per scenario to swap in that scenario's rows (TRUST-311
-	 * follow-up). Auth + project scoping mirror restore-thread: the table must be
-	 * in the thread's project.
-	 */
-	@Post('/eval/seed-data-table-rows')
-	@GlobalScope('instanceAi:eval')
-	async seedEvalDataTableRows(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalSeedDataTableRowsRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, payload.threadId);
-		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
-		if (!projectId) {
-			throw new BadRequestError('Thread is not bound to a project');
-		}
-		await this.evalThreadRestore.reseedDataTableRows(payload.tableId, projectId, payload.rows);
-		return { ok: true, tableId: payload.tableId, rowCount: payload.rows.length };
-	}
-
-	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
-
-	@Post('/gateway/create-link')
-	@GlobalScope('instanceAi:gateway')
-	async createGatewayLink(req: AuthenticatedRequest) {
-		await this.assertGatewayEnabled(req.user.id);
-		const token = this.gatewayService.generatePairingToken(req.user.id);
-		const expiresAt = this.gatewayService.getGatewayApiKeyExpiresAt(req.user.id, token);
-		const ttlSeconds = expiresAt
-			? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
-			: null;
-		const baseUrl = this.urlService.getInstanceBaseUrl();
-		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
-		return { token, command, expiresAt: expiresAt?.toISOString() ?? null, ttlSeconds };
-	}
-
-	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
-	async gatewayEvents(req: Request, res: FlushableResponse) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
-		await this.assertGatewayEnabled(userId);
-
-		const gateway = this.gatewayService.getLocalGateway(userId);
-
-		// If the grace-period timer already fired (e.g. after a long reconnect gap),
-		// the gateway state is torn down. Reject so the daemon falls into its auth-error
-		// reconnect branch, which re-uploads capabilities and re-establishes state.
-		if (!gateway.isConnected) {
-			throw new ForbiddenError('Local gateway not initialized');
-		}
-
-		// Daemon reconnected within the grace window — cancel the pending disconnect.
-		this.gatewayService.clearDisconnectTimer(userId);
-
-		(res as unknown as { compress: boolean }).compress = false;
-		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache, no-transform');
-		res.setHeader('Connection', 'keep-alive');
-		res.setHeader('X-Accel-Buffering', 'no');
-		res.flushHeaders();
-
-		const unsubscribeRequest = gateway.onRequest((event) => {
-			res.write(`data: ${JSON.stringify(event)}\n\n`);
-			res.flush?.();
-		});
-		const unsubscribeDisconnect = gateway.onDisconnect((event) => {
-			res.write(`data: ${JSON.stringify(event)}\n\n`);
-			res.flush?.();
-			res.end();
-		});
-
-		const keepAlive = setInterval(() => {
-			res.write(': ping\n\n');
-			res.flush?.();
-		}, KEEP_ALIVE_INTERVAL_MS);
-
-		let cleanedUp = false;
-		const cleanup = () => {
-			if (cleanedUp) return;
-			cleanedUp = true;
-			unsubscribeRequest();
-			unsubscribeDisconnect();
-			clearInterval(keepAlive);
-			this.gatewayService.startDisconnectTimer(userId, () => {
-				this.push.sendToUsers(
-					{
-						type: 'instanceAiGatewayStateChanged',
-						data: {
-							connected: false,
-							directory: null,
-							hostIdentifier: null,
-							toolCategories: [],
-						},
-					},
-					[userId],
-				);
-			});
-		};
-		res.once('close', cleanup);
-		res.once('finish', cleanup);
-	}
-
-	@Post('/gateway/init', { skipAuth: true })
-	async gatewayInit(req: Request, _res: Response, @Body payload: InstanceAiGatewayCapabilitiesDto) {
-		const key = this.getGatewayKeyHeader(req);
-		const userId = this.validateGatewayApiKey(key);
-		await this.assertGatewayEnabled(userId);
-
-		this.gatewayService.initGateway(userId, payload);
-		this.gatewayService.applyToolPolicy(userId);
-
-		const status = this.gatewayService.getGatewayStatus(userId);
-		this.push.sendToUsers(
-			{
-				type: 'instanceAiGatewayStateChanged',
-				data: {
-					connected: status.connected,
-					directory: status.directory,
-					hostIdentifier: status.hostIdentifier,
-					toolCategories: status.toolCategories,
-				},
-			},
-			[userId],
-		);
-
-		// Try to consume a pairing token and upgrade to a session key
-		const sessionKey = key ? this.gatewayService.consumePairingToken(userId, key) : null;
-		if (sessionKey) {
-			return { ok: true, sessionKey };
-		}
-		return { ok: true };
-	}
-
-	@Post('/gateway/disconnect', { skipAuth: true })
-	gatewayDisconnect(req: Request) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
-
-		this.gatewayService.clearDisconnectTimer(userId);
-		this.gatewayService.disconnectGateway(userId);
-		this.gatewayService.clearActiveSessionKey(userId);
-		this.push.sendToUsers(
-			{
-				type: 'instanceAiGatewayStateChanged',
-				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-			},
-			[userId],
-		);
-		return { ok: true };
-	}
-
-	@Post('/gateway/response/:requestId', { skipAuth: true })
-	gatewayResponse(
-		req: Request,
-		_res: Response,
-		@Param('requestId') requestId: string,
-		@Body payload: InstanceAiFilesystemResponseDto,
-	) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
-
-		const resolved = this.gatewayService.resolveGatewayRequest(
-			userId,
-			requestId,
-			payload.result,
-			payload.error,
-		);
-		if (!resolved) {
-			throw new NotFoundError('Gateway request not found or already resolved');
-		}
-		return { ok: true };
-	}
-
-	@Post('/gateway/credentials', { skipAuth: true })
-	async gatewayCreateCredential(
-		req: Request,
-		_res: Response,
-		@Body payload: InstanceAiGatewayCreateCredentialDto,
-	) {
-		const user = await this.resolveGatewayUser(this.getGatewayKeyHeader(req));
-		await this.assertGatewayEnabled(user.id);
-		const credential = await this.credentialsService.createUnmanagedCredential(payload, user);
-		return { credentialId: credential.id };
-	}
-
-	@Get('/gateway/status')
-	@GlobalScope('instanceAi:gateway')
-	async gatewayStatus(req: AuthenticatedRequest) {
-		await this.assertGatewayEnabled(req.user.id);
-		this.gatewayService.applyToolPolicy(req.user.id);
-		return this.gatewayService.getGatewayStatus(req.user.id);
-	}
-
-	/**
-	 * User-initiated gateway disconnect. Tears down the paired daemon session
-	 * so its tools are no longer exposed to the agent, without changing the
-	 * user's preference to disabled.
-	 */
-	@Post('/gateway/disconnect-session')
-	@GlobalScope('instanceAi:gateway')
-	async gatewayDisconnectSession(req: AuthenticatedRequest) {
-		const userId = req.user.id;
-		this.gatewayService.clearDisconnectTimer(userId);
-		this.gatewayService.disconnectGateway(userId);
-		this.gatewayService.clearActiveSessionKey(userId);
-		this.push.sendToUsers(
-			{
-				type: 'instanceAiGatewayStateChanged',
-				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-			},
-			[userId],
-		);
-		return { ok: true };
-	}
+	// ── Browser Use endpoints ───────────────────────────────────────────────────
 
 	@Post('/browser/create-link')
 	@GlobalScope('instanceAi:gateway')
@@ -1686,68 +1143,6 @@ export class InstanceAiController {
 		if (!options?.allowNew && ownership === 'not_found') {
 			throw new NotFoundError('Thread not found');
 		}
-	}
-
-	/** Throw if the local gateway is disabled globally or for this user. */
-	private async assertGatewayEnabled(userId: string): Promise<void> {
-		if (await this.settingsService.isLocalGatewayDisabledForUser(userId)) {
-			throw new ForbiddenError('Local gateway is disabled');
-		}
-	}
-
-	/**
-	 * Safely extract and validate the x-gateway-key header value.
-	 * Headers can be string | string[] | undefined — take only the first value
-	 * and validate against the shared gateway key schema.
-	 */
-	private getGatewayKeyHeader(req: Request): string | undefined {
-		const raw = req.headers['x-gateway-key'];
-		const value = Array.isArray(raw) ? raw[0] : raw;
-		const parsed = instanceAiGatewayKeySchema.safeParse(value);
-		return parsed.success ? parsed.data : undefined;
-	}
-
-	/**
-	 * Validate the gateway API key from query param or header.
-	 * Accepts: static env var key, one-time pairing token (init only), or active session key.
-	 * Returns the userId associated with the key.
-	 */
-	private validateGatewayApiKey(key: string | undefined): string {
-		if (!key) {
-			throw new ForbiddenError('Missing API key');
-		}
-		const actual = Buffer.from(key);
-
-		// Check static env var key — out of user-scoped flow, uses a sentinel userId
-		if (this.gatewayApiKey) {
-			const expected = Buffer.from(this.gatewayApiKey);
-			if (expected.length === actual.length && timingSafeEqual(expected, actual)) {
-				return 'env-gateway';
-			}
-		}
-
-		// Check per-user pairing token or session key via reverse lookup
-		const userId = this.gatewayService.getUserIdForApiKey(key);
-		if (userId) return userId;
-
-		throw new ForbiddenError('Invalid API key');
-	}
-
-	/**
-	 * Resolve a gateway API key to its associated User. Requires a user-scoped
-	 * key — the static env-var key (which has no associated DB user) is rejected.
-	 */
-	private async resolveGatewayUser(key: string | undefined): Promise<User> {
-		const userId = this.validateGatewayApiKey(key);
-		if (userId === 'env-gateway') {
-			throw new ForbiddenError('Credential creation requires a user-scoped gateway key');
-		}
-		const user = await this.userRepository.findOne({
-			where: { id: userId },
-			relations: ['role', 'role.scopes'],
-		});
-		if (!user) throw new ForbiddenError('Invalid API key');
-		return user;
 	}
 
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {

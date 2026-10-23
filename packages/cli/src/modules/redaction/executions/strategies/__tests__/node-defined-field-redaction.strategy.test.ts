@@ -15,6 +15,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	enforceDynCredRedaction: false,
 	enforceCredentialUsabilityRedaction: false,
 	inaccessibleCredentialIds: [],
+	redactedBySubWorkflow: false,
 	memo: new Map(),
 	...overrides,
 });

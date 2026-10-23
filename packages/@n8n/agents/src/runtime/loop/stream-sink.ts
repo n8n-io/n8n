@@ -11,6 +11,7 @@ import type {
 	RunServices,
 	SuspendEmission,
 } from '../../types/runtime/agent-loop';
+import { withPromptSizeBreakdown } from './prompt-size-usage';
 import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
@@ -124,7 +125,7 @@ export class StreamSink implements RunOutputSink<void> {
 	 */
 	getTerminalFinish(): { usage?: TokenUsage; model: string } {
 		const usage = this.services.applyCost(
-			mergeUsage(this.lastUsage, this.rawUsageReader?.getUsage()),
+			mergeUsage(this.lastUsage, withPromptSizeBreakdown(this.rawUsageReader?.getUsage())),
 		);
 		return { ...(usage && { usage }), model: this.services.modelId };
 	}

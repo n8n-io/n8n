@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, "failureSummary" text, "author" text, "acceptsSteering" BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT "CHK_agent_execution_storedAt" CHECK ((("storedAt" IN ('db', 'fs', 's3', 'az')))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK (((((("hitlStatus" IN ('suspended', 'resumed'))))))), CONSTRAINT "CHK_agent_execution_status" CHECK (("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted'))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, "failureSummary" text, "author" text, "acceptsSteering" BOOLEAN NOT NULL DEFAULT FALSE, "finishReason" VARCHAR(32), "guardrailCode" VARCHAR(64), "cacheReadTokens" integer, "cacheWriteTokens" integer, "parentExecutionId" varchar(36) CONSTRAINT "FK_agent_execution_parentExecutionId" REFERENCES "agent_execution" ("id") ON DELETE SET NULL, CONSTRAINT "CHK_agent_execution_storedAt" CHECK ((("storedAt" IN ('db', 'fs', 's3', 'az')))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK (((((("hitlStatus" IN ('suspended', 'resumed'))))))), CONSTRAINT "CHK_agent_execution_status" CHECK (("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted'))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -18,15 +18,20 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | acceptsSteering | BOOLEAN | FALSE | false |  |  |  |
 | attachments | TEXT |  | true |  |  |  |
 | author | TEXT |  | true |  |  |  |
+| cacheReadTokens | INTEGER |  | true |  |  |  |
+| cacheWriteTokens | INTEGER |  | true |  |  |  |
 | completionTokens | INTEGER |  | true |  |  |  |
 | cost | REAL |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | duration | INTEGER | 0 | false |  |  |  |
 | error | TEXT |  | true |  |  |  |
 | failureSummary | TEXT |  | true |  |  |  |
+| finishReason | VARCHAR(32) |  | true |  |  |  |
+| guardrailCode | VARCHAR(64) |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
-| id | varchar(36) |  | false | [agent_execution_message_links](agent_execution_message_links.md) [agent_message_queue](agent_message_queue.md) |  |  |
+| id | varchar(36) |  | false | [agent_background_job](agent_background_job.md) [agent_execution](agent_execution.md) [agent_execution_message_links](agent_execution_message_links.md) [agent_message_queue](agent_message_queue.md) |  |  |
 | model | varchar(255) |  | true |  |  |  |
+| parentExecutionId | varchar(36) |  | true |  | [agent_execution](agent_execution.md) |  |
 | promptTokens | INTEGER |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | datetime(3) |  | true |  |  |  |
@@ -47,6 +52,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | - | CHECK | CHECK (((((("hitlStatus" IN ('suspended', 'resumed'))))))) |
 | - | CHECK | CHECK (("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted'))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (parentExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_execution_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -55,6 +61,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | Name | Definition |
 | ---- | ---------- |
 | IDX_63d3c3a68b9cebf05f967f0b1c | CREATE INDEX "IDX_63d3c3a68b9cebf05f967f0b1c" ON "agent_execution" ("threadId", "createdAt")  |
+| IDX_agent_execution_parentExecutionId | CREATE INDEX "IDX_agent_execution_parentExecutionId" ON "agent_execution" ("parentExecutionId")  |
 | IDX_agent_execution_status | CREATE INDEX "IDX_agent_execution_status" ON "agent_execution" ("status") WHERE "status" = 'running' |
 | sqlite_autoindex_agent_execution_1 | PRIMARY KEY (id) |
 
@@ -63,6 +70,8 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 ```mermaid
 erDiagram
 
+"agent_background_job" }o--o| "agent_execution" : "FOREIGN KEY (sourceExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_execution" }o--o| "agent_execution" : "FOREIGN KEY (parentExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_execution_message_links" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (steeringExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
@@ -72,15 +81,20 @@ erDiagram
   BOOLEAN acceptsSteering
   TEXT attachments
   TEXT author
+  INTEGER cacheReadTokens
+  INTEGER cacheWriteTokens
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
   TEXT failureSummary
+  VARCHAR_32_ finishReason
+  VARCHAR_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
+  varchar_36_ parentExecutionId FK
   INTEGER promptTokens
   varchar_32_ source
   datetime_3_ startedAt
@@ -92,6 +106,31 @@ erDiagram
   INTEGER totalTokens
   datetime_3_ updatedAt
   TEXT userMessage
+}
+"agent_background_job" {
+  varchar_36_ childExecutionId
+  varchar_128_ childThreadId
+  datetime_3_ createdAt
+  TEXT error
+  varchar_36_ id PK
+  varchar_16_ kind
+  datetime_3_ notifiedAt
+  varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
+  varchar_128_ parentThreadId
+  varchar pauseRequestId
+  varchar planId FK
+  varchar planTaskId
+  TEXT result
+  datetime_3_ settledAt
+  varchar_36_ sourceExecutionId FK
+  varchar_16_ status
+  varchar_36_ subAgentId
+  datetime_3_ timeoutAt
+  varchar_255_ title
+  datetime_3_ updatedAt
+  varchar_36_ workflowId
 }
 "agent_execution_message_links" {
   datetime_3_ createdAt
@@ -125,6 +164,7 @@ erDiagram
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId
+  TEXT taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   INTEGER totalCompletionTokens

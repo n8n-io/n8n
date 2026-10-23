@@ -3,6 +3,7 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -19,7 +20,7 @@ import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 
 const props = defineProps<{
 	open: boolean;
-	connectionId: string;
+	environmentId: string;
 	branchName: string;
 }>();
 
@@ -107,7 +108,7 @@ async function submit() {
 	isSubmitting.value = true;
 	try {
 		// Whole-branch apply: no expectedSource, so the current branch tip is applied.
-		const result = await applyPromotion(rootStore.publicApiContext, props.connectionId);
+		const result = await applyPromotion(rootStore.publicApiContext, props.environmentId);
 		if (result.status === 'applied') {
 			await onApplied(result);
 			return;
@@ -170,36 +171,41 @@ function onBindingsOpenChange(open: boolean) {
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 
-		<form :class="$style.form" @submit.prevent="submit">
-			<N8nText color="text-base">
-				{{
-					i18n.baseText('settings.promotions.apply.dialog.body', {
-						interpolate: { branch: branchName },
-					})
-				}}
-			</N8nText>
-
-			<N8nDialogFooter>
-				<N8nButton
-					type="button"
-					variant="outline"
-					:disabled="isSubmitting"
-					data-test-id="apply-cancel-button"
-					@click="close"
-				>
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
-				<N8nButton type="submit" :loading="isSubmitting" data-test-id="apply-confirm-button">
-					{{ i18n.baseText('settings.promotions.apply.dialog.confirm') }}
-				</N8nButton>
-			</N8nDialogFooter>
-		</form>
+		<N8nDialogBody>
+			<form id="apply-instance-form" :class="$style.form" @submit.prevent="submit">
+				<N8nText color="text-base">
+					{{
+						i18n.baseText('settings.promotions.apply.dialog.body', {
+							interpolate: { branch: branchName },
+						})
+					}}
+				</N8nText>
+			</form>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				type="button"
+				variant="outline"
+				:disabled="isSubmitting"
+				data-test-id="apply-cancel-button"
+				@click="close"
+			>
+				{{ i18n.baseText('generic.cancel') }}
+			</N8nButton>
+			<N8nButton
+				type="submit"
+				form="apply-instance-form"
+				:loading="isSubmitting"
+				data-test-id="apply-confirm-button"
+			>
+				{{ i18n.baseText('settings.promotions.apply.dialog.confirm') }}
+			</N8nButton>
+		</N8nDialogFooter>
 	</N8nDialog>
 	<PromotionBindingsFlow
 		v-else
 		:open="true"
 		:blocked-result="blockedResult"
-		:continue-with="{ kind: 'instance' }"
 		@applied="onBindingsApplied"
 		@source-changed="onBindingsSourceChanged"
 		@update:open="onBindingsOpenChange"

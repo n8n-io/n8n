@@ -4,6 +4,7 @@ import { NodeApiError } from 'n8n-workflow';
 import {
 	buildMicrosoftGraphPath,
 	createMicrosoftGraphTransport,
+	type MicrosoftGraphContext,
 	type MicrosoftGraphCredentialType,
 	type MicrosoftGraphPathSegment,
 	rewriteNotFound,
@@ -50,9 +51,7 @@ export {
  * (App `Team.ReadBasic.All`). OAuth2 keeps the per-user `/v1.0/me/joinedTeams`.
  * Shared by `getTeams` (listSearch) and `fetchAllTeams` (trigger).
  */
-export function joinedTeamsEndpoint(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-): string {
+export function joinedTeamsEndpoint(this: MicrosoftGraphContext): string {
 	return getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH
 		? '/v1.0/teams'
 		: '/v1.0/me/joinedTeams';

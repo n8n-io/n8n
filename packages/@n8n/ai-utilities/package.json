@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -36,6 +36,9 @@
       ],
       "llm-output": [
         "dist/esm/llm-output/index.d.ts"
+      ],
+      "gen-ai": [
+        "dist/esm/gen-ai/index.d.ts"
       ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
@@ -100,6 +103,11 @@
       "types": "./dist/esm/llm-output/index.d.ts",
       "import": "./dist/esm/llm-output/index.js",
       "require": "./dist/cjs/llm-output/index.js"
+    },
+    "./gen-ai": {
+      "types": "./dist/esm/gen-ai/index.d.ts",
+      "import": "./dist/esm/gen-ai/index.js",
+      "require": "./dist/cjs/gen-ai/index.js"
     },
     "./web-search": {
       "types": "./dist/esm/web-search/index.d.ts",

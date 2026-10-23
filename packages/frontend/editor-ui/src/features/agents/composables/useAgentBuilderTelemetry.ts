@@ -6,7 +6,7 @@ import {
 	type AgentTelemetryStatus,
 } from './agentTelemetry.utils';
 import { syncAgentIntegrationStatusCache } from './useAgentIntegrationStatus';
-import { useAgentTelemetry } from './useAgentTelemetry';
+import { useAgentTelemetry, type KnowledgeUploadClientFailureReason } from './useAgentTelemetry';
 import type { AgentResource, AgentJsonConfig } from '../types';
 
 /**
@@ -20,14 +20,12 @@ export interface AgentBuilderTelemetryDeps {
 	agent: Ref<AgentResource | null>;
 	/** Local (unsaved) config — the fingerprint source for emitted events. */
 	localConfig: Ref<AgentJsonConfig | null>;
-	connectedTriggers: Ref<string[]>;
 }
 
 interface EditSnapshot {
 	agentId: string;
 	status: AgentTelemetryStatus;
 	config: AgentJsonConfig | null;
-	connectedTriggers: string[];
 }
 
 /**
@@ -70,16 +68,12 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			agentId: deps.agentId.value,
 			status: deriveAgentStatus(deps.agent.value),
 			config: deps.localConfig.value,
-			connectedTriggers: deps.connectedTriggers.value,
 		};
 	}
 
 	/**
-	 * Compute the agent's `config_version` fingerprint asynchronously, then hand
-	 * it to `emit`. Centralizes the async-IIFE + try/catch boilerplate that
-	 * every fingerprint-bearing event would otherwise duplicate. `crypto.subtle`
-	 * can throw in insecure contexts, so failures are swallowed — individual
-	 * track calls are already wrapped inside `useAgentTelemetry`.
+	 * Compute the fingerprint before each event. Ignore failures so telemetry
+	 * does not interrupt editing. Track calls also handle errors in `useAgentTelemetry`.
 	 */
 	function withFingerprint(
 		config: AgentJsonConfig | null,
@@ -117,6 +111,19 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			},
 			[payload.triggerType],
 		);
+	}
+
+	function trackTriggerRemoved(payload: { triggerType: string; triggers: string[] }) {
+		const s = snapshot();
+		withFingerprint(s.config, payload.triggers, (configVersion, configuredTriggers) => {
+			agentTelemetry.trackRemovedTrigger({
+				agentId: s.agentId,
+				triggerType: payload.triggerType,
+				triggers: configuredTriggers,
+				configVersion,
+				status: s.status,
+			});
+		});
 	}
 
 	/**
@@ -158,11 +165,39 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		agentTelemetry.trackOpenedAddSkillModal({ agentId: deps.agentId.value });
 	}
 
+	function trackOpenedKnowledgeTab() {
+		agentTelemetry.trackOpenedKnowledgeTab({ agentId: deps.agentId.value });
+	}
+
+	function trackStartedFileUpload(fileCount: number) {
+		agentTelemetry.trackStartedAddingKnowledge({
+			agentId: deps.agentId.value,
+			kind: 'file',
+			fileCount,
+		});
+	}
+
+	function trackStartedVectorStoreSetup() {
+		agentTelemetry.trackStartedAddingKnowledge({
+			agentId: deps.agentId.value,
+			kind: 'vector_store',
+		});
+	}
+
+	function trackRejectedFileUpload(reason: KnowledgeUploadClientFailureReason, fileCount: number) {
+		agentTelemetry.trackFailedKnowledgeUpload({ agentId: deps.agentId.value, reason, fileCount });
+	}
+
 	return {
 		trackTriggerAdded,
+		trackTriggerRemoved,
 		fetchInitialTriggersBaseline,
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackOpenedKnowledgeTab,
+		trackStartedFileUpload,
+		trackStartedVectorStoreSetup,
+		trackRejectedFileUpload,
 	};
 }

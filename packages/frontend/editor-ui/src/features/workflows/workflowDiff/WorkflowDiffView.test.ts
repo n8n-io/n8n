@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { defineComponent, h, ref, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { render, waitFor } from '@testing-library/vue';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { NodeDiffStatus } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
@@ -168,6 +168,14 @@ describe('WorkflowDiffView', () => {
 		vi.mocked(useWorkflowDiff).mockReturnValue(defaultWorkflowDiffMock());
 	});
 
+	it('names the navigation actions for assistive technology', () => {
+		const { getByRole } = render(WorkflowDiffView, { props: { showBackButton: true } });
+
+		expect(getByRole('button', { name: 'generic.back' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'workflowDiff.previousChange' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'workflowDiff.nextChange' })).toBeInTheDocument();
+	});
+
 	describe('tidyUp prop', () => {
 		const createMockWorkflow = (id: string, name: string) => ({
 			id,
@@ -328,6 +336,68 @@ describe('WorkflowDiffView', () => {
 			});
 		});
 
+		describe('canvas focus', () => {
+			it('releases wheel events until activated and after clicking outside or pressing Escape', async () => {
+				const { getByTestId, getByText, queryByText } = renderView({
+					props: { sourceWorkflow, targetWorkflow, requireCanvasFocus: true },
+				});
+				const viewer = getByTestId('workflow-diff-view');
+
+				expect(viewer).toHaveClass('nowheel');
+				expect(getByText('promotions.preview.workflow.activateCanvas')).toBeVisible();
+
+				await userEvent.click(viewer);
+				expect(viewer).not.toHaveClass('nowheel');
+				expect(queryByText('promotions.preview.workflow.activateCanvas')).not.toBeInTheDocument();
+
+				await userEvent.click(document.body);
+				expect(viewer).toHaveClass('nowheel');
+
+				await userEvent.click(viewer);
+				await userEvent.keyboard('{Escape}');
+				expect(viewer).toHaveClass('nowheel');
+			});
+
+			it('supports keyboard focus and releases wheel events when focus leaves', async () => {
+				const { getByTestId } = renderView({
+					props: { sourceWorkflow, targetWorkflow, requireCanvasFocus: true },
+				});
+				const viewer = getByTestId('workflow-diff-view');
+
+				expect(viewer).toHaveAttribute('tabindex', '0');
+				await fireEvent.focusIn(viewer);
+				expect(viewer).not.toHaveClass('nowheel');
+				await fireEvent.focusOut(viewer, { relatedTarget: document.body });
+				expect(viewer).toHaveClass('nowheel');
+			});
+
+			it('enables wheel navigation in fullscreen and resets it on return', async () => {
+				const { getByTestId } = renderView({
+					props: {
+						sourceWorkflow,
+						targetWorkflow,
+						requireCanvasFocus: true,
+						showFullscreenButton: true,
+					},
+				});
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+				expect(getByTestId('workflow-diff-view')).not.toHaveClass('nowheel');
+				await userEvent.keyboard('{Escape}');
+				expect(getByTestId('workflow-diff-view')).toHaveClass('nowheel');
+			});
+
+			it('keeps wheel navigation enabled by default', () => {
+				const { getByTestId, queryByText } = renderView({
+					props: { sourceWorkflow, targetWorkflow },
+				});
+
+				expect(getByTestId('workflow-diff-view')).not.toHaveClass('nowheel');
+				expect(getByTestId('workflow-diff-view')).not.toHaveAttribute('tabindex');
+				expect(queryByText('promotions.preview.workflow.activateCanvas')).not.toBeInTheDocument();
+			});
+		});
+
 		describe('fullscreen toggle', () => {
 			it('is hidden by default, so the modal and full-page usages are unaffected', () => {
 				const { queryByTestId } = renderView({
@@ -351,6 +421,18 @@ describe('WorkflowDiffView', () => {
 
 				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
 				expect(getByTestId('workflow-diff-view').parentElement).not.toBe(baseElement);
+			});
+
+			it('hides the workflow name when hideTitle is set, but shows it in fullscreen', async () => {
+				const { getByTestId, queryByText } = renderView({
+					props: { sourceWorkflow, targetWorkflow, showFullscreenButton: true, hideTitle: true },
+				});
+
+				expect(queryByText('Source Workflow')).not.toBeInTheDocument();
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+
+				expect(queryByText('Source Workflow')).toBeInTheDocument();
 			});
 
 			it('leaves fullscreen on Escape', async () => {

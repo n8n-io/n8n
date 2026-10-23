@@ -114,4 +114,21 @@ describe('AgentChannelWhatsAppIdentityCard', () => {
 
 		expect(getByTestId('whatsapp-connect')).toBeDisabled();
 	});
+
+	it('links to WhatsApp Manager in the settings only', () => {
+		const { getByTestId, queryByTestId, rerender } = renderComponent({
+			props: { profile: PROFILE, showManagerLink: true },
+		});
+
+		const link = getByTestId('whatsapp-manager-link');
+		expect(link).toHaveAttribute(
+			'href',
+			'https://business.facebook.com/latest/whatsapp_manager/phone_numbers/',
+		);
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(link).toHaveTextContent('agents.channels.whatsapp.settings.editInManager');
+
+		void rerender({ profile: PROFILE, showManagerLink: false });
+		return Promise.resolve().then(() => expect(queryByTestId('whatsapp-manager-link')).toBeNull());
+	});
 });

@@ -389,7 +389,7 @@ function makePlanReviewMessage(): InstanceAiMessage {
 		toolCalls: [
 			{
 				toolCallId: 'tc-plan',
-				toolName: 'create-tasks',
+				toolName: 'workflow_builder_create_tasks',
 				args: {},
 				isLoading: true,
 				confirmationStatus: 'pending',
@@ -1719,7 +1719,7 @@ describe('InstanceAiThreadView', () => {
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
 				toolCall: {
 					toolCallId: 'tc-1',
-					toolName: 'workflows',
+					toolName: 'workflow_builder_workflows',
 					args: { action: 'run' },
 					isLoading: true,
 					confirmationStatus: 'pending',
@@ -1741,7 +1741,7 @@ describe('InstanceAiThreadView', () => {
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
 				toolCall: {
 					toolCallId: 'tc-q',
-					toolName: 'ask-user',
+					toolName: 'workflow_builder_ask_user',
 					args: {},
 					isLoading: true,
 					confirmationStatus: 'pending',
@@ -1910,7 +1910,7 @@ describe('InstanceAiThreadView', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-create-agent',
-						toolName: 'build-agent',
+						toolName: 'agent_builder_build_agent',
 						args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
 						isLoading: false,
 						result: { ok: true, builderReply: 'Created the agent.' },
@@ -2106,7 +2106,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId,
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							args: {},
 							isLoading: false,
 							result: { success: true, workflowId },
@@ -2219,7 +2219,7 @@ describe('InstanceAiThreadView', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-build-agent',
-						toolName: 'build-agent',
+						toolName: 'agent_builder_build_agent',
 						args: { message: 'Build me an SEO auditor', name: 'SEO Auditor' },
 						isLoading: true,
 					},
@@ -2386,7 +2386,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-build',
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							args: {},
 							isLoading: false,
 							result: { success: true, workflowId },
@@ -2534,7 +2534,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-call-1',
-							toolName: 'call_agent',
+							toolName: 'agent_builder_call_agent',
 							args: { message: 'Summarize the thread about the outage' },
 							isLoading: false,
 							result: {
@@ -2871,7 +2871,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-call-1',
-							toolName: 'call_agent',
+							toolName: 'agent_builder_call_agent',
 							args: { message: 'Summarize the thread about the outage' },
 							isLoading: false,
 							result: {

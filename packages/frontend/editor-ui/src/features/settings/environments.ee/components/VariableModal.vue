@@ -185,9 +185,16 @@ const destinationName = computed(() =>
 	props.destination?.kind === 'resolved' ? props.destination.project.name : props.destination?.name,
 );
 
+// On a protected instance, source control owns which variables exist and their keys.
+// Users can still edit values, because source control does not carry them.
+// Bindings can still be created during the promotion apply flow.
+const isProtectedInstance = computed(() => sourceControlStore.preferences.branchReadOnly);
+const isKeyLocked = computed(() => props.mode === 'edit' && isProtectedInstance.value);
+
 const canCreate = computed(() => {
+	if (props.mode === 'new' && isProtectedInstance.value && !props.allowOnProtectedInstance)
+		return false;
 	if (!props.onCreate) return true;
-	if (sourceControlStore.preferences.branchReadOnly) return false;
 	const destination = props.destination;
 	if (!destination)
 		return !!getResourcePermissions(usersStore.currentUser?.globalScopes).variable.create;
@@ -282,7 +289,7 @@ onMounted(async () => {
 				<N8nFormInput
 					ref="keyInputRef"
 					v-model="form.key"
-					:disabled="fixedKey || loading"
+					:disabled="fixedKey || isKeyLocked || loading"
 					:label="i18n.baseText('variables.modal.key.label')"
 					name="key"
 					focus-initially

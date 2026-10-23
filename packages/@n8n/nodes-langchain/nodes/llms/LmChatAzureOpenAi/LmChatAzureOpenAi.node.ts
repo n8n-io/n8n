@@ -40,7 +40,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		displayName: 'Microsoft Foundry Chat Model',
 
 		name: 'lmChatAzureOpenAi',
-		icon: 'file:azure.svg',
+		icon: 'file:foundry.svg',
 		group: ['transform'],
 		version: [1, 1.1],
 		defaultVersion: 1.1,
@@ -223,7 +223,12 @@ export class LmChatAzureOpenAi implements INodeType {
 					maxTokens: options.maxTokens && options.maxTokens > 0 ? options.maxTokens : undefined,
 					maxRetries: options.maxRetries ?? 2,
 					invocationKwargs: extraBodyKwargs,
-					callbacks: [new N8nLlmTracing(this, { tokensUsageParser: anthropicTokensUsageParser })],
+					callbacks: [
+						new N8nLlmTracing(this, {
+							tokensUsageParser: anthropicTokensUsageParser,
+							genAiProviderName: 'anthropic',
+						}),
+					],
 					onFailedAttempt: makeN8nLlmFailedAttemptHandler(
 						this,
 						makeAzureFoundryFailedAttemptHandler(modelName, false, 'anthropic'),

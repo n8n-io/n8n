@@ -175,7 +175,11 @@ describe('buildAgentPlanDisplayGroups', () => {
 		const message = update(progress, {
 			state: 'running',
 			output: undefined,
-			input: { planId: initial.planId, expectedRevision: 1, document: progress },
+			input: {
+				planId: initial.planId,
+				expectedRevision: 1,
+				document: { items: [{ id: planTask(1).id, status: 'done' }] },
+			},
 		});
 		const messages = [previous, message];
 		const call = message.toolCalls![0];
@@ -187,6 +191,69 @@ describe('buildAgentPlanDisplayGroups', () => {
 
 		call.output = output;
 		expect(visibleCalls(messages)).toEqual(visible ? [initialCallId, 'update'] : [initialCallId]);
+	});
+
+	describe.each(['pending', 'running', 'done'] as const)('partial %s updates', (state) => {
+		it.each([
+			['task progress', { items: [{ id: planTask(1).id, status: 'done', title: 'Researched' }] }],
+			['cleared result', { items: [{ id: planTask(1).id, resultSummary: null }] }],
+			['presentation', { presentation: { label: 'Researching' } }],
+			['presentation detail', { presentation: { detail: null } }],
+			['cleared presentation', { presentation: null }],
+			['empty items', { items: [] }],
+			['unchanged scope', { items: [{ id: planTask(1).id, description: 'Find candidates' }] }],
+		])('hides %s before its result arrives', (_name, document) => {
+			const messages = [
+				planMessage(initial),
+				update(progress, {
+					state,
+					output: undefined,
+					input: { planId: initial.planId, expectedRevision: 1, document, removeItemIds: [] },
+				}),
+			];
+			const before = structuredClone(messages);
+			expect(visibleCalls(messages)).toEqual([initialCallId]);
+			expect(messages).toEqual(before);
+		});
+
+		it('hides child progress without the group fields or sibling tasks', () => {
+			const group = { ...planTask(10), kind: 'group', tasks: initial.document.items };
+			const previous = planMessage({
+				...initial,
+				document: { ...initial.document, items: [group] },
+			});
+			const call = update(progress, {
+				state,
+				output: undefined,
+				input: {
+					planId: initial.planId,
+					expectedRevision: 1,
+					document: { items: [{ id: group.id, tasks: [{ id: planTask(1).id, status: 'done' }] }] },
+				},
+			});
+			expect(visibleCalls([previous, call])).toEqual([initialCallId]);
+		});
+
+		it.each([
+			['plan title', { document: { title: 'New goal' } }],
+			['description', { document: { items: [{ id: planTask(1).id, description: 'New scope' }] } }],
+			['dependencies', { document: { items: [{ id: planTask(2).id, dependsOn: [] }] } }],
+			['fallback', { document: { items: [{ id: planTask(2).id, fallbackFor: planTask(1).id }] } }],
+			['removal', { document: {}, removeItemIds: [planTask(1).id] }],
+			['removal with full document', { document: progress, removeItemIds: [planTask(1).id] }],
+			['new item', { document: { items: [{ ...planTask(3), id: 'new:task' }] } }],
+			['unknown item', { document: { items: [{ id: planTask(99).id, status: 'done' }] } }],
+			['unknown field', { document: { items: [{ id: planTask(1).id, futureRule: true }] } }],
+			['tasks on a task', { document: { items: [{ id: planTask(1).id, tasks: [] }] } }],
+			['duplicate item', { document: { items: [{ id: planTask(1).id }, { id: planTask(1).id }] } }],
+		])('keeps %s visible', (_name, input) => {
+			const call = update(progress, {
+				state,
+				output: undefined,
+				input: { planId: initial.planId, expectedRevision: 1, ...input },
+			});
+			expect(visibleCalls([planMessage(initial), call])).toEqual([initialCallId, 'update']);
+		});
 	});
 
 	it.each([

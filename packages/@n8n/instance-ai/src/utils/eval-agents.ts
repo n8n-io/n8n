@@ -4,6 +4,7 @@ import {
 	Agent,
 	Tool,
 	type AnthropicThinkingEffort,
+	type BuiltTelemetry,
 	type ExecutionOptions,
 	type GenerateResult,
 	type ModelConfig,
@@ -244,6 +245,7 @@ export function createEvalAgent(
 		cache?: boolean;
 		/** Host-resolved model used when no eval model API key is configured in the environment. */
 		fallbackModelConfig?: ModelConfig;
+		telemetry?: BuiltTelemetry;
 		/** Use `N8N_INSTANCE_AI_EVAL_JUDGE_MODEL` / `_JUDGE_EFFORT` instead of the default eval settings. */
 		judge?: boolean;
 	},
@@ -253,6 +255,7 @@ export function createEvalAgent(
 		options.fallbackModelConfig,
 	);
 	const agent = new Agent(name).model(model);
+	if (options.telemetry) agent.telemetry(options.telemetry);
 
 	if (options.cache) {
 		agent.instructions(options.instructions, CACHE_PROVIDER_OPTS);

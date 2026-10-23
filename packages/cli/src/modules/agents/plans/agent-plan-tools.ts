@@ -1,5 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
+import { planLeaves } from './agent-plan-work-state';
 import type { OperationContext } from '@n8n/db';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -15,6 +16,7 @@ import {
 	type AgentPlanDocument,
 	type AgentPlanItem,
 } from './agent-plan.schema';
+import { isFinal } from './agent-plan.validation';
 
 const itemId = z.union([
 	z.string().uuid().toLowerCase(),
@@ -22,16 +24,43 @@ const itemId = z.union([
 		.string()
 		.regex(/^new:[A-Za-z0-9_-]+$/, 'Use a temporary ID such as new:research for new items.'),
 ]);
+
 const itemFields = { id: itemId, dependsOn: z.array(itemId) };
+
 const taskInput = agentPlanTaskSchema
 	.omit({ startedAt: true, endedAt: true })
 	.extend({ ...itemFields, fallbackFor: itemId.optional() });
+
 const groupInput = agentPlanGroupSchema
 	.omit({ startedAt: true, endedAt: true })
 	.extend({ ...itemFields, tasks: z.array(taskInput) });
+
 const documentInput = agentPlanDocumentSchema.extend({
 	items: z.array(z.discriminatedUnion('kind', [taskInput, groupInput])),
 });
+
+const taskUpdate = taskInput.partial().required({ id: true }).extend({
+	resultSummary: taskInput.shape.resultSummary.unwrap().nullable().optional(),
+	fallbackFor: taskInput.shape.fallbackFor.unwrap().nullable().optional(),
+});
+
+const itemUpdate = taskUpdate.extend({
+	kind: z.enum(['task', 'group']).optional(),
+	tasks: z.array(taskUpdate).optional(),
+});
+
+const documentUpdate = documentInput.partial().extend({
+	presentation: agentPlanDocumentSchema.shape.presentation
+		.unwrap()
+		.partial()
+		.extend({
+			detail: z.string().trim().min(1).nullable().optional(),
+		})
+		.nullable()
+		.optional(),
+	items: z.array(itemUpdate).optional(),
+});
+
 const writeInput = z
 	.object({
 		planId: z.string().uuid().toLowerCase(),
@@ -40,6 +69,104 @@ const writeInput = z
 	.strict();
 
 type AgentPlanDocumentInput = z.infer<typeof documentInput>;
+
+function withoutTiming<Item extends AgentPlanItem>(item: Item) {
+	const { startedAt, endedAt, ...visible } = item;
+	return visible;
+}
+
+function mergeDocumentUpdate(
+	previous: AgentPlanDocument,
+	update: z.infer<typeof documentUpdate>,
+	removeItemIds: string[],
+): AgentPlanDocumentInput {
+	const existing = new Map(
+		previous.items
+			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
+			.map((item) => [item.id, item]),
+	);
+
+	const removed = new Set(removeItemIds);
+	if (removed.size !== removeItemIds.length) {
+		throw new AgentPlanValidationError('Removal IDs must be unique.');
+	}
+
+	for (const id of removeItemIds) {
+		const item = existing.get(id);
+		if (!item) throw new AgentPlanValidationError(`Unknown removal ID: ${id}`);
+		if (item.kind === 'group') {
+			for (const task of item.tasks) removed.add(task.id);
+		}
+	}
+
+	const updated = new Set<string>();
+	const mergeItems = (
+		items: AgentPlanItem[],
+		changes: Array<z.infer<typeof itemUpdate>>,
+	): unknown[] => {
+		const merged = new Map<string, unknown>();
+		for (const item of items) {
+			if (removed.has(item.id)) continue;
+
+			merged.set(
+				item.id,
+				item.kind === 'group'
+					? { ...withoutTiming(item), tasks: mergeItems(item.tasks, []) }
+					: withoutTiming(item),
+			);
+		}
+
+		for (const change of changes) {
+			if (updated.has(change.id)) {
+				throw new AgentPlanValidationError(`Duplicate update ID: ${change.id}`);
+			}
+			updated.add(change.id);
+
+			if (removed.has(change.id)) {
+				throw new AgentPlanValidationError(`Cannot update and remove the same item: ${change.id}`);
+			}
+
+			const current = items.find((item) => item.id === change.id);
+			if (!current && !change.id.startsWith('new:')) {
+				throw new AgentPlanValidationError(`Unknown item ID at this level: ${change.id}`);
+			}
+
+			const { tasks, ...fields } = change;
+			const item = { ...(current ? withoutTiming(current) : {}), ...fields };
+			if (item.resultSummary === null) delete item.resultSummary;
+			if (item.fallbackFor === null) delete item.fallbackFor;
+			merged.set(
+				change.id,
+				tasks !== undefined || item.kind === 'group'
+					? {
+							...item,
+							tasks: mergeItems(current?.kind === 'group' ? current.tasks : [], tasks ?? []),
+						}
+					: item,
+			);
+		}
+
+		return [...merged.values()];
+	};
+
+	const { items, presentation, ...fields } = update;
+	const nextPresentation =
+		presentation === null
+			? undefined
+			: {
+					...previous.presentation,
+					...presentation,
+				};
+
+	if (nextPresentation?.detail === null) delete nextPresentation.detail;
+
+	return documentInput.parse({
+		...previous,
+		...fields,
+		presentation: presentation === undefined ? previous.presentation : nextPresentation,
+		items: mergeItems(previous.items, items ?? []),
+	});
+}
 
 function prepareDocument(
 	data: AgentPlanDocumentInput,
@@ -60,6 +187,7 @@ function prepareDocument(
 			if (aliases.has(item.id)) {
 				throw new AgentPlanValidationError(`Duplicate temporary ID: ${item.id}`);
 			}
+
 			aliases.set(item.id, randomUUID());
 		} else if (!existing.has(item.id)) {
 			throw new AgentPlanValidationError(`Use a new: temporary ID for the new item: ${item.id}`);
@@ -97,7 +225,7 @@ function prepareDocument(
 	};
 }
 
-function presentPlan(plan: AgentPlanSnapshot | null) {
+export function presentPlan(plan: AgentPlanSnapshot | null) {
 	if (!plan) return null;
 
 	const startedAt =
@@ -107,16 +235,22 @@ function presentPlan(plan: AgentPlanSnapshot | null) {
 			.filter((timestamp): timestamp is string => timestamp !== null)
 			.sort()[0] ?? null;
 
-	const withoutTiming = <Item extends AgentPlanItem>(item: Item) => {
-		const { startedAt, endedAt, ...visible } = item;
-		return visible;
-	};
+	const leaves = planLeaves(plan.data);
+	const finishedAt =
+		leaves.length > 0 && leaves.every((item) => isFinal(item.status))
+			? (leaves
+					.map((item) => item.endedAt)
+					.filter((timestamp): timestamp is string => timestamp !== null)
+					.sort()
+					.at(-1) ?? null)
+			: null;
 
 	return {
 		planId: plan.id,
 		revision: plan.revision,
 		closed: plan.closedAt !== null,
 		startedAt,
+		finishedAt,
 		closedAt: plan.closedAt?.toISOString() ?? null,
 		document: {
 			...plan.data,
@@ -208,11 +342,16 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 					'Do not add final communication-only tasks, such as "Presented findings to user", to the plan. ' +
 					'Include such a task only when it requires a sub-agent or a tool call beyond plan maintenance. ' +
 					'If the current plan content and revision are not in context, call read_plan before updating the plan. ' +
+					'For update_plan, send only fields that must change. Do not resend the full plan, unchanged items, or unchanged descriptions and dependencies. ' +
+					'For a task status change, send document.items with only the task id, status, and any changed title or resultSummary. ' +
+					'For a child task, include its group id and put the child update in tasks. Omitted fields and items stay unchanged. ' +
+					'If an update is rejected, correct it and retry before reporting progress. Read the plan again if the revision changed. ' +
 					'For sub-agent work on a plan task, always use delegate_subagent with mode: "background", even for short or sequential tasks. ' +
 					'Do not use foreground delegation for plan work. ' +
 					'This rule overrides the default foreground-delegation guidance for plan work. ' +
 					'If background mode is unavailable, explain the limitation instead of delegating plan work in the foreground. ' +
 					'Keep task and group statuses current. Accept results before marking work Done. ' +
+					'This includes work you complete in your own reply, such as a comparison or recommendation. Mark that task Done before giving the final answer. ' +
 					'Before announcing plan changes or task progress to the user, always update the plan with that information. ' +
 					'Wait for the plan update to succeed before announcing the change. ' +
 					'Use presentation.label for a short, factual activity label in the plan card. ' +
@@ -240,14 +379,21 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 		).build(),
 		scopedTool(
 			'update_plan',
-			'Replace the complete active plan at the expected revision. Keep permanent IDs for existing items. ' +
-				'Use new: names for new items and their references. Omit timestamps. ' +
+			'Update only the supplied fields at the expected revision. Omitted fields and items stay unchanged. ' +
+				'Send only changed fields. Merge document.items and group tasks by id. Existing items keep their order; new items append. ' +
+				'Use removeItemIds to remove items explicitly; an empty items or tasks list removes nothing. ' +
+				'For new items, supply all required fields and use new: names for their IDs and references. Omit timestamps. ' +
+				'Set presentation, presentation.detail, resultSummary, or fallbackFor to null to clear it. ' +
+				'A supplied dependsOn list replaces the saved list. Use [] to clear it. ' +
 				'Dependencies connect siblings only. Prerequisites must be done before work starts or completes. ' +
 				'New tasks and groups must have status "pending". Change their statuses in a separate update after this write succeeds. ' +
-				'Final items cannot change. Only pending items can be removed. ' +
+				'Final items cannot change. In-progress tasks cannot change description or dependencies. Only pending items can be removed. ' +
 				'fallbackFor references a failed or cancelled sibling task. Read the saved result for redirected dependencies.',
-			writeInput.extend({ document: documentInput }),
-			async ({ document, ...input }, threadId, ctx) => {
+			writeInput.extend({
+				document: documentUpdate,
+				removeItemIds: z.array(z.string().uuid().toLowerCase()).optional(),
+			}),
+			async ({ document, removeItemIds, ...input }, threadId, ctx) => {
 				const current = await service.findPlan(threadId, input.planId, ctx);
 				if (!current || current.closedAt !== null || current.revision !== input.expectedRevision) {
 					throw new AgentPlanWriteConflictError();
@@ -257,7 +403,10 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 						...input,
 						threadId,
 						formatVersion: AGENT_PLAN_FORMAT_VERSION,
-						data: prepareDocument(document, current.data),
+						data: prepareDocument(
+							mergeDocumentUpdate(current.data, document, removeItemIds ?? []),
+							current.data,
+						),
 					},
 					ctx,
 				);

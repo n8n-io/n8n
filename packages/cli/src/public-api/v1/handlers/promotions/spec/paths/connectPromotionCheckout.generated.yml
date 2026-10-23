@@ -1,0 +1,36 @@
+operationId: connectPromotionCheckout
+tags:
+  - Promotions
+summary: Connect an environment
+description: Prepares the environment on the instance that handles the request. For a Git provider, this clones the configured branch into local storage. Safe to call repeatedly. Connecting one environment does not make another ready.
+x-required-scope: gitConnection:clone
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionCheckoutPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

@@ -1,3 +1,4 @@
+import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { WorkflowEditorLockedError } from '../../../errors/workflow-editor-locked.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
@@ -40,6 +41,18 @@ describe('createSaveFailureRemediation', () => {
 		});
 	});
 
+	it('classifies the outside-project error by type, not by message text', () => {
+		const error = new OutsideThreadProjectError();
+		error.message = 'Workflow save failed';
+
+		expect(createSaveFailureRemediation(error, true)).toMatchObject({
+			reason: 'workflow_outside_thread_project',
+		});
+		expect(
+			createSaveFailureRemediation(new Error('Workflow save failed', { cause: error }), true),
+		).toMatchObject({ reason: 'workflow_outside_thread_project' });
+	});
+
 	it('returns bound_workflow_not_found for WorkflowNotFoundError', () => {
 		const remediation = createSaveFailureRemediation(
 			new WorkflowNotFoundError('invoice-processing'),
@@ -80,6 +93,6 @@ describe('createSaveFailureRemediation', () => {
 			reason: 'workflow_id_not_found',
 		});
 		expect(remediation.guidance).toContain('omit workflowId');
-		expect(remediation.guidance).toContain('workflows()');
+		expect(remediation.guidance).toContain('workflow_builder_workflows()');
 	});
 });

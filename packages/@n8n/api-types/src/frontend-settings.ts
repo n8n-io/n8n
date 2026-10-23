@@ -183,11 +183,6 @@ export interface FrontendSettings {
 	workflowsGroupsWithTriggersEnabled: boolean;
 	workflowsGroupsWithManyBoundariesEnabled: boolean;
 	useWorkflowPublicationService: boolean;
-	/**
-	 * Granular credential sharing: a personal credential is usable in any
-	 * project its owner works in. Set from `N8N_ENV_FEAT_CRED_SHARING`.
-	 */
-	granularCredentialSharing: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -404,7 +399,6 @@ export type FrontendModuleSettings = {
 	'instance-ai'?: {
 		enabled: boolean;
 		mcpConnectionsAvailable: boolean;
-		localGatewayDisabled: boolean;
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
@@ -415,6 +409,7 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
+		workflowSuggestionsEnabled: boolean;
 	};
 
 	/**

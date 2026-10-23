@@ -30,6 +30,7 @@ import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
+import { ProductionHold } from '@/memory-guard/production-hold';
 import type { Telemetry } from '@/telemetry';
 
 vi.mock('@n8n/utils/sleep', () => ({
@@ -279,6 +280,7 @@ describe('ActiveExecutions', () => {
 					deployment: { type: 'default' },
 				}),
 				mock<License>(),
+				new ProductionHold(),
 			);
 			return service;
 		};
@@ -421,6 +423,18 @@ describe('ActiveExecutions', () => {
 	});
 
 	describe('finalizeExecution', () => {
+		test('old promise cleanup leaves a replacement entry intact', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			const oldEntry = activeExecutions.getExecutionOrFail(executionId);
+			await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
+			const resumedEntry = activeExecutions.getExecutionOrFail(executionId);
+
+			oldEntry.postExecutePromise.resolve(undefined);
+			await new Promise(setImmediate);
+
+			expect(activeExecutions.getExecutionOrFail(executionId)).toBe(resumedEntry);
+		});
+
 		test('Should not remove a waiting execution', async () => {
 			const executionId = await activeExecutions.add(executionData);
 			activeExecutions.setStatus(executionId, 'waiting');

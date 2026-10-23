@@ -9,7 +9,7 @@ description: >-
   key page or test endpoint is wrong.
 recommended_tools:
   - research
-  - workflows
+  - workflow_builder_workflows
 ---
 
 # Credential Recipe Research

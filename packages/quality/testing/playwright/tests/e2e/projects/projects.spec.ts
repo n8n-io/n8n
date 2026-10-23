@@ -134,8 +134,10 @@ test.describe(
 
 				await n8n.canvas.openNode('Append a block');
 
-				// Credential is inaccessible after move, so empty state is shown
-				await expect(n8n.ndv.getNodeCredentialsEmptyState()).toBeVisible();
+				// The owner's credential stays on the node, marked as one the member
+				// cannot use, so the member can switch to a credential of their own
+				await expect(n8n.ndv.credentials.getUnusableWarning()).toBeVisible();
+				await expect(n8n.ndv.getNodeCredentialsEmptyState()).toBeHidden();
 			});
 
 			test('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', async ({

@@ -33,13 +33,25 @@ export interface GenerateValidatedJsonOptions<T> {
 	fallbackModelConfig?: ModelConfig;
 }
 
+/** Tracing must never block a model call: when it fails, the call runs without spans. */
+async function helperTelemetry(agentName: string) {
+	try {
+		const { getCurrentHelperTelemetry } = await import('../tracing/langsmith-tracing.js');
+		return getCurrentHelperTelemetry(agentName);
+	} catch {
+		return undefined;
+	}
+}
+
 export async function generateValidatedJson<T>(
 	agentName: string,
 	options: GenerateValidatedJsonOptions<T>,
 ): Promise<ValidatedJsonResult<T>> {
+	const telemetry = await helperTelemetry(agentName);
 	let text: string;
 	try {
 		const llm = createEvalAgent(agentName, {
+			telemetry,
 			model: options.model,
 			instructions: options.instructions,
 			fallbackModelConfig: options.fallbackModelConfig,

@@ -538,6 +538,15 @@ describe('aiGateway.store', () => {
 
 			expect(store.isCredentialTypeSupported('googlePalmApi')).toBe(false);
 		});
+
+		it('supports an MCP registry Gateway credits type without serving it as a model provider', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isCredentialTypeSupported('n8nConnectFirecrawlMcpAiGatewayApi')).toBe(true);
+			expect(store.canServeCredentialType('n8nConnectFirecrawlMcpAiGatewayApi')).toBe(false);
+		});
 	});
 
 	describe('isActionSupported()', () => {

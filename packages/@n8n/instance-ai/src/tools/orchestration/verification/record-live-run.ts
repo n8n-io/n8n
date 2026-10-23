@@ -1,8 +1,8 @@
 /**
  * Live runs as verification evidence.
  *
- * `verify-built-workflow` always simulates nodes with side effects, so the live
- * test it recommends runs through `executions(action="run")`. Without this, the
+ * `workflow_builder_verify_built_workflow` always simulates nodes with side effects, so the live
+ * test it recommends runs through `workflow_builder_executions(action="run")`. Without this, the
  * stored claim keeps the simulated verdict and the publish gate warns about a
  * path the user just saw succeed.
  */
@@ -10,6 +10,7 @@
 import { analyzeVerificationResult, countProducedOutputRows } from './analyze-result';
 import { deriveVerificationClaim } from './claim';
 import type { ExecutionRunResult } from './types';
+import { emitWorkflowVerificationMetric } from './verification-metric';
 import type { InstanceAiContext } from '../../../types';
 import type { VerificationClaim } from '../../../workflow-loop/workflow-loop-state';
 
@@ -61,7 +62,7 @@ export async function recordLiveRunVerification(args: {
 		});
 		if (claim.level !== 'verified') return undefined;
 
-		return await workflowTaskService.recordVerification(outcome.workItemId, {
+		const storedClaim = await workflowTaskService.recordVerification(outcome.workItemId, {
 			attempted: true,
 			success: true,
 			executionId: result.executionId || undefined,
@@ -73,6 +74,14 @@ export async function recordLiveRunVerification(args: {
 			},
 			verifiedAt: new Date().toISOString(),
 		});
+		await emitWorkflowVerificationMetric(context.tracing, {
+			source: 'live_run',
+			workflowId,
+			workItemId: outcome.workItemId,
+			executionId: result.executionId || undefined,
+			claim: storedClaim ?? claim,
+		});
+		return storedClaim;
 	} catch (error) {
 		// Advisory: the run itself succeeded, and the stored verdict stays as it was.
 		context.logger.warn('Failed to record a live run as verification evidence', {

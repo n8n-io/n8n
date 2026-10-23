@@ -41,6 +41,18 @@ const agentSessionMetrics = {
 		.describe('Recorded-turn tokens only; reconciles with cost_sum, unlike token_count'),
 	tool_call_count_sum: z.number(),
 	num_skills_sum: z.number(),
+	skill_load_count_sum: z
+		.number()
+		.optional()
+		.describe(
+			'Successful `load_skill` calls that activated a skill. A read of a linked file does not count. Absent on rows before CONTEXT-335',
+		),
+	loaded_skill_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct ids of the skills those calls activated, sorted. Join to "User created skill" for the scope. Absent on rows before CONTEXT-335',
+		),
 };
 
 // Spread into the session-metrics payload, matching `IAgentConfigurationTelemetryProperties`.
@@ -64,7 +76,7 @@ const agentConfigurationTelemetry = {
 // is stable across an editing session rather than only true on the first edit.
 const builderPreWriteStatus = agentStatus.describe("Agent status before the builder's write");
 
-const sessionId = z.string().describe('Editor push session id (pushRef)');
+const pushRef = z.string().describe('Editor push reference (pushRef)');
 
 const agentConfigFingerprint = z.object({
 	instructions: z.string(),
@@ -110,6 +122,7 @@ const agentConfigPart = z.enum([
 	'credential',
 	'memory',
 	'name',
+	'description',
 	'config',
 	'tools',
 	'providerTools',
@@ -139,6 +152,12 @@ const agentCapabilityProfile = {
 	capability_count: z.number(),
 	tool_count: z.number(),
 	skill_count: z.number(),
+	skill_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Ids of the attached skills, sorted. Join to "User created skill" for the scope, to tell a shared skill from an agent-local one. Absent on rows before CONTEXT-335',
+		),
 	sub_agent_count: z.number(),
 	mcp_server_count: z.number(),
 	vector_store_count: z.number(),
@@ -146,6 +165,27 @@ const agentCapabilityProfile = {
 	trigger_count: z.number(),
 	model: z.string().nullable(),
 	tool_types: z.array(z.string()).describe('Tool types, never user-authored tool names'),
+};
+
+/** Present when the builder write or publish ran inside an n8n Assistant thread. */
+const builderWriteSession = {
+	thread_id: z
+		.string()
+		.optional()
+		.describe('Instance AI thread hosting the builder session. Absent on rows before CONTEXT-335'),
+	run_id: z
+		.string()
+		.optional()
+		.describe('Instance AI run that made the change. Absent on rows before CONTEXT-335'),
+};
+
+const agentKnowledgeModification = {
+	vector_store_fingerprints: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Codes that identify the knowledge sources connected to the agent after a change. Each code is a keyed hash of the provider and source name, and of the Pinecone namespace when one is set, with a key that is different for each instance. In one instance, the same provider and source name produce the same code, even across different accounts. The list contains each code once. An empty list means no sources remain. This field is sent when the vector store settings change, also when the connected sources stay the same.',
+		),
 };
 
 /**
@@ -185,12 +225,43 @@ const n8nChatVariant = z
 	.nullable()
 	.describe('The 125_agents_n8n_chat PostHog variant; null when the user has no flag value');
 
+const n8nChatHint = z
+	.enum(['channel_chip', 'new_chat_sidebar'])
+	.describe('Which n8n Chat hint popover the event is about');
+
 const agentPublish = {
 	...agentActorIdentity,
 	...agentCapabilityProfile,
 	trigger: agentPublishTrigger,
 	version_id: z.string().describe('AgentHistory versionId that became active'),
+	knowledge_file_count: z
+		.number()
+		.optional()
+		.describe(
+			'Knowledge files of the agent at publish time. Files have no versions. Absent when the server could not read the files.',
+		),
+	knowledge_total_bytes: z
+		.number()
+		.optional()
+		.describe(
+			'Sum of the original sizes of the knowledge files at publish time. Absent when the server could not read the files.',
+		),
 };
+
+/** Upload checks that the editor makes before it sends the files. */
+const knowledgeUploadClientFailureReason = z.enum(['file_size', 'too_many_files', 'total_limit']);
+
+/** Upload checks that the server makes. `unknown` covers every other error. */
+const knowledgeUploadServerFailureReason = z.enum([
+	'file_type',
+	'file_size',
+	'too_many_files',
+	'total_limit',
+	'duplicate_name',
+	'pdf_no_text',
+	'invalid_file_name',
+	'unknown',
+]);
 
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_TEAMS_SETUP_STEP: {
@@ -262,8 +333,48 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			mcp_server_count: z.number().describe('MCP servers with a URL set'),
 			vector_store_count: z.number(),
 			task_count: z.number(),
-			trigger_count: z.number().describe('Configured chat integrations; draft channels excluded'),
+			trigger_count: z
+				.number()
+				.describe(
+					'Configured chat integrations; draft channels and n8n Chat excluded, because new agents get n8n Chat by default',
+				),
 			status: agentStatus,
+		}),
+	},
+	AGENT_RUN_USED_KNOWLEDGE: {
+		name: 'Agent run used knowledge',
+		description:
+			'Sent when an agent run ends, if the agent used its knowledge files or vector stores at least once in that run. A run without knowledge use sends no event. A run that pauses for an approval and then resumes sends one event for each part, with the same run_id, so count distinct run_id values to count runs.',
+		properties: z.object({
+			agent_id: z.string(),
+			run_id: z.string().describe('Run id of the agent runtime'),
+			run_type: agentRunType,
+			user_id: z
+				.string()
+				.optional()
+				.describe('Absent for runs without an n8n user, such as some chat integrations'),
+			file_find_count: z.number().describe('Calls that listed knowledge files by name'),
+			file_search_count: z.number().describe('Calls that searched text inside knowledge files'),
+			file_read_count: z.number().describe('Calls that read part of a knowledge file'),
+			vector_store_search_count: z.number().describe('Searches in any vector store of the agent'),
+			file_content_chars: z
+				.number()
+				.describe(
+					'Characters that successful knowledge file tool calls sent to the model in the run. Failed calls add nothing. A result over 50,000 tokens counts in full, but the model gets a shorter version.',
+				),
+			vector_store_content_chars: z
+				.number()
+				.describe(
+					'Characters that successful vector store searches sent to the model in the run. Counted like file_content_chars.',
+				),
+			file_failed_count: z
+				.number()
+				.describe('Knowledge file tool calls that failed. Each one also counts in its call count'),
+			vector_store_failed_count: z
+				.number()
+				.describe(
+					'Vector store searches that failed. Each one also counts in vector_store_search_count',
+				),
 		}),
 	},
 	AGENT_EXECUTION_COUNT: {
@@ -314,58 +425,105 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			...agentConfigurationTelemetry,
 		}),
 	},
+	AGENT_KNOWLEDGE_SNAPSHOT: {
+		name: 'Agent knowledge snapshot',
+		description:
+			'Daily count of the published agents of the instance and the knowledge they use. One event per instance, sent by one main instance only. An instance without published agents sends no event. A vector store counts only when it is in the published version of the agent. Knowledge files have no versions, so the file counts are the current files of each published agent. Includes agents published before this event existed. Each event carries totals, not increments: do not sum snapshots over time; take the latest one for each instance in a window.',
+		properties: z.object({
+			published_agent_count: z.number(),
+			published_with_files_count: z
+				.number()
+				.describe('Published agents with at least one knowledge file'),
+			published_with_vector_stores_count: z
+				.number()
+				.describe('Published agents with at least one vector store in the published version'),
+			published_with_both_count: z
+				.number()
+				.describe('Published agents with knowledge files and vector stores'),
+			knowledge_file_count: z.number().describe('Knowledge files of all published agents'),
+			knowledge_total_bytes: z
+				.number()
+				.describe('Sum of the original sizes of the knowledge files of all published agents'),
+			vector_store_count: z.number().describe('Vector stores in all published versions'),
+			vector_store_providers: z
+				.record(z.string(), z.number())
+				.describe('Vector stores for each provider, for example { pinecone: 3, qdrant: 1 }'),
+		}),
+	},
 	BUILDER_CREATED_AGENT: {
 		name: 'Builder created agent',
 		description:
-			'The Instance AI builder was the first surface to configure an agent. One of three same-shaped creation events ("User created agent", "MCP created agent") — union them for total agent creation, or read one for that surface alone. Emitted from `AgentConfigService.updateConfig` on the agent\'s first configuring write, so the builder minting an agent row emits nothing and a build that fails before writing config never counts. event_version 2 replaced thread_id with user_id, moved the emit from the frontend-facing delegate wrapper to the config-save path, and added the write profile.',
+			'The Instance AI builder persisted a new Agent. Emitted after the Agent and its initial configuration commit, including incomplete drafts. A later build failure does not undo creation. Union the user, builder, and MCP creation events to count all new Agents. Adoption of an existing Agent emits no creation event. Version 3 reports the committed insert instead of the first configuring update.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('2'),
+			...builderWriteSession,
+			event_version: z.literal('3'),
 		}),
 	},
 	USER_CREATED_AGENT: {
 		name: 'User created agent',
 		description:
-			'A user was the first surface to configure an agent, from the editor. One of three same-shaped creation events ("Builder created agent", "MCP created agent") — union them for total agent creation, or read one for that surface alone. Emitted from `AgentConfigService.updateConfig` on the agent\'s first configuring write: agents are created lazily and the row alone emits nothing, so this fires when the agent gains a model, instructions or a capability rather than on the click, and an abandoned new-agent flow never counts. A rename or an icon change does not qualify. "User clicked new agent" carries the same agent_id, so the two join into a click-to-creation funnel whose gap is abandoned flows. event_version 2 dropped source (editor-only knowledge, still on the click event), added project_id, user_id and the write profile, and moved the emit to the backend.',
+			'A user persisted a new Agent from the editor, a template, or duplication. Emitted after the Agent and its initial configuration commit, regardless of its default model or setup readiness. Union the user, builder, and MCP creation events to count all new Agents. User clicked new agent joins through agent_id. User duplicated agent retains the source Agent context. Version 3 reports the committed insert instead of the first configuring update.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('2'),
+			event_version: z.literal('3'),
 		}),
 	},
 	MCP_CREATED_AGENT: {
 		name: 'MCP created agent',
 		description:
-			'An MCP client was the first surface to configure an agent, through the `create_agent` or `mutate_agent` tool. One of three same-shaped creation events ("User created agent", "Builder created agent") — union them for total agent creation, or read one for that surface alone. Emitted from `AgentConfigService.updateConfig` on the agent\'s first configuring write, so a `create_agent` call carrying no initial config emits nothing until something configures the agent. The coarser "User called mcp tool" event also fires for the same call.',
+			'An MCP client persisted a new Agent through create_agent, with or without initial configuration. Emitted after the Agent and its configuration commit. Union the user, builder, and MCP creation events to count all new Agents. User called mcp tool also reports the tool call. Version 2 reports the committed insert instead of the first configuring update.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('1'),
+			event_version: z.literal('2'),
 		}),
 	},
 	USER_MODIFIED_AGENT: {
 		name: 'User modified agent',
 		description:
-			'A user saved a change to an agent that was already configured, from the editor. One of three same-shaped modification events ("Builder modified agent", "MCP modified agent") — union them for total agent modification, or read one for that surface alone. Emitted once per save from `AgentConfigService.updateConfig`; a save that changed nothing emits nothing, and the agent\'s first configuring write emits the matching creation event instead — so a write is never counted as both, and this event is not inflated by every agent\'s birth. The capability counts mirror "Agent setup completed", so a profile at each modification lines up with the profile at setup completion. Replaces the per-part "User edited agent config" and the per-item "User added/removed tools/skills/tasks" and "User added/removed agent tool" events, which fired several times for a single save and never covered the builder or MCP.',
+			'A user saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits User created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('1'),
+			...agentKnowledgeModification,
+			changed_settings: z
+				.array(
+					z.enum([
+						'monthly_budget',
+						'budget_alert',
+						'session_cost_cap',
+						'custom_model_routing',
+						'memory_model',
+						'cache_duration',
+						'tool_concurrency',
+						'max_iterations',
+					]),
+				)
+				.optional()
+				.describe(
+					'Names of tracked settings changed by the committed user write, in the listed order. New emissions include an empty array when none changed. Compares stored fields, including added or removed overrides. Model settings compare model IDs, not credentials. Budget settings compare amounts and the alert threshold, not the shared enabled flag. Never includes setting values.',
+				),
+			event_version: z.literal('2'),
 		}),
 	},
 	BUILDER_MODIFIED_AGENT: {
 		name: 'Builder modified agent',
 		description:
-			'The Instance AI builder saved a change to an agent that was already configured. One of three same-shaped modification events ("User modified agent", "MCP modified agent") — union them for total agent modification, or read one for that surface alone. Emitted once per save from `AgentConfigService.updateConfig`; a save that changed nothing emits nothing, and the agent\'s first configuring write emits "Builder created agent" instead. The capability counts mirror "Agent setup completed", so a profile at each modification lines up with the profile at setup completion. Replaces the per-item "Builder added tools/skills to agent" and "Builder removed tasks from agent" events.',
+			'The Instance AI builder saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits, including the first generated configuration of a saved draft. No-op and cosmetic-only saves emit nothing. Creation emits Builder created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('1'),
+			...builderWriteSession,
+			...agentKnowledgeModification,
+			event_version: z.literal('2'),
 		}),
 	},
 	MCP_MODIFIED_AGENT: {
 		name: 'MCP modified agent',
 		description:
-			'An MCP client saved a change to an agent that was already configured, through the `create_agent` or `mutate_agent` tool. One of three same-shaped modification events ("User modified agent", "Builder modified agent") — union them for total agent modification, or read one for that surface alone. Emitted once per save from `AgentConfigService.updateConfig`; a save that changed nothing emits nothing, and the agent\'s first configuring write emits "MCP created agent" instead. The capability counts mirror "Agent setup completed", so a profile at each modification lines up with the profile at setup completion. This surface had no modification telemetry before. The coarser "User called mcp tool" event also fires for the same call.',
+			'An MCP client saved a tracked configuration or resource change to an existing Agent through mutate_agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits MCP created agent instead. User called mcp tool also reports the tool call. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('1'),
+			...agentKnowledgeModification,
+			event_version: z.literal('2'),
 		}),
 	},
 	USER_PUBLISHED_AGENT: {
@@ -380,9 +538,10 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_PUBLISHED_AGENT: {
 		name: 'Builder published agent',
 		description:
-			'The Instance AI builder published an agent version through its publish_agent tool. One of three same-shaped publish events ("User published agent", "MCP published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing.',
+			'The Instance AI builder published an agent version through its agent_builder_publish_agent tool. One of three same-shaped publish events ("User published agent", "MCP published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing.',
 		properties: z.object({
 			...agentPublish,
+			...builderWriteSession,
 			event_version: z.literal('1'),
 		}),
 	},
@@ -407,9 +566,10 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_UNPUBLISHED_AGENT: {
 		name: 'Builder unpublished agent',
 		description:
-			'The Instance AI builder unpublished an agent through its unpublish_agent tool. One of three same-shaped unpublish events ("User unpublished agent", "MCP unpublished agent") — union them for total agent unpublishing, or read one for that surface alone. Emitted from `AgentPublishService.unpublishAgent`.',
+			'The Instance AI builder unpublished an agent through its agent_builder_unpublish_agent tool. One of three same-shaped unpublish events ("User unpublished agent", "MCP unpublished agent") — union them for total agent unpublishing, or read one for that surface alone. Emitted from `AgentPublishService.unpublishAgent`.',
 		properties: z.object({
 			...agentActorIdentity,
+			...builderWriteSession,
 			event_version: z.literal('1'),
 		}),
 	},
@@ -429,7 +589,17 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			dont_show_again: z.boolean(),
-			session_id: sessionId.optional(),
+			action: z
+				.enum(['got_it', 'talk_to_agent', 'closed'])
+				.optional()
+				.describe(
+					'How the modal closed: the Got it button, the Talk to agent button (opens the agent in n8n Chat), or the close icon or Escape',
+				),
+			n8n_chat_live: z
+				.boolean()
+				.optional()
+				.describe('Whether the published version carries the n8n Chat channel'),
+			push_ref: pushRef.optional(),
 		}),
 	},
 	INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW: {
@@ -472,27 +642,39 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ADDED_TASKS: {
 		name: 'Builder added tasks to agent',
 		description:
-			'The Instance AI builder created a scheduled task through the `create_tasks` tool. That path persists outside `AgentConfigService.updateConfig`, so it is not covered by "Builder modified agent" — this event stays until the task write path is folded in.',
-		properties: z.object({
-			...builderSessionIdentity,
-			task_added: z.string().describe('Identifier of the newly added task'),
-			tasks: z.array(z.string()).describe('Full task identifier list after the save'),
-			status: builderPreWriteStatus,
-		}),
+			'Historical event for scheduled tasks created by the Instance AI builder. No longer emitted. Task creation now emits Builder modified agent through the shared task persistence service.',
+		properties: z
+			.object({
+				...builderSessionIdentity,
+				task_added: z.string().describe('Identifier of the newly added task'),
+				tasks: z.array(z.string()).describe('Full task identifier list after the save'),
+				status: builderPreWriteStatus,
+			})
+			.meta({ deprecated: true }),
 	},
 	BUILDER_ADDED_TRIGGER: {
 		name: 'Builder added trigger to agent',
 		description:
-			'The Instance AI builder configured and persisted a chat channel for the target agent through the configure_channel tool, mirroring the frontend "User added trigger to agent" event.',
+			'The Instance AI builder configured and persisted a chat channel for the target agent through the agent_builder_configure_channel tool, mirroring the frontend "User added trigger to agent" event.',
 		properties: z.object({
 			...builderSessionIdentity,
 			trigger_type: z.string().describe('Chat integration type that was configured and persisted'),
 		}),
 	},
+	BUILDER_REMOVED_TRIGGER: {
+		name: 'Builder removed trigger from agent',
+		description:
+			'The Instance AI builder saved a config through agent_builder_write_config or agent_builder_patch_config that removed a configured chat channel. One event fires for each removed channel type, after the save commits. Mirrors the frontend "User removed trigger from agent" event.',
+		properties: z.object({
+			...builderSessionIdentity,
+			trigger_type: z.string().describe('Chat integration type that was removed'),
+			triggers: z.array(z.string()).describe('Configured trigger types after the change'),
+		}),
+	},
 	BUILDER_ASKED_QUESTIONS: {
 		name: 'Builder asked questions',
 		description:
-			'The Instance AI builder used the ask_questions tool and suspended, showing the user a batch of questions to determine the shape of the agent.',
+			'The Instance AI builder used the agent_builder_ask_questions tool and suspended, showing the user a batch of questions to determine the shape of the agent.',
 		properties: z.object({
 			...builderSessionIdentity,
 			question_count: z.number(),
@@ -502,7 +684,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_ANSWERED_BUILDER_QUESTIONS: {
 		name: 'User answered builder questions',
 		description:
-			'The user resumed a builder ask_questions card by answering, skipping, or dismissing it.',
+			'The user resumed a builder agent_builder_ask_questions card by answering, skipping, or dismissing it.',
 		properties: z.object({
 			...builderSessionIdentity,
 			outcome: z.enum(['answered', 'skipped', 'dismissed']),
@@ -513,7 +695,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_REQUESTED_CREDENTIAL: {
 		name: 'Builder requested credential',
 		description:
-			'The Instance AI builder used the ask_credential (or ask_embedding_credential) tool and suspended to show a credential picker card. Does not fire when the request auto-resolves without showing a card.',
+			'The Instance AI builder used the agent_builder_ask_credential (or agent_builder_ask_embedding_credential) tool and suspended to show a credential picker card. Does not fire when the request auto-resolves without showing a card.',
 		properties: z.object({
 			...builderSessionIdentity,
 			credential_type: z.string(),
@@ -560,7 +742,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Deprecated: the "Create agent manually" entry point was removed. No longer emitted.',
 				),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_SUBMITTED_MESSAGE_TO_AGENT: {
@@ -572,7 +754,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			mode: z.literal('test').describe('Constant dimension kept for warehouse-schema stability'),
 			status: agentStatus,
 			agent_config: agentConfigFingerprint,
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_ADDED_TRIGGER_TO_AGENT: {
@@ -584,7 +766,20 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			triggers: z.array(z.string()).describe('Configured trigger types after the change'),
 			config_version: z.string(),
 			status: agentStatus,
-			session_id: sessionId,
+			push_ref: pushRef,
+		}),
+	},
+	USER_REMOVED_TRIGGER_FROM_AGENT: {
+		name: 'User removed trigger from agent',
+		description:
+			'The user removed a chat trigger from the agent builder, from the channel menu or the channel settings. Counterpart of "User added trigger to agent". No event fires when the channel stays configured after the removal.',
+		properties: z.object({
+			agent_id: z.string(),
+			trigger_type: z.string(),
+			triggers: z.array(z.string()).describe('Configured trigger types after the change'),
+			config_version: z.string(),
+			status: agentStatus,
+			push_ref: pushRef,
 		}),
 	},
 	USER_ADDED_AGENT_NODE: {
@@ -610,7 +805,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			tool_type: z.string(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_OPENED_AGENT_SKILL: {
@@ -619,7 +814,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			skill_id: z.string(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_OPENED_ADD_SKILL_MODAL: {
@@ -627,7 +822,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		description: 'The user opened the add-skill modal in the builder.',
 		properties: z.object({
 			agent_id: z.string(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_IMPORTED_AGENT_SKILL: {
@@ -640,7 +835,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			status: z.enum(['success', 'error']),
 			reference_count: z.number(),
 			error: z.string().optional(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_STARTED_ADDING_AGENT_TOOL: {
@@ -662,11 +857,127 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: optionalAgentId,
 		}),
 	},
+	USER_CLICKED_AGENTS_TAB: {
+		name: 'User clicked agents tab',
+		description:
+			'The user activated a Build, Sessions, Knowledge, or Settings tab in the agent builder. Includes repeated clicks on the active tab. Excludes programmatic tab changes.',
+		properties: z.object({
+			agent_id: z.string(),
+			name: z.enum(['build', 'sessions', 'knowledge', 'settings']).describe('Activated tab'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_KNOWLEDGE_UPLOAD: {
+		name: 'User clicked knowledge upload',
+		description:
+			'The user opened the knowledge file picker in the agent builder. Includes clicks followed by cancellation. Does not report selected files.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_TRACE_ITEM: {
+		name: 'User clicked trace item',
+		description:
+			'The user selected an agent session timeline item with the chart, table, or keyboard. Excludes selection restoration and deselection.',
+		properties: z.object({
+			agent_id: z.string(),
+			item_type: z
+				.enum([
+					'user',
+					'agent',
+					'skill',
+					'tool',
+					'node',
+					'workflow',
+					'execution-error',
+					'suspension',
+					'hitl-response',
+					'background-task-signal',
+				])
+				.describe('Selected timeline item kind. Does not include item content.'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_APPLIED_SESSION_FILTER: {
+		name: 'User applied session filter',
+		description:
+			'The user changed or cleared agent session filters. Fires once per action before results load, with only the names of changed fields.',
+		properties: z.object({
+			agent_id: z.string(),
+			filter_names: z
+				.array(z.enum(['status', 'origin', 'start_date', 'end_date']))
+				.describe('Changed filter fields. Does not include filter values or dates.'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL: {
+		name: 'User clicked new test chat icon from test panel',
+		description:
+			'The user started a new test chat from the preview dock icon, its shortcut, or the standalone preview button.',
+		properties: z.object({
+			agent_id: z.string(),
+			source: z
+				.enum(['test-panel', 'shortcut', 'standalone'])
+				.describe('Origin of the new chat action'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL: {
+		name: 'User clicked more options from test panel',
+		description:
+			'The user opened the preview dock More menu. Excludes menu closure and metadata refresh.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_AN_OPTION_FROM_MORE_LIST: {
+		name: 'User clicked an option from more list',
+		description:
+			'The user selected an enabled preview dock More menu action. Fires before the action, even if it fails or the user cancels confirmation.',
+		properties: z.object({
+			agent_id: z.string(),
+			option: z
+				.enum([
+					'copy-link',
+					'copy-conversation',
+					'open-in-new-tab',
+					'toggle-full-width',
+					'export-session',
+					'delete-session',
+				])
+				.describe('Selected menu action'),
+			push_ref: pushRef,
+		}),
+	},
 	USER_OPENED_AGENT_PREVIEW: {
 		name: 'User opened agent preview',
 		description: 'The user opened the agent preview panel in the builder.',
 		properties: z.object({
 			agent_id: z.string(),
+			source: z
+				.enum(['icon', 'primary'])
+				.optional()
+				.describe('The button that opened the preview. Omit this for non-button openings.'),
+		}),
+	},
+	USER_REVERTED_CHANGES_ON_AGENT: {
+		name: 'User reverted changes on agent',
+		description:
+			'The user successfully reverted draft changes to the published version or a selected version in the Agent Builder.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL: {
+		name: 'User clicked trace details from test panel',
+		description:
+			'The user activated the enabled Trace details control in the agent preview. Fires before navigation, not after trace loading.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
 		}),
 	},
 	USER_SAVED_AGENT_SKILL: {
@@ -677,6 +988,88 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			skill_id: z.string(),
 		}),
 	},
+	USER_UPLOADED_AGENT_KNOWLEDGE_FILES: {
+		name: 'User uploaded agent knowledge files',
+		description:
+			'The user uploaded one or more files to the knowledge of an agent. Fires once for each upload request that stored all of its files. A failed upload stores no files and sends "User failed agent knowledge upload" instead.',
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z.string(),
+			file_count: z.number(),
+			total_bytes: z.number().describe('Sum of size_bytes for all files in the upload'),
+			files: z.array(
+				z.object({
+					mime_type: z.string().describe('MIME type that the browser sent with the file'),
+					content_hash: z
+						.string()
+						.optional()
+						.describe(
+							'Keyed hash of the original uploaded bytes, independent of the file name. The key is different for each instance, so the same file produces the same code only in one instance. Omitted if the telemetry hash could not be computed.',
+						),
+					size_bytes: z
+						.number()
+						.describe('Size of the original file, not of the stored text extracted from a PDF'),
+				}),
+			),
+		}),
+	},
+	USER_OPENED_AGENT_KNOWLEDGE_TAB: {
+		name: 'User opened agent knowledge tab',
+		description:
+			'The knowledge tab of the agent builder became the active tab, by a click or by opening a URL with the knowledge section. When the page opens on the tab, the event can fire before the agent finishes loading. First step of the knowledge funnel.',
+		properties: z.object({
+			agent_id: z.string(),
+			push_ref: pushRef,
+		}),
+	},
+	USER_STARTED_ADDING_AGENT_KNOWLEDGE: {
+		name: 'User started adding agent knowledge',
+		description:
+			'The user chose files to upload to the knowledge of an agent, or opened the modal to add a vector store. Sent before any check. The success step is "User uploaded agent knowledge files" for files, and "User modified agent" with the vectorStores part for vector stores.',
+		properties: z.object({
+			agent_id: z.string(),
+			kind: z.enum(['file', 'vector_store']),
+			file_count: z.number().optional().describe('Files chosen. Only for kind file.'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_FAILED_AGENT_KNOWLEDGE_UPLOAD: {
+		name: 'User failed agent knowledge upload',
+		description:
+			'A file upload to the knowledge of an agent was rejected. stage client: the editor rejected it before sending. stage server: the server rejected it, and sent no files. When only some chosen files are too large, the editor reports a client file_size failure and still uploads the other files, so the same upload can also send "User uploaded agent knowledge files".',
+		properties: z.discriminatedUnion('stage', [
+			z.object({
+				stage: z.literal('client'),
+				agent_id: z.string(),
+				file_count: z.number().describe('Files rejected by the check'),
+				reason: knowledgeUploadClientFailureReason,
+				push_ref: pushRef,
+			}),
+			z.object({
+				stage: z.literal('server'),
+				agent_id: z.string(),
+				project_id: z.string(),
+				user_id: z.string(),
+				file_count: z
+					.number()
+					.describe(
+						'Files that the server received in the rejected request. The server stores none of them. When the server rejects a file while it reads the request, the count does not include that file or any file after it.',
+					),
+				reason: knowledgeUploadServerFailureReason,
+			}),
+		]),
+	},
+	USER_REMOVED_AGENT_KNOWLEDGE: {
+		name: 'User removed agent knowledge',
+		description:
+			'The server deleted one knowledge file of an agent at the request of a user. Not sent when the agent itself is deleted. Removing a vector store sends "User modified agent" with the vectorStores part instead.',
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z.string(),
+		}),
+	},
 	USER_STARTED_AGENT_CHANNEL_SETUP: {
 		name: 'User started agent channel setup',
 		description:
@@ -684,7 +1077,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			channel_type: z.string(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_CLOSED_AGENT_CHANNEL_SETUP: {
@@ -695,7 +1088,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: z.string(),
 			channel_type: z.string(),
 			completed: z.boolean().describe('True when the channel was connected'),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_FAILED_TO_CONNECT_AGENT_CHANNEL: {
@@ -711,7 +1104,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 					'persist: saving the agent failed; before_save: the platform pre-save step failed; connect: the connect request failed',
 				),
 			conflict: z.boolean().describe('True when the connect request answered 409'),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL: {
@@ -730,7 +1123,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Only when status is failed. request_failed: the request to n8n failed, so Microsoft was never asked',
 				),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_CLICKED_DEPLOY_TO_AZURE_FOR_TEAMS_CHANNEL: {
@@ -738,7 +1131,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		description: 'The user clicked the Deploy to Azure button in the Teams channel setup.',
 		properties: z.object({
 			agent_id: z.string(),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_DOWNLOADED_TEAMS_APP_PACKAGE: {
@@ -747,7 +1140,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			status: z.enum(['success', 'error']),
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_SELECTED_N8N_CHAT_AGENT: {
@@ -758,7 +1151,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: z.string(),
 			source: z.enum(['card', 'library', 'dropdown']),
 			variant: n8nChatVariant,
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_SENT_MESSAGE_TO_N8N_CHAT_AGENT: {
@@ -769,7 +1162,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			thread_id: z.string(),
 			is_new_thread: z.boolean(),
 			variant: n8nChatVariant,
-			session_id: sessionId,
+			push_ref: pushRef,
 		}),
 	},
 	USER_CLICKED_N8N_CHAT_SIDEBAR_ITEM: {
@@ -780,14 +1173,36 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			z.object({
 				item: z.literal('new_chat'),
 				variant: n8nChatVariant,
-				session_id: sessionId,
+				push_ref: pushRef,
 			}),
 			z.object({
 				item: z.literal('chat'),
 				chat_type: z.enum(['assistant', 'agent']),
 				variant: n8nChatVariant,
-				session_id: sessionId,
+				push_ref: pushRef,
 			}),
 		]),
+	},
+	USER_VIEWED_N8N_CHAT_HINT: {
+		name: 'User viewed n8n chat hint',
+		description:
+			'A one-time n8n Chat hint popover opened. `new_chat_sidebar` points at the sidebar "New chat" item on the user\'s first visit, on any page. `channel_chip` shows on the n8n Chat channel chip in the agent builder while the agent is available in n8n Chat, which new agents are by default; it waits until `new_chat_sidebar` is dismissed. Each hint shows until the user dismisses it once.',
+		properties: z.object({
+			hint: n8nChatHint,
+			agent_id: z.string().optional().describe('The agent on screen; absent for new_chat_sidebar'),
+			variant: n8nChatVariant,
+			push_ref: pushRef,
+		}),
+	},
+	USER_DISMISSED_N8N_CHAT_HINT: {
+		name: 'User dismissed n8n chat hint',
+		description:
+			'The user closed a one-time n8n Chat hint popover with its Got it button, the only way to close it. Pairs with "User viewed n8n chat hint" on `hint`. A dismissed hint does not show again.',
+		properties: z.object({
+			hint: n8nChatHint,
+			agent_id: z.string().optional().describe('The agent on screen; absent for new_chat_sidebar'),
+			variant: n8nChatVariant,
+			push_ref: pushRef,
+		}),
 	},
 });

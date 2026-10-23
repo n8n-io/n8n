@@ -143,6 +143,17 @@ export class TypeAvailabilityPolicyInstanceController {
 		return { success: true };
 	}
 
+	@Get('/scopes/:scopeId/attachments')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('nodeTypePolicy:manage')
+	async getAttachments(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('scopeId') scopeId: string,
+	) {
+		return await this.service.getAttachments(NODE_TYPES_KIND, scopeId);
+	}
+
 	@Put('/scopes/:scopeId/attachments')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')

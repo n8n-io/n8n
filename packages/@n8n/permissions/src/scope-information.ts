@@ -22,6 +22,14 @@ export const ALL_SCOPES = buildResourceScopes();
 export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
+	'app:create': { displayName: 'Create app', description: 'Create apps in a project.' },
+	'app:read': { displayName: 'View app', description: 'View app details and versions.' },
+	'app:update': { displayName: 'Edit app', description: 'Edit apps in a project.' },
+	'app:delete': { displayName: 'Delete app', description: 'Delete apps and their versions.' },
+	'app:list': {
+		displayName: 'List apps',
+		description: 'List apps in a project.',
+	},
 	'aiPreference:read': {
 		displayName: 'Read AI Preferences',
 		description:
@@ -224,5 +232,13 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Pull Git Connection',
 		description:
 			'Allows importing all projects from a Git connection working copy into the instance.',
+	},
+	'gitConnection:readReviews': {
+		displayName: 'Read promotion reviews',
+		description: 'Allows listing promotion reviews and reading their state from the Git host.',
+	},
+	'gitConnection:approveReviews': {
+		displayName: 'Approve promotion reviews',
+		description: 'Allows approving and merging promotion reviews on the Git host.',
 	},
 };

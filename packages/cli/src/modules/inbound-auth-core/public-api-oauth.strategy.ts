@@ -1,7 +1,13 @@
 import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { extractBearer, inboundFrom, inboundRequestOf, ResourceAdmission } from '@n8n/inbound-auth';
+import {
+	extractBearer,
+	inboundFrom,
+	inboundRequestOf,
+	isUrlIssuer,
+	ResourceAdmission,
+} from '@n8n/inbound-auth';
 import {
 	getApiKeyScopesForRole,
 	isApiKeyScope,
@@ -9,10 +15,11 @@ import {
 	type Scope,
 } from '@n8n/permissions';
 
-import type { AuthStrategy } from '@n8n/backend-services/auth';
+import type { AuthStrategy, AuthStrategyResult } from '@n8n/backend-services/auth';
 import { JwtService } from '@n8n/backend-services';
 
 import { PublicApiProtectedResource } from './public-api-protected-resource';
+import { advertisedOf } from './resource-admission';
 
 // Token scopes arrive as plain strings; `isApiKeyScope` only takes known scope names.
 const isApiKeyScopeName = (scope: string): scope is ApiKeyScope =>
@@ -36,31 +43,47 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 	}
 
 	private isOAuthIssuer(token: string): boolean {
-		const iss: unknown = this.jwtService.decodeUnverified<{ iss?: unknown } | null>(token)?.iss;
-		return typeof iss === 'string' && URL.canParse(iss) && /^https?:$/.test(new URL(iss).protocol);
+		return isUrlIssuer(this.jwtService.decodeUnverified<{ iss?: unknown } | null>(token)?.iss);
 	}
 
-	async authenticate(req: AuthenticatedRequest): Promise<boolean | null> {
-		const isAvailable = await this.resource.isAvailable();
-		if (!isAvailable) {
-			return null;
+	async challenge(req: AuthenticatedRequest): Promise<string | undefined> {
+		if (!(await this.resource.isAvailable())) {
+			return undefined;
 		}
 
+		const inbound = inboundFrom(this.resource, inboundRequestOf(req));
+		return await this.admission.challenge({ advertised: advertisedOf(inbound) });
+	}
+
+	async authenticate(req: AuthenticatedRequest): Promise<AuthStrategyResult> {
+		const isAvailable = await this.resource.isAvailable();
+		if (!isAvailable) {
+			return { outcome: 'abstained' };
+		}
+
+		const inbound = inboundFrom(this.resource, inboundRequestOf(req));
+
 		// Routing, not verification: a bearer another strategy owns is left to it.
-		const extracted = extractBearer(inboundFrom(this.resource, inboundRequestOf(req)));
-		if (!extracted.ok || !this.isOAuthIssuer(extracted.value.credential.token)) {
-			return null;
+		const extracted = extractBearer(inbound);
+		if (!extracted.ok) {
+			return { outcome: 'abstained' };
+		}
+
+		if (!this.isOAuthIssuer(extracted.value.credential.token)) {
+			return { outcome: 'abstained' };
 		}
 
 		const admitted = await this.admission.admit(this.resource, extracted.value);
 		if (!admitted.ok) {
-			req.res?.setHeader('WWW-Authenticate', await this.admission.challenge(admitted));
-			return false;
+			return { outcome: 'rejected', challenge: await this.admission.challenge(admitted) };
 		}
 
 		const user = await this.userRepository.findByIdWithRole(admitted.context.subject.id);
 		if (!user) {
-			return false;
+			return {
+				outcome: 'rejected',
+				challenge: await this.admission.challenge({ advertised: advertisedOf(inbound) }),
+			};
 		}
 
 		// Only API key scopes narrow the grant. An external IdP's own scopes (`openid`, ...) are
@@ -77,6 +100,6 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 		req.ctx = {
 			security: admitted.context,
 		};
-		return true;
+		return { outcome: 'authenticated' };
 	}
 }

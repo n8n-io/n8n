@@ -57,7 +57,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
-import type { Job } from '@/scaling/scaling.types';
+import type { Job, JobFinishedProps } from '@/scaling/scaling.types';
 import { WorkflowRunner } from '@/workflow-runner';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
@@ -237,11 +237,10 @@ describe('processError', () => {
 			expect.objectContaining({ status: 'success', finished: true, data: successData }),
 		);
 		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
-		expect(deleteInFlightSpy).toHaveBeenCalledWith({
-			workflowId: workflow.id,
-			executionId: execution.id,
-			storedAt: 'db',
-		});
+		expect(deleteInFlightSpy).toHaveBeenCalledWith(
+			{ workflowId: workflow.id, executionId: execution.id, storedAt: 'db' },
+			expect.objectContaining({ status: 'success', finished: true }),
+		);
 		expect(activeExecutions.has(execution.id)).toBe(false);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
@@ -350,11 +349,10 @@ describe('processError', () => {
 		const run = await postExecutePromise;
 		expect(run).toEqual(expect.objectContaining({ status: 'error', finished: false }));
 		// ...but the retention decision ran anyway, off the row that was found.
-		expect(deleteInFlightSpy).toHaveBeenCalledWith({
-			workflowId: workflow.id,
-			executionId: execution.id,
-			storedAt: 'db',
-		});
+		expect(deleteInFlightSpy).toHaveBeenCalledWith(
+			{ workflowId: workflow.id, executionId: execution.id, storedAt: 'db' },
+			expect.objectContaining({ status: 'success', finished: true }),
+		);
 		expect(activeExecutions.has(execution.id)).toBe(false);
 	});
 
@@ -1156,6 +1154,39 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the completed segment status when the DB row already resumed', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		let workflowExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+			workflowExecution = execution;
+		});
+		const finalize = vi.spyOn(activeExecutions, 'finalizeExecution');
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingMain').mockReturnValueOnce(
+			mock<core.ExecutionLifecycleHooks>(),
+		);
+		const data = mock<IWorkflowExecutionDataProcess>({
+			executionMode: 'trigger',
+			workflowData: { nodes: [], staticData: {} },
+			forceFullExecutionData: true,
+		});
+		const waitTill = new Date();
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-old', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce(mock<JobFinishedProps>({ status: 'waiting', waitTill }));
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValueOnce(
+			mock<IExecutionResponse>({ status: 'running', waitTill: null }),
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+		await workflowExecution;
+
+		expect(finalize).toHaveBeenCalledWith(
+			'1',
+			expect.objectContaining({ status: 'waiting', waitTill: expect.anything() }),
+		);
 	});
 
 	it('should fail the execution when the result cannot be read from the DB after the job ended', async () => {

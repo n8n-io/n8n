@@ -394,7 +394,9 @@ describe('InstanceContextService', () => {
 
 		expect(expansion?.entry.action).toBe('saved');
 		expect(expansion?.resourceHistory.map((other) => other.action)).toEqual(['created']);
-		expect(expansion?.liveRecordHint).toBe('workflows(action="get", workflowId="wf-1")');
+		expect(expansion?.liveRecordHint).toBe(
+			'workflow_builder_workflows(action="get", workflowId="wf-1")',
+		);
 	});
 
 	it('reads nothing when the conversation is bound to no project', async () => {
@@ -628,7 +630,9 @@ describe('InstanceContextService', () => {
 			const viaChat = await service.expand({ id: entry.id, user, scope: bound(project.id) });
 
 			expect(viaMcp?.liveRecordHint).toBe(`get_workflow_details(workflowId="${workflow.id}")`);
-			expect(viaChat?.liveRecordHint).toBe(`workflows(action="get", workflowId="${workflow.id}")`);
+			expect(viaChat?.liveRecordHint).toBe(
+				`workflow_builder_workflows(action="get", workflowId="${workflow.id}")`,
+			);
 		});
 
 		it('reads no credential history for a caller without the credential grant', async () => {
@@ -795,7 +799,9 @@ describe('InstanceContextService', () => {
 			const viaChat = await service.expand({ id: entry.id, user, scope: bound(project.id) });
 
 			expect(viaMcp?.liveRecordHint).toBe(`get_workflow_details(workflowId="${workflow.id}")`);
-			expect(viaChat?.liveRecordHint).toBe(`workflows(action="get", workflowId="${workflow.id}")`);
+			expect(viaChat?.liveRecordHint).toBe(
+				`workflow_builder_workflows(action="get", workflowId="${workflow.id}")`,
+			);
 		});
 
 		it('reads no credential history for a caller without the credential grant', async () => {
