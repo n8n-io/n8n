@@ -75,7 +75,7 @@ export function validateCredentialData(
 
 	// An expression resolves at runtime, so validate it only as a string.
 	for (const [name, value] of Object.entries(data)) {
-		if (isExpression(value) && name in schema.properties) {
+		if (isExpression(value) && Object.hasOwn(schema.properties, name)) {
 			schema.properties[name] = { type: 'string' };
 		}
 	}
