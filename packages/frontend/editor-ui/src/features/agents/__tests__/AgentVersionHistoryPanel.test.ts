@@ -286,7 +286,7 @@ it('refreshes history when a new draft version is saved', async () => {
 it('switches between Versions and Publish Timeline', async () => {
 	const wrapper = mountPanel();
 	await flushPromises();
-	const tabs = wrapper.findComponent('[data-test-id="agent-history-tabs"]');
+	const tabs = wrapper.getComponent({ name: 'N8nTabs' });
 	expect(tabs.props('options')).toEqual([
 		{ value: 'versions', label: 'workflowHistory.tab.history' },
 		{ value: 'timeline', label: 'workflowHistory.tab.publishTimeline' },
