@@ -1,0 +1,5 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.backend.go.json",
+	"compilerOptions": { "lib": ["ES2023", "DOM"] },
+	"include": ["src/**/*.ts", "tests/**/*.ts"]
+}

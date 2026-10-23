@@ -7,7 +7,7 @@ Read the repository [AGENTS.md](../../AGENTS.md) first. Use the [quality enginee
 | Policy | Repository rules and static analysis | [`rules-engine`](policy/rules-engine/), [`code-health`](policy/code-health/) |
 | Testing | Test selection, architecture checks, and test orchestration | [`test-impact`](testing/test-impact/), [`janitor`](testing/janitor/), [`playwright`](testing/playwright/) |
 | Environments | Test services and deployment stacks | [`containers`](environments/containers/) |
-| Efficiency | Speed, memory, load, latency, throughput, capacity, and resource use | [Efficiency workspace](efficiency/), [idle memory](efficiency/memory/idle/), [microbenchmarks](efficiency/microbenchmarks/), [Playwright performance tests](testing/playwright/tests/performance/), [infrastructure benchmarks](testing/playwright/tests/infrastructure/benchmarks/), [benchmark CLI](efficiency/scale/benchmark/) |
+| Efficiency | Speed, memory, load, latency, throughput, capacity, and resource use | [Efficiency workspace](efficiency/), [idle memory](efficiency/memory/idle/), [local memory profiling](efficiency/memory/local/), [microbenchmarks](efficiency/microbenchmarks/), [Playwright performance tests](testing/playwright/tests/performance/), [infrastructure benchmarks](testing/playwright/tests/infrastructure/benchmarks/), [benchmark CLI](efficiency/scale/benchmark/) |
 
 ## Working rules
 
