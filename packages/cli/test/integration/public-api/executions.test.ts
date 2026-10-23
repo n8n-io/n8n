@@ -32,7 +32,6 @@ import {
 	createSuccessfulExecution,
 } from '../shared/db/executions';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import { requestWithAPIKey } from '../shared/public-api';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -96,13 +95,13 @@ function createTraceparent() {
 
 describe('GET /executions/:id', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/executions/1', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/executions/1');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/executions/1', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/executions/1');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -333,13 +332,13 @@ describe('GET /executions/:id', () => {
 
 describe('DELETE /executions/:id', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'delete', '/executions/1', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().delete('/executions/1');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'delete', '/executions/1', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').delete('/executions/1');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -449,18 +448,15 @@ describe('POST /executions/:id/retry', () => {
 	};
 
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/executions/1/retry', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/executions/1/retry');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'post',
-			'/executions/1/retry',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/executions/1/retry');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -649,13 +645,13 @@ describe('POST /executions/:id/retry', () => {
 
 describe('GET /executions', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/executions', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/executions');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/executions', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/executions');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -1282,13 +1278,13 @@ describe('GET /executions', () => {
 
 describe('GET /executions/:id/tags', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/executions/1/tags', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/executions/1/tags');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/executions/1/tags', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/executions/1/tags');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -1349,13 +1345,13 @@ describe('GET /executions/:id/tags', () => {
 
 describe('PUT /executions/:id/tags', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'put', '/executions/1/tags', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().put('/executions/1/tags');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'put', '/executions/1/tags', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').put('/executions/1/tags');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -1481,18 +1477,13 @@ describe('PUT /executions/:id/tags', () => {
 
 describe('POST /executions/:id/stop', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/executions/1/stop', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/executions/1/stop');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'post',
-			'/executions/1/stop',
-			'abcXYZ',
-		);
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').post('/executions/1/stop');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -1668,13 +1659,13 @@ describe('POST /executions/:id/stop', () => {
 
 describe('POST /executions/stop', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/executions/stop', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/executions/stop');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/executions/stop', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').post('/executions/stop');
 
 		expect(response.statusCode).toBe(401);
 	});

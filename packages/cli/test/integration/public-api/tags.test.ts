@@ -5,7 +5,6 @@ import { Container } from '@n8n/di';
 
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import { requestWithAPIKey } from '../shared/public-api';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -30,13 +29,13 @@ beforeEach(async () => {
 
 describe('GET /tags', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/tags', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/tags');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/tags', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/tags');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -94,18 +93,15 @@ describe('GET /tags', () => {
 
 describe('GET /tags/:id', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/tags/gZqmqiGAuo1dHT7q', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'get',
-			'/tags/gZqmqiGAuo1dHT7q',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -160,23 +156,17 @@ describe('GET /tags/:id', () => {
 
 describe('DELETE /tags/:id', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			'/tags/gZqmqiGAuo1dHT7q',
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.delete('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			'/tags/gZqmqiGAuo1dHT7q',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.delete('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -251,13 +241,13 @@ describe('DELETE /tags/:id', () => {
 
 describe('POST /tags', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/tags', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/tags');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/tags', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').post('/tags');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -358,18 +348,15 @@ describe('POST /tags', () => {
 
 describe('PUT /tags/:id', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'put', '/tags/gZqmqiGAuo1dHT7q', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().put('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'put',
-			'/tags/gZqmqiGAuo1dHT7q',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.put('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(401);
 	});

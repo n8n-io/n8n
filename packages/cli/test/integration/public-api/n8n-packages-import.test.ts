@@ -17,7 +17,6 @@ import { Telemetry } from '@/telemetry';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { getVariableByKey } from '../shared/db/variables';
-import { requestWithAPIKey } from '../shared/public-api';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -125,18 +124,15 @@ async function buildImportPackage(
 
 describe('POST /n8n-packages/import', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/n8n-packages/import', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/n8n-packages/import');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'post',
-			'/n8n-packages/import',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/n8n-packages/import');
 
 		expect(response.statusCode).toBe(401);
 	});

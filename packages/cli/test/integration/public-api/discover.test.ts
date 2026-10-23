@@ -3,7 +3,6 @@ import type { User } from '@n8n/db';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import { requestWithAPIKey } from '../shared/public-api';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -32,13 +31,13 @@ describe('GET /discover', () => {
 	});
 
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/discover', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/discover');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/discover', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/discover');
 
 		expect(response.statusCode).toBe(401);
 	});

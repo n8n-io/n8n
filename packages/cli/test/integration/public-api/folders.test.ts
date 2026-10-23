@@ -11,7 +11,6 @@ import { ProjectService } from '@/services/project.service.ee';
 import { createFolder } from '../shared/db/folders';
 import { createTag } from '../shared/db/tags';
 import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
-import { requestWithAPIKey } from '../shared/public-api';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -71,23 +70,17 @@ const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 describe('POST /projects/:projectId/folders', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'post',
-			`/projects/${String('any-id')}/folders`,
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.post(`/projects/${String('any-id')}/folders`);
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'post',
-			`/projects/${String('any-id')}/folders`,
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post(`/projects/${String('any-id')}/folders`);
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -261,23 +254,17 @@ describe('POST /projects/:projectId/folders', () => {
 
 describe('GET /projects/:projectId/folders', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'get',
-			`/projects/${String('any-id')}/folders`,
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.get(`/projects/${String('any-id')}/folders`);
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'get',
-			`/projects/${String('any-id')}/folders`,
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get(`/projects/${String('any-id')}/folders`);
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -533,23 +520,17 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 	};
 
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.delete(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.delete(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -774,23 +755,17 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 
 describe('GET /projects/:projectId/folders/:folderId', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'get',
-			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.get(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'get',
-			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -938,23 +913,17 @@ describe('GET /projects/:projectId/folders/:folderId', () => {
 
 describe('PATCH /projects/:projectId/folders/:folderId', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'patch',
-			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.patch(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'patch',
-			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.patch(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
 
 		expect(response.statusCode).toBe(401);
 	});

@@ -10,7 +10,6 @@ import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { createDataTable } from '../shared/db/data-tables';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
-import { requestWithAPIKey } from '../shared/public-api';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -77,13 +76,13 @@ const createUnscopedAgent = async () => {
 
 describe('GET /data-tables', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/data-tables', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/data-tables');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/data-tables', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/data-tables');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -406,13 +405,13 @@ describe('GET /data-tables', () => {
 
 describe('POST /data-tables', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/data-tables', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/data-tables');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/data-tables', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').post('/data-tables');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -562,13 +561,13 @@ describe('POST /data-tables', () => {
 
 describe('GET /data-tables/:dataTableId', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/data-tables/123', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/data-tables/123');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/data-tables/123', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/data-tables/123');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -673,13 +672,13 @@ describe('GET /data-tables/:dataTableId', () => {
 
 describe('PATCH /data-tables/:dataTableId', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'patch', '/data-tables/123', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().patch('/data-tables/123');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'patch', '/data-tables/123', 'abcXYZ');
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').patch('/data-tables/123');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -798,18 +797,13 @@ describe('PATCH /data-tables/:dataTableId', () => {
 
 describe('DELETE /data-tables/:dataTableId', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'delete', '/data-tables/123', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().delete('/data-tables/123');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			'/data-tables/123',
-			'abcXYZ',
-		);
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').delete('/data-tables/123');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -879,18 +873,15 @@ describe('DELETE /data-tables/:dataTableId', () => {
 
 describe('GET /data-tables/:dataTableId/rows', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/data-tables/123/rows', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/data-tables/123/rows');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'get',
-			'/data-tables/123/rows',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get('/data-tables/123/rows');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -1170,18 +1161,15 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 
 describe('POST /data-tables/:dataTableId/rows', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/data-tables/123/rows', null);
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/data-tables/123/rows');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'post',
-			'/data-tables/123/rows',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/data-tables/123/rows');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -1303,23 +1291,17 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 
 describe('PATCH /data-tables/:dataTableId/rows/update', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'patch',
-			'/data-tables/123/rows/update',
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.patch('/data-tables/123/rows/update');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'patch',
-			'/data-tables/123/rows/update',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.patch('/data-tables/123/rows/update');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -1482,23 +1464,17 @@ describe('PATCH /data-tables/:dataTableId/rows/update', () => {
 
 describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'post',
-			'/data-tables/123/rows/upsert',
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.post('/data-tables/123/rows/upsert');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'post',
-			'/data-tables/123/rows/upsert',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/data-tables/123/rows/upsert');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -1657,23 +1633,17 @@ describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 
 describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			'/data-tables/123/rows/delete',
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.delete('/data-tables/123/rows/delete');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			'/data-tables/123/rows/delete',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.delete('/data-tables/123/rows/delete');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -1896,23 +1866,17 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 
 describe('DELETE /data-tables/:dataTableId/rows/clear', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			'/data-tables/123/rows/clear',
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.delete('/data-tables/123/rows/clear');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			'/data-tables/123/rows/clear',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.delete('/data-tables/123/rows/clear');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -2537,23 +2501,15 @@ describe('GET /data-tables with projectId filter', () => {
 
 describe('GET /data-tables/:dataTableId/columns', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'get',
-			'/data-tables/123/columns',
-			null,
-		);
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/data-tables/123/columns');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'get',
-			'/data-tables/123/columns',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get('/data-tables/123/columns');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -2655,23 +2611,17 @@ describe('GET /data-tables/:dataTableId/columns', () => {
 
 describe('POST /data-tables/:dataTableId/columns', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'post',
-			'/data-tables/123/columns',
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.post('/data-tables/123/columns');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'post',
-			'/data-tables/123/columns',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/data-tables/123/columns');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -2786,23 +2736,17 @@ describe('POST /data-tables/:dataTableId/columns', () => {
 
 describe('DELETE /data-tables/:dataTableId/columns/:columnId', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			'/data-tables/123/columns/456',
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.delete('/data-tables/123/columns/456');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'delete',
-			'/data-tables/123/columns/456',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.delete('/data-tables/123/columns/456');
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -2903,23 +2847,17 @@ describe('DELETE /data-tables/:dataTableId/columns/:columnId', () => {
 
 describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 	test('should fail due to missing API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'patch',
-			'/data-tables/123/columns/456',
-			null,
-		);
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.patch('/data-tables/123/columns/456');
 
 		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail due to invalid API Key', async () => {
-		const response = await requestWithAPIKey(
-			authOwnerAgent,
-			'patch',
-			'/data-tables/123/columns/456',
-			'abcXYZ',
-		);
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.patch('/data-tables/123/columns/456');
 
 		expect(response.statusCode).toBe(401);
 	});
