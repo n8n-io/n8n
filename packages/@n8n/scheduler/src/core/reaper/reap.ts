@@ -28,6 +28,8 @@ export interface ExpiredLeaseRef {
  */
 export interface ExpiredLeaseRow extends ClaimedTask {
 	dispatchedAt: Date | null;
+	/** Set when a holder reported its resource armed. Only held tasks carry it. */
+	heldSince?: Date | null;
 }
 
 /** A task that the reaper set to `missed`. */
@@ -63,6 +65,11 @@ export interface ReaperTaskStore {
 	 * already happened, so it must not be recorded failed nor dispatched again.
 	 */
 	completeExpired(ref: ExpiredLeaseRef): Promise<number>;
+	/**
+	 * Return an expired held task whose holder reported ready to `pending`, due now,
+	 * with no attempt counted.
+	 */
+	reclaimExpiredHeld?(ref: ExpiredLeaseRef): Promise<number>;
 	/**
 	 * Retire up to `limit` `pending` tasks past their `missedAfter` as `missed`.
 	 * One statement rather than a row at a time: there is no per-row decision to make.
@@ -188,6 +195,16 @@ export async function reap(
 			// same as a handler failure would.
 			const nextAttempts = task.attempts + 1;
 			const ref = { id: task.id, claimedEpoch: task.leaseEpoch };
+			// A holder that reported ready worked, so losing it costs no attempt.
+			if (
+				task.mode === 'hold' &&
+				task.heldSince !== null &&
+				task.heldSince !== undefined &&
+				store.reclaimExpiredHeld !== undefined
+			) {
+				reclaimed += await store.reclaimExpiredHeld(ref);
+				continue;
+			}
 			// The effect boundary is the primary split, ahead of the attempt count: a row
 			// the owner dispatched before losing its lease already had its effect happen, so
 			// it is completed whatever the attempts left and never redelivered. Only a

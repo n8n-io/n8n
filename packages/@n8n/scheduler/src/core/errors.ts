@@ -87,6 +87,21 @@ export class InvalidRunOptionError extends Error {
  * The abort reason of a handler's signal when its run reaches the timeout of
  * its occurrence. The executor stops renewing the lease at the same time.
  */
+export class HolderShutdownError extends Error {
+	constructor() {
+		super('The executor is stopping, so the holder must let go');
+		this.name = 'HolderShutdownError';
+	}
+}
+
+/** Raised when the executor is asked to run held tasks but its store cannot write them. */
+export class HoldStoreMissingError extends Error {
+	constructor() {
+		super('Held tasks are enabled, but the task store has no hold operations');
+		this.name = 'HoldStoreMissingError';
+	}
+}
+
 export class TaskTimeoutError extends Error {
 	constructor(readonly timeoutSeconds: number) {
 		super('The run of this occurrence reached its timeout');

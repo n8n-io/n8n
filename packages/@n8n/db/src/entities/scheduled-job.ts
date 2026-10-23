@@ -184,6 +184,14 @@ export class ScheduledJob extends WithTimestamps {
 	@Column({ type: 'int', nullable: true })
 	concurrencyLimit: number | null;
 
+	/**
+	 * Lease length in seconds for this job's tasks, copied onto each task. `null`
+	 * means the executor's configured lease. Held tasks use a shorter lease to keep
+	 * failover short.
+	 */
+	@Column({ type: 'int', nullable: true })
+	leaseSeconds: number | null;
+
 	/** What happens to an occurrence overdue by more than {@link misfireGraceSeconds}. */
 	@Column({ type: 'varchar', length: 16, default: ScheduledJobMisfirePolicy.Coalesce })
 	misfirePolicy: ScheduledJobMisfirePolicy;

@@ -129,8 +129,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
-| [public.scheduled_job](public.scheduled_job.md) | 25 |  | BASE TABLE |
-| [public.scheduled_task](public.scheduled_task.md) | 19 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 26 |  | BASE TABLE |
+| [public.scheduled_task](public.scheduled_task.md) | 22 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
 | [public.self_healing_configuration](public.self_healing_configuration.md) | 7 |  | BASE TABLE |
@@ -1686,6 +1686,7 @@ erDiagram
   integer intervalSeconds
   varchar_16_ kind
   timestamp_3__with_time_zone lastFiredAt
+  integer leaseSeconds
   integer maxAttempts
   integer misfireGraceSeconds
   varchar_16_ misfirePolicy
@@ -1710,12 +1711,15 @@ erDiagram
   timestamp_3__with_time_zone dispatchedAt
   text errorMessage
   timestamp_3__with_time_zone finishedAt
+  timestamp_3__with_time_zone heldSince
   bigint id
   integer jobId FK
   integer leaseEpoch
   timestamp_3__with_time_zone leaseExpiresAt
+  integer leaseSeconds
   integer maxAttempts
   timestamp_3__with_time_zone missedAfter
+  varchar_16_ mode
   json payload
   timestamp_3__with_time_zone runAt
   timestamp_3__with_time_zone scheduledFor

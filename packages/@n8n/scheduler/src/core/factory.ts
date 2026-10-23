@@ -15,6 +15,7 @@ import {
 import {
 	DEFAULT_EXECUTOR_OPTIONS,
 	Executor,
+	isHoldTaskHandler,
 	PrecisionTimer,
 	TaskHandlerRegistry,
 } from './executor';
@@ -378,6 +379,27 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					);
 				}
 			},
+			onHoldReady: (task) => {
+				emit('debug', 'Scheduler holder reported ready', {
+					taskId: task.id,
+					taskType: task.taskType,
+					leaseEpoch: task.leaseEpoch,
+				});
+			},
+			onHoldReleased: (task, reason) => {
+				emit('debug', 'Scheduler released a held task', {
+					taskId: task.id,
+					taskType: task.taskType,
+					leaseEpoch: task.leaseEpoch,
+					reason,
+				});
+			},
+			onBatchRenewal: (size, durationMs) => {
+				emit('debug', 'Scheduler renewed held leases in one write', {
+					size,
+					durationMs: Math.round(durationMs),
+				});
+			},
 		},
 		createExecutorTracing(tracer),
 	);
@@ -616,6 +638,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 								...context,
 							});
 						},
+						onHeldTasksRearmed: (context) => {
+							emit('info', 'Re-armed failed held tasks whose owner still exists', { ...context });
+						},
 						onReviveClockFailed: ({ jobId, error }) => {
 							emit('warn', 'Could not recompute the clock of a revived scheduled job', {
 								jobId,
@@ -770,7 +795,10 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		registerTaskHandler(taskType, handler) {
 			// Wrapped here, at registration, so the executor calls handlers without
 			// knowing a tracing span surrounds each run.
-			registry.register(taskType, withHandoffTracing(tracer, handler));
+			registry.register(
+				taskType,
+				isHoldTaskHandler(handler) ? handler : withHandoffTracing(tracer, handler),
+			);
 		},
 
 		materialize: runMaterialize,

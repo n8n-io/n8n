@@ -25,6 +25,15 @@ export interface ClaimDueTasksBatch {
 	leaseMs: number;
 	/** The most tasks one claim takes. */
 	batchSize: number;
+	/** Also take held tasks whose lease expired after their holder reported ready. */
+	takeExpiredHeld?: boolean;
+}
+
+/** One claim in a batched lease renewal. */
+export interface LeaseRenewal {
+	id: string;
+	claimedEpoch: number;
+	expiresInMs: number;
 }
 
 /**
@@ -85,4 +94,21 @@ export interface ExecutorTaskStore {
 
 	/** Return a claimed-but-unfired task to `pending` without counting an attempt. */
 	releaseClaim(claim: ClaimedTaskRef): Promise<number>;
+
+	/** Held tasks only: stamp `heldSince` and reset the attempts. */
+	markHeld?(claim: ClaimedTaskRef): Promise<number>;
+
+	/** Held tasks only: back to `pending`, due after `delayMs`, no attempt counted. */
+	releaseHeld?(
+		claim: ClaimedTaskRef,
+		delayMs: number,
+		errorMessage: string | null,
+	): Promise<number>;
+
+	/**
+	 * Extend many leases of one host in one write.
+	 *
+	 * @returns the ids whose lease was extended
+	 */
+	renewLeases?(host: string, renewals: LeaseRenewal[]): Promise<Set<string>>;
 }

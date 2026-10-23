@@ -2,21 +2,37 @@ import { Time } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { backoff } from './backoff';
-import { LeaseLostError, TaskTimeoutError } from '../errors';
+import { BatchedLeaseRenewer } from './batched-lease-renewer';
+import {
+	HolderShutdownError,
+	HoldStoreMissingError,
+	LeaseLostError,
+	TaskTimeoutError,
+} from '../errors';
 import { MIN_RENEWAL_INTERVAL_MS } from './lease-constants';
 import { LeaseHeartbeat } from './lease-heartbeat';
 import type { LeaseRenewalResult } from './lease-heartbeat';
 import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
 import type { PrecisionTimer } from './precision-timer';
 import type { ClaimedTaskRef, ClaimDueTasksBatch, ExecutorTaskStore } from './store';
-import { createDispatchReporter } from './task-handler';
-import type { DispatchReporter, TaskHandler, TaskHandlerRegistry } from './task-handler';
+import { createDispatchReporter, isHoldTaskHandler } from './task-handler';
+import type {
+	DispatchReporter,
+	HoldReporter,
+	HoldTaskHandler,
+	TaskHandler,
+	TaskHandlerRegistry,
+} from './task-handler';
 import { noopExecutorTracing } from './tracing';
 import type { ExecutorTracing, FireResult } from './tracing';
 import { Alarm } from '../lifecycle/alarm';
 import type { ClaimedTask } from '../types';
 
 type ClaimedEntry = { host: string; task: ClaimedTask };
+
+type HolderEntry = { claim: ClaimedTaskRef; run: AbortController; settled: Promise<void> };
+
+type HoldStore = Required<Pick<ExecutorTaskStore, 'markHeld' | 'releaseHeld'>>;
 
 type HeartbeatRun = {
 	claim: ClaimedTaskRef;
@@ -92,6 +108,15 @@ export interface ExecutorHooks {
 	 * Both of the latter abort the handler's signal before dispatch.
 	 */
 	onLeaseRenewal?: (task: ClaimedTask, result: LeaseRenewalResult) => void;
+
+	/** A holder reported its resource armed. */
+	onHoldReady?: (task: ClaimedTask) => void;
+
+	/** A held task went back to `pending`. `reason` names why the holder let go. */
+	onHoldReleased?: (task: ClaimedTask, reason: string) => void;
+
+	/** One batched renewal write finished. */
+	onBatchRenewal?: (size: number, durationMs: number) => void;
 }
 
 /**
@@ -144,6 +169,11 @@ export class Executor {
 	/** Set by {@link stop}: claims resolving after it must be handed back, never scheduled. */
 	private stopping = false;
 
+	/** Running holders, keyed by task id, so {@link stop} can tell them to let go. */
+	private readonly holders = new Map<string, HolderEntry>();
+
+	private readonly renewers = new Map<string, BatchedLeaseRenewer>();
+
 	constructor(
 		private readonly store: ExecutorTaskStore,
 		private readonly registry: TaskHandlerRegistry,
@@ -170,6 +200,16 @@ export class Executor {
 				minRenewalIntervalMs: MIN_RENEWAL_INTERVAL_MS,
 			});
 		}
+
+		const hold = options.hold;
+		if (
+			hold !== undefined &&
+			(store.markHeld === undefined ||
+				store.releaseHeld === undefined ||
+				(hold.renewal === 'batched' && store.renewLeases === undefined))
+		) {
+			throw new HoldStoreMissingError();
+		}
 	}
 
 	/**
@@ -193,6 +233,7 @@ export class Executor {
 			lookaheadMs: this.lookaheadMs,
 			leaseMs: this.leaseMs,
 			batchSize: this.options.batchSize,
+			...(this.options.hold !== undefined ? { takeExpiredHeld: true } : {}),
 		};
 		const tasks = await this.store.claimDueTasks(batch);
 
@@ -268,10 +309,18 @@ export class Executor {
 		// registered types, so this normally resolves; if the handler went away (e.g. a
 		// rolling restart), release without counting an attempt so it isn't lost.
 		const handler = this.registry.resolve(task.taskType);
-		if (handler === undefined) {
+		const isHeldTask = task.mode === 'hold';
+		if (
+			handler === undefined ||
+			isHoldTaskHandler(handler) !== isHeldTask ||
+			(isHeldTask && this.options.hold === undefined)
+		) {
 			this.hooks.onMissingHandler?.(task);
 			await this.releaseClaimBestEffort(claim);
 			return { outcome: 'skipped-no-handler' };
+		}
+		if (isHoldTaskHandler(handler)) {
+			return await this.runHold(task, claim, handler);
 		}
 
 		// Pre-dispatch mutex: atomically claim the sole right to run this occurrence's
@@ -444,6 +493,214 @@ export class Executor {
 		}
 	}
 
+	/**
+	 * Keep one held task: run the holder while its lease is renewed, then record how
+	 * it let go. A clean return or a throw after `ready()` releases the task with no
+	 * attempt counted. A throw before `ready()` is a failed start and counts one.
+	 */
+	private async runHold(
+		task: ClaimedTask,
+		claim: ClaimedTaskRef,
+		handler: HoldTaskHandler,
+	): Promise<FireResult> {
+		const store = this.holdStore();
+		const leaseMs = this.leaseMsFor(task);
+		const leaseSetAt = performance.now();
+		if ((await this.store.beginDispatch(claim, leaseMs)) === 0) {
+			return { outcome: 'skipped-not-owned' };
+		}
+		if (this.stopping) {
+			await this.releaseClaimBestEffort(claim);
+			this.hooks.onHoldReleased?.(task, 'shutdown');
+			return { outcome: 'released' };
+		}
+		this.hooks.onDispatch?.(task.taskType, 0);
+
+		const run = new AbortController();
+		let isReady = false;
+		const startTimeout = new Alarm(() => performance.now());
+		startTimeout.set(leaseSetAt + task.timeoutSeconds * Time.seconds.toMilliseconds, () => {
+			if (!isReady && !run.signal.aborted) {
+				this.hooks.onTaskTimeout?.(task);
+				run.abort(new TaskTimeoutError(task.timeoutSeconds));
+			}
+		});
+		const holder: HoldReporter = {
+			ready: async () => {
+				if (isReady || run.signal.aborted) return;
+				if ((await store.markHeld(claim)) === 0) {
+					run.abort(new LeaseLostError());
+					return;
+				}
+				isReady = true;
+				startTimeout.cancel();
+				this.hooks.onHoldReady?.(task);
+			},
+		};
+		const stopLease = this.keepHoldLease(task, claim, leaseMs, leaseSetAt, (result) => {
+			this.hooks.onLeaseRenewal?.(task, result);
+			if (result !== 'renewed' && !run.signal.aborted) {
+				run.abort(new LeaseLostError());
+			}
+		});
+
+		let settle = () => {};
+		const settled = new Promise<void>((resolve) => {
+			settle = resolve;
+		});
+		this.holders.set(task.id, { claim, run, settled });
+
+		let failure: { error: unknown } | undefined;
+		try {
+			await handler.hold(task, holder, { signal: run.signal });
+		} catch (error) {
+			failure = { error };
+		} finally {
+			startTimeout.cancel();
+			stopLease();
+		}
+
+		try {
+			return await this.recordHoldEnd(task, claim, store, {
+				failure,
+				isReady,
+				abortReason: run.signal.reason,
+			});
+		} finally {
+			this.holders.delete(task.id);
+			settle();
+		}
+	}
+
+	private async recordHoldEnd(
+		task: ClaimedTask,
+		claim: ClaimedTaskRef,
+		store: HoldStore,
+		{
+			failure,
+			isReady,
+			abortReason,
+		}: { failure?: { error: unknown }; isReady: boolean; abortReason: unknown },
+	): Promise<FireResult> {
+		const shutdown = abortReason instanceof HolderShutdownError;
+		const reason = shutdown
+			? 'shutdown'
+			: abortReason instanceof LeaseLostError
+				? 'lease-lost'
+				: abortReason instanceof TaskTimeoutError
+					? 'start-timeout'
+					: failure !== undefined
+						? 'error'
+						: 'returned';
+
+		if (failure === undefined || shutdown) {
+			const errorMessage = failure === undefined ? null : ensureError(failure.error).message;
+			const rows = await store.releaseHeld(claim, 0, errorMessage);
+			if (rows === 0) return { outcome: 'skipped-not-owned' };
+			this.hooks.onHoldReleased?.(task, reason);
+			return { outcome: 'released' };
+		}
+
+		const errorMessage = ensureError(failure.error).message;
+		if (isReady) {
+			const rows = await store.releaseHeld(claim, backoff(1), errorMessage);
+			if (rows === 0) return { outcome: 'skipped-not-owned', errorMessage };
+			this.hooks.onHoldReleased?.(task, reason);
+			return { outcome: 'released', errorMessage };
+		}
+
+		return await this.recordHandlerFailure(task, claim, failure.error, {
+			dispatchWasReported: false,
+			abortReason,
+		});
+	}
+
+	/** Renew a held task's lease until the returned function is called. */
+	private keepHoldLease(
+		task: ClaimedTask,
+		claim: ClaimedTaskRef,
+		leaseMs: number,
+		leaseSetAt: number,
+		onRenewal: (result: LeaseRenewalResult) => void,
+	): () => void {
+		const fenceMarginMs =
+			this.options.hold?.stopBudgetMs ?? Math.min(5_000, Math.floor(leaseMs / 8));
+		if (this.options.hold?.renewal === 'batched') {
+			return this.renewerFor(claim.host).add(
+				claim,
+				{ leaseMs, leaseSetAt, fenceMarginMs },
+				onRenewal,
+			);
+		}
+		const heartbeat = new LeaseHeartbeat(
+			async (expiresInMs) => await this.store.renewLease(claim, expiresInMs),
+			{ leaseDurationMs: leaseMs, leaseSetAt, fenceMarginMs },
+			{
+				onRenewal,
+				onRenewalError: (error) => this.hooks.onLeaseRenewalError?.(task, error),
+			},
+		);
+		return () => heartbeat.stop();
+	}
+
+	private renewerFor(host: string): BatchedLeaseRenewer {
+		let renewer = this.renewers.get(host);
+		if (renewer === undefined) {
+			const renewLeases = this.store.renewLeases;
+			if (renewLeases === undefined) throw new HoldStoreMissingError();
+			renewer = new BatchedLeaseRenewer(
+				host,
+				async (owner, renewals) => await renewLeases.call(this.store, owner, renewals),
+				{
+					onBatch: (size, durationMs) => this.hooks.onBatchRenewal?.(size, durationMs),
+					onRenewalError: (error) => this.hooks.onReleaseError?.('batched-renewal', error),
+				},
+			);
+			this.renewers.set(host, renewer);
+		}
+		return renewer;
+	}
+
+	private holdStore(): HoldStore {
+		const { markHeld, releaseHeld } = this.store;
+		if (markHeld === undefined || releaseHeld === undefined) throw new HoldStoreMissingError();
+		return {
+			markHeld: async (claim) => await markHeld.call(this.store, claim),
+			releaseHeld: async (claim, delayMs, errorMessage) =>
+				await releaseHeld.call(this.store, claim, delayMs, errorMessage),
+		};
+	}
+
+	private leaseMsFor(task: ClaimedTask): number {
+		const leaseSeconds = task.leaseSeconds ?? this.options.leaseSeconds;
+		return leaseSeconds * Time.seconds.toMilliseconds;
+	}
+
+	/**
+	 * Tell every running holder to let go, wait up to the shutdown grace for them to
+	 * return, then release the claims of the ones still running.
+	 */
+	private async stopHolders(): Promise<void> {
+		const entries = [...this.holders.values()];
+		for (const entry of entries) entry.run.abort(new HolderShutdownError());
+		if (entries.length > 0) {
+			const graceMs = this.options.hold?.shutdownGraceMs ?? 0;
+			const grace = new Alarm(() => performance.now());
+			await Promise.race([
+				Promise.allSettled(entries.map(async (entry) => await entry.settled)),
+				new Promise<void>((resolve) => grace.set(performance.now() + graceMs, resolve)),
+			]);
+			grace.cancel();
+			await Promise.all(
+				[...this.holders.values()].map(
+					async (entry) => await this.releaseClaimBestEffort(entry.claim),
+				),
+			);
+		}
+		for (const renewer of this.renewers.values()) renewer.stop();
+		this.renewers.clear();
+	}
+
 	/** Release a claim, reporting but swallowing failures: the reaper still recovers the row. */
 	private async releaseClaimBestEffort(claim: ClaimedTaskRef): Promise<void> {
 		try {
@@ -483,5 +740,6 @@ export class Executor {
 			}
 		});
 		this.claimedTaskById.clear();
+		await this.stopHolders();
 	}
 }
