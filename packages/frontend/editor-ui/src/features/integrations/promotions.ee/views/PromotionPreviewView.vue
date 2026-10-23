@@ -243,7 +243,7 @@ const tabs = computed(() => [
 	{
 		value: 'changes' as const,
 		label: i18n.baseText('promotions.preview.tab.changes'),
-		tag: String(totalChanges.value),
+		tag: graph.value ? String(totalChanges.value) : undefined,
 	},
 	...(showBlockersTab.value
 		? [

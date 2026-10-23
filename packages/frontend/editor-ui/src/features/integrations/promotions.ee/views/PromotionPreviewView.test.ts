@@ -209,6 +209,31 @@ describe('PromotionPreviewView', () => {
 		},
 	);
 
+	it.each(['promote', 'apply'] as const)(
+		'hides unknown counts until a retry loads the %s changes',
+		async (direction) => {
+			vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment(direction)]);
+			vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline'));
+			const { getByTestId, getByRole } = await render(
+				`/projects/p1/promotions/${direction}`,
+				direction,
+			);
+			const action = direction === 'promote' ? 'Promote' : 'Apply';
+			const tabs = getByTestId('promotion-preview-tabs');
+			const submit = getByTestId('promotion-preview-submit');
+
+			expect(tabs).toHaveTextContent(/^Changes$/);
+			expect(submit).toHaveTextContent(new RegExp(`^${action} changes$`));
+			expect(submit).toBeDisabled();
+			expect(getByTestId('promotion-preview-error')).toHaveTextContent("Couldn't load the changes");
+
+			await userEvent.click(getByRole('button', { name: 'Try again' }));
+			await waitFor(() => expect(submit).toBeEnabled());
+			expect(tabs).toHaveTextContent(/Changes\s*5/);
+			expect(submit).toHaveTextContent(`${action} 5 changes`);
+		},
+	);
+
 	it.each([
 		{
 			direction: 'promote',
@@ -434,6 +459,7 @@ describe('PromotionPreviewView', () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValueOnce(billingPreview({ resources: [] }));
 		const { getByTestId } = await render();
 		expect(getByTestId('promotion-preview-empty')).toHaveTextContent('Nothing to promote');
+		expect(getByTestId('promotion-preview-tabs')).toHaveTextContent(/Changes\s*0/);
 		vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline'));
 
 		await userEvent.click(getByTestId('promotion-preview-refresh'));
@@ -441,6 +467,7 @@ describe('PromotionPreviewView', () => {
 
 		// "Nothing to promote" could be out of date, so the page asks for a retry.
 		expect(getByTestId('promotion-preview-error')).toHaveTextContent("Couldn't load the changes");
+		expect(getByTestId('promotion-preview-tabs')).toHaveTextContent(/^Changes$/);
 	});
 
 	it('should promote the selection to a branch that has no commit yet, then go back to the project', async () => {
