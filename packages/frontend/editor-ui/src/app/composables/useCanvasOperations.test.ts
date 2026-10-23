@@ -32,6 +32,7 @@ import {
 	AddNodeCommand,
 	AddNodeGroupCommand,
 	BulkCommand,
+	historyBus,
 	MoveNodeCommand,
 	RemoveNodeCommand,
 	RemoveNodeGroupCommand,
@@ -9296,6 +9297,11 @@ describe('useCanvasOperations', () => {
 			vi.spyOn(workflowDocumentStoreInstance, 'addNode').mockImplementation((addedNode) => {
 				nodesById.set(addedNode.id, addedNode);
 			});
+			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
+				nodesById.delete(id);
+			});
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 			vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById').mockImplementation(
 				(id, position) => {
 					const node = nodesById.get(id);
@@ -9341,8 +9347,9 @@ describe('useCanvasOperations', () => {
 			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.Main}/0`;
 
 			const positionOf = (node: TestNode) => nodesById.get(node.id)?.position;
+			const hasNode = (id: string) => nodesById.has(id);
 
-			return { positionOf, undoStack };
+			return { positionOf, hasNode, undoStack };
 		}
 
 		function createAgentWithSubNodes() {
@@ -9423,10 +9430,17 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should record the insert and every shift in one undo step', async () => {
-			const { trigger, agent, nodes, connections } = createAgentWithSubNodes();
-			const { undoStack } = setupEdgeInsert({ nodes, connections, source: trigger, target: agent });
+			const { trigger, agent, slack, model, memory, tool, nodes, connections } =
+				createAgentWithSubNodes();
+			const { positionOf, hasNode, undoStack } = setupEdgeInsert({
+				nodes,
+				connections,
+				source: trigger,
+				target: agent,
+			});
 
-			const { addNodesAndConnections } = useCanvasOperations();
+			const { addNodesAndConnections, revertAddNode, revertUpdateNodePosition } =
+				useCanvasOperations();
 			const { addedNodes } = await addNodesAndConnections([{ type: SET_NODE_TYPE }], [], {});
 
 			expect(undoStack).toHaveLength(1);
@@ -9451,6 +9465,25 @@ describe('useCanvasOperations', () => {
 				Memory: [240, 208],
 				Tool: [384, 208],
 			});
+
+			// Undo the bulk as useHistoryHelper does, with the history bus handlers that NodeView registers
+			const onNodeMove = ({ nodeName, position }: { nodeName: string; position: XYPosition }) =>
+				revertUpdateNodePosition(nodeName, { x: position[0], y: position[1] });
+			const onRevertAddNode = async ({ node }: { node: INodeUi }) => await revertAddNode(node.name);
+			historyBus.on('nodeMove', onNodeMove);
+			historyBus.on('revertAddNode', onRevertAddNode);
+			for (const command of [...commands].reverse()) {
+				await command.revert();
+			}
+			historyBus.off('nodeMove', onNodeMove);
+			historyBus.off('revertAddNode', onRevertAddNode);
+
+			expect(hasNode(addedNodes[0].id)).toBe(false);
+			expect(positionOf(agent)).toEqual([224, 0]);
+			expect(positionOf(slack)).toEqual([576, 0]);
+			expect(positionOf(model)).toEqual([96, 208]);
+			expect(positionOf(memory)).toEqual([240, 208]);
+			expect(positionOf(tool)).toEqual([384, 208]);
 		});
 
 		it('should keep a sub-node in place when it also feeds a root node that stays', async () => {
