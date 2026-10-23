@@ -1,3 +1,4 @@
+import type { AgentModelCredentialConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
@@ -9,10 +10,11 @@ import { AgentDefaultModelResolverService } from './agent-default-model-resolver
 import type {
 	AgentDraftReference,
 	CreateAgentDraftOptions,
+	PersistAgentDraftOptions,
 	PersistedAgentDraft,
 } from './agent-draft.contracts';
 import { AgentRunnableStateService } from './agent-runnable-state.service';
-import { AgentsService } from './agents.service';
+import { AgentsService, type AgentCreationResult } from './agents.service';
 import { AgentsSettingsService } from './agents-settings.service';
 
 @Service()
@@ -40,6 +42,7 @@ export class AgentDraftService {
 		const { agent, adopted } = await this.agents.createOrAdopt(projectId, name, {
 			...options,
 			actor: { kind: 'user', user },
+			...(options.createdBy ? { user } : {}),
 			...(options.skills ? { skillCreator: user } : {}),
 		});
 		return { agentId: agent.id, projectId, name: agent.name, adopted };
@@ -48,7 +51,7 @@ export class AgentDraftService {
 	async persistDraft(
 		user: User,
 		projectId: string,
-		options: { id: string; name: string; adoptOnCollision: boolean },
+		options: PersistAgentDraftOptions,
 	): Promise<PersistedAgentDraft | null> {
 		await this.settings.assertEnabled();
 		const existing = await this.agents.findById(options.id, projectId);
@@ -58,25 +61,43 @@ export class AgentDraftService {
 		if (!(await userHasScopes(user, scopes, false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to create agents in this project.');
 		}
-		let agent = existing;
-		if (!agent) {
-			const defaultModel = await this.defaultModel.resolve(user, projectId);
-			agent = await this.agents.create(projectId, options.name, {
-				id: options.id,
-				adoptOnCollision: options.adoptOnCollision,
-				actor: { kind: 'user', user },
-				...(defaultModel ? { defaultModel } : {}),
-			});
+		let creationResult: AgentCreationResult;
+		if (existing) {
+			creationResult = await this.agents.getCreationResult(existing, true);
+		} else {
+			creationResult = await this.createPendingDraft(user, projectId, options);
 		}
-		const persisted = agent;
+		const { agent, ...creationState } = creationResult;
 		return {
-			id: persisted.id,
-			name: persisted.name,
+			id: agent.id,
+			name: agent.name,
 			getState: async () => ({
-				...(await this.runnableState.addRunnableState(persisted, projectId, user)),
+				...(await this.runnableState.addRunnableState(agent, projectId, user)),
+				...creationState,
 				projectId,
 			}),
 		};
+	}
+
+	private async createPendingDraft(
+		user: User,
+		projectId: string,
+		options: PersistAgentDraftOptions,
+	) {
+		let defaultModel: AgentModelCredentialConfig | null = null;
+		if (options.config?.model === undefined) {
+			defaultModel = await this.defaultModel.resolve(user, projectId);
+		}
+		return await this.agents.createOrAdopt(projectId, options.name, {
+			actor: { kind: 'user', user },
+			user,
+			createdBy: 'user',
+			id: options.id,
+			adoptOnCollision: options.adoptOnCollision,
+			config: options.config,
+			pushRef: options.pushRef,
+			...(defaultModel ? { defaultModel } : {}),
+		});
 	}
 
 	async deleteDraft(user: User, projectId: string, agentId: string): Promise<void> {

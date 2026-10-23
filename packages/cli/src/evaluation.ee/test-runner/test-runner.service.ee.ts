@@ -1,20 +1,19 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
-import type { EvaluationConfig, User } from '@n8n/db';
+import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import {
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
 	TestCaseExecutionErrorCode,
 	TestCaseExecutionRepository,
-	TestRun,
 	TestRunErrorCode,
 	TestRunRepository,
+	TransactionRunner,
 	WorkflowRepository,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	EVALUATION_NODE_TYPE,
@@ -100,6 +99,7 @@ export class TestRunnerService {
 		private readonly evaluationConfigRepository: EvaluationConfigRepository,
 		private readonly workflowCompiler: WorkflowCompilerService,
 		private readonly ownershipService: OwnershipService,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	private findEvaluationTriggerNode(workflow: IWorkflowBase) {
@@ -748,7 +748,6 @@ export class TestRunnerService {
 		};
 
 		const abortSignal = abortController.signal;
-		const { manager: dbManager } = this.testRunRepository;
 
 		try {
 			// Tag with instance ID for multi-main coordination.
@@ -1082,9 +1081,9 @@ export class TestRunnerService {
 			// this is where cancellation telemetry status is set for both paths.
 			if (abortSignal.aborted) {
 				this.logger.debug('Test run was cancelled', { workflowId });
-				await dbManager.transaction(async (trx) => {
-					await this.testRunRepository.markAsCancelled(testRun.id, trx);
-					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
+				await this.txRunner.run({}, async (ctx) => {
+					await this.testRunRepository.markAsCancelled(testRun.id, ctx);
+					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, ctx);
 				});
 				telemetryMeta.status = 'cancelled';
 			} else {
@@ -1126,9 +1125,9 @@ export class TestRunnerService {
 					stoppedOn: e.extra?.executionId,
 				});
 
-				await dbManager.transaction(async (trx) => {
-					await this.testRunRepository.markAsCancelled(testRun.id, trx);
-					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
+				await this.txRunner.run({}, async (ctx) => {
+					await this.testRunRepository.markAsCancelled(testRun.id, ctx);
+					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, ctx);
 				});
 
 				telemetryMeta.status = 'cancelled';
@@ -1258,23 +1257,16 @@ export class TestRunnerService {
 			});
 		}
 
-		// Fallback for runs we don't own locally. Race protection: a foreign main
-		// may have completed a run since `activeRuns` was sampled, so scope the
-		// update by status — a plain markAsCancelled would clobber the terminal
-		// state. 0 rows affected means natural completion won; skip its case sweep.
+		// Fallback for runs we don't own locally. A foreign main may have completed
+		// a run since `activeRuns` was sampled, so `markAsCancelledIfActive` guards
+		// the flip; sweep a run's cases only when it actually flipped.
 		const localSet = new Set(cancelledLocally);
 		const fallbackRunIds = activeRuns.map((r) => r.id).filter((id) => !localSet.has(id));
 		if (fallbackRunIds.length > 0) {
-			const { manager: dbManager } = this.testRunRepository;
-			await dbManager.transaction(async (trx) => {
+			await this.txRunner.run({}, async (ctx) => {
 				for (const runId of fallbackRunIds) {
-					const result = await trx.update(
-						TestRun,
-						{ id: runId, status: In(['new', 'running']) },
-						{ status: 'cancelled', completedAt: new Date() },
-					);
-					if (result.affected) {
-						await this.testCaseExecutionRepository.markAllPendingAsCancelled(runId, trx);
+					if (await this.testRunRepository.markAsCancelledIfActive(runId, ctx)) {
+						await this.testCaseExecutionRepository.markAllPendingAsCancelled(runId, ctx);
 					}
 				}
 			});
@@ -1304,18 +1296,12 @@ export class TestRunnerService {
 		}
 
 		// If not running locally, mark cancelled in DB as fallback (single-main, or
-		// multi-main where the owner is unreachable). Same race protection as
-		// `cancelCollection`: scope by status so a natural completion wins.
+		// multi-main where the owner is unreachable). Same race guard as
+		// `cancelCollection`: a natural completion wins.
 		if (!cancelledLocally) {
-			const { manager: dbManager } = this.testRunRepository;
-			await dbManager.transaction(async (trx) => {
-				const result = await trx.update(
-					TestRun,
-					{ id: testRunId, status: In(['new', 'running']) },
-					{ status: 'cancelled', completedAt: new Date() },
-				);
-				if (result.affected) {
-					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
+			await this.txRunner.run({}, async (ctx) => {
+				if (await this.testRunRepository.markAsCancelledIfActive(testRunId, ctx)) {
+					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, ctx);
 				}
 			});
 		}

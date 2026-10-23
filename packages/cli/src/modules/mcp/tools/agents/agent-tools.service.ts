@@ -40,7 +40,7 @@ import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import {
 	SkillNameTakenError,
 	skillNameTakenToolMessage,
-} from '@/modules/agents/skills/skill-name-taken.error';
+} from '@/modules/skills/skill-name-taken.error';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
 	AgentTestRunService,
@@ -607,41 +607,17 @@ export class McpAgentToolsService {
 					await this.assertScope(user, projectId, 'agent:create');
 					const initialConfig = config ? { ...config, name } : undefined;
 					if (initialConfig) {
-						const validation = await this.agentConfigService.validateConfig(initialConfig);
-						if (!validation.valid) {
-							throw new UserError(`Invalid initial Agent config: ${validation.error}`);
-						}
 						await this.assertAccessibleCredentials(initialConfig, user, projectId);
 					}
 
 					// Agents created over MCP stay operable over MCP.
-					const agent = await this.agentsService.create(projectId, name, {
+					const { agent, configHash } = await this.agentsService.createOrAdopt(projectId, name, {
 						actor: { kind: 'user', user },
+						user,
+						createdBy: 'mcp',
+						config: initialConfig,
 						availableInMCP: true,
 					});
-					let configHash: string | null;
-					let versionId = agent.versionId;
-					try {
-						if (initialConfig) {
-							const result = await this.agentConfigService.updateConfig(
-								agent.id,
-								projectId,
-								initialConfig,
-								user,
-								{
-									baseConfigHash: getAgentConfigHash(await this.configFromEntity(agent)),
-									modifiedBy: 'mcp',
-								},
-							);
-							configHash = getAgentConfigHash(result.config);
-							versionId = result.versionId;
-						} else {
-							configHash = await this.fetchConfigHash(projectId, agent.id);
-						}
-					} catch (error) {
-						await this.agentsService.delete(agent.id, projectId);
-						throw error;
-					}
 
 					return {
 						ok: true,
@@ -650,7 +626,7 @@ export class McpAgentToolsService {
 							name: agent.name,
 							projectId: agent.projectId,
 							published: false,
-							versionId,
+							versionId: agent.versionId,
 							activeVersionId: agent.activeVersionId,
 						},
 						configHash,

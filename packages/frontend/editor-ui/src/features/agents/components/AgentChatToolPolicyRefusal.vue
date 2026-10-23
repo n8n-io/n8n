@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { N8nLink } from '@n8n/design-system';
 import {
-	ContactInstanceAdminModal,
+	ContactAdminModal,
+	getViolationVerdict,
+	useRestrictionContact,
 	type RestrictedTypeKind,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
@@ -31,6 +33,10 @@ const adminSubject = computed(() => subjectName(firstViolation.value) ?? props.f
 const adminSubjectKind = computed<RestrictedTypeKind>(() =>
 	firstViolation.value.subjectType === 'credentialType' ? 'credential' : 'node',
 );
+const { copy: contactCopy } = useRestrictionContact(
+	() => getViolationVerdict(firstViolation.value),
+	() => firstViolation.value.projectId,
+);
 
 onMounted(() => {
 	void loadSubjectTypes(props.refusal).catch(() => undefined);
@@ -46,12 +52,13 @@ onMounted(() => {
 			data-test-id="agent-chat-tool-policy-refusal-contact-admin"
 			@click.prevent="isContactAdminOpen = true"
 		>
-			{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
+			{{ i18n.baseText(contactCopy.action) }}
 		</N8nLink>
-		<ContactInstanceAdminModal
+		<ContactAdminModal
 			v-model:open="isContactAdminOpen"
 			:node-type-name="adminSubject"
 			:kind="adminSubjectKind"
+			:audience="contactCopy.audience"
 		/>
 	</span>
 </template>

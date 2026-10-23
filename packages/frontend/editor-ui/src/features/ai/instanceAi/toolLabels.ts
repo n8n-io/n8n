@@ -24,6 +24,7 @@ const SKILL_TOOLS = new Set<string>([
 	'read_skill',
 	AGENT_BUILDER_TOOL_NAMES.UPDATE_SKILL,
 	'load_skill',
+	'skills',
 ]);
 const WORKFLOW_BUILDER_PREFIX_PATTERN = /^workflow_builder_/;
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';

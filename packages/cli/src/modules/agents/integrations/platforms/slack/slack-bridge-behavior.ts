@@ -16,6 +16,12 @@ import type { ReplyExpectation } from '../../integration-tools';
 const SLACK_THINKING_STATUS = 'Thinking...';
 const SLACK_STATUS_RETRY_DELAY_MS = 750;
 
+export const SLACK_STREAMING_OPTIONS = {
+	fallbackStreamingPlaceholderText: null,
+	// Batch edits to reduce Slack API calls.
+	streamingUpdateIntervalMs: 1500,
+};
+
 const SLACK_HISTORY_MAX_MESSAGES = 30;
 const SLACK_HISTORY_MAX_CHARS = 8000;
 const SLACK_HISTORY_MAX_MESSAGE_CHARS = 1500;
@@ -118,7 +124,7 @@ export async function createSlackBridgeExecutionContext(
 	return {
 		platformAgentContext,
 		slackThreadContext,
-		forceBuffered: slackThreadContext?.canUseThreadTs !== true,
+		forceBuffered: false,
 		statusHandle,
 		...(historyContext ? { historyContext } : {}),
 	};
@@ -131,16 +137,16 @@ export async function createSlackResumeExecutionContext(params: {
 	agentId: string;
 	slackThreadContext?: SlackThreadContext;
 }): Promise<BridgeResumeExecutionContext> {
-	// Slack action payloads do not reliably include the original message's raw
-	// thread_ts, so resume responses use the same safe buffered path as top-level
-	// messages without a materialized Slack thread.
+	const slackThreadContext =
+		params.slackThreadContext ?? getSlackResumeThreadContext(params.thread);
+	// Post-and-edit replies do not need native stream recipient context.
 	return {
-		forceBuffered: true,
+		forceBuffered: false,
 		statusHandle: await startSlackThinkingStatus(params.thread, {
 			chat: params.chat,
 			logger: params.logger,
 			agentId: params.agentId,
-			slackThreadContext: params.slackThreadContext,
+			slackThreadContext,
 			statusRetry: new AbortController(),
 		}),
 	};
@@ -159,13 +165,15 @@ async function startSlackThinkingStatus(
 	const { slackThreadContext, statusRetry } = options;
 
 	if (slackThreadContext && !slackThreadContext.canUseThreadTs) {
-		const setStatus = setSlackAssistantStatus(slackThreadContext, options);
+		let retry = statusRetry;
+		let setStatus = setSlackAssistantStatus(slackThreadContext, options);
 		return {
+			keepDuringResponse: true,
 			clearBeforeResponse: async () => {
 				// Cancel any pending status retry first: the retry waits out a
 				// delay before re-setting "Thinking...", and without this it could
 				// fire *after* we clear and leave a stale status behind.
-				statusRetry?.abort();
+				retry?.abort();
 				// Then wait for the set to settle. Aborting only cancels the
 				// retry's local wait — an *in-flight* "Thinking..." write can't
 				// be recalled, so we must let it land before we clear, otherwise
@@ -173,6 +181,16 @@ async function startSlackThinkingStatus(
 				// stale status. (setStatus never rejects — it logs internally.)
 				await setStatus;
 				await clearSlackAssistantStatus(slackThreadContext, options);
+			},
+			resumeAfterResponse: async () => {
+				retry?.abort();
+				await setStatus;
+				retry = new AbortController();
+				setStatus = setSlackAssistantStatus(slackThreadContext, {
+					...options,
+					statusRetry: retry,
+				});
+				await setStatus;
 			},
 		};
 	}
@@ -192,8 +210,15 @@ async function startSlackThinkingStatus(
 	// first response) — return a handle so those paths clear it explicitly.
 	if (slackThreadContext) {
 		return {
+			keepDuringResponse: true,
 			clearBeforeResponse: async () => {
 				await clearSlackAssistantStatus(slackThreadContext, options);
+			},
+			resumeAfterResponse: async () => {
+				await setSlackAssistantStatus(slackThreadContext, {
+					...options,
+					statusRetry: new AbortController(),
+				});
 			},
 		};
 	}
@@ -385,6 +410,22 @@ function sanitizeSlackHistoryText(text: string): string {
 		/<(\/?)(slack_thread_history)\s*>/gi,
 		(_m, slash: string, name: string) => `[${slash}${name}]`,
 	);
+}
+
+function getSlackResumeThreadContext(
+	thread: Thread<unknown, unknown>,
+): SlackThreadContext | undefined {
+	let decoded: unknown;
+	try {
+		decoded = thread.adapter.decodeThreadId(thread.id);
+	} catch {
+		return undefined;
+	}
+	if (!isRecord(decoded)) return undefined;
+	const channelId = stringValue(decoded.channel);
+	const threadTs = stringValue(decoded.threadTs);
+	if (!channelId || !threadTs) return undefined;
+	return { channelId, threadTs, hasRealThreadTs: true, canUseThreadTs: true };
 }
 
 function getSlackThreadContext(

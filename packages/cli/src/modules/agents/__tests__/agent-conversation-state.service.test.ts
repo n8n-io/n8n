@@ -58,4 +58,40 @@ describe('AgentConversationStateService', () => {
 			await expect(service.isResumable(AGENT_ID, RUN_ID)).resolves.toBe(false);
 		});
 	});
+
+	describe('inspect', () => {
+		const THREAD_ID = 'thread-1';
+
+		function createService() {
+			const executionRepository = mock<AgentExecutionRepository>();
+			const checkpointStorage = mock<N8NCheckpointStorage>();
+			executionRepository.existsRunningByThread.mockResolvedValue(true);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(checkpoint('suspended'));
+			const service = new AgentConversationStateService(executionRepository, checkpointStorage);
+			return { service, executionRepository, checkpointStorage };
+		}
+
+		it('reports the running execution and the suspended checkpoint', async () => {
+			const { service } = createService();
+
+			await expect(service.inspect(AGENT_ID, THREAD_ID)).resolves.toEqual({
+				running: true,
+				suspendedCheckpoint: expect.objectContaining({ status: 'suspended' }),
+			});
+		});
+
+		it('reads both records in the transaction of the caller', async () => {
+			const { service, executionRepository, checkpointStorage } = createService();
+			const ctx = {};
+
+			await service.inspect(AGENT_ID, THREAD_ID, ctx);
+
+			expect(executionRepository.existsRunningByThread).toHaveBeenCalledWith(THREAD_ID, ctx);
+			expect(checkpointStorage.findSuspendedForThread).toHaveBeenCalledWith(
+				AGENT_ID,
+				THREAD_ID,
+				ctx,
+			);
+		});
+	});
 });

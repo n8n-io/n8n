@@ -10,5 +10,4 @@ export interface BuilderCredentialService {
 export interface BuilderToolsOptions {
 	track?: BuilderTrackFn;
 	useEvalModelCatalog?: boolean;
-	excludeToolNames?: string[];
 }

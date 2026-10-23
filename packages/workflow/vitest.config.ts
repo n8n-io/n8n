@@ -19,6 +19,7 @@ const ENGINE_TESTS = [
 	'test/ExpressionExtensions/*.test.ts',
 	'test/native-evaluation-fuzz.test.ts',
 	'test/native-evaluation-parity.test.ts',
+	'test/native-evaluation-verify.test.ts',
 	'test/webhook-description-fields.test.ts',
 	'test/workflow.test.ts',
 	'test/workflow-data-proxy.test.ts',

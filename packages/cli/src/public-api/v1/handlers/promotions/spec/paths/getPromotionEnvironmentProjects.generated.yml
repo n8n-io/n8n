@@ -1,0 +1,37 @@
+operationId: getPromotionEnvironmentProjects
+tags:
+  - Promotions
+summary: List projects linked to a promotion environment
+x-required-scope: gitConnection:read
+parameters:
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            projectIds:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 36
+          required:
+            - projectIds
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

@@ -288,6 +288,7 @@ import IconLucideFileOutput from '~icons/lucide/file-output';
 import IconLucideFingerprint from '~icons/lucide/fingerprint';
 import IconLucideFlame from '~icons/lucide/flame';
 import IconLucideGem from '~icons/lucide/gem';
+import IconLucideGitlab from '~icons/lucide/gitlab';
 import IconLucideHandCoins from '~icons/lucide/hand-coins';
 import IconLucideHandshake from '~icons/lucide/handshake';
 import IconLucideHeading1 from '~icons/lucide/heading-1';
@@ -744,6 +745,7 @@ export const updatedIconSet = {
 	gem: IconLucideGem,
 	gift: BrandGift,
 	'git-branch': BrandGitBranch,
+	gitlab: IconLucideGitlab,
 	globe: BrandGlobe,
 	'graduation-cap': BrandGraduationCap,
 	graph: BrandGraph,

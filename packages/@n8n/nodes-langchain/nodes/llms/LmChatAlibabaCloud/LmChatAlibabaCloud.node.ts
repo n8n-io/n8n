@@ -152,7 +152,7 @@ export class LmChatAlibabaCloud implements INodeType {
 					},
 				],
 			},
-			alias: ['qwen', 'dashscope', 'alibaba', 'model studio'],
+			alias: ['qwen', 'dashscope', 'alibaba', 'model studio', 'deepseek'],
 		},
 
 		inputs: [],

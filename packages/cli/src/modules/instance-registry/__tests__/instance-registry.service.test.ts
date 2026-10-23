@@ -6,6 +6,9 @@ import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '@/constants';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
+
 import { InstanceRegistryService } from '../instance-registry.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 import type { InstanceStorage } from '../storage/instance-storage.interface';
@@ -57,6 +60,11 @@ vi.mock('../storage/redis-instance-storage', () => {
 
 	return { RedisInstanceStorage: MockRedisStorage };
 });
+
+vi.mock('@/utils/container-limits', () => ({
+	getMemoryLimit: vi.fn(() => null),
+	getCpuLimit: vi.fn(() => ({ limit: null, source: 'unreadable', weight: null })),
+}));
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -236,6 +244,83 @@ describe('InstanceRegistryService', () => {
 			);
 		});
 
+		it.each(['main', 'worker', 'webhook'] as const)(
+			'should log the aligned cluster version on a %s instance',
+			async (instanceType) => {
+				service = createService({ instanceType });
+
+				await service.init();
+
+				expect(logger.info).toHaveBeenCalledWith(`Cluster aligned on version ${N8N_VERSION}`, {
+					instances: [
+						expect.objectContaining({
+							hostId: 'main-abc123',
+							instanceType,
+							instanceRole: 'unset',
+							version: N8N_VERSION,
+						}),
+					],
+				});
+			},
+		);
+
+		it('should log both versions and all instances on a non-leader main', async () => {
+			const storage = new (RedisInstanceStorage as unknown as new () => RedisInstanceStorage)();
+			Container.set(RedisInstanceStorage, storage);
+			service = createService({ isMultiMain: true, instanceRole: 'follower' });
+			await storage.register({
+				...service.getLocalInstance(),
+				instanceKey: 'old-key',
+				hostId: 'old-main',
+				instanceRole: 'leader',
+				version: '2.27.4',
+			});
+			const read = vi.spyOn(storage, 'getAllRegistrations');
+
+			await service.init();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Cluster is running multiple n8n versions: 2.27.4, ${N8N_VERSION}`,
+				{
+					instances: expect.arrayContaining([
+						{
+							hostId: 'old-main',
+							instanceType: 'main',
+							instanceRole: 'leader',
+							version: '2.27.4',
+						},
+						{
+							hostId: 'main-abc123',
+							instanceType: 'main',
+							instanceRole: 'follower',
+							version: N8N_VERSION,
+						},
+					]),
+				},
+			);
+			await service.heartbeat();
+			expect(read).toHaveBeenCalledTimes(1);
+		});
+
+		it('should continue startup when the cluster version read fails', async () => {
+			const storage = new (RedisInstanceStorage as unknown as new () => RedisInstanceStorage)();
+			Container.set(RedisInstanceStorage, storage);
+			service = createService({ isMultiMain: true });
+			const error = new Error('Redis down');
+			vi.spyOn(storage, 'getAllRegistrations').mockRejectedValueOnce(error);
+
+			await expect(service.init()).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to inspect cluster versions after registration',
+				{ error },
+			);
+			expect(logger.info).not.toHaveBeenCalledWith(
+				expect.stringContaining('Cluster aligned'),
+				expect.anything(),
+			);
+		});
+
 		it('should not start a heartbeat timer', async () => {
 			service = createService();
 			await service.init();
@@ -245,6 +330,46 @@ describe('InstanceRegistryService', () => {
 			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS * 3);
 
 			expect(heartbeatSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('resource limits', () => {
+		beforeEach(() => {
+			vi.mocked(getMemoryLimit).mockReturnValue(null);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: null, source: 'unreadable', weight: null });
+		});
+
+		it('should register the memory and CPU limits', async () => {
+			vi.mocked(getMemoryLimit).mockReturnValue(1_073_741_824);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: 0.5, source: 'cgroup_v2', weight: 100 });
+			service = createService();
+
+			await service.init();
+
+			const [reg] = await service.getAllInstances();
+			expect(reg).toMatchObject({ memoryLimit: 1_073_741_824, cpuLimit: 0.5 });
+		});
+
+		it('should register null for a process without limits', async () => {
+			service = createService();
+
+			await service.init();
+
+			const [reg] = await service.getAllInstances();
+			expect(reg.memoryLimit).toBeNull();
+			expect(reg.cpuLimit).toBeNull();
+		});
+
+		it('should write the current limits on every heartbeat', async () => {
+			service = createService();
+			await service.init();
+
+			vi.mocked(getMemoryLimit).mockReturnValue(2_147_483_648);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: 2, source: 'cgroup_v2', weight: 100 });
+			await service.heartbeat();
+
+			const [reg] = await service.getAllInstances();
+			expect(reg).toMatchObject({ memoryLimit: 2_147_483_648, cpuLimit: 2 });
 		});
 	});
 

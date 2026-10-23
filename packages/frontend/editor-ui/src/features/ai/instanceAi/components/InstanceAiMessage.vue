@@ -177,7 +177,8 @@ function formatJson(value: unknown): string {
 		:data-test-id="isUser ? 'instance-ai-user-message' : 'instance-ai-assistant-message'"
 	>
 		<!-- User message -->
-		<div v-if="isUser">
+		<div v-if="isUser" :class="$style.userMessage">
+			<N8nText v-if="props.message.content" size="large">{{ props.message.content }}</N8nText>
 			<div v-if="attachments.length > 0" :class="$style.userAttachments">
 				<AttachmentPreview
 					v-for="(attachment, index) in attachments"
@@ -186,7 +187,6 @@ function formatJson(value: unknown): string {
 					:is-removable="false"
 				/>
 			</div>
-			<N8nText size="large">{{ props.message.content }}</N8nText>
 		</div>
 
 		<!-- Assistant message -->
@@ -296,11 +296,16 @@ function formatJson(value: unknown): string {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 
+.userMessage {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
 .userAttachments {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--2xs);
 }
 
 .statusIndicator {

@@ -103,7 +103,10 @@ import {
 } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
-import { SkillNameTakenError, skillNameTakenToolMessage } from '../skills/skill-name-taken.error';
+import {
+	SkillNameTakenError,
+	skillNameTakenToolMessage,
+} from '@/modules/skills/skill-name-taken.error';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -574,9 +577,8 @@ export class AgentsBuilderToolsService {
 		credentialProviderFor: (agentId: string) => CredentialProvider,
 		credentialService: BuilderCredentialService,
 		user: User,
-		options: BuilderToolsOptions & { excludeToolNames?: string[] } = {},
+		options: BuilderToolsOptions = {},
 	): BuiltTool[] {
-		const excluded = new Set(options.excludeToolNames ?? []);
 		const buildToolSet = (agentId: string, credentialProvider: CredentialProvider) => {
 			const { json, shared } = this.getTools(
 				agentId,
@@ -586,7 +588,7 @@ export class AgentsBuilderToolsService {
 				user,
 				options,
 			);
-			return [...json, ...shared].filter((tool) => !excluded.has(tool.name));
+			return [...json, ...shared];
 		};
 
 		const toolSetsByAgentId = new Map<string, Map<string, BuiltTool>>();

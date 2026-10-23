@@ -2,15 +2,16 @@ operationId: promotePackage
 tags:
   - Promotions
 summary: Promote all team projects
-description: Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. Requires the Promote direction to be cloned first, and is available on the instance connection only. The API key also needs variable:list when the workflows reference variables.
+description: Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. Requires a connected Promote environment with instance scope. The API key also needs variable:list when the workflows reference variables.
 x-required-scope: gitConnection:push
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
       type: string
+      format: uuid
     required: true
-    description: The ID of the promotion connection.
-    name: promotionConnectionId
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
     in: path
 requestBody:
   required: true

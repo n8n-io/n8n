@@ -1496,7 +1496,7 @@ export class OauthService {
 	/**
 	 * Fetches a `.well-known` discovery document and returns its parsed JSON body.
 	 * Only a 200 is accepted (RFC 8414 / RFC 9728 / OpenID Connect discovery endpoints respond with 200).
-	 * Any other status, or a transport/SSRF failure, throws,
+	 * Any other status, a non-object body, or a transport/SSRF failure throws,
 	 * so the discovery loops can uniformly catch and fall through to the next candidate URL.
 	 */
 	private async fetchDiscoveryDocument(url: string): Promise<unknown> {
@@ -1508,6 +1508,9 @@ export class OauthService {
 		});
 		if (response.statusCode !== 200) {
 			throw new OperationalError(`Request failed with status code ${response.statusCode}`);
+		}
+		if (!isRecord(response.body)) {
+			throw new OperationalError('Discovery response must be a JSON object');
 		}
 		return response.body;
 	}

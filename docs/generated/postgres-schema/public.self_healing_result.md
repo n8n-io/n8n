@@ -10,7 +10,7 @@
 | dismissedAt | timestamp(3) with time zone |  | true |  |  |  |
 | dismissedById | uuid |  | true |  | [public.user](public.user.md) | Reviewer who dismissed the result |
 | executionId | varchar(36) |  | false |  |  | Execution reference retained after pruning; also supports the external v2 data plane |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [public.self_healing_investigation](public.self_healing_investigation.md) |  |  |
 | outcome | varchar(16) |  | false |  |  | Accepted investigation outcome, separate from review closure |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original workflow owner project |
 | report | text |  | false |  |  | Saved report, independent of execution and chat data |
@@ -62,6 +62,7 @@ erDiagram
 
 "public.self_healing_result" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--o| "public.user" : "FOREIGN KEY (#quot;dismissedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.self_healing_investigation" }o--o| "public.self_healing_result" : "FOREIGN KEY (#quot;resultId#quot;) REFERENCES self_healing_result(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--o| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -99,6 +100,20 @@ erDiagram
   varchar_128_ roleSlug FK
   json settings
   timestamp_3__with_time_zone updatedAt
+}
+"public.self_healing_investigation" {
+  uuid backgroundUserId FK
+  json baseline
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ executionId
+  timestamp_3__with_time_zone finishedAt
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_36_ resultId FK
+  uuid runId
+  uuid threadId
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 "public.project" {
   timestamp_3__with_time_zone createdAt

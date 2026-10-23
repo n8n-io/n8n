@@ -174,7 +174,7 @@ describe('AuthStrategyRegistry', () => {
 			expect(strategy3.buildTokenGrant).not.toHaveBeenCalled();
 		});
 
-		it('returns null when all strategies abstain or when a strategy returns false (fail-fast)', async () => {
+		it('returns null when all strategies abstain', async () => {
 			const emptyRegistry = new AuthStrategyRegistry();
 			expect(await emptyRegistry.buildContextFromToken('token')).toBeNull();
 
@@ -182,14 +182,16 @@ describe('AuthStrategyRegistry', () => {
 			abstain.buildTokenGrant.mockResolvedValue(null);
 			registry.register(abstain);
 			expect(await registry.buildContextFromToken('token')).toBeNull();
+		});
 
+		it('returns false and stops when a strategy refuses the token (fail-fast)', async () => {
 			const unreached = mock<AuthStrategy>();
 			const failing = mock<AuthStrategy>();
 			failing.buildTokenGrant.mockResolvedValue(false);
 			const failRegistry = new AuthStrategyRegistry();
 			failRegistry.register(failing);
 			failRegistry.register(unreached);
-			expect(await failRegistry.buildContextFromToken('token')).toBeNull();
+			expect(await failRegistry.buildContextFromToken('token')).toBe(false);
 			expect(unreached.buildTokenGrant).not.toHaveBeenCalled();
 		});
 	});
