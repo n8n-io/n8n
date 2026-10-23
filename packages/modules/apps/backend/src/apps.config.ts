@@ -17,7 +17,7 @@ export class AppsConfig {
 	@Env('N8N_APPS_MAX_BUILD_LOG_BYTES', positiveInteger)
 	maxBuildLogBytes: number = 32 * 1024;
 
-	/** Maximum attempts per app build, including the first attempt. n8n retries temporary provider and storage failures within this limit. */
+	/** Maximum attempts per build request, including the first attempt. n8n retries temporary provider and storage failures within this limit. */
 	@Env('N8N_APPS_MAX_BUILD_ATTEMPTS', positiveInteger)
 	maxBuildAttempts: number = 3;
 

@@ -33,13 +33,14 @@ export class AppWorkspaceService {
 	) {}
 
 	async build(
+		projectId: string,
 		appId: string,
 		versionId: string,
 		attempt: AppBuildAttempt,
 		files: AppFiles,
 		signal: AbortSignal,
 	): Promise<AppFiles> {
-		const config = await this.sandboxConfig(appId);
+		const config = await this.sandboxConfig(projectId, appId);
 		if (!config.enabled) throw new BadRequestError('Configure a sandbox provider to build apps.');
 		const sandbox = await createSandbox(config, { logger: this.logger });
 		if (!sandbox?.executeCommand)
@@ -155,8 +156,10 @@ export class AppWorkspaceService {
 		}
 	}
 
-	async delete(appId: string): Promise<void> {
-		const sandbox = await createSandbox(await this.sandboxConfig(appId), { logger: this.logger });
+	async delete(projectId: string, appId: string): Promise<void> {
+		const sandbox = await createSandbox(await this.sandboxConfig(projectId, appId), {
+			logger: this.logger,
+		});
 		if (sandbox?.deleteRemote) {
 			await sandbox.deleteRemote();
 			this.logger.debug('Deleted app sandbox.', { appId });
@@ -166,8 +169,8 @@ export class AppWorkspaceService {
 		}
 	}
 
-	private async sandboxConfig(appId: string): Promise<SandboxConfig> {
-		const config = await this.settings.resolve();
+	private async sandboxConfig(projectId: string, appId: string): Promise<SandboxConfig> {
+		const config = await this.settings.resolve(projectId);
 		if (!config.enabled) return config;
 		return config.provider === 'daytona'
 			? {

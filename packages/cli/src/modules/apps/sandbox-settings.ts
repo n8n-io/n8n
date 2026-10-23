@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
-export async function resolveAppSandboxConfig(): Promise<SandboxConfig> {
+export async function resolveAppSandboxConfig(projectId: string): Promise<SandboxConfig> {
 	const settings = Container.get(SandboxSettingsService);
 	const provider = settings.getProvider();
 	if (!settings.isAgentSandboxEnabled()) return { enabled: false, provider };
@@ -12,15 +12,16 @@ export async function resolveAppSandboxConfig(): Promise<SandboxConfig> {
 	settings.registerCredentialUses();
 	const config = Container.get(GlobalConfig).instanceAi;
 	if (provider === 'daytona') {
-		const credentials = await settings.resolveDaytonaConfig();
-		if (!credentials.apiKey) return { enabled: false, provider: 'daytona' };
-		return {
-			enabled: true,
-			provider: 'daytona',
-			daytonaApiUrl: credentials.apiUrl,
-			daytonaApiKey: credentials.apiKey,
+		const connection = await settings.resolveDaytonaSandboxConfig(projectId, {
 			image: config.sandboxImage || undefined,
 			snapshot: config.sandboxSnapshot || undefined,
+		});
+		if (!connection.daytonaApiKey && !connection.getAuthToken)
+			return { enabled: false, provider: 'daytona' };
+		return {
+			...connection,
+			enabled: true,
+			provider: 'daytona',
 			timeout: config.sandboxTimeout,
 		};
 	}

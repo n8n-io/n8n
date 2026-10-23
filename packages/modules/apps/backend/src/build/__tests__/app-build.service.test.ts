@@ -203,6 +203,7 @@ describe('AppBuildService', () => {
 		expect(versions.claimBuild).toHaveBeenCalledWith('app', 'version', 'queued', ctx);
 		expect(source.readSource).toHaveBeenCalledWith('project', 'app', 'version');
 		expect(workspaces.build).toHaveBeenCalledWith(
+			'project',
 			'app',
 			'version',
 			{ attemptNumber: 1, startedAt: version.buildStatusUpdatedAt },
@@ -391,7 +392,7 @@ describe('AppBuildService', () => {
 	it('marks a running build failed on shutdown', async () => {
 		const { service, workspaces } = setup();
 		workspaces.build.mockImplementation(
-			async (_app, _version, _attempt, _files, signal) =>
+			async (_project, _app, _version, _attempt, _files, signal) =>
 				await new Promise((_resolve, reject) => {
 					signal.addEventListener('abort', () => reject(new Error('Aborted.')), { once: true });
 				}),

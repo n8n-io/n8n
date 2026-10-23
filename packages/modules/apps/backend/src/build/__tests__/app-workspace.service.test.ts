@@ -58,16 +58,17 @@ function setup(provider: 'daytona' | 'n8n-sandbox' = 'n8n-sandbox') {
 	const service = new AppWorkspaceService(settings, config, archives, mock<Logger>());
 	const attempt = { attemptNumber: 1, startedAt: new Date() };
 	const build = async () =>
-		await service.build(appId, 'version', attempt, files, new AbortController().signal);
-	return { service, sandbox, filesystem, archives, files, config, build };
+		await service.build('project', appId, 'version', attempt, files, new AbortController().signal);
+	return { service, settings, sandbox, filesystem, archives, files, config, build };
 }
 
 describe('AppWorkspaceService', () => {
 	it.each(['daytona', 'n8n-sandbox'] as const)(
 		'reconnects to the same app identity through %s',
 		async (provider) => {
-			const { build } = setup(provider);
+			const { build, settings } = setup(provider);
 			await build();
+			expect(settings.resolve).toHaveBeenCalledWith('project');
 			const first = vi.mocked(createSandbox).mock.calls.at(-1)?.[0];
 			await build();
 			expect(vi.mocked(createSandbox).mock.calls.at(-1)?.[0]).toEqual(first);
@@ -163,8 +164,9 @@ describe('AppWorkspaceService', () => {
 	it.each(['daytona', 'n8n-sandbox'] as const)(
 		'deletes the app sandbox through %s without starting a workspace',
 		async (provider) => {
-			const { service, sandbox } = setup(provider);
-			await service.delete(appId);
+			const { service, settings, sandbox } = setup(provider);
+			await service.delete('project', appId);
+			expect(settings.resolve).toHaveBeenCalledExactlyOnceWith('project');
 			expect(vi.mocked(createSandbox).mock.calls.at(-1)?.[0]).toMatchObject({
 				provider,
 				id: appId,

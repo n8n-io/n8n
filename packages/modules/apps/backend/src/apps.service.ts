@@ -100,7 +100,7 @@ export class AppsService {
 		}
 		this.logger.debug('Deleted app.', { projectId, appId });
 		try {
-			await this.workspaces.delete(appId);
+			await this.workspaces.delete(projectId, appId);
 		} catch (error) {
 			this.logger.warn('Could not delete app sandbox.', { appId, error });
 		}

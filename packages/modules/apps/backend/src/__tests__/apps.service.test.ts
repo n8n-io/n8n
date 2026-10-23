@@ -179,7 +179,7 @@ describe('AppsService', () => {
 		const deletion = service.deleteApp('project-1', appId);
 		if (affected) {
 			await expect(deletion).resolves.toBeUndefined();
-			expect(workspaces.delete).toHaveBeenCalledExactlyOnceWith(appId);
+			expect(workspaces.delete).toHaveBeenCalledExactlyOnceWith('project-1', appId);
 		} else {
 			await expect(deletion).rejects.toThrow(NotFoundError);
 			expect(workspaces.delete).not.toHaveBeenCalled();
@@ -223,7 +223,7 @@ describe('AppsService', () => {
 
 		await expect(service.deleteApp('project-1', appId)).resolves.toBeUndefined();
 		expect(appRepository.deleteInProject).toHaveBeenCalledExactlyOnceWith('project-1', appId, ctx);
-		expect(workspaces.delete).toHaveBeenCalledExactlyOnceWith(appId);
+		expect(workspaces.delete).toHaveBeenCalledExactlyOnceWith('project-1', appId);
 	});
 
 	it('completes app deletion when sandbox teardown fails', async () => {

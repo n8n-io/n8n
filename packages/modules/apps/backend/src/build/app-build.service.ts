@@ -141,7 +141,7 @@ export class AppBuildService {
 				checkBuildSource(source);
 				stage = 'sandbox';
 				const files = await raceAbort(
-					this.workspaces.build(appId, versionId, attempt, source, signal),
+					this.workspaces.build(projectId, appId, versionId, attempt, source, signal),
 					signal,
 					aborted,
 				);
