@@ -79,7 +79,8 @@ export const DELIVERY_FAILURE_NOTICE =
 	'Then send it with send_template. Use only facts you know as placeholder values. ' +
 	'If no template fits, do not send one. ' +
 	'Do not write a normal reply to the customer, because it cannot be delivered. ' +
-	'End this turn with the do_not_respond action.';
+	'End this turn with the do_not_respond action. ' +
+	'If no template fit, set input.reason to "not delivered, no suitable template".';
 
 /**
  * The same report, for a chat that sent the failed message. A person reads

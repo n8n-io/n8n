@@ -212,7 +212,16 @@ const addReactionActionInputSchema = z.object({
 
 const doNotRespondActionInputSchema = z.object({
 	action: z.literal('do_not_respond'),
-	input: noInputSchema,
+	input: z
+		.object({
+			reason: z
+				.string()
+				.min(1)
+				.max(200)
+				.optional()
+				.describe('Short reason for the run record. It is not sent to anyone.'),
+		})
+		.strict(),
 });
 
 export const GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS = [
@@ -310,7 +319,7 @@ const OPT_IN_ACTION_TOOL_DEFINITIONS = [
 		name: 'do_not_respond',
 		inputSchema: doNotRespondActionInputSchema,
 		description:
-			'do_not_respond: no input. Ends the turn without sending any message. Use only for messages in subscribed group channels or threads that need no reaction from you, or when the user explicitly asked you not to reply. Never use it for direct messages or direct mentions. After calling it, stop immediately — do not write any text and never post a message saying you are staying silent.',
+			'do_not_respond: optional input.reason is a short note for the run record and is never sent. Ends the turn without sending any message. Use only for messages in subscribed group channels or threads that need no reaction from you, or when the user explicitly asked you not to reply. Never use it for direct messages or direct mentions. After calling it, stop immediately — do not write any text and never post a message saying you are staying silent.',
 	},
 ] satisfies IntegrationActionDefinition[];
 

@@ -39,6 +39,7 @@ const sendDmInputSchema = z.object({
 	userId: z.string().min(1),
 	message: messageSchema,
 });
+const doNotRespondInputSchema = z.object({ reason: z.string().optional() });
 const sendChannelMessageInputSchema = z.object({
 	channelId: z.string().min(1),
 	message: messageSchema,
@@ -176,9 +177,11 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 		}
 
+		const { reason } = doNotRespondInputSchema.parse(params.input);
 		return {
 			ok: true,
 			silent: true,
+			...(reason ? { reason } : {}),
 			note: 'No reply will be sent. End your turn now without writing any text.',
 		};
 	}

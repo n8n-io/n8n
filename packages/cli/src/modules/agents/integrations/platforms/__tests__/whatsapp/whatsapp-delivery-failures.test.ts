@@ -1,4 +1,5 @@
 import {
+	DELIVERY_FAILURE_NOTICE,
 	DeliveryFailureRecoveryLimiter,
 	isRecentFailure,
 	parseWindowClosedFailures,
@@ -110,5 +111,12 @@ describe('isRecentFailure', () => {
 
 	it('rejects a timestamp that is not a number', () => {
 		expect(isRecentFailure(failureAt('soon'), nowMs)).toBe(false);
+	});
+});
+
+describe('DELIVERY_FAILURE_NOTICE', () => {
+	it('asks for a reason on do_not_respond when no template fits', () => {
+		expect(DELIVERY_FAILURE_NOTICE).toContain('do_not_respond');
+		expect(DELIVERY_FAILURE_NOTICE).toContain('not delivered, no suitable template');
 	});
 });

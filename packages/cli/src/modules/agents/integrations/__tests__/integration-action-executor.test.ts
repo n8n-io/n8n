@@ -1503,6 +1503,31 @@ describe('ChatIntegrationActionExecutor', () => {
 			expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 		});
 
+		it('returns the reason for the run record', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+			);
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'do_not_respond',
+				input: { reason: 'not delivered, no suitable template' },
+				awaitResponse: false,
+				currentMessageContext: { ...slackMessageContext, replyExpectation: 'optional' },
+			});
+
+			expect(result).toEqual({
+				ok: true,
+				silent: true,
+				reason: 'not delivered, no suitable template',
+				note: expect.stringContaining('No reply will be sent'),
+			});
+		});
+
 		it('rejects when the reply expectation is required', async () => {
 			const chatIntegrationService = mock<ChatIntegrationService>();
 			const executor = new ChatIntegrationActionExecutor(
