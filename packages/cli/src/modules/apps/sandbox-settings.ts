@@ -2,6 +2,7 @@ import type { SandboxConfig } from '@n8n/agents/sandbox';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
+import { N8N_VERSION } from '@/constants';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
 export async function resolveAppSandboxConfig(projectId: string): Promise<SandboxConfig> {
@@ -12,9 +13,10 @@ export async function resolveAppSandboxConfig(projectId: string): Promise<Sandbo
 
 	settings.registerCredentialUses();
 	if (provider === 'daytona') {
+		const defaultSnapshot = N8N_VERSION ? `n8n/instance-ai:${N8N_VERSION}` : undefined;
 		const connection = await settings.resolveDaytonaSandboxConfig(projectId, {
 			image: config.sandboxImage || undefined,
-			snapshot: config.sandboxSnapshot || undefined,
+			snapshot: config.sandboxSnapshot?.trim() || defaultSnapshot,
 		});
 		if (!connection.daytonaApiKey && !connection.getAuthToken)
 			return { enabled: false, provider: 'daytona' };
