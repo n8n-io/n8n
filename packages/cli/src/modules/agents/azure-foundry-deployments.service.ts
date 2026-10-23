@@ -11,10 +11,12 @@ import {
 	type ProviderModel,
 } from '@n8n/ai-utilities/model-discovery';
 import { AZURE_FOUNDRY_ANTHROPIC_PREFIX, type AgentModelsUnavailableReason } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { UserError } from 'n8n-workflow';
 
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -48,10 +50,13 @@ export class AzureFoundryDeploymentsService {
 	>();
 
 	constructor(
+		private readonly logger: Logger,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
-	) {}
+	) {
+		this.logger = this.logger.scoped('agents');
+	}
 
 	async list(credential: ResolvedCredential): Promise<FoundryDeploymentsResult> {
 		const mapped = mapCredentialForProvider('azure-openai', credential);
@@ -80,7 +85,9 @@ export class AzureFoundryDeploymentsService {
 	/**
 	 * The model a deployment serves, for cost and capability lookups. The result
 	 * is cached for each credential, so a run does not list the deployments every
-	 * time. A failed listing returns undefined and is not cached.
+	 * time. A deployment that is not in the cache causes a new listing, so a new
+	 * deployment resolves on its first run. A failed listing returns undefined and
+	 * is not cached.
 	 */
 	async findUnderlyingModel(
 		credentialId: string,
@@ -88,10 +95,21 @@ export class AzureFoundryDeploymentsService {
 		agentModelName: string,
 	): Promise<string | undefined> {
 		const cached = this.underlyingModels.get(credentialId);
-		if (cached && cached.expiresAt > Date.now()) return cached.byModelId.get(agentModelName);
+		const cachedModel = cached?.byModelId.get(agentModelName);
+		if (cachedModel && cached && cached.expiresAt > Date.now()) return cachedModel;
 
 		const result = await this.list(credential);
-		if (result.status !== 'success') return undefined;
+		if (result.status !== 'success') {
+			this.logger.warn(
+				'Could not resolve the model a Foundry deployment serves. Its usage has no cost.',
+				{
+					credentialId,
+					reason: result.reason,
+					error: result.error === undefined ? undefined : getErrorMessage(result.error),
+				},
+			);
+			return undefined;
+		}
 		const byModelId = new Map(
 			result.deployments.flatMap(
 				({ id, modelName }): Array<[string, string]> => (modelName ? [[id, modelName]] : []),
