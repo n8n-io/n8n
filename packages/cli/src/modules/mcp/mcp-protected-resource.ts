@@ -24,7 +24,6 @@ import {
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
-	areSkillToolsAvailable,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
@@ -79,7 +78,7 @@ export class McpProtectedResource implements ProtectedResource {
 
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
-		const skillsAvailable = areSkillToolsAvailable(Container.get(SkillAgentsProxy));
+		const skillsAvailable = Container.get(SkillAgentsProxy).hasProvider;
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&

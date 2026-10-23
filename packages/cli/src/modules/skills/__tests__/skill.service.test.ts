@@ -888,14 +888,13 @@ describe('SkillService', () => {
 			);
 			skills.findVersionsByIds.mockResolvedValue(new Map([[pinnedB.version.id, pinnedB]]));
 
-			const snapshot = await service.snapshotForPublish(
+			const versionByRef = await service.snapshotForPublish(
 				[{ id: 'skill_a' }, { id: 'skill_b', versionId: pinnedB.version.id }],
 				TX_CTX,
 			);
 
 			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_a', 'skill_b'], TX_CTX);
-			expect(Object.keys(snapshot.skills)).toEqual(['skill_a', 'skill_b']);
-			expect([...snapshot.versionByRef]).toEqual([
+			expect([...versionByRef]).toEqual([
 				['skill_a', 'skill_a-v3'],
 				['skill_b', 'skill_b-v1'],
 			]);

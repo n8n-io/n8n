@@ -785,7 +785,7 @@ describe('SettingsInstanceAiView', () => {
 			);
 		});
 
-		it('hides the Skills group while the skills hub is off', () => {
+		it('hides the Skills group while the agents module is off', () => {
 			contextSkillsEnabledMock.mockReturnValueOnce(false);
 
 			const { queryByTestId } = renderComponent();

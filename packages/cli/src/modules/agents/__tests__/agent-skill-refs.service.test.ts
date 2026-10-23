@@ -506,8 +506,6 @@ describe('AgentSkillRefsService', () => {
 	});
 
 	describe('versionSnapshot and pinVersion', () => {
-		const notes = { name: 'Notes', description: 'Take notes', instructions: 'Write it down.' };
-
 		it('pins the versions the draft runs', async () => {
 			agentSkillRepository.findDependencies.mockResolvedValue(
 				new Map([
@@ -524,10 +522,7 @@ describe('AgentSkillRefsService', () => {
 				['zeta', 'zeta-v2'],
 				['alpha', pinId],
 			]);
-			skillService.snapshotForPublish.mockResolvedValue({
-				skills: { zeta: notes, alpha: notes },
-				versionByRef,
-			});
+			skillService.snapshotForPublish.mockResolvedValue(versionByRef);
 
 			const snapshot = await service.versionSnapshot(agent, ctx);
 			await service.pinVersion('version-1', snapshot, ctx);
@@ -536,7 +531,7 @@ describe('AgentSkillRefsService', () => {
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
 				ctx,
 			);
-			expect(snapshot).toEqual({ pins: versionByRef });
+			expect(snapshot).toEqual(versionByRef);
 			expect(agentSkillUsage.pinForPublish).toHaveBeenCalledWith('version-1', versionByRef, ctx);
 		});
 
@@ -544,7 +539,7 @@ describe('AgentSkillRefsService', () => {
 			agentSkillRepository.findDependencies.mockResolvedValue(
 				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
 			);
-			skillService.snapshotForPublish.mockResolvedValue({ skills: {}, versionByRef: new Map() });
+			skillService.snapshotForPublish.mockResolvedValue(new Map());
 
 			await expect(service.versionSnapshot(agent, ctx)).rejects.toThrow(
 				'Cannot publish agent with missing skills: zeta',
@@ -555,7 +550,7 @@ describe('AgentSkillRefsService', () => {
 			const snapshot = await service.versionSnapshot(agent, ctx);
 			await service.pinVersion('version-1', snapshot, ctx);
 
-			expect(snapshot).toEqual({ pins: new Map() });
+			expect(snapshot).toEqual(new Map());
 			expect(skillService.snapshotForPublish).not.toHaveBeenCalled();
 			expect(agentSkillUsage.pinForPublish).not.toHaveBeenCalled();
 		});

@@ -23,12 +23,6 @@ import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentSkillRepository } from './repositories/agent-skill.repository';
 import { getAgentSkillHash } from './utils/agent-config-hash';
 
-/** The hub versions that a publish pins. */
-export type PublishSnapshot = {
-	/** Hub skill version id for each skill ref, in draft order. */
-	pins: Map<string, string>;
-};
-
 /** Skill refs and the skill bodies they resolve to, keyed by skill id. */
 export interface AgentSkillsSnapshot {
 	skillRefs: AgentJsonSkillConfig[];
@@ -308,33 +302,33 @@ export class AgentSkillRefsService {
 	}
 
 	/**
-	 * The hub version of each draft ref. Pin the versions once the `agent_history`
-	 * row exists (see `pinVersion`). Call it in the publish transaction: it takes
-	 * the publish lock on the skills.
+	 * The hub version id of each draft ref, keyed by skill id, in draft order. Pin
+	 * the versions once the `agent_history` row exists (see `pinVersion`). Call it in
+	 * the publish transaction: it takes the publish lock on the skills.
 	 */
 	async versionSnapshot(
 		agent: Pick<Agent, 'id' | 'schema'>,
 		ctx: OperationContext,
-	): Promise<PublishSnapshot> {
-		if (!agent.schema) return { pins: new Map() };
+	): Promise<Map<string, string>> {
+		if (!agent.schema) return new Map();
 		const refs = await this.refsForDraft(agent, ctx);
-		if (refs.length === 0) return { pins: new Map() };
-		const { versionByRef } = await this.skillService.snapshotForPublish(toServiceRefs(refs), ctx);
+		if (refs.length === 0) return new Map();
+		const versionByRef = await this.skillService.snapshotForPublish(toServiceRefs(refs), ctx);
 		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
 		if (missing.length > 0) {
 			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
 		}
-		return { pins: versionByRef };
+		return versionByRef;
 	}
 
 	/** Publish, after the `agent_history` row exists: pin the versions of `versionSnapshot`. */
 	async pinVersion(
 		agentVersionId: string,
-		snapshot: PublishSnapshot,
+		pins: Map<string, string>,
 		ctx: OperationContext,
 	): Promise<void> {
-		if (snapshot.pins.size === 0) return;
-		await this.agentSkillUsage.pinForPublish(agentVersionId, snapshot.pins, ctx);
+		if (pins.size === 0) return;
+		await this.agentSkillUsage.pinForPublish(agentVersionId, pins, ctx);
 	}
 
 	async availabilityOf(

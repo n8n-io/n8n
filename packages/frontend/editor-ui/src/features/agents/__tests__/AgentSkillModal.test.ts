@@ -643,7 +643,7 @@ describe('AgentSkillModal', () => {
 		await waitFor(() => expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME));
 	});
 
-	it('creates a skill on the agent without the picker or the skills API when the skills hub is off', async () => {
+	it('creates a skill on the agent without the picker or the skills API for an inline agent', async () => {
 		const onConfirm = vi.fn();
 		const { container, getByTestId, queryByTestId } = renderModal({
 			hubSkillsEnabled: false,

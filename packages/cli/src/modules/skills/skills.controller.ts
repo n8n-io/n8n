@@ -34,7 +34,7 @@ export class SkillsController {
 
 	/** Runs before the request is validated, so every request answers 404 while the agents module is off. */
 	@Middleware()
-	requireSkillsHub(_req: Request, res: Response, next: NextFunction) {
+	requireSkillProvider(_req: Request, res: Response, next: NextFunction) {
 		if (!this.skillAgents.hasProvider) {
 			res.status(404).send('Not found');
 			return;

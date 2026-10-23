@@ -1159,11 +1159,7 @@ describe('AgentPublishService', () => {
 			// The pins hold the skills, so publish writes no `agent_history.skills`.
 			expect(saved).not.toHaveProperty('skills');
 			expect(refsService.versionSnapshot).toHaveBeenCalledWith(agent, ctx);
-			expect(refsService.pinVersion).toHaveBeenCalledWith(
-				saved.versionId,
-				expect.objectContaining({ pins: expect.any(Map) }),
-				ctx,
-			);
+			expect(refsService.pinVersion).toHaveBeenCalledWith(saved.versionId, expect.any(Map), ctx);
 			expect(saveCtx).toBe(ctx);
 			// The pins need the history row.
 			expect(agentHistoryRepository.saveVersion.mock.invocationCallOrder[0]).toBeLessThan(

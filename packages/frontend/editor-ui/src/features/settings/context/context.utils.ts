@@ -166,7 +166,7 @@ export function canWriteInstanceSkillScope(): boolean {
  * disabled then. The skills routes answer 404 while the hub is off.
  */
 export function isContextSkillsEnabled(): boolean {
-	return useSettingsStore().isModuleActive('agents') === true;
+	return useSettingsStore().isModuleActive('agents');
 }
 
 /** The service builds the cap message from the scope and the number, so match the fixed part. */

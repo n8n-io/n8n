@@ -178,18 +178,13 @@ describe('SkillsController', () => {
 
 	it('hides the skills API while the agents module is off', async () => {
 		// As when the agents module never registered its provider.
-		const proxy = Container.get(SkillAgentsProxy) as unknown as { provider: unknown };
-		const provider = proxy.provider;
-		proxy.provider = null;
-		try {
-			await owner.get('/skills').expect(404);
-			await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
-			// The gate is checked before the body, so a malformed request also answers 404.
-			await owner.post('/skills').send({ scope: 'nope' }).expect(404);
-			await owner.get('/skills?take=-1').expect(404);
-		} finally {
-			proxy.provider = provider;
-		}
+		vi.spyOn(Container.get(SkillAgentsProxy), 'hasProvider', 'get').mockReturnValue(false);
+
+		await owner.get('/skills').expect(404);
+		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
+		// The gate is checked before the body, so a malformed request also answers 404.
+		await owner.post('/skills').send({ scope: 'nope' }).expect(404);
+		await owner.get('/skills?take=-1').expect(404);
 	});
 
 	afterEach(async () => {

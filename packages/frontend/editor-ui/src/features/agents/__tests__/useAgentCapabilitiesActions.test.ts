@@ -5,7 +5,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { createAgentSkill, getHubSkill, getNewSkillName } from '../composables/useAgentApi';
@@ -243,7 +242,7 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		vi.clearAllMocks();
 	});
 
-	it('waits for the unsaved agent to be persisted before creating the skill', async () => {
+	it('waits for the unsaved agent to be persisted before opening the skill modal', async () => {
 		let releasePersist: () => void = () => {};
 		const persisted = new Promise<void>((resolve) => {
 			releasePersist = resolve;
@@ -256,15 +255,17 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		});
 		const { uiStore, actions } = setup({ ensureAgentPersisted: async () => await persisted });
 
-		actions.onOpenAddSkillModal();
-		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
-		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		void actions.onOpenAddSkillModal();
 		await flushPromises();
 
-		// The agent does not exist yet, so the skill endpoint would 404.
-		expect(createAgentSkill).not.toHaveBeenCalled();
+		// The agent does not exist yet, so the skill endpoints would 404.
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.data).toBeUndefined();
 
 		releasePersist();
+		await flushPromises();
+
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
 		await flushPromises();
 
 		expect(createAgentSkill).toHaveBeenCalled();
@@ -428,16 +429,15 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		expect(localConfig.value?.skills).toBeUndefined();
 	});
 
-	it('does not create the skill when persisting the agent fails', async () => {
+	it('does not open the skill modal when persisting the agent fails', async () => {
 		const { uiStore, actions } = setup({
 			ensureAgentPersisted: async () => await Promise.reject(new Error('create failed')),
 		});
 
-		actions.onOpenAddSkillModal();
-		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
-		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		void actions.onOpenAddSkillModal();
 		await flushPromises();
 
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.data).toBeUndefined();
 		expect(createAgentSkill).not.toHaveBeenCalled();
 	});
 
@@ -660,11 +660,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		};
 	}
 
-	/** Agents keep their skills in the skills hub while the agents module is active. */
-	function activateAgentsModule() {
-		useSettingsStore().settings.activeModules = ['skills', 'agents'];
-	}
-
 	function setupHub({ flushConfigSave }: { flushConfigSave?: () => Promise<unknown> } = {}) {
 		const agent = ref<AgentResource | null>({
 			id: 'agent-1',
@@ -672,7 +667,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			skillHashes: { tone: 'hash-tone' },
 		} as unknown as AgentResource);
 		const result = setup({ agent, agentId: ref('agent-1'), flushConfigSave });
-		activateAgentsModule();
 		result.localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone' }] });
 		result.actions.onOpenAddSkillModal();
 		const modalData = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
@@ -691,7 +685,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			releasePersist = resolve;
 		});
 		const { uiStore, actions } = setup({ ensureAgentPersisted: async () => await persisted });
-		activateAgentsModule();
 
 		void actions.onOpenAddSkillModal();
 		await flushPromises();
@@ -707,7 +700,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		const { uiStore, actions } = setup({
 			ensureAgentPersisted: async () => await Promise.reject(error),
 		});
-		activateAgentsModule();
 
 		await actions.onOpenAddSkillModal();
 
@@ -980,7 +972,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 	it('never enables the hub for a host that keeps its own skill bodies', () => {
 		const localConfig = ref<AgentJsonConfig | null>(makeConfig());
 		setActivePinia(createTestingPinia({ stubActions: false }));
-		activateAgentsModule();
 		const uiStore = useUIStore();
 		const actions = useAgentCapabilitiesActions({
 			localConfig,

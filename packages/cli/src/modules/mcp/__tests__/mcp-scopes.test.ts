@@ -267,7 +267,7 @@ describe('McpService scope enforcement', () => {
 
 		// Agent and skill tools require the agents module (inactive here). The agent
 		// tools' own drift guard lives in agent-tools.service.test.ts, and the skill
-		// tools are covered by the skills hub tests below. Community-package
+		// tools are covered by the skill tools tests below. Community-package
 		// tools need that module, the verified catalog, and a scope-bearing
 		// caller; their registration guard lives in
 		// install-community-node.registration.test.ts. Instance-context tools
@@ -284,10 +284,10 @@ describe('McpService scope enforcement', () => {
 	});
 
 	it.each([true, false])(
-		'registers the skill tools only when the skills hub is on: %s',
-		async (skillsHubEnabled) => {
+		'registers the skill tools only with an agents provider: %s',
+		async (hasProvider) => {
 			mockInstance(SkillsApiService);
-			mockInstance(SkillAgentsProxy, { hasProvider: skillsHubEnabled });
+			mockInstance(SkillAgentsProxy, { hasProvider });
 			const server = await buildService({
 				builderEnabled: false,
 				agentsActive: true,
@@ -296,7 +296,7 @@ describe('McpService scope enforcement', () => {
 
 			expect(registered.has('mutate_agent')).toBe(false);
 			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
-				skillsHubEnabled ? [...SKILL_TOOLS] : [],
+				hasProvider ? [...SKILL_TOOLS] : [],
 			);
 		},
 	);

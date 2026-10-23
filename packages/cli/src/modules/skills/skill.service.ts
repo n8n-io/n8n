@@ -413,18 +413,14 @@ export class SkillService {
 	// ---------------------------------------------------------------- publish
 
 	/**
-	 * Publish, step 1: the version each ref resolves to. Publish
+	 * Publish, step 1: the version id each ref resolves to, keyed by ref id. Publish
 	 * creates no version. Needs the caller's transaction for the publish lock.
 	 */
-	async snapshotForPublish(
-		refs: SkillRef[],
-		ctx: OperationContext,
-	): Promise<{ skills: Record<string, AgentSkill>; versionByRef: Map<string, string> }> {
+	async snapshotForPublish(refs: SkillRef[], ctx: OperationContext): Promise<Map<string, string>> {
 		const refIds = [...new Set(refs.map((ref) => ref.id))];
 		await this.skillRepository.lockForPublish(refIds, ctx);
 		const rows = await this.resolveRows(refs, ctx);
-		const versionByRef = new Map([...rows].map(([refId, row]) => [refId, row.version.id]));
-		return { skills: toRecord(rows), versionByRef };
+		return new Map([...rows].map(([refId, row]) => [refId, row.version.id]));
 	}
 
 	// ---------------------------------------------------------------- move

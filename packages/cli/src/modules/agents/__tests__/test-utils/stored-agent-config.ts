@@ -111,14 +111,13 @@ export function createAgentSkillRefsService(
 		),
 	);
 	service.versionSnapshot.mockImplementation(async (agent) => {
-		if (!agent.schema) return { pins: new Map() };
-		const skillRefs = readDraftRefs(agent);
-		return {
-			pins: new Map(skillRefs.map((ref) => [ref.id, ref.versionId ?? `${ref.id}-latest`])),
-		};
+		if (!agent.schema) return new Map();
+		return new Map(
+			readDraftRefs(agent).map((ref) => [ref.id, ref.versionId ?? `${ref.id}-latest`]),
+		);
 	});
-	service.pinVersion.mockImplementation(async (agentVersionId, snapshot) => {
-		versionPins.set(agentVersionId, Object.fromEntries(snapshot.pins));
+	service.pinVersion.mockImplementation(async (agentVersionId, pins) => {
+		versionPins.set(agentVersionId, Object.fromEntries(pins));
 	});
 	service.findOutdatedSkillIds.mockResolvedValue([]);
 	return service;

@@ -226,7 +226,7 @@ export class AgentSkillsService {
 			'Agent not found',
 		);
 
-		const skillRefs = (await this.agentSkillRefs.refsForDraft(entity, {})) ?? [];
+		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
 		const ref = skillRefs.find((candidate) => candidate.id === skillId);
 		const existing = ref && (await this.agentSkillRefs.skillsForRefs([ref], {}))[skillId];
 		if (!existing) throw new NotFoundError('Skill not found');
