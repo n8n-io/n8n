@@ -4068,7 +4068,7 @@ describe('OauthService', () => {
 					}),
 				);
 				expect(toUpdate).not.toHaveProperty('clientSecret');
-				expect(toUpdate).not.toHaveProperty('scope');
+				expect(toUpdate).toHaveProperty('scope', '');
 			});
 
 			it.each([
@@ -5182,6 +5182,20 @@ describe('OauthService', () => {
 				expect(registerPayload.scope).toBe('mcp offline_access');
 				expect(persisted.scope).toBe('mcp offline_access');
 			});
+
+			it.each(['', ' \t ', undefined])(
+				'omits blank scope %j when neither discovery document lists scopes',
+				async (scope) => {
+					mockProtectedResourceDiscovery();
+					mockAuthServerWithoutScopes();
+
+					const { registerPayload, clientOptions, persisted } = await runAtlassianFlow({ scope });
+
+					expect(registerPayload.scope).toBeUndefined();
+					expect(clientOptions.scopes?.join(clientOptions.scopesSeparator)).toBe('');
+					expect(persisted.scope).toBe('');
+				},
+			);
 
 			it('adds offline_access when the auth server offers it and the resource omits it', async () => {
 				mockProtectedResourceDiscovery(['mcp']);

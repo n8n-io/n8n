@@ -1229,10 +1229,8 @@ export class OauthService {
 		const scope =
 			oauthCredentials.scope?.trim() ||
 			(effectiveScopes?.length ? effectiveScopes.join(' ') : undefined);
-		if (scope) {
-			oauthCredentials.scope = scope;
-			toUpdate.scope = scope;
-		}
+		oauthCredentials.scope = scope ?? '';
+		toUpdate.scope = scope ?? '';
 
 		const { grantType, authentication, usePkce } = this.selectGrantTypeAndAuthenticationMethod(
 			metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
