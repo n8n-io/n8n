@@ -25,25 +25,12 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: vi.fn() }),
 }));
 
-// Render the dialog only when open so presence assertions reflect the modal's visibility.
-const ElDialogStub = {
-	props: ['modelValue'],
-	template: `
-		<div v-if="modelValue" role="dialog">
-			<slot name="header" />
-			<slot />
-			<slot name="footer" />
-		</div>
-	`,
-};
-
 const renderComponent = createComponentRenderer(InstanceRolesView, {
 	global: {
 		stubs: {
 			RouterLink: {
 				template: '<router-link-stub v-bind="$attrs"><slot /></router-link-stub>',
 			},
-			ElDialog: ElDialogStub,
 			N8nSelect: true,
 		},
 	},
@@ -160,12 +147,12 @@ describe('InstanceRolesView', () => {
 		// The delete flow fetches the current count before deciding.
 		rolesStore.fetchRoleBySlug.mockResolvedValue({ ...customRole, usedByUsers: 3 });
 
-		const { getByTestId, getAllByTestId } = renderComponent();
+		const { findByTestId, getByTestId, getAllByTestId } = renderComponent();
 		await userEvent.click(within(getAllByTestId('action-toggle')[0]).getByRole('button'));
 		await userEvent.click(getByTestId('action-delete'));
 
 		expect(rolesStore.fetchRoleBySlug).toHaveBeenCalledWith({ slug: customRole.slug });
-		expect(getByTestId('delete-instance-role-modal')).toBeInTheDocument();
+		expect(await findByTestId('delete-instance-role-modal')).toBeInTheDocument();
 		// No deletion happens just from opening the modal.
 		expect(rolesStore.deleteRole).not.toHaveBeenCalled();
 	});
