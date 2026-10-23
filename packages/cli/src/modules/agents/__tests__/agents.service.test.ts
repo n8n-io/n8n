@@ -20,6 +20,7 @@ import type {
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock, type MockProxy } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -102,6 +103,7 @@ function makeService() {
 		broadcaster,
 		new AgentModificationTelemetryService(
 			telemetry,
+			mock<InstanceSettings>(),
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			eventService,
 			// EOF Experiment cleanup

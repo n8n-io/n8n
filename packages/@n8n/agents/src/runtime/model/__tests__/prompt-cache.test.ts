@@ -91,6 +91,7 @@ describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 		'anthropic/claude-sonnet-4-5',
 		'google-vertex-anthropic/claude-opus-4-8',
 		'google-vertex/claude-opus-5@default',
+		'azure-openai/anthropic/my-claude',
 	])('defaults to a 1h cache breakpoint for %s', (modelId) => {
 		expect(buildInstructionPromptCacheOptions({ enabled: true }, modelId)).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },

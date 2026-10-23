@@ -88,11 +88,11 @@ describe('McpSkillToolsService', () => {
 		).not.toHaveProperty('availableToAssistant');
 	});
 
-	describe('search_skills', () => {
+	describe('search_n8n_skills', () => {
 		it('lists the skills with the filters the client sent', async () => {
 			skillsApi.list.mockResolvedValue({ count: 1, data: [listItem] });
 
-			const result = await callTool('search_skills', {
+			const result = await callTool('search_n8n_skills', {
 				query: 'brand',
 				attachableToAgentId: 'agent-1',
 				limit: 20,
@@ -120,7 +120,7 @@ describe('McpSkillToolsService', () => {
 		it('does not return who created a skill', async () => {
 			skillsApi.list.mockResolvedValue({ count: 1, data: [listItem] });
 
-			const result = await callTool('search_skills', { limit: 50, skip: 0 });
+			const result = await callTool('search_n8n_skills', { limit: 50, skip: 0 });
 
 			expect(JSON.stringify(result.structuredContent)).not.toContain('someone@example.com');
 		});

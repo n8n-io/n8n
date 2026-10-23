@@ -55,7 +55,8 @@ split them out of the old `runner.ts` monolith):
 - `harness/agent-execution.ts` — `executeAgentScenario` and the agent
   artifact helpers (the agent-anchored counterpart of scenario execution).
 - `harness/seed-tables.ts` — the scenario seed-data-table family (TRUST-311):
-  dedupe, pre-seed note, per-scenario row reseeding.
+  dedupe, pre-seed note, per-scenario row reseeding, and the table keys runs
+  queue on (the server refills every other table a workflow uses; TRUST-669).
 - `harness/cleanup.ts` — `cleanupBuild`, per-case timeout policy, bounded
   concurrency, binary workflow checks and shared failure summaries.
 

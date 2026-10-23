@@ -6,10 +6,12 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
+import { InstanceSettings } from 'n8n-core';
 
 import { Telemetry } from '@/telemetry';
 
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
+import { buildVectorStoreFingerprints } from './agent-knowledge-telemetry';
 import type { Agent } from './entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 
@@ -200,6 +202,7 @@ function modificationProperties({
 export class AgentModificationTelemetryService {
 	constructor(
 		private readonly telemetry: Telemetry,
+		private readonly instanceSettings: InstanceSettings,
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		private readonly eventService: EventService,
 		// EOF Experiment cleanup
@@ -209,7 +212,10 @@ export class AgentModificationTelemetryService {
 		if (event.changedParts.length === 0) return;
 		try {
 			const { by } = event;
-			const properties = modificationProperties(event);
+			const properties = {
+				...modificationProperties(event),
+				...this.vectorStoreFingerprints(event),
+			};
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			this.recordAssistantActivity(event, properties.capability_count, event.changedParts);
 			// EOF Experiment cleanup
@@ -230,6 +236,26 @@ export class AgentModificationTelemetryService {
 			this.telemetry.track(entry, { ...properties, event_version: '2' });
 		} catch {
 			// Telemetry must never fail a write that already succeeded.
+		}
+	}
+
+	/** Make sure a failed fingerprint leaves out only the fingerprints, not the whole event. */
+	private vectorStoreFingerprints(event: AgentModificationEvent): {
+		vector_store_fingerprints?: string[];
+	} {
+		if (!event.changedParts.includes('vectorStores')) {
+			return {};
+		}
+
+		try {
+			return {
+				vector_store_fingerprints: buildVectorStoreFingerprints(
+					event.config?.vectorStores ?? [],
+					this.instanceSettings.hmacSignatureSecret,
+				),
+			};
+		} catch {
+			return {};
 		}
 	}
 

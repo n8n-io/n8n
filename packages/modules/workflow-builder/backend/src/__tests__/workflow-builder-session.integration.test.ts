@@ -30,7 +30,8 @@ afterAll(async () => {
 });
 
 async function createSessionOwner() {
-	const user = await Container.get(UserRepository).save({ role: { slug: 'global:owner' } });
+	const userRepository = Container.get(UserRepository);
+	const user = await userRepository.save(userRepository.create({ role: { slug: 'global:owner' } }));
 	const workflow = await createWorkflow();
 	return { user, workflow, threadId: `workflow-${workflow.id}-user-${user.id}` };
 }

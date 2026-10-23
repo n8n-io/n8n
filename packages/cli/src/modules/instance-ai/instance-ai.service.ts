@@ -90,7 +90,7 @@ import {
 	isQuotaExhaustedError,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
-	PLANNED_TASK_PERMISSION_OVERRIDES,
+	applyPlannedTaskPermissionOverrides,
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
@@ -176,6 +176,7 @@ import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
+import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
 import { isAgentsAccessEnabled } from './agents-access';
 import {
 	INSTANCE_CONTEXT_CURSOR,
@@ -4192,10 +4193,12 @@ export class InstanceAiService {
 				orchestrationContext.checkpointTaskId = checkpoint.checkpointTaskId;
 				// Plan approval authorizes verification; grant runWorkflow on the adapter context
 				// because createInstanceAgent builds domain tools from `context`, not `orchestrationContext.domainContext`.
-				context.permissions = {
-					...context.permissions,
-					...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
-				} as typeof context.permissions;
+				if (context.permissions) {
+					context.permissions = applyPlannedTaskPermissionOverrides(
+						context.permissions,
+						'checkpoint',
+					);
+				}
 				// Scope the runWorkflow override to the workflows this checkpoint is verifying:
 				// the orchestrator can call `workflow_builder_executions(action="run")` on a depended-on workflow
 				// without HITL, but any other workflow id still requires user approval.
@@ -4206,10 +4209,12 @@ export class InstanceAiService {
 			}
 
 			if (plannedBuild?.isPlannedBuildFollowUp) {
-				context.permissions = {
-					...context.permissions,
-					...(PLANNED_TASK_PERMISSION_OVERRIDES['build-workflow'] ?? {}),
-				} as typeof context.permissions;
+				if (context.permissions) {
+					context.permissions = applyPlannedTaskPermissionOverrides(
+						context.permissions,
+						'build-workflow',
+					);
+				}
 				context.workflowBuildContext = {
 					threadId,
 					runId,
@@ -4625,17 +4630,20 @@ export class InstanceAiService {
 			// After the stream settles, so the do-not-harm pair (latency, input tokens) rides the
 			// same event. Covers suspended and terminal outcomes alike, once per turn: a resume is
 			// a follow-up segment that skips the preferences path.
-			if (aiPreferencesTurn) {
-				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN, {
-					user_id: user.id,
-					count: aiPreferencesTurn.payload.preferences.length,
-					scope_types: [...new Set(aiPreferencesTurn.payload.preferences.map((p) => p.scope))],
-					rendered_length: aiPreferencesTurn.payload.renderedLength,
-					surface: 'aia',
-					injected_this_turn: aiPreferencesTurn.payload.injectedThisTurn,
-					turn_latency_ms: Date.now() - turnStartedAt.getTime(),
-					...(result.usage ? { turn_token_count: result.usage.promptTokens } : {}),
+			const preferencesApplied =
+				aiPreferencesTurn &&
+				buildPreferencesAppliedTelemetry(aiPreferencesTurn.payload, {
+					userId: user.id,
+					threadId,
+					runId,
+					latencyMs: Date.now() - turnStartedAt.getTime(),
+					promptTokens: result.usage?.promptTokens,
 				});
+			if (preferencesApplied) {
+				this.telemetry.track(
+					TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN,
+					preferencesApplied,
+				);
 			}
 
 			if (result.status === 'suspended') {
