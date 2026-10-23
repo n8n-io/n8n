@@ -13,7 +13,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_budget_applied_call](agent_budget_applied_call.md) | 2 |  | table |
 | [agent_budget_spend](agent_budget_spend.md) | 4 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
-| [agent_chat_attachments](agent_chat_attachments.md) | 12 |  | table |
+| [agent_chat_attachments](agent_chat_attachments.md) | 13 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 7 |  | table |
 | [agent_credential_dependency](agent_credential_dependency.md) | 3 |  | table |
@@ -24,6 +24,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution](agent_execution.md) | 28 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 20 |  | table |
+| [agent_file_grants](agent_file_grants.md) | 4 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_message_queue](agent_message_queue.md) | 10 |  | table |
@@ -212,6 +213,7 @@ erDiagram
 "agent_execution_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--o| "agent_history" : "FOREIGN KEY (taskVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_file_grants" |o--|| "agent_chat_attachments" : "FOREIGN KEY (attachmentId) REFERENCES agent_chat_attachments (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -526,6 +528,7 @@ erDiagram
   varchar_36_ agentId FK
   TEXT binaryDataId
   datetime_3_ createdAt
+  varchar_128_ createdByThreadId
   varchar_255_ fileName
   INTEGER fileSizeBytes
   varchar_16_ id PK
@@ -671,6 +674,12 @@ erDiagram
   REAL totalCost
   INTEGER totalDuration
   INTEGER totalPromptTokens
+  datetime_3_ updatedAt
+}
+"agent_file_grants" {
+  varchar_16_ attachmentId PK
+  datetime_3_ createdAt
+  varchar_128_ threadId PK
   datetime_3_ updatedAt
 }
 "agent_files" {
