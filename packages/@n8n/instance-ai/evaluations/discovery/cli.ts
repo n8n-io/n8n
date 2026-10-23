@@ -24,6 +24,8 @@
 // not gate a merge.
 // ---------------------------------------------------------------------------
 
+// Must run first: it wraps fetch before any model client exists.
+import './brand-rename';
 import { runDiscoveryScenario, runOrchestratorTurn, type DiscoveryRunResult } from './runner';
 import { createSeededThread } from './seeded-turn';
 import type { DiscoveryTestCase } from './types';
