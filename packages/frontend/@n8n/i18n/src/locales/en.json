@@ -1432,6 +1432,8 @@
 	"experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.qualifyInboundLeads.description": "Research, score, and route new leads.",
 	"experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.scheduleSocialPosts.description": "Turn weekly ideas into scheduled posts.",
 	"experiments.instanceAiPersonalizedPromptSuggestions.fallbackSuggestions.whatsappSupportAgent.description": "Reply to common support questions instantly.",
+	"experiments.instanceAiInspirationFromTaxonomy.everyone": "For everyone",
+	"experiments.instanceAiInspirationFromTaxonomy.heading": "For sales and marketing",
 	"experiments.instanceAiPersonalizedPromptSuggestions.heading": "Start from an example",
 	"experiments.instanceAiPersonalizedPromptSuggestions.helper": "Picked for you. Change anything.",
 	"experiments.instanceAiPersonalizedPromptSuggestions.seeMore": "See more",
