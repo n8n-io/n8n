@@ -19,6 +19,8 @@ import {
 	createSetupItemsEmitter,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
+	type InstanceAiContext,
+	type ModelConfig,
 	type OrchestrationContext,
 	type ServiceProxyConfig,
 	type WorkflowTaskService,
@@ -41,7 +43,10 @@ import { Telemetry } from '@/telemetry';
 import { resolveBrowserUseState } from '../browser/browser-use-availability';
 import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
-import { InstanceAiConversationHistoryService } from '../instance-ai-conversation-history.service';
+import {
+	InstanceAiConversationHistoryService,
+	type ScopedConversationHistory,
+} from '../instance-ai-conversation-history.service';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import { InstanceAiModelService } from '../instance-ai-model.service';
@@ -52,7 +57,7 @@ import {
 	type InstanceAiFeatureFlags,
 } from '../instance-ai.adapter.service';
 import { DbIterationLogStorage } from '../storage/db-iteration-log-storage';
-import type { AssistantTurnRuntime } from './assistant-turn-runtime';
+import type { AssistantTurnMemory, AssistantTurnRuntime } from './assistant-turn-runtime';
 import {
 	assistantCreditsExhaustedError,
 	isAssistantCreditBalanceExhausted,
@@ -75,6 +80,24 @@ export function resolveOperatorPromptVersion(configured: string | undefined): st
 	if (!version) return undefined;
 	assertInstanceAiPromptVersion(version);
 	return version;
+}
+
+/** What the shared turn setup returns for one run. */
+export interface AssistantTurnEnvironment {
+	context: InstanceAiContext;
+	memory: AssistantTurnMemory;
+	taskStorage: ThreadTaskStorage;
+	iterationLog: DbIterationLogStorage;
+	workflowTasks: WorkflowTaskService;
+	plannedTaskService: PlannedTaskCoordinator;
+	modelId: ModelConfig;
+	memoryModelId: ModelConfig | undefined;
+	orchestrationContext: OrchestrationContext;
+	conversationHistory: ScopedConversationHistory | undefined;
+	aiPreferencesEnabled: boolean;
+	instanceContextEnabled: boolean;
+	nodeUsageEnabled: boolean;
+	skillScope: InstanceAiSkillScope;
 }
 
 export interface AssistantTurnEnvironmentParams {
@@ -204,7 +227,10 @@ export class AssistantTurnEnvironmentFactory {
 		);
 	}
 
-	async create(params: AssistantTurnEnvironmentParams, runtime: AssistantTurnRuntime) {
+	async create(
+		params: AssistantTurnEnvironmentParams,
+		runtime: AssistantTurnRuntime,
+	): Promise<AssistantTurnEnvironment> {
 		const {
 			user,
 			threadId,
