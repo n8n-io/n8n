@@ -69,8 +69,30 @@ function isResolvingBuilderModel(modelId: string): boolean {
 	return modelId === builderModel;
 }
 
+/**
+ * The dedicated eval model's own endpoint: `N8N_INSTANCE_AI_EVAL_MODEL_URL` (with
+ * `N8N_INSTANCE_AI_EVAL_MODEL_API_KEY`) applies to `N8N_INSTANCE_AI_EVAL_MODEL` only,
+ * as the builder pair applies to the builder model. Judges and fixed helper ids keep
+ * their provider's own API.
+ */
+function getDedicatedEvalEndpoint(modelId: string): { url: string; apiKey?: string } | undefined {
+	const url = process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL?.trim();
+	const evalModel = process.env.N8N_INSTANCE_AI_EVAL_MODEL?.trim();
+	if (!url || modelId !== evalModel || isResolvingBuilderModel(modelId)) return undefined;
+	return { url, apiKey: process.env.N8N_INSTANCE_AI_EVAL_MODEL_API_KEY?.trim() || undefined };
+}
+
 function getApiKey(modelId: string): string {
 	const provider = getProviderPrefix(modelId);
+	const evalEndpoint = getDedicatedEvalEndpoint(modelId);
+	if (evalEndpoint) {
+		// Never fall back to the builder's or provider keys: they belong to other endpoints.
+		if (evalEndpoint.apiKey) return evalEndpoint.apiKey;
+		if (provider === 'custom') return '';
+		throw new Error(
+			`Missing API key for eval model "${modelId}". Set N8N_INSTANCE_AI_EVAL_MODEL_API_KEY for N8N_INSTANCE_AI_EVAL_MODEL_URL.`,
+		);
+	}
 	const providerKeyEnv = PROVIDER_API_KEY_ENV[provider];
 	const providerKey = providerKeyEnv ? process.env[providerKeyEnv] : undefined;
 	const anthropicLegacy = provider === 'anthropic' ? process.env.N8N_AI_ANTHROPIC_KEY : undefined;
@@ -128,7 +150,7 @@ export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 		provider,
 		providerModelId,
 		apiKey: getApiKey(modelId),
-		url: attachBuilderEndpoint ? getModelUrl() : undefined,
+		url: attachBuilderEndpoint ? getModelUrl() : getDedicatedEvalEndpoint(modelId)?.url,
 		headers: attachBuilderEndpoint ? getModelHeaders() : undefined,
 	};
 }
