@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { isRecord } from '@n8n/utils/is-record';
 import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { createHash, randomUUID } from 'node:crypto';
@@ -7,7 +8,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
 type AgentRow = { id: string; createdAt: Date | string; schema: unknown; skills: unknown };
-type HistoryRow = { versionId: string; schema: unknown; skills: unknown };
+type HistoryRow = { schema: unknown; skills: unknown };
 type VersionRow = {
 	id: string;
 	skillId: string;
@@ -65,15 +66,6 @@ const REPORTED_FAILURES = 100;
 const STARTUP_COPY_PROGRESS_KEY = 'agents.skillsHubCopy';
 
 /**
- * Which drafts the migration may copy. `through` is the last agent that the startup copy
- * checked. Its draft and the drafts before it, in (`createdAt`, `id`) order, are not
- * copied again, except `retryAgentIds`, the drafts whose startup copy failed.
- */
-type DraftScope =
-	| { copyDrafts: false }
-	| { copyDrafts: true; through: AgentKey | null; retryAgentIds: Set<string> };
-
-/**
  * Copies the inline skills of agents (`agents.skills`, `agent_history.skills`) into the
  * skills hub, so every instance reads agent skills from the hub. Each inline skill becomes
  * an agent skill of its agent. It applies the rules of the startup copy that ran while the
@@ -100,19 +92,19 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		const columns = ['id', 'createdAt', 'schema', 'skills']
 			.map((name) => escape.columnName(name))
 			.join(', ');
-		const scope = await this.readDraftScope(context);
+		const mayCopyDraft = await this.readDraftScope(context);
 
 		// This migration writes no agent rows, so offset paging stays stable.
 		await runInBatches<AgentRow>(
 			`SELECT ${columns} FROM ${escape.tableName('agents')} ORDER BY ${escape.columnName('createdAt')}, ${escape.columnName('id')}`,
 			async (agents) => {
 				for (const agent of agents) {
-					const draftAllowed =
-						scope.copyDrafts &&
-						(scope.through === null ||
-							isAfter(agent, scope.through) ||
-							scope.retryAgentIds.has(agent.id));
-					const error = await this.copyAgentInSavepoint(context, agent, draftAllowed, counts);
+					const error = await this.copyAgentInSavepoint(
+						context,
+						agent,
+						mayCopyDraft(agent),
+						counts,
+					);
 					if (error !== undefined) failures.push({ agentId: agent.id, error });
 				}
 			},
@@ -142,26 +134,31 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 	}
 
 	/**
-	 * Which drafts to copy, from the progress of the startup copy. Without that row, every
-	 * draft follows the copy rules. With an unreadable row, no draft is copied: reopening
-	 * every draft could bring back skills that users deleted.
+	 * Which drafts to copy, from the progress of the startup copy. `through` is the last
+	 * agent that copy checked: its draft and the drafts before it, in (`createdAt`, `id`)
+	 * order, are not copied again, except `retryAgentIds`, the drafts whose copy failed.
+	 * Without that row, every draft follows the copy rules. With an unreadable row, no draft
+	 * is copied: reopening every draft could bring back skills that users deleted.
 	 */
-	private async readDraftScope(context: MigrationContext): Promise<DraftScope> {
+	private async readDraftScope(
+		context: MigrationContext,
+	): Promise<(agent: Pick<AgentRow, 'createdAt' | 'id'>) => boolean> {
 		const { escape, runQuery, logger, migrationName } = context;
 		const [row] = await runQuery<Array<{ value: string }>>(
 			`SELECT ${escape.columnName('value')} AS ${escape.columnName('value')} FROM ${escape.tableName('settings')} WHERE ${escape.columnName('key')} = :key`,
 			{ key: STARTUP_COPY_PROGRESS_KEY },
 		);
-		if (!row) return { copyDrafts: true, through: null, retryAgentIds: new Set() };
+		if (!row) return () => true;
 
 		const progress = parseStartupCopyProgress(context, row.value);
 		if (!progress) {
 			logger.error(
 				`[${migrationName}] Unreadable startup copy progress in ${STARTUP_COPY_PROGRESS_KEY}: no agent draft is copied`,
 			);
-			return { copyDrafts: false };
+			return () => false;
 		}
-		return { copyDrafts: true, ...progress };
+		const { through, retryAgentIds } = progress;
+		return (agent) => through === null || isAfter(agent, through) || retryAgentIds.has(agent.id);
 	}
 
 	/**
@@ -189,14 +186,16 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		await queryRunner.query('SAVEPOINT copy_agent_skills');
 		const agentCounts = { skills: 0, versions: 0, pins: 0 };
 		try {
-			const state = await this.loadState(context, agent.id);
+			// An agent whose draft is copied has no hub rows, so there is nothing to load.
+			const state = copyDraft ? emptyState() : await this.loadState(context, agent.id);
 			for (const versionId of versionIds) {
 				const version = await this.findVersion(context, versionId);
 				const skills = version
 					? this.readInline(context, `version ${versionId}`, version.schema, version.skills)
 					: [];
 				if (skills.length === 0) continue;
-				const pins: Array<{ skillId: string; skillVersionId: string }> = [];
+				// One pin per skill, in ref order.
+				const pins = new Map<string, string>();
 				for (const { refId, content } of skills) {
 					const pinned = await this.versionFor(
 						context,
@@ -207,15 +206,17 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 						state,
 						agentCounts,
 					);
-					if (!pins.some((pin) => pin.skillId === pinned.skillId)) {
-						pins.push({ skillId: pinned.skillId, skillVersionId: pinned.id });
-					}
+					if (!pins.has(pinned.skillId)) pins.set(pinned.skillId, pinned.id);
 				}
-				await this.insertPins(context, versionId, pins);
-				agentCounts.pins += pins.length;
+				await this.insertPins(
+					context,
+					versionId,
+					[...pins].map(([skillId, skillVersionId]) => ({ skillId, skillVersionId })),
+				);
+				agentCounts.pins += pins.size;
 			}
 			if (copyDraft) {
-				const skillIds: string[] = [];
+				const skillIds = new Set<string>();
 				for (const { refId, content } of draft) {
 					// The draft runs the newest version, so its text must be the newest one.
 					const { skillId } = await this.versionFor(
@@ -227,9 +228,9 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 						state,
 						agentCounts,
 					);
-					if (!skillIds.includes(skillId)) skillIds.push(skillId);
+					skillIds.add(skillId);
 				}
-				await this.insertDependencies(context, agent.id, skillIds);
+				await this.insertDependencies(context, agent.id, [...skillIds]);
 			}
 			await queryRunner.query('RELEASE SAVEPOINT copy_agent_skills');
 		} catch (error) {
@@ -312,7 +313,10 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		return row !== undefined;
 	}
 
-	/** The ids of the published versions of an agent that pin no skill, oldest first. */
+	/**
+	 * The ids of the published versions of an agent that pin no skill and have inline
+	 * skills, oldest first.
+	 */
 	private async findUnpinnedVersionIds(
 		context: MigrationContext,
 		agentId: string,
@@ -323,6 +327,7 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 			`SELECT history.${versionId} AS ${versionId}
 			FROM ${escape.tableName('agent_history')} history
 			WHERE history.${escape.columnName('agentId')} = :agentId
+			AND history.${escape.columnName('skills')} IS NOT NULL
 			AND NOT EXISTS (
 				SELECT 1 FROM ${escape.tableName('agent_version_skill_dependency')} pin
 				WHERE pin.${escape.columnName('agentVersionId')} = history.${versionId}
@@ -338,9 +343,7 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		versionId: string,
 	): Promise<HistoryRow | undefined> {
 		const { escape, runQuery } = context;
-		const columns = ['versionId', 'schema', 'skills']
-			.map((name) => escape.columnName(name))
-			.join(', ');
+		const columns = ['schema', 'skills'].map((name) => escape.columnName(name)).join(', ');
 		const [row] = await runQuery<HistoryRow[]>(
 			`SELECT ${columns} FROM ${escape.tableName('agent_history')} WHERE ${escape.columnName('versionId')} = :versionId`,
 			{ versionId },
@@ -367,13 +370,7 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 			ORDER BY version.${escape.columnName('version')} ASC`,
 			{ agentId },
 		);
-		const state: AgentState = {
-			byHash: new Map(),
-			skillByRef: new Map(),
-			refBySkill: new Map(),
-			latest: new Map(),
-			owned: new Set(),
-		};
+		const state = emptyState();
 		for (const row of rows) {
 			if (row.agentId === agentId) state.owned.add(row.skillId);
 			const version = Number(row.version);
@@ -554,10 +551,6 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 	}
 }
 
-function isStringArray(value: unknown): value is string[] {
-	return Array.isArray(value) && value.every((item) => typeof item === 'string');
-}
-
 /** The `through` agent id and the retry list of the startup copy, or null when unreadable. */
 function parseStartupCopyProgress(
 	context: MigrationContext,
@@ -569,13 +562,17 @@ function parseStartupCopyProgress(
 	} catch {
 		return null;
 	}
-	if (!isRecord(progress) || !isStringArray(progress.retryAgentIds)) return null;
-	const { through } = progress;
-	if (through === null) return { through: null, retryAgentIds: new Set(progress.retryAgentIds) };
+	if (!isRecord(progress)) return null;
+	const { through, retryAgentIds } = progress;
+	if (!Array.isArray(retryAgentIds) || !retryAgentIds.every((id) => typeof id === 'string')) {
+		return null;
+	}
+	const retry = new Set<string>(retryAgentIds);
+	if (through === null) return { through: null, retryAgentIds: retry };
 	if (!isRecord(through) || typeof through.id !== 'string') return null;
 	const createdAt = toIsoTimestamp(through.createdAt);
 	if (!createdAt) return null;
-	return { through: { createdAt, id: through.id }, retryAgentIds: new Set(progress.retryAgentIds) };
+	return { through: { createdAt, id: through.id }, retryAgentIds: retry };
 }
 
 /**
@@ -597,10 +594,6 @@ function isAfter(agent: Pick<AgentRow, 'createdAt' | 'id'>, through: AgentKey): 
 	if (!createdAt) return false;
 	if (createdAt !== through.createdAt) return createdAt > through.createdAt;
 	return agent.id > through.id;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -634,6 +627,16 @@ function toContent(raw: unknown): SkillContent | null {
 }
 
 /** Keeps one version of each skill for each content: the first one seen, which is the oldest. */
+function emptyState(): AgentState {
+	return {
+		byHash: new Map(),
+		skillByRef: new Map(),
+		refBySkill: new Map(),
+		latest: new Map(),
+		owned: new Set(),
+	};
+}
+
 function addByHash(state: AgentState, hash: string, version: HubVersion) {
 	const versions = state.byHash.get(hash) ?? [];
 	if (!versions.some((known) => known.skillId === version.skillId)) versions.push(version);

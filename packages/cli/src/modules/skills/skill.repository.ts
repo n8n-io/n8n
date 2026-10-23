@@ -298,11 +298,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 		});
 	}
 
-	/** Whether the agent owns a skill (an agent skill). */
-	async existsForAgent(agentId: string, ctx: OperationContext = {}): Promise<boolean> {
-		return await this.managerFor(ctx).exists(Skill, { where: { agentId } });
-	}
-
 	/** The number of each version, keyed by version id. */
 	async findVersionNumbers(
 		versionIds: string[],
@@ -318,22 +313,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 				}),
 		);
 		return new Map(versions.map((version) => [version.id, version.version]));
-	}
-
-	/** The content hash of the latest version of each skill, keyed by skill id. */
-	async findLatestContentHashes(
-		skillIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, string>> {
-		const manager = this.managerFor(ctx);
-		const versions = await inChunks(
-			skillIds,
-			async (chunk) =>
-				await latestVersionsQuery(manager, chunk)
-					.select(['version.skillId', 'version.contentHash'])
-					.getMany(),
-		);
-		return new Map(versions.map((version) => [version.skillId, version.contentHash]));
 	}
 
 	/** Moves a skill to a project, one agent or the instance. */

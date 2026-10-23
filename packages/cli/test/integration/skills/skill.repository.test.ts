@@ -603,15 +603,6 @@ describe('SkillRepository', () => {
 	});
 
 	describe('reads for the agents module', () => {
-		it('tells whether an agent owns a skill', async () => {
-			const owner = await createAgent('Owner');
-			const other = await createAgent('Other');
-			await createSkill({ agentId: owner.id });
-
-			expect(await skills.existsForAgent(owner.id)).toBe(true);
-			expect(await skills.existsForAgent(other.id)).toBe(false);
-		});
-
 		it('maps version ids to their number', async () => {
 			const id = await createSkill();
 			const v1 = await latestVersionId(id);
@@ -622,15 +613,6 @@ describe('SkillRepository', () => {
 					[v1, 1],
 					[v2, 2],
 				]),
-			);
-		});
-
-		it('maps skill ids to the content hash of their latest version', async () => {
-			const id = await createSkill();
-			await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
-
-			expect(await skills.findLatestContentHashes([id, 'skill_gone'])).toEqual(
-				new Map([[id, skillContentHash(content({ instructions: 'v2' }))]]),
 			);
 		});
 	});
