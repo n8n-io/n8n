@@ -197,7 +197,8 @@
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
-      "lodash@4.18.0": "patches/lodash@4.18.0.patch"
+      "lodash@4.18.0": "patches/lodash@4.18.0.patch",
+      "@n8n/typeorm@0.3.20-15": "patches/@n8n__typeorm@0.3.20-15.patch"
     }
   }
 }

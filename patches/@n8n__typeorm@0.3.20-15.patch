@@ -1,0 +1,35 @@
+diff --git a/driver/sqlite-pooled/SqliteWriteConnection.js b/driver/sqlite-pooled/SqliteWriteConnection.js
+index abcff67..d014ad8 100644
+--- a/driver/sqlite-pooled/SqliteWriteConnection.js
++++ b/driver/sqlite-pooled/SqliteWriteConnection.js
+@@ -86,7 +86,13 @@ class SqliteWriteConnection {
+             }
+             throw error;
+         }
+-        this.dbLease = await this.createAndGetConnection(dbLeaseHolder);
++        try {
++            this.dbLease = await this.createAndGetConnection(dbLeaseHolder);
++        }
++        catch (error) {
++            this.writeConnectionMutex.release();
++            throw error;
++        }
+         return this.dbLease;
+     }
+     async releaseConnection(leasedDbConnection) {
+@@ -122,7 +128,14 @@ class SqliteWriteConnection {
+             this.writeConnectionPromise =
+                 this.sqliteLibrary.createDatabaseConnection();
+         }
+-        const dbConnection = await this.writeConnectionPromise;
++        let dbConnection;
++        try {
++            dbConnection = await this.writeConnectionPromise;
++        }
++        catch (error) {
++            this.writeConnectionPromise = null;
++            throw error;
++        }
+         (0, assert_1.default)(!this.dbLease);
+         return new LeasedDbConnection_1.LeasedDbConnection(dbConnection, this, dbLeaseHolder);
+     }
