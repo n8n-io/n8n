@@ -35,7 +35,7 @@ describe('AgentMemoryController', () => {
 		await expect(
 			controller.listMemoryEntries(req, mock<Response>(), 'project-1', 'agent-1', { limit: '10' }),
 		).resolves.toBe(page);
-		expect(service.list).toHaveBeenCalledWith('agent-1', 'project-1', 'viewer-1', { limit: '10' });
+		expect(service.list).toHaveBeenCalledWith('agent-1', 'project-1', req.user, { limit: '10' });
 	});
 
 	it('lists the source facets for the requesting user', async () => {

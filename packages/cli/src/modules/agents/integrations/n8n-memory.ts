@@ -72,6 +72,23 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import { isIntegrationMemoryResourceId } from '../utils/agent-memory-scope';
 
+export function toEpisodicMemoryEntry(entity: AgentMemoryEntryEntity): EpisodicMemoryEntry {
+	return {
+		id: entity.id,
+		resourceId: entity.resourceId,
+		content: entity.content,
+		contentHash: entity.contentHash,
+		status: entity.status,
+		supersededBy: entity.supersededBy,
+		...(entity.embedding ? { embedding: entity.embedding } : {}),
+		...(entity.embeddingModel ? { embeddingModel: entity.embeddingModel } : {}),
+		metadata: entity.metadata,
+		createdAt: entity.createdAt,
+		updatedAt: entity.updatedAt,
+		lastSeenAt: entity.lastSeenAt,
+	};
+}
+
 /**
  * Integration chats are shared conversations, so each channel resolves its own
  * scope. A turn on an integration resource without one has no owner: it must
@@ -160,8 +177,9 @@ export class N8nMemoryImpl
 			await this.getEpisodicMemoryEntriesByContentHashes(scope, contentHashes),
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
-		searchEntries: async (scope, query, opts) =>
-			await this.searchEpisodicMemoryEntries(scope, query, opts),
+		// Ranking uses the query embedding in `opts`, not the query text.
+		searchEntries: async (scope, _query, opts) =>
+			await this.searchEpisodicMemoryEntries(scope, opts),
 		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
 		applyReflection: async (scope, reflection) =>
 			await this.applyEpisodicMemoryReflection(scope, reflection),
@@ -703,7 +721,7 @@ export class N8nMemoryImpl
 			episodicWriteScopeId(scope),
 			contentHashes,
 		);
-		return entities.map((entity) => this.toEpisodicMemoryEntry(entity));
+		return entities.map((entity) => toEpisodicMemoryEntry(entity));
 	}
 
 	private async saveEpisodicMemoryEntryWithSources(
@@ -720,12 +738,11 @@ export class N8nMemoryImpl
 			sources,
 			{},
 		);
-		return this.toEpisodicMemoryEntry(persisted);
+		return toEpisodicMemoryEntry(persisted);
 	}
 
 	private async searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
-		query: string,
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
 		const statuses = opts?.includeStatuses ?? ['active'];
@@ -749,8 +766,7 @@ export class N8nMemoryImpl
 			if (!seen || entity.lastSeenAt > seen.lastSeenAt) newestByContent.set(key, entity);
 		}
 		return rankEpisodicMemoryEntries(
-			[...newestByContent.values()].map((entity) => this.toEpisodicMemoryEntry(entity)),
-			query,
+			[...newestByContent.values()].map((entity) => toEpisodicMemoryEntry(entity)),
 			opts,
 		);
 	}
@@ -962,7 +978,7 @@ export class N8nMemoryImpl
 			return {
 				droppedIds: effectiveDrop,
 				supersededIds,
-				inserted: replacements.map((entry) => this.toEpisodicMemoryEntry(entry)),
+				inserted: replacements.map((entry) => toEpisodicMemoryEntry(entry)),
 			};
 		});
 	}
@@ -994,23 +1010,6 @@ export class N8nMemoryImpl
 			status: entity.status,
 			supersededBy: entity.supersededBy,
 			createdAt: entity.createdAt,
-		};
-	}
-
-	private toEpisodicMemoryEntry(entity: AgentMemoryEntryEntity): EpisodicMemoryEntry {
-		return {
-			id: entity.id,
-			resourceId: entity.resourceId,
-			content: entity.content,
-			contentHash: entity.contentHash,
-			status: entity.status,
-			supersededBy: entity.supersededBy,
-			...(entity.embedding ? { embedding: entity.embedding } : {}),
-			...(entity.embeddingModel ? { embeddingModel: entity.embeddingModel } : {}),
-			metadata: entity.metadata,
-			createdAt: entity.createdAt,
-			updatedAt: entity.updatedAt,
-			lastSeenAt: entity.lastSeenAt,
 		};
 	}
 

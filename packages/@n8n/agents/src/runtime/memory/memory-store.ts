@@ -139,8 +139,9 @@ export class InMemoryMemory
 		},
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
-		searchEntries: async (scope, query, opts) =>
-			await this.searchEpisodicMemoryEntries(scope, query, opts),
+		// Ranking uses the query embedding in `opts`, not the query text.
+		searchEntries: async (scope, _query, opts) =>
+			await this.searchEpisodicMemoryEntries(scope, opts),
 		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
 		applyReflection: async (scope, reflection) =>
 			await this.applyEpisodicMemoryReflection(scope, reflection),
@@ -685,7 +686,6 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
-		query: string,
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
 		const scopeIds = opts?.writeScopeOnly
@@ -700,7 +700,7 @@ export class InMemoryMemory
 			if (!seen || entry.lastSeenAt > seen.lastSeenAt) newestByContent.set(key, entry);
 		}
 		const scoped = [...newestByContent.values()].map(cloneEpisodicMemoryEntry);
-		return rankEpisodicMemoryEntries(scoped, query, opts);
+		return rankEpisodicMemoryEntries(scoped, opts);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await

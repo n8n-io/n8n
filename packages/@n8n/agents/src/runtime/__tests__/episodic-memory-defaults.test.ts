@@ -2,6 +2,12 @@ import type * as AiImport from 'ai';
 
 import type { ModelConfig } from '../../types';
 import { createEpisodicMemoryReflectFn } from '../memory/episodic-memory-defaults';
+import { createModel } from '../model/model-factory';
+
+vi.mock('../model/model-factory', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../model/model-factory')>();
+	return { ...actual, createModel: vi.fn(actual.createModel) };
+});
 
 type GenerateTextCall = {
 	output: {
@@ -69,6 +75,27 @@ describe('episodic memory defaults', () => {
 				sources: [],
 			}),
 		).rejects.toThrow();
+	});
+
+	it('creates the reflector model with the given fetch', async () => {
+		const modelFetch = vi.fn();
+		mockGenerateText.mockImplementationOnce(async ({ output }) => {
+			const parsedOutput = output.schema.parse({ drop: [], merge: [] });
+			return await Promise.resolve({
+				output: parsedOutput,
+				finalStep: { providerMetadata: undefined },
+			});
+		});
+
+		await createEpisodicMemoryReflectFn(fakeModel, { modelFetch })({
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
+			now: new Date('2026-05-12T15:00:00.000Z'),
+			seedEntryIds: [],
+			entries: [],
+			sources: [],
+		});
+
+		expect(createModel).toHaveBeenCalledWith(fakeModel, modelFetch);
 	});
 
 	it('counts reflection generation tokens when usage is available', async () => {

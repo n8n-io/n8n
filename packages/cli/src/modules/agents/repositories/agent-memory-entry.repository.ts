@@ -109,6 +109,14 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		return await query.getRawMany<MemorySourceFacetRow>();
 	}
 
+	/** Every active entry, with its embedding, for ranking. */
+	async findActiveForSearch(
+		agentId: string,
+		filter: MemoryEntrySourceFilter = {},
+	): Promise<AgentMemoryEntryEntity[]> {
+		return await this.activeEntriesQuery(agentId, filter).getMany();
+	}
+
 	/**
 	 * Stores the delete as `dropped`: recall skips it and the row keeps its text and sources.
 	 * Returns false when the agent has no active entry with this id.

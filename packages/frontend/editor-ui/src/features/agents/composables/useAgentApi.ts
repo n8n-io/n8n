@@ -405,7 +405,7 @@ export const listAgentMemoryEntries = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	options: { limit: number; cursor?: string } & AgentMemorySourceSelection,
+	options: { limit: number; cursor?: string; search?: string } & AgentMemorySourceSelection,
 ): Promise<AgentMemoryEntriesPageDto> => {
 	return await makeRestApiRequest<AgentMemoryEntriesPageDto>(
 		context,
