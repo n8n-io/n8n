@@ -66,8 +66,8 @@ describe('listAzureOpenAiModels', () => {
 		);
 		expect(calledHeaders(fetch)).toEqual({ 'api-key': 'key' });
 		expect(models).toEqual([
-			{ id: 'a-chat-model', name: 'a-chat-model (gpt-4o)' },
-			{ id: 'my-gpt4', name: 'my-gpt4 (gpt-4.1-nano)' },
+			{ id: 'a-chat-model', name: 'a-chat-model (gpt-4o)', modelFamily: 'openai' },
+			{ id: 'my-gpt4', name: 'my-gpt4 (gpt-4.1-nano)', modelFamily: 'openai' },
 		]);
 	});
 
@@ -98,10 +98,10 @@ describe('listAzureOpenAiModels', () => {
 			fetch,
 		});
 
-		expect(models).toEqual([{ id: 'my-gpt4', name: 'my-gpt4' }]);
+		expect(models).toEqual([{ id: 'my-gpt4', name: 'my-gpt4', modelFamily: 'openai' }]);
 	});
 
-	it('drops Anthropic deployments only when openAiCompatibleOnly is set', async () => {
+	it('marks Claude deployments as the anthropic family', async () => {
 		const chat = { chat_completion: 'true' };
 		const body = {
 			value: [
@@ -116,21 +116,20 @@ describe('listAzureOpenAiModels', () => {
 				{ name: 'llama', modelName: 'Llama-3.3-70B', modelPublisher: 'Meta', capabilities: chat },
 			],
 		};
-		const options = {
+
+		const models = await listAzureOpenAiModels({
 			baseURL: 'https://my-resource.services.ai.azure.com',
 			project: 'my-project',
 			headers: {},
-		};
-
-		const all = await listAzureOpenAiModels({ ...options, fetch: mockFetch(body) });
-		const openAiOnly = await listAzureOpenAiModels({
-			...options,
 			fetch: mockFetch(body),
-			openAiCompatibleOnly: true,
 		});
 
-		expect(all.map((model) => model.id)).toEqual(['claude', 'claude-no-publisher', 'gpt', 'llama']);
-		expect(openAiOnly.map((model) => model.id)).toEqual(['gpt', 'llama']);
+		expect(models.map(({ id, modelFamily }) => [id, modelFamily])).toEqual([
+			['claude', 'anthropic'],
+			['claude-no-publisher', 'anthropic'],
+			['gpt', 'openai'],
+			['llama', 'openai'],
+		]);
 	});
 
 	it('returns an empty list when the response has no value field', async () => {

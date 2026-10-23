@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { isGoogleVertexAnthropicModel, splitModelId } from '@n8n/ai-utilities/agent-config';
+import { AZURE_FOUNDRY_ANTHROPIC_PREFIX, splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	AZURE_AI_FOUNDRY_AUDIENCE,
 	ensureUrlPathSuffix,
+	getAzureFoundryOrigin,
 	isOpenAiCustomEndpoint,
 } from '@n8n/ai-utilities/model-discovery';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
@@ -15,6 +16,7 @@ import type { NativeToolDeferral } from './native-tool-deferral';
 import { anthropicToolDeferral } from './native-tool-deferral/anthropic';
 import { openAiToolDeferral } from './native-tool-deferral/openai';
 import { wrapOpenRouterModel } from './openrouter';
+import { isAnthropicMessagesProvider } from './prompt-cache';
 import {
 	endpointRouteKey,
 	guardOpenAiRoutes,
@@ -226,10 +228,8 @@ export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
 export function supportsSplitSystemMessages(model: ModelConfig): boolean {
 	const modelId = getModelIdString(model);
-	if (isGoogleVertexAnthropicModel(modelId)) return true;
+	if (isAnthropicMessagesProvider(modelId)) return true;
 	switch (modelId.split('/')[0]) {
-		case 'anthropic':
-		case 'google-vertex-anthropic':
 		case 'openrouter':
 			return true;
 		case 'openai': {
@@ -245,6 +245,64 @@ export function supportsSplitSystemMessages(model: ModelConfig): boolean {
 		default:
 			return false;
 	}
+}
+
+/**
+ * Microsoft Foundry exposes an OpenAI-compatible `/openai/v1` base on
+ * `*.services.ai.azure.com`. `@ai-sdk/azure`'s URL builder assumes the classic
+ * `*.openai.azure.com` shape (it appends `/openai` and injects
+ * `/deployments/{id}`), which mangles the Foundry URL into `…/openai/v1/openai`.
+ * Drive it as a plain OpenAI-compatible endpoint so the configured base is used
+ * verbatim. The model id is the deployment name, which Foundry matches against.
+ */
+function buildAzureFoundryModel(
+	creds: ProviderCredentials<'azure-openai'>,
+	model: string,
+	fetch: FetchFn | undefined,
+): LanguageModel {
+	const { baseURL, apiKey } = creds;
+	// Neither SDK takes a token provider, so Entra ID wraps the transport to
+	// send a fresh `Authorization: Bearer <token>` on every request.
+	const isEntra = isAzureEntraCredential(creds);
+	const transport = isEntra
+		? withBearerAuth(fetch, createEntraTokenProvider(creds, { ssrfBridge: creds.ssrfBridge }))
+		: fetch;
+
+	if (model.startsWith(AZURE_FOUNDRY_ANTHROPIC_PREFIX)) {
+		const deployment = model.slice(AZURE_FOUNDRY_ANTHROPIC_PREFIX.length);
+		return buildAzureFoundryAnthropicModel(
+			baseURL,
+			isEntra ? undefined : apiKey,
+			deployment,
+			transport,
+		);
+	}
+	return buildOpenAiCompatible(
+		'azure-openai',
+		undefined,
+		isEntra ? { baseURL } : { apiKey, baseURL },
+		model,
+		transport,
+	);
+}
+
+/** Claude on Foundry answers on `<resource origin>/anthropic`; the SDK appends `/messages` to the versioned base. */
+function buildAzureFoundryAnthropicModel(
+	baseURL: string | undefined,
+	apiKey: string | undefined,
+	deployment: string,
+	fetch: FetchFn | undefined,
+): LanguageModel {
+	if (!baseURL) throw new Error('baseURL is required for a Microsoft Foundry credential');
+	const { createAnthropic } = require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
+	return createAnthropic({
+		baseURL: `${getAzureFoundryOrigin(baseURL)}/anthropic/v1`,
+		// Without an API key the SDK needs some credential. The placeholder bearer
+		// token also keeps it from reading ANTHROPIC_API_KEY off the host; the Entra
+		// transport replaces it on every request.
+		...(apiKey ? { apiKey } : { authToken: 'entra-id' }),
+		fetch,
+	})(deployment);
 }
 
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
@@ -438,28 +496,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			const { baseURL, resourceName, apiVersion, apiKey, endpointType } = creds;
 			const isEntra = isAzureEntraCredential(creds);
 
-			// Azure AI Foundry exposes an OpenAI-compatible `/openai/v1` base on
-			// `*.services.ai.azure.com`. `@ai-sdk/azure`'s URL builder assumes the
-			// classic `*.openai.azure.com` shape (it appends `/openai` and injects
-			// `/deployments/{id}`), which mangles the Foundry URL into
-			// `…/openai/v1/openai`. Drive it as a plain OpenAI-compatible endpoint
-			// so the configured base is used verbatim.
-			if (endpointType === 'foundry') {
-				// The model id is the deployment name picked from the project's
-				// deployment list, which is what Foundry matches against.
-				if (isEntra) {
-					// `buildOpenAiCompatible` has no `tokenProvider` slot, so wrap the
-					// transport to inject `Authorization: Bearer <token>` per request.
-					const tokenProvider = createEntraTokenProvider(creds, { ssrfBridge: creds.ssrfBridge });
-					return buildOpenAiCompatible(
-						'azure-openai',
-						undefined,
-						{ baseURL },
-						model,
-						withBearerAuth(fetch, tokenProvider),
-					);
-				}
-				return buildOpenAiCompatible('azure-openai', undefined, { apiKey, baseURL }, model, fetch);
+			if (endpointType === 'foundry') return buildAzureFoundryModel(creds, model, fetch);
+			if (model.startsWith(AZURE_FOUNDRY_ANTHROPIC_PREFIX)) {
+				throw new Error('Claude deployments need a Microsoft Foundry credential');
 			}
 
 			// Classic Azure OpenAI (`*.openai.azure.com`, or `resourceName` only).

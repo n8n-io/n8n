@@ -5,6 +5,7 @@ import { useDebounceFn } from '@vueuse/core';
 import {
 	AGENT_REASONING_LEVELS,
 	getModelPromptCachingCapability,
+	isAzureFoundryAnthropicModel,
 	type AgentReasoningLevel,
 } from '@n8n/api-types';
 import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
@@ -42,11 +43,19 @@ const selectedCatalogModel = computed(() => {
 	if (!selectedModel.value) return undefined;
 	return catalog.value[selectedModel.value.provider]?.models[selectedModel.value.name];
 });
+// The runtime sends no reasoning for Claude on Foundry until it knows the underlying model.
+const isFoundryClaude = computed(() =>
+	isAzureFoundryAnthropicModel(modelToString(props.config?.model)),
+);
 const isReasoningUnavailable = computed(
-	() => !selectedModel.value || selectedCatalogModel.value?.reasoning === false,
+	() =>
+		!selectedModel.value ||
+		selectedCatalogModel.value?.reasoning === false ||
+		isFoundryClaude.value,
 );
 const reasoningHintKey = computed(() => {
 	if (!selectedModel.value) return 'agents.builder.advanced.reasoning.noModelHint';
+	if (isFoundryClaude.value) return 'agents.builder.advanced.reasoning.foundryClaudeHint';
 	if (selectedCatalogModel.value?.reasoning === false) {
 		return 'agents.builder.advanced.reasoning.unsupportedHint';
 	}

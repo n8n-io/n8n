@@ -359,6 +359,24 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
+	it('disables reasoning and explains for a Claude deployment on Foundry', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ model: 'azure-openai/anthropic/my-claude' }),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		await nextTick();
+
+		expect(
+			wrapper.find('[data-testid="agent-reasoning-toggle"]').attributes('disabled'),
+		).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'agents.builder.advanced.reasoning.foundryClaudeHint',
+		);
+	});
+
 	it('disables reasoning and explains when no model is selected', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: {

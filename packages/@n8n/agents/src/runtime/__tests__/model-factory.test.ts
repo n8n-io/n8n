@@ -12,6 +12,7 @@ import { forgetEndpointApiStyles } from '../model/openai-api-style';
 
 type ProviderOpts = {
 	apiKey?: string;
+	authToken?: string;
 	baseURL?: string;
 	fetch?: typeof globalThis.fetch;
 	headers?: Record<string, string>;
@@ -26,6 +27,7 @@ vi.mock('@ai-sdk/anthropic', () => ({
 		provider: 'anthropic',
 		modelId: model,
 		apiKey: opts?.apiKey,
+		authToken: opts?.authToken,
 		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
 		headers: opts?.headers,
@@ -904,6 +906,32 @@ describe('createModel', () => {
 			).toThrow(/Invalid credentials for provider "azure-openai"[\s\S]*resourceName/);
 		});
 
+		it('sends a Claude deployment to the Anthropic endpoint of the Foundry resource', () => {
+			const model = createModel({
+				id: 'azure-openai/anthropic/my-claude',
+				apiKey: 'az-key',
+				endpointType: 'foundry',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+			}) as unknown as Record<string, unknown>;
+
+			expect(model.provider).toBe('anthropic');
+			expect(model.modelId).toBe('my-claude');
+			expect(model.apiKey).toBe('az-key');
+			expect(model.baseURL).toBe('https://my-resource.services.ai.azure.com/anthropic/v1');
+		});
+
+		it('rejects a Claude deployment on a classic credential', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/anthropic/my-claude',
+					apiKey: 'az-key',
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+					endpointType: 'classic',
+				}),
+			).toThrow('Claude deployments need a Microsoft Foundry credential');
+		});
+
 		it('should throw if a foundry endpoint is missing baseURL', () => {
 			expect(() =>
 				createModel({
@@ -1063,6 +1091,31 @@ describe('createModel', () => {
 					ssrfBridge,
 				}),
 			);
+		});
+
+		it('sends a fresh Bearer token, not an API key, for a Foundry Claude deployment', async () => {
+			let capturedHeaders: Headers | undefined;
+			const baseFetch = vi.fn(async (_input: unknown, init?: RequestInit) => {
+				capturedHeaders = new Headers(init?.headers);
+				return new Response('{}', { status: 200 });
+			}) as unknown as typeof globalThis.fetch;
+
+			const model = createModel(
+				{
+					id: 'azure-openai/anthropic/my-claude',
+					endpointType: 'foundry',
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+					...entraCreds,
+				},
+				baseFetch,
+			) as unknown as { fetch: typeof globalThis.fetch; apiKey?: string; provider: string };
+
+			expect(model.provider).toBe('anthropic');
+			expect(model.apiKey).toBeUndefined();
+			await model.fetch('https://example.com', {
+				headers: { Authorization: 'Bearer entra-id' },
+			});
+			expect(capturedHeaders?.get('Authorization')).toBe('Bearer minted-bearer');
 		});
 
 		it('rejects credentials that supply both apiKey and Entra', () => {
@@ -1288,6 +1341,8 @@ describe('supportsSplitSystemMessages', () => {
 		['google-vertex/gemini-3-flash-preview', false],
 		['google-vertex/mistral-large-2411', false],
 		['google-vertex/xai/grok-4', false],
+		['azure-openai/anthropic/my-claude', true],
+		['azure-openai/my-chat', false],
 	] as const)('checks split system messages for %s', (model, expected) => {
 		expect(supportsSplitSystemMessages(model)).toBe(expected);
 	});

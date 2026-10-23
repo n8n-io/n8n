@@ -43,7 +43,9 @@ function makeService(ssrfEnabled = true) {
 describe('AzureFoundryDeploymentsService', () => {
 	beforeEach(() => {
 		listAzureOpenAiModels.mockReset();
-		listAzureOpenAiModels.mockResolvedValue([{ id: 'my-chat', name: 'my-chat (gpt-4.1)' }]);
+		listAzureOpenAiModels.mockResolvedValue([
+			{ id: 'my-chat', name: 'my-chat (gpt-4.1)', modelFamily: 'openai' },
+		]);
 		mintAzureFoundryDeploymentsToken.mockReset();
 	});
 
@@ -65,7 +67,7 @@ describe('AzureFoundryDeploymentsService', () => {
 		expect(listAzureOpenAiModels).not.toHaveBeenCalled();
 	});
 
-	it('lists the OpenAI-compatible deployments with the API key', async () => {
+	it('lists the deployments with the API key', async () => {
 		const { service } = makeService();
 
 		const result = await service.list({
@@ -84,7 +86,6 @@ describe('AzureFoundryDeploymentsService', () => {
 				baseURL: 'https://my-resource.services.ai.azure.com',
 				project: 'my-project',
 				headers: { 'api-key': 'key' },
-				openAiCompatibleOnly: true,
 			}),
 		);
 	});
@@ -113,6 +114,25 @@ describe('AzureFoundryDeploymentsService', () => {
 		expect(listAzureOpenAiModels).toHaveBeenCalledWith(
 			expect.objectContaining({ headers: { Authorization: 'Bearer foundry-token' } }),
 		);
+	});
+
+	it('prefixes Claude deployments so the runtime uses the Anthropic API', async () => {
+		const { service } = makeService();
+		listAzureOpenAiModels.mockResolvedValue([
+			{ id: 'my-claude', name: 'my-claude (claude-opus-4-1)', modelFamily: 'anthropic' },
+		]);
+
+		const result = await service.list({
+			endpointType: 'foundry',
+			foundryEndpoint,
+			apiKey: 'key',
+			project: 'my-project',
+		});
+
+		expect(result).toEqual({
+			status: 'success',
+			deployments: [{ id: 'anthropic/my-claude', name: 'my-claude (claude-opus-4-1)' }],
+		});
 	});
 
 	it('reports a project the deployments API does not know', async () => {

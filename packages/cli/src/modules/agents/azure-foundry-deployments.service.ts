@@ -7,9 +7,10 @@ import {
 	AzureProjectNotFoundError,
 	getAzureFoundryOrigin,
 	listAzureOpenAiModels,
+	type AzureDeploymentModel,
 	type ProviderModel,
 } from '@n8n/ai-utilities/model-discovery';
-import type { AgentModelsUnavailableReason } from '@n8n/api-types';
+import { AZURE_FOUNDRY_ANTHROPIC_PREFIX, type AgentModelsUnavailableReason } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -26,7 +27,8 @@ export type FoundryDeploymentsResult =
 /**
  * Lists the chat deployments of the Microsoft Foundry project on an Azure
  * OpenAI credential (API key or Entra ID). Agents send the deployment name as
- * the model id, so this list is what the model picker offers.
+ * the model id, so this list is what the model picker offers. A Claude
+ * deployment gets the `anthropic/` prefix so the runtime uses the Anthropic API.
  */
 @Service()
 export class AzureFoundryDeploymentsService {
@@ -50,9 +52,8 @@ export class AzureFoundryDeploymentsService {
 				project,
 				headers: await this.authHeaders(mapped),
 				fetch: createAiProxyFetch(this.outboundHttp),
-				openAiCompatibleOnly: true,
 			});
-			return { status: 'success', deployments };
+			return { status: 'success', deployments: deployments.map(toAgentModel) };
 		} catch (error) {
 			if (error instanceof AzureProjectNotFoundError) {
 				return { status: 'unavailable', reason: 'project_not_found', error };
@@ -71,6 +72,10 @@ export class AzureFoundryDeploymentsService {
 			Authorization: `Bearer ${await mintAzureFoundryDeploymentsToken(mapped, ssrfBridge)}`,
 		};
 	}
+}
+
+function toAgentModel({ id, name, modelFamily }: AzureDeploymentModel): ProviderModel {
+	return { id: modelFamily === 'anthropic' ? `${AZURE_FOUNDRY_ANTHROPIC_PREFIX}${id}` : id, name };
 }
 
 /** Rejects a missing or invalid endpoint with a message the picker can log. */

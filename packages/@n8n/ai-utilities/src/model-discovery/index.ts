@@ -70,6 +70,7 @@ export {
 	listAzureOpenAiModels,
 	shouldIncludeAzureModel,
 	type AzureOpenAiListModelsOptions,
+	type AzureDeploymentModel,
 } from './providers/azure';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';

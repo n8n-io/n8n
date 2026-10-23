@@ -146,3 +146,27 @@ describe('Vertex thinking options', () => {
 		expect(builder.modelId).toBe(modelId);
 	});
 });
+
+describe('Foundry reasoning', () => {
+	it.each([
+		{ modelId: 'azure-openai/anthropic/my-claude', expected: undefined },
+		{ modelId: 'azure-openai/my-chat', expected: 'high' },
+	])('passes reasoning $expected for $modelId', ({ modelId, expected }) => {
+		const builder = new RuntimeContextBuilder(
+			{
+				name: 'test',
+				model: {
+					id: modelId,
+					apiKey: 'az-key',
+					endpointType: 'foundry',
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				},
+				instructions: '',
+				reasoning: 'high',
+			},
+			undefined,
+		);
+
+		expect(builder.buildStaticLoopContext().reasoning).toBe(expected);
+	});
+});
