@@ -324,13 +324,16 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(JSON.stringify(visible[1])).toContain('y'.repeat(750));
 	});
 
-	it.each(['provider', 'cursor'] as const)(
+	it.each(['provider', 'commit'] as const)(
 		'defers a failed %s attempt until the next run',
 		async (failure) => {
 			const store = new InMemoryMemory();
 			const observe = vi.fn(async () => await Promise.resolve('* INFO Conversation reviewed.'));
 			if (failure === 'provider') observe.mockRejectedValueOnce(new Error('observer failed'));
-			else vi.spyOn(store, 'setCursor').mockRejectedValueOnce(new Error('cursor write failed'));
+			else
+				vi.spyOn(store, 'commitObservationLogBatch').mockRejectedValueOnce(
+					new Error('batch commit failed'),
+				);
 			const { orchestrator, tracker } = buildOrchestrator(store, {
 				observerThresholdTokens: 1000,
 				observe,
@@ -361,7 +364,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 				{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
 			]);
 			expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toHaveLength(
-				failure === 'cursor' ? 2 : 1,
+				1,
 			);
 			const cursor = await store.getCursor(THREAD_ID);
 			expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);

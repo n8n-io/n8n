@@ -5,7 +5,9 @@ import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
-	/** Enable workflow suggestion runtime integrations at startup. */
+	/**
+	 * Enable workflow suggestions, self-healing investigations, and result review.
+	 */
 	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
 	workflowSuggestionsEnabled: boolean = false;
 
@@ -70,10 +72,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
 	midRunObservation: boolean = false;
 
-	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
-	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
-	localGatewayDisabled: boolean = false;
-
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;
 
@@ -130,10 +128,9 @@ export class InstanceAiConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
-	 * Marks an instance that serves the Instance AI eval harness. Only then may an eval run
-	 * reset per-workflow state (Remove Duplicates history) around a scenario: on a normal
-	 * instance an eval pointed at a real workflow must leave its history alone. An eval
-	 * instance also skips PostHog, so feature flags resolve from their defaults plus env overrides.
+	 * Set to true only on a throwaway instance that runs n8n Assistant evaluations. It turns on
+	 * the evaluation API routes and lets an evaluation reset Remove Duplicates history between
+	 * scenarios. Feature flags then come only from their defaults and environment overrides.
 	 */
 	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
 	evalInstance: boolean = false;
@@ -178,10 +175,6 @@ export class InstanceAiConfig {
 	/** SearXNG instance URL for web search (e.g. "http://searxng:8080"). Empty = disabled. No API key needed. */
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
 	searxngUrl: string = '';
-
-	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
-	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
-	gatewayApiKey: string = '';
 
 	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')

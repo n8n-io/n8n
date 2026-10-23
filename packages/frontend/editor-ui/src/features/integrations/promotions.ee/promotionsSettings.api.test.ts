@@ -1,14 +1,18 @@
-import { request } from '@n8n/rest-api-client';
+import { request, ResponseError } from '@n8n/rest-api-client';
 import {
 	applyProjectSelection,
 	continueApplyProjectSelection,
 	continueApplyPromotion,
+	deleteProviderIfUnused,
 	fetchPromotionRepositories,
 	fetchPromotionBranches,
 } from './promotionsSettings.api';
 import { blocked } from './__tests__/bindings.fixtures';
 
-vi.mock('@n8n/rest-api-client', () => ({ request: vi.fn() }));
+vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	request: vi.fn(),
+}));
 
 it('requests repositories with the encoded provider, query, and public API base URL', async () => {
 	const result = { data: [], nextCursor: 'next' };
@@ -89,4 +93,17 @@ it('posts the selection to the project apply continue endpoint', async () => {
 		endpoint: '/promotions/projects/project-id/apply/continue',
 		data: body,
 	});
+});
+
+it('treats a provider that is gone or still in use as handled', async () => {
+	const context = { baseUrl: '/custom/api/v2' };
+	const failWith = (httpStatusCode: number) =>
+		vi.mocked(request).mockRejectedValueOnce(new ResponseError('refused', { httpStatusCode }));
+
+	failWith(404);
+	await expect(deleteProviderIfUnused(context, 'provider-id')).resolves.toBeUndefined();
+	failWith(409);
+	await expect(deleteProviderIfUnused(context, 'provider-id')).resolves.toBeUndefined();
+	failWith(500);
+	await expect(deleteProviderIfUnused(context, 'provider-id')).rejects.toThrow('refused');
 });

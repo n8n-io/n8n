@@ -1667,6 +1667,7 @@ describe('PromotionsService', () => {
 						user: actor,
 						overwriteDeletionPolicy: 'hard-delete',
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
+						tagConflictPolicy: 'rename',
 					},
 					{ sourceDir: packageFolder },
 					{
@@ -1787,6 +1788,7 @@ describe('PromotionsService', () => {
 								user: actor,
 								overwriteDeletionPolicy: 'hard-delete',
 								dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
+								tagConflictPolicy: 'rename',
 							},
 							{ sourceDir: packageFolder },
 							{

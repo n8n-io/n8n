@@ -16,7 +16,8 @@ import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
+import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
+import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
@@ -32,8 +33,9 @@ import {
 	type ProjectAgent,
 } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
-import { SkillService, toAgentSkill } from '@/modules/agents/skills/skill.service';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
+import { SkillService, toAgentSkill } from '@/modules/skills/skill.service';
 import {
 	markAgentDraftDirty,
 	saveAgentDraftFenced,
@@ -69,8 +71,9 @@ describe('Agent skills in the skills hub', () => {
 		mockInstance(AgentTaskService).requestReconcile.mockResolvedValue(undefined);
 		const validation = mockInstance(AgentValidationService);
 		validation.validateAgentEntityConfiguration.mockResolvedValue({ status: 'valid', issues: [] });
-		await testModules.loadModules(['agents']);
+		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
+		registerSkillAgentsProvider();
 		await Container.get(AgentsSettingsService).setEnabled(true);
 		owner = await createOwner();
 		editor = await createMember();
@@ -223,9 +226,9 @@ describe('Agent skills in the skills hub', () => {
 		await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
 
 		const refs = await skillRefs.refsForDraft(agent, {});
-		const pinned = (await Container.get(SkillRepository).findPinned(agent.activeVersionId!)).get(
-			skill,
-		);
+		const pinned = (
+			await Container.get(AgentSkillRepository).findPinned(agent.activeVersionId!)
+		).get(skill);
 		expect(refs).toEqual([{ type: 'skill', id: skill, versionId: pinned?.version.id }]);
 		const draft = await skillRefs.readDraft(agent, {});
 		expect(await instructionsOf(draft.skills)).toEqual({ [skill]: 'Published text.' });
@@ -483,7 +486,7 @@ describe('Agent skills in the skills hub', () => {
 		expect(created.skillHash).toBe(getAgentSkillHash(skills[created.id]!));
 	});
 
-	it('changes where a skill can be added only while no other agent uses it', async () => {
+	it('changes where a skill can be added only while every other agent keeps it', async () => {
 		const agent = await createAgent([]);
 		const context = { user: editor, modifiedBy: 'user' as const };
 		const created = await agentSkillsService.createAndAttachSkill(
@@ -512,7 +515,7 @@ describe('Agent skills in the skills hub', () => {
 		});
 		await update('project');
 		const other = await createAgent([created.id]);
-		await expect(update('agent')).rejects.toThrow('Other agents use this skill.');
+		await expect(update('agent')).rejects.toThrow('would lose access to this skill.');
 		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
 			agentId: null,
 		});
@@ -521,7 +524,7 @@ describe('Agent skills in the skills hub', () => {
 		await publish(other);
 		await skillRefs.replaceDraftRefs(await reload(other), [], {});
 		expect(await skillRefs.refsForDraft(await reload(other), {})).toEqual([]);
-		await expect(update('agent')).rejects.toThrow('Other agents use this skill.');
+		await expect(update('agent')).rejects.toThrow('would lose access to this skill.');
 	});
 
 	it('renames and moves a skill in one save to a name that only the old scope holds', async () => {

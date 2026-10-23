@@ -40,7 +40,7 @@ import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import {
 	SkillNameTakenError,
 	skillNameTakenToolMessage,
-} from '@/modules/agents/skills/skill-name-taken.error';
+} from '@/modules/skills/skill-name-taken.error';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
 	AgentTestRunService,

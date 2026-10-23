@@ -36,6 +36,7 @@ type BlockingIssue =
 	| {
 			type: 'credential-policy-violation';
 			sourceId: string;
+			targetId?: string;
 			name?: string;
 			credentialType: string;
 			usedBy: RequirementConsumer[];
@@ -167,6 +168,9 @@ function formatIssue(issue: unknown): string {
 		const reasons = Array.isArray(it.violations)
 			? it.violations.map(({ message }) => message).join('; ')
 			: '';
+		if (it.targetId) {
+			return `update of credential ${it.targetId} (${it.credentialType}) from package credential "${it.name ?? it.sourceId}" (${it.sourceId}) refused by policy: ${reasons}, used by ${usedBy}`;
+		}
 		return `credential "${it.name ?? it.sourceId}" (${it.sourceId}, ${it.credentialType}) refused by policy: ${reasons}, used by ${usedBy}`;
 	}
 	if (it.type === 'credential-conflict') {

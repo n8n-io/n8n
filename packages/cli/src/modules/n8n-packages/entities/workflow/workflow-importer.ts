@@ -15,7 +15,6 @@ import {
 	type WorkflowArchiveTransition,
 } from './workflow-archive-transition';
 import { decideWorkflowConflictAction } from './workflow-conflict-policy';
-import { decideWorkflowId } from './workflow-id-policy';
 import {
 	WorkflowImportMatchService,
 	type WorkflowIdConflict,
@@ -40,6 +39,7 @@ import type {
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { decideImportId } from '../import-id-policy';
 
 export interface WorkflowImportResult {
 	outcomes: PersistedWorkflowOutcome[];
@@ -388,7 +388,7 @@ function toPlanItem(
 	if (existing === null) {
 		return {
 			action: 'create',
-			decidedId: decideWorkflowId(idPolicy, prepared.sourceWorkflowId),
+			decidedId: decideImportId(idPolicy, prepared.sourceWorkflowId),
 			...prepared,
 		};
 	}
@@ -411,7 +411,7 @@ function toPlanItem(
 			// Only `fail` reaches here with a match; it records a conflict the gate rejects first.
 			return {
 				action,
-				decidedId: decideWorkflowId(idPolicy, prepared.sourceWorkflowId),
+				decidedId: decideImportId(idPolicy, prepared.sourceWorkflowId),
 				...prepared,
 			};
 	}

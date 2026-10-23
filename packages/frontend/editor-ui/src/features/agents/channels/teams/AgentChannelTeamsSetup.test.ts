@@ -39,6 +39,9 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@/features/credentials/credentials.api');
 
+const confirm = vi.hoisted(() => vi.fn());
+vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
+
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
 	getTeamsSetupState: vi.fn(),
@@ -538,6 +541,80 @@ describe('AgentChannelTeamsSetup', () => {
 			});
 
 			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+		});
+
+		it('offers every credential on a connected channel, not only a new one', async () => {
+			withBot();
+			const { container, queryByTestId } = renderComponent({
+				props: props({
+					modelValue: 'cred-1',
+					savedCredentialId: 'cred-1',
+					connected: true,
+					forceNewCredential: true,
+					credentials: [{ id: 'cred-1', name: 'Teams bot' }],
+				}),
+			});
+
+			expect(container.querySelector('[data-test-id="teams-credential-select"]')).not.toBeNull();
+			expect(queryByTestId('teams-create-credential-button')).not.toBeInTheDocument();
+		});
+
+		it('sets a connected channel up again when another credential is picked', async () => {
+			withBot();
+			confirm.mockResolvedValue('confirm');
+			// A listener makes the model controlled, as under v-model in the hosts.
+			const connected = {
+				savedCredentialId: 'cred-1',
+				connected: true,
+				'onUpdate:modelValue': vi.fn(),
+			};
+			const { rerender, emitted } = renderComponent({
+				props: props({ modelValue: 'cred-1', ...connected }),
+			});
+
+			await rerender(props({ modelValue: 'cred-2', ...connected }));
+
+			await waitFor(() => expect(emitted().restart).toEqual([[{ credentialId: 'cred-2' }]]));
+			expect(emitted()['update:modelValue']?.at(-1)).toEqual(['cred-1']);
+		});
+
+		it('keeps the credential of a connected channel when the restart is cancelled', async () => {
+			withBot();
+			confirm.mockResolvedValue('cancel');
+			// A listener makes the model controlled, as under v-model in the hosts.
+			const connected = {
+				savedCredentialId: 'cred-1',
+				connected: true,
+				'onUpdate:modelValue': vi.fn(),
+			};
+			const { rerender, emitted } = renderComponent({
+				props: props({ modelValue: 'cred-1', ...connected }),
+			});
+
+			await rerender(props({ modelValue: 'cred-2', ...connected }));
+
+			await waitFor(() => expect(confirm).toHaveBeenCalled());
+			await flushPromises();
+			expect(emitted()).not.toHaveProperty('restart');
+			expect(emitted()['update:modelValue']?.at(-1)).toEqual(['cred-1']);
+			const requested = [
+				...vi.mocked(checkTeamsCredential).mock.calls,
+				...vi.mocked(getTeamsSetupState).mock.calls,
+			].flat();
+			expect(requested).not.toContain('cred-2');
+		});
+
+		it('switches the credential without asking before the channel is connected', async () => {
+			withBot();
+			const { rerender, emitted } = renderComponent({
+				props: props({ modelValue: 'cred-1', savedCredentialId: 'cred-1' }),
+			});
+
+			await rerender(props({ modelValue: 'cred-2', savedCredentialId: 'cred-1' }));
+			await flushPromises();
+
+			expect(confirm).not.toHaveBeenCalled();
+			expect(emitted()).not.toHaveProperty('restart');
 		});
 
 		it('does not connect again when the channel is already connected', async () => {
@@ -1109,20 +1186,6 @@ describe('AgentChannelTeamsSetup', () => {
 						title: 'agents.channels.teams.setup.install.downloaded',
 						message: 'agents.channels.teams.setup.install.hint',
 					}),
-				);
-			});
-
-			it('treats a credential swap as an app change', async () => {
-				const { getByTestId, rerender } = renderHost({ props: { viewProps: settingsProps() } });
-
-				await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
-				expect(getByTestId('save-label')).toBeEmptyDOMElement();
-				await rerender({ viewProps: settingsProps({ modelValue: 'cred-2' }) });
-
-				await waitFor(() =>
-					expect(getByTestId('save-label')).toHaveTextContent(
-						'agents.channels.teams.settings.saveAndDownload',
-					),
 				);
 			});
 

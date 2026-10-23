@@ -265,6 +265,20 @@ export type TimelineEvent =
 			toolCallId: string;
 			response: unknown;
 			timestamp: number;
+	  }
+	| {
+			type: 'guardrail';
+			code: string;
+			timestamp: number;
+	  }
+	| {
+			/** A custom event that a system-agent provider emitted during the turn. */
+			type: 'host-event';
+			name: string;
+			/** A later event with the same name and key replaces this one. */
+			key?: string;
+			payload: unknown;
+			timestamp: number;
 	  };
 
 /**
@@ -277,10 +291,15 @@ export interface MessageRecord {
 	finishReason: string;
 	usage: RecordedUsage | null;
 	totalCost: number | null;
+	/** Input tokens read from the prompt cache. A subset of `usage.promptTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the prompt cache. A subset of `usage.promptTokens`. */
+	cacheWriteTokens: number | null;
 	timeline: TimelineEvent[];
 	startTime: number;
 	duration: number;
 	error: string | null;
+	guardrailCode: string | null;
 }
 
 export class ExecutionRecorder {
@@ -322,9 +341,15 @@ export class ExecutionRecorder {
 
 	private finishReason = 'unknown';
 
+	private guardrailCode: string | null = null;
+
 	private usage: RecordedUsage | null = null;
 
 	private totalCost: number | null = null;
+
+	private cacheReadTokens: number | null = null;
+
+	private cacheWriteTokens: number | null = null;
 
 	private timeline: TimelineEvent[] = [];
 
@@ -365,6 +390,46 @@ export class ExecutionRecorder {
 			response: sanitizeExecutionLogValue(response),
 			timestamp: Date.now(),
 		});
+	}
+
+	/**
+	 * Record a custom host event at its position in the turn. The payload is
+	 * sanitized like other recorded values, because history returns it to the
+	 * client as it is stored. When the turn already has an event with the same
+	 * name and key, the new payload replaces the old one in its position.
+	 * Returns the recorded event, so that the live stream can send the same
+	 * payload.
+	 */
+	recordHostEvent(
+		name: string,
+		payload: unknown,
+		key?: string,
+	): Extract<TimelineEvent, { type: 'host-event' }> {
+		const sanitized = sanitizeExecutionLogValue(payload);
+		if (key !== undefined) {
+			const index = this.timeline.findIndex(
+				(item) => item.type === 'host-event' && item.name === name && item.key === key,
+			);
+			const existing = this.timeline[index];
+			if (existing?.type === 'host-event') {
+				const replaced = { ...existing, payload: sanitized };
+				this.timeline[index] = replaced;
+				// Text or reasoning can still stream here, so keep it in the snapshot.
+				this.emitTimelineSnapshot(this.activeBlock());
+				return replaced;
+			}
+		}
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		const event: Extract<TimelineEvent, { type: 'host-event' }> = {
+			type: 'host-event',
+			name,
+			...(key !== undefined ? { key } : {}),
+			payload: sanitized,
+			timestamp: Date.now(),
+		};
+		this.appendCompletedEvent(event);
+		return event;
 	}
 
 	/** Feed a stream chunk into the recorder. */
@@ -436,6 +501,14 @@ export class ExecutionRecorder {
 			case 'finish':
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
+				if (chunk.guardrail) {
+					this.guardrailCode = chunk.guardrail.code;
+					this.appendCompletedEvent({
+						type: 'guardrail',
+						code: chunk.guardrail.code,
+						timestamp: Date.now(),
+					});
+				}
 				this.finishReason = chunk.finishReason;
 				if (chunk.usage) {
 					this.usage = {
@@ -443,6 +516,8 @@ export class ExecutionRecorder {
 						completionTokens: chunk.usage.completionTokens,
 						totalTokens: chunk.usage.totalTokens,
 					};
+					this.cacheReadTokens = chunk.usage.inputTokenDetails?.cacheRead ?? null;
+					this.cacheWriteTokens = chunk.usage.inputTokenDetails?.cacheWrite ?? null;
 				}
 				this.model = chunk.model ?? null;
 				this.totalCost = chunk.usage?.cost ?? null;
@@ -494,10 +569,13 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
+			cacheReadTokens: this.cacheReadTokens,
+			cacheWriteTokens: this.cacheWriteTokens,
 			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
 			error: this.error,
+			guardrailCode: this.guardrailCode,
 		};
 	}
 
@@ -552,24 +630,7 @@ export class ExecutionRecorder {
 		if (this.timelineSnapshotTimer) return;
 		this.timelineSnapshotTimer = setTimeout(() => {
 			this.timelineSnapshotTimer = undefined;
-			const now = Date.now();
-			if (this.textStartTime !== null && this.textBuffer.length > 0) {
-				this.emitTimelineSnapshot({
-					type: 'text',
-					content: this.textBuffer.join(''),
-					timestamp: this.textStartTime,
-					endTime: now,
-				});
-			} else if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
-				this.emitTimelineSnapshot({
-					type: 'reasoning',
-					content: this.reasoningBuffer.join(''),
-					timestamp: this.reasoningStartTime,
-					endTime: now,
-				});
-			} else {
-				this.emitTimelineSnapshot();
-			}
+			this.emitTimelineSnapshot(this.activeBlock());
 		}, TIMELINE_BLOCK_MAX_DURATION_MS);
 		this.timelineSnapshotTimer.unref();
 	}
@@ -747,6 +808,28 @@ export class ExecutionRecorder {
 	private appendCompletedEvent(event: TimelineEvent): void {
 		this.timeline.push(event);
 		this.emitTimelineSnapshot();
+	}
+
+	/** The text or reasoning block that still streams, as it would be flushed now. */
+	private activeBlock(): TimelineEvent | undefined {
+		const now = Date.now();
+		if (this.textStartTime !== null && this.textBuffer.length > 0) {
+			return {
+				type: 'text',
+				content: this.textBuffer.join(''),
+				timestamp: this.textStartTime,
+				endTime: now,
+			};
+		}
+		if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
+			return {
+				type: 'reasoning',
+				content: this.reasoningBuffer.join(''),
+				timestamp: this.reasoningStartTime,
+				endTime: now,
+			};
+		}
+		return undefined;
 	}
 
 	private emitTimelineSnapshot(activeEvent?: TimelineEvent): void {

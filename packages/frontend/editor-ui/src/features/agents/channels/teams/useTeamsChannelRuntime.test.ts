@@ -79,6 +79,45 @@ describe('useTeamsChannelRuntime', () => {
 	 * while any runtime reports loading. A runtime that starts loading therefore
 	 * hangs the list for every channel, not just this one.
 	 */
+	it('forgets the earlier setup on reset, but keeps the sign-in', () => {
+		const runtime = buildRuntime();
+		runtime.managerCredentialId.value = 'manager-1';
+		runtime.setupKind.value = 'manual';
+		runtime.provisionedApp.value = { credentialId: 'bot-1' } as never;
+		runtime.provisionedBot.value = { botName: 'bot' } as never;
+		runtime.subscriptions.value = [{ id: 'sub-1' }] as never;
+		runtime.catalogState.value = { status: 'published' } as never;
+		runtime.connectedCredentialId.value = 'bot-1';
+
+		runtime.reset({ credentialId: '' });
+
+		expect(runtime.managerCredentialId.value).toBe('manager-1');
+		expect(runtime.nextSetupKind.value).toBe('managed');
+		expect(runtime.provisionedApp.value).toBeNull();
+		expect(runtime.provisionedBot.value).toBeNull();
+		expect(runtime.subscriptions.value).toEqual([]);
+		expect(runtime.catalogState.value).toBeNull();
+		expect(runtime.connectedCredentialId.value).toBe('');
+	});
+
+	it('starts the manual setup on reset for a picked bot credential', () => {
+		const runtime = buildRuntime();
+
+		runtime.reset({ credentialId: 'bot-2' });
+
+		expect(runtime.nextSetupKind.value).toBe('manual');
+	});
+
+	it('switches to the sign-in picked for the new setup on reset', () => {
+		const runtime = buildRuntime();
+		runtime.managerCredentialId.value = 'manager-1';
+
+		runtime.reset({ credentialId: '', signInCredentialId: 'manager-2' });
+
+		expect(runtime.managerCredentialId.value).toBe('manager-2');
+		expect(runtime.nextSetupKind.value).toBe('managed');
+	});
+
 	it('does not report loading before anything has loaded', () => {
 		expect(buildRuntime().loading.value).toBe(false);
 	});
@@ -213,7 +252,7 @@ describe('useTeamsChannelRuntime', () => {
 			vi.mocked(createTeamsManagerCredential).mockResolvedValue({ id: 'cred-new' } as never);
 			oauth.authorizeNewCredential.mockResolvedValue(false);
 
-			await expect(buildRuntime().connectManagerCredential()).resolves.toBe(false);
+			await expect(buildRuntime().connectManagerCredential()).resolves.toBeNull();
 
 			expect(oauth.authorizeNewCredential).toHaveBeenCalled();
 			expect(deleteCredential).not.toHaveBeenCalled();
@@ -249,10 +288,22 @@ describe('useTeamsChannelRuntime', () => {
 		it('signs in an existing credential rather than making another', async () => {
 			oauth.authorize.mockResolvedValue(true);
 
-			await expect(buildRuntime().connectManagerCredential('cred-new')).resolves.toBe(true);
+			await expect(buildRuntime().connectManagerCredential('cred-new')).resolves.toBe('cred-new');
 
 			expect(createTeamsManagerCredential).not.toHaveBeenCalled();
 			expect(oauth.authorize).toHaveBeenCalled();
+		});
+
+		it('leaves the current sign-in selected when asked not to switch', async () => {
+			oauth.authorize.mockResolvedValue(true);
+			const runtime = buildRuntime();
+			runtime.managerCredentialId.value = 'cred-old';
+
+			await expect(runtime.connectManagerCredential('cred-new', { select: false })).resolves.toBe(
+				'cred-new',
+			);
+
+			expect(runtime.managerCredentialId.value).toBe('cred-old');
 		});
 	});
 

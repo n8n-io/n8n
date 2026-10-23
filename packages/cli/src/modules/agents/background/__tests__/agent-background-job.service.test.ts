@@ -664,6 +664,7 @@ describe('registerSubAgentJob', () => {
 				mock(),
 				mock(),
 				service,
+				mock(),
 			);
 			const context = {
 				projectId: 'project-1',

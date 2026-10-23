@@ -114,7 +114,7 @@ vi.mock('../workspace.tool', () => ({
 	createWorkspaceTool: vi.fn(() => ({ id: 'workspace' })),
 }));
 
-vi.mock('../filesystem/create-tools-from-mcp-server', () => ({
+vi.mock('../create-tools-from-mcp-server', () => ({
 	createToolsFromLocalMcpServer: vi.fn(() => ({
 		browser_connect: { id: 'browser_connect' },
 		browser_navigate: { id: 'browser_navigate' },

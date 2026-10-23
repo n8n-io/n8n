@@ -39,6 +39,7 @@ import { CredentialTypes } from '@/credential-types';
 import { UnprocessableRequestError } from '@n8n/errors';
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
@@ -49,6 +50,8 @@ import {
 	buildEntityPackageBuffer,
 	buildImportPackageBuffer,
 	credentialRequirementsFromWorkflows,
+	githubCredentialPayload,
+	serializedCredential,
 	serializedFolder,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
@@ -63,6 +66,16 @@ const deniedMessage = (name: string) => `Workflow "${name}" is denied on import`
 /** The decorator registers once per process, so each test names the workflow it wants denied. */
 const deniedWorkflowNames = new Set<string>();
 const seenTransports: string[] = [];
+const deniedImportedCredentialIds = new Set<string>();
+const seenImportedCredentials: ContentImportContext[] = [];
+
+const importDenial = (credentialId: string): PolicyViolation => ({
+	kind: VIOLATION_KIND,
+	checkId: CHECK_ID,
+	message: `Credential "${credentialId}" is denied on import`,
+	subject: credentialId,
+	subjectType: 'credential',
+});
 
 @PolicyCheck()
 class PackageContentImportDenyCheck implements RegisteredPolicyCheck {
@@ -71,7 +84,15 @@ class PackageContentImportDenyCheck implements RegisteredPolicyCheck {
 	async onContentImport(context: ContentImportContext): Promise<PolicyCheckResult> {
 		seenTransports.push(context.transport);
 
-		if (!('workflow' in context) || !deniedWorkflowNames.has(context.workflow.name)) {
+		if ('credential' in context) {
+			seenImportedCredentials.push(context);
+			const { id } = context.credential;
+			return {
+				violations: id !== null && deniedImportedCredentialIds.has(id) ? [importDenial(id)] : [],
+			};
+		}
+
+		if (!deniedWorkflowNames.has(context.workflow.name)) {
 			return { violations: [] };
 		}
 
@@ -120,7 +141,9 @@ class PackageCredentialSaveDenyCheck implements RegisteredPolicyCheck {
 const licenseMocker = new LicenseMocker();
 
 mockInstance(ActiveWorkflowManager);
-mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
+const credentialTypes = mockInstance(CredentialTypes);
+credentialTypes.recognizes.mockReturnValue(true);
+credentialTypes.getParentTypes.mockReturnValue([]);
 
 async function importPackage(
 	params: Pick<ImportPackageRequest, 'user' | 'packageBuffer'> & Partial<ImportPackageRequest>,
@@ -152,6 +175,8 @@ beforeEach(() => {
 	seenTransports.length = 0;
 	deniedCredentialTypes.clear();
 	seenCredentialSaves.length = 0;
+	deniedImportedCredentialIds.clear();
+	seenImportedCredentials.length = 0;
 });
 
 afterEach(async () => {
@@ -434,5 +459,98 @@ describe('credentialSave on a package import that creates stubs', () => {
 			'credential-unresolved',
 		]);
 		expect(seenCredentialSaves).toEqual([]);
+	});
+});
+
+describe('credentialSave and contentImport on a package import that updates a credential', () => {
+	const saveOwnedCredential = affixRoleToSaveCredential('credential:owner');
+
+	const setUp = async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Target', owner);
+		const credential = await saveOwnedCredential(githubCredentialPayload({ name: 'GitHub' }), {
+			project,
+		});
+		const packageBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-source',
+					name: 'Uses credential',
+					credentialId: credential.id,
+					credentialName: credential.name,
+				}),
+			],
+			{ credentials: [serializedCredential({ id: credential.id, name: 'Renamed' })] },
+		);
+		const params = {
+			user: owner,
+			projectId: project.id,
+			credentialConflictPolicy: 'overwrite' as const,
+			packageBuffer,
+		};
+		return { project, credential, params };
+	};
+
+	it('refuses the package before anything is written when credentialSave refuses the update', async () => {
+		const { credential, params } = await setUp();
+		deniedCredentialTypes.add('githubApi');
+
+		const error = await importPackage(params).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+		expect((error as UnprocessableRequestError).meta?.issues).toEqual([
+			{
+				type: 'credential-policy-violation',
+				sourceId: credential.id,
+				targetId: credential.id,
+				name: 'Renamed',
+				credentialType: 'githubApi',
+				usedBy: [{ kind: 'workflow', id: 'wf-source' }],
+				violations: [credentialDenial('githubApi')],
+			} satisfies BlockingIssue,
+		]);
+		await expect(Container.get(WorkflowRepository).count()).resolves.toBe(0);
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: credential.id,
+		});
+		expect(stored.name).toBe('GitHub');
+	});
+
+	it('refuses the package before anything is written when contentImport refuses the update', async () => {
+		const { credential, params } = await setUp();
+		deniedImportedCredentialIds.add(credential.id);
+
+		const error = await importPackage(params).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+		expect((error as UnprocessableRequestError).meta?.issues).toEqual([
+			expect.objectContaining({
+				type: 'credential-policy-violation',
+				targetId: credential.id,
+				violations: [importDenial(credential.id)],
+			}),
+		]);
+		await expect(Container.get(WorkflowRepository).count()).resolves.toBe(0);
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: credential.id,
+		});
+		expect(stored.name).toBe('GitHub');
+	});
+
+	it('updates the credential when both checks admit it', async () => {
+		const { project, credential, params } = await setUp();
+
+		const result = await importPackage(params);
+
+		expect(result.credentials.updated).toEqual([credential.id]);
+		const policed = { id: credential.id, type: 'githubApi' };
+		// The plan checks the update once, and the write checks it again as a backstop.
+		expect(seenCredentialSaves).toEqual([
+			{ credential: policed, storedCredential: policed, projectId: project.id },
+			{ credential: policed, storedCredential: policed, projectId: project.id },
+		]);
+		expect(seenImportedCredentials).toEqual([
+			{ credential: policed, projectId: project.id, transport: 'package' },
+		]);
 	});
 });
