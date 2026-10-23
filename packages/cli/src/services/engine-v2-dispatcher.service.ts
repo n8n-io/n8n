@@ -62,12 +62,9 @@ const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecut
 	main.map((slot) => slot ?? []);
 
 /**
- * The data plane's refusal of phase two, as the caller sees it. The node's
- * resume method has already run by then, so the token can only be stale: a
- * second request for the same wait lost the compare-and-set (`not_waiting`), or
- * the execution ended in between. Both answer 409, as v1 does for a wait that
- * is over. Phase one verified the token, so a 401 here means the step is gone
- * with its execution: the data plane answers a missing step as a bad token.
+ * Maps the refusal of phase two. A 409 means that the wait ended after phase
+ * one. v1 also answers 409 for a wait that is over. Phase one verified the
+ * token, so a 401 means that the step went away with its execution.
  */
 function toResumeRefusal(executionId: string, status: number, reason: string): Error {
 	if (status === 401) return new NotFoundError(`The execution "${executionId}" does not exist.`);
@@ -76,7 +73,7 @@ function toResumeRefusal(executionId: string, status: number, reason: string): E
 }
 
 /**
- * Routes a run to the engine v2 data plane and starts it there.
+ * Routes a run to the engine v2 data plane.
  *
  * The single dispatch point for the v2 path: {@link routesToEngineV2} decides,
  * {@link start} runs. A workflow that opts into engine v2 never falls back to
@@ -122,16 +119,14 @@ export class EngineV2Dispatcher {
 	}
 
 	/**
-	 * Ends the wait of a data-plane execution with what the node's resume method
-	 * produced. The waiting-webhook route located the step and ran the node's
-	 * `webhook()` on this plane; `prepareExecutionData` put its items on the
-	 * resuming node's stack entry, as v1 does before it re-enters the node. Those
-	 * items are the step's outputs. The engine emits them itself and runs no node
-	 * code (ADR-20260902-steps-declare-waits, decision 3).
+	 * Ends the wait of a data-plane execution with the items that the node's
+	 * `webhook()` produced. `prepareExecutionData` put them on the stack entry of
+	 * the resuming node, as v1 does. The engine emits them as the step's outputs
+	 * and runs no node code (ADR-20260902-steps-declare-waits, decision 3).
 	 *
-	 * Of the v1 pre-run gates only the credential check applies: there is no
-	 * control-plane row to take over, and the trigger's identity was established
-	 * when the run started.
+	 * Of the v1 pre-run gates, only the credential check applies. There is no
+	 * control-plane row to take over, and the trigger identity was set when the
+	 * run started.
 	 */
 	async resume(
 		existingExecution: ResumableExecution,

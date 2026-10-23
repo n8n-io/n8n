@@ -132,10 +132,8 @@ function assertRemoteConfig(config: EngineConfig): void {
 		);
 	}
 
-	// Only the data plane reads the resume secret
-	// (ADR-20260904-a-derived-token-authorizes-a-resume-request, decision 7). A
-	// control plane that holds it could mint a resume URL, so the isolation is a
-	// check here and not a convention, as the engine command checks the reverse.
+	// A control plane that holds the resume secret could mint resume URLs
+	// (ADR-20260904-a-derived-token-authorizes-a-resume-request, decision 7).
 	if (config.resumeSecret) {
 		throw new UserError(
 			'N8N_ENGINE_MODE=remote must not set N8N_ENGINE_RESUME_SECRET on this main. The data plane runs elsewhere; set the secret in its environment only.',

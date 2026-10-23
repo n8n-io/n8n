@@ -39,9 +39,8 @@ export type CancelExecutionOutcome =
 	| { cancelled: false; status: ExecutionStatus };
 
 /**
- * The data plane's answer to a resume request. Not thrown: the waiting-webhook
- * route answers each refusal differently (401 for a bad token, 404, 409 for a
- * wait that is over) and must learn no more than the status and the reason.
+ * The data plane's answer to a resume request. Returned, not thrown: each
+ * caller maps the status to its own answer.
  */
 export type ResumeOutcome<T> =
 	| { ok: true; value: T }

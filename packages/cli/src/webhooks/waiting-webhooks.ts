@@ -42,14 +42,12 @@ import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { preserveInputOverride } from '@/workflow-helpers';
 
-/** An execution that can still reach a wait, or waits for a deadline only. */
 const isLiveSnapshot = ({ status }: ExecutionSnapshot): boolean =>
 	status === 'queued' || status === 'running' || status === 'waiting';
 
 /**
- * Puts the waiting node where the v1 resume path expects it: at the top of the
- * node execution stack and as the last node executed. The data plane keeps no
- * stack, so the stand-in gets one entry. The node is a copy, because
+ * Puts the waiting node where the v1 resume path expects it. The data plane
+ * keeps no stack, so the execution gets one entry. The node is a copy, because
  * `disableNode` flags the stack entry, and a disabled workflow node has no
  * webhooks to look up. `preserveInputOverride` pops the node's last run, so one
  * must exist.
@@ -314,8 +312,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		this.logReceivedWebhook(req.method, executionId);
 
-		// The shape of the id picks the engine, as the other execution routes do.
-		// A v2 execution has no control-plane row; the data plane holds its wait.
+		// The id shape picks the engine. A v2 execution has no control-plane row.
 		if (isExecutionIdV2(executionId)) {
 			return await this.resumeEngineV2Execution(req, res, executionId, suffix);
 		}
@@ -416,15 +413,11 @@ export class WaitingWebhooks implements IWebhookManager {
 	/**
 	 * Resumes a wait that lives on the engine v2 data plane.
 	 *
-	 * Authorize first, run node code second: the data plane verifies the token,
-	 * which this plane cannot read, and names the waiting step. Only then runs
-	 * the node's `webhook()`, here, as in v1 and for the same reason: it needs
-	 * the HTTP request and the HTTP response. What it produces goes back to the
-	 * data plane as the step's outputs, through `WorkflowRunner.run` and
-	 * `EngineV2Dispatcher.resume`. One request, one locate: the data plane holds
-	 * a request for a short time when the execution runs but has not reached its
-	 * wait yet, and this plane adds no check of its own, because it has no row
-	 * for the execution.
+	 * The data plane verifies the token and names the waiting step before node
+	 * code runs. Then the node's `webhook()` runs here, as in v1, because it needs
+	 * the HTTP request and response. `EngineV2Dispatcher.resume` sends its items
+	 * to the data plane. The data plane holds an early request for a short time,
+	 * so this route does not retry.
 	 */
 	protected async resumeEngineV2Execution(
 		req: WaitingWebhookRequest,
@@ -489,7 +482,6 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
-	/** The 401 of this route: JSON here, a page on the form route. */
 	protected respondInvalidToken(res: express.Response): IWebhookResponseCallbackData {
 		res.status(401).json({ error: 'Invalid token' });
 		return { noWebhookResponse: true };
@@ -510,10 +502,9 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * The data plane found no step that accepts the request. The execution's
-	 * status says why, and the answer is v1's for the same state: a live
-	 * execution has not reached its wait yet, or waits for a deadline only; any
-	 * other execution has ended.
+	 * The data plane found no step that accepts the request. A live execution has
+	 * not reached its wait yet, or waits for a deadline only. Any other execution
+	 * has ended.
 	 */
 	protected answerEngineV2WithoutTarget(
 		executionId: string,
@@ -528,9 +519,9 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * Strips the auth cookies before node code sees the request. After the data
-	 * plane named the node, so the form route can keep them for a node that opts
-	 * in; the data plane itself reads nothing of the request but the token.
+	 * Strips the auth cookies before node code sees the request. It runs after the
+	 * data plane named the node, so the form route can keep them for a node that
+	 * opts in.
 	 */
 	protected sanitizeEngineV2Request(req: WaitingWebhookRequest, _resumeNode: INode): void {
 		sanitizeWebhookRequest(req);

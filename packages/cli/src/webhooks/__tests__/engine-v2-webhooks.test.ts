@@ -127,7 +127,6 @@ describe('EngineV2Webhooks.assertSupported on a resume', () => {
 		const proxy = mock<EngineDataPlaneProxyService>();
 		proxy.isAvailable.mockReturnValue(available);
 		new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy).assertSupported({
-			// The node that waits, not a trigger: the trigger checks do not apply.
 			workflowStartNode: mock<INode>({ name: 'Wait', type: 'n8n-nodes-base.wait', parameters: {} }),
 			responseMode,
 			executionId: EXECUTION_ID,

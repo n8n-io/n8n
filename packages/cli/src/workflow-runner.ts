@@ -424,8 +424,7 @@ export class WorkflowRunner {
 			return await this.engineV2Dispatcher.start(data);
 		}
 
-		// A resume of a data-plane execution ends its wait there. The gates below
-		// take over a control-plane row that this execution does not have.
+		// A v2 resume has no control-plane row either.
 		if (existingExecution?.engineResume) {
 			return await this.engineV2Dispatcher.resume(existingExecution, data);
 		}

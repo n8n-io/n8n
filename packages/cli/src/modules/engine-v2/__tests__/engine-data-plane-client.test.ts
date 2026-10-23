@@ -389,7 +389,6 @@ describe('EngineDataPlaneClient', () => {
 			);
 		});
 
-		// The route answers each status differently, so a refusal is an outcome, not an error.
 		it.each([
 			[401, 'invalid_token'],
 			[404, 'not_found'],

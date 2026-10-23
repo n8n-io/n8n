@@ -31,7 +31,6 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 	}
 
-	/** The form route answers a bad token with a page, as the v1 form route does. */
 	protected override respondInvalidToken(res: express.Response): IWebhookResponseCallbackData {
 		applyFormSandboxCSP(res);
 		res.status(401).render('form-invalid-token');
@@ -70,10 +69,9 @@ export class WaitingForms extends WaitingWebhooks {
 	}
 
 	/**
-	 * As the v1 form route: a live execution that has not reached its form yet
-	 * gets no body, because the page polls; an execution that completed gets the
-	 * generic completion page, because the data plane keeps no stack to find a
-	 * Form node's own completion page from; anything else has ended.
+	 * A queued or running execution gets no body, because the page polls, as in
+	 * v1. A completed execution gets the generic completion page, not a Form
+	 * node's own.
 	 */
 	protected override answerEngineV2WithoutTarget(
 		executionId: string,
@@ -97,7 +95,6 @@ export class WaitingForms extends WaitingWebhooks {
 		return super.answerEngineV2WithoutTarget(executionId, snapshot, res);
 	}
 
-	/** Keeps the auth cookies for a node that opts in, as the v1 form route does. */
 	protected override sanitizeEngineV2Request(req: WaitingWebhookRequest, resumeNode: INode): void {
 		if (!authAllowlistedNodes.has(resumeNode.type)) sanitizeWebhookRequest(req);
 	}
@@ -137,8 +134,8 @@ export class WaitingForms extends WaitingWebhooks {
 
 		this.logReceivedWebhook(req.method, executionId);
 
-		// A v2 execution's wait lives on the data plane. A GET renders the form from
-		// the stand-in and resumes nothing; a POST resumes.
+		// On a v2 execution, a GET renders the form and resumes nothing. A POST
+		// resumes.
 		if (isExecutionIdV2(executionId)) {
 			return await this.resumeEngineV2Execution(req, res, executionId, routeSuffix);
 		}

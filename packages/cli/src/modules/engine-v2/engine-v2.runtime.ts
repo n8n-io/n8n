@@ -133,11 +133,6 @@ export class EngineV2Runtime {
 		this.engine = engine;
 	}
 
-	/**
-	 * Mints the token that `$execution.resumeUrl` and `$execution.resumeFormUrl`
-	 * carry. Without it, core puts a random token there that the engine cannot
-	 * verify, so the resume request fails at the engine instead of in the node.
-	 */
 	private resumeTokenMinter(): V1StepExecutorDeps['resumeToken'] {
 		const { resumeSecret } = this.engineConfig;
 		if (!resumeSecret) return undefined;

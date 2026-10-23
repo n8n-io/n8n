@@ -101,9 +101,8 @@ export class EngineV2Webhooks {
 			);
 		}
 
-		// A resume runs the waiting node's `webhook()`, not a trigger. The checks
-		// below describe the node that started the run, and that run was admitted
-		// when it started. What remains to check is how the resume answers.
+		// A resume runs the waiting node, not a trigger. The trigger checks below
+		// ran when the run started.
 		if (executionId !== undefined) {
 			this.assertResumeResponseSupported(responseMode);
 			return;
