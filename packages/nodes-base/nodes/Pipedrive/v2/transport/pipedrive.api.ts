@@ -124,7 +124,7 @@ export async function pipedriveApiRequestAllItemsCursor(
 }
 
 export async function pipedriveApiRequestAllItemsOffset(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
