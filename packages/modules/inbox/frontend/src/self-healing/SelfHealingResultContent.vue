@@ -40,6 +40,9 @@ const reportOptions = {
 };
 const WorkflowDiffView = computed(() => componentRegistry.get('workflow-diff'));
 const isOpen = computed(() => props.detail.reviewState === 'open');
+const isAutomaticallyClosed = computed(
+	() => props.detail.reviewState === 'closed' && props.detail.outcome === 'could_not_fix',
+);
 const isFixReady = computed(() => props.detail.outcome === 'fix_ready');
 const hasSuggestion = computed(() => props.detail.suggestion !== null);
 const chatLabel = computed(() =>
@@ -112,7 +115,7 @@ function onTabChange(tab: string) {
 					data-test-id="self-healing-result-tabs"
 					@update:model-value="onTabChange"
 				/>
-				<div v-if="isOpen" :class="$style.decisionActions">
+				<div v-if="isOpen || isAutomaticallyClosed" :class="$style.decisionActions">
 					<N8nButton
 						v-if="isFixReady"
 						size="small"
@@ -141,6 +144,7 @@ function onTabChange(tab: string) {
 						@click="emit('action', 'chat')"
 					/>
 					<N8nButton
+						v-if="isOpen"
 						variant="ghost"
 						size="small"
 						:label="i18n.baseText('inbox.selfHealing.action.discard')"
@@ -159,7 +163,7 @@ function onTabChange(tab: string) {
 				{{ i18n.baseText('inbox.selfHealing.action.publishUnavailable') }}
 			</N8nText>
 			<N8nText
-				v-if="isOpen && !isFixReady && !canChat"
+				v-if="(isOpen || isAutomaticallyClosed) && !isFixReady && !canChat"
 				size="small"
 				color="text-light"
 				:class="$style.permissionHint"

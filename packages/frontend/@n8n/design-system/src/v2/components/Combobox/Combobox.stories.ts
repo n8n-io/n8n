@@ -3,7 +3,9 @@ import { computed, onUnmounted, reactive, ref } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nDialog from '@n8n/design-system/components/N8nDialog/Dialog.vue';
+import N8nDialogBody from '@n8n/design-system/components/N8nDialog/DialogBody.vue';
 import N8nDialogClose from '@n8n/design-system/components/N8nDialog/DialogClose.vue';
+import N8nDialogDescription from '@n8n/design-system/components/N8nDialog/DialogDescription.vue';
 import N8nDialogFooter from '@n8n/design-system/components/N8nDialog/DialogFooter.vue';
 import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
@@ -917,7 +919,15 @@ const CREATE_FRUIT_VALUE = '__create_fruit__';
 export const WithHeaderAndFooterActions = {
 	name: 'With Header And Footer Actions',
 	render: () => ({
-		components: { Combobox, N8nDialog, N8nDialogFooter, N8nDialogClose, N8nButton },
+		components: {
+			Combobox,
+			N8nDialog,
+			N8nDialogBody,
+			N8nDialogDescription,
+			N8nDialogFooter,
+			N8nDialogClose,
+			N8nButton,
+		},
 		setup() {
 			const value = ref<string | undefined>();
 			const open = ref(false);
@@ -961,9 +971,13 @@ export const WithHeaderAndFooterActions = {
 			<N8nDialog
 				v-model:open="createOpen"
 				header="Create new fruit"
-				description="This action item uses onSelect with preventDefault so it never becomes the Combobox value."
 				size="small"
 			>
+				<N8nDialogBody>
+					<N8nDialogDescription>
+						This action item uses onSelect with preventDefault so it never becomes the Combobox value.
+					</N8nDialogDescription>
+				</N8nDialogBody>
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
 						<N8nButton label="Cancel" variant="outline" />

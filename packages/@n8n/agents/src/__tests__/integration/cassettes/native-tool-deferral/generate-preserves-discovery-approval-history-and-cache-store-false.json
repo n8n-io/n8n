@@ -1,0 +1,714 @@
+[
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5.4",
+			"input": [
+				{
+					"role": "developer",
+					"content": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				}
+			],
+			"store": false,
+			"include": ["reasoning.encrypted_content"],
+			"prompt_cache_key": "agent:ef9394a06c7d910d3075764885a33140aabdf76b30c92896fb7268d4e7",
+			"prompt_cache_retention": "24h",
+			"tools": [
+				{
+					"type": "function",
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": false
+				},
+				{
+					"type": "function",
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "function",
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search",
+					"execution": "server"
+				}
+			],
+			"tool_choice": "auto"
+		},
+		"status": 200,
+		"response": "{\n  \"id\": \"resp_025ae5703facc25b016ac85fe559e887d1943b0235a78aab53\",\n  \"object\": \"response\",\n  \"created_at\": 1791516645,\n  \"status\": \"completed\",\n  \"access_programs\": null,\n  \"background\": false,\n  \"billing\": {\n    \"payer\": \"developer\"\n  },\n  \"completed_at\": 1791516646,\n  \"error\": null,\n  \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\": null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5.4-2026-03-05\",\n  \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"tsc_025ae5703facc25b016ac85fe6157887d1bbbec750f547ed32\",\n      \"type\": \"tool_search_call\",\n      \"status\": \"completed\",\n      \"arguments\": {\n        \"paths\": [\n          \"issue_invoice\"\n        ]\n      },\n      \"call_id\": null,\n      \"execution\": \"server\"\n    },\n    {\n      \"id\": \"tso_025ae5703facc25b016ac85fe632a087d19258c0eb7dea71b7\",\n      \"type\": \"tool_search_output\",\n      \"status\": \"completed\",\n      \"call_id\": null,\n      \"execution\": \"server\",\n      \"tools\": [\n        {\n          \"type\": \"function\",\n          \"defer_loading\": true,\n          \"description\": \"Issue an invoice from a unit price and quantity. Requires user approval.\",\n          \"name\": \"issue_invoice\",\n          \"output_schema\": null,\n          \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"unitPrice\": {\n                \"type\": \"number\"\n              },\n              \"quantity\": {\n                \"type\": \"number\"\n              }\n            },\n            \"required\": [\n              \"unitPrice\",\n              \"quantity\"\n            ],\n            \"additionalProperties\": false,\n            \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n          },\n          \"strict\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"fc_025ae5703facc25b016ac85fe6a54087d1ae6ce4464c7ef874\",\n      \"type\": \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\": \"{\\\"unitPrice\\\":6,\\\"quantity\\\":7}\",\n      \"call_id\": \"call_X13bmDIlYE3kPoizb0DHyd6G\",\n      \"name\": \"issue_invoice\",\n      \"namespace\": \"issue_invoice\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\": \"agent:ef9394a06c7d910d3075764885a33140aabdf76b30c92896fb7268d4e7\",\n  \"prompt_cache_retention\": \"24h\",\n  \"reasoning\": {\n    \"context\": \"current_turn\",\n    \"effort\": \"none\",\n    \"mode\": \"standard\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\": false,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tool_usage\": {\n    \"image_gen\": {\n      \"input_tokens\": 0,\n      \"input_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"output_tokens\": 0,\n      \"output_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"total_tokens\": 0\n    },\n    \"web_search\": {\n      \"num_requests\": 0\n    }\n  },\n  \"tools\": [\n    {\n      \"type\": \"function\",\n      \"description\": \"Read a file from the workspace.\",\n      \"name\": \"workspace_read_file\",\n      \"output_schema\": null,\n      \"parameters\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"path\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"path\"\n        ],\n        \"additionalProperties\": false,\n        \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\": \"function\",\n      \"defer_loading\": true,\n      \"description\": \"Issue an invoice from a unit price and quantity. Requires user approval.\",\n      \"name\": \"issue_invoice\",\n      \"output_schema\": null,\n      \"parameters\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"unitPrice\": {\n            \"type\": \"number\"\n          },\n          \"quantity\": {\n            \"type\": \"number\"\n          }\n        },\n        \"required\": [\n          \"unitPrice\",\n          \"quantity\"\n        ],\n        \"additionalProperties\": false,\n        \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\": \"function\",\n      \"defer_loading\": true,\n      \"description\": \"Read the available stock quantity for a product SKU in a warehouse.\",\n      \"name\": \"lookup_warehouse_stock\",\n      \"output_schema\": null,\n      \"parameters\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"sku\": {\n            \"type\": \"string\"\n          },\n          \"warehouse\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"sku\",\n          \"warehouse\"\n        ],\n        \"additionalProperties\": false,\n        \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\": \"tool_search\",\n      \"description\": null,\n      \"parameters\": null\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 0.98,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 2642,\n    \"input_tokens_details\": {\n      \"cache_write_tokens\": 0,\n      \"cached_tokens\": 1536\n    },\n    \"output_tokens\": 44,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\": 20\n    },\n    \"total_tokens\": 2686\n  },\n  \"user\": null,\n  \"metadata\": {}\n}",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4ef8af6a5af7-VIE",
+			"connection": "keep-alive",
+			"content-type": "application/json",
+			"date": "Fri, 09 Oct 2026 03:30:46 GMT",
+			"openai-processing-ms": "1476",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "15000",
+			"x-ratelimit-limit-tokens": "40000000",
+			"x-ratelimit-remaining-requests": "14998",
+			"x-ratelimit-remaining-tokens": "40000000",
+			"x-ratelimit-reset-requests": "8ms",
+			"x-ratelimit-reset-tokens": "0s",
+			"x-request-id": "req_7d69f1fba9e44129b41d92ed8644d222"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5.4",
+			"input": [
+				{
+					"role": "developer",
+					"content": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				},
+				{
+					"type": "tool_search_call",
+					"id": "tsc_025ae5703facc25b016ac85fe6157887d1bbbec750f547ed32",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"arguments": {
+						"paths": ["issue_invoice"]
+					}
+				},
+				{
+					"type": "tool_search_output",
+					"id": "tso_025ae5703facc25b016ac85fe632a087d19258c0eb7dea71b7",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"tools": [
+						{
+							"type": "function",
+							"defer_loading": true,
+							"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+							"name": "issue_invoice",
+							"output_schema": null,
+							"parameters": {
+								"type": "object",
+								"properties": {
+									"unitPrice": {
+										"type": "number"
+									},
+									"quantity": {
+										"type": "number"
+									}
+								},
+								"required": ["unitPrice", "quantity"],
+								"additionalProperties": false,
+								"$schema": "http://json-schema.org/draft-07/schema#"
+							},
+							"strict": true
+						}
+					]
+				},
+				{
+					"type": "function_call",
+					"call_id": "call_X13bmDIlYE3kPoizb0DHyd6G",
+					"name": "issue_invoice",
+					"arguments": "{\"unitPrice\":6,\"quantity\":7}",
+					"namespace": "issue_invoice"
+				},
+				{
+					"type": "function_call_output",
+					"call_id": "call_X13bmDIlYE3kPoizb0DHyd6G",
+					"output": "{\"total\":42}"
+				}
+			],
+			"store": false,
+			"include": ["reasoning.encrypted_content"],
+			"prompt_cache_key": "agent:ef9394a06c7d910d3075764885a33140aabdf76b30c92896fb7268d4e7",
+			"prompt_cache_retention": "24h",
+			"tools": [
+				{
+					"type": "function",
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": false
+				},
+				{
+					"type": "function",
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "function",
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search",
+					"execution": "server"
+				}
+			],
+			"tool_choice": "auto"
+		},
+		"status": 200,
+		"response": "{\n  \"id\": \"resp_025ae5703facc25b016ac85fe7143c87d1baf73b6421561d74\",\n  \"object\": \"response\",\n  \"created_at\": 1791516647,\n  \"status\": \"completed\",\n  \"access_programs\": null,\n  \"background\": false,\n  \"billing\": {\n    \"payer\": \"developer\"\n  },\n  \"completed_at\": 1791516647,\n  \"error\": null,\n  \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\": null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5.4-2026-03-05\",\n  \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"msg_025ae5703facc25b016ac85fe7ba8887d18bdd5a28c6bd15ca\",\n      \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n          \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\": [],\n          \"text\": \"Invoice issued for a total of 42.\"\n        }\n      ],\n      \"phase\": \"final_answer\",\n      \"role\": \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\": \"agent:ef9394a06c7d910d3075764885a33140aabdf76b30c92896fb7268d4e7\",\n  \"prompt_cache_retention\": \"24h\",\n  \"reasoning\": {\n    \"context\": \"current_turn\",\n    \"effort\": \"none\",\n    \"mode\": \"standard\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\": false,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tool_usage\": {\n    \"image_gen\": {\n      \"input_tokens\": 0,\n      \"input_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"output_tokens\": 0,\n      \"output_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"total_tokens\": 0\n    },\n    \"web_search\": {\n      \"num_requests\": 0\n    }\n  },\n  \"tools\": [\n    {\n      \"type\": \"function\",\n      \"description\": \"Read a file from the workspace.\",\n      \"name\": \"workspace_read_file\",\n      \"output_schema\": null,\n      \"parameters\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"path\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"path\"\n        ],\n        \"additionalProperties\": false,\n        \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\": \"function\",\n      \"defer_loading\": true,\n      \"description\": \"Read the available stock quantity for a product SKU in a warehouse.\",\n      \"name\": \"lookup_warehouse_stock\",\n      \"output_schema\": null,\n      \"parameters\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"sku\": {\n            \"type\": \"string\"\n          },\n          \"warehouse\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"sku\",\n          \"warehouse\"\n        ],\n        \"additionalProperties\": false,\n        \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\": \"tool_search\",\n      \"description\": null,\n      \"parameters\": null\n    },\n    {\n      \"type\": \"namespace\",\n      \"description\": \"Issue an invoice from a unit price and quantity. Requires user approval.\",\n      \"name\": \"issue_invoice\",\n      \"tools\": [\n        {\n          \"type\": \"function\",\n          \"description\": \"Issue an invoice from a unit price and quantity. Requires user approval.\",\n          \"name\": \"issue_invoice\",\n          \"output_schema\": null,\n          \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"unitPrice\": {\n                \"type\": \"number\"\n              },\n              \"quantity\": {\n                \"type\": \"number\"\n              }\n            },\n            \"required\": [\n              \"unitPrice\",\n              \"quantity\"\n            ],\n            \"additionalProperties\": false,\n            \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n          },\n          \"strict\": true\n        }\n      ]\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 0.98,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 2683,\n    \"input_tokens_details\": {\n      \"cache_write_tokens\": 0,\n      \"cached_tokens\": 2560\n    },\n    \"output_tokens\": 13,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\": 0\n    },\n    \"total_tokens\": 2696\n  },\n  \"user\": null,\n  \"metadata\": {}\n}",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f037a3f5af7-VIE",
+			"connection": "keep-alive",
+			"content-type": "application/json",
+			"date": "Fri, 09 Oct 2026 03:30:47 GMT",
+			"openai-processing-ms": "841",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "15000",
+			"x-ratelimit-limit-tokens": "40000000",
+			"x-ratelimit-remaining-requests": "14996",
+			"x-ratelimit-remaining-tokens": "40000000",
+			"x-ratelimit-reset-requests": "16ms",
+			"x-ratelimit-reset-tokens": "0s",
+			"x-request-id": "req_97fab9002063458893cd3a90019d6c09"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5.4",
+			"input": [
+				{
+					"role": "developer",
+					"content": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				},
+				{
+					"type": "tool_search_call",
+					"id": "tsc_025ae5703facc25b016ac85fe6157887d1bbbec750f547ed32",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"arguments": {
+						"paths": ["issue_invoice"]
+					}
+				},
+				{
+					"type": "tool_search_output",
+					"id": "tso_025ae5703facc25b016ac85fe632a087d19258c0eb7dea71b7",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"tools": [
+						{
+							"type": "function",
+							"defer_loading": true,
+							"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+							"name": "issue_invoice",
+							"output_schema": null,
+							"parameters": {
+								"type": "object",
+								"properties": {
+									"unitPrice": {
+										"type": "number"
+									},
+									"quantity": {
+										"type": "number"
+									}
+								},
+								"required": ["unitPrice", "quantity"],
+								"additionalProperties": false,
+								"$schema": "http://json-schema.org/draft-07/schema#"
+							},
+							"strict": true
+						}
+					]
+				},
+				{
+					"type": "function_call",
+					"call_id": "call_X13bmDIlYE3kPoizb0DHyd6G",
+					"name": "issue_invoice",
+					"arguments": "{\"unitPrice\":6,\"quantity\":7}",
+					"namespace": "issue_invoice"
+				},
+				{
+					"type": "function_call_output",
+					"call_id": "call_X13bmDIlYE3kPoizb0DHyd6G",
+					"output": "{\"total\":42}"
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "output_text",
+							"text": "Invoice issued for a total of 42."
+						}
+					],
+					"id": "msg_025ae5703facc25b016ac85fe7ba8887d18bdd5a28c6bd15ca",
+					"phase": "final_answer"
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Now look up stock for SKU A-17 in warehouse west. Use the inventory tool."
+						}
+					]
+				}
+			],
+			"store": false,
+			"include": ["reasoning.encrypted_content"],
+			"prompt_cache_key": "agent:ef9394a06c7d910d3075764885a33140aabdf76b30c92896fb7268d4e7",
+			"prompt_cache_retention": "24h",
+			"tools": [
+				{
+					"type": "function",
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": false
+				},
+				{
+					"type": "function",
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "function",
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search",
+					"execution": "server"
+				}
+			],
+			"tool_choice": "auto"
+		},
+		"status": 200,
+		"response": "{\n  \"id\": \"resp_025ae5703facc25b016ac85fe82bb887d19307f23f809bc5ce\",\n  \"object\": \"response\",\n  \"created_at\": 1791516648,\n  \"status\": \"completed\",\n  \"access_programs\": null,\n  \"background\": false,\n  \"billing\": {\n    \"payer\": \"developer\"\n  },\n  \"completed_at\": 1791516649,\n  \"error\": null,\n  \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\": null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5.4-2026-03-05\",\n  \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"tsc_025ae5703facc25b016ac85fe8d69887d186ec95af4ebffd97\",\n      \"type\": \"tool_search_call\",\n      \"status\": \"completed\",\n      \"arguments\": {\n        \"paths\": [\n          \"lookup_warehouse_stock\"\n        ]\n      },\n      \"call_id\": null,\n      \"execution\": \"server\"\n    },\n    {\n      \"id\": \"tso_025ae5703facc25b016ac85fe8ff0087d1a95a844cdbe49fc6\",\n      \"type\": \"tool_search_output\",\n      \"status\": \"completed\",\n      \"call_id\": null,\n      \"execution\": \"server\",\n      \"tools\": [\n        {\n          \"type\": \"function\",\n          \"defer_loading\": true,\n          \"description\": \"Read the available stock quantity for a product SKU in a warehouse.\",\n          \"name\": \"lookup_warehouse_stock\",\n          \"output_schema\": null,\n          \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"sku\": {\n                \"type\": \"string\"\n              },\n              \"warehouse\": {\n                \"type\": \"string\"\n              }\n            },\n            \"required\": [\n              \"sku\",\n              \"warehouse\"\n            ],\n            \"additionalProperties\": false,\n            \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n          },\n          \"strict\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"fc_025ae5703facc25b016ac85fe9725887d1bea9f325f572daab\",\n      \"type\": \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\": \"{\\\"sku\\\":\\\"A-17\\\",\\\"warehouse\\\":\\\"west\\\"}\",\n      \"call_id\": \"call_0oDJpqVydXkzHHOUzkc5RhJF\",\n      \"name\": \"lookup_warehouse_stock\",\n      \"namespace\": \"lookup_warehouse_stock\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\": \"agent:ef9394a06c7d910d3075764885a33140aabdf76b30c92896fb7268d4e7\",\n  \"prompt_cache_retention\": \"24h\",\n  \"reasoning\": {\n    \"context\": \"current_turn\",\n    \"effort\": \"none\",\n    \"mode\": \"standard\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\": false,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tool_usage\": {\n    \"image_gen\": {\n      \"input_tokens\": 0,\n      \"input_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"output_tokens\": 0,\n      \"output_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"total_tokens\": 0\n    },\n    \"web_search\": {\n      \"num_requests\": 0\n    }\n  },\n  \"tools\": [\n    {\n      \"type\": \"function\",\n      \"description\": \"Read a file from the workspace.\",\n      \"name\": \"workspace_read_file\",\n      \"output_schema\": null,\n      \"parameters\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"path\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"path\"\n        ],\n        \"additionalProperties\": false,\n        \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\": \"function\",\n      \"defer_loading\": true,\n      \"description\": \"Read the available stock quantity for a product SKU in a warehouse.\",\n      \"name\": \"lookup_warehouse_stock\",\n      \"output_schema\": null,\n      \"parameters\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"sku\": {\n            \"type\": \"string\"\n          },\n          \"warehouse\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"sku\",\n          \"warehouse\"\n        ],\n        \"additionalProperties\": false,\n        \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\": \"tool_search\",\n      \"description\": null,\n      \"parameters\": null\n    },\n    {\n      \"type\": \"namespace\",\n      \"description\": \"Issue an invoice from a unit price and quantity. Requires user approval.\",\n      \"name\": \"issue_invoice\",\n      \"tools\": [\n        {\n          \"type\": \"function\",\n          \"description\": \"Issue an invoice from a unit price and quantity. Requires user approval.\",\n          \"name\": \"issue_invoice\",\n          \"output_schema\": null,\n          \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"unitPrice\": {\n                \"type\": \"number\"\n              },\n              \"quantity\": {\n                \"type\": \"number\"\n              }\n            },\n            \"required\": [\n              \"unitPrice\",\n              \"quantity\"\n            ],\n            \"additionalProperties\": false,\n            \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n          },\n          \"strict\": true\n        }\n      ]\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 0.98,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 2899,\n    \"input_tokens_details\": {\n      \"cache_write_tokens\": 0,\n      \"cached_tokens\": 2560\n    },\n    \"output_tokens\": 51,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\": 22\n    },\n    \"total_tokens\": 2950\n  },\n  \"user\": null,\n  \"metadata\": {}\n}",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f0a4c805af7-VIE",
+			"connection": "keep-alive",
+			"content-type": "application/json",
+			"date": "Fri, 09 Oct 2026 03:30:49 GMT",
+			"openai-processing-ms": "1494",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "15000",
+			"x-ratelimit-limit-tokens": "40000000",
+			"x-ratelimit-remaining-requests": "14998",
+			"x-ratelimit-remaining-tokens": "39999832",
+			"x-ratelimit-reset-requests": "8ms",
+			"x-ratelimit-reset-tokens": "0s",
+			"x-request-id": "req_344d5577581148a6a81f94ba977e02e1"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5.4",
+			"input": [
+				{
+					"role": "developer",
+					"content": "Use tools for invoices and inventory. Never calculate an invoice or guess stock without a tool result. Complete only the requested action. Call approval tools to request approval. The runtime asks the user after the call. Do not ask for approval in a text reply. Reply with the result in one short sentence.\n\nReference 1: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 2: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 3: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 4: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 5: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 6: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 7: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 8: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 9: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 10: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 11: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 12: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 13: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 14: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 15: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 16: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 17: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 18: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 19: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 20: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 21: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 22: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 23: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 24: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 25: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 26: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 27: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 28: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 29: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 30: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 31: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 32: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 33: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 34: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 35: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 36: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 37: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 38: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 39: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 40: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 41: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 42: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 43: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 44: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 45: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 46: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 47: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 48: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 49: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 50: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 51: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 52: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 53: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 54: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 55: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 56: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 57: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 58: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 59: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records.\nReference 60: The operations team stores business records by department, reporting period, account identifier, and record version. Preserve these fields when you work with records."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Issue an invoice for 7 items at a unit price of 6. Use the invoice tool."
+						}
+					]
+				},
+				{
+					"type": "tool_search_call",
+					"id": "tsc_025ae5703facc25b016ac85fe6157887d1bbbec750f547ed32",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"arguments": {
+						"paths": ["issue_invoice"]
+					}
+				},
+				{
+					"type": "tool_search_output",
+					"id": "tso_025ae5703facc25b016ac85fe632a087d19258c0eb7dea71b7",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"tools": [
+						{
+							"type": "function",
+							"defer_loading": true,
+							"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+							"name": "issue_invoice",
+							"output_schema": null,
+							"parameters": {
+								"type": "object",
+								"properties": {
+									"unitPrice": {
+										"type": "number"
+									},
+									"quantity": {
+										"type": "number"
+									}
+								},
+								"required": ["unitPrice", "quantity"],
+								"additionalProperties": false,
+								"$schema": "http://json-schema.org/draft-07/schema#"
+							},
+							"strict": true
+						}
+					]
+				},
+				{
+					"type": "function_call",
+					"call_id": "call_X13bmDIlYE3kPoizb0DHyd6G",
+					"name": "issue_invoice",
+					"arguments": "{\"unitPrice\":6,\"quantity\":7}",
+					"namespace": "issue_invoice"
+				},
+				{
+					"type": "function_call_output",
+					"call_id": "call_X13bmDIlYE3kPoizb0DHyd6G",
+					"output": "{\"total\":42}"
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "output_text",
+							"text": "Invoice issued for a total of 42."
+						}
+					],
+					"id": "msg_025ae5703facc25b016ac85fe7ba8887d18bdd5a28c6bd15ca",
+					"phase": "final_answer"
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "Now look up stock for SKU A-17 in warehouse west. Use the inventory tool."
+						}
+					]
+				},
+				{
+					"type": "tool_search_call",
+					"id": "tsc_025ae5703facc25b016ac85fe8d69887d186ec95af4ebffd97",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"arguments": {
+						"paths": ["lookup_warehouse_stock"]
+					}
+				},
+				{
+					"type": "tool_search_output",
+					"id": "tso_025ae5703facc25b016ac85fe8ff0087d1a95a844cdbe49fc6",
+					"execution": "server",
+					"call_id": null,
+					"status": "completed",
+					"tools": [
+						{
+							"type": "function",
+							"defer_loading": true,
+							"description": "Read the available stock quantity for a product SKU in a warehouse.",
+							"name": "lookup_warehouse_stock",
+							"output_schema": null,
+							"parameters": {
+								"type": "object",
+								"properties": {
+									"sku": {
+										"type": "string"
+									},
+									"warehouse": {
+										"type": "string"
+									}
+								},
+								"required": ["sku", "warehouse"],
+								"additionalProperties": false,
+								"$schema": "http://json-schema.org/draft-07/schema#"
+							},
+							"strict": true
+						}
+					]
+				},
+				{
+					"type": "function_call",
+					"call_id": "call_0oDJpqVydXkzHHOUzkc5RhJF",
+					"name": "lookup_warehouse_stock",
+					"arguments": "{\"sku\":\"A-17\",\"warehouse\":\"west\"}",
+					"namespace": "lookup_warehouse_stock"
+				},
+				{
+					"type": "function_call_output",
+					"call_id": "call_0oDJpqVydXkzHHOUzkc5RhJF",
+					"output": "{\"quantity\":13}"
+				}
+			],
+			"store": false,
+			"include": ["reasoning.encrypted_content"],
+			"prompt_cache_key": "agent:ef9394a06c7d910d3075764885a33140aabdf76b30c92896fb7268d4e7",
+			"prompt_cache_retention": "24h",
+			"tools": [
+				{
+					"type": "function",
+					"name": "workspace_read_file",
+					"description": "Read a file from the workspace.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": false
+				},
+				{
+					"type": "function",
+					"name": "issue_invoice",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"unitPrice": {
+								"type": "number"
+							},
+							"quantity": {
+								"type": "number"
+							}
+						},
+						"required": ["unitPrice", "quantity"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "function",
+					"name": "lookup_warehouse_stock",
+					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"sku": {
+								"type": "string"
+							},
+							"warehouse": {
+								"type": "string"
+							}
+						},
+						"required": ["sku", "warehouse"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"defer_loading": true
+				},
+				{
+					"type": "tool_search",
+					"execution": "server"
+				}
+			],
+			"tool_choice": "auto"
+		},
+		"status": 200,
+		"response": "{\n  \"id\": \"resp_025ae5703facc25b016ac85fea3b7887d190cf8699e187ff58\",\n  \"object\": \"response\",\n  \"created_at\": 1791516650,\n  \"status\": \"completed\",\n  \"access_programs\": null,\n  \"background\": false,\n  \"billing\": {\n    \"payer\": \"developer\"\n  },\n  \"completed_at\": 1791516651,\n  \"error\": null,\n  \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\": null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5.4-2026-03-05\",\n  \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"msg_025ae5703facc25b016ac85feae96887d19cde8791de618e2a\",\n      \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n          \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\": [],\n          \"text\": \"SKU A-17 has 13 units in warehouse west.\"\n        }\n      ],\n      \"phase\": \"final_answer\",\n      \"role\": \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\": \"agent:ef9394a06c7d910d3075764885a33140aabdf76b30c92896fb7268d4e7\",\n  \"prompt_cache_retention\": \"24h\",\n  \"reasoning\": {\n    \"context\": \"current_turn\",\n    \"effort\": \"none\",\n    \"mode\": \"standard\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\": false,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tool_usage\": {\n    \"image_gen\": {\n      \"input_tokens\": 0,\n      \"input_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"output_tokens\": 0,\n      \"output_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"total_tokens\": 0\n    },\n    \"web_search\": {\n      \"num_requests\": 0\n    }\n  },\n  \"tools\": [\n    {\n      \"type\": \"function\",\n      \"description\": \"Read a file from the workspace.\",\n      \"name\": \"workspace_read_file\",\n      \"output_schema\": null,\n      \"parameters\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"path\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"path\"\n        ],\n        \"additionalProperties\": false,\n        \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\": \"tool_search\",\n      \"description\": null,\n      \"parameters\": null\n    },\n    {\n      \"type\": \"namespace\",\n      \"description\": \"Issue an invoice from a unit price and quantity. Requires user approval.\",\n      \"name\": \"issue_invoice\",\n      \"tools\": [\n        {\n          \"type\": \"function\",\n          \"description\": \"Issue an invoice from a unit price and quantity. Requires user approval.\",\n          \"name\": \"issue_invoice\",\n          \"output_schema\": null,\n          \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"unitPrice\": {\n                \"type\": \"number\"\n              },\n              \"quantity\": {\n                \"type\": \"number\"\n              }\n            },\n            \"required\": [\n              \"unitPrice\",\n              \"quantity\"\n            ],\n            \"additionalProperties\": false,\n            \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n          },\n          \"strict\": true\n        }\n      ]\n    },\n    {\n      \"type\": \"namespace\",\n      \"description\": \"Read the available stock quantity for a product SKU in a warehouse.\",\n      \"name\": \"lookup_warehouse_stock\",\n      \"tools\": [\n        {\n          \"type\": \"function\",\n          \"description\": \"Read the available stock quantity for a product SKU in a warehouse.\",\n          \"name\": \"lookup_warehouse_stock\",\n          \"output_schema\": null,\n          \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"sku\": {\n                \"type\": \"string\"\n              },\n              \"warehouse\": {\n                \"type\": \"string\"\n              }\n            },\n            \"required\": [\n              \"sku\",\n              \"warehouse\"\n            ],\n            \"additionalProperties\": false,\n            \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n          },\n          \"strict\": true\n        }\n      ]\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 0.98,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 2949,\n    \"input_tokens_details\": {\n      \"cache_write_tokens\": 0,\n      \"cached_tokens\": 2560\n    },\n    \"output_tokens\": 16,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\": 0\n    },\n    \"total_tokens\": 2965\n  },\n  \"user\": null,\n  \"metadata\": {}\n}",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a47a4f155f3b5af7-VIE",
+			"connection": "keep-alive",
+			"content-type": "application/json",
+			"date": "Fri, 09 Oct 2026 03:30:51 GMT",
+			"openai-processing-ms": "1133",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "15000",
+			"x-ratelimit-limit-tokens": "40000000",
+			"x-ratelimit-remaining-requests": "14997",
+			"x-ratelimit-remaining-tokens": "40000000",
+			"x-ratelimit-reset-requests": "12ms",
+			"x-ratelimit-reset-tokens": "0s",
+			"x-request-id": "req_228693ece823490ebbc584cc87c26c6f"
+		},
+		"responseIsBinary": false
+	}
+]

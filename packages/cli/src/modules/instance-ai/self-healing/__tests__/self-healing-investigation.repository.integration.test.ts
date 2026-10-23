@@ -1,6 +1,13 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { createWorkflow, createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { TransactionRunner, WorkflowRepository } from '@n8n/db';
+import {
+	TransactionRunner,
+	WorkflowRepository,
+	postgresMigrations,
+	sqliteMigrations,
+	wrapMigration,
+} from '@n8n/db';
+import { DataSource, type MigrationInterface } from '@n8n/typeorm';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
@@ -86,4 +93,50 @@ it('removes investigations when their workflow is deleted', async () => {
 	const investigation = await createInvestigation();
 	await Container.get(WorkflowRepository).delete(baseline.workflowId);
 	expect(await investigations.findInvestigation(investigation.id)).toBeNull();
+});
+
+it('reverts and reapplies the investigation and configuration schemas', async () => {
+	const db = Container.get(DataSource);
+	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
+	const migration = db.migrations.find(
+		({ constructor }) => constructor.name === 'CreateSelfHealingInvestigationTable1792578704944',
+	);
+	if (!migration) throw new Error('The investigation migration is not registered.');
+	const configurationMigration = db.migrations.find(
+		({ constructor }) => constructor.name === 'CreateSelfHealingConfigurations1792742505678',
+	);
+	if (!configurationMigration) throw new Error('The configuration migration is not registered.');
+	async function runMigration(migration: MigrationInterface, direction: 'up' | 'down') {
+		// Table rebuilds can leave stale schema metadata on a reused query runner.
+		const runner = db.createQueryRunner();
+		try {
+			await migration[direction](runner);
+		} finally {
+			await runner.release();
+		}
+	}
+
+	await runMigration(configurationMigration, 'down');
+	try {
+		await runMigration(migration, 'down');
+		try {
+			const runner = db.createQueryRunner();
+			try {
+				expect(await runner.hasTable(investigations.metadata.tablePath)).toBe(false);
+			} finally {
+				await runner.release();
+			}
+		} finally {
+			await runMigration(migration, 'up');
+		}
+	} finally {
+		await runMigration(configurationMigration, 'up');
+	}
+	configurationId = (await createConfiguration(baseline.projectId, baseline.backgroundUserId)).id;
+	const investigation = await createInvestigation();
+	expect(await investigations.findInvestigation(investigation.id)).toMatchObject({
+		baseline,
+		resultId: null,
+		finishedAt: null,
+	});
 });

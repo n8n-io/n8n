@@ -92,11 +92,11 @@ export function suggestReplacementModels(
 
 function formatReplacementGuidance(suggestions: string[]): string {
 	if (suggestions.length === 0) {
-		return 'Use nodes(action="explore-resources") on the chat-model node with its connected credential to list allowed models.';
+		return 'Use workflow_builder_nodes(action="explore-resources") on the chat-model node with its connected credential to list allowed models.';
 	}
 	return (
 		`Prefer one of: ${suggestions.map((id) => `"${id}"`).join(', ')}. ` +
-		'Confirm with nodes(action="explore-resources") against the connected credential before repairing.'
+		'Confirm with workflow_builder_nodes(action="explore-resources") against the connected credential before repairing.'
 	);
 }
 
@@ -273,7 +273,7 @@ export async function computeUnavailableLocatorIssues(
 		const resourceType = isModel ? 'allowed models' : 'allowed options';
 		issues[entry.name] = [
 			`"${sanitizeForGuidance(entry.currentValue)}" isn't available with the connected credential "${sanitizeForGuidance(credential.name)}". ` +
-				`Pick a value the credential offers instead — use nodes(action="explore-resources") to list ${resourceType}.`,
+				`Pick a value the credential offers instead — use workflow_builder_nodes(action="explore-resources") to list ${resourceType}.`,
 		];
 	}
 	return issues;

@@ -38,33 +38,39 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const isDuplicate = Boolean(payload.schema);
 
-		const defaultModel = isDuplicate
-			? undefined
-			: await this.agentDefaultModelResolverService.resolve(req.user, projectId);
+		const defaultModel =
+			isDuplicate || payload.config?.model !== undefined
+				? undefined
+				: await this.agentDefaultModelResolverService.resolve(req.user, projectId);
 
-		const agent = await this.agentsService.create(projectId, payload.name, {
-			actor: { kind: 'user', user: req.user },
-			id: payload.id,
-			...(defaultModel ? { defaultModel } : {}),
-			// Keep the config name in sync with the entity name so the list and
-			// builder never disagree on a directly-seeded create. Narrowing
-			// payload.schema here keeps the spread over a defined config, so its
-			// required fields (model, instructions) stay required for the service.
-			...(isDuplicate && payload.schema
-				? {
-						schema: { ...payload.schema, name: payload.name },
-						skills: payload.skills,
-						tools: payload.tools,
-						// A REST duplicate is a user-driven write: the service sanitizes the
-						// config, blanks inaccessible credentials, copies channels as
-						// drafts, and emits `agent-saved` so the dependency index
-						// refreshes. The duplicate itself is reported by the frontend
-						// "User duplicated agent" event (carrying the source agent id).
-						user: req.user,
-					}
-				: {}),
-		});
-		return await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
+		const { agent, ...creationState } = await this.agentsService.createOrAdopt(
+			projectId,
+			payload.name,
+			{
+				actor: { kind: 'user', user: req.user },
+				user: req.user,
+				createdBy: 'user',
+				pushRef: req.headers?.['push-ref'],
+				id: payload.id,
+				config: payload.config,
+				...(defaultModel ? { defaultModel } : {}),
+				// Keep the config name in sync with the entity name so the list and
+				// builder never disagree on a directly-seeded create. Narrowing
+				// payload.schema here keeps the spread over a defined config, so its
+				// required fields (model, instructions) stay required for the service.
+				...(isDuplicate && payload.schema
+					? {
+							schema: { ...payload.schema, name: payload.name },
+							skills: payload.skills,
+							tools: payload.tools,
+						}
+					: {}),
+			},
+		);
+		return {
+			...(await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user)),
+			...creationState,
+		};
 	}
 
 	@Get('/')

@@ -1,5 +1,6 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
@@ -15,6 +16,7 @@ import {
 	type WorkflowBuildOutcome,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import isEqual from 'lodash/isEqual';
 import { calculateWorkflowChecksum, STICKY_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
 
 import { License } from '@/license';
@@ -43,10 +45,46 @@ export class SelfHealingCandidateService {
 		private readonly logger: Logger,
 		private readonly enterpriseWorkflows: EnterpriseWorkflowService,
 		private readonly license: License,
+		private readonly writeAccess: InstanceWriteAccessService,
 	) {}
 
+	async compile(
+		input: Pick<CandidateInput, 'baseline' | 'context' | 'filePath' | 'abortSignal'>,
+		user: User,
+	): Promise<CandidateWorkflowResult> {
+		const compiled = await compileCandidateWorkflow(input);
+		if (!compiled.success) return compiled;
+
+		// Reject restored edits so verification and the suggestion use the same graph.
+		// oxlint-disable-next-line typescript/no-deprecated
+		if (this.license.isSharingEnabled()) {
+			const nodes = structuredClone(compiled.workflow.nodes);
+			compiled.workflow = await this.enterpriseWorkflows.preventTampering(
+				compiled.workflow,
+				input.baseline.workflowId,
+				user,
+			);
+			const restoredNodes = nodes
+				.filter((node, index) => !isEqual(node, compiled.workflow.nodes[index]))
+				.map(({ name }) => name);
+			if (restoredNodes.length > 0) {
+				return {
+					success: false,
+					reason: 'candidate_credential_access',
+					errors: [
+						`Credential access prevents changes to these nodes: ${restoredNodes.join(', ')}. ` +
+							'Leave their protected settings unchanged, or return needs_you without a candidate ' +
+							'and explain which credential access is needed.',
+					],
+				};
+			}
+		}
+
+		return compiled;
+	}
+
 	async verify(input: CandidateInput) {
-		const { baseline, context, filePath, abortSignal } = input;
+		const { baseline, filePath, abortSignal } = input;
 		abortSignal.throwIfAborted();
 
 		if (input.user.id !== baseline.backgroundUserId) {
@@ -58,24 +96,9 @@ export class SelfHealingCandidateService {
 			baseline.workflowId,
 		);
 
-		const compiled = await compileCandidateWorkflow({
-			baseline,
-			context,
-			filePath,
-			abortSignal,
-		});
+		const compiled = await this.compile(input, user);
 		if (!compiled.success) {
 			return { filePath, validation: compiled, verification: { status: 'not_run' } };
-		}
-
-		// Match the builder's save checks before identifying the graph that will run.
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (this.license.isSharingEnabled()) {
-			compiled.workflow = await this.enterpriseWorkflows.preventTampering(
-				compiled.workflow,
-				baseline.workflowId,
-				user,
-			);
 		}
 
 		const candidate = {
@@ -108,6 +131,14 @@ export class SelfHealingCandidateService {
 	}
 
 	private async verifyExecution(input: CandidateInput, candidate: CompiledCandidate) {
+		if (this.writeAccess.isReadOnly()) {
+			return {
+				status: 'not_run',
+				error:
+					'Cannot verify execution on a protected instance. This instance is in read-only mode.',
+			};
+		}
+
 		const { baseline, context, abortSignal, user } = input;
 		const { runId } = context;
 		if (!runId) throw new UnexpectedError('The investigation context is missing.');

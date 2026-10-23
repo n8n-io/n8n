@@ -5,6 +5,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
+import type { ErrorReporter } from 'n8n-core';
 import {
 	createInstanceAiTraceContext,
 	createSelfHealingAgent,
@@ -21,6 +23,7 @@ import type { AiUsageService } from '@/services/ai-usage.service';
 import type { InProcessEventBus } from '../../event-bus/in-process-event-bus';
 import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
+import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
 import type { InstanceAiModelService } from '../../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import type { RuntimeSandboxEntry } from '../../sandbox/instance-ai-sandbox.service';
@@ -33,9 +36,7 @@ import {
 } from '../self-healing-agent.service';
 import type { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
 import type { SelfHealingCandidateService } from '../self-healing-candidate.service';
-import { compileCandidateWorkflow, type CandidateWorkflowResult } from '../candidate-workflow';
-
-vi.mock('../candidate-workflow', () => ({ compileCandidateWorkflow: vi.fn() }));
+import type { CandidateWorkflowResult } from '../candidate-workflow';
 
 vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/instance-ai')>()),
@@ -94,6 +95,8 @@ describe('SelfHealingAgentService', () => {
 		ai: {},
 	});
 	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+	const errorReporter = mock<ErrorReporter>();
 	const suggestions = mock<WorkflowSuggestionService>();
 	const executions = mock<SelfHealingExecutionReferenceService>();
 	const memory = mock<TypeORMAgentMemory>();
@@ -121,6 +124,7 @@ describe('SelfHealingAgentService', () => {
 		credits,
 		events,
 		candidates,
+		new InstanceAiErrorReporterService(logger, errorReporter),
 	);
 	let controller: AbortController;
 	let options: SelfHealingRunOptions;
@@ -153,6 +157,7 @@ describe('SelfHealingAgentService', () => {
 			createProxyRunConfig: vi.fn().mockResolvedValue({}),
 			assertCreditsAvailable: vi.fn().mockResolvedValue(undefined),
 			onActivity: vi.fn(),
+			onFinalizing: vi.fn(),
 			onComplete: vi.fn(),
 			getAbortReason: () => 'shutdown',
 			onFinish: vi.fn(),
@@ -262,14 +267,29 @@ describe('SelfHealingAgentService', () => {
 		expect(memory.saveThreadWithProject.mock.invocationCallOrder[0]).toBeLessThan(
 			events.publish.mock.invocationCallOrder[0],
 		);
+		expect(createInstanceAiTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({
+				metadata: expect.objectContaining({
+					self_healing: true,
+					self_healing_workflow_id: baseline.workflowId,
+					self_healing_execution_id: input.executionId,
+					self_healing_project_id: baseline.projectId,
+				}),
+			}),
+		);
 		expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
 			user,
 			options.threadId,
 			'sdk-run',
 			stream.usage?.usage,
 			'completed',
+			'self_healing',
 		);
-		expect(options.sandbox.destroySandbox).not.toHaveBeenCalled();
+		expect(options.sandbox.destroySandbox).toHaveBeenCalledExactlyOnceWith(
+			options.threadId,
+			'thread_cleanup',
+			user.id,
+		);
 		expect(createSelfHealingAgent).toHaveBeenCalledWith(
 			expect.objectContaining({
 				context: expect.objectContaining({ threadId: options.threadId, runId: options.runId }),
@@ -302,6 +322,7 @@ describe('SelfHealingAgentService', () => {
 	it('waits for result storage with final usage and the original candidate context', async () => {
 		const entered = createDeferredPromise();
 		const persisted = createDeferredPromise();
+		const currentUser = mock<User>({ id: user.id });
 		const candidate: CandidateWorkflowResult = {
 			success: true,
 			workflow: baseline.original,
@@ -314,9 +335,10 @@ describe('SelfHealingAgentService', () => {
 				resolvedCredentialsByNode: {},
 			},
 		};
-		vi.mocked(compileCandidateWorkflow).mockResolvedValue(candidate);
+		candidates.compile.mockResolvedValue(candidate);
 		options.onComplete = vi.fn(async (result) => {
 			expect(result.usage).toMatchObject({ credits: 0.25 });
+			suggestions.requireEditor.mockResolvedValueOnce(currentUser);
 			expect(await result.candidate?.compile()).toEqual(candidate);
 			entered.resolve();
 			await persisted.promise;
@@ -324,27 +346,59 @@ describe('SelfHealingAgentService', () => {
 		const pending = service.execute(input, options);
 		await entered.promise;
 		expect(options.onFinish).not.toHaveBeenCalled();
-		expect(compileCandidateWorkflow).toHaveBeenCalledWith(
+		expect(options.sandbox.destroySandbox).not.toHaveBeenCalled();
+		expect(candidates.compile).toHaveBeenCalledWith(
 			expect.objectContaining({
 				baseline,
 				filePath: validOutput.candidateFilePath,
 				context: expect.objectContaining({ workspace: expect.anything() }),
 			}),
+			currentUser,
 		);
 		persisted.resolve();
 		await pending;
 		expect(options.onComplete).toHaveBeenCalledTimes(1);
 		expect(options.onFinish).toHaveBeenCalledTimes(1);
+		expect(options.sandbox.destroySandbox).toHaveBeenCalledTimes(1);
+	});
+
+	it('preserves the completed result when sandbox cleanup fails', async () => {
+		vi.mocked(options.sandbox.destroySandbox).mockRejectedValueOnce(new Error('Cleanup failed'));
+
+		await expect(service.execute(input, options)).resolves.toMatchObject({
+			status: 'completed',
+			output: validOutput,
+		});
+		expect(options.onComplete).toHaveBeenCalledTimes(1);
 	});
 
 	it('preserves runtime completion when result storage fails', async () => {
 		options.onComplete = vi.fn().mockRejectedValue(new Error('Storage unavailable'));
 		await expect(service.execute(input, options)).rejects.toThrow('Storage unavailable');
+		expect(options.sandbox.destroySandbox).toHaveBeenCalledTimes(1);
 		expect(options.onFinish).toHaveBeenCalledWith(
 			expect.objectContaining({ status: 'completed', finishReason: 'stop', output: validOutput }),
 			'test/model',
 			stream,
 		);
+	});
+
+	it('enters finalization before claiming usage and accepting output', async () => {
+		credits.claimRunUsage.mockImplementationOnce(async () => {
+			expect(options.onFinalizing).toHaveBeenCalledTimes(1);
+			expect(options.onComplete).not.toHaveBeenCalled();
+			return 0.25;
+		});
+
+		const result = await service.execute(input, options);
+
+		expect(result).toMatchObject({
+			status: 'completed',
+			output: validOutput,
+			usage: { credits: 0.25 },
+		});
+		expect(credits.claimRunUsage).toHaveBeenCalledTimes(1);
+		expect(options.onComplete).toHaveBeenCalledExactlyOnceWith(result, controller.signal);
 	});
 
 	it('reports cancellation before acceptance when accounting outlasts the run', async () => {
@@ -416,6 +470,7 @@ describe('SelfHealingAgentService', () => {
 				outcome,
 				summary: 'The investigation needs follow-up.',
 				report: 'No candidate is ready.',
+				candidateFilePath: null,
 			};
 			stream.structuredOutput = output;
 			const result = await service.execute(input, options);
@@ -436,7 +491,7 @@ describe('SelfHealingAgentService', () => {
 
 		expect(result.candidate?.filePath).toBe(filePath);
 		await result.candidate?.compile();
-		expect(compileCandidateWorkflow).toHaveBeenCalledWith(expect.objectContaining({ filePath }));
+		expect(candidates.compile).toHaveBeenCalledWith(expect.objectContaining({ filePath }), user);
 	});
 
 	it('preserves valid output when accounting throws', async () => {
@@ -481,6 +536,7 @@ describe('SelfHealingAgentService', () => {
 				'sdk-run',
 				stream.usage?.usage,
 				status,
+				'self_healing',
 			);
 		},
 	);
@@ -572,6 +628,7 @@ describe('SelfHealingAgentService', () => {
 			'sdk-run',
 			stream.usage?.usage,
 			'cancelled',
+			'self_healing',
 		);
 	});
 
@@ -604,8 +661,44 @@ describe('SelfHealingAgentService', () => {
 		const result = await service.execute(input, options);
 		expect(result).toMatchObject({ status: 'cancelled', reason: 'shutdown' });
 		expect(createSelfHealingAgent).not.toHaveBeenCalled();
-		expect(options.sandbox.destroySandbox).toHaveBeenCalledWith('internal-thread', 'actor');
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(options.sandbox.destroySandbox).toHaveBeenCalledWith(
+			'internal-thread',
+			'thread_cleanup',
+			'actor',
+		);
 	});
+
+	it.each(['thrown', 'returned'] as const)(
+		'reports a %s stream error once with self-healing context',
+		async (kind) => {
+			const failure = new Error(
+				'Request failed: https://example.test/path?signature=private-value',
+			);
+			if (kind === 'thrown') vi.mocked(streamAgentRun).mockRejectedValueOnce(failure);
+			else stream = { ...stream, status: 'errored', error: failure };
+
+			const result = await service.execute(input, options);
+
+			expect(result.status).toBe('errored');
+			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(
+				failure,
+				expect.objectContaining({
+					tags: expect.objectContaining({
+						component: 'instance-ai-self-healing',
+						role: 'self-healing',
+						threadId: options.threadId,
+						runId: options.runId,
+					}),
+				}),
+			);
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			if (kind === 'thrown') {
+				expect(result.reason).toBe('Request failed: https://example.test/path');
+			}
+		},
+	);
 
 	it('finalizes a stream read failure and releases its incomplete workspace', async () => {
 		const failure = new Error('Connection closed');
@@ -627,6 +720,7 @@ describe('SelfHealingAgentService', () => {
 			options.runId,
 			[],
 			'errored',
+			'self_healing',
 		);
 		expect(options.onComplete).toHaveBeenCalledExactlyOnceWith(result, controller.signal);
 		expect(options.onFinish).toHaveBeenCalledWith(result, 'test/model', undefined);
@@ -637,6 +731,7 @@ describe('SelfHealingAgentService', () => {
 		);
 		expect(options.sandbox.destroySandbox).toHaveBeenCalledExactlyOnceWith(
 			options.threadId,
+			'thread_cleanup',
 			user.id,
 		);
 	});
@@ -649,13 +744,27 @@ describe('SelfHealingAgentService', () => {
 		expect(options.onFinish).toHaveBeenCalledTimes(1);
 	});
 
-	it('reads the captured graph after later workflow changes and rejects other targets', async () => {
+	it('reports transport errors during agent setup as setup failures', async () => {
+		vi.mocked(createSelfHealingAgent).mockRejectedValueOnce(
+			Object.assign(new TypeError('terminated'), {
+				cause: Object.assign(new Error('closed'), { code: 'ECONNRESET' }),
+			}),
+		);
+		await service.execute(input, options);
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
+		expect(streamAgentRun).not.toHaveBeenCalled();
+	});
+
+	it('reads the captured target graph and delegates other workflow reads to the adapter', async () => {
+		const otherWorkflow = { name: 'Sub-workflow', nodes: [] };
 		const context = mock<InstanceAiContext>({
 			workflowService: {
 				get: vi.fn().mockResolvedValue({ name: 'Later edit', versionId: 'v2', nodes: [] }),
+				getAsWorkflowJSON: vi.fn().mockResolvedValue(otherWorkflow),
 				getVersion: vi.fn().mockResolvedValue({ versionId: 'v1', nodes: [] }),
 			},
 		});
+		const originalService = context.workflowService;
 		adapter.createContext.mockReturnValueOnce(context);
 		await service.execute(input, options);
 		expect(await context.workflowService.get('workflow')).toMatchObject({
@@ -667,7 +776,20 @@ describe('SelfHealingAgentService', () => {
 			name: baseline.original.name,
 			nodes: [expect.objectContaining({ id: 'node-id', parameters: { value: 'original value' } })],
 		});
-		await expect(context.workflowService.get('another-workflow')).rejects.toThrow('assigned');
+		expect(await context.workflowService.get('another-workflow')).toMatchObject({
+			name: 'Later edit',
+			nodes: [],
+		});
+		expect(await context.workflowService.getAsWorkflowJSON('another-workflow', 'v2')).toBe(
+			otherWorkflow,
+		);
+		expect(originalService.getAsWorkflowJSON).toHaveBeenCalledWith('another-workflow', 'v2');
+		expect(await context.workflowService.getVersion?.('another-workflow', 'v2')).toEqual({
+			versionId: 'v1',
+			nodes: [],
+		});
+		expect(originalService.getVersion).toHaveBeenCalledWith('another-workflow', 'v2');
+		expect(suggestions.requireEditor).not.toHaveBeenCalledWith(user.id, 'another-workflow');
 		await expect(context.workflowService.getAsWorkflowJSON('workflow', 'v2')).rejects.toThrow(
 			'baseline',
 		);
@@ -679,6 +801,18 @@ describe('SelfHealingAgentService', () => {
 			'baseline',
 		);
 	});
+
+	it.each(['get', 'getAsWorkflowJSON', 'getVersion'] as const)(
+		'preserves adapter access rejection for other workflow reads through %s',
+		async (method) => {
+			const context = mock<InstanceAiContext>();
+			const error = new ForbiddenError('Read access required');
+			context.workflowService[method] = vi.fn().mockRejectedValue(error);
+			adapter.createContext.mockReturnValueOnce(context);
+			await service.execute(input, options);
+			await expect(context.workflowService[method]?.('another-workflow', 'v2')).rejects.toBe(error);
+		},
+	);
 
 	it('rejects a disabled gate at admission', () => {
 		config.instanceAi.workflowSuggestionsEnabled = false;

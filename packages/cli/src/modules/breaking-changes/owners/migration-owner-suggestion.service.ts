@@ -10,6 +10,7 @@ import {
 import { Service } from '@n8n/di';
 
 import type { OwnerSuggestion } from '../database/repositories/migration-workflow-owner.repository';
+import { canOwnFindings } from './workflow-owner';
 
 /** A user and when they acted on the workflow. */
 interface Candidate {
@@ -73,7 +74,7 @@ export class MigrationOwnerSuggestionService {
 		const byId = new Map<string, User>();
 		const idsByName = new Map<string, string[]>();
 		for (const user of all) {
-			if (user.disabled || user.isPending) continue;
+			if (!canOwnFindings(user)) continue;
 			byId.set(user.id, user);
 			const name = `${user.firstName} ${user.lastName}`;
 			idsByName.set(name, [...(idsByName.get(name) ?? []), user.id]);

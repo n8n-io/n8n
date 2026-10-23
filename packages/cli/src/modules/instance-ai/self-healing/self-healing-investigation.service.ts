@@ -1,6 +1,7 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { InstanceAiConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import {
 	SharedWorkflowRepository,
 	TransactionRunner,
@@ -29,6 +30,8 @@ import {
 	SelfHealingResultService,
 	type SelfHealingResultInput,
 } from './self-healing-result.service';
+
+export const SELF_HEALING_CANNOT_FIX_COOLDOWN_MS = Time.days.toMilliseconds;
 
 type StartInvestigation = {
 	workflowId: string;
@@ -89,6 +92,14 @@ export class SelfHealingInvestigationService {
 
 		const existing = await this.findExisting(input);
 		if (existing) return existing;
+
+		// Skip a cooldown before the baseline capture and the locked claim. The claim checks again.
+		const inCooldown = await this.resultRepository.hasRecentCannotFixForActiveVersion({
+			workflowId: input.workflowId,
+			projectId: input.projectId,
+			completedAfter: this.cooldownStart(),
+		});
+		if (inCooldown) return null;
 
 		try {
 			const baseline = await this.suggestions.captureBaseline(input.workflowId, actor.id);
@@ -175,6 +186,8 @@ export class SelfHealingInvestigationService {
 			if (existing) return existing;
 
 			await this.suggestions.requireCurrentBaseline(baseline, ctx);
+			if (await this.isInCooldown(baseline, ctx)) return null;
+
 			return await this.investigations.createInvestigation(
 				{
 					baseline,
@@ -186,6 +199,22 @@ export class SelfHealingInvestigationService {
 				ctx,
 			);
 		});
+	}
+
+	private async isInCooldown(baseline: WorkflowSuggestionBaseline, ctx: OperationContext) {
+		return await this.resultRepository.hasRecentCannotFixForVersion(
+			{
+				workflowId: baseline.workflowId,
+				projectId: baseline.projectId,
+				publishedVersionId: baseline.expectedBaseline.publishedVersionId,
+				completedAfter: this.cooldownStart(),
+			},
+			ctx,
+		);
+	}
+
+	private cooldownStart() {
+		return new Date(Date.now() - SELF_HEALING_CANNOT_FIX_COOLDOWN_MS);
 	}
 
 	private async run(investigation: SelfHealingInvestigation, user: User) {
@@ -243,24 +272,31 @@ export class SelfHealingInvestigationService {
 			const candidate = await run.candidate.compile();
 			if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
 
+			const placeholderWarnings = candidate.warnings.filter(
+				({ code }) => code === 'unresolved_placeholders',
+			);
 			if (
 				output.outcome === 'fix_ready' &&
-				candidate.credentialResolution.mockedCredentialTypes.length > 0
+				(candidate.credentialResolution.mockedCredentialTypes.length > 0 ||
+					placeholderWarnings.length > 0)
 			) {
-				const missingCredentials = Object.entries(
-					candidate.credentialResolution.mockedCredentialsByNode,
-				).map(([node, types]) => `- ${node}: ${types.join(', ')}`);
+				const missingSetup = [
+					...Object.entries(candidate.credentialResolution.mockedCredentialsByNode).map(
+						([node, types]) => `- Connect credentials for ${node}: ${types.join(', ')}`,
+					),
+					...placeholderWarnings.map(({ message }) => `- ${message}`),
+				];
 				result.output = {
 					...output,
 					outcome: 'needs_you',
-					summary: 'Connect the missing credentials to complete this repair',
+					summary: 'Complete the missing setup to use this repair',
 					report:
 						'**What happened**\n\n' +
-						`The proposed repair still needs credentials for:\n\n${missingCredentials.join('\n')}\n\n` +
+						`The proposed repair still needs setup:\n\n${missingSetup.join('\n')}\n\n` +
 						'**What changed**\n\n' +
 						'The proposed repair has not been applied. ' +
-						'Simulated verification does not confirm that these connections work. ' +
-						'Continue in chat to connect the credentials and verify the repair.',
+						'Simulated verification does not confirm that this setup works. ' +
+						'Continue in chat to complete the setup and verify the repair.',
 				};
 			}
 
@@ -272,10 +308,7 @@ export class SelfHealingInvestigationService {
 		const outputFields = selfHealingOutputSchema.innerType().shape;
 		result.output = {
 			...result.output,
-			summary: scrubSecretsInText(result.output.summary).slice(
-				0,
-				outputFields.summary.maxLength ?? undefined,
-			),
+			summary: outputFields.summary.parse(scrubSecretsInText(result.output.summary)),
 			report: scrubSecretsInText(result.output.report).slice(
 				0,
 				outputFields.report.maxLength ?? undefined,

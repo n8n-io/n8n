@@ -26,7 +26,6 @@ function substituteSkillPlaceholders(instructions: string): string {
 /** Bundled Assistant skills, including the fragments that prompt profiles append. */
 export function loadInstanceAiSkills(): RuntimeSkillSource {
 	cachedSkills ??= loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
-		exclude: ['self-healing'],
 		transformInstructions: substituteSkillPlaceholders,
 	});
 	return cachedSkills;

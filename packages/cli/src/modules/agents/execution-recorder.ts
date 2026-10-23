@@ -235,6 +235,7 @@ export type TimelineEvent =
 			startTime: number;
 			endTime: number;
 			success: boolean;
+			canceled?: boolean;
 			workflowId?: string;
 			workflowName?: string;
 			workflowExecutionId?: string;
@@ -264,6 +265,11 @@ export type TimelineEvent =
 			toolCallId: string;
 			response: unknown;
 			timestamp: number;
+	  }
+	| {
+			type: 'guardrail';
+			code: string;
+			timestamp: number;
 	  };
 
 /**
@@ -280,6 +286,7 @@ export interface MessageRecord {
 	startTime: number;
 	duration: number;
 	error: string | null;
+	guardrailCode: string | null;
 }
 
 export class ExecutionRecorder {
@@ -320,6 +327,8 @@ export class ExecutionRecorder {
 	private model: string | null = null;
 
 	private finishReason = 'unknown';
+
+	private guardrailCode: string | null = null;
 
 	private usage: RecordedUsage | null = null;
 
@@ -429,11 +438,20 @@ export class ExecutionRecorder {
 					chunk.toolName,
 					chunk.output,
 					chunk.isError === true,
+					chunk.canceled === true,
 				);
 				break;
 			case 'finish':
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
+				if (chunk.guardrail) {
+					this.guardrailCode = chunk.guardrail.code;
+					this.appendCompletedEvent({
+						type: 'guardrail',
+						code: chunk.guardrail.code,
+						timestamp: Date.now(),
+					});
+				}
 				this.finishReason = chunk.finishReason;
 				if (chunk.usage) {
 					this.usage = {
@@ -496,6 +514,7 @@ export class ExecutionRecorder {
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
 			error: this.error,
+			guardrailCode: this.guardrailCode,
 		};
 	}
 
@@ -673,6 +692,7 @@ export class ExecutionRecorder {
 		name: string,
 		output: unknown,
 		isError: boolean,
+		canceled: boolean,
 	): void {
 		const recordedOutput = sanitizeExecutionLogValue(
 			isError ? normaliseToolErrorOutput(output) : output,
@@ -688,6 +708,7 @@ export class ExecutionRecorder {
 		if (pendingTimeline) {
 			pendingTimeline.output = recordedOutput;
 			pendingTimeline.success = !isError;
+			if (canceled) pendingTimeline.canceled = true;
 			// `tool-execution-end` (real per-tool finish) normally closed this entry
 			// already; only fall back to the batched result time if it never fired.
 			if (pendingTimeline.endTime === 0) {
@@ -719,6 +740,7 @@ export class ExecutionRecorder {
 			startTime: now,
 			endTime: now,
 			success: !isError,
+			...(canceled ? { canceled: true } : {}),
 			workflowId: entry?.workflowId,
 			workflowName: entry?.workflowName,
 			triggerType: entry?.triggerType,

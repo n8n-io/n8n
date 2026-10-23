@@ -1,6 +1,5 @@
 import {
 	Workspace,
-	type BuiltMemory,
 	type BuiltTool,
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
@@ -16,6 +15,7 @@ import { loadInstanceAiSkills } from '../../skills/skills';
 import type { InstanceAiContext, WorkflowDetail } from '../../types';
 import type { InstanceAiEventBus } from '../../event-bus';
 import { streamAgentRun, type StreamableAgent } from '../../runtime/stream-runner';
+import { DOMAIN_TOOL_IDS } from '../../tools/tool-ids';
 
 function createContext(): InstanceAiContext {
 	return {
@@ -78,9 +78,17 @@ function modelTurn(parts: MockStreamPart[], callsTool = false): MockStreamResult
 	};
 }
 
+function outputTurn(output: Record<string, unknown>): MockStreamResult {
+	return modelTurn([
+		{ type: 'text-start', id: 'result' },
+		{ type: 'text-delta', id: 'result', delta: JSON.stringify(output) },
+		{ type: 'text-end', id: 'result' },
+	]);
+}
+
 describe('createSelfHealingAgent', () => {
 	it('runs the factory, read tools, verifier, and stream consumer with a deterministic model', async () => {
-		// Agent.build() reads model prices. Keep this deterministic test offline.
+		// Keep model pricing requests offline.
 		vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({}));
 		const context = createContext();
 		vi.mocked(context.executionService.getStatus).mockResolvedValue({
@@ -89,7 +97,7 @@ describe('createSelfHealingAgent', () => {
 		});
 		const output = {
 			outcome: 'fix_ready',
-			summary: 'Correct the field mapping',
+			summary: 'Correct the field mapping'.repeat(4),
 			report:
 				'**What happened**\n\nThe node used the wrong field.\n\n' +
 				'**What changed**\n\nThe proposed mapping passed verification. Nothing has been applied.',
@@ -101,7 +109,7 @@ describe('createSelfHealingAgent', () => {
 					{
 						type: 'tool-call',
 						toolCallId: 'read',
-						toolName: 'executions',
+						toolName: DOMAIN_TOOL_IDS.EXECUTIONS,
 						input: JSON.stringify({ action: 'get', executionId: 'execution' }),
 					},
 				],
@@ -118,11 +126,7 @@ describe('createSelfHealingAgent', () => {
 				],
 				true,
 			),
-			modelTurn([
-				{ type: 'text-start', id: 'result' },
-				{ type: 'text-delta', id: 'result', delta: JSON.stringify(output) },
-				{ type: 'text-end', id: 'result' },
-			]),
+			outputTurn(output),
 		];
 		const model = new MockLanguageModelV3({
 			doStream: async () => {
@@ -157,48 +161,73 @@ describe('createSelfHealingAgent', () => {
 		);
 
 		expect(result.status).toBe('completed');
-		expect(result.structuredOutput).toEqual(output);
+		expect(result.structuredOutput).toEqual({ ...output, summary: output.summary.slice(0, 80) });
 		expect(result.finishReason).toBe('stop');
 		expect(context.executionService.getStatus).toHaveBeenCalledWith('execution');
 		expect(verifyCandidate).toHaveBeenCalledTimes(1);
 		expect(turns).toHaveLength(0);
 
-		const buildMemory = async (instance: typeof agent) =>
-			await (instance as unknown as { build(): Promise<{ memory: BuiltMemory }> }).build();
-		const { memory } = await buildMemory(agent);
-		expect(await memory.getMessages('internal-thread')).not.toHaveLength(0);
-		const nextAgent = await createAgent();
-		const { memory: nextMemory } = await buildMemory(nextAgent);
-		expect(await nextMemory.getMessages('internal-thread')).toEqual([]);
+		const persistence = { threadId: 'internal-thread', resourceId: 'ia-self-healing:actor' };
+		turns.push(outputTurn(output));
+		const continued = await agent.stream('Continue the investigation.', { persistence });
+		await continued.stream.pipeTo(new WritableStream());
+		expect(JSON.stringify(model.doStreamCalls.at(-1)?.prompt)).toContain(output.summary);
+
+		const nextAgent = await createSelfHealingAgent({ context, modelId: model, verifyCandidate });
+		turns.push(outputTurn(output));
+		const fresh = await nextAgent.stream('Investigate another failure.', { persistence });
+		await fresh.stream.pipeTo(new WritableStream());
+		expect(model.doStreamCalls).toHaveLength(5);
+		expect(JSON.stringify(model.doStreamCalls.at(-1)?.prompt)).not.toContain(output.summary);
 	});
 
-	it('restricts the final SDK tools and loads the investigation skill before inference', async () => {
+	it('restricts the final SDK tools and includes the investigation prompt', async () => {
 		const context = createContext();
 		context.workspace = new Workspace({
 			filesystem: mock<WorkspaceFilesystem>({ status: 'ready', basePath: '/workspace' }),
 			sandbox: mock<WorkspaceSandbox>({ status: 'running' }),
 		});
-		const agent = await createAgent(context);
-		const config = await (
-			agent as unknown as {
-				build(): Promise<{
-					tools: BuiltTool[];
-					instructions: string;
-					checkpointStorage?: unknown;
-					observationalMemory?: unknown;
-					skillSource?: unknown;
-				}>;
-			}
-		).build();
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({}));
+		const model = new MockLanguageModelV3({
+			doStream: async () =>
+				outputTurn({
+					outcome: 'could_not_fix',
+					summary: 'No fix found',
+					report: 'No changes were made.',
+					candidateFilePath: null,
+				}),
+		});
+		const agent = await createSelfHealingAgent({
+			context,
+			modelId: model,
+			verifyCandidate: vi.fn<SelfHealingCandidateVerifier>(),
+		});
+		const { stream } = await agent.stream('Investigate the failed execution.');
+		await stream.pipeTo(new WritableStream());
+		expect(model.doStreamCalls).toHaveLength(1);
+		const request = model.doStreamCalls[0];
+		expect(request.responseFormat).toMatchObject({
+			type: 'json',
+			schema: {
+				required: ['outcome', 'summary', 'report', 'candidateFilePath'],
+				properties: {
+					candidateFilePath: { anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }] },
+				},
+			},
+		});
+		const instructions = request.prompt
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
 
-		expect(config.tools.map((tool) => tool.name).sort()).toEqual(
+		expect(request.tools?.map((tool) => tool.name).sort()).toEqual(
 			[
-				'workflows',
-				'executions',
-				'data-tables',
-				'nodes',
-				'n8n-docs',
-				'research',
+				DOMAIN_TOOL_IDS.WORKFLOWS,
+				DOMAIN_TOOL_IDS.EXECUTIONS,
+				DOMAIN_TOOL_IDS.DATA_TABLES,
+				DOMAIN_TOOL_IDS.NODES,
+				DOMAIN_TOOL_IDS.N8N_DOCS,
+				DOMAIN_TOOL_IDS.RESEARCH,
 				'verify_candidate',
 				'workspace_read_file',
 				'workspace_read_tool_result',
@@ -207,26 +236,25 @@ describe('createSelfHealingAgent', () => {
 				'workspace_execute_command',
 			].sort(),
 		);
-		expect(config.instructions).toContain('# Self-healing');
-		expect(config.instructions).toContain('knowledge-base/reference/workflow-sdk-language.md');
-		expect(config.instructions).toContain('Filesystem access is scoped to `/workspace`');
-		expect(config.instructions).toContain('execute commands in the workspace');
-		expect(config.checkpointStorage).toBe('memory');
-		expect(config.observationalMemory).toBeUndefined();
-		expect(config.skillSource).toBeUndefined();
+		expect(instructions).toContain('# Self-healing');
+		expect(instructions).toContain('knowledge-base/reference/workflow-sdk-language.md');
+		expect(instructions).toContain('Filesystem access is scoped to `/workspace`');
+		expect(instructions).toContain('execute commands in the workspace');
+		expect(agent.hasCheckpointStorage()).toBe(true);
+		expect(agent.snapshot.hasObservationalMemory).toBe(false);
 		expect(await loadInstanceAiSkills().loadSkill('self-healing')).toBeNull();
 	});
 
 	it.each([
-		['workflows', { action: 'publish', workflowId: 'workflow' }],
-		['workflows', { action: 'setup', workflowId: 'workflow' }],
-		['executions', { action: 'run', workflowId: 'workflow' }],
-		['executions', { action: 'run-step', workflowId: 'workflow', nodeName: 'Read' }],
-		['executions', { action: 'stop', executionId: 'execution' }],
-		['data-tables', { action: 'create', name: 'Table', columns: [] }],
-		['data-tables', { action: 'insert-rows', dataTableId: 'table', rows: [{}] }],
-		['nodes', { action: 'execute', nodeType: 'n8n-nodes-base.httpRequest' }],
-		['nodes', { action: 'explore-resources', nodeType: 'n8n-nodes-base.slack' }],
+		[DOMAIN_TOOL_IDS.WORKFLOWS, { action: 'publish', workflowId: 'workflow' }],
+		[DOMAIN_TOOL_IDS.WORKFLOWS, { action: 'setup', workflowId: 'workflow' }],
+		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'run', workflowId: 'workflow' }],
+		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'run-step', workflowId: 'workflow', nodeName: 'Read' }],
+		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'stop', executionId: 'execution' }],
+		[DOMAIN_TOOL_IDS.DATA_TABLES, { action: 'create', name: 'Table', columns: [] }],
+		[DOMAIN_TOOL_IDS.DATA_TABLES, { action: 'insert-rows', dataTableId: 'table', rows: [{}] }],
+		[DOMAIN_TOOL_IDS.NODES, { action: 'execute', nodeType: 'n8n-nodes-base.httpRequest' }],
+		[DOMAIN_TOOL_IDS.NODES, { action: 'explore-resources', nodeType: 'n8n-nodes-base.slack' }],
 	])('rejects unavailable %s actions in the schema', async (name, input) => {
 		const agent = await createAgent();
 		const tool = findTool(agent.declaredTools, name);
@@ -239,7 +267,7 @@ describe('createSelfHealingAgent', () => {
 			executionId: 'execution',
 			status: 'error',
 		});
-		const tool = findTool((await createAgent(context)).declaredTools, 'executions');
+		const tool = findTool((await createAgent(context)).declaredTools, DOMAIN_TOOL_IDS.EXECUTIONS);
 		await expect(
 			executeTool(tool, { action: 'get', executionId: 'execution' }),
 		).resolves.toMatchObject({ status: 'error' });
@@ -278,7 +306,7 @@ describe('createSelfHealingAgent', () => {
 			connections: {},
 			settings: { executionOrder: 'v1' },
 		});
-		const tool = findTool((await createAgent(context)).declaredTools, 'workflows');
+		const tool = findTool((await createAgent(context)).declaredTools, DOMAIN_TOOL_IDS.WORKFLOWS);
 		const result = await executeTool(tool, { action: 'get-as-code', workflowId: 'workflow' });
 
 		expect(result).toMatchObject({
@@ -286,8 +314,8 @@ describe('createSelfHealingAgent', () => {
 			status: 'written',
 		});
 		expect(result.note).toContain('verify_candidate');
-		expect(result.note).not.toContain('build-workflow');
-		expect(JSON.stringify(tool.inputSchema)).not.toContain('build-workflow');
+		expect(result.note).not.toContain(DOMAIN_TOOL_IDS.BUILD_WORKFLOW);
+		expect(JSON.stringify(tool.inputSchema)).not.toContain(DOMAIN_TOOL_IDS.BUILD_WORKFLOW);
 		expect(files.get(candidatePath)).toBe('edited candidate');
 	});
 
@@ -299,7 +327,7 @@ describe('createSelfHealingAgent', () => {
 			count: 1,
 			data: [{ id: 1, status: 'ready' }],
 		});
-		const tool = findTool((await createAgent(context)).declaredTools, 'data-tables');
+		const tool = findTool((await createAgent(context)).declaredTools, DOMAIN_TOOL_IDS.DATA_TABLES);
 		await expect(executeTool(tool, { action: 'list' })).resolves.toEqual({ tables: [] });
 		await expect(
 			executeTool(tool, { action: 'schema', dataTableId: 'table' }),
@@ -328,7 +356,7 @@ describe('createSelfHealingAgent', () => {
 			contentLength: 9,
 			truncated: false,
 		});
-		const tool = findTool((await createAgent(context)).declaredTools, 'research');
+		const tool = findTool((await createAgent(context)).declaredTools, DOMAIN_TOOL_IDS.RESEARCH);
 		const suspend = vi.fn();
 		const toolContext = { suspend };
 		await expect(

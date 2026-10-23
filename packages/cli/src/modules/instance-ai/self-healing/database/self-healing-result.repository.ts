@@ -4,16 +4,24 @@ import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
 	TransactionRunner,
+	WorkflowEntity,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { DataSource, IsNull } from '@n8n/typeorm';
+import { DataSource, IsNull, MoreThan } from '@n8n/typeorm';
 
 import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
+import { SelfHealingInvestigation } from './self-healing-investigation.entity';
 import { SelfHealingResult } from './self-healing-result.entity';
+
+// Keep in sync with getSelfHealingReviewState(), which returns 'open' for the same rows.
+const inboxState = `CASE WHEN result.dismissedAt IS NULL
+	AND result.outcome <> 'could_not_fix'
+	AND (result.suggestionId IS NULL OR suggestion.state = 'pending')
+	THEN 'open' ELSE 'closed' END`;
 
 export type CreateSelfHealingResult = Pick<
 	SelfHealingResult,
@@ -48,6 +56,12 @@ type SelfHealingInboxQuery = {
 	boundary?: SelfHealingInboxBoundary;
 };
 
+type RecentCannotFixQuery = {
+	workflowId: string;
+	projectId: string;
+	completedAfter: Date;
+};
+
 @Service()
 export class SelfHealingResultRepository extends BaseRepository<SelfHealingResult> {
 	constructor(
@@ -56,12 +70,6 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		private readonly sharedWorkflows: SharedWorkflowRepository,
 	) {
 		super(SelfHealingResult, dataSource.manager, transactionRunner);
-	}
-
-	private inboxState() {
-		return `CASE WHEN result.dismissedAt IS NULL
-			AND (result.suggestionId IS NULL OR suggestion.state = 'pending')
-			THEN 'open' ELSE 'closed' END`;
 	}
 
 	private inboxQuery({ user, ...roles }: SelfHealingInboxAccess) {
@@ -91,8 +99,51 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 			.select('result.id')
 			.leftJoin('result.suggestion', 'suggestion')
 			.where({ workflowId, projectId })
-			.andWhere(`(${this.inboxState()}) = :state`, { state: 'open' })
+			.andWhere(`(${inboxState}) = :state`, { state: 'open' })
 			.getOne();
+	}
+
+	async hasRecentCannotFixForVersion(
+		{ publishedVersionId, ...recent }: RecentCannotFixQuery & { publishedVersionId: string },
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const versionIds = await this.getRecentCannotFixVersionIds(recent, ctx);
+		return versionIds.includes(publishedVersionId);
+	}
+
+	/** Checks the workflow's current published version. Reads it only when a recent result exists. */
+	async hasRecentCannotFixForActiveVersion(
+		recent: RecentCannotFixQuery,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const versionIds = await this.getRecentCannotFixVersionIds(recent, ctx);
+		if (versionIds.length === 0) return false;
+
+		const workflow = await this.managerFor(ctx).findOne(WorkflowEntity, {
+			select: { activeVersionId: true },
+			where: { id: recent.workflowId },
+		});
+		return !!workflow?.activeVersionId && versionIds.includes(workflow.activeVersionId);
+	}
+
+	private async getRecentCannotFixVersionIds(
+		{ workflowId, projectId, completedAfter }: RecentCannotFixQuery,
+		ctx: OperationContext,
+	): Promise<string[]> {
+		const investigations = await this.managerFor(ctx).find(SelfHealingInvestigation, {
+			select: ['baseline'],
+			where: {
+				result: {
+					workflowId,
+					projectId,
+					outcome: 'could_not_fix',
+					completedAt: MoreThan(completedAfter),
+				},
+			},
+		});
+
+		// PostgreSQL accepts escaped NUL in json columns, but JSON extraction rejects it.
+		return investigations.map(({ baseline }) => baseline.expectedBaseline.publishedVersionId);
 	}
 
 	async listForInbox(
@@ -112,7 +163,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				'result.completedAt',
 				'workflow.name',
 			])
-			.andWhere(`(${this.inboxState()}) = :state`, { state })
+			.andWhere(`(${inboxState}) = :state`, { state })
 			.orderBy('result.updatedAt', 'DESC')
 			.addOrderBy('result.id', 'ASC');
 
@@ -143,9 +194,9 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 
 	async countForInbox(access: SelfHealingInboxAccess): Promise<InboxCounts> {
 		const counts = await this.inboxQuery(access)
-			.select(this.inboxState(), 'state')
+			.select(inboxState, 'state')
 			.addSelect('COUNT(*)', 'count')
-			.groupBy(this.inboxState())
+			.groupBy(inboxState)
 			.getRawMany<{ state: InboxState; count: number | string }>();
 		return {
 			open: Number(counts.find((row) => row.state === 'open')?.count ?? 0),

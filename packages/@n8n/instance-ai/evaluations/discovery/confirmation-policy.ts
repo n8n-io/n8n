@@ -15,6 +15,7 @@
 // runner. A scenario can always bypass the lot with `resumeWith`.
 // ---------------------------------------------------------------------------
 
+import { resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { ConfirmationAnswer, DiscoveryTestCase } from './types';
@@ -32,7 +33,11 @@ export function buildConfirmationPolicy(
 ): ConfirmationPolicy {
 	const policy: ConfirmationPolicy = new Map();
 	for (const [toolName, answer] of Object.entries(scenario.confirmations ?? {})) {
-		policy.set(toolName, typeof answer === 'string' ? { decision: answer } : answer);
+		// Stored scenarios can key an answer by a former builder tool name.
+		policy.set(
+			resolveBuilderToolName(toolName),
+			typeof answer === 'string' ? { decision: answer } : answer,
+		);
 	}
 	return policy;
 }
@@ -66,7 +71,9 @@ export function unmatchedConfirmations(
 }
 
 function suspendedToolName(suspension: SuspensionInfo | undefined): string {
-	if (suspension?.toolName) return suspension.toolName;
+	if (suspension?.toolName) return resolveBuilderToolName(suspension.toolName);
 	const payload = suspension?.suspendPayload;
-	return isRecord(payload) && typeof payload.toolName === 'string' ? payload.toolName : '';
+	return isRecord(payload) && typeof payload.toolName === 'string'
+		? resolveBuilderToolName(payload.toolName)
+		: '';
 }

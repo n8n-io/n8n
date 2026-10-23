@@ -6,11 +6,45 @@ The runtime attaches these tools in [`agent-runtime-reconstruction.service.ts`](
 
 ## Before you add a built-in tool
 
-Keep the number of built-in tools low. Each built-in tool goes into the context of every agent run. A long tool list costs tokens and makes tool selection harder for the model.
+Keep the number of built-in tools low. A long tool list costs tokens and makes tool selection harder for the model. Native tool search can defer definitions. Unsupported routes load the full catalog into the model context.
 
 - Check the list in this document first.
 - Extend an existing tool when it covers the use case. Do not add a similar tool.
 - Update this document when you add, remove, or change a built-in tool.
+
+## Tool visibility
+
+The runtime enables native tool deferral during agent reconstruction. Direct
+OpenAI Responses routes use native tool search from GPT-5.4, except GPT-5.4 Nano.
+Direct Anthropic Messages routes use it from Claude 4.5. Numeric version rules
+include later versions and dated snapshots. See the
+[native deferral policy](../../../../@n8n/agents/docs/prompt-caching.md#native-tool-deferral).
+The runtime checks the selected model and effective endpoint before each run.
+Other providers, older versions, unknown model ID formats, Chat Completions,
+custom endpoints, and Gateway credits use the complete eager catalog.
+
+These local tools stay eager when they are attached:
+
+- `workspace_read_file`
+- `workspace_read_tool_result`
+- `workspace_write_file`
+- `workspace_str_replace_file`
+- `workspace_execute_command`
+- `load_skill`
+- `mark_session_failed`
+
+Other eligible local tools are deferred. This includes built-in, custom,
+workflow, node, integration, knowledge, memory, and MCP tools. Provider-native
+tools stay eager. A local tool also stays eager when it has an explicit cache
+marker or `deferLoading: false`.
+
+Deferral changes model visibility only. All authorized handlers stay in the
+execution registry. Validation, approval, and cancellation use the same paths.
+The catalog, tool order, and instructions stay stable during discovery. Search
+results stay in conversation history through memory and approval resume.
+
+The same policy applies to inline and delegated children. The runtime checks
+each child's selected model. There is no feature flag or Agent Builder setting.
 
 ## Tools attached to every agent
 
@@ -47,7 +81,7 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 ### Knowledge retrieval tools
 
 - Purpose: `find_file` finds uploaded knowledge files by filename pattern. `search_text` searches the file contents with a regex. `read_file` reads one file.
-- Attach condition: The sandbox is on, the agent is not an inline agent, and the agent has knowledge files.
+- Attach condition: The sandbox is on, the `knowledge` module is active (`KnowledgeAvailabilityService` in the knowledge module answers this), the agent is not an inline agent, and the agent has knowledge files.
 - Source: [`tools/knowledge/search-knowledge.tool.ts`](./tools/knowledge/search-knowledge.tool.ts).
 
 ## Tools attached to top-level agents only
@@ -68,12 +102,50 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 ### `write_todos`
 
 - Purpose: Writes a task list for the run. The agent uses it to plan and to track progress.
-- Attach condition: Top-level agent.
+- Attach condition: Top-level agent when plan tools are disabled or the caller passes `allowPlanTools: false`.
 - Source: [`packages/@n8n/agents/src/runtime/tools/write-todos-tool.ts`](../../../../@n8n/agents/src/runtime/tools/write-todos-tool.ts).
 
 ### `mark_session_failed`
 
 See the [dedicated section](#mark_session_failed-session-outcomes).
+
+## Plan tools
+
+Attach condition: Top-level agent with `AgentsConfig.planToolsEnabled` enabled, unless the caller passes `allowPlanTools: false`.
+Other top-level agents receive `write_todos`. Sub-agents receive neither tool set.
+
+Source: [`plans/agent-plan-tools.ts`](./plans/agent-plan-tools.ts).
+
+`create_plan` takes a complete document. `read_plan` returns the saved document and revision.
+`update_plan` takes a partial `document`, `planId`, and `expectedRevision`.
+Send only fields that must change. Do not resend unchanged tasks, descriptions, or dependencies.
+The tool merges `items` and group `tasks` by ID. Omitted fields and items stay unchanged.
+Existing items keep their order. New items append and require all creation fields with a `new:` ID.
+For a child task, send its group ID and put the child update in `tasks`.
+For example, a task completion needs only:
+
+```json
+{
+  "planId": "<saved plan UUID>",
+  "expectedRevision": 4,
+  "document": {
+    "items": [{ "id": "<saved task UUID>", "status": "done", "resultSummary": "Reviewed the findings." }]
+  }
+}
+```
+
+Use `removeItemIds` to remove pending items. An empty `items` or `tasks` list removes nothing.
+A supplied `dependsOn` list replaces that item's dependencies. Use `[]` to clear it.
+Set `presentation`, `presentation.detail`, `resultSummary`, or `fallbackFor` to `null` to clear it.
+The service validates the complete result and saves it with its history in one transaction.
+Final items, task prerequisites, and service timestamps retain their existing rules.
+If an update fails, correct it and retry before reporting progress. Read the plan again after a revision conflict.
+`close_plan` closes the active plan without changing its document or cancelling work.
+
+Snapshots report `finishedAt` when all task leaves have a final status.
+A group with children contributes its child tasks. An empty group counts as one task.
+The timestamp is the last leaf end time. A later group status update does not extend it.
+Group statuses remain independent, so readiness can still list a pending group after its children finish.
 
 ## Background job tools
 

@@ -1,4 +1,5 @@
 import {
+	SCHEDULED_JOB_NAME_MAX_LENGTH,
 	SCHEDULED_JOB_OWNER_ID_MAX_LENGTH,
 	SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,
 } from '@n8n/constants';
@@ -9,6 +10,7 @@ import type { DesiredJob, ProvisionSummary } from './types';
 import { createProvisionerTracing } from '../../observability/provisioner-tracing';
 import { noopTracer, type Tracer } from '../../observability/tracer';
 import {
+	InvalidJobNameError,
 	InvalidOwnerIdError,
 	InvalidOwnerMemberIdError,
 	UnregisteredOwnerTypeError,
@@ -43,6 +45,7 @@ export interface JobProvisioner<PScope extends OwnedScope, DScope = PScope> {
 	 * owner type, which would create jobs the sweep could never clean up.
 	 * @throws {InvalidOwnerIdError} when the owner id is empty or too long to store.
 	 * @throws {InvalidOwnerMemberIdError} when the owner member id is empty or too long to store.
+	 * @throws {InvalidJobNameError} when a desired job's name is too long to store.
 	 */
 	provision(scope: PScope, desired: DesiredJob[]): Promise<ProvisionSummary>;
 	/** Delete all of `scope`'s jobs; see {@link deprovision}. */
@@ -85,6 +88,7 @@ export function createJobProvisioner<PScope extends OwnedScope, DScope = PScope>
 	return {
 		async provision(scope, desired) {
 			assertProvisionableOwner(deps.owners, scope.owner);
+			assertStorableNames(desired);
 			return await tracing.provision(
 				async () =>
 					await provision(
@@ -118,16 +122,36 @@ function assertProvisionableOwner(
 	if (!owners.has(ownerType)) {
 		throw new UnregisteredOwnerTypeError(ownerType);
 	}
-	if (ownerId === '' || ownerId.length > SCHEDULED_JOB_OWNER_ID_MAX_LENGTH) {
-		throw new InvalidOwnerIdError(ownerId.length, SCHEDULED_JOB_OWNER_ID_MAX_LENGTH);
+	const ownerIdLength = characterCount(ownerId);
+	if (ownerIdLength === 0 || ownerIdLength > SCHEDULED_JOB_OWNER_ID_MAX_LENGTH) {
+		throw new InvalidOwnerIdError(ownerIdLength, SCHEDULED_JOB_OWNER_ID_MAX_LENGTH);
 	}
-	if (
-		ownerMemberId !== null &&
-		(ownerMemberId === '' || ownerMemberId.length > SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH)
-	) {
+	if (ownerMemberId === null) return;
+	const ownerMemberIdLength = characterCount(ownerMemberId);
+	if (ownerMemberIdLength === 0 || ownerMemberIdLength > SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH) {
 		throw new InvalidOwnerMemberIdError(
-			ownerMemberId.length,
+			ownerMemberIdLength,
 			SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,
 		);
 	}
+}
+
+/**
+ * Reject a desired job whose name does not fit its column. SQLite does not
+ * enforce the column length, so without this check the result depends on the database.
+ *
+ * @throws {InvalidJobNameError} when a name is too long to store.
+ */
+function assertStorableNames(desired: DesiredJob[]): void {
+	for (const { name } of desired) {
+		const length = characterCount(name);
+		if (length > SCHEDULED_JOB_NAME_MAX_LENGTH) {
+			throw new InvalidJobNameError(length, SCHEDULED_JOB_NAME_MAX_LENGTH);
+		}
+	}
+}
+
+/** Counts code points, as Postgres varchar does, not UTF-16 code units. */
+function characterCount(value: string): number {
+	return [...value].length;
 }

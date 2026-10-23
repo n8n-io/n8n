@@ -5,7 +5,7 @@ import {
 	type WorkspaceSandbox,
 } from '@n8n/agents';
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
-import type { InstanceAiContext } from '@n8n/instance-ai';
+import { computeChatModelValidationIssues, type InstanceAiContext } from '@n8n/instance-ai';
 import {
 	buildImports,
 	generateWorkflowCode,
@@ -21,6 +21,11 @@ import { mock } from 'vitest-mock-extended';
 
 import { toWorkflowJSON } from '../../workflow-json';
 import { compileCandidateWorkflow } from '../candidate-workflow';
+
+vi.mock('@n8n/instance-ai', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/instance-ai')>()),
+	computeChatModelValidationIssues: vi.fn(async () => ({})),
+}));
 
 function makeBaseline(): WorkflowSuggestionBaseline {
 	return {
@@ -76,6 +81,7 @@ describe('compileCandidateWorkflow', () => {
 	let context: InstanceAiContext;
 
 	beforeEach(async () => {
+		vi.mocked(computeChatModelValidationIssues).mockResolvedValue({});
 		baseline = makeBaseline();
 		directory = await mkdtemp(join(tmpdir(), 'n8n-candidate-test-'));
 		const filesystem = mock<WorkspaceFilesystem>({
@@ -180,6 +186,73 @@ describe('compileCandidateWorkflow', () => {
 		await writeCandidate(generatedWorkflow());
 
 		expect(await compile()).toMatchObject({ success: true });
+	});
+
+	it.each(['added', 'changed', 'unchanged', 'disabled', 'restored'] as const)(
+		'reports placeholders on %s nodes',
+		async (kind) => {
+			const placeholder = '<__PLACEHOLDER_VALUE__Request URL__>';
+			if (kind === 'unchanged') baseline.original.nodes[0].parameters.url = placeholder;
+			const workflow = generatedWorkflow();
+			changeUrl(workflow, placeholder);
+			const request = workflow.nodes.find((node) => node.name === 'Request')!;
+			if (kind === 'changed') {
+				request.parameters = { ...request.parameters, options: { timeout: placeholder } };
+			}
+			if (kind === 'added') {
+				workflow.nodes.push({
+					...structuredClone(request),
+					id: 'new-request',
+					name: 'New request',
+				});
+				changeUrl(workflow, 'https://example.test/original');
+			}
+			if (kind === 'disabled') request.disabled = true;
+			await writeCandidate(workflow);
+
+			const result = await compile();
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.warnings.filter(({ code }) => code === 'unresolved_placeholders')).toHaveLength(
+				kind === 'added' || kind === 'changed' ? 1 : 0,
+			);
+		},
+	);
+
+	it.each(['unchanged', 'changed', 'restored'])('checks %s model settings', async (kind) => {
+		const changed = kind === 'changed';
+		baseline.original.nodes[0].type = '@n8n/n8n-nodes-langchain.lmChatOpenAi';
+		baseline.original.nodes[0].parameters = {
+			model: 'existing-model',
+			options: { temperature: 0.7 },
+		};
+		vi.mocked(computeChatModelValidationIssues).mockImplementation(
+			async (_context, node): Promise<Record<string, string[]>> =>
+				node.name === 'Request' ? { model: ['The selected model is unavailable.'] } : {},
+		);
+		const workflow = generatedWorkflow();
+		if (kind === 'restored') {
+			const request = workflow.nodes.find((node) => node.name === 'Request')!;
+			request.parameters = {
+				...request.parameters,
+				options: { temperature: '<__PLACEHOLDER_VALUE__Temperature__>' },
+			};
+		}
+		if (changed) {
+			workflow.nodes.find((node) => node.name === 'Request')!.parameters = {
+				model: 'unavailable-model',
+			};
+		}
+		await writeCandidate(workflow);
+
+		const result = await compile();
+		expect(result.success).toBe(!changed);
+		if (changed) {
+			expect(result).toMatchObject({
+				reason: 'chat_model_validation_failed',
+				errors: ['Request: The selected model is unavailable.'],
+			});
+		}
 	});
 
 	it('restores an existing webhook ID through the builder preparation', async () => {

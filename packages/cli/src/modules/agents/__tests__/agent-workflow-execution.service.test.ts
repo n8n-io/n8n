@@ -11,7 +11,8 @@ import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflo
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
-import { SkillService } from '../skills/skill.service';
+import { SkillService } from '@/modules/skills/skill.service';
+import { AgentSkillUsageService } from '../agent-skill-usage.service';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
@@ -24,7 +25,7 @@ import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
-} from '../agent-runtime-instrumentation';
+} from '../evaluation/agent-evaluation.contracts';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
@@ -35,7 +36,7 @@ import {
 import { AgentBudgetAlertService } from '../agent-budget-alert.service';
 import { AgentSpendLedger } from '../budget-guardrail';
 import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -56,7 +57,7 @@ const schema: AgentJsonConfig = {
 	instructions: 'Help users',
 };
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 	return {
 		id: agentId,
 		name: 'Support Agent',
@@ -67,7 +68,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		tools: {},
 		skills: {},
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeReadableStream(chunks: StreamChunk[]): ReadableStream<StreamChunk> {
@@ -502,7 +503,7 @@ describe('AgentWorkflowExecutionService', () => {
 		async (compilation) => {
 			const { service, agentRepository, reconstructionService, executionService } = makeService();
 			const lookupStarted = createDeferredPromise();
-			const agentLookup = createDeferredPromise<Agent>();
+			const agentLookup = createDeferredPromise<ProjectAgent>();
 			const runtime = makeRuntime();
 			const cause = new UserError('Session not found');
 			executionService.getSessionMode.mockResolvedValue('existing');
@@ -894,6 +895,7 @@ describe('AgentWorkflowExecutionService', () => {
 
 		it('runs the embedded skills and never calls the skill service', async () => {
 			const skillService = mockInstance(SkillService);
+			const agentSkillUsage = mockInstance(AgentSkillUsageService);
 			const { service, reconstructionService, skillRefs } = makeService();
 			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(
 				makeRuntime([{ type: 'finish', finishReason: 'stop' }]),
@@ -927,8 +929,7 @@ describe('AgentWorkflowExecutionService', () => {
 				skillRefs.readVersion,
 				skillRefs.skillsForRefs,
 				skillService.resolveForAgentDraft,
-				skillService.resolvePinned,
-				skillService.checkRefs,
+				agentSkillUsage.checkRefs,
 				skillService.create,
 			]) {
 				expect(read).not.toHaveBeenCalled();
@@ -1521,7 +1522,9 @@ describe('AgentWorkflowExecutionService', () => {
 
 	describe('eval runs', () => {
 		const evalConfig: AgentJsonConfig = { ...schema, instructions: 'Help users (eval copy)' };
-		const integrations = [{ type: 'slack', credentialId: 'slack-1' }] as Agent['integrations'];
+		const integrations = [
+			{ type: 'slack', credentialId: 'slack-1' },
+		] as ProjectAgent['integrations'];
 
 		function makePrepareForEval() {
 			const instrumentation: AgentRuntimeInstrumentation = {

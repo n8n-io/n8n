@@ -1,15 +1,16 @@
 /**
- * complete-checkpoint tool — called by the orchestrator to settle a planned-task
+ * workflow_builder_complete_checkpoint tool — called by the orchestrator to settle a planned-task
  * checkpoint.
  *
  * The service enqueues an internal follow-up run carrying a checkpoint's spec.
- * The orchestrator executes the spec using its normal tools (verify-built-workflow,
- * executions(action="run"), etc.) and then MUST call this tool exactly once to
+ * The orchestrator executes the spec using its normal tools (workflow_builder_verify_built_workflow,
+ * workflow_builder_executions(action="run"), etc.) and then MUST call this tool exactly once to
  * report the outcome. The service's post-run deadlock fallback guarantees
  * progress even if the orchestrator forgets.
  */
 
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
@@ -19,6 +20,7 @@ import {
 	partitionSkippedSetupRequests,
 } from '../workflows/setup-skip-state';
 import { analyzeWorkflow } from '../workflows/setup-workflow.service';
+import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 const inputSchema = z.object({
 	taskId: z.string().describe('The checkpoint task ID from the <planned-task-follow-up> payload'),
@@ -89,7 +91,7 @@ async function rejectIfSetupStillRequired(
 			ok: false,
 			result:
 				'Error: checkpoint cannot be completed yet because workflow setup is still required, ' +
-				'but the workflow context is unavailable. Call workflows(action="setup") before complete-checkpoint.',
+				'but the workflow context is unavailable. Call workflow_builder_workflows(action="setup") before workflow_builder_complete_checkpoint.',
 		};
 	}
 
@@ -133,7 +135,7 @@ async function rejectIfSetupStillRequired(
 					ok: false,
 					result:
 						`Error: workflow setup is still required for workflow "${workflowId}". ` +
-						`Call workflows(action="setup", workflowId="${workflowId}") before complete-checkpoint.` +
+						`Call workflow_builder_workflows(action="setup", workflowId="${workflowId}") before workflow_builder_complete_checkpoint.` +
 						suffix,
 				};
 			}
@@ -143,7 +145,7 @@ async function rejectIfSetupStillRequired(
 				result:
 					`Error: workflow setup could not be checked for workflow "${workflowId}": ` +
 					`${error instanceof Error ? error.message : String(error)}. ` +
-					`Call workflows(action="setup", workflowId="${workflowId}") before complete-checkpoint.`,
+					`Call workflow_builder_workflows(action="setup", workflowId="${workflowId}") before workflow_builder_complete_checkpoint.`,
 			};
 		}
 	}
@@ -162,7 +164,8 @@ async function rejectIfSetupStillRequired(
 }
 
 export function createCompleteCheckpointTool(context: OrchestrationContext) {
-	return new Tool('complete-checkpoint')
+	return new Tool(ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT)
+		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT))
 		.description(
 			'Report the outcome of a planned-task checkpoint you just executed. Only call in checkpoint follow-up turns. ' +
 				'Call this exactly once per <planned-task-follow-up type="checkpoint"> block. ' +
@@ -223,7 +226,7 @@ export function createCompleteCheckpointTool(context: OrchestrationContext) {
 					result:
 						`Error: task "${input.taskId}" is not a checkpoint ` +
 						`(actual kind: ${settleResult.actual?.kind ?? 'unknown'}). ` +
-						'complete-checkpoint can only settle checkpoint tasks.',
+						'workflow_builder_complete_checkpoint can only settle checkpoint tasks.',
 				};
 			}
 			return {

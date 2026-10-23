@@ -16,8 +16,10 @@ import {
 	TransactionRunner,
 	UserRepository,
 	WorkflowHistoryRepository,
+	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowRepository,
+	type WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
@@ -48,7 +50,10 @@ import { SelfHealingResultRepository } from '../database/self-healing-result.rep
 import { SelfHealingInvestigationRepository } from '../database/self-healing-investigation.repository';
 import type { SelfHealingRunResult } from '../self-healing-agent.service';
 import { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
-import { SelfHealingInvestigationService } from '../self-healing-investigation.service';
+import {
+	SELF_HEALING_CANNOT_FIX_COOLDOWN_MS,
+	SelfHealingInvestigationService,
+} from '../self-healing-investigation.service';
 import {
 	SelfHealingResultService,
 	type SelfHealingResultInput,
@@ -98,6 +103,7 @@ beforeEach(() => {
 	Container.get(GlobalConfig).workflows.useWorkflowPublicationService = true;
 	Container.get(GlobalConfig).instanceAi.workflowSuggestionsEnabled = true;
 	runtime.startSelfHealingRun.mockReset();
+	runtime.routeCancelRun.mockReset();
 	validation.validateTriggerNodeIds.mockReturnValue({ isValid: true });
 	validation.validateForActivation.mockResolvedValue({ isValid: true });
 	validation.validateDynamicCredentials.mockResolvedValue({ isValid: true });
@@ -122,9 +128,12 @@ async function completeResult(input: Parameters<SelfHealingResultService['comple
 
 type Outcome = 'fix_ready' | 'needs_you' | 'could_not_fix';
 
-async function prepareFixture(outcome: Outcome = 'needs_you') {
+async function prepareFixture(
+	outcome: Outcome = 'needs_you',
+	workflowData: Partial<WorkflowEntity> = {},
+) {
 	const user = await createUser();
-	const workflow = await createWorkflowWithHistory({}, user);
+	const workflow = await createWorkflowWithHistory(workflowData, user);
 	const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id);
 	await workflows.update(workflow.id, { activeVersionId: workflow.versionId, active: true });
 	await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(workflow.id, [
@@ -164,8 +173,12 @@ async function prepareFixture(outcome: Outcome = 'needs_you') {
 	return { user, project, original, graph, input };
 }
 
-async function fixture(outcome: Outcome = 'needs_you', withSuggestion = false) {
-	const prepared = await prepareInvestigation(outcome, withSuggestion);
+async function fixture(
+	outcome: Outcome = 'needs_you',
+	withSuggestion = false,
+	workflowData: Partial<WorkflowEntity> = {},
+) {
+	const prepared = await prepareInvestigation(outcome, withSuggestion, { workflowData });
 	const result = await completeResult({
 		investigationId: prepared.investigation.id,
 		...prepared.completion,
@@ -180,15 +193,20 @@ async function fixture(outcome: Outcome = 'needs_you', withSuggestion = false) {
 async function prepareInvestigation(
 	outcome: Outcome = 'fix_ready',
 	withSuggestion: boolean | 'unchanged' = true,
-	content: { report?: string; usage?: SelfHealingResultUsage } = {},
+	content: {
+		report?: string;
+		usage?: SelfHealingResultUsage;
+		workflowData?: Partial<WorkflowEntity>;
+	} = {},
 ) {
-	const fixture = await prepareFixture(outcome);
+	const { workflowData, ...resultContent } = content;
+	const fixture = await prepareFixture(outcome, workflowData);
 	const { original, user } = fixture;
 	const graph =
 		withSuggestion === 'unchanged'
 			? { nodes: original.nodes, connections: original.connections }
 			: fixture.graph;
-	const input = { ...fixture.input, ...content };
+	const input = { ...fixture.input, ...resultContent };
 	const baseline = await suggestionService.captureBaseline(original.id, user.id);
 	const investigation = await Container.get(TransactionRunner).run({}, async (ctx) => {
 		return await investigations.createInvestigation(
@@ -207,7 +225,7 @@ async function prepareInvestigation(
 			outcome,
 			summary: input.summary,
 			report: input.report,
-			...(withSuggestion ? { candidateFilePath: 'candidate.workflow.ts' } : {}),
+			candidateFilePath: withSuggestion ? 'candidate.workflow.ts' : null,
 		},
 		usage: input.usage,
 		completedAt: new Date().toISOString(),
@@ -288,7 +306,6 @@ describe('investigation eligibility after a result', () => {
 	}
 
 	it.each([
-		['could_not_fix', false],
 		['needs_you', false],
 		['needs_you', true],
 		['fix_ready', true],
@@ -317,7 +334,7 @@ describe('investigation eligibility after a result', () => {
 		},
 	);
 
-	it.each(['needs_you', 'could_not_fix'] as const)(
+	it.each(['needs_you'] as const)(
 		'allows another investigation after closing a %s report',
 		async (outcome) => {
 			const { input, result, user, project, original } = await fixture(outcome);
@@ -337,8 +354,176 @@ describe('investigation eligibility after a result', () => {
 		},
 	);
 
+	it('skips failures until 24 hours without extending the cooldown or using credits', async () => {
+		const { input, result, user, project, original } = await fixture('could_not_fix');
+		const producer = Container.get(SelfHealingInvestigationService);
+		const expiresAt = result.completedAt.getTime() + SELF_HEALING_CANNOT_FIX_COOLDOWN_MS;
+		const now = vi.spyOn(Date, 'now').mockReturnValue(expiresAt - 60_000);
+
+		await expect(producer.start(await nextFailure(input))).resolves.toBeNull();
+		await service.dismiss(user, project.id, original.id, result.id);
+
+		now.mockReturnValue(expiresAt - 1);
+		await expect(producer.start(await nextFailure(input))).resolves.toBeNull();
+		expect(await results.findOneByOrFail({ id: result.id })).toEqual(result);
+		expect(await investigations.count()).toBe(1);
+		expect(await results.count()).toBe(1);
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+
+		now.mockReturnValue(expiresAt);
+		await expect(producer.start(await nextFailure(input))).resolves.toMatchObject({
+			kind: 'investigation',
+		});
+		expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
+	});
+
+	it('starts a new cooldown from the latest accepted cannot-fix result', async () => {
+		const { input, result, completion } = await fixture('could_not_fix');
+		const producer = Container.get(SelfHealingInvestigationService);
+		const expiresAt = result.completedAt.getTime() + SELF_HEALING_CANNOT_FIX_COOLDOWN_MS;
+		const now = vi.spyOn(Date, 'now').mockReturnValue(expiresAt);
+
+		const admitted = await producer.start(await nextFailure(input));
+		if (admitted?.kind !== 'investigation') throw new Error('Expected a new investigation.');
+
+		const completedAt = expiresAt + 60_000;
+		await completeResult({
+			investigationId: admitted.investigationId,
+			...completion,
+			completedAt: new Date(completedAt).toISOString(),
+		});
+
+		const nextExpiresAt = completedAt + SELF_HEALING_CANNOT_FIX_COOLDOWN_MS;
+		now.mockReturnValue(nextExpiresAt - 1);
+		await expect(producer.start(await nextFailure(input))).resolves.toBeNull();
+		expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
+
+		now.mockReturnValue(nextExpiresAt);
+		await expect(producer.start(await nextFailure(input))).resolves.toMatchObject({
+			kind: 'investigation',
+		});
+		expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(2);
+	});
+
+	it.each(['before expiry', 'at expiry', 'new publication'] as const)(
+		'checks cooldowns with escaped characters in the saved baseline: %s',
+		async (scenario) => {
+			const { input, result, original } = await fixture('could_not_fix', false, {
+				pinData: { 'Schedule Trigger': [{ json: { value: 'before\u0000after' } }] },
+			});
+			const elapsed = scenario === 'at expiry' ? SELF_HEALING_CANNOT_FIX_COOLDOWN_MS : 60_000;
+			vi.spyOn(Date, 'now').mockReturnValue(result.completedAt.getTime() + elapsed);
+
+			if (scenario === 'new publication') {
+				const versionId = randomUUID();
+				await Container.get(WorkflowHistoryRepository).insert({
+					workflowId: original.id,
+					versionId,
+					nodes: original.nodes,
+					connections: original.connections,
+					authors: 'Test',
+				});
+				await workflows.update(original.id, { versionId, activeVersionId: versionId, pinData: {} });
+				await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(
+					original.id,
+					[
+						{
+							nodeId: original.nodes[0].id,
+							versionId,
+							status: 'activated',
+							triggerKind: 'persisted',
+							errorMessage: null,
+						},
+					],
+				);
+			}
+
+			const response = await Container.get(SelfHealingInvestigationService).start(
+				await nextFailure(input),
+			);
+
+			if (scenario === 'before expiry') {
+				expect(response).toBeNull();
+				expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+			} else {
+				expect(response).toMatchObject({ kind: 'investigation' });
+				expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
+			}
+		},
+	);
+
+	it('admits only one concurrent investigation when the cooldown expires', async () => {
+		const { input, result } = await fixture('could_not_fix');
+		const producer = Container.get(SelfHealingInvestigationService);
+		const first = await nextFailure(input);
+		const second = await nextFailure(input);
+		vi.spyOn(Date, 'now').mockReturnValue(
+			result.completedAt.getTime() + SELF_HEALING_CANNOT_FIX_COOLDOWN_MS,
+		);
+
+		const admitted = await Promise.all([producer.start(first), producer.start(second)]);
+
+		expect(admitted[0]).toMatchObject({ kind: 'investigation' });
+		expect(admitted[1]).toEqual(admitted[0]);
+		expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
+		expect(await investigations.count()).toBe(2);
+	});
+
+	it('retains the cooldown after execution pruning and same-version republication', async () => {
+		const { input, result, user, original } = await fixture('could_not_fix');
+		await Container.get(ExecutionRepository).delete(input.executionId);
+		await Container.get(WorkflowService).deactivateWorkflow(user, original.id);
+		await Container.get(WorkflowService).activateWorkflow(user, original.id, {
+			versionId: original.versionId,
+		});
+		// The publication worker is mocked in this suite. Settle its outbox record.
+		await Container.get(WorkflowPublicationOutboxRepository).update(
+			{ workflowId: original.id },
+			{ status: 'completed' },
+		);
+
+		await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(
+			original.id,
+			[
+				{
+					nodeId: original.nodes[0].id,
+					versionId: original.versionId,
+					status: 'activated',
+					triggerKind: 'persisted',
+					errorMessage: null,
+				},
+			],
+		);
+
+		await expect(
+			Container.get(SelfHealingInvestigationService).start(await nextFailure(input)),
+		).resolves.toBeNull();
+		expect(await results.findOneByOrFail({ id: result.id })).toEqual(result);
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('skips a cooldown failure with a saved draft before capturing a baseline', async () => {
+		const { input, original } = await fixture('could_not_fix');
+		const versionId = randomUUID();
+		await Container.get(WorkflowHistoryRepository).insert({
+			workflowId: original.id,
+			versionId,
+			nodes: original.nodes,
+			connections: original.connections,
+			authors: 'Test',
+		});
+		await workflows.update(original.id, { versionId });
+		const captureBaseline = vi.spyOn(suggestionService, 'captureBaseline');
+
+		await expect(
+			Container.get(SelfHealingInvestigationService).start(await nextFailure(input)),
+		).resolves.toBeNull();
+		expect(captureBaseline).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
 	it.each(['could_not_fix', 'fix_ready'] as const)(
-		'keeps only informational results open after a different version is published: %s',
+		'admits a new failure after a different version is published: %s',
 		async (outcome) => {
 			const { input, result, original } = await fixture(outcome, outcome === 'fix_ready');
 			const versionId = randomUUID();
@@ -350,6 +535,10 @@ describe('investigation eligibility after a result', () => {
 				authors: 'Test',
 			});
 			await workflows.update(original.id, { versionId, activeVersionId: versionId });
+			const producer = Container.get(SelfHealingInvestigationService);
+			await expect(producer.start(await nextFailure(input))).rejects.toThrow('fully published');
+			expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+
 			await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(
 				original.id,
 				[
@@ -366,11 +555,9 @@ describe('investigation eligibility after a result', () => {
 			const failure = await nextFailure(input);
 			const response = await Container.get(SelfHealingInvestigationService).start(failure);
 
-			if (outcome === 'could_not_fix') {
-				expect(response).toEqual({ kind: 'result', resultId: result.id });
-				expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
-			} else {
-				expect(response?.kind).toBe('investigation');
+			expect(response?.kind).toBe('investigation');
+			expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
+			if (outcome === 'fix_ready') {
 				const suggestion = await suggestions.findOneByOrFail({ id: result.suggestionId! });
 				expect(suggestion.closedReason).toBe('outdated');
 			}
@@ -417,6 +604,7 @@ describe('investigation eligibility after a result', () => {
 		const { input, user, project, original, result } = await fixture('could_not_fix');
 		const configurationService = Container.get(SelfHealingConfigurationService);
 		const producer = Container.get(SelfHealingInvestigationService);
+		const cooldown = vi.spyOn(results, 'hasRecentCannotFixForActiveVersion');
 
 		await configurationService.setEnabled(user, project.id, input.configurationId, false);
 		await configurationService.setEnabled(user, project.id, input.configurationId, true);
@@ -433,10 +621,10 @@ describe('investigation eligibility after a result', () => {
 		);
 		const failureAfterEdit = await nextFailure(input);
 
-		await expect(producer.start(failureAfterEdit)).resolves.toEqual({
-			kind: 'result',
-			resultId: result.id,
-		});
+		await expect(producer.start(failureAfterEdit)).resolves.toBeNull();
+		// A null result also means no enabled configuration. Confirm that the cooldown skipped it.
+		expect(cooldown).toHaveBeenCalledTimes(1);
+		await expect(cooldown.mock.results[0].value).resolves.toBe(true);
 
 		// The all-workflows configuration now covers this workflow instead.
 		const otherWorkflow = await createWorkflowWithHistory({}, user);
@@ -454,10 +642,9 @@ describe('investigation eligibility after a result', () => {
 		await createConfiguration(project.id, user.id);
 		const failureAfterReplacement = await nextFailure(input);
 
-		await expect(producer.start(failureAfterReplacement)).resolves.toEqual({
-			kind: 'result',
-			resultId: result.id,
-		});
+		await expect(producer.start(failureAfterReplacement)).resolves.toBeNull();
+		expect(cooldown).toHaveBeenCalledTimes(2);
+		await expect(cooldown.mock.results[1].value).resolves.toBe(true);
 
 		await configurationService.remove(project.id, input.configurationId);
 
@@ -685,7 +872,7 @@ it.each([
 			resultId: result.id,
 			outcome,
 			report: input.report,
-			reviewState: 'open',
+			reviewState: outcome === 'could_not_fix' ? 'closed' : 'open',
 			usage: input.usage,
 			execution: { status: 'available', id: input.executionId },
 		});
@@ -802,27 +989,44 @@ it('keeps the report and unknown usage after the execution is removed', async ()
 	});
 });
 
-it.each(['needs_you', 'could_not_fix'] as const)(
-	'dismisses a %s result once for assigned editors without changing its workflow',
-	async (outcome) => {
+it.each([
+	['needs_you', 'dismissed'],
+	['could_not_fix', 'closed'],
+] as const)(
+	'handles dismissal of %s without changing its workflow',
+	async (outcome, reviewState) => {
 		const { user, project, original, result, url } = await fixture(outcome);
 		const editor = await createUser();
 		await addReviewer(result.configurationId, editor.id);
 		await shareWorkflowWithUsers(original, [editor]);
 		const response = await testServer.authAgentFor(user).post(`${url}/dismiss`);
 		expect(response.status).toBe(200);
-		expect(response.body.data.reviewState).toBe('dismissed');
+		expect(response.body.data.reviewState).toBe(reviewState);
 		const firstDismissal = await results.findOneByOrFail({ id: result.id });
-		await expect(
-			service.dismiss(editor, project.id, original.id, result.id),
-		).rejects.toBeInstanceOf(ConflictError);
+		if (outcome === 'could_not_fix') {
+			expect(firstDismissal).toEqual(result);
+			expect(firstDismissal.dismissedAt).toBeNull();
+			expect(firstDismissal.dismissedById).toBeNull();
+			await service.dismiss(editor, project.id, original.id, result.id);
+		} else {
+			await expect(
+				service.dismiss(editor, project.id, original.id, result.id),
+			).rejects.toBeInstanceOf(ConflictError);
+		}
 		expect(await results.findOneByOrFail({ id: result.id })).toEqual(firstDismissal);
 		expect((await service.getDetail(editor, project.id, original.id, result.id)).reviewState).toBe(
-			'dismissed',
+			reviewState,
 		);
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	},
 );
+
+it('returns a recorded dismissal of a could_not_fix result as dismissed', async () => {
+	const { user, result, getDetail } = await fixture('could_not_fix');
+	await results.update(result.id, { dismissedAt: new Date(), dismissedById: user.id });
+
+	expect(await getDetail()).toMatchObject({ reviewState: 'dismissed', dismissedById: user.id });
+});
 
 it('rolls back shared dismissal when result storage fails', async () => {
 	const { user, project, original, result } = await fixture('needs_you', true);
@@ -1001,7 +1205,6 @@ it.each([
 	{ outcome: 'fix_ready', withSuggestion: true, action: 'apply', reviewState: 'applied' },
 	{ outcome: 'needs_you', withSuggestion: true, action: 'apply', reviewState: 'applied' },
 	{ outcome: 'needs_you', withSuggestion: false, action: 'dismiss', reviewState: 'dismissed' },
-	{ outcome: 'could_not_fix', withSuggestion: false, action: 'dismiss', reviewState: 'dismissed' },
 ] as const)(
 	'closes $outcome with proposal=$withSuggestion through $action as $reviewState',
 	async ({ outcome, withSuggestion, action, reviewState }) => {
@@ -1069,7 +1272,6 @@ it.each([
 	['fix_ready', true, 'apply'],
 	['needs_you', true, 'apply'],
 	['needs_you', false, 'dismiss'],
-	['could_not_fix', false, 'dismiss'],
 ] as const)(
 	'rejects every action after %s with proposal=%s closes through %s',
 	async (outcome, withSuggestion, firstAction) => {
@@ -1453,12 +1655,13 @@ describe('Inbox source reads', () => {
 		'lists one compact row for %s with suggestion=%s',
 		async (outcome, withSuggestion) => {
 			const { user, original, result, input } = await fixture(outcome, withSuggestion);
-			const rows = await service.listForInbox(user, { state: 'open', limit: 10 });
+			const state = outcome === 'could_not_fix' ? 'closed' : 'open';
+			const rows = await service.listForInbox(user, { state, limit: 10 });
 			expect(rows).toEqual([
 				{
 					type: 'self_healing_result',
 					id: result.id,
-					state: 'open',
+					state,
 					projectId: result.projectId,
 					workflowId: original.id,
 					workflowName: original.name,
@@ -1469,7 +1672,15 @@ describe('Inbox source reads', () => {
 					completedAt: result.completedAt.toISOString(),
 				},
 			]);
-			expect(await service.countForInbox(user)).toEqual({ open: 1, closed: 0 });
+			expect(await service.countForInbox(user)).toEqual(
+				state === 'closed' ? { open: 0, closed: 1 } : { open: 1, closed: 0 },
+			);
+			expect(
+				await service.listForInbox(user, {
+					state: state === 'closed' ? 'open' : 'closed',
+					limit: 10,
+				}),
+			).toEqual([]);
 		},
 	);
 
@@ -1654,6 +1865,136 @@ describe('Inbox source reads', () => {
 });
 
 describe('configuration lifecycle', () => {
+	it('pauses admission without reviewers and preserves the report for a replacement reviewer', async () => {
+		const { user, project, original, input, result } = await fixture('could_not_fix');
+		const configurations = Container.get(SelfHealingConfigurationService);
+		const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await configurations.save(
+			user,
+			project.id,
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: [reviewer.id],
+			},
+			result.configurationId,
+		);
+		await Container.get(UserRepository).delete(reviewer.id);
+		const nextExecution = await createExecution(
+			{ status: 'error', mode: 'trigger', workflowVersionId: original.versionId },
+			original,
+		);
+		const producer = Container.get(SelfHealingInvestigationService);
+		const failure = { ...input, executionId: nextExecution.id };
+		vi.spyOn(Date, 'now').mockReturnValue(
+			result.completedAt.getTime() + SELF_HEALING_CANNOT_FIX_COOLDOWN_MS + 1,
+		);
+
+		expect(await producer.start(failure)).toBeNull();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+		expect(await configurations.get(project.id, result.configurationId)).toMatchObject({
+			enabled: false,
+			enabledById: user.id,
+			reviewerIds: [],
+		});
+		expect(await results.findOneBy({ id: result.id })).not.toBeNull();
+
+		await configurations.save(
+			user,
+			project.id,
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: [user.id],
+			},
+			result.configurationId,
+		);
+		expect(await service.getDetail(user, project.id, original.id, result.id)).toMatchObject({
+			resultId: result.id,
+		});
+		await configurations.setEnabled(user, project.id, result.configurationId, true);
+		expect(await producer.start(failure)).toMatchObject({ kind: 'investigation' });
+		expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
+	});
+
+	it('pauses when the sole reviewer is deleted between admission and claim', async () => {
+		const { user, project, original, input } = await prepareFixture();
+		const configurations = Container.get(SelfHealingConfigurationService);
+		const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await configurations.save(
+			user,
+			project.id,
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: [reviewer.id],
+			},
+			input.configurationId,
+		);
+		const references = Container.get(SelfHealingExecutionReferenceService);
+		const validateFailure = references.validateFailure.bind(references);
+		vi.spyOn(references, 'validateFailure').mockImplementationOnce(async (...args) => {
+			await validateFailure(...args);
+			await Container.get(UserRepository).delete(reviewer.id);
+		});
+
+		expect(await Container.get(SelfHealingInvestigationService).start(input)).toBeNull();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+		expect(await investigations.getForExecution(original.id, input.executionId)).toBeNull();
+		expect(await configurations.get(project.id, input.configurationId)).toMatchObject({
+			enabled: false,
+			enabledById: user.id,
+		});
+	});
+
+	it.each([false, true])(
+		'finishes without a result after reviewer deletion with suggestion=%s',
+		async (withSuggestion) => {
+			const { user, project, original, investigation, completion } = await prepareInvestigation(
+				withSuggestion ? 'fix_ready' : 'could_not_fix',
+				withSuggestion,
+			);
+			const configurations = Container.get(SelfHealingConfigurationService);
+			const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
+			await configurations.save(
+				user,
+				project.id,
+				{
+					scope: 'all',
+					workflowIds: [],
+					reviewerIds: [reviewer.id],
+				},
+				investigation.configurationId,
+			);
+			if (withSuggestion) {
+				const prepare = suggestionService.prepareSuggestion.bind(suggestionService);
+				vi.spyOn(suggestionService, 'prepareSuggestion').mockImplementationOnce(async (...args) => {
+					const prepared = await prepare(...args);
+					await Container.get(UserRepository).delete(reviewer.id);
+					return prepared;
+				});
+			} else {
+				await Container.get(UserRepository).delete(reviewer.id);
+			}
+
+			expect(
+				await service.complete({ investigationId: investigation.id, ...completion }),
+			).toBeNull();
+			expect(await investigations.findInvestigation(investigation.id)).toMatchObject({
+				finishedAt: expect.any(Date),
+				resultId: null,
+			});
+			expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
+			expect(await results.count()).toBe(0);
+			expect(await suggestions.getPendingForWorkflow(original.id)).toBeNull();
+			expect(await configurations.get(project.id, investigation.configurationId)).toMatchObject({
+				enabled: false,
+				enabledById: user.id,
+				reviewerIds: [],
+			});
+		},
+	);
+
 	it('keeps the source configuration enabled when a workflow moves during a run', async () => {
 		const { input, user, project, original } = await prepareFixture('could_not_fix');
 		const releaseRun = createDeferredPromise();
@@ -1666,7 +2007,12 @@ describe('configuration lifecycle', () => {
 				runId: lifecycle.runId,
 				status: 'completed',
 				finishReason: 'stop',
-				output: { outcome: 'could_not_fix', summary: 'No fix found.', report: 'No fix found.' },
+				output: {
+					outcome: 'could_not_fix',
+					summary: 'No fix found.',
+					report: 'No fix found.',
+					candidateFilePath: null,
+				},
 				usage: { credits: null, turns: null, durationSeconds: null },
 			};
 			await lifecycle.onComplete(run, new AbortController().signal);
@@ -1693,7 +2039,7 @@ describe('configuration lifecycle', () => {
 		).toMatchObject({ enabled: true, enabledById: user.id });
 	});
 
-	it('accepts an investigation if the configuration resumes before completion', async () => {
+	it('can accept late output after re-enabling if cancellation misses the run', async () => {
 		const { user, project, original, investigation, completion } = await prepareInvestigation();
 		const configurations = Container.get(SelfHealingConfigurationService);
 		await configurations.setEnabled(user, project.id, investigation.configurationId, false);
@@ -1705,6 +2051,28 @@ describe('configuration lifecycle', () => {
 		expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
 		expect(await suggestions.getPendingForWorkflow(original.id)).not.toBeNull();
 		expect(await results.count()).toBe(1);
+	});
+
+	it('rejects canceled output after re-enabling the configuration', async () => {
+		const { user, project, original, investigation, completion } = await prepareInvestigation();
+		const configurations = Container.get(SelfHealingConfigurationService);
+		const abort = new AbortController();
+		runtime.routeCancelRun.mockImplementationOnce(async () => abort.abort());
+
+		await configurations.setEnabled(user, project.id, investigation.configurationId, false);
+		await configurations.setEnabled(user, project.id, investigation.configurationId, true);
+
+		expect(runtime.routeCancelRun).toHaveBeenCalledExactlyOnceWith(investigation.threadId);
+		await expect(
+			service.complete({
+				investigationId: investigation.id,
+				...completion,
+				signal: abort.signal,
+			}),
+		).rejects.toThrow();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+		expect(await suggestions.getPendingForWorkflow(original.id)).toBeNull();
+		expect(await results.count()).toBe(0);
 	});
 
 	it.each(['pause', 'remove'] as const)(
@@ -1742,7 +2110,7 @@ describe('configuration lifecycle', () => {
 			investigation.configurationId,
 		);
 		expect(await investigations.findInvestigation(investigation.id)).toBeNull();
-		expect(runtime.routeCancelRun).not.toHaveBeenCalled();
+		expect(runtime.routeCancelRun).toHaveBeenCalledExactlyOnceWith(investigation.threadId);
 		expect(await service.complete({ investigationId: investigation.id, ...completion })).toBeNull();
 		expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
 		expect(await suggestions.getPendingForWorkflow(original.id)).toBeNull();
@@ -1763,6 +2131,7 @@ describe('configuration lifecycle', () => {
 		expect(await service.listForInbox(user, { state: 'open', limit: 10 })).toEqual([]);
 		await testServer.authAgentFor(user).get(url).expect(404);
 		await testServer.authAgentFor(user).post(`${url}/apply`).expect(404);
+		expect(runtime.routeCancelRun).not.toHaveBeenCalled();
 	});
 
 	it('keeps independent suggestions when their result is deleted', async () => {

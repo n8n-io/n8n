@@ -1,7 +1,9 @@
 import type {
 	SaveSelfHealingConfigurationDto,
 	SelfHealingConfigurationOptions,
+	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { RoleService } from '@n8n/backend-services';
 import {
 	SharedWorkflowRepository,
@@ -10,7 +12,7 @@ import {
 	type OperationContext,
 	type User,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -18,6 +20,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { SelfHealingConfiguration } from './database/self-healing-configuration.entity';
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
+import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 
 @Service()
 export class SelfHealingConfigurationService {
@@ -28,6 +31,8 @@ export class SelfHealingConfigurationService {
 		private readonly users: UserRepository,
 		private readonly roles: RoleService,
 		private readonly transactionRunner: TransactionRunner,
+		private readonly investigations: SelfHealingInvestigationRepository,
+		private readonly logger: Logger,
 	) {}
 
 	async afterWorkflowsTransferred(workflowIds: string[]): Promise<void> {
@@ -45,19 +50,9 @@ export class SelfHealingConfigurationService {
 	}
 
 	async getConfigurationChoices(projectId: string): Promise<SelfHealingConfigurationOptions> {
-		const scopes = ['workflow:read', 'workflow:update'] as const;
-		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
-			this.roles.rolesWithScope('project', [...scopes]),
-			this.roles.rolesWithScope('global', [...scopes]),
-		]);
-
 		const [workflows, reviewers] = await Promise.all([
 			this.configurations.listProjectWorkflows(projectId),
-			this.users.findEligibleByProjectOrGlobalRoles({
-				projectId,
-				projectRoleSlugs,
-				globalRoleSlugs,
-			}),
+			this.findEligibleReviewers(projectId),
 		]);
 
 		return {
@@ -71,11 +66,16 @@ export class SelfHealingConfigurationService {
 		};
 	}
 
-	async save(user: User, projectId: string, input: SaveSelfHealingConfigurationDto, id?: number) {
+	async save(
+		user: User,
+		projectId: string,
+		input: SaveSelfHealingConfigurationDto | UpdateSelfHealingConfigurationDto,
+		id?: number,
+	) {
 		await this.validateSelections(projectId, input);
 
 		let canEnable = false;
-		if (input.enabled) {
+		if (id === undefined && 'enabled' in input && input.enabled) {
 			canEnable = await this.canEnable(user, projectId);
 		}
 
@@ -86,11 +86,11 @@ export class SelfHealingConfigurationService {
 				configuration.projectId = projectId;
 				configuration.enabled = false;
 				configuration.enabledById = null;
+				this.changeEnabled(configuration, 'enabled' in input && input.enabled, user, canEnable);
 			} else {
 				configuration = await this.requireConfiguration(id, projectId, ctx);
 			}
 
-			this.changeEnabled(configuration, input.enabled, user, canEnable);
 			configuration.scope = input.scope;
 
 			await this.configurations.saveConfiguration(configuration, ctx);
@@ -107,16 +107,23 @@ export class SelfHealingConfigurationService {
 			canEnable = await this.canEnable(user, projectId);
 		}
 
-		await this.transactionRunner.run({}, async (ctx) => {
+		const threadIds = await this.transactionRunner.run({}, async (ctx) => {
 			const configuration = await this.requireConfiguration(id, projectId, ctx);
+			if (enabled && !(await this.configurations.hasReviewers(id, ctx))) {
+				throw new BadRequestError('Select at least one reviewer before enabling self-healing.');
+			}
 			this.changeEnabled(configuration, enabled, user, canEnable);
 			await this.configurations.saveConfiguration(configuration, ctx);
+			return enabled
+				? []
+				: await this.investigations.getUnfinishedThreadIdsForConfiguration(id, ctx);
 		});
+		await this.cancelInvestigations(threadIds);
 
 		return await this.get(projectId, id);
 	}
 
-	private async validateSelections(projectId: string, input: SaveSelfHealingConfigurationDto) {
+	private async validateSelections(projectId: string, input: UpdateSelfHealingConfigurationDto) {
 		if (input.scope === 'selected' && input.workflowIds.length === 0) {
 			throw new BadRequestError('Select at least one workflow.');
 		}
@@ -126,16 +133,36 @@ export class SelfHealingConfigurationService {
 			);
 		}
 
-		const options = await this.getConfigurationChoices(projectId);
-		const projectWorkflowIds = new Set(options.workflows.map(({ id }) => id));
-		if (input.workflowIds.some((id) => !projectWorkflowIds.has(id))) {
-			throw new BadRequestError('Select workflows from this project.');
+		if (input.scope === 'selected') {
+			const workflows = await this.configurations.listProjectWorkflows(
+				projectId,
+				input.workflowIds,
+			);
+			const projectWorkflowIds = new Set(workflows.map(({ id }) => id));
+			if (input.workflowIds.some((id) => !projectWorkflowIds.has(id))) {
+				throw new BadRequestError('Select workflows from this project.');
+			}
 		}
 
-		const eligibleReviewerIds = new Set(options.reviewers.map(({ id }) => id));
+		const reviewers = await this.findEligibleReviewers(projectId, input.reviewerIds);
+		const eligibleReviewerIds = new Set(reviewers.map(({ id }) => id));
 		if (input.reviewerIds.some((id) => !eligibleReviewerIds.has(id))) {
 			throw new BadRequestError('Select reviewers with workflow edit access to this project.');
 		}
+	}
+
+	private async findEligibleReviewers(projectId: string, userIds?: string[]) {
+		const scopes = ['workflow:read', 'workflow:update'] as const;
+		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
+			this.roles.rolesWithScope('project', [...scopes]),
+			this.roles.rolesWithScope('global', [...scopes]),
+		]);
+		return await this.users.findEligibleByProjectOrGlobalRoles({
+			projectId,
+			projectRoleSlugs,
+			globalRoleSlugs,
+			userIds,
+		});
 	}
 
 	private async canEnable(user: User, projectId: string) {
@@ -165,10 +192,26 @@ export class SelfHealingConfigurationService {
 	}
 
 	async remove(projectId: string, id: number) {
-		await this.transactionRunner.run({}, async (ctx) => {
+		const threadIds = await this.transactionRunner.run({}, async (ctx) => {
 			await this.requireConfiguration(id, projectId, ctx);
+			const unfinished = await this.investigations.getUnfinishedThreadIdsForConfiguration(id, ctx);
 			await this.configurations.deleteConfiguration(id, ctx);
+			return unfinished;
 		});
+		await this.cancelInvestigations(threadIds);
+	}
+
+	/** Request cancellation only after the configuration transaction commits. */
+	private async cancelInvestigations(threadIds: string[]) {
+		for (const threadId of threadIds) {
+			try {
+				// Selection cleanup and saved reviews do not need the Assistant runtime.
+				const { InstanceAiService } = await import('../instance-ai.service.js');
+				await Container.get(InstanceAiService).routeCancelRun(threadId);
+			} catch (error) {
+				this.logger.warn('Could not cancel a self-healing investigation.', { threadId, error });
+			}
+		}
 	}
 
 	private async requireConfiguration(id: number, projectId: string, ctx: OperationContext) {
@@ -193,6 +236,12 @@ export class SelfHealingConfigurationService {
 		ctx: OperationContext,
 	) {
 		if (!configuration.enabled) return null;
+
+		if (!(await this.configurations.hasReviewers(configuration.id, ctx))) {
+			configuration.enabled = false;
+			await this.configurations.saveConfiguration(configuration, ctx);
+			return null;
+		}
 
 		if (configuration.enabledById) {
 			const user = await this.users.findByIdWithRole(configuration.enabledById, ctx);

@@ -48,13 +48,13 @@ export type SelfHealingResultInput = {
 };
 
 export function getSelfHealingReviewState(
-	result: Pick<SelfHealingResult, 'dismissedAt'>,
+	result: Pick<SelfHealingResult, 'dismissedAt' | 'outcome'>,
 	suggestion: Pick<WorkflowSuggestionProposalDetail, 'closedReason'> | null,
 ): SelfHealingResultDetail['reviewState'] {
 	if (suggestion?.closedReason === 'applied') return 'applied';
 	if (result.dismissedAt) return 'dismissed';
-	if (suggestion?.closedReason) return suggestion.closedReason;
-	return 'open';
+	if (result.outcome === 'could_not_fix') return 'closed';
+	return suggestion?.closedReason ?? 'open';
 }
 
 @Service()
@@ -376,7 +376,7 @@ export class SelfHealingResultService {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
 
-			if (result.outcome !== 'fix_ready') {
+			if (result.outcome === 'needs_you') {
 				const dismissed = await this.results.dismissResult(result.id, user.id, ctx);
 				if (!dismissed) return 'already_closed';
 			}

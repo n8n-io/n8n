@@ -132,6 +132,14 @@ describe('AgentExporter', () => {
 		);
 	});
 
+	it('rejects an instance agent', async () => {
+		const { agent, definitions, exporter } = setup();
+		Object.assign(agent, { scope: 'instance', projectId: null });
+		await expect(exporter.prepare(agent)).rejects.toThrow('Only project agents can be exported');
+		expect(definitions.readDraft).not.toHaveBeenCalled();
+		expect(definitions.readVersion).not.toHaveBeenCalled();
+	});
+
 	it('propagates draft revision conflicts', async () => {
 		const { agent, definitions, exporter } = setup();
 		const conflict = new ConflictError('Agent was modified concurrently; please retry');
@@ -259,7 +267,7 @@ describe('AgentExporter', () => {
 		expect(JSON.parse(writer.files[1].content)).toEqual(expected.metadata);
 	});
 
-	it('keeps authored bytes and hashes stable when only publication metadata changes', async () => {
+	it('keeps authored bytes and hashes stable when publication metadata changes', async () => {
 		const { agent, exporter } = setup();
 		const before = (await exporter.prepare(agent))!;
 		agent.versionId = 'new-draft-version';

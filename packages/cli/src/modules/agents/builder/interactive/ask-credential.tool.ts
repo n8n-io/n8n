@@ -11,10 +11,11 @@ import {
 	type AskCredentialInput,
 	type CredentialResumeData,
 	type CredentialSuspendPayload,
+	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../builder-session';
 import type { BuilderTrackFn } from '../builder-config-telemetry';
 import type { CredentialSetupDeps } from './setup-tool.types';
 
@@ -47,7 +48,7 @@ function withNodeCredentialMap(
 
 /** Existing credentials of the requested type — used both for the suspend card and to resolve a display name on resume. */
 async function listExistingCredentials(
-	credentialService: InstanceAiCredentialService,
+	credentialService: BuilderCredentialService,
 	projectId: string,
 	credentialType: string,
 ): Promise<Array<Pick<CredentialListItem, 'id' | 'name'>>> {
@@ -59,7 +60,7 @@ async function listExistingCredentials(
 async function resolveResume(
 	input: AskCredentialInput,
 	resumeData: CredentialResumeData,
-	credentialService: InstanceAiCredentialService,
+	credentialService: BuilderCredentialService,
 	projectId: string,
 	track: BuilderTrackFn,
 ): Promise<AskCredentialToolResult> {
@@ -161,11 +162,12 @@ async function resolveCredentialSelection(
 
 export function buildAskCredentialTool(deps: CredentialSetupDeps): BuiltTool {
 	return new Tool(ASK_CREDENTIAL_TOOL_NAME)
+		.legacyNames(...getLegacyBuilderToolNames(ASK_CREDENTIAL_TOOL_NAME))
 		.description(
 			'Show a credential picker card in the chat UI and suspend until the user selects ' +
 				'a credential. Call ONCE per credential slot. For an addition to an existing agent, ' +
-				'call it before the write_config / patch_config that introduces the tool. Never call ' +
-				'this during an initial build — follow the Initial Build rules in your system prompt; ' +
+				'call it before the agent_builder_write_config / agent_builder_patch_config that introduces the tool. Never call ' +
+				'this during an initial build — follow the Initial Build rules in the agent-builder skill; ' +
 				'use it for additions to an existing agent and follow-up setup turns. ' +
 				'Returns { credentialId, credentialName, credentials } on success ' +
 				'or { skipped: true } if the user skips credential setup so the tool can be added ' +
@@ -191,9 +193,10 @@ export function buildAskCredentialTool(deps: CredentialSetupDeps): BuiltTool {
 
 export function buildAskEmbeddingCredentialTool(deps: AskEmbeddingCredentialToolDeps): BuiltTool {
 	return new Tool(ASK_EMBEDDING_CREDENTIAL_TOOL_NAME)
+		.legacyNames(...getLegacyBuilderToolNames(ASK_EMBEDDING_CREDENTIAL_TOOL_NAME))
 		.description(
 			'Resolve the OpenAI embedding credential for Episodic Memory. Tries to resolve n8n managed credential. Otherwise behaves ' +
-				'like ask_credential: show a credential picker card in the chat UI and suspend until ' +
+				'like agent_builder_ask_credential: show a credential picker card in the chat UI and suspend until ' +
 				'the user selects a credential. Returns { credentialId, credentialName, credentials } ' +
 				'on success or { skipped: true } if the user skips credential setup.',
 		)

@@ -8,6 +8,7 @@ import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
+import { SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiModule } from '../module.descriptor';
@@ -66,7 +67,6 @@ function setGlobalScopes(scopes: Scope[]) {
 const instanceAiModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
 	mcpConnectionsAvailable: true,
-	localGatewayDisabled: false,
 	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
@@ -126,7 +126,7 @@ describe('InstanceAiModule legacy route redirects', () => {
 	});
 });
 
-describe('self-healing configuration access', () => {
+describe.each(['initial navigation', 'from another page'])('self-healing access %s', (entry) => {
 	it.each([
 		{ enabled: false, canUpdate: true, allowed: false },
 		{ enabled: true, canUpdate: false, allowed: false },
@@ -150,12 +150,20 @@ describe('self-healing configuration access', () => {
 				},
 			];
 			const router = createTestRouter();
-			await router.push('/home');
+			if (entry === 'from another page') {
+				await router.push('/assistant');
+			}
 			await router.push('/projects/project/settings/self-healing/new');
 
 			expect(router.currentRoute.value.name).toBe(
-				allowed ? 'self-healing-configuration' : VIEWS.HOMEPAGE,
+				allowed ? SELF_HEALING_CONFIGURATION_VIEW : VIEWS.HOMEPAGE,
 			);
+			if (allowed) {
+				expect(router.currentRoute.value.params).toEqual({
+					projectId: 'project',
+					configurationId: 'new',
+				});
+			}
 		},
 	);
 });

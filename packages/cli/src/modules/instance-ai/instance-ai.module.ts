@@ -6,11 +6,15 @@ import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'instance-ai', instanceTypes: ['main', 'worker', 'webhook'] })
 export class InstanceAiModule implements ModuleInterface {
+	private isMain(): boolean {
+		return Container.get(InstanceSettings).instanceType === 'main';
+	}
+
 	async init() {
 		await import('./self-healing/self-healing-trigger.service.js');
 
 		// Workers and webhook processes only relay eligible failures to main.
-		if (Container.get(InstanceSettings).instanceType !== 'main') return;
+		if (!this.isMain()) return;
 
 		const { WorkflowMutationHooksProxy } = await import('@n8n/backend-services');
 		const { SelfHealingConfigurationService } = await import(
@@ -47,6 +51,9 @@ export class InstanceAiModule implements ModuleInterface {
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).evalInstance) {
+			await import('./eval/eval.controller.js');
+		}
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
 			await import('./self-healing/self-healing-configurations.controller.js');
@@ -99,7 +106,7 @@ export class InstanceAiModule implements ModuleInterface {
 	}
 
 	async systemTasks() {
-		if (Container.get(InstanceSettings).instanceType !== 'main') return [];
+		if (!this.isMain()) return [];
 
 		const { InstanceAiConfig } = await import('@n8n/config');
 		const { SelfHealingReconciliationTask } = await import(
@@ -114,7 +121,7 @@ export class InstanceAiModule implements ModuleInterface {
 	}
 
 	async settings() {
-		if (Container.get(InstanceSettings).instanceType !== 'main') return {};
+		if (!this.isMain()) return {};
 
 		const { GlobalConfig } = await import('@n8n/config');
 		const { InstanceAiService } = await import('./instance-ai.service.js');
@@ -124,14 +131,12 @@ export class InstanceAiModule implements ModuleInterface {
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = settingsService.isAgentEnabled();
 		const mcpConnectionsAvailable = service.areMcpConnectionsAvailable();
-		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
 		const browserUseEnabled = settingsService.isBrowserUseEnabled();
 		const sandboxStatus = settingsService.getSandboxStatus();
 		const setupCompleted = await settingsService.isSetupCompleted();
 		return {
 			enabled,
 			mcpConnectionsAvailable,
-			localGatewayDisabled,
 			browserUseEnabled,
 			proxyEnabled: service.isProxyEnabled(),
 			cloudManaged: globalConfig.deployment.type === 'cloud',
@@ -221,7 +226,7 @@ export class InstanceAiModule implements ModuleInterface {
 
 	@OnShutdown()
 	async shutdown() {
-		if (Container.get(InstanceSettings).instanceType !== 'main') return;
+		if (!this.isMain()) return;
 
 		const { InstanceAiService } = await import('./instance-ai.service.js');
 		await Container.get(InstanceAiService).shutdown();

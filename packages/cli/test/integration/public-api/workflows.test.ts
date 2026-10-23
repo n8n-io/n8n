@@ -2833,6 +2833,15 @@ describe('POST /workflows redaction floor enforcement', () => {
 		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
 	});
 
+	test('persists and returns the setting that stops redacting calling executions', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'all', redactCallerExecutions: false });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.redactCallerExecutions).toBe(false);
+		const saved = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(saved?.settings?.redactCallerExecutions).toBe(false);
+	});
+
 	test('reports the floor violation even when the payload is also otherwise invalid', async () => {
 		const response = await authOwnerAgent.post('/workflows').send({
 			name: 'redaction-floor-precedence',
@@ -2914,6 +2923,20 @@ describe('PUT /workflows/:id redaction floor enforcement', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(await savedRedactionPolicy(workflow.id)).toBe('all');
+	});
+
+	test('persists and returns the setting that stops redacting calling executions', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, {
+			redactionPolicy: 'all',
+			redactCallerExecutions: false,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.redactCallerExecutions).toBe(false);
+		const saved = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(saved?.settings?.redactCallerExecutions).toBe(false);
 	});
 });
 

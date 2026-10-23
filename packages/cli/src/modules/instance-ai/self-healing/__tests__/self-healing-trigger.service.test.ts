@@ -4,6 +4,7 @@ import { GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import { SharedWorkflowRepository, type Project } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData, type IRun, type IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -59,12 +60,74 @@ describe('SelfHealingTriggerService', () => {
 
 			await service.onWorkflowExecuteAfter(ctx);
 
-			expect(investigations.start).toHaveBeenCalledWith({
-				workflowId: 'workflow',
-				executionId: '42',
-				projectId: 'project',
+			await vi.waitFor(() => {
+				expect(investigations.start).toHaveBeenCalledWith({
+					workflowId: 'workflow',
+					executionId: '42',
+					projectId: 'project',
+				});
 			});
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		},
+	);
+
+	it('returns on main while the owner lookup is pending', async () => {
+		const project = createDeferredPromise<Project | undefined>();
+		ownership.getWorkflowOwningProject.mockReturnValueOnce(project.promise);
+
+		await expect(service.onWorkflowExecuteAfter(ctx)).resolves.toBeUndefined();
+
+		expect(ownership.getWorkflowOwningProject).toHaveBeenCalledWith('workflow');
+		expect(investigations.start).not.toHaveBeenCalled();
+		project.resolve(undefined);
+		await project.promise;
+	});
+
+	it('logs an admission rejection after the main hook returns', async () => {
+		const admissionStarted = createDeferredPromise();
+		const admission = createDeferredPromise<null>();
+		investigations.start.mockImplementationOnce(async () => {
+			admissionStarted.resolve();
+			return await admission.promise;
+		});
+
+		await expect(service.onWorkflowExecuteAfter(ctx)).resolves.toBeUndefined();
+		await admissionStarted.promise;
+		expect(logger.warn).not.toHaveBeenCalled();
+
+		const error = new Error('Admission unavailable');
+		admission.reject(error);
+
+		await vi.waitFor(() => {
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not start self-healing after a production failure.',
+				{ workflowId: 'workflow', executionId: '42', error },
+			);
+		});
+	});
+
+	it.each(['worker', 'webhook'] as const)(
+		'waits for relay publication on %s',
+		async (instanceType) => {
+			Object.assign(instanceSettings, { instanceType });
+			const publication = createDeferredPromise();
+			publisher.publishCommand.mockReturnValueOnce(publication.promise);
+			const completed = vi.fn();
+
+			const completion = service.onWorkflowExecuteAfter(ctx).then(completed);
+			await Promise.resolve();
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'self-healing-failure',
+				payload: { workflowId: 'workflow', executionId: '42' },
+			});
+			expect(completed).not.toHaveBeenCalled();
+			expect(ownership.getWorkflowOwningProject).not.toHaveBeenCalled();
+			expect(investigations.start).not.toHaveBeenCalled();
+
+			publication.resolve();
+			await completion;
+			expect(completed).toHaveBeenCalledOnce();
 		},
 	);
 
@@ -83,7 +146,7 @@ describe('SelfHealingTriggerService', () => {
 
 		await service.onWorkflowExecuteAfter(ctx);
 
-		expect(investigations.start).toHaveBeenCalledOnce();
+		await vi.waitFor(() => expect(investigations.start).toHaveBeenCalledOnce());
 	});
 
 	it.each([
@@ -210,10 +273,12 @@ describe('SelfHealingTriggerService', () => {
 
 			await expect(service.onWorkflowExecuteAfter(ctx)).resolves.toBeUndefined();
 
-			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
-				workflowId: 'workflow',
-				executionId: '42',
-				error,
+			await vi.waitFor(() => {
+				expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+					workflowId: 'workflow',
+					executionId: '42',
+					error,
+				});
 			});
 		},
 	);

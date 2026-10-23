@@ -1,10 +1,11 @@
 import type { Workspace, WorkspaceFilesystem } from '@n8n/agents';
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
 import type { InstanceAiContext, InstanceAiExecutionService } from '@n8n/instance-ai';
-import { calculateWorkflowChecksum } from 'n8n-workflow';
+import * as instanceAi from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
@@ -68,6 +69,7 @@ describe('SelfHealingCandidateService', () => {
 	const logger = mock<Logger>();
 	const enterpriseWorkflows = mock<EnterpriseWorkflowService>();
 	const license = mock<License>();
+	const writeAccess = mock<InstanceWriteAccessService>();
 	const executionService = mock<InstanceAiExecutionService>();
 	const filesystem = mock<WorkspaceFilesystem>();
 	const workspace = mock<Workspace>({ filesystem });
@@ -77,12 +79,14 @@ describe('SelfHealingCandidateService', () => {
 		logger,
 		enterpriseWorkflows,
 		license,
+		writeAccess,
 	);
 	let source: string;
 	let input: Parameters<SelfHealingCandidateService['verify']>[0];
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		writeAccess.isReadOnly.mockReturnValue(false);
 		license.isSharingEnabled.mockReturnValue(false);
 		enterpriseWorkflows.preventTampering.mockImplementation(async (workflow) => workflow);
 		source = candidateSource('Repaired process');
@@ -122,10 +126,37 @@ describe('SelfHealingCandidateService', () => {
 	});
 
 	afterEach(() => {
+		vi.restoreAllMocks();
 		vi.unstubAllEnvs();
 	});
 
-	it('validates the current source without creating or running a temporary workflow', async () => {
+	it.each([false, true])(
+		'skips execution planning on a protected instance with validationOnly=%s',
+		async (validationOnly) => {
+			const plan = vi.spyOn(instanceAi, 'planVerificationSimulation');
+			writeAccess.isReadOnly.mockReturnValue(true);
+			input.context.branchReadOnly = false;
+
+			const result = await service.verify({ ...input, validationOnly });
+
+			expect(result.validation).toMatchObject({ success: true });
+			expect(result.verification).toEqual(
+				validationOnly
+					? { status: 'not_run' }
+					: {
+							status: 'not_run',
+							error:
+								'Cannot verify execution on a protected instance. This instance is in read-only mode.',
+						},
+			);
+			expect(plan).not.toHaveBeenCalled();
+			expect(temporaryWorkflows.create).not.toHaveBeenCalled();
+			expect(executionService.run).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([false, true])('validates unchanged preparation with sharing=%s', async (sharing) => {
+		license.isSharingEnabled.mockReturnValue(sharing);
 		const result = await service.verify({ ...input, validationOnly: true });
 
 		expect(result).toMatchObject({
@@ -138,27 +169,37 @@ describe('SelfHealingCandidateService', () => {
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
 
-	it('identifies the graph after the builder credential checks restore protected nodes', async () => {
-		license.isSharingEnabled.mockReturnValue(true);
-		enterpriseWorkflows.preventTampering.mockResolvedValueOnce(baseline.original);
+	it.each(['verify', 'compile'] as const)(
+		'rejects restored node settings during %s',
+		async (method) => {
+			license.isSharingEnabled.mockReturnValue(true);
+			const edited = structuredClone(baseline.original);
+			edited.nodes[1].parameters = { value: 'edited' };
+			source = JSON.stringify(edited);
+			enterpriseWorkflows.preventTampering.mockImplementationOnce(async (workflow) => {
+				workflow.nodes[1].parameters = {};
+				return workflow;
+			});
 
-		const result = await service.verify({ ...input, validationOnly: true });
+			const validation =
+				method === 'verify'
+					? (await service.verify(input)).validation
+					: await service.compile(input, user);
 
-		expect(enterpriseWorkflows.preventTampering).toHaveBeenCalledWith(
-			expect.objectContaining({
-				nodes: expect.arrayContaining([expect.objectContaining({ name: 'Repaired process' })]),
-			}),
-			baseline.workflowId,
-			user,
-		);
-		expect(result).toMatchObject({
-			candidateChecksum: await calculateWorkflowChecksum(baseline.original),
-			validation: { success: true },
-			verification: { status: 'not_run' },
-		});
-		expect(temporaryWorkflows.create).not.toHaveBeenCalled();
-		expect(executionService.run).not.toHaveBeenCalled();
-	});
+			expect(enterpriseWorkflows.preventTampering).toHaveBeenCalledWith(
+				expect.anything(),
+				baseline.workflowId,
+				user,
+			);
+			expect(validation).toMatchObject({
+				success: false,
+				reason: 'candidate_credential_access',
+				errors: [expect.stringMatching(/Process.*needs_you without a candidate/)],
+			});
+			expect(temporaryWorkflows.create).not.toHaveBeenCalled();
+			expect(executionService.run).not.toHaveBeenCalled();
+		},
+	);
 
 	it('stops before verification when the builder credential checks reject the candidate', async () => {
 		license.isSharingEnabled.mockReturnValue(true);

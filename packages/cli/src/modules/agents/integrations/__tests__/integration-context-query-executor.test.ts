@@ -8,7 +8,7 @@ import type { ChatIntegrationService, ChatInstance } from '../chat-integration.s
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
-import { LinearIntegration } from '../platforms/linear-integration';
+import { LinearIntegration } from '../platforms/linear/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 

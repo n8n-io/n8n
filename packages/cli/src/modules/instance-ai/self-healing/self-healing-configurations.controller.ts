@@ -1,6 +1,7 @@
 import {
 	SaveSelfHealingConfigurationDto,
 	SetSelfHealingConfigurationEnabledDto,
+	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Patch, Post, ProjectScope, RestController } from '@n8n/decorators';
@@ -54,7 +55,7 @@ export class SelfHealingConfigurationsController {
 	async update(
 		req: ConfigurationRequest,
 		_res: Response,
-		@Body input: SaveSelfHealingConfigurationDto,
+		@Body input: UpdateSelfHealingConfigurationDto,
 	) {
 		return await this.configurations.save(
 			req.user,

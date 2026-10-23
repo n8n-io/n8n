@@ -914,7 +914,14 @@ describe('POST /workflows', () => {
 			expect(response.statusCode).toBe(400);
 			expect(response.body.message).toMatch(/deprecated/i);
 			expect(response.body.meta?.violations).toEqual([
-				{ kind: 'added', nodeName: 'Function', nodeType: 'n8n-nodes-base.function' },
+				expect.objectContaining({
+					kind: 'node-type-deprecated',
+					message: expect.stringContaining(
+						'Cannot use a "n8n-nodes-base.function" node ("Function")',
+					),
+					subject: 'n8n-nodes-base.function',
+					subjectType: 'nodeType',
+				}),
 			]);
 		});
 	});
@@ -3931,7 +3938,14 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.meta?.violations).toEqual([
-				{ kind: 'added', nodeName: 'Function', nodeType: 'n8n-nodes-base.function' },
+				expect.objectContaining({
+					kind: 'node-type-deprecated',
+					message: expect.stringContaining(
+						'Cannot use a "n8n-nodes-base.function" node ("Function")',
+					),
+					subject: 'n8n-nodes-base.function',
+					subjectType: 'nodeType',
+				}),
 			]);
 		});
 
@@ -3947,7 +3961,14 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.meta?.violations).toEqual([
-				{ kind: 'edited', nodeName: 'Function', nodeType: 'n8n-nodes-base.function' },
+				expect.objectContaining({
+					kind: 'node-type-deprecated',
+					message: expect.stringContaining(
+						'Cannot modify a "n8n-nodes-base.function" node ("Function")',
+					),
+					subject: 'n8n-nodes-base.function',
+					subjectType: 'nodeType',
+				}),
 			]);
 		});
 
@@ -5141,6 +5162,7 @@ describe('POST /workflows/:workflowId/run', () => {
 				startExecution,
 				getExecution,
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
 			});
 		});
@@ -5151,9 +5173,10 @@ describe('POST /workflows/:workflowId/run', () => {
 			startExecution.mockResolvedValue({ executionId: 'a3c1e0f2-0000-4000-8000-000000000001' });
 		});
 
-		const createV2Workflow = async () =>
+		const createV2Workflow = async (pinData?: IPinData) =>
 			await createWorkflow(
 				{
+					pinData,
 					nodes: [
 						{
 							id: uuid(),
@@ -5206,8 +5229,9 @@ describe('POST /workflows/:workflowId/run', () => {
 			expect(executions.filter((e) => e.workflowId === dbWorkflow.id)).toHaveLength(0);
 		});
 
-		test('should return 400 for a partial execution', async () => {
-			const dbWorkflow = await createV2Workflow();
+		test('should seed a pinned node and reuse the trigger run data for a partial execution', async () => {
+			const dbWorkflow = await createV2Workflow({ [SET_NAME]: [{ json: { pinned: true } }] });
+			const setNode = dbWorkflow.nodes.find((node) => node.name === SET_NAME);
 
 			const response = await authOwnerAgent.post(`/workflows/${dbWorkflow.id}/run`).send({
 				destinationNode: { nodeName: SET_NAME, mode: 'inclusive' },
@@ -5218,17 +5242,21 @@ describe('POST /workflows/:workflowId/run', () => {
 							executionTime: 0,
 							executionIndex: 0,
 							source: [],
-							data: { main: [[{ json: {} }]] },
+							data: { main: [[{ json: { from: 'earlier' } }]] },
 						},
 					],
 				},
 			});
 
-			expect(response.statusCode).toBe(400);
-			expect(response.body.message).toBe(
-				'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+			expect(response.statusCode).toBe(200);
+			expect(startExecution).toHaveBeenCalledWith(
+				objectContaining({
+					triggerOutputs: [[{ json: { from: 'earlier' } }]],
+					seededSteps: {
+						[setNode?.id ?? '']: [[[{ json: { pinned: true }, pairedItem: { item: 0 } }]]],
+					},
+				}),
 			);
-			expect(startExecution).not.toHaveBeenCalled();
 		});
 	});
 });

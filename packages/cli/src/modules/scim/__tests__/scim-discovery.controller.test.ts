@@ -31,11 +31,13 @@ describe('ScimDiscoveryController', () => {
 		},
 	);
 
-	it('advertises no operations it cannot serve', () => {
+	it('advertises only the operations it can serve', () => {
 		const { body } = call('getServiceProviderConfig');
 
-		expect(body.patch.supported).toBe(false);
-		expect(body.filter.supported).toBe(false);
+		// Both are implemented by /scim/v2/Users.
+		expect(body.patch.supported).toBe(true);
+		expect(body.filter.supported).toBe(true);
+
 		expect(body.bulk.supported).toBe(false);
 		expect(body.changePassword.supported).toBe(false);
 		expect(body.sort.supported).toBe(false);
@@ -50,14 +52,25 @@ describe('ScimDiscoveryController', () => {
 		]);
 	});
 
-	// These flip on in the PRs that add /scim/v2/Users and /scim/v2/Groups.
-	it.each(['getResourceTypes', 'getSchemas'] as const)(
-		'%s advertises nothing while no resource endpoint exists',
-		(handler) => {
-			const { body } = call(handler);
+	it('advertises the User resource type, pointing at /Users', () => {
+		const { body } = call('getResourceTypes');
 
-			expect(body.totalResults).toBe(0);
-			expect(body.Resources).toEqual([]);
-		},
-	);
+		expect(body.totalResults).toBe(1);
+		expect(body.Resources).toEqual([expect.objectContaining({ id: 'User', endpoint: '/Users' })]);
+	});
+
+	it('advertises the User schema', () => {
+		const { body } = call('getSchemas');
+
+		expect(body.totalResults).toBe(1);
+		expect(body.Resources).toEqual([
+			expect.objectContaining({ id: 'urn:ietf:params:scim:schemas:core:2.0:User' }),
+		]);
+	});
+
+	// Advertising a resource with no endpoint behind it turns every sync into a
+	// 404. Group is added by the PR that implements it.
+	it.each(['getResourceTypes', 'getSchemas'] as const)('%s does not mention Group', (handler) => {
+		expect(JSON.stringify(call(handler).body)).not.toMatch(/Group/);
+	});
 });

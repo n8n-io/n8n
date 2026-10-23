@@ -5,7 +5,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentHistory } from '../../entities/agent-history.entity';
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
@@ -57,7 +57,7 @@ function makeAgentHistory(overrides: AgentHistoryFixtureOverrides = {}): AgentHi
 	} as unknown as AgentHistory;
 }
 
-function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 	return {
 		id: agentId,
 		name: 'Helper Agent',
@@ -69,7 +69,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 		activeVersionId: versionId,
 		activeVersion: makeAgentHistory(),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 describe('SubAgentSourceResolver', () => {

@@ -138,6 +138,39 @@ describe('WorkflowApiHelper.runManually engine routing', () => {
 	});
 });
 
+describe('WorkflowApiHelper.runToNode', () => {
+	function apiReturningExecutionId(executionId: string, options: ApiHelpers['options']) {
+		const post = vi.fn().mockResolvedValue({
+			ok: () => true,
+			json: async () => ({ data: { executionId } }),
+		});
+		return { api: { request: { post }, options } as unknown as ApiHelpers, post };
+	}
+
+	test('posts the destination with the run data to reuse', async () => {
+		const { api, post } = apiReturningExecutionId('1783', {});
+		const runData = { Trigger: [] };
+
+		await new WorkflowApiHelper(api).runToNode('wf-1', 'Set', { runData, dirtyNodeNames: ['Set'] });
+
+		expect(post).toHaveBeenCalledWith('/rest/workflows/wf-1/run', {
+			data: {
+				destinationNode: { nodeName: 'Set', mode: 'inclusive' },
+				runData,
+				dirtyNodeNames: ['Set'],
+			},
+		});
+	});
+
+	test('rejects a legacy execution id when the stack routes to engine v2', async () => {
+		const { api } = apiReturningExecutionId('1783', { workflowSettings: { engineType: 'v2' } });
+
+		await expect(new WorkflowApiHelper(api).runToNode('wf-1', 'Set')).rejects.toThrow(
+			/settings\.engineType/,
+		);
+	});
+});
+
 describe('WorkflowApiHelper.assertLatestExecutionRoutedToEngine', () => {
 	function apiListing(executionIds: string[], options: ApiHelpers['options']) {
 		const get = vi.fn().mockResolvedValue({

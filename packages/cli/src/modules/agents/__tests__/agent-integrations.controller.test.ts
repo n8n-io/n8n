@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import { AgentIntegrationsController } from '../agent-integrations.controller';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentChannelStatusReporter } from '../integrations/agent-channel-status-reporter';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
@@ -85,7 +85,7 @@ describe('AgentIntegrationsController integration management', () => {
 		projectId: 'project-1',
 		activeVersionId: 'version-1',
 		integrations: [],
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 
 	it('delegates a connect and reports connected for a published agent', async () => {
 		const { controller, managementService, agentRepository } = makeController();
@@ -200,7 +200,7 @@ describe('AgentIntegrationsController integration management', () => {
 			type: 'slack',
 			credentialId: 'credential-1',
 		} satisfies AgentIntegrationConfig;
-		const draftAgent = { ...agent, activeVersionId: null } as Agent;
+		const draftAgent = { ...agent, activeVersionId: null } as ProjectAgent;
 		agentRepository.findByIdAndProjectId.mockResolvedValue(draftAgent);
 		managementService.connect.mockResolvedValue({
 			integration,
@@ -575,7 +575,7 @@ describe('AgentIntegrationsController channel status', () => {
 		projectId: 'project-1',
 		activeVersionId: 'version-1',
 		integrations: [slack, telegram],
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 
 	function liveRow(integration: AgentIntegrationConfig): AgentChannelStatus {
 		return {
@@ -591,7 +591,7 @@ describe('AgentIntegrationsController channel status', () => {
 		} as AgentChannelStatus;
 	}
 
-	async function statusOf(agent: Agent, rows: AgentChannelStatus[]) {
+	async function statusOf(agent: ProjectAgent, rows: AgentChannelStatus[]) {
 		const { controller, agentRepository, channelStatusRepository, statusReporter } =
 			makeController();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -630,7 +630,7 @@ describe('AgentIntegrationsController channel status', () => {
 					integrations: [{ type: 'n8n_chat', credentialId: '' }],
 				},
 			},
-		} as Agent;
+		} as ProjectAgent;
 		const { response } = await statusOf(agent, []);
 		expect(response.n8nChat).toEqual({ draftEnabled: false, publishedEnabled: true });
 		expect(response.integrations).toEqual([
@@ -643,7 +643,7 @@ describe('AgentIntegrationsController channel status', () => {
 			activeVersionId: null,
 			activeVersion: null,
 			integrations: [...agent.integrations, { type: 'n8n_chat', credentialId: '' }],
-		} as Agent;
+		} as ProjectAgent;
 		const { response: unpublishedResponse } = await statusOf(unpublished, []);
 		expect(unpublishedResponse.n8nChat).toEqual({ draftEnabled: true, publishedEnabled: false });
 		expect(unpublishedResponse.integrations).toContainEqual({

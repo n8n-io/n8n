@@ -24,6 +24,10 @@ export interface RedactionContext {
 	/** The credentials behind `enforceCredentialUsabilityRedaction`: those the
 	 *  requesting user cannot use. Empty when that redaction does not apply. */
 	readonly inaccessibleCredentialIds: readonly string[];
+	/** True when the execution's own policy does not redact its mode, but the
+	 *  channels its sub-workflows reported do. Drives the
+	 *  `sub_workflow_redaction_policy` redaction reason. */
+	readonly redactedBySubWorkflow: boolean;
 	/** Generic memo store — strategies may cache intermediate results here
 	 *  to avoid redundant computation across requiresRedaction/apply calls.
 	 *  Keyed by strategy name. */

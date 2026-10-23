@@ -1,3 +1,14 @@
+import {
+	type SerializedCredential,
+	serializedCredentialSchema,
+	type SerializedDataTable,
+	serializedDataTableSchema,
+	type SerializedProject,
+	serializedProjectSchema,
+	type SerializedVariable,
+	serializedVariableSchema,
+	serializedWorkflowSchema,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type { z } from 'zod';
@@ -7,23 +18,6 @@ import {
 	WorkflowSerializer,
 	type WorkflowPackageContent,
 } from '../../entities/workflow/workflow.serializer';
-import {
-	serializedCredentialSchema,
-	type SerializedCredential,
-} from '../../spec/serialized/credential.schema';
-import {
-	serializedDataTableSchema,
-	type SerializedDataTable,
-} from '../../spec/serialized/data-table.schema';
-import {
-	serializedProjectSchema,
-	type SerializedProject,
-} from '../../spec/serialized/project.schema';
-import {
-	serializedVariableSchema,
-	type SerializedVariable,
-} from '../../spec/serialized/variable.schema';
-import { serializedWorkflowSchema } from '../../spec/serialized/workflow.schema';
 import { PACKAGE_ENTITY_LAYOUT } from '../manifest-entry';
 import type { PackageReader } from '../package-reader';
 

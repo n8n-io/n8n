@@ -124,7 +124,6 @@ describe('SelfHealingResultContent', () => {
 	it.each([
 		{ outcome: 'needs_you', proposal: null },
 		{ outcome: 'needs_you', proposal: suggestion({ resultKind: 'needs_you' }) },
-		{ outcome: 'could_not_fix', proposal: null },
 	] as const)(
 		'offers chat and discard for $outcome and labels suggested changes explicitly',
 		async ({ outcome, proposal }) => {
@@ -146,6 +145,16 @@ describe('SelfHealingResultContent', () => {
 			expect(emitted('action')).toEqual([['chat'], ['dismiss']]);
 		},
 	);
+
+	it('offers only chat for an automatically closed cannot-fix result', async () => {
+		const { getByRole, getByTestId, queryByRole, emitted } = renderContent({
+			detail: result({ outcome: 'could_not_fix', reviewState: 'closed', suggestion: null }),
+		});
+		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Closed');
+		expect(queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
+		await userEvent.click(getByRole('button', { name: 'Open in chat' }));
+		expect(emitted('action')).toEqual([['chat']]);
+	});
 
 	it('shows a closed result in its status and activity', () => {
 		const { getByTestId, getAllByText } = renderContent({

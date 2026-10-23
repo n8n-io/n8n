@@ -341,6 +341,18 @@ function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: st
 			return buildHitlResponseRun(event, path);
 		case 'tool-call':
 			return buildToolCallRun(event, path);
+		case 'guardrail':
+			return {
+				path,
+				name: 'Guardrail stop',
+				runType: 'chain',
+				startTime: event.timestamp,
+				endTime: event.timestamp,
+				inputs: { code: event.code },
+				outputs: { status: 'stopped' },
+				metadata: {},
+				children: [],
+			};
 	}
 }
 

@@ -36,4 +36,8 @@ describe('projectRoleScopes', () => {
 			'projectAiPreference:delete',
 		]);
 	});
+
+	it('offers app metadata management permissions', () => {
+		expect(SCOPES.app).toEqual(['app:read', 'app:list', 'app:create', 'app:update', 'app:delete']);
+	});
 });

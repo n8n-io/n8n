@@ -23,6 +23,14 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 		});
 	}
 
+	async getUnfinishedThreadIdsForConfiguration(configurationId: number, ctx: OperationContext) {
+		const investigations = await this.managerFor(ctx).find(SelfHealingInvestigation, {
+			where: { configurationId, finishedAt: IsNull() },
+			select: { threadId: true },
+		});
+		return investigations.map(({ threadId }) => threadId);
+	}
+
 	async getForExecution(workflowId: string, executionId: string, ctx: OperationContext = {}) {
 		return await this.managerFor(ctx).findOne(SelfHealingInvestigation, {
 			where: { workflowId, executionId },

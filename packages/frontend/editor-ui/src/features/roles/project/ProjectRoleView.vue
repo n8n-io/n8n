@@ -83,6 +83,9 @@ const onBackClick = () => {
 
 const scopeTypes = computed(() => {
 	let types = SCOPE_TYPES;
+	if (!settingsStore.isAppsEnabled) {
+		types = types.filter((type) => type !== 'app');
+	}
 	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
 		types = types.filter((type) => type !== 'externalSecretsProvider' && type !== 'externalSecret');
 	}

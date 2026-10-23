@@ -35,7 +35,6 @@ import {
 } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
@@ -202,24 +201,16 @@ export class EnterpriseWorkflowService {
 	): Promise<ReadonlySet<string>> {
 		if (credentialIds.length === 0) return new Set();
 
-		if (isCredSharingEnabled()) {
-			// The rule a run acting as this user follows, so the editor blocks exactly
-			// what the server refuses: what the project carries, plus the user's own
-			// access without an Owner's or Admin's instance-wide grant.
-			const unusable = await this.credentialsPermissionChecker.findUnusableInWorkflow(
-				workflowId,
-				credentialIds,
-				user.id,
-			);
-			const unusableIds = new Set(unusable.map((c) => c.id));
-			return new Set(credentialIds.filter((id) => !unusableIds.has(id)));
-		}
-
-		const userCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
-			user,
-			{ workflowId },
+		// The rule a run acting as this user follows, so the editor blocks exactly
+		// what the server refuses: what the project carries, plus the user's own
+		// access without an Owner's or Admin's instance-wide grant.
+		const unusable = await this.credentialsPermissionChecker.findUnusableInWorkflow(
+			workflowId,
+			credentialIds,
+			user.id,
 		);
-		return new Set(userCredentials.map((credential) => credential.id));
+		const unusableIds = new Set(unusable.map((c) => c.id));
+		return new Set(credentialIds.filter((id) => !unusableIds.has(id)));
 	}
 
 	validateCredentialPermissionsToUser(

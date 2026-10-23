@@ -179,7 +179,6 @@ const instanceAi = computed<IMenuItem>(() => ({
 		? locale.baseText('instanceAi.thread.new')
 		: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
-	preview: true,
 }));
 
 function onNewChatClick(): void {
@@ -215,7 +214,7 @@ const isInboxVisible = computed(() => settingsStore.settings.inbox?.enabled === 
 
 const inbox = computed<IMenuItem>(() => ({
 	id: 'inbox',
-	icon: 'message-square-text',
+	icon: 'inbox',
 	label: locale.baseText('inbox.title'),
 	route: { to: { name: INBOX_VIEW } },
 }));

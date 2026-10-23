@@ -295,6 +295,42 @@ describe('InstanceAiDataTablePreview', () => {
 		},
 	);
 
+	it('keeps rows editable and locks columns on a protected instance', async () => {
+		const { pinia, store } = setup();
+		vi.mocked(store.fetchDataTableDetails).mockResolvedValue({
+			...firstTable,
+			columns: [
+				...firstTable.columns,
+				{ id: 'stock-column', name: 'inStock', type: 'boolean', index: 1 },
+			],
+		});
+		vi.mocked(store.fetchDataTableContent).mockResolvedValue({
+			data: [{ id: 1, name: 'Notebook', inStock: true }],
+			count: 1,
+		});
+		useSourceControlStore().preferences.branchReadOnly = true;
+		const { getByTestId, getByRole } = renderComponent({ pinia });
+		await waitFor(() => {
+			expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute('aria-hidden', 'false');
+		});
+		const displayedGrid = getByTestId('instance-ai-data-table-grid');
+		const gridApi = getGridApi(displayedGrid.querySelector('[grid-id]')?.parentElement)!;
+		const header = displayedGrid.querySelector('.ag-header-cell[col-id="name-column"]')!;
+		const row = gridApi.getRowNode('1')!;
+		await fireEvent.mouseEnter(header.querySelector('[data-test-id="data-table-column-header"]')!);
+
+		expect(row.selectable).toBe(true);
+		expect(getByRole('button', { name: 'Add Row' })).toBeEnabled();
+		expect(
+			displayedGrid.querySelector(
+				'.ag-row[row-id="1"] .ag-cell[col-id="stock-column"] input[type="checkbox"]',
+			),
+		).toBeEnabled();
+		expect(getByTestId('data-table-add-column-trigger-button')).toBeDisabled();
+		expect(header.querySelector('button[aria-haspopup="menu"]')).not.toBeVisible();
+		expect(gridApi.getGridOption('suppressMovableColumns')).toBe(true);
+	});
+
 	it('cancels an active cell edit on lock and permits editing after unlock', async () => {
 		const { pinia, store } = setup();
 		const { getByTestId } = renderComponent({ pinia });

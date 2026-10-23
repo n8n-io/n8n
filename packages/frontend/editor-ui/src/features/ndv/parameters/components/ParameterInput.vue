@@ -2285,6 +2285,7 @@ onUpdated(async () => {
 .parameter-input {
 	display: inline-block;
 	position: relative;
+	min-width: 0;
 
 	:deep(.color-input) {
 		display: flex;

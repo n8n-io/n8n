@@ -223,6 +223,32 @@ describe('InstanceContextService', () => {
 			});
 		});
 
+		it('reads no runs when the user lacks execution:read on the bound project', async () => {
+			userHasScopes.mockImplementation(async (...args: unknown[]) => {
+				const scopes = args[1];
+				return !(Array.isArray(scopes) && scopes.includes('execution:read'));
+			});
+			const service = serviceWith();
+			workflowRepository.findRecentForProjects.mockResolvedValue({
+				total: 1,
+				workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: true }],
+			});
+
+			const built = await service.buildBlock({
+				enabled: true,
+				user: USER,
+				scope: BOUND,
+				cursor: null,
+				now: NOW,
+			});
+
+			expect(built).toMatchObject({ state: 'injected', legs: { inventory: 1, runs: 0 } });
+			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
+			expect(userHasScopes).toHaveBeenCalledWith(USER, ['execution:read'], false, {
+				projectId: PROJECT_ID,
+			});
+		});
+
 		it('returns nothing from the tool reads once the user loses project access', async () => {
 			const service = serviceWith();
 			userHasScopes.mockResolvedValue(false);
@@ -913,7 +939,9 @@ describe('InstanceContextService', () => {
 			expect(expansion?.entry.id).toBe(10);
 			// The entry itself is not repeated inside its own history.
 			expect(expansion?.resourceHistory.map((other) => other.id)).toEqual([4]);
-			expect(expansion?.liveRecordHint).toBe('workflows(action="get", workflowId="wf-1")');
+			expect(expansion?.liveRecordHint).toBe(
+				'workflow_builder_workflows(action="get", workflowId="wf-1")',
+			);
 			expect(activityEventRepository.findByResource).toHaveBeenCalledWith(
 				expect.objectContaining({ projectIds: [PROJECT_ID] }),
 			);
@@ -1092,7 +1120,7 @@ describe('InstanceContextService', () => {
 				expect(blockOf(built)).toContain('get_instance_activity');
 				expect(blockOf(built)).toContain('search_workflows');
 				expect(blockOf(built)).not.toContain('activity(action=');
-				expect(blockOf(built)).not.toContain('workflows(action=');
+				expect(blockOf(built)).not.toContain('workflow_builder_workflows(action=');
 			});
 
 			it('still tags the block and names Instance AI tools on a conversation', async () => {

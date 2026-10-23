@@ -26,11 +26,13 @@ const {
 	createSuggestionEventRelay,
 	loadResultController,
 	loadConfigurationController,
+	loadEvalController,
 } = vi.hoisted(() => ({
 	loadSuggestionEventRelay: vi.fn(),
 	createSuggestionEventRelay: vi.fn(),
 	loadResultController: vi.fn(),
 	loadConfigurationController: vi.fn(),
+	loadEvalController: vi.fn(),
 }));
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
@@ -69,6 +71,10 @@ vi.mock('../self-healing/self-healing-configurations.controller', () => {
 	loadConfigurationController();
 	return {};
 });
+vi.mock('../eval/eval.controller', () => {
+	loadEvalController();
+	return {};
+});
 vi.mock('../self-healing/self-healing-results.controller', () => {
 	loadResultController();
 	return {};
@@ -86,7 +92,10 @@ vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () =>
 
 describe('InstanceAiModule.init', () => {
 	function setup() {
-		const config = mockInstance(InstanceAiConfig, { workflowSuggestionsEnabled: false });
+		const config = mockInstance(InstanceAiConfig, {
+			workflowSuggestionsEnabled: false,
+			evalInstance: false,
+		});
 		const instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
 		const sources = mockInstance(InboxSourceRegistry);
 		const mutationHooks = mockInstance(WorkflowMutationHooksProxy);
@@ -180,6 +189,21 @@ describe('InstanceAiModule.init', () => {
 			expect(loadConfigurationController).not.toHaveBeenCalled();
 		},
 	);
+
+	it('registers the eval controller only on an eval instance', async () => {
+		const { config, investigations } = setup();
+
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+
+		expect(loadEvalController).not.toHaveBeenCalled();
+
+		config.evalInstance = true;
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
+
+		expect(loadEvalController).toHaveBeenCalledOnce();
+	});
 
 	it('starts reconciliation after the interrupted-run sweep finishes', async () => {
 		const { sweeper, investigations } = setup();

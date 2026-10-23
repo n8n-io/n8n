@@ -95,3 +95,36 @@ it('keeps the latest list when requests finish out of order', async () => {
 
 	expect(store.configurations.project).toEqual([updated]);
 });
+
+it.each(['save', 'setEnabled'] as const)(
+	'keeps row order after %s updates an existing configuration',
+	async (action) => {
+		const store = useSelfHealingStore();
+		const second = { ...configuration, id: 2 };
+		const third = { ...configuration, id: 3 };
+		store.configurations.project = [configuration, second, third];
+		const updated = { ...configuration, enabled: true, enabledById: 'actor' };
+
+		if (action === 'save') {
+			vi.mocked(api.saveConfiguration).mockResolvedValue(updated);
+			await store.save('project', updated, configuration.id);
+		} else {
+			vi.mocked(api.setConfigurationEnabled).mockResolvedValue(updated);
+			await store.setEnabled('project', configuration.id, true);
+		}
+
+		expect(store.configurations.project).toEqual([updated, second, third]);
+	},
+);
+
+it('appends new configurations after existing rows', async () => {
+	const store = useSelfHealingStore();
+	const second = { ...configuration, id: 2 };
+	const created = { ...configuration, id: 3 };
+	store.configurations.project = [configuration, second];
+	vi.mocked(api.saveConfiguration).mockResolvedValue(created);
+
+	await store.save('project', created);
+
+	expect(store.configurations.project).toEqual([configuration, second, created]);
+});

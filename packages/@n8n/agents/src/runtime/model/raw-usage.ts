@@ -1,7 +1,6 @@
-import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
+import { getProviderPrefix, isGoogleVertexAnthropicModel } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 
-import { isGoogleVertexAnthropicModel } from './google-vertex';
 import { type ProviderId } from './provider-credentials';
 import type { TokenUsage } from '../../types';
 
@@ -57,13 +56,14 @@ export class AnthropicRawUsageReader implements RawUsageReader {
 			completionTokens: output,
 			totalTokens: promptTokens + output,
 		};
-		if (noCache || cacheRead || cacheWrite) {
-			usage.inputTokenDetails = {
-				...(noCache && { noCache }),
-				...(cacheRead && { cacheRead }),
-				...(cacheWrite && { cacheWrite }),
-			};
-		}
+		// Keep a reported zero, but leave out a field the provider did not send.
+		const reported = (v: unknown) => typeof v === 'number';
+		const details = {
+			...(reported(raw.input_tokens) && { noCache }),
+			...(reported(raw.cache_read_input_tokens) && { cacheRead }),
+			...(reported(raw.cache_creation_input_tokens) && { cacheWrite }),
+		};
+		if (Object.keys(details).length > 0) usage.inputTokenDetails = details;
 		return usage;
 	}
 }

@@ -102,8 +102,10 @@ async function retryDetail() {
 
 async function onAction(action: SelfHealingResultAction) {
 	const before = detail.value;
-	if (before?.reviewState !== 'open' || pendingAction.value || !store.isSelected(props.selection))
-		return;
+	if (!before || pendingAction.value || !store.isSelected(props.selection)) return;
+	const isClosedChat =
+		action === 'chat' && before.reviewState === 'closed' && before.outcome === 'could_not_fix';
+	if (before.reviewState !== 'open' && !isClosedChat) return;
 
 	if (action === 'approve-and-publish' && (!canPublish.value || before.outcome !== 'fix_ready'))
 		return;
@@ -125,7 +127,9 @@ async function onAction(action: SelfHealingResultAction) {
 
 	pendingAction.value = action;
 	try {
-		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
+		const result = isClosedChat
+			? await fetchSelfHealingResult(rootStore.restApiContext, target)
+			: await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
 
 		store.acceptResult(result);
 		notifyResultClosed(before, result, onItemChange);

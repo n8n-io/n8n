@@ -79,7 +79,6 @@ it.each([
 	{ outcome: 'fix_ready', destination: 'editor', withSuggestion: true },
 	{ outcome: 'needs_you', destination: 'chat', withSuggestion: true },
 	{ outcome: 'needs_you', destination: 'chat', withSuggestion: false },
-	{ outcome: 'could_not_fix', destination: 'chat', withSuggestion: false },
 ] as const)(
 	'closes $outcome with suggestion=$withSuggestion before opening $destination with one request',
 	async ({ outcome, destination, withSuggestion }) => {
@@ -389,3 +388,18 @@ it.each(['discarded', 'dismissed'] as const)(
 		expect(push).not.toHaveBeenCalled();
 	},
 );
+
+it('opens an automatically closed report in chat without a review mutation', async () => {
+	const detail = result({ outcome: 'could_not_fix', reviewState: 'closed', suggestion: null });
+	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
+	const view = renderComponent();
+	await waitAllPromises();
+	for (const action of ['editor', 'approve-and-publish', 'dismiss'])
+		view.getByTestId(action).click();
+	view.getByTestId('chat').click();
+	await waitAllPromises();
+	expect(api.fetchSelfHealingResult).toHaveBeenCalledTimes(2);
+	expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
+	expect(startChat).toHaveBeenCalledExactlyOnceWith(detail);
+	expect(onItemChange).not.toHaveBeenCalled();
+});
