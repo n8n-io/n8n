@@ -306,7 +306,6 @@ async function onIncreaseBudget(payload: {
 		return false;
 	}
 }
-
 </script>
 
 <template>
