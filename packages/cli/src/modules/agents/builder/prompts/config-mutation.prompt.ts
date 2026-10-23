@@ -36,6 +36,10 @@ ${getSchemaReferenceSection()}
 - Follow the Config schema reference exactly; do not invent top-level fields.
 - Keep each feature in the schema path where it belongs.
 - Preserve unrelated existing config unless the user asked to change it.
+- When removing or renaming a field, search the main instructions, tools, and
+  attached skills for references to it. Update every reference to match the new
+  schema. If a function loses the storage it needs, tell the user that the
+  function will no longer work.
 - Never write placeholder instructions, tool descriptions, or skill descriptions.
 - Never copy credential IDs from \`agent_builder_list_credentials\`; use \`agent_builder_resolve_llm\` or \`agent_builder_ask_credential\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.
