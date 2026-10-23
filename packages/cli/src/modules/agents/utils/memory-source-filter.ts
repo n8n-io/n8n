@@ -23,6 +23,7 @@ import {
 	chatSourceOwner,
 	isIntegrationKind,
 	type IntegrationSourceKind,
+	type MemorySourceMessage,
 } from './memory-entry-source';
 
 type ChatSourceKind = 'preview' | 'n8n-chat' | 'build';
@@ -112,6 +113,36 @@ function integrationSourceFilter(
 	};
 }
 
+function messageFieldValue(
+	message: MemorySourceMessage,
+	field: MemorySourceMessageField,
+): string | undefined {
+	const integration = message.origin?.integration;
+	if (field === 'authorId') return message.author?.id;
+	if (field === 'channelId' && integration && 'channelId' in integration) {
+		return integration.channelId;
+	}
+	if (field === 'teamId' && integration?.type === 'linear') return integration.teamId;
+	return undefined;
+}
+
+/** Whether a source message matches the message part of the filter, so its row label fits the filter. */
+export function sourceMatchesFilter(
+	message: MemorySourceMessage,
+	filter: MemoryEntrySourceFilter,
+): boolean {
+	const integrationType = message.origin?.integration?.type;
+	if (filter.sourceMessage) {
+		const { field, value } = filter.sourceMessage;
+		return (
+			integrationType === filter.sourceMessage.integrationType &&
+			messageFieldValue(message, field) === value
+		);
+	}
+	if (filter.integration) return integrationType === filter.integration.type;
+	return true;
+}
+
 /** Collects facet items by id. A later row with a name fills in a missing one. */
 class FacetItems {
 	private readonly items = new Map<string, AgentMemorySourceFacetItemDto>();
@@ -179,7 +210,8 @@ function addIntegrationRow(
 ): void {
 	group.users.add(row.authorId, row.authorName);
 	const placeFacet = PLACE_FACETS[kind];
-	if (placeFacet === 'channel' && row.integrationType === kind) {
+	// A direct message is not a channel. The user filter covers it.
+	if (placeFacet === 'channel' && row.integrationType === kind && row.conversationKind !== 'dm') {
 		group.places.add(row.channelId, row.channelName?.replace(/^#+/, ''));
 	}
 	if (placeFacet === 'team' && row.integrationType === kind) {

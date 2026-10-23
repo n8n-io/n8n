@@ -203,6 +203,7 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 		let linear: string;
 		let preview: string;
 		let legacy: string;
+		let crossed: string;
 
 		beforeEach(async () => {
 			finance = await insertSourcedEntry({
@@ -227,6 +228,13 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 			preview = await insertSourcedEntry({ scope: 'draft-chat:user-1', content: 'preview fact' });
 			// Stored before messages kept their author and origin.
 			legacy = await insertSourcedEntry({ scope: 'integration:slack:U3', content: 'legacy fact' });
+			// The message decides over the scope id.
+			crossed = await insertSourcedEntry({
+				scope: 'integration:slack:U4',
+				content: 'crossed fact',
+				author: { id: 'L2', name: 'Kim' },
+				integration: { type: 'linear', issueId: 'I2', teamId: 'T2' },
+			});
 		});
 
 		it.each([
@@ -236,6 +244,13 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 					integration: { type: 'slack', resourceIdPrefixes: ['integration:slack:', 'slack:'] },
 				}),
 				() => [finance, support, legacy],
+			],
+			[
+				'an integration named only by a source message',
+				() => ({
+					integration: { type: 'linear', resourceIdPrefixes: ['integration:linear:', 'linear:'] },
+				}),
+				() => [linear, crossed],
 			],
 			[
 				'a channel',
@@ -280,7 +295,7 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 
 			const rows = await entryRepository.findSourceFacetRows(agentId);
 
-			expect(rows).toHaveLength(4);
+			expect(rows).toHaveLength(5);
 			expect(rows).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
