@@ -102,7 +102,7 @@ export interface AgentChannelViewProps {
 }
 
 export interface AgentChannelPresentationContext {
-	text: (key: BaseTextKey) => string;
+	text: (key: BaseTextKey, interpolate?: Record<string, string>) => string;
 }
 
 export interface AgentChannelWarningPresentation {

@@ -35,6 +35,7 @@ describe('AgentWhatsAppIntegrationsController', () => {
 
 	it.each([
 		['checkCredential', 'agent:update'],
+		['metaStatus', 'agent:read'],
 		['webhookStatus', 'agent:read'],
 		['resetWebhookStatus', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -54,6 +55,37 @@ describe('AgentWhatsAppIntegrationsController', () => {
 
 			expect(credentialCheckService.check).toHaveBeenCalledWith(user, 'project-1', 'cred-1');
 			expect(result).toBe(check);
+		});
+	});
+
+	describe('metaStatus', () => {
+		it('checks the agent exists, then reads the status for the caller and credential', async () => {
+			const { controller, credentialCheckService, agentRepository } = makeController();
+			agentRepository.existsBy.mockResolvedValue(true);
+			credentialCheckService.getMetaStatus.mockResolvedValue({ state: 'dailyLimit' });
+
+			const result = await controller.metaStatus(request, undefined as never, 'agent-1', 'cred-1');
+
+			expect(agentRepository.existsBy).toHaveBeenCalledWith({
+				id: 'agent-1',
+				projectId: 'project-1',
+			});
+			expect(credentialCheckService.getMetaStatus).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				'cred-1',
+			);
+			expect(result).toEqual({ state: 'dailyLimit' });
+		});
+
+		it('throws NotFoundError for an agent outside the project', async () => {
+			const { controller, credentialCheckService, agentRepository } = makeController();
+			agentRepository.existsBy.mockResolvedValue(false);
+
+			await expect(
+				controller.metaStatus(request, undefined as never, 'agent-1', 'cred-1'),
+			).rejects.toThrow(NotFoundError);
+			expect(credentialCheckService.getMetaStatus).not.toHaveBeenCalled();
 		});
 	});
 
