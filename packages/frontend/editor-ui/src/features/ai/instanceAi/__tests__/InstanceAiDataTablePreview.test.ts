@@ -273,13 +273,15 @@ describe('InstanceAiDataTablePreview', () => {
 					'.ag-row[row-id="1"] .ag-cell[col-id="stock-column"] input[type="checkbox"]',
 				);
 				if (locked) {
-					expect(addRow).toBeDisabled();
+					expect(addRow).toHaveAttribute('aria-disabled', 'true');
+					expect(addRow).not.toBeDisabled();
 					expect(addColumn).toBeDisabled();
 					expect(checkbox).toBeDisabled();
 					expect(menu).not.toBeVisible();
 					expect(row.isSelected()).toBe(false);
 				} else {
 					expect(addRow).toBeEnabled();
+					expect(addRow).not.toHaveAttribute('aria-disabled');
 					expect(addColumn).toBeEnabled();
 					expect(checkbox).toBeEnabled();
 					expect(menu).toBeVisible();

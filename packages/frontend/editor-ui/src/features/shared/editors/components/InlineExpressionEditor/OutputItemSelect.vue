@@ -62,6 +62,7 @@ function prevItem() {
 				icon="chevron-left"
 				size="xsmall"
 				:disabled="!canSelectPrevItem"
+				:aria-label="i18n.baseText('parameterInput.previousItem')"
 				@click="prevItem"
 			></N8nIconButton>
 
@@ -75,6 +76,7 @@ function prevItem() {
 					icon="chevron-right"
 					size="xsmall"
 					:disabled="!canSelectNextItem"
+					:aria-label="i18n.baseText('parameterInput.nextItem')"
 					:focusable-when-disabled="!hideTableHoverHint"
 					@click="nextItem"
 				></N8nIconButton>

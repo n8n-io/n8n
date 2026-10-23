@@ -133,6 +133,13 @@ defineExpose({
 						variant="ghost"
 						:disabled="messagingState !== 'idle'"
 						focusable-when-disabled
+						:aria-label="
+							i18n.baseText(
+								isListening
+									? 'chatHub.chat.prompt.button.stopRecording'
+									: 'chatHub.chat.prompt.button.voiceInput',
+							)
+						"
 						:icon="isListening ? 'square' : 'mic'"
 						:class="{ [$style.recording]: isListening }"
 						icon-size="large"
