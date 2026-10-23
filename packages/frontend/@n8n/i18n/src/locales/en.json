@@ -10019,7 +10019,7 @@
 	"promotions.preview.workflow.showDiffOf": "Show diff of {name}",
 	"promotions.preview.workflow.loadingDiff": "Loading diff…",
 	"promotions.preview.workflow.activateCanvas": "Click anywhere in the canvas to pan and zoom",
-	"promotions.preview.badge.promote": "{count} change to promote | {count} changes to promote",
+	"promotions.preview.badge.promote": "Promote {count} change to {environment} | Promote {count} changes to {environment}",
 	"promotions.preview.badge.apply": "{count} incoming change | {count} incoming changes",
 	"promotions.preview.badge.empty.promote": "No changes to promote",
 	"promotions.preview.badge.empty.apply": "No changes to apply",

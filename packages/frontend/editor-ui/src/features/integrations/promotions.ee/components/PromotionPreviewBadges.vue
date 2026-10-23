@@ -33,7 +33,12 @@ const gitConnectionPermissions = computed(
 
 // Each direction needs its configuration on the instance connection, so a source never
 // asks for incoming changes and a destination never asks for outgoing ones.
-const { hasPromoteConfig, hasApplyConfig, load: loadConnection } = useInstancePromotionConnection();
+const {
+	environments,
+	hasPromoteConfig,
+	hasApplyConfig,
+	load: loadConnection,
+} = useInstancePromotionConnection();
 
 const canPreviewChanges = computed(
 	() =>
@@ -116,7 +121,12 @@ const badges = computed(() => {
 					? i18n.baseText(`promotions.preview.badge.empty.${direction}`)
 					: i18n.baseText(`promotions.preview.badge.${direction}`, {
 							adjustToNumber: changes.changeCount.value,
-							interpolate: { count: String(changes.changeCount.value) },
+							interpolate: {
+								count: String(changes.changeCount.value),
+								environment:
+									environments.value.find((environment) => environment.direction === direction)
+										?.name ?? '',
+							},
 						}),
 			to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },
 		}));

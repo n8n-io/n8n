@@ -71,8 +71,8 @@ describe('PromotionPreviewBadges', () => {
 			],
 		});
 		vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([
-			{ id: 'environment-1', scope: 'instance', direction: 'promote' },
-			{ id: 'environment-2', scope: 'instance', direction: 'apply' },
+			{ id: 'environment-1', scope: 'instance', direction: 'promote', name: 'Production' },
+			{ id: 'environment-2', scope: 'instance', direction: 'apply', name: 'Development' },
 		] as unknown as settingsApi.PromotionEnvironmentSummary[]);
 	});
 
@@ -90,13 +90,46 @@ describe('PromotionPreviewBadges', () => {
 		// All selected workflows bring the folder rename, the changed table and the new variable.
 		expect(promote).toHaveTextContent('5');
 		expect(promote).toHaveAttribute('data-route', `${PROMOTION_PREVIEW_VIEWS.promote}:p1`);
-		expect(promote).toHaveAttribute('aria-label', '5 changes to promote');
+		expect(promote).toHaveAttribute('aria-label', 'Promote 5 changes to Production');
 		const apply = getByTestId('promotion-preview-badge-apply');
 		expect(apply).toHaveTextContent('0');
 		expect(apply).toHaveAttribute('aria-disabled', 'true');
 		expect(apply).not.toHaveAttribute('data-route');
 		expect(promote).not.toHaveAttribute('aria-disabled');
 		expect(getByTestId('promotion-preview-badges').children).toHaveLength(2);
+	});
+
+	it.each([
+		{ name: 'Production', count: 1, label: 'Promote 1 change to Production' },
+		{ name: 'Production', count: 2, label: 'Promote 2 changes to Production' },
+		{ name: 'Staging', count: 1, label: 'Promote 1 change to Staging' },
+		{ name: 'Staging', count: 2, label: 'Promote 2 changes to Staging' },
+	])('should show "$label" in the Promote tooltip', async ({ name, count, label }) => {
+		vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([
+			{
+				id: 'environment-1',
+				scope: 'instance',
+				direction: 'promote',
+				name,
+			} as unknown as settingsApi.PromotionEnvironmentSummary,
+		]);
+		const preview = billingPreview();
+		vi.mocked(api.getPromotionPreview).mockResolvedValue({
+			...preview,
+			resources: preview.resources
+				.filter(({ key }) => ['workflow:w1', 'workflow:w3'].includes(key))
+				.slice(0, count),
+			dependencies: [],
+		});
+		const { findByTestId, findByText } = renderComponent();
+		await waitAllPromises();
+		const badge = await findByTestId('promotion-preview-badge-promote');
+
+		expect(badge).toHaveTextContent(String(count));
+		expect(badge).toHaveAttribute('aria-label', label);
+		badge.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
+		expect(await findByText(label)).toBeVisible();
+		expect(settingsApi.fetchPromotionEnvironments).toHaveBeenCalledTimes(1);
 	});
 
 	it.each(['promote', 'apply'] as const)(
@@ -157,7 +190,7 @@ describe('PromotionPreviewBadges', () => {
 			expect(loadedBadge.querySelector('.n8n-badge')?.className).not.toContain('warning');
 			expect(loadedBadge).toHaveAttribute(
 				'aria-label',
-				direction === 'promote' ? '5 changes to promote' : '5 incoming changes',
+				direction === 'promote' ? 'Promote 5 changes to Production' : '5 incoming changes',
 			);
 		},
 	);
