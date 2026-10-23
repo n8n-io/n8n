@@ -122,7 +122,8 @@ export class ExecutionData implements INodeType {
 						(acc, { key, value }) => {
 							// Expressions can resolve to booleans or numbers. Keep falsy values
 							// such as `false` and `0`, only nullish values become empty strings.
-							acc[key] = nodeVersion >= 1.1 ? String(value ?? '') : value;
+							// The metadata setter converts valid values and rejects objects.
+							acc[key] = nodeVersion >= 1.1 ? (value ?? '') : value;
 							return acc;
 						},
 						{} as { [key: string]: string },
