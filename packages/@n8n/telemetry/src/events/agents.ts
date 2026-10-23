@@ -718,6 +718,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 					'suspension',
 					'hitl-response',
 					'background-task-signal',
+					'background-task',
 				])
 				.describe('Selected timeline item kind. Does not include item content.'),
 			push_ref: pushRef,
