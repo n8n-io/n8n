@@ -7,7 +7,7 @@ type WorkflowRule = LightReport['workflowResults'][number];
 type InstanceRule = LightReport['instanceResults'][number];
 
 const HEADER =
-	'target_version,current_version,synced_at,total_workflows,affected_workflows,affected_instance_rules,rule_kind,rule_id,rule_title,impact,unresolved_workflows,wont_fix_workflows';
+	'target_version,current_version,synced_at,total_workflows,affected_workflows,affected_instance_rules,rule_kind,rule_id,rule_title,impact,impact_label,unresolved_workflows,wont_fix_workflows';
 
 function workflowRule(overrides: Partial<WorkflowRule> = {}): WorkflowRule {
 	return {
@@ -78,8 +78,8 @@ describe('toMigrationReportCsv', () => {
 
 		expect(csv.split('\r\n')).toEqual([
 			HEADER,
-			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,5,0,workflow,removed-nodes-v3,Removed nodes,executionsFail,4,1',
-			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,5,0,workflow,code-node-v3,Code node,behaviorChanges,0,2',
+			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,5,0,workflow,removed-nodes-v3,Removed nodes,executionsFail,Executions will fail,4,1',
+			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,5,0,workflow,code-node-v3,Code node,behaviorChanges,Behavior changes,0,2',
 			'',
 		]);
 	});
@@ -91,8 +91,8 @@ describe('toMigrationReportCsv', () => {
 
 		expect(csv.split('\r\n')).toEqual([
 			HEADER,
-			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,5,1,workflow,removed-nodes-v3,Removed nodes,executionsFail,4,1',
-			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,5,1,instance,removed-env-var-v3,Removed env var,upgradeBlocked,,',
+			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,5,1,workflow,removed-nodes-v3,Removed nodes,executionsFail,Executions will fail,4,1',
+			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,5,1,instance,removed-env-var-v3,Removed env var,upgradeBlocked,Upgrade blocked,,',
 			'',
 		]);
 	});
@@ -102,7 +102,7 @@ describe('toMigrationReportCsv', () => {
 
 		expect(csv.split('\r\n')).toEqual([
 			HEADER,
-			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,0,0,,,,,,',
+			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,0,0,,,,,,,',
 			'',
 		]);
 	});
@@ -110,7 +110,7 @@ describe('toMigrationReportCsv', () => {
 	it('leaves synced_at empty before the first sync', () => {
 		const csv = toMigrationReportCsv(report({ report: { generatedAt: undefined } }));
 
-		expect(csv.split('\r\n')[1]).toBe('v3,2.10.0,,10,5,0,,,,,,');
+		expect(csv.split('\r\n')[1]).toBe('v3,2.10.0,,10,5,0,,,,,,,');
 	});
 
 	it('quotes a field that contains a comma, a quote, or a line break', () => {
@@ -131,9 +131,33 @@ describe('toMigrationReportCsv', () => {
 		expect(rows[2]).toContain(',"The ""Code"" node",');
 		// A quoted line break does not end the record, so the row stays one line.
 		expect(rows[3]).toBe(
-			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,5,0,workflow,multiline,"Line one\nline two",executionsFail,4,1',
+			'v3,2.10.0,2026-10-20T08:30:00.000Z,10,5,0,workflow,multiline,"Line one\nline two",executionsFail,Executions will fail,4,1',
 		);
 	});
+
+	it.each([
+		{ impact: 'upgradeBlocked', label: 'Upgrade blocked' },
+		{ impact: 'executionsFail', label: 'Executions will fail' },
+		{ impact: 'executionsMightFail', label: 'Executions might fail' },
+		{ impact: 'behaviorChanges', label: 'Behavior changes' },
+		{ impact: 'capabilityRemoved', label: 'Capability removed' },
+	] as const)(
+		'writes the report label "$label" after the raw $impact impact',
+		({ impact, label }) => {
+			const csv = toMigrationReportCsv(
+				report({
+					report: {
+						workflowResults: [workflowRule({ ruleImpact: impact })],
+						instanceResults: [instanceRule({ ruleImpact: impact })],
+					},
+				}),
+			);
+
+			const rows = csv.split('\r\n');
+			expect(rows[1]).toContain(`,${impact},${label},`);
+			expect(rows[2]).toContain(`,${impact},${label},`);
+		},
+	);
 });
 
 describe('migrationReportCsvFilename', () => {

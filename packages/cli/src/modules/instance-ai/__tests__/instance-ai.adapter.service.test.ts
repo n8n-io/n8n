@@ -91,7 +91,13 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
+import { pairAiGatewayServers } from '@/modules/mcp-registry/registry/mcp-registry-ai-gateway';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import {
+	braveSearchAiGatewayMockServer,
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
+} from '@/modules/mcp-registry/registry/mock-servers';
 
 import { InstanceAiMcpRegistryService } from '../mcp';
 import type { InstanceContextService } from '../instance-context.service';
@@ -2804,6 +2810,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: vi.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: vi.fn().mockResolvedValue(undefined),
 		makeOwner: vi.fn().mockResolvedValue(undefined),
+		findProjectIds: vi.fn().mockResolvedValue(['team-project-id']),
 	};
 
 	const mockAiBuilderTemporaryWorkflowRepository = {
@@ -7942,6 +7949,46 @@ describe('MCP registry discovery', () => {
 			expect(getBySlugs).toHaveBeenCalledWith(['google-drive', 'made-up']);
 			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
 			expect(results[0].usesCredentials).toEqual(registryServer.usesCredentials);
+		});
+
+		it('never offers Gateway credits in search results or slug lookups', async () => {
+			stubContainer({
+				registrySearch: vi.fn().mockResolvedValue([
+					registryHit,
+					{
+						...registryHit,
+						slug: 'n8n-connect-brave-search',
+						authentication: 'none',
+						credential: AI_GATEWAY_MANAGED_TAG,
+					},
+					{ ...registryHit, slug: 'no-auth-server', authentication: 'none' },
+				]),
+				registryGetBySlugs: vi
+					.fn()
+					.mockResolvedValue(
+						pairAiGatewayServers(
+							[firecrawlMockServer, firecrawlAiGatewayMockServer, braveSearchAiGatewayMockServer],
+							() => true,
+						),
+					),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
+
+			const searchResults = await context.mcpService!.search(['drive', 'brave', 'no-auth']);
+			const servers = await context.mcpService!.getServers(['firecrawl']);
+
+			expect(searchResults.map((result) => result.slug)).toEqual([
+				'google-drive',
+				'no-auth-server',
+			]);
+			expect(servers.map(({ slug, usesCredentials }) => ({ slug, usesCredentials }))).toEqual([
+				{
+					slug: 'firecrawl',
+					usesCredentials: [
+						{ credentialType: 'firecrawlMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+					],
+				},
+			]);
 		});
 
 		it('lists slugs with a connection row, not just the loadable ones', async () => {

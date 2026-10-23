@@ -15,7 +15,10 @@ const props = defineProps<{
 	entries: ReadonlyMap<ResourceKey, DetailEntry>;
 	inspectedKey?: ResourceKey;
 	blockers: BlockerIndex;
+	branchName?: string;
 }>();
+
+const activeWorkflow = defineModel<ResourceKey | undefined>('activeWorkflow');
 
 const emit = defineEmits<{
 	retry: [key: ResourceKey];
@@ -31,7 +34,7 @@ const resources = computed(() =>
 	}),
 );
 
-// Scrolls the card to the top. An instant jump keeps loading cards from pushing it away.
+// Tree navigation scrolls to the requested card. Card toggles keep their position.
 async function scrollToCard(key: ResourceKey | undefined) {
 	if (!key) return;
 	await nextTick();
@@ -57,6 +60,10 @@ defineExpose({ scrollToCard });
 			:entry="entries.get(resource.key)"
 			:inspected="inspectedKey === resource.key"
 			:blockers="blockersOf(blockers, resource)"
+			:branch-name="branchName"
+			:diff-active="activeWorkflow === resource.key"
+			@activate-diff="activeWorkflow = resource.key"
+			@deactivate-diff="activeWorkflow = undefined"
 			@inspect="emit('inspect', $event)"
 			@retry="emit('retry', resource.key)"
 			@refresh="emit('refresh')"

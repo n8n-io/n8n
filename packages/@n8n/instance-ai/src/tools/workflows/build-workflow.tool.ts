@@ -87,6 +87,7 @@ import {
 	type ValidationWarning,
 } from './workflow-validation-warnings';
 import { FolderResolutionError } from '../../errors/folder-resolution.error';
+import { isOutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
 import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
@@ -702,6 +703,33 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					],
 					remediation,
 				};
+			}
+
+			// Fail before compile, approval, and save when this conversation cannot save the workflow.
+			const existingWorkflowId = binding.workflowId ?? input.workflowId;
+			if (existingWorkflowId) {
+				try {
+					await context.assertInThreadProject?.({ kind: 'workflow', id: existingWorkflowId });
+				} catch (error) {
+					if (!isOutsideThreadProjectError(error)) throw error;
+					const remediation = createSaveFailureRemediation(error, !!binding.workflowId);
+					trackWorkflowSourceBuild(context, {
+						result: 'blocked',
+						stage: 'permission',
+						binding,
+						targetWorkflowId: existingWorkflowId,
+						isSupportingWorkflow: input.isSupportingWorkflow,
+						remediation,
+						errorCount: 1,
+					});
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						workflowId: existingWorkflowId,
+						errors: [error instanceof Error ? error.message : String(error)],
+						remediation,
+					};
+				}
 			}
 
 			// The source was read while parameter values were hidden. Saving it would erase them.

@@ -6,3 +6,10 @@ export interface AgentTurnFinalizeOutcome {
 	status: AgentTurnStatus;
 	error?: unknown;
 }
+
+/** The user-facing form of a turn error, given by a host formatter. */
+export interface FormattedTurnError {
+	message: string;
+	/** A stable code for the client, such as `quota_exhausted`. */
+	code?: string;
+}

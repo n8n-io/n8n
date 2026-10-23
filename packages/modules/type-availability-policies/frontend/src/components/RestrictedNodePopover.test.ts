@@ -4,20 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 
 import RestrictedNodePopover from './RestrictedNodePopover.vue';
+import { contactAdminModalStub, mockPolicyProject } from '../__tests__/mocks';
 
 const DESCRIPTION =
 	'An administrator blocked this node. To use it in your workflows, contact an instance administrator for access.';
 
 const renderComponent = createComponentRenderer(RestrictedNodePopover, {
-	props: { nodeTypeName: 'Gmail', scope: 'instance' },
+	props: { nodeTypeName: 'Gmail', restriction: { scope: 'instance' } },
 	global: {
 		stubs: {
-			ContactAdminModal: {
-				props: ['open', 'nodeTypeName'],
-				emits: ['update:open'],
-				template:
-					'<div v-if="open" data-test-id="contact-admin-modal">{{ nodeTypeName }}<button data-test-id="contact-admin-close" @click="$emit(\'update:open\', false)" /></div>',
-			},
+			ContactAdminModal: contactAdminModalStub,
 		},
 	},
 });
@@ -62,13 +58,13 @@ describe('RestrictedNodePopover', () => {
 	});
 
 	it('names the project scope', async () => {
-		renderPopover({ active: true, scope: 'project' });
+		renderPopover({ active: true, restriction: { scope: 'project' } });
 
 		expect(await screen.findByText('Restricted in this project')).toBeInTheDocument();
 	});
 
 	it('falls back to the generic title for an unknown scope', async () => {
-		renderPopover({ active: true, scope: undefined });
+		renderPopover({ active: true, restriction: undefined });
 
 		expect(await screen.findByText('This node is restricted')).toBeInTheDocument();
 	});
@@ -196,7 +192,7 @@ describe('RestrictedNodePopover', () => {
 	});
 
 	it('uses the credential type copy', async () => {
-		renderPopover({ active: true, kind: 'credential', scope: undefined });
+		renderPopover({ active: true, kind: 'credential', restriction: undefined });
 
 		expect(await screen.findByText('This credential type is restricted')).toBeInTheDocument();
 		expect(
@@ -206,13 +202,17 @@ describe('RestrictedNodePopover', () => {
 		).toBeInTheDocument();
 	});
 
-	it('hands the contact-admin request to a listening parent instead of opening its own dialog', async () => {
+	it('hands the contact-admin request and its audience to a listening parent instead of opening its own dialog', async () => {
+		mockPolicyProject({ type: 'team' });
 		const onContactAdmin = vi.fn();
-		renderComponent({ props: { active: true }, attrs: { onContactAdmin } });
+		renderComponent({
+			props: { active: true, restriction: { scope: 'project' } },
+			attrs: { onContactAdmin },
+		});
 
 		await userEvent.click(await screen.findByTestId('node-restricted-contact-admin'));
 
-		expect(onContactAdmin).toHaveBeenCalledOnce();
+		expect(onContactAdmin).toHaveBeenCalledExactlyOnceWith('project');
 		expect(screen.queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
 	});
 
@@ -228,5 +228,33 @@ describe('RestrictedNodePopover', () => {
 
 		expect(onDocumentPointerDown).not.toHaveBeenCalled();
 		document.removeEventListener('pointerdown', onDocumentPointerDown);
+	});
+
+	it('sends a project restriction to the project admins', async () => {
+		renderPopover({ active: true, restriction: { scope: 'project' } });
+		mockPolicyProject({ type: 'team' });
+
+		expect(
+			await screen.findByText(
+				'An administrator blocked this node in this project. To use it, contact a project admin for access.',
+			),
+		).toBeInTheDocument();
+		await userEvent.click(screen.getByTestId('node-restricted-contact-admin'));
+
+		expect(screen.getByTestId('contact-admin-modal')).toHaveAttribute('data-audience', 'project');
+	});
+
+	it('says a project admin can allow a delegated node', async () => {
+		renderPopover({ active: true, restriction: { scope: 'instance', optInAvailable: true } });
+		mockPolicyProject({ type: 'team' });
+
+		expect(
+			await screen.findByText(
+				'This node needs approval in each project. A project admin can allow it for this project.',
+			),
+		).toBeInTheDocument();
+		expect(screen.getByTestId('node-restricted-contact-admin')).toHaveTextContent(
+			'Contact project admin',
+		);
 	});
 });

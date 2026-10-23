@@ -1,4 +1,4 @@
-import { SettingsRepository } from '@n8n/db';
+import { CredentialsRepository, SettingsRepository } from '@n8n/db';
 import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -11,6 +11,7 @@ describe('Breaking change rules auto-discovery', () => {
 		// Some rules inject repositories that need a live DataSource. Provide a
 		// mock so the container can resolve every rule without a database.
 		Container.set(SettingsRepository, mock<SettingsRepository>());
+		Container.set(CredentialsRepository, mock<CredentialsRepository>());
 	});
 
 	it('should register all rules grouped by version', () => {

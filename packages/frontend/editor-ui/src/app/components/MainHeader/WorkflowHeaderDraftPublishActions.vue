@@ -192,7 +192,7 @@ const restrictedNodeTypes = computed(() => {
 		if (!restriction) return [];
 
 		const displayName = nodeTypesStore.getNodeType(type)?.displayName ?? type;
-		return [{ displayName, scope: restriction.scope }];
+		return [{ ...restriction, displayName }];
 	});
 });
 
