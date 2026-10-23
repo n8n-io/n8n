@@ -1568,6 +1568,7 @@ describe('configuration lifecycle', () => {
 		);
 		const producer = Container.get(SelfHealingInvestigationService);
 		const failure = { ...input, executionId: nextExecution.id };
+		vi.spyOn(Date, 'now').mockReturnValue(result.completedAt.getTime() + 24 * 60 * 60 * 1000 + 1);
 
 		expect(await producer.start(failure)).toBeNull();
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
@@ -1592,7 +1593,8 @@ describe('configuration lifecycle', () => {
 			resultId: result.id,
 		});
 		await configurations.setEnabled(user, project.id, result.configurationId, true);
-		expect(await producer.start(failure)).toBeNull();
+		expect(await producer.start(failure)).toMatchObject({ kind: 'investigation' });
+		expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
 	});
 
 	it('pauses when the sole reviewer is deleted between admission and claim', async () => {
