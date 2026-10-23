@@ -48,9 +48,11 @@ describe('normalizeFormTriggerContent', () => {
 		it('turns an empty envelope into an empty submission', () => {
 			const content = { headers: {}, query: {}, body: {} };
 
-			expect(normalizeFormTriggerContent(formNode(FEEDBACK_FIELDS), content, NOW)).toEqual(
-				FORM_FIELDS_ADDED,
-			);
+			expect(normalizeFormTriggerContent(formNode(FEEDBACK_FIELDS), content, NOW)).toEqual({
+				name: null,
+				comments: null,
+				...FORM_FIELDS_ADDED,
+			});
 		});
 
 		it('moves a binary map to the top level from inside or beside the body', () => {
@@ -59,10 +61,12 @@ describe('normalizeFormTriggerContent', () => {
 
 			expect(normalizeFormTriggerContent(node, { body: { binary } }, NOW)).toEqual({
 				binary,
+				CV: null,
 				...FORM_FIELDS_ADDED,
 			});
 			expect(normalizeFormTriggerContent(node, { body: {}, binary }, NOW)).toEqual({
 				binary,
+				CV: null,
 				...FORM_FIELDS_ADDED,
 			});
 		});
@@ -75,10 +79,12 @@ describe('normalizeFormTriggerContent', () => {
 
 			expect(normalizeFormTriggerContent(formNode(FEEDBACK_FIELDS), content, NOW)).toEqual({
 				name: 'Alice',
+				comments: null,
 				...FORM_FIELDS_ADDED,
 			});
 			expect(normalizeFormTriggerContent(showing, content, NOW)).toEqual({
 				name: 'Alice',
+				comments: null,
 				headers: { 'user-agent': 'test' },
 				...FORM_FIELDS_ADDED,
 			});
@@ -89,6 +95,7 @@ describe('normalizeFormTriggerContent', () => {
 
 			expect(normalizeFormTriggerContent(formNode(FEEDBACK_FIELDS), content, NOW)).toEqual({
 				name: 'Alice',
+				comments: null,
 				formQueryParameters: { ref: 'newsletter' },
 				...FORM_FIELDS_ADDED,
 			});
@@ -99,6 +106,7 @@ describe('normalizeFormTriggerContent', () => {
 
 			expect(normalizeFormTriggerContent(formNode(FEEDBACK_FIELDS), content, NOW)).toEqual({
 				...content,
+				comments: null,
 				...FORM_FIELDS_ADDED,
 			});
 		});
@@ -116,9 +124,32 @@ describe('normalizeFormTriggerContent', () => {
 
 	describe('flat content', () => {
 		it('adds submittedAt and formMode only when they are missing', () => {
-			const content = { name: 'Alice', submittedAt: '2026-10-20T10:00:00.000Z', formMode: 'test' };
+			const content = {
+				name: 'Alice',
+				comments: 'Great',
+				submittedAt: '2026-10-20T10:00:00.000Z',
+				formMode: 'test',
+			};
 
 			expect(normalizeFormTriggerContent(formNode(FEEDBACK_FIELDS), content, NOW)).toEqual(content);
+		});
+	});
+
+	describe('missing fields', () => {
+		it('sets every declared field that is missing to null, as the Form Trigger does', () => {
+			const node = formNode([
+				{ fieldLabel: 'Name', fieldName: 'name', fieldType: 'text' },
+				{ fieldLabel: 'Comments', fieldName: 'comments', fieldType: 'textarea' },
+				{ fieldLabel: 'Rating', fieldName: 'rating', fieldType: 'number' },
+				{ fieldType: 'html', elementName: 'intro', html: '<p>Hi</p>' },
+			]);
+
+			expect(normalizeFormTriggerContent(node, { Name: 'Alice' }, NOW)).toEqual({
+				name: 'Alice',
+				comments: null,
+				rating: null,
+				...FORM_FIELDS_ADDED,
+			});
 		});
 	});
 
@@ -173,6 +204,8 @@ describe('normalizeFormTriggerContent', () => {
 
 			expect(normalizeFormTriggerContent(node, { email: 'jane@example.com' }, NOW)).toEqual({
 				email: 'jane@example.com',
+				'E-mail': null,
+				Email: null,
 				...FORM_FIELDS_ADDED,
 			});
 		});
@@ -183,11 +216,14 @@ describe('normalizeFormTriggerContent', () => {
 			expect(normalizeFormTriggerContent(node, { Name: 'Alice', NAME: 'Bob' }, NOW)).toEqual({
 				Name: 'Alice',
 				NAME: 'Bob',
+				name: null,
+				comments: null,
 				...FORM_FIELDS_ADDED,
 			});
 			expect(normalizeFormTriggerContent(node, { name: 'Alice', Name: 'Bob' }, NOW)).toEqual({
 				name: 'Alice',
 				Name: 'Bob',
+				comments: null,
 				...FORM_FIELDS_ADDED,
 			});
 		});

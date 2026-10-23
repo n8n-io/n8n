@@ -110,9 +110,22 @@ function rekeyToDeclaredFields(
 	return rekeyed;
 }
 
+/** A declared field with no value is emitted as null (`addFormResponseDataToReturnItem`). */
+function addMissingFields(
+	content: Record<string, unknown>,
+	fields: DeclaredField[],
+): Record<string, unknown> {
+	const missing = fields.filter((field) => !Object.hasOwn(content, field.key));
+	if (missing.length === 0) return content;
+	const filled = { ...content };
+	for (const field of missing) filled[field.key] = null;
+	return filled;
+}
+
 /**
  * Give model-written Form Trigger output the shape the real node emits: fields at the top
- * level under their emitted keys, plus `submittedAt` and `formMode`. Other triggers pass through.
+ * level under their emitted keys (null when missing), plus `submittedAt` and `formMode`.
+ * Other triggers pass through.
  */
 export function normalizeFormTriggerContent(
 	node: INode,
@@ -122,7 +135,10 @@ export function normalizeFormTriggerContent(
 	if (node.type !== FORM_TRIGGER_NODE_TYPE) return content;
 
 	const fields = declaredFields(node);
-	const flat = rekeyToDeclaredFields(unwrapWebhookEnvelope(node, content, fields), fields);
+	const flat = addMissingFields(
+		rekeyToDeclaredFields(unwrapWebhookEnvelope(node, content, fields), fields),
+		fields,
+	);
 	return {
 		...flat,
 		submittedAt: flat.submittedAt ?? now.toISOString(),
