@@ -1,6 +1,7 @@
 import type {
 	AgentMemoryEntriesPageDto,
 	AgentMemoryEntryDto,
+	AgentMemorySourceFacetsDto,
 	ListAgentMemoryEntriesQueryDto,
 } from '@n8n/api-types';
 import { UserRepository, type User } from '@n8n/db';
@@ -8,11 +9,19 @@ import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { N8nMemory, type EpisodicMemorySourceWithMessageContext } from './integrations/n8n-memory';
-import { AgentMemoryEntryRepository } from './repositories/agent-memory-entry.repository';
+import {
+	AgentMemoryEntryRepository,
+	type MemoryEntrySourceFilter,
+} from './repositories/agent-memory-entry.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import type { AgentMemoryEntryEntity } from './entities/agent-memory-entry.entity';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { buildMemoryEntrySource, chatSourceOwner } from './utils/memory-entry-source';
+import {
+	buildMemorySourceFacetGroups,
+	sourceMatchesFilter,
+	toMemoryEntrySourceFilter,
+} from './utils/memory-source-filter';
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
@@ -71,15 +80,32 @@ export class AgentMemoryEntriesService {
 		query: ListAgentMemoryEntriesQueryDto,
 	): Promise<AgentMemoryEntriesPageDto> {
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const filter = toMemoryEntrySourceFilter(query);
 		const limit = parseLimit(query.limit);
 		const [rows, total] = await Promise.all([
-			this.memoryEntryRepository.listActiveByAgent(agentId, limit + 1, parseCursor(query.cursor)),
-			this.memoryEntryRepository.countActiveByAgent(agentId),
+			this.memoryEntryRepository.listActiveByAgent(
+				agentId,
+				limit + 1,
+				parseCursor(query.cursor),
+				filter,
+			),
+			this.memoryEntryRepository.countActiveByAgent(agentId, filter),
 		]);
 		const entries = rows.slice(0, limit);
-		const items = await this.toDtos(agentId, entries, viewerId);
+		const items = await this.toDtos(agentId, entries, viewerId, filter);
 		const hasMore = rows.length > limit;
 		return { items, total, nextCursor: hasMore ? encodeCursor(entries[entries.length - 1]) : null };
+	}
+
+	async listSourceFacets(
+		agentId: string,
+		projectId: string,
+		viewerId: string,
+	): Promise<AgentMemorySourceFacetsDto> {
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const rows = await this.memoryEntryRepository.findSourceFacetRows(agentId);
+		const userNames = await this.loadChatUserNames(rows);
+		return { groups: buildMemorySourceFacetGroups(rows, userNames, viewerId) };
 	}
 
 	async delete(agentId: string, projectId: string, entryId: string): Promise<void> {
@@ -92,6 +118,7 @@ export class AgentMemoryEntriesService {
 		agentId: string,
 		entries: AgentMemoryEntryEntity[],
 		viewerId: string,
+		filter: MemoryEntrySourceFilter,
 	): Promise<AgentMemoryEntryDto[]> {
 		const sources = await this.n8nMemory
 			.getImplementation(agentId)
@@ -100,16 +127,16 @@ export class AgentMemoryEntriesService {
 		const userNames = await this.loadChatUserNames(entries);
 		return entries.map((entry) => {
 			const entrySources = sourcesByEntry.get(entry.id) ?? [];
+			// Sources come oldest first. Show the newest one that fits the filter.
+			const shownSource =
+				entrySources.filter((source) => sourceMatchesFilter(source, filter)).at(-1) ??
+				entrySources.at(-1) ??
+				{};
 			return {
 				id: entry.id,
 				content: entry.content,
 				createdAt: entry.createdAt.toISOString(),
-				source: buildMemoryEntrySource(
-					entry.resourceId,
-					entrySources.at(-1) ?? {},
-					userNames,
-					viewerId,
-				),
+				source: buildMemoryEntrySource(entry.resourceId, shownSource, userNames, viewerId),
 				otherSourceCount: this.countOtherSources(entrySources),
 			};
 		});
@@ -121,7 +148,9 @@ export class AgentMemoryEntriesService {
 		return Math.max(threads.size - 1, 0);
 	}
 
-	private async loadChatUserNames(entries: AgentMemoryEntryEntity[]): Promise<Map<string, string>> {
+	private async loadChatUserNames(
+		entries: Array<Pick<AgentMemoryEntryEntity, 'resourceId'>>,
+	): Promise<Map<string, string>> {
 		const userIds = new Set(
 			entries.flatMap(({ resourceId }) => chatSourceOwner(resourceId)?.userId ?? []),
 		);
