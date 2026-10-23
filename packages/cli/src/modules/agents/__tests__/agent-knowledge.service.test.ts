@@ -200,66 +200,69 @@ describe('AgentKnowledgeService', () => {
 			activeVersionId: null,
 		} as never);
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
-		const textFilePath = path.join(tempDirectory, 'notes.txt');
-		const pdfFilePath = path.join(tempDirectory, 'report.pdf');
-		await writeFile(textFilePath, 'hello world');
-		await writeFile(pdfFilePath, '%PDF-1.4');
+		try {
+			const textFilePath = path.join(tempDirectory, 'notes.txt');
+			const pdfFilePath = path.join(tempDirectory, 'report.pdf');
+			await writeFile(textFilePath, 'hello world');
+			await writeFile(pdfFilePath, '%PDF-1.4');
 
-		const result = await service.uploadFiles(agentId, projectId, [
-			makeMulterFile({
-				originalname: 'notes.txt',
-				mimetype: 'text/plain',
-				path: textFilePath,
-				size: 11,
-				buffer: undefined,
-			}),
-			makeMulterFile({
-				originalname: 'report.pdf',
-				mimetype: 'application/pdf',
-				path: pdfFilePath,
-				size: 8,
-				buffer: undefined,
-			}),
-		]);
+			const result = await service.uploadFiles(agentId, projectId, [
+				makeMulterFile({
+					originalname: 'notes.txt',
+					mimetype: 'text/plain',
+					path: textFilePath,
+					size: 11,
+					buffer: undefined,
+				}),
+				makeMulterFile({
+					originalname: 'report.pdf',
+					mimetype: 'application/pdf',
+					path: pdfFilePath,
+					size: 8,
+					buffer: undefined,
+				}),
+			]);
 
-		expect(result.map(({ file }) => file)).toEqual([
-			expect.objectContaining({
-				agentId,
-				fileName: 'notes.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 11,
-			}),
-			expect.objectContaining({
-				agentId,
-				fileName: 'report.pdf',
-				mimeType: 'application/pdf',
-				fileSizeBytes: 8,
-			}),
-		]);
+			expect(result.map(({ file }) => file)).toEqual([
+				expect.objectContaining({
+					agentId,
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					fileSizeBytes: 11,
+				}),
+				expect.objectContaining({
+					agentId,
+					fileName: 'report.pdf',
+					mimeType: 'application/pdf',
+					fileSizeBytes: 8,
+				}),
+			]);
 
-		expect(result.map(({ contentHash }) => contentHash)).toEqual([
-			knowledgeHash('hello world'),
-			knowledgeHash('%PDF-1.4'),
-		]);
-		expect(agentKnowledgeFileStore.write).toHaveBeenCalledTimes(2);
-		const [textCall, pdfCall] = agentKnowledgeFileStore.write.mock.calls;
-		expect(textCall[0]).toEqual({ agentId, fileId: expect.any(String) });
-		expect(textCall[1]).toBeInstanceOf(Readable);
-		expect(textCall[2]).toEqual(
-			expect.objectContaining({ mimeType: 'text/plain', fileName: 'notes.txt' }),
-		);
-		expect(pdfCall[1]).toEqual(Buffer.from('extracted pdf text', 'utf-8'));
-		expect(pdfCall[2]).toEqual(
-			expect.objectContaining({ mimeType: 'application/pdf', fileName: 'report.txt' }),
-		);
+			expect(result.map(({ contentHash }) => contentHash)).toEqual([
+				knowledgeHash('hello world'),
+				knowledgeHash('%PDF-1.4'),
+			]);
+			expect(agentKnowledgeFileStore.write).toHaveBeenCalledTimes(2);
+			const [textCall, pdfCall] = agentKnowledgeFileStore.write.mock.calls;
+			expect(textCall[0]).toEqual({ agentId, fileId: expect.any(String) });
+			expect(textCall[1]).toBeInstanceOf(Readable);
+			expect(textCall[2]).toEqual(
+				expect.objectContaining({ mimeType: 'text/plain', fileName: 'notes.txt' }),
+			);
+			expect(pdfCall[1]).toEqual(Buffer.from('extracted pdf text', 'utf-8'));
+			expect(pdfCall[2]).toEqual(
+				expect.objectContaining({ mimeType: 'application/pdf', fileName: 'report.txt' }),
+			);
 
-		const [storedTextFile, storedPdfFile] = agentFileRepository.all();
-		expect(storedTextFile.storedAt).toBe('fs');
-		expect(storedPdfFile.storedAt).toBe('fs');
+			const [storedTextFile, storedPdfFile] = agentFileRepository.all();
+			expect(storedTextFile.storedAt).toBe('fs');
+			expect(storedPdfFile.storedAt).toBe('fs');
 
-		await expect(access(textFilePath)).rejects.toThrow();
-		await expect(access(pdfFilePath)).rejects.toThrow();
-		await rm(tempDirectory, { recursive: true, force: true });
+			await expect(access(textFilePath)).rejects.toThrow();
+			await expect(access(pdfFilePath)).rejects.toThrow();
+		} finally {
+			await rm(tempDirectory, { recursive: true, force: true });
+		}
 	});
 
 	it('matches original bytes across names and agents and distinguishes different content', async () => {
