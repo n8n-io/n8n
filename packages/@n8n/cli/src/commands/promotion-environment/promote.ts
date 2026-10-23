@@ -7,6 +7,7 @@ export default class PromotionEnvironmentPromote extends BaseCommand {
 		'Export all team projects, commit, and push to the configured branch. Requires a connected Promote environment with instance scope.';
 
 	static override examples = [
+		'<%= config.bin %> promotion-environment promote env-1',
 		'<%= config.bin %> promotion-environment promote env-1 --message="Promote team projects"',
 	];
 
@@ -16,8 +17,7 @@ export default class PromotionEnvironmentPromote extends BaseCommand {
 		...BaseCommand.baseFlags,
 		message: Flags.string({
 			char: 'm',
-			description: 'Commit message for the promotion',
-			required: true,
+			description: 'Commit message for the promotion. A default is used when omitted.',
 		}),
 		force: Flags.boolean({
 			description: 'Overwrite the remote branch even if it has diverged',

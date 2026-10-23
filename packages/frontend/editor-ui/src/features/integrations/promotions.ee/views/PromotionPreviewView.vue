@@ -27,6 +27,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
+import PromoteSelectionDialog from '../components/PromoteSelectionDialog.vue';
 import { usePromotionOperation } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
@@ -67,12 +68,16 @@ const {
 	preview,
 	check,
 	graph,
+	environment,
 	repositoryName,
 	refreshing,
 	refreshFailed,
 	lastRefreshedAt,
 	refresh,
 } = usePromotionPreview(projectId, direction);
+const promoteEnvironment = computed(() =>
+	environment.value?.direction === 'promote' ? environment.value : null,
+);
 // The page shows and enforces only the blockers of the workflows it lists.
 const scopedCheck = computed(() =>
 	check.value && graph.value ? scopeCheck(check.value, graph.value) : null,
@@ -212,6 +217,24 @@ const submitLabel = computed(() => {
 	});
 });
 
+// Promote asks for the optional commit message first. Apply confirms inside the operation.
+const promoteDialogOpen = ref(false);
+// Lives here, not in the dialog, so the typed message survives a failed promote.
+const promoteCommitMessage = ref('');
+
+async function onSubmit() {
+	if (props.direction === 'promote') {
+		promoteDialogOpen.value = true;
+		return;
+	}
+	await operation.submit(request.value);
+}
+
+async function onPromoteConfirm(commitMessage: string | undefined) {
+	promoteDialogOpen.value = false;
+	await operation.submit({ ...request.value, commitMessage });
+}
+
 type PreviewTab = 'changes' | 'blockers';
 const activeTab = ref<PreviewTab>('changes');
 const blockerCount = computed(() => blockerList.value.filter(isBlocking).length);
@@ -315,7 +338,7 @@ const treeResizer = useResizablePanel({
 						:disabled="!canSubmit"
 						:loading="operation.isRunning.value"
 						data-test-id="promotion-preview-submit"
-						@click="operation.submit(request)"
+						@click="onSubmit"
 					>
 						{{ submitLabel }}
 					</N8nButton>
@@ -472,6 +495,17 @@ const treeResizer = useResizablePanel({
 				</N8nCallout>
 			</PromotionBlockers>
 		</template>
+
+		<PromoteSelectionDialog
+			v-if="promoteDialogOpen && promoteEnvironment"
+			v-model:open="promoteDialogOpen"
+			v-model:commit-message="promoteCommitMessage"
+			:change-count="includedChanges"
+			:base-branch-name="promoteEnvironment.settings.baseBranchName"
+			:create-branch-on-promotion="promoteEnvironment.settings.createBranchOnPromotion"
+			:provider-type="promoteEnvironment.provider.type"
+			@confirm="onPromoteConfirm"
+		/>
 	</div>
 </template>
 

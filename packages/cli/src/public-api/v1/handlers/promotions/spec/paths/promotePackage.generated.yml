@@ -14,7 +14,6 @@ parameters:
     name: promotionEnvironmentId
     in: path
 requestBody:
-  required: true
   content:
     application/json:
       schema:
@@ -24,10 +23,9 @@ requestBody:
             type: string
             minLength: 1
             maxLength: 1000
+            description: Message for the promotion commit. A default is used when omitted.
           force:
             type: boolean
-        required:
-          - commitMessage
         additionalProperties: false
 responses:
   '200':
