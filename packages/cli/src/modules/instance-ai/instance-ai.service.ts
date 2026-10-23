@@ -168,6 +168,7 @@ import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
+import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
 import { isAgentsAccessEnabled } from './agents-access';
 import {
 	INSTANCE_CONTEXT_CURSOR,
@@ -3947,17 +3948,20 @@ export class InstanceAiService {
 			// After the stream settles, so the do-not-harm pair (latency, input tokens) rides the
 			// same event. Covers suspended and terminal outcomes alike, once per turn: a resume is
 			// a follow-up segment that skips the preferences path.
-			if (aiPreferencesTurn) {
-				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN, {
-					user_id: user.id,
-					count: aiPreferencesTurn.payload.preferences.length,
-					scope_types: [...new Set(aiPreferencesTurn.payload.preferences.map((p) => p.scope))],
-					rendered_length: aiPreferencesTurn.payload.renderedLength,
-					surface: 'aia',
-					injected_this_turn: aiPreferencesTurn.payload.injectedThisTurn,
-					turn_latency_ms: Date.now() - turnStartedAt.getTime(),
-					...(result.usage ? { turn_token_count: result.usage.promptTokens } : {}),
+			const preferencesApplied =
+				aiPreferencesTurn &&
+				buildPreferencesAppliedTelemetry(aiPreferencesTurn.payload, {
+					userId: user.id,
+					threadId,
+					runId,
+					latencyMs: Date.now() - turnStartedAt.getTime(),
+					promptTokens: result.usage?.promptTokens,
 				});
+			if (preferencesApplied) {
+				this.telemetry.track(
+					TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN,
+					preferencesApplied,
+				);
 			}
 
 			if (result.status === 'suspended') {
