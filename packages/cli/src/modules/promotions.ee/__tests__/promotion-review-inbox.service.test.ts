@@ -1,4 +1,4 @@
-import type { LicenseState } from '@n8n/backend-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
 import { ServiceUnavailableError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,12 +20,16 @@ describe('PromotionReviewInboxService.refreshState', () => {
 	const hostResolver = mock<PromotionReviewHostResolver>();
 	const mergeRequests = mock<GitLabMergeRequestClient>();
 
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+
 	const service = new PromotionReviewInboxService(
 		mock<LicenseState>(),
 		reviewRepository,
 		runRepository,
 		hostResolver,
 		mergeRequests,
+		logger,
 	);
 
 	const review = (overrides: Partial<PromotionReview> = {}) =>

@@ -844,6 +844,7 @@ export {
 	type PromotionRunType,
 } from './promotions/promotion-run.dto';
 export {
+	ApprovePromotionReviewDto,
 	ListPromotionReviewsQueryDto,
 	PromotionReviewDetailDto,
 	PromotionReviewListPublicDto,
