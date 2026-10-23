@@ -2,7 +2,6 @@ import {
 	Agent,
 	createObservationLogObserveFn,
 	createObservationLogReflectFn,
-	extendRuntimeSkillSource,
 	Memory,
 } from '@n8n/agents';
 
@@ -13,7 +12,6 @@ import {
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
-import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -22,7 +20,6 @@ import {
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
 import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
-import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
 	mergeTraceRunInputs,
@@ -191,31 +188,9 @@ export async function createInstanceAgent(
 		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
-	const hasDeferredExternalMcpTools =
-		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
-	const systemPrompt = getVersionedSystemPrompt(
-		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
-			resolvePromptProfile({}).profile.systemPromptVersion,
-		{
-			browserUseState: context.browserUseState,
-			toolSearchEnabled: hasDeferrableTools,
-			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
-			licenseHints: context.licenseHints,
-			branchReadOnly: context.branchReadOnly,
-			parameterValuesHidden: context.allowSendingParameterValues === false,
-			projectId: context.projectId,
-			// Presence of the service IS the experiment gate — the host only wires it
-			// for flagged-in users on project-bound runs.
-			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
-			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
-			setupPanelEnabled: isSetupPanelEnabled(context),
-			workspaceRoot:
-				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
-					? orchestrationContext.workspaceRoot
-					: undefined,
-		},
-	);
+	// Performance baseline: the orchestrator runs without a system prompt.
+	const systemPrompt = '';
 
 	setTracePromptVersion(
 		orchestrationContext?.tracing,
@@ -246,18 +221,10 @@ export async function createInstanceAgent(
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}
-	// The agents module owns the builder skills that are generated from its config schema.
-	const builderSkills = context.builderDelegate?.getRuntimeSkills() ?? [];
-	const baseSkills = orchestrationContext?.skills;
-	const skills =
-		baseSkills && builderSkills.length > 0
-			? extendRuntimeSkillSource(baseSkills, builderSkills)
-			: baseSkills;
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}
 	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
-	if (skills) agent.skills(skills);
 
 	if (options.memory) {
 		const mem = new Memory().storage(options.memory);
@@ -314,7 +281,6 @@ export async function createInstanceAgent(
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,
 			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
-			skills: skills?.registry,
 		}),
 	);
 

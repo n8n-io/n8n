@@ -65,24 +65,17 @@ export function buildSystemMessages(
 	].filter((s): s is string => Boolean(s));
 
 	if (!splitSystemMessages || (!skillContent && volatileSections.length === 0)) {
-		return {
-			role: 'system',
-			content: [
-				baseInstructions,
-				...(skillContent ? [skillContent] : []),
-				...volatileSections,
-			].join('\n\n'),
-			...cacheOptions,
-		};
+		const content = [baseInstructions, skillContent, ...volatileSections]
+			.filter((s): s is string => Boolean(s))
+			.join('\n\n');
+		// Providers reject empty system text, and Anthropic rejects cache control on it.
+		if (!content) return [];
+		return { role: 'system', content, ...cacheOptions };
 	}
 
-	const messages: SystemModelMessage[] = [
-		{
-			role: 'system',
-			content: baseInstructions,
-			...cacheOptions,
-		},
-	];
+	const messages: SystemModelMessage[] = baseInstructions
+		? [{ role: 'system', content: baseInstructions, ...cacheOptions }]
+		: [];
 	if (skillContent) {
 		messages.push({
 			role: 'system',

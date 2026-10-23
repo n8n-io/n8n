@@ -54,7 +54,7 @@ import {
 	WORKFLOW_DIAGNOSTICS_FILENAME,
 } from './sandbox-typescript';
 import { joinWorkspacePath } from './workspace-paths';
-import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
+import { SANDBOX_KNOWLEDGE_BASE_DIR } from '../knowledge-base/materialize-knowledge-base';
 import { traceSandboxOperation, sandboxFileBytes } from '../tracing/sandbox-tracing';
 
 export { TSCONFIG_JSON } from './sandbox-typescript';
@@ -66,7 +66,7 @@ type SandboxWorkspaceSetupStep =
 	| 'read-initialization-marker'
 	| 'list-node-types'
 	| 'write-workspace-files'
-	| 'materialize-knowledge-base'
+	| 'remove-knowledge-base'
 	| 'install-dependencies'
 	| 'link-workspace-sdk'
 	| 'write-initialization-marker';
@@ -468,21 +468,14 @@ async function readWorkspaceFile(
 	return await readFileViaSandbox(workspace, path);
 }
 
-async function materializeKnowledgeBaseStep(
-	workspace: SandboxWorkspace,
-	root: string,
-	context: InstanceAiContext,
-	verifiedBundles: VerifiedWorkspaceBundles | undefined,
-): Promise<void> {
-	await setupStep('materialize-knowledge-base', async () => {
-		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
-		await materializeKnowledgeBaseIntoWorkspace({
-			workspace,
-			verifiedBundles,
-			root,
-			logger: context.logger,
-			templatesArchive: templatesBundle?.archive ?? null,
-		});
+/** Performance baseline: the builder runs without a knowledge base, even one baked into a snapshot. */
+async function removeKnowledgeBaseStep(workspace: SandboxWorkspace, root: string): Promise<void> {
+	await setupStep('remove-knowledge-base', async () => {
+		const path = joinWorkspacePath(root, SANDBOX_KNOWLEDGE_BASE_DIR);
+		const result = await runInSandbox(workspace, `rm -rf '${escapeSingleQuotes(path)}'`);
+		if (result.exitCode !== 0) {
+			throw new Error(`Failed to remove ${path}: ${result.stderr}`);
+		}
 	});
 }
 
@@ -522,7 +515,7 @@ export async function isSandboxWorkspaceInitialized(workspace: SandboxWorkspace)
 export async function setupSandboxWorkspace(
 	workspace: SandboxWorkspace,
 	context: InstanceAiContext,
-	options: { verifiedBundles?: VerifiedWorkspaceBundles } = {},
+	_options: { verifiedBundles?: VerifiedWorkspaceBundles } = {},
 ): Promise<boolean> {
 	return await traceSandboxOperation(
 		'initialize-workspace',
@@ -531,7 +524,7 @@ export async function setupSandboxWorkspace(
 			// Check marker file for idempotency
 			const { root, marker } = await readInitializationMarker(workspace);
 			if (marker !== null) {
-				await materializeKnowledgeBaseStep(workspace, root, context, options.verifiedBundles);
+				await removeKnowledgeBaseStep(workspace, root);
 				return false;
 			}
 
@@ -558,7 +551,7 @@ export async function setupSandboxWorkspace(
 				'write-workspace-files',
 				async () => await writeWorkspaceFiles(workspace, root, files),
 			);
-			await materializeKnowledgeBaseStep(workspace, root, context, options.verifiedBundles);
+			await removeKnowledgeBaseStep(workspace, root);
 
 			// npm install (must run after package.json is in place)
 			await setupStep('install-dependencies', async () => {

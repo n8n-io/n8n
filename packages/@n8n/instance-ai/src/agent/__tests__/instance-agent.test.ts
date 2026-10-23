@@ -460,51 +460,24 @@ describe('createInstanceAgent', () => {
 		});
 	});
 
-	it('attaches skills to the orchestrator when provided by the context', async () => {
-		const skills = {
-			registry: {
-				schemaVersion: 1,
-				skillsHash: 'skills-hash',
-				skills: [
-					{
-						id: 'data-table-manager',
-						name: 'data-table-manager',
-						description: 'Manage data tables.',
-						hash: 'skill-hash',
-						linkedFiles: {
-							references: [],
-							templates: [],
-							scripts: [],
-							assets: [],
-							examples: [],
-							other: [],
-						},
-					},
-				],
-			},
-			loadSkill: vi.fn(),
-		};
-
+	it('sends an empty system prompt to the orchestrator', async () => {
 		await createInstanceAgent({
 			modelId: 'test-model',
 			context: {
-				runLabel: 'skills-test',
+				runLabel: 'empty-prompt-test',
 				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
-			orchestrationContext: {
-				runId: 'skills-test',
-				skills,
-			},
+			orchestrationContext: { runId: 'empty-prompt-test' },
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
-		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(skills);
+		expect(mockAgentInstances[0]?.instructions).toHaveBeenCalledWith('', expect.anything());
 	});
 
-	it('adds the builder delegate runtime skills to the orchestrator skills', async () => {
+	it('does not attach skills to the orchestrator', async () => {
 		const { createRuntimeSkillSource } =
 			await vi.importActual<typeof import('@n8n/agents')>('@n8n/agents');
 		const baseSkills = createRuntimeSkillSource([
@@ -520,28 +493,18 @@ describe('createInstanceAgent', () => {
 		await createInstanceAgent({
 			modelId: 'test-model',
 			context: {
-				runLabel: 'builder-skills-test',
+				runLabel: 'no-skills-test',
 				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 				builderDelegate: { getRuntimeSkills: () => [builderSkill] },
 			},
-			orchestrationContext: {
-				runId: 'builder-skills-test',
-				skills: baseSkills,
-			},
+			orchestrationContext: { runId: 'no-skills-test', skills: baseSkills },
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
-		const attached = mockAgentInstances[0]?.skills.mock.calls[0]?.[0] as typeof baseSkills;
-		expect(attached.registry.skills.map((skill) => skill.id)).toEqual([
-			'base_skill',
-			'builder_skill',
-		]);
-		await expect(attached.loadSkill('builder_skill')).resolves.toMatchObject({
-			instructions: 'Builder body.',
-		});
+		expect(mockAgentInstances[0]?.skills).not.toHaveBeenCalled();
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
@@ -581,50 +544,6 @@ describe('createInstanceAgent', () => {
 			browser_connect: { id: 'browser_connect' },
 			browser_navigate: { id: 'browser_navigate' },
 		});
-	});
-
-	it('enables MCP-specific tool search guidance when external MCP tools are available', async () => {
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {
-				runLabel: 'external-mcp-prompt',
-				browserUseState: undefined,
-				licenseHints: undefined,
-				localMcpServer: undefined,
-			},
-			orchestrationContext: { runId: 'external-mcp-prompt' },
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(
-				new Map([['notion_search', mockBuiltTool('notion_search')]]),
-			),
-		} as never);
-
-		expect(getSystemPrompt).toHaveBeenCalledWith(
-			expect.objectContaining({
-				toolSearchEnabled: true,
-				mcpToolSearchEnabled: true,
-			}),
-		);
-	});
-
-	it('passes the thread project to the prompt so the project-scope section renders', async () => {
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {
-				runLabel: 'project-scope-prompt',
-				projectId: 'project-1',
-				browserUseState: undefined,
-				licenseHints: undefined,
-				localMcpServer: undefined,
-			},
-			orchestrationContext: { runId: 'project-scope-prompt' },
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(new Map()),
-		} as never);
-
-		expect(getSystemPrompt).toHaveBeenCalledWith(
-			expect.objectContaining({ projectId: 'project-1' }),
-		);
 	});
 
 	describe('connected MCP services', () => {
@@ -698,60 +617,6 @@ describe('createInstanceAgent', () => {
 			]);
 			expect(orchestrationContext.mcpTools).toBeUndefined();
 		});
-	});
-
-	it('does not enable MCP-specific tool search guidance when deferred search is disabled', async () => {
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {
-				runLabel: 'external-mcp-eager-prompt',
-				browserUseState: undefined,
-				licenseHints: undefined,
-				localMcpServer: undefined,
-			},
-			orchestrationContext: { runId: 'external-mcp-eager-prompt' },
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(
-				new Map([['notion_search', mockBuiltTool('notion_search')]]),
-			),
-			disableDeferredTools: true,
-		} as never);
-
-		expect(getSystemPrompt).toHaveBeenCalledWith(
-			expect.objectContaining({
-				toolSearchEnabled: false,
-				mcpToolSearchEnabled: false,
-			}),
-		);
-	});
-
-	it('does not enable MCP-specific tool search guidance for Browser Use tools alone', async () => {
-		const localMcpServer = {
-			getToolsByCategory: vi.fn().mockReturnValue([{ name: 'browser_navigate' }]),
-		};
-		createToolsFromLocalMcpServer.mockReturnValue(
-			new Map([['browser_navigate', mockBuiltTool('browser_navigate')]]),
-		);
-
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {
-				runLabel: 'local-mcp-prompt',
-				browserUseState: undefined,
-				licenseHints: undefined,
-				localMcpServer,
-			},
-			orchestrationContext: { runId: 'local-mcp-prompt' },
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(),
-		} as never);
-
-		expect(getSystemPrompt).toHaveBeenCalledWith(
-			expect.objectContaining({
-				toolSearchEnabled: true,
-				mcpToolSearchEnabled: false,
-			}),
-		);
 	});
 
 	it('prefers Browser Use tools over external MCP tools when names collide', async () => {

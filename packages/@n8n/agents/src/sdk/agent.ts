@@ -1016,7 +1016,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (!this.modelConfig) {
 			throw new Error(`Agent "${this.name}" requires a model`);
 		}
-		if (!this.instructionsText) {
+		if (this.instructionsText === undefined) {
 			throw new Error(`Agent "${this.name}" requires instructions`);
 		}
 

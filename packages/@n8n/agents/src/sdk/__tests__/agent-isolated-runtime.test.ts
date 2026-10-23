@@ -57,6 +57,24 @@ describe('Agent isolated runtimes', () => {
 		vi.clearAllMocks();
 	});
 
+	it('runs with empty instructions', async () => {
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('response'));
+		const agent = new Agent('agent').model('openai/gpt-4o-mini').instructions('');
+
+		const result = await agent.generate('hello');
+
+		expect(result.error).toBeUndefined();
+		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+
+	it('requires instructions to be set', async () => {
+		const agent = new Agent('agent').model('openai/gpt-4o-mini');
+
+		await expect((agent as unknown as AgentInternals).ensureBuilt()).rejects.toThrow(
+			'requires instructions',
+		);
+	});
+
 	it('keeps result state bound to the runtime that produced it', async () => {
 		generateText
 			.mockResolvedValueOnce(makeGenerateSuccess('first response'))

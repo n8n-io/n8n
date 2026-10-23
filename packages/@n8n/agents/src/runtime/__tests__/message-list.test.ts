@@ -243,6 +243,37 @@ describe('AgentMessageList — forLlm observation memory', () => {
 	});
 });
 
+describe('buildSystemMessages — empty base instructions', () => {
+	const cacheOptions = { anthropic: { cacheControl: { type: 'ephemeral' as const } } };
+
+	it('sends no system message when every section is empty', () => {
+		expect(buildSystemMessages('', undefined, cacheOptions)).toEqual([]);
+	});
+
+	it('sends only the volatile message when split messages are supported', () => {
+		const system = buildSystemMessages('', undefined, cacheOptions, 'Volatile rule.');
+
+		expect(system).toEqual([{ role: 'system', content: '\n\nVolatile rule.' }]);
+	});
+
+	it('omits the empty base from a merged system message', () => {
+		const system = buildSystemMessages(
+			'',
+			undefined,
+			cacheOptions,
+			'Volatile rule.',
+			undefined,
+			false,
+		);
+
+		expect(system).toEqual({
+			role: 'system',
+			content: 'Volatile rule.',
+			providerOptions: cacheOptions,
+		});
+	});
+});
+
 describe('buildSystemMessages — volatile tool-instruction fragments', () => {
 	it('places volatile instructions in an uncached second message when observation memory is absent', () => {
 		const system = buildSystemMessages(

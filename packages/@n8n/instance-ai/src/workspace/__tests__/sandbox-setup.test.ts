@@ -67,7 +67,6 @@ import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { makeBuilderTemplatesTarGz } from '../../knowledge-base/__tests__/builder-templates-archive.fixtures';
-import { buildKnowledgeBaseWorkspaceBundle } from '../../knowledge-base/materialize-knowledge-base';
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
@@ -357,7 +356,10 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
-	it('upgrades the knowledge base when sandbox was initialized before templates existed', async () => {
+	it.each([
+		['a fresh', null],
+		['an already initialized', '2024-01-01T00:00:00.000Z'],
+	])('removes the knowledge base from %s workspace', async (_label, marker) => {
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
 				(
@@ -367,101 +369,10 @@ describe('setupSandboxWorkspace', () => {
 		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
-		readFileViaSandbox.mockImplementation(async (_workspace, path) => {
-			await Promise.resolve();
-			if (path === '/sandbox/.sandbox-initialized') {
-				return '2024-01-01T00:00:00.000Z';
-			}
-			return null;
-		});
-		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
-			runInSandbox,
-			readFileViaSandbox,
+		readFileViaSandbox.mockImplementation(
+			async (_workspace, path) =>
+				await Promise.resolve(path === '/sandbox/.sandbox-initialized' ? marker : null),
 		);
-		const writeFile = vi.fn<
-			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
-		>(async () => await Promise.resolve());
-		const readFile = vi.fn(async (path: string) => {
-			if (path === '/sandbox/.sandbox-initialized') {
-				return await Promise.resolve('2024-01-01T00:00:00.000Z');
-			}
-			return await Promise.reject(new Error(`ENOENT: ${path}`));
-		});
-
-		const bundle: BuilderTemplatesBundle = {
-			archive: makeBuilderTemplatesTarGz([{ name: 'example-workflow.ts', content: 'export {}' }]),
-			version: 'test-sha',
-		};
-		const initialized = await setupSandboxWorkspace(
-			createLocalWorkspace(writeFile, undefined, readFile),
-			createSetupContext(bundle),
-		);
-
-		expect(initialized).toBe(false);
-		expect(installCommandsFrom(runInSandbox)).toEqual([]);
-		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
-		expect(writtenPaths).not.toContain('/sandbox/workflow-diagnostics.mts');
-		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
-	});
-
-	it('reads only the knowledge base manifest when the prebaked bundle matches', async () => {
-		const runInSandbox: RunInSandboxMock =
-			vi.fn<
-				(
-					...args: [SandboxWorkspace, string, string?]
-				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
-			>();
-		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
-		const readFileViaSandbox: ReadFileViaSandboxMock =
-			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
-		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
-			runInSandbox,
-			readFileViaSandbox,
-		);
-		const context = createSetupContext();
-		const knowledgeBase = await buildKnowledgeBaseWorkspaceBundle({
-			root: '/sandbox',
-			logger: context.logger,
-		});
-		const files = new Map(knowledgeBase.files);
-		files.set('/sandbox/.sandbox-initialized', '2024-01-01T00:00:00.000Z');
-		const writeFile = vi.fn<
-			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
-		>(async () => await Promise.resolve());
-		const readFile = vi.fn(async (path: string) => {
-			const content = files.get(path);
-			if (content === undefined) return await Promise.reject(new Error(`ENOENT: ${path}`));
-			return await Promise.resolve(content);
-		});
-		const verifiedBundles = new Map<string, string>();
-
-		const initialized = await setupSandboxWorkspace(
-			createLocalWorkspace(writeFile, undefined, readFile),
-			context,
-			{ verifiedBundles },
-		);
-
-		expect(initialized).toBe(false);
-		expect(readFile.mock.calls.map(([path]) => path)).toEqual([
-			'/sandbox/.sandbox-initialized',
-			knowledgeBase.manifestPath,
-		]);
-		expect(writeFile).not.toHaveBeenCalled();
-		expect(verifiedBundles.get(knowledgeBase.manifestPath)).toBe(knowledgeBase.contentHash);
-	});
-
-	it('materializes knowledge-base templates on the local provider when a bundle is available', async () => {
-		const runInSandbox: RunInSandboxMock =
-			vi.fn<
-				(
-					...args: [SandboxWorkspace, string, string?]
-				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
-			>();
-		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
-		const readFileViaSandbox: ReadFileViaSandboxMock =
-			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
-		readFileViaSandbox.mockResolvedValue(null);
 		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
 			runInSandbox,
 			readFileViaSandbox,
@@ -469,15 +380,24 @@ describe('setupSandboxWorkspace', () => {
 		const writeFile = vi.fn<
 			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
 		>(async () => {});
+		const readFile = vi.fn(async (path: string) => {
+			if (marker !== null && path === '/sandbox/.sandbox-initialized') return marker;
+			return await Promise.reject(new Error(`ENOENT: ${path}`));
+		});
 
 		const bundle: BuilderTemplatesBundle = {
 			archive: makeBuilderTemplatesTarGz([{ name: 'example-workflow.ts', content: 'export {}' }]),
 			version: 'test-sha',
 		};
-		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext(bundle));
+		await setupSandboxWorkspace(
+			createLocalWorkspace(writeFile, undefined, readFile),
+			createSetupContext(bundle),
+		);
 
+		const commands = runInSandbox.mock.calls.map(([, command]) => command);
+		expect(commands).toContain("rm -rf '/sandbox/knowledge-base'");
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
-		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
+		expect(writtenPaths.some((p) => p.includes('/knowledge-base/'))).toBe(false);
 	});
 
 	it.each(['mkdir', 'writeFile'])(
@@ -534,7 +454,14 @@ describe('setupSandboxWorkspace', () => {
 					...args: [SandboxWorkspace, string, string?]
 				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
 			>();
-		runInSandbox.mockResolvedValue({ exitCode: 1, stdout: '', stderr: 'install failed' });
+		runInSandbox.mockImplementation(
+			async (_workspace, command) =>
+				await Promise.resolve(
+					command.startsWith('npm install')
+						? { exitCode: 1, stdout: '', stderr: 'install failed' }
+						: { exitCode: 0, stdout: '', stderr: '' },
+				),
+		);
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
 		readFileViaSandbox.mockResolvedValue(null);
