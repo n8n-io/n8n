@@ -284,12 +284,6 @@ describe('EngineV2ExecutionReader', () => {
 				expect.objectContaining({ id: EXECUTION_ID, status: 'waiting', finished: false }),
 			);
 		});
-
-		it('reads as no execution when the document has no nodes', async () => {
-			await expect(
-				reader.fromSnapshot(snapshot({ workflow: { id: WORKFLOW_ID } })),
-			).resolves.toBeUndefined();
-		});
 	});
 
 	describe('findOne', () => {

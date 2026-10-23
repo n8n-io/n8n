@@ -5,7 +5,14 @@ import type { ExecutionSnapshot } from '@n8n/engine';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
 import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
-import type { INodeParameters, IWebhookData, IWorkflowBase, Workflow } from 'n8n-workflow';
+import type {
+	INode,
+	INodeParameters,
+	IRunData,
+	IWebhookData,
+	IWorkflowBase,
+	Workflow,
+} from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -2047,18 +2054,58 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	const snapshot = (status: ExecutionSnapshot['status']) =>
 		({ id: EXECUTION_ID, status, workflow: { nodes: [waitNode] } }) as unknown as ExecutionSnapshot;
 	const target = { stepId: 'step-1', nodeId: 'wait-id' };
-	const request = (query: Record<string, string>) =>
-		mock<WaitingWebhookRequest>({
+	const request = (query: Record<string, string>, headers: Record<string, string> = {}) => {
+		const url = `/webhook-waiting/${EXECUTION_ID}?${new URLSearchParams(query).toString()}`;
+		return mock<WaitingWebhookRequest>({
 			method: 'GET',
 			params: { path: EXECUTION_ID, suffix: undefined },
 			query,
-			url: `/webhook-waiting/${EXECUTION_ID}?${new URLSearchParams(query).toString()}`,
-			headers: { host: 'localhost' },
+			url,
+			originalUrl: url,
+			headers: { host: 'localhost', ...headers },
 		});
+	};
 	const response = () => {
 		const res = mock<express.Response>();
 		res.status.mockReturnValue(res);
 		return res;
+	};
+
+	/** Lets the data plane name the waiting step of `node`, and returns the execution the reader maps. */
+	const acceptResume = ({
+		node = waitNode,
+		path = '',
+		runData = {},
+	}: { node?: INode; path?: string; runData?: IRunData } = {}) => {
+		dataPlane.locateResumeTarget.mockResolvedValue({
+			ok: true,
+			value: { execution: snapshot('waiting'), target },
+		});
+		const execution = {
+			id: EXECUTION_ID,
+			mode: 'manual',
+			status: 'waiting',
+			workflowData: { id: 'wf-1', name: 'wf', nodes: [{ ...node }], connections: {} },
+			data: { resultData: { runData } },
+		} as unknown as IExecutionResponse;
+		executionReader.fromSnapshot.mockResolvedValue(execution);
+		webhookService.getNodeWebhooks.mockReturnValue([
+			{
+				httpMethod: 'GET',
+				path,
+				webhookDescription: { restartWebhook: true, httpMethod: 'GET', name: 'default', path },
+			} as unknown as IWebhookData,
+		]);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+		const executeWebhookSpy = vi
+			.spyOn(WebhookHelpers, 'executeWebhook')
+			.mockImplementation(
+				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+					callback(null, { noWebhookResponse: true });
+					return EXECUTION_ID;
+				},
+			);
+		return { execution, executeWebhookSpy };
 	};
 
 	beforeEach(() => {
@@ -2117,10 +2164,10 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	});
 
 	it.each([
+		['queued', 'is running already'],
 		['running', 'is running already'],
 		['waiting', 'is running already'],
 		['completed', 'has finished already'],
-		['cancelled', 'has finished already'],
 	] as const)(
 		'answers 409 when no step accepts the request and the execution is %s',
 		async (status, message) => {
@@ -2129,40 +2176,18 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 				value: { execution: snapshot(status), target: null },
 			});
 
-			await expect(
-				waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
-			).rejects.toThrow(`The execution "${EXECUTION_ID}" ${message}.`);
+			const answer = waitingWebhooks.executeWebhook(
+				request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }),
+				response(),
+			);
+
+			await expect(answer).rejects.toThrow(ConflictError);
+			await expect(answer).rejects.toThrow(`The execution "${EXECUTION_ID}" ${message}.`);
 		},
 	);
 
 	it('runs the waiting node under its own execution id, with the step and token the data plane named', async () => {
-		dataPlane.locateResumeTarget.mockResolvedValue({
-			ok: true,
-			value: { execution: snapshot('waiting'), target },
-		});
-		executionReader.fromSnapshot.mockResolvedValue({
-			id: EXECUTION_ID,
-			mode: 'manual',
-			status: 'waiting',
-			workflowData: { id: 'wf-1', name: 'wf', nodes: [waitNode], connections: {} },
-			data: { resultData: { runData: {} } },
-		} as unknown as IExecutionResponse);
-		webhookService.getNodeWebhooks.mockReturnValue([
-			{
-				httpMethod: 'GET',
-				path: '',
-				webhookDescription: { restartWebhook: true, httpMethod: 'GET', name: 'default', path: '' },
-			} as unknown as IWebhookData,
-		]);
-		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
-		const executeWebhookSpy = vi
-			.spyOn(WebhookHelpers, 'executeWebhook')
-			.mockImplementation(
-				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
-					callback(null, { noWebhookResponse: true });
-					return EXECUTION_ID;
-				},
-			);
+		const { executeWebhookSpy } = acceptResume();
 		const req = request({ [WAITING_TOKEN_QUERY_PARAM]: 'token' });
 
 		await expect(waitingWebhooks.executeWebhook(req, response())).resolves.toEqual({
@@ -2181,5 +2206,91 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			expect.objectContaining({ engineResume: { stepId: 'step-1', token: 'token' } }),
 		);
 		expect(calledReq.url).toBe(`/webhook-waiting/${EXECUTION_ID}`);
+		expect(calledReq.params).toEqual({});
+	});
+
+	it('reads the webhook path that follows the token in the query', async () => {
+		acceptResume({ path: 'my-suffix' });
+
+		await expect(
+			waitingWebhooks.executeWebhook(
+				request({ [WAITING_TOKEN_QUERY_PARAM]: 'token/my-suffix' }),
+				response(),
+			),
+		).resolves.toEqual({ noWebhookResponse: true });
+
+		expect(dataPlane.locateResumeTarget).toHaveBeenCalledWith(EXECUTION_ID, { token: 'token' });
+	});
+
+	it('answers 404 when the reader cannot map the snapshot to an execution', async () => {
+		acceptResume();
+		executionReader.fromSnapshot.mockResolvedValue(undefined);
+
+		await expect(
+			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
+		).rejects.toThrow(NotFoundError);
+	});
+
+	it('answers 404 when the workflow has no node with the id of the waiting step', async () => {
+		acceptResume({ node: { ...waitNode, id: 'other-id' } });
+
+		await expect(
+			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
+		).rejects.toThrow('Could not find node to process webhook.');
+	});
+
+	it('removes the auth cookie before the node gets the request', async () => {
+		const { executeWebhookSpy } = acceptResume();
+
+		await waitingWebhooks.executeWebhook(
+			request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }, { cookie: 'n8n-auth=x' }),
+			response(),
+		);
+
+		expect(executeWebhookSpy.mock.calls[0][8].headers.cookie).not.toContain('n8n-auth');
+	});
+
+	it('redirects the resume of a form wait to the form-waiting route', async () => {
+		acceptResume({ node: { ...waitNode, parameters: { resume: 'form' } } });
+		const res = response();
+
+		await expect(
+			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), res),
+		).resolves.toEqual({ noWebhookResponse: true });
+
+		expect(res.redirect).toHaveBeenCalledWith(307, expect.stringContaining('/form-waiting/'));
+	});
+
+	it('sets the CORS headers before the node runs', async () => {
+		acceptResume();
+		const res = response();
+
+		await waitingWebhooks.executeWebhook(
+			request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }, { origin: 'https://example.com' }),
+			res,
+		);
+
+		expect(res.setHeader).toHaveBeenCalledWith(
+			'Access-Control-Allow-Origin',
+			'https://example.com',
+		);
+	});
+
+	it('keeps the earlier runs of the waiting node', async () => {
+		const earlierRun = { startTime: 1, executionTime: 1, executionIndex: 0, source: [] };
+		const waitingRun = { startTime: 2, executionTime: 0, executionIndex: 1, source: [] };
+		const { execution } = acceptResume({ runData: { Wait: [earlierRun, waitingRun] } });
+
+		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response());
+
+		expect(execution.data.resultData.runData.Wait).toEqual([earlierRun]);
+	});
+
+	it('disables a copy of the waiting node, not the workflow node', async () => {
+		const { execution } = acceptResume();
+
+		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response());
+
+		expect(execution.workflowData.nodes[0].disabled).toBeUndefined();
 	});
 });

@@ -5,7 +5,9 @@ import type { InstanceSettings } from 'n8n-core';
 import { getHtmlSandboxCSP, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
+	WAIT_NODE_TYPE,
 	WAITING_FORMS_EXECUTION_STATUS,
+	type IWebhookData,
 	type IWorkflowBase,
 	type Workflow,
 } from 'n8n-workflow';
@@ -15,6 +17,9 @@ import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-r
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitingForms } from '@/webhooks/waiting-forms';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import type { WebhookService } from '@/webhooks/webhook.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import type { WaitingWebhookRequest } from '../webhook.types';
 
@@ -890,28 +895,41 @@ describe('WaitingForms', () => {
 describe('WaitingForms on an engine v2 execution', () => {
 	const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 	const dataPlane = mock<EngineDataPlaneProxyService>();
+	const executionReader = mock<EngineV2ExecutionReader>();
+	const webhookService = mock<WebhookService>();
 	const waitingForms = new WaitingForms(
 		mock(),
 		mock(),
 		mock<ExecutionPersistence>(),
-		mock(),
+		webhookService,
 		mock<InstanceSettings>(),
 		mock(),
 		mock(),
 		dataPlane,
-		mock<EngineV2ExecutionReader>(),
+		executionReader,
 	);
 
 	const formNode = { id: 'form-id', name: 'Form', type: FORM_NODE_TYPE, parameters: {} };
+	const waitNode = {
+		id: 'wait-id',
+		name: 'Wait',
+		type: WAIT_NODE_TYPE,
+		parameters: { resume: 'webhook' },
+	};
+	// Plain objects, not `mock()`: the route clones the node, and a proxy cannot be cloned.
 	const snapshot = (status: ExecutionSnapshot['status']) =>
-		mock<ExecutionSnapshot>({ id: EXECUTION_ID, status, workflow: { nodes: [formNode] } });
-	const request = (suffix: string | undefined) =>
+		({
+			id: EXECUTION_ID,
+			status,
+			workflow: { nodes: [formNode, waitNode] },
+		}) as unknown as ExecutionSnapshot;
+	const request = (suffix: string | undefined, headers: Record<string, string> = {}) =>
 		mock<WaitingWebhookRequest>({
 			method: 'GET',
 			params: { path: EXECUTION_ID, suffix },
 			query: { [WAITING_TOKEN_QUERY_PARAM]: 't' },
 			url: `/form-waiting/${EXECUTION_ID}/${suffix ?? ''}?${WAITING_TOKEN_QUERY_PARAM}=t`,
-			headers: { host: 'localhost' },
+			headers: { host: 'localhost', ...headers },
 		});
 	const response = () => {
 		const res = mock<express.Response>();
@@ -920,6 +938,7 @@ describe('WaitingForms on an engine v2 execution', () => {
 	};
 
 	beforeEach(() => {
+		vi.restoreAllMocks();
 		vi.clearAllMocks();
 	});
 
@@ -939,13 +958,13 @@ describe('WaitingForms on an engine v2 execution', () => {
 	});
 
 	it.each([
-		['waiting', { stepId: 'step-1', nodeId: 'form-id' }, 'form-waiting'],
-		['running', null, 'running'],
-		['completed', null, 'success'],
-		['failed', null, 'error'],
+		['form-waiting', 'waiting', 'a form target', { stepId: 'step-1', nodeId: 'form-id' }],
+		['waiting', 'waiting', 'a webhook target', { stepId: 'step-1', nodeId: 'wait-id' }],
+		['running', 'running', 'a form target', { stepId: 'step-1', nodeId: 'form-id' }],
+		['running', 'running', 'no target', null],
 	] as const)(
-		'answers the status poll of a %s execution with the word the form page acts on',
-		async (status, target, expected) => {
+		"answers '%s' to the status poll of a %s execution with %s",
+		async (expected, status, _, target) => {
 			dataPlane.locateResumeTarget.mockResolvedValue({
 				ok: true,
 				value: { execution: snapshot(status), target },
@@ -953,27 +972,37 @@ describe('WaitingForms on an engine v2 execution', () => {
 			const res = response();
 
 			await expect(
-				waitingForms.executeWebhook(request(WAITING_FORMS_EXECUTION_STATUS), res),
+				waitingForms.executeWebhook(
+					request(WAITING_FORMS_EXECUTION_STATUS, { origin: 'https://example.com' }),
+					res,
+				),
 			).resolves.toEqual({ noWebhookResponse: true });
 
 			expect(res.send).toHaveBeenCalledWith(expected);
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Access-Control-Allow-Origin',
+				'https://example.com',
+			);
 		},
 	);
 
-	it('answers nothing while a live execution has not reached its form, so the page keeps polling', async () => {
-		dataPlane.locateResumeTarget.mockResolvedValue({
-			ok: true,
-			value: { execution: snapshot('running'), target: null },
-		});
-		const res = response();
+	it.each(['running', 'queued'] as const)(
+		'answers nothing while a %s execution has not reached its form, so the page keeps polling',
+		async (status) => {
+			dataPlane.locateResumeTarget.mockResolvedValue({
+				ok: true,
+				value: { execution: snapshot(status), target: null },
+			});
+			const res = response();
 
-		await expect(waitingForms.executeWebhook(request(undefined), res)).resolves.toEqual({
-			noWebhookResponse: true,
-		});
+			await expect(waitingForms.executeWebhook(request(undefined), res)).resolves.toEqual({
+				noWebhookResponse: true,
+			});
 
-		expect(res.render).not.toHaveBeenCalled();
-		expect(res.status).not.toHaveBeenCalled();
-	});
+			expect(res.render).not.toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+		},
+	);
 
 	it('renders the completion page for an execution that completed', async () => {
 		dataPlane.locateResumeTarget.mockResolvedValue({
@@ -985,5 +1014,57 @@ describe('WaitingForms on an engine v2 execution', () => {
 		await waitingForms.executeWebhook(request(undefined), res);
 
 		expect(res.render).toHaveBeenCalledWith('form-trigger-completion', expect.any(Object));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 	});
+
+	it('answers 409 for an execution that failed', async () => {
+		dataPlane.locateResumeTarget.mockResolvedValue({
+			ok: true,
+			value: { execution: snapshot('failed'), target: null },
+		});
+
+		await expect(waitingForms.executeWebhook(request(undefined), response())).rejects.toThrow(
+			'has finished already',
+		);
+	});
+
+	it.each([
+		['keeps', 'Form', formNode, 'n8n-auth=x'],
+		['removes', 'Wait', { ...waitNode, parameters: { resume: 'form' } }, ''],
+	] as const)(
+		'%s the auth cookie when a %s node waits for the form',
+		async (_, __, node, cookie) => {
+			dataPlane.locateResumeTarget.mockResolvedValue({
+				ok: true,
+				value: { execution: snapshot('waiting'), target: { stepId: 'step-1', nodeId: node.id } },
+			});
+			executionReader.fromSnapshot.mockResolvedValue({
+				id: EXECUTION_ID,
+				mode: 'manual',
+				status: 'waiting',
+				workflowData: { id: 'wf-1', name: 'wf', nodes: [node], connections: {} },
+				data: { resultData: { runData: {} } },
+			} as unknown as IExecutionResponse);
+			webhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'GET',
+					path: '',
+					webhookDescription: { restartWebhook: true, nodeType: 'form' },
+				} as unknown as IWebhookData,
+			]);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const executeWebhookSpy = vi
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(
+					async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+						callback(null, { noWebhookResponse: true });
+						return EXECUTION_ID;
+					},
+				);
+
+			await waitingForms.executeWebhook(request(undefined, { cookie: 'n8n-auth=x' }), response());
+
+			expect(executeWebhookSpy.mock.calls[0][8].headers.cookie).toBe(cookie);
+		},
+	);
 });

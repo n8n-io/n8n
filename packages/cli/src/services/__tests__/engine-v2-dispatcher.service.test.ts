@@ -971,7 +971,34 @@ describe('EngineV2Dispatcher', () => {
 		it('answers a wait that is over with a conflict, as v1 does', async () => {
 			proxy.resolveStep.mockResolvedValue({ ok: false, status: 409, error: 'not_waiting' });
 
-			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow(ConflictError);
+			const resumed = dispatcher.resume(existing, resumeData([[]]));
+
+			await expect(resumed).rejects.toThrow(ConflictError);
+			await expect(resumed).rejects.toThrow(`The execution "${executionId}" is not waiting.`);
+		});
+
+		it('answers any other refusal of the data plane with a user error', async () => {
+			proxy.resolveStep.mockResolvedValue({ ok: false, status: 501, error: 'unimplemented' });
+
+			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow(UserError);
+		});
+
+		it('sends an empty slot of the resume payload as a dead edge', async () => {
+			await dispatcher.resume(existing, resumeData([null, [{ json: {} }]]));
+
+			expect(proxy.resolveStep).toHaveBeenCalledWith('step-1', {
+				token: 'token',
+				outputs: [null, [{ json: {} }]],
+			});
+		});
+
+		it('fails when the stack carries no payload for the waiting node', async () => {
+			const data = {
+				workflowData: workflow(),
+				userId: 'user-1',
+			} as unknown as IWorkflowExecutionDataProcess;
+
+			await expect(dispatcher.resume(existing, data)).rejects.toThrow('carries no payload');
 		});
 
 		describe('the files the resume method stored', () => {
@@ -1018,8 +1045,9 @@ describe('EngineV2Dispatcher', () => {
 		it('refuses a resume that names no wait on the data plane', async () => {
 			await expect(
 				dispatcher.resume({ executionId, expectedStatus: 'waiting' }, resumeData([[]])),
-			).rejects.toThrow();
+			).rejects.toThrow('A v2 resume needs the step');
 
+			expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
 			expect(proxy.resolveStep).not.toHaveBeenCalled();
 		});
 	});

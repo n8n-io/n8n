@@ -76,6 +76,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
+import type { EngineV2ResumeRequest } from '@/interfaces';
 import { type ResponseError } from '@n8n/errors';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -2784,6 +2785,7 @@ describe('executeWebhook on engine v2', () => {
 		startNode = webhookNode(),
 		webhookResult = { workflowData: [[{ json: { body: 'hi' } }]] } as IWebhookResponseData,
 		executionId,
+		engineResume,
 		destinationNode,
 		responseHeaders,
 		response = mock<express.Response>({ headersSent: false, writableEnded: false }),
@@ -2792,6 +2794,7 @@ describe('executeWebhook on engine v2', () => {
 		startNode?: INode;
 		webhookResult?: IWebhookResponseData;
 		executionId?: string;
+		engineResume?: EngineV2ResumeRequest;
 		destinationNode?: IDestinationNode;
 		/** The response headers configured on the webhook node, as an expression. */
 		responseHeaders?: string;
@@ -2849,6 +2852,7 @@ describe('executeWebhook on engine v2', () => {
 			response,
 			responseCallback,
 			destinationNode,
+			{ engineResume },
 		);
 
 		return { response, responseCallback, returned };
@@ -2933,12 +2937,18 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('resumes under the id of the waiting execution', async () => {
+			const engineResume = { stepId: 'step-1', token: 't' };
+
 			await startWebhook({
 				startNode: webhookNode(WAIT_NODE_TYPE),
 				executionId: ENGINE_EXECUTION_ID,
+				engineResume,
 			});
 
 			expect(workflowRunner.run.mock.calls[0][0].engineV2ExecutionId).toBe(ENGINE_EXECUTION_ID);
+			expect(workflowRunner.run.mock.calls[0][3]).toEqual(
+				expect.objectContaining({ executionId: ENGINE_EXECUTION_ID, engineResume }),
+			);
 		});
 
 		it('dispatches the run without a response expectation, because nobody listens', async () => {

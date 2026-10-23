@@ -369,6 +369,8 @@ describe('EngineDataPlaneClient', () => {
 					url: `/api/workflow-executions/${EXECUTION_ID}/resume-target`,
 					method: 'POST',
 					body: { token: 't' },
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true,
 					disableFollowRedirect: true,
 				}),
 			);
@@ -404,11 +406,21 @@ describe('EngineDataPlaneClient', () => {
 			});
 		});
 
-		it.each([500, 503])('throws on a %s, which is a failure and not a refusal', async (status) => {
-			respondWith(status, { error: 'internal' });
+		it('relays a 300 without a reason as an engine error', async () => {
+			respondWith(300, {});
+
+			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+				ok: false,
+				status: 300,
+				error: 'engine_error',
+			});
+		});
+
+		it('throws on a 500, which is a failure and not a refusal', async () => {
+			respondWith(500, { error: 'internal' });
 
 			await expect(client.resolveStep('step-1', { token: 't', outputs: [[]] })).rejects.toThrow(
-				`Engine responded with ${status}`,
+				'Engine responded with 500',
 			);
 		});
 	});

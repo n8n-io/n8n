@@ -32,6 +32,13 @@ describe('EngineConfig', () => {
 		expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining('N8N_ENGINE_AUTH_SECRET'));
 	});
 
+	it('should accept a resume secret of at least 32 characters', () => {
+		const secret = 'r'.repeat(32);
+		process.env.N8N_ENGINE_RESUME_SECRET = secret;
+
+		expect(Container.get(EngineConfig).resumeSecret).toBe(secret);
+	});
+
 	it('should reject a shorter resume secret and fall back to the default', () => {
 		process.env.N8N_ENGINE_RESUME_SECRET = 'r'.repeat(31);
 
