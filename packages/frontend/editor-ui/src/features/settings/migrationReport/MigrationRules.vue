@@ -51,7 +51,7 @@ const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 
 const targetVersionMajor = MIGRATION_REPORT_TARGET_VERSION?.slice(1) ?? '2';
 const targetVersionDisplay = `${targetVersionMajor}.0.0`;
-const documentationUrl = `https://docs.n8n.io/${targetVersionMajor}-0-breaking-changes/`;
+const documentationUrl = 'https://docs.n8n.io/changelog/v30-breaking-changes';
 
 type WorkflowRuleResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
 
