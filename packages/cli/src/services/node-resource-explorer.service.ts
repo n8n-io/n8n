@@ -174,9 +174,20 @@ export class NodeResourceExplorerService {
 			};
 		}
 
-		const property = findNodeParameterProperty(
-			nodeTypeDescription.description.properties,
-			params.parameterPath,
+		const description = nodeTypeDescription.description;
+		const node = { typeVersion: params.version };
+		const rawParameters = (params.nodeParameters ?? {}) as INodeParameters;
+		const resolvedParameters =
+			NodeHelpers.getNodeParameters(
+				description.properties,
+				rawParameters,
+				true,
+				false,
+				node,
+				description,
+			) ?? rawParameters;
+		const property = findNodeParameterProperty(description.properties, params.parameterPath, (p) =>
+			NodeHelpers.displayParameter(resolvedParameters, p, node, description),
 		);
 		if (!property) {
 			return {
