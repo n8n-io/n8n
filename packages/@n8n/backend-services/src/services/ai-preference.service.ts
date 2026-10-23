@@ -703,13 +703,8 @@ export function flattenAiPreferences(preferences: ApplicableAiPreferences): AiPr
 	];
 }
 
-/**
- * Where the block the model reads came from. A turn either sent it or it did not, and only
- * the second case has a run to name, so the two cannot be reported together.
- */
-export type AppliedPreferencesInjection =
-	| { injectedThisTurn: true }
-	| { injectedThisTurn: false; carriedFromRunId?: string };
+/** Whether this turn sent the block, or an earlier block in the conversation still carries it. */
+export type AppliedPreferencesInjection = { injectedThisTurn: boolean };
 
 /**
  * Names the preferences one turn carried, in the shape the turn publishes.

@@ -7384,7 +7384,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			getActiveObservationLog: Mock;
 			getMessagesForObservationScope: Mock;
 		};
-		eventLog: { getLastPreferencesInjectionRunId: Mock };
 		logger: { warn: Mock };
 	};
 
@@ -7397,7 +7396,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			getActiveObservationLog: vi.fn().mockResolvedValue([]),
 			getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
 		};
-		service.eventLog = { getLastPreferencesInjectionRunId: vi.fn().mockResolvedValue(undefined) };
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
@@ -7481,17 +7479,12 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			expect(turn.block).toBe(block);
 			expect(turn.payload.injectedThisTurn).toBe(true);
 			expect(turn.payload.preferences.map(({ id }) => id)).not.toContain('removed-pref');
-			expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
 
 			service.agentMemory.getMessages.mockResolvedValue([...history, storedUserTurn(turn.block)]);
-			service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('refresh-run');
 			const nextTurn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
 
 			expect(nextTurn.block).toBeUndefined();
-			expect(nextTurn.payload).toMatchObject({
-				injectedThisTurn: false,
-				carriedFromRunId: 'refresh-run',
-			});
+			expect(nextTurn.payload).toMatchObject({ injectedThisTurn: false });
 		},
 	);
 
@@ -7545,7 +7538,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			{ role: 'assistant', content: 'Done.' },
 			storedUserTurn(undefined, 'Thanks'),
 		]);
-		service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('run-1');
 
 		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
 
@@ -7557,7 +7549,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			],
 			renderedLength: block.length,
 			injectedThisTurn: false,
-			carriedFromRunId: 'run-1',
 		});
 	});
 
@@ -7575,7 +7566,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 
 		expect(turn.block).toContain('- Keep replies short.');
 		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
-		expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
 	});
 
 	it('publishes an empty payload when the read fails, without touching the history', async () => {
@@ -7628,7 +7618,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 
 		expect(turn.block).toBeUndefined();
 		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
-		expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
 	});
 
 	it('injects when the history read fails, because re-sending is the safe direction', async () => {
@@ -7690,28 +7679,12 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 		});
 		service.agentMemory.getActiveObservationLog.mockResolvedValue([]);
 		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
-		service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('run-1');
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-		expect(turn.block).toBeUndefined();
-		expect(turn.payload).toMatchObject({ injectedThisTurn: false, carriedFromRunId: 'run-1' });
-		expect(service.agentMemory.getMessagesForObservationScope).not.toHaveBeenCalled();
-	});
-
-	it('still skips an unchanged block when the run attribution lookup fails', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
-		const block = renderAiPreferencesBlock(applicable);
-		if (!block) throw new Error('expected a block');
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
-		service.eventLog.getLastPreferencesInjectionRunId.mockRejectedValue(new Error('log down'));
 
 		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
 
 		expect(turn.block).toBeUndefined();
 		expect(turn.payload).toMatchObject({ injectedThisTurn: false });
-		expect(turn.payload).not.toHaveProperty('carriedFromRunId');
+		expect(service.agentMemory.getMessagesForObservationScope).not.toHaveBeenCalled();
 	});
 });
 
