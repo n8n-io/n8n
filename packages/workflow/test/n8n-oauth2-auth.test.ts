@@ -110,6 +110,25 @@ describe('n8nOAuth2Auth', () => {
 		});
 	});
 
+	it.each([
+		['invalid_token', 401],
+		['insufficient_scope', 403],
+	] as const)('answers a %s refusal with the challenge the host built', async (reason, code) => {
+		const params = `resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/webhook/protected-path", error="${reason}", error_description="source-not-accepted"`;
+		const { context, response } = buildContext({
+			authorization: 'Bearer test-token',
+			validation: { valid: false, reason, challenge: `Bearer ${params}` },
+		});
+
+		const result = await n8nOAuth2Auth(context, { realm: 'n8n Webhook' });
+
+		expect(result).toBe('handled');
+		// The realm is added, as on every other challenge from the trigger.
+		expect(response.writeHead).toHaveBeenCalledWith(code, {
+			'WWW-Authenticate': `Bearer realm="n8n Webhook", ${params}`,
+		});
+	});
+
 	// insufficient_scope → 403, invalid_token → 401; both carry the reason in WWW-Authenticate.
 	it.each([
 		['insufficient_scope', 403],

@@ -8,7 +8,7 @@ description: >-
   directly for routine Agent follow-ups; rerun intent-recognition only when the
   requested artifact is no longer clear.
 shared_references:
-  - credential-setup-with-computer-use
+  - credential-setup-with-browser-use
 recommended_tools:
   - agent_builder_select_agent
   - agent-context
@@ -143,8 +143,8 @@ Agents support, each with `capabilities`, `useIntegrationWhen`, and
 `useNodeToolWhen`. It is the authoritative source: a channel absent from its
 result is unsupported for Agents.
 
-When the user asks for a channel that is not supported (for example WhatsApp
-or Microsoft Teams):
+When the user asks for a channel that is not supported (for example Instagram
+or Facebook Messenger):
 
 - Do not add it to `integrations`, do not draft it, and do not call
   `agent_builder_configure_channel` or `agent_builder_finish_setup` with it.

@@ -1,6 +1,7 @@
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
@@ -133,6 +134,79 @@ export class ProjectRepository extends BaseRepository<Project> {
 			where: {
 				projectRelations: {
 					userId,
+				},
+			},
+		});
+	}
+
+	/** An undefined role list allows global access. An empty list matches no projects. */
+	async findOneWithUserRoles(
+		projectId: string,
+		userId: string,
+		roleSlugs: string[] | undefined,
+		ctx: OperationContext = {},
+	): Promise<Project | null> {
+		return await this.managerFor(ctx).findOne(Project, {
+			where: {
+				id: projectId,
+				...(roleSlugs !== undefined && {
+					projectRelations: { userId, role: { slug: In(roleSlugs) } },
+				}),
+			},
+		});
+	}
+
+	async findIdsWithUserRoles(
+		userId: string,
+		roleSlugs: string[] | undefined,
+		projectIds?: string[],
+	): Promise<string[]> {
+		const where: FindOptionsWhere<Project> = {};
+		if (projectIds) where.id = In(projectIds);
+		if (roleSlugs !== undefined) {
+			// Without explicit IDs, scoped users can list only team projects.
+			if (!projectIds) where.type = 'team';
+			where.projectRelations = { userId, role: { slug: In(roleSlugs) } };
+		}
+
+		const projects = await this.find({
+			where,
+			select: ['id'],
+		});
+		return projects.map(({ id }) => id);
+	}
+
+	async findExistingIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const projects = await this.find({ select: ['id'], where: { id: In(ids) } });
+		return projects.map(({ id }) => id);
+	}
+
+	async findByIdsWithUserRoles(
+		ids: string[],
+		userId: string,
+		roleSlugs: string[] | undefined,
+	): Promise<Project[]> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			where: {
+				id: In(ids),
+				...(roleSlugs !== undefined && {
+					projectRelations: { userId, role: { slug: In(roleSlugs) } },
+				}),
+			},
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	async findOwnedOrAdminByUser(userId: string): Promise<Project[]> {
+		return await this.find({
+			where: {
+				projectRelations: {
+					userId,
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]) },
 				},
 			},
 		});

@@ -4,14 +4,24 @@ import {
 	createTeamProject,
 	getAllProjectRelations,
 	createWorkflow,
+	getPersonalProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, RoleRepository, SharedWorkflowRepository } from '@n8n/db';
+import {
+	ProjectRelationRepository,
+	ProjectRelation,
+	ProjectRepository,
+	RoleRepository,
+	SharedWorkflowRepository,
+	type Project,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { LicenseMocker } from '@test-integration/license';
 
-import { createUser } from './shared/db/users';
+import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from './shared/db/roles';
+import { createOwner, createUser } from './shared/db/users';
 
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
@@ -43,7 +53,168 @@ describe('ProjectService', () => {
 	});
 
 	afterAll(async () => {
+		await cleanupRolesAndScopes();
 		await testDb.terminate();
+	});
+
+	describe('project reads', () => {
+		let user: User;
+		let personal: Project;
+		let admin: Project;
+		let editor: Project;
+		let viewer: Project;
+		let unrelated: Project;
+
+		beforeEach(async () => {
+			user = await createUser();
+			personal = await getPersonalProject(user);
+			admin = await createTeamProject('Admin project', user);
+			editor = await createTeamProject('Editor project');
+			viewer = await createTeamProject('Viewer project');
+			unrelated = await createTeamProject('Unrelated project');
+			await linkUserToProject(user, editor, 'project:editor');
+			await linkUserToProject(user, viewer, 'project:viewer');
+			await linkUserToProject(await createUser(), viewer, 'project:admin');
+		});
+
+		it('lists only team projects with all requested scopes when IDs are omitted', async () => {
+			const ids = await projectService.getProjectIdsWithScope(user, ['workflow:create']);
+
+			expect(ids.sort()).toEqual([admin.id, editor.id].sort());
+		});
+
+		it('includes the personal project when its ID is supplied', async () => {
+			const ids = await projectService.getProjectIdsWithScope(
+				user,
+				['workflow:create'],
+				[personal.id, viewer.id, unrelated.id],
+			);
+
+			expect(ids).toEqual([personal.id]);
+		});
+
+		it('keeps global access independent of project membership and type', async () => {
+			const owner = await createOwner();
+			const projects = [
+				personal,
+				admin,
+				editor,
+				viewer,
+				unrelated,
+				await getPersonalProject(owner),
+			];
+			const ids = await projectService.getProjectIdsWithScope(owner, ['workflow:create']);
+
+			expect(ids).toEqual(expect.arrayContaining(projects.map(({ id }) => id)));
+			expect(
+				await projectService.getProjectIdsWithScope(owner, ['workflow:create'], [unrelated.id]),
+			).toEqual([unrelated.id]);
+			expect(
+				await projectService.getProjectWithScope(owner, unrelated.id, ['workflow:create']),
+			).toMatchObject({ id: unrelated.id });
+			expect(
+				await projectService.findProjectsByIdsForUser(owner, [unrelated.id], ['workflow:create']),
+			).toMatchObject([{ id: unrelated.id }]);
+		});
+
+		it('returns no projects for an empty ID list, with or without global access', async () => {
+			for (const actor of [user, await createOwner()]) {
+				expect(await projectService.getProjectIdsWithScope(actor, ['workflow:create'], [])).toEqual(
+					[],
+				);
+				expect(
+					await projectService.findProjectsByIdsForUser(actor, [], ['workflow:create']),
+				).toEqual([]);
+			}
+			expect(await projectService.findExistingProjectIds([])).toEqual(new Set());
+		});
+
+		it('returns no projects when no project roles qualify', async () => {
+			const repository = Container.get(ProjectRepository);
+
+			expect(await repository.findOneWithUserRoles(admin.id, user.id, [])).toBeNull();
+			expect(await repository.findIdsWithUserRoles(user.id, [])).toEqual([]);
+			expect(await repository.findByIdsWithUserRoles([admin.id], user.id, [])).toEqual([]);
+		});
+
+		it('reads project membership changes from the active transaction', async () => {
+			const repository = Container.get(ProjectRepository);
+			const rollback = new Error('Roll back the test transaction');
+
+			await expect(
+				repository.runInTransaction({}, async (manager, ctx) => {
+					await manager.update(
+						ProjectRelation,
+						{ projectId: admin.id, userId: user.id },
+						{ role: { slug: 'project:viewer' } },
+					);
+
+					expect(
+						await projectService.getProjectWithScope(user, admin.id, ['workflow:create'], ctx),
+					).toBeNull();
+					throw rollback;
+				}),
+			).rejects.toThrow(rollback);
+
+			expect(
+				await projectService.getProjectWithScope(user, admin.id, ['workflow:create']),
+			).toMatchObject({ id: admin.id });
+		});
+
+		it('returns only existing IDs and removes duplicates', async () => {
+			expect(
+				await projectService.findExistingProjectIds([admin.id, 'missing-project', admin.id]),
+			).toEqual(new Set([admin.id]));
+		});
+
+		it('filters by the requesting user and sorts by creation time, then ID', async () => {
+			const repository = Container.get(ProjectRepository);
+			await repository.update([admin.id, editor.id], { createdAt: new Date('2025-01-01') });
+			await repository.update(personal.id, { createdAt: new Date('2025-01-02') });
+
+			const projects = await projectService.findProjectsByIdsForUser(
+				user,
+				[personal.id, viewer.id, editor.id, unrelated.id, admin.id],
+				['workflow:create'],
+			);
+
+			expect(projects.map(({ id }) => id)).toEqual([...[admin.id, editor.id].sort(), personal.id]);
+		});
+
+		it('returns only the projects the user owns or administers', async () => {
+			const projects = await projectService.getUserOwnedOrAdminProjects(user.id);
+
+			expect(projects.map(({ id }) => id).sort()).toEqual([personal.id, admin.id].sort());
+		});
+
+		it('loads the requesting user role and its scopes for the supplied projects', async () => {
+			const projects = await projectService.addUserScopes(user, [admin, viewer, unrelated]);
+
+			expect(projects.map(({ id, role }) => ({ id, role }))).toEqual([
+				{ id: admin.id, role: 'project:admin' },
+				{ id: viewer.id, role: 'project:viewer' },
+				{ id: unrelated.id, role: 'global:member' },
+			]);
+			expect(projects[0].scopes).toContain('workflow:create');
+			expect(projects[1].scopes).toContain('workflow:read');
+			expect(projects[1].scopes).not.toContain('workflow:create');
+			expect(projects[2].scopes).not.toContain('workflow:read');
+		});
+
+		it('uses custom role scopes and requires every requested scope', async () => {
+			const role = await createCustomRoleWithScopeSlugs(['workflow:read']);
+			await linkUserToProject(user, unrelated, role.slug);
+
+			expect(
+				await projectService.getProjectWithScope(user, unrelated.id, ['workflow:read']),
+			).toMatchObject({ id: unrelated.id });
+			expect(
+				await projectService.getProjectWithScope(user, unrelated.id, [
+					'workflow:read',
+					'workflow:create',
+				]),
+			).toBeNull();
+		});
 	});
 
 	describe('addUsersToProject', () => {

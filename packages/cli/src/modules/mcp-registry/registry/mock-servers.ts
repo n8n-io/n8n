@@ -1,4 +1,8 @@
-import type { McpRegistryServer } from './mcp-registry.types';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	AI_GATEWAY_MCP_CAPABILITY,
+	type McpRegistryServer,
+} from './mcp-registry.types';
 
 export const notionMockServer = {
 	name: 'com.notion/mcp',
@@ -188,4 +192,55 @@ export const linearMockServer: McpRegistryServer = {
 	origin: 'registry',
 	status: 'active',
 	tags: ['issue-tracking', 'project-management'],
+} satisfies McpRegistryServer;
+
+export const firecrawlAiGatewayMockServer = {
+	name: 'com.n8n/n8n-connect-firecrawl-mcp',
+	slug: 'n8n-connect-firecrawl',
+	title: 'Firecrawl',
+	description: 'Scrape, crawl, map and search the web, billed to Gateway credits',
+	tagline: 'Read the web with Gateway credits',
+	version: '1.0.0',
+	updatedAt: '2026-09-17T10:00:00.000Z',
+	icons: [{ src: 'https://firecrawl.dev/icon.svg', mimeType: 'image/svg+xml' }],
+	authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+	remotes: [{ type: 'streamable-http', url: 'https://gateway.n8n.test/v1/gateway/mcp/firecrawl' }],
+	tools: [{ name: 'firecrawl_scrape', title: 'Scrape', annotations: { readOnlyHint: true } }],
+	isOfficial: false,
+	origin: 'registry',
+	status: 'active',
+	requiredCapabilities: [AI_GATEWAY_MCP_CAPABILITY],
+} satisfies McpRegistryServer;
+
+/** An AI Gateway row without a registry twin. */
+export const braveSearchAiGatewayMockServer = {
+	...firecrawlAiGatewayMockServer,
+	name: 'com.n8n/n8n-connect-brave-search-mcp',
+	slug: 'n8n-connect-brave-search',
+	title: 'Brave Search',
+	description: 'Search the web, billed to Gateway credits',
+	tagline: 'Search the web with Gateway credits',
+	icons: [{ src: 'https://brave.com/icon.svg', mimeType: 'image/svg+xml' }],
+	remotes: [
+		{ type: 'streamable-http', url: 'https://gateway.n8n.test/v1/gateway/mcp/brave-search' },
+	],
+	tools: [{ name: 'brave_web_search', title: 'Web search', annotations: { readOnlyHint: true } }],
+} satisfies McpRegistryServer;
+
+/** A registry server whose AI Gateway twin is `firecrawlAiGatewayMockServer`. */
+export const firecrawlMockServer = {
+	name: 'dev.firecrawl/mcp',
+	slug: 'firecrawl',
+	title: 'Firecrawl',
+	description: "Firecrawl's MCP server scrapes, crawls and searches the web.",
+	tagline: 'Connect to the Firecrawl MCP Server',
+	version: '1.0.0',
+	updatedAt: '2026-09-01T10:00:00.000Z',
+	icons: [{ src: 'https://firecrawl.dev/icon.svg', mimeType: 'image/svg+xml' }],
+	authType: 'oauth2',
+	remotes: [{ type: 'streamable-http', url: 'https://mcp.firecrawl.dev/mcp' }],
+	tools: [{ name: 'firecrawl_scrape', title: 'Scrape', annotations: { readOnlyHint: true } }],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
 } satisfies McpRegistryServer;

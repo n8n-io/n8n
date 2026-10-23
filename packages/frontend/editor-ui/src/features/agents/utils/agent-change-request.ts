@@ -7,9 +7,8 @@ import {
 } from './fix-with-assistant';
 
 /**
- * Detects preview-chat messages that ask the agent to change itself. The
- * preview chat only runs the agent — configuration changes belong to the AI
- * Assistant — so a match surfaces a hand-off note next to the message.
+ * Detects preview-chat messages that ask the agent to change itself. A match
+ * shows a hand-off note that points to the n8n Assistant for setup changes.
  *
  * ponytail: English keyword heuristic. Swap for a classifier if it misses too
  * much, e.g. for non-English messages.
@@ -56,7 +55,7 @@ export function looksLikeAgentChangeRequest(text: string): boolean {
 }
 
 /**
- * Draft that hands a preview-chat change request to the AI Assistant. The user
+ * Draft that hands a preview-chat change request to the n8n Assistant. The user
  * wrote this sentence themselves and sees it in the composer, so it goes across
  * as plain text — no fencing, no "treat this as data" preamble. It is still
  * scrubbed, because a pasted secret should not travel to another surface.

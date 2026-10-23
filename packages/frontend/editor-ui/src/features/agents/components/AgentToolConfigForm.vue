@@ -117,7 +117,7 @@ const initialNode = computed<INode | null>(() =>
 				: null,
 );
 
-const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => initialNode.value?.type);
+const { isRestricted, restriction } = useNodeTypeRestriction(() => initialNode.value?.type);
 const restrictedToolName = computed(() =>
 	initialNode.value
 		? (nodeTypesStore.getNodeType(initialNode.value.type)?.displayName ?? initialNode.value.type)
@@ -337,7 +337,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 		<RestrictedToolCallout
 			v-if="isRestricted"
 			:node-type-name="restrictedToolName"
-			:scope="restrictionScope"
+			:restriction="restriction"
 		/>
 		<N8nText
 			v-if="submitCount && !canSave"
@@ -417,7 +417,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 .contentWrapper {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 	overflow-x: hidden;
 
 	:global(.ndv-connection-hint-notice) {
@@ -434,7 +434,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 	display: flex;
 	min-height: 0;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 }
 
 .customToolViewer {

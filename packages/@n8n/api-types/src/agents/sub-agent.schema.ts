@@ -37,6 +37,11 @@ export interface SubAgentSpawnRequest {
 	source: SubAgentSource;
 	policy?: SubAgentRunPolicy;
 	parentThreadId?: string;
+	/**
+	 * Execution of the parent turn that delegates this run. The runner links the
+	 * child execution to it for usage reads. Absent when the parent records no execution.
+	 */
+	parentExecutionId?: string;
 	/** Parent's episodic-memory resource id, inherited so the child shares its scope. */
 	parentResourceId?: string;
 	/**

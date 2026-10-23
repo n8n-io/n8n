@@ -8,8 +8,8 @@ import { UserError } from 'n8n-workflow';
 import {
 	SkillNameTakenError,
 	skillNameTakenToolMessage,
-} from '@/modules/agents/skills/skill-name-taken.error';
-import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+} from '@/modules/skills/skill-name-taken.error';
+import { SkillsApiService } from '@/modules/skills/skills-api.service';
 
 const STALE_SKILL_TOOL_MESSAGE =
 	'The skill changed since you read it, so nothing was saved. Read it again with the get action and retry with its new skillHash.';

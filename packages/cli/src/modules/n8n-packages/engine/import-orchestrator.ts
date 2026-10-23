@@ -7,6 +7,7 @@ import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import {
 	credentialConflicts,
 	forbiddenCredentialUpdates,
+	plannedCredentialUpdates,
 } from '../entities/credential/credential-conflict-policy';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
@@ -85,6 +86,7 @@ import { ContentImportPolicyGate, contentImportTransport } from './content-impor
 import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';
 import {
+	assertCredentialUpdatesAllowed,
 	assertCredentialWritesAllowed,
 	assertDataTableWritesAllowed,
 	assertVariableWritesAllowed,
@@ -192,12 +194,20 @@ export class ImportOrchestrator {
 				resolution: credentialPlan,
 			})),
 		);
+		if (plans.length > 0) {
+			assertCredentialUpdatesAllowed(
+				options.apiKeyScopes,
+				plans[0].input.credentialRequest.conflictPolicy,
+				plans.map((plan) => plan.credentialPlan),
+			);
+		}
 
 		for (const { input, variablePlan, credentialPlan } of plans) {
 			await this.credentialImporter.assertCanCreate(
 				input.context,
 				input.credentialRequest,
 				credentialPlan,
+				input.projectPendingCreation ?? false,
 			);
 			if (variablePlan.creations.length > 0) {
 				await this.variableImporter.assertCanCreate(
@@ -213,6 +223,16 @@ export class ImportOrchestrator {
 
 		const issues = await this.collectPackageBlockingIssues(plans);
 		if (issues.length > 0) throw toImportBlockedError(issues);
+
+		// Last: an import with blocking issues reports them instead of a dry-run error, and a
+		// divergent update never reaches the dry run.
+		for (const { input, credentialPlan } of plans) {
+			await this.credentialImporter.assertCanUpdate(
+				input.context,
+				input.credentialRequest,
+				credentialPlan,
+			);
+		}
 	}
 
 	private async collectPackageBlockingIssues(plans: ImportPlan[]): Promise<BlockingIssue[]> {
@@ -243,17 +263,22 @@ export class ImportOrchestrator {
 
 		// Across scopes: one destination credential can be reached from several projects.
 		if (plans.length > 0) {
+			const { context, credentialRequest, importSource } = plans[0].input;
 			const credentialPlans = plans.map((plan) => plan.credentialPlan);
 			for (const forbidden of forbiddenCredentialUpdates(credentialPlans)) {
 				issues.push({ type: 'credential-update-forbidden', ...forbidden });
 			}
-			const conflicts = credentialConflicts(
-				plans[0].input.credentialRequest.conflictPolicy,
-				credentialPlans,
-			);
+			const conflicts = credentialConflicts(credentialRequest.conflictPolicy, credentialPlans);
 			for (const conflict of conflicts) {
 				issues.push({ type: 'credential-conflict', ...conflict });
 			}
+			issues.push(
+				...(await this.credentialSavePolicyGate.refusedUpdates(
+					plannedCredentialUpdates(credentialRequest.conflictPolicy, credentialPlans),
+					contentImportTransport(importSource),
+					{ kind: 'user', user: context.user },
+				)),
+			);
 		}
 
 		const quotaFailure = await this.variableImporter.quotaFailure(
@@ -412,7 +437,7 @@ export class ImportOrchestrator {
 
 		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
 
-		const credentialResult = await this.credentialImporter.apply(
+		const credentialBindResult = await this.credentialImporter.apply(
 			context,
 			credentialRequest,
 			credentialPlan,
@@ -426,13 +451,13 @@ export class ImportOrchestrator {
 		// Weakest reason first, so a later, stronger reason overwrites it.
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
-			new Set(credentialResult.incomplete),
+			new Set(credentialBindResult.incomplete),
 		)) {
 			blockedFromPublish.set(sourceWorkflowId, 'incomplete-credential');
 		}
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
-			new Set(credentialResult.stubbed),
+			new Set(credentialBindResult.stubbed),
 		)) {
 			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
 		}
@@ -444,7 +469,7 @@ export class ImportOrchestrator {
 			{ ...context, droppedTagIds: droppedTagIds(tagPlan) },
 			workflowPlan,
 			createBindings({
-				credentials: credentialResult.bindings,
+				credentials: credentialBindResult.bindings,
 				// Seeds cross-scope workflow ids so a project package can resolve
 				// sub-workflow references that point into another project.
 				...(seedWorkflowBindings ? { workflows: seedWorkflowBindings } : {}),
@@ -455,6 +480,14 @@ export class ImportOrchestrator {
 		// step above reads a variable, since `$vars` resolves by name at runtime. Still ahead of the
 		// publish sweep, which evaluates trigger parameters against variable values.
 		const variableResult = await this.variableImporter.apply(context, variablePlan);
+
+		// After the variables: a credential update is the only write that reaches outside the
+		// package. Before the publish sweep, so that a published workflow uses the new values.
+		const credentialsUpdated = await this.credentialImporter.applyUpdates(
+			context,
+			credentialRequest,
+			credentialPlan,
+		);
 
 		// Removal trails every write: the package's own content is in place first, so a failure
 		// earlier leaves the target with more than the package asked for rather than less. It sits
@@ -471,7 +504,7 @@ export class ImportOrchestrator {
 			removedFolders,
 			folderSummaries,
 			bindings,
-			credentialResult,
+			credentialResult: { ...credentialBindResult, updated: credentialsUpdated },
 			dataTablePlan,
 			variablePlan,
 			variableResult,
