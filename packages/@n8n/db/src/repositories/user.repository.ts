@@ -268,17 +268,23 @@ export class UserRepository extends BaseRepository<User> {
 		projectId,
 		projectRoleSlugs,
 		globalRoleSlugs,
+		userIds,
 	}: {
 		projectId: string;
 		projectRoleSlugs: string[];
 		globalRoleSlugs: string[];
+		userIds?: string[];
 	}): Promise<User[]> {
+		if (userIds?.length === 0) return [];
+
+		const requestedUsers = userIds ? { id: In(userIds) } : {};
 		const where: Array<FindOptionsWhere<User>> = [];
 		if (globalRoleSlugs.length > 0) {
-			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+			where.push({ ...requestedUsers, disabled: false, role: { slug: In(globalRoleSlugs) } });
 		}
 		if (projectRoleSlugs.length > 0) {
 			where.push({
+				...requestedUsers,
 				disabled: false,
 				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
 			});
