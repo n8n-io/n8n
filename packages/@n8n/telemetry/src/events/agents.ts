@@ -153,7 +153,7 @@ const agentKnowledgeModification = {
 		.array(z.string())
 		.optional()
 		.describe(
-			'Codes that identify the knowledge sources connected to the agent after a change. Each code is a keyed hash of the provider and source name, with a key that is different for each instance. In one instance, the same provider and source name produce the same code, even across different accounts. The list contains each code once. An empty list means no sources remain. This field is sent when the vector store settings change, also when the connected sources stay the same.',
+			'Codes that identify the knowledge sources connected to the agent after a change. Each code is a keyed hash of the provider and source name, and of the Pinecone namespace when one is set, with a key that is different for each instance. In one instance, the same provider and source name produce the same code, even across different accounts. The list contains each code once. An empty list means no sources remain. This field is sent when the vector store settings change, also when the connected sources stay the same.',
 		),
 };
 

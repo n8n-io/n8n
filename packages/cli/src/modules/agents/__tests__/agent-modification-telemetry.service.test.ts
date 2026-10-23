@@ -54,6 +54,23 @@ describe('knowledge reuse telemetry', () => {
 		]);
 	});
 
+	it('keeps Pinecone namespaces of one index apart', () => {
+		const sales = {
+			...base,
+			provider: 'pinecone' as const,
+			indexName: 'documents',
+			namespace: 'sales',
+		};
+		const support = { ...sales, namespace: 'support' };
+
+		expect(buildVectorStoreFingerprints([sales], instanceSecret)).not.toEqual(
+			buildVectorStoreFingerprints([support], instanceSecret),
+		);
+		expect(buildVectorStoreFingerprints([sales], instanceSecret)).not.toEqual(
+			buildVectorStoreFingerprints([stores[0]], instanceSecret),
+		);
+	});
+
 	it('produces different codes for the same store in another instance', () => {
 		expect(buildVectorStoreFingerprints(stores, 'other-instance-secret')).not.toEqual(
 			buildVectorStoreFingerprints(stores, instanceSecret),

@@ -12,15 +12,16 @@ export function createKnowledgeTelemetryHmac(instanceSecret: string) {
 	return createHmac('sha256', key);
 }
 
-function vectorStoreIdentity(store: AgentJsonVectorStoreConfig): string {
+/** The parts that name one set of stored documents. A Pinecone namespace is its own set. */
+function vectorStoreIdentity(store: AgentJsonVectorStoreConfig): string[] {
 	switch (store.provider) {
 		case 'pinecone':
-			return store.indexName;
+			return store.namespace ? [store.indexName, store.namespace] : [store.indexName];
 		case 'qdrant':
-			return store.collectionName;
+			return [store.collectionName];
 		case 'supabase':
 		case 'postgres':
-			return store.tableName;
+			return [store.tableName];
 	}
 }
 
@@ -30,7 +31,7 @@ export function buildVectorStoreFingerprints(
 ): string[] {
 	const fingerprints = stores.map((store) =>
 		createKnowledgeTelemetryHmac(instanceSecret)
-			.update(JSON.stringify([store.provider, vectorStoreIdentity(store)]))
+			.update(JSON.stringify([store.provider, ...vectorStoreIdentity(store)]))
 			.digest('hex'),
 	);
 	return [...new Set(fingerprints)].sort();
