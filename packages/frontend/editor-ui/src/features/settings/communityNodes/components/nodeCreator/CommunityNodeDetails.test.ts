@@ -144,6 +144,7 @@ describe('CommunityNodeDetails', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia();
 		setActivePinia(pinia);
+		installPackage.mockResolvedValue({ packageName: 'n8n-nodes-test', installedNodes: [] });
 	});
 
 	afterEach(() => {

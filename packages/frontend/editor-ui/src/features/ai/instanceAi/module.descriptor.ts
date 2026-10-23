@@ -1,4 +1,5 @@
 import { i18n } from '@n8n/i18n';
+import { SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import type { LocationQuery } from 'vue-router';
 import { VIEWS } from '@/app/constants';
@@ -87,6 +88,26 @@ export const InstanceAiModule = defineFrontendModule({
 	description: 'Chat with your n8n instance.',
 	icon: 'n8n-assistant',
 	routes: [
+		{
+			path: 'settings/self-healing/:configurationId',
+			name: SELF_HEALING_CONFIGURATION_VIEW,
+			component: async () =>
+				(await import('@n8n/frontend-module-self-healing')).SelfHealingConfigView,
+			props: true,
+			meta: { projectRoute: true },
+			beforeEnter: async (to) => {
+				const { useProjectsStore } = await import(
+					'@/features/collaboration/projects/projects.store'
+				);
+				const { getResourcePermissions } = await import('@n8n/permissions');
+				const project = useProjectsStore().myProjects.find(({ id }) => id === to.params.projectId);
+				const canConfigure =
+					!!useSettingsStore().moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
+					!!getResourcePermissions(project?.scopes).project.update;
+
+				return canConfigure ? true : { name: VIEWS.HOMEPAGE };
+			},
+		},
 		{
 			path: '/assistant',
 			component: InstanceAiView,

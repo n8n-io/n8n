@@ -105,6 +105,7 @@ erDiagram
 "self_healing_result" {
   varchar backgroundUserId FK
   datetime_3_ completedAt
+  INTEGER configurationId FK
   datetime_3_ createdAt
   datetime_3_ dismissedAt
   varchar dismissedById FK
