@@ -179,7 +179,18 @@ export class ActiveExecutions {
 			})
 			.finally(() => {
 				capacityReservation.release();
-				if (execution.status === 'waiting') {
+				// A resumed execution may have replaced this entry before cleanup runs.
+				if (this.activeExecutions[executionId] !== execution) return;
+
+				const releaseWaitingSubExecution =
+					this.executionsConfig.mode === 'queue' &&
+					this.instanceSettings.isWorker &&
+					mode === 'integrated' &&
+					!execution.responsePromise;
+
+				// Workers resume persisted sub-workflows as queue jobs, without reusing this entry.
+				// Other instances may still need their waiting response context on resume.
+				if (execution.status === 'waiting' && !releaseWaitingSubExecution) {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
 				} else if (this.activeExecutions[executionId] === execution) {
