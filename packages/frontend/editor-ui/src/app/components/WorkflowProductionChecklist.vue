@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref, onMounted, watch } from 'vue';
+import { computed, inject, ref, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
@@ -26,6 +26,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowEvaluationState } from '@/features/ai/evaluation.ee/composables/useWorkflowEvaluationState';
+import { useProductionChecklistStore } from '@/app/stores/productionChecklist.store';
 
 defineProps<{
 	hideTrigger?: boolean;
@@ -43,6 +44,7 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+const productionChecklistStore = useProductionChecklistStore();
 
 const isPopoverOpen = ref(false);
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -225,11 +227,19 @@ async function handleActionClick(actionId: string) {
 		default:
 			break;
 	}
-	isPopoverOpen.value = false;
+	closeSuggestedActions();
 }
 
 function openSuggestedActions() {
+	productionChecklistStore.activeWorkflowId = workflowDocumentStore?.value?.workflowId ?? null;
 	isPopoverOpen.value = true;
+}
+
+function closeSuggestedActions() {
+	isPopoverOpen.value = false;
+	if (productionChecklistStore.activeWorkflowId === workflowDocumentStore?.value?.workflowId) {
+		productionChecklistStore.activeWorkflowId = null;
+	}
 }
 
 function onPopoverOpened() {
@@ -238,10 +248,10 @@ function onPopoverOpened() {
 
 function handlePopoverOpenChange(open: boolean) {
 	if (open) {
-		isPopoverOpen.value = true;
+		openSuggestedActions();
 		onPopoverOpened();
 	} else if (!isActivationModalOpen.value) {
-		isPopoverOpen.value = false;
+		closeSuggestedActions();
 	}
 }
 
@@ -264,21 +274,33 @@ const isConfirmedActive = computed(() => {
 });
 
 // Watch for workflow activation
-watch(isConfirmedActive, async (isActive, wasActive) => {
+watch(isConfirmedActive, async (isActive, wasActive, onCleanup) => {
 	if (isActive && !wasActive) {
 		// Check if this is the first activation
 		if (!cachedSettings.value?.firstActivatedAt) {
+			const workflowId = workflowDocumentStore?.value?.workflowId ?? '';
+			productionChecklistStore.activeWorkflowId = workflowId;
+			let stopModalWatch: (() => void) | undefined;
+			let openTimer: ReturnType<typeof setTimeout> | undefined;
+			onCleanup(() => {
+				stopModalWatch?.();
+				if (openTimer) clearTimeout(openTimer);
+				if (!isPopoverOpen.value && productionChecklistStore.activeWorkflowId === workflowId) {
+					productionChecklistStore.activeWorkflowId = null;
+				}
+			});
 			if (isAnyModalOpen.value) {
 				// Defer opening until any open modal closes so the popover
 				// doesn't paint over it.
-				const stop = watch(isAnyModalOpen, (isOpen) => {
+				stopModalWatch = watch(isAnyModalOpen, (isOpen) => {
 					if (!isOpen) {
-						stop();
+						stopModalWatch?.();
+						stopModalWatch = undefined;
 						openSuggestedActions();
 					}
 				});
 			} else {
-				setTimeout(() => {
+				openTimer = setTimeout(() => {
 					openSuggestedActions();
 				}, 0); // Ensure UI is ready and availableActions.length > 0
 			}
@@ -291,6 +313,10 @@ watch(isConfirmedActive, async (isActive, wasActive) => {
 
 onMounted(async () => {
 	await loadWorkflowSettings();
+});
+
+onBeforeUnmount(() => {
+	closeSuggestedActions();
 });
 
 // Whether the checklist has anything to show, so hosts can gate their entry
