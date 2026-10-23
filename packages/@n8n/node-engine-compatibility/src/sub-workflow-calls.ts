@@ -100,7 +100,8 @@ export class SubWorkflowCalls {
 		}
 
 		// The node completes this run on an empty result, which the executor
-		// replaces with the child. It runs again with the result when the child ends.
+		// replaces with the child declaration. It runs again with the result when
+		// the child ends.
 		this.awaited = child;
 		return { executionId: child.executionId, data: [[]] };
 	}
