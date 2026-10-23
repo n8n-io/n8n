@@ -510,13 +510,8 @@ const treeResizer = useResizablePanel({
 }
 
 .tabRow {
-	/* N8nTabs draws its active indicator this far below its own box. Reserving the space puts the
-	   indicator on the divider, as in the inbox. No token matches this value. */
-	--promotion-preview--tab-overhang: 14px;
-
 	display: flex;
 	align-items: flex-end;
-	padding-bottom: var(--promotion-preview--tab-overhang);
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	width: 100%;
@@ -530,8 +525,7 @@ const treeResizer = useResizablePanel({
 
 .meta {
 	flex-shrink: 0;
-	/* Centers the group on the tab label, which sits half the overhang below the tab box. */
-	margin-bottom: calc(var(--promotion-preview--tab-overhang) / -2);
+	align-self: center;
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
