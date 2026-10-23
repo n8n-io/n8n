@@ -5,7 +5,6 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getRequestHelperFunctions } from '../factory';
 
-/** `traceparent` as the W3C propagator writes it, plus a vendor `tracestate`. */
 const TRACE_HEADERS = {
 	traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
 	tracestate: 'vendor=opaque',
@@ -15,10 +14,6 @@ describe('request helpers trace context', () => {
 	const workflow = mock<Workflow>();
 	const node = mock<INode>({ name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest' });
 
-	/**
-	 * `mockDeep` auto-mocks `otel.injectTraceHeaders`, so every case states what it
-	 * wants: a writer, nothing, or a throw.
-	 */
 	function helpersWith(options: {
 		executionId?: string;
 		inject?: (
@@ -27,7 +22,6 @@ describe('request helpers trace context', () => {
 			headers: Record<string, string>,
 		) => void;
 	}) {
-		// Cast off the deep-mock proxy types so `otel` takes a plain stub
 		const additionalData =
 			mockDeep<IWorkflowExecuteAdditionalData>() as IWorkflowExecuteAdditionalData;
 		additionalData.evalLlmMockHandler = undefined;
@@ -49,7 +43,6 @@ describe('request helpers trace context', () => {
 			const { helpers } = helpersWith({ executionId: 'exec-1', inject: writesTraceHeaders });
 
 			expect(helpers.getTraceHeaders()).toEqual(TRACE_HEADERS);
-			// The tracer mutates the carrier it is given, so assert on the identity arguments
 			expect(writesTraceHeaders.mock.calls[0].slice(0, 2)).toEqual(['exec-1', 'HTTP Request']);
 		});
 

@@ -42,34 +42,29 @@ Consequences:
 
 ### Outbound propagation
 
-n8n puts the W3C trace context on the requests it makes during an execution, so the service
-it calls can continue the trace. There are two producers, and both read the same span:
+During an execution, n8n adds the W3C trace context to the requests it sends. The service that
+n8n calls can then continue the trace.
 
-- The **request helpers** `httpRequest` and `request` add the headers themselves. A node that
-  uses them needs no code.
-- **A node that builds its own HTTP transport** asks for the headers with
-  `helpers.getTraceHeaders()` and adds them to its own request. The MCP client nodes do this,
-  because the MCP SDK opens its own connection. The helper is public, so a community node can
-  use it too.
+There are two ways to add the headers:
 
-`getTraceHeaders()` returns `traceparent`, and `tracestate` when the trace has one. It
+- `httpRequest` and `request` add them for you. A node that uses these helpers needs no code.
+- A node with its own HTTP transport calls `helpers.getTraceHeaders()` and adds the result to
+  its request. The MCP client nodes do this, because the MCP SDK opens its own connection. The
+  helper is public, so a community node can use it too.
+
+`getTraceHeaders()` returns `traceparent`, and also `tracestate` when the trace has one. It
 returns an empty object when OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is
-off, or when no execution runs, for example a load-options call. A caller can therefore use
-the result without a guard.
+off, or when no execution runs. Use the result without a guard.
 
-Rules that both producers follow:
+Both ways obey these rules:
 
-- **Read the headers for each request.** They point to the span that is active now: the
-  running node, or the workflow span between nodes. A transport that stays open serves many
-  spans — one MCP client answers many tool calls — so a value read once at connect would name
-  the wrong span for every later call.
-- **The trace context wins** over a header of the same name that the request already has.
-- **The headers follow a redirect**, including one that crosses origins. A trace id is not a
-  credential, so it is not withheld the way an auth header is. On the MCP path every hop is
-  also checked against the credential allowlist and the instance egress filter first.
-- **A failure never stops the request.** `getTraceHeaders()` gives no headers and the request
-  goes out without them. The tracer logs the cause when the failure happens inside it. A
-  failure in the caller, for example a context that supplies no `getTraceHeaders`, is silent.
+- **Read the headers for each request.** They name the span that is active now. A transport
+  that stays open serves many spans, so a value read at connect names the wrong span later.
+- **The trace context replaces** a header of the same name on the request.
+- **The headers follow a redirect**, also across origins. A trace id is not a credential. On
+  the MCP path, n8n first checks each hop against the credential allowlist and the egress
+  filter.
+- **A failure never stops the request.** The request goes out without the headers.
 
 ### Execution identity
 

@@ -541,12 +541,6 @@ describe('runtime', () => {
 			expect(manager.size).toBe(1);
 		});
 
-		/**
-		 * The MCP transport holds a `getTraceHeaders` closure bound to the execution that
-		 * opened the client (see `connectMcpClientForCredential`). That is only safe while
-		 * a cached client cannot serve another execution. If this test fails because the
-		 * cache key got wider, that closure now reports the wrong execution in the trace.
-		 */
 		it('keys the client cache per execution, so a cached client never serves another execution', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });

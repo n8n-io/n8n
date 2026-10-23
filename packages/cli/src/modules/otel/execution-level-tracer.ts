@@ -306,7 +306,6 @@ export class ExecutionLevelTracer {
 
 			propagator.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
 		} catch (error) {
-			// Swallowed on purpose: telemetry must never stop the request it traces.
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
 				error: error instanceof Error ? error.message : String(error),

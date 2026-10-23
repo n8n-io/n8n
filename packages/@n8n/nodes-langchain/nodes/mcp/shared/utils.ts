@@ -578,9 +578,6 @@ export async function connectMcpClientForCredential(
 		headers: authHeaders,
 		allowedDomains,
 		secureEgressFilter: ctx.helpers.getSecureEgressFilter(),
-		// Safe to hold for the life of the client: a cached client never serves another
-		// execution, because the cache key holds the execution id (see shared/runtime.ts).
-		// The span is read for each request, so it is always the one that is active now.
 		getTraceHeaders: () => ctx.helpers.getTraceHeaders(),
 		name: node.type,
 		version: node.typeVersion,
