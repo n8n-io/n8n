@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ElRadio } from 'element-plus';
-import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nOption,
+	N8nRadioGroup,
+	N8nRadioGroupItem,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 
 import type {
 	N8nChatCardComponent,
@@ -155,21 +161,20 @@ function selectedOptionValue(component: SelectComponent): string | undefined {
 					<N8nText v-if="block.component.label" :class="$style.selectLabel" bold>
 						{{ block.component.label }}
 					</N8nText>
-					<ElRadio
-						v-for="option in block.component.options ?? []"
-						:key="option.value"
-						:class="$style.radio"
-						:model-value="selectedOptionValue(block.component) ?? ''"
-						:label="option.value"
+					<N8nRadioGroup
+						:model-value="selectedOptionValue(block.component)"
 						:disabled="disabled"
-						data-testid="n8n-chat-card-radio"
-						@update:model-value="submitOption(block.component, option.value)"
+						@update:model-value="submitOption(block.component, $event)"
 					>
-						<span>{{ option.label }}</span>
-						<N8nText v-if="option.description" size="xsmall" color="text-light">
-							{{ option.description }}
-						</N8nText>
-					</ElRadio>
+						<N8nRadioGroupItem
+							v-for="option in block.component.options ?? []"
+							:key="option.value"
+							:value="option.value"
+							:label="option.label"
+							:description="option.description"
+							data-testid="n8n-chat-card-radio"
+						/>
+					</N8nRadioGroup>
 				</div>
 
 				<div v-else-if="block.component.type === 'select'" :class="$style.selectGroup">
@@ -264,10 +269,6 @@ function selectedOptionValue(component: SelectComponent): string | undefined {
 
 .selectLabel {
 	margin-bottom: var(--spacing--5xs);
-}
-
-.radio {
-	margin-right: 0;
 }
 
 .fieldsGroup {
