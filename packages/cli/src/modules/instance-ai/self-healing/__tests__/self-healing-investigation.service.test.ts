@@ -134,8 +134,7 @@ describe('SelfHealingInvestigationService', () => {
 		investigations.getUnfinishedForWorkflow.mockResolvedValue(null);
 		investigations.createInvestigation.mockResolvedValue(investigation);
 		resultRepository.getOpenForWorkflow.mockResolvedValue(null);
-		resultRepository.hasRecentCannotFixForActiveVersion.mockResolvedValue(false);
-		resultRepository.hasRecentCannotFixForVersion.mockResolvedValue(false);
+		resultRepository.isInCooldown.mockResolvedValue(false);
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
 			execution = (async () => {
@@ -458,11 +457,11 @@ describe('SelfHealingInvestigationService', () => {
 	});
 
 	it('skips a cooldown before capturing a baseline or opening the claim', async () => {
-		resultRepository.hasRecentCannotFixForActiveVersion.mockResolvedValue(true);
+		resultRepository.isInCooldown.mockResolvedValue(true);
 
 		await expect(service.start(input)).resolves.toBeNull();
 
-		expect(resultRepository.hasRecentCannotFixForActiveVersion).toHaveBeenCalledWith({
+		expect(resultRepository.isInCooldown).toHaveBeenCalledWith({
 			workflowId: input.workflowId,
 			projectId: input.projectId,
 			completedAfter: expect.any(Date),
@@ -475,30 +474,29 @@ describe('SelfHealingInvestigationService', () => {
 
 	it('returns existing work for the same execution during a cooldown', async () => {
 		investigations.getForExecution.mockResolvedValue(investigation);
-		resultRepository.hasRecentCannotFixForActiveVersion.mockResolvedValue(true);
+		resultRepository.isInCooldown.mockResolvedValue(true);
 
 		await expect(service.start(input)).resolves.toEqual({
 			kind: 'investigation',
 			investigationId: investigation.id,
 		});
-		expect(resultRepository.hasRecentCannotFixForActiveVersion).not.toHaveBeenCalled();
+		expect(resultRepository.isInCooldown).not.toHaveBeenCalled();
 	});
 
 	it('checks a newly completed cannot-fix result inside the locked claim transaction', async () => {
 		const ctx: OperationContext = { trx: mock<Transaction>() };
 		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
 		suggestions.readWorkflowTargetForApply.mockImplementationOnce(async () => {
-			resultRepository.hasRecentCannotFixForVersion.mockResolvedValue(true);
+			resultRepository.isInCooldown.mockResolvedValue(true);
 			return mock<Awaited<ReturnType<WorkflowSuggestionService['readWorkflowTargetForApply']>>>();
 		});
 
 		await expect(service.start(input)).resolves.toBeNull();
 
-		expect(resultRepository.hasRecentCannotFixForVersion).toHaveBeenCalledWith(
+		expect(resultRepository.isInCooldown).toHaveBeenLastCalledWith(
 			{
 				workflowId: input.workflowId,
 				projectId: input.projectId,
-				publishedVersionId: baseline.expectedBaseline.publishedVersionId,
 				completedAfter: expect.any(Date),
 			},
 			ctx,

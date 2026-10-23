@@ -56,7 +56,7 @@ type SelfHealingInboxQuery = {
 	boundary?: SelfHealingInboxBoundary;
 };
 
-type RecentCannotFixQuery = {
+type CooldownQuery = {
 	workflowId: string;
 	projectId: string;
 	completedAfter: Date;
@@ -103,33 +103,11 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 			.getOne();
 	}
 
-	async hasRecentCannotFixForVersion(
-		{ publishedVersionId, ...recent }: RecentCannotFixQuery & { publishedVersionId: string },
-		ctx: OperationContext,
-	): Promise<boolean> {
-		const versionIds = await this.getRecentCannotFixVersionIds(recent, ctx);
-		return versionIds.includes(publishedVersionId);
-	}
-
-	/** Checks the workflow's current published version. Reads it only when a recent result exists. */
-	async hasRecentCannotFixForActiveVersion(
-		recent: RecentCannotFixQuery,
+	/** Checks for a Could not fix result for the workflow's current published version. */
+	async isInCooldown(
+		{ workflowId, projectId, completedAfter }: CooldownQuery,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const versionIds = await this.getRecentCannotFixVersionIds(recent, ctx);
-		if (versionIds.length === 0) return false;
-
-		const workflow = await this.managerFor(ctx).findOne(WorkflowEntity, {
-			select: { activeVersionId: true },
-			where: { id: recent.workflowId },
-		});
-		return !!workflow?.activeVersionId && versionIds.includes(workflow.activeVersionId);
-	}
-
-	private async getRecentCannotFixVersionIds(
-		{ workflowId, projectId, completedAfter }: RecentCannotFixQuery,
-		ctx: OperationContext,
-	): Promise<string[]> {
 		const investigations = await this.managerFor(ctx).find(SelfHealingInvestigation, {
 			select: ['baseline'],
 			where: {
@@ -141,9 +119,22 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				},
 			},
 		});
+		// Most workflows have no recent result, so skip the workflow read.
+		if (investigations.length === 0) return false;
+
+		const workflow = await this.managerFor(ctx).findOne(WorkflowEntity, {
+			select: { activeVersionId: true },
+			where: { id: workflowId },
+		});
+		const activeVersionId = workflow?.activeVersionId;
 
 		// PostgreSQL accepts escaped NUL in json columns, but JSON extraction rejects it.
-		return investigations.map(({ baseline }) => baseline.expectedBaseline.publishedVersionId);
+		return (
+			!!activeVersionId &&
+			investigations.some(
+				({ baseline }) => baseline.expectedBaseline.publishedVersionId === activeVersionId,
+			)
+		);
 	}
 
 	async listForInbox(

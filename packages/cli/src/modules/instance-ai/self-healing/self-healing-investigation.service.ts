@@ -94,12 +94,7 @@ export class SelfHealingInvestigationService {
 		if (existing) return existing;
 
 		// Skip a cooldown before the baseline capture and the locked claim. The claim checks again.
-		const inCooldown = await this.resultRepository.hasRecentCannotFixForActiveVersion({
-			workflowId: input.workflowId,
-			projectId: input.projectId,
-			completedAfter: this.cooldownStart(),
-		});
-		if (inCooldown) return null;
+		if (await this.resultRepository.isInCooldown(this.cooldownQuery(input))) return null;
 
 		try {
 			const baseline = await this.suggestions.captureBaseline(input.workflowId, actor.id);
@@ -185,8 +180,9 @@ export class SelfHealingInvestigationService {
 			const existing = await this.findExisting(input, ctx);
 			if (existing) return existing;
 
+			// The baseline check confirms that the current published version is the captured version.
 			await this.suggestions.requireCurrentBaseline(baseline, ctx);
-			if (await this.isInCooldown(baseline, ctx)) return null;
+			if (await this.resultRepository.isInCooldown(this.cooldownQuery(input), ctx)) return null;
 
 			return await this.investigations.createInvestigation(
 				{
@@ -201,20 +197,9 @@ export class SelfHealingInvestigationService {
 		});
 	}
 
-	private async isInCooldown(baseline: WorkflowSuggestionBaseline, ctx: OperationContext) {
-		return await this.resultRepository.hasRecentCannotFixForVersion(
-			{
-				workflowId: baseline.workflowId,
-				projectId: baseline.projectId,
-				publishedVersionId: baseline.expectedBaseline.publishedVersionId,
-				completedAfter: this.cooldownStart(),
-			},
-			ctx,
-		);
-	}
-
-	private cooldownStart() {
-		return new Date(Date.now() - SELF_HEALING_CANNOT_FIX_COOLDOWN_MS);
+	private cooldownQuery({ workflowId, projectId }: StartInvestigation) {
+		const completedAfter = new Date(Date.now() - SELF_HEALING_CANNOT_FIX_COOLDOWN_MS);
+		return { workflowId, projectId, completedAfter };
 	}
 
 	private async run(investigation: SelfHealingInvestigation, user: User) {

@@ -579,7 +579,7 @@ describe('investigation eligibility after a result', () => {
 		const { input, user, project, original, result } = await fixture('could_not_fix');
 		const configurationService = Container.get(SelfHealingConfigurationService);
 		const producer = Container.get(SelfHealingInvestigationService);
-		const cooldown = vi.spyOn(results, 'hasRecentCannotFixForActiveVersion');
+		const cooldown = vi.spyOn(results, 'isInCooldown');
 
 		await configurationService.setEnabled(user, project.id, input.configurationId, false);
 		await configurationService.setEnabled(user, project.id, input.configurationId, true);
