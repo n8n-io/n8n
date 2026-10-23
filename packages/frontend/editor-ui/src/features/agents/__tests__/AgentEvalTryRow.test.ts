@@ -232,6 +232,61 @@ describe('AgentEvalTryRow', () => {
 		});
 	});
 
+	describe('notGraded (the judge did not grade the case)', () => {
+		const renderNotGraded = () =>
+			renderComponent({
+				props: {
+					status: 'work',
+					output: 'Order #123 ships tomorrow.',
+					errorMessage: 'The checker did not give a clear pass or fail.',
+					fixSuggestion: 'Always include the ticket number.',
+					notGraded: true,
+					testId: 'row',
+				},
+			});
+
+		it('opens an ungraded check with no output, so its buttons are reachable', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent({
+				props: { status: 'work', output: null, notGraded: true, testId: 'row' },
+			});
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-actually-fine')).toBeInTheDocument();
+			expect(getByTestId('row-run-check')).toBeInTheDocument();
+		});
+
+		it('says the check could not be graded, not that it needs work', () => {
+			const { getByText, queryByText } = renderNotGraded();
+
+			expect(getByText('Couldn’t grade. Run it again.')).toBeInTheDocument();
+			expect(queryByText('Needs work')).not.toBeInTheDocument();
+		});
+
+		it('offers "Run check" and "Actually fine", but no correction controls or fix suggestion', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId, queryByText } = renderNotGraded();
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-run-check')).toBeInTheDocument();
+			expect(getByTestId('row-actually-fine')).toBeInTheDocument();
+			expect(queryByTestId('row-suggestion')).not.toBeInTheDocument();
+			expect(queryByTestId('row-save-check')).not.toBeInTheDocument();
+			expect(queryByTestId('row-suggestion-card')).not.toBeInTheDocument();
+			// No verdict callout: it would say "Follows the rule" or "Couldn't verify the rule".
+			expect(queryByText(/Follows the rule|verify the rule/)).not.toBeInTheDocument();
+		});
+
+		it('emits actually-fine when the user accepts the ungraded answer', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderNotGraded();
+			await user.click(getByTestId('row-toggle'));
+			await user.click(getByTestId('row-actually-fine'));
+
+			expect(emitted('actually-fine')).toHaveLength(1);
+		});
+	});
+
 	describe('"Run check"', () => {
 		const renderPassing = (overrides: Record<string, unknown> = {}) =>
 			renderComponent({

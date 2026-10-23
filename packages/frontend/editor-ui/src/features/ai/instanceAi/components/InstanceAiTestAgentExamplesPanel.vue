@@ -30,6 +30,8 @@ export type SuiteCaseRun = {
 	errorMessage: string | null;
 	/** One instruction the judge proposed for a graded fail. Absent or null when it made none. */
 	fixSuggestion?: string | null;
+	/** The judge gave no readable verdict, so the case is neither a pass nor needs work. */
+	notGraded?: boolean;
 };
 
 const props = defineProps<{
@@ -44,6 +46,8 @@ const props = defineProps<{
 	previewStatus?: AgentAvatarKind;
 	/** The judge's reasoning behind `previewStatus`, when it graded the try. */
 	previewReasoning?: string | null;
+	/** The judge gave no readable verdict for the confirmed try. Its row shows no verdict callout. */
+	previewNotGraded?: boolean;
 	projectId?: string;
 	/** Already fetched in full (up to 10) — the slider only trims the display. */
 	examples: AgentEvalDraftCase[];
@@ -90,12 +94,20 @@ const waitingCount = computed(
 const passedCount = computed(
 	() => props.caseRuns?.filter((run) => run.status === 'pass').length ?? 0,
 );
+// An ungraded check is the judge's problem, not the agent's: it is counted on its
+// own, never as needs work.
+const notGradedCount = computed(() => props.caseRuns?.filter((run) => run.notGraded).length ?? 0);
 const needsWorkCount = computed(
-	() => (props.caseRuns?.length ?? 0) - passedCount.value - waitingCount.value,
+	() =>
+		(props.caseRuns?.length ?? 0) - passedCount.value - waitingCount.value - notGradedCount.value,
 );
 const runSettled = computed(() => props.caseRuns !== null && waitingCount.value === 0);
 const allPassed = computed(
-	() => runSettled.value && needsWorkCount.value === 0 && passedCount.value > 0,
+	() =>
+		runSettled.value &&
+		needsWorkCount.value === 0 &&
+		notGradedCount.value === 0 &&
+		passedCount.value > 0,
 );
 
 // "Keep as is" hides a card until a different suggestion arrives for that case.
@@ -125,10 +137,10 @@ function onApplyAllSuggestions() {
 	emit('apply-suggestions', applicableSuggestionIds.value);
 }
 
-// A settled run with cases that need work opens its list, so they are not hidden behind
-// the summary. The user can still collapse it.
+// A settled run with cases that need work, or that could not be graded, opens its list,
+// so they are not hidden behind the summary. The user can still collapse it.
 watch(
-	() => runSettled.value && needsWorkCount.value > 0,
+	() => runSettled.value && needsWorkCount.value + notGradedCount.value > 0,
 	(needsAttention) => {
 		if (needsAttention) summaryExpanded.value = true;
 	},
@@ -158,6 +170,7 @@ function onCheckYourAgent() {
 				:input="previewInput"
 				:output="previewOutput"
 				:error-message="previewReasoning"
+				:not-graded="previewNotGraded"
 				:label="previewScenario ?? i18n.baseText('instanceAi.testAgentPreview.yourTry')"
 				hide-revise
 				test-id="instance-ai-test-agent-examples-try"
@@ -213,13 +226,19 @@ function onCheckYourAgent() {
 				data-test-id="instance-ai-test-agent-examples-run-summary"
 			>
 				{{
-					i18n.baseText('instanceAi.testAgentPreview.wentWellNeedWork', {
-						interpolate: {
-							passed: String(passedCount),
-							total: String(caseRuns?.length ?? 0),
-							needsWork: String(needsWorkCount),
+					i18n.baseText(
+						notGradedCount > 0
+							? 'instanceAi.testAgentPreview.wentWellNeedWorkNotGraded'
+							: 'instanceAi.testAgentPreview.wentWellNeedWork',
+						{
+							interpolate: {
+								passed: String(passedCount),
+								total: String(caseRuns?.length ?? 0),
+								needsWork: String(needsWorkCount),
+								notGraded: String(notGradedCount),
+							},
 						},
-					})
+					)
 				}}
 			</N8nText>
 
@@ -235,6 +254,7 @@ function onCheckYourAgent() {
 						v-for="run in caseRuns"
 						:key="run.rowId"
 						:kind="run.status"
+						:not-graded="run.notGraded"
 						:label="run.label"
 						size="row"
 						:class="$style.summaryAvatar"
@@ -263,6 +283,7 @@ function onCheckYourAgent() {
 						:output="run.output"
 						:label="run.label"
 						:error-message="run.errorMessage"
+						:not-graded="run.notGraded"
 						:tool-calls="run.toolCalls"
 						:project-id="projectId"
 						:test-id="`instance-ai-test-agent-examples-case-${run.rowId}`"

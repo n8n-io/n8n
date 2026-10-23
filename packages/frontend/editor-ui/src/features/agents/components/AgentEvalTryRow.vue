@@ -64,6 +64,8 @@ const props = defineProps<{
 	fixSuggestion?: string | null;
 	/** True from "Apply suggestion" until the rewrite and rerun settle. */
 	applyingSuggestion?: boolean;
+	/** The case ran but the judge did not grade it. The row offers a rerun, not a correction. */
+	notGraded?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -94,7 +96,10 @@ const root = ref<HTMLElement | null>(null);
 // A case the judge marked as needing work or unable to finish gets a chance to
 // say what should have happened instead — a passed or not-yet-run case has
 // nothing to correct.
-const needsCorrection = computed(() => props.status === 'work' || props.status === 'fail');
+// A judge error says nothing about the agent, so there is nothing to correct.
+const needsCorrection = computed(
+	() => !props.notGraded && (props.status === 'work' || props.status === 'fail'),
+);
 
 // "Keep as is" hides the card only until a different suggestion arrives (a rerun failed
 // again), so a new proposal is never swallowed by an old dismissal.
@@ -113,8 +118,11 @@ const showFixSuggestion = computed(
 		!suggestionDismissed.value,
 );
 // A "couldn't finish" case often has no output at all — it must still expand
-// to reach the correction form, so this isn't gated on output alone.
-const canExpand = computed(() => props.output !== null || needsCorrection.value);
+// to reach the correction form, so this isn't gated on output alone. An ungraded
+// check still needs the expanded row for its "Actually fine" and "Run check" buttons.
+const canExpand = computed(
+	() => props.output !== null || needsCorrection.value || props.notGraded === true,
+);
 
 type StatusText = { labelKey: BaseTextKey; color?: TextColor; warning?: boolean };
 
@@ -130,9 +138,17 @@ const STATUS_TEXT: Record<AgentAvatarKind, StatusText> = {
 	fail: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'danger' },
 };
 
-const statusText = computed(() => i18n.baseText(STATUS_TEXT[props.status].labelKey));
-const statusColor = computed(() => STATUS_TEXT[props.status].color);
-const statusIsWarning = computed(() => STATUS_TEXT[props.status].warning === true);
+// An ungraded check shows the neutral "idle" look: no verdict, so no warning.
+const displayStatus = computed<AgentAvatarKind>(() => (props.notGraded ? 'idle' : props.status));
+const statusText = computed(() =>
+	i18n.baseText(
+		props.notGraded
+			? 'agents.builder.agentEvals.checks.status.notGraded'
+			: STATUS_TEXT[props.status].labelKey,
+	),
+);
+const statusColor = computed(() => STATUS_TEXT[displayStatus.value].color);
+const statusIsWarning = computed(() => STATUS_TEXT[displayStatus.value].warning === true);
 
 function toggleExpanded() {
 	if (!canExpand.value) return;
@@ -218,7 +234,7 @@ watch(
 <template>
 	<div ref="root" :class="$style.root" :data-test-id="testId">
 		<div v-if="view === 'complete'" :class="$style.header" @click="toggleExpanded">
-			<AgentAvatar :kind="status" size="md" />
+			<AgentAvatar :kind="displayStatus" :not-graded="notGraded" size="md" />
 			<div :class="$style.headerTitle">
 				<N8nText color="text-dark" size="medium" bold :class="$style.headerTitleText">{{
 					input
@@ -252,7 +268,7 @@ watch(
 		</div>
 
 		<div v-else :class="$style.header" @click="onOpen">
-			<AgentAvatar :kind="status" size="xs" />
+			<AgentAvatar :kind="displayStatus" :not-graded="notGraded" size="xs" />
 			<div :class="$style.headerTitle">
 				<N8nText v-if="label" color="text-light" size="small">{{ label }}</N8nText>
 				<N8nText color="text-dark" :class="$style.inputText" size="small">{{ input }}</N8nText>
@@ -330,7 +346,8 @@ watch(
 					:preview-input="input"
 					:preview-output="output ?? ''"
 					:error-message="errorMessage ?? undefined"
-					:status="status"
+					:status="displayStatus"
+					:hide-banner="notGraded"
 					:tool-calls="toolCalls"
 					:project-id="projectId"
 					:joined-below="!practiceBannerDismissed"
@@ -402,17 +419,29 @@ watch(
 							{{ i18n.baseText('instanceAi.testAgentPreview.actuallyFine') }}
 						</N8nButton>
 					</template>
-					<N8nButton
-						v-else
-						size="small"
-						variant="outline"
-						:disabled="disabled"
-						:loading="runningCheck"
-						:data-test-id="testId && `${testId}-run-check`"
-						@click="onRunCheck"
-					>
-						{{ i18n.baseText('instanceAi.testAgentPreview.runCheck') }}
-					</N8nButton>
+					<template v-else>
+						<!-- An ungraded check has no correction to save, but the user can still accept the answer. -->
+						<N8nButton
+							v-if="notGraded"
+							variant="ghost"
+							size="small"
+							:disabled="disabled || savingCheck"
+							:data-test-id="testId && `${testId}-actually-fine`"
+							@click="onActuallyFine"
+						>
+							{{ i18n.baseText('instanceAi.testAgentPreview.actuallyFine') }}
+						</N8nButton>
+						<N8nButton
+							size="small"
+							variant="outline"
+							:disabled="disabled"
+							:loading="runningCheck"
+							:data-test-id="testId && `${testId}-run-check`"
+							@click="onRunCheck"
+						>
+							{{ i18n.baseText('instanceAi.testAgentPreview.runCheck') }}
+						</N8nButton>
+					</template>
 				</div>
 				<!-- Ghost, so it never outranks Run check or Actually fine. -->
 				<N8nTooltip

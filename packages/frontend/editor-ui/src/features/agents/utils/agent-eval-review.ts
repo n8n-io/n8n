@@ -130,6 +130,23 @@ export function readVerdictReasoning(verdict: AgentEvalVerdict | null | undefine
 }
 
 /**
+ * The judge never graded the answer: the judge call failed, or its reply had no
+ * readable verdict. Shown as "couldn't grade", not as a fail, so the user does
+ * not change a working agent because of the judge.
+ */
+export function isUngradedVerdict(verdict: AgentEvalVerdict | null | undefined): boolean {
+	return verdict?.status === 'error';
+}
+
+/** The case ran, but the judge never graded it. See `isUngradedVerdict`. */
+export function isJudgeError(
+	status: AgentEvalResultStatus,
+	verdict: AgentEvalVerdict | null | undefined,
+): boolean {
+	return status === 'success' && isUngradedVerdict(verdict);
+}
+
+/**
  * The fix the judge's failure produced, when there is one. Only a graded fail
  * carries it, so a pass, a skipped or errored judge, and a blank value all read
  * as no suggestion.

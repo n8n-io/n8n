@@ -244,6 +244,59 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			expect(queryByTestId('instance-ai-test-agent-examples-stop')).not.toBeInTheDocument();
 		});
 
+		describe('with a check the judge could not grade', () => {
+			const withNotGraded = [
+				caseRuns[0],
+				caseRuns[1],
+				// A judge error maps to `work` (fail closed); only `notGraded` tells it apart.
+				{ ...caseRuns[2], status: 'work' as const, output: 'answer c', notGraded: true },
+			];
+
+			it('counts it apart from needs work in the tally', () => {
+				const { getByText } = renderComponent({ props: { caseRuns: withNotGraded } });
+
+				expect(
+					getByText('1 of 3 went well, 1 need work, 1 couldn’t be graded'),
+				).toBeInTheDocument();
+			});
+
+			// The compact row carries no status text, only the avatar: it must read as
+			// ungraded, not as "Needs work".
+			it('does not mark its row as needs work', () => {
+				const { getByTestId } = renderComponent({ props: { caseRuns: withNotGraded } });
+
+				const row = getByTestId('instance-ai-test-agent-examples-case-3');
+				expect(within(row).getByRole('img', { name: /Couldn’t grade/ })).toBeInTheDocument();
+				expect(within(row).queryByRole('img', { name: /Needs work/ })).not.toBeInTheDocument();
+			});
+
+			it('shows it as ungraded in the summary pill too', () => {
+				const { getByTestId } = renderComponent({ props: { caseRuns: withNotGraded } });
+
+				const pill = getByTestId('instance-ai-test-agent-examples-summary-toggle');
+				expect(
+					within(pill).getByRole('img', { name: /Custom — Couldn’t grade/ }),
+				).toBeInTheDocument();
+				expect(within(pill).getAllByRole('img', { name: /Needs work/ })).toHaveLength(1);
+			});
+
+			it('opens its list by default even when nothing needs work', () => {
+				const { getByTestId } = renderComponent({
+					props: { caseRuns: [caseRuns[0], withNotGraded[2]] },
+				});
+
+				expect(getByTestId('instance-ai-test-agent-examples-case-3')).toBeInTheDocument();
+			});
+
+			it('does not offer "Try agent yourself" while a check is ungraded', () => {
+				const { queryByTestId } = renderComponent({
+					props: { caseRuns: [caseRuns[0], withNotGraded[2]] },
+				});
+
+				expect(queryByTestId('instance-ai-test-agent-examples-try-agent')).not.toBeInTheDocument();
+			});
+		});
+
 		it('keeps each row labeled with its scenario tag once the suite has run', async () => {
 			const { findByText, getByText } = renderComponent({ props: { caseRuns } });
 

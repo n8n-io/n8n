@@ -8,6 +8,7 @@ import type {
 import type { ReviewDraft } from '../agent-eval-review';
 import {
 	canSaveDraft,
+	isJudgeError,
 	readAgentAnswer,
 	readCaseRequest,
 	readCaseWhatToCheck,
@@ -242,6 +243,25 @@ const verdict = (overrides: Partial<AgentEvalVerdict> = {}): AgentEvalVerdict =>
 	outcome: 'pass',
 	reasoning: 'Matches the expected answer.',
 	...overrides,
+});
+
+describe('isJudgeError', () => {
+	const errored = verdict({ status: 'error', outcome: null, reasoning: 'No clear verdict.' });
+
+	it('is true when a case ran but the judge did not grade it', () => {
+		expect(isJudgeError('success', errored)).toBe(true);
+	});
+
+	it.each([
+		['a graded fail', 'success', verdict({ outcome: 'fail' })],
+		['a graded pass', 'success', verdict()],
+		['a skipped judge', 'success', verdict({ status: 'skipped', outcome: null })],
+		['no verdict', 'success', null],
+		['an execution error', 'error', errored],
+		['a cancelled case', 'cancelled', errored],
+	] as const)('is false for %s', (_label, status, v) => {
+		expect(isJudgeError(status, v)).toBe(false);
+	});
 });
 
 describe('readVerdictSuggestion', () => {
