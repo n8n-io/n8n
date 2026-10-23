@@ -45,7 +45,12 @@ import {
 import { credentialAutoSetupResponder } from './credential-approval';
 import { evaluateDiscoveryTrial } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
-import { buildTurnMessage, createSeededThread, type SeededThread } from './seeded-turn';
+import {
+	buildTurnMessage,
+	createSeededThread,
+	STUB_PROJECT_ID,
+	type SeededThread,
+} from './seeded-turn';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import {
 	createMcpConnectResponder,
@@ -220,8 +225,10 @@ export async function runOrchestratorTurn(
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
+			// Every production thread belongs to a project. Without one, adopting an existing Agent fails.
+			projectId: STUB_PROJECT_ID,
 			// The Agents module is a default module, so the eval runs with a builder.
-			builderDelegate: createStubBuilderDelegate(),
+			builderDelegate: createStubBuilderDelegate(options.scenario.seed),
 			workspace: createStubWorkspace(knowledgeBase.files),
 			workspaceRoot: stubWorkspaceRoot,
 		};
@@ -435,7 +442,7 @@ function createStubBuilderTools(tools: AgentBuilderFile['tools']): BuiltTool[] {
 	});
 }
 
-function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+function createStubBuilderDelegate(seed: DiscoveryScenario['seed']): InstanceAiBuilderDelegate {
 	const agentBuilder = agentBuilderFileSchema.parse(
 		JSON.parse(readFileSync(path.join(__dirname, 'agent-builder.json'), 'utf8')),
 	);
@@ -443,13 +450,14 @@ function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
 		createAgent: async (name) =>
 			await Promise.resolve({
 				agentId: 'discovery-agent',
-				projectId: 'discovery-project',
+				projectId: STUB_PROJECT_ID,
 				name,
 			}),
 		getBuilderTools: () => createStubBuilderTools(agentBuilder.tools),
 		getRuntimeSkills: () => agentBuilder.skills,
 		getBuilderSessionContext: async () => await Promise.resolve('## Session context'),
-		resolveAgentName: async () => await Promise.resolve(undefined),
+		resolveAgentName: async (agentId) =>
+			await Promise.resolve(seed?.agents.find((agent) => agent.id === agentId)?.config.name),
 	};
 }
 
