@@ -3543,7 +3543,7 @@ useKeybindings({
 @use '@n8n/design-system/css/mixins/motion';
 
 .root {
-	--n8n--agent-builder-header-height: var(--height--4xl);
+	--n8n--agent-builder-header-height: var(--height--2xl);
 
 	position: relative;
 	display: flex;

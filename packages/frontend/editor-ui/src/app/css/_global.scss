@@ -1,5 +1,5 @@
 :root {
-	--navbar--height: 64px;
+	--navbar--height: var(--height--2xl);
 	--header--height: 65;
 	--content-container--width: 1280px;
 	--banner--height: 48px;

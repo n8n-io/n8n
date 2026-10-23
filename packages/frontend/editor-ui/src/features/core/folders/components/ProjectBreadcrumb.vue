@@ -91,7 +91,7 @@ const onProjectMouseUp = () => {
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
 		<N8nLink :to="projectLink" :class="[$style['project-link']]">
-			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" :title="projectName" />
+			<ProjectIcon :icon="projectIcon" :border-less="true" size="medium" :title="projectName" />
 			<N8nText
 				size="medium"
 				color="text-base"
