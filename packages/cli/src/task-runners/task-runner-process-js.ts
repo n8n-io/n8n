@@ -35,7 +35,11 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		const startScript = require.resolve('@n8n/task-runner/start');
 		const flags = this.runnerConfig.insecureMode
 			? []
-			: ['--disallow-code-generation-from-strings', '--disable-proto=delete'];
+			: [
+					'--disallow-code-generation-from-strings',
+					'--disable-proto=delete',
+					'--no-experimental-webstorage',
+				];
 
 		return spawn('node', [...flags, startScript], {
 			env: this.getProcessEnvVars(grantToken, taskBrokerUri, runnerId),

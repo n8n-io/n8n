@@ -10,7 +10,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
@@ -27,24 +27,34 @@ import {
 } from '../../promotionPreview.content';
 import type { ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
 import { isContainer, resourceIcon } from '../../promotionPreview.tree';
+import { hasWorkflowDiff } from '../../promotionPreview.workflow';
 import DataTableChangeDetails from './DataTableChangeDetails.vue';
 import PromotionFieldChanges from './PromotionFieldChanges.vue';
+import PromotionWorkflowPreview from './PromotionWorkflowPreview.vue';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
-const props = defineProps<{
-	resource: PromotionResource;
-	graph: SelectionGraph;
-	direction: PromotionDirection;
-	included: boolean;
-	entry?: DetailEntry;
-	inspected: boolean;
-	blockers?: Blocker[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		resource: PromotionResource;
+		graph: SelectionGraph;
+		direction: PromotionDirection;
+		included: boolean;
+		entry?: DetailEntry;
+		inspected: boolean;
+		blockers?: Blocker[];
+		diffActive?: boolean;
+		/** False for a list that users only read. The card then shows no inclusion state. */
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
 
 const emit = defineEmits<{
 	inspect: [key: ResourceKey];
 	retry: [];
 	refresh: [];
+	activateDiff: [];
+	deactivateDiff: [];
 }>();
 
 const i18n = useI18n();
@@ -56,18 +66,22 @@ const blocker = computed(() =>
 );
 
 // Cards start open. Inspecting a resource from the tree opens its card again.
-const open = ref(true);
+const open = defineModel<boolean>('open', { default: true });
 watch(
 	() => props.inspected,
 	(inspected) => {
 		if (inspected) open.value = true;
 	},
 );
+watch(open, (isOpen) => {
+	if (!isOpen && props.diffActive) emit('deactivateDiff');
+});
 // A blocker matters more than the inclusion, so it takes the place of the inclusion icon.
 const status = computed(() => {
 	if (blocker.value) {
 		return { label: blocker.value, icon: 'circle-alert' as const, tone: 'blocked' };
 	}
+	if (!props.selectable) return undefined;
 	return props.included
 		? {
 				label: i18n.baseText('promotions.preview.card.included'),
@@ -90,21 +104,23 @@ const scope = computed(() =>
 
 type Footer = { keypath: BaseTextKey; workflows: Array<{ key: ResourceKey; name: string }> };
 
-// Resources that users cannot select name the workflows that use or call them.
+// Resources that users cannot select name the workflows that use or call them. A resource
+// that a review deletes can have no such workflow left.
 const footer = computed((): Footer | undefined => {
 	const { resource, graph } = props;
 	if (resource.selectable || isContainer(resource)) return undefined;
 	const users = graph.requiredBy.get(resource.key) ?? [];
+	const callers = graph.calledBy.get(resource.key) ?? [];
 	const named = (keys: readonly ResourceKey[]) => keys.map((key) => ({ key, name: nameOf(key) }));
 	if (users.length > 0)
 		return { keypath: 'promotions.preview.card.usedBy', workflows: named(users) };
-	return {
-		keypath: 'promotions.preview.card.calledBy',
-		workflows: named(graph.calledBy.get(resource.key) ?? []),
-	};
+	if (callers.length > 0)
+		return { keypath: 'promotions.preview.card.calledBy', workflows: named(callers) };
+	return undefined;
 });
 
 const detail = computed(() => (props.entry?.status === 'loaded' ? props.entry.detail : undefined));
+const hasDiff = computed(() => hasWorkflowDiff(props.resource));
 const stale = computed(() => !!detail.value && isStaleDetail(detail.value, props.resource));
 const fieldChanges = computed(() => {
 	const context = { direction: props.direction, resource: props.resource, containerName: nameOf };
@@ -165,7 +181,7 @@ const tagNote = computed(() => {
 					</N8nText>
 				</span>
 				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-				<N8nTooltip :content="status.label" as-child>
+				<N8nTooltip v-if="status" :content="status.label" as-child>
 					<span
 						role="img"
 						:aria-label="status.label"
@@ -180,22 +196,25 @@ const tagNote = computed(() => {
 
 			<CollapsibleContent>
 				<div :class="$style.notices">
-					<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>
-						{{ i18n.baseText('promotions.preview.card.missing') }}
-						<template #trailingContent>
-							<N8nButton variant="outline" size="small" @click="emit('refresh')">
-								{{ i18n.baseText('promotions.preview.refresh') }}
-							</N8nButton>
-						</template>
-					</N8nCallout>
-					<N8nCallout v-else-if="entry?.status === 'error'" theme="danger" slim>
-						{{ i18n.baseText('promotions.preview.card.loadFailed') }}
-						<template #trailingContent>
-							<N8nButton variant="outline" size="small" @click="emit('retry')">
-								{{ i18n.baseText('promotions.preview.state.retry') }}
-							</N8nButton>
-						</template>
-					</N8nCallout>
+					<!-- A workflow diff shows these states in its own area. -->
+					<template v-if="!hasDiff">
+						<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>
+							{{ i18n.baseText('promotions.preview.card.missing') }}
+							<template #trailingContent>
+								<N8nButton variant="outline" size="small" @click="emit('refresh')">
+									{{ i18n.baseText('promotions.preview.refresh') }}
+								</N8nButton>
+							</template>
+						</N8nCallout>
+						<N8nCallout v-else-if="entry?.status === 'error'" theme="danger" slim>
+							{{ i18n.baseText('promotions.preview.card.loadFailed') }}
+							<template #trailingContent>
+								<N8nButton variant="outline" size="small" @click="emit('retry')">
+									{{ i18n.baseText('promotions.preview.state.retry') }}
+								</N8nButton>
+							</template>
+						</N8nCallout>
+					</template>
 					<N8nCallout v-if="stale" theme="warning" slim data-test-id="promotion-preview-card-stale">
 						{{ i18n.baseText('promotions.preview.card.stale') }}
 						<template #trailingContent>
@@ -204,7 +223,7 @@ const tagNote = computed(() => {
 							</N8nButton>
 						</template>
 					</N8nCallout>
-					<N8nCallout v-if="detail && hasUnreadableSide(detail)" theme="info" slim>
+					<N8nCallout v-if="!hasDiff && detail && hasUnreadableSide(detail)" theme="info" slim>
 						{{ i18n.baseText('promotions.preview.card.unreadable') }}
 					</N8nCallout>
 				</div>
@@ -217,7 +236,11 @@ const tagNote = computed(() => {
 				>
 					{{ i18n.baseText('promotions.preview.card.noChanges') }}
 				</N8nText>
-				<N8nLoading v-else-if="entry?.status === 'loading'" :rows="2" :class="$style.padded" />
+				<N8nLoading
+					v-else-if="entry?.status === 'loading' && !hasDiff"
+					:rows="2"
+					:class="$style.padded"
+				/>
 				<template v-else>
 					<DataTableChangeDetails
 						v-if="dataTable"
@@ -229,6 +252,18 @@ const tagNote = computed(() => {
 						:changes="fieldChanges"
 						:direction="direction"
 						:absent-sides="absentSides"
+					/>
+					<PromotionWorkflowPreview
+						v-if="hasDiff"
+						:active="!!diffActive && open"
+						:entry="entry"
+						:resource-key="resource.key"
+						:workflow-name="resource.name"
+						:direction="direction"
+						:graph="graph"
+						@activate="emit('activateDiff')"
+						@retry="emit('retry')"
+						@refresh="emit('refresh')"
 					/>
 					<N8nText
 						v-if="detail?.type === 'variable' && detail.valueHidden"
@@ -246,9 +281,14 @@ const tagNote = computed(() => {
 					</N8nText>
 				</template>
 
-				<footer v-if="footer" :class="$style.footer">
+				<footer v-if="footer || scope" :class="$style.footer">
 					<N8nText v-if="scope" step="2xs" color="text-light">{{ scope }}</N8nText>
-					<N8nText step="2xs" color="text-light" data-test-id="promotion-preview-card-inclusion">
+					<N8nText
+						v-if="footer"
+						step="2xs"
+						color="text-light"
+						data-test-id="promotion-preview-card-inclusion"
+					>
 						<I18nT :keypath="footer.keypath" scope="global">
 							<template #names>
 								<PromotionWorkflowLinks

@@ -146,7 +146,7 @@ describe('generateThreadTitle side-call cost', () => {
 		expect(reports[0].task).toBe('title');
 	});
 
-	it('does not forward a report when the model has no catalog pricing', async () => {
+	it('forwards a report without cost when the model has no catalog pricing', async () => {
 		mockGenerateText.mockResolvedValue({
 			text: '{"title":"Berlin rain alert","emoji":"rain"}',
 			usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
@@ -157,7 +157,13 @@ describe('generateThreadTitle side-call cost', () => {
 		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
 
 		const reports = await runTitle(memory);
-		expect(reports).toHaveLength(0);
+		expect(reports).toHaveLength(1);
+		const report = reports[0];
+		expect(report.task).toBe('title');
+		expect(report.model).toBe(MODEL_ID);
+		expect(report.usage.promptTokens).toBe(100);
+		expect(report.usage.completionTokens).toBe(50);
+		expect(report).not.toHaveProperty('cost');
 	});
 
 	it('does not forward a report when the LLM reports no usage', async () => {

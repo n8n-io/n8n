@@ -131,7 +131,6 @@ describe('ProjectsNavigation', () => {
 			'instance-ai': {
 				enabled: true,
 				mcpConnectionsAvailable: true,
-				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,
@@ -140,6 +139,7 @@ describe('ProjectsNavigation', () => {
 				workflowBuilderAvailable: true,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
 			},
 		};
 	}

@@ -79,6 +79,7 @@ import {
 } from './promotions-git.utils';
 import type {
 	BranchPackage,
+	PackageCommit,
 	PromotionCacheDescriptor,
 	PromotionGitCredentials,
 	PromotionOperationInput,
@@ -1123,12 +1124,60 @@ export class PromotionsService {
 	): Promise<Map<string, string>> {
 		const input = await this.resolver.resolveForProject(projectId, direction);
 		await this.assertCheckoutReady(input, 'reading branch files');
+		return await this.readExistingFiles(
+			{
+				paths: this.workingDirectory.paths(input.environmentId),
+				branchName: checkoutBranchName(input.config),
+				environmentId: input.environmentId,
+				commitSha,
+			},
+			filePaths,
+		);
+	}
+
+	/**
+	 * Fetches the head and the baseline of a promotion review into the checkout of its
+	 * environment, and returns the package at each. The Git service chooses the baseline.
+	 */
+	async readReviewCommits(
+		environmentId: string,
+		request: {
+			headRef: string;
+			headCommitSha: string;
+			baseline: { targetBranchName: string } | { commitSha: string; targetBranchName?: string };
+		},
+	): Promise<{ baseline: PackageCommit; head: PackageCommit }> {
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
+		await this.assertCheckoutReady(input, 'reading a review');
 		const operation = {
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName: checkoutBranchName(input.config),
 			environmentId: input.environmentId,
-			commitSha,
 		};
+		const { baselineCommitSha } = await this.gitService.fetchReviewCommits({
+			...operation,
+			...request,
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+		});
+		const atCommit = (commitSha: string): PackageCommit => ({
+			commitSha,
+			listFiles: async () =>
+				await this.gitService.listFilesAtCommit({
+					...operation,
+					commitSha,
+					directory: PACKAGE_SUBFOLDER,
+				}),
+			readFiles: async (filePaths) =>
+				await this.readExistingFiles({ ...operation, commitSha }, filePaths),
+		});
+		return { baseline: atCommit(baselineCommitSha), head: atCommit(request.headCommitSha) };
+	}
+
+	private async readExistingFiles(
+		operation: Omit<Parameters<PromotionsGitService['readFilesAtCommit']>[0], 'filePaths'>,
+		filePaths: readonly string[],
+	): Promise<Map<string, string>> {
 		const existing = await this.gitService.findPathsAtCommit({ ...operation, filePaths });
 		return await this.gitService.readFilesAtCommit({
 			...operation,

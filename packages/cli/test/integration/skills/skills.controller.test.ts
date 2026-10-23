@@ -1,4 +1,11 @@
-import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import {
+	createTeamProject,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
@@ -9,6 +16,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { SkillRepository } from '@/modules/skills/skill.repository';
 import { SkillService } from '@/modules/skills/skill.service';
+import { PostHogClient } from '@/posthog';
 
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMember, createOwner, createUser } from '../shared/db/users';
@@ -23,6 +31,7 @@ beforeAll(async () => {
 
 describe('SkillsController', () => {
 	const server = setupTestServer({ endpointGroups: ['ai'] });
+	const postHog = mockInstance(PostHogClient);
 	let ownerUser: User;
 	let memberUser: User;
 	let owner: SuperAgentTest;
@@ -49,6 +58,123 @@ describe('SkillsController', () => {
 
 	beforeEach(async () => {
 		setSkillsHubFlag(true);
+		postHog.getFeatureFlagForInstance.mockImplementation(
+			async (flag) => flag === ASSISTANT_SKILLS_FLAG,
+		);
+	});
+
+	it('keeps new skills unavailable and lets an owner toggle without a new content version', async () => {
+		const {
+			body: { data: created },
+		} = await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(200);
+		expect(created.availableToAssistant).toBe(false);
+		const {
+			body: { data: saved },
+		} = await owner
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(200);
+		expect(saved.created).toBe(false);
+		expect(saved.version).toBe(created.latestVersion);
+		const {
+			body: { data: detail },
+		} = await owner.get(`/skills/${created.id}`).expect(200);
+		expect(detail.availableToAssistant).toBe(true);
+		await member
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: false })
+			.expect(403);
+		await owner
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: false })
+			.expect(200);
+		const {
+			body: { data: disabled },
+		} = await owner.get(`/skills/${created.id}`).expect(200);
+		expect(disabled.availableToAssistant).toBe(false);
+		expect(disabled.latestVersion).toBe(created.latestVersion);
+	});
+
+	it('blocks Assistant updates while ordinary skill edits remain available', async () => {
+		const {
+			body: { data: created },
+		} = await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(200);
+		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
+		await owner
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(404);
+		await owner
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, description: 'Updated description' })
+			.expect(200);
+	});
+
+	it('uses the project edit permission for the Assistant toggle', async () => {
+		const {
+			body: { data: created },
+		} = await editor
+			.post('/skills')
+			.send({ scope: 'project', projectId: project.id, skill: body })
+			.expect(200);
+		await viewer
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(403);
+		await outsider
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(404);
+		await editor
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(200);
+	});
+
+	it('rolls back availability when the content save is refused', async () => {
+		const {
+			body: { data: created },
+		} = await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(200);
+		await owner
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: 'stale', availableToAssistant: true })
+			.expect(409);
+		const {
+			body: { data: detail },
+		} = await owner.get(`/skills/${created.id}`).expect(200);
+		expect(detail.availableToAssistant).toBe(false);
+	});
+
+	it('requires moving an agent-scoped skill before enabling it for the Assistant', async () => {
+		const agent = await newAgent('Assistant toggle test', project.id);
+		const {
+			body: { data: created },
+		} = await owner
+			.post('/skills')
+			.send({ scope: 'agent', agentId: agent.id, skill: body })
+			.expect(200);
+		await owner
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(400);
+		const {
+			body: { data: detail },
+		} = await owner.get(`/skills/${created.id}`).expect(200);
+		expect(detail.availableToAssistant).toBe(false);
+		await editor
+			.patch(`/skills/${created.id}`)
+			.send({
+				baseSkillHash: created.skillHash,
+				scope: 'project',
+				projectId: project.id,
+				availableToAssistant: true,
+			})
+			.expect(200);
+		const {
+			body: { data: moved },
+		} = await owner.get(`/skills/${created.id}`).expect(200);
+		expect(moved.scope).toBe('project');
+		expect(moved.availableToAssistant).toBe(true);
 	});
 
 	it('hides the skills API when the skills hub is off', async () => {

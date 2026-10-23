@@ -22,6 +22,7 @@ import {
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -88,6 +89,8 @@ export type AgentSkillModalData = {
 	 */
 	scopeOptions?: AgentSkillModalScopeOption[];
 	initialScope?: string;
+	/** Settings only. Absent hides the Assistant toggle. */
+	availableToAssistant?: boolean;
 	/**
 	 * A default name that no skill in the scope has yet, as new workflows get one. Called
 	 * when the user starts a skill by hand, with the Settings scope value or, in the agent
@@ -109,6 +112,7 @@ export type AgentSkillModalData = {
 		skill: AgentSkill;
 		availableTo?: AgentSkillAvailability;
 		scope?: string;
+		availableToAssistant?: boolean;
 		/** Set on create only: whether the user typed the skill or uploaded it. */
 		method?: SkillCreateMethod;
 	}) => AgentSkillConfirmResult | Promise<AgentSkillConfirmResult>;
@@ -170,6 +174,13 @@ const isSaving = ref(false);
 /** A name error from the server, such as a taken name. Typing a new name clears it. */
 const serverNameError = ref('');
 const scope = ref(props.data.initialScope ?? props.data.scopeOptions?.[0]?.value ?? '');
+const availableToAssistant = ref(props.data.availableToAssistant ?? false);
+const showAssistantAvailability = computed(() => props.data.availableToAssistant !== undefined);
+const assistantAvailabilityChanged = computed(
+	() =>
+		showAssistantAvailability.value &&
+		availableToAssistant.value !== props.data.availableToAssistant,
+);
 
 /** The last default name the server gave. A name the user typed is never replaced. */
 const serverDefaultName = ref<string | null>(null);
@@ -486,6 +497,7 @@ const hasChanges = computed(
 	() =>
 		!isEditing.value ||
 		!isEqual(skill.value, initialSkill) ||
+		assistantAvailabilityChanged.value ||
 		(showAvailabilitySelect.value && availableTo.value !== savedTarget.value) ||
 		(canChangeScope.value && scope.value !== props.data.initialScope),
 );
@@ -547,11 +559,6 @@ async function loadSkillAccess(skillId: string) {
 function onPickerItemAttach(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled || item.attached) return;
 	void attachLibrarySkill(item.skillId);
-}
-
-function onPickerItemDetach(item: ToolConnectionItem) {
-	if (item.kind !== 'skill' || !item.attached || item.attaching) return;
-	props.data.onRemove?.(item.skillId);
 }
 
 async function onPickerItemPreview(item: ToolConnectionItem) {
@@ -713,6 +720,9 @@ async function onSave() {
 			skill: payload,
 			...(showAvailabilitySelect.value && targetChanged ? { availableTo: availableTo.value } : {}),
 			...(canChangeScope.value ? { scope: scope.value } : {}),
+			...(assistantAvailabilityChanged.value
+				? { availableToAssistant: availableToAssistant.value }
+				: {}),
 			...(isEditing.value ? {} : { method: createMethod.value }),
 		});
 	} catch {
@@ -801,12 +811,20 @@ function onRemove() {
 					description: i18n.baseText('agents.builder.skills.picker.create.description'),
 					testId: 'agent-skill-picker-create',
 				}"
+				:connect-label="() => i18n.baseText('agents.builder.skills.picker.add')"
+				:connect-aria-label="
+					(item) =>
+						i18n.baseText('agents.builder.skills.picker.addAriaLabel', {
+							interpolate: { name: item.title },
+						})
+				"
 				embedded
 				show-connect-actions
+				hide-empty-categories
+				iconless-rows
 				persistent-scrollbar
 				data-testid="agent-skill-picker"
 				@connect="onPickerItemAttach"
-				@disconnect="onPickerItemDetach"
 				@open-detail="onPickerItemPreview"
 				@create="onPickerCreate"
 			/>
@@ -958,6 +976,21 @@ function onRemove() {
 									{{ accessWarning }}
 								</N8nCallout>
 							</div>
+							<N8nInputLabel
+								v-if="showScope && showAssistantAvailability"
+								input-name="skill-assistant-availability"
+								:label="i18n.baseText('settings.context.skills.assistant.label')"
+								:tooltip-text="i18n.baseText('settings.context.skills.assistant.tooltip')"
+								size="small"
+							>
+								<N8nSwitch
+									id="skill-assistant-availability"
+									v-model="availableToAssistant"
+									:aria-label="i18n.baseText('settings.context.skills.assistant.label')"
+									:disabled="editorLocked"
+									data-testid="skill-assistant-availability"
+								/>
+							</N8nInputLabel>
 						</template>
 					</AgentSkillViewer>
 				</template>

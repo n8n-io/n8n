@@ -519,7 +519,7 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
-  # In-process discovery eval — asserts the orchestrator reaches for browser/computer-use
+  # In-process discovery eval — asserts the orchestrator reaches for Browser Use
   # tools at OAuth/screenshot moments. Lightweight (no Docker), runs in parallel with the
   # heavy workflow eval. Non-blocking initially; promote to required after stability.
   instance-ai-discovery-evals:
