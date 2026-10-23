@@ -304,27 +304,29 @@ const treeResizer = useResizablePanel({
 							</I18nT>
 						</N8nText>
 					</div>
-					<N8nButton
-						variant="outline"
-						size="small"
-						icon="refresh-cw"
-						:loading="refreshing"
-						:disabled="operation.isBusy.value"
-						data-test-id="promotion-preview-refresh"
-						@click="refresh"
-					>
-						{{ i18n.baseText('promotions.preview.refresh') }}
-					</N8nButton>
-					<N8nButton
-						:variant="request.confirmDestructiveChanges ? 'destructive' : 'brand'"
-						size="small"
-						:disabled="!canSubmit"
-						:loading="operation.isRunning.value"
-						data-test-id="promotion-preview-submit"
-						@click="operation.submit(request)"
-					>
-						{{ submitLabel }}
-					</N8nButton>
+					<div :class="$style.actions">
+						<N8nButton
+							variant="outline"
+							size="small"
+							icon="refresh-cw"
+							:loading="refreshing"
+							:disabled="operation.isBusy.value"
+							data-test-id="promotion-preview-refresh"
+							@click="refresh"
+						>
+							{{ i18n.baseText('promotions.preview.refresh') }}
+						</N8nButton>
+						<N8nButton
+							:variant="request.confirmDestructiveChanges ? 'destructive' : 'brand'"
+							size="small"
+							:disabled="!canSubmit"
+							:loading="operation.isRunning.value"
+							data-test-id="promotion-preview-submit"
+							@click="operation.submit(request)"
+						>
+							{{ submitLabel }}
+						</N8nButton>
+					</div>
 				</div>
 			</div>
 		</header>
@@ -536,6 +538,12 @@ const treeResizer = useResizablePanel({
 	flex-wrap: wrap;
 	align-items: center;
 	column-gap: var(--spacing--2xs);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .details > * + *::before {
