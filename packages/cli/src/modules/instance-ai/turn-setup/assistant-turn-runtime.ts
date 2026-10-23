@@ -5,6 +5,7 @@ import type {
 	InstanceAiSetupItem,
 } from '@n8n/api-types';
 import type {
+	CreateInstanceAgentOptions,
 	DomainAccessTracker,
 	InstanceAiContext,
 	InstanceAiEventBus,
@@ -35,6 +36,8 @@ export interface AssistantTurnState {
 	setSetupPanelEnabled(enabled: boolean): void;
 	/** Whether the client renders the Browser Use entry. */
 	getBrowserUseAvailable(): boolean | undefined;
+	/** The observer threshold that the thread sets, if any. */
+	getObserverThresholdTokens(): number | undefined;
 }
 
 /**
@@ -59,7 +62,8 @@ export interface AssistantTurnRuntime
 			| 'onArtifactChanged'
 			| 'recordWorkflowCodeSnapshot'
 			| 'markWorkflowSetupHandled'
-		> {
+		>,
+		Pick<CreateInstanceAgentOptions, 'checkpointStore' | 'onMemoryTaskEvent'> {
 	memory: AssistantTurnMemory;
 	eventBus: InstanceAiEventBus;
 	turnState: AssistantTurnState;
