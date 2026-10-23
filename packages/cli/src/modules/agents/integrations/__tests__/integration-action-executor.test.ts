@@ -107,6 +107,10 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 		return undefined;
 	}
 
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}

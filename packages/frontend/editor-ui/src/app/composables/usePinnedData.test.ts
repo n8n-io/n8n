@@ -225,6 +225,24 @@ describe('usePinnedData', () => {
 			expect(canPinNode(false, -1)).toBe(false);
 		});
 
+		it('does not allow pin on deprecated node type', async () => {
+			const node = ref({
+				name: 'single output node',
+				typeVersion: 1,
+				type: HTTP_REQUEST_NODE_TYPE,
+				parameters: {},
+				onError: 'stopWorkflow',
+			} as INodeUi);
+			getNodeType.mockReturnValue({
+				...makeNodeType([NodeConnectionTypes.Main], HTTP_REQUEST_NODE_TYPE),
+				deprecated: true,
+			});
+
+			const { canPinNode } = usePinnedData(node);
+
+			expect(canPinNode()).toBe(false);
+		});
+
 		it('allows pin on one main and one error output', async () => {
 			const node = ref({
 				name: 'single output node',

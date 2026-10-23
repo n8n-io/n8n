@@ -9,6 +9,7 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
+import { AgentFormattedTurnError } from './agent-formatted-turn.error';
 import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
@@ -73,11 +74,17 @@ export function initSseStream(res: FlushableResponse) {
 	return { send, onChunk, abortSignal: abortController.signal, close };
 }
 
+/** The stable client `errorCode` of a known error class, if it has one. */
+export function chatErrorCode(error: unknown): string | undefined {
+	if (error instanceof AgentTurnAlreadyRunningError) return 'turn_already_running';
+	if (error instanceof AgentN8nChatUnavailableError) return 'agent_unavailable';
+	if (error instanceof AgentFormattedTurnError) return error.errorCode;
+	return undefined;
+}
+
 /** Build the `error` SSE event for a caught error, mapping known error classes to a stable `errorCode`. */
 export function toChatErrorEvent(error: unknown, fallbackMessage: string): AgentSseEvent {
-	let errorCode: string | undefined;
-	if (error instanceof AgentTurnAlreadyRunningError) errorCode = 'turn_already_running';
-	if (error instanceof AgentN8nChatUnavailableError) errorCode = 'agent_unavailable';
+	const errorCode = chatErrorCode(error);
 	return {
 		type: 'error',
 		message: scrubSecretsInText(error instanceof Error ? error.message : fallbackMessage),

@@ -2,6 +2,7 @@
 import type { CanvasNode, CanvasConnection } from '@/features/workflows/canvas/canvas.types';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import type { INodeUi } from '@/Interface';
+import WorkflowDiffPanels from './WorkflowDiffPanels.vue';
 import SyncedWorkflowCanvas from './SyncedWorkflowCanvas.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 import NodeDiff from './NodeDiff.vue';
@@ -9,7 +10,7 @@ import HighlightedEdge from './HighlightedEdge.vue';
 import Node from '@/features/workflows/canvas/components/elements/nodes/CanvasNode.vue';
 import { useI18n } from '@n8n/i18n';
 import { computed, useCssModule } from 'vue';
-import { N8nHeading, N8nText } from '@n8n/design-system';
+import { N8nHeading } from '@n8n/design-system';
 import { NodeDiffStatus } from 'n8n-workflow';
 
 const props = defineProps<{
@@ -61,14 +62,10 @@ function getEdgeStatusClass(id: string) {
 
 <template>
 	<div :class="$style.workflowDiffContent">
-		<div :class="$style.workflowDiff">
-			<!-- Source panel -->
-			<div :class="$style.workflowDiffPanel">
-				<slot name="sourceLabel">
-					<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
-						{{ sourceLabel }}
-					</N8nText>
-				</slot>
+		<WorkflowDiffPanels :source-label="sourceLabel" :target-label="targetLabel">
+			<template v-if="$slots.sourceLabel" #sourceLabel><slot name="sourceLabel" /></template>
+			<template v-if="$slots.targetLabel" #targetLabel><slot name="targetLabel" /></template>
+			<template #source>
 				<template v-if="sourceExists">
 					<SyncedWorkflowCanvas
 						:id="sourceCanvasId"
@@ -78,7 +75,11 @@ function getEdgeStatusClass(id: string) {
 						:apply-layout="applyLayout"
 					>
 						<template #node="{ nodeProps }">
-							<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
+							<Node
+								v-bind="nodeProps"
+								:read-only="true"
+								:class="{ [getNodeStatusClass(nodeProps.id)]: true }"
+							>
 								<template #toolbar />
 							</Node>
 						</template>
@@ -103,15 +104,8 @@ function getEdgeStatusClass(id: string) {
 						<slot name="sourceEmptyText" />
 					</div>
 				</template>
-			</div>
-
-			<!-- Target panel -->
-			<div :class="$style.workflowDiffPanel">
-				<slot name="targetLabel">
-					<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
-						{{ targetLabel }}
-					</N8nText>
-				</slot>
+			</template>
+			<template #target>
 				<template v-if="targetExists">
 					<SyncedWorkflowCanvas
 						:id="targetCanvasId"
@@ -121,7 +115,11 @@ function getEdgeStatusClass(id: string) {
 						:apply-layout="applyLayout"
 					>
 						<template #node="{ nodeProps }">
-							<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
+							<Node
+								v-bind="nodeProps"
+								:read-only="true"
+								:class="{ [getNodeStatusClass(nodeProps.id)]: true }"
+							>
 								<template #toolbar />
 							</Node>
 						</template>
@@ -142,8 +140,8 @@ function getEdgeStatusClass(id: string) {
 						<slot name="targetEmptyText" />
 					</div>
 				</template>
-			</div>
-		</div>
+			</template>
+		</WorkflowDiffPanels>
 
 		<WorkflowDiffAside v-if="selectedNode" :node="selectedNode" @close="emit('closeAside')">
 			<template #default="{ outputFormat }">
@@ -159,24 +157,6 @@ function getEdgeStatusClass(id: string) {
 	height: 100%;
 	flex: 1;
 	overflow: hidden;
-}
-
-.workflowDiff {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	flex: 1;
-}
-
-.workflowDiffPanel {
-	flex: 1;
-	position: relative;
-	border-top: 1px solid var(--color--foreground);
-	background: var(--canvas--color--background);
-}
-
-.sourceBadge {
-	composes: sourceBadge from './workflowDiff.module.scss';
 }
 
 .emptyWorkflow {

@@ -2,24 +2,6 @@ const INTEGRATION_MEMORY_RESOURCE_PREFIX = 'integration:';
 const DRAFT_CHAT_MEMORY_RESOURCE_PREFIX = 'draft-chat:';
 const PRODUCTION_CHAT_MEMORY_RESOURCE_PREFIX = 'n8n-chat-production:';
 const SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX = 'system-chat:';
-const THREAD_MEMORY_RESOURCE_PREFIX = 'thread:';
-
-export function threadMemoryResourceId(threadId: string): string {
-	return `${THREAD_MEMORY_RESOURCE_PREFIX}${threadId}`;
-}
-
-/**
- * Integration threads are shared conversations, so their durable notes belong
- * to the thread, not to the author. Every other run keeps its resource as scope.
- */
-export function episodicMemoryWriteScopeId(scope: {
-	resourceId: string;
-	threadId: string;
-}): string {
-	return isIntegrationMemoryResourceId(scope.resourceId)
-		? threadMemoryResourceId(scope.threadId)
-		: scope.resourceId;
-}
 
 export function draftChatMemoryResourceId(userId: string): string {
 	return `${DRAFT_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;
