@@ -1,8 +1,7 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
-import { AgentsService } from '@/modules/agents/agents.service';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 
 import { createOwner } from '../../../../../test/integration/shared/db/users';
 
@@ -11,10 +10,6 @@ import { EvalThreadRestoreService } from '../thread-restore.service';
 beforeAll(async () => {
 	await testModules.loadModules(['agents']);
 	await testDb.init();
-});
-
-afterEach(async () => {
-	await Container.get(AgentRepository).delete({});
 });
 
 afterAll(async () => {
@@ -61,8 +56,15 @@ describe('EvalThreadRestoreService.restoreAgents with custom tools', () => {
 			owner,
 		);
 
-		const agent = await Container.get(AgentsService).findById(agentId, project.id);
-		expect(agent?.tools).toEqual(tools);
-		expect(agent?.schema?.tools).toEqual([{ type: 'custom', id: 'lookup_order' }]);
+		const drafts = Container.get(AgentDraftService);
+		const restored = await drafts.persistDraft(owner, project.id, {
+			id: agentId,
+			name: 'Order helper',
+			adoptOnCollision: true,
+		});
+		const state = await restored?.getState();
+		expect(state?.tools).toEqual(tools);
+		expect(state?.schema?.tools).toEqual([{ type: 'custom', id: 'lookup_order' }]);
+		await drafts.deleteDraft(owner, project.id, agentId);
 	});
 });
