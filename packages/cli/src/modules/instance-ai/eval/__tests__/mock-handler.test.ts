@@ -875,6 +875,41 @@ describe('placeholder API hosts', () => {
 		expect(prompt).toContain('## Placeholder API');
 		expect(prompt).toContain('## GraphQL format requirement');
 		expect(prompt).toContain('keep the GraphQL envelope');
+		// The placeholder error rule must not contradict the GraphQL error format.
+		expect(prompt).toContain('a GraphQL request uses the GraphQL error format');
+		expect(prompt).not.toContain('For an error scenario, still use type "error".');
+	});
+
+	it.each([
+		'n8n-nodes-base.httpRequest',
+		'n8n-nodes-base.httpRequestTool',
+		'@n8n/n8n-nodes-langchain.toolHttpRequest',
+		'n8n-nodes-base.graphql',
+	])('applies the Placeholder API section to the generic HTTP client %s', async (type) => {
+		llmSubmits({ type: 'json', body: [] });
+		const handler = createLlmMockHandler();
+
+		await handler({ url: 'https://api.example.com/v1/orders', method: 'GET' }, {
+			name: 'Fetch Orders',
+			type,
+		} as INode);
+
+		expect(mockGenerate.mock.calls[0][0]).toContain('## Placeholder API');
+	});
+
+	it('keeps the API-knowledge note for a service node on a placeholder host', async () => {
+		// The eval credential seeder points WordPress at https://blog.example.com.
+		llmSubmits({ type: 'json', body: [] });
+		const handler = createLlmMockHandler();
+
+		await handler({ url: 'https://blog.example.com/wp-json/wp/v2/posts', method: 'GET' }, {
+			name: 'Get Posts',
+			type: 'n8n-nodes-base.wordpress',
+		} as INode);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('No API documentation is attached');
+		expect(prompt).not.toContain('## Placeholder API');
 	});
 
 	it('keeps the API-knowledge note for a real host', async () => {
@@ -914,6 +949,10 @@ describe('placeholder API hosts', () => {
 			instructions: string;
 		};
 		expect(instructions).toContain('Placeholder API section');
+		const envelopeRule = instructions.slice(instructions.indexOf('**Response envelope.**'));
+		expect(envelopeRule.slice(0, envelopeRule.indexOf('\n'))).toContain(
+			'Exception: when the user message has a Placeholder API section, that section decides the layout.',
+		);
 	});
 });
 

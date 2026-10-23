@@ -15,7 +15,11 @@ import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { sleep } from '@n8n/utils/sleep';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import {
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	OperationalError,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';
@@ -60,7 +64,7 @@ Response SHAPE comes from your knowledge of the real API; DATA VALUES come from 
 
 **Node response-handling options are not part of the body.** The node config may include options that control how n8n post-processes the response — \`fullResponse\`, \`responseFormat\`, \`outputPropertyName\`, pagination. These are applied AFTER you return and must NOT change the body you produce: always return the raw body the real API sends over the wire. Never reshape the body to mimic them — a body shaped like \`{ statusCode, headers, body }\` (mimicking \`fullResponse\`) or \`{ <outputPropertyName>: ... }\` is wrong.
 
-**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...] }\`, \`{ "results": [...] }\`, \`{ "items": [...] }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
+**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...] }\`, \`{ "results": [...] }\`, \`{ "items": [...] }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses. Exception: when the user message has a Placeholder API section, that section decides the layout.
 
 Node-config patterns to know:
   - "__rl" object: "value" is the selected resource id
@@ -101,7 +105,19 @@ const API_DOCS_NOTE =
 // Reserved example names (RFC 2606, RFC 6761) never host a real API, so the model has no layout
 // to recall. The scenario's stated layout wins; otherwise one fixed default keeps runs stable.
 const PLACEHOLDER_API_NOTE =
-	'This host is a reserved placeholder domain. No real API exists here, so you have no layout to recall. The Scenario, Data and Hint lines are this API\'s specification. If they state a body or layout for THIS request (a JSON literal, a top-level array, named wrapper keys), return that layout exactly, with its values. If they state none, return a list as a bare top-level JSON array of records, with no wrapper object and no pagination or count fields, and return a single record or a write result as a bare JSON object. When the user message also has a GraphQL format requirement section, keep the GraphQL envelope: with no stated layout, that list or record goes under the operation\'s field inside "data". For an error scenario, still use type "error".';
+	'This host is a reserved placeholder domain. No real API exists here, so you have no layout to recall. The Scenario, Data and Hint lines are this API\'s specification. If they state a body or layout for THIS request (a JSON literal, a top-level array, named wrapper keys), return that layout exactly, with its values. If they state none, return a list as a bare top-level JSON array of records, with no wrapper object and no pagination or count fields, and return a single record or a write result as a bare JSON object. When the user message also has a GraphQL format requirement section, keep the GraphQL envelope: with no stated layout, that list or record goes under the operation\'s field inside "data". For an error scenario in a request that is not GraphQL, still use type "error"; a GraphQL request uses the GraphQL error format.';
+
+/**
+ * Nodes that send whatever request the workflow author writes. Only for these is a
+ * placeholder host an invented API; a service node (e.g. WordPress, which the eval
+ * credential seeder points at `blog.example.com`) still calls its real API's layout.
+ */
+const GENERIC_HTTP_CLIENT_NODE_TYPES = new Set([
+	HTTP_REQUEST_NODE_TYPE,
+	'n8n-nodes-base.httpRequestTool',
+	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	'n8n-nodes-base.graphql',
+]);
 
 const PLACEHOLDER_DOMAINS = ['example.com', 'example.net', 'example.org'];
 const PLACEHOLDER_TLDS = ['example', 'test', 'invalid', 'localhost'];
@@ -357,6 +373,7 @@ async function generateMockResponse(
 
 	const serviceName = extractServiceName(request.url);
 	const endpoint = extractEndpoint(request.url);
+	const requestHostname = extractHostname(request.url);
 
 	const dateAnchors = buildDateAnchors(new Date());
 
@@ -395,7 +412,7 @@ async function generateMockResponse(
 		);
 	}
 
-	if (isPlaceholderHost(extractHostname(request.url))) {
+	if (GENERIC_HTTP_CLIENT_NODE_TYPES.has(node.type) && isPlaceholderHost(requestHostname)) {
 		sections.push('', '## Placeholder API', PLACEHOLDER_API_NOTE);
 	} else {
 		sections.push('', '## API documentation', API_DOCS_NOTE);
@@ -438,7 +455,6 @@ async function generateMockResponse(
 
 	const requestPath = extractEndpointPath(request.url);
 	const requestMethod = request.method ?? 'GET';
-	const requestHostname = extractHostname(request.url);
 	const dateConstraints = extractDateFilterConstraints(request.body, request.qs);
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
