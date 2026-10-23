@@ -1,4 +1,5 @@
 import { TSESTree } from '@typescript-eslint/utils';
+import { split } from 'change-case';
 
 import { findObjectProperty, getStringLiteralValue } from './ast-utils.js';
 
@@ -53,12 +54,6 @@ const ARTICLES = new Set(['a', 'an', 'the']);
 /** A note in brackets, like "(Account View)", is not part of the name. */
 const BRACKETED_TEXT = /\([^)]*\)/g;
 
-/** Spaces, underscores and hyphens, and the start of each capitalized part of a camelCase value. */
-const WORD_BOUNDARY = /[\s_-]+|(?<=[\p{Ll}\d])(?=\p{Lu})/u;
-
-/** Punctuation and symbols. Letters of all languages and digits stay. */
-const NON_WORD_CHARACTER = /[^\p{L}\d]/gu;
-
 const PLURAL_SUFFIX = /s$/;
 
 /**
@@ -66,11 +61,10 @@ const PLURAL_SUFFIX = /s$/;
  * "directory_context" and "Directory Contexts" all give ["directory", "context"].
  */
 function normalizedWords(text: string): string[] {
-	return text
-		.replace(BRACKETED_TEXT, ' ')
-		.split(WORD_BOUNDARY)
-		.map((word) => word.replace(NON_WORD_CHARACTER, '').toLowerCase().replace(PLURAL_SUFFIX, ''))
-		.filter((word) => word !== '' && !ARTICLES.has(word));
+	// split() handles camelCase, acronyms, separators and punctuation.
+	return split(text.replace(BRACKETED_TEXT, ' '))
+		.map((word) => word.toLowerCase().replace(PLURAL_SUFFIX, ''))
+		.filter((word) => !ARTICLES.has(word));
 }
 
 /**
