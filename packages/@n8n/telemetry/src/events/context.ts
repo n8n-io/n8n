@@ -64,6 +64,13 @@ const skillMethod = z
 		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. Filter out `ai` to count the skills people write by hand',
 	);
 
+const preferenceExampleId = z
+	.enum(['workflows', 'agents', 'credentials', 'answers'])
+	.optional()
+	.describe(
+		'The example card on the empty preferences page that filled the text (experiment 127). Absent when the text box opened empty',
+	);
+
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_PREFERENCES: {
 		name: 'User viewed preferences',
@@ -89,6 +96,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				.enum(['new', 'edit'])
 				.describe('`new` is the Add button. `edit` is the pencil on an existing row'),
 			scope_type: scopeType.optional().describe('Scope of the row being edited. Absent on `new`'),
+			example_id: preferenceExampleId,
 		}),
 	},
 	USER_CREATED_PREFERENCE: {
@@ -99,6 +107,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			scope_type: scopeType,
 			text_length: textLength,
 			project_id: z.string().optional().describe('Present only for a project-scoped preference'),
+			example_id: preferenceExampleId,
 		}),
 	},
 	USER_UPDATED_PREFERENCE: {
@@ -153,10 +162,23 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCES_APPLIED_TO_TURN: {
 		name: 'Preferences applied to a turn',
 		description:
-			'A turn was built with the saved preferences available to it. Fires once for each turn that ran the preferences path, including a turn that applied none, so the share of turns with preferences is computable. CONTEXT-139 fires it.',
+			'An n8n Assistant turn put saved preferences into the conversation. Fires on the first turn of a thread that has preferences, and again on each turn that injects a new or changed preference. A turn that applies none, or whose block an earlier turn still carries, sends nothing. Rows before CONTEXT-363 fired on every turn, also with `count` 0, so filter on `injected_this_turn` and `count` > 0 when you compare across that change.',
 		properties: z.object({
 			user_id: userId,
-			count: z.number().describe('Preferences the request carried. 0 when none applied'),
+			thread_id: z
+				.string()
+				.optional()
+				.describe('The n8n Assistant thread. Joins the event to a build in the same thread'),
+			run_id: z.string().optional().describe('The n8n Assistant run of this turn'),
+			count: z
+				.number()
+				.describe('Preferences the request carried. Rows before CONTEXT-363 can report 0'),
+			preference_ids: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'Ids of the injected preferences, so reuse of one preference is countable. The text is never reported',
+				),
 			scope_types: z.array(scopeType).describe('Distinct scopes the applied preferences covered'),
 			rendered_length: z
 				.number()
@@ -169,7 +191,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			injected_this_turn: z
 				.boolean()
 				.describe(
-					'False when the text was unchanged and an earlier block in the same conversation still carries it. Shows how often re-injecting on every turn actually costs anything',
+					'Always true since CONTEXT-363. False on older rows, where the text was unchanged and an earlier block in the same conversation still carried it',
 				),
 			turn_latency_ms: z
 				.number()
@@ -299,7 +321,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			text_length: textLength.optional(),
 		}),
 	},
-	// ─── Skills hub ───
+	// ─── Skills ───
 
 	USER_VIEWED_SKILLS: {
 		name: 'User viewed skills',
@@ -322,10 +344,23 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			read_only: z.boolean().describe('Whether the user may only read the skill'),
 		}),
 	},
+	USER_DOWNLOADED_SKILL: {
+		name: 'User downloaded skill',
+		description:
+			'A user downloaded one skill from the row menu on the Skills settings page. Fires once the browser gets the file.',
+		properties: z.object({
+			skill_id: skillId,
+			scope: skillScope,
+			project_id: skillProjectId,
+			format: z
+				.enum(['markdown', 'zip'])
+				.describe('`markdown` is a lone SKILL.md. `zip` holds SKILL.md and its reference files'),
+		}),
+	},
 	USER_CREATED_SKILL: {
 		name: 'User created skill',
 		description:
-			'A skill was created in the skills hub, from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the startup copy or an agent duplicate, reports nothing.',
+			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the startup copy or an agent duplicate, reports nothing.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
@@ -338,7 +373,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_UPDATED_SKILL: {
 		name: 'User updated skill',
 		description:
-			'A save stored a new version of a skill in the skills hub. A save with unchanged content stores no version and reports nothing, also when it moves the skill. Reports the scope after the save.',
+			'A save stored a new version of a skill. A save with unchanged content stores no version and reports nothing, also when it moves the skill. Reports the scope after the save.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
@@ -352,7 +387,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DELETED_SKILL: {
 		name: 'User deleted skill',
 		description:
-			'A user deleted a skill from the skills hub, from the settings page, n8n Assistant or an MCP client. Fires once the delete commits. Removing a skill from one agent keeps the hub skill and reports nothing here.',
+			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits. Removing a skill from one agent keeps the skill and reports nothing here.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,

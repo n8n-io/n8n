@@ -9,6 +9,7 @@ import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -31,7 +32,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
 
-import { SkillNameTakenError } from '@/modules/agents/skills/skill-name-taken.error';
+import { SkillNameTakenError } from '@/modules/skills/skill-name-taken.error';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -61,6 +62,7 @@ import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-ta
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { NodeTypes } from '@/node-types';
@@ -232,6 +234,7 @@ describe('McpAgentToolsService', () => {
 		const lifecycleTelemetry = mock<Telemetry>();
 		const modificationTelemetry = new AgentModificationTelemetryService(
 			lifecycleTelemetry,
+			mock<InstanceSettings>(),
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			mock<EventService>(),
 			// EOF Experiment cleanup
@@ -281,6 +284,7 @@ describe('McpAgentToolsService', () => {
 			transactionRunner,
 			saveCompletion,
 			agentSkillRefs,
+			mock<ChatIntegrationRegistry>(),
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>

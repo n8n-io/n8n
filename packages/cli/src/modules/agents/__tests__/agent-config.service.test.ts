@@ -9,9 +9,11 @@ import {
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User, WorkflowRepository, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import set from 'lodash/set';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -30,6 +32,10 @@ import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
+import type {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+} from '../integrations/agent-chat-integration';
 import { syncAgentIntegrations } from '../integrations/integrations-sync';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -96,6 +102,7 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 	const agentPolicyService = mock<AgentPolicyService>();
+	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 
 	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -131,13 +138,19 @@ function makeService() {
 			eventService,
 			agentUpdateBroadcaster,
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
-			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
+			new AgentModificationTelemetryService(
+				telemetry,
+				mock<InstanceSettings>(),
+				mock<EventService>(),
+			),
 		),
 		skillRefs,
+		chatIntegrationRegistry,
 	);
 
 	return {
 		service,
+		chatIntegrationRegistry,
 		agentPolicyService,
 		agentRepository,
 		agentTaskRepository,
@@ -505,6 +518,58 @@ describe('AgentConfigService', () => {
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
+		describe('platform with one connection per agent', () => {
+			const teams = (credentialId: string): AgentIntegrationConfig => ({
+				type: 'teams',
+				credentialId,
+			});
+
+			function makeTeamsService(integrations: AgentIntegrationConfig[]) {
+				const context = makeService();
+				context.chatIntegrationRegistry.get.mockReturnValue(
+					mock<AgentChatIntegration>({
+						singleConnectionPerAgent: true,
+						displayLabel: 'Microsoft Teams',
+					}),
+				);
+				const agent = makeAgent({ integrations });
+				context.agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				mockAccessibleCredentials(context.credentialsService, ['teams-1', 'teams-2']);
+				return { ...context, agent };
+			}
+
+			it('rejects a config that adds a second connection', async () => {
+				const { service, agentRepository, agent } = makeTeamsService([teams('teams-1')]);
+
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, integrations: [teams('teams-1'), teams('teams-2')] },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow(BadRequestError);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
+
+			it('rejects a save of an agent that already holds two', async () => {
+				const both = [teams('teams-1'), teams('teams-2')];
+				const { service, agentRepository, agent } = makeTeamsService(both);
+
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, integrations: both },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow(BadRequestError);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
+		});
+
 		it('keeps omitted integrations without syncing channels', async () => {
 			const { service, agentRepository } = makeService();
 			const slack = { type: 'slack', credentialId: 'slack-cred' } as const;
@@ -584,9 +649,10 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).not.toHaveProperty('description');
 		});
 
-		it('persists modelDeploymentName, retains it when omitted, and drops it on clearOmittedOptionalFields', async () => {
+		it('drops a legacy modelDeploymentName from a stored config and from the payload', async () => {
 			const { service, agentRepository } = makeService();
-			const agent = makeAgent();
+			const legacySchema = { ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' };
+			const agent = makeAgent({ schema: legacySchema as AgentJsonConfig });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(
@@ -596,40 +662,8 @@ describe('AgentConfigService', () => {
 				user,
 				fencedOn(agent),
 			);
-			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
-			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
 
-			// Omitting the field keeps the stored value (merge semantics).
-			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
-			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
-			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
-
-			// An explicit empty value is a clear (the builder sends "" when the
-			// user blanks the deployment-name field).
-			await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, modelDeploymentName: '' },
-				user,
-				fencedOn(agent),
-			);
-			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
-			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
-
-			await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' },
-				user,
-				fencedOn(agent),
-			);
-
-			// Full-replace callers remove it when omitted.
-			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, {
-				clearOmittedOptionalFields: true,
-				...fencedOn(agent),
-			});
-			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
 		});
 

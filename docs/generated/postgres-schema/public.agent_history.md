@@ -80,6 +80,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -104,6 +105,7 @@ erDiagram
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
+  json taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   integer totalCompletionTokens

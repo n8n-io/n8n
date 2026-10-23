@@ -7,7 +7,7 @@ import {
 	webhookDescriptionIsNativelyResolvable,
 } from 'n8n-workflow';
 
-import { defaultWebhookDescription } from '../description';
+import { defaultWebhookDescription, trustedSourceProperty } from '../description';
 import { Webhook } from '../Webhook.node';
 
 // Pins what lets `LiveWebhooks` resolve this description without the expression
@@ -134,6 +134,18 @@ describe('defaultWebhookDescription', () => {
 					expect(native).toEqual(viaTemplate);
 				});
 			});
+		});
+	});
+});
+
+describe('trustedSourceProperty', () => {
+	// The resolvers read the stored value as the source id, without evaluating it.
+	it('takes no expression, so the stored value is the source id', () => {
+		expect(trustedSourceProperty()).toMatchObject({
+			name: 'trustedSource',
+			default: 'n8n-internal',
+			noDataExpression: true,
+			displayOptions: { show: { authentication: ['n8nOAuth2'] } },
 		});
 	});
 });

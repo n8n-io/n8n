@@ -11,7 +11,7 @@ import type {
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
 } from '../integration-tools';
-import { N8nChatIntegration } from '../platforms/n8n-chat-integration';
+import { N8nChatIntegration } from '../platforms/n8n-chat/n8n-chat-integration';
 
 const makeContext = (): IntegrationMessageContext => ({
 	integrationConnectionId: 'n8n_chat',
