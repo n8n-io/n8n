@@ -13,7 +13,6 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -21,6 +20,7 @@ import { join } from 'node:path';
 import { CredentialsFinderService, CacheService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { SlackMethodsService } from './slack-methods.service';
@@ -948,7 +948,7 @@ export class SlackManagedSetupService {
 				this.credentialsOverwrites.resolveBoundVersion(SLACK_MANAGER_CREDENTIAL_TYPE, rawData),
 			);
 		} catch (error) {
-			if (error instanceof UserError) return undefined;
+			if (error instanceof ManagedAppUnavailableError) return undefined;
 			throw error;
 		}
 	}

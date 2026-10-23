@@ -3,13 +3,14 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { CommaSeparatedStringArray, GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Cipher, UnrecognizedCredentialTypeError } from 'n8n-core';
-import { MANAGED_VERSION_KEY, UserError } from 'n8n-workflow';
+import { MANAGED_VERSION_KEY } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, ICredentialType, IDataObject } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { StaticAuthService } from '@/services/static-auth-service';
 
@@ -1420,7 +1421,7 @@ describe('CredentialsOverwrites', () => {
 						'notionOAuth2Api',
 						managed({ ...tokens, [MANAGED_VERSION_KEY]: 5 }),
 					),
-				).toThrow(UserError);
+				).toThrow(ManagedAppUnavailableError);
 				expect(() =>
 					instance.applyOverwrite(
 						'notionOAuth2Api',
@@ -1454,7 +1455,9 @@ describe('CredentialsOverwrites', () => {
 					const instance = await createInstance(rollout);
 					const data = managed({ ...tokens, [MANAGED_VERSION_KEY]: value });
 
-					expect(() => instance.resolveBoundVersion('notionOAuth2Api', data)).toThrow(UserError);
+					expect(() => instance.resolveBoundVersion('notionOAuth2Api', data)).toThrow(
+						ManagedAppUnavailableError,
+					);
 					expect(() => instance.applyOverwrite('notionOAuth2Api', data)).toThrow(
 						'Reconnect the credential to continue.',
 					);
@@ -1477,7 +1480,9 @@ describe('CredentialsOverwrites', () => {
 				expect(instance.getOverwrites('notionOAuth2Api')).toEqual(newApp);
 				expect(instance.getOverwrites('notionOAuth2Api', 2)).toEqual(newApp);
 				expect(instance.getOverwrites('notionOAuth2Api', 1)).toEqual(baseApp);
-				expect(() => instance.getOverwrites('notionOAuth2Api', 7)).toThrow(UserError);
+				expect(() => instance.getOverwrites('notionOAuth2Api', 7)).toThrow(
+					ManagedAppUnavailableError,
+				);
 			});
 
 			it('should not leak versions into the credential data or the overwrites', async () => {
@@ -1612,7 +1617,7 @@ describe('CredentialsOverwrites', () => {
 				).toMatchObject(newApp);
 				expect(instance.applyOverwrite('notionOAuth2Api', managed())).toMatchObject(newApp);
 				expect(() => instance.applyOverwrite('notionOAuth2Api', managed(tokens))).toThrow(
-					UserError,
+					ManagedAppUnavailableError,
 				);
 				expect(instance.getAll()).toEqual({ notionOAuth2Api: newApp });
 			});

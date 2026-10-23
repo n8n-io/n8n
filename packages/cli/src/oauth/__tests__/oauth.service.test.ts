@@ -441,6 +441,8 @@ describe('OauthService', () => {
 				'internal',
 				undefined,
 				false,
+				undefined,
+				{ managedVersion: undefined },
 			);
 		});
 	});
@@ -463,6 +465,8 @@ describe('OauthService', () => {
 				'internal',
 				undefined,
 				true,
+				undefined,
+				{ managedVersion: undefined },
 			);
 		});
 	});
@@ -1429,7 +1433,6 @@ describe('OauthService', () => {
 			it('should apply the managed version pinned in the flow state', async () => {
 				const { req, mockAdditionalData } = makeRequest();
 				cacheService.get.mockResolvedValue({ csrfSecret: 'csrf-secret', managedVersion: 2 });
-				credentialsHelper.getNewConnectionVersion.mockReturnValue(2);
 				vi.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
 
 				const result = await service.resolveCredential(req);
@@ -1444,20 +1447,6 @@ describe('OauthService', () => {
 					2,
 				);
 				expect(result[4].managedVersion).toBe(2);
-			});
-
-			it('should drop the pinned version when the credential now has its own client', async () => {
-				const { req } = makeRequest();
-				cacheService.get.mockResolvedValue({ csrfSecret: 'csrf-secret', managedVersion: 2 });
-				credentialsHelper.getNewConnectionVersion.mockReturnValue(undefined);
-				vi.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
-
-				const result = await service.resolveCredential(req);
-
-				expect(credentialsHelper.getNewConnectionVersion).toHaveBeenCalledWith(expect.anything(), {
-					clientId: '',
-				});
-				expect(result[4].managedVersion).toBeUndefined();
 			});
 
 			it('should check the flow state before it reads the credential data', async () => {

@@ -994,6 +994,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		tokenData: ICredentialDataDecryptedObject['oauthTokenData'],
 	) {
 		if (!isRecord(tokenData) || tokenData[MANAGED_VERSION_KEY] !== undefined) return tokenData;
+		// Most instances have no overwrite. Skip the decrypt of the stored data for them.
+		if (!this.credentialsOverwrites.supportsManagedAuth(type)) return tokenData;
 
 		const storedData = await credentials.getData();
 		if (hasTokenData(storedData)) return tokenData;

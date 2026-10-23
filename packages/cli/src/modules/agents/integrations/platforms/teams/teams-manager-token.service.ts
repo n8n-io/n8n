@@ -7,8 +7,9 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import { BadRequestError } from '@n8n/errors';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
 import { TEAMS_MANAGER_CREDENTIAL_TYPE } from './teams-managed-setup.service';
 import { withTeamsFailure } from './teams-setup-telemetry.service';
@@ -253,7 +254,7 @@ export class TeamsManagerTokenService {
 			);
 		} catch (error) {
 			// A stored version that matches no app. The overwrites of this instance no longer list it.
-			if (!(error instanceof UserError)) throw error;
+			if (!(error instanceof ManagedAppUnavailableError)) throw error;
 			throw new BadRequestError(
 				'Reconnect the Microsoft Teams credential to use the recommended setup.',
 			);

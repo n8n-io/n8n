@@ -5,9 +5,10 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { deepCopy, IMPLICIT_MANAGED_VERSION, jsonParse, UserError } from 'n8n-workflow';
+import { deepCopy, IMPLICIT_MANAGED_VERSION, jsonParse } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import type { ICredentialsOverwrite, ManagedAuthState, ManagedVersionEntry } from '@/interfaces';
 import {
 	hasEmptyClientFields,
@@ -188,7 +189,7 @@ export class CredentialsOverwrites {
 	 * Fills the empty fields of a credential from the overwrite of its type.
 	 *
 	 * @param versionOverride the app version to use. By default it is the version of the credential.
-	 * @throws UserError when the version matches no app in the config
+	 * @throws ManagedAppUnavailableError when the version matches no app in the config
 	 */
 	applyOverwrite(type: string, data: ICredentialDataDecryptedObject, versionOverride?: number) {
 		const base = this.get(type);
@@ -240,7 +241,7 @@ export class CredentialsOverwrites {
 	 * The overwrite of a type. Without a version, it is the default app: the newer app of
 	 * a rollout, or the base entry.
 	 *
-	 * @throws UserError when the version matches no app in the config
+	 * @throws ManagedAppUnavailableError when the version matches no app in the config
 	 */
 	getOverwrites(type: string, version?: number): ICredentialDataDecryptedObject | undefined {
 		const base = this.getOverwritesWithParents(type);
@@ -283,7 +284,7 @@ export class CredentialsOverwrites {
 		if (stored !== undefined) return stored;
 
 		if (hasInvalidStoredVersion(data)) {
-			throw new UserError(
+			throw new ManagedAppUnavailableError(
 				'The managed app version stored on this credential is not valid. Reconnect the credential to continue.',
 			);
 		}
@@ -329,7 +330,7 @@ export class CredentialsOverwrites {
 		// The newer app takes the fields of the base entry that it does not set.
 		if (newer && target === newer.version) return { ...base, ...withoutVersion(newer) };
 
-		throw new UserError(
+		throw new ManagedAppUnavailableError(
 			`This credential uses a managed app (version ${target}) that is no longer available. Reconnect the credential to continue.`,
 		);
 	}
@@ -430,7 +431,7 @@ export class CredentialsOverwrites {
 				? 'managed'
 				: 'not-managed';
 		} catch (error) {
-			if (error instanceof UserError) return 'missing-app';
+			if (error instanceof ManagedAppUnavailableError) return 'missing-app';
 			throw error;
 		}
 	}

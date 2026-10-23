@@ -1,11 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, CredentialsRepository } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import { BadRequestError } from '@n8n/errors';
 
 import { MicrosoftTeamsManagerOAuth2Api } from 'n8n-nodes-base/credentials/MicrosoftTeamsManagerOAuth2Api.credentials';
@@ -307,7 +307,7 @@ describe('TeamsManagerTokenService', () => {
 		} as never);
 		credentialsOverwrites.resolveBoundVersion.mockReturnValue(2);
 		credentialsOverwrites.getOverwrites.mockImplementation(() => {
-			throw new UserError('no app with version 2');
+			throw new ManagedAppUnavailableError('no app with version 2');
 		});
 
 		const error = await service.acquire(credential, GRAPH_RESOURCE).catch((e: unknown) => e);

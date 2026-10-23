@@ -1171,8 +1171,13 @@ describe('CredentialsHelper', () => {
 			const nodeCredentials: INodeCredentialsDetails = { id: 'cred-1', name: 'Managed' };
 			const newToken = { oauthTokenData: { access_token: 'token' } };
 
-			const save = async (storedData: Record<string, unknown>, overwriteVersion?: number) => {
+			const save = async (
+				storedData: Record<string, unknown>,
+				overwriteVersion?: number,
+				supportsManagedAuth = true,
+			) => {
 				const credentialsOverwrites = mock<CredentialsOverwrites>();
+				credentialsOverwrites.supportsManagedAuth.mockReturnValue(supportsManagedAuth);
 				credentialsOverwrites.getNewConnectionVersion.mockReturnValue(overwriteVersion);
 				const helper = new CredentialsHelper(
 					new CredentialTypes(mockNodesAndCredentials),
@@ -1215,6 +1220,17 @@ describe('CredentialsHelper', () => {
 				const { saved } = await save({ clientId: 'own', clientSecret: 'own' }, undefined);
 
 				expect(saved.oauthTokenData).toEqual({ access_token: 'token' });
+			});
+
+			test('does not read the stored data for a type without an overwrite', async () => {
+				const { saved, credentialsOverwrites } = await save(
+					{ clientId: '', clientSecret: '' },
+					undefined,
+					false,
+				);
+
+				expect(saved.oauthTokenData).toEqual({ access_token: 'token' });
+				expect(credentialsOverwrites.getNewConnectionVersion).not.toHaveBeenCalled();
 			});
 
 			test('does not add a version when the credential already holds a token', async () => {
