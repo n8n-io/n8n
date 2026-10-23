@@ -92,6 +92,7 @@ vi.mock('@n8n/di', () => ({
 import { Tool } from '@n8n/agents/tool';
 import { Container } from '@n8n/di';
 import { createEvalAgent } from '@n8n/instance-ai';
+import { OperationalError } from 'n8n-workflow';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import { createLlmCompletionMockHandler } from '../llm-completion-mock';
@@ -275,6 +276,61 @@ describe('createLlmCompletionMockHandler', () => {
 		expect(warning).toContain('finishReason=stop');
 		expect(warning).toContain('Invalid tool input');
 		expect(warning).toContain('<p>x</p>');
+	});
+
+	it('asks again, then throws, when no attempt calls submit_agent_step or writes text', async () => {
+		mockGenerate.mockImplementation((async (prompt: string) => {
+			promptCapture.prompt = prompt;
+			return {
+				finishReason: 'stop',
+				messages: [{ role: 'assistant', content: [{ type: 'text', text: '' }] }],
+				_text: '',
+			};
+		}) as never);
+		const handler = createLlmCompletionMockHandler();
+
+		const run = handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		await expect(run).rejects.toThrow(OperationalError);
+		await expect(run).rejects.toThrow(/none \(no submit_agent_step call\)/);
+		expect(mockGenerate).toHaveBeenCalledTimes(2);
+		const warning = String(mockLogger.warn.mock.calls.at(-1)?.[0]);
+		expect(warning).toContain('attempt 2/2');
+		expect(warning).toContain('rejected: none (no submit_agent_step call)');
+		expect(promptCapture.prompt).toContain('## Previous attempt');
+		expect(promptCapture.prompt).toContain('none (no submit_agent_step call)');
+	});
+
+	it('logs a submit that was cut off and left without a result', async () => {
+		mockGenerate.mockImplementationOnce((async () => ({
+			finishReason: 'length',
+			messages: [
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'call-1',
+							toolName: 'submit_agent_step',
+							state: 'pending',
+							input: { kind: 'final', content: 'The Daily Drag' },
+						},
+					],
+				},
+			],
+			_text: '',
+		})) as never);
+		submitQueue.push({ kind: 'final', content: 'ok' });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(res?.body).toEqual({ content: 'ok' });
+		expect(mockGenerate).toHaveBeenCalledTimes(2);
+		const warning = String(mockLogger.warn.mock.calls.at(-1)?.[0]);
+		expect(warning).toContain('finishReason=length');
+		expect(warning).toContain('call left pending');
+		expect(warning).toContain('The Daily Drag');
 	});
 
 	it('truncates a long rejected input in the log', async () => {
