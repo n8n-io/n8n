@@ -1712,6 +1712,7 @@ onBeforeUnmount(() => {
 					<template #footer-start>
 						<N8nTooltip
 							v-if="showAttach && showAttachButton"
+							as-child
 							:content="locale.baseText('chatInputBase.button.attach')"
 							placement="top"
 						>
@@ -1720,6 +1721,7 @@ onBeforeUnmount(() => {
 								icon="paperclip"
 								icon-size="large"
 								:disabled="isPreparingToSend || !!editingQueueId"
+								focusable-when-disabled
 								:aria-label="locale.baseText('chatInputBase.button.attach')"
 								data-test-id="chat-input-attach-button"
 								@click.stop="chatInput?.openFilePicker()"

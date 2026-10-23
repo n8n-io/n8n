@@ -125,12 +125,14 @@ defineExpose({
 				</N8nTooltip>
 				<N8nTooltip
 					v-if="isSpeechSupported"
+					as-child
 					:content="i18n.baseText('chatHub.chat.prompt.button.voiceInput')"
 					placement="top"
 				>
 					<N8nIconButton
 						variant="ghost"
 						:disabled="messagingState !== 'idle'"
+						focusable-when-disabled
 						:icon="isListening ? 'square' : 'mic'"
 						:class="{ [$style.recording]: isListening }"
 						icon-size="large"

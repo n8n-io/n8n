@@ -486,6 +486,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 		>
 			<template #actions>
 				<N8nTooltip
+					as-child
 					:content="i18n.baseText('instanceAi.thread.new')"
 					placement="bottom"
 					:show-after="TOOLTIP_DELAY_MS"
@@ -496,6 +497,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 						size="small"
 						icon-size="large"
 						:disabled="building"
+						focusable-when-disabled
 						:aria-label="i18n.baseText('instanceAi.thread.new')"
 						data-test-id="instance-ai-embed-new-thread"
 						@click="onNewThreadRequested"

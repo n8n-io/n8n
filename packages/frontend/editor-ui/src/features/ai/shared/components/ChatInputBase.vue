@@ -306,12 +306,14 @@ defineExpose({
 				<slot name="right-actions" />
 				<N8nTooltip
 					v-if="showAttach && showAttachButton && acceptedMimeTypes !== undefined"
+					as-child
 					:content="i18n.baseText('chatInputBase.button.attach')"
 					placement="top"
 				>
 					<N8nIconButton
 						variant="ghost"
 						:disabled="disabled || isStreaming"
+						focusable-when-disabled
 						icon="paperclip"
 						icon-size="large"
 						:aria-label="i18n.baseText('chatInputBase.button.attach')"

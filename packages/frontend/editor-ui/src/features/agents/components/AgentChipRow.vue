@@ -37,13 +37,14 @@ const emit = defineEmits<{
 			<div :class="$style.chips">
 				<slot />
 
-				<N8nTooltip v-if="props.itemCount > 0" :content="props.addLabel" placement="top">
+				<N8nTooltip v-if="props.itemCount > 0" as-child :content="props.addLabel" placement="top">
 					<N8nButton
 						variant="ghost"
 						size="medium"
 						icon-only
 						:aria-label="props.addLabel"
 						:disabled="props.disabled"
+						focusable-when-disabled
 						:data-testid="props.addButtonTestId"
 						@click="emit('add')"
 					>

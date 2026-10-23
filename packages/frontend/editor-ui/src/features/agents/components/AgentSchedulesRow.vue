@@ -233,6 +233,7 @@ watch(
 
 				<N8nTooltip
 					v-if="taskIndex === taskRows.length - 1"
+					as-child
 					:content="i18n.baseText('agents.builder.tasks.add')"
 					placement="top"
 				>
@@ -241,6 +242,7 @@ watch(
 						size="medium"
 						icon-only
 						:disabled="props.disabled"
+						focusable-when-disabled
 						data-testid="agent-capabilities-add-task"
 						@click="openTaskModal(null)"
 					>

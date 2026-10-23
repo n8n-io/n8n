@@ -100,7 +100,8 @@ describe('ChatInputBase', () => {
 
 		expect(getByTestId('instance-ai-stop-button')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
-		expect(getByTestId('chat-input-attach-button')).toBeDisabled();
+		expect(getByTestId('chat-input-attach-button')).not.toBeDisabled();
+		expect(getByTestId('chat-input-attach-button')).toHaveAttribute('aria-disabled', 'true');
 		expect(getByTestId('chat-input-voice-button')).toHaveAttribute('aria-disabled', 'true');
 		expect(getByTestId('chat-input-voice-button')).toHaveAccessibleDescription(
 			'Stop the response to dictate',

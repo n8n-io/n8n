@@ -16,12 +16,13 @@ const isDisabled = computed(() => toValue(props.params.disabled) ?? false);
 </script>
 
 <template>
-	<N8nTooltip :content="i18n.baseText('dataTable.addRow.label')">
+	<N8nTooltip as-child :content="i18n.baseText('dataTable.addRow.label')">
 		<N8nIconButton
 			variant="ghost"
 			icon="plus"
 			:aria-label="i18n.baseText('dataTable.addRow.label')"
 			:disabled="isDisabled"
+			focusable-when-disabled
 			@click="props.params.onClick"
 		/>
 	</N8nTooltip>
