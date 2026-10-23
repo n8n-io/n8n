@@ -2291,6 +2291,7 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 
 		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response());
 
+		expect(execution.data.executionData?.nodeExecutionStack[0].node.disabled).toBe(true);
 		expect(execution.workflowData.nodes[0].disabled).toBeUndefined();
 	});
 });
