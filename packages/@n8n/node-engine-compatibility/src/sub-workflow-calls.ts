@@ -1,7 +1,7 @@
 import type {
 	ChildResult,
 	ChildResumeCause,
-	SpawnDeclaration,
+	ChildDeclaration,
 	StepExecutionContext,
 	StepError,
 } from '@n8n/engine';
@@ -41,9 +41,9 @@ interface CallOptions {
  */
 export class SubWorkflowCalls {
 	/** The child the step waits for, once an awaited call was made. */
-	awaited?: SpawnDeclaration;
+	awaited?: ChildDeclaration;
 	/** The children the node started without waiting. */
-	readonly detached: SpawnDeclaration[] = [];
+	readonly detached: ChildDeclaration[] = [];
 	private called = false;
 
 	constructor(
@@ -92,17 +92,17 @@ export class SubWorkflowCalls {
 			},
 			items,
 		});
-		const spawn: SpawnDeclaration = { executionId, ...resolved };
+		const child: ChildDeclaration = { executionId, ...resolved };
 
 		if (options.doNotWaitToFinish) {
-			this.detached.push(spawn);
-			return { executionId: spawn.executionId, data: [null] };
+			this.detached.push(child);
+			return { executionId: child.executionId, data: [null] };
 		}
 
 		// The node completes this run on an empty result, which the executor
-		// replaces with the spawn. It runs again with the result when the child ends.
-		this.awaited = spawn;
-		return { executionId: spawn.executionId, data: [[]] };
+		// replaces with the child. It runs again with the result when the child ends.
+		this.awaited = child;
+		return { executionId: child.executionId, data: [[]] };
 	}
 
 	private answerFromChild(resume: ChildResumeCause, options: CallOptions): ExecuteWorkflowData {

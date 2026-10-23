@@ -53,7 +53,7 @@ const graphWith = (type: string, parameters = {}): WorkflowGraph =>
 
 /** The outputs of a result, for a test that feeds one step's output into the next. */
 function outputsOf(result: StepExecutionResult): StepSlots {
-	if (result.wait || result.spawn) {
+	if (result.wait || result.child) {
 		throw new Error('the step declared a wait, but the test expects outputs');
 	}
 	return result.outputs;
@@ -565,18 +565,18 @@ describe('sub-workflows', () => {
 		return { executor, resolveSubWorkflow };
 	}
 
-	it('turns an awaited executeWorkflow call into a spawn, resolved through the host', async () => {
+	it('turns an awaited executeWorkflow call into a child, resolved through the host', async () => {
 		const graph = graphWith('test.runsSubWorkflow');
 		const { executor, resolveSubWorkflow } = executorWith(graph);
 
 		const result = await executor.execute(stepRequest(graph, 'n', input));
 
-		expect(result.spawn).toMatchObject(resolved);
-		expect(result.spawn?.executionId).toMatch(UUID_V7);
+		expect(result.child).toMatchObject(resolved);
+		expect(result.child?.executionId).toMatch(UUID_V7);
 		expect(resolveSubWorkflow).toHaveBeenCalledExactlyOnceWith({
 			workflowId: 'child',
 			// The same id the child then runs under.
-			executionId: result.spawn?.executionId,
+			executionId: result.child?.executionId,
 			parent: {
 				executionId: 'exec-1',
 				workflowId: 'wf-1',
@@ -594,7 +594,7 @@ describe('sub-workflows', () => {
 
 		const result = await executor.execute(stepRequest(graph, 'n', input));
 
-		expect(result.spawn).toBeUndefined();
+		expect(result.child).toBeUndefined();
 		expect(result.detached).toHaveLength(1);
 		expect(result.detached?.[0]).toMatchObject(resolved);
 		// The node reports the child id, as it does on v1, with no data.
