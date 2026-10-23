@@ -560,15 +560,17 @@ describe('AgentSkillRefsService', () => {
 			expect(agentSkillUsage.pinForPublish).toHaveBeenCalledWith('version-1', versionByRef, ctx);
 		});
 
-		it('rejects a ref that resolves to no version', async () => {
+		it('keeps an unresolved ref in the saved draft', async () => {
 			agentSkillRepository.findDependencies.mockResolvedValue(
 				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
 			);
 			skillService.snapshotForPublish.mockResolvedValue({ skills: {}, versionByRef: new Map() });
 
-			await expect(service.versionSnapshot(agent, ctx)).rejects.toThrow(
-				'Cannot publish agent with missing skills: zeta',
-			);
+			await expect(service.versionSnapshot(agent, ctx)).resolves.toEqual({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'zeta' }] },
+				skills: {},
+				pins: new Map(),
+			});
 		});
 
 		it('writes an empty skill list and pins nothing for a draft without skills', async () => {
@@ -679,12 +681,14 @@ describe('AgentSkillRefsService', () => {
 			});
 		});
 
-		it('refuses to publish a ref without a body', async () => {
+		it('preserves a legacy draft whose skill body is missing', async () => {
 			const draft = legacyAgent([{ type: 'skill', id: 'gone' }]);
 
-			await expect(service.versionSnapshot(draft, ctx)).rejects.toThrow(
-				'Cannot publish agent with missing skill bodies: gone',
-			);
+			await expect(service.versionSnapshot(draft, ctx)).resolves.toEqual({
+				schema: draft.schema,
+				skills: {},
+				pins: new Map(),
+			});
 		});
 
 		it('reports no outdated skills', async () => {

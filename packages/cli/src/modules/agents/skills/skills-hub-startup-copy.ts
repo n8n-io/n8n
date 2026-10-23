@@ -110,14 +110,18 @@ export class SkillsHubStartupCopy {
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
-	/** Called when the agents module starts, after the skills module read the rollout flag. */
-	async runOnStartup(): Promise<void> {
-		if (this.instanceSettings.instanceType !== 'main') return;
+	/** Return failed draft IDs, or null when copy progress is unknown. */
+	async runOnStartup(): Promise<string[] | null> {
+		if (this.instanceSettings.instanceType !== 'main') return [];
 		// Without the skills module there are no hub tables to copy into or compare with.
-		if (!this.moduleRegistry.isActive('skills')) return;
-		if (this.rollout.isEnabled) await this.copyAll();
+		if (!this.moduleRegistry.isActive('skills')) return [];
+		if (this.rollout.isEnabled) {
+			await this.copyAll();
+			return (await this.readProgress())?.retryAgentIds ?? null;
+		}
 		// One warning per instance is enough: only the leader logs it.
-		else if (this.instanceSettings.isLeader) await this.warnAboutHubOnlySkills();
+		if (this.instanceSettings.isLeader) await this.warnAboutHubOnlySkills();
+		return [];
 	}
 
 	async copyAll(): Promise<CopyCounts> {
@@ -134,7 +138,7 @@ export class SkillsHubStartupCopy {
 		this.logger.info('Started copying inline agent skills into the skills hub');
 		const startedAt = Date.now();
 		const read = await this.readProgress();
-		// An unreadable row copies no draft in this run; saving the progress repairs it.
+		// An unreadable row cannot distinguish uncopied drafts from deleted skills.
 		const progress = read ?? { through: null, retryAgentIds: [] };
 		const retry = new Set(progress.retryAgentIds);
 		const failedDrafts: string[] = [];
@@ -182,7 +186,7 @@ export class SkillsHubStartupCopy {
 			if (agents.length > 0) after = agents[agents.length - 1];
 			if (agents.length < BATCH_SIZE) break;
 		}
-		await this.saveProgress(after, copiedDrafts, failedDrafts);
+		if (read !== null) await this.saveProgress(after, copiedDrafts, failedDrafts);
 		this.logger.info('Copied inline agent skills into the skills hub', {
 			...counts,
 			durationMs: Date.now() - startedAt,
