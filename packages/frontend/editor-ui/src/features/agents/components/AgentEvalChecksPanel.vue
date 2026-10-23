@@ -160,15 +160,43 @@ const visibleStatusFilters = computed(() =>
 	statusFilterOptions.value.filter((option) => option.alwaysShown || option.count > 0),
 );
 
-const statusFilterSegments = computed(() =>
-	visibleStatusFilters.value.map((option) => ({
+// Every check in one status: a status option and "All" would list the same rows,
+// so the control shows one option that reads as a summary ("All 9 passed").
+// Only when every result has loaded: a loaded page is not the whole run.
+const uniformStatus = computed<Exclude<StatusFilter, 'all'> | null>(() => {
+	const total = rows.value.length;
+	if (total === 0 || hasMore.value) return null;
+	if (passedCount.value === total) return 'pass';
+	if (needsWorkCount.value === total) return 'needs-work';
+	return null;
+});
+
+const statusFilterSegments = computed(() => {
+	if (uniformStatus.value) {
+		const count = rows.value.length;
+		return [
+			{
+				value: uniformStatus.value,
+				label: i18n.baseText(
+					uniformStatus.value === 'pass'
+						? 'agents.builder.agentEvals.checks.allPass'
+						: 'agents.builder.agentEvals.checks.allNeedWork',
+					{ adjustToNumber: count, interpolate: { count: String(count) } },
+				),
+			},
+		];
+	}
+	return visibleStatusFilters.value.map((option) => ({
 		value: option.key,
 		label: i18n.baseText(option.labelKey, {
 			adjustToNumber: option.count,
 			interpolate: { count: String(option.count) },
 		}),
-	})),
-);
+	}));
+});
+
+/** The summary option is always the selected one. */
+const selectedStatusSegment = computed(() => uniformStatus.value ?? statusFilter.value);
 
 // Needs-work first, then pass, so the rows a reviewer should act on are
 // never buried below the ones that already look fine — regardless of filter.
@@ -202,7 +230,13 @@ watch([needsWorkCount, passedCount], ([needsWork, passed]) => {
 	if (statusFilter.value === 'pass' && passed === 0) statusFilter.value = 'all';
 });
 
+// With one summary option there is nothing to filter: show every row.
+watch(uniformStatus, (status) => {
+	if (status) statusFilter.value = 'all';
+});
+
 function setStatusFilter(filter: StatusFilter) {
+	if (uniformStatus.value) return;
 	statusFilter.value = filter;
 }
 
@@ -463,7 +497,7 @@ onBeforeUnmount(store.stopPollingRun);
 		<header :class="$style.header">
 			<N8nSegmentControl
 				v-if="rows.length > 0"
-				:model-value="statusFilter"
+				:model-value="selectedStatusSegment"
 				:options="statusFilterSegments"
 				@update:model-value="setStatusFilter"
 			>

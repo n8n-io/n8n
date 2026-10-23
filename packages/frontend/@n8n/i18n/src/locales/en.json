@@ -9484,6 +9484,8 @@
 	"agents.builder.agentEvals.checks.needsWork": "{count} needs work | {count} need work",
 	"agents.builder.agentEvals.checks.pass": "{count} passed",
 	"agents.builder.agentEvals.checks.all": "All {count}",
+	"agents.builder.agentEvals.checks.allPass": "{count} passed | All {count} passed",
+	"agents.builder.agentEvals.checks.allNeedWork": "{count} needs work | All {count} need work",
 	"agents.builder.agentEvals.checks.runAll": "Run all checks",
 	"agents.builder.agentEvals.checks.addCheck": "Add a check",
 	"agents.builder.agentEvals.checks.addCheckClose": "Close",
