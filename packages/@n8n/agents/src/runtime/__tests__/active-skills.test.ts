@@ -33,6 +33,79 @@ const source = createRuntimeSkillSource([
 	},
 ]);
 
+const turnSource = createRuntimeSkillSource([
+	{
+		id: 'router',
+		name: 'router',
+		description: 'Route requests.',
+		instructions: 'Pick a route.',
+		policy: { lifetime: 'turn' },
+	},
+	{
+		id: 'builder',
+		name: 'builder',
+		description: 'Build workflows.',
+		instructions: 'Build one workflow.',
+	},
+]);
+
+function historyWithLoads(...skillIds: string[]): AgentMessageList {
+	const list = new AgentMessageList();
+	list.addHistory([
+		{
+			role: 'assistant',
+			content: skillIds.map((skillId) => ({
+				type: 'tool-call' as const,
+				toolName: 'load_skill',
+				toolCallId: `load-${skillId}`,
+				input: { skillId },
+				state: 'resolved' as const,
+				output: { type: 'content', value: [{ type: 'text', text: 'loaded' }] },
+			})),
+		},
+	]);
+	return list;
+}
+
+describe('skill lifetime', () => {
+	it('expires a turn-lifetime skill when a fresh run starts', async () => {
+		const memory = new InMemoryMemory();
+		const active = new ActiveSkills(turnSource, 'assistant', memory.skillState);
+		const list = historyWithLoads('router', 'builder');
+
+		await active.restore(list, scope, { freshRun: true });
+
+		const text = JSON.stringify(active.modelMessages(list.forLlm('').messages, list));
+		expect(text).toContain('Build one workflow.');
+		expect(text).not.toContain('Pick a route.');
+		expect(text).toContain('{"skillId":"router","active":false}');
+		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([
+			'builder',
+		]);
+	});
+
+	it('keeps a turn-lifetime skill when a run resumes', async () => {
+		const active = new ActiveSkills(turnSource, 'assistant', new InMemoryMemory().skillState);
+		const list = historyWithLoads('router');
+
+		await active.restore(list, scope);
+
+		expect(JSON.stringify(active.modelMessages(list.forLlm('').messages, list))).toContain(
+			'Pick a route.',
+		);
+	});
+
+	it('keeps a turn-lifetime skill that loads during a fresh run', async () => {
+		const active = new ActiveSkills(turnSource, 'assistant', new InMemoryMemory().skillState);
+		const list = new AgentMessageList();
+		await active.restore(list, scope, { freshRun: true });
+
+		await active.load('router');
+
+		expect(active.instructions()).toContain('Pick a route.');
+	});
+});
+
 describe('active skills', () => {
 	it('does not rewrite unchanged stored skills on later turns', async () => {
 		const memory = new InMemoryMemory();

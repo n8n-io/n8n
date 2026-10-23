@@ -47,7 +47,17 @@ export class ActiveSkills {
 		private readonly store?: RuntimeSkillStateStore,
 	) {}
 
-	async restore(list: AgentMessageList, persistence?: AgentPersistenceOptions): Promise<void> {
+	/**
+	 * Restore the active skills for a run. A fresh run starts a new user turn, so
+	 * skills with a `turn` lifetime expire: their recorded loads collapse to
+	 * `active: false`, and the model loads them again when it needs them. A
+	 * resumed run continues the same turn and keeps them.
+	 */
+	async restore(
+		list: AgentMessageList,
+		persistence?: AgentPersistenceOptions,
+		options: { freshRun?: boolean } = {},
+	): Promise<void> {
 		this.loaded.clear();
 		this.list = list;
 		this.scope = persistence
@@ -66,7 +76,11 @@ export class ActiveSkills {
 				...this.recordedLoads(list).values(),
 				...this.stampedActivations(list).map(([, skillId]) => skillId),
 			];
-		const registered = new Set(this.source.registry.skills.map(({ id }) => id));
+		const registered = new Set(
+			this.source.registry.skills
+				.filter((entry) => !(options.freshRun && entry.policy?.lifetime === 'turn'))
+				.map(({ id }) => id),
+		);
 		const retainedIds = new Set<string>();
 		for (const id of new Set(ids)) {
 			const skill = registered.has(id) ? await this.source.loadSkill(id) : null;
