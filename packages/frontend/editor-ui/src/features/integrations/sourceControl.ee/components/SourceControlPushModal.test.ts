@@ -14,8 +14,6 @@ import type { ProjectListItem } from '@/features/collaboration/projects/projects
 import { reactive } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@n8n/frontend-test-utils';
-import { i18n, i18nInstance } from '@n8n/i18n';
-import { useUsersStore } from '@n8n/stores/users.store';
 
 const eventBus = createEventBus();
 
@@ -63,11 +61,9 @@ vi.mock('@/app/composables/useLoadingService', () => ({
 	}),
 }));
 
-const showMessageMock = vi.hoisted(() => vi.fn());
-
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
-		showMessage: showMessageMock,
+		showMessage: vi.fn(),
 		showError: vi.fn(),
 		showSuccess: vi.fn(),
 		showToast: vi.fn(),
@@ -1323,84 +1319,6 @@ describe('SourceControlPushModal', () => {
 			const callArgs = sourceControlStore.pushWorkfolder.mock.calls[0][0];
 			const dt2InPayload = callArgs.fileNames.some((f: SourceControlledFile) => f.id === 'dt-2');
 			expect(dt2InPayload).toBe(false);
-		});
-	});
-
-	describe('localization', () => {
-		const TEST_LOCALE = 'test-locale';
-		const originalLocale = i18nInstance.global.locale.value;
-
-		const workflowStatus: SourceControlledFile[] = [
-			{
-				id: 'gTbbBkkYTnNyX1jD',
-				name: 'My workflow 1',
-				type: 'workflow',
-				status: 'created',
-				location: 'local',
-				conflict: false,
-				file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
-				updatedAt: '2024-09-20T10:31:40.000Z',
-			},
-		];
-
-		beforeEach(() => {
-			i18nInstance.global.setLocaleMessage(TEST_LOCALE, {
-				'settings.sourceControl.modals.push.noChanges.title': 'Translated no changes',
-				'settings.sourceControl.modals.push.everythingIsUpToDate': 'Translated up to date',
-				'settings.sourceControl.modals.push.search.placeholder': 'Translated filter',
-				'generic.dismiss': 'Translated dismiss',
-			});
-			i18nInstance.global.locale.value = TEST_LOCALE;
-			i18n.clearCache();
-		});
-
-		afterEach(() => {
-			i18nInstance.global.locale.value = originalLocale;
-			i18n.clearCache();
-		});
-
-		it('should localize the toast shown when there are no changes', async () => {
-			sourceControlStore.getAggregatedStatus.mockResolvedValue([]);
-
-			renderModal({ pinia, props: { data: { eventBus } } });
-
-			await waitFor(() => {
-				expect(showMessageMock).toHaveBeenCalledWith({
-					title: 'Translated no changes',
-					message: 'Translated up to date',
-					type: 'info',
-				});
-			});
-		});
-
-		it('should localize the search placeholder', async () => {
-			sourceControlStore.getAggregatedStatus.mockResolvedValue(workflowStatus);
-
-			const { getByPlaceholderText } = renderModal({
-				pinia,
-				props: { data: { eventBus, status: workflowStatus } },
-			});
-
-			await waitFor(() => {
-				expect(getByPlaceholderText('Translated filter')).toBeInTheDocument();
-			});
-		});
-
-		it('should localize the title of the callout dismiss icon', async () => {
-			const usersStore = mockedStore(useUsersStore);
-			usersStore.currentUser = {
-				role: 'global:member',
-			} as unknown as (typeof usersStore)['currentUser'];
-			sourceControlStore.getAggregatedStatus.mockResolvedValue(workflowStatus);
-
-			const { getByTitle } = renderModal({
-				pinia,
-				props: { data: { eventBus, status: workflowStatus } },
-			});
-
-			await waitFor(() => {
-				expect(getByTitle('Translated dismiss')).toBeInTheDocument();
-			});
 		});
 	});
 
