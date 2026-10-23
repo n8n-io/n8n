@@ -48,4 +48,16 @@ describe('execution cancellation helpers', () => {
 			await expect(wait).rejects.toThrow('The execution was canceled');
 		});
 	});
+
+	describe('does not fail when the context does not have cancellation implemented', () => {
+		it('throwIfExecutionCancelled should not throw', () => {
+			expect(() => throwIfExecutionCancelled({} as unknown as IExecuteFunctions)).not.toThrow();
+		});
+
+		it('sleepUnlessExecutionCancelled should resolve', async () => {
+			await expect(
+				sleepUnlessExecutionCancelled({} as unknown as IExecuteFunctions, 1),
+			).resolves.toBeUndefined();
+		});
+	});
 });
