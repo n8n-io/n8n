@@ -163,12 +163,6 @@ export type BlockerIndex = {
 	blocked: ReadonlySet<ResourceKey>;
 };
 
-export const emptyBlockerIndex: BlockerIndex = {
-	byWorkflow: new Map(),
-	byResource: new Map(),
-	blocked: new Set(),
-};
-
 function push(map: Map<ResourceKey, Blocker[]>, key: ResourceKey, blocker: Blocker) {
 	const list = map.get(key);
 	if (!list) map.set(key, [blocker]);

@@ -2,7 +2,8 @@ import type { ApplyCheckResult } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor, within } from '@testing-library/vue';
+import { render as renderToast, waitFor, within } from '@testing-library/vue';
+import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -183,16 +184,14 @@ describe('PromotionPreviewView', () => {
 		expect(router.currentRoute.value.query.resource).toBe('dataTable:t1');
 	});
 
-	it('should load the changed resources and only the active workflow with the preview', async () => {
+	it('should load the changed resources and only the active workflow at the commit of the preview', async () => {
 		await render();
 
 		expect(api.getPromotionResourceDetails).toHaveBeenCalledTimes(1);
-		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3].keys).toEqual([
-			'folder:f1',
-			'workflow:w1',
-			'dataTable:t1',
-			'variable:global:API_URL',
-		]);
+		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3]).toEqual({
+			commitSha: COMMIT_SHA,
+			keys: ['folder:f1', 'workflow:w1', 'dataTable:t1', 'variable:global:API_URL'],
+		});
 	});
 
 	it('should switch the active diff without collapsing or scrolling cards', async () => {
@@ -363,8 +362,50 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
 		});
-		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Changes promoted',
+			message: 'Pushed to promotion/p1.',
+			type: 'success',
+		});
 		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
+	});
+
+	it('should keep the promotion toast open and link the merge request', async () => {
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
+			review: { reviewId: 'review-1', number: 3, webUrl: 'https://gitlab.example/mr/3' },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+		const { getByTestId } = await render();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'Changes promoted', type: 'success', duration: 0 }),
+		);
+		const message = showMessage.mock.calls[0]?.[0].message;
+		const toast = renderToast(defineComponent({ render: () => message }));
+		const link = toast.getByRole('link', { name: 'View merge request' });
+		expect(link).toHaveAttribute('href', 'https://gitlab.example/mr/3');
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(toast.queryByText(/Pushed to/)).not.toBeInTheDocument();
+	});
+
+	it('should keep promotion warnings visible in the toast', async () => {
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
+			warnings: [{ message: 'No merge request was opened.' }],
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+		const { getByTestId } = await render();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'Changes promoted', type: 'warning', duration: 0 }),
+		);
+		const message = showMessage.mock.calls[0]?.[0].message;
+		const toast = renderToast(defineComponent({ render: () => message }));
+		expect(toast.getByText('Pushed to promotion/p1.')).toBeInTheDocument();
+		expect(toast.getByText('No merge request was opened.')).toBeInTheDocument();
 	});
 
 	it('should apply only the workflows without blockers, once, at the commit of the check', async () => {

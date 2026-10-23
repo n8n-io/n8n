@@ -1,15 +1,28 @@
+import { BaseRepository, OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
 import { MyFeatureEntity } from './my-feature.entity';
 
+// File-private table: never exported, never registered with DI. Only the
+// repository below reaches TypeORM, so nothing leaks into business logic.
+class MyFeatureTable extends BaseRepository<MyFeatureEntity> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(MyFeatureEntity, dataSource.manager, transactionRunner);
+	}
+}
+
 @Service()
-export class MyFeatureRepository extends Repository<MyFeatureEntity> {
-	constructor(dataSource: DataSource) {
-		super(MyFeatureEntity, dataSource.manager);
+export class MyFeatureRepository {
+	private readonly table: MyFeatureTable;
+
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		this.table = new MyFeatureTable(dataSource, transactionRunner);
 	}
 
-	async getSummary() {
-		return await Promise.resolve({}); 
+	// Every data access is a named use-case method: plain params in, domain
+	// shapes out, `ctx` last, manager resolved via `this.table.managerFor(ctx)`.
+	async getSummary(ctx: OperationContext) {
+		return await this.table.managerFor(ctx).count(MyFeatureEntity);
 	}
 }

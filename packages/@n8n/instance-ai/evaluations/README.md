@@ -38,6 +38,7 @@ Each run:
 - **Mocked nodes** — anything that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, Notion…). The request is intercepted before it leaves the process; an LLM generates the response.
 - **Pinned nodes** — nodes that don't go through the HTTP layer (triggers/webhooks, LangChain/AI nodes, database nodes). They receive LLM-generated pin data.
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute on the mocked data.
+- **Data Table nodes** — run for real against the real table. Before each scenario, the server empties every Data Table the workflow uses and inserts starting rows that an LLM writes from the scenario. A table declared in the scenario's `seedDataTables` gets those exact rows instead. Two runs that use the same table run one after the other. A scenario that gives rows a `createdAt` or `updatedAt` time is a framework issue: the table sets those columns itself.
 
 ~95% of node types are covered. See [Known limitations](#known-limitations) for the gaps.
 
@@ -65,14 +66,14 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
    LANGSMITH_API_KEY=...
    ```
 
-2. **Start the instance**:
+2. **Start the instance**. `N8N_INSTANCE_AI_EVAL_INSTANCE=true` registers the eval routes the harness calls:
    ```bash
-   dotenvx run -f .env.local -- pnpm dev:ai
+   N8N_INSTANCE_AI_EVAL_INSTANCE=true dotenvx run -f .env.local -- pnpm dev:ai
    ```
 
 3. **Create the owner account**. First time only: open `http://localhost:5678`, sign up with the email/password from your `.env.local`. If you'd rather reset to a known state (useful after deleting the DB or between iterations), start the server with `E2E_TESTS=true` and `curl` the reset endpoint:
    ```bash
-   E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
+   N8N_INSTANCE_AI_EVAL_INSTANCE=true E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
    # then in another shell:
    curl -sf -X POST http://localhost:5678/rest/e2e/reset \
      -H "Content-Type: application/json" \
@@ -97,6 +98,7 @@ docker run -d --name n8n-eval \
   -e E2E_TESTS=true \
   -e N8N_ENABLED_MODULES=instance-ai,agents \
   -e N8N_AI_ENABLED=true \
+  -e N8N_INSTANCE_AI_EVAL_INSTANCE=true \
   -e N8N_INSTANCE_AI_MODEL_API_KEY=your-key \
   -p 5678:5678 \
   n8nio/n8n:local
@@ -363,7 +365,7 @@ on disk. Losing this field turns it into a normal attachment test.
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 | `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
-| `N8N_INSTANCE_AI_EVAL_INSTANCE` | No | Set to `true` on a throwaway eval instance, never on a daily dev instance. Feature flags then come only from env overrides (`N8N_FEATURE_FLAG_OVERRIDES`, `N8N_INSTANCE_AI_*_ENABLED`): every flag-gated feature runs its default arm unless a run turns it on, instead of each fresh instance drawing its own flags from the live PostHog rollout. It also lets an eval run reset Remove Duplicates history between scenarios. `run-eval-lanes.sh` and LangTracer's eval n8n containers (compose bundle, Kubernetes pool) set it. A dispatcher pointed at an n8n you start yourself does not: set it on that n8n. When a feature reaches 100% rollout, delete its flag from the code or add it to the eval overrides, or evals keep testing the old path. |
+| `N8N_INSTANCE_AI_EVAL_INSTANCE` | No | Set to `true` on a throwaway eval instance, never on a daily dev instance. Feature flags then come only from env overrides (`N8N_FEATURE_FLAG_OVERRIDES`, `N8N_INSTANCE_AI_*_ENABLED`): every flag-gated feature runs its default arm unless a run turns it on, instead of each fresh instance drawing its own flags from the live PostHog rollout. It also lets an eval run reset Remove Duplicates history between scenarios. It registers the `/rest/instance-ai/eval/` routes and allows the `observerThresholdTokens` chat override. Without it, the harness gets 404 from those routes. `run-eval-lanes.sh` and LangTracer's eval n8n containers (compose bundle, Kubernetes pool) set it. A dispatcher pointed at an n8n you start yourself does not: set it on that n8n. When a feature reaches 100% rollout, delete its flag from the code or add it to the eval overrides, or evals keep testing the old path. |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
 
@@ -797,6 +799,7 @@ reliable signal. Two specific things to know:
 - **Mocked nodes** — any node that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, Notion, etc.). The request is intercepted before it leaves the process. An LLM generates the response.
 - **Pinned nodes** — nodes that don't go through the HTTP layer: trigger/webhook nodes, LangChain/AI nodes (they use SDKs directly), database nodes. These receive LLM-generated data as pin data.
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute their actual code on the mocked/pinned data.
+- **Data Table nodes** — run for real against the real table, which the server empties and fills with the scenario's starting rows before each scenario (see [What gets mocked](#what-gets-mocked)).
 
 No real credentials or API connections are needed. ~95% of node types are covered; the main gaps are binary-data nodes (file attachments, image generation) and streaming nodes.
 
@@ -1327,6 +1330,7 @@ packages/cli/src/modules/instance-ai/eval/
 ├── workflow-analysis.ts  # Hint generation (Phase 1)
 ├── mock-handler.ts       # Per-request mock generation (Phase 2)
 ├── node-config.ts        # Node config serializer
+├── data-table-rows.ts    # LLM starting rows for the workflow's Data Tables (Phase 1.5)
 └── pin-data-generator.ts # LLM pin data for bypass nodes (Phase 1.5)
 ```
 
