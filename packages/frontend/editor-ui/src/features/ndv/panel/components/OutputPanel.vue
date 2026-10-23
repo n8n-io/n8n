@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -22,7 +22,7 @@ import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
-import { N8nIcon, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nSegmentControl, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -115,12 +115,29 @@ const workflowObject = computed(() =>
 const node = computed(() => {
 	return ndvStore.value.activeNode ?? undefined;
 });
-const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+
+const { hasNodeRun, workflowExecution, workflowRunData, nodeRunData } = useExecutionData({ node });
+
+const {
+	canReveal,
+	isDynamicCredentials,
+	isSubWorkflowRedaction,
+	revealData,
+	credentialToShare,
+	openCredentialSharing,
+} = useExecutionRedaction();
 
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
 });
+
+const noOutputActionLabel = computed(() =>
+	i18n.baseText(
+		isTriggerNode.value
+			? 'ndv.output.noOutputData.trigger.action'
+			: 'ndv.output.noOutputData.notRun.action',
+	),
+);
 
 const hasAiMetadata = computed(() => {
 	if (isNodeRunning.value || !workflowRunData.value) {
@@ -141,13 +158,7 @@ const hasAiMetadata = computed(() => {
 	return false;
 });
 
-const hasError = computed(() =>
-	Boolean(
-		workflowRunData.value &&
-			node.value &&
-			workflowRunData.value[node.value.name]?.[props.runIndex]?.error,
-	),
-);
+const hasError = computed(() => Boolean(nodeRunData.value?.[props.runIndex]?.error));
 
 // Determine the initial output mode to logs if the node has an error and the logs are available
 const defaultOutputMode = computed<OutputType>(() => {
@@ -169,36 +180,10 @@ const runTaskData = computed(() => {
 		return null;
 	}
 
-	const runData = workflowRunData.value;
-
-	if (!runData?.hasOwnProperty(node.value.name)) {
-		return null;
-	}
-
-	if (runData[node.value.name].length <= props.runIndex) {
-		return null;
-	}
-
-	return runData[node.value.name][props.runIndex];
+	return nodeRunData.value?.[props.runIndex] ?? null;
 });
 
-const runsCount = computed(() => {
-	if (node.value === null) {
-		return 0;
-	}
-
-	const runData: IRunData | null = workflowRunData.value;
-
-	if (runData === null || (node.value && !runData.hasOwnProperty(node.value.name))) {
-		return 0;
-	}
-
-	if (node.value && runData[node.value.name].length) {
-		return runData[node.value.name].length;
-	}
-
-	return 0;
-});
+const runsCount = computed(() => nodeRunData.value?.length ?? 0);
 
 const staleData = computed(() => {
 	if (!node.value) {
@@ -344,7 +329,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		<template #header>
 			<div :class="$style.titleSection">
 				<template v-if="hasAiMetadata">
-					<N8nRadioButtons
+					<N8nSegmentControl
 						v-model="outputMode"
 						data-test-id="ai-output-mode-select"
 						:options="outputTypes"
@@ -387,6 +372,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							: 'ndv.output.noOutputData.notRun.title',
 					)
 				"
+				has-compact-action
 			>
 				<template v-if="isTriggerNode" #icon>
 					<svg width="16" viewBox="0 0 14 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -414,15 +400,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							<NodeExecuteButton
 								hide-icon
 								transparent
-								variant="subtle"
+								variant="outline"
 								:node-name="activeNode?.name ?? ''"
-								:label="
-									i18n.baseText(
-										isTriggerNode
-											? 'ndv.output.noOutputData.trigger.action'
-											: 'ndv.output.noOutputData.notRun.action',
-									)
-								"
+								:label="noOutputActionLabel"
 								telemetry-source="inputs"
 								@execute="emit('execute')"
 							/>
@@ -433,15 +413,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<NodeExecuteButton
 							hide-icon
 							transparent
-							variant="subtle"
+							variant="outline"
 							:node-name="activeNode?.name ?? ''"
-							:label="
-								i18n.baseText(
-									isTriggerNode
-										? 'ndv.output.noOutputData.trigger.action'
-										: 'ndv.output.noOutputData.notRun.action',
-								)
-							"
+							:label="noOutputActionLabel"
 							telemetry-source="inputs"
 							@execute="emit('execute')"
 						/>
@@ -451,6 +425,20 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							{{ i18n.baseText('ndv.output.insertTestData') }}
 						</N8nText>
 					</template>
+				</template>
+				<template #actions>
+					<NodeExecuteButton
+						icon-only
+						hide-label
+						variant="outline"
+						size="medium"
+						:node-name="activeNode?.name ?? ''"
+						:aria-label="noOutputActionLabel"
+						:tooltip="noOutputActionLabel"
+						telemetry-source="inputs"
+						data-test-id="execute-step-compact"
+						@execute="emit('execute')"
+					/>
 				</template>
 			</NDVEmptyState>
 		</template>
@@ -483,7 +471,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<RedactedDataState
 				:title="i18n.baseText('ndv.output.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
+				:is-sub-workflow-redaction="isSubWorkflowRedaction"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
@@ -493,7 +484,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<RedactedDataState
 				:title="i18n.baseText('ndv.output.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
+				:is-sub-workflow-redaction="isSubWorkflowRedaction"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
@@ -533,7 +527,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	text-transform: uppercase;
 	color: var(--color--text--tint-1);
 	letter-spacing: 2px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--xs);
 }
 

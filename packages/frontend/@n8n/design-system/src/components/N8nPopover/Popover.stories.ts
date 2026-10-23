@@ -62,14 +62,14 @@ const Template: StoryFn = (args) => ({
 		N8nInput,
 	},
 	template: `
-		<div style="padding: 50px;">
+		<div>
 			<N8nPopover v-model:open="isOpen" v-bind="args">
 				<template #trigger>
 					<N8nButton>Open Form</N8nButton>
 				</template>
 				<template #content="{ close }">
 					<div style="display: flex; flex-direction: column; gap: 12px; padding: var(--spacing--sm);">
-						<h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">User Information</h3>
+						<h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: var(--font-weight--medium);">User Information</h3>
 						<N8nInput
 							v-model="username"
 							placeholder="Enter username"
@@ -92,9 +92,8 @@ const Template: StoryFn = (args) => ({
 	`,
 });
 
-export const SimpleExample = Template.bind({});
-SimpleExample.args = {};
-SimpleExample.storyName = 'With Form Inputs';
+export const Default = Template.bind({});
+Default.args = {};
 
 const ScrollableTemplate: StoryFn = (args) => ({
 	setup() {
@@ -106,14 +105,14 @@ const ScrollableTemplate: StoryFn = (args) => ({
 		N8nButton,
 	},
 	template: `
-		<div style="padding: 50px;">
+		<div>
 			<N8nPopover v-model:open="isOpen" v-bind="args">
 				<template #trigger>
 					<N8nButton>Open Scrollable Menu</N8nButton>
 				</template>
 				<template #content="{ close }">
 					<div style="display: flex; flex-direction: column; gap: 8px; padding: var(--spacing--sm);">
-						<h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">Menu Items</h3>
+						<h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: var(--font-weight--medium);">Menu Items</h3>
 						<div v-for="i in 20" :key="i" 
 							style="padding: 8px 12px; background: var(--color--background); border-radius: 4px; cursor: pointer; min-height: 40px; display: flex; align-items: center;"
 							@click="close"
@@ -189,7 +188,7 @@ const AlignmentVariantsTemplate: StoryFn = (args) => ({
 		N8nButton,
 	},
 	template: `
-		<div style="padding: 80px; display: flex; flex-direction: column; gap: 16px; align-items: flex-start;">
+		<div style="display: flex; flex-direction: column; gap: 16px; align-items: flex-start">
 			<div v-for="side in sides" :key="side" style="display: flex; align-items: center; gap: 12px;">
 				<div style="width: 56px; text-transform: capitalize; font-size: 12px; color: var(--color--text--tint-1);">
 					{{ side }}

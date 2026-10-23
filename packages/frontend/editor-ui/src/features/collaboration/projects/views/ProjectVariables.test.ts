@@ -427,6 +427,46 @@ describe('ProjectVariables', () => {
 		});
 	});
 
+	describe('protected instance', () => {
+		const protectedInstance = (variables: EnvironmentVariable[]) => {
+			const stores = userWithPrivileges(variables);
+			stores.sourceControlStore.preferences = {
+				branchReadOnly: true,
+			} as SourceControlPreferences;
+			return stores;
+		};
+
+		it('should disable creating the first variable', async () => {
+			protectedInstance([]);
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				global: {
+					stubs: {
+						N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
+					},
+				},
+			});
+
+			await waitFor(() => expect(getByTestId('empty-resources-list')).toBeVisible());
+			const emptyState = getByTestId('empty-resources-list');
+			expect(emptyState.querySelector('button')).toBeDisabled();
+			expect(emptyState).toHaveTextContent(
+				"You can't add new resources to a protected n8n instance",
+			);
+			expect(queryByTestId('cannot-create-variables')).not.toBeInTheDocument();
+		});
+
+		it('should allow editing and block deleting a variable', async () => {
+			protectedInstance([{ id: '1', key: 'TEST_VAR', value: 'value' }]);
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
+			expect(getByTestId('variable-row-edit-button')).toBeEnabled();
+			expect(getByTestId('variable-row-delete-button')).toBeDisabled();
+		});
+	});
+
 	describe('permissions', () => {
 		it('should disable edit button when user lacks both global and project update permission', async () => {
 			const usersStore = mockedStore(useUsersStore);

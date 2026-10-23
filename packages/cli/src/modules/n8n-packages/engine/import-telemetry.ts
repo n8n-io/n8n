@@ -1,12 +1,17 @@
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@n8n/backend-services';
 
+import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PersistedWorkflowOutcome } from '../entities/workflow/workflow-import.types';
 import { VariableParentPolicy } from '../n8n-packages.types';
-import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
+import type {
+	ImportContext,
+	ResolvedImportPackageRequest,
+	ImportResult,
+} from '../n8n-packages.types';
 import type { ImportContentResult } from './import-orchestrator';
 import { reconcileVariableSummary } from './import-result';
 import type { PackageManifest } from '../spec/manifest.schema';
@@ -21,10 +26,15 @@ export interface PackageImportScope {
 	tagRequest: TagImportRequest;
 }
 
+export interface ImportOutcome {
+	result: ImportResult;
+	scopes: PackageImportScope[];
+}
+
 export function emitPackageImportedEvent(
 	eventService: EventService,
 	params: {
-		request: ImportPackageRequest;
+		request: ResolvedImportPackageRequest;
 		manifest: PackageManifest;
 		scopes: PackageImportScope[];
 	},
@@ -32,6 +42,7 @@ export function emitPackageImportedEvent(
 	const { request, manifest, scopes } = params;
 
 	const workflowOutcomes = scopes.flatMap(({ imported }) => imported.workflowOutcomes);
+	const removedWorkflows = scopes.flatMap(({ imported }) => imported.removedWorkflows);
 	const credentialResults = scopes.map(({ imported }) => imported.credentialResult);
 	const importedWorkflows = workflowOutcomes.filter(({ status }) => status !== 'skipped');
 	const countByStatus = (status: PersistedWorkflowOutcome['status']) =>
@@ -41,11 +52,19 @@ export function emitPackageImportedEvent(
 		0,
 	);
 
-	const matchedCredentialIds = credentialResults.flatMap(({ matched, bindings }) =>
-		matched.map((sourceId) => bindings.get(sourceId)!),
+	// One destination credential can be written from several scopes, so count it once.
+	const updatedCredentialIds = new Set(
+		credentialResults.flatMap(({ updated, bindings }) =>
+			updated.map((sourceId) => bindings.get(sourceId)!),
+		),
 	);
-	const createdCredentialIds = credentialResults.flatMap(({ stubbed, bindings }) =>
-		stubbed.map((sourceId) => bindings.get(sourceId)!),
+	// An updated credential matched first, but the import rewrote it, so `updated` wins.
+	const matchedCredentialIds = credentialResults
+		.flatMap(({ matched, bindings }) => matched.map((sourceId) => bindings.get(sourceId)!))
+		.filter((credentialId) => !updatedCredentialIds.has(credentialId));
+	const createdCredentialIds = credentialResults.flatMap(
+		({ stubbed, seeded, incomplete, bindings }) =>
+			[...stubbed, ...seeded, ...incomplete].map((sourceId) => bindings.get(sourceId)!),
 	);
 
 	const dataTablePlans = scopes.map(({ imported }) => imported.dataTablePlan);
@@ -58,6 +77,7 @@ export function emitPackageImportedEvent(
 		(total, plan) => total + plan.creations.length,
 		0,
 	);
+	const dataTablesUpdated = dataTablePlans.reduce((total, plan) => total + plan.updates.length, 0);
 
 	const variableRequirements = scopes.reduce(
 		(total, { variableRequest }) => total + (variableRequest.requirements?.length ?? 0),
@@ -99,8 +119,14 @@ export function emitPackageImportedEvent(
 			workflowIdPolicy: request.workflowIdPolicy,
 			credentialMatchingMode: request.credentialMatchingMode,
 			credentialMissingMode: request.credentialMissingMode,
+			credentialConflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
 			workflowPublishingPolicy: request.workflowPublishingPolicy,
 			missingNodeTypeMode: request.missingNodeTypeMode,
+			projectConflictPolicy: request.projectConflictPolicy,
+			// Settled by the dispatcher before any importer runs, so analytics see what the import
+			// actually ran under rather than a blank meaning "same as the project policy".
+			folderConflictPolicy: request.folderConflictPolicy,
+			overwriteDeletionPolicy: request.overwriteDeletionPolicy,
 			dataTableMatchingMode: request.dataTableMatchingMode,
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
@@ -116,22 +142,31 @@ export function emitPackageImportedEvent(
 		credentialIds: {
 			matched: matchedCredentialIds,
 			created: createdCredentialIds,
-			updated: [],
+			updated: [...updatedCredentialIds],
 		},
 		counts: {
 			workflows: {
 				created: countByStatus('created'),
 				updated: countByStatus('updated'),
 				skipped: countByStatus('skipped'),
+				// Reconciliation removals, split by what actually happened — a `hard-delete` whose
+				// row could not be dropped yet counts as archived, like the API response reports it.
+				archived: removedWorkflows.filter(({ deletion }) => deletion === 'archived').length,
+				deleted: removedWorkflows.filter(({ deletion }) => deletion === 'deleted').length,
+			},
+			folders: {
+				removed: scopes.reduce((total, { imported }) => total + imported.removedFolders.length, 0),
 			},
 			credentials: {
 				matched: matchedCredentialIds.length,
 				created: createdCredentialIds.length,
+				updated: updatedCredentialIds.size,
 				requirements: credentialRequirements,
 			},
 			dataTables: {
 				matched: dataTablesMatched,
 				created: dataTablesCreated,
+				updated: dataTablesUpdated,
 				requirements: dataTableRequirements,
 			},
 			variables: {

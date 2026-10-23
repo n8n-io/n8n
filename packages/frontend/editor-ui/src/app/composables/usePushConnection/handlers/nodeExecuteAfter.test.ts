@@ -59,6 +59,7 @@ describe('nodeExecuteAfter', () => {
 
 	it('should update node execution data with placeholder and remove executing node', async () => {
 		const assistantStore = useAssistantStore();
+		const clearAgentNodeProgress = vi.spyOn(workflowExecutionStateStore, 'clearAgentNodeProgress');
 
 		const event: NodeExecuteAfter = {
 			type: 'nodeExecuteAfter',
@@ -82,6 +83,7 @@ describe('nodeExecuteAfter', () => {
 		expect(workflowExecutionStateStore.executingNode.removeExecutingNode).toHaveBeenCalledWith(
 			'Test Node',
 		);
+		expect(clearAgentNodeProgress).toHaveBeenCalledWith('Test Node');
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledTimes(1);
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledWith(event.data);
 

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+// EOF Experiment cleanup
+
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -70,7 +74,7 @@ const {
 	toggleCollapse,
 } = useSidebarLayout();
 
-const { settingsItems } = useSettingsItems();
+const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
 const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
 
 // Component data
@@ -94,7 +98,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
 		position: 'bottom',
-		label: 'Admin Panel',
+		label: i18n.baseText('mainSidebar.cloudConsole'),
 		icon: 'cloud',
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
@@ -110,7 +114,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to in-app templates, available if custom templates are enabled and resource center is disabled
 		id: 'templates',
-		icon: 'package-open',
+		icon: 'grid-2x2',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
@@ -122,7 +126,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to website templates, available if custom templates host is not configured and resource center is disabled
 		id: 'templates',
-		icon: 'package-open',
+		icon: 'grid-2x2',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
@@ -162,7 +166,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 			{
 				id: 'docs',
-				icon: 'book',
+				icon: 'book-open',
 				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
 				link: {
 					href: EXTERNAL_LINKS.DOCUMENTATION,
@@ -171,7 +175,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 			{
 				id: 'forum',
-				icon: 'users',
+				icon: 'book',
 				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
 				link: {
 					href: EXTERNAL_LINKS.FORUM,
@@ -184,6 +188,16 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
 				link: {
 					href: EXTERNAL_LINKS.COURSES,
+					target: '_blank',
+				},
+			},
+			{
+				id: 'contact-support',
+				icon: 'life-buoy',
+				label: i18n.baseText('mainSidebar.helpMenuItems.contactSupport'),
+				available: settingsStore.isCloudDeployment,
+				link: {
+					href: EXTERNAL_LINKS.SUPPORT,
 					target: '_blank',
 				},
 			},
@@ -207,14 +221,19 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'settings',
 		label: i18n.baseText('mainSidebar.settings'),
-		icon: 'settings',
+		icon: 'wrench',
 		available: true,
 		children: settingsItems.value,
 	},
 ]);
 
 const visibleMenuItems = computed<IMenuItem[]>(() =>
-	mainMenuItems.value.filter((item) => item.available !== false),
+	mainMenuItems.value
+		.filter((item) => item.available !== false)
+		.map((item) => ({
+			...item,
+			children: item.children?.filter((child) => child.available !== false),
+		})),
 );
 
 const checkOverflow = () => {
@@ -297,6 +316,11 @@ const handleSelect = (key: string) => {
 			void pageRedirectionHelper.goToDashboard();
 			break;
 		}
+		case 'settings-n8n-connect': {
+			void handleSettingsItemSelect(key);
+			break;
+		}
+		case 'contact-support':
 		case 'quickstart':
 		case 'docs':
 		case 'forum':
@@ -376,6 +400,9 @@ useKeybindings({
 				/>
 			</N8nScrollArea>
 		</div>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<ClaudeEntryPoint placement="sidebar" :collapsed="isCollapsed" />
+		<!-- EOF Experiment cleanup -->
 		<BottomMenu
 			:items="visibleMenuItems"
 			:is-collapsed="isCollapsed"
@@ -387,6 +414,8 @@ useKeybindings({
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .sideMenu {
 	position: relative;
 	height: 100%;

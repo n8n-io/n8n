@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -15,7 +16,13 @@ import type { SsrfBridge } from '../ssrf';
 import { invokeAxios } from './axios/invoke';
 import { buildAxiosConfigFromLegacyRequest, buildLegacyAgentOptions } from './axios/legacy';
 import { followSsrfRedirects, shouldFollowRedirectsManually } from './axios/redirect';
-import { resolveLegacyRequestUrl, throwIfDomainNotAllowed, validateUrlSsrf } from './axios/utils';
+import {
+	destroyRequestBody,
+	resolveLegacyRequestUrl,
+	throwIfDomainNotAllowed,
+	validateProxySsrf,
+	validateUrlSsrf,
+} from './axios/utils';
 import { binaryToString } from './binary-string';
 import { parseIncomingMessage } from './parse-incoming-message';
 
@@ -45,6 +52,22 @@ export async function executeLegacyRequest(
 	logger: Logger,
 	callbacks?: LegacyRequestCallbacks,
 ): Promise<unknown> {
+	try {
+		return await sendLegacyRequest(requestObject, ssrfBridge, logger, callbacks);
+	} catch (error) {
+		// The URL, SSRF and domain checks can throw before axios reads the body.
+		destroyRequestBody(requestObject.body);
+		destroyRequestBody(requestObject.formData);
+		throw error;
+	}
+}
+
+async function sendLegacyRequest(
+	requestObject: IRequestOptions,
+	ssrfBridge: SsrfBridge | undefined,
+	logger: Logger,
+	callbacks?: LegacyRequestCallbacks,
+): Promise<unknown> {
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
 		// -1 is the Axios sentinel for "no limit". Infinity also means no limit but
@@ -56,6 +79,7 @@ export async function executeLegacyRequest(
 
 	const url = resolveLegacyRequestUrl(requestObject);
 	await validateUrlSsrf(url, ssrfBridge);
+	await validateProxySsrf(requestObject.proxy, ssrfBridge);
 
 	axiosConfig = Object.assign(
 		axiosConfig,
@@ -95,7 +119,7 @@ export async function executeLegacyRequest(
 		const { config, response } = error;
 
 		// Axios hydrates the original error with more data. We extract them.
-		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
+		// https://github.com/axios/axios/blob/v1.x/lib/core/AxiosError.js
 		// Note: `code` is ignored as it's an expected part of the errorData.
 		if (error.isAxiosError) {
 			error.config = error.request = undefined;

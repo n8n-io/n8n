@@ -1,3 +1,4 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -13,6 +14,7 @@ import { STORES } from '@n8n/stores';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
@@ -84,6 +86,7 @@ const mockedProjectsApi = vi.mocked(projectsApi);
 describe('CredentialsView', () => {
 	beforeEach(async () => {
 		createTestingPinia({ initialState });
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 		await router.push('/');
 		await router.isReady();
 
@@ -115,6 +118,7 @@ describe('CredentialsView', () => {
 				id: '1',
 				name: 'test',
 				type: 'test',
+				description: 'Use for production reports',
 				createdAt: '2021-05-05T00:00:00Z',
 				updatedAt: '2021-05-05T00:00:00Z',
 				isManaged: false,
@@ -124,6 +128,9 @@ describe('CredentialsView', () => {
 		projectsStore.isProjectHome = false;
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('resources-list-item')).toBeVisible();
+		expect(getByTestId('credential-card-description')).toHaveTextContent(
+			'Use for production reports',
+		);
 	});
 
 	it('should disable cards based on permissions', () => {
@@ -419,6 +426,35 @@ describe('CredentialsView', () => {
 			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
+		});
+	});
+
+	describe('credentials shared with all users and projects', () => {
+		it('requests global credentials for the personal project page', async () => {
+			const personalProject = createTestProject({
+				id: 'personal-project-id',
+				type: ProjectTypes.Personal,
+			});
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = personalProject;
+			projectsStore.currentProject = personalProject;
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.fetchAllCredentials.mockClear();
+
+			await router.push({
+				name: VIEWS.CREDENTIALS,
+				params: { projectId: personalProject.id },
+			});
+			renderComponent();
+			await flushPromises();
+
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledWith(
+				expect.objectContaining({
+					projectId: personalProject.id,
+					includeGlobal: true,
+				}),
+			);
 		});
 	});
 

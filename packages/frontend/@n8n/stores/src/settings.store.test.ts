@@ -6,6 +6,30 @@ import { mock } from 'vitest-mock-extended';
 
 import { useSettingsStore } from './settings.store';
 
+it.each([
+	{ active: true, enabled: true, expected: true },
+	{ active: true, enabled: undefined, expected: true },
+	{ active: true, enabled: false, expected: false },
+	{ active: false, enabled: true, expected: false },
+])(
+	'gates Agents and its features (active=$active, enabled=$enabled)',
+	({ active, enabled, expected }) => {
+		setActivePinia(createPinia());
+		const store = useSettingsStore();
+		store.settings.activeModules = active ? ['agents'] : [];
+		store.moduleSettings.agents = {
+			enabled,
+			modules: ['tasks'],
+			knowledgeBaseEnabled: true,
+			proxyEnabled: false,
+		};
+
+		expect(store.isAgentsEnabled).toBe(expected);
+		expect(store.isAgentModuleActive('tasks')).toBe(expected);
+		expect(store.isAgentsKnowledgeBaseFeatureEnabled).toBe(expected);
+	},
+);
+
 const mockRootStore = {
 	restApiContext: {},
 	setUrlBaseWebhook: vi.fn(),
@@ -23,6 +47,7 @@ const mockRootStore = {
 	setExecutionTimeout: vi.fn(),
 	setMaxExecutionTimeout: vi.fn(),
 	setInstanceId: vi.fn(),
+	setPublicApiPath: vi.fn(),
 	setOauthCallbackUrls: vi.fn(),
 	setJwksUri: vi.fn(),
 	setN8nMetadata: vi.fn(),
@@ -73,6 +98,12 @@ const mockSettings = mock<FrontendSettings>({
 	telemetry: {
 		enabled: false,
 	},
+	publicApi: {
+		enabled: true,
+		latestVersion: 1,
+		path: 'api',
+		swaggerUi: { enabled: true },
+	},
 });
 
 const publicSettingsResponse = {
@@ -99,6 +130,82 @@ describe('settings.store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
+	});
+
+	describe('setWorkflowReviewsPolicy', () => {
+		beforeEach(() => {
+			const store = useSettingsStore();
+			store.settings.activeModules = ['inbox', 'workflow-reviews'];
+			store.settings.enterprise = { ...mockSettings.enterprise, workflowReviews: true };
+			store.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
+		});
+
+		it.each(['availableTypes', 'failedTypes'] as const)(
+			'preserves Assistant %s when Reviews are enabled and disabled',
+			(sourceStatus) => {
+				const store = useSettingsStore();
+				store.settings.inbox = {
+					enabled: true,
+					availableTypes: [],
+					failedTypes: ['workflow_review'],
+				};
+				store.settings.inbox[sourceStatus].push('self_healing_result');
+
+				store.setWorkflowReviewsPolicy({ enabled: true });
+				expect(store.settings.inbox.availableTypes).toContain('workflow_review');
+				expect(store.settings.inbox.failedTypes).not.toContain('workflow_review');
+				expect(store.settings.inbox[sourceStatus]).toContain('self_healing_result');
+
+				store.setWorkflowReviewsPolicy({ enabled: false });
+				expect(store.settings.inbox).toEqual({
+					enabled: true,
+					availableTypes: [],
+					failedTypes: [],
+					[sourceStatus]: ['self_healing_result'],
+				});
+			},
+		);
+
+		it('disables Inbox when its last source is disabled', () => {
+			const store = useSettingsStore();
+			store.setWorkflowReviewsPolicy({ enabled: true });
+			expect(store.settings.inbox?.enabled).toBe(true);
+
+			store.setWorkflowReviewsPolicy({ enabled: false });
+
+			expect(store.settings.inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+		});
+
+		it.each([
+			{ licensed: false, activeModules: ['inbox', 'workflow-reviews'] },
+			{ licensed: true, activeModules: ['inbox'] },
+			{ licensed: true, activeModules: ['workflow-reviews'] },
+		])('keeps license and module gates: %j', ({ licensed, activeModules }) => {
+			const store = useSettingsStore();
+			store.settings.enterprise.workflowReviews = licensed;
+			store.settings.activeModules = activeModules;
+
+			store.setWorkflowReviewsPolicy({ enabled: true });
+
+			expect(store.settings.inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+		});
+
+		it('does not invent Inbox settings when they are absent', () => {
+			const store = useSettingsStore();
+			delete store.settings.inbox;
+
+			store.setWorkflowReviewsPolicy({ enabled: true });
+
+			expect(store.settings.inbox).toBeUndefined();
+		});
 	});
 
 	describe('isAutosaveEnabled', () => {
@@ -136,6 +243,24 @@ describe('settings.store', () => {
 			await settingsStore.getSettings();
 
 			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
+	});
+
+	describe('isEnterprisePlan', () => {
+		it.each([
+			{ planName: 'Enterprise', expected: true },
+			{ planName: 'Business', expected: false },
+			{ planName: undefined, expected: false },
+		])('returns $expected for plan $planName', async ({ planName, expected }) => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				license: { planName } as FrontendSettings['license'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isEnterprisePlan).toBe(expected);
 		});
 	});
 
@@ -337,6 +462,7 @@ describe('settings.store', () => {
 				expect(mockRootStore.setMaxExecutionTimeout).not.toHaveBeenCalled();
 				expect(mockRootStore.setN8nMetadata).not.toHaveBeenCalled();
 				expect(mockRootStore.setBinaryDataMode).not.toHaveBeenCalled();
+				expect(mockRootStore.setPublicApiPath).not.toHaveBeenCalled();
 
 				// side effects
 				expect(sessionStarted).not.toHaveBeenCalled();
@@ -391,6 +517,9 @@ describe('settings.store', () => {
 				expect(mockRootStore.setN8nMetadata).toHaveBeenCalled();
 				expect(mockRootStore.setDefaultLocale).toHaveBeenCalled();
 				expect(mockRootStore.setBinaryDataMode).toHaveBeenCalled();
+				expect(mockRootStore.setPublicApiPath).toHaveBeenCalledWith(
+					`${mockSettings.publicApi.path}/v${mockSettings.publicApi.latestVersion}`,
+				);
 
 				// side effects
 				expect(sessionStarted).toHaveBeenCalled();

@@ -5,7 +5,7 @@ import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, toRaw, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const DISPLAY_NAME_MIN_LENGTH = 2;
@@ -25,10 +25,18 @@ export interface UseRoleEditorFormOptions {
 	defaultScopes?: () => string[];
 	/**
 	 * Filter applied to every scope set entering the form (default seed, fetched role,
-	 * reset). Keeps the editor — and anything it saves — limited to scopes it exposes,
-	 * so a role loaded with non-assignable scopes is sanitized rather than forwarded.
+	 * reset) and to the persisted snapshot. Keeps the editor — and anything it saves —
+	 * limited to scopes it exposes, so a role loaded with non-assignable scopes is
+	 * sanitized rather than forwarded. Must only strip; adding scopes here would
+	 * rewrite `initialState` and hide the difference from what is stored.
 	 */
 	filterScopes?: (scopes: string[]) => string[];
+	/**
+	 * Applied to form scopes after `filterScopes`, but not to `initialState`.
+	 * Inject required scopes that should persist on the next save without treating
+	 * a legacy role as already up to date.
+	 */
+	ensureScopes?: (scopes: string[]) => string[];
 	/** Error message shown when the initial role fetch fails. */
 	fetchError: string;
 }
@@ -38,6 +46,7 @@ export function useRoleEditorForm({
 	viewRoute,
 	defaultScopes,
 	filterScopes,
+	ensureScopes,
 	fetchError,
 }: UseRoleEditorFormOptions) {
 	const rolesStore = useRolesStore();
@@ -60,13 +69,48 @@ export function useRoleEditorForm({
 	const sanitizeScopes = (scopes: string[]): string[] =>
 		filterScopes ? filterScopes(scopes) : scopes;
 
+	const formScopes = (scopes: string[]): string[] =>
+		ensureScopes ? ensureScopes(sanitizeScopes(scopes)) : sanitizeScopes(scopes);
+
 	const defaultForm = (): RoleEditorForm => ({
 		displayName: '',
 		description: '',
-		scopes: sanitizeScopes(defaultScopes?.() ?? []),
+		scopes: formScopes(defaultScopes?.() ?? []),
 	});
 
 	const initialState = ref<Role | undefined>();
+
+	const formFromRole = (role: Role): RoleEditorForm => ({
+		displayName: role.displayName,
+		description: role.description,
+		scopes: formScopes(role.scopes),
+	});
+
+	// Snapshot is stripped only. Required scopes go on the form so a stored
+	// role missing them stays unsaved until the next save.
+	const snapshotRole = (role: Role) => {
+		initialState.value = structuredClone({
+			...toRaw(role),
+			scopes: sanitizeScopes(role.scopes),
+		});
+	};
+
+	// The roles list already fetched every role with its scopes and usage count.
+	// A role opened from there is in the store, so the editor can show its name,
+	// description and scopes at once instead of an empty form; the fetch by slug
+	// then refreshes it.
+	const cachedRole = (slug: string): Role | undefined =>
+		Object.values(rolesStore.roles)
+			.flat()
+			.find((role) => role.slug === slug);
+
+	const initialForm = (): RoleEditorForm => {
+		const slug = roleSlug();
+		const role = slug ? cachedRole(slug) : undefined;
+		if (!role) return defaultForm();
+		snapshotRole(role);
+		return formFromRole(role);
+	};
 
 	const { state: form, isLoading } = useAsyncState(
 		async () => {
@@ -77,20 +121,16 @@ export function useRoleEditorForm({
 
 			try {
 				const role = await rolesStore.fetchRoleBySlug({ slug });
-				const scopes = sanitizeScopes(role.scopes);
-				// Sanitize initialState too so the form isn't falsely dirty on load.
-				initialState.value = structuredClone({ ...role, scopes });
-				return {
-					displayName: role.displayName,
-					description: role.description,
-					scopes,
-				};
+				snapshotRole(role);
+				return formFromRole(role);
 			} catch (error) {
 				showError(error, fetchError);
+				// Drop the cached snapshot too: an error leaves the editor empty, as before.
+				initialState.value = undefined;
 				return defaultForm();
 			}
 		},
-		defaultForm(),
+		initialForm(),
 		{ shallow: false },
 	);
 
@@ -145,13 +185,7 @@ export function useRoleEditorForm({
 
 	function resetForm(payload: Role | undefined): void {
 		submitted.value = false;
-		form.value = payload
-			? {
-					displayName: payload.displayName,
-					description: payload.description,
-					scopes: sanitizeScopes(payload.scopes),
-				}
-			: defaultForm();
+		form.value = payload ? formFromRole(payload) : defaultForm();
 	}
 
 	return {

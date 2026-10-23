@@ -43,7 +43,7 @@
         "status": {
             "type": "string"
         },
-        "videoViews": {
+        "videoTrueviewViews": {
             "type": "string"
         }
     },

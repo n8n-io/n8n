@@ -38,7 +38,7 @@ const baseDescription: INodeTypeBaseDescription = {
 	name: 'kafkaTrigger',
 	icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 	group: ['trigger'],
-	defaultVersion: 1.3,
+	defaultVersion: 2,
 	description: 'Consume messages from a Kafka topic',
 };
 
@@ -407,9 +407,9 @@ describe('KafkaTrigger Node', () => {
 			headers: { 'content-type': Buffer.from('application/json') },
 		});
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'http://localhost:8081',
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({ host: 'http://localhost:8081/' }),
+		);
 		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
 		expect(emit).toHaveBeenCalledWith([
 			[
@@ -459,10 +459,12 @@ describe('KafkaTrigger Node', () => {
 			value: Buffer.from('test-message'),
 		});
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'https://schema-registry.local:8081',
-			auth: { username: 'registry-user', password: 'registry-password' },
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({
+				host: 'https://schema-registry.local:8081/',
+				auth: { username: 'registry-user', password: 'registry-password' },
+			}),
+		);
 		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
 		expect(emit).toHaveBeenCalledWith([
 			[
@@ -506,9 +508,9 @@ describe('KafkaTrigger Node', () => {
 			},
 		});
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'https://unauthenticated-registry.local:8081',
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({ host: 'https://unauthenticated-registry.local:8081/' }),
+		);
 	});
 
 	it('should emit the original message and log a sanitized warning when decoding fails', async () => {
@@ -2556,9 +2558,15 @@ describe('KafkaTrigger (versioned entry point)', () => {
 		expect(kafkaTrigger.nodeVersions[2].description).toEqual(expectedV2Description);
 	});
 
-	it('defaults new workflows to version 1.3', () => {
-		expect(kafkaTrigger.description.defaultVersion).toBe(1.3);
-		expect(kafkaTrigger.currentVersion).toBe(1.3);
-		expect(kafkaTrigger.getNodeType()).toBe(kafkaTrigger.nodeVersions[1.3]);
+	it('defaults new workflows to version 2', () => {
+		expect(kafkaTrigger.description.defaultVersion).toBe(2);
+		expect(kafkaTrigger.currentVersion).toBe(2);
+		expect(kafkaTrigger.getNodeType()).toBe(kafkaTrigger.nodeVersions[2]);
+	});
+
+	it('still resolves a workflow pinned to an earlier version', () => {
+		for (const version of v1Versions) {
+			expect(kafkaTrigger.getNodeType(version)).toBeInstanceOf(KafkaTriggerV1);
+		}
 	});
 });

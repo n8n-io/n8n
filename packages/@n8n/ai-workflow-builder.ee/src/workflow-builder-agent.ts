@@ -40,6 +40,7 @@ import type { HITLInterruptValue, PlanOutput } from './types/planning';
 import type { SimpleWorkflow } from './types/workflow';
 import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
 import { createStreamProcessor, type StreamEvent } from './utils/stream-processor';
+import { sanitizeWorkflowForBuilder } from './utils/workflow-sanitization';
 import type { WorkflowState } from './workflow-state';
 
 const PROMPT_IS_TOO_LARGE_ERROR =
@@ -196,18 +197,19 @@ export class WorkflowBuilderAgent {
 	async getState(workflowId?: string, userId?: string): Promise<TypedStateSnapshot> {
 		const workflow = this.createWorkflow();
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
-		return (await workflow.getState({
+		return await workflow.getState({
 			configurable: { thread_id: threadId },
-		})) as TypedStateSnapshot;
+		});
 	}
 
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
-		return (
-			(payload.workflowContext?.currentWorkflow as SimpleWorkflow) ?? {
-				nodes: [],
-				connections: {},
-			}
-		);
+		const currentWorkflow = payload.workflowContext?.currentWorkflow as SimpleWorkflow | undefined;
+
+		if (!currentWorkflow) {
+			return { nodes: [], connections: {}, name: '' };
+		}
+
+		return sanitizeWorkflowForBuilder(currentWorkflow);
 	}
 
 	async *chat(

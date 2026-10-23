@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -7,7 +8,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OauthService } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';

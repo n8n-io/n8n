@@ -1,7 +1,13 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class CreateFolderTable1738709609940 implements ReversibleMigration {
-	async up({ runQuery, escape, schemaBuilder: { createTable, column } }: MigrationContext) {
+	async up({
+		runQuery,
+		escape,
+		queryRunner,
+		tablePrefix,
+		schemaBuilder: { createTable, column },
+	}: MigrationContext) {
 		const workflowTable = escape.tableName('workflow_entity');
 		const workflowFolderId = escape.columnName('parentFolderId');
 		const folderTable = escape.tableName('folder');
@@ -41,6 +47,12 @@ export class CreateFolderTable1738709609940 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			});
+
+		// On SQLite this migration commits its own transaction, and the executor
+		// records it afterwards. A stop between the two leaves the column in place
+		// with no record, so the next run must not add the column again. The
+		// `createTable` calls above already skip existing tables.
+		if (await queryRunner.hasColumn(`${tablePrefix}workflow_entity`, 'parentFolderId')) return;
 
 		await runQuery(
 			`ALTER TABLE ${workflowTable} ADD COLUMN ${workflowFolderId} VARCHAR(36) DEFAULT NULL REFERENCES ${folderTable}(${folderId}) ON DELETE SET NULL`,

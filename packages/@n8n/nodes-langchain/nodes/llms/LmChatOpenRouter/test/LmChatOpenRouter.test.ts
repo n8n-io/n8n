@@ -4,7 +4,7 @@
 
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, getProxyAgent } from '@n8n/ai-utilities';
+import { makeN8nLlmFailedAttemptHandler, getProxyAgent, aiClientFetch } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
@@ -17,6 +17,7 @@ vi.mock('@n8n/ai-utilities');
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 
 describe('LmChatOpenRouter', () => {
 	let node: LmChatOpenRouter;
@@ -50,6 +51,11 @@ describe('LmChatOpenRouter', () => {
 
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
+		// aiClientFetch wraps global fetch in production; mirror that so the
+		// OpenRouter adapter drives the test's globalThis.fetch stub.
+		mockedAiClientFetch.mockImplementation(
+			async (...args) => await (globalThis.fetch as typeof fetch)(...args),
+		);
 		return ctx;
 	};
 
@@ -275,6 +281,80 @@ describe('LmChatOpenRouter', () => {
 				expect(callArgs?.modelKwargs).toBeUndefined();
 			});
 		});
+
+		describe('reasoning effort', () => {
+			const setupWithOptions = (model: string, options: Record<string, unknown>) => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return model;
+					if (paramName === 'options') return options;
+					return undefined;
+				});
+				return ctx;
+			};
+
+			it.each(['minimal', 'low', 'medium', 'high', 'xhigh'])(
+				'should set reasoning.effort to %s in modelKwargs',
+				async (effort) => {
+					const ctx = setupWithOptions('openai/gpt-6-sol', { reasoningEffort: effort });
+
+					await node.supplyData.call(ctx, 0);
+
+					expect(MockedChatOpenAI).toHaveBeenCalledWith(
+						expect.objectContaining({
+							modelKwargs: { reasoning: { effort } },
+						}),
+					);
+				},
+			);
+
+			it('should not pass reasoningEffort as a ChatOpenAI field', async () => {
+				const ctx = setupWithOptions('openai/gpt-6-sol', { reasoningEffort: 'high' });
+
+				await node.supplyData.call(ctx, 0);
+
+				const callArgs = MockedChatOpenAI.mock.calls[0][0];
+				expect(callArgs).not.toHaveProperty('reasoningEffort');
+				expect(callArgs).not.toHaveProperty('reasoning');
+			});
+
+			it('should include reasoning, response format and provider routing together', async () => {
+				const ctx = setupWithOptions('openai/gpt-6-sol', {
+					reasoningEffort: 'low',
+					responseFormat: 'json_object',
+					providerRouting: { zdr: true },
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						modelKwargs: {
+							reasoning: { effort: 'low' },
+							response_format: { type: 'json_object' },
+							provider: { zdr: true },
+						},
+					}),
+				);
+			});
+
+			it.each(['openai/gpt-6-sol', 'openai/gpt-5', 'anthropic/claude-sonnet-4-20250514'])(
+				'should serialize reasoning in the OpenRouter request for %s',
+				async (model) => {
+					const ctx = setupWithOptions(model, { reasoningEffort: 'high' });
+					await node.supplyData.call(ctx, 0);
+
+					// Feed the node's constructor args into the real ChatOpenAI to inspect the request body
+					const actual =
+						await vi.importActual<typeof import('@langchain/openai')>('@langchain/openai');
+					const realModel = new actual.ChatOpenAI(MockedChatOpenAI.mock.calls[0][0]);
+					const params = realModel.invocationParams({});
+
+					expect(params).toMatchObject({ model, reasoning: { effort: 'high' } });
+					expect(params).not.toHaveProperty('reasoning_effort');
+				},
+			);
+		});
 	});
 
 	describe('fetch wrapper (empty tool call arguments fix)', () => {
@@ -302,6 +382,17 @@ describe('LmChatOpenRouter', () => {
 			await node.supplyData.call(ctx, 0);
 			return MockedChatOpenAI.mock.calls[0][0]?.configuration?.fetch as typeof fetch;
 		}
+
+		it('should delegate to the bounded aiClientFetch under the wrapper', async () => {
+			const mockFetch = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+
+			const wrappedFetch = await setupFetchWrapper(mockFetch);
+			await wrappedFetch('https://openrouter.ai/api/v1/models');
+
+			// The wrapper must route through aiClientFetch, not call fetch directly,
+			// so the outbound response stays bounded.
+			expect(mockedAiClientFetch).toHaveBeenCalled();
+		});
 
 		it.each<{ input: unknown; expected: string; label: string }>([
 			{ input: '', expected: '{}', label: 'empty string' },

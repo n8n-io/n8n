@@ -1,0 +1,69 @@
+{
+	"name": "Databricks Job Run Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "run",
+				"jobId": {
+					"mode": "id",
+					"value": "281874479417551"
+				},
+				"jobParameters": {
+					"parameters": [
+						{
+							"name": "environment",
+							"value": "staging"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "job-run-001",
+			"name": "Run Job",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Run Job": [
+			{
+				"json": {
+					"run_id": 41847992357943,
+					"number_in_job": 41847992357943
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Run Job",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

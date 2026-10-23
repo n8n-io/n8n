@@ -1,9 +1,20 @@
 import { createTestingPinia } from '@pinia/testing';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import type { AgentResource } from '../types';
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -36,6 +47,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['open'],
 	},
 	N8nDialogHeader: { template: '<div><slot /></div>' },
+	N8nDialogBody: { template: '<div><slot /></div>' },
 	N8nDialogTitle: { template: '<div><slot /></div>' },
 	N8nHeading: { template: '<h2><slot /></h2>', props: ['size'] },
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
@@ -44,8 +56,8 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['disabled', 'ariaLabel'],
 	},
 	N8nLoading: { template: '<div />', props: ['rows', 'variant'] },
+	N8nSegmentControl: { template: '<div />', props: ['modelValue', 'options'] },
 	N8nOption: { template: '<div />', props: ['value', 'label', 'disabled'] },
-	N8nRadioButtons: { template: '<div />', props: ['modelValue', 'options'] },
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
 	N8nSelect: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
 	N8nSwitch: { template: '<button data-test-id="agent-memory-toggle"></button>' },
@@ -54,8 +66,16 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTabs: {
 		name: 'N8nTabs',
 		template:
-			'<nav data-testid="agent-header-tabs"><button v-for="option in options" :key="option.value">{{ option.label }}</button></nav>',
+			'<nav data-testid="agent-header-tabs"><button v-for="option in options" :key="option.value" :data-tab="option.value" @click="$emit(\'update:modelValue\', option.value)">{{ option.label }}</button></nav>',
 		props: ['modelValue', 'options'],
+		emits: ['update:modelValue'],
+	},
+	N8nToggle: {
+		name: 'N8nToggle',
+		template:
+			'<button :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
+		emits: ['click'],
 	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 }));
@@ -72,8 +92,8 @@ vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
 	default: { name: 'AgentCapabilitiesSection', template: '<div />' },
 }));
 
-vi.mock('../components/AgentChannelsSection.vue', () => ({
-	default: { name: 'AgentChannelsSection', template: '<div />' },
+vi.mock('../components/AgentTriggersSection.vue', () => ({
+	default: { name: 'AgentTriggersSection', template: '<div />' },
 }));
 
 vi.mock('../components/AgentIdentityHeader.vue', () => ({
@@ -85,7 +105,7 @@ vi.mock('../components/AgentInfoPanel.vue', () => ({
 		name: 'AgentInfoPanel',
 		template:
 			'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-		props: ['showModel', 'showInstructions', 'showInstructionsToolbar', 'instructionsMaxHeight'],
+		props: ['showModel', 'showInstructions'],
 	},
 }));
 
@@ -93,13 +113,25 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 	default: {
 		name: 'AgentFilesPanel',
 		template: '<div data-testid="agent-files-panel" />',
-		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
+		props: ['agentId', 'files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
 		emits: ['upload-files', 'delete-file'],
 	},
 }));
 
 vi.mock('../components/AgentPanelHeader.vue', () => ({
-	default: { name: 'AgentPanelHeader', template: '<h3 data-testid="agent-panel-header" />' },
+	default: {
+		name: 'AgentPanelHeader',
+		template: '<header data-testid="agent-panel-header"><slot name="actions" /></header>',
+	},
+}));
+
+vi.mock('../components/AgentBudgetPanel.vue', () => ({
+	default: {
+		name: 'AgentBudgetPanel',
+		template: '<div data-testid="agent-budget-panel-stub" />',
+		props: ['config', 'disabled', 'projectId', 'agentId'],
+		emits: ['update:config'],
+	},
 }));
 
 vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
@@ -114,7 +146,7 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 vi.mock('../views/AgentSessionsListView.vue', () => ({
 	default: {
 		name: 'AgentSessionsListView',
-		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab', 'manageStoreLifecycle'],
+		props: ['embedded', 'projectId', 'agentId', 'manageStoreLifecycle'],
 		template: '<div />',
 	},
 }));
@@ -147,6 +179,7 @@ async function mountColumn(
 		}>;
 		knowledgeBaseEnabled: boolean;
 		canEditAgent: boolean;
+		agent: AgentResource | null;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -158,7 +191,7 @@ async function mountColumn(
 		props: {
 			activeMainTab: overrides.activeMainTab ?? 'agent',
 			mainTabOptions: overrides.mainTabOptions ?? [
-				{ label: 'Agent', value: 'agent' },
+				{ label: 'Build', value: 'agent' },
 				{ label: 'Knowledge', value: 'knowledge' },
 				{ label: 'Sessions', value: 'sessions' },
 				{ label: 'Settings', value: 'settings' },
@@ -169,7 +202,7 @@ async function mountColumn(
 				instructions: 'Help the user.',
 				memory: { enabled: true, storage: 'n8n' },
 			},
-			agent: null,
+			agent: overrides.agent ?? null,
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			agentFiles: [],
@@ -185,19 +218,14 @@ async function mountColumn(
 			plugins: [pinia],
 			stubs: {
 				AgentCapabilitiesSection: false,
-				AgentChannelsSection: false,
+				AgentTriggersSection: false,
 				AgentInfoPanel: {
 					name: 'AgentInfoPanel',
 					template:
 						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-					props: [
-						'showModel',
-						'showInstructions',
-						'showInstructionsToolbar',
-						'instructionsMaxHeight',
-					],
+					props: ['showModel', 'showInstructions'],
+					emits: ['update:config'],
 				},
-				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
 			},
@@ -210,15 +238,51 @@ describe('AgentBuilderEditorColumn', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders Agent, Knowledge, Sessions, and Settings tabs without Raw', async () => {
+	it.each([
+		['agent', 'build'],
+		['sessions', 'sessions'],
+		['knowledge', 'knowledge'],
+		['settings', 'settings'],
+	] as const)('tracks repeated %s tab activation as %s', async (tab, name) => {
+		const wrapper = await mountColumn({ activeMainTab: tab });
+		expect(track).not.toHaveBeenCalled();
+
+		await wrapper.get(`[data-tab="${tab}"]`).trigger('click');
+		await wrapper.get(`[data-tab="${tab}"]`).trigger('click');
+
+		expect(track).toHaveBeenCalledTimes(2);
+		expect(track).toHaveBeenLastCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_AGENTS_TAB, {
+			agent_id: 'agent-1',
+			push_ref: 'session-xyz',
+			name,
+		});
+		expect(wrapper.emitted('update:activeMainTab')).toEqual([[tab], [tab]]);
+	});
+
+	it('keeps initialization, programmatic tab changes, and Evals telemetry silent', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'knowledge' });
+		await wrapper.setProps({ activeMainTab: 'settings' });
+		wrapper.getComponent({ name: 'N8nTabs' }).vm.$emit('update:modelValue', 'evals');
+
+		expect(track).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:activeMainTab')).toEqual([['evals']]);
+	});
+
+	it('renders Build, Knowledge, Sessions, and Settings tabs without Raw', async () => {
 		const wrapper = await mountColumn();
 
 		const tabs = wrapper.find('[data-testid="agent-header-tabs"]');
-		expect(tabs.text()).toContain('Agent');
+		expect(tabs.text()).toContain('Build');
 		expect(tabs.text()).toContain('Knowledge');
 		expect(tabs.text()).toContain('Sessions');
 		expect(tabs.text()).toContain('Settings');
 		expect(tabs.text()).not.toContain('Raw');
+	});
+
+	it('loads the type availability policies for the project', async () => {
+		await mountColumn();
+
+		expect(useTypeAvailabilityPoliciesStore().fetchForProject).toHaveBeenCalledWith('project-1');
 	});
 
 	it('does not render per-tab headings or descriptions for Sessions and Settings', async () => {
@@ -279,6 +343,37 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.emitted('generate-eval-cases')).toHaveLength(1);
 	});
 
+	it('forwards the auto-applied-default meta from AgentInfoPanel to the host', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper
+			.getComponent({ name: 'AgentInfoPanel' })
+			.vm.$emit('update:config', { model: 'openai/gpt-5-mini' }, { source: 'auto' });
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{ model: 'openai/gpt-5-mini' },
+			{ source: 'auto' },
+		]);
+	});
+
+	it('forwards a user-driven AgentInfoPanel config change without meta', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper
+			.getComponent({ name: 'AgentInfoPanel' })
+			.vm.$emit('update:config', { instructions: 'x' });
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([{ instructions: 'x' }, undefined]);
+	});
+
+	it('forwards draft input before the config update', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper.getComponent({ name: 'AgentInfoPanel' }).vm.$emit('draft:config');
+
+		expect(wrapper.emitted('draft:config')).toHaveLength(1);
+	});
+
 	it('disables the evals CTA for a read-only agent', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
 
@@ -301,7 +396,6 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props()).toMatchObject({
 			embedded: true,
 			manageStoreLifecycle: false,
-			openSessionInNewTab: false,
 		});
 	});
 
@@ -311,13 +405,36 @@ describe('AgentBuilderEditorColumn', () => {
 
 		expect(agentWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
 		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(true);
+		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).props('agentId')).toBe(
+			'agent-1',
+		);
+		expect(
+			knowledgeWrapper
+				.findAllComponents({ name: 'AgentPanel' })
+				.find(function hasFilesHeader(panel) {
+					return panel.props('header') === 'agents.builder.files.title';
+				})
+				?.props('description'),
+		).toBe('agents.builder.files.titleTooltip');
 	});
 
-	it('renders the Knowledge tab with vector stores but without the files table when the knowledge base is disabled', async () => {
+	it('keeps vector stores under the collapsed Advanced disclosure on the Knowledge tab', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'knowledge', knowledgeBaseEnabled: false });
 
 		expect(wrapper.find('[data-testid="agent-knowledge-tab-content"]').exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
+
+		const trigger = wrapper.find('[data-testid="agent-knowledge-advanced-trigger"]');
+
+		expect(trigger.exists()).toBe(true);
+		expect(trigger.attributes('aria-expanded')).toBe('false');
+		expect(wrapper.find('[data-testid="agent-knowledge-advanced-content"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(false);
+
+		await trigger.trigger('click');
+
+		expect(trigger.attributes('aria-expanded')).toBe('true');
+		expect(wrapper.find('[data-testid="agent-knowledge-advanced-content"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(true);
 	});
 
@@ -329,16 +446,35 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabsRule.find('[data-testid="agent-header-tabs"]').exists()).toBe(true);
 	});
 
-	it('uses settings cards without wrapping the Agent tab sections', async () => {
-		const agentWrapper = await mountColumn({ knowledgeBaseEnabled: false });
-		const settingsWrapper = await mountColumn({ activeMainTab: 'settings' });
+	it('renders named Agent tab cards', async function rendersNamedCards() {
+		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
+		const panels = wrapper.findAllComponents({ name: 'AgentPanel' });
 
-		expect(agentWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(0);
-		expect(settingsWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(3);
+		expect(
+			panels.map(function getPanelHeader(panel) {
+				return panel.props('header');
+			}),
+		).toEqual([
+			'agents.builder.skills.title',
+			'agents.builder.triggers.title',
+			'agents.builder.capabilities.title',
+			'agents.builder.memory.title',
+		]);
 	});
 
-	it('renders only the episodic memory row in the builder memory card', async () => {
-		const wrapper = await mountColumn({ activeMainTab: 'settings' });
+	it.each([true, false])(
+		'handles preview clicks from the Triggers card when runnable is %s',
+		async (isRunnable) => {
+			const wrapper = await mountColumn({ agent: { isRunnable } as AgentResource });
+
+			await wrapper.get('[data-testid="agent-triggers-preview-chat-button"]').trigger('click');
+
+			expect(wrapper.emitted('open-preview')).toEqual(isRunnable ? [['icon']] : undefined);
+		},
+	);
+
+	it('renders the episodic memory row on the Agent tab', async function rendersMemoryOnAgentTab() {
+		const wrapper = await mountColumn();
 
 		expect(wrapper.text()).toContain('Episodic Memory');
 		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
@@ -349,6 +485,15 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 		await flushPromises();
 
+		const budgetPanel = wrapper.findComponent({ name: 'AgentBudgetPanel' });
+		expect(budgetPanel.exists()).toBe(true);
+		expect(budgetPanel.props('config')).toMatchObject({
+			name: 'Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+		});
+		expect(budgetPanel.props('disabled')).toBe(false);
+		expect(budgetPanel.props('projectId')).toBe('project-1');
+		expect(budgetPanel.props('agentId')).toBe('agent-1');
 		const subAgentsPanel = wrapper.findComponent({ name: 'AgentSubAgentsPanel' });
 		expect(subAgentsPanel.exists()).toBe(true);
 		expect(subAgentsPanel.props('config')).toMatchObject({
@@ -358,10 +503,26 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('disabled')).toBe(false);
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
-		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(true);
+		// Usage and limits sits above sub-agents.
+		expect(
+			budgetPanel.element.compareDocumentPosition(subAgentsPanel.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
 		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
 		expect(advancedPanel.exists()).toBe(true);
 		expect(advancedPanel.props('projectId')).toBe('project-1');
+	});
+
+	it('forwards a budget panel config update to the host as a budget save', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'settings' });
+		await flushPromises();
+
+		const changes = { config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } } };
+		wrapper.findComponent({ name: 'AgentBudgetPanel' }).vm.$emit('update:config', changes);
+
+		expect(wrapper.emitted('update:budget-config')?.[0]).toEqual([changes]);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {
@@ -371,46 +532,44 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentInfoPanel' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentSubAgentsPanel' }).exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(false);
 	});
 
-	it('orders the Agent tab as channels, capabilities, model, then instructions', async () => {
+	it('keeps the Agent tab card order', async function ordersAgentCards() {
 		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		await flushPromises();
 
-		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
-		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
+		const skills = wrapper.find('[data-testid="agent-skills-panel"]');
+		const triggers = wrapper.findComponent({ name: 'AgentTriggersSection' });
+		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
+		const memory = wrapper.getComponent({ name: 'AgentMemoryPanel' });
 
-		expect(channels.exists()).toBe(true);
-		expect(capabilities.exists()).toBe(true);
 		expect(model.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
-		expect(
-			channels.element.compareDocumentPosition(capabilities.element) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
-		expect(
-			capabilities.element.compareDocumentPosition(model.element) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
+		expect(skills.exists()).toBe(true);
+		expect(triggers.exists()).toBe(true);
+		expect(capabilities.exists()).toBe(true);
 		expect(
 			model.element.compareDocumentPosition(instructions.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
-	});
-
-	it('shows the instructions toolbar in the main Agent tab', async () => {
-		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
-		await flushPromises();
-
-		const instructionsPanel = wrapper
-			.findAllComponents({ name: 'AgentInfoPanel' })
-			.find((panel) => panel.props('showModel') === false);
-
-		expect(instructionsPanel?.props('showInstructionsToolbar')).toBe(true);
-		expect(instructionsPanel?.props('instructionsMaxHeight')).toBe('none');
+		expect(
+			instructions.element.compareDocumentPosition(skills.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			skills.element.compareDocumentPosition(triggers.element) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			triggers.element.compareDocumentPosition(capabilities.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			capabilities.element.compareDocumentPosition(memory.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 });

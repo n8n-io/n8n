@@ -1,8 +1,9 @@
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { matchSourceIds } from '../match-source-ids';
 
 export interface WorkflowIdConflict {
 	sourceWorkflowId: string;
@@ -11,6 +12,21 @@ export interface WorkflowIdConflict {
 	existingProjectId: string | null;
 	isArchived: boolean;
 	name: string;
+}
+
+export interface WorkflowLineageConflict {
+	sourceWorkflowId: string;
+	projectId: string;
+	existingWorkflows: Array<{
+		id: string;
+		name: string;
+		isArchived: boolean;
+	}>;
+}
+
+interface WorkflowImportMatches {
+	matches: Map<string, WorkflowEntity>;
+	lineageConflicts: WorkflowLineageConflict[];
 }
 
 @Service()
@@ -42,12 +58,17 @@ export class WorkflowImportMatchService {
 	async findBySourceWorkflowIds(
 		projectId: string,
 		sourceWorkflowIds: string[],
-	): Promise<Map<string, WorkflowEntity>> {
-		if (sourceWorkflowIds.length === 0) return new Map();
+	): Promise<WorkflowImportMatches> {
+		if (sourceWorkflowIds.length === 0) {
+			return { matches: new Map(), lineageConflicts: [] };
+		}
 
-		const packageWorkflowIds = new Set(sourceWorkflowIds);
-		const finderOptions = { includeActiveVersion: true, includeParentFolder: true } as const;
-		const matchBySourceWorkflowId = new Map<string, WorkflowEntity>();
+		const finderOptions = {
+			includeActiveVersion: true,
+			includeParentFolder: true,
+			includeArchived: true,
+		} as const;
+		const lineageConflicts: WorkflowLineageConflict[] = [];
 
 		const workflows = await this.workflowFinderService.findOwnedWorkflowsBySourceWorkflowIds(
 			projectId,
@@ -55,31 +76,32 @@ export class WorkflowImportMatchService {
 			finderOptions,
 		);
 
-		for (const workflow of workflows) {
-			if (!workflow.sourceWorkflowId) continue;
+		const { matches, ambiguous } = matchSourceIds(
+			sourceWorkflowIds,
+			workflows,
+			(workflow) => workflow.sourceWorkflowId,
+		);
 
-			const key = workflow.sourceWorkflowId;
-			if (!packageWorkflowIds.has(key)) continue;
-
-			if (matchBySourceWorkflowId.has(key)) {
-				throw new UnexpectedError(
-					'Multiple workflows in the target project share the same sourceWorkflowId',
-					{ extra: { projectId, sourceWorkflowId: key } },
-				);
+		for (const [sourceWorkflowId, candidates] of ambiguous) {
+			const activeCandidates = candidates.filter((workflow) => !workflow.isArchived);
+			if (activeCandidates.length === 1) {
+				matches.set(sourceWorkflowId, activeCandidates[0]);
+				continue;
 			}
 
-			matchBySourceWorkflowId.set(key, workflow);
+			// Keep a representative so the planner skips the conflicting import.
+			matches.set(sourceWorkflowId, candidates[0]);
+			lineageConflicts.push({
+				sourceWorkflowId,
+				projectId,
+				existingWorkflows: candidates.map(({ id, name, isArchived }) => ({
+					id,
+					name,
+					isArchived,
+				})),
+			});
 		}
 
-		for (const workflow of workflows) {
-			if (workflow.sourceWorkflowId !== null) continue;
-
-			const key = workflow.id;
-			if (!packageWorkflowIds.has(key) || matchBySourceWorkflowId.has(key)) continue;
-
-			matchBySourceWorkflowId.set(key, workflow);
-		}
-
-		return matchBySourceWorkflowId;
+		return { matches, lineageConflicts };
 	}
 }

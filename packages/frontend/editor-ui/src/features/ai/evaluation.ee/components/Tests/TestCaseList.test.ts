@@ -52,7 +52,7 @@ const mockFetchExecution = vi.fn().mockResolvedValue(null);
 
 vi.mock('@/features/execution/executions/executions.store', () => ({
 	useExecutionsStore: () => ({
-		fetchExecutions: mockFetchExecutions,
+		fetchExecutionsPage: mockFetchExecutions,
 		fetchExecution: mockFetchExecution,
 	}),
 }));

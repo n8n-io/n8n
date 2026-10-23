@@ -41,7 +41,8 @@ export function applyMisfirePolicy(
 	}
 
 	switch (job.misfirePolicy) {
-		case ScheduledJobMisfirePolicy.Coalesce: {
+		case ScheduledJobMisfirePolicy.Coalesce:
+		case ScheduledJobMisfirePolicy.CoalesceOwner: {
 			if (truncated && ahead.length === 0) return { occurrences: [], catchUpAt: null };
 			const catchUpAt = behind[behind.length - 1];
 			return { occurrences: [catchUpAt, ...ahead], catchUpAt };

@@ -323,7 +323,9 @@ onUnmounted(() => {
 
 .chatSdkContainer {
 	display: flex;
-	height: 100%;
+	/* Take the space left by the header instead of a full-height overflow */
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow: hidden;
 	flex-direction: column;
 }

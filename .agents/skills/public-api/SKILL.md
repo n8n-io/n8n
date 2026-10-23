@@ -21,8 +21,7 @@ check the code, not license to drop a team default.
 ## Non-negotiable rules
 
 - New endpoints are `@PublicApiController` classes under `v1/controllers/`, one
-  `*.public.controller.ts` per feature. A controller is a class — never
-  `export =` (the legacy tuple style; `require-public-api-controller` flags it).
+  `*.public.controller.ts` per feature.
 - Public API and internal REST are separate HTTP surfaces. A public controller
   never calls an internal controller/endpoint; both reuse the same service.
 - Controllers and handlers delegate to a service — never import a repository or
@@ -31,7 +30,6 @@ check the code, not license to drop a team default.
   `@ApiResponse(Dto)`.
 - Register each controller via a side-effect import in `v1/controllers/index.ts`
   (`public-api-controllers.test.ts` fails otherwise).
-- Don't add business logic to legacy `express-openapi-validator` (EOV) handlers.
 - Migrating a legacy endpoint must not change its public contract.
 
 These are `n8n-local-rules` ESLint rules (see `packages/cli/eslint.config.mjs`)
@@ -41,8 +39,14 @@ add to it.
 
 ## Team defaults
 
+- Write code that acts as its own documentation. The schema, the decorator, and the test should make the rule clear on their own without a comment.
 - List endpoints: cursor-based pagination (internal API uses both cursor- and
   page-based — don't copy an internal endpoint's model).
+- Pagination args are always `offset` and `limit` — on service methods, handler
+  calls, and repository methods you add. Never `skip`/`take` (TypeORM names).
+  Translate to `skip`/`take` only inside a repository, at the TypeORM `find`
+  call. The public query string is still `cursor` + `limit`; `offset` is the
+  decoded cursor field passed into the service, never a client-facing param.
 - Updates: full-object `PUT`, not `PATCH`. A successful `GET` body should be
   acceptable as a `PUT` body for the same resource (round-trip), aside from
   server-managed/immutable fields.
@@ -103,19 +107,25 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
 | `@Get/@Post/@Put/@Patch/@Delete('/path')` | Route method. |
 | `@ApiKeyScope('res:action')` | API-key grant check. |
 | `@ProjectScope/@GlobalScope('res:action')` | User RBAC check. |
-| `@ApiResponse(status)` / `@ApiResponse(status, Dto)` | Success status + (optional) output DTO; registry `.parse()`s + strips the return value. Exactly one per route — a second `@ApiResponse` throws. `204` can't carry a DTO — throws. |
+| `@ApiResponse(status)` / `@ApiResponse(status, Dto)` | Success status + (optional) output DTO; registry `.parse()`s + strips the return value. Exactly one per route — a second `@ApiResponse` throws. `204` can't carry a DTO or a binary body — throws. For a binary response body (returned as `{ body, headers? }`), use `@ApiResponse(status, { mediaType, description?, headers? })` — see [Binary response bodies](reference.md#binary-response-bodies). |
 | `@ApiErrorResponse(status)` | Declares an additional documented non-2xx status (e.g. `404`, `409`). Stack multiple for more than one. `400`/`401`/`403` are added automatically (body/query present, always, and `@ApiKeyScope` present, respectively) — don't declare those yourself. |
 | `@ApiSummary(text)` / `@ApiDescription(text)` / `@ApiTags([...])` | OpenAPI summary/description/tags. `@ApiTags` sorts alphabetically regardless of the order you pass. All optional but expected on every real route. |
-| `@Query` / `@Body` / `@Param('name')` | Bind + validate via a `Z.class` DTO / path param. |
+| `@Query` / `@Body` / `@Param('name')` | Bind + validate via a `Z.class` DTO / path param. `@Body` is JSON by default; `@Body({ mediaType: 'multipart/form-data', uploadLimits })` takes a `multipart/form-data` body instead — see [Request body media types](reference.md#request-body-media-types). |
 | `@Licensed('feat')` | Gates the route on a single `BooleanLicenseFeature`; `PublicApiControllerRegistry` runs its own license middleware (after auth/`@ApiKeyScope`/`@ProjectScope`|`@GlobalScope`, before the handler) and 403s unlicensed requests. Only takes one feature — if the gate is an any-of/all-of combination (e.g. `LicenseState.isProvisioningLicensed()`, which is `feat:saml` OR `feat:oidc`), `@Licensed` can't express that; check manually in the handler instead, same as the internal `provisioning.controller.ee.ts`/`role-mapping-rule.controller.ee.ts` do today (throwing `ForbiddenError` on failure). |
 
 ## Authorization (easy to get wrong)
 
 - `@ApiKeyScope` (what the API key is granted) and `@ProjectScope`/`@GlobalScope`
   (what the user may do) are independent. Use both when the model needs both.
-- `@ProjectScope` reads `req.params` as-is and does not remap `id` — name the path
-  param what the resolver expects (`workflowId`, `credentialId`, `projectId`,
-  `dataTableId`, …). A generic `id` often fails.
+- Name every path param `{resource}Id` (e.g. `workflowId`, `credentialId`,
+  `projectId`, …) — never a generic `:id` / `{id}`. This is the Public API's
+  naming convention: it keeps the API self-documenting and gives typed SDK
+  codegen a real argument name instead of `id`. `@ProjectScope` also reads
+  `req.params` as-is and does not remap `id` — it resolves authorization by
+  exact key name (`workflowId`, `credentialId`, `projectId`, `dataTableId`,
+  …), so a generic `id` on a `@ProjectScope` route often fails outright; a
+  `@GlobalScope` or unscoped route won't fail the same way, but still follow
+  the convention.
 - `@ApiKeyScope` takes a string, `{ anyOf: [...] }`, or `{ allOf: [...] }` — never
   a bare array. The scope must exist in the permissions registry
   (`API_KEY_RESOURCES` in `@n8n/permissions`); `scope-parity.test.ts` fails on an
@@ -127,17 +137,29 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
   on `@ApiResponse` stripping to hide fields.
 - Treat the output DTO as an allowlist. Re-check nested relations, ownership
   fields, tokens, and encrypted values.
-- Make input DTOs strict so unknown/partial fields aren't silently accepted.
+- An output DTO restricts which fields you return, not which values they may hold.
+  The registry parses the handler's return value against it, so a value the schema
+  rejects becomes a `500`. Keep the schema loose enough for anything an existing
+  row may contain.
+- Build the response from the relations the route loaded, not from the entity type.
+  TypeORM relations are opt-in, so two routes over the same entity can return
+  different shapes.
+- Make input DTOs strict so unknown/partial fields aren't silently accepted:
+  `Z.class(shape, { strict: true })`.
 - Secrets: never return a real secret; use the resource's sentinel/placeholder
   (or omit). See [Updates and write-only secrets](reference.md#updates-and-write-only-secrets).
 
 ## List endpoints (cursor pagination)
 
-Copy the cursor flow from `tags.public.controller.ts`. Use `publicApiPaginationSchema`
-plus `decodeCursor` / `encodeNextCursor` from the shared pagination service; the
+Copy the cursor flow from `tags.public.controller.ts`. The input DTO takes
+`limit: publicApiPaginationSchema.limit` plus `cursor: z.string().optional()` —
+pick `limit` off the schema, never spread the whole `publicApiPaginationSchema`
+(it also exports `offset`, which must never be a Public API query param). Use
+`decodeCursor` / `encodeNextCursor` from the shared pagination service; the
 cursor is opaque; return `{ data, nextCursor }` (never a bare array) with
 `nextCursor: null` on the last page; an invalid cursor is a `400`. Preserve an
-existing endpoint's pagination as-is. Detail:
+existing endpoint's cursor semantics as-is — but an `offset` param is a
+defect to remove, not a contract to preserve. Detail:
 [List endpoints and cursor pagination](reference.md#list-endpoints-and-cursor-pagination).
 
 ## Wiring checklist
@@ -176,4 +198,5 @@ existing tests.
 - [Test-before-save endpoints](reference.md#test-before-save-endpoints)
 - [Errors](reference.md#errors)
 - [Testing matrix](reference.md#testing-matrix)
-- [Migrating legacy EOV endpoints](reference.md#migrating-legacy-eov-endpoints)
+- [Verifying a migration](reference.md#verifying-a-migration)
+- [CI and merging](reference.md#ci-and-merging)

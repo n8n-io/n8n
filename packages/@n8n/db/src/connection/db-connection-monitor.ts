@@ -6,7 +6,7 @@ import type { PostgresDriver } from '@n8n/typeorm/driver/postgres/PostgresDriver
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ErrorReporter } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
-import { setTimeout as setTimeoutP } from 'timers/promises';
+import { setImmediate as setImmediateP, setTimeout as setTimeoutP } from 'timers/promises';
 
 import { computeBackoff } from './backoff';
 import type { DbConnectionMetrics } from './db-connection-metrics';
@@ -276,7 +276,10 @@ export class DbConnectionMonitor {
 				work,
 				setTimeoutP(timeoutMs, undefined, {
 					signal: abortController.signal,
-				}).then(() => {
+				}).then(async () => {
+					// After a stalled event loop, due timers run before pending I/O is polled.
+					// Yield one I/O turn so a reply that already arrived still wins the race.
+					await setImmediateP();
 					throw new OperationalError('Database connection timed out');
 				}),
 			]);
@@ -325,7 +328,9 @@ export class DbConnectionMonitor {
 					this.setConnected(true);
 					this.consecutiveFailures = 0;
 					recovered = true;
+					this.recordRecoveryAttempt('success');
 				} catch (error) {
+					this.recordRecoveryAttempt('failure');
 					const wrapped = ensureError(error);
 					this.errorReporter.error(wrapped);
 					const { minRecoveryBackoffMs, maxRecoveryBackoffMs } = this.databaseConfig;
@@ -659,5 +664,28 @@ export class DbConnectionMonitor {
 		}
 		this.connected = connected;
 		this.onConnectedChange(connected);
+		if (!connected) {
+			this.recordDisconnection();
+		}
+	}
+
+	private recordDisconnection() {
+		try {
+			this.dbConnectionMetrics.disconnectionObserver?.();
+		} catch (error) {
+			// Metrics must not interrupt connection monitoring.
+			this.errorReporter.error(ensureError(error));
+		}
+	}
+
+	private recordRecoveryAttempt(result: 'success' | 'failure') {
+		if (!this.stopped) {
+			try {
+				this.dbConnectionMetrics.recoveryAttemptObserver?.(result);
+			} catch (error) {
+				// Metrics must not interrupt recovery or change its outcome.
+				this.errorReporter.error(ensureError(error));
+			}
+		}
 	}
 }

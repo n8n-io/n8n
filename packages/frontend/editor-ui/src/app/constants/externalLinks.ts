@@ -3,4 +3,5 @@ export const EXTERNAL_LINKS = {
 	DOCUMENTATION: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 	FORUM: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 	COURSES: 'https://docs.n8n.io/courses/',
+	SUPPORT: 'https://support.n8n.io',
 } as const;

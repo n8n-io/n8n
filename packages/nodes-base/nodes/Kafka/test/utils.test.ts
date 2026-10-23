@@ -1,4 +1,5 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+import { passthroughEgressFilter } from '@n8n/backend-network';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { Consumer } from 'kafkajs';
@@ -574,7 +575,7 @@ describe('Kafka Utils', () => {
 
 				const result = await resultPromise;
 
-				expect(mockedSleep).toHaveBeenCalledWith(5000); // DEFAULT_ERROR_RETRY_DELAY_MS
+				expect(mockedSleep).toHaveBeenCalledWith(5000, expect.any(AbortSignal)); // DEFAULT_ERROR_RETRY_DELAY_MS
 				expect(ctx.logger.error).toHaveBeenCalled();
 				expect(result).toEqual({ success: false });
 			});
@@ -593,7 +594,7 @@ describe('Kafka Utils', () => {
 
 				await resultPromise;
 
-				expect(mockedSleep).toHaveBeenCalledWith(10000);
+				expect(mockedSleep).toHaveBeenCalledWith(10000, expect.any(AbortSignal));
 			});
 		});
 
@@ -750,7 +751,7 @@ describe('Kafka Utils', () => {
 
 				const result = await resultPromise;
 
-				expect(mockedSleep).toHaveBeenCalledWith(5000);
+				expect(mockedSleep).toHaveBeenCalledWith(5000, expect.any(AbortSignal));
 				expect(ctx.logger.error).toHaveBeenCalledWith('Execution failed', expect.any(Object));
 				expect(result).toEqual({ success: false });
 			});
@@ -864,24 +865,22 @@ describe('Kafka Utils', () => {
 				expect(ctx.emit).not.toHaveBeenCalled();
 			});
 
-			it('should cut the error retry backoff short when the close signal aborts mid-backoff', async () => {
+			// The backoff is cut short by handing the close signal to `sleep`, which
+			// rejects on abort and clears its timer. That behaviour is covered in
+			// @n8n/utils; here we pin that the signal reaches it.
+			it('should hand the close signal to the error retry backoff', async () => {
 				const deferredPromise = createDeferredPromise<IRun>();
 				const ctx = createMockContext({ resolveOffset: 'onSuccess' }, 'trigger', deferredPromise);
 				const closeController = new AbortController();
-				// Never-ending backoff: the test hangs here unless abort cuts it short
-				mockedSleep.mockReturnValueOnce(new Promise<void>(() => {}));
 
 				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
 				const resultPromise = emitter([{ json: { message: 'test' } }]);
 
 				deferredPromise.resolveWith({ status: 'error' } as unknown as IRun);
 				await vi.advanceTimersByTimeAsync(0);
-				expect(mockedSleep).toHaveBeenCalled();
 
-				closeController.abort();
-
-				const result = await resultPromise;
-				expect(result).toEqual({ success: false });
+				expect(mockedSleep).toHaveBeenCalledWith(expect.any(Number), closeController.signal);
+				expect(await resultPromise).toEqual({ success: false });
 			});
 
 			it('should not accumulate abort listeners across messages', async () => {
@@ -900,7 +899,7 @@ describe('Kafka Utils', () => {
 				await emitter([{ json: { message: 'two' } }]);
 				await emitter([{ json: { message: 'three' } }]);
 
-				expect(getEventListeners(closeController.signal, 'abort')).toHaveLength(1);
+				expect(getEventListeners(closeController.signal, 'abort')).toHaveLength(0);
 			});
 		});
 	});
@@ -1018,7 +1017,9 @@ describe('Kafka Utils', () => {
 			ctx.logger = mock<Logger>();
 			ctx.helpers = {
 				...ctx.helpers,
-				getSecureEgressFilter: vi.fn().mockReturnValue(secureEgressFilter),
+				getSecureEgressFilter: vi
+					.fn()
+					.mockReturnValue(secureEgressFilter ?? passthroughEgressFilter),
 			};
 			return ctx;
 		};
@@ -1037,6 +1038,8 @@ describe('Kafka Utils', () => {
 			const validateUrl = vi.fn().mockResolvedValue(result);
 			const filter: NodeEgressFilter = {
 				validateUrl,
+				validateRedirectSync: vi.fn(),
+				validateConnectionHost: () => createResultOk(undefined),
 				createSecureLookup: () => lookup,
 			};
 			return { filter, lookup, validateUrl };
@@ -1307,14 +1310,16 @@ describe('Kafka Utils', () => {
 				expect(agentLookup(arg.agent)).toBe(lookup);
 			});
 
-			it('constructs the registry without an agent or pre-flight when egress filtering is not configured', async () => {
+			it('constructs the registry with the plain system lookup when egress filtering is not configured', async () => {
 				const ctx = createRegistryContext();
+				const input = 'https://schema-registry.local:8081';
 
-				await createSchemaRegistry(ctx, 'http://169.254.169.254:80 /v');
+				await createSchemaRegistry(ctx, input);
 
 				const arg = lastConstructorArg();
-				expect(arg).toEqual({ host: 'http://169.254.169.254:80 /v' });
-				expect(arg).not.toHaveProperty('agent');
+				expect(arg.host).toBe(new URL(input).href);
+				expect(arg.agent).toBeInstanceOf(https.Agent);
+				expect(agentLookup(arg.agent)).toBe(passthroughEgressFilter.createSecureLookup());
 			});
 
 			it('throws a NodeOperationError surfaced as the continueOnFail item message', async () => {
@@ -1356,10 +1361,15 @@ describe('Kafka Utils', () => {
 
 				const result = await setSchemaRegistry(ctx);
 
-				expect(SchemaRegistry).toHaveBeenCalledWith({
-					host: 'https://schema-registry.local:8081',
-					auth: { username: 'registry-user', password: 'registry-password' },
-				});
+				const arg = (SchemaRegistry as Mock).mock.calls[0][0] as {
+					host: string;
+					auth?: { username: string; password: string };
+					agent?: https.Agent;
+				};
+				expect(arg.host).toBe('https://schema-registry.local:8081/');
+				expect(arg.auth).toEqual({ username: 'registry-user', password: 'registry-password' });
+				expect(arg.agent).toBeInstanceOf(https.Agent);
+				expect(agentLookup(arg.agent)).toBe(passthroughEgressFilter.createSecureLookup());
 				expect(result).toBeDefined();
 			});
 

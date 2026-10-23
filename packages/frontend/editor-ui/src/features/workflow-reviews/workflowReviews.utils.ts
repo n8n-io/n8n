@@ -1,3 +1,1 @@
-export function toError(error: unknown): Error {
-	return error instanceof Error ? error : new Error(String(error));
-}
+export { formatUserDisplayName } from '@n8n/frontend-module-inbox';

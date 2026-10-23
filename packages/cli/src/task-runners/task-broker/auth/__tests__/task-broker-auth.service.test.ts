@@ -4,7 +4,7 @@ import { Time } from '@n8n/constants';
 import { sleep } from '@n8n/utils/sleep';
 
 import config from '@/config';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { retryUntil } from '@test-integration/retry-until';
 
 import { TaskBrokerAuthService } from '../task-broker-auth.service';
@@ -114,6 +114,26 @@ describe('TaskBrokerAuthService', () => {
 				isValid: false,
 				boundRunnerId: null,
 			});
+		});
+
+		it('should be valid only once when consumed concurrently', async () => {
+			// Arrange
+			const grantToken = await authService.createGrantToken('runner1');
+
+			// Act
+			const results = await Promise.all([
+				authService.tryConsumeGrantToken(grantToken),
+				authService.tryConsumeGrantToken(grantToken),
+			]);
+
+			// Assert
+			expect(results).toHaveLength(2);
+			expect(results.filter((result) => result.isValid)).toEqual([
+				{ isValid: true, boundRunnerId: 'runner1' },
+			]);
+			expect(results.filter((result) => !result.isValid)).toEqual([
+				{ isValid: false, boundRunnerId: null },
+			]);
 		});
 
 		it('should be invalid for an expired grant token', async () => {

@@ -35,15 +35,11 @@ const CONNECTION_OPTION_KEYS = [
 ] as const satisfies ReadonlyArray<keyof https.AgentOptions>;
 
 function pickKeys(agentOptions: https.AgentOptions, keys: readonly string[]): https.AgentOptions {
-	return Object.fromEntries(
-		Object.entries(agentOptions).filter(([key]) => keys.includes(key)),
-	) as https.AgentOptions;
+	return Object.fromEntries(Object.entries(agentOptions).filter(([key]) => keys.includes(key)));
 }
 
 function omitKeys(agentOptions: https.AgentOptions, keys: readonly string[]): https.AgentOptions {
-	return Object.fromEntries(
-		Object.entries(agentOptions).filter(([key]) => !keys.includes(key)),
-	) as https.AgentOptions;
+	return Object.fromEntries(Object.entries(agentOptions).filter(([key]) => !keys.includes(key)));
 }
 
 function forProxyConnection(agentOptions: https.AgentOptions = {}): https.AgentOptions {

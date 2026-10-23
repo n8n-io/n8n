@@ -14,7 +14,17 @@ function formatCompactPem(pem: string, isPublic: boolean): string | undefined {
 	const [, label, body] = pemMatch;
 	const normalizedBody = body.replace(/\\n/g, '\n').trim();
 	const formattedBody = /\s/.test(normalizedBody)
-		? normalizedBody.replace(/:\s+/g, ':').replace(/\s+/g, '\n')
+		? normalizedBody
+				.replace(/:\s+/g, ':')
+				.replace(/\s+/g, '\n')
+				// Restore RFC 1421 shape for a legacy encrypted key's headers. Both halves
+				// are load-bearing: OpenSSL 3 matches no decoder without the blank line
+				// before the body, and ssh2 reads the DEK-Info value at a fixed offset that
+				// assumes a single space after the colon.
+				.replace(
+					/^(?:(?:Proc-Type|DEK-Info):\S+\n)+/,
+					(headers) => `${headers.replace(/^(Proc-Type|DEK-Info):/gm, '$1: ')}\n`,
+				)
 		: (normalizedBody.match(new RegExp(`.{1,${PEM_BODY_LINE_LENGTH}}`, 'g')) ?? []).join('\n');
 
 	return `-----BEGIN ${label}-----\n${formattedBody}\n-----END ${label}-----`;
@@ -25,6 +35,9 @@ function formatCompactPem(pem: string, isPublic: boolean): string | undefined {
  * by collapsing whitespace and wrapping the body at 64 chars. Multi-block PEM
  * chains are returned unchanged.
  *
+ * Input that is not a single-line PEM block is returned unchanged, so a plain
+ * secret (e.g. a key passphrase) passed here by mistake is not corrupted.
+ *
  * @param pem - The PEM-encoded block to format.
  * @param isPublic - When true, match `PUBLIC KEY` labels instead of the default `PRIVATE KEY` / `CERTIFICATE`.
  * @returns The formatted PEM block.
@@ -34,7 +47,9 @@ export function formatPemBlock(pem: string, isPublic = false): string {
 	if (isPublic) {
 		regex = /(PUBLIC KEY)/;
 	}
-	if (!pem || /\n/.test(pem)) {
+	// The fallback formatter below would collapse a non-PEM value's whitespace
+	// into newlines, corrupting plain secrets such as key passphrases.
+	if (!pem || /\n/.test(pem) || !pem.includes('-----BEGIN ')) {
 		return pem;
 	}
 	const compactPem = formatCompactPem(pem, isPublic);

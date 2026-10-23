@@ -28,14 +28,18 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { SHELL_MODAL_INITIAL_STATE } from './defaults/modals';
 import { computed, ref, watch } from 'vue';
-import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
-import { modalRegistry } from '@n8n/frontend-module-sdk';
+import {
+	modalRegistry,
+	type IMenuSettingItem,
+	type ModuleLicenseFlag,
+} from '@n8n/frontend-module-sdk';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { showsPlaceholderPage } from '@/app/moduleInitializer/placeholderPage';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -173,7 +177,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * Modules can register items and SettingsSidebar will render them
 	 * when the corresponding module is active.
 	 */
-	const registeredSettingsPages = ref<Record<string, IMenuItem[]>>({});
+	const registeredSettingsPages = ref<Record<string, IMenuSettingItem[]>>({});
+	// Module id → license flag, for modules with a placeholder page
+	const placeholderLicenseFlags = ref<Record<string, ModuleLicenseFlag>>({});
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
@@ -283,10 +289,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
 
-	const settingsSidebarItems = computed<IMenuItem[]>(() => {
-		const items: IMenuItem[] = [];
+	const settingsSidebarItems = computed<IMenuSettingItem[]>(() => {
+		const items: IMenuSettingItem[] = [];
 		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
-			if (settingsStore.isModuleActive(moduleName)) {
+			if (
+				settingsStore.isModuleActive(moduleName) ||
+				showsPlaceholderPage(placeholderLicenseFlags.value[moduleName])
+			) {
 				items.push(...moduleItems.map((item) => ({ available: true, ...item })));
 			}
 		});
@@ -385,7 +394,29 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		patchModalState(payload.name, { data: payload.data });
 	};
 
+	/**
+	 * An unknown key resolves to a closed state instead of throwing, so a forgotten
+	 * registration reads as "it just doesn't open". This makes that visible, and it
+	 * belongs on the open path: by then the key has no `<ModalRoot>` and
+	 * `DynamicModalLoader` only walks registered keys, so nothing reads it. Needs
+	 * the click, so a modal nobody opens in dev stays silent.
+	 */
+	const warnIfUnknownModalKey = (name: ModalKey): void => {
+		if (!import.meta.env.DEV) return;
+
+		const key = String(name);
+		if (key in shellModalDefaults || modalRegistry.has(key) || modalRegistry.isAdHocKey(key)) {
+			return;
+		}
+
+		console.warn(
+			`[modals] Opening "${key}", which nothing defines — no shell catalogue entry and no registry entry, so it will not render.\n` +
+				"Register it from the owning feature's `modals.ts`, or declare its prefix with `modalRegistry.declareAdHocKeyPrefix()` if the key is minted at runtime.",
+		);
+	};
+
 	const openModal = (name: ModalKey) => {
+		warnIfUnknownModalKey(name);
 		patchModalState(name, { open: true });
 		modalStack.value = [name].concat(modalStack.value) as string[];
 	};
@@ -400,6 +431,16 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		modalStack.value = modalStack.value.filter((openModalName) => name !== openModalName);
 	};
 
+	const closeAllModals = () => {
+		for (const name of modalStack.value) {
+			modalsById.value[name] = {
+				...modalsById.value[name],
+				open: false,
+			};
+		}
+		modalStack.value = [];
+	};
+
 	const openDeleteUserModal = (id: string) => {
 		setActiveId(DELETE_USER_MODAL_KEY, id);
 		openModal(DELETE_USER_MODAL_KEY);
@@ -411,17 +452,29 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+			workflowId?: string;
+			contextNode?: INodeUi;
+			initialTab?: NewCredentialsModal['initialTab'];
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 		patchModalState(CREDENTIAL_EDIT_MODAL_KEY, {
+			notice: undefined,
+			initialName: undefined,
+			initialData: undefined,
+			destination: undefined,
+			createCredential: undefined,
+			onInitializeError: undefined,
 			projectId: undefined,
-			contextNode: undefined,
+			contextNode: options.contextNode,
 			closeOnSave: false,
+			workflowId: options.workflowId,
+			onCredentialCreated: undefined,
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
+			initialTab: options.initialTab,
 		} as Partial<NewCredentialsModal>);
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -438,9 +491,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			closeOnSave?: boolean;
+			onCredentialCreated?: NewCredentialsModal['onCredentialCreated'];
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 			usageScope?: NewCredentialsModal['usageScope'];
 			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
+			notice?: () => string;
+			initialName?: NewCredentialsModal['initialName'];
+			initialData?: NewCredentialsModal['initialData'];
+			destination?: NewCredentialsModal['destination'];
+			createCredential?: NewCredentialsModal['createCredential'];
+			onInitializeError?: NewCredentialsModal['onInitializeError'];
+			workflowId?: string;
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
@@ -448,8 +509,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		patchModalState(CREDENTIAL_EDIT_MODAL_KEY, {
 			forceManualMode,
 			closeOnSave: options.closeOnSave ?? false,
+			onCredentialCreated: options.onCredentialCreated,
 			projectId,
 			suggestedName,
+			workflowId: options.workflowId,
 			nodeName,
 			contextNode,
 			hideAskAssistant: options.hideAskAssistant,
@@ -457,6 +520,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 			usageScope: options.usageScope,
 			credentialSetupHint: options.credentialSetupHint,
+			initialTab: undefined,
+			notice: options.notice,
+			initialName: options.initialName,
+			initialData: options.initialData,
+			destination: options.destination,
+			createCredential: options.createCredential,
+			onInitializeError: options.onInitializeError,
 		} as Partial<NewCredentialsModal>);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -542,8 +612,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		moduleTabs.value[page][moduleName] = tabs;
 	};
 
-	const registerSettingsPages = (moduleName: string, items: IMenuItem[]) => {
+	const registerSettingsPages = (
+		moduleName: string,
+		items: IMenuSettingItem[],
+		placeholderLicenseFlag?: ModuleLicenseFlag,
+	) => {
 		registeredSettingsPages.value[moduleName] = items;
+		if (placeholderLicenseFlag) placeholderLicenseFlags.value[moduleName] = placeholderLicenseFlag;
 	};
 
 	/**
@@ -605,6 +680,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModalWithData,
 		openModal,
 		closeModal,
+		closeAllModals,
 		openDeleteUserModal,
 		openExistingCredential,
 		openNewCredential,

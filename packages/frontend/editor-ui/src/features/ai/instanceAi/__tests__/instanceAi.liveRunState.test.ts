@@ -72,7 +72,7 @@ describe('instanceAi.liveRunState', () => {
 						toolCalls: [
 							{
 								toolCallId: 'tc-1',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: {},
 								isLoading: true,
 								confirmation: { requestId: 'req-1', severity: 'info', message: 'Run?' },
@@ -123,6 +123,29 @@ describe('instanceAi.liveRunState', () => {
 
 		test('does not re-arm on deny', () => {
 			expect(shouldRearmRunAfterConfirm({ kind: 'approval', approved: false })).toBe(false);
+		});
+
+		test('only re-arms after a credential destination is approved', () => {
+			const destination = { origin: 'https://api.example.com' };
+			expect(
+				shouldRearmRunAfterConfirm({
+					kind: 'credentialDestination',
+					approved: true,
+					...destination,
+				}),
+			).toBe(true);
+			expect(
+				shouldRearmRunAfterConfirm({
+					kind: 'credentialDestination',
+					approved: false,
+					...destination,
+				}),
+			).toBe(false);
+		});
+
+		test('re-arms on both legs of the MCP connect card', () => {
+			expect(shouldRearmRunAfterConfirm({ kind: 'mcpConnect', approved: true })).toBe(true);
+			expect(shouldRearmRunAfterConfirm({ kind: 'mcpConnect', approved: false })).toBe(true);
 		});
 
 		test('re-arms on resume-capable confirm kinds', () => {

@@ -9,10 +9,10 @@ import {
 	NON_INDEXED_QUERY_HEADERS,
 	nonIndexedFilterThresholdError,
 	simplifyItem,
-} from '../../helpers/utils';
-import { listRLC, untilSiteSelected } from '../../list';
-import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequestAllItems } from '../../transport';
+} from '../../../helpers/utils';
+import { listRLC, untilSiteSelected } from '../../../list';
+import { resolveSiteId, siteRLC } from '../../../site';
+import { microsoftApiRequestAllItems } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{

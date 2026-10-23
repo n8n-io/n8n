@@ -1,0 +1,13 @@
+diff --git a/package.json b/package.json
+index ed972a91dca9ad78b47f1d8d295df58cdef269ff..d8f7499f85c1432cbf62bdbbe01fc12680e8e31c 100644
+--- a/package.json
++++ b/package.json
+@@ -10,7 +10,7 @@
+     "configure": "node-gyp configure",
+     "build": "node-gyp build",
+     "test": "make test",
+-    "install": "node-pre-gyp install --fallback-to-build",
++    "install": "node-pre-gyp install || echo '[@confluentinc/kafka-javascript] no prebuilt binding for this Node version or platform (see the node-pre-gyp error above), so the Kafka node will not run. Use Node 24 for local Kafka work.'",
+     "install-from-source": "npm ci && node-pre-gyp install --build-from-source=@confluentinc/kafka-javascript --fallback-to-build",
+     "prepack": "node ./ci/prepublish.js",
+     "test:types": "tsc -p ."

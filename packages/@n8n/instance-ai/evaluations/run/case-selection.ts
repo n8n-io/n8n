@@ -7,6 +7,7 @@
 import type { CliArgs } from '../cli/args';
 import { unsupportedMcpBuildSetupFields } from '../cli/mcp-builder';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { resolveEvalPromptSettings } from '../harness/build-mode';
 import type { EvalLogger } from '../harness/logger';
 import {
 	loadPrebuiltManifest,
@@ -86,6 +87,10 @@ export function selectCases(
 				'--build-via-mcp supports none of the selected test cases (all declare orchestrator-only setup fields) — nothing to run.',
 			);
 		}
+	}
+	if (!args.buildViaMcp && !prebuiltManifest) {
+		// Reject invalid configuration before provisioning lanes or recording results.
+		for (const { testCase } of testCasesWithFiles) resolveEvalPromptSettings(testCase);
 	}
 	return { testCasesWithFiles, prebuiltManifest };
 }

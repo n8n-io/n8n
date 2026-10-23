@@ -1,10 +1,20 @@
-import { INSTANCE_AI_MCP_CONNECTIONS_FLAG } from '@n8n/api-types';
+import {
+	AGENTS_N8N_CHAT_FLAG,
+	ASSISTANT_SKILLS_FLAG,
+	AI_ASSISTANT_AT_MENTIONS_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+} from '@n8n/api-types';
 
-function createExperiment<T extends Record<string, string>>(
-	name: string,
-	variants: T,
-): { name: string } & T;
-function createExperiment(name: string): { name: string; control: 'control'; variant: 'variant' };
+function createExperiment<
+	const TName extends string,
+	const TVariants extends Record<string, string>,
+>(name: TName, variants: TVariants): { name: TName } & TVariants;
+function createExperiment<const TName extends string>(
+	name: TName,
+): { name: TName; control: 'control'; variant: 'variant' };
 function createExperiment(name: string, variants?: Record<string, string>) {
 	return { name, ...(variants ?? { control: 'control', variant: 'variant' }) } as const;
 }
@@ -107,36 +117,93 @@ export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExpe
 	},
 );
 
-export const INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT = createExperiment(
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
-);
-
 export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
 	'089_instance_ai_split_empty_state',
-);
-
-export const INSTANCE_AI_BROWSER_USE_EXPERIMENT = createExperiment('090_instance_ai_browser_use');
-
-export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instance_ai_computer_use');
-
-export const INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
-	'092_instance_ai_template_examples',
-);
-export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
-	'094_instance_ai_browser_credential_setup',
 );
 
 export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
 	'095_expose_all_workflows_to_mcp',
 );
-export const N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT = createExperiment(
-	'100_n8n_credits_credential_selection',
-);
-
 export const TRIAL_INTRO_MODAL_EXPERIMENT = createExperiment('101_trial_intro_modal');
 export const INLINE_AGENTS_EXPERIMENT = createExperiment('103_inline_agents');
+export const INSTANCE_AI_FREE_NUDGE_EXPERIMENT = createExperiment('105_instance_ai_free_nudge', {
+	control: 'control',
+	variant1: 'variant-1',
+	variant2: 'variant-2',
+});
+
+export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
+	'108_open_workflow_in_assistant',
+);
+
+export const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT = createExperiment(
+	'112_aia_inspiration_from_taxonomy',
+);
+
+export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+);
+
+export const INSTANCE_AI_CONCISE_STYLE_EXPERIMENT = createExperiment(
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+);
+
+export const INSTANCE_AI_SETUP_PANEL_EXPERIMENT = createExperiment(INSTANCE_AI_SETUP_PANEL_FLAG);
+export const AI_ASSISTANT_AT_MENTIONS_EXPERIMENT = createExperiment(AI_ASSISTANT_AT_MENTIONS_FLAG);
+
+/**
+ * Multivariate: the enabled arm is the variant string `variant`, not a boolean,
+ * so the check goes through `isVariantEnabled` rather than `isFeatureEnabled`.
+ * The default `control` / `variant` arms match the PostHog flag.
+ */
+export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_on_export_import');
+
+export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
+export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLAG);
+
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
+// EOF Experiment cleanup
+export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
+	'119_surface_assistant_on_workflow_error',
+);
+
+export const WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT = createExperiment(
+	'124_workflow_previews_above_assistant',
+);
+
+export const AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT = createExperiment(
+	'120_agents_empty_state_templates',
+);
+
+export const AGENTS_N8N_CHAT_EXPERIMENT = createExperiment(AGENTS_N8N_CHAT_FLAG, {
+	control: 'control',
+	variantA: 'variant-a',
+	variantB: 'variant-b',
+});
+
+/**
+ * Boolean flag, matched by instance and Cloud only. Its payload can set
+ * `sampleRate` and `timeoutMs` for the shadow run.
+ */
+export const QUICKJS_EXPRESSION_SHADOW_EXPERIMENT = createExperiment(
+	'126_quickjs_expression_shadow',
+);
+
+export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferences_empty_state', {
+	control: 'control',
+	examples: 'examples',
+	assistant: 'assistant',
+});
 
 export const EXPERIMENTS_TO_TRACK = [
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT.name,
+	// EOF Experiment cleanup
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
+	AI_ASSISTANT_AT_MENTIONS_EXPERIMENT.name,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
+	INSTANCE_AI_CONCISE_STYLE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
@@ -162,15 +229,21 @@ export const EXPERIMENTS_TO_TRACK = [
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
 	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
-	INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
-	INSTANCE_AI_BROWSER_USE_EXPERIMENT.name,
-	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
-	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name,
-	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
-	N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
+	PREFERENCES_EMPTY_STATE_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
+	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
+	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
+	MCP_JSON_NUDGE_EXPERIMENT.name,
+	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
+	ASSISTANT_SKILLS_EXPERIMENT.name,
+	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT.name,
+	AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name,
+	AGENTS_N8N_CHAT_EXPERIMENT.name,
+	QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name,
 ];

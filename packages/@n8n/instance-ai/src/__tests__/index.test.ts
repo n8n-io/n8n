@@ -11,6 +11,9 @@ vi.mock('../tracing/langsmith-tracing', () => ({
 	continueInstanceAiTraceContext: () => 'continueInstanceAiTraceContext',
 	releaseTraceClient: () => 'releaseTraceClient',
 	submitLangsmithUserFeedback: () => 'submitLangsmithUserFeedback',
+	setTracePromptVersion: () => 'setTracePromptVersion',
+	setTraceModelId: () => 'setTraceModelId',
+	modelIdTraceMetadata: () => 'modelIdTraceMetadata',
 }));
 
 vi.mock('../tracing/trace-replay', () => {
@@ -36,9 +39,6 @@ vi.mock('../domain-access', () => ({
 vi.mock('../tools/web-research/sanitize-web-content', () => ({
 	wrapUntrustedData: (content: string, source: string) =>
 		`<untrusted_data source="${source}">${content}</untrusted_data>`,
-}));
-vi.mock('../tools', () => ({
-	createAllTools: () => ['all-tools'],
 }));
 vi.mock('../tools/orchestration/agent-persistence', () => ({
 	SUB_AGENT_RESOURCE_PREFIX: 'instance-ai-subagent',
@@ -71,24 +71,12 @@ vi.mock('../storage', () => ({
 	WorkflowLoopStorage: class WorkflowLoopStorage {},
 }));
 vi.mock('../stream/map-chunk', () => ({ mapAgentChunkToEvent: () => ({ type: 'event' }) }));
-vi.mock('../skills/runtime-skills', () => ({
-	INSTANCE_AI_SKILLS_DIR: '/instance-ai-skills',
-	loadInstanceAiRuntimeSkillSource: () => 'runtime-skill-source',
-}));
-vi.mock('../skills/materialize-runtime-skills', () => ({
-	SANDBOX_RUNTIME_SKILLS_DIR: '/sandbox-skills',
-	SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: 'registry.json',
-	RUNTIME_SKILL_MANIFEST_FILE: 'manifest.json',
-	RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION: 1,
-	N8N_SKILLS_DIR_ENV: 'N8N_SKILLS_DIR',
-	N8N_SKILL_DIR_ENV: 'N8N_SKILL_DIR',
-	N8N_WORKSPACE_DIR_ENV: 'N8N_WORKSPACE_DIR',
-	createLazyWorkspaceRuntimeSkillSource: () => 'lazy-skill-source',
+vi.mock('../skills/skills', () => ({
+	loadInstanceAiSkills: () => 'skills',
 }));
 vi.mock('../utils/eval-agents', () => ({
 	createEvalAgent: () => 'eval-agent',
 	extractText: () => 'text',
-	Tool: class Tool {},
 }));
 vi.mock('../utils/agent-tree', () => ({
 	buildAgentTreeFromEvents: () => ({ agentId: 'root', children: [] }),
@@ -101,10 +89,6 @@ vi.mock('../workspace/builder-templates-service', () => ({
 vi.mock('../workspace/create-workspace', () => ({
 	createSandbox: () => ({ type: 'sandbox' }),
 	createWorkspace: () => ({ type: 'workspace' }),
-}));
-vi.mock('@n8n/agents/sandbox', () => ({
-	getWorkspaceRoot: () => '/workspace',
-	getPromptWorkspaceRoot: () => '/home/daytona/workspace',
 }));
 vi.mock('../workspace/lazy-runtime-workspace', () => ({
 	createLazyRuntimeWorkspace: () => ({ type: 'lazy-workspace' }),
@@ -162,10 +146,6 @@ vi.mock('../planned-tasks/planned-task-service', () => ({
 }));
 vi.mock('../planned-tasks/planned-task-permissions', () => ({
 	PLANNED_TASK_PERMISSION_OVERRIDES: { checkpoint: { runWorkflow: 'always_allow' } },
-	applyPlannedTaskPermissions: (context: { permissions: Record<string, unknown> }) => ({
-		...context,
-		permissions: { ...context.permissions, runWorkflow: 'always_allow' },
-	}),
 }));
 vi.mock('../parsers/structured-file-parser', () => ({
 	classifyAttachments: () => [{ index: 0, parseable: true, format: 'csv' }],
@@ -192,7 +172,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		const entrypoint = await import('../index.js');
 
 		expect(entrypoint.MAX_STEPS.ORCHESTRATOR).toBeGreaterThan(0);
-		expect(entrypoint.createAllTools).toEqual(expect.any(Function));
 		expect(entrypoint.createInstanceAgent).toEqual(expect.any(Function));
 		expect(entrypoint.createLazyRuntimeWorkspace).toEqual(expect.any(Function));
 		expect(entrypoint.getParseableAttachmentMimeTypes).toEqual(expect.any(Function));
@@ -222,8 +201,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(entrypoint.wrapUntrustedData('hello', 'https://example.com')).toContain(
 			'<untrusted_data source="https://example.com">',
 		);
-		expect(call(entrypoint.createAllTools)).toEqual(['all-tools']);
-
 		expect(entrypoint.PURE_REPLAY_TOOLS.has('web-search')).toBe(true);
 		expect(entrypoint.createSubAgentResourceIdPrefix('thread-1')).toBe(
 			'instance-ai-subagent:thread-1:',
@@ -236,16 +213,7 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.TraceIndex)).toBeInstanceOf(entrypoint.TraceIndex);
 		expect(construct(entrypoint.TraceWriter)).toBeInstanceOf(entrypoint.TraceWriter);
 
-		expect(call(entrypoint.loadInstanceAiRuntimeSkillSource)).toBe('runtime-skill-source');
-		expect(call(entrypoint.createLazyWorkspaceRuntimeSkillSource)).toBe('lazy-skill-source');
-		expect(entrypoint.INSTANCE_AI_SKILLS_DIR).toBe('/instance-ai-skills');
-		expect(entrypoint.SANDBOX_RUNTIME_SKILLS_DIR).toBe('/sandbox-skills');
-		expect(entrypoint.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE).toBe('registry.json');
-		expect(entrypoint.RUNTIME_SKILL_MANIFEST_FILE).toBe('manifest.json');
-		expect(entrypoint.RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION).toBe(1);
-		expect(entrypoint.N8N_SKILLS_DIR_ENV).toBe('N8N_SKILLS_DIR');
-		expect(entrypoint.N8N_SKILL_DIR_ENV).toBe('N8N_SKILL_DIR');
-		expect(entrypoint.N8N_WORKSPACE_DIR_ENV).toBe('N8N_WORKSPACE_DIR');
+		expect(call(entrypoint.loadInstanceAiSkills)).toBe('skills');
 
 		expect(call(entrypoint.formatPreviousAttempts)).toBe('previous attempts');
 		expect(construct(entrypoint.ThreadIterationLogStorage)).toBeInstanceOf(
@@ -276,13 +244,10 @@ describe('@n8n/instance-ai public entrypoint', () => {
 
 		expect(call(entrypoint.createEvalAgent)).toBe('eval-agent');
 		expect(call(entrypoint.extractText)).toBe('text');
-		expect(construct(entrypoint.Tool)).toBeInstanceOf(entrypoint.Tool);
 		expect(call(entrypoint.buildAgentTreeFromEvents)).toEqual({ agentId: 'root', children: [] });
 		expect(call(entrypoint.findAgentNodeInTree)).toEqual({ agentId: 'root', children: [] });
 
 		expect(call(entrypoint.createLazyRuntimeWorkspace)).toEqual({ type: 'lazy-workspace' });
-		expect(call(entrypoint.getWorkspaceRoot)).toBe('/workspace');
-		expect(entrypoint.getPromptWorkspaceRoot('daytona')).toBe('/home/daytona/workspace');
 		expect(call(entrypoint.setupSandboxWorkspace)).toBeUndefined();
 		expect(construct(entrypoint.BuilderTemplatesService)).toBeInstanceOf(
 			entrypoint.BuilderTemplatesService,
@@ -326,10 +291,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.PlannedTaskCoordinator)).toBeInstanceOf(
 			entrypoint.PlannedTaskCoordinator,
 		);
-		expect(
-			entrypoint.applyPlannedTaskPermissions({ permissions: {} } as never, 'checkpoint')
-				.permissions!.runWorkflow,
-		).toBe('always_allow');
 		expect(entrypoint.PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint!.runWorkflow).toBe(
 			'always_allow',
 		);

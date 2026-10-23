@@ -1,4 +1,20 @@
-import type { INode } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
+
+import { BadRequestError } from '@n8n/errors';
+
+/**
+ * A migration refused a specific node. Carries the node identity in `meta` so the
+ * UI can link straight to it.
+ */
+export class WorkflowMigrationNodeError extends BadRequestError {
+	constructor(
+		message: string,
+		readonly meta: { nodeId: string; nodeName: string },
+	) {
+		super(message);
+		this.name = 'WorkflowMigrationNodeError';
+	}
+}
 
 export interface NodeMigrationResult {
 	// The replacement node's type/version/parameters. The rewrite engine keeps
@@ -19,3 +35,64 @@ export interface NodeMigration {
 	// Pure, per node. Return the replacement node; throw to abort with an error.
 	migrate(node: INode): NodeMigrationResult;
 }
+
+export interface WorkflowMigrationInput {
+	nodes: INode[];
+	connections: IConnections;
+	// Ids of the nodes the rule flagged. Detection decides what gets migrated.
+	affectedNodeIds: Set<string>;
+}
+
+export interface WorkflowMigrationOutput {
+	nodes: INode[];
+	connections: IConnections;
+	// Ids of the flagged nodes that were rewritten (not the nodes added around them).
+	migratedNodeIds: string[];
+	unmapped?: string[];
+	notes?: string[];
+}
+
+/**
+ * A whole-workflow transform for changes a node-for-node swap cannot express,
+ * such as inserting nodes and rewiring connections. Must not mutate its input:
+ * return new `nodes` and `connections`. Throw `WorkflowMigrationNodeError` to
+ * refuse a specific node, or any other Error to abort the workflow.
+ */
+export interface WorkflowMigration {
+	ruleId: string;
+	migrateWorkflow(input: WorkflowMigrationInput): WorkflowMigrationOutput;
+}
+
+/**
+ * Replaces each flagged node with the result of `migrateNode`. A throw from `migrateNode`
+ * becomes a `WorkflowMigrationNodeError` that names the node. Other nodes pass through.
+ */
+export function replaceAffectedNodes(
+	nodes: INode[],
+	affectedNodeIds: Set<string>,
+	migrateNode: (node: INode) => INode,
+): Pick<WorkflowMigrationOutput, 'nodes' | 'migratedNodeIds'> {
+	const migratedNodeIds: string[] = [];
+
+	const migratedNodes = nodes.map((node) => {
+		if (!affectedNodeIds.has(node.id)) return node;
+
+		try {
+			const migrated = migrateNode(node);
+			migratedNodeIds.push(node.id);
+			return migrated;
+		} catch (error) {
+			throw new WorkflowMigrationNodeError(
+				error instanceof Error ? error.message : 'Migration failed.',
+				{ nodeId: node.id, nodeName: node.name },
+			);
+		}
+	});
+
+	return { nodes: migratedNodes, migratedNodeIds };
+}
+
+export type Migration = NodeMigration | WorkflowMigration;
+
+export const isWorkflowMigration = (migration: Migration): migration is WorkflowMigration =>
+	'migrateWorkflow' in migration;

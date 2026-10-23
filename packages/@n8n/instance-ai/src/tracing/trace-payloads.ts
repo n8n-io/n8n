@@ -1,11 +1,13 @@
 import {
 	redactText,
-	SUPPORTED_PII_CATEGORIES,
 	type AttributeValue,
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
+import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { createHash } from 'node:crypto';
 
 import {
@@ -16,6 +18,7 @@ import {
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
+import { modelConfigId } from '../utils/model-config-id';
 
 const MAX_TRACE_DEPTH = 4;
 const MAX_PROMPT_SCHEMA_TRACE_DEPTH = 12;
@@ -27,8 +30,6 @@ const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
-const SENSITIVE_TELEMETRY_KEY_PATTERN =
-	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 /**
  * LangSmith structural identifier attributes. These carry the run/trace/span IDs
@@ -62,8 +63,8 @@ function isStructuralTelemetryIdKey(key: string): boolean {
 }
 
 /**
- * Telemetry/tracing redaction policy. Deliberately stricter than the
- * user-facing output policy `DEFAULT_OUTPUT_REDACTION_OPTIONS`.
+ * Telemetry/tracing redaction policy: secrets plus every supported PII
+ * category, since traces egress to third-party tooling.
  * `preserveUrlStructure`: whole-URL redaction destroyed traced workflow
  * definitions without adding protection (secrets in URLs are caught first).
  */
@@ -74,7 +75,7 @@ export const DEFAULT_TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
 };
 
 /** Redact secrets + all PII from a free-text telemetry value before it egresses. */
-function scrubTelemetryText(value: string): string {
+export function scrubTelemetryText(value: string): string {
 	return redactText(value, DEFAULT_TELEMETRY_REDACTION_OPTIONS).text;
 }
 
@@ -97,11 +98,12 @@ const LLM_AI_SDK_OPERATION_IDS = new Set([
 ]);
 
 export interface AgentTraceInputOptions {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	systemPrompt?: string;
 	tools?: InstanceAiToolRegistry;
 	deferredTools?: InstanceAiToolRegistry;
 	runtimeTools?: InstanceAiToolRegistry;
-	runtimeSkills?: RuntimeSkillRegistry;
+	skills?: RuntimeSkillRegistry;
 	modelId?: unknown;
 	memory?: unknown;
 	toolSearchEnabled?: boolean;
@@ -184,7 +186,7 @@ function redactTelemetryJsonValue(
 		return '[redacted-depth-limit]';
 	}
 
-	if (keyHint && SENSITIVE_TELEMETRY_KEY_PATTERN.test(keyHint)) {
+	if (keyHint && isSensitiveKey(keyHint)) {
 		return '[redacted]';
 	}
 
@@ -230,7 +232,7 @@ function redactTelemetryAttribute(key: string, value: unknown, completionDepth?:
 		return value;
 	}
 
-	if (SENSITIVE_TELEMETRY_KEY_PATTERN.test(key)) {
+	if (isSensitiveKey(key)) {
 		return '[redacted]';
 	}
 
@@ -1030,6 +1032,19 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	renameNativeToolSpanForLangSmith(span, attributes);
 	moveNonLlmUsageAttributes(attributes);
 	span.attributes = attributes;
+	if (isRecord(span.status) && typeof span.status.message === 'string') {
+		span.status = {
+			...span.status,
+			message: truncateString(scrubTelemetryText(span.status.message)),
+		};
+	}
+	if (Array.isArray(span.events)) {
+		span.events = span.events.map((event: unknown) =>
+			isRecord(event) && isRecord(event.attributes)
+				? { ...event, attributes: redactTelemetryJsonValue(event.attributes) }
+				: event,
+		);
+	}
 	return span;
 }
 
@@ -1099,44 +1114,53 @@ function classifyToolSource(name: string, toolRecord: Record<string, unknown>): 
 	return 'domain';
 }
 
+/** Keyword checks must not match the builder prefix (`workflow_builder_` contains "workflow" and "build"). */
+function unprefixedToolName(name: string): string {
+	return name.replace(/^(workflow|agent)_builder_/, '');
+}
+
 function classifyToolCategory(name: string): string {
-	if (name.includes('credential')) return 'credential';
-	if (name.includes('browser')) return 'browser';
-	if (name.includes('data-table')) return 'data-table';
-	if (name.includes('workflow')) {
-		return 'workflow';
-	}
+	if (name === DOMAIN_TOOL_IDS.DATA_TABLES) return 'data-table';
 	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
 	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
-	if (name.includes('research')) return 'research';
-	if (name.includes('plan') || name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) {
-		return 'planning';
+	if (name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) return 'planning';
+	const baseName = unprefixedToolName(name);
+	if (baseName.includes('credential')) return 'credential';
+	if (baseName.includes('browser')) return 'browser';
+	if (baseName.includes('data-table')) return 'data-table';
+	if (baseName.includes('workflow')) {
+		return 'workflow';
 	}
-	if (name.startsWith('workspace_')) return 'workspace';
-	if (name.includes('file') || name.includes('filesystem')) return 'filesystem';
+	if (baseName.includes('research')) return 'research';
+	if (baseName.includes('plan')) return 'planning';
+	if (baseName.startsWith('workspace_')) return 'workspace';
+	if (baseName.includes('file') || baseName.includes('filesystem')) return 'filesystem';
 	return 'other';
 }
 
 function classifyToolSideEffect(name: string): string {
-	if (name.includes('browser')) return 'browser';
-	if (name.includes('research')) return 'network';
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS || name.includes('execute') || name.includes('run')) {
+	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execute';
+	if (name === DOMAIN_TOOL_IDS.ASK_USER) return 'none';
+	const baseName = unprefixedToolName(name);
+	if (baseName.includes('browser')) return 'browser';
+	if (baseName.includes('research')) return 'network';
+	if (baseName.includes('execute') || baseName.includes('run')) {
 		return 'execute';
 	}
 	if (
-		name.includes('write') ||
-		name.includes('submit') ||
-		name.includes('apply') ||
-		name.includes('build') ||
-		name.includes('create') ||
-		name.includes('update') ||
-		name.includes('delete') ||
-		name.includes('remove') ||
-		name.includes('complete')
+		baseName.includes('write') ||
+		baseName.includes('submit') ||
+		baseName.includes('apply') ||
+		baseName.includes('build') ||
+		baseName.includes('create') ||
+		baseName.includes('update') ||
+		baseName.includes('delete') ||
+		baseName.includes('remove') ||
+		baseName.includes('complete')
 	) {
 		return 'write';
 	}
-	if (name.includes(DOMAIN_TOOL_IDS.ASK_USER) || name.includes('pause-for-user')) return 'none';
+	if (baseName.includes('pause-for-user')) return 'none';
 	return 'read';
 }
 
@@ -1237,7 +1261,8 @@ function summarizeMemoryBinding(memory: unknown): Record<string, unknown> {
 	};
 }
 
-function summarizeRuntimeSkillRegistry(
+/** The `runtime_skill_*` keys stay as they are, because trace queries read them. */
+function summarizeSkillRegistry(
 	registry: RuntimeSkillRegistry | undefined,
 ): Record<string, unknown> {
 	if (!registry || registry.skills.length === 0) {
@@ -1342,12 +1367,12 @@ export function rawTracePayload(value: unknown): Record<string, unknown> {
 }
 
 export function serializeModelIdForTrace(modelId: unknown): unknown {
-	if (typeof modelId === 'string' && modelId.length > 0) {
-		return truncateString(modelId);
-	}
-
-	if (isRecord(modelId) && typeof modelId.id === 'string') {
-		return truncateString(modelId.id);
+	// Falling through to `sanitizeTraceValue` dumps the whole model instance —
+	// config, zod chunk schema, bound functions — into the span attribute, so
+	// every recognizable variant has to be handled by `modelConfigId`.
+	const id = modelConfigId(modelId);
+	if (id !== undefined) {
+		return truncateString(id);
 	}
 
 	return sanitizeTraceValue(modelId);
@@ -1368,6 +1393,14 @@ export function mergeTraceInputs(
 
 export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<string, unknown> {
 	return sanitizeTracePayload({
+		...(options.promptConfiguration
+			? {
+					prompt_configuration: options.promptConfiguration,
+					system_prompt_hash: createHash('sha256')
+						.update(options.systemPrompt ?? '')
+						.digest('hex'),
+				}
+			: {}),
 		...(options.systemPrompt ? { system_prompt: serializeTraceText(options.systemPrompt) } : {}),
 		...(options.modelId !== undefined ? { model: serializeModelIdForTrace(options.modelId) } : {}),
 		...(options.toolSearchEnabled !== undefined
@@ -1378,6 +1411,6 @@ export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<s
 		...summarizeToolSet('loaded', options.tools),
 		...summarizeToolSet('deferred', options.deferredTools),
 		...summarizeToolSet('runtime', options.runtimeTools),
-		...summarizeRuntimeSkillRegistry(options.runtimeSkills),
+		...summarizeSkillRegistry(options.skills),
 	});
 }

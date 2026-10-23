@@ -1,4 +1,5 @@
 import { WorkerStatus } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -7,14 +8,17 @@ import process from 'node:process';
 
 import { N8N_VERSION } from '@/constants';
 import { Push } from '@/push';
+import { getMemoryLimit } from '@/utils/container-limits';
 
 import { JobProcessor } from './job-processor';
 import { Publisher } from './pubsub/publisher.service';
+import { resolveQueueName, resolveWorkerPoolName } from './queue-name';
 
 @Service()
 export class WorkerStatusService {
 	constructor(
 		private readonly jobProcessor: JobProcessor,
+		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly push: Push,
@@ -57,11 +61,7 @@ export class WorkerStatusService {
 	}
 
 	private generateStatus(): WorkerStatus {
-		const constrainedMemory = process.constrainedMemory();
-
-		// See https://github.com/nodejs/node/issues/59227 for information about why we cap at MAX_SAFE_INTEGER
-		// The number 18446744073709552000 does come back when running in a container with no constraints
-		const isInContainer = constrainedMemory > 0 && constrainedMemory < Number.MAX_SAFE_INTEGER;
+		const isInContainer = getMemoryLimit() !== null;
 		return {
 			senderId: this.instanceSettings.hostId,
 			runningJobsSummary: this.jobProcessor.getRunningJobsSummary(),
@@ -96,6 +96,11 @@ export class WorkerStatusService {
 				})),
 			),
 			version: N8N_VERSION,
+			poolName: resolveWorkerPoolName(this.globalConfig.queue.workerPool),
+			queueName: resolveQueueName(
+				this.instanceSettings.instanceType,
+				resolveWorkerPoolName(this.globalConfig.queue.workerPool),
+			),
 		};
 	}
 

@@ -1,17 +1,27 @@
-import { UNLIMITED_CREDITS, buildProxyHeaders, type InstanceAiCredits } from '@n8n/api-types';
+import { splitModelId } from '@n8n/ai-utilities/agent-config';
+import {
+	UNLIMITED_CREDITS,
+	isMoonshotaiKimiK3ModelId,
+	type InstanceAiCredits,
+	type ProxyContext,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION } from '@/constants';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { createProxyLanguageModel } from '@/utils/ai-proxy-language-model';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { modelNameForProvider, withModelName } from './model-config-name';
 
 /**
  * Resolves the language model the Instance AI agent runs against and reports
@@ -19,8 +29,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
  *
  * Model resolution follows a layered chain so chat and eval paths share the
  * same working model:
- *   1. AI service proxy (when enabled) — wraps with proxy auth, returns a
- *      native Anthropic transport pointed at the proxy.
+ *   1. AI service proxy (when enabled) — wraps with proxy auth.
  *   2. HTTP_PROXY (when set, e.g. e2e tests) — wraps the model with a
  *      proxy-aware fetch.
  *   3. Env vars / user credential — raw settings resolution.
@@ -35,6 +44,7 @@ export class InstanceAiModelService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly logger: Logger,
 	) {}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
@@ -52,8 +62,11 @@ export class InstanceAiModelService {
 	 *
 	 * Call this instead of `settingsService.resolveModelConfig` directly so
 	 * the eval endpoint gets the same working model the chat endpoint uses.
+	 *
+	 * `proxyContext` is forwarded as `x-n8n-run-id` / `x-n8n-thread-id` on every
+	 * proxied model call when set (run-less callers like verification omit it).
 	 */
-	async resolveAgentModelConfig(user: User): Promise<ModelConfig> {
+	async resolveAgentModelConfig(user: User, proxyContext?: ProxyContext): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const client = await this.aiService.getClient();
 			const proxyBaseUrl = client.getApiProxyBaseUrl();
@@ -63,7 +76,7 @@ export class InstanceAiModelService {
 					{ userMessageId: nanoid() },
 				);
 			});
-			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager);
+			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext);
 		}
 		const httpProxyModel = await this.resolveHttpProxyModel(user);
 		if (httpProxyModel) return httpProxyModel;
@@ -71,13 +84,47 @@ export class InstanceAiModelService {
 	}
 
 	/**
-	 * Build model config. When the AI service proxy is enabled, returns a native
-	 * Anthropic LanguageModelV2 instance pointing at the proxy.
-	 *
-	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
-	 * object because this proxy route needs the native Anthropic transport.
-	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
-	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
+	 * Model for the Observer and Reflector memory tasks. It runs the configured
+	 * memory model name on the main model's provider and credentials. Returns
+	 * `undefined` when no memory model is set, so the caller uses the main model.
+	 */
+	async resolveMemoryModelConfig(
+		user: User,
+		mainModel: ModelConfig,
+		run: { proxyBaseUrl?: string; tokenManager?: ProxyTokenManager; proxyContext?: ProxyContext },
+	): Promise<ModelConfig | undefined> {
+		const modelName = this.settingsService.getConfiguredMemoryModelName();
+		if (!modelName) return undefined;
+		try {
+			if (run.proxyBaseUrl && run.tokenManager) {
+				return await this.resolveProxyModel(
+					user,
+					run.proxyBaseUrl,
+					run.tokenManager,
+					run.proxyContext,
+					modelName,
+				);
+			}
+			// withModelName renames configs that carry a `provider/model` id. Outside the
+			// AI service proxy, the only main model without one is the pre-built Anthropic
+			// client used when HTTP(S)_PROXY is set, so build that client again with the memory model.
+			return (
+				withModelName(mainModel, modelName, { dropMainProviderPrefix: true }) ??
+				(await this.resolveHttpProxyModel(user, modelName))
+			);
+		} catch (error) {
+			// A memory model must never fail the user's run; the main model still works.
+			this.logger.warn('Failed to resolve the Instance AI memory model, using the main model', {
+				modelName,
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
+	}
+
+	/**
+	 * Build model config. When the AI service proxy is enabled, returns a
+	 * LanguageModel pointed at the proxy.
 	 *
 	 * Auth headers are injected via a custom `fetch` wrapper so that each
 	 * request gets a fresh-or-cached token from the ProxyTokenManager,
@@ -87,30 +134,27 @@ export class InstanceAiModelService {
 		user: User,
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
+		proxyContext?: ProxyContext,
+		modelName?: string,
 	): Promise<ModelConfig> {
-		const modelName = this.settingsService.resolveModelName(user);
-		const { createAnthropic } = await import('@ai-sdk/anthropic');
-		// Route through the proxy-aware transport so this path honours
-		// HTTP(S)_PROXY and the long AI timeout, same as the HTTP-proxy path.
-		const modelFetch = createAiProxyFetch(this.outboundHttp);
-		const provider = createAnthropic({
-			baseURL: proxyBaseUrl + '/anthropic/v1',
-			apiKey: 'proxy-managed',
-			fetch: async (input, init) => {
-				const headers = new Headers(init?.headers);
-				const auth = await tokenManager.getAuthHeaders();
-				for (const [k, v] of Object.entries(auth)) {
-					headers.set(k, v);
-				}
-				for (const [k, v] of Object.entries(
-					buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION }),
-				)) {
-					headers.set(k, v);
-				}
-				return await modelFetch(input, { ...init, headers });
-			},
+		const configuredModelId = this.settingsService.getConfiguredModelId();
+		const isExactKimi = isMoonshotaiKimiK3ModelId(configuredModelId);
+		const modelId = modelName
+			? isMoonshotaiKimiK3ModelId(modelName)
+				? modelName
+				: modelNameForProvider(modelName, splitModelId(configuredModelId).provider)
+			: isExactKimi
+				? configuredModelId
+				: this.settingsService.resolveModelName(user);
+		return await createProxyLanguageModel({
+			proxyBaseUrl,
+			modelId,
+			tokenManager,
+			feature: 'instance-ai',
+			n8nVersion: N8N_VERSION,
+			outboundHttp: this.outboundHttp,
+			...proxyContext,
 		});
-		return provider(modelName);
 	}
 
 	/**
@@ -118,7 +162,10 @@ export class InstanceAiModelService {
 	 * with a proxy-aware fetch so the AI SDK routes through the proxy.
 	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
 	 */
-	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
+	private async resolveHttpProxyModel(
+		user: User,
+		modelNameOverride?: string,
+	): Promise<ModelConfig | undefined> {
 		// Only take over model construction when a proxy is configured; otherwise
 		// the regular model resolution path applies. Node's global `fetch` does
 		// not honour HTTP(S)_PROXY, hence the proxy-aware transport below.
@@ -129,8 +176,7 @@ export class InstanceAiModelService {
 		const modelId = typeof config === 'string' ? config : 'id' in config ? config.id : null;
 		if (!modelId) return undefined;
 
-		const [provider, ...rest] = modelId.split('/');
-		const modelName = rest.join('/');
+		const { provider, model: modelName } = splitModelId(modelId);
 		const apiKey = typeof config === 'object' && 'apiKey' in config ? config.apiKey : undefined;
 		const baseURL = typeof config === 'object' && 'url' in config ? config.url : undefined;
 		if (provider !== 'anthropic') return undefined;
@@ -140,7 +186,7 @@ export class InstanceAiModelService {
 			apiKey,
 			baseURL: baseURL || undefined,
 			fetch: createAiProxyFetch(this.outboundHttp),
-		})(modelName);
+		})(modelNameOverride ? modelNameForProvider(modelNameOverride, provider) : modelName);
 	}
 
 	/** Get current Instance AI credit usage from the AI service proxy. */

@@ -1,8 +1,20 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, type VueWrapper } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
+import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
+
+beforeEach(() => vi.clearAllMocks());
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
@@ -13,7 +25,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nButton: {
 		name: 'N8nButton',
 		template:
-			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" :data-icon-only="iconOnly" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" :data-icon-only="iconOnly" :disabled="disabled" @click="$emit(\'click\')"><i v-if="icon" :data-icon="icon"></i><slot /></button>',
 		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled'],
 		emits: ['click'],
 	},
@@ -28,13 +40,20 @@ vi.mock('@n8n/design-system', () => ({
 		name: 'N8nTooltip',
 		template: '<div><slot /><slot name="content" /></div>',
 	},
+	N8nToggle: {
+		name: 'N8nToggle',
+		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ label }}</button>',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label'],
+		emits: ['click'],
+	},
 	N8nKeyboardShortcut: {
 		name: 'N8nKeyboardShortcut',
 		template: '<span />',
 	},
 	N8nBreadcrumbs: {
 		name: 'N8nBreadcrumbs',
-		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
+		template:
+			'<div data-testid="stub-breadcrumbs"><slot name="prepend" /><slot name="append" /></div>',
 		props: ['items'],
 		emits: ['itemSelected'],
 	},
@@ -53,7 +72,12 @@ type DropdownStubWrapper = VueWrapper<{
 }>;
 
 type BreadcrumbsStubWrapper = VueWrapper<{
-	items: Array<{ id: string; label: string; href?: string }>;
+	items: Array<{
+		id: string;
+		label: string;
+		href?: string;
+		icon?: { type: 'icon' | 'emoji'; value: string };
+	}>;
 	$emit: (event: 'itemSelected', value: { id: string }) => void;
 }>;
 
@@ -67,6 +91,7 @@ describe('AgentSessionTimelineHeader', () => {
 		return mount(AgentSessionTimelineHeader, {
 			props: {
 				breadcrumbItems,
+				projectIcon: { type: 'icon', value: 'user' },
 				sessionTitle: 'Support session',
 				sessionOptions: [
 					{
@@ -82,6 +107,8 @@ describe('AgentSessionTimelineHeader', () => {
 				totalTokens: 1234,
 				totalCost: 0.1234,
 				durationLabel: '1.2s',
+				showLangsmithExport: false,
+				langsmithExportLoading: false,
 			},
 		});
 	}
@@ -97,6 +124,13 @@ describe('AgentSessionTimelineHeader', () => {
 		expect(wrapper.text()).toContain('Slack');
 		expect(wrapper.text()).toContain('1,234t ($0.1234)');
 		expect(wrapper.text()).toContain('1.2s');
+	});
+
+	it('passes the project icon to the first breadcrumb', () => {
+		const wrapper = mountHeader();
+		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' }) as BreadcrumbsStubWrapper;
+
+		expect(breadcrumbs.vm.items[0].icon).toEqual({ type: 'icon', value: 'user' });
 	});
 
 	it('hides metrics and close button while metrics are unavailable', () => {
@@ -130,5 +164,62 @@ describe('AgentSessionTimelineHeader', () => {
 		expect(closeButton.attributes('data-size')).toBe('medium');
 		expect(closeButton.attributes('data-icon-only')).toBeDefined();
 		expect(closeButton.find('[data-icon="x"]').exists()).toBe(true);
+	});
+});
+
+describe('AgentPreviewHeader', () => {
+	function mountPreviewHeader() {
+		return mount(AgentPreviewHeader, {
+			props: {
+				agentId: 'agent-1',
+				agentName: 'Darwin',
+				agentHref: '/projects/project-1/agents/agent-1',
+				sessionTitle: 'Alpha',
+				sessionOptions: [
+					{ id: 'week', title: 'Week session', updatedAt: new Date().toISOString() },
+				],
+				hasTrace: false,
+				isDeletingSession: false,
+				canDeleteSession: true,
+			},
+			global: {
+				stubs: {
+					AgentSessionHistoryDropdown: {
+						name: 'AgentSessionHistoryDropdown',
+						template: '<div><slot name="trigger" /></div>',
+						props: ['sessionOptions', 'canDeleteSession', 'isDeletingSession'],
+						emits: ['select', 'delete'],
+					},
+				},
+			},
+		});
+	}
+
+	it('tracks the standalone New chat button once and preserves its event', async () => {
+		const wrapper = mountPreviewHeader();
+		expect(track).not.toHaveBeenCalled();
+		await wrapper.get('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
+
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+			{ agent_id: 'agent-1', push_ref: 'session-xyz', source: 'standalone' },
+		);
+	});
+
+	it('forwards history props and events', () => {
+		const wrapper = mountPreviewHeader();
+		const history = wrapper.findComponent({ name: 'AgentSessionHistoryDropdown' });
+
+		expect(history.props()).toMatchObject({
+			sessionOptions: [expect.objectContaining({ id: 'week', title: 'Week session' })],
+			canDeleteSession: true,
+			isDeletingSession: false,
+		});
+		history.vm.$emit('select', 'week');
+		history.vm.$emit('delete', 'week');
+
+		expect(wrapper.emitted('session-select')).toEqual([['week']]);
+		expect(wrapper.emitted('delete-session')).toEqual([['week']]);
 	});
 });

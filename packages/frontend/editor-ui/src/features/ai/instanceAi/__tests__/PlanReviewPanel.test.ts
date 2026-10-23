@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import PlanReviewPanel, { type PlannedTaskArg } from '../components/PlanReviewPanel.vue';
+import type { PlannedTaskArg } from '@n8n/api-types';
+
+import PlanReviewPanel from '../components/PlanReviewPanel.vue';
 
 const plannedTasks: PlannedTaskArg[] = [
 	{
@@ -46,12 +48,14 @@ describe('PlanReviewPanel', () => {
 		expect(getByText(/Route qualified leads to the sales team\./)).toBeInTheDocument();
 	});
 
-	it('shows the three pending plan actions without an internal textarea', () => {
-		const { getByTestId, queryByRole } = renderComponent();
+	// Feedback travels through the chat composer, which stays live for the whole
+	// review and says so in its placeholder, so the card offers no second route.
+	it('shows the two pending plan actions without an internal textarea', () => {
+		const { getByTestId, queryByTestId, queryByRole } = renderComponent();
 
 		expect(getByTestId('instance-ai-plan-deny')).toHaveTextContent('Deny');
-		expect(getByTestId('instance-ai-plan-ask-for-edits')).toHaveTextContent('Ask for edits');
 		expect(getByTestId('instance-ai-plan-approve')).toHaveTextContent('Approve');
+		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
 		expect(queryByRole('textbox')).not.toBeInTheDocument();
 	});
 
@@ -92,7 +96,6 @@ describe('PlanReviewPanel', () => {
 		expect(getByTestId('instance-ai-plan-building')).toHaveTextContent('Building plan...');
 		// Actions stay hidden until the plan is final.
 		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
 	});
 
@@ -104,16 +107,6 @@ describe('PlanReviewPanel', () => {
 		expect(emitted().approve).toEqual([[]]);
 	});
 
-	it('emits ask-for-edits when the ask-for-edits action is clicked', async () => {
-		const { emitted, getByTestId } = renderComponent();
-
-		await userEvent.click(getByTestId('instance-ai-plan-ask-for-edits'));
-
-		expect(emitted()['ask-for-edits']).toEqual([[]]);
-		expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
-		expect(getByTestId('instance-ai-plan-approve')).toBeInTheDocument();
-	});
-
 	it('emits deny when the deny action is clicked', async () => {
 		const { emitted, getByTestId } = renderComponent();
 
@@ -121,7 +114,6 @@ describe('PlanReviewPanel', () => {
 
 		expect(emitted().deny).toEqual([[]]);
 		expect(emitted().approve).toBeUndefined();
-		expect(emitted()['ask-for-edits']).toBeUndefined();
 	});
 
 	it('shows the denied badge after the deny action resolves', async () => {
@@ -131,7 +123,6 @@ describe('PlanReviewPanel', () => {
 
 		expect(getByTestId('instance-ai-plan-denied')).toHaveTextContent('Plan denied');
 		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
 	});
 
@@ -145,7 +136,6 @@ describe('PlanReviewPanel', () => {
 		expect(getByTestId('instance-ai-plan-changes-requested')).toHaveTextContent(
 			'Changes requested',
 		);
-		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
 	});
@@ -153,7 +143,6 @@ describe('PlanReviewPanel', () => {
 	it('hides actions for read-only plans', () => {
 		const { queryByTestId } = renderComponent({ props: { readOnly: true } });
 
-		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
 	});
@@ -169,5 +158,25 @@ describe('PlanReviewPanel', () => {
 		expect(header.className).toContain('headerCollapsed');
 		expect(chevron).toHaveAttribute('data-icon', 'chevron-right');
 		expect(queryByText('Plan approved')).not.toBeInTheDocument();
+	});
+});
+
+describe('PlanReviewPanel — blank titles', () => {
+	it('labels a task whose title is blank', () => {
+		const { getByText } = renderComponent({
+			props: {
+				plannedTasks: [
+					{
+						id: 'table',
+						title: '  ',
+						kind: 'manage-data-tables',
+						spec: 'Create a table.',
+						deps: [],
+					},
+				],
+			},
+		});
+
+		expect(getByText('Untitled task')).toBeInTheDocument();
 	});
 });

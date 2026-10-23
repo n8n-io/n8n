@@ -112,6 +112,44 @@ describe('createAgentSequence', () => {
 		]);
 	});
 
+	it('should force tool calls for primary and fallback models', () => {
+		const boundModel = mock<BaseChatModel>();
+		const boundFallbackModel = mock<BaseChatModel>();
+		const model = mock<BaseChatModel>({
+			bindTools: vi.fn().mockReturnValue(boundModel),
+		});
+		const fallbackModel = mock<BaseChatModel>({
+			bindTools: vi.fn().mockReturnValue(boundFallbackModel),
+		});
+		const mockAgent = mock<any>();
+
+		mockAgent.withFallbacks = vi.fn().mockReturnValue(mockAgent);
+		(createToolCallingAgent as Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as Mock).mockReturnValue(mock<any>());
+
+		createAgentSequence(
+			model,
+			[mockTool],
+			mockPrompt,
+			{},
+			undefined,
+			undefined,
+			fallbackModel,
+			true,
+		);
+
+		expect(model.bindTools).toHaveBeenCalledWith([mockTool], { tool_choice: 'any' });
+		expect(fallbackModel.bindTools).toHaveBeenCalledWith([mockTool], { tool_choice: 'any' });
+		expect(createToolCallingAgent).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ llm: boundModel, tools: [mockTool] }),
+		);
+		expect(createToolCallingAgent).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ llm: boundFallbackModel, tools: [mockTool] }),
+		);
+	});
+
 	it('should pass output parser to getAgentStepsParser', () => {
 		const mockAgent = mock<any>();
 		const mockRunnableSequence = mock<any>();

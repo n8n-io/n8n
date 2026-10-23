@@ -9,6 +9,7 @@ const closeModalMock = vi.fn();
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({
 		closeModal: closeModalMock,
+		modalsById: { agentJsonImportModal: { open: true } },
 	}),
 }));
 
@@ -27,13 +28,8 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@/app/components/Modal.vue', () => ({
-	default: {
-		name: 'Modal',
-		template:
-			'<section data-testid="agent-json-import-modal"><slot name="header" /><slot name="content" /><slot name="footer" /></section>',
-		props: ['name', 'width', 'customClass'],
-	},
+vi.mock('../components/modals/AgentModal.vue', async () => ({
+	default: (await import('./utils/AgentModalTestStub')).AgentModalTestStub,
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -123,7 +119,7 @@ describe('AgentJsonImportModal', () => {
 			);
 		});
 
-		await wrapper.findAll('button')[0].trigger('click');
+		await wrapper.get('[data-testid="dialog-close-button"]').trigger('click');
 
 		expect(wrapper.text()).not.toContain('agent.json');
 		expect(wrapper.find('[data-testid="agent-json-import-confirm"]').attributes('disabled')).toBe(

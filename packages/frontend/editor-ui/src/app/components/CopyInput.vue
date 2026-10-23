@@ -15,6 +15,7 @@ type Props = {
 	collapse?: boolean;
 	redactValue?: boolean;
 	disableCopy?: boolean;
+	truncate?: 'start' | 'end';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -26,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 	copyButtonText: useI18n().baseText('generic.copy'),
 	toastTitle: useI18n().baseText('generic.copiedToClipboard'),
 	disableCopy: false,
+	truncate: 'end',
 });
 const emit = defineEmits<{
 	copy: [];
@@ -56,6 +58,7 @@ function copy() {
 					[$style.copyText]: true,
 					[$style[size]]: true,
 					[$style.collapsed]: collapse,
+					[$style.truncateStart]: truncate === 'start',
 					[$style.noHover]: disableCopy,
 					'ph-no-capture': redactValue,
 				}"
@@ -116,6 +119,19 @@ function copy() {
 .collapsed {
 	white-space: nowrap;
 	overflow: hidden;
+}
+
+.truncateStart {
+	white-space: nowrap;
+	overflow: hidden;
+	direction: rtl;
+	text-align: left;
+	text-overflow: ellipsis;
+
+	> span {
+		direction: ltr;
+		unicode-bidi: isolate;
+	}
 }
 
 .copyButton {

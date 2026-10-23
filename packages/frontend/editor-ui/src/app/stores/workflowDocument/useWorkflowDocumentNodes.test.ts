@@ -21,14 +21,13 @@ import { setActivePinia, createPinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes, type INodeTypeDescription, type Workflow } from 'n8n-workflow';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
 import {
 	useWorkflowDocumentNodes,
 	type WorkflowDocumentNodesDeps,
 } from './useWorkflowDocumentNodes';
 import { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
-import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
-
 const getNodeType = vi.fn().mockReturnValue(null);
 const communityNodeType = vi.fn().mockReturnValue(undefined);
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -64,19 +63,6 @@ describe('useWorkflowDocumentNodes', () => {
 	});
 
 	describe('round-trip: setNodes → read', () => {
-		it('preserves a center-aligned v2 agent position', () => {
-			const agent = createNode({
-				position: [112, 105],
-				type: MESSAGE_AN_AGENT_NODE_TYPE,
-				typeVersion: 2,
-			});
-			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
-
-			workflowDocumentNodes.setNodes([agent]);
-
-			expect(workflowDocumentNodes.getNodeById(agent.id)?.position).toEqual([112, 105]);
-		});
-
 		it('nodes set via setNodes are readable via allNodes', () => {
 			const nodeA = createNode({ name: 'A' });
 			const nodeB = createNode({ name: 'B' });
@@ -131,6 +117,22 @@ describe('useWorkflowDocumentNodes', () => {
 			workflowDocumentNodes.setNodes([createNode({ name: 'X' }), createNode({ name: 'Y' })]);
 
 			expect(workflowDocumentNodes.canvasNames.value).toEqual(new Set(['X', 'Y']));
+		});
+
+		it('setNodes snaps every node position to the grid, including agent cards', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({
+					name: 'Agent',
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					position: [95, 57],
+				}),
+				createNode({ name: 'Regular', position: [110, 110] }),
+			]);
+
+			expect(workflowDocumentNodes.getNodeByName('Agent')?.position).toEqual([96, 64]);
+			expect(workflowDocumentNodes.getNodeByName('Regular')?.position).toEqual([112, 112]);
 		});
 
 		it('getNodesByIds returns matching nodes', () => {
@@ -590,6 +592,37 @@ describe('useWorkflowDocumentNodes', () => {
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
 
+		it('updateNodeProperties fires onStateDirty when a property changes', () => {
+			const dirtySpy = vi.fn();
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.updateNodeProperties({
+				name: 'Target',
+				properties: { disabled: true },
+			});
+
+			expect(dirtySpy).toHaveBeenCalledOnce();
+		});
+
+		it('updateNodeProperties with markDirty: false does not fire onStateDirty (server-mirror path)', () => {
+			const dirtySpy = vi.fn();
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.updateNodeProperties(
+				{ name: 'Target', properties: { disabled: true } },
+				{ markDirty: false },
+			);
+
+			expect(dirtySpy).not.toHaveBeenCalled();
+			expect(workflowDocumentNodes.getNodeByName('Target')?.disabled).toBe(true);
+		});
+
 		it('removeAllNodes does not fire onStateDirty (initialization path)', () => {
 			const dirtySpy = vi.fn();
 
@@ -729,6 +762,90 @@ describe('useWorkflowDocumentNodes', () => {
 			]);
 
 			expect(workflowDocumentNodes.workflowTriggerNodes.value).toHaveLength(0);
+		});
+	});
+
+	describe('replaceInvalidWorkflowCredentials', () => {
+		const invalid = { id: 'deleted-id', name: 'Deleted credential' };
+		const replacement = { id: 'replacement-id', name: 'Replacement credential' };
+		const otherCredential = { id: 'other-id', name: 'Other credential' };
+
+		it.each([
+			{ label: 'ID', credential: invalid },
+			{ label: 'name with a null ID', credential: { id: null, name: invalid.name } },
+			{ label: 'legacy name', credential: invalid.name },
+		])('marks replacements by $label as changed', ({ credential }) => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes(
+				['A', 'B'].map((name) =>
+					createNode({
+						name,
+						credentials: {
+							n8nApi: credential,
+							httpBasicAuth: otherCredential,
+						} as INodeUi['credentials'],
+					}),
+				),
+			);
+			const dirtySpy = vi.fn();
+			const changeSpy = vi.fn();
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.onNodesChange(changeSpy);
+			vi.mocked(deps.syncWorkflowObject).mockClear();
+
+			workflowDocumentNodes.replaceInvalidWorkflowCredentials({
+				credentials: replacement,
+				invalid,
+				type: 'n8nApi',
+			});
+
+			for (const name of ['A', 'B']) {
+				expect(workflowDocumentNodes.getNodeByName(name)?.credentials).toEqual({
+					n8nApi: replacement,
+					httpBasicAuth: otherCredential,
+				});
+				expect(changeSpy).toHaveBeenCalledWith({ action: 'update', payload: { name } });
+			}
+			expect(dirtySpy).toHaveBeenCalledTimes(2);
+			expect(deps.syncWorkflowObject).toHaveBeenCalledTimes(2);
+			expect(deps.syncWorkflowObject).toHaveBeenLastCalledWith(
+				workflowDocumentNodes.allNodes.value,
+			);
+		});
+
+		it('does not change unrelated or identical credentials', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			const credentials = [
+				undefined,
+				{ httpBasicAuth: invalid },
+				{ n8nApi: { id: 'other-id', name: invalid.name } },
+				{ n8nApi: { id: null, name: 'Other credential' } },
+				{ n8nApi: 'Other credential' },
+				{ n8nApi: invalid },
+			];
+			workflowDocumentNodes.setNodes(
+				credentials.map((value, index) =>
+					createNode({ name: `Node ${index}`, credentials: value as INodeUi['credentials'] }),
+				),
+			);
+			const dirtySpy = vi.fn();
+			const changeSpy = vi.fn();
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.onNodesChange(changeSpy);
+			vi.mocked(deps.syncWorkflowObject).mockClear();
+
+			workflowDocumentNodes.replaceInvalidWorkflowCredentials({
+				credentials: { ...invalid },
+				invalid,
+				type: 'n8nApi',
+			});
+
+			expect(workflowDocumentNodes.allNodes.value.map((node) => node.credentials)).toEqual(
+				credentials,
+			);
+			expect(dirtySpy).not.toHaveBeenCalled();
+			expect(changeSpy).not.toHaveBeenCalled();
+			expect(deps.syncWorkflowObject).not.toHaveBeenCalled();
 		});
 	});
 

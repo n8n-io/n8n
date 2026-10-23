@@ -1,7 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { getHtmlSandboxCSP, isWebhookHtmlSandboxingDisabled } from 'n8n-core';
+import {
+	getHtmlSandboxCSP,
+	isFormHtmlSandboxingDisabled,
+	isWebhookHtmlSandboxingDisabled,
+} from 'n8n-core';
 import { validateHeaderName, validateHeaderValue } from 'node:http';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
@@ -15,8 +19,15 @@ export type WebhookNodeResponseHeaders = {
 	}>;
 };
 
-/** Headers that users are not allowed to set via webhook response config */
-const PROTECTED_HEADERS = new Set(['content-security-policy']);
+/**
+ * Headers that users are not allowed to set via webhook response config, because they control
+ * client-side state the instance owns rather than the response payload.
+ */
+const PROTECTED_HEADERS = new Set([
+	'content-security-policy',
+	'strict-transport-security',
+	'clear-site-data',
+]);
 
 /** Response headers. Keys are always lower-cased. Invalid headers are silently skipped. */
 export class WebhookResponseHeaders {
@@ -29,10 +40,15 @@ export class WebhookResponseHeaders {
 		return instance;
 	}
 
-	/** Add a single header. Silently skips invalid or protected headers. */
+	/** Add a single header. Skips invalid or protected headers, logging a warning for each. */
 	set(name: string, value: string): void {
 		const lowerName = name.toLowerCase();
-		if (PROTECTED_HEADERS.has(lowerName)) return;
+		if (PROTECTED_HEADERS.has(lowerName)) {
+			Container.get(Logger).warn('Dropping protected webhook response header', {
+				headerName: name,
+			});
+			return;
+		}
 		try {
 			validateHeaderName(lowerName);
 			validateHeaderValue(lowerName, value);
@@ -70,8 +86,43 @@ export class WebhookResponseHeaders {
 	}
 }
 
-/** Set the sandbox CSP header on a webhook response, unless explicitly disabled. */
-export function applySandboxCSP(res: Response): void {
-	if (isWebhookHtmlSandboxingDisabled()) return;
+/** The operator setting that controls the sandbox CSP on the responses of a route. */
+export type WebhookSandboxSetting = 'webhook' | 'form';
+
+const SANDBOX_SETTING_LOCAL = 'webhookSandboxSetting';
+
+/** Record which operator setting controls the sandbox CSP on this response. */
+export function setRouteSandboxSetting(res: Response, setting: WebhookSandboxSetting): void {
+	res.locals[SANDBOX_SETTING_LOCAL] = setting;
+}
+
+function getRouteSandboxSetting(res: Response): WebhookSandboxSetting | undefined {
+	const setting: unknown = res.locals?.[SANDBOX_SETTING_LOCAL];
+	return setting === 'webhook' || setting === 'form' ? setting : undefined;
+}
+
+/**
+ * Set the sandbox CSP header on a webhook or form route response, unless an operator
+ * disabled it. The setting of the route decides, so every writer of a route follows the
+ * same setting. `fallback` applies when the response is not on a webhook or form route.
+ */
+export function applySandboxCSP(res: Response, fallback: WebhookSandboxSetting = 'webhook'): void {
+	const setting = getRouteSandboxSetting(res) ?? fallback;
+	const disabled =
+		setting === 'form' ? isFormHtmlSandboxingDisabled() : isWebhookHtmlSandboxingDisabled();
+	if (disabled) return;
+	res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+}
+
+/**
+ * Set the sandbox CSP header on a form page response. If an operator disabled it, remove
+ * the header instead, because the request handler sets it for the whole route.
+ * Call this for every HTML page a form endpoint serves, error and status pages included.
+ */
+export function applyFormSandboxCSP(res: Response): void {
+	if (isFormHtmlSandboxingDisabled()) {
+		res.removeHeader('Content-Security-Policy');
+		return;
+	}
 	res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 }

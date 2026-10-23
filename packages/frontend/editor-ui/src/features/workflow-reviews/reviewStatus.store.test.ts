@@ -18,10 +18,12 @@ const review = (
 	state: 'open',
 	decision: 'pending',
 	workflowVersionId: 'ver-1',
+	workflowVersionName: null,
+	description: null,
 	createdAt: '2026-07-20T10:00:00.000Z',
 	updatedAt: '2026-07-20T10:00:00.000Z',
 	decisionBy: null,
-	approvedVersionPublicationState: null,
+	viewerCanOpen: false,
 	...overrides,
 });
 
@@ -82,11 +84,7 @@ describe('reviewStatus.store', () => {
 
 	it('does not treat a latest approved review as open, but keeps it as the latest', async () => {
 		const store = useWorkflowReviewStatusStore();
-		const approved = review({
-			state: 'closed',
-			decision: 'approved',
-			approvedVersionPublicationState: 'not_published',
-		});
+		const approved = review({ state: 'closed', decision: 'approved' });
 		fetchMock.mockResolvedValue(listOf(approved));
 
 		await store.fetchStatus('workflow-1');
@@ -122,9 +120,34 @@ describe('reviewStatus.store', () => {
 			review({
 				id: 'req-9',
 				workflowVersionId: 'ver-9',
+				// The caller just opened this review, so they may open it too
+				viewerCanOpen: true,
 			}),
 		);
 		expect(store.hasOpenReview('workflow-1')).toBe(true);
+	});
+
+	it('keeps the description and the version name the caller submitted with a freshly created review', () => {
+		const store = useWorkflowReviewStatusStore();
+
+		store.setOpenReview(
+			'workflow-1',
+			{
+				id: 'req-9',
+				state: 'open',
+				decision: 'pending',
+				workflowVersionId: 'ver-9',
+				createdAt: '2026-07-20T10:00:00.000Z',
+				updatedAt: '2026-07-20T10:00:00.000Z',
+			},
+			'Please review the retry logic',
+			'Release candidate',
+		);
+
+		expect(store.latestReviewRequest('workflow-1')?.description).toBe(
+			'Please review the retry logic',
+		);
+		expect(store.latestReviewRequest('workflow-1')?.workflowVersionName).toBe('Release candidate');
 	});
 
 	it('stores null when the API returns no review', async () => {

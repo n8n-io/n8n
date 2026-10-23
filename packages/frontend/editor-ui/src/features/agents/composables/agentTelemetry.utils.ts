@@ -1,3 +1,6 @@
+import { isDraftIntegration } from '@n8n/api-types';
+import { sha256 } from '@n8n/utils/sha256';
+
 import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types';
 
 export type AgentTelemetryStatus = 'draft' | 'production';
@@ -19,12 +22,7 @@ export type AgentConfigFingerprint = {
  * key. Not a privacy mechanism — agent payloads carry the raw config fields.
  */
 async function sha256Hex16(input: string): Promise<string> {
-	const bytes = new TextEncoder().encode(input);
-	const digest = await crypto.subtle.digest('SHA-256', bytes);
-	const hex = Array.from(new Uint8Array(digest))
-		.map((b) => b.toString(16).padStart(2, '0'))
-		.join('');
-	return hex.slice(0, 16);
+	return (await sha256(input)).slice(0, 16);
 }
 
 function toolIdentifier(ref: AgentJsonToolRef): string {
@@ -51,12 +49,19 @@ export function taskIdentifiersFromConfig(config: AgentJsonConfig | null): strin
 export async function buildAgentConfigFingerprint(
 	config: AgentJsonConfig | null,
 	connectedTriggers: string[],
+	additionalConfiguredTriggers: string[] = [],
 ): Promise<AgentConfigFingerprint> {
 	const instructions = config?.instructions ?? '';
 	const tools = toolIdentifiersFromConfig(config);
 	const skills = skillIdentifiersFromConfig(config);
 	const tasks = taskIdentifiersFromConfig(config);
-	const triggers = [...connectedTriggers].sort();
+	const configuredTriggers = new Set([
+		...(config?.integrations ?? [])
+			.filter((integration) => !isDraftIntegration(integration))
+			.map((integration) => integration.type),
+		...additionalConfiguredTriggers,
+	]);
+	const triggers = connectedTriggers.filter((trigger) => configuredTriggers.has(trigger)).sort();
 	const vectorStores = (config?.vectorStores ?? [])
 		.map((store) => `${store.provider}:${store.name}`)
 		.sort();

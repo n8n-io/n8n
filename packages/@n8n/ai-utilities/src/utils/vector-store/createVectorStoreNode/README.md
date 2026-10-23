@@ -125,6 +125,7 @@ interface VectorStoreNodeConstructorArgs<T extends VectorStore> {
   populateVectorStore: Function;     // Store documents in vector store (accepts batches in v1.1+)
   getVectorStoreClient: Function;    // Get vector store instance
   releaseVectorStoreClient?: Function; // Clean up resources
+  searchByText?: true;               // Text-search modes call similaritySearchWithScore and skip embedQuery
 }
 ```
 

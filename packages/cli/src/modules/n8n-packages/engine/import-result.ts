@@ -1,3 +1,4 @@
+import type { CredentialApplyResult } from '../entities/credential/credential.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { VariableApplyResult, VariableImportPlan } from '../entities/variable/variable.types';
 import type {
@@ -7,8 +8,11 @@ import type {
 import type { PackagePublishingResults } from '../entities/workflow/workflow-publisher';
 import { serializeBindings } from '../n8n-packages.types';
 import type {
+	RemovedFolderSummary,
+	RemovedWorkflowSummary,
 	ImportBindingMap,
 	ImportCredentialSummary,
+	ImportDataTableSummary,
 	ImportedFolderSummary,
 	ImportedProjectSummary,
 	ImportedWorkflowSummary,
@@ -19,7 +23,10 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../spec/requirements.schema';
+import type {
+	PackageCredentialRequirement,
+	PackageRequirementConsumer,
+} from '../spec/requirements.schema';
 
 export function toPackageSummary(manifest: PackageManifest): ImportPackageSummary {
 	return {
@@ -51,6 +58,7 @@ export function toImportedWorkflowSummaries(
 			projectId,
 			parentFolderId: current.parentFolder?.id ?? null,
 			activeVersionId: current.activeVersionId ?? null,
+			isArchived: current.isArchived,
 			publishing: result?.publishing ?? { state: 'unchanged' },
 			status,
 		};
@@ -60,22 +68,68 @@ export function toImportedWorkflowSummaries(
 export function buildImportResult(input: {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
+	removedWorkflows: RemovedWorkflowSummary[];
+	removedFolders: RemovedFolderSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
 	bindings: PackageImportBindings;
 	credentials: ImportCredentialSummary;
+	dataTables: ImportDataTableSummary;
 	variables: ImportVariableSummary;
 	tags: ImportTagSummary;
 }): ImportResult {
 	return {
 		package: input.package,
 		workflows: input.workflows,
+		removedWorkflows: input.removedWorkflows,
+		removedFolders: input.removedFolders,
 		folders: input.folders,
 		projects: input.projects,
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials,
+		dataTables: input.dataTables,
 		variables: input.variables,
 		tags: input.tags,
+	};
+}
+
+/**
+ * The source ids whose destination credential the import wrote, across every scope. Scopes apply
+ * in turn: when two source ids of different scopes bind to one destination, the first scope
+ * writes it and the next finds nothing left to change. Counts by destination, like the telemetry.
+ */
+export function credentialsUpdatedAcrossScopes(
+	results: Array<Pick<CredentialApplyResult, 'bindings' | 'matched' | 'updated'>>,
+): string[] {
+	const updatedTargetIds = new Set(
+		results.flatMap(({ updated, bindings }) => updated.map((sourceId) => bindings.get(sourceId))),
+	);
+
+	return results.flatMap(({ updated, matched, bindings }) => [
+		...updated,
+		...matched.filter((sourceId) => updatedTargetIds.has(bindings.get(sourceId))),
+	]);
+}
+
+/**
+ * Merges the credential outcomes of every scope: each list is a union. An updated source id
+ * matched first, but the import rewrote its credential, so `updated` wins.
+ */
+export function reconcileCredentialSummary(input: {
+	matched: Iterable<string>;
+	stubbed: Iterable<string>;
+	seeded: Iterable<string>;
+	incomplete: Iterable<string>;
+	updated: Iterable<string>;
+}): ImportCredentialSummary {
+	const updated = new Set(input.updated);
+
+	return {
+		matched: [...new Set(input.matched)].filter((sourceId) => !updated.has(sourceId)),
+		stubbed: [...new Set(input.stubbed)],
+		seeded: [...new Set(input.seeded)],
+		incomplete: [...new Set(input.incomplete)],
+		updated: [...updated],
 	};
 }
 
@@ -151,9 +205,9 @@ export function unionTagSummaries(summaries: ImportTagSummary[]): ImportTagSumma
 }
 
 /**
- * Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match.
+ * Keep only requirements and consumers for the imported workflows.
  */
-export function identifyRequirements<T extends { usedByWorkflows: string[] }>(
+export function identifyRequirements<T extends { usedBy: PackageRequirementConsumer[] }>(
 	requirements: T[] | undefined,
 	workflows: PreparedWorkflow[],
 ): T[] | undefined {
@@ -163,9 +217,11 @@ export function identifyRequirements<T extends { usedByWorkflows: string[] }>(
 	return requirements
 		.map((requirement) => ({
 			...requirement,
-			usedByWorkflows: requirement.usedByWorkflows.filter((id) => importedIds.has(id)),
+			usedBy: requirement.usedBy.filter(
+				({ kind, id }) => kind === 'workflow' && importedIds.has(id),
+			),
 		}))
-		.filter((requirement) => requirement.usedByWorkflows.length > 0);
+		.filter((requirement) => requirement.usedBy.length > 0);
 }
 
 /**

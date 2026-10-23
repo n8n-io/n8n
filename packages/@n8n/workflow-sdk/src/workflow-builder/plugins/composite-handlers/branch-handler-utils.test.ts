@@ -54,6 +54,25 @@ describe('branch-handler-utils', () => {
 			};
 			expect(getTargetNodeName(chain)).toBe('Head');
 		});
+
+		it('returns the prefix-chain head for a builder created inline from a chain', () => {
+			const head = createMockNode('Head');
+			const ifNode = createMockNode('Route');
+			const builder = {
+				_isIfElseBuilder: true,
+				ifNode,
+				prefixChain: { head, allNodes: [head, ifNode] },
+			};
+			expect(getTargetNodeName(builder)).toBe('Head');
+		});
+
+		it('returns the branching node for a builder claimed by feeder chains', () => {
+			const head = createMockNode('Head');
+			const ifNode = createMockNode('Route');
+			const builder: Record<string, unknown> = { _isIfElseBuilder: true, ifNode };
+			builder.feederChains = [{ head, allNodes: [head, builder] }];
+			expect(getTargetNodeName(builder)).toBe('Route');
+		});
 	});
 
 	describe('collectFromTarget', () => {

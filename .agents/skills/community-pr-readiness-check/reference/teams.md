@@ -16,7 +16,7 @@ Owner resolution, the GitHub-team → Linear-team → label mapping, and the Lin
 
 ## Identifying the owning team
 
-Use the canonical owners script at `.github/scripts/owners.mjs`. It parses `.github/OWNERS` with last-match-wins semantics and returns allocations sorted by file count with a `share` percentage. Using the script keeps this skill consistent with whatever CI uses.
+Use the canonical owners script at `.github/scripts/owners/owners.mjs`. It parses `OWNERS` with last-match-wins semantics and returns allocations sorted by file count with a `share` percentage. Using the script keeps this skill consistent with whatever CI uses.
 
 1. Write the PR's changed file paths (from the `files` list) to a temp file, one per line:
    ```bash
@@ -24,7 +24,7 @@ Use the canonical owners script at `.github/scripts/owners.mjs`. It parses `.git
    ```
 2. Run the script:
    ```bash
-   node .github/scripts/owners.mjs /tmp/pr-<number>-files.txt
+   node .github/scripts/owners/owners.mjs /tmp/pr-<number>-files.txt
    ```
 3. The script prints JSON of the form:
    ```json
@@ -38,10 +38,10 @@ Use the canonical owners script at `.github/scripts/owners.mjs`. It parses `.git
    ```
    Allocations are already sorted by `fileCount` descending — take the first entry as the winning team.
 4. Clean up: `rm /tmp/pr-<number>-files.txt`.
-5. Strip the `@n8n-io/` prefix from `allocations[0].team` — the GitHub team slug is `nodes`, `iam`, `ai`, etc. If `allocations` is empty (no file matched any rule, which is possible only if `.github/OWNERS` lost its catch-all), fall back to `catalysts`.
+5. Strip the `@n8n-io/` prefix from `allocations[0].team` — the GitHub team slug is `nodes`, `iam`, `ai`, etc. If `allocations` is empty (no file matched any rule, which is possible only if `OWNERS` lost its catch-all), fall back to `catalysts`.
 6. Map the GitHub team slug to its Linear team name and PR label using the table below. The `team` field in the JSON output is the **Linear team name**. If the resolved GitHub team slug has no entry in the table, fall back to `Engineering`.
 
-**Sub-agent fallback**: if `node` execution is denied by the sandbox, read `.github/OWNERS` directly and apply last-match-wins by hand. All the active rules fit on one screen.
+**Sub-agent fallback**: if `node` execution is denied by the sandbox, read `OWNERS` directly and apply last-match-wins by hand. All the active rules fit on one screen.
 
 ## GitHub team → Linear team → GitHub label
 
@@ -54,7 +54,7 @@ Use the canonical owners script at `.github/scripts/owners.mjs`. It parses `.git
 | `design`                  | Design                  | `team:design`      |
 | `iam`                     | Identity & Access       | `team:identity`    |
 | `ligo`                    | Lifecycle & Governance  | `team:lifecycle`   |
-| `instance-ai`             | AI Assistant            | `team:instance-ai` |
+| `ai-assistant`            | AI Assistant            | `team:instance-ai` |
 | `frontend`                | Adore                   | `team:adore`       |
 | `qa-dx`                   | Developer Platform      | `team:qa-dx`       |
 | `migrations-review`       | Catalysts               | `team:cats`        |

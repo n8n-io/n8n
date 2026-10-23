@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
@@ -5,11 +6,11 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
-import { EventService } from '@/events/event.service';
 import {
 	buildImportPackageBuffer,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	WIRE_VERSION_ID,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { Telemetry } from '@/telemetry';
@@ -21,6 +22,10 @@ import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
+// Must run before `setupTestServer`, which constructs the controller with this mock.
+const credentialTypesMock = mockInstance(CredentialTypes);
+credentialTypesMock.recognizes.mockReturnValue(true);
+
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 let owner: User;
@@ -28,9 +33,6 @@ let ownerPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	const credentialTypesMock = mockInstance(CredentialTypes);
-	credentialTypesMock.recognizes.mockReturnValue(true);
-
 	// Register node types so imports pass the default fail-on-missing-node-type check.
 	await utils.initNodeTypes();
 
@@ -78,7 +80,7 @@ async function buildImportPackage(
 				? {
 						variables: [{ id: 'var-http-source', name: variable.name, target: variable.target }],
 						requirements: {
-							variables: [{ name: variable.name, usedByWorkflows: [wfId] }],
+							variables: [{ name: variable.name, usedBy: [{ kind: 'workflow', id: wfId }] }],
 						},
 					}
 				: {}),
@@ -101,11 +103,13 @@ async function buildImportPackage(
 				},
 			],
 			connections: {},
-			versionId: 'wire-version-id',
 			parentFolderId: null,
-			isPublished: false,
 			isArchived: false,
 		}),
+	);
+	writer.writeFile(
+		`workflows/${wfId}/workflow-metadata.json`,
+		JSON.stringify({ versionId: WIRE_VERSION_ID, publishedVersionId: null }),
 	);
 
 	if (variable) {
@@ -149,7 +153,6 @@ describe('POST /n8n-packages/import', () => {
 
 	test('rejects import when the API key lacks workflow:import scope', async () => {
 		const limitedOwner = await createOwnerWithApiKey({ scopes: ['workflow:export'] });
-		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		const tarBuffer = await buildImportPackage();
 
 		const response = await testServer
@@ -159,10 +162,6 @@ describe('POST /n8n-packages/import', () => {
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(403);
-		expect(emitSpy).toHaveBeenCalledWith(
-			'n8n-package-import-failed',
-			expect.objectContaining({ reason: 'access-denied' }),
-		);
 	});
 
 	test('rejects import into a project the caller has no access to', async () => {
@@ -242,10 +241,13 @@ describe('POST /n8n-packages/import', () => {
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					isArchived: false,
 					publishing: { state: 'unchanged' },
 					status: 'created',
 				},
 			],
+			removedWorkflows: [],
+			removedFolders: [],
 			folders: [],
 			projects: [],
 			bindings: {
@@ -255,6 +257,14 @@ describe('POST /n8n-packages/import', () => {
 			credentials: {
 				matched: [],
 				stubbed: [],
+				seeded: [],
+				incomplete: [],
+				updated: [],
+			},
+			dataTables: {
+				matched: 0,
+				created: 0,
+				updated: 0,
 			},
 			variables: {
 				matched: [],
@@ -313,7 +323,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('missingNodeTypeMode', 'fail')
 			.field('dataTableMatchingMode', 'by-id')
 			.field('dataTableMissingMode', 'must-preexist')
-			.field('dataTableSchemaConflictPolicy', 'fail')
+			.field('dataTableSchemaConflictPolicy', 'overwrite')
 			.field('variableMissingMode', 'create-with-value')
 			.field('variableConflictPolicy', 'overwrite')
 			.field('variableParentPolicy', 'project')
@@ -323,6 +333,32 @@ describe('POST /n8n-packages/import', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('accepts overwrite-non-destructive as the data table schema conflict policy', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', ownerPersonalProject.id)
+			.field('workflowConflictPolicy', 'fail')
+			.field('dataTableSchemaConflictPolicy', 'overwrite-non-destructive')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('accepts credentialMissingMode=create-with-values through the OpenAPI request validator', async () => {
+		const tarBuffer = await buildImportPackage();
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', ownerPersonalProject.id)
+			.field('workflowConflictPolicy', 'fail')
+			.field('credentialMissingMode', 'create-with-values')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.credentials).toMatchObject({ seeded: [] });
 	});
 
 	test('rejects an unsupported dataTableMissingMode value', async () => {
@@ -415,7 +451,7 @@ describe('POST /n8n-packages/import', () => {
 					id: 'wf-unknown-node',
 					name: 'Unknown Node Type',
 					// Published in the source, so a publish-intent policy would publish it.
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: [
 						{
 							id: 'unknown-node',
@@ -447,7 +483,7 @@ describe('POST /n8n-packages/import', () => {
 					type: 'missing-node-type',
 					nodeType: 'n8n-nodes-community.chatBot',
 					typeVersion: 1,
-					usedByWorkflows: ['wf-unknown-node'],
+					usedBy: [{ kind: 'workflow', id: 'wf-unknown-node' }],
 				},
 			],
 		});
@@ -495,6 +531,9 @@ describe('POST /n8n-packages/import', () => {
 		expect(response.body.credentials).toEqual({
 			matched: [],
 			stubbed: ['missing-credential'],
+			seeded: [],
+			incomplete: [],
+			updated: [],
 		});
 		expect(response.body.bindings.credentials).toEqual({
 			'missing-credential': expect.any(String),

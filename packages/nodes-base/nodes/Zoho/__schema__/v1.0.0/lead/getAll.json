@@ -4,6 +4,9 @@
         "$approval": {
             "type": "object",
             "properties": {
+                "add_approver": {
+                    "type": "boolean"
+                },
                 "approve": {
                     "type": "boolean"
                 },
@@ -85,6 +88,12 @@
         "$zia_owner_assignment": {
             "type": "string"
         },
+        "Address": {
+            "type": "string"
+        },
+        "Coordinates": {
+            "type": "string"
+        },
         "Created_By": {
             "type": "object",
             "properties": {
@@ -105,6 +114,9 @@
         "Email_Opt_Out": {
             "type": "boolean"
         },
+        "Fax": {
+            "type": "null"
+        },
         "Full_Name": {
             "type": "string"
         },
@@ -114,8 +126,14 @@
         "Last_Name": {
             "type": "string"
         },
+        "Latitude": {
+            "type": "null"
+        },
         "Locked__s": {
             "type": "boolean"
+        },
+        "Longitude": {
+            "type": "null"
         },
         "Modified_By": {
             "type": "object",
@@ -161,7 +179,13 @@
                     }
                 }
             }
+        },
+        "Unsubscribed_Mode": {
+            "type": "null"
+        },
+        "Unsubscribed_Time": {
+            "type": "null"
         }
     },
-    "version": 8
+    "version": 9
 }

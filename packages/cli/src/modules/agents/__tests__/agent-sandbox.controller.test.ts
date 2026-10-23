@@ -1,8 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
+
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentSandboxController } from '../agent-sandbox.controller';
@@ -10,9 +11,11 @@ import { AgentSandboxController } from '../agent-sandbox.controller';
 describe('AgentSandboxController', () => {
 	it('accepts knowledge sandbox warmup before files exist', async () => {
 		const agentKnowledgeService = mock<AgentKnowledgeService>();
-		const controller = new AgentSandboxController(agentKnowledgeService, mock<Logger>(), {
-			sandboxEnabled: true,
-		} as AgentsConfig);
+		const controller = new AgentSandboxController(
+			agentKnowledgeService,
+			mock<Logger>(),
+			makeKnowledgeAvailabilityService(),
+		);
 		const req = { user: { id: 'user-1' } } as AuthenticatedRequest<{ projectId: string }>;
 		const res = mock<Response>();
 
@@ -24,14 +27,19 @@ describe('AgentSandboxController', () => {
 		});
 
 		expect(res.status).toHaveBeenCalledWith(202);
-		expect(agentKnowledgeService.warmSandbox).toHaveBeenCalledWith('agent-1', 'project-1');
+		expect(agentKnowledgeService.warmKnowledgeSandbox).toHaveBeenCalledWith('agent-1', 'project-1');
 	});
 
-	it('rejects warmup when the knowledge base is disabled', async () => {
+	it.each([
+		{ reason: 'the sandbox is disabled', availability: { isSandboxEnabled: false } },
+		{ reason: 'the knowledge module is inactive', availability: { isKnowledgeActive: false } },
+	])('rejects warmup when $reason', async ({ availability }) => {
 		const agentKnowledgeService = mock<AgentKnowledgeService>();
-		const controller = new AgentSandboxController(agentKnowledgeService, mock<Logger>(), {
-			sandboxEnabled: false,
-		} as AgentsConfig);
+		const controller = new AgentSandboxController(
+			agentKnowledgeService,
+			mock<Logger>(),
+			makeKnowledgeAvailabilityService(availability),
+		);
 
 		await expect(
 			controller.warmKnowledgeSandbox(
@@ -41,6 +49,6 @@ describe('AgentSandboxController', () => {
 				'agent-1',
 			),
 		).rejects.toThrow('Agent knowledge base is not enabled');
-		expect(agentKnowledgeService.warmSandbox).not.toHaveBeenCalled();
+		expect(agentKnowledgeService.warmKnowledgeSandbox).not.toHaveBeenCalled();
 	});
 });

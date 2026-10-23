@@ -709,17 +709,12 @@ export abstract class TaskRunner extends EventEmitter {
 	 * Cancels all node type and data requests made by the given task
 	 */
 	private cancelTaskRequests(taskId: string, reason: string) {
-		for (const [requestId, request] of this.dataRequests.entries()) {
-			if (request.taskId === taskId) {
-				request.reject(new TaskCancelledError(reason));
-				this.dataRequests.delete(requestId);
-			}
-		}
-
-		for (const [requestId, request] of this.nodeTypesRequests.entries()) {
-			if (request.taskId === taskId) {
-				request.reject(new TaskCancelledError(reason));
-				this.nodeTypesRequests.delete(requestId);
+		for (const requests of [this.dataRequests, this.nodeTypesRequests]) {
+			for (const [requestId, request] of requests.entries()) {
+				if (request.taskId === taskId) {
+					request.reject(new TaskCancelledError(reason));
+					requests.delete(requestId);
+				}
 			}
 		}
 	}

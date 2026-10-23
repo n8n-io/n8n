@@ -7,6 +7,7 @@ import type {
 import { sleep } from '@n8n/utils/sleep';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 // Import from centralized module
@@ -16,6 +17,8 @@ import {
 	getCustomErrorMessage as getCustomOpenAiErrorMessage,
 	isOpenAiError,
 } from '../../vendors/OpenAi/helpers/error-handling';
+
+const CHAIN_FAILURE_FALLBACK_MESSAGE = 'Model execution failed';
 
 /**
  * Basic LLM Chain Node Implementation
@@ -106,14 +109,19 @@ export class ChainLlm implements INodeType {
 							}
 						}
 
+						const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex, {
+							enrichNonParserErrors: true,
+							fallbackMessage: CHAIN_FAILURE_FALLBACK_MESSAGE,
+						});
+
 						if (this.continueOnFail()) {
 							returnData.push({
-								json: { error: error.message },
+								json: { error: executionError.message },
 								pairedItem: { item: itemIndex },
 							});
 							return;
 						}
-						throw new NodeOperationError(this.getNode(), error);
+						throw new NodeOperationError(this.getNode(), executionError);
 					}
 
 					const responses = promiseResult.value;
@@ -152,13 +160,21 @@ export class ChainLlm implements INodeType {
 						}
 					}
 
+					const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex, {
+						enrichNonParserErrors: true,
+						fallbackMessage: CHAIN_FAILURE_FALLBACK_MESSAGE,
+					});
+
 					// Continue on failure if configured
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+						returnData.push({
+							json: { error: executionError.message },
+							pairedItem: { item: itemIndex },
+						});
 						continue;
 					}
 
-					throw error;
+					throw executionError;
 				}
 			}
 		}

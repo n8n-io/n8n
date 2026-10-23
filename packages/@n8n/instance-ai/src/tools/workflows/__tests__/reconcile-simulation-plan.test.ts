@@ -1,10 +1,14 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+import { agentToolWorkflow } from '../../../__tests__/agent-tool-workflow';
 import type {
 	NodeSimulationVerdict,
 	WorkflowBuildOutcome,
 } from '../../../workflow-loop/workflow-loop-state';
-import { CREDENTIALLESS_AI_ROOT_SIMULATION_REASON } from '../plan-verification-simulation';
+import {
+	CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+	DECLARED_OUTPUT_SIMULATION_REASON,
+} from '../plan-verification-simulation';
 import { reconcileSimulationPlan } from '../reconcile-simulation-plan';
 import { type CredentialEntry, type CredentialMap } from '../resolve-credentials';
 
@@ -70,6 +74,39 @@ function makeWorkflow(nodes: TestNode[]): WorkflowJSON {
 // ---------------------------------------------------------------------------
 
 describe('reconcileSimulationPlan', () => {
+	it.each([
+		{ operation: 'send', declared: false, expected: 'simulate' },
+		{ operation: 'get', declared: false, expected: 'execute' },
+		{ operation: 'get', declared: true, expected: 'simulate' },
+	])(
+		'reconciles attached $operation tools with declared output: $declared',
+		async ({ operation, declared, expected }) => {
+			const workflow = agentToolWorkflow(3.1, 3);
+			workflow.nodes[2].parameters = { operation };
+			workflow.nodes[2].credentials = { slackApi: { id: 'cred-1', name: 'Tool account' } };
+			const reason = declared ? DECLARED_OUTPUT_SIMULATION_REASON : MOCKED_CREDENTIAL_REASON;
+			const patch = await reconcileSimulationPlan({
+				workflow,
+				buildOutcome: makeBuildOutcome({
+					mockedNodeNames: ['Write'],
+					mockedCredentialsByNode: { Write: ['slackApi'] },
+					nodeSimulationPlan: [{ ...mockedVerdict('Write'), reason }],
+					simulationFixtures: { Write: [{ id: 'fixture' }] },
+				}),
+				availableCredentials: makeCredentialMap([
+					{ id: 'cred-1', name: 'Tool account', type: 'slackApi' },
+				]),
+			});
+			expect(patch?.nodeSimulationPlan).toEqual([
+				expect.objectContaining({ nodeName: 'Write', verdict: expected }),
+			]);
+			expect(patch?.nodeSimulationPlan?.[0].reason).not.toBe(MOCKED_CREDENTIAL_REASON);
+			expect(patch?.simulationFixtures?.Write).toEqual(
+				expected === 'simulate' ? [{ id: 'fixture' }] : undefined,
+			);
+		},
+	);
+
 	it('returns undefined when the outcome has no mocked credentials', async () => {
 		const patch = await reconcileSimulationPlan({
 			buildOutcome: makeBuildOutcome(),

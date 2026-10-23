@@ -42,6 +42,7 @@ type CanvasConnectionReplacementDependencies = {
 			trackHistory?: boolean;
 			keepPristine?: boolean;
 			validateNodeGroups?: boolean;
+			trackEmptyGroupTelemetry?: boolean;
 		},
 	) => void;
 	deleteConnection: (
@@ -232,7 +233,12 @@ export function replaceCanvasConnection({
 	}
 
 	for (const connection of addBeforeRemoval) {
-		createConnection(connection, { trackHistory, validateNodeGroups: false });
+		createConnection(connection, {
+			trackHistory,
+			validateNodeGroups: false,
+			// Replacing a connection is an internal operation.
+			trackEmptyGroupTelemetry: false,
+		});
 	}
 
 	deleteConnection(connectionToRemove, {
@@ -242,7 +248,12 @@ export function replaceCanvasConnection({
 	});
 
 	for (const connection of addAfterRemoval) {
-		createConnection(connection, { trackHistory, validateNodeGroups: false });
+		createConnection(connection, {
+			trackHistory,
+			validateNodeGroups: false,
+			// Replacing a connection is an internal operation.
+			trackEmptyGroupTelemetry: false,
+		});
 	}
 
 	return true;

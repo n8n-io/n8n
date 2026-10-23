@@ -78,6 +78,20 @@ function makeArgs(runMock: ReturnType<typeof vi.fn>): ScriptedGateRunArgs {
 }
 
 describe('runScriptedGateVerification', () => {
+	it('does not start another decision pass after cancellation', async () => {
+		const controller = new AbortController();
+		const run = vi.fn().mockImplementationOnce(async () => {
+			controller.abort();
+			return approvePassResult;
+		});
+
+		await expect(
+			runScriptedGateVerification({ ...makeArgs(run), abortSignal: controller.signal }),
+		).rejects.toThrow();
+
+		expect(run).toHaveBeenCalledTimes(1);
+	});
+
 	it('runs one pass per decision with the gate pin swapped and the loop edge cut', async () => {
 		const run = vi
 			.fn()
@@ -107,6 +121,30 @@ describe('runScriptedGateVerification', () => {
 		expect(analysis.coverageNote).toContain('"decline" ended at "Revise"');
 		expect(analysis.coverageNote).toContain('"Revise" → "Format"');
 		expect(result.executedNodeNames).toEqual(expect.arrayContaining(['Publish', 'Revise']));
+	});
+
+	it('keeps the file-output nodes of every pass', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({ ...approvePassResult, binaryOutputNodeNames: ['Publish'] })
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { result } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(result.binaryOutputNodeNames).toEqual(['Publish']);
+	});
+
+	it('starts every decision pass from the named trigger', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce(approvePassResult)
+			.mockResolvedValueOnce(declinePassResult);
+
+		await runScriptedGateVerification({ ...makeArgs(run), triggerNodeName: 'First of Month' });
+
+		for (const call of run.mock.calls) {
+			expect((call as unknown[])[2]).toMatchObject({ triggerNodeName: 'First of Month' });
+		}
 	});
 
 	it('fails the merged analysis when any pass fails', async () => {
@@ -142,6 +180,24 @@ describe('runScriptedGateVerification — merge consistency', () => {
 
 		expect(analysis.success).toBe(false);
 		expect(result.status).toBe('error');
+		expect(analysis.nodeErrors).toEqual([
+			{ nodeName: 'Revise', message: '[decision: decline] expression error' },
+		]);
+	});
+
+	it('discloses that a redacted pass was not inspected, whichever pass it was', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({
+				...approvePassResult,
+				redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+			})
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(analysis.success).toBe(true);
+		expect(analysis.redactionNote).toContain('output was not inspected');
 	});
 
 	it('discloses simulated nodes reached only in an earlier pass', async () => {
@@ -160,5 +216,34 @@ describe('runScriptedGateVerification — merge consistency', () => {
 
 		// Publish is reached only by the approve pass; the decline pass ran last.
 		expect(analysis.simulationNote).toContain('Publish');
+	});
+
+	it('discloses a node fed by workflow pin data in any pass', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({ ...approvePassResult, workflowPinnedNodeNames: ['Router'] })
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		// Pins come from the run result, so they exist per pass only. Losing them
+		// in the merge would let a pin-fed gate run read as a live test.
+		expect(analysis.workflowPinnedNodeNames).toEqual(['Router']);
+		expect(analysis.reachedSimulatedNodes.map((node) => node.nodeName)).toContain('Router');
+		expect(analysis.simulationNote).toContain('Router');
+	});
+
+	it('does not double-count a pinned node that the plan already simulates', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({ ...approvePassResult, workflowPinnedNodeNames: ['Generate'] })
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(analysis.workflowPinnedNodeNames).toEqual([]);
+		expect(
+			analysis.reachedSimulatedNodes.filter((node) => node.nodeName === 'Generate'),
+		).toHaveLength(1);
 	});
 });

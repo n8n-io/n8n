@@ -4,10 +4,13 @@ import {
 	estimateObservationTokens,
 	normalizeObservationLogReflection,
 	supersededLifecycleState,
+	type AgentDbMessage,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -16,7 +19,6 @@ import {
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
 } from '@n8n/agents';
-import type { AgentDbMessage } from '@n8n/instance-ai';
 import { Equal, In, IsNull, MoreThan, type FindOptionsWhere } from '@n8n/typeorm';
 
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -51,6 +53,12 @@ export class TypeORMObservationLogStore
 		private readonly messageRepo: InstanceAiMessageRepository,
 		private readonly toAgentMessage: (entity: InstanceAiMessage) => AgentDbMessage | undefined,
 	) {}
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationRepo.commitObservationLogBatch(batch);
+	}
 
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],

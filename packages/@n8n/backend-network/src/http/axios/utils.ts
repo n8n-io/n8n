@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import crypto from 'crypto';
@@ -12,6 +13,7 @@ import {
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
 import net from 'node:net';
+import { Readable } from 'node:stream';
 
 import { hasProxyEnvironmentVariables } from '../../proxy/proxy-resolution';
 import type { SsrfBridge } from '../../ssrf';
@@ -22,7 +24,13 @@ export function throwIfDomainNotAllowed(
 	configOrUrl: AxiosRequestConfig | string,
 	allowedDomains?: string,
 ): void {
-	const url = typeof configOrUrl === 'string' ? configOrUrl : axios.getUri(configOrUrl);
+	// Resolve the bare target rather than `axios.getUri()`, which also serializes
+	// `config.params` onto the string. The allowlist check only needs the hostname,
+	// and this URL is what the thrown message embeds.
+	const url =
+		typeof configOrUrl === 'string'
+			? configOrUrl
+			: (buildTargetUrl(configOrUrl.url, configOrUrl.baseURL) ?? configOrUrl.url ?? '');
 	assertUrlAllowed({ url, allowedDomains });
 }
 
@@ -139,8 +147,6 @@ export const getBeforeRedirectFn =
 		const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 		const proxy = resolveProxyOption(customProxyUrl);
 
-		// SSRF lookup is applied to direct connections only; behind a proxy the
-		// proxy validates the final target.
 		const targetUrl = redirectedRequest.href;
 		const { httpAgent, httpsAgent } = buildNodeAgents(proxy, ssrf, redirectAgentOptions);
 
@@ -226,6 +232,30 @@ const pushFormDataValue = (form: FormData, key: string, value: any) => {
 };
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
+const streamOfFormDataValue = (value: unknown) => {
+	if (value instanceof Readable) return value;
+	if (isRecord(value) && 'options' in value && value.value instanceof Readable) return value.value;
+	return undefined;
+};
+
+/**
+ * Destroys the streams in a request body: a stream, a `FormData`, or form fields that hold
+ * streams. A request that fails leaves an unread file stream open until garbage collection.
+ */
+export const destroyRequestBody = (body: unknown) => {
+	if (body instanceof Readable) {
+		body.destroy();
+	} else if (isFormDataInstance(body)) {
+		// `isFormDataInstance` matches on `getHeaders` and `append` only.
+		if (typeof body.destroy === 'function') body.destroy();
+	} else if (isRecord(body) && !ArrayBuffer.isView(body)) {
+		for (const field of Object.values(body)) {
+			const values: unknown[] = Array.isArray(field) ? field : [field];
+			values.forEach((value) => streamOfFormDataValue(value)?.destroy());
+		}
+	}
+};
+
 /** Converts a plain object into a `FormData` instance, handling arrays and option objects. */
 export const createFormDataObject = (data: Record<string, unknown>) => {
 	const formData = new FormData();
@@ -256,7 +286,7 @@ export function isFormDataInstance(data: unknown): data is FormData {
 		(typeof data === 'object' &&
 			data !== null &&
 			'getHeaders' in data &&
-			typeof (data as { getHeaders: unknown }).getHeaders === 'function' &&
+			typeof data.getHeaders === 'function' &&
 			'append' in data &&
 			typeof (data as { append: unknown }).append === 'function')
 	);
@@ -397,8 +427,6 @@ export function setAxiosAgents(
 	const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 	const proxy = resolveProxyOption(customProxyUrl);
 
-	// SSRF lookup is applied to direct connections only; behind a proxy the
-	// proxy validates the final target.
 	const { httpAgent, httpsAgent } = buildNodeAgents(proxy, ssrf, agentOptions);
 	config.httpAgent = httpAgent;
 	config.httpsAgent = httpsAgent;
@@ -420,6 +448,16 @@ export async function validateUrlSsrf(
 	}
 }
 
+export async function validateProxySsrf(
+	proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+	ssrfBridge?: SsrfBridge,
+): Promise<void> {
+	const proxyUrl = getUrlFromProxyConfig(proxyConfig);
+	if (!isSupportedProxyUrl(proxyUrl)) return;
+
+	await validateUrlSsrf(proxyUrl, ssrfBridge);
+}
+
 /**
  * Resolves the raw target of a legacy request object, i.e. the value the axios
  * config carries as its `url`.
@@ -429,11 +467,13 @@ export async function validateUrlSsrf(
  * pre-flight SSRF check and the dispatched request can never read different
  * fields.
  */
+// oxlint-disable-next-line typescript/no-deprecated
 export function resolveLegacyRequestTarget(requestObject: IRequestOptions): string | undefined {
 	return (requestObject.url ?? requestObject.uri)?.toString();
 }
 
 /** Resolves the absolute target of a legacy request object, honouring `baseURL`. */
+// oxlint-disable-next-line typescript/no-deprecated
 export function resolveLegacyRequestUrl(requestObject: IRequestOptions): string | undefined {
 	const rawUrl = resolveLegacyRequestTarget(requestObject);
 	const baseURL = requestObject.baseURL?.toString();

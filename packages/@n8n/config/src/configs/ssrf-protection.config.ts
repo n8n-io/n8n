@@ -58,10 +58,10 @@ const blockedIpRangesSchema = z.string().transform(parseBlockedIpRanges);
  *
  * It does **not** decide, on its own, which outbound requests are guarded.
  *
- * That choice is made per call site via the `ssrf` option on `OutboundHttp.requests()` / `.transport()`,
- * because whether a destination is dangerous depends on where its URL comes from.
- * The one exception is {@link enabled}, which high-risk call sites read to decide
- * whether to switch protection on for user-controlled URLs.
+ * `OutboundHttp` guards every request by default and resolves {@link enabled}
+ * internally. A call site can only bypass the guard by passing an explicit
+ * `useDefaultSsrfPolicy: 'unsafe'` on `OutboundHttp.requests()` / `.transport()` — used
+ * for fixed, n8n-owned or operator-configured destinations.
  *
  * Validation precedence inside the service: allowed hostname → blocked hostname
  * → allowed IP range → blocked IP range → allow.

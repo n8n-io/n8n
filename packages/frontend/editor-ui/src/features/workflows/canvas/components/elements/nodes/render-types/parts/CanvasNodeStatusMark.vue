@@ -33,7 +33,7 @@ const {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--5xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .success {

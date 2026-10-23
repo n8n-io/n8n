@@ -141,6 +141,33 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 		});
 	});
 
+	it('should search by text when searchByText is set', async () => {
+		mockVectorStore.similaritySearchWithScore.mockResolvedValue([
+			[{ pageContent: 'test content 1', metadata: { test: 'metadata 1' } } as Document, 0.95],
+			[{ pageContent: 'test content 2', metadata: { test: 'metadata 2' } } as Document, 0.85],
+			[{ pageContent: 'test content 3', metadata: { test: 'metadata 3' } } as Document, 0.75],
+		]);
+
+		const result = await handleRetrieveAsToolExecuteOperation(
+			mockContext,
+			{ ...mockArgs, searchByText: true },
+			mockEmbeddings,
+			0,
+		);
+
+		expect(mockVectorStore.similaritySearchWithScore).toHaveBeenCalledWith('test search query', 3, {
+			testFilter: 'value',
+		});
+		expect(mockEmbeddings.embedQuery).not.toHaveBeenCalled();
+		expect(mockVectorStore.similaritySearchVectorWithScore).not.toHaveBeenCalled();
+		const response = result[0].json.response as Array<{ type: string; text: string }>;
+		expect(response.map((entry) => JSON.parse(entry.text).pageContent)).toEqual([
+			'test content 1',
+			'test content 2',
+			'test content 3',
+		]);
+	});
+
 	it('should throw error when input data does not contain query', async () => {
 		inputData[0].json = { notQuery: 'some value' };
 

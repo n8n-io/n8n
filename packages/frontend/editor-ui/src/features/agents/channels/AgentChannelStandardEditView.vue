@@ -15,12 +15,16 @@ const emit = defineEmits<{
 const detailsRef = ref<AgentChannelViewExpose>();
 const currentSettings = computed(() => detailsRef.value?.currentSettings);
 const validationError = computed(() => detailsRef.value?.validationError ?? null);
+const saveLabel = computed(() => detailsRef.value?.saveLabel);
+const beforeSave = async () => await detailsRef.value?.beforeSave?.();
+const afterSave = async () => await detailsRef.value?.afterSave?.();
 
-defineExpose({ currentSettings, validationError });
+defineExpose({ currentSettings, validationError, saveLabel, beforeSave, afterSave });
 </script>
 
 <template>
-	<div :class="$style.editView">
+	<!-- The modal focuses this rather than the credential select, which opens on focus. -->
+	<div :class="$style.editView" tabindex="-1" data-agent-modal-autofocus>
 		<AgentIntegrationCredentialConnection
 			v-model="credentialId"
 			:integration-type="integration.type"
@@ -28,11 +32,10 @@ defineExpose({ currentSettings, validationError });
 			:credentials="credentials"
 			:credential-permissions="credentialPermissions"
 			:credentials-loading="credentialsLoading"
-			:disabled="credentialReplacementPending || loading"
+			:disabled="loading"
 			:loading="loading"
 			:error-message="errorMessage"
 			:error-is-conflict="errorIsConflict"
-			:show-edit-button="!credentialReplacementPending"
 			@create="emit('create')"
 			@edit="emit('edit')"
 		/>
@@ -45,7 +48,7 @@ defineExpose({ currentSettings, validationError });
 			:credentials="credentials"
 			:credential-permissions="credentialPermissions"
 			:credentials-loading="credentialsLoading"
-			:loading="credentialReplacementPending || loading"
+			:loading="loading"
 			:connected="connected"
 			:connected-description="connectedDescription"
 			:saved-settings="savedSettings"
@@ -53,6 +56,8 @@ defineExpose({ currentSettings, validationError });
 			:agent-name="agentName"
 			:project-id="projectId"
 			:agent-id="agentId"
+			:managed-runtime="runtime"
+			:persist-channel="persistChannel"
 		/>
 	</div>
 </template>
@@ -62,5 +67,9 @@ defineExpose({ currentSettings, validationError });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+
+	&:focus {
+		outline: none;
+	}
 }
 </style>

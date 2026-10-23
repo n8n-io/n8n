@@ -44,7 +44,7 @@ function openCommandBar(event: MouseEvent) {
 	});
 }
 
-const { settingsItems } = useSettingsItems();
+const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
@@ -96,13 +96,20 @@ const onLogout = () => {
 		<N8nScrollArea as-child>
 			<div :class="$style.scrollArea">
 				<ChatSidebarContent :is-collapsed="isCollapsed" />
-				<BottomMenu :items="visibleMenuItems" :is-collapsed="isCollapsed" @logout="onLogout" />
+				<BottomMenu
+					:items="visibleMenuItems"
+					:is-collapsed="isCollapsed"
+					@select="handleSettingsItemSelect"
+					@logout="onLogout"
+				/>
 			</div>
 		</N8nScrollArea>
 	</N8nResizeWrapper>
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .sideMenu {
 	position: relative;
 	height: 100%;

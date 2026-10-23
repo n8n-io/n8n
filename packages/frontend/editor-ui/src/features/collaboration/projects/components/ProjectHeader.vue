@@ -20,15 +20,14 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
-import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
+import PromotionPreviewBadges from '@/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
+import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 
@@ -40,7 +39,7 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const agentTelemetry = useAgentTelemetry();
+const { createAgent } = useCreateAgent();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 
@@ -122,7 +121,11 @@ const externalSecretsProviderPermissions = computed(
 const showSettings = computed(
 	() =>
 		!!route?.params?.projectId &&
-		(!!projectPermissions.value.update || !!externalSecretsProviderPermissions.value.read) &&
+		// Each section of the settings page is entered by its own scope, so any one
+		// of them is enough to reach the page.
+		(!!projectPermissions.value.update ||
+			!!projectPermissions.value.manageMembers ||
+			!!externalSecretsProviderPermissions.value.read) &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
 
@@ -133,21 +136,25 @@ const showFolders = computed(() => {
 	);
 });
 
-const customProjectTabs = computed((): Array<TabOptions<string>> => {
-	// Determine the type of tab based on the current project page
-	let tabType: 'shared' | 'overview' | 'project';
+const pageType = computed(() => {
 	if (projectPages.isSharedSubPage) {
-		tabType = 'shared';
+		return 'shared';
 	} else if (projectPages.isOverviewSubPage) {
-		tabType = 'overview';
+		return 'overview';
 	} else {
-		tabType = 'project';
+		return 'project';
 	}
+});
+
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	// Only pick up tabs from active modules
-	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
-		settingsStore.isModuleActive,
+	const moduleTabs = uiStore.moduleTabs[pageType.value];
+	const activeModules = Object.keys(moduleTabs).filter(
+		(module) =>
+			settingsStore.isModuleActive(module) &&
+			(module !== 'agents' || settingsStore.isAgentsEnabled),
 	);
-	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+	return activeModules.flatMap((module) => moduleTabs[module]);
 });
 
 const ACTION_TYPES = {
@@ -209,7 +216,7 @@ const createAgentButton = computed(() => ({
 }));
 
 const selectedMainButtonType = computed(() => {
-	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isModuleActive('agents')) {
+	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isAgentsEnabled) {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
@@ -293,10 +300,7 @@ const menu = computed(() => {
 		});
 	}
 
-	if (
-		settingsStore.isModuleActive('agents') &&
-		selectedMainButtonType.value !== ACTION_TYPES.AGENT
-	) {
+	if (settingsStore.isAgentsEnabled && selectedMainButtonType.value !== ACTION_TYPES.AGENT) {
 		items.push({
 			value: ACTION_TYPES.AGENT,
 			label: i18n.baseText('projects.header.create.agent'),
@@ -383,21 +387,9 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 		telemetry.track('User clicked header add variable button');
 	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
-		const agentId = generateNanoId();
-		agentTelemetry.trackClickedNewAgent(source, agentId);
-		void router.push(instanceAiCreateAgentRoute(projectId, agentId));
+		createAgent(source, projectId);
 	},
 } as const;
-
-const pageType = computed(() => {
-	if (projectPages.isSharedSubPage) {
-		return 'shared';
-	} else if (projectPages.isOverviewSubPage) {
-		return 'overview';
-	} else {
-		return 'project';
-	}
-});
 
 const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
@@ -478,9 +470,17 @@ const onSelect = (action: string, source: CreateSource) => {
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
-					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
-						projectName
-					}}</N8nHeading>
+					<div :class="$style.titleRow">
+						<N8nHeading
+							v-if="projectName"
+							bold
+							tag="h2"
+							size="xlarge"
+							data-test-id="project-name"
+							>{{ projectName }}</N8nHeading
+						>
+						<PromotionPreviewBadges />
+					</div>
 					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
 						{{ sectionDescription }}
 					</N8nText>
@@ -520,6 +520,7 @@ const onSelect = (action: string, source: CreateSource) => {
 						<ProjectCreateResource
 							data-test-id="add-resource-buttons"
 							:actions="menu"
+							variant="brand"
 							:disabled="sourceControlStore.preferences.branchReadOnly"
 							@action="(action: string) => onSelect(action, 'dropdown')"
 						>
@@ -527,6 +528,7 @@ const onSelect = (action: string, source: CreateSource) => {
 								:data-test-id="`add-resource-${selectedMainButtonType}`"
 								v-bind="mainButtonConfig"
 								size="medium"
+								variant="brand"
 								@click="onSelect(selectedMainButtonType, 'button')"
 							/>
 						</ProjectCreateResource>
@@ -547,6 +549,8 @@ const onSelect = (action: string, source: CreateSource) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .projectHeader {
 	display: flex;
 	align-items: flex-start;
@@ -597,11 +601,17 @@ const onSelect = (action: string, source: CreateSource) => {
 	}
 }
 
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 .projectDetails:hover .favoriteBtn {
 	opacity: 1;
 }
 
-@include mixins.breakpoint('xs-only') {
+@include breakpoints.breakpoint('xs-only') {
 	.projectHeader {
 		flex-direction: column;
 		align-items: flex-start;

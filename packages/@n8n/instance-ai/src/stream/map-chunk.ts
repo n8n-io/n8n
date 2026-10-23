@@ -1,5 +1,9 @@
 import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
+	AGENT_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+	instanceAiApprovalDetailsSchema,
+	instanceAiQuestionSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	taskListSchema,
@@ -7,21 +11,17 @@ import {
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
 	channelConfigSchema,
+	mcpConnectRequestSchema,
+	credentialDestinationSchema,
+	testListenerCardSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
 
 export { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
-
-const questionItemSchema = z.object({
-	id: z.string(),
-	question: z.string(),
-	type: z.enum(['single', 'multi', 'text']),
-	options: z.array(z.string()).optional(),
-});
 
 function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
 	const value = record[key];
@@ -328,23 +328,42 @@ function mapSuspendedChunk(
 		suspendPayload.credentialRequests,
 		credentialRequestSchema,
 	);
+	const requireUserSelection = suspendPayload.requireUserSelection === true;
 	const projectId = presentString(suspendPayload.projectId);
 	const inputType = parseInputType(suspendPayload.inputType);
-	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
+	const questions = parseSchemaArray(suspendPayload.questions, instanceAiQuestionSchema);
 	const introMessage = presentString(suspendPayload.introMessage);
 	const tasks = parseSchemaRecord(suspendPayload.tasks, taskListSchema);
 	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
+	const credentialDestination = parseSchemaRecord(
+		suspendPayload.credentialDestination,
+		credentialDestinationSchema,
+	);
 	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
 	const workflowId = presentString(suspendPayload.workflowId);
+	const resourceName = presentString(suspendPayload.resourceName);
+	const approvalDetails = parseSchemaRecord(
+		suspendPayload.approvalDetails,
+		instanceAiApprovalDetailsSchema,
+	);
 	const resourceDecision = parseSchemaRecord(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
 	);
 	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
-	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
+	const mcpConnectRequest = parseSchemaRecord(
+		suspendPayload.mcpConnectRequest,
+		mcpConnectRequestSchema,
+	);
+	const testListener = parseSchemaRecord(suspendPayload.testListener, testListenerCardSchema);
+	// A test run of the target Agent pauses for the target's own tool approvals.
+	const isTargetTestRun =
+		typeof chunk.toolName === 'string' &&
+		resolveBuilderToolName(chunk.toolName) === AGENT_BUILDER_TOOL_NAMES.CALL_AGENT;
+	const targetApprovalResult = isTargetTestRun
 		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
 		: undefined;
 	const targetApproval = targetApprovalResult?.success
@@ -372,19 +391,25 @@ function mapSuspendedChunk(
 					: 'Confirmation required',
 			...(targetApproval ? { targetApproval } : {}),
 			...(credentialRequests ? { credentialRequests } : {}),
+			...(requireUserSelection ? { requireUserSelection } : {}),
 			...(projectId ? { projectId } : {}),
 			...(inputType ? { inputType } : {}),
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),
+			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),
 			...(workflowId ? { workflowId } : {}),
+			...(resourceName ? { resourceName } : {}),
+			...(approvalDetails ? { approvalDetails } : {}),
 			...(questions ? { questions } : {}),
 			...(introMessage ? { introMessage } : {}),
 			...(tasks ? { tasks } : {}),
 			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
+			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
+			...(testListener ? { testListener } : {}),
 		},
 	};
 }

@@ -2,6 +2,7 @@ import {
 	applyDynamicCredentialsUsage,
 	attachDynamicCredentialsUsage,
 	runDataAttemptedDynamicCredentials,
+	runDataUsedCredentialIds,
 	runDataUsedDynamicCredentials,
 	summarizeDynamicCredentialsUsage,
 	takeAttachedDynamicCredentialsUsage,
@@ -96,6 +97,55 @@ describe('dynamic-credentials-helpers', () => {
 				executionData({ node: [task({ attemptedDynamicCredentials: true })] }, 'resolved-user'),
 			);
 			expect(usage).toEqual({ attemptedDynamicCredentials: true });
+		});
+	});
+
+	describe('used credential ids', () => {
+		it('collects the ids sub-workflows reported onto any task, once each', () => {
+			const runData: IRunData = {
+				caller: [task({ usedCredentialIds: ['b', 'a'] }), task({})],
+				other: [task({ usedCredentialIds: ['a', 'c'] })],
+			};
+			expect(runDataUsedCredentialIds(runData).sort()).toEqual(['a', 'b', 'c']);
+			expect(runDataUsedCredentialIds(undefined)).toEqual([]);
+		});
+
+		it('ignores null slots and malformed ids in persisted run data', () => {
+			// Persisted run data is not validated, so a task can hold any value here.
+			const runData = {
+				caller: [
+					null,
+					task({ usedCredentialIds: 'cred-1' as never }),
+					task({ usedCredentialIds: ['cred-2', 7, null] as never }),
+				],
+			} as unknown as IRunData;
+			expect(runDataUsedCredentialIds(runData)).toEqual(['cred-2']);
+		});
+
+		it("reports the run's own credentials and those its sub-workflows reported", () => {
+			const usage = summarizeDynamicCredentialsUsage(
+				executionData({ caller: [task({ usedCredentialIds: ['grandchild-cred'] })] }),
+				['own-cred'],
+			);
+			expect(usage.usedCredentialIds).toEqual(['grandchild-cred', 'own-cred']);
+		});
+
+		it('reports no ids when the run touched no credential', () => {
+			expect(summarizeDynamicCredentialsUsage(executionData({}))).toEqual({});
+		});
+
+		it('adds reported ids to the ones the node already collected', () => {
+			const target = { currentNodeUsedCredentialIds: ['a'] };
+			applyDynamicCredentialsUsage(target, { usedCredentialIds: ['a', 'b'] });
+			expect(target.currentNodeUsedCredentialIds).toEqual(['a', 'b']);
+		});
+
+		it('rides the ids on an error and keeps only strings', () => {
+			const error = attachDynamicCredentialsUsage(new Error('child failed'), {
+				usedCredentialIds: ['a'],
+			});
+			Object.assign(error, { dynamicCredentialsUsage: { usedCredentialIds: ['a', 7] } });
+			expect(takeAttachedDynamicCredentialsUsage(error)).toEqual({ usedCredentialIds: ['a'] });
 		});
 	});
 

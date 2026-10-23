@@ -1,3 +1,6 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Mock } from 'vitest';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
@@ -5,18 +8,19 @@ import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { jsonParse, type ICredentialType, type INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
-import type { License } from '@/license';
+import { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
+import type { InboxService } from '@/modules/inbox/inbox.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
@@ -38,6 +42,7 @@ describe('FrontendService', () => {
 		tags: { disabled: false },
 		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
+		expressionEngine: { frontendEngine: 'legacy' },
 		hiringBanner: { enabled: false },
 		versionNotifications: {
 			enabled: false,
@@ -79,8 +84,17 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		ai: { allowSendingParameterValues: true },
 		aiAssistant: { baseUrl: '' },
 		aiGateway: { enabled: false },
+		evaluation: {
+			collectionsEnabled: false,
+			configEvalsEnabled: false,
+			agentEvalsEnabled: false,
+			agentEvalsRunTimeoutMinutes: 60,
+			forceAgentWorthTesting: false,
+		},
+		queue: { workerPool: { enabled: false } },
 	});
 
 	const instanceSettings = mock<InstanceSettings>({
@@ -168,6 +182,7 @@ describe('FrontendService', () => {
 		isOidcLicensed: vi.fn().mockReturnValue(false),
 		isMFAEnforcementLicensed: vi.fn().mockReturnValue(false),
 		isOtelCustomSpanAttributesLicensed: vi.fn().mockReturnValue(false),
+		isWorkerPoolsLicensed: vi.fn().mockReturnValue(false),
 		getMaxWorkflowsWithEvaluations: vi.fn().mockReturnValue(0),
 	});
 
@@ -184,7 +199,7 @@ describe('FrontendService', () => {
 	});
 
 	const aiUsageService = mock<AiUsageService>({
-		getAiUsageSettings: vi.fn().mockResolvedValue(true),
+		isParameterValueSharingAllowed: vi.fn().mockResolvedValue(true),
 	});
 
 	const workflowRepository = mock<WorkflowRepository>({
@@ -192,6 +207,7 @@ describe('FrontendService', () => {
 	});
 
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
+	const inboxService = mock<InboxService>();
 
 	const createMockService = () => {
 		Container.set(
@@ -200,37 +216,52 @@ describe('FrontendService', () => {
 				enabled: false,
 			}),
 		);
+		// isApiKeyAuthEnabled() reads License via the container directly, so the
+		// constructor-injected mock above must also be registered here.
+		Container.set(License, license);
 
-		return {
-			service: new FrontendService(
-				globalConfig,
-				logger,
-				loadNodesAndCredentials,
-				credentialTypes,
-				credentialsOverwrites,
+		// Suppress the constructor's background write so it cannot outlive the test.
+		// Restore the method so tests and reload handlers can call it explicitly.
+		const generateTypes = vi
+			.spyOn(FrontendService.prototype, 'generateTypes')
+			.mockResolvedValueOnce();
+		try {
+			return {
+				service: new FrontendService(
+					globalConfig,
+					logger,
+					loadNodesAndCredentials,
+					credentialTypes,
+					credentialsOverwrites,
+					license,
+					mailer,
+					instanceSettings,
+					urlService,
+					securityConfig,
+					pushConfig,
+					binaryDataConfig,
+					licenseState,
+					moduleRegistry,
+					mfaService,
+					ownershipService,
+					aiUsageService,
+					workflowRepository,
+					workflowReviewPolicyService,
+					inboxService,
+				),
 				license,
-				mailer,
-				instanceSettings,
-				urlService,
-				securityConfig,
-				pushConfig,
-				binaryDataConfig,
-				licenseState,
-				moduleRegistry,
-				mfaService,
-				ownershipService,
-				aiUsageService,
-				workflowRepository,
-				workflowReviewPolicyService,
-			),
-			license,
-		};
+			};
+		} finally {
+			generateTypes.mockRestore();
+		}
 	};
 
 	beforeEach(() => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
+		moduleRegistry.isActive.mockReturnValue(false);
 		globalConfig.diagnostics.enabled = false;
+		globalConfig.endpoints.frontendHealthCheckTimeoutMs = 5000;
 		globalConfig.aiAssistant.baseUrl = '';
 		globalConfig.aiGateway.enabled = false;
 		licenseState.isAiGatewayLicensed.mockReturnValue(false);
@@ -262,6 +293,44 @@ describe('FrontendService', () => {
 	});
 
 	describe('getSettings', () => {
+		it('refreshes Inbox availability from registered sources on each request', async () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+			inboxService.getSettings
+				.mockResolvedValueOnce({
+					enabled: true,
+					availableTypes: ['workflow_review'],
+					failedTypes: [],
+				})
+				.mockResolvedValueOnce({
+					enabled: true,
+					availableTypes: [],
+					failedTypes: ['workflow_review'],
+				});
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: true,
+				availableTypes: ['workflow_review'],
+				failedTypes: [],
+			});
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: true,
+				availableTypes: [],
+				failedTypes: ['workflow_review'],
+			});
+			expect(inboxService.getSettings).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not query Inbox sources when its module is inactive', async () => {
+			const { service } = createMockService();
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+			expect(inboxService.getSettings).not.toHaveBeenCalled();
+		});
+
 		it('should return frontend settings', async () => {
 			const { service } = createMockService();
 			const settings = await service.getSettings();
@@ -271,6 +340,24 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should expose the configured health check timeout', async () => {
+			globalConfig.endpoints.frontendHealthCheckTimeoutMs = 1500;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.healthCheckTimeoutMs).toBe(1500);
+		});
+
+		it('should expose excluded node types from NODES_EXCLUDE', async () => {
+			globalConfig.nodes.exclude = ['n8n-nodes-base.executeWorkflow'];
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.excludeNodes).toEqual(['n8n-nodes-base.executeWorkflow']);
 		});
 
 		it('should enable the AI Gateway when configured and licensed', async () => {
@@ -306,6 +393,28 @@ describe('FrontendService', () => {
 			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
 		});
 
+		it('should surface the assistant Cloud UBB entitlement when the AI Assistant is enabled and entitled', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+			const { service, license } = createMockService();
+			license.isAiAssistantEnabled.mockReturnValue(true);
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiAssistant).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
+		it('should keep the assistant Cloud UBB entitlement off when the AI Assistant is disabled', async () => {
+			globalConfig.aiAssistant.baseUrl = '';
+			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+			const { service, license } = createMockService();
+			license.isAiAssistantEnabled.mockReturnValue(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiAssistant).toMatchObject({ enabled: false, cloudUbbEnabled: false });
+		});
+
 		it('should normalize configured postMessage origins', async () => {
 			securityConfig.postMessageAllowedOrigins =
 				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url, data:text/html;foo';
@@ -324,7 +433,6 @@ describe('FrontendService', () => {
 		});
 
 		it('should refresh the workflow reviews policy on every settings fetch', async () => {
-			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 			workflowReviewPolicyService.get
 				.mockResolvedValueOnce({ enabled: true })
@@ -510,6 +618,18 @@ describe('FrontendService', () => {
 			expect(settings.evaluationConcurrencyLimit).toBe(4);
 		});
 
+		it('surfaces the forceAgentWorthTesting operator override', async () => {
+			globalConfig.evaluation = {
+				...globalConfig.evaluation,
+				forceAgentWorthTesting: true,
+			} as GlobalConfig['evaluation'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.evaluation.forceAgentWorthTesting).toBe(true);
+		});
+
 		it('should surface whether custom OpenTelemetry span attributes are licensed', async () => {
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 
@@ -517,6 +637,36 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
+		});
+
+		it('should enable worker pools when both the config flag and the license are on', async () => {
+			globalConfig.queue = { workerPool: { enabled: true } } as GlobalConfig['queue'];
+			licenseState.isWorkerPoolsLicensed.mockReturnValue(true);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.workerPools.enabled).toBe(true);
+		});
+
+		it('should keep worker pools disabled when the config flag is on but the feature is not licensed', async () => {
+			globalConfig.queue = { workerPool: { enabled: true } } as GlobalConfig['queue'];
+			licenseState.isWorkerPoolsLicensed.mockReturnValue(false);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.workerPools.enabled).toBe(false);
+		});
+
+		it('should keep worker pools disabled when licensed but the config flag is off', async () => {
+			globalConfig.queue = { workerPool: { enabled: false } } as GlobalConfig['queue'];
+			licenseState.isWorkerPoolsLicensed.mockReturnValue(true);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.workerPools.enabled).toBe(false);
 		});
 
 		it('should surface useWorkflowPublicationService from workflows config', async () => {
@@ -737,6 +887,27 @@ describe('FrontendService', () => {
 		});
 	});
 
+	describe('expressionEngine setting', () => {
+		afterEach(() => {
+			globalConfig.expressionEngine.frontendEngine = 'legacy';
+		});
+
+		it('should surface the frontend expression engine from config', async () => {
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.expressionEngine).toBe('legacy');
+		});
+
+		// The default alone would still pass if the value were hard-coded.
+		it('should surface quickjs when the config selects it', async () => {
+			globalConfig.expressionEngine.frontendEngine = 'quickjs';
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.expressionEngine).toBe('quickjs');
+		});
+	});
+
 	describe('aiBuilder setting', () => {
 		it('should initialize aiBuilder setting as disabled by default', async () => {
 			const { service } = createMockService();
@@ -767,6 +938,31 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('ai.allowSendingParameterValues setting', () => {
+		afterEach(() => {
+			globalConfig.ai.allowSendingParameterValues = true;
+		});
+
+		it('should use the effective value from AiUsageService', async () => {
+			const { service } = createMockService();
+			aiUsageService.isParameterValueSharingAllowed.mockResolvedValueOnce(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowSendingParameterValues).toBe(false);
+		});
+
+		it('should fall back to the env value when the stored value cannot be read', async () => {
+			const { service } = createMockService();
+			globalConfig.ai.allowSendingParameterValues = false;
+			aiUsageService.isParameterValueSharingAllowed.mockRejectedValueOnce(new Error('DB error'));
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowSendingParameterValues).toBe(false);
 		});
 	});
 
@@ -851,8 +1047,52 @@ describe('FrontendService', () => {
 	describe('overwriteCredentialsProperties', () => {
 		afterEach(() => {
 			// Restore globalConfig.credentials to the default so other tests are unaffected
-			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			(globalConfig as any).credentials = { overwrite: { showScopes: [], skipTypes: [] } };
 			loadNodesAndCredentials.types = { credentials: [], nodes: [] };
+		});
+
+		it('should expose managed OAuth scopes only for configured credential types', () => {
+			const baseCredential = {
+				name: 'googleOAuth2Api',
+				displayName: 'Google OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const childCredential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [baseCredential, childCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { showScopes: ['googleOAuth2Api'], skipTypes: [] },
+			};
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(baseCredential.__showManagedOAuthScopes).toBe(true);
+			expect(childCredential.__showManagedOAuthScopes).toBeUndefined();
+		});
+
+		it('should clear stale managed OAuth scope visibility metadata', () => {
+			const credential = {
+				name: 'googleOAuth2Api',
+				displayName: 'Google OAuth2 API',
+				properties: [],
+				__showManagedOAuthScopes: true,
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { showScopes: [], skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__showManagedOAuthScopes).toBeUndefined();
 		});
 
 		it('should set __skipManagedCreation for types in the skip list', () => {
@@ -1092,6 +1332,53 @@ describe('FrontendService', () => {
 			} finally {
 				writeStaticJSONSpy.mockRestore();
 			}
+		});
+
+		describe('concurrent calls', () => {
+			let cacheDir: string;
+
+			const createNodes = (count: number) =>
+				Array.from({ length: count }, (_, index) => ({
+					name: `n8n-nodes-base.node${index}`,
+					version: 1,
+					description: 'x'.repeat(200),
+				}));
+
+			const readTypesFile = (name: string) =>
+				jsonParse<unknown>(readFileSync(join(cacheDir, 'types', `${name}.json`), 'utf-8'));
+
+			beforeEach(() => {
+				cacheDir = mkdtempSync(join(tmpdir(), 'n8n-frontend-types-'));
+				Object.assign(instanceSettings, { staticCacheDir: cacheDir });
+			});
+
+			afterEach(() => {
+				rmSync(cacheDir, { recursive: true, force: true });
+				Object.assign(instanceSettings, { staticCacheDir: '/tmp/test-cache' });
+			});
+
+			it('should leave complete types files when calls overlap', async () => {
+				const largeNodes = createNodes(5000);
+				const smallNodes = createNodes(1);
+				const collectTypes = loadNodesAndCredentials.collectTypes as Mock;
+
+				const { service } = createMockService();
+				expect(collectTypes).not.toHaveBeenCalled();
+
+				for (let attempt = 0; attempt < 10; attempt++) {
+					collectTypes
+						.mockResolvedValueOnce({ nodes: largeNodes, credentials: [] })
+						.mockResolvedValueOnce({ nodes: smallNodes, credentials: [] });
+
+					await Promise.all([service.generateTypes(), service.generateTypes()]);
+
+					expect([largeNodes, smallNodes]).toContainEqual(readTypesFile('nodes'));
+					expect(readTypesFile('credentials')).toEqual([]);
+					expect(readTypesFile('node-versions')).toEqual(expect.any(Array));
+				}
+
+				expect(collectTypes).toHaveBeenCalledTimes(20);
+			});
 		});
 	});
 });

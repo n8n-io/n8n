@@ -13,6 +13,7 @@ import type {
 } from 'n8n-workflow';
 
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { createCohereV2ChatClient } from './cohereV2Client';
 
@@ -127,7 +128,8 @@ export class LmChatCohere implements INodeType {
 				default: 'command-a-03-2025',
 				builderHint: {
 					propertyHint:
-						'Default to the latest Cohere Command A model (command-a-03-2025). Avoid command-r and command-light legacy variants.',
+						"Choose a current Command model from the connected credential's model list. Check tool support when connecting it to an agent. " +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{

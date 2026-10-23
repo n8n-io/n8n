@@ -1,6 +1,9 @@
-import { createWorkflow } from '@n8n/backend-test-utils';
+import { createWorkflow, createWorkflowHistory, setActiveVersion } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, Folder, Project, WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
+import { WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { INode, IWorkflowSettings } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 interface BuildWorkflowReferencingCredentialByIdOptions {
 	name: string;
@@ -206,6 +209,80 @@ export async function buildWorkflowReferencingDataTables({
 		},
 		project,
 	);
+}
+
+export function noOpNode(name: string): INode {
+	return {
+		id: name,
+		name,
+		type: 'n8n-nodes-base.noOp',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
+}
+
+export function credentialNode(credential: Pick<CredentialsEntity, 'id' | 'name' | 'type'>): INode {
+	return {
+		id: `http-${credential.id}`,
+		name: `HTTP ${credential.name}`,
+		type: 'n8n-nodes-base.httpRequest',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+		credentials: { [credential.type]: { id: credential.id, name: credential.name } },
+	};
+}
+
+interface BuildVersionedWorkflowOptions {
+	name: string;
+	project: Project;
+	versions: INode[][];
+	publishedVersion?: number;
+	settings?: IWorkflowSettings;
+	parentFolder?: Folder;
+}
+
+/**
+ * Snapshots each version into workflow history and leaves the workflow row holding
+ * the last one, so the row is the draft and any earlier version can be published.
+ */
+export async function buildVersionedWorkflow(
+	options: BuildVersionedWorkflowOptions,
+): Promise<{ workflow: WorkflowEntity; versionIds: string[] }> {
+	const [firstVersion, ...laterVersions] = options.versions;
+	const workflow = await createWorkflow(
+		{
+			name: options.name,
+			nodes: firstVersion,
+			connections: {},
+			parentFolder: options.parentFolder,
+			// An explicit `undefined` would override the default `{}` and persist as null.
+			...(options.settings ? { settings: options.settings } : {}),
+		},
+		options.project,
+	);
+	await createWorkflowHistory(workflow);
+	const versionIds = [workflow.versionId];
+
+	for (const nodes of laterVersions) {
+		workflow.versionId = uuid();
+		workflow.nodes = nodes;
+		await Container.get(WorkflowRepository).update(workflow.id, {
+			versionId: workflow.versionId,
+			nodes,
+		});
+		await createWorkflowHistory(workflow);
+		versionIds.push(workflow.versionId);
+	}
+
+	if (options.publishedVersion !== undefined) {
+		const activeVersionId = versionIds[options.publishedVersion];
+		await setActiveVersion(workflow.id, activeVersionId);
+		workflow.activeVersionId = activeVersionId;
+	}
+
+	return { workflow, versionIds };
 }
 
 export function executeWorkflowNode(workflowId: string): INode {

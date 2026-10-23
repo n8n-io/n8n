@@ -1,7 +1,10 @@
 import {
 	AiGatewayConfigDto,
+	AiGatewayMcpServersResponse,
 	getAgentModelProviderCredentialTypes,
+	type AiGatewayMcpServer,
 	type AiGatewayUsageResponse,
+	type AiGatewayWalletResponse,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -10,24 +13,70 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { ICredentialDataDecryptedObject, IHttpRequestMethods } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
+import { isMcpAiGatewayAuthentication, OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { License } from '@/license';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/mcp-registry-connection';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	AI_GATEWAY_MCP_CAPABILITY,
+	AI_GATEWAY_MCP_SLUG_PREFIX,
+	mcpRegistryIconMimeTypeSchema,
+	type McpRegistryServer,
+} from '@/modules/mcp-registry/registry/mcp-registry.types';
+import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
 }
 
-interface GatewayWalletResponse {
-	budget: number;
-	balance: number;
+/**
+ * Maps an AI Gateway MCP server to a registry row. The row slug has a reserved
+ * prefix, so it cannot replace a registry row; the URL keeps the gateway's own
+ * slug. Optional keys are only set when present, because the refresh compares
+ * rows in their stored form.
+ */
+function toAiGatewayRegistryServer(server: AiGatewayMcpServer, baseUrl: string): McpRegistryServer {
+	return {
+		name: server.name,
+		slug: `${AI_GATEWAY_MCP_SLUG_PREFIX}${server.slug}`,
+		title: server.title,
+		description: server.description,
+		tagline: server.tagline,
+		version: server.version,
+		updatedAt: server.updatedAt,
+		icons: server.icons.map(({ src, mimeType, theme }) => {
+			// The registry picks the preferred icon by MIME type. Drop a value it does not accept.
+			const parsedMimeType = mcpRegistryIconMimeTypeSchema.safeParse(mimeType);
+			return {
+				src,
+				...(parsedMimeType.success ? { mimeType: parsedMimeType.data } : {}),
+				...(theme ? { theme } : {}),
+			};
+		}),
+		...(server.websiteUrl ? { websiteUrl: server.websiteUrl } : {}),
+		authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+		remotes: [{ type: 'streamable-http', url: `${baseUrl}/v1/gateway/mcp/${server.slug}` }],
+		tools: server.tools.map(({ name, title, readOnlyHint }) => ({
+			name,
+			...(title ? { title } : {}),
+			...(readOnlyHint !== undefined ? { annotations: { readOnlyHint } } : {}),
+		})),
+		// n8n hosts the server, so the service vendor does not publish it.
+		isOfficial: false,
+		origin: 'registry',
+		status: 'active',
+		requiredCapabilities: [AI_GATEWAY_MCP_CAPABILITY],
+		...(server.tags ? { tags: server.tags } : {}),
+	};
 }
 
 export type AiGatewayAvailability =
@@ -66,6 +115,7 @@ export class AiGatewayService {
 		private readonly userRepository: UserRepository,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	/**
@@ -81,7 +131,7 @@ export class AiGatewayService {
 
 	assertEnabled(): void {
 		if (!this.isEnabled()) {
-			throw new BadRequestError('n8n Connect is not enabled on this instance');
+			throw new BadRequestError('Gateway credits are not enabled on this instance');
 		}
 	}
 
@@ -94,18 +144,20 @@ export class AiGatewayService {
 			url: string;
 			headers?: Record<string, string>;
 			body?: unknown;
+			signal?: AbortSignal;
 		},
 		errorMessage: string,
 	): Promise<T> {
 		const response = await this.outboundHttp
 			.requests({
-				ssrf: 'disabled', // the gateway base URL is n8n-owned configuration
+				useDefaultSsrfPolicy: 'unsafe', // the gateway base URL is n8n-owned configuration
 			})
 			.request({
 				method: options.method,
 				url: options.url,
 				...(options.headers ? { headers: options.headers } : {}),
 				...(options.body !== undefined ? { body: options.body, json: true } : {}),
+				...(options.signal ? { abortSignal: options.signal } : {}),
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as a `UserError` carrying the status code
 			});
@@ -169,6 +221,10 @@ export class AiGatewayService {
 	 * Returns a synthetic credential for the given type, pointing the node at the gateway
 	 * instead of the real provider. Called from `CredentialsHelper.getDecrypted` when
 	 * `nodeCredentials.__aiGatewayManaged` is set.
+	 *
+	 * `node` is optional — callers with no workflow node to check against (e.g.
+	 * Agents) skip eligibility entirely. When provided, it's checked against
+	 * `checkAiGatewayEligibility` before minting.
 	 */
 	async getSyntheticCredential({
 		credentialType,
@@ -176,46 +232,65 @@ export class AiGatewayService {
 		workflowId,
 		projectId,
 		executionId,
+		agentId,
+		node,
 	}: {
 		credentialType: string;
 		userId: string | undefined;
 		workflowId?: string;
 		projectId?: string;
 		executionId?: string;
+		agentId?: string;
+		node?: Pick<INode, 'type' | 'typeVersion' | 'parameters'>;
 	}): Promise<ICredentialDataDecryptedObject> {
 		if (!this.licenseState.isAiGatewayLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
 		}
 		if (!this.isEnabled()) {
-			throw new UserError('n8n Connect is not enabled on this instance.');
+			throw new UserError('Gateway credits are not enabled on this instance.');
 		}
 
 		const baseUrl = this.requireBaseUrl();
 
+		if (isMcpAiGatewayAuthentication(credentialType)) {
+			return await this.getAiGatewayMcpCredential({
+				credentialType,
+				userId,
+				workflowId,
+				projectId,
+				node,
+				baseUrl,
+			});
+		}
+
 		const config = await this.getGatewayConfig();
 		const providerConfig = config.providerConfig[credentialType];
 		if (!providerConfig) {
-			throw new UserError(`Credential type "${credentialType}" is not supported by n8n credits.`);
+			throw new UserError(
+				`Credential type "${credentialType}" is not supported by Gateway credits.`,
+			);
 		}
 
-		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
-		const resolvedUserId = await this.resolveUserId({
+		if (node) {
+			const eligibility = checkAiGatewayEligibility(node, credentialType, config);
+			if (!eligibility.eligible) {
+				throw new UserError(
+					`Gateway credits eligibility check failed: ${eligibility.reason}${eligibility.details ? ` (${eligibility.details})` : ''}.`,
+				);
+			}
+		}
+
+		const { jwt, resolvedProjectId } = await this.resolveAndMintToken({
 			userId,
-			projectId: resolvedProjectId,
 			workflowId,
+			projectId,
 		});
-		if (!resolvedUserId) {
-			throw new UserError('Failed to resolve user for n8n credits attribution.');
-		}
-		const jwt = await this.getOrFetchToken(resolvedUserId);
-		if (!jwt) {
-			throw new UserError('Failed to obtain a valid n8n credits token.');
-		}
 
 		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
 			executionId,
 			workflowId,
 			projectId: resolvedProjectId,
+			agentId,
 		});
 
 		return {
@@ -234,7 +309,7 @@ export class AiGatewayService {
 	private buildUrlFields(
 		baseUrl: string,
 		providerConfig: { gatewayPath: string; urlField: string; routing?: Record<string, string> },
-		context: { executionId?: string; workflowId?: string; projectId?: string },
+		context: { executionId?: string; workflowId?: string; projectId?: string; agentId?: string },
 	): Record<string, string> {
 		const routing = providerConfig.routing;
 		if (routing && Object.keys(routing).length > 0) {
@@ -258,7 +333,7 @@ export class AiGatewayService {
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid n8n credits token.');
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
 		}
 
 		const url = new URL(`${baseUrl}/v1/gateway/usage`);
@@ -274,7 +349,7 @@ export class AiGatewayService {
 			'Failed to fetch AI Gateway usage',
 		);
 		if (!Array.isArray(data.entries) || typeof data.total !== 'number') {
-			throw new UserError('n8n credits returned an invalid usage response.');
+			throw new UserError('Gateway credits returned an invalid usage response.');
 		}
 		return data;
 	}
@@ -282,12 +357,12 @@ export class AiGatewayService {
 	/**
 	 * Returns the current wallet (budget and remaining balance) for the given user.
 	 */
-	async getWallet(userId: string): Promise<GatewayWalletResponse> {
+	async getWallet(userId: string): Promise<AiGatewayWalletResponse> {
 		const baseUrl = this.requireBaseUrl();
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid n8n credits token.');
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
 		}
 		const data = await this.gatewayRequest<unknown>(
 			{
@@ -301,12 +376,16 @@ export class AiGatewayService {
 		return this.parseWalletResponse(data);
 	}
 
-	private parseWalletResponse(data: unknown): GatewayWalletResponse {
-		const d = data as GatewayWalletResponse;
+	private parseWalletResponse(data: unknown): AiGatewayWalletResponse {
+		const d = data as { budget?: unknown; balance?: unknown; hasEverToppedUp?: unknown };
 		if (typeof d.budget !== 'number' || typeof d.balance !== 'number') {
-			throw new UserError('n8n credits returned an invalid wallet response.');
+			throw new UserError('Gateway credits returned an invalid wallet response.');
 		}
-		return d;
+		return {
+			budget: d.budget,
+			balance: d.balance,
+			hasEverToppedUp: d.hasEverToppedUp === true,
+		};
 	}
 
 	/**
@@ -321,33 +400,106 @@ export class AiGatewayService {
 	 * `|`-joined, encoded list (`:workflowId|:projectId`, the `|` percent-encoded), so the
 	 * gateway can group usage by project. Omitting it keeps the `:workflowId`-only form.
 	 *
+	 * Agents have no execution or workflow. When an `agentId` is present (and no
+	 * `workflowId`), the literal `agent` takes the execution segment and the agentId
+	 * takes the workflow segment, so the gateway attributes usage to the agent.
+	 *
 	 * Example (OpenAI):
 	 *   without context → `<base>/v1/gateway/openai/v1`
 	 *   with context    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/openai/v1`
 	 *   with project    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/openai/v1`
+	 *   agent           → `<base>/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/openai/v1`
 	 */
 	private buildGatewayUrl(
 		baseUrl: string,
 		gatewayPath: string,
-		context: { executionId?: string; workflowId?: string; projectId?: string },
+		context: { executionId?: string; workflowId?: string; projectId?: string; agentId?: string },
 	): string {
-		if (context.executionId && context.workflowId) {
+		const execId = context.workflowId ? context.executionId : context.agentId && 'agent';
+		const attributionId = context.workflowId ?? context.agentId;
+		if (execId && attributionId) {
 			if (!gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
 				return `${baseUrl}${gatewayPath}`;
 			}
 			const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
 			const contextSegment = encodeURIComponent(
-				[context.workflowId, context.projectId].filter(Boolean).join('|'),
+				[attributionId, context.projectId].filter(Boolean).join('|'),
 			);
-			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${contextSegment}${providerSuffix}`;
+			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(execId)}/${contextSegment}${providerSuffix}`;
 		}
 		return `${baseUrl}${gatewayPath}`;
 	}
 
 	private requireBaseUrl(): string {
 		const url = this.globalConfig.aiAssistant.baseUrl;
-		if (!url) throw new UserError('n8n credits is not configured. Set the AI assistant base URL.');
+		if (!url)
+			throw new UserError('Gateway credits are not configured. Set the AI assistant base URL.');
 		return url;
+	}
+
+	/**
+	 * Mints the Gateway credits credential of an MCP registry server. Its checks
+	 * replace the provider config lookup and the node eligibility check of models.
+	 */
+	private async getAiGatewayMcpCredential({
+		credentialType,
+		userId,
+		workflowId,
+		projectId,
+		node,
+		baseUrl,
+	}: {
+		credentialType: string;
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+		node?: Pick<INode, 'type'>;
+		baseUrl: string;
+	}): Promise<ICredentialDataDecryptedObject> {
+		// The registry loader registers this type only for a server the AI Gateway lists.
+		if (!this.credentialTypes.recognizes(credentialType)) {
+			throw new UserError(`Gateway credits do not serve credential type "${credentialType}".`);
+		}
+		// Only a registry MCP node may hold this token. A node that can request any
+		// credential type, such as HTTP Request, must not receive it.
+		if (node && !node.type.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)) {
+			throw new UserError(
+				`Credential type "${credentialType}" can only be used by its MCP server node.`,
+			);
+		}
+		const { jwt } = await this.resolveAndMintToken({ userId, workflowId, projectId });
+		// The token is billed and not limited to one provider, so pin it to the AI Gateway host.
+		return {
+			token: jwt,
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: new URL(baseUrl).hostname,
+		};
+	}
+
+	/** Resolves the user that a credential is attributed to, and mints a token for that user. */
+	private async resolveAndMintToken({
+		userId,
+		workflowId,
+		projectId,
+	}: {
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+	}): Promise<{ jwt: string; resolvedProjectId?: string }> {
+		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
+		const resolvedUserId = await this.resolveUserId({
+			userId,
+			projectId: resolvedProjectId,
+			workflowId,
+		});
+		if (!resolvedUserId) {
+			throw new UserError('Failed to resolve user for Gateway credits attribution.');
+		}
+		const jwt = await this.getOrFetchToken(resolvedUserId);
+		if (!jwt) {
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
+		}
+		return { jwt, resolvedProjectId };
 	}
 
 	private isConfigStale(): boolean {
@@ -380,7 +532,9 @@ export class AiGatewayService {
 			this.configFetchFailedAt > 0 &&
 			Date.now() - this.configFetchFailedAt < AiGatewayService.CONFIG_FAILURE_TTL_MS
 		) {
-			throw new OperationalError('n8n credits config fetch recently failed; retry is throttled.');
+			throw new OperationalError(
+				'Gateway credits config fetch recently failed; retry is throttled.',
+			);
 		}
 
 		const baseUrl = this.requireBaseUrl();
@@ -395,7 +549,7 @@ export class AiGatewayService {
 			);
 			const parsed = AiGatewayConfigDto.safeParse(data);
 			if (!parsed.success) {
-				throw new UserError('n8n credits returned an invalid config response.');
+				throw new UserError('Gateway credits returned an invalid config response.');
 			}
 
 			this.gatewayConfig = parsed.data;
@@ -406,6 +560,24 @@ export class AiGatewayService {
 			this.configFetchFailedAt = Date.now();
 			throw error;
 		}
+	}
+
+	/**
+	 * Fetches the AI Gateway MCP servers as registry rows. The registry refresh
+	 * stores them, so every n8n process reads them from the database.
+	 * @throws when the request fails or the response is not valid.
+	 */
+	async fetchAiGatewayMcpServers(signal?: AbortSignal): Promise<McpRegistryServer[]> {
+		const baseUrl = this.requireBaseUrl();
+		const data = await this.gatewayRequest<unknown>(
+			{ method: 'GET', url: `${baseUrl}/v1/gateway/mcp-servers`, signal },
+			'Failed to fetch Gateway credits MCP servers',
+		);
+		const parsed = AiGatewayMcpServersResponse.safeParse(data);
+		if (!parsed.success) {
+			throw new UserError('Gateway credits returned an invalid MCP servers response.');
+		}
+		return parsed.data.servers.map((server) => toAiGatewayRegistryServer(server, baseUrl));
 	}
 
 	/**
@@ -521,7 +693,7 @@ export class AiGatewayService {
 			'Failed to fetch AI Gateway token',
 		);
 		if (!token || typeof expiresIn !== 'number') {
-			throw new UserError('n8n credits returned an invalid token response.');
+			throw new UserError('Gateway credits returned an invalid token response.');
 		}
 		if (this.tokenCache.size >= this.TOKEN_CACHE_MAX_SIZE) {
 			this.tokenCache.delete(this.tokenCache.keys().next().value as string);

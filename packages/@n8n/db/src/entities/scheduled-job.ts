@@ -1,11 +1,17 @@
-import { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import {
+	SCHEDULED_JOB_NAME_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_ID_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH,
+	ScheduledJobMisfirePolicy,
+} from '@n8n/constants';
 import type { ScheduledJobKind, RecurringCronUnit } from '@n8n/constants';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
 
 export { ScheduledJobKind, ScheduledJobKindList } from '@n8n/constants';
-export { ScheduledJobMisfirePolicy } from '@n8n/constants';
+export { ScheduledJobMisfirePolicy, ScheduledJobOwnerType } from '@n8n/constants';
 
 /**
  * A scheduled job: the rule for when something should run,
@@ -28,36 +34,49 @@ export { ScheduledJobMisfirePolicy } from '@n8n/constants';
 @Index(['nextRunAt'], {
 	where: '"enabled" = true AND "nextRunAt" IS NOT NULL',
 })
-@Index(['workflowId'], { where: '"workflowId" IS NOT NULL' })
+// Not unique: one member can own several jobs. Owner-wide queries use the
+// leftmost prefix, the third column covers the per-member provisioning diff.
+@Index(['ownerType', 'ownerId', 'ownerMemberId'])
 @Index(['name'], { unique: true })
+// The claim reads the set of limited jobs on every pass. Partial, so it stays as
+// small as that set.
+@Index(['concurrencyLimit'], { where: '"concurrencyLimit" IS NOT NULL' })
 export class ScheduledJob extends WithTimestamps {
 	@PrimaryGeneratedColumn()
 	id: number;
 
 	/**
-	 * Human-readable job name, unique across all jobs.
-	 * A well-known scheduler key for system jobs (e.g. a maintenance job);
-	 * generated for jobs owned by a workflow trigger.
+	 * Human-readable job name, unique across all jobs, and the key provisioning
+	 * matches existing rows on.
 	 */
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_NAME_MAX_LENGTH })
 	name: string;
 
 	/**
-	 * Workflow this job belongs to,
-	 * referenced via its published version
-	 * (only published trigger nodes get scheduled).
-	 * `null` for well-known system jobs that aren't tied to a workflow.
-	 * Unpublishing the workflow cascades its jobs away.
+	 * What kind of thing owns this job, e.g. `'workflow'` or `'system-task'`
+	 * (see `ScheduledJobOwnerType`).
+	 *
+	 * A plain string, not an enum: the scheduler only ever compares it, so a new
+	 * kind of owner needs no schema change.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	workflowId: string | null;
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH })
+	ownerType: string;
 
 	/**
-	 * Trigger node within the workflow that owns this job.
-	 * `null` for non-trigger jobs.
+	 * Which owner of that kind: a workflow id, a system task name, an agent id.
+	 *
+	 * Deleting the owner does not delete this row. The owning module must
+	 * deprovision explicitly, with the reconciliation sweep as the backstop.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	nodeId: string | null;
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_OWNER_ID_MAX_LENGTH })
+	ownerId: string;
+
+	/**
+	 * Which part of the owner, e.g. a workflow's trigger node id. `null` when the
+	 * owner has no parts.
+	 */
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH, nullable: true })
+	ownerMemberId: string | null;
 
 	/**
 	 * What kind of work this job runs.
@@ -145,6 +164,26 @@ export class ScheduledJob extends WithTimestamps {
 	@Column({ type: 'int', default: 1 })
 	maxAttempts: number;
 
+	/**
+	 * How long, in seconds, one attempt of an occurrence may run before the executor
+	 * stops it. Copied onto each occurrence this job materializes.
+	 *
+	 * Pinned to a literal, not the config default, so a later change to the default
+	 * can't retroactively change what this entity declares.
+	 */
+	@Column({ type: 'int', default: 300 })
+	timeoutSeconds: number;
+
+	/**
+	 * How many of this job's occurrences may run at the same time. `null` means no
+	 * limit.
+	 *
+	 * At least 1: a lower ceiling would hold every occurrence back until its misfire
+	 * deadline passed, so the job would never run.
+	 */
+	@Column({ type: 'int', nullable: true })
+	concurrencyLimit: number | null;
+
 	/** What happens to an occurrence overdue by more than {@link misfireGraceSeconds}. */
 	@Column({ type: 'varchar', length: 16, default: ScheduledJobMisfirePolicy.Coalesce })
 	misfirePolicy: ScheduledJobMisfirePolicy;
@@ -162,4 +201,25 @@ export class ScheduledJob extends WithTimestamps {
 	 */
 	@Column({ type: 'int', default: 60 })
 	misfireGraceSeconds: number;
+
+	/**
+	 * When the reconciliation sweep last found this job's owner gone. `null`
+	 * while the owner is alive.
+	 *
+	 * A quarantine marker, not a delete: the job's clock is cleared first and it
+	 * is only deleted once the stamp is older than the quarantine grace, leaving
+	 * a window for a wrong liveness answer to be corrected.
+	 */
+	@DateTimeColumn({ nullable: true })
+	orphanedAt: Date | null;
 }
+
+/** Who a scheduled job belongs to: a kind of owner, an owner, and a part of it. */
+export interface ScheduledJobOwner {
+	ownerType: string;
+	ownerId: string;
+	ownerMemberId: string | null;
+}
+
+/** An owner without a member: every job that owner holds, whichever part made it. */
+export type ScheduledJobOwnerRef = Pick<ScheduledJobOwner, 'ownerType' | 'ownerId'>;

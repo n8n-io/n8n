@@ -1,12 +1,13 @@
 /**
  * Shared LLM-as-judge helpers.
  *
- * Used by both the workflow binary-check factory and the computer-use eval
+ * Used by the workflow binary-check factory
  * graders. Centralizes the "respond with a JSON verdict" instruction suffix,
  * the parsing of fenced/bare JSON, and the verdict shape.
  */
 
-const FENCED_JSON = /```(?:json)?\s*\n?([\s\S]*?)```/;
+import { extractFencedJson } from '@n8n/ai-utilities/llm-output';
+
 const BARE_JSON_OBJECT = /\{[\s\S]*\}/;
 
 /**
@@ -81,9 +82,9 @@ function isJudgeVerdict(value: unknown): value is JudgeVerdict {
  * Returns `undefined` when no valid verdict is found.
  */
 export function parseJudgeVerdict(text: string): JudgeVerdict | undefined {
-	const fenceMatch = text.match(FENCED_JSON);
-	const fenced = fenceMatch ? tryParse(fenceMatch[1].trim()) : tryParse(text.trim());
-	if (fenced) return fenced;
+	const fenced = extractFencedJson(text);
+	const first = tryParse(fenced ?? text.trim());
+	if (first) return first;
 
 	const objectMatch = text.match(BARE_JSON_OBJECT);
 	const bare = objectMatch ? tryParse(objectMatch[0]) : undefined;

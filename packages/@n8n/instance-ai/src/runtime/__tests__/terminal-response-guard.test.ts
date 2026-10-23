@@ -103,7 +103,12 @@ describe('InstanceAiTerminalResponseGuard', () => {
 
 	it('emits text fallback for silent completed runs with structured work counts only', () => {
 		const decision = guard().evaluateTerminal([runStart()], 'completed', {
-			workSummary: { totalToolCalls: 3, totalToolErrors: 1, toolCalls: [] },
+			workSummary: {
+				totalToolCalls: 3,
+				totalToolErrors: 1,
+				toolCalls: [],
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		expect(decision.action).toBe('emit');
@@ -115,7 +120,12 @@ describe('InstanceAiTerminalResponseGuard', () => {
 
 	it('does not emit completed fallback when silence is expected and an agent already produced text', () => {
 		const decision = guard().evaluateTerminal([runStart(), childText()], 'completed', {
-			workSummary: { totalToolCalls: 3, totalToolErrors: 0, toolCalls: [] },
+			workSummary: {
+				totalToolCalls: 3,
+				totalToolErrors: 0,
+				toolCalls: [],
+				askedClarifyingQuestion: false,
+			},
 			suppressCompletedFallback: true,
 		});
 
@@ -142,6 +152,33 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.action).toBe('emit');
 		expect(decision.reason).toBe('completed-silent');
 		expect(decision.event?.type).toBe('text-delta');
+	});
+
+	it('emits fallback when a completed run only produced a preamble before its tool calls', () => {
+		const decision = guard().evaluateTerminal(
+			[runStart(), rootText('Let me read the current source first.'), toolCall()],
+			'completed',
+		);
+
+		expect(decision.action).toBe('emit');
+		expect(decision.reason).toBe('completed-silent');
+		expect(decision.event?.type).toBe('text-delta');
+	});
+
+	it('does not emit fallback when a completed run answers after its tool calls', () => {
+		const decision = guard().evaluateTerminal(
+			[
+				runStart(),
+				rootText('Let me read the current source first.'),
+				toolCall(),
+				rootText('Done.'),
+			],
+			'completed',
+		);
+
+		expect(decision.action).toBe('none');
+		expect(decision.visibilitySource).toBe('root-text');
+		expect(decision.reason).toBe('already-visible');
 	});
 
 	it('does not emit completed fallback when the message group already has root text', () => {

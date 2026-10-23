@@ -1,10 +1,11 @@
 import type { Mocked } from 'vitest';
-import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
+
+import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -16,19 +17,17 @@ import {
 
 function makeController({
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
-	agentsConfig = {
-		sandboxEnabled: true,
-	} as AgentsConfig,
+	knowledgeAvailabilityService = makeKnowledgeAvailabilityService(),
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
 }: {
 	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
-	agentsConfig?: AgentsConfig;
+	knowledgeAvailabilityService?: KnowledgeAvailabilityService;
 	runtimeCacheService?: Mocked<AgentRuntimeCacheService>;
 } = {}) {
 	return {
 		controller: new AgentKnowledgeController(
 			agentKnowledgeService,
-			agentsConfig,
+			knowledgeAvailabilityService,
 			runtimeCacheService,
 		),
 		agentKnowledgeService,
@@ -127,11 +126,12 @@ describe('AgentKnowledgeController file deletion', () => {
 });
 
 describe('AgentKnowledgeController knowledge base gating', () => {
-	it('returns not found for file endpoints when the knowledge base is disabled', async () => {
-		const { controller } = makeController({
-			agentsConfig: {
-				sandboxEnabled: false,
-			} as AgentsConfig,
+	it.each([
+		{ reason: 'the sandbox is disabled', availability: { isSandboxEnabled: false } },
+		{ reason: 'the knowledge module is inactive', availability: { isKnowledgeActive: false } },
+	])('returns not found for file endpoints when $reason', async ({ availability }) => {
+		const { controller, agentKnowledgeService } = makeController({
+			knowledgeAvailabilityService: makeKnowledgeAvailabilityService(availability),
 		});
 
 		await expect(
@@ -159,5 +159,8 @@ describe('AgentKnowledgeController knowledge base gating', () => {
 				'file-1',
 			),
 		).rejects.toThrow(NotFoundError);
+		expect(agentKnowledgeService.listFiles).not.toHaveBeenCalled();
+		expect(agentKnowledgeService.uploadFiles).not.toHaveBeenCalled();
+		expect(agentKnowledgeService.deleteFile).not.toHaveBeenCalled();
 	});
 });

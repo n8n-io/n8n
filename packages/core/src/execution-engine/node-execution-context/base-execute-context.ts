@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import type { Result } from '@n8n/utils/result';
 import get from 'lodash/get';
 import type {
@@ -23,23 +24,30 @@ import type {
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
+	ChunkType,
 	NodeConnectionType,
 	IExecuteFunctions,
 	ExecuteAgentWorkflowContext,
+	IDataObject,
+	StructuredChunk,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
 	OperationalError,
 	NodeHelpers,
 	NodeConnectionTypes,
-	WAIT_INDEFINITELY,
+	WAIT_FOR_SUB_EXECUTION,
+	MAX_IN_PROCESS_WAIT_MS,
 	WorkflowDataProxy,
 	createEnvProviderState,
 	applyDynamicCredentialsUsage,
 	takeAttachedDynamicCredentialsUsage,
+	escalateSubWorkflowRedaction,
+	takeAttachedSubWorkflowRedaction,
 	shouldRedactConsoleOutput,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import { deepMerge } from '@/utils/deep-merge';
@@ -126,7 +134,23 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		);
 	}
 
-	async putExecutionToWait(waitTill: Date): Promise<void> {
+	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
+		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
+	}
+
+	async putExecutionToWait(
+		waitTill: Date,
+		options?: { acceptsResumeRequest?: boolean },
+	): Promise<void> {
+		const waitMs = Math.max(waitTill.getTime() - Date.now(), 0);
+
+		// Suspending a short wait costs a write and a reload, and the tracker polls too
+		// slowly to promise an on-time resume.
+		if (options?.acceptsResumeRequest === false && waitMs < MAX_IN_PROCESS_WAIT_MS) {
+			// A cancelled execution ends the wait, and the step still returns its input.
+			return await sleep(waitMs, this.abortSignal).catch(() => undefined);
+		}
+
 		this.runExecutionData.waitTill = waitTill;
 		if (this.additionalData.setExecutionStatus) {
 			this.additionalData.setExecutionStatus('waiting');
@@ -174,6 +198,11 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			// still inherits the flags.
 			const usage = takeAttachedDynamicCredentialsUsage(error);
 			if (usage) applyDynamicCredentialsUsage(this.additionalData, usage);
+			// A failed sub-workflow may have produced output before it failed.
+			escalateSubWorkflowRedaction(
+				this.runExecutionData.executionData?.runtimeData,
+				takeAttachedSubWorkflowRedaction(error),
+			);
 			throw error;
 		}
 
@@ -181,12 +210,24 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		// usage onto this parent node so its task inherits the flag and redaction covers the
 		// embedded output.
 		applyDynamicCredentialsUsage(this.additionalData, result);
+		// This execution keeps a copy of the sub-workflow's output, so it redacts at least
+		// the channels the sub-workflow redacts.
+		escalateSubWorkflowRedaction(
+			this.runExecutionData.executionData?.runtimeData,
+			result.subWorkflowRedaction,
+		);
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
+			this.setMetadata({
+				waitingChildExecutionIds: [
+					...(this.executeData.metadata?.waitingChildExecutionIds ?? []),
+					result.executionId,
+				],
+			});
 			// then put the parent workflow execution also into the waiting state,
 			// but do not use the sub-workflow `waitTill` to avoid WaitTracker resuming the parent execution at the same time as the sub-workflow
-			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			await this.putExecutionToWait(WAIT_FOR_SUB_EXECUTION);
 		}
 
 		return result;
@@ -212,7 +253,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 
 		const callerSessionId = agentInfo.sessionId?.trim();
-		const threadId = callerSessionId || `${executionId}-${itemIndex}`;
+		const threadId = callerSessionId || randomUUID();
 
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
 		const mainBranches = this.inputData?.main ?? [];
@@ -240,6 +281,14 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			runExecutionData: this.runExecutionData,
 		};
 
+		const sendResponseChunk =
+			agentInfo.enableStreaming !== false &&
+			agentInfo.outputSchema === undefined &&
+			this.isStreaming()
+				? async (type: 'begin' | 'item' | 'end' | 'error', content?: string) =>
+						await this.sendChunk(type, itemIndex, content)
+				: undefined;
+
 		return await this.additionalData.executeAgent(
 			source,
 			message,
@@ -249,7 +298,47 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.additionalData.rootExecutionMode ?? this.getMode(),
 			agentInfo.outputSchema,
 			workflowContext,
+			{
+				nodeId: this.node.id,
+				nodeName: this.node.name,
+				runIndex: this.runIndex,
+				itemIndex,
+				...(sendResponseChunk ? { sendResponseChunk } : {}),
+			},
 		);
+	}
+
+	isStreaming(): boolean {
+		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
+		const hasHandlers = handlers !== undefined && handlers > 0;
+		const streamingEnabled = this.additionalData.streamingEnabled === true;
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
+
+		return hasHandlers && executionModeSupportsStreaming.includes(this.mode) && streamingEnabled;
+	}
+
+	async sendChunk(
+		type: ChunkType,
+		itemIndex: number,
+		content?: IDataObject | string,
+	): Promise<void> {
+		const metadata = {
+			nodeId: this.node.id,
+			nodeName: this.node.name,
+			itemIndex,
+			runIndex: this.runIndex,
+			timestamp: Date.now(),
+		};
+
+		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
+
+		const message: StructuredChunk = {
+			type,
+			content: parsedContent,
+			metadata,
+		};
+
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
 	}
 
 	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
@@ -304,10 +393,12 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	 */
 	isConsoleOutputRedacted(): boolean {
 		try {
+			const runtimeData = this.runExecutionData.executionData?.runtimeData;
 			return shouldRedactConsoleOutput(
-				this.runExecutionData.executionData?.runtimeData?.redaction,
+				runtimeData?.redaction,
 				this.workflow.settings,
 				this.mode,
+				runtimeData?.subWorkflowRedaction,
 			);
 		} catch {
 			return true;
@@ -334,6 +425,8 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		try {
 			if (this.additionalData.sendDataToUI) {
 				args = args.map((arg) => {
+					if (arg === null || arg === undefined) return String(arg);
+
 					// prevent invalid dates from being logged as null
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
 					if (arg.isLuxonDateTime && arg.invalidReason) return { ...arg };

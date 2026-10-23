@@ -1,6 +1,5 @@
+import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-
-import { EventService } from '@/events/event.service';
 
 /**
  * Durable-log instrumentation (RFC: instance-ai durable event log,
@@ -101,15 +100,6 @@ export class DurableLogMetrics {
 		this.history.foldLatencyMsTotal += latencyMs;
 		this.history.treesDerived += trees;
 		this.eventService.emit('instance-ai-history-folded', { latencyMs, trees });
-	}
-
-	/**
-	 * The parser is pure module code and keeps its own counter
-	 * (messageParserStats); this only forwards new activations to the
-	 * metrics pipeline.
-	 */
-	notifyParserFallbacks(count: number): void {
-		if (count > 0) this.eventService.emit('instance-ai-parser-fallback', { count });
 	}
 
 	recordSweepRunExamined(): void {

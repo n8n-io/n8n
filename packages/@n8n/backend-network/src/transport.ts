@@ -19,13 +19,17 @@ export {
 	createSsrfInterceptor,
 	createAuthorizationInterceptor,
 	createDispatcherTransport,
+	createResponseSizeLimit,
 	dispatchedFetch,
+	limitResponseBody,
 } from './http/undici/transport';
 export type {
 	CustomFetch,
 	DispatcherTransport,
 	CreateDispatcherTransportOptions,
 	RequestAuthorizer,
+	ResponseSizeLimit,
+	TransportSsrfPolicy,
 	TransportTimeoutOptions,
 } from './http/undici/transport';
 export type { ProxyOption, ProxyUrl, SsrfOption } from './http/node-agents';

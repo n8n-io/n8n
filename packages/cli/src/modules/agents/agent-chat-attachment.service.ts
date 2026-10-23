@@ -10,10 +10,19 @@ import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import { AgentChatAttachmentRepository } from './repositories/agent-chat-attachment.repository';
+import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import {
+	draftChatMemoryResourceId,
+	isIntegrationMemoryResourceId,
+	isTaskRunMemoryResourceId,
+} from './utils/agent-memory-scope';
+import { threadBelongsTo } from './utils/agent-thread-access';
 
 // Typed against `SourceType` so a drift from the `binary_data` schema enum
 // (see `packages/@n8n/db/src/entities/binary-data-file.ts`) is a compile error.
 const ATTACHMENT_SOURCE_TYPE: SourceType = 'agent_chat_attachment';
+
+const RETENTION_BATCH_SIZE = 500;
 
 export interface StoreInboundAttachmentParams {
 	/** Null for inline agents, which have no `agents` row. */
@@ -26,14 +35,6 @@ export interface StoreInboundAttachmentParams {
 	fileName: string;
 	mimeType: string;
 	data: Buffer;
-}
-
-/** Reference passed from ingestion (controller/bridge) to the orchestrator. */
-export interface StoredAttachmentRef {
-	id: string;
-	fileName: string;
-	mimeType: string;
-	sizeBytes: number;
 }
 
 /**
@@ -62,6 +63,7 @@ export class AgentChatAttachmentService {
 		private readonly logger: Logger,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly repository: AgentChatAttachmentRepository,
+		private readonly threadRepository: AgentExecutionThreadRepository,
 	) {}
 
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
@@ -110,12 +112,35 @@ export class AgentChatAttachmentService {
 		}
 	}
 
-	/** Metadata lookup scoped to the owning agent + project; null when out of scope. */
+	/**
+	 * An attachment that a system chat stored for one memory resource. The
+	 * caller checks access to its thread.
+	 */
+	async getForSystemAgent(
+		attachmentId: string,
+		scope: { agentId: string; resourceId: string; source: string },
+	): Promise<AgentChatAttachment | null> {
+		return await this.repository.findByIdForSystemAgent(attachmentId, scope);
+	}
+
+	/** Return metadata only when the caller can read the session. */
 	async getForAgent(
 		attachmentId: string,
-		scope: { agentId: string; projectId: string },
+		scope: { agentId: string; projectId: string; userId: string },
 	): Promise<AgentChatAttachment | null> {
-		return await this.repository.findByIdForAgent(attachmentId, scope);
+		const attachment = await this.repository.findByIdForAgent(attachmentId, scope);
+		if (!attachment) return null;
+		const thread = await this.threadRepository.findOneBy({ id: attachment.threadId });
+		if (thread) {
+			return threadBelongsTo(thread, scope.projectId, scope.agentId, scope.userId)
+				? attachment
+				: null;
+		}
+		return attachment.resourceId === draftChatMemoryResourceId(scope.userId) ||
+			isIntegrationMemoryResourceId(attachment.resourceId ?? undefined) ||
+			isTaskRunMemoryResourceId(attachment.resourceId ?? undefined)
+			? attachment
+			: null;
 	}
 
 	async getStream(attachment: AgentChatAttachment): Promise<Readable> {
@@ -148,6 +173,47 @@ export class AgentChatAttachmentService {
 		await this.deleteAttachments(await this.repository.findBy({ agentId }), { agentId });
 	}
 
+	/**
+	 * Deletes the files an agent received from one channel before `before`, in
+	 * batches, so a large backlog does not load into memory at once. Deletes
+	 * bytes before rows so a storage failure leaves the rows for the next run.
+	 */
+	async deleteFromSourceCreatedBefore(
+		scope: { agentId: string; source: string },
+		before: Date,
+		signal?: AbortSignal,
+	): Promise<number> {
+		let deleted = 0;
+		while (!signal?.aborted) {
+			const batch = await this.repository.findFromSourceCreatedBefore(
+				scope,
+				before,
+				RETENTION_BATCH_SIZE,
+			);
+			if (batch.length === 0) break;
+			await this.binaryDataService.deleteManyByBinaryDataId(
+				batch.map((attachment) => attachment.binaryDataId),
+			);
+			await this.repository.delete(batch.map((attachment) => attachment.id));
+			deleted += batch.length;
+			if (batch.length < RETENTION_BATCH_SIZE) break;
+		}
+		return deleted;
+	}
+
+	async deleteStoredData(
+		binaryDataIds: string[],
+		logContext: Record<string, string>,
+	): Promise<void> {
+		if (binaryDataIds.length === 0) return;
+		await this.binaryDataService.deleteManyByBinaryDataId(binaryDataIds).catch((error: unknown) =>
+			this.logger.warn('Failed to delete agent chat attachment bytes', {
+				...logContext,
+				error,
+			}),
+		);
+	}
+
 	private async deleteAttachments(
 		attachments: AgentChatAttachment[],
 		logContext: Record<string, string>,
@@ -155,14 +221,10 @@ export class AgentChatAttachmentService {
 		if (attachments.length === 0) return;
 
 		await this.repository.delete(attachments.map((attachment) => attachment.id));
-		await this.binaryDataService
-			.deleteManyByBinaryDataId(attachments.map((attachment) => attachment.binaryDataId))
-			.catch((error: unknown) =>
-				this.logger.warn('Failed to delete agent chat attachment bytes', {
-					...logContext,
-					error,
-				}),
-			);
+		await this.deleteStoredData(
+			attachments.map((attachment) => attachment.binaryDataId),
+			logContext,
+		);
 	}
 
 	/**

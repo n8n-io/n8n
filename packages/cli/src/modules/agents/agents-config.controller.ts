@@ -1,4 +1,9 @@
-import { type AgentConfigValidationResponse, UpdateAgentConfigDto } from '@n8n/api-types';
+import {
+	type AgentBudgetSpend,
+	type AgentConfigValidationResponse,
+	UpdateAgentConfigDto,
+} from '@n8n/api-types';
+import { budgetMonthKey } from '@n8n/agents';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -7,9 +12,12 @@ import { AgentsCredentialProvider } from './adapters/agents-credential-provider'
 import { AgentConfigService } from './agent-config.service';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentValidationService } from './agent-validation.service';
+import { AgentSpendLedger } from './budget-guardrail';
 import { AgentRepository } from './repositories/agent.repository';
+import { getAgentConfigHash } from './utils/agent-config-hash';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsConfigController {
@@ -19,13 +27,30 @@ export class AgentsConfigController {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRepository: AgentRepository,
+		private readonly collaborationService: CollaborationService,
+		private readonly agentSpendLedger: AgentSpendLedger,
 	) {}
+
+	@Get('/:agentId/budget')
+	@ProjectScope('agent:read')
+	async getBudget(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentBudgetSpend> {
+		const { projectId, agentId } = req.params;
+		const exists = await this.agentRepository.existsByIdAndProjectId(agentId, projectId);
+		if (!exists) {
+			throw new NotFoundError('Agent not found');
+		}
+		const spentUsd = await this.agentSpendLedger.read(budgetMonthKey(agentId));
+		return { spentUsd };
+	}
 
 	@Get('/:agentId/config')
 	@ProjectScope('agent:read')
 	async getConfig(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
-		return await this.agentConfigService.getConfig(agentId, projectId);
+		const config = await this.agentConfigService.getConfig(agentId, projectId);
+		return { config, configHash: getAgentConfigHash(config) };
 	}
 
 	/**
@@ -49,6 +74,7 @@ export class AgentsConfigController {
 			this.credentialsService,
 			projectId,
 			req.user,
+			agentId,
 		);
 		return await this.agentValidationService.validateLoadedAgentConfiguration(
 			agent,
@@ -66,9 +92,19 @@ export class AgentsConfigController {
 		@Body payload: UpdateAgentConfigDto,
 	) {
 		const { projectId } = req.params;
-		const { config } = payload;
+		const { config, baseConfigHash } = payload;
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'update',
+		);
 		return await this.agentConfigService.updateConfig(agentId, projectId, config, req.user, {
+			baseConfigHash,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 	}
 
@@ -81,9 +117,18 @@ export class AgentsConfigController {
 		@Param('toolId') toolId: string,
 	) {
 		const { projectId } = req.params;
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'delete',
+		);
 		await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, toolId, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 		return { ok: true };
 	}

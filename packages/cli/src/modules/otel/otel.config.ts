@@ -1,5 +1,7 @@
+import { exporterEndpointSchema, otlpProtocolSchema } from '@n8n/api-types';
 import { Config, Env } from '@n8n/config';
 
+import type { OtlpProtocol } from './otel.constants';
 import { OTEL_ENV_VARS } from './otel.constants';
 
 @Config
@@ -7,7 +9,10 @@ export class OtelConfig {
 	@Env(OTEL_ENV_VARS.enabled)
 	enabled: boolean = false;
 
-	@Env(OTEL_ENV_VARS.exporterEndpoint)
+	@Env(OTEL_ENV_VARS.exporterProtocol, otlpProtocolSchema)
+	exporterProtocol: OtlpProtocol = 'http/protobuf';
+
+	@Env(OTEL_ENV_VARS.exporterEndpoint, exporterEndpointSchema)
 	exporterEndpoint: string = 'http://localhost:4318';
 
 	@Env(OTEL_ENV_VARS.exporterTracingPath)
@@ -27,6 +32,12 @@ export class OtelConfig {
 
 	@Env(OTEL_ENV_VARS.includeNodeSpans)
 	includeNodeSpans: boolean = true;
+
+	@Env(OTEL_ENV_VARS.emitWorkflowStartSpan)
+	emitWorkflowStartSpan: boolean = false;
+
+	@Env(OTEL_ENV_VARS.emitNodeStartSpan)
+	emitNodeStartSpan: boolean = false;
 
 	@Env(OTEL_ENV_VARS.injectOutbound)
 	injectOutbound: boolean = true;

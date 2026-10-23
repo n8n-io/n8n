@@ -74,12 +74,25 @@ function scoreTool(tool: BuiltTool, query: string): number {
 
 export interface DeferredToolManagerOptions {
 	topK?: number;
+	/**
+	 * Tools that are already in the model's toolset. They are not loadable, but
+	 * `load_tool` and `search_tools` must still recognize them. An instruction
+	 * that tells the model to load an always-active tool otherwise dead-ends on
+	 * `not_found`, and the model spends a full round trip on the fallback search.
+	 */
+	activeTools?: BuiltTool[];
 }
 
 export class DeferredToolManager {
 	private readonly toolsByName = new Map<string, BuiltTool>();
 
 	private readonly loadedToolNames = new Set<string>();
+
+	/** Former tool names mapped to current ones, so older history still hydrates. */
+	private readonly currentNameByLegacyName = new Map<string, string>();
+
+	/** Always-available tools, kept out of `toolsByName` so they stay unloadable. */
+	private readonly activeToolsByName = new Map<string, BuiltTool>();
 
 	private readonly topK: number;
 
@@ -96,6 +109,25 @@ export class DeferredToolManager {
 				throw new Error(`Duplicate deferred tool name "${tool.name}"`);
 			}
 			this.toolsByName.set(tool.name, tool);
+		}
+
+		for (const tool of options.activeTools ?? []) {
+			// A deferred tool of the same name owns the name, because that one is loadable.
+			if (this.toolsByName.has(tool.name)) continue;
+			this.activeToolsByName.set(tool.name, tool);
+		}
+
+		for (const tool of [...this.toolsByName.values(), ...this.activeToolsByName.values()]) {
+			for (const legacyName of tool.legacyNames ?? []) {
+				if (
+					this.toolsByName.has(legacyName) ||
+					this.activeToolsByName.has(legacyName) ||
+					this.currentNameByLegacyName.has(legacyName)
+				) {
+					continue;
+				}
+				this.currentNameByLegacyName.set(legacyName, tool.name);
+			}
 		}
 
 		this.topK = options.topK ?? DEFAULT_TOP_K;
@@ -120,6 +152,11 @@ export class DeferredToolManager {
 		return [this.searchTool, this.loadTool];
 	}
 
+	/** A registered deferred tool, loaded or not. Resolves legacy names. */
+	getTool(name: string): BuiltTool | undefined {
+		return this.toolsByName.get(this.resolveName(name));
+	}
+
 	getLoadedTools(): BuiltTool[] {
 		return Array.from(this.loadedToolNames)
 			.map((name) => this.toolsByName.get(name))
@@ -133,7 +170,8 @@ export class DeferredToolManager {
 			if (!('content' in message) || !Array.isArray(message.content)) continue;
 			for (const block of message.content) {
 				if (!this.isSuccessfulLoadToolCall(block)) continue;
-				const toolName = this.getLoadedToolNameFromOutput(block.output);
+				const loadedName = this.getLoadedToolNameFromOutput(block.output);
+				const toolName = loadedName && this.resolveName(loadedName);
 				if (toolName && this.toolsByName.has(toolName)) {
 					this.loadedToolNames.add(toolName);
 				}
@@ -170,7 +208,9 @@ export class DeferredToolManager {
 	}
 
 	private search(query: string): SearchToolsOutput {
-		const scored = Array.from(this.toolsByName.values())
+		// Active tools are included so a search for one returns the real tool
+		// (marked `loaded`) instead of unrelated loadable ones.
+		const scored = [...this.toolsByName.values(), ...this.activeToolsByName.values()]
 			.map((tool) => ({
 				tool,
 				score: scoreTool(tool, query),
@@ -188,7 +228,22 @@ export class DeferredToolManager {
 		};
 	}
 
-	private load(toolName: string): LoadToolOutput {
+	private resolveName(name: string): string {
+		return this.currentNameByLegacyName.get(name) ?? name;
+	}
+
+	load(requestedName: string): LoadToolOutput {
+		const toolName = this.resolveName(requestedName);
+		const activeTool = this.activeToolsByName.get(toolName);
+		if (activeTool) {
+			return {
+				status: 'already_loaded',
+				toolName,
+				tool: this.summarizeTool(activeTool),
+				message: `Tool "${toolName}" is already available. Call it directly.`,
+			};
+		}
+
 		const tool = this.toolsByName.get(toolName);
 		if (!tool) {
 			return {
@@ -221,7 +276,7 @@ export class DeferredToolManager {
 		return {
 			name: tool.name,
 			description: tool.description,
-			loaded: this.loadedToolNames.has(tool.name),
+			loaded: this.activeToolsByName.has(tool.name) || this.loadedToolNames.has(tool.name),
 		};
 	}
 

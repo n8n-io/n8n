@@ -27,7 +27,12 @@ declare global {
 
 type KeyboardEventHandler =
 	| ((event: KeyboardEvent) => void)
-	| { disabled: () => boolean; run: (event: KeyboardEvent) => void };
+	| {
+			disabled?: () => boolean;
+			/** Allows input, textarea, and editable content focus. Defaults to false. */
+			allowInInputs?: boolean;
+			run: (event: KeyboardEvent) => void;
+	  };
 
 export type KeyMap = Partial<Record<string, KeyboardEventHandler>>;
 
@@ -79,10 +84,6 @@ export const useKeybindings = (
 	}
 
 	const isDisabled = computed(() => toValue(options?.disabled));
-
-	const ignoreKeyPresses = computed(
-		() => activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value),
-	);
 
 	const normalizedKeymap = computed(() =>
 		Object.fromEntries(
@@ -197,7 +198,7 @@ export const useKeybindings = (
 	// 5. For non-letter keys (arrows, function keys, etc.), allow `byCode` as a
 	//    last resort to ensure consistent physical-key behavior across layouts.
 	function onKeyDown(event: KeyboardEvent) {
-		if (ignoreKeyPresses.value || isDisabled.value) return;
+		if (isDisabled.value) return;
 
 		const { byKey, byCode, byLayout } = toShortcutString(event);
 
@@ -213,14 +214,19 @@ export const useKeybindings = (
 		const handlerFromCode = useCodeFallback ? normalizedKeymap.value[byCode] : undefined;
 
 		const handler = handlerFromKey ?? handlerFromLayout ?? handlerFromCode;
-		const run =
-			typeof handler === 'function' ? handler : handler?.disabled() ? undefined : handler?.run;
+		if (!handler) return;
 
-		if (run) {
-			event.preventDefault();
-			event.stopPropagation();
-			run(event);
+		const allowInInputs = typeof handler !== 'function' && handler.allowInInputs === true;
+		if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value, { allowInInputs })) {
+			return;
 		}
+
+		if (typeof handler !== 'function' && handler.disabled?.()) return;
+
+		const run = typeof handler === 'function' ? handler : handler.run;
+		event.preventDefault();
+		event.stopPropagation();
+		run(event);
 	}
 
 	useEventListener(popOutWindow?.value?.document ?? document, 'keydown', onKeyDown);

@@ -8,20 +8,22 @@ import {
 	uniqueStrings,
 } from './memory-lifecycle';
 import { normalizeObservationLogReflection } from './observation-log-reflector';
+import { observationCursorsMatch, prepareObservationLogBatchCursor } from './observation-log-batch';
+import type { RuntimeSkillStateStore } from '../../skills/types';
 import type {
+	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
 	BuiltMemory,
-	EpisodicMemoryCursor,
+	EpisodicMemoryCaptureCandidate,
 	EpisodicMemoryEntry,
 	EpisodicMemoryEntrySource,
-	EpisodicMemoryMethods,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionResult,
 	EpisodicMemoryScope,
 	EpisodicMemorySearchOptions,
 	EpisodicMemoryTaskLockHandle,
 	MemoryDescriptor,
-	NewEpisodicMemoryCursor,
+	NewEpisodicMemoryCaptureCandidate,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
@@ -34,6 +36,8 @@ import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
+	ObservationLogBatch,
+	ObservationLogBatchCommitResult,
 	ObservationLogEntry,
 	ObservationLogReadOptions,
 	ObservationLogReflection,
@@ -62,7 +66,7 @@ function cloneObservationLogEntry(entry: ObservationLogEntry): ObservationLogEnt
 	return { ...entry, createdAt: new Date(entry.createdAt) };
 }
 
-function compareKeyset(
+export function compareKeyset(
 	a: { createdAt: Date; id: string },
 	b: { createdAt: Date; id: string },
 ): number {
@@ -83,11 +87,29 @@ export class InMemoryMemory
 		BuiltMemory,
 		BuiltObservationLogStore,
 		BuiltObservationLogTaskLockStore,
-		BuiltEpisodicMemoryStore
+		BuiltEpisodicMemoryStore,
+		BuiltEpisodicMemoryCaptureStore
 {
 	private threads = new Map<string, Thread>();
 
 	private messagesByThread = new Map<string, StoredMessage[]>();
+	private skillsByThread = new Map<string, Map<string, string[]>>();
+
+	readonly skillState: RuntimeSkillStateStore = {
+		load: async ({ threadId, resourceId, agentName }) =>
+			await Promise.resolve(
+				this.skillsByThread
+					.get(threadId)
+					?.get(JSON.stringify([resourceId, agentName]))
+					?.slice(),
+			),
+		save: async ({ threadId, resourceId, agentName }, ids) => {
+			const states = this.skillsByThread.get(threadId) ?? new Map<string, string[]>();
+			states.set(JSON.stringify([resourceId, agentName]), [...ids]);
+			this.skillsByThread.set(threadId, states);
+			await Promise.resolve();
+		},
+	};
 
 	private observationLogByScope = new Map<string, ObservationLogEntry[]>();
 
@@ -99,11 +121,22 @@ export class InMemoryMemory
 
 	private episodicMemorySources: EpisodicMemoryEntrySource[] = [];
 
-	private episodicMemoryCursorsByScope = new Map<string, EpisodicMemoryCursor>();
+	private episodicMemoryCaptureCandidates: EpisodicMemoryCaptureCandidate[] = [];
 
 	private episodicMemoryLocksByResource = new Map<string, EpisodicMemoryTaskLockHandle>();
 
-	readonly episodic: EpisodicMemoryMethods = {
+	readonly episodic: BuiltEpisodicMemoryCaptureStore['episodic'] = {
+		getEntriesByContentHashes: async (scope, contentHashes) => {
+			const hashes = new Set(contentHashes);
+			return await Promise.resolve(
+				this.episodicMemory
+					.filter(
+						(entry) =>
+							entry.resourceId === episodicWriteScopeId(scope) && hashes.has(entry.contentHash),
+					)
+					.map(cloneEpisodicMemoryEntry),
+			);
+		},
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
 		searchEntries: async (scope, query, opts) =>
@@ -111,11 +144,17 @@ export class InMemoryMemory
 		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
 		applyReflection: async (scope, reflection) =>
 			await this.applyEpisodicMemoryReflection(scope, reflection),
-		getCursor: async (scope) => await this.getEpisodicMemoryCursor(scope),
-		setCursor: async (cursor) => await this.setEpisodicMemoryCursor(cursor),
+		enqueueCaptureCandidate: async (candidate) =>
+			await this.enqueueEpisodicMemoryCaptureCandidate(candidate),
+		getPendingCaptureCandidates: async (scope, opts) =>
+			await this.getPendingEpisodicMemoryCaptureCandidates(scope, opts),
+		completeCaptureCandidates: async (ids) =>
+			await this.completeEpisodicMemoryCaptureCandidates(ids),
+		recordCaptureCandidateFailure: async (ids, maxAttempts) =>
+			await this.recordEpisodicMemoryCaptureCandidateFailure(ids, maxAttempts),
 		taskLock: {
-			acquire: async (resourceId, opts) =>
-				await this.acquireEpisodicMemoryTaskLock(resourceId, opts),
+			acquire: async (scope, opts) =>
+				await this.acquireEpisodicMemoryTaskLock(episodicWriteScopeId(scope), opts),
 			release: async (handle) => await this.releaseEpisodicMemoryTaskLock(handle),
 		},
 	};
@@ -143,6 +182,7 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async deleteThread(threadId: string): Promise<void> {
 		this.threads.delete(threadId);
+		this.skillsByThread.delete(threadId);
 		this.messagesByThread.delete(threadId);
 		this.observationLogByScope.delete(threadId);
 		this.cursorsByScope.delete(threadId);
@@ -154,6 +194,9 @@ export class InMemoryMemory
 		);
 		this.episodicMemorySources = this.episodicMemorySources.filter(
 			(source) => source.threadId !== threadId,
+		);
+		this.episodicMemoryCaptureCandidates = this.episodicMemoryCaptureCandidates.filter(
+			(candidate) => candidate.threadId !== threadId,
 		);
 		if (affectedEntryIds.length > 0) {
 			const entriesWithSources = new Set(
@@ -168,7 +211,6 @@ export class InMemoryMemory
 				}
 			}
 		}
-		this.episodicMemoryCursorsByScope.delete(threadId);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
@@ -239,6 +281,12 @@ export class InMemoryMemory
 				messages.filter((s) => !idSet.has(s.message.id)),
 			);
 		}
+		for (const candidate of this.episodicMemoryCaptureCandidates) {
+			if (candidate.sourceMessageId && idSet.has(candidate.sourceMessageId)) {
+				candidate.sourceMessageId = null;
+				candidate.updatedAt = new Date();
+			}
+		}
 	}
 
 	describe(): MemoryDescriptor {
@@ -246,6 +294,34 @@ export class InMemoryMemory
 	}
 
 	// ── Observational memory ─────────────────────────────────────────────
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		const cursor = prepareObservationLogBatchCursor(batch);
+		const storedCursor = this.cursorsByScope.get(batch.observationScopeId) ?? null;
+		if (!cursor || !observationCursorsMatch(storedCursor, batch.expectedCursor)) {
+			return 'stale';
+		}
+
+		const staged: ObservationLogEntry[] = [];
+		for (const entry of batch.entries) {
+			staged.push({
+				id: crypto.randomUUID(),
+				observationScopeId: batch.observationScopeId,
+				marker: entry.marker,
+				text: entry.text,
+				parentId: entry.parentIndex === null ? null : staged[entry.parentIndex].id,
+				tokenCount: entry.tokenCount,
+				createdAt: new Date(entry.createdAt),
+				...activeLifecycleState(),
+			});
+		}
+		const existing = this.observationLogByScope.get(batch.observationScopeId) ?? [];
+		this.observationLogByScope.set(batch.observationScopeId, [...existing, ...staged]);
+		this.cursorsByScope.set(batch.observationScopeId, cursor);
+		return await Promise.resolve('committed');
+	}
 
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],
@@ -446,12 +522,75 @@ export class InMemoryMemory
 	private async releaseScopeLock(handle: ObservationLogTaskLockHandle): Promise<void> {
 		const key = handle.observationScopeId;
 		const current = this.locksByScope.get(key);
-		if (current && current.holderId === handle.holderId) {
+		if (current?.holderId === handle.holderId) {
 			this.locksByScope.delete(key);
 		}
 	}
 
 	// ── Episodic memory ──────────────────────────────────────────────────
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	private async enqueueEpisodicMemoryCaptureCandidate(
+		candidate: NewEpisodicMemoryCaptureCandidate,
+	): Promise<EpisodicMemoryCaptureCandidate> {
+		const existing = this.episodicMemoryCaptureCandidates.find(
+			(row) => row.runId === candidate.runId && row.toolCallId === candidate.toolCallId,
+		);
+		if (existing) return cloneEpisodicMemoryCaptureCandidate(existing);
+
+		const now = new Date();
+		const { episodic: _episodic, ...candidateData } = candidate;
+		const row: EpisodicMemoryCaptureCandidate = {
+			...candidateData,
+			resourceId: episodicWriteScopeId(candidate),
+			id: crypto.randomUUID(),
+			status: 'pending',
+			attemptCount: 0,
+			createdAt: now,
+			updatedAt: now,
+		};
+		this.episodicMemoryCaptureCandidates.push(row);
+		return cloneEpisodicMemoryCaptureCandidate(row);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	private async getPendingEpisodicMemoryCaptureCandidates(
+		scope: EpisodicMemoryScope,
+		opts?: { limit?: number },
+	): Promise<EpisodicMemoryCaptureCandidate[]> {
+		return this.episodicMemoryCaptureCandidates
+			.filter(
+				(candidate) =>
+					candidate.resourceId === episodicWriteScopeId(scope) && candidate.status === 'pending',
+			)
+			.sort((a, b) => compareKeyset(a, b))
+			.slice(0, opts?.limit)
+			.map(cloneEpisodicMemoryCaptureCandidate);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	private async completeEpisodicMemoryCaptureCandidates(ids: string[]): Promise<void> {
+		const idSet = new Set(ids);
+		for (const candidate of this.episodicMemoryCaptureCandidates) {
+			if (!idSet.has(candidate.id) || candidate.status !== 'pending') continue;
+			candidate.status = 'completed';
+			candidate.updatedAt = new Date();
+		}
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	private async recordEpisodicMemoryCaptureCandidateFailure(
+		ids: string[],
+		maxAttempts: number,
+	): Promise<void> {
+		const idSet = new Set(ids);
+		for (const candidate of this.episodicMemoryCaptureCandidates) {
+			if (!idSet.has(candidate.id) || candidate.status !== 'pending') continue;
+			candidate.attemptCount += 1;
+			if (candidate.attemptCount >= maxAttempts) candidate.status = 'failed';
+			candidate.updatedAt = new Date();
+		}
+	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async saveEpisodicMemoryEntries(
@@ -461,21 +600,19 @@ export class InMemoryMemory
 		const saved: EpisodicMemoryEntry[] = [];
 		for (const entry of entries) {
 			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
+			const resourceId = episodicWriteScopeId(entry);
 			const duplicate = this.episodicMemory.find(
-				(existing) =>
-					existing.resourceId === entry.resourceId && existing.contentHash === contentHash,
+				(existing) => existing.resourceId === resourceId && existing.contentHash === contentHash,
 			);
 			if (duplicate) {
-				markLifecycleActive(duplicate);
-				duplicate.lastSeenAt = entry.lastSeenAt ?? now;
-				duplicate.updatedAt = now;
+				refreshEpisodicMemoryEntry(duplicate, entry, now);
 				saved.push(cloneEpisodicMemoryEntry(duplicate));
 				continue;
 			}
 
 			const row: EpisodicMemoryEntry = {
 				id: crypto.randomUUID(),
-				resourceId: entry.resourceId,
+				resourceId,
 				content: entry.content,
 				contentHash,
 				...activeLifecycleState(),
@@ -501,17 +638,20 @@ export class InMemoryMemory
 			const duplicate = this.episodicMemorySources.find(
 				(existing) =>
 					existing.memoryEntryId === source.memoryEntryId &&
-					existing.observationId === source.observationId &&
+					(existing.observationId ?? null) === (source.observationId ?? null) &&
+					(existing.candidateId ?? null) === (source.candidateId ?? null) &&
 					existing.evidenceText === source.evidenceText,
 			);
 			if (duplicate) {
 				saved.push(cloneEpisodicMemorySource(duplicate));
 				continue;
 			}
+			const provenance = provenanceOf(source);
+			if (!provenance) continue;
 			const row: EpisodicMemoryEntrySource = {
 				id: crypto.randomUUID(),
 				memoryEntryId: source.memoryEntryId,
-				observationId: source.observationId,
+				...provenance,
 				threadId: source.threadId,
 				evidenceText: source.evidenceText,
 				createdAt: source.createdAt ?? new Date(),
@@ -548,9 +688,18 @@ export class InMemoryMemory
 		query: string,
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
-		const scoped = this.episodicMemory
-			.filter((entry) => entry.resourceId === scope.resourceId)
-			.map(cloneEpisodicMemoryEntry);
+		const scopeIds = opts?.writeScopeOnly
+			? [episodicWriteScopeId(scope)]
+			: episodicReadScopeIds(scope);
+		// The same fact told in two scopes is one memory to the reader.
+		const newestByContent = new Map<string, EpisodicMemoryEntry>();
+		for (const entry of this.episodicMemory) {
+			if (!scopeIds.includes(entry.resourceId)) continue;
+			const key = `${entry.status}\n${entry.contentHash}`;
+			const seen = newestByContent.get(key);
+			if (!seen || entry.lastSeenAt > seen.lastSeenAt) newestByContent.set(key, entry);
+		}
+		const scoped = [...newestByContent.values()].map(cloneEpisodicMemoryEntry);
 		return rankEpisodicMemoryEntries(scoped, query, opts);
 	}
 
@@ -581,7 +730,9 @@ export class InMemoryMemory
 	): Promise<EpisodicMemoryReflectionResult> {
 		const activeIds = new Set(
 			this.episodicMemory
-				.filter((entry) => entry.resourceId === scope.resourceId && entry.status === 'active')
+				.filter(
+					(entry) => entry.resourceId === episodicWriteScopeId(scope) && entry.status === 'active',
+				)
 				.map((entry) => entry.id),
 		);
 		const normalized = normalizeFlatReflectionActions({
@@ -605,13 +756,19 @@ export class InMemoryMemory
 			inserted.push(replacement);
 			const copiedSources = this.episodicMemorySources
 				.filter((source) => supersedes.includes(source.memoryEntryId))
-				.map((source) => ({
-					memoryEntryId: replacement.id,
-					observationId: source.observationId,
-					threadId: source.threadId,
-					evidenceText: source.evidenceText,
-					createdAt: merge.entry.createdAt ?? new Date(),
-				}));
+				.flatMap((source): NewEpisodicMemoryEntrySource[] => {
+					const provenance = provenanceOf(source);
+					if (!provenance) return [];
+					return [
+						{
+							memoryEntryId: replacement.id,
+							threadId: source.threadId,
+							evidenceText: source.evidenceText,
+							createdAt: merge.entry.createdAt ?? new Date(),
+							...provenance,
+						},
+					];
+				});
 			await this.saveEpisodicMemoryEntrySources(copiedSources);
 			await this.supersedeEpisodicMemoryEntries(supersedes, replacement.id);
 			supersededIds.push(...supersedes.filter((id) => id !== replacement.id));
@@ -622,24 +779,6 @@ export class InMemoryMemory
 			supersededIds,
 			inserted,
 		};
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
-	private async getEpisodicMemoryCursor(
-		scope: ObservationLogScope,
-	): Promise<EpisodicMemoryCursor | null> {
-		const cursor = this.episodicMemoryCursorsByScope.get(scope.observationScopeId);
-		return cursor ? cloneEpisodicMemoryCursor(cursor) : null;
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
-	private async setEpisodicMemoryCursor(cursor: NewEpisodicMemoryCursor): Promise<void> {
-		const now = new Date();
-		this.episodicMemoryCursorsByScope.set(cursor.observationScopeId, {
-			...cursor,
-			lastIndexedObservationCreatedAt: new Date(cursor.lastIndexedObservationCreatedAt),
-			updatedAt: cursor.updatedAt ?? now,
-		});
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
@@ -664,7 +803,7 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async releaseEpisodicMemoryTaskLock(handle: EpisodicMemoryTaskLockHandle): Promise<void> {
 		const current = this.episodicMemoryLocksByResource.get(handle.resourceId);
-		if (current && current.holderId === handle.holderId) {
+		if (current?.holderId === handle.holderId) {
 			this.episodicMemoryLocksByResource.delete(handle.resourceId);
 		}
 	}
@@ -680,9 +819,27 @@ export async function saveMessagesToThread(
 	threadId: string,
 	resourceId: string,
 	messages: AgentDbMessage[],
+	hostMetadata?: Parameters<BuiltMemory['saveMessages']>[0]['hostMetadata'],
 ): Promise<void> {
 	await memory.saveThread({ id: threadId, resourceId });
-	await memory.saveMessages({ threadId, resourceId, messages });
+	await memory.saveMessages({
+		threadId,
+		resourceId,
+		messages,
+		...(hostMetadata && { hostMetadata }),
+	});
+}
+
+function refreshEpisodicMemoryEntry(
+	entry: EpisodicMemoryEntry,
+	update: NewEpisodicMemoryEntry,
+	now: Date,
+): void {
+	markLifecycleActive(entry);
+	entry.lastSeenAt = update.lastSeenAt ?? now;
+	entry.updatedAt = now;
+	if (update.embedding !== undefined) entry.embedding = [...update.embedding];
+	if (update.embeddingModel !== undefined) entry.embeddingModel = update.embeddingModel;
 }
 
 function cloneEpisodicMemoryEntry(entry: EpisodicMemoryEntry): EpisodicMemoryEntry {
@@ -695,14 +852,34 @@ function cloneEpisodicMemoryEntry(entry: EpisodicMemoryEntry): EpisodicMemoryEnt
 	};
 }
 
+function cloneEpisodicMemoryCaptureCandidate(
+	candidate: EpisodicMemoryCaptureCandidate,
+): EpisodicMemoryCaptureCandidate {
+	return {
+		...candidate,
+		createdAt: new Date(candidate.createdAt),
+		updatedAt: new Date(candidate.updatedAt),
+	};
+}
+
 function cloneEpisodicMemorySource(source: EpisodicMemoryEntrySource): EpisodicMemoryEntrySource {
 	return { ...source, createdAt: new Date(source.createdAt) };
 }
 
-function cloneEpisodicMemoryCursor(cursor: EpisodicMemoryCursor): EpisodicMemoryCursor {
-	return {
-		...cursor,
-		lastIndexedObservationCreatedAt: new Date(cursor.lastIndexedObservationCreatedAt),
-		updatedAt: new Date(cursor.updatedAt),
-	};
+function provenanceOf(source: {
+	observationId?: string | null;
+	candidateId?: string | null;
+}): { observationId: string } | { candidateId: string } | null {
+	if (source.observationId) return { observationId: source.observationId };
+	if (source.candidateId) return { candidateId: source.candidateId };
+	return null;
+}
+
+/** The scope a turn writes to. A host-resolved scope wins over the resource. */
+function episodicWriteScopeId(scope: Pick<EpisodicMemoryScope, 'resourceId' | 'episodic'>): string {
+	return scope.episodic?.writeScopeId ?? scope.resourceId;
+}
+
+function episodicReadScopeIds(scope: EpisodicMemoryScope): string[] {
+	return scope.episodic?.readScopeIds ?? [scope.resourceId];
 }

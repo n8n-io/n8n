@@ -523,6 +523,71 @@ describe('ProjectRoleView', () => {
 		});
 	});
 
+	describe('execution scope coupling', () => {
+		it('renders execution:read as a disabled checkbox that follows workflow:read', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('scope-checkbox-execution:read')).toBeInTheDocument());
+
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+			const executionReadCheckbox = getByTestId('scope-checkbox-execution:read');
+			expect(executionReadCheckbox).toBeDisabled();
+
+			// The viewer preset in this test lacks execution:read: toggling workflow:read
+			// off and on couples it.
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+			expect(executionReadCheckbox).not.toBeChecked();
+
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).toBeChecked();
+			expect(executionReadCheckbox).toBeChecked();
+		});
+
+		it('unchecks execution:read and execution:delete when workflow:read is unchecked', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-execution:delete')).toBeInTheDocument(),
+			);
+
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+			const executionReadCheckbox = getByTestId('scope-checkbox-execution:read');
+			const executionDeleteCheckbox = getByTestId('scope-checkbox-execution:delete');
+
+			await userEvent.click(readCheckbox);
+			await userEvent.click(readCheckbox);
+			await userEvent.click(executionDeleteCheckbox);
+			expect(executionReadCheckbox).toBeChecked();
+			expect(executionDeleteCheckbox).toBeChecked();
+
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+			expect(executionReadCheckbox).not.toBeChecked();
+			expect(executionDeleteCheckbox).not.toBeChecked();
+		});
+
+		it('auto-checks workflow:read and execution:read when execution:delete is checked without workflow:read', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-execution:delete')).toBeInTheDocument(),
+			);
+
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+			const executionReadCheckbox = getByTestId('scope-checkbox-execution:read');
+			const executionDeleteCheckbox = getByTestId('scope-checkbox-execution:delete');
+
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+
+			await userEvent.click(executionDeleteCheckbox);
+			expect(executionDeleteCheckbox).toBeChecked();
+			expect(readCheckbox).toBeChecked();
+			expect(executionReadCheckbox).toBeChecked();
+		});
+	});
+
 	describe('workflow:execute scope dependency', () => {
 		it('should render workflow:execute checkbox in the UI', async () => {
 			const { getByTestId } = renderComponent();
@@ -630,6 +695,41 @@ describe('ProjectRoleView', () => {
 			await userEvent.click(updateCheckbox);
 			expect(updateCheckbox).not.toBeChecked();
 			expect(executeCheckbox).not.toBeChecked();
+		});
+	});
+
+	describe('App scopes', () => {
+		it('hides App scopes when the module is inactive', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('scope-checkbox-workflow:read')).toBeInTheDocument());
+
+			expect(queryByTestId('scope-checkbox-app:read')).not.toBeInTheDocument();
+			expect(queryByTestId('scope-checkbox-app:create')).not.toBeInTheDocument();
+		});
+
+		it('shows App scopes when the module is active', async () => {
+			settingsStore.isAppsEnabled = true;
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('scope-checkbox-app:read')).toBeInTheDocument());
+			expect(getByTestId('scope-checkbox-app:create')).toBeInTheDocument();
+		});
+	});
+
+	describe('Skill scopes', () => {
+		it('hides the Skills scopes while the skills hub is off', () => {
+			const { queryByText } = renderComponent();
+
+			expect(queryByText('Skills')).not.toBeInTheDocument();
+		});
+
+		it('shows the Skills scopes while the skills hub is on', () => {
+			settingsStore.moduleSettings = {
+				agents: { skillsHubEnabled: true },
+			} as typeof settingsStore.moduleSettings;
+			const { getByText } = renderComponent();
+
+			expect(getByText('Skills')).toBeInTheDocument();
 		});
 	});
 

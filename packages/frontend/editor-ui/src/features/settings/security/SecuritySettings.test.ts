@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -78,7 +78,64 @@ describe('SecuritySettings', () => {
 		});
 
 		expect(getByText('Security & policies')).toBeInTheDocument();
-		expect(getByText('Personal Space')).toBeInTheDocument();
+		expect(getByText('Personal space')).toBeInTheDocument();
+	});
+
+	it('should use the shared settings page composition', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-settings-header')).toBeInTheDocument();
+			expect(getByTestId('security-data-redaction-section')).toBeInTheDocument();
+		});
+
+		expect(
+			within(getByTestId('security-mfa-section')).getByTestId('settings-row-group'),
+		).toBeInTheDocument();
+		expect(
+			within(getByTestId('security-data-redaction-section')).getByTestId('settings-row-group'),
+		).toBeInTheDocument();
+		expect(
+			within(getByTestId('security-personal-space-section')).getAllByTestId('settings-row-group'),
+		).toHaveLength(2);
+	});
+
+	it('should render concise section copy and the security documentation link', async () => {
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = true;
+		getSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			workflowReviews: { enabled: false },
+		});
+		const { getByTestId, getByText, queryByText } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-data-redaction-section')).toBeInTheDocument();
+		});
+
+		expect(getByTestId('settings-page-header-docs')).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/deploy/host-n8n/configure-n8n/security/manage-security-policies',
+		);
+		expect(getByText('Manage security policies for this instance.')).toBeInTheDocument();
+		expect(getByText('Two-factor authentication')).toBeInTheDocument();
+		expect(
+			getByText('Require two-factor authentication for users who sign in with email and password.'),
+		).toBeInTheDocument();
+		expect(
+			getByText(
+				'Allow users to submit workflow versions for approval before publishing. Reviews are optional, but an open review blocks publishing.',
+			),
+		).toBeInTheDocument();
+		expect(
+			queryByText(
+				'Require workflow versions to be submitted for review and approved before they can be published to production.',
+			),
+		).not.toBeInTheDocument();
+		expect(
+			queryByText(
+				'Select whether to redact production executions, or manual and production executions.',
+			),
+		).not.toBeInTheDocument();
 	});
 
 	it('should render both publishing and sharing toggles with correct test ids', async () => {
@@ -851,6 +908,16 @@ describe('SecuritySettings', () => {
 			});
 		});
 
+		it('should show a Preview tag on the workflow reviews toggle', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('security-workflow-reviews-preview-tag')).toHaveTextContent('Preview');
+		});
+
 		it('should persist workflow reviews toggle changes', async () => {
 			updateSecuritySettings.mockResolvedValue({
 				workflowReviews: { enabled: true },
@@ -870,6 +937,25 @@ describe('SecuritySettings', () => {
 				});
 				expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
 			});
+		});
+
+		it('updates Inbox access after saving the policy without reloading settings', async () => {
+			settingsStore.settings.activeModules = ['inbox', 'workflow-reviews'];
+			settingsStore.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
+			updateSecuritySettings.mockResolvedValue({ workflowReviews: { enabled: true } });
+			const { findByTestId } = renderView();
+			const toggle = await findByTestId('security-workflow-reviews-toggle');
+			await userEvent.click(toggle);
+			await waitFor(() => expect(showToast).toHaveBeenCalled());
+			expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
+			expect(settingsStore.settings.inbox).toEqual({
+				enabled: true,
+				availableTypes: ['workflow_review'],
+				failedTypes: [],
+			});
+			expect(toggle).not.toHaveClass('is-disabled');
+			expect(showError).not.toHaveBeenCalled();
+			expect(settingsStore.getSettings).not.toHaveBeenCalled();
 		});
 
 		it('should disable workflow reviews toggle when managed by env', async () => {

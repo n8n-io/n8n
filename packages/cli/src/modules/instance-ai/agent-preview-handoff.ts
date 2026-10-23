@@ -5,7 +5,7 @@ import {
 	AGENT_PREVIEW_CONTEXT_CLOSE_TAG,
 	AGENT_PREVIEW_CONTEXT_OPEN_TAG,
 } from './internal-messages';
-import type { AgentExecutionService } from '../agents/agent-execution.service';
+import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
 
 export type AgentPreviewHandoffResult = {
 	block: string;
@@ -29,22 +29,29 @@ function escapeAgentPreviewContextDelimiters(value: string): string {
  * Resolve an agent-preview handoff reference into an LLM-facing context block.
  * The block is a reference only — it does NOT embed the transcript. The
  * orchestrator reads the transcript on demand via the `get-session` tool, and
- * only calls `build-agent` when the user explicitly asks to edit the agent.
- * Ownership is enforced by `getThreadDetail` (project + agent scoped).
- * On success, callers must bind `target` before streaming so `build-agent`
- * edits the shared agent. On throw, do not bind.
+ * only changes the agent when the user explicitly asks to edit it.
+ * Ownership is enforced by `getThreadDetail`.
+ * On success, callers must bind `target` before streaming so the builder tools
+ * edit the shared agent. On throw, do not bind.
  */
 export async function resolveAgentPreviewHandoff(
 	context: InstanceAiAgentPreviewHandoffContext,
 	options: {
 		projectId: string;
-		getThreadDetail: AgentExecutionService['getThreadDetail'];
+		userId: string;
+		getThreadDetail: (
+			threadId: string,
+			projectId: string,
+			agentId: string,
+			userId: string,
+		) => Promise<AgentSessionDetail | null>;
 	},
 ): Promise<AgentPreviewHandoffResult> {
 	const detail = await options.getThreadDetail(
 		context.threadId,
 		options.projectId,
 		context.agentId,
+		options.userId,
 	);
 	if (!detail) {
 		throw new UserError('Preview session not found');
@@ -85,7 +92,7 @@ export async function resolveAgentPreviewHandoff(
 		`The user shared a real preview-chat transcript for agent \`${context.agentId}\` (${safeSessionLabel}).`,
 		'Call `get-session` to read the transcript before commenting on the agent.',
 		'For review/analysis requests (e.g. "review the tone", "assess behavior"), answer directly from the transcript — do NOT modify the agent.',
-		'Only call `build-agent` when the user explicitly asks to update, improve, or fix the agent. The builder sub-agent cannot see this chat — pass `agentId` and the relevant findings from the transcript in `message`.',
+		'Only change the agent when the user explicitly asks to update, improve, or fix it. Then load the `agent-builder` skill and call `agent_builder_select_agent` with this `agentId` before any other builder tool.',
 	].join('\n');
 
 	const block = [

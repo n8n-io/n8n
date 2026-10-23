@@ -20,7 +20,14 @@ export class NoOp implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		properties: [],
+		properties: [
+			{
+				displayName: 'Empty Group Anchor',
+				name: 'emptyGroupAnchor',
+				type: 'hidden',
+				default: false,
+			},
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

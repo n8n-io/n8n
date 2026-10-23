@@ -91,6 +91,8 @@ type Props = {
 	optionsOverrides?: ParameterOptionsOverrides;
 	assignmentCollectionEditableValueIndices?: Record<string, number[]>;
 	layout?: 'inline';
+	parameterIssues?: Record<string, string[]>;
+	fromAiDisabledParameters?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -452,9 +454,7 @@ function updateAgentParameters(parameters: INodeProperties[], nodeName: string) 
 				return {
 					...option,
 					disabled: true,
-					description:
-						option.description ??
-						i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
+					description: i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
 				};
 			}),
 		};
@@ -601,7 +601,10 @@ async function getDependentParametersValues(parameter: INodeProperties): Promise
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
-			parameterPath = resolveRelativePath(props.path, parameterPath);
+			// '&recordType' means the recordType next to this parameter. resolveRelativePath
+			// replaces the last path segment, so give it this parameter's path, not the list path:
+			// 'parameters.entries.entry[1].attributes' -> 'entries.entry[1].recordType'
+			parameterPath = resolveRelativePath(getPath(parameter.name), parameterPath);
 
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
@@ -996,6 +999,7 @@ watch(
 			/>
 			<AssignmentCollection
 				v-else-if="item.parameter.type === 'assignmentCollection'"
+				class="parameter-item"
 				:parameter="item.parameter"
 				:value="getParameterValue<AssignmentCollectionValue>(item.parameter.name)"
 				:path="item.path"
@@ -1027,6 +1031,8 @@ watch(
 					:key="node?.name"
 					:parameter="item.parameter"
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
+					:external-issues="parameterIssues?.[item.parameter.name]"
+					:disable-from-ai="fromAiDisabledParameters?.includes(item.parameter.name)"
 					:value="getParameterValue(item.parameter.name)"
 					:display-options="item.showOptions"
 					:options-overrides="optionsOverrides"
@@ -1066,6 +1072,8 @@ watch(
 </template>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 .parameter-input-list-wrapper {
 	--input--color--background--disabled: var(--color--background);
 	.icon-button {
@@ -1112,7 +1120,7 @@ watch(
 		padding: 0.7em;
 
 		a {
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 		}
 	}
 

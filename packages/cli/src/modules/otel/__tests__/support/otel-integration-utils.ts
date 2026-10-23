@@ -8,16 +8,28 @@ import { readFileSync } from 'fs';
 import { InstanceSettings, UnrecognizedNodeTypeError } from 'n8n-core';
 import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
-import { createRunExecutionData } from 'n8n-workflow';
-import type { IDataObject, INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
+import { createRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IDataObject,
+	INodeType,
+	INodeTypeData,
+	NodeLoadingDetails,
+} from 'n8n-workflow';
 import path from 'path';
 
+import { ActiveExecutions } from '@/active-executions';
+import { JobProcessor } from '@/scaling/job-processor';
+import type { Job } from '@/scaling/scaling.types';
 import { WorkflowRunner } from '@/workflow-runner';
 import * as utils from '@test-integration/utils';
 
 import { OtelTestProvider } from './otel-test-provider';
 import { TestNodeWithTracing } from './test-node-with-tracing';
+import { OtelSettingsService } from '../../otel-settings.service';
 import { OtelConfig } from '../../otel.config';
+import { OtelService } from '../../otel.service';
+import type { TracingContext } from '../../tracing-context';
 
 const BASE_DIR = path.resolve(__dirname, '../../../../../..');
 
@@ -45,6 +57,8 @@ export async function initOtelTestEnvironment() {
 
 	await testModules.loadModules(['otel']);
 	await testDb.init();
+	Container.set(OtelService, otel.asOtelService());
+	await Container.get(OtelSettingsService).loadSettings();
 	await Container.get(ModuleRegistry).initModules('main');
 	Container.get(LicenseState).setLicenseProvider({
 		isLicensed: (feature) => feature === LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES,
@@ -53,6 +67,7 @@ export async function initOtelTestEnvironment() {
 	const distNodes = loadNodesFromDist([
 		'n8n-nodes-base.executeWorkflow',
 		'n8n-nodes-base.executeWorkflowTrigger',
+		'n8n-nodes-base.wait',
 	]);
 	await utils.initNodeTypes({
 		'n8n-nodes-base.manualTrigger': { type: new ManualTrigger(), sourcePath: '' },
@@ -106,13 +121,53 @@ export async function executeWorkflow(
 	options: {
 		mode?: 'webhook' | 'trigger' | 'manual' | 'retry';
 		retryOf?: string;
-		tracingContext?: { traceparent: string; tracestate?: string };
+		tracingContext?: TracingContext;
 		triggerData?: IDataObject;
 	} = {},
 ): Promise<string> {
 	const { mode = 'webhook', retryOf, tracingContext, triggerData } = options;
+
+	return await workflowRunner.run(
+		{
+			workflowData: workflow,
+			projectId,
+			executionMode: mode,
+			executionData: createTriggerExecutionData(workflow, triggerData),
+			retryOf,
+			tracingContext,
+		},
+		true,
+	);
+}
+
+export async function executeWorkflowOnWorker(
+	workflow: WorkflowEntity,
+	projectId: string,
+): Promise<string> {
+	const executionId = await Container.get(ActiveExecutions).add({
+		workflowData: workflow,
+		projectId,
+		executionMode: 'trigger',
+		executionData: createTriggerExecutionData(workflow),
+	});
+
+	const job = {
+		id: `job-${executionId}`,
+		data: { executionId, workflowId: workflow.id, loadStaticData: false },
+		progress: vi.fn(),
+	} as unknown as Job;
+	try {
+		await Container.get(JobProcessor).processJob(job);
+	} finally {
+		Container.get(ActiveExecutions).finalizeExecution(executionId);
+	}
+
+	return executionId;
+}
+
+function createTriggerExecutionData(workflow: WorkflowEntity, triggerData?: IDataObject) {
 	const triggerNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.manualTrigger')!;
-	const executionData = createRunExecutionData({
+	return createRunExecutionData({
 		executionData: {
 			nodeExecutionStack: [
 				{
@@ -126,18 +181,6 @@ export async function executeWorkflow(
 			startNodes: [{ name: triggerNode.name, sourceData: null }],
 		},
 	});
-
-	return await workflowRunner.run(
-		{
-			workflowData: workflow,
-			projectId,
-			executionMode: mode,
-			executionData,
-			retryOf,
-			tracingContext,
-		},
-		true,
-	);
 }
 
 export async function waitForExecution(
@@ -152,4 +195,24 @@ export async function waitForExecution(
 		await new Promise((resolve) => setTimeout(resolve, 100));
 	}
 	throw new Error(`Execution ${executionId} did not complete within ${timeout}ms`);
+}
+
+/** `waitForExecution` is unusable for parked executions: `stoppedAt` is already set. */
+export async function waitForExecutionStatus(
+	executionRepository: ExecutionRepository,
+	executionId: string,
+	status: ExecutionStatus,
+	timeout = 10_000,
+): Promise<void> {
+	const start = Date.now();
+	let lastSeen: ExecutionStatus | undefined;
+	while (Date.now() - start < timeout) {
+		const execution = await executionRepository.findOneBy({ id: executionId });
+		lastSeen = execution?.status;
+		if (lastSeen === status) return;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
+	throw new UnexpectedError(
+		`Execution ${executionId} did not reach status "${status}" within ${timeout}ms (last status: ${lastSeen})`,
+	);
 }

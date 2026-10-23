@@ -1,16 +1,14 @@
+import { WORKFLOW_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import type {
 	InstanceAiRunDebugStep,
 	InstanceAiRunDebugWorkflowCodeSnapshot,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
-const WORKFLOW_CODE_TOOL_NAMES = new Set(['build-workflow']);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+const WORKFLOW_CODE_TOOL_NAMES = new Set<string>([WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW]);
 
 export function isWorkflowCodeToolName(name: string | undefined): boolean {
-	return name !== undefined && WORKFLOW_CODE_TOOL_NAMES.has(name);
+	return name !== undefined && WORKFLOW_CODE_TOOL_NAMES.has(resolveBuilderToolName(name));
 }
 
 function extractBuildWorkflowToolCallIds(output: Record<string, unknown> | undefined): string[] {

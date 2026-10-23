@@ -1,6 +1,7 @@
 import {
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
+	WAIT_TOOL_NAME,
 	type AgentBuilderOpenSuspension,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -9,12 +10,20 @@ import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
 	parseN8nChatActionInput,
+	parseWaitSuspendPayload,
 } from './n8nChatInteraction';
 
-import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
+import {
+	CHAT_MESSAGE_ROLE,
+	CHAT_MESSAGE_STATUS,
+	INTERACTION_EXTENSION_TOOL_NAME,
+	TOOL_CALL_STATE,
+} from './constants';
 import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
+import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
+import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
 import type {
 	ApprovalInput,
 	ChatMessage,
@@ -90,18 +99,51 @@ export function findOpenInteractive(
 	return undefined;
 }
 
+/**
+ * The open interactive on the last turn, which is the one that owns the chat
+ * input and any steering. A parked run is always the tail of the transcript, so
+ * an unresolved card further up belongs to a turn the conversation already moved
+ * past — `findOpenInteractive` returns those too, and acting on them would
+ * answer or cancel the wrong tool call.
+ */
+export function findTailOpenInteractive(
+	messages: MessageWithInteractives[],
+): InteractivePayload | undefined {
+	const tail = messages[messages.length - 1];
+	if (!tail) return undefined;
+	return getMessageInteractives(tail).find((payload) => payload.resolvedAt === undefined);
+}
+
+/**
+ * The open interactive on the last turn that a steering message is allowed to
+ * cancel. A waiting card is never one: the workflow resumes it by itself, so
+ * cancelling it because the user typed would abandon a run they never asked to
+ * stop and leave the sub-workflow finishing into a checkpoint nobody reads.
+ * Stopping a wait is a deliberate act — the card's own button, or Stop.
+ */
+export function findTailSteerableInteractive(
+	messages: MessageWithInteractives[],
+): InteractivePayload | undefined {
+	const tail = messages[messages.length - 1];
+	if (!tail) return undefined;
+	return getMessageInteractives(tail).find(
+		(payload) => payload.resolvedAt === undefined && payload.toolName !== WAIT_TOOL_NAME,
+	);
+}
+
 /** True when a suspend payload is the approval tool's renderable input. */
 export function isApprovalSuspendInput(value: unknown): boolean {
 	return parseApprovalInput(value) !== undefined;
 }
 
-function parseApprovalInput(value: unknown): ApprovalInput | undefined {
+export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 	if (!isRecord(value)) return undefined;
 	if (value.type !== 'approval') return undefined;
 	if (typeof value.toolName !== 'string' || value.toolName.length === 0) return undefined;
 	return {
 		type: 'approval',
 		toolName: value.toolName,
+		...(value.supportsSessionApproval === true && { supportsSessionApproval: true }),
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
 		args: value.args,
@@ -114,17 +156,25 @@ function isDeclinedToolOutput(value: unknown): boolean {
 
 /**
  * Given a tool call belonging to one of the interactive tools still rendered
- * in agents chat (`approval`, `chat_action`), reconstruct an
- * `InteractivePayload` for it. The result is:
+ * in agents chat (`approval`, `chat_action`) — or a workflow tool parked on a
+ * Wait node — reconstruct an `InteractivePayload` for it. The result is:
  *
  * - **resolved**: when `output` is present.
  * - **open**: when `output` is absent — the card renders as an active
  *   awaiting-user prompt. Used when a refresh during a suspension restored the
  *   suspended assistant turn from the open checkpoint.
  *
+ * Host extensions are tried after all built-in cards, so a host cannot take
+ * over an approval, a Wait node or a `chat_action` call. Without extensions, no
+ * extension card is mapped. Extensions without `parse` have no card, so the
+ * mapper skips them.
+ *
  * Returns `undefined` when the tool name isn't interactive or input parsing fails.
  */
-export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload | undefined {
+export function rebuildInteractiveFromHistory(
+	tc: ToolCall,
+	extensions: readonly AgentsChatInteractionExtension[] = [],
+): InteractivePayload | undefined {
 	const approvalInput = parseApprovalInput(tc.suspendPayload) ?? parseApprovalInput(tc.input);
 	if (approvalInput) {
 		const resolved = tc.output !== undefined;
@@ -139,6 +189,21 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 				!isDelegateSubAgentTool(tc.tool) && {
 					resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
 				}),
+		};
+	}
+
+	// A workflow tool waiting on a Wait node: the tool name is per-workflow, so
+	// the suspend payload's own marker is the only discriminator.
+	const waitInput = parseWaitSuspendPayload(tc.suspendPayload);
+	if (waitInput) {
+		const resolved = tc.output !== undefined ? n8nChatResumeValueSchema.safeParse(tc.output) : null;
+		return {
+			toolCallId: tc.toolCallId,
+			...(tc.output !== undefined && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
+			toolName: WAIT_TOOL_NAME,
+			input: waitInput,
+			...(tc.canceled !== true && resolved?.success && { resolvedValue: resolved.data }),
 		};
 	}
 
@@ -158,6 +223,19 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 		};
 	}
 
+	for (const extension of extensions) {
+		const input = extension.parse?.(tc);
+		if (input === undefined) continue;
+		return {
+			toolCallId: tc.toolCallId,
+			...(tc.output !== undefined && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
+			toolName: INTERACTION_EXTENSION_TOOL_NAME,
+			extensionKey: extension.key,
+			input,
+		};
+	}
+
 	return undefined;
 }
 
@@ -166,16 +244,24 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
  *
  * Whenever a tool call is interactive, we attach a reconstructed
  * `InteractivePayload` so the UI re-renders the card in either its open
- * (awaiting user) or resolved (disabled) state.
+ * (awaiting user) or resolved (disabled) state. `extensions` are the card
+ * types of the chat host (see `rebuildInteractiveFromHistory`).
  */
-export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatMessage[] {
+export function convertDbMessages(
+	dbMessages: AgentPersistedMessageDto[],
+	extensions: readonly AgentsChatInteractionExtension[] = [],
+): ChatMessage[] {
 	const result: ChatMessage[] = [];
 
 	for (const msg of dbMessages) {
 		if (!msg.role || !Array.isArray(msg.content)) continue;
 
 		const role: ChatMessage['role'] | null =
-			msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'assistant' : null;
+			msg.role === CHAT_MESSAGE_ROLE.USER
+				? 'user'
+				: msg.role === CHAT_MESSAGE_ROLE.ASSISTANT
+					? 'assistant'
+					: null;
 		if (role === null) continue;
 
 		let text = '';
@@ -185,8 +271,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
 		const attachments: ChatMessageAttachment[] = [];
-		let status: ChatMessage['status'] =
-			msg.executionStatus === 'error' ? CHAT_MESSAGE_STATUS.ERROR : undefined;
+		let status: ChatMessage['status'];
+		const failed = msg.executionStatus === 'error' || msg.executionStatus === 'interrupted';
+		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
+		else if (msg.executionStatus === 'running') status = CHAT_MESSAGE_STATUS.STREAMING;
 
 		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {
@@ -215,7 +303,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					output = part.output;
 					if (canceled) {
 						state = TOOL_CALL_STATE.CANCELLED;
-					} else if (isFailedDelegateOutput(part.toolName, part.output)) {
+					} else if (
+						isFailedDelegateOutput(part.toolName, part.output) ||
+						isPolicyRefusedToolOutput(part.output)
+					) {
 						state = TOOL_CALL_STATE.ERROR;
 					} else {
 						state = TOOL_CALL_STATE.DONE;
@@ -223,7 +314,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
-				} else if (msg.executionStatus === 'error') {
+				} else if (failed) {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
 				} else {
@@ -240,14 +331,15 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					state,
 					...(part.startTime !== undefined && { startTime: part.startTime }),
 					...(part.endTime !== undefined && { endTime: part.endTime }),
+					...(part.suspendPayload !== undefined && { suspendPayload: part.suspendPayload }),
 					...(part.childTrace && { childProgress: part.childTrace }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
 				toolCalls.push(toolCall);
 
-				const rebuilt = rebuildInteractiveFromHistory(toolCall);
+				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (!rebuilt) continue;
-				if (rebuilt.resolvedAt === undefined && msg.executionStatus !== 'error') {
+				if (rebuilt.resolvedAt === undefined && !failed && msg.executionStatus !== 'running') {
 					toolCall.state = TOOL_CALL_STATE.SUSPENDED;
 					status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
@@ -256,10 +348,15 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			}
 		}
 
+		// A malformed wire timestamp must not reach the transcript as NaN: it would
+		// silence every later timestamp divider in the chat.
+		const createdAt = msg.createdAt ? Date.parse(msg.createdAt) : NaN;
+
 		const chatMessage: ChatMessage = {
 			id: msg.id ?? crypto.randomUUID(),
 			role,
 			content: text,
+			...(msg.author && { author: msg.author }),
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
@@ -267,9 +364,28 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			...(attachments.length > 0 && { attachments }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && msg.backgroundTaskSignal
+				? { backgroundJobSignal: msg.backgroundTaskSignal }
+				: {}),
+			...(Number.isFinite(createdAt) && { createdAt }),
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);
+
+		// A turn that ended in an error carries the recorded run error — render
+		// it as its own error bubble, mirroring what the live stream showed.
+		// Without this, an errored turn reloads as red-marked partial output (or
+		// nothing at all) with no explanation.
+		if (msg.executionError) {
+			result.push({
+				id: `${chatMessage.id}:error`,
+				role: 'assistant',
+				content: msg.executionError,
+				toolCalls: [],
+				status: CHAT_MESSAGE_STATUS.ERROR,
+				...(msg.executionId ? { executionId: msg.executionId } : {}),
+			});
+		}
 	}
 	return result;
 }
@@ -282,11 +398,12 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
  *
  * Mutates `chat` in place (history-load happens before reactivity wraps the
  * messages, so this is safe and avoids an extra deep clone) and returns it
- * for ergonomic chaining.
+ * for ergonomic chaining. `extensions` are the card types of the chat host.
  */
 export function applyOpenSuspensions(
 	chat: ChatMessage[],
 	suspensions: AgentBuilderOpenSuspension[],
+	extensions: readonly AgentsChatInteractionExtension[] = [],
 ): ChatMessage[] {
 	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s]));
 	for (const msg of chat) {
@@ -307,7 +424,7 @@ export function applyOpenSuspensions(
 				if (suspension.suspendPayload !== undefined) {
 					toolCall.suspendPayload = suspension.suspendPayload;
 				}
-				const rebuilt = rebuildInteractiveFromHistory(toolCall);
+				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (rebuilt) {
 					rebuilt.runId = suspension.runId;
 					upsertMessageInteractive(msg, rebuilt);
@@ -315,7 +432,7 @@ export function applyOpenSuspensions(
 				hasOpenToolCall = true;
 			} else if (msg.status === CHAT_MESSAGE_STATUS.ERROR) {
 				toolCall.state = TOOL_CALL_STATE.ERROR;
-			} else {
+			} else if (msg.status !== CHAT_MESSAGE_STATUS.STREAMING) {
 				toolCall.state = TOOL_CALL_STATE.CANCELLED;
 				toolCall.canceled = true;
 			}

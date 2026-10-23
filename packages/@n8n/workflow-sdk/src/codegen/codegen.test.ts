@@ -2,7 +2,110 @@ import { generateWorkflowCode } from './index';
 import { parseWorkflowCode } from './parse-workflow-code';
 import type { WorkflowJSON } from '../types/base';
 
+describe('includePositions', () => {
+	const workflow: WorkflowJSON = {
+		name: 'Positions',
+		nodes: [
+			{
+				id: 'trigger',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [100, 200],
+				parameters: {},
+			},
+			{
+				id: 'agent',
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1.7,
+				position: [300, 200],
+				parameters: {},
+			},
+			{
+				id: 'model',
+				name: 'Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				position: [300, 400],
+				parameters: {},
+			},
+			{
+				id: 'merge',
+				name: 'Merge',
+				type: 'n8n-nodes-base.merge',
+				typeVersion: 3,
+				position: [500, 200],
+				parameters: {},
+			},
+			{
+				id: 'note',
+				name: 'Note',
+				type: 'n8n-nodes-base.stickyNote',
+				typeVersion: 1,
+				position: [0, 600],
+				parameters: { content: 'hello' },
+			},
+		],
+		connections: {
+			Start: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+			Agent: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+			Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+		},
+	};
+
+	it('emits positions by default', () => {
+		const code = generateWorkflowCode({ workflow, includeNodeIds: true });
+		expect(code).toContain('position: [100, 200]');
+		expect(code).toContain('position: [300, 400]');
+		expect(code).toContain('position: [500, 200]');
+		expect(code).toContain('position: [0, 600]');
+	});
+
+	it('leaves positions out of nodes, subnodes, merges, and sticky notes when disabled', () => {
+		const code = generateWorkflowCode({ workflow, includeNodeIds: true, includePositions: false });
+		expect(code).not.toContain('position');
+		expect(code).toContain("id: 'trigger'");
+		expect(code).toContain("sticky('hello'");
+		expect(
+			parseWorkflowCode(code)
+				.nodes.map((n) => n.name)
+				.sort(),
+		).toEqual(['Agent', 'Merge', 'Model', 'Note', 'Start']);
+	});
+});
+
 describe('generateWorkflowCode', () => {
+	it('never emits pinData from the source workflow', () => {
+		// Intentional (INS-1216): pinned data must not round-trip through
+		// generated code. get-as-code → edit → rebuild is how the AI Assistant
+		// clears stale pins (fabricated verification fixtures a user adopted);
+		// if codegen represented pins, every rebuild would re-persist them.
+		const json: WorkflowJSON = {
+			id: 'wf-pins',
+			name: 'Pinned Workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Get Job Alert Emails',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 2.1,
+					position: [0, 0],
+					parameters: { resource: 'message', operation: 'getAll' },
+				},
+			],
+			connections: {},
+			pinData: {
+				'Get Job Alert Emails': [{ id: 'msg_1', threadId: 'th_1' }],
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).not.toContain('pinData');
+		expect(code).not.toContain('msg_1');
+	});
+
 	it('should generate valid TypeScript for a simple workflow', () => {
 		const json: WorkflowJSON = {
 			id: 'test-123',
@@ -138,6 +241,37 @@ describe('generateWorkflowCode', () => {
 		expect(code).toContain("slackApi: newCredential('My Slack', 'cred-123')");
 	});
 
+	it('should generate a placeholder for an AI Gateway managed credential', () => {
+		const json: WorkflowJSON = {
+			id: 'managed-credential-test',
+			name: 'Managed Credentials Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.2,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						slackApi: {
+							id: null,
+							name: 'n8n Connect',
+							__aiGatewayManaged: true,
+						},
+					},
+				},
+			],
+			connections: {},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toContain("slackApi: newCredential('n8n Connect')");
+		expect(code).not.toContain('id: null');
+		expect(code).not.toContain('__aiGatewayManaged');
+	});
+
 	it('should generate code for sticky notes', () => {
 		const json: WorkflowJSON = {
 			id: 'sticky-test',
@@ -162,7 +296,7 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		expect(code).toContain("sticky('## Documentation\\n\\nThis is a note.'");
+		expect(code).toContain('sticky(`## Documentation\n\nThis is a note.`');
 		expect(code).toContain('color: 4');
 	});
 
@@ -354,9 +488,10 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		// Should properly escape
+		// Single-line strings keep escaped quotes; multi-line strings become template
+		// literals with real line breaks so each line stays editable on its own.
 		expect(code).toContain("\\'quotes\\'");
-		expect(code).toContain('\\n');
+		expect(code).toContain("jsCode: `const x = 'hello';\nreturn x;`");
 	});
 
 	it('should generate code with variables-first format', () => {
@@ -427,6 +562,13 @@ describe('generateWorkflowCode with AI subnodes', () => {
 					parameters: {
 						model: 'gpt-4',
 					},
+					credentials: {
+						openAiApi: {
+							id: null,
+							name: 'n8n Connect',
+							__aiGatewayManaged: true,
+						},
+					},
 				},
 			],
 			connections: {
@@ -450,6 +592,9 @@ describe('generateWorkflowCode with AI subnodes', () => {
 		// Should reference the variable in subnodes config
 		expect(code).toContain('subnodes:');
 		expect(code).toMatch(/model: \w+/); // Variable reference, not inline call
+		expect(code).toContain("openAiApi: newCredential('n8n Connect')");
+		expect(code).not.toContain('id: null');
+		expect(code).not.toContain('__aiGatewayManaged');
 	});
 
 	it('should generate subnode config for AI agent with multiple subnodes', () => {
@@ -3070,5 +3215,51 @@ describe('Sequential polling loops', () => {
 
 		// Retry Wait 2 → Check Job 2 (cycle back)
 		expect(parsed.connections['Retry Wait 2']?.main[0]?.[0]?.node).toBe('Check Job 2');
+	});
+
+	it('should emit multi-line strings as template literals and round-trip them exactly', () => {
+		const jsonBody =
+			'{\n  "orderId": "={{ $json.order_id }}",\n  "note": "a `tick` and ${not_an_expr} and a \\ backslash",\n  "quote": "it\'s"\n}';
+		const jsCode =
+			'const msg = `Hello ${name}`;\r\nreturn [{ json: { msg, when: $now.toISO() } }];';
+		const json: WorkflowJSON = {
+			name: 'Multi-line strings',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'Send',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0],
+					parameters: { method: 'POST', specifyBody: 'json', jsonBody: `=${jsonBody}` },
+				},
+				{
+					id: 'n2',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: { jsCode },
+				},
+			],
+			connections: { Send: { main: [[{ node: 'Code', type: 'main', index: 0 }]] } },
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Each body line is its own source line, so a scoped edit can target one key.
+		expect(code).toContain('jsonBody: expr(`{\n  "orderId": "={{ $json.order_id }}",\n');
+		// The parameters object nests under config; only the template content keeps its own indentation.
+		expect(code).toContain(
+			"    parameters: {\n      method: 'POST',\n      specifyBody: 'json',\n      jsonBody: expr(`{\n  \"orderId\"",
+		);
+		// The CR is escaped: a raw CR inside a template literal would be normalized to LF.
+		expect(code).toContain('jsCode: `const msg = \\`Hello \\${name}\\`;\\r\n');
+
+		const parsed = parseWorkflowCode(code);
+		const send = parsed.nodes.find((n) => n.name === 'Send');
+		const codeNode = parsed.nodes.find((n) => n.name === 'Code');
+		expect(send?.parameters?.jsonBody).toBe(`=${jsonBody}`);
+		expect(codeNode?.parameters?.jsCode).toBe(jsCode);
 	});
 });

@@ -340,7 +340,7 @@ describe('promptUtils', () => {
 
 			const result = await parser(message);
 
-			expect(message).not.toBeInstanceOf(BaseMessage);
+			expect(BaseMessage.prototype.isPrototypeOf(message)).toBe(false);
 			expect(BaseMessage.isInstance(message)).toBe(true);
 			expect(mockOutputParser.parse).toHaveBeenCalledWith('Cross-module text content');
 			expect(result).toEqual(parsedResult);

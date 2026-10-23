@@ -1,6 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
-import type { InstanceAiContext, PlannedTaskKind, StoredPlannedTaskKind } from '../types';
+import type { PlannedTaskKind } from '../types';
 
 /**
  * Permission overrides applied when a planned task has been approved by the user.
@@ -25,29 +25,8 @@ export const PLANNED_TASK_PERMISSION_OVERRIDES: Partial<
 	},
 	// Checkpoint tasks run inside an orchestrator follow-up run. Plan approval
 	// authorizes the verification step, so the orchestrator can call
-	// verify-built-workflow / executions(action="run") without a second prompt.
+	// workflow_builder_verify_built_workflow / workflow_builder_executions(action="run") without a second prompt.
 	checkpoint: {
 		runWorkflow: 'always_allow',
 	},
 };
-
-/**
- * Returns a shallow clone of the context with plan-approved permission overrides
- * applied for the given task kind. If no overrides exist for the kind, the
- * original context is returned unchanged.
- */
-export function applyPlannedTaskPermissions(
-	context: InstanceAiContext,
-	taskKind: StoredPlannedTaskKind,
-): InstanceAiContext {
-	const overrides = PLANNED_TASK_PERMISSION_OVERRIDES[taskKind as PlannedTaskKind];
-	if (!overrides) return context;
-
-	return {
-		...context,
-		permissions: {
-			...context.permissions,
-			...overrides,
-		} as InstanceAiPermissions,
-	};
-}

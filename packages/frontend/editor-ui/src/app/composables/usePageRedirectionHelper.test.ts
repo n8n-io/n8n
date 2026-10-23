@@ -5,6 +5,7 @@ import { confirmIfBuilderStreaming } from '@/features/ai/assistant/composables/u
 
 vi.mock('@n8n/stores/composables/useBasePageRedirectionHelper', () => ({
 	useBasePageRedirectionHelper: vi.fn(() => ({
+		goToCloudDashboard: vi.fn(),
 		goToDashboard: vi.fn(),
 		goToVersions: vi.fn(),
 		goToUpgrade: vi.fn(),
@@ -28,6 +29,7 @@ describe('usePageRedirectionHelper (app wrapper)', () => {
 		// The core composable's API is returned unchanged.
 		expect(helper).toEqual(
 			expect.objectContaining({
+				goToCloudDashboard: expect.any(Function),
 				goToDashboard: expect.any(Function),
 				goToVersions: expect.any(Function),
 				goToUpgrade: expect.any(Function),

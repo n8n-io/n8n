@@ -7,7 +7,7 @@ import { HumanMessage, isDataContentBlock } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, NodeTypeAndVersion } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -608,6 +608,90 @@ describe('getTools', () => {
 		const dynamicTool = tools.find((t) => t.name === 'format_final_json_response');
 		expect(dynamicTool).toBeDefined();
 	});
+
+	describe('source node metadata', () => {
+		/**
+		 * A context with its own getParentNodes, so the metadata assignment step in
+		 * getConnectedTools sees real source nodes instead of an empty parent list.
+		 */
+		function createToolContext(
+			connectedTools: unknown[],
+			parentNodes: Array<Partial<NodeTypeAndVersion> & { id: string; name: string }>,
+		) {
+			const ctx = mock<IExecuteFunctions>({ helpers: mock<IExecuteFunctions['helpers']>() });
+			ctx.getNode.mockReturnValue(mock<INode>({ name: 'AI Agent' }));
+			ctx.getInputConnectionData
+				.calledWith(NodeConnectionTypes.AiTool, 0)
+				.mockResolvedValue(connectedTools);
+			ctx.getParentNodes.mockReturnValue(parentNodes as NodeTypeAndVersion[]);
+			return ctx;
+		}
+
+		it('should record the source node ID alongside the source node name', async () => {
+			const ctx = createToolContext(
+				[{ name: 'get_weather', description: 'Get the weather' }],
+				[{ id: 'b0f2e1d0-0000-4000-8000-000000000001', name: 'Weather Tool' }],
+			);
+
+			const tools = await getTools(ctx);
+
+			expect(tools).toHaveLength(1);
+			expect(tools[0].metadata).toMatchObject({
+				sourceNodeName: 'Weather Tool',
+				sourceNodeId: 'b0f2e1d0-0000-4000-8000-000000000001',
+			});
+		});
+
+		it('should keep the source node ID stable when the source node is renamed', async () => {
+			const sourceNodeId = 'b0f2e1d0-0000-4000-8000-000000000001';
+
+			const before = await getTools(
+				createToolContext(
+					[{ name: 'get_weather', description: 'Get the weather' }],
+					[{ id: sourceNodeId, name: 'Weather Tool' }],
+				),
+			);
+			const after = await getTools(
+				createToolContext(
+					[{ name: 'get_weather', description: 'Get the weather' }],
+					[{ id: sourceNodeId, name: 'Forecast Tool' }],
+				),
+			);
+
+			expect(before[0].metadata?.sourceNodeName).toBe('Weather Tool');
+			expect(after[0].metadata?.sourceNodeName).toBe('Forecast Tool');
+			expect(after[0].metadata?.sourceNodeId).toBe(before[0].metadata?.sourceNodeId);
+			expect(after[0].metadata?.sourceNodeId).toBe(sourceNodeId);
+		});
+
+		it('should not corrupt the source node metadata when a source node is disabled', async () => {
+			// The disabled node produces no tool, so its parent entry must be skipped
+			// rather than shifting the metadata of the tools that follow it.
+			const ctx = createToolContext(
+				[
+					{ name: 'get_weather', description: 'Get the weather' },
+					{ name: 'send_email', description: 'Send an email' },
+				],
+				[
+					{ id: 'node-weather', name: 'Weather Tool', disabled: false },
+					{ id: 'node-calendar', name: 'Calendar Tool', disabled: true },
+					{ id: 'node-email', name: 'Email Tool', disabled: false },
+				],
+			);
+
+			const tools = await getTools(ctx);
+
+			expect(tools).toHaveLength(2);
+			expect(tools[0].metadata).toMatchObject({
+				sourceNodeName: 'Weather Tool',
+				sourceNodeId: 'node-weather',
+			});
+			expect(tools[1].metadata).toMatchObject({
+				sourceNodeName: 'Email Tool',
+				sourceNodeId: 'node-email',
+			});
+		});
+	});
 });
 
 describe('prepareMessages', () => {
@@ -1050,6 +1134,49 @@ describe('getAgentStepsParser', () => {
 				returnValues: { city: 'Berlin', temperature: 15 },
 				log: 'Final response formatted',
 			});
+		});
+
+		it('should hand the parser the text block when the model returns content blocks', async () => {
+			// Anthropic with thinking on: a (display-omitted) thinking block precedes the answer
+			const steps: AgentFinish = {
+				returnValues: {
+					output: [
+						{ type: 'thinking', thinking: '', signature: 'sig', index: 0 },
+						{ type: 'text', text: '{"city":"Berlin","temperature":15}', index: 1 },
+					],
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({ city: 'Berlin', temperature: 15 });
+
+			const parser = getAgentStepsParser(mockOutputParser, undefined);
+			const result = await parser(steps);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith(
+				'{"output":{"city":"Berlin","temperature":15}}',
+			);
+			expect(result).toEqual({
+				returnValues: { city: 'Berlin', temperature: 15 },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should hand the parser an empty string when the model returns only thinking blocks', async () => {
+			// Token budget spent on thinking: no text block exists, so there is no answer to parse
+			const steps: AgentFinish = {
+				returnValues: {
+					output: [{ type: 'thinking', thinking: 'Let me work out the temperature…', index: 0 }],
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({});
+
+			const parser = getAgentStepsParser(mockOutputParser, undefined);
+			await parser(steps);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('');
 		});
 	});
 

@@ -2,6 +2,7 @@ export const AGENT_MODEL_PROVIDERS = [
 	'openai',
 	'anthropic',
 	'google',
+	'google-vertex',
 	'azure-openai',
 	'aws-bedrock',
 	'xai',
@@ -12,10 +13,13 @@ export const AGENT_MODEL_PROVIDERS = [
 	'mistral',
 	'vercel',
 	'nvidia',
+	'moonshotai',
+	'alibaba',
+	'minimax',
 ] as const;
 
 /** Canonical `provider/model-name` validation shared by API schemas and editor parsing. */
-export const AGENT_MODEL_STRING_REGEX = /^[a-z0-9-]+\/(?:[a-z0-9._:-]+\/)*[a-z0-9._:-]+$/i;
+export const AGENT_MODEL_STRING_REGEX = /^[a-z0-9-]+\/(?:[a-z0-9._:@-]+\/)*[a-z0-9._:@-]+$/i;
 
 export type AgentModelProvider = (typeof AGENT_MODEL_PROVIDERS)[number];
 
@@ -36,6 +40,7 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	openai: ['openAiApi'],
 	anthropic: ['anthropicApi'],
 	google: ['googlePalmApi'],
+	'google-vertex': ['googleVertexAiApi'],
 	'azure-openai': ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'],
 	'aws-bedrock': ['aws'],
 	xai: ['xAiApi'],
@@ -46,6 +51,9 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	mistral: ['mistralCloudApi'],
 	vercel: ['vercelAiGatewayApi'],
 	nvidia: ['nvidiaApi'],
+	moonshotai: ['moonshotApi'],
+	alibaba: ['alibabaCloudApi'],
+	minimax: ['minimaxApi'],
 } as const satisfies Record<AgentModelProvider, readonly [string, ...string[]]>;
 
 /** Credential types for a provider prefix, or `[]` when it is not a model provider. */
@@ -62,11 +70,15 @@ export interface AgentCatalogModel {
 	toolCall: boolean;
 	cost?: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
 	limits?: { context?: number; output?: number };
+	/** Pickers list models with a priority first, highest first. Reported by the models API. */
+	priority?: number;
 }
 
 /** Response of `GET /agents/v2/catalog/models/:provider`. */
 export interface AgentProviderModelsResponse {
 	provider: string;
+	/** The provider default verified for the selected credential, when available. */
+	defaultModelId?: string;
 	/**
 	 * True when the list was confirmed against the provider's own model API
 	 * (only models the credential can actually call). False means the static

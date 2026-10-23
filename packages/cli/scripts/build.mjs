@@ -19,7 +19,7 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 generateUserManagementEmailTemplates();
 generateTimezoneData();
-copyInstanceAiExamplesData();
+copyAgentIntegrationAssets();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
@@ -34,14 +34,26 @@ function generateUserManagementEmailTemplates() {
 
 	shell.mkdir('-p', destinationDir);
 
-	const templates = glob.sync('*.mjml', { cwd: sourceDir });
-	templates.forEach((template) => {
-		if (template.startsWith('_')) return;
-		const source = path.resolve(sourceDir, template);
-		const destination = path.resolve(destinationDir, template.replace(/\.mjml$/, '.handlebars'));
-		const command = `pnpm mjml --output "${destination}" "${source}"`;
-		shell.exec(command, { silent: false });
+	const templates = glob.sync('*.mjml', { cwd: sourceDir }).filter((t) => !t.startsWith('_'));
+
+	// One mjml process for all templates: each `pnpm mjml` start costs about 0.3s.
+	// With several inputs, mjml writes `<name>.html` into the output directory.
+	const sources = templates.map((template) => `"${path.resolve(sourceDir, template)}"`).join(' ');
+	const result = shell.exec(`pnpm mjml ${sources} --output "${destinationDir}"`, {
+		silent: false,
 	});
+	if (result.code !== 0) {
+		throw new Error(`mjml failed to compile the email templates (exit code ${result.code})`);
+	}
+
+	for (const template of templates) {
+		const name = template.replace(/\.mjml$/, '');
+		const compiled = path.resolve(destinationDir, `${name}.html`);
+		if (!existsSync(compiled)) {
+			throw new Error(`mjml did not write ${compiled}`);
+		}
+		shell.mv(compiled, path.resolve(destinationDir, `${name}.handlebars`));
+	}
 
 	shell.cp(path.resolve(sourceDir, 'n8n-logo.png'), destinationDir);
 }
@@ -63,38 +75,30 @@ function copySwaggerTheme() {
 	shell.cp('-r', swaggerTheme.source, swaggerTheme.destination);
 }
 
-// Builds the v1 spec from two sources:
-// - the hand-written routes (eov) at `openapi.yml`
-// - the full `@PublicApiController` decorated routes at `openapi.decorator-routes.generated.yml`
+// Builds the v1 spec. The generated root lists every `@PublicApiController` operation. The build
+// bundles it, then puts its paths and components into the hand-written envelope (`openapi.yml`).
 async function buildPublicApiSpec() {
 	const v1Dir = path.resolve(ROOT_DIR, 'src', 'public-api', 'v1');
-	const { generateDocs, mergeDecoratorDocument, DECORATOR_ROOT_FILENAME } =
-		await loadOpenApiGenerator();
+	const { generateDocs, assembleSpec, DECORATOR_ROOT_FILENAME } = await loadOpenApiGenerator();
 
-	// 1. Generate decorated route OpenAPI specs from source.
+	// 1. Generate the operation fragments and the root from source.
 	generateDocs(v1Dir);
 
-	// 2. Bundle both sources.
+	// 2. Bundle the generated root, resolving its $refs to the fragment files.
 	const v1DistDir = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1');
+	const generatedDistSpec = path.join(v1DistDir, DECORATOR_ROOT_FILENAME);
+	bundleSpec(path.join(v1Dir, DECORATOR_ROOT_FILENAME), generatedDistSpec);
 
-	const eovDistSpec = path.join(v1DistDir, SPEC_FILENAME);
-	bundleSpec(path.join(v1Dir, SPEC_FILENAME), eovDistSpec);
-
-	const decoratorDistSpec = path.join(v1DistDir, DECORATOR_ROOT_FILENAME);
-	bundleSpec(path.join(v1Dir, DECORATOR_ROOT_FILENAME), decoratorDistSpec);
-
-	// 3. Merge the two specs into a single OpenAPI document, writing back to the eov spec path.
-	const eovDoc = parseYaml(readFileSync(eovDistSpec, 'utf8'));
-	const decoratorDoc = parseYaml(readFileSync(decoratorDistSpec, 'utf8'));
-
-	// 4. Merge the two specs and write back to the eov spec path.
+	// 3. Assemble the published spec from the envelope and the bundled root.
+	const envelope = parseYaml(readFileSync(path.join(v1Dir, SPEC_FILENAME), 'utf8'));
+	const generated = parseYaml(readFileSync(generatedDistSpec, 'utf8'));
 	writeFileSync(
-		eovDistSpec,
-		stringifyYaml(mergeDecoratorDocument(eovDoc, decoratorDoc), YAML_STRINGIFY_OPTS),
+		path.join(v1DistDir, SPEC_FILENAME),
+		stringifyYaml(assembleSpec(envelope, generated), YAML_STRINGIFY_OPTS),
 	);
 
-	// 5. Cleanup the decorator spec.
-	rmSync(decoratorDistSpec);
+	// 4. Remove the bundled root. Only the assembled spec is published.
+	rmSync(generatedDistSpec);
 }
 
 // Imports the already-compiled generator from dist rather than the .ts source — by the time
@@ -115,7 +119,7 @@ async function loadOpenApiGenerator() {
 	}
 
 	const generator = await import(pathToFileURL(generatorPath).href);
-	for (const name of ['generateDocs', 'mergeDecoratorDocument', 'DECORATOR_ROOT_FILENAME']) {
+	for (const name of ['generateDocs', 'assembleSpec', 'DECORATOR_ROOT_FILENAME']) {
 		if (generator[name] === undefined) {
 			throw new Error(
 				`OpenAPI doc generator at ${generatorPath} is missing export '${name}' — its contract may have changed.`,
@@ -125,39 +129,63 @@ async function loadOpenApiGenerator() {
 	return generator;
 }
 
-// Bundles a spec through redocly, resolving all $refs into a single file at `distPath`.
+// Bundles a spec through redocly, resolving all $refs, and writes it to `distPath`.
 function bundleSpec(sourcePath, distPath) {
+	// Remove old output, so that the check below cannot pass on a stale file.
+	rmSync(distPath, { force: true });
+
 	const result = shell.exec(`pnpm openapi bundle "${sourcePath}" --output "${distPath}"`, {
 		silent: true,
 	});
 	if (result.code !== 0) {
 		throw new Error(`redocly failed to bundle ${sourcePath}:\n${result.stderr || result.stdout}`);
 	}
+	if (!existsSync(distPath)) {
+		throw new Error(`redocly did not write the bundle for ${sourcePath} to ${distPath}`);
+	}
 }
 
-// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment.
-// The data lives in the frontend source tree but is read at runtime by the CLI, so it
-// must be bundled into `dist` to ship with the published package.
-function copyInstanceAiExamplesData() {
-	const source = path.resolve(
+function copyAgentIntegrationAssets() {
+	// tsc emits no non-TS files, so every platform's assets are copied here.
+	// Discovered rather than listed: a platform that adds an assets directory
+	// otherwise works in dev, where they are read from src, and ships without
+	// them.
+	const platformsRoot = path.resolve(
 		ROOT_DIR,
-		'..',
-		'frontend',
-		'editor-ui',
 		'src',
-		'experiments',
-		'instanceAiTemplateExamples',
-		'instance-ai-examples.data.json',
+		'modules',
+		'agents',
+		'integrations',
+		'platforms',
 	);
+	const sourceDirs = glob.sync('*/assets', {
+		cwd: platformsRoot,
+		onlyDirectories: true,
+		absolute: false,
+	});
 
-	if (!existsSync(source)) {
-		throw new Error(`Instance AI examples data file not found: ${source}`);
+	if (sourceDirs.length === 0) {
+		throw new Error(`No agent integration assets directories found under: ${platformsRoot}`);
 	}
 
-	const destination = path.resolve(ROOT_DIR, 'dist', 'instance-ai-examples.data.json');
-	shell.cp(source, destination);
-	if (!existsSync(destination)) {
-		throw new Error(`Failed to copy Instance AI examples data file to: ${destination}`);
+	for (const relativeDir of sourceDirs) {
+		const sourceDir = path.resolve(platformsRoot, relativeDir);
+		const destinationDir = path.resolve(
+			ROOT_DIR,
+			'dist',
+			'modules',
+			'agents',
+			'integrations',
+			'platforms',
+			relativeDir,
+		);
+
+		shell.rm('-rf', destinationDir);
+		shell.mkdir('-p', path.dirname(destinationDir));
+		shell.cp('-R', sourceDir, destinationDir);
+		if (!existsSync(destinationDir)) {
+			throw new Error(`Failed to copy agent integration assets to: ${destinationDir}`);
+		}
 	}
 }
 

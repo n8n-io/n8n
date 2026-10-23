@@ -1,4 +1,5 @@
-import { AgentJsonConfigBaseSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema, WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME } from '@n8n/api-types';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export const AGENT_BUILDER_REFERENCE_URI = 'n8n://agents/reference';
@@ -47,7 +48,9 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 7. Report that the draft is ready, include a clickable link using the \`url\` returned by
    validate_agent, and ask whether the user wants to publish it.
 8. Call publish_agent only when the user explicitly requested publication, activation, deployment,
-   or making the Agent live, or confirms publication after the build.
+   or making the Agent live, or confirms publication after the build. If publish_agent fails because
+   the Agent uses workflows that are not published, name those workflows to the user. Publish them
+   with publish_workflow only when the user asks, then call publish_agent again.
 9. Use update_agent_integration to configure chat integrations. Configuration never publishes the
    Agent. A configured channel stays inactive until explicit publication unless the Agent already has an active version.
 
@@ -55,9 +58,10 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 
 call_agent verifies the draft Agent's behavior through built-in Preview chat, not configured channel
 triggers, platform context, message delivery, or replies. Real tools and credentials are used, so
-side effects are possible. If the test exposes errors, report them and ask whether to fix them rather
-than mutating the Agent automatically. Every approval decision must come from the human; resume each
-returned approval individually.
+side effects are possible. Omit sessionId to start a new test conversation. To continue one, pass the
+exact sessionId from an earlier call_agent result; never make one up. If the test exposes errors,
+report them and ask whether to fix them rather than mutating the Agent automatically. Every approval
+decision must come from the human; resume each returned approval individually.
 
 ## Publication approval
 
@@ -91,11 +95,18 @@ directly on that object — there is no \`value\` wrapper. For example:
   integrations; use update_agent_integration for those.
 - config.patch: Set \`patch\` to an array of RFC 6902 operations (add, remove, replace, move, copy,
   test). Paths under /integrations are rejected; use update_agent_integration for those.
-- skill.upsert: Set \`skill\` to the complete skill body. Omit \`skillId\` to create and attach a new
-  skill, or pass it to replace an existing skill body.
-- skill.delete: Set \`skillId\` to the skill to delete; its config reference is removed.
+- skill.upsert: Set \`skill\` to the complete skill body. Omit \`skillId\` to create a new skill in
+  the Agent's project and attach it, or pass it to save a new version of an attached skill. When
+  replacing, also pass \`baseSkillHash\` from get_agent's \`skillHashes\` so a skill edited elsewhere
+  in the meantime is not overwritten. Skills ignore \`allowedTools\`.
+- skill.delete: Set \`skillId\` to the skill to detach. The skill stays available to other Agents.
+- A skill ref with \`versionId\` pins that saved version of the skill. get_agent lists the pinned
+  skills that have a newer version in \`outdatedSkillIds\`. To use the latest version, remove
+  \`versionId\` from the ref with config.patch. Do not delete and add the skill again.
 - task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
   scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
+  On a replace, an omitted \`timezone\` keeps the zone the task already has; send \`null\` to move it
+  back to the instance timezone.
 - task.delete: Set \`taskId\` to the task to delete; its config reference is removed.
 - customTool.upsert: Set \`code\` to the tool source; it is compiled, validated, stored, and attached.
   Only \`@n8n/agents\` and \`zod\` imports are available. The default export must be a Tool builder
@@ -126,6 +137,10 @@ Tool references use these forms:
 
 - Custom tool: { "type": "custom", "id": "tool_name" }
 - Workflow tool: { "type": "workflow", "workflow": "Workflow Name", "name": "tool_name" }
+  A workflow tool must start with a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger
+  (${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}) and must be published before the published Agent can
+  call it; validate_agent reports incompatible_reference with reason no_supported_trigger or
+  not_published otherwise.
 - Node tool: { "type": "node", "name": "tool_name", "node": { "nodeType": "...",
   "nodeTypeVersion": 1, "nodeParameters": {}, "credentials": {} } }
 
@@ -141,8 +156,8 @@ options first. Never place credential secret data in Agent configuration or MCP 
 credential IDs returned by list_credentials.
 
 Skills and tasks have separately persisted bodies. Always manage them through mutate_agent instead
-of manually inventing their IDs. Saved sub-agents must be published Agents from the same project.
-Use discover_agent_assets with kind=subagents to obtain valid IDs.
+of manually inventing their IDs. Saved sub-agents must be Agents from the same project. Use
+discover_agent_assets with kind=subagents to obtain valid IDs.
 
 Chat integrations are conversation surfaces, not ordinary node tools. Use an integration when users
 should invoke and converse with the Agent in Slack, Telegram, or Linear. Use a node/workflow tool
@@ -154,6 +169,34 @@ never appear in the config schema above. Manage them exclusively with update_age
 which validates the credential and persists the configuration without publishing. A configured
 channel stays inactive until publish_agent is called unless the Agent already has an active version;
 in that case, it connects immediately to the existing active snapshot.
+
+### Slack
+
+A Slack app sends events only to the request URL in its own configuration, so a Slack channel works
+only with a Slack app that points at this Agent. A slackApi credential made for another use, such as a
+Slack Trigger or another Agent, passes every credential check but the Agent receives nothing. Connect
+Slack in this order:
+
+1. Call update_agent_integration with action=connect, type=slack, and no credentialId. Nothing changes.
+   - status=workspace_selection_required lists managerCredentials with their workspaces. Ask the user
+     which workspace to use and confirm that n8n may create a Slack app there.
+   - code=slack_workspace_not_connected means no Slack workspace is connected to n8n yet. Give the
+     user agentUrl and ask them to connect the workspace once through Add channel, then retry.
+   - code=slack_manager_reconnect_required means the listed Slack workspace credentials must be
+     reconnected. Give the user agentUrl and ask them to reconnect through Add channel, then retry.
+   - code=slack_managed_setup_unavailable means this instance cannot create Slack apps. Relay
+     slackApp.requestUrl and slackApp.manifest so the user can configure a Slack app, then connect
+     with that app's slackApi credential.
+2. Call update_agent_integration again with the chosen managerCredentialId and workspaceId. n8n
+   creates the Slack app, installs it, and connects the channel. If the result has
+   status=install_approval_required, give the user installUrl; n8n connects the channel after they
+   approve the install. Call get_agent to confirm. If the result has
+   code=slack_app_built_for_another_agent, the Agent already uses a bot credential from another
+   Slack app: disconnect that credential, then install again.
+
+When you connect with an explicit slackApi credential, the result has slackApp.configuredForAgent. It
+is true only when n8n built the Slack app for this Agent. If it is false, relay the warning and
+slackApp.requestUrl to the user instead of reporting the channel as ready.
 
 ## MCP servers
 
@@ -167,10 +210,10 @@ Before writing an entry into mcpServers, call verify_agent_mcp_server with the s
 transport, authentication, and credential. The server does not need to be attached to the Agent
 first: verification opens a temporary connection and returns the server's live tools. validate_agent
 never performs this handshake, so an unverified entry can pass validation and still fail at runtime.
-Confirm the returned tools cover the requested capability and use the list to populate toolFilter
-instead of guessing tool names. If verification fails, report the error and resolve it with the user
-instead of persisting a broken server. Only when the user cannot supply the URL or credential yet,
-persist the known fields without inventing values and skip verification.
+Confirm the returned tools cover the requested capability and use the verified list instead of
+guessing tool names. If verification fails, report the error and resolve it with the user instead of
+persisting a broken server. Only when the user cannot supply the URL or credential yet, persist the
+known fields without inventing values and skip verification.
 `;
 
 export const AGENT_BUILDER_REFERENCE = `${AGENT_BUILDER_GUIDE}

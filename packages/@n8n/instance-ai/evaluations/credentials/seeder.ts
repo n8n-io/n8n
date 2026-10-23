@@ -10,6 +10,8 @@
 // POST /rest/credentials takes raw values -- n8n encrypts them server-side.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
+
 import type { N8nClient } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
 import type { TestCaseCredential } from '../types';
@@ -47,6 +49,32 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	googleDriveOAuth2Api: {
 		defaultName: '[eval] Google Drive',
 		envVar: 'EVAL_GOOGLE_DRIVE_ACCESS_TOKEN',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	googleSheetsOAuth2Api: {
+		defaultName: '[eval] Google Sheets',
+		envVar: 'EVAL_GOOGLE_SHEETS_ACCESS_TOKEN',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	googleCalendarOAuth2Api: {
+		defaultName: '[eval] Google Calendar',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	hubspotAppToken: {
+		defaultName: '[eval] HubSpot',
+		buildData: (token) => ({ appToken: token }),
+	},
+	// Instagram accounts connect through the Facebook Graph API.
+	facebookGraphApi: {
+		defaultName: '[eval] Facebook Graph',
+		buildData: (token) => ({ accessToken: token }),
+	},
+	linkedInOAuth2Api: {
+		defaultName: '[eval] LinkedIn',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	highLevelOAuth2Api: {
+		defaultName: '[eval] HighLevel',
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
 	// MCP-registry-synthesized credential types (agent MCP servers). Creating
@@ -99,6 +127,22 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_OPENAI_API_KEY',
 		buildData: (key) => ({ apiKey: key }),
 	},
+	anthropicApi: {
+		defaultName: '[eval] Anthropic',
+		buildData: (key) => ({ apiKey: key, url: 'https://api.anthropic.com' }),
+	},
+	groqApi: {
+		defaultName: '[eval] Groq',
+		buildData: (key) => ({ apiKey: key }),
+	},
+	wordpressApi: {
+		defaultName: '[eval] WordPress',
+		buildData: (password) => ({
+			username: 'eval-user',
+			password,
+			url: 'https://blog.example.com',
+		}),
+	},
 };
 
 // ---------------------------------------------------------------------------
@@ -131,8 +175,20 @@ export async function createOneCredential(
 	credentialType: string,
 	name: string | undefined,
 	usedNames: Map<string, number>,
-	options?: { logger?: EvalLogger },
+	options?: {
+		logger?: EvalLogger;
+		setupHint?: InstanceAiCredentialSetupHint;
+		description?: string | null;
+		/** Seed with no field values, modelling a credential the user saved empty. */
+		blank?: boolean;
+		/** The build's project. Absent: the caller's personal project. */
+		projectId?: string;
+	},
 ): Promise<CreatedCredential> {
+	if (credentialType === 'httpTemplatedCustomAuth') {
+		return await createTemplatedCustomAuthCredential(client, name, usedNames, options);
+	}
+
 	const template = CREDENTIAL_TEMPLATES[credentialType];
 	if (!template) {
 		throw new Error(
@@ -147,14 +203,85 @@ export async function createOneCredential(
 
 	const envToken = template.envVar ? process.env[template.envVar] : undefined;
 	const token = envToken ?? PLACEHOLDER_TOKEN;
-	options?.logger?.verbose(`  Creating credential ${resolvedName} (${credentialType})`);
+	options?.logger?.verbose(
+		`  Creating credential ${resolvedName} (${credentialType})${options.blank ? ' [blank]' : ''}`,
+	);
 	// No retry: a credential POST isn't idempotent, so retrying after a lost response would orphan a duplicate we never capture for cleanup.
 	const { id } = await client.createCredential(
 		resolvedName,
 		credentialType,
-		template.buildData(token),
+		options?.blank ? {} : template.buildData(token),
+		options?.description,
+		options?.projectId,
 	);
 	return { id, name: resolvedName, type: credentialType };
+}
+
+/**
+ * Mint an `httpTemplatedCustomAuth` ("Simplified Custom Auth") credential from
+ * a setup card's recipe. Unlike the 14 types above, this type has no fixed
+ * field shape — the AI builder researches it at runtime per service — so there
+ * is no `CREDENTIAL_TEMPLATES` entry to look up; the recipe carried on
+ * `options.setupHint` is the only source of the data to persist.
+ */
+async function createTemplatedCustomAuthCredential(
+	client: N8nClient,
+	name: string | undefined,
+	usedNames: Map<string, number>,
+	options?: {
+		logger?: EvalLogger;
+		setupHint?: InstanceAiCredentialSetupHint;
+		description?: string | null;
+		projectId?: string;
+	},
+): Promise<CreatedCredential> {
+	const hint = options?.setupHint;
+	if (!hint) {
+		throw new Error(
+			'No setupHint for credential type "httpTemplatedCustomAuth" — this type has no static ' +
+				'template in evaluations/credentials/seeder.ts (its field shape only exists once a ' +
+				'real setup card proposes a recipe mid-conversation), so a case cannot declare it as ' +
+				'a static credential at load time.',
+		);
+	}
+
+	const base = name ?? hint.suggestedName ?? '[eval] Simplified Custom Auth';
+	const count = (usedNames.get(base) ?? 0) + 1;
+	usedNames.set(base, count);
+	const resolvedName = count > 1 ? `${base} #${count}` : base;
+
+	if (!hint.serviceHost) {
+		options?.logger?.warn(
+			`httpTemplatedCustomAuth credential "${resolvedName}" created with no serviceHost — ` +
+				'it will not be offered to any node',
+		);
+	}
+
+	// `template`, `placeholderDefs`, `placeholderValues` and `acceptedStatusCodes`
+	// all persist as JSON strings on this credential type, even though the recipe
+	// types some of them as objects/arrays — see HttpTemplatedCustomAuth.credentials.ts.
+	const placeholderValues = Object.fromEntries(
+		hint.placeholders.map((placeholder) => [placeholder.name, PLACEHOLDER_TOKEN]),
+	);
+
+	options?.logger?.verbose(`  Creating credential ${resolvedName} (httpTemplatedCustomAuth)`);
+	const { id } = await client.createCredential(
+		resolvedName,
+		'httpTemplatedCustomAuth',
+		{
+			template: JSON.stringify(hint.template),
+			placeholderDefs: JSON.stringify(hint.placeholders),
+			placeholderValues: JSON.stringify(placeholderValues),
+			serviceHost: hint.serviceHost ?? '',
+			serviceOrigin: hint.serviceOrigin ?? '',
+			docsUrl: hint.docsUrl ?? '',
+			testUrl: hint.testUrl ?? '',
+			acceptedStatusCodes: hint.acceptedStatusCodes ? JSON.stringify(hint.acceptedStatusCodes) : '',
+		},
+		options?.description,
+		options?.projectId,
+	);
+	return { id, name: resolvedName, type: 'httpTemplatedCustomAuth' };
 }
 
 /**
@@ -180,6 +307,8 @@ export async function createDeclaredCredentials(
 		onCreated?: (id: string) => void;
 		logger?: EvalLogger;
 		nameCounts?: Map<string, number>;
+		/** The build's project. Absent: the caller's personal project. */
+		projectId?: string;
 	},
 ): Promise<CreatedCredential[]> {
 	const logger = options?.logger;
@@ -187,7 +316,12 @@ export async function createDeclaredCredentials(
 	const nameCounts = options?.nameCounts ?? new Map<string, number>();
 
 	for (const decl of declared) {
-		const cred = await createOneCredential(client, decl.type, decl.name, nameCounts, { logger });
+		const cred = await createOneCredential(client, decl.type, decl.name, nameCounts, {
+			logger,
+			...(decl.description !== undefined ? { description: decl.description } : {}),
+			...(decl.blank ? { blank: true } : {}),
+			...(options?.projectId !== undefined ? { projectId: options.projectId } : {}),
+		});
 		options?.onCreated?.(cred.id);
 		created.push(cred);
 	}

@@ -17,6 +17,8 @@ import { NodeOperationError, NodeConnectionTypes, deepCopy } from 'n8n-workflow'
 import { parse as pathParse } from 'path';
 import { file } from 'tmp-promise';
 
+import { router } from './v2/actions/router';
+
 type EditImageNodeOptions = {
 	destinationKey?: string;
 	font?: string;
@@ -25,6 +27,15 @@ type EditImageNodeOptions = {
 	quality?: number;
 };
 
+const GRAVITY_MAP: { [horizontal: string]: { [vertical: string]: string } } = {
+	west: { north: 'northwest', middle: 'west', south: 'southwest' },
+	center: { north: 'north', middle: 'center', south: 'south' },
+	east: { north: 'northeast', middle: 'east', south: 'southeast' },
+};
+
+export function resolveGravity(horizontal: string, vertical: string): string {
+	return GRAVITY_MAP[horizontal]?.[vertical] ?? 'northwest';
+}
 const numericOperationParameters: Record<string, string[]> = {
 	blur: ['blur', 'sigma'],
 	border: ['borderWidth', 'borderHeight'],
@@ -364,6 +375,60 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'Y (vertical) position of the text',
 	},
 	{
+		displayName: 'Horizontal Alignment',
+		name: 'horizontalAlignment',
+		type: 'options',
+		options: [
+			{
+				name: 'Left',
+				value: 'west',
+			},
+			{
+				name: 'Center',
+				value: 'center',
+			},
+			{
+				name: 'Right',
+				value: 'east',
+			},
+		],
+		default: 'center',
+		displayOptions: {
+			show: {
+				operation: ['text'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		description: 'Horizontal alignment of the text',
+	},
+	{
+		displayName: 'Vertical Alignment',
+		name: 'verticalAlignment',
+		type: 'options',
+		options: [
+			{
+				name: 'Top',
+				value: 'north',
+			},
+			{
+				name: 'Middle',
+				value: 'middle',
+			},
+			{
+				name: 'Bottom',
+				value: 'south',
+			},
+		],
+		default: 'middle',
+		displayOptions: {
+			show: {
+				operation: ['text'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		description: 'Vertical alignment of the text',
+	},
+	{
 		displayName: 'Max Line Length',
 		name: 'lineLength',
 		type: 'number',
@@ -394,6 +459,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['blur'],
+				'@version': [{ _cnd: { lt: 2 } }],
 			},
 		},
 		description: 'How strong the blur should be',
@@ -410,9 +476,27 @@ const nodeOperationOptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['blur'],
+				'@version': [{ _cnd: { lt: 2 } }],
 			},
 		},
 		description: 'The sigma of the blur',
+	},
+	{
+		displayName: 'Blur Radius',
+		name: 'blurRadius',
+		type: 'number',
+		typeOptions: {
+			minValue: 0,
+			maxValue: 1000,
+		},
+		default: 5,
+		displayOptions: {
+			show: {
+				operation: ['blur'],
+				'@version': [{ _cnd: { gte: 2 } }],
+			},
+		},
+		description: 'Blur radius in pixels',
 	},
 
 	// ----------------------------------
@@ -811,7 +895,8 @@ export class EditImage implements INodeType {
 		icon: 'node:edit-image',
 		iconColor: 'purple',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1, 2],
+		defaultVersion: 2,
 		description: 'Edits an image like blur, resize or adding border and text',
 		defaults: {
 			name: 'Edit Image',
@@ -819,6 +904,18 @@ export class EditImage implements INodeType {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
+			{
+				displayName:
+					'This node version is deprecated. Upgrade to version 2. Image output can look different because version 2 uses a different processing library.',
+				name: 'legacyVersionNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 2 } }],
+					},
+				},
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -998,9 +1095,27 @@ export class EditImage implements INodeType {
 						displayOptions: {
 							show: {
 								format: ['jpeg', 'png', 'tiff'],
+								'@version': [{ _cnd: { lt: 2 } }],
 							},
 						},
 						description: 'Sets the jpeg|png|tiff compression level from 0 to 100 (best)',
+					},
+					{
+						displayName: 'Quality',
+						name: 'quality',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+							maxValue: 100,
+						},
+						default: 100,
+						displayOptions: {
+							show: {
+								format: ['jpeg', 'webp'],
+								'@version': [{ _cnd: { gte: 2 } }],
+							},
+						},
+						description: 'Sets the JPEG or WebP quality from 0 to 100',
 					},
 				],
 			},
@@ -1041,6 +1156,10 @@ export class EditImage implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		if (this.getNode().typeVersion >= 2) {
+			return await router.call(this);
+		}
+
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -1089,7 +1208,17 @@ export class EditImage implements INodeType {
 					resize: ['height', 'resizeOption', 'width'],
 					rotate: ['backgroundColor', 'rotate'],
 					shear: ['degreesX', 'degreesY'],
-					text: ['font', 'fontColor', 'fontSize', 'lineLength', 'positionX', 'positionY', 'text'],
+					text: [
+						'horizontalAlignment',
+						'verticalAlignment',
+						'font',
+						'fontColor',
+						'fontSize',
+						'lineLength',
+						'positionX',
+						'positionY',
+						'text',
+					],
 					transparent: ['color'],
 				};
 
@@ -1333,6 +1462,15 @@ export class EditImage implements INodeType {
 							);
 						}
 
+						const nodeVersion = this.getNode().typeVersion;
+						const gravity =
+							nodeVersion >= 1.1
+								? resolveGravity(
+										operationData.horizontalAlignment as string,
+										operationData.verticalAlignment as string,
+									)
+								: 'northwest';
+
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
 							.fontSize(operationData.fontSize as number)
@@ -1341,6 +1479,7 @@ export class EditImage implements INodeType {
 								operationData.positionX as number,
 								operationData.positionY as number,
 								renderText,
+								gravity,
 							);
 					} else if (operationData.operation === 'transparent') {
 						gmInstance = gmInstance!.transparent(operationData.color as string);

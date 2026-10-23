@@ -17,12 +17,14 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { CacheService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let member: User;
@@ -43,11 +45,13 @@ const formTriggerNode = ({
 	authentication = 'n8nUserAuth',
 	disabled = false,
 	requireExecuteAccess,
+	trustedSource,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
+	trustedSource?: string;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
@@ -60,6 +64,7 @@ const formTriggerNode = ({
 		authentication,
 		// Omitted when undefined so the "absent param ⇒ secure default" path is exercised too.
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
+		...(trustedSource === undefined ? {} : { trustedSource }),
 	},
 });
 
@@ -97,17 +102,12 @@ const resolveResource = async (webhookPath: string) =>
 	);
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true'; // gates the form-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	const { endpoints } = Container.get(GlobalConfig);
 	formEndpoint = endpoints.form;
 	formTestEndpoint = endpoints.formTest;
 	registrations = Container.get(TestWebhookRegistrationsService);
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {
@@ -122,6 +122,26 @@ afterEach(async () => {
 		'WorkflowEntity',
 		'WorkflowHistory',
 	]);
+});
+
+describe('accepted trusted sources', () => {
+	test("accepts only the instance's own OAuth2 server when the node has no trustedSource", async () => {
+		const webhookPath = randomUUID();
+		await registerTestWebhook(webhookPath, formTriggerNode());
+
+		const resource = await resolveResource(webhookPath);
+
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(['n8n-internal']);
+	});
+
+	test('accepts only the trusted source the node selected', async () => {
+		const webhookPath = randomUUID();
+		await registerTestWebhook(webhookPath, formTriggerNode({ trustedSource: 'customer-idp' }));
+
+		const resource = await resolveResource(webhookPath);
+
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(['customer-idp']);
+	});
 });
 
 describe('protected resource metadata for test form triggers', () => {
@@ -328,7 +348,14 @@ describe('test vs production form resources', () => {
 
 		const mint = async (resourceUrl: string) => {
 			const pair = tokenService.generateTokenPair(owner.id, clientId, resourceUrl, []);
-			await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, owner.id, []);
+			await tokenService.saveTokenPair(
+				pair.accessToken,
+				pair.refreshToken,
+				clientId,
+				owner.id,
+				[],
+				pair.audience,
+			);
 			return pair.accessToken;
 		};
 

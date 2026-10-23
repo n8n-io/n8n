@@ -1,7 +1,7 @@
 /**
  * Shared event reducer for Instance AI agent runs.
  *
- * Used by both the frontend (live SSE updates) and the backend (snapshot building).
+ * Used by both the frontend (live SSE updates) and the backend (history folds, run-sync bootstrap).
  * All state is plain objects/arrays — no Map/Set — so it's Pinia-safe and easy
  * to inspect in tests.
  *
@@ -19,7 +19,13 @@
  * parse yields a state whose index and tree no longer share objects.
  */
 
+import {
+	acceptInstanceAiEvent,
+	createInstanceAiEventLifecycle,
+} from './instance-ai-event-lifecycle';
+import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
 import { getRenderHint, isKnownInstanceAiErrorCode, isSafeObjectKey } from './instance-ai.schema';
+import { resolveBuilderToolName } from '../builder-tool-names';
 import type {
 	InstanceAiEvent,
 	InstanceAiAgentNode,
@@ -44,6 +50,9 @@ function categorizeCancellation(
 // ---------------------------------------------------------------------------
 
 export interface AgentRunState {
+	/** Terminal facts stay scoped to their run across merged follow-up turns. */
+	lifecycle: InstanceAiEventLifecycle;
+	currentRunId?: string;
 	rootAgentId: string;
 	/**
 	 * Flat agent lookup — supports any nesting depth. Values are the live tree
@@ -82,6 +91,7 @@ function createNode(agentId: string, role: string): InstanceAiAgentNode {
 export function createInitialState(rootAgentId = 'agent-001'): AgentRunState {
 	const safeRootAgentId = isSafeObjectKey(rootAgentId) ? rootAgentId : 'agent-001';
 	return {
+		lifecycle: createInstanceAiEventLifecycle(),
 		rootAgentId: safeRootAgentId,
 		agentsById: {
 			[safeRootAgentId]: createNode(safeRootAgentId, 'orchestrator'),
@@ -108,6 +118,31 @@ export function findAgent(state: AgentRunState, agentId: string): InstanceAiAgen
 function ensureAgent(state: AgentRunState, agentId: string): InstanceAiAgentNode | undefined {
 	if (!isSafeObjectKey(agentId)) return undefined;
 	return state.agentsById[agentId];
+}
+
+/**
+ * Per-run orchestrator agent id. A follow-up run merged into an existing
+ * message group streams under this id, not under the group's root agent id.
+ */
+export function orchestratorAgentId(runId: string): string {
+	return `orchestrator-${runId}`;
+}
+
+/**
+ * Alias a follow-up run's orchestrator to the group's root agent.
+ *
+ * `run-start` creates this alias, but a state rebuilt from a snapshot tree
+ * (a `run-sync` frame or history hydration) only indexes the tree's own
+ * nodes. Without the alias, every later event of that run is dropped as an
+ * orphan, including the tool call that a confirmation attaches to.
+ */
+function aliasRunOrchestrator(state: AgentRunState, agentId: string, runId: string): void {
+	if (!isSafeObjectKey(agentId) || state.agentsById[agentId]) return;
+	if (agentId !== orchestratorAgentId(runId)) return;
+	const root = state.agentsById[state.rootAgentId];
+	// Same test as a follow-up `run-start`: a fresh state has no group to join.
+	if (!root || (Object.keys(state.agentsById).length <= 1 && !nodeHasContent(root))) return;
+	state.agentsById[agentId] = root;
 }
 
 /** When the event was published — falls back to "now" for live events and
@@ -187,7 +222,8 @@ function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
 		!!node.statusMessage ||
 		!!node.result ||
 		!!node.error ||
-		!!node.tasks
+		!!node.tasks ||
+		!!node.setupItemsByWorkflowId
 	);
 }
 
@@ -200,9 +236,18 @@ function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
  * as the existing frontend reducer). Returns the same state reference.
  */
 export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): AgentRunState {
+	if (!acceptInstanceAiEvent(state.lifecycle, event)) return state;
+	if (event.type !== 'run-start') {
+		aliasRunOrchestrator(state, event.agentId, event.runId);
+		if (event.type === 'agent-spawned') {
+			aliasRunOrchestrator(state, event.payload.parentId, event.runId);
+		}
+	}
+
 	switch (event.type) {
 		case 'run-start': {
 			const rootId = event.agentId;
+			state.currentRunId = event.runId;
 			if (!isSafeObjectKey(rootId)) break;
 			const root = state.agentsById[state.rootAgentId];
 			const hasExistingAgents = Object.keys(state.agentsById).length > 1 || nodeHasContent(root);
@@ -213,6 +258,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				state.status = 'active';
 				if (root) {
 					root.status = 'active';
+					root.runId = event.runId;
 					// A merged follow-up/resume run streams under its own per-run agentId
 					// (e.g. `orchestrator-<runId>`). Alias it to the existing root so its
 					// tool calls and confirmations resolve an agent instead of being
@@ -222,7 +268,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			} else {
 				// First run: initialize from scratch.
 				state.rootAgentId = rootId;
-				state.agentsById = { [rootId]: createNode(rootId, 'orchestrator') };
+				state.agentsById = {
+					[rootId]: { ...createNode(rootId, 'orchestrator'), runId: event.runId },
+				};
 				state.parentByAgentId = {};
 				state.toolCallsById = {};
 				state.status = 'active';
@@ -256,8 +304,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				const tc: InstanceAiToolCallState = {
+					runId: event.runId,
 					toolCallId: event.payload.toolCallId,
-					toolName: event.payload.toolName,
+					toolName: resolveBuilderToolName(event.payload.toolName),
 					args: {},
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),
@@ -351,8 +400,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				const tc: InstanceAiToolCallState = {
+					runId: event.runId,
 					toolCallId: event.payload.toolCallId,
-					toolName: event.payload.toolName,
+					toolName: resolveBuilderToolName(event.payload.toolName),
 					args: event.payload.args,
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),
@@ -398,6 +448,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const tc = state.toolCallsById[event.payload.toolCallId];
 			if (tc) {
 				tc.error = event.payload.error;
+				tc.interrupted = true;
 				tc.isLoading = false;
 				tc.completedAt = eventTimestamp(event);
 			}
@@ -413,6 +464,12 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// unnamed replay.
 			const existingNode = state.agentsById[event.agentId];
 			if (existingNode) {
+				if (existingNode.runId && existingNode.runId !== event.runId) {
+					existingNode.status = 'active';
+				}
+				existingNode.runId = event.runId;
+				existingNode.activity = event.payload.activity ?? existingNode.activity;
+				existingNode.title = event.payload.title ?? existingNode.title;
 				const incoming = event.payload.targetResource;
 				if (incoming && incoming.id === existingNode.targetResource?.id) {
 					existingNode.targetResource = {
@@ -426,9 +483,11 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (parentAgent) {
 				const child: InstanceAiAgentNode = {
 					...createNode(event.agentId, event.payload.role),
+					runId: event.runId,
 					tools: event.payload.tools,
 					taskId: event.payload.taskId,
 					kind: event.payload.kind,
+					activity: event.payload.activity,
 					title: event.payload.title,
 					subtitle: event.payload.subtitle,
 					goal: event.payload.goal,
@@ -455,8 +514,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				agent.status = event.payload.status ?? (event.payload.error ? 'error' : 'completed');
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
+				agent.agentChange = event.payload.agentChange;
 				// A completed/errored agent can't have tool calls still in-flight.
-				// Clear isLoading so persisted snapshots don't show stale confirmations.
+				// Clear isLoading so folded history trees don't show stale confirmations.
 				for (const tc of agent.toolCalls) {
 					if (tc.isLoading) {
 						tc.isLoading = false;
@@ -470,27 +530,31 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
 			const tc = state.toolCallsById[event.payload.toolCallId];
 			if (tc) {
-				tc.confirmation = {
-					requestId: event.payload.requestId,
-					inputThreadId: event.payload.inputThreadId,
-					severity: event.payload.severity,
-					message: event.payload.message,
-					targetApproval: event.payload.targetApproval,
-					credentialRequests: event.payload.credentialRequests,
-					projectId: event.payload.projectId,
-					inputType: event.payload.inputType,
-					domainAccess: event.payload.domainAccess,
-					webSearch: event.payload.webSearch,
-					credentialFlow: event.payload.credentialFlow,
-					setupRequests: event.payload.setupRequests,
-					workflowId: event.payload.workflowId,
-					planItems: event.payload.planItems,
-					questions: event.payload.questions,
-					introMessage: event.payload.introMessage,
-					tasks: event.payload.tasks,
-					resourceDecision: event.payload.resourceDecision,
-					channelConfig: event.payload.channelConfig,
-				};
+				const {
+					toolCallId: _toolCallId,
+					toolName: _toolName,
+					args: _args,
+					...confirmation
+				} = event.payload;
+				tc.confirmation = confirmation;
+			}
+			break;
+		}
+
+		case 'instance-context': {
+			// Store the row on the root so history replay restores it.
+			const root = ensureAgent(state, state.rootAgentId);
+			// Match by run ID. A message group can contain several turns.
+			const alreadyShown = root?.timeline.some(
+				(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
+			);
+			if (root && !alreadyShown) {
+				root.timeline.push({
+					type: 'instance-context',
+					runId: event.runId,
+					injection: event.payload.injection,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
 			}
 			break;
 		}
@@ -502,6 +566,51 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				if (event.payload.planItems) {
 					agent.planItems = event.payload.planItems;
 				}
+			}
+			break;
+		}
+
+		case 'setup-items': {
+			// Thread-level state, so it folds onto the ROOT node regardless of the
+			// emitting agent — history restore reads only the tree root. Full-snapshot
+			// semantics: last event wins per workflowId.
+			const root = ensureAgent(state, state.rootAgentId);
+			if (root && isSafeObjectKey(event.payload.workflowId)) {
+				root.latestSetupAnnouncement = {
+					workflowId: event.payload.workflowId,
+					agentId: ensureAgent(state, event.agentId)?.agentId ?? event.agentId,
+					timestamp: eventTimestamp(event),
+				};
+				root.setupItemsByWorkflowId = {
+					...root.setupItemsByWorkflowId,
+					[event.payload.workflowId]: event.payload.items,
+				};
+			}
+			break;
+		}
+
+		// A later fact about a preference the `save_user_preference` tool saved: the user
+		// edited it or undid it from the card. It folds onto the tool call so the card
+		// renders the current state after a reload, without asking the database.
+		case 'preference-card': {
+			// The id comes from a request body, so an inherited name like `toString`
+			// must not resolve to a function on the prototype.
+			if (!Object.hasOwn(state.toolCallsById, event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				// An edit fact names a scope; an undo fact names none.
+				const namesScope = event.payload.scope !== undefined;
+				tc.preferenceCard = {
+					state: event.payload.state,
+					// An undo fact carries no content, scope or project, so keep the last ones a
+					// fact named. An edit then an undo must strike out the edited text, not the
+					// text the tool result still holds, and must still name where the row was.
+					content: event.payload.content ?? tc.preferenceCard?.content,
+					scope: event.payload.scope ?? tc.preferenceCard?.scope,
+					// A fact that names a scope also decides the project: `null` on a move out of
+					// a project must win over the project the last fact named, so `??` is wrong here.
+					projectId: namesScope ? (event.payload.projectId ?? null) : tc.preferenceCard?.projectId,
+				};
 			}
 			break;
 		}
@@ -529,7 +638,28 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		}
 
 		case 'run-finish': {
-			const { status } = event.payload;
+			const { status, contextReach } = event.payload;
+			const contextEntry = state.agentsById[state.rootAgentId]?.timeline.find(
+				(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
+			);
+			if (contextReach && contextEntry?.type === 'instance-context')
+				contextEntry.reach = contextReach;
+			const cancelGroup =
+				(status === 'cancelled' || status === 'interrupted') &&
+				(!state.currentRunId || state.currentRunId === event.runId);
+			if (status !== 'completed') {
+				for (const agent of Object.values(state.agentsById)) {
+					if (agent.status === 'active' && (agent.runId === event.runId || cancelGroup)) {
+						agent.status = status === 'error' ? 'error' : 'cancelled';
+						if (agent.runId && isSafeObjectKey(agent.runId))
+							state.lifecycle.closedRuns[agent.runId] = true;
+					}
+				}
+				for (const tc of Object.values(state.toolCallsById)) {
+					if (tc.runId === event.runId || cancelGroup) tc.isLoading = false;
+				}
+			}
+			if (state.currentRunId && state.currentRunId !== event.runId) break;
 			// 'interrupted' renders as a cancellation whose reason attributes the
 			// crash — no dedicated FE state needed.
 			state.status =
@@ -545,20 +675,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					root.cancellationReason = categorizeCancellation(event.payload.reason);
 				}
 			}
-			// A terminated run can't have tool calls still in-flight.
-			// Clear isLoading so persisted snapshots don't show stale confirmations.
-			if (state.status === 'cancelled' || state.status === 'error') {
-				for (const tc of Object.values(state.toolCallsById)) {
-					if (tc.isLoading) {
-						tc.isLoading = false;
-					}
-				}
-			}
+
 			break;
 		}
 
-		case 'filesystem-request':
-		case 'thread-title-updated': {
+		// `preferences-applied` names the saved preferences the turn carried. The chat and
+		// the plus menu read it from the durable log, so the run tree holds no copy.
+		case 'thread-title-updated':
+		case 'preferences-applied': {
 			// Handled externally — no state change
 			break;
 		}
@@ -578,7 +702,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
  * an immutable snapshot must clone it themselves.
  */
 export function toAgentTree(state: AgentRunState): InstanceAiAgentNode {
-	return state.agentsById[state.rootAgentId] ?? createNode(state.rootAgentId, 'unknown');
+	const root = state.agentsById[state.rootAgentId] ?? createNode(state.rootAgentId, 'unknown');
+	root.eventLifecycle = state.lifecycle;
+	return root;
 }
 
 /**
@@ -590,6 +716,10 @@ export function toAgentTree(state: AgentRunState): InstanceAiAgentNode {
  */
 function isAdoptableId(id: unknown): id is string {
 	return typeof id === 'string' && isSafeObjectKey(id);
+}
+
+function isClosed(value: unknown): value is true {
+	return value === true;
 }
 
 /**
@@ -607,6 +737,7 @@ export function stateFromAgentTree(tree: InstanceAiAgentNode): AgentRunState | u
 	if (!isAdoptableId(tree.agentId)) return undefined;
 
 	const state: AgentRunState = {
+		lifecycle: createInstanceAiEventLifecycle(),
 		rootAgentId: tree.agentId,
 		agentsById: {},
 		parentByAgentId: {},
@@ -614,6 +745,28 @@ export function stateFromAgentTree(tree: InstanceAiAgentNode): AgentRunState | u
 		status: tree.status === 'active' ? 'active' : tree.status,
 	};
 	adoptNode(state, tree, undefined);
+	const currentRunId = isAdoptableId(tree.runId) ? tree.runId : undefined;
+	const saved = tree.eventLifecycle;
+	for (const [runId, closed] of Object.entries(saved?.closedRuns ?? {})) {
+		if (isSafeObjectKey(runId) && isClosed(closed)) state.lifecycle.closedRuns[runId] = true;
+	}
+	for (const [runId, agents] of Object.entries(saved?.closedAgents ?? {})) {
+		if (!isSafeObjectKey(runId) || !agents || typeof agents !== 'object') continue;
+		for (const [agentId, closed] of Object.entries(agents)) {
+			if (isSafeObjectKey(agentId) && isClosed(closed)) {
+				(state.lifecycle.closedAgents[runId] ??= {})[agentId] = true;
+			}
+		}
+	}
+	state.currentRunId = currentRunId;
+	if (tree.status === 'cancelled' || tree.status === 'error') {
+		for (const node of Object.values(state.agentsById)) {
+			if (node.status === 'active') node.status = tree.status;
+			if (isAdoptableId(node.runId)) state.lifecycle.closedRuns[node.runId] = true;
+			for (const tc of node.toolCalls) tc.isLoading = false;
+		}
+	}
+	tree.eventLifecycle = state.lifecycle;
 	return state;
 }
 

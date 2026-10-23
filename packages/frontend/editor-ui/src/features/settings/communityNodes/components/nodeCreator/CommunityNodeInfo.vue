@@ -5,7 +5,6 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
-import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import ContactAdministratorToInstall from '../ContactAdministratorToInstall.vue';
 import { useInstalledCommunityPackage } from '../../composables/useInstalledCommunityPackage';
 
@@ -13,6 +12,8 @@ import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import CommunityNodeUpdateInfo from './CommunityNodeUpdateInfo.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 
 const { activeViewStack } = useViewStacks();
 
@@ -27,13 +28,15 @@ const downloads = ref<string | null>(null);
 const verified = ref(false);
 const official = ref(false);
 const packageName = computed(() => communityNodeDetails?.packageName);
-const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
-	useInstalledCommunityPackage(packageName);
+const nodeTypeName = computed(() => communityNodeDetails?.key);
+const { installedPackage, initInstalledPackage, canUpdatePackage, hasUpdateAvailable } =
+	useInstalledCommunityPackage(nodeTypeName);
 const { getQuickConnectOptionByPackageName } = useQuickConnect();
 const quickConnect = computed(() => {
 	const pkg = packageName.value;
 	return pkg ? getQuickConnectOptionByPackageName(pkg) : undefined;
 });
+const { promotionText } = useGatewayCreditsPromotion({ nodeType: nodeTypeName });
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -119,7 +122,7 @@ onMounted(async () => {
 			{{ communityNodeDetails?.description }}
 		</N8nText>
 		<CommunityNodeUpdateInfo
-			v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
+			v-if="canUpdatePackage && hasUpdateAvailable"
 			data-test-id="update-available"
 			:package-name="communityNodeDetails?.packageName"
 			source="node creator panel"
@@ -133,7 +136,7 @@ onMounted(async () => {
 						: i18n.baseText('communityNodeInfo.approved')
 				}}</template>
 				<div>
-					<ShieldIcon :class="$style.tooltipIcon" />
+					<N8nIcon :class="$style.tooltipIcon" icon="shield-half" />
 					<N8nText color="text-light" size="xsmall" bold data-test-id="verified-tag">
 						{{ i18n.baseText('communityNodeInfo.approved.label') }}
 					</N8nText>
@@ -180,6 +183,11 @@ onMounted(async () => {
 			:text="quickConnect?.text"
 			:disclaimer="quickConnect?.disclaimer"
 		/>
+		<GatewayCreditsPromotion
+			v-if="promotionText"
+			:text="promotionText"
+			:class="$style.gatewayCreditsPromotion"
+		/>
 		<ContactAdministratorToInstall v-if="!isAdminOrOwner && !communityNodeDetails?.installed" />
 	</div>
 </template>
@@ -201,6 +209,9 @@ onMounted(async () => {
 
 .description {
 	margin: var(--spacing--md) 0;
+}
+.gatewayCreditsPromotion {
+	margin-top: var(--spacing--2xs);
 }
 .separator {
 	height: var(--border-width);

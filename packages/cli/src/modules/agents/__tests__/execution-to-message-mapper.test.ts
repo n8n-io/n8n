@@ -1,19 +1,231 @@
 import type { AgentExecution } from '../entities/agent-execution.entity';
+import { MARK_SESSION_FAILED_TOOL_NAME } from '../tools/mark-session-failed.tool';
 import {
 	executionToMessagesDto,
 	executionsToMessagesDto,
 } from '../utils/execution-to-message-mapper';
+import { MAX_ITERATIONS_STOPPED_MESSAGE } from '../utils/fatal-session-outcome';
+
+const FIXED_CREATED_AT = new Date('2024-01-15T10:00:00.000Z');
 
 function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 	return {
 		id: 'execution-1',
 		userMessage: 'Hello',
 		timeline: null,
+		createdAt: FIXED_CREATED_AT,
 		...overrides,
 	} as unknown as AgentExecution;
 }
 
 describe('execution-to-message-mapper', () => {
+	it('splits assistant output around stable additional user messages', () => {
+		const inputD = {
+			id: 'steer-d',
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'D' }],
+			createdAt: new Date(150).toISOString(),
+		};
+		const inputB = {
+			id: 'steer-b',
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'B' }],
+			createdAt: new Date(250).toISOString(),
+		};
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: 'Failed after input',
+				inputMessages: [
+					{ id: 'initial-message', role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+					inputD,
+					inputB,
+				],
+				timeline: [
+					{ type: 'text', content: 'before', timestamp: 100, endTime: 120 },
+					{ type: 'input', messageId: inputD.id, timestamp: 150 },
+					{ type: 'text', content: 'between', timestamp: 200, endTime: 220 },
+					{ type: 'input', messageId: inputB.id, timestamp: 250 },
+					{ type: 'text', content: 'after', timestamp: 300, endTime: 320 },
+				],
+			}),
+		);
+		expect(result.map(({ role, content }) => ({ role, content }))).toEqual([
+			{ role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'before' }] },
+			{ role: 'user', content: inputD.content },
+			{ role: 'assistant', content: [{ type: 'text', text: 'between' }] },
+			{ role: 'user', content: inputB.content },
+			{ role: 'assistant', content: [{ type: 'text', text: 'after' }] },
+		]);
+		expect(result[2]).toMatchObject({ ...inputD, executionId: 'execution-1' });
+		expect(result[4]).toMatchObject({ ...inputB, executionId: 'execution-1' });
+		expect(result.map(({ id }) => id)).toEqual([
+			'initial-message',
+			'execution-1:assistant',
+			'steer-d',
+			'execution-1:assistant:steer-d',
+			'steer-b',
+			'execution-1:assistant:steer-b',
+		]);
+		expect(result[1].executionStatus).toBe('success');
+		expect(result[3].executionStatus).toBe('success');
+		expect(result[1].executionError).toBeUndefined();
+		expect(result[3].executionError).toBeUndefined();
+		expect(result[5]).toMatchObject({
+			executionStatus: 'error',
+			executionError: 'Failed after input',
+		});
+	});
+	it.each(['running', 'success', 'error', 'cancelled', 'interrupted'] as const)(
+		'keeps a signal-only turn with status %s',
+		(status) => {
+			const signal = {
+				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			} as const;
+			const result = executionsToMessagesDto([
+				execution({
+					userMessage: null,
+					status,
+					timeline: [
+						{
+							type: 'background-task-signal',
+							signal: { tasks: [...signal.tasks] },
+							timestamp: 100,
+						},
+					],
+				}),
+			]);
+			expect(result).toEqual([
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					executionId: 'execution-1',
+					content: [],
+					executionStatus: status,
+					backgroundTaskSignal: signal,
+					createdAt: FIXED_CREATED_AT.toISOString(),
+				},
+			]);
+		},
+	);
+
+	it('carries the recorded run error on the assistant message of an errored turn', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: 'The model stream stalled: no data received for 90 seconds.',
+				timeline: [{ type: 'text', content: 'partial output', timestamp: 100, endTime: 110 }],
+			}),
+		);
+
+		expect(result[1]).toMatchObject({
+			role: 'assistant',
+			executionStatus: 'error',
+			executionError: 'The model stream stalled: no data received for 90 seconds.',
+		});
+	});
+
+	it('carries the integration author on the user message and omits it when absent', () => {
+		const author = { id: 'U1', name: 'alice' };
+
+		expect(executionToMessagesDto(execution({ author }))[0]).toMatchObject({
+			role: 'user',
+			author,
+		});
+		expect(executionToMessagesDto(execution({ author: null }))[0]).not.toHaveProperty('author');
+	});
+
+	it('keeps an assistant message for an errored turn that produced no output at all', () => {
+		const result = executionsToMessagesDto([
+			execution({ status: 'error', error: 'fetch failed', timeline: [] }),
+		]);
+
+		const assistant = result.find((m) => m.role === 'assistant');
+		expect(assistant).toMatchObject({ executionStatus: 'error', executionError: 'fetch failed' });
+		expect(assistant?.content).toEqual([]);
+	});
+
+	it('does not attach the max-iterations stop as a run error', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: MAX_ITERATIONS_STOPPED_MESSAGE,
+				timeline: [
+					{
+						type: 'text',
+						content: MAX_ITERATIONS_STOPPED_MESSAGE,
+						timestamp: 100,
+						endTime: 110,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]).toMatchObject({ role: 'assistant', executionStatus: 'error' });
+		expect(result[1]?.executionError).toBeUndefined();
+	});
+
+	it('does not attach a mark_session_failed reason as a run error', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: 'Could not recover',
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: MARK_SESSION_FAILED_TOOL_NAME,
+						toolCallId: 'tc-fail',
+						input: { reason: 'Could not recover' },
+						output: { marked: true },
+						startTime: 100,
+						endTime: 110,
+						success: true,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.executionError).toBeUndefined();
+	});
+
+	it('keeps a real run error when the turn also marked the session failed', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: 'fetch failed',
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: MARK_SESSION_FAILED_TOOL_NAME,
+						toolCallId: 'tc-fail',
+						input: { reason: 'Could not recover' },
+						output: { marked: true },
+						startTime: 100,
+						endTime: 110,
+						success: true,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.executionError).toBe('fetch failed');
+	});
+
+	it('does not attach the recorded error to successful turns', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'success',
+				error: null,
+				timeline: [{ type: 'text', content: 'ok', timestamp: 100, endTime: 110 }],
+			}),
+		);
+
+		expect(result[1]?.executionError).toBeUndefined();
+	});
+
 	it('maps reasoning timeline events with timing into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({
@@ -109,6 +321,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
@@ -128,8 +341,47 @@ describe('execution-to-message-mapper', () => {
 					{ type: 'text', text: 'Done.' },
 				],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
+	});
+
+	it('associates a suspension payload with its original tool call', () => {
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'check_ledger',
+			args: { operation: 'get', returnAll: true },
+		};
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'node',
+						name: 'check_ledger',
+						toolCallId: 'call-1',
+						input: {},
+						output: undefined,
+						startTime: 100,
+						endTime: 0,
+						success: false,
+					},
+					{
+						type: 'suspension',
+						toolName: 'check_ledger',
+						toolCallId: 'call-1',
+						timestamp: 110,
+						suspendPayload,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.content[0]).toMatchObject({
+			type: 'tool-call',
+			toolCallId: 'call-1',
+			suspendPayload,
+		});
 	});
 
 	it('maps failed timeline tool calls as rejected content parts', () => {
@@ -157,6 +409,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
@@ -174,6 +427,7 @@ describe('execution-to-message-mapper', () => {
 					},
 				],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});
@@ -199,6 +453,7 @@ describe('execution-to-message-mapper', () => {
 				},
 			],
 			executionId: 'execution-1',
+			createdAt: FIXED_CREATED_AT.toISOString(),
 		});
 	});
 
@@ -224,29 +479,24 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
-	it('includes the execution outcome on assistant messages', () => {
+	it('maps an execution error without model output into an assistant message', () => {
 		const result = executionToMessagesDto(
 			execution({
 				status: 'error',
-				timeline: [
-					{
-						type: 'tool-call',
-						kind: 'tool',
-						name: 'slow_tool',
-						toolCallId: 'call-1',
-						input: {},
-						output: undefined,
-						startTime: 100,
-						endTime: 0,
-						success: false,
-					},
-				],
+				error: 'Model request failed',
 			}),
 		);
 
-		expect(result[1]).toMatchObject({
+		// The error stays in `executionError`, not in `content`, so the client
+		// renders it as an error bubble instead of model output.
+		expect(result[1]).toEqual({
+			id: 'execution-1:assistant',
 			role: 'assistant',
+			content: [],
+			executionId: 'execution-1',
 			executionStatus: 'error',
+			executionError: 'Model request failed',
+			createdAt: FIXED_CREATED_AT.toISOString(),
 		});
 	});
 
@@ -328,6 +578,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Show me an action' }],
 				executionId: 'execution-suspended',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-suspended:assistant',
@@ -356,12 +607,14 @@ describe('execution-to-message-mapper', () => {
 					},
 				],
 				executionId: 'execution-suspended',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-resumed:assistant',
 				role: 'assistant',
 				content: [{ type: 'text', text: 'Approved.' }],
 				executionId: 'execution-resumed',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});

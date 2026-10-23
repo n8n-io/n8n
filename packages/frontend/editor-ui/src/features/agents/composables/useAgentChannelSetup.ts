@@ -98,8 +98,9 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		credentialsLoading.value = true;
 		try {
 			credentialsStore.setCredentials([]);
-			const allCredentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+			const allCredentials = await credentialsStore.fetchUsableCredentials({
 				projectId: projectId.value,
+				forAgent: true,
 			});
 
 			for (const integration of integrations) {

@@ -89,6 +89,30 @@ export class RegularClass {
 			}),
 		},
 		{
+			name: 'lifecycle methods written with computed literal keys',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						['checkExists']: async () => true,
+						['create']: async () => true,
+						[\`delete\`]: async () => true,
+					},
+				}`,
+			}),
+		},
+		{
+			name: 'lifecycle group and methods written with quoted keys',
+			code: createTriggerNode({
+				webhookMethods: `{
+					'default': {
+						'checkExists': async () => true,
+						'create': async () => true,
+						'delete': async () => true,
+					},
+				}`,
+			}),
+		},
+		{
 			name: 'webhook lifecycle defined via arrow functions',
 			code: createTriggerNode({
 				webhookMethods: `{
@@ -188,6 +212,24 @@ export class RegularClass {
 				webhookMethods: null,
 			}),
 			errors: [{ messageId: 'missingWebhookMethods' }],
+		},
+		{
+			name: 'lifecycle method behind a key only known at runtime',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						async checkExists() { return true; },
+						async create() { return true; },
+						[methodName]: async () => true,
+					},
+				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
 		},
 		{
 			name: 'multiple webhook groups each missing methods',

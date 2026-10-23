@@ -7,13 +7,9 @@ import type {
 	IPairedItemData,
 	INodeExecutionData,
 	INodeType,
+	IRunExecutionData,
 } from 'n8n-workflow';
-import {
-	BaseError,
-	NodeConnectionTypes,
-	UnexpectedError,
-	createRunExecutionData,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@test/helpers';
@@ -22,6 +18,7 @@ vi.mock('node:fs', async (importActual) => ({
 	...(await importActual()),
 	existsSync: vi.fn().mockReturnValue(false),
 	renameSync: vi.fn(),
+	writeFileSync: vi.fn(),
 }));
 
 import { DirectedGraph } from '../partial-execution-utils';
@@ -50,6 +47,8 @@ describe('processRunExecutionData', () => {
 		vi.resetAllMocks();
 		runHook.mockResolvedValue(undefined);
 	});
+
+	const hookNames = () => (runHook.mock.calls as Array<[string]>).map(([name]) => name);
 
 	test('throws if execution-data is missing', () => {
 		// ARRANGE
@@ -126,6 +125,74 @@ describe('processRunExecutionData', () => {
 		expect(runHook).toHaveBeenNthCalledWith(4, 'nodeExecuteBefore', expect.any(Array));
 		expect(runHook).toHaveBeenNthCalledWith(5, 'nodeExecuteAfter', expect.any(Array));
 		expect(runHook).toHaveBeenNthCalledWith(6, 'workflowExecuteAfter', expect.any(Array));
+	});
+
+	describe('a handler that throws at workflowExecuteBefore', () => {
+		const blocked = new UnexpectedError('blocked before the first node ran');
+		const node = createNodeData({ name: 'node', type: types.passThrough });
+		const workflow = new DirectedGraph()
+			.addNodes(node)
+			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+		const runBlocked = async (executionData: IRunExecutionData, workflowToRun = workflow) => {
+			runHook.mockImplementation(async (hookName: string) => {
+				if (hookName === 'workflowExecuteBefore') throw blocked;
+			});
+
+			const result = await new WorkflowExecute(
+				additionalData,
+				executionMode,
+				executionData,
+			).processRunExecutionData(workflowToRun);
+
+			return { result, hooks: hookNames() };
+		};
+
+		test('aborts the execution and keeps the error it was given', async () => {
+			const { result, hooks } = await runBlocked(
+				createRunExecutionData({
+					startData: { startNodes: [{ name: node.name, sourceData: null }] },
+					executionData: {
+						nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
+					},
+				}),
+			);
+
+			expect(result.data.resultData.error?.message).toBe(blocked.message);
+			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
+		});
+
+		// Empty for e.g. a Chat Trigger-only workflow, which used to mask the error with a TypeError.
+		test('keeps the error when there is no node on the execution stack', async () => {
+			const { result, hooks } = await runBlocked(
+				createRunExecutionData({ executionData: { nodeExecutionStack: [] } }),
+			);
+
+			expect(result.data.resultData.error?.message).toBe(blocked.message);
+			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
+		});
+
+		test('is reported ahead of the workflow issues', async () => {
+			const nodeWithIssues = createNodeData({
+				name: 'node',
+				type: types.testNodeWithRequiredProperty,
+			});
+			const { result } = await runBlocked(
+				createRunExecutionData({
+					startData: { startNodes: [{ name: nodeWithIssues.name, sourceData: null }] },
+					executionData: {
+						nodeExecutionStack: [
+							{ data: { main: [[{ json: { foo: 1 } }]] }, node: nodeWithIssues, source: null },
+						],
+					},
+				}),
+				new DirectedGraph()
+					.addNodes(nodeWithIssues)
+					.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } }),
+			);
+
+			expect(result.data.resultData.error?.message).toBe(blocked.message);
+		});
 	});
 
 	test('agent node emits nodeExecuteBefore only once when resuming after tool execution', async () => {
@@ -291,6 +358,55 @@ describe('processRunExecutionData', () => {
 			expect(taskData.metadata?.dynamicCredentialsUsage).toBeUndefined();
 		});
 
+		test('stamps the credential ids a sub-execution reported on the task, for that node only', async () => {
+			// ARRANGE
+			// Credential usability redaction reads these ids from the calling node's task,
+			// since the sub-workflow's credentials are not on this workflow's nodes.
+			const waitingNode = createNodeData({ name: 'waitingNode', type: types.passThrough });
+			const nextNode = createNodeData({ name: 'nextNode', type: types.passThrough });
+			const workflow = new DirectedGraph()
+				.addNodes(waitingNode, nextNode)
+				.addConnections({ from: waitingNode, to: nextNode })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const data: IDataObject = { foo: 1 };
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: waitingNode.name, sourceData: null }] },
+				resultData: {
+					runData: {
+						waitingNode: [toITaskData([{ data }], { executionStatus: 'waiting' })],
+					},
+					lastNodeExecuted: 'waitingNode',
+				},
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: { main: [[{ json: data }]] },
+							node: waitingNode,
+							source: null,
+							metadata: {
+								dynamicCredentialsUsage: { usedCredentialIds: ['child-cred'] },
+							},
+						},
+					],
+					runtimeData: { version: 1, establishedAt: 0, source: 'trigger' },
+				},
+				waitTill: new Date('2024-01-01'),
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			const [waitingTask] = result.data.resultData.runData.waitingNode;
+			expect(waitingTask.usedCredentialIds).toEqual(['child-cred']);
+			// Reset before each node, so the next node does not inherit them.
+			const [nextTask] = result.data.resultData.runData.nextNode;
+			expect(nextTask.usedCredentialIds).toBeUndefined();
+		});
+
 		test('restores an attempted-only stash without recording a resolved user', async () => {
 			// ARRANGE
 			const node = createNodeData({ name: 'waitingNode', type: types.passThrough });
@@ -339,35 +455,36 @@ describe('processRunExecutionData', () => {
 	});
 
 	describe('workflow issues', () => {
-		test('throws if workflow contains nodes with missing required properties', () => {
-			// ARRANGE
-			const node = createNodeData({ name: 'node', type: types.testNodeWithRequiredProperty });
-			const workflow = new DirectedGraph()
-				.addNodes(node)
-				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+		const node = createNodeData({ name: 'node', type: types.testNodeWithRequiredProperty });
+		const workflow = new DirectedGraph()
+			.addNodes(node)
+			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
-			const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
+		test('fails the run if workflow contains nodes with missing required properties', async () => {
+			// ARRANGE
 			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: node.name, sourceData: null }] },
 				executionData: {
-					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
+					nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
 				},
 			});
 
-			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+			// ACT
+			const result = await new WorkflowExecute(
+				additionalData,
+				executionMode,
+				executionData,
+			).processRunExecutionData(workflow);
 
-			// ACT & ASSERT
-			// The function returns a Promise, but throws synchronously, so we can't await it.
-			// eslint-disable-next-line @typescript-eslint/promise-function-async
-			const execution = () => workflowExecute.processRunExecutionData(workflow);
-
-			expect(execution).toThrow(BaseError);
-			expect(execution).toThrow(
+			// ASSERT
+			expect(result.data.resultData.error?.name).toBe('WorkflowHasIssuesError');
+			expect(result.data.resultData.error?.message).toMatch(
 				/^The 'node' node has issues:\n- Parameter "Required Text" is required\.$/,
 			);
+			expect(hookNames()).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
 		});
 
-		test('does not complain about nodes with issue past the destination node', () => {
+		test('does not complain about nodes with issue past the destination node', async () => {
 			// ARRANGE
 			const node1 = createNodeData({ name: 'node1', type: types.passThrough });
 			const node2 = createNodeData({ name: 'node2', type: types.testNodeWithRequiredProperty });
@@ -387,12 +504,15 @@ describe('processRunExecutionData', () => {
 				},
 			});
 
-			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+			// ACT
+			const result = await new WorkflowExecute(
+				additionalData,
+				executionMode,
+				executionData,
+			).processRunExecutionData(workflow);
 
-			// ACT & ASSERT
-			// The function returns a Promise, but throws synchronously, so we can't await it.
-			// eslint-disable-next-line @typescript-eslint/promise-function-async
-			expect(() => workflowExecute.processRunExecutionData(workflow)).not.toThrowError();
+			// ASSERT
+			expect(result.data.resultData.error).toBeUndefined();
 		});
 	});
 

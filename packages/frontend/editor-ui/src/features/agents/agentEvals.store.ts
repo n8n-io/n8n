@@ -5,9 +5,12 @@ import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { TIME } from '@/app/constants';
+import { DEFAULT_ID_COLUMN_NAME } from '@/features/core/dataTable/constants';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 
 import * as agentEvalsApi from './agentEvals.api';
 import type {
+	AgentEvalCase,
 	AgentEvalDatasetRecord,
 	AgentEvalRatingRecord,
 	AgentEvalResultRecord,
@@ -15,11 +18,26 @@ import type {
 	AgentEvalRunStatus,
 	AgentEvalRunSummary,
 	AgentEvalVote,
+	ApplyAgentEvalSuggestionsResult,
+	ApplyPreviewSuggestionOptions,
+	CreateDraftDatasetOptions,
 	GenerateDraftCasesOptions,
+	PreviewRunOptions,
+	RerunResultOptions,
 } from './agentEvals.types';
 import { AGENT_EVAL_RESULTS_DEFAULT_TAKE, MAX_ITEMS_PER_PAGE } from './agentEvals.types';
+import { AGENT_EVAL_CASES_PAGE_SIZE } from './constants';
 import type { PendingReview, ReviewDraft } from './utils/agent-eval-review';
 import { canSaveDraft, readCorrectionText } from './utils/agent-eval-review';
+import {
+	toAgentEvalCase,
+	toAgentEvalCases,
+	toDataTableRow,
+	type AgentEvalCaseSource,
+} from './utils/agentEvalCases.utils';
+
+/** The two fields a case is edited through; the row id identifies which row they land on. */
+type AgentEvalCaseValue = Pick<AgentEvalCase, 'input' | 'whatToCheck'>;
 
 /**
  * Per-run review state: the run, a page of its cases, the latest rating on each,
@@ -56,6 +74,11 @@ type RunReviewState = {
  */
 const RUN_POLL_INTERVAL_MS = 5 * TIME.SECOND;
 
+/** Stop watching a run that never settles, so a forgotten tab can't poll indefinitely. */
+const RUN_POLL_TIMEOUT_MS = 10 * TIME.MINUTE;
+/** One failed poll is a blip worth retrying; a sustained run of them means we've lost the run. */
+const RUN_POLL_MAX_ERRORS = 3;
+
 /** A run in one of these states is still doing work. */
 const isPendingStatus = (status: AgentEvalRunStatus | undefined) =>
 	status === 'new' || status === 'running';
@@ -77,6 +100,7 @@ const emptyRunReview = (): RunReviewState => ({
  */
 export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const rootStore = useRootStore();
+	const dataTableStore = useDataTableStore();
 
 	// Keyed by agentId so switching agents inside the builder can't render the
 	// previous agent's datasets.
@@ -107,6 +131,27 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	// reschedule itself under the *new* watcher's flag — leaving two timers running.
 	let pollTimer: ReturnType<typeof setTimeout> | null = null;
 	let pollGeneration = 0;
+	/** Wall clock past which the current watch gives up; null when not watching. */
+	let pollDeadline: number | null = null;
+	let pollConsecutiveErrors = 0;
+
+	// Set when a watch stops without seeing its run settle, so the view can say the
+	// progress it is showing is no longer being updated.
+	const lostTrackByRunId = ref<Record<string, boolean | undefined>>({});
+
+	// Cases key by datasetId, not agentId: one agent accumulates a dataset per
+	// generation, and each has its own rows.
+	const casesByDatasetId = ref<Record<string, AgentEvalCase[]>>({});
+	// The server's total, which can exceed the page held above — it's what the run
+	// button counts, since a run covers every row in the table.
+	const casesCountByDatasetId = ref<Record<string, number>>({});
+	const loadingCases = ref<Record<string, boolean | undefined>>({});
+	// Keyed `datasetId:rowId` so one row saving can't disable its siblings.
+	const mutatingCases = ref<Record<string, boolean | undefined>>({});
+	const cancellingRunByDatasetId = ref<Record<string, boolean | undefined>>({});
+	// A case table's owning project, which the Data Table routes scope on. Keyed by
+	// table id because it is a property of the table, not of the agent reading it.
+	const tableProjectByDataTableId = ref<Record<string, string | undefined>>({});
 	/**
 	 * A request from another surface to focus an agent's eval tab, optionally
 	 * generating on arrival — raised by the assistant's post-setup suggestion.
@@ -116,10 +161,21 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	 * has to reveal the agent artifact first). A watcher can consume a request
 	 * that predates it; a fire-and-forget event would be dropped.
 	 */
-	const pendingEvalsFocus = ref<{ agentId: string; generate: boolean } | null>(null);
+	const pendingEvalsFocus = ref<{
+		agentId: string;
+		generate: boolean;
+		/** A check to expand and scroll to once the eval view shows. */
+		resultId?: string;
+	} | null>(null);
 
-	const requestEvalsFocus = (agentId: string, generate = false) => {
-		pendingEvalsFocus.value = { agentId, generate };
+	/**
+	 * The check the eval view should expand — handed on from a consumed request,
+	 * because the checks panel mounts after the builder claims the request.
+	 */
+	const focusedEvalResult = ref<{ agentId: string; resultId: string } | null>(null);
+
+	const requestEvalsFocus = (agentId: string, generate = false, resultId?: string) => {
+		pendingEvalsFocus.value = { agentId, generate, resultId };
 	};
 
 	/** Claims the request when it names this agent, so only one builder acts on it. */
@@ -127,7 +183,16 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		const request = pendingEvalsFocus.value;
 		if (request?.agentId !== agentId) return null;
 		pendingEvalsFocus.value = null;
+		if (request.resultId) focusedEvalResult.value = { agentId, resultId: request.resultId };
 		return request;
+	};
+
+	/** Claims the focused check when it belongs to this agent, so it expands only once. */
+	const consumeFocusedEvalResult = (agentId: string) => {
+		const focused = focusedEvalResult.value;
+		if (focused?.agentId !== agentId) return null;
+		focusedEvalResult.value = null;
+		return focused.resultId;
 	};
 
 	/**
@@ -179,6 +244,9 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	// server-side and cost model credits, so a transient refresh failure must not
 	// surface as a generation failure (user retries → duplicate dataset). A stale
 	// cache self-heals on the next fetch.
+	//
+	// `save: false` persists nothing server-side, so there is no new dataset to
+	// pick up — skipped rather than firing a pointless refetch.
 	const generateDraftCases = async (
 		projectId: string,
 		agentId: string,
@@ -192,11 +260,91 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 				agentId,
 				options,
 			);
-			await fetchDatasets(projectId, agentId).catch(() => null);
+			if (options.save !== false) {
+				await fetchDatasets(projectId, agentId).catch(() => null);
+			}
 			return result;
 		} finally {
 			generatingCases.value = { ...generatingCases.value, [agentId]: false };
 		}
+	};
+
+	// An empty dataset — no LLM call, no rows — for committing a `save: false`
+	// preview: once the user picks which cases to keep, they're inserted into
+	// this via `createCase`. The result carries its own `columnMapping`, so a
+	// caller can resolve a writable `CaseSource` straight from it rather than
+	// depending on this refresh (best-effort: a transient failure here must not
+	// look like the create itself failed — the dataset already exists either way).
+	const createDraftDataset = async (
+		projectId: string,
+		agentId: string,
+		options: CreateDraftDatasetOptions = {},
+	) => {
+		const result = await agentEvalsApi.createDraftDataset(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			options,
+		);
+		await fetchDatasets(projectId, agentId).catch(() => null);
+		return result;
+	};
+
+	// Rolls back a draft dataset that was just created but whose commit failed
+	// partway through (e.g. a row insert) — without this, a retry off that
+	// failure would create another empty dataset rather than reusing or
+	// cleaning up the first one. Evicts it from the cache directly: the
+	// dataset is already gone server-side, so a refetch isn't needed to notice.
+	const deleteDataset = async (projectId: string, agentId: string, datasetId: string) => {
+		await agentEvalsApi.deleteDataset(rootStore.restApiContext, projectId, agentId, datasetId);
+		const current = datasetsByAgentId.value[agentId];
+		// Only updates an already-loaded cache. If nothing has been successfully
+		// fetched for this agent yet (e.g. `createDraftDataset`'s own best-effort
+		// refresh failed), writing `[]` here would make `isLoaded` report true for
+		// a read that never actually happened.
+		if (current)
+			setDatasets(
+				agentId,
+				current.filter((d) => d.id !== datasetId),
+			);
+	};
+
+	// Discards a draft dataset together with its backing Data Table — for rolling
+	// back a failed commit. Drops it from an already-loaded cache the same way
+	// `deleteDataset` does.
+	const deleteDraftDataset = async (projectId: string, agentId: string, datasetId: string) => {
+		await agentEvalsApi.deleteDraftDataset(rootStore.restApiContext, projectId, agentId, datasetId);
+		const current = datasetsByAgentId.value[agentId];
+		if (current)
+			setDatasets(
+				agentId,
+				current.filter((d) => d.id !== datasetId),
+			);
+	};
+
+	// Drafts one case and runs it against the agent directly — no Data Table, no
+	// dataset, no eval-run row, so nothing here needs a cache refresh.
+	const previewRun = async (
+		projectId: string,
+		agentId: string,
+		options: PreviewRunOptions = {},
+	) => {
+		return await agentEvalsApi.previewRun(rootStore.restApiContext, projectId, agentId, options);
+	};
+
+	// Rewrites the agent's instructions with a preview run's suggestion, then runs the
+	// same case again. Nothing is cached, like `previewRun`.
+	const applyPreviewSuggestion = async (
+		projectId: string,
+		agentId: string,
+		options: ApplyPreviewSuggestionOptions,
+	) => {
+		return await agentEvalsApi.applyPreviewSuggestion(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			options,
+		);
 	};
 
 	// ---- runs + review ----
@@ -209,9 +357,213 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		reviewByRunId.value = { ...reviewByRunId.value, [runId]: { ...current, ...patch } };
 	};
 
+	// Deleting a case drops its Data Table row — nothing the run/result API
+	// knows about — so the result it produced has to be dropped from the
+	// cached page by hand, here, rather than through a server response.
+	const removeCachedResult = (runId: string, resultId: string) => {
+		const current = getReview(runId);
+		const results = current.results.filter((result) => result.id !== resultId);
+		// Not cached (e.g. on a page that was never loaded): nothing to drop, and the
+		// run's total must not shrink for a row this cache never counted.
+		if (results.length === current.results.length) return;
+
+		const { [resultId]: _rating, ...ratingsByResultId } = current.ratingsByResultId;
+		const { [resultId]: _pending, ...pendingByResultId } = current.pendingByResultId;
+		const { [resultId]: _draft, ...draftsByResultId } = current.draftsByResultId;
+		patchReview(runId, {
+			results,
+			resultsCount: Math.max(0, current.resultsCount - 1),
+			ratingsByResultId,
+			pendingByResultId,
+			draftsByResultId,
+		});
+	};
+
 	const getLatestRunId = (datasetId: string) => latestRunIdByDatasetId.value[datasetId];
 
 	const isStartingRun = (datasetId: string) => startingRunByDatasetId.value[datasetId] === true;
+
+	const getCases = (datasetId: string) => casesByDatasetId.value[datasetId] ?? [];
+
+	const getCasesCount = (datasetId: string) => casesCountByDatasetId.value[datasetId] ?? 0;
+
+	/** Absence of an entry is "not read yet", not "no cases" — the two render differently. */
+	const areCasesLoaded = (datasetId: string) => casesByDatasetId.value[datasetId] !== undefined;
+
+	const isLoadingCases = (datasetId: string) => loadingCases.value[datasetId] === true;
+
+	const isMutatingCase = (datasetId: string, rowId: number) =>
+		mutatingCases.value[`${datasetId}:${rowId}`] === true;
+
+	const isCancellingRun = (datasetId: string) => cancellingRunByDatasetId.value[datasetId] === true;
+
+	/** True when a watch stopped without its run settling — the counts shown are frozen. */
+	const hasLostTrackOfRun = (runId: string) => lostTrackByRunId.value[runId] === true;
+
+	const setCases = (datasetId: string, cases: AgentEvalCase[]) => {
+		casesByDatasetId.value = { ...casesByDatasetId.value, [datasetId]: cases };
+	};
+
+	const setCasesCount = (datasetId: string, count: number) => {
+		casesCountByDatasetId.value = { ...casesCountByDatasetId.value, [datasetId]: count };
+	};
+
+	const setMutatingCase = (datasetId: string, rowId: number, mutating: boolean) => {
+		mutatingCases.value = { ...mutatingCases.value, [`${datasetId}:${rowId}`]: mutating };
+	};
+
+	// The Data Table routes scope on the project in the path, which is *the table's*
+	// project — not necessarily the agent's. Generation co-locates the two, but a
+	// dataset attached through the API may point at a table in another project (the
+	// runner resolves that case via `getProjectIdForDataTable`, so such datasets are
+	// runnable and must be editable too).
+	//
+	// Only a resolved answer is cached. Caching the fallback would pin the agent's
+	// project for the rest of the session after a single transient failure, so the
+	// card's retry would keep re-reading the wrong project and never recover.
+	const resolveTableProjectId = async (agentProjectId: string, dataTableId: string) => {
+		const cached = tableProjectByDataTableId.value[dataTableId];
+		if (cached) return cached;
+
+		// `fetchDataTableById` is the store's existing global point lookup: it does not
+		// touch the list state, and it returns null when the user lacks `dataTable:list`
+		// rather than firing a request that would be refused.
+		const resolved = await dataTableStore
+			.fetchDataTableById(dataTableId)
+			.then((table) => table?.projectId)
+			.catch(() => undefined);
+
+		if (!resolved) return agentProjectId;
+
+		tableProjectByDataTableId.value = {
+			...tableProjectByDataTableId.value,
+			[dataTableId]: resolved,
+		};
+		return resolved;
+	};
+
+	// Sorted by row id so the numbering the view shows is stable across reads, and
+	// read as one page: the page size is the row route's own ceiling.
+	const fetchCases = async (projectId: string, source: AgentEvalCaseSource) => {
+		loadingCases.value = { ...loadingCases.value, [source.datasetId]: true };
+		try {
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+			const { count, data } = await dataTableStore.fetchDataTableContent(
+				source.dataTableId,
+				tableProjectId,
+				1,
+				AGENT_EVAL_CASES_PAGE_SIZE,
+				`${DEFAULT_ID_COLUMN_NAME}:asc`,
+			);
+			const cases = toAgentEvalCases(data, source.columns);
+			setCases(source.datasetId, cases);
+			setCasesCount(source.datasetId, count);
+			return cases;
+		} finally {
+			loadingCases.value = { ...loadingCases.value, [source.datasetId]: false };
+		}
+	};
+
+	// Appends rather than refetching, so the list can't reorder under the user
+	// mid-review. The total moves regardless of whether the returned row could be
+	// mapped — the row exists server-side either way, and an unmappable one heals
+	// on the next read.
+	const createCase = async (
+		projectId: string,
+		source: AgentEvalCaseSource,
+		value: AgentEvalCaseValue,
+	) => {
+		const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+		const inserted = await dataTableStore.insertRow(
+			source.dataTableId,
+			tableProjectId,
+			toDataTableRow(value, source.columns),
+		);
+		setCasesCount(source.datasetId, getCasesCount(source.datasetId) + 1);
+
+		const created = inserted ? toAgentEvalCase(inserted, source.columns) : null;
+		if (created) setCases(source.datasetId, [...getCases(source.datasetId), created]);
+
+		return created;
+	};
+
+	// Patches in place only once the write is acknowledged. No optimistic update:
+	// the route answers with a boolean rather than the row, so a rollback would need
+	// a snapshot to restore for a sub-second single-row write.
+	const updateCase = async (
+		projectId: string,
+		source: AgentEvalCaseSource,
+		rowId: number,
+		value: AgentEvalCaseValue,
+	) => {
+		setMutatingCase(source.datasetId, rowId, true);
+		try {
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+			const updated = await dataTableStore.updateRow(
+				source.dataTableId,
+				tableProjectId,
+				rowId,
+				toDataTableRow(value, source.columns),
+			);
+			if (!updated) return false;
+
+			setCases(
+				source.datasetId,
+				getCases(source.datasetId).map((c) => (c.rowId === rowId ? { ...c, ...value } : c)),
+			);
+			return true;
+		} finally {
+			setMutatingCase(source.datasetId, rowId, false);
+		}
+	};
+
+	// Writes only the rule column. `updateCase` always writes the input as well, and a
+	// caller that only holds a result's snapshot would overwrite a newer input with
+	// the one the case last ran with.
+	const updateCaseRule = async (
+		projectId: string,
+		source: AgentEvalCaseSource,
+		rowId: number,
+		whatToCheck: string,
+	) => {
+		const column = source.columns.whatToCheck;
+		if (column === null) return false;
+
+		setMutatingCase(source.datasetId, rowId, true);
+		try {
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+			const updated = await dataTableStore.updateRow(source.dataTableId, tableProjectId, rowId, {
+				[column]: whatToCheck,
+			});
+			if (!updated) return false;
+
+			setCases(
+				source.datasetId,
+				getCases(source.datasetId).map((c) => (c.rowId === rowId ? { ...c, whatToCheck } : c)),
+			);
+			return true;
+		} finally {
+			setMutatingCase(source.datasetId, rowId, false);
+		}
+	};
+
+	const deleteCase = async (projectId: string, source: AgentEvalCaseSource, rowId: number) => {
+		setMutatingCase(source.datasetId, rowId, true);
+		try {
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+			const deleted = await dataTableStore.deleteRows(source.dataTableId, tableProjectId, [rowId]);
+			if (!deleted) return false;
+
+			setCases(
+				source.datasetId,
+				getCases(source.datasetId).filter((c) => c.rowId !== rowId),
+			);
+			setCasesCount(source.datasetId, Math.max(0, getCasesCount(source.datasetId) - 1));
+			return true;
+		} finally {
+			setMutatingCase(source.datasetId, rowId, false);
+		}
+	};
 
 	/**
 	 * The newest run of a dataset, or `null` when it has never been run. Runs come
@@ -582,6 +934,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 
 	const stopPollingRun = () => {
 		pollGeneration += 1;
+		pollDeadline = null;
+		pollConsecutiveErrors = 0;
 		if (pollTimer !== null) {
 			clearTimeout(pollTimer);
 			pollTimer = null;
@@ -646,9 +1000,18 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			if (current.counts !== null && canRefreshWholeWindow(runId)) {
 				await refreshResults(projectId, agentId, runId);
 			}
+
+			pollConsecutiveErrors = 0;
 		} catch {
 			// A dropped poll is not worth surfacing — the next tick retries, and the
-			// run is unaffected either way.
+			// run is unaffected either way. A sustained run of them is different: the
+			// counts on screen have stopped tracking the run, so stop claiming they are
+			// live rather than retrying forever.
+			pollConsecutiveErrors += 1;
+			if (pollConsecutiveErrors >= RUN_POLL_MAX_ERRORS) {
+				lostTrackByRunId.value = { ...lostTrackByRunId.value, [runId]: true };
+				return true;
+			}
 		}
 		return false;
 	};
@@ -661,6 +1024,14 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		pollTimer = setTimeout(async () => {
 			pollTimer = null;
 			if (generation !== pollGeneration) return;
+
+			// Guards a run that never reports settled — without this a forgotten tab
+			// polls for as long as it stays open.
+			if (pollDeadline !== null && Date.now() > pollDeadline) {
+				lostTrackByRunId.value = { ...lostTrackByRunId.value, [runId]: true };
+				stopPollingRun();
+				return;
+			}
 
 			// A backgrounded tab doesn't need progress; it re-reads when it comes back.
 			if (!document.hidden && (await pollRunOnce(projectId, agentId, runId))) {
@@ -680,6 +1051,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const startPollingRun = (projectId: string, agentId: string, runId: string) => {
 		stopPollingRun();
 		const generation = pollGeneration;
+		pollDeadline = Date.now() + RUN_POLL_TIMEOUT_MS;
+		lostTrackByRunId.value = { ...lostTrackByRunId.value, [runId]: false };
 
 		void (async () => {
 			const settled = await pollRunOnce(projectId, agentId, runId);
@@ -688,6 +1061,225 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			if (settled) stopPollingRun();
 			else schedulePoll(projectId, agentId, runId, generation);
 		})();
+	};
+
+	// Asks the runner to stop. The cases already in flight settle on their own, so
+	// polling continues until the summary reports nothing pending — treating the
+	// cancel response as the end would strand the tallies mid-count.
+	const cancelRun = async (
+		projectId: string,
+		agentId: string,
+		datasetId: string,
+		runId: string,
+	) => {
+		cancellingRunByDatasetId.value = { ...cancellingRunByDatasetId.value, [datasetId]: true };
+		try {
+			const run = await agentEvalsApi.cancelRun(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				runId,
+			);
+			patchReview(runId, { run });
+			return run;
+		} finally {
+			cancellingRunByDatasetId.value = { ...cancellingRunByDatasetId.value, [datasetId]: false };
+		}
+	};
+
+	/** Finds which cached run page currently holds a given result, if any. */
+	const findCachedResult = (
+		resultId: string,
+	): { runId: string; result: AgentEvalResultRecord } | undefined => {
+		for (const [runId, state] of Object.entries(reviewByRunId.value)) {
+			const result = state.results.find((r) => r.id === resultId);
+			if (result) return { runId, result };
+		}
+		return undefined;
+	};
+
+	const replaceCachedResult = (runId: string, resultId: string, result: AgentEvalResultRecord) => {
+		patchReview(runId, {
+			results: getReview(runId).results.map((r) => (r.id === resultId ? result : r)),
+		});
+	};
+
+	// Re-reads one cached result from the server, using its position in the cached
+	// page (results are paged in a stable order) to fetch just that row. Returns
+	// whether it found and applied the row: a deletion ahead of it shifts the
+	// position, so the row at that offset may be a different result.
+	const refreshCachedResult = async (
+		projectId: string,
+		agentId: string,
+		runId: string,
+		resultId: string,
+	): Promise<boolean> => {
+		const index = getReview(runId).results.findIndex((r) => r.id === resultId);
+		if (index < 0) return false;
+		const detail = await agentEvalsApi.getRunDetail(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			runId,
+			{ take: 1, skip: index },
+		);
+		const fresh = detail.results.data[0];
+		if (fresh?.id !== resultId) return false;
+		replaceCachedResult(runId, resultId, fresh);
+		return true;
+	};
+
+	// Re-executes one already-settled case in place — no new run. Patches the
+	// result to `running` in the cache before the request even lands, the same
+	// way a batch run's own seeded rows read while in flight — every consumer
+	// of `getReview` (the checks panel, the suite examples list) picks this up
+	// through the ordinary status → avatar mapping, with nothing rerun-specific
+	// of its own to track. The REST call is a single synchronous round trip, so
+	// this optimistic patch is the only time the UI ever sees `running` at all.
+	const rerunResult = async (
+		projectId: string,
+		agentId: string,
+		resultId: string,
+		options: RerunResultOptions = {},
+	) => {
+		const cached = findCachedResult(resultId);
+		// Already showing as running from an earlier click — don't fire a second
+		// request the backend would just reject.
+		if (cached?.result.status === 'running') return cached.result;
+
+		if (cached) {
+			// An edited rule reads instantly too, rather than waiting on the round
+			// trip — the real response (which the backend has already persisted
+			// onto the same snapshot) replaces this once it lands either way.
+			const optimisticInput =
+				options.whatToCheck !== undefined
+					? { ...(cached.result.input ?? {}), criteria: options.whatToCheck }
+					: cached.result.input;
+			replaceCachedResult(cached.runId, resultId, {
+				...cached.result,
+				status: 'running',
+				input: optimisticInput,
+			});
+		}
+		try {
+			const updated = await agentEvalsApi.rerunResult(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				resultId,
+				options,
+			);
+			replaceCachedResult(updated.runId, resultId, updated);
+			return updated;
+		} catch (error) {
+			// A poll or refresh may already have replaced the optimistic row with
+			// fresher data — only undo it while it is still the patch we made.
+			if (cached && findCachedResult(resultId)?.result.status === 'running') {
+				if (options.whatToCheck === undefined) {
+					replaceCachedResult(cached.runId, resultId, cached.result);
+				} else {
+					// The backend saves an edited rule before it executes, so a failure
+					// doesn't say whether the old or new rule is stored — read it back
+					// rather than guess. If that read fails or lands on another row, fall
+					// back to the old one so the row doesn't stay on "running".
+					const refreshed = await refreshCachedResult(
+						projectId,
+						agentId,
+						cached.runId,
+						resultId,
+					).catch(() => false);
+					if (!refreshed && findCachedResult(resultId)?.result.status === 'running') {
+						replaceCachedResult(cached.runId, resultId, cached.result);
+					}
+				}
+			}
+			throw error;
+		}
+	};
+
+	// Applies the suggested fixes of these failed results: the backend rewrites the
+	// agent's instructions once and reruns just these results, all in one request.
+	// Patches each to `running` first, like `rerunResult`. Results already running are
+	// left out; null means nothing was left to send.
+	const applySuggestions = async (
+		projectId: string,
+		agentId: string,
+		resultIds: string[],
+	): Promise<ApplyAgentEvalSuggestionsResult | null> => {
+		const targets: Array<{ runId: string; result: AgentEvalResultRecord }> = [];
+		for (const resultId of new Set(resultIds)) {
+			const cached = findCachedResult(resultId);
+			if (cached?.result.status === 'running') continue;
+			if (cached) targets.push(cached);
+		}
+		if (targets.length === 0) return null;
+
+		for (const { runId, result } of targets) {
+			replaceCachedResult(runId, result.id, { ...result, status: 'running' });
+		}
+		try {
+			const applied = await agentEvalsApi.applySuggestions(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				{ resultIds: targets.map(({ result }) => result.id) },
+			);
+			for (const updated of applied.results) {
+				replaceCachedResult(updated.runId, updated.id, updated);
+			}
+			return applied;
+		} catch (error) {
+			// A failure after the config was saved may still have rerun some results, so
+			// read each back before assuming it is unchanged. Only touch a row that still
+			// shows the optimistic patch: a poll may already have replaced it.
+			await Promise.all(
+				targets.map(async ({ runId, result }) => {
+					if (findCachedResult(result.id)?.result.status !== 'running') return;
+					const refreshed = await refreshCachedResult(projectId, agentId, runId, result.id).catch(
+						() => false,
+					);
+					if (!refreshed && findCachedResult(result.id)?.result.status === 'running') {
+						replaceCachedResult(runId, result.id, result);
+					}
+				}),
+			);
+			throw error;
+		}
+	};
+
+	// Marks a finished case as passing. Patches the cached verdict first so the
+	// row flips instantly, and reverts it if the request fails.
+	const acceptResult = async (projectId: string, agentId: string, resultId: string) => {
+		const cached = findCachedResult(resultId);
+		if (cached) {
+			replaceCachedResult(cached.runId, resultId, {
+				...cached.result,
+				verdict: { status: 'completed', outcome: 'pass', reasoning: null },
+			});
+		}
+		try {
+			const updated = await agentEvalsApi.acceptResult(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				resultId,
+			);
+			replaceCachedResult(updated.runId, resultId, updated);
+			return updated;
+		} catch (error) {
+			if (cached) replaceCachedResult(cached.runId, resultId, cached.result);
+			throw error;
+		}
+	};
+
+	// Persists the removal server-side, then drops it from the cached page.
+	// `deleteCase` alone only removes the Data Table row it came from — this
+	// result is a separate persisted snapshot that would otherwise survive and
+	// reappear on the next load.
+	const deleteResult = async (projectId: string, agentId: string, resultId: string) => {
+		const cached = findCachedResult(resultId);
+		await agentEvalsApi.deleteResult(rootStore.restApiContext, projectId, agentId, resultId);
+		if (cached) removeCachedResult(cached.runId, resultId);
 	};
 
 	/** Runs the dataset's cases again against the agent's current config. */
@@ -714,7 +1306,14 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		isGeneratingCases,
 		fetchDatasets,
 		generateDraftCases,
+		createDraftDataset,
+		deleteDataset,
+		deleteDraftDataset,
+		previewRun,
+		applyPreviewSuggestion,
 		getReview,
+		removeCachedResult,
+		deleteResult,
 		getLatestRunId,
 		isStartingRun,
 		resolveLatestRunId,
@@ -733,10 +1332,28 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		isRunInFlight,
 		startPollingRun,
 		stopPollingRun,
+		hasLostTrackOfRun,
 		startRun,
+		rerunResult,
+		applySuggestions,
+		acceptResult,
+		cancelRun,
+		isCancellingRun,
+		getCases,
+		getCasesCount,
+		areCasesLoaded,
+		isLoadingCases,
+		isMutatingCase,
+		fetchCases,
+		createCase,
+		updateCase,
+		updateCaseRule,
+		deleteCase,
 		pendingEvalsFocus,
 		requestEvalsFocus,
 		consumeEvalsFocus,
+		focusedEvalResult,
+		consumeFocusedEvalResult,
 		clearEvalsFocus,
 	};
 });

@@ -1,10 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import DataTableView from '@/features/core/dataTable/DataTableView.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { createRouter, createWebHistory } from 'vue-router';
@@ -12,6 +13,8 @@ import type { DataTableResource } from '@/features/core/dataTable/types';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { Mock } from 'vitest';
 import { type Project } from '@/features/collaboration/projects/projects.types';
+import { useUIStore } from '@/app/stores/ui.store';
+import { ADD_DATA_TABLE_MODAL_KEY } from '@/features/core/dataTable/constants';
 
 vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
@@ -81,6 +84,10 @@ const router = createRouter({
 	routes: [
 		{
 			path: '/projects/:projectId/data-tables',
+			component: { template: '<div></div>' },
+		},
+		{
+			path: '/projects/:projectId/datatables/:new(new)?',
 			component: { template: '<div></div>' },
 		},
 		{
@@ -190,6 +197,18 @@ describe('DataTableView', () => {
 
 			expect(mockToast.showError).toHaveBeenCalledWith(error, 'Error loading data tables');
 		});
+
+		it('should reload the data tables after a package was applied', async () => {
+			renderComponent({ pinia });
+			await waitAllPromises();
+			const fetches = dataTableStore.fetchDataTables.mock.calls.length;
+
+			promotionEventBus.emit('applied', { projectId: 'test-project' });
+
+			await waitFor(() =>
+				expect(dataTableStore.fetchDataTables.mock.calls.length).toBeGreaterThan(fetches),
+			);
+		});
 	});
 
 	describe('empty state', () => {
@@ -274,6 +293,50 @@ describe('DataTableView', () => {
 
 			const emptyBox = getByTestId('empty-resources-list');
 			expect(emptyBox).toBeInTheDocument();
+		});
+	});
+
+	describe('create route', () => {
+		let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+
+		beforeEach(async () => {
+			await router.push('/projects/test-project/datatables/new');
+			uiStore = mockedStore(useUIStore);
+			dataTableStore.projectPermissions = {
+				dataTable: { create: true },
+			} as typeof dataTableStore.projectPermissions;
+			sourceControlStore.preferences = {
+				branchReadOnly: false,
+			} as typeof sourceControlStore.preferences;
+		});
+
+		it('should open the create modal when the user can create data tables', async () => {
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(uiStore.openModal).toHaveBeenCalledWith(ADD_DATA_TABLE_MODAL_KEY);
+		});
+
+		it('should not open the create modal on a protected instance', async () => {
+			sourceControlStore.preferences = {
+				branchReadOnly: true,
+			} as typeof sourceControlStore.preferences;
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(uiStore.openModal).not.toHaveBeenCalledWith(ADD_DATA_TABLE_MODAL_KEY);
+		});
+
+		it('should not open the create modal when the user cannot create data tables', async () => {
+			dataTableStore.projectPermissions = {
+				dataTable: { create: false },
+			} as typeof dataTableStore.projectPermissions;
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(uiStore.openModal).not.toHaveBeenCalledWith(ADD_DATA_TABLE_MODAL_KEY);
 		});
 	});
 

@@ -45,6 +45,16 @@ export interface EvaluatorConfig {
 	/** If set, scale the pool to 0 warm bridges after this many ms with no isolate acquire. */
 	idleTimeoutMs?: number;
 
+	/**
+	 * Lazy acquisition mode (prototype): acquire() only opens a scope for the
+	 * caller; the bridge is created synchronously on the first evaluate() that
+	 * actually needs the engine. Callers whose expressions never reach the
+	 * engine (e.g. handled by a host-side fast path) never consume a bridge.
+	 * On pool exhaustion the bridge is cold-started synchronously via
+	 * RuntimeBridge.initializeSync().
+	 */
+	lazyAcquire?: boolean;
+
 	/** Optional logger. Passed through to pool. Falls back to no-op. */
 	logger?: Logger;
 }
@@ -137,10 +147,10 @@ export interface NodeProxy {
  * type.
  *
  * Return types are `unknown` rather than `INodeExecutionData` / `[]`:
- * results cross the isolate boundary via `applySync({ result: { copy: true } })`,
- * which structured-clones the value and erases nominal types. The handlers
- * pass the clone through verbatim, so a precise return type would be
- * misleading. Matches the `NodeProxy` return type for the same reason.
+ * `ivm.Callback` structured-clones results as they pass between isolates,
+ * which erases nominal types. The handlers pass the clone through verbatim,
+ * so a precise return type would be misleading. Matches the `NodeProxy`
+ * return type for the same reason.
  */
 export interface InputProxy {
 	first?: () => unknown;

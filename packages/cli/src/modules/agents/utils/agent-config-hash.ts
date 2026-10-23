@@ -11,9 +11,23 @@ function canonicalizeJson(value: unknown): unknown {
 	return sorted;
 }
 
-export function getAgentConfigHash(config: AgentJsonConfig | null): string | null {
-	if (!config) return null;
+function getHash(value: unknown): string {
 	return createHash('sha256')
-		.update(JSON.stringify(canonicalizeJson(config)))
+		.update(JSON.stringify(canonicalizeJson(value)))
 		.digest('hex');
 }
+
+export function getAgentConfigHash(config: AgentJsonConfig): string;
+export function getAgentConfigHash(config: null): null;
+export function getAgentConfigHash(config: AgentJsonConfig | null): string | null;
+export function getAgentConfigHash(config: AgentJsonConfig | null): string | null {
+	if (!config) return null;
+	return getHash(config);
+}
+
+export function isSameAgentConfig(a: unknown, b: unknown): boolean {
+	return getHash(a) === getHash(b);
+}
+
+/** The skills module owns the skill hash, so agents and skills APIs return the same value. */
+export { getSkillHash as getAgentSkillHash } from '@/modules/skills/skill-hash';

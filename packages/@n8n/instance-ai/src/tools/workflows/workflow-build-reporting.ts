@@ -79,6 +79,7 @@ export async function reportFailedWorkflowBuildOutcome(
 		errors: string[];
 		summary: string;
 		storeOnRunContext: boolean;
+		grouping?: WorkflowBuildOutcome['grouping'];
 	},
 ): Promise<void> {
 	const buildContext = context.workflowBuildContext;
@@ -98,6 +99,7 @@ export async function reportFailedWorkflowBuildOutcome(
 		blockingReason: input.remediation.guidance,
 		failureSignature: input.errors.join('\n').slice(0, 500),
 		remediation: input.remediation,
+		...(input.grouping ? { grouping: input.grouping } : {}),
 		summary: input.summary,
 	});
 

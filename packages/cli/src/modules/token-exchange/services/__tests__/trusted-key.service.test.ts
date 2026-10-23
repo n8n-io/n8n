@@ -1,7 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { DbLockService } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
@@ -58,14 +57,38 @@ function makeTrustedKeyEntity(
 	return entity;
 }
 
-function createMocks({ isLeader = true }: { isLeader?: boolean } = {}) {
+function makeSource(overrides: Partial<TrustedKeySourceEntity> = {}): TrustedKeySourceEntity {
+	return Object.assign(new TrustedKeySourceEntity(), {
+		id: 'static',
+		type: 'static' as const,
+		config: JSON.stringify([]),
+		status: 'pending' as const,
+		lastError: null,
+		lastRefreshedAt: null,
+		...overrides,
+	});
+}
+
+/** A source whose refresh fails, and another source that is due. */
+function seedFailingAndDueSources(mocks: ReturnType<typeof createMocks>) {
+	const failing = makeSource({
+		id: 'jwks-1',
+		type: 'jwks',
+		config: JSON.stringify({ type: 'jwks', url: 'https://idp.example.com/jwks' }),
+	});
+	const due = makeSource({ id: 'static' });
+	mocks.sourceRepo.find.mockResolvedValue([failing, due]);
+	mocks.sourceRepo.refreshSource.mockRejectedValueOnce(new Error('jwks down'));
+	return { failing, due };
+}
+
+function createMocks() {
 	const config = mock<TokenExchangeConfig>({
 		trustedKeys: '',
 		keyRefreshIntervalSeconds: 300,
 	});
 	const sourceRepo = mock<TrustedKeySourceRepository>();
 	const keyRepo = mock<TrustedKeyRepository>();
-	const instanceSettings = mock<InstanceSettings>({ isLeader });
 	const dbLockService = mock<DbLockService>();
 	const jwksResolverService = mock<JwksResolverService>();
 
@@ -75,6 +98,7 @@ function createMocks({ isLeader = true }: { isLeader?: boolean } = {}) {
 		},
 	);
 
+	dbLockService.withLockContext.mockImplementation(async (_lockId, fn) => await fn({}));
 	sourceRepo.find.mockResolvedValue([]);
 
 	const service = new TrustedKeyService(
@@ -82,12 +106,11 @@ function createMocks({ isLeader = true }: { isLeader?: boolean } = {}) {
 		config,
 		sourceRepo,
 		keyRepo,
-		instanceSettings,
 		dbLockService,
 		jwksResolverService,
 	);
 
-	return { service, keyRepo, sourceRepo, dbLockService, instanceSettings };
+	return { service, keyRepo, sourceRepo, dbLockService };
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -97,11 +120,6 @@ function createMocks({ isLeader = true }: { isLeader?: boolean } = {}) {
 describe('TrustedKeyService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.useFakeTimers();
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
 	});
 
 	describe('crypto cache', () => {
@@ -145,124 +163,74 @@ describe('TrustedKeyService', () => {
 	});
 
 	describe('initialize', () => {
-		it('should sync sources, refresh keys, and start refresh poller on the leader', async () => {
-			const { service, dbLockService } = createMocks({ isLeader: true });
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+		it('should sync sources and refresh keys on every instance', async () => {
+			const { service, dbLockService } = createMocks();
 
 			await service.initialize();
 
-			// sync + refresh both run under the distributed lock
-			expect(dbLockService.withLock).toHaveBeenCalled();
-			// refresh poller started
-			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-
-			service.stopRefresh();
-			setIntervalSpy.mockRestore();
-		});
-
-		it('should sync sources and refresh keys on followers without starting the refresh poller', async () => {
-			const { service, dbLockService } = createMocks({ isLeader: false });
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
-
-			await service.initialize();
-
-			// Followers MUST write sources and keys to DB at startup — this closes
+			// Every main MUST write sources and keys to DB at startup — this closes
 			// the multi-main race where a follower could serve verification before
-			// the leader had populated the table.
+			// the leader had populated the table. The periodic refresh thereafter
+			// is the trusted-key-refresh system task.
 			expect(dbLockService.withLock).toHaveBeenCalled();
-			// Periodic refresh is still leader-only
-			expect(setIntervalSpy).not.toHaveBeenCalled();
-
-			setIntervalSpy.mockRestore();
 		});
 	});
 
-	describe('leader lifecycle', () => {
-		it('should refresh keys and start the poller when a follower is elected leader', async () => {
-			const { service, dbLockService } = createMocks({ isLeader: false });
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+	describe('onLeaderTakeover', () => {
+		it('should refresh the remaining sources and resolve when one source fails', async () => {
+			const mocks = createMocks();
+			seedFailingAndDueSources(mocks);
 
-			await service.initialize();
-			expect(setIntervalSpy).not.toHaveBeenCalled();
+			await mocks.service.onLeaderTakeover();
+
+			expect(mocks.dbLockService.withLockContext).toHaveBeenCalledTimes(2);
+			expect(mocks.sourceRepo.refreshSource).toHaveBeenCalledWith(
+				'static',
+				expect.any(Function),
+				{},
+			);
+			expect(mockLogger.error).toHaveBeenCalledTimes(1);
+		});
+
+		it.each(['lock', 'write'] as const)(
+			'should refresh the remaining sources after a %s failure',
+			async (failureType) => {
+				const { service, sourceRepo, dbLockService } = createMocks();
+				const sources = [makeSource({ id: 'first' }), makeSource({ id: 'second' })];
+				const error = new Error(`${failureType} failed`);
+				sourceRepo.find.mockResolvedValue(sources);
+				if (failureType === 'lock') {
+					dbLockService.withLockContext.mockRejectedValueOnce(error);
+				} else {
+					sourceRepo.refreshSource.mockRejectedValueOnce(error);
+				}
+
+				await expect(service.onLeaderTakeover()).resolves.toBeUndefined();
+
+				expect(sourceRepo.refreshSource).toHaveBeenCalledWith('second', expect.any(Function), {});
+				expect(mockLogger.error).toHaveBeenCalledWith('Failed to refresh trusted key source', {
+					sourceId: 'first',
+					error,
+				});
+			},
+		);
+
+		it('should refresh keys from sources when a follower is elected leader', async () => {
+			const { service, sourceRepo, dbLockService } = createMocks();
+
+			const source = Object.assign(new TrustedKeySourceEntity(), {
+				id: 'static',
+				type: 'static' as const,
+				config: JSON.stringify([]),
+				status: 'healthy' as const,
+				lastError: null,
+				lastRefreshedAt: new Date(), // recency must not matter on takeover
+			});
+			sourceRepo.find.mockResolvedValue([source]);
 
 			await service.onLeaderTakeover();
 
-			// Takeover should re-fetch from sources...
-			expect(dbLockService.withLock).toHaveBeenCalled();
-			// ...and start the periodic poller that was previously follower-suppressed.
-			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-
-			service.stopRefresh();
-			setIntervalSpy.mockRestore();
-		});
-
-		it('should start refresh poll interval on leader takeover', () => {
-			const { service } = createMocks();
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
-
-			service.startRefresh();
-
-			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-			expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 30_000);
-
-			service.stopRefresh();
-			setIntervalSpy.mockRestore();
-		});
-
-		it('should not create duplicate interval on repeated startRefresh calls', () => {
-			const { service } = createMocks();
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
-
-			service.startRefresh();
-			service.startRefresh();
-
-			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-
-			service.stopRefresh();
-			setIntervalSpy.mockRestore();
-		});
-
-		it('should not start refresh if shutting down', () => {
-			const { service } = createMocks();
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
-
-			service.shutdown();
-			service.startRefresh();
-
-			expect(setIntervalSpy).not.toHaveBeenCalled();
-
-			setIntervalSpy.mockRestore();
-		});
-
-		it('should clear interval on leader stepdown', () => {
-			const { service } = createMocks();
-			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
-
-			service.startRefresh();
-			service.stopRefresh();
-
-			expect(clearIntervalSpy).toHaveBeenCalled();
-
-			// Call again to verify idempotency — should not throw
-			service.stopRefresh();
-
-			clearIntervalSpy.mockRestore();
-		});
-
-		it('should stop refresh on shutdown', () => {
-			const { service } = createMocks();
-			const setIntervalSpy = vi.spyOn(global, 'setInterval');
-
-			service.startRefresh();
-			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-
-			service.shutdown();
-			service.startRefresh();
-
-			// Still only 1 call — post-shutdown startRefresh is a no-op
-			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-
-			setIntervalSpy.mockRestore();
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
 		});
 	});
 
@@ -281,12 +249,10 @@ describe('TrustedKeyService', () => {
 
 			sourceRepo.find.mockResolvedValue([recentSource]);
 
-			service.startRefresh();
-			await vi.advanceTimersByTimeAsync(30_000);
-			service.stopRefresh();
+			await service.refreshDueSources(new AbortController().signal);
 
 			// Source was recently refreshed — should not trigger a refresh
-			expect(dbLockService.withLock).not.toHaveBeenCalled();
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
 		it('should refresh sources whose lastRefreshedAt exceeds the interval', async () => {
@@ -303,11 +269,9 @@ describe('TrustedKeyService', () => {
 
 			sourceRepo.find.mockResolvedValue([staleSource]);
 
-			service.startRefresh();
-			await vi.advanceTimersByTimeAsync(30_000);
-			service.stopRefresh();
+			await service.refreshDueSources(new AbortController().signal);
 
-			expect(dbLockService.withLock).toHaveBeenCalled();
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
 		});
 
 		it('should refresh sources that have never been refreshed', async () => {
@@ -324,11 +288,90 @@ describe('TrustedKeyService', () => {
 
 			sourceRepo.find.mockResolvedValue([newSource]);
 
-			service.startRefresh();
-			await vi.advanceTimersByTimeAsync(30_000);
-			service.stopRefresh();
+			await service.refreshDueSources(new AbortController().signal);
 
-			expect(dbLockService.withLock).toHaveBeenCalled();
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
+		});
+
+		it('should reject with the source error and stop at the failed source', async () => {
+			const mocks = createMocks();
+			seedFailingAndDueSources(mocks);
+
+			await expect(mocks.service.refreshDueSources(new AbortController().signal)).rejects.toThrow(
+				'jwks down',
+			);
+
+			expect(mocks.dbLockService.withLockContext).toHaveBeenCalledTimes(1);
+		});
+
+		it('should try the least recently updated source first', async () => {
+			const mocks = createMocks();
+
+			await mocks.service.refreshDueSources(new AbortController().signal);
+
+			expect(mocks.sourceRepo.find).toHaveBeenCalledWith({ order: { updatedAt: 'ASC' } });
+		});
+
+		it('should record a refresh failure after rollback and propagate the error', async () => {
+			const mocks = createMocks();
+			const { failing } = seedFailingAndDueSources(mocks);
+
+			await expect(mocks.service.refreshDueSources(new AbortController().signal)).rejects.toThrow(
+				'jwks down',
+			);
+
+			expect(mocks.sourceRepo.update).toHaveBeenCalledWith(failing.id, {
+				status: 'error',
+				lastError: 'jwks down',
+			});
+		});
+
+		it('should record a lock failure and propagate the error', async () => {
+			const mocks = createMocks();
+			const { failing } = seedFailingAndDueSources(mocks);
+			const error = new Error('lock failed');
+			mocks.dbLockService.withLockContext.mockRejectedValueOnce(error);
+
+			await expect(mocks.service.refreshDueSources(new AbortController().signal)).rejects.toBe(
+				error,
+			);
+
+			expect(mocks.sourceRepo.refreshSource).not.toHaveBeenCalled();
+			expect(mocks.sourceRepo.update).toHaveBeenCalledWith(failing.id, {
+				status: 'error',
+				lastError: 'lock failed',
+			});
+		});
+
+		it('should reject when the sources cannot be loaded', async () => {
+			const { service, sourceRepo } = createMocks();
+
+			sourceRepo.find.mockRejectedValue(new Error('DB error'));
+
+			await expect(service.refreshDueSources(new AbortController().signal)).rejects.toThrow(
+				'DB error',
+			);
+		});
+
+		it('should stop before the next source when the run is aborted', async () => {
+			const { service, sourceRepo, dbLockService } = createMocks();
+			const controller = new AbortController();
+
+			const staleSource = (id: string) =>
+				Object.assign(new TrustedKeySourceEntity(), {
+					id,
+					type: 'static' as const,
+					config: JSON.stringify([]),
+					status: 'healthy' as const,
+					lastError: null,
+					lastRefreshedAt: null,
+				});
+			sourceRepo.find.mockResolvedValue([staleSource('first'), staleSource('second')]);
+			dbLockService.withLockContext.mockImplementation(async () => controller.abort());
+
+			await service.refreshDueSources(controller.signal);
+
+			expect(dbLockService.withLockContext).toHaveBeenCalledTimes(1);
 		});
 	});
 });

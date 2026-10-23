@@ -40,6 +40,54 @@ describe('SSO store', () => {
 		},
 	);
 
+	describe('getSsoLoginUrl', () => {
+		const oidcLoginUrl = 'http://localhost:5678/rest/sso/oidc/login';
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should ask the backend for the SAML redirect with the destination', async () => {
+			vi.mocked(ssoApi.initSSO).mockResolvedValue('https://idp.example.com/saml?SAMLRequest=x');
+			ssoStore.initialize({
+				authenticationMethod: 'saml' as AuthenticationMethod,
+				config: { saml: { loginEnabled: true } },
+				features: { saml: true, ldap: false, oidc: false },
+			});
+
+			await expect(ssoStore.getSsoLoginUrl('/workflow/abc')).resolves.toBe(
+				'https://idp.example.com/saml?SAMLRequest=x',
+			);
+			expect(ssoApi.initSSO).toHaveBeenCalledWith(expect.anything(), '/workflow/abc');
+		});
+
+		it('should append the destination to the OIDC login URL', async () => {
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as AuthenticationMethod,
+				config: { oidc: { loginEnabled: true, loginUrl: oidcLoginUrl } },
+				features: { saml: false, ldap: false, oidc: true },
+			});
+
+			await expect(ssoStore.getSsoLoginUrl('/workflow/abc?tab=1&x=2')).resolves.toBe(
+				`${oidcLoginUrl}?redirect=%2Fworkflow%2Fabc%3Ftab%3D1%26x%3D2`,
+			);
+			await expect(ssoStore.getSsoLoginUrl()).resolves.toBe(oidcLoginUrl);
+			expect(ssoApi.initSSO).not.toHaveBeenCalled();
+		});
+
+		it('should reject when the OIDC login URL is missing', async () => {
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as AuthenticationMethod,
+				config: { oidc: { loginEnabled: true } },
+				features: { saml: false, ldap: false, oidc: true },
+			});
+
+			await expect(ssoStore.getSsoLoginUrl('/home')).rejects.toThrow(
+				'The OIDC login URL is not configured',
+			);
+		});
+	});
+
 	describe('OIDC callbackUrl after re-initialization', () => {
 		it('should populate callbackUrl when re-initialized with authenticated settings', () => {
 			// Simulate public settings (before login) — no callbackUrl

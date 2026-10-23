@@ -222,7 +222,7 @@ export const validFieldReferences: BinaryCheck = {
 					} else {
 						// Implicit reference: $json.field — use first upstream node
 						const upstreamNames = upstreamMap.get(node.name);
-						if (upstreamNames && upstreamNames.length === 1) {
+						if (upstreamNames?.length === 1) {
 							sourceNode = nodeByName.get(upstreamNames[0]);
 						}
 						// Multiple upstream nodes (merge) — can't determine which, skip

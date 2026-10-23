@@ -1,0 +1,96 @@
+{
+	"name": "onlineMeeting get by join URL (Service Principal)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6666-9999-77777",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [880, 380]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftEntraServicePrincipalApi",
+				"resource": "onlineMeeting",
+				"operation": "get",
+				"meetingId": {
+					"__rl": true,
+					"mode": "url",
+					"value": "https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZDE2Nzg0%40thread.v2/0?context=%7b%22Tid%22%3a%22abc%22%7d"
+				},
+				"organizerId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "11111111-2222-3333-4444-555555555555"
+				}
+			},
+			"id": "6666-5555-77777",
+			"name": "Microsoft Teams",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 2,
+			"position": [1100, 380],
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "spCredId",
+					"name": "Microsoft Entra Service Principal account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1400, 380]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi",
+					"startDateTime": "2026-09-10T10:00:00Z",
+					"endDateTime": "2026-09-10T10:30:00Z",
+					"joinWebUrl": "https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZDE2Nzg0%40thread.v2/0?context=%7b%22Tid%22%3a%22abc%22%7d",
+					"subject": "Quarterly Sync"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Teams",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Teams": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "0a5f7c1e-6c5f-4a1b-9c1e-1f2e3d4c5b6a",
+	"id": "onlineMeetingGetSp01",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

@@ -1,4 +1,4 @@
-import { SCHEDULER_ATTRIBUTES } from './attributes';
+import { pickSchedulerTaskIdentity } from './attributes';
 import { SpanStatus, type Tracer } from './tracer';
 import type { RecordedOccurrence } from '../core/materializer';
 
@@ -23,11 +23,7 @@ export async function traceCreatedTasks(
 			{
 				name: 'Scheduler task created',
 				op: 'scheduler.task.create',
-				attributes: {
-					[SCHEDULER_ATTRIBUTES.taskId]: task.id,
-					[SCHEDULER_ATTRIBUTES.jobId]: task.jobId,
-					[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
-				},
+				attributes: pickSchedulerTaskIdentity(task),
 			},
 			async (span) => {
 				span.setStatus({ code: SpanStatus.ok });

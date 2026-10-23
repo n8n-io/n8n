@@ -1,3 +1,5 @@
+import { isUnknownArray } from '@n8n/utils/is-unknown-array';
+
 /**
  * AI root nodes are the target of any `ai_*` connection — Agent/Chain nodes
  * to which language model, memory, tool, etc. sub-nodes attach. Pinning these
@@ -9,12 +11,6 @@
  */
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;
-}
-
-// `Array.isArray` narrows to `any[]` in lib.es5.d.ts; wrap it so the elements
-// stay typed as `unknown` and downstream checks have to narrow explicitly.
-function isUnknownArray(value: unknown): value is readonly unknown[] {
-	return Array.isArray(value);
 }
 
 export function findAiRootNodeNames(connections: unknown): Set<string> {

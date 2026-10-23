@@ -1,0 +1,111 @@
+import { Time } from '@n8n/constants';
+import { httpStatusFromError } from '@n8n/backend-network';
+import { isRecord } from '@n8n/utils/is-record';
+
+import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
+import {
+	integrationError,
+	rateLimitExceeded,
+	type IntegrationErrorResponse,
+} from './integration-helpers';
+import type { ChannelRateLimitGuard } from './channel-rate-limit.guard';
+
+export const CHANNEL_RATE_LIMIT_COOLDOWN_MS = 15 * Time.minutes.toMilliseconds;
+
+function isRateLimitExceededResult(value: unknown): boolean {
+	return (
+		isRecord(value) &&
+		value.ok === false &&
+		isRecord(value.error) &&
+		value.error.code === INTEGRATION_ERROR_CODES.RATE_LIMIT_EXCEEDED
+	);
+}
+
+function rateLimitMessageFromResult(value: unknown): string | undefined {
+	if (
+		isRecord(value) &&
+		value.ok === false &&
+		isRecord(value.error) &&
+		value.error.code === INTEGRATION_ERROR_CODES.RATE_LIMIT_EXCEEDED &&
+		typeof value.error.message === 'string'
+	) {
+		return value.error.message;
+	}
+	return undefined;
+}
+
+export function rateLimitMessageFromError(error: unknown): string | undefined {
+	if (!isRateLimitedToolOutput(error)) return undefined;
+	// Single result: { ok: false, error: { code, message } }
+	const single = rateLimitMessageFromResult(error);
+	if (single !== undefined) return single;
+	// Batched action calls nest per-operation results under `results`; the
+	// stream consumer stores the whole batch as the fallback, so extract the
+	// message from the first rate-limited entry before falling back.
+	if (isRecord(error) && Array.isArray(error.results)) {
+		for (const entry of error.results) {
+			if (!isRecord(entry)) continue;
+			const message = rateLimitMessageFromResult(entry.result);
+			if (message !== undefined) return message;
+		}
+	}
+	return undefined;
+}
+
+export function isRateLimitedToolOutput(output: unknown): boolean {
+	if (isRateLimitExceededResult(output)) return true;
+	if (!isRecord(output) || !Array.isArray(output.results)) return false;
+	return output.results.some((entry) => isRecord(entry) && isRateLimitExceededResult(entry.result));
+}
+
+export function isHttp429(error: unknown): boolean {
+	return httpStatusFromError(error) === 429;
+}
+
+// Capitalize-first-letter can't produce WhatsApp's internal capital; every
+// other platform this runs for (slack, telegram, discord, linear) needs no
+// exception.
+const PLATFORM_DISPLAY_LABEL_OVERRIDES: Record<string, string> = {
+	whatsapp: 'WhatsApp',
+};
+
+export function channelRateLimitMessage(platform: string): string {
+	const label =
+		PLATFORM_DISPLAY_LABEL_OVERRIDES[platform] ??
+		`${platform.charAt(0).toUpperCase()}${platform.slice(1)}`;
+	return `The ${label} integration has exceeded its rate limit. Please wait a few minutes before trying again.`;
+}
+
+/** A 429 for one recipient only. Don't block the whole connection for it. */
+export interface RecipientScopedRateLimitError {
+	response: { status: 429 };
+	rateLimitScope: 'recipient';
+}
+
+function isRecipientScopedRateLimit(error: unknown): boolean {
+	return isRecord(error) && error.rateLimitScope === 'recipient';
+}
+
+export function caughtIntegrationError(
+	error: unknown,
+	params: {
+		connectionId: string;
+		platform: string;
+		guard: ChannelRateLimitGuard | undefined;
+		failedCode:
+			| typeof INTEGRATION_ERROR_CODES.ACTION_FAILED
+			| typeof INTEGRATION_ERROR_CODES.CONTEXT_QUERY_FAILED;
+	},
+): IntegrationErrorResponse {
+	if (isHttp429(error)) {
+		if (isRecipientScopedRateLimit(error) && error instanceof Error) {
+			return rateLimitExceeded(error.message);
+		}
+		params.guard?.record(params.connectionId);
+		return rateLimitExceeded(channelRateLimitMessage(params.platform));
+	}
+	return integrationError(
+		params.failedCode,
+		error instanceof Error ? error.message : String(error),
+	);
+}

@@ -1,7 +1,11 @@
-import { BaseError } from '../../../src/errors/base/base.error';
-import { UnexpectedError } from '../../../src/errors/base/unexpected.error';
+import { BaseError, UnexpectedError as SharedUnexpectedError } from '@n8n/errors';
+import { UnexpectedError } from '../../../src/errors';
 
 describe('UnexpectedError', () => {
+	it('should re-export the shared class', () => {
+		expect(UnexpectedError).toBe(SharedUnexpectedError);
+	});
+
 	it('should be an instance of UnexpectedError', () => {
 		const error = new UnexpectedError('test');
 		expect(error).toBeInstanceOf(UnexpectedError);
@@ -10,6 +14,17 @@ describe('UnexpectedError', () => {
 	it('should be an instance of BaseError', () => {
 		const error = new UnexpectedError('test');
 		expect(error).toBeInstanceOf(BaseError);
+	});
+
+	it('should set name to the class name', () => {
+		const error = new UnexpectedError('test');
+		expect(error.name).toBe('UnexpectedError');
+	});
+
+	it('should keep name in the spread copy the engine saves', () => {
+		const error = new UnexpectedError('test');
+		const saved = { ...error, message: error.message, stack: error.stack };
+		expect(saved.name).toBe('UnexpectedError');
 	});
 
 	it('should have correct defaults', () => {

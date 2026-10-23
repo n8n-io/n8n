@@ -16,6 +16,7 @@ import type {
 	ToolCall,
 	ToolFunction,
 } from '../../helpers/interfaces';
+import { minimaxTextModelOptions } from '../../helpers/modelOptions';
 import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -23,17 +24,57 @@ const properties: INodeProperties[] = [
 		displayName: 'Model',
 		name: 'modelId',
 		type: 'options',
-		options: [
-			{ name: 'MiniMax-M2', value: 'MiniMax-M2' },
-			{ name: 'MiniMax-M2.1', value: 'MiniMax-M2.1' },
-			{ name: 'MiniMax-M2.1-Highspeed', value: 'MiniMax-M2.1-highspeed' },
-			{ name: 'MiniMax-M2.5', value: 'MiniMax-M2.5' },
-			{ name: 'MiniMax-M2.5-Highspeed', value: 'MiniMax-M2.5-highspeed' },
-			{ name: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
-			{ name: 'MiniMax-M2.7-Highspeed', value: 'MiniMax-M2.7-highspeed' },
-		],
+		options: minimaxTextModelOptions.v1,
 		default: 'MiniMax-M2.7',
 		description: 'The model to use for generating the response',
+		displayOptions: {
+			show: {
+				'@version': [1],
+			},
+		},
+	},
+	{
+		displayName: 'Model',
+		name: 'modelId',
+		type: 'options',
+		options: minimaxTextModelOptions.v1_1,
+		default: 'MiniMax-M3',
+		description: 'The model to use for generating the response',
+		displayOptions: {
+			show: {
+				'@version': [1.1],
+			},
+		},
+	},
+	{
+		displayName: 'Model',
+		name: 'modelId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: 'MiniMax-M3' },
+		required: true,
+		description: 'The model to use for generating the response',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'modelSearch',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. MiniMax-M3',
+			},
+		],
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.2 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Messages',
@@ -184,7 +225,7 @@ interface MessageOptions {
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const model = this.getNodeParameter('modelId', i) as string;
+	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const rawMessages = this.getNodeParameter('messages.values', i, []) as Array<{
 		content: string;
 		role: string;
@@ -223,7 +264,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.tools = tools;
 	}
 
-	let response = (await apiRequest.call(this, 'POST', '/chat/completions', {
+	let response = (await apiRequest.call(this, 'POST', '/v1/chat/completions', {
 		body,
 	})) as ChatCompletionResponse;
 
@@ -267,7 +308,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		await handleToolUse.call(this, choice.message.tool_calls, messages, connectedTools);
 		currentIteration++;
 
-		response = (await apiRequest.call(this, 'POST', '/chat/completions', {
+		response = (await apiRequest.call(this, 'POST', '/v1/chat/completions', {
 			body,
 		})) as ChatCompletionResponse;
 

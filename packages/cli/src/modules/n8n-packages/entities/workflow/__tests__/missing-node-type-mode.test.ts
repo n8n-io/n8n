@@ -1,3 +1,4 @@
+import type { MissingNodeTypeRequirement } from '../missing-node-type-mode';
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
@@ -31,6 +32,7 @@ function prepared(
 		} as WorkflowEntity,
 		sourceWorkflowId,
 		sourcePublished: false,
+		sourceArchived: false,
 		parentFolderId: null,
 	};
 }
@@ -55,7 +57,11 @@ describe('collectMissingNodeTypes', () => {
 		const workflows = [prepared('wf-1', [{ type: 'n8n-nodes-base.unknown', typeVersion: 2 }])];
 
 		expect(collectMissingNodeTypes(workflows, getSupportedVersions)).toEqual([
-			{ type: 'n8n-nodes-base.unknown', typeVersion: 2, usedByWorkflows: ['wf-1'] },
+			{
+				type: 'n8n-nodes-base.unknown',
+				typeVersion: 2,
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+			},
 		]);
 	});
 
@@ -63,7 +69,7 @@ describe('collectMissingNodeTypes', () => {
 		const workflows = [prepared('wf-1', [{ type: 'n8n-nodes-base.set', typeVersion: 4 }])];
 
 		expect(collectMissingNodeTypes(workflows, getSupportedVersions)).toEqual([
-			{ type: 'n8n-nodes-base.set', typeVersion: 4, usedByWorkflows: ['wf-1'] },
+			{ type: 'n8n-nodes-base.set', typeVersion: 4, usedBy: [{ kind: 'workflow', id: 'wf-1' }] },
 		]);
 	});
 
@@ -81,8 +87,19 @@ describe('collectMissingNodeTypes', () => {
 		];
 
 		expect(collectMissingNodeTypes(workflows, getSupportedVersions)).toEqual([
-			{ type: 'n8n-nodes-base.unknown', typeVersion: 1, usedByWorkflows: ['wf-1', 'wf-2'] },
-			{ type: 'n8n-nodes-base.unknown', typeVersion: 2, usedByWorkflows: ['wf-2'] },
+			{
+				type: 'n8n-nodes-base.unknown',
+				typeVersion: 1,
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-2' },
+				],
+			},
+			{
+				type: 'n8n-nodes-base.unknown',
+				typeVersion: 2,
+				usedBy: [{ kind: 'workflow', id: 'wf-2' }],
+			},
 		]);
 	});
 
@@ -94,13 +111,22 @@ describe('collectMissingNodeTypes', () => {
 		];
 
 		expect(collectMissingNodeTypes(workflows, getSupportedVersions)).toEqual([
-			{ type: 'n8n-nodes-base.unknown', typeVersion: 1, usedByWorkflows: ['wf-1', 'wf-2'] },
+			{
+				type: 'n8n-nodes-base.unknown',
+				typeVersion: 1,
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-2' },
+				],
+			},
 		]);
 	});
 });
 
 describe('missingNodeTypeBlockingFailures', () => {
-	const missing = [{ type: 'n8n-nodes-base.unknown', typeVersion: 1, usedByWorkflows: ['wf-1'] }];
+	const missing: MissingNodeTypeRequirement[] = [
+		{ type: 'n8n-nodes-base.unknown', typeVersion: 1, usedBy: [{ kind: 'workflow', id: 'wf-1' }] },
+	];
 
 	it('fail treats every missing pair as blocking', () => {
 		expect(missingNodeTypeBlockingFailures('fail', missing)).toEqual(missing);
@@ -114,8 +140,22 @@ describe('missingNodeTypeBlockingFailures', () => {
 describe('workflowsWithMissingNodeTypes', () => {
 	it('unions the workflow ids across every missing pair', () => {
 		const blocked = workflowsWithMissingNodeTypes([
-			{ type: 'n8n-nodes-base.unknown', typeVersion: 1, usedByWorkflows: ['wf-1', 'wf-2'] },
-			{ type: 'n8n-nodes-base.other', typeVersion: 2, usedByWorkflows: ['wf-2', 'wf-3'] },
+			{
+				type: 'n8n-nodes-base.unknown',
+				typeVersion: 1,
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-2' },
+				],
+			},
+			{
+				type: 'n8n-nodes-base.other',
+				typeVersion: 2,
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-2' },
+					{ kind: 'workflow', id: 'wf-3' },
+				],
+			},
 		]);
 
 		expect(blocked).toEqual(new Set(['wf-1', 'wf-2', 'wf-3']));

@@ -1,3 +1,4 @@
+import type { ResourceEditorDestination } from '@/features/collaboration/projects/projects.types';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
@@ -45,6 +46,7 @@ import {
 	parseTemplatedAuthField,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 } from '../templatedAuth.utils';
+import { hasManagedOAuthApp } from '../credentials.utils';
 
 const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 	'scope',
@@ -54,6 +56,9 @@ const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 ]);
 
 export interface UseCredentialFormOptions {
+	initialName?: MaybeRefOrGetter<string | undefined>;
+	initialData?: MaybeRefOrGetter<Record<string, unknown> | undefined>;
+	destination?: MaybeRefOrGetter<ResourceEditorDestination | undefined>;
 	mode: MaybeRefOrGetter<'new' | 'edit'>;
 	/** In 'new' mode: the credential type to create. In 'edit' mode: the credential id to load. */
 	activeId?: MaybeRefOrGetter<string | undefined>;
@@ -116,6 +121,11 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	});
 
 	const homeProject = computed(() => {
+		const destination = toValue(options.destination);
+		if (destination?.kind === 'resolved') return destination.project;
+		if (destination?.kind === 'pending') {
+			return projectsStore.myProjects.find((project) => project.id === destination.id);
+		}
 		const overrideProjectId = toValue(options.projectId);
 		if (overrideProjectId) {
 			const override = projectsStore.myProjects.find((p) => p.id === overrideProjectId);
@@ -173,10 +183,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 	const parentTypes = computed(() =>
 		credentialTypeName.value ? getParentTypes(credentialTypeName.value) : [],
-	);
-
-	const nodesWithAccess = computed(() =>
-		credentialTypeName.value ? credentialsStore.getNodesWithAccess(credentialTypeName.value) : [],
 	);
 
 	// --- OAuth / managed derivations ---------------------------------------
@@ -316,21 +322,27 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		});
 		if (hasUntestableExpressions) return false;
 
-		const nodesThatCanTest = nodesWithAccess.value.filter((node) =>
-			node.credentials?.some(
-				(credential) => credential.name === credentialTypeName.value && credential.testedBy,
-			),
-		);
-		return !!nodesThatCanTest.length || (!!credentialType.value && !!credentialType.value.test);
+		if (!credentialTypeName.value) return false;
+
+		return credentialsStore.isCredentialTypeTestable(credentialTypeName.value);
 	});
 
-	const credentialPermissions = computed(
-		() =>
-			getResourcePermissions(
-				(currentCredential.value as ICredentialsResponse | null)?.scopes ??
-					homeProject.value?.scopes,
-			).credential,
-	);
+	const credentialPermissions = computed(() => {
+		const permissions = getResourcePermissions(
+			currentCredential.value?.scopes ?? homeProject.value?.scopes,
+		).credential;
+		const destination = toValue(options.destination);
+		if (
+			destination?.kind === 'pending' &&
+			toValue(options.mode) === 'new' &&
+			!credentialId.value &&
+			!currentCredential.value &&
+			!homeProject.value
+		) {
+			return { ...permissions, create: destination.permissions.create };
+		}
+		return permissions;
+	});
 
 	// --- helpers -----------------------------------------------------------
 	function getParentTypes(name: string): string[] {
@@ -359,10 +371,11 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 	function displayCredentialParameter(parameter: INodeProperties): boolean {
 		if (parameter.type === 'hidden') return false;
-
+		const isManagedCredential = isEditingManagedCredential.value || isManagedOAuthMode.value;
 		if (
 			MANAGED_CREDENTIAL_HIDDEN_PROPERTIES.has(parameter.name) &&
-			(isEditingManagedCredential.value || isManagedOAuthMode.value)
+			isManagedCredential &&
+			!credentialType.value?.__showManagedOAuthScopes
 		) {
 			return false;
 		}
@@ -388,12 +401,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	}
 
 	function hasManagedOAuthCredentials(credType: string): boolean {
-		const type = credentialsStore.getCredentialTypeByName(credType);
-		if (type?.__skipManagedCreation) return false;
-		return !!(
-			type?.__overwrittenProperties?.includes('clientId') &&
-			type.__overwrittenProperties.includes('clientSecret')
-		);
+		return hasManagedOAuthApp(credentialsStore.getCredentialTypeByName(credType));
 	}
 
 	function usesExternalSecrets(data: Record<string, unknown>): boolean {
@@ -514,6 +522,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 				? { acceptedStatusCodes: JSON.stringify(setupHint.acceptedStatusCodes) }
 				: {}),
 			...(setupHint.serviceHost ? { serviceHost: setupHint.serviceHost } : {}),
+			...(setupHint.serviceOrigin ? { serviceOrigin: setupHint.serviceOrigin } : {}),
 		};
 	}
 
@@ -534,6 +543,24 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
 				? toValue(options.setupHint)
 				: undefined;
+		// Render the form immediately; generating its saved name can wait for the server.
+		setCredentialPropertyDefaults();
+		if (setupHint) seedFromSetupHint(setupHint);
+		const initialData = toValue(options.initialData);
+		if (initialData) {
+			const data = deepCopy(initialData);
+			for (const property of mergedProperties.value) {
+				const value = data[property.name];
+				if (property.type === 'json' && typeof value === 'object' && value !== null) {
+					data[property.name] = JSON.stringify(value);
+				}
+			}
+			Object.assign(credentialData.value, data);
+			// Client fields that the instance overwrites only show in custom OAuth mode.
+			if (credentialType.value?.__overwrittenProperties?.some((name) => name in initialData)) {
+				useCustomOAuth.value = true;
+			}
+		}
 		// Recipe-created credentials carry the creator's name ("fal.ai API Key
 		// (Jan D)") so same-recipe credentials stay tellable-apart in shared
 		// projects. A host-suggested name still needs the numbering dedup —
@@ -543,15 +570,15 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			const base = setupHint.suggestedName || suggestedName;
 			if (base) suggestedName = composeCredentialNameWithUser(base, usersStore.currentUser);
 		}
-		credentialName.value = suggestedName
-			? await credentialsStore.getDedupedCredentialName(suggestedName)
-			: credentialTypeName.value
-				? await credentialsStore.getNewCredentialName({
-						credentialTypeName: credentialTypeName.value,
-					})
-				: (credentialType.value?.displayName ?? '');
-		setCredentialPropertyDefaults();
-		if (setupHint) seedFromSetupHint(setupHint);
+		credentialName.value =
+			toValue(options.initialName) ??
+			(suggestedName
+				? await credentialsStore.getDedupedCredentialName(suggestedName)
+				: credentialTypeName.value
+					? await credentialsStore.getNewCredentialName({
+							credentialTypeName: credentialTypeName.value,
+						})
+					: (credentialType.value?.displayName ?? ''));
 		if (homeProject.value) {
 			credentialData.value = { ...credentialData.value, homeProject: homeProject.value };
 		}
@@ -658,7 +685,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		credentialType,
 		mergedProperties,
 		parentTypes,
-		nodesWithAccess,
 		isOAuthType,
 		isOAuthConnected,
 		isManagedOAuthMode,
@@ -674,7 +700,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		getParentTypes,
 		getCredentialProperties,
 		displayCredentialParameter,
-		hasManagedOAuthCredentials,
 		usesExternalSecrets,
 		setCredentialPropertyDefaults,
 		resetCredentialData,

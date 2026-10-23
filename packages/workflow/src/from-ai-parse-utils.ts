@@ -479,7 +479,7 @@ function collectDefaults(props: INodeProperties[], defaults: Set<string>) {
 						defaults.add(nested.default);
 					}
 					if (nested.options) {
-						collectDefaults([nested] as unknown as INodeProperties[], defaults);
+						collectDefaults([nested], defaults);
 					}
 				}
 			}

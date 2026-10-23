@@ -135,7 +135,7 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 			<!-- We weren't able to parse text or raw switch -->
 			<div v-else :class="$style.rawContent">
 				<N8nIconButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					:class="$style.copyToClipboard"
 					:title="i18n.baseText('nodeErrorView.copyToClipboard')"

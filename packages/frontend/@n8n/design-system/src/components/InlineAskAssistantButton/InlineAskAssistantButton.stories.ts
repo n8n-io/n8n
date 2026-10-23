@@ -30,8 +30,15 @@ AskedButton.args = {
 	asked: true,
 };
 
-export const Small = Template.bind({});
-Small.args = { size: 'small' };
+export const Sizes: StoryFn = () => ({
+	components: { InlineAskAssistantButton },
+	template: `
+		<div style="display: flex; gap: 16px; align-items: center;">
+			<InlineAskAssistantButton size="small" />
+			<InlineAskAssistantButton size="medium" />
+		</div>
+	`,
+});
 
 export const Static = Template.bind({});
 Static.args = { static: true };

@@ -1,4 +1,5 @@
 import { createWorkflow, createWorkflowHistory, testDb } from '@n8n/backend-test-utils';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import type { IWorkflowDb } from '@n8n/db';
 import {
 	WorkflowHistoryRepository,
@@ -25,6 +26,15 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 	// own workflow/version since they delete the parent.
 	let workflow: IWorkflowDb;
 
+	// Fixtures for the batch count query.
+	let wfAllOk: IWorkflowDb;
+	let wfPartial: IWorkflowDb;
+	let wfAllFailed: IWorkflowDb;
+	let wfNone: IWorkflowDb;
+	const versionId1 = 'v-count-1';
+	const versionId2 = 'v-count-2';
+	const versionId3 = 'v-count-3';
+
 	beforeAll(async () => {
 		await testDb.init();
 		repo = Container.get(WorkflowPublicationTriggerStatusRepository);
@@ -37,6 +47,14 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		// Mark the workflow active: `findActivatedInMemoryTriggers` only considers
 		// workflows with an `activeVersionId`. Set after seeding to satisfy the FK.
 		await workflowRepository.update(workflow.id, { activeVersionId: 'v1' });
+
+		wfAllOk = await createWorkflow();
+		await seedVersions(wfAllOk, [versionId1]);
+		wfPartial = await createWorkflow();
+		await seedVersions(wfPartial, [versionId2]);
+		wfAllFailed = await createWorkflow();
+		await seedVersions(wfAllFailed, [versionId3]);
+		wfNone = await createWorkflow();
 	});
 	afterEach(async () => {
 		await testDb.truncate(['WorkflowPublicationTriggerStatus', 'WorkflowPublicationOutbox']);
@@ -74,6 +92,24 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		const rows = await repo.findByWorkflowId(workflow.id);
 		expect(rows).toHaveLength(1);
 		expect(rows[0]).toMatchObject({ nodeId: 'n1', versionId: 'v2', status: 'activated' });
+	});
+
+	it('replaceForWorkflow stores node ids of the maximum length', async () => {
+		const longNodeId = 'n'.repeat(NODE_ID_MAX_LENGTH);
+
+		await repo.replaceForWorkflow(workflow.id, [
+			{
+				nodeId: longNodeId,
+				versionId: 'v1',
+				status: 'activated',
+				errorMessage: null,
+				triggerKind: 'persisted',
+			},
+		]);
+
+		expect(await repo.findByWorkflowId(workflow.id)).toEqual([
+			expect.objectContaining({ nodeId: longNodeId }),
+		]);
 	});
 
 	it('replaceForWorkflow with an empty list clears all rows', async () => {
@@ -308,6 +344,76 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 			expect(await repo.findActivatedInMemoryTriggers()).toEqual([
 				{ workflowId: workflow.id, nodeId: 'poll1' },
 			]);
+		});
+	});
+
+	describe('getStatusCountsByWorkflowIds', () => {
+		it('returns total and failed counts grouped per workflow, and omits workflows with no rows', async () => {
+			// wfAllOk: 2 activated; wfPartial: 1 activated + 1 failed; wfAllFailed: 2 failed; wfNone: no rows
+			await repo.replaceForWorkflow(wfAllOk.id, [
+				{
+					nodeId: 'n1',
+					versionId: versionId1,
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'in-memory',
+				},
+				{
+					nodeId: 'n2',
+					versionId: versionId1,
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'in-memory',
+				},
+			]);
+			await repo.replaceForWorkflow(wfPartial.id, [
+				{
+					nodeId: 'n1',
+					versionId: versionId2,
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'in-memory',
+				},
+				{
+					nodeId: 'n2',
+					versionId: versionId2,
+					status: 'failed',
+					errorMessage: 'boom',
+					triggerKind: 'in-memory',
+				},
+			]);
+			await repo.replaceForWorkflow(wfAllFailed.id, [
+				{
+					nodeId: 'n1',
+					versionId: versionId3,
+					status: 'failed',
+					errorMessage: 'boom',
+					triggerKind: 'in-memory',
+				},
+				{
+					nodeId: 'n2',
+					versionId: versionId3,
+					status: 'failed',
+					errorMessage: 'boom',
+					triggerKind: 'in-memory',
+				},
+			]);
+
+			const counts = await repo.getStatusCountsByWorkflowIds([
+				wfAllOk.id,
+				wfPartial.id,
+				wfAllFailed.id,
+				wfNone.id,
+			]);
+
+			expect(counts.get(wfAllOk.id)).toEqual({ total: 2, failed: 0 });
+			expect(counts.get(wfPartial.id)).toEqual({ total: 2, failed: 1 });
+			expect(counts.get(wfAllFailed.id)).toEqual({ total: 2, failed: 2 });
+			expect(counts.has(wfNone.id)).toBe(false);
+		});
+
+		it('returns an empty map for an empty id list', async () => {
+			expect(await repo.getStatusCountsByWorkflowIds([])).toEqual(new Map());
 		});
 	});
 });

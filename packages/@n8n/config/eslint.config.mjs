@@ -1,22 +1,9 @@
 import { defineConfig } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
-export default defineConfig(
-	nodeConfig,
-	{
-		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-
-			// TODO: Remove this
-			'@typescript-eslint/naming-convention': 'warn',
-			'@typescript-eslint/no-unsafe-call': 'warn',
-			'@typescript-eslint/no-unsafe-function-type': 'warn',
-		},
+export default defineConfig(backendConfig, {
+	files: ['**/*.config.ts'],
+	rules: {
+		'n8n-local-rules/no-untyped-config-class-field': 'error',
 	},
-	{
-		files: ['**/*.config.ts'],
-		rules: {
-			'n8n-local-rules/no-untyped-config-class-field': 'error',
-		},
-	},
-);
+});

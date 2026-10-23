@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, Project } from '@n8n/db';
@@ -10,12 +10,16 @@ import {
 	DeploymentKeyRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { IRun } from 'n8n-workflow';
+import { ErrorReporter } from 'n8n-core';
+import type { INode, IRun } from 'n8n-workflow';
+import { Expression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
@@ -41,15 +45,18 @@ const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 const shutdownService = mockInstance(ShutdownService);
 const deprecationService = mockInstance(DeprecationService);
 mockInstance(MessageEventBus);
-mockInstance(ExpressionObservabilityProvider);
+const expressionObservability = mockInstance(ExpressionObservabilityProvider);
 const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
 mockInstance(License);
 mockInstance(LicenseState);
 mockInstance(CommunityPackagesService);
+mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 
+const logger = mockInstance(Logger);
+const errorReporter = mockInstance(ErrorReporter);
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
@@ -57,10 +64,34 @@ mockInstance(AuthRolesService);
 mockInstance(BinaryDataRepository);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
-deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
-test('should start a task runner', async () => {
+// BaseCommand.init() wires the encryption key provider; this command-init test
+// does not exercise encryption, so keep the bootstrap a no-op.
+mockInstance(EncryptionBootstrapService);
+
+// minimal command for exercising BaseCommand.init():
+// Execute.init() chains singletons that cannot init twice per process
+class ReadOnlyCommand extends BaseCommand {}
+
+// default config for every test, so none depends on what an earlier test leaked
+// into the container; tests that need different values set their own
+beforeEach(() => {
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: { engine: 'legacy' },
+			// must be numeric: the SIGTERM/SIGINT handlers registered by init() compute
+			// a setTimeout delay from it, and a mock proxy yields NaN at pool teardown
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+});
+
+test('should start a task runner and the policy modules', async () => {
 	// arrange
 
 	const workflow = mock<WorkflowEntity>({
@@ -85,13 +116,7 @@ test('should start a task runner', async () => {
 	workflowRunner.run.mockResolvedValue('123');
 	activeExecutions.getPostExecutePromise.mockResolvedValue(run);
 
-	Container.set(
-		GlobalConfig,
-		mock<GlobalConfig>({
-			taskRunners: {},
-			nodes: {},
-		}),
-	);
+	const initModules = vi.spyOn(Container.get(ModuleRegistry), 'initModules');
 
 	const cmd = new Execute();
 	// @ts-expect-error Protected property
@@ -105,16 +130,20 @@ test('should start a task runner', async () => {
 	// assert
 
 	expect(taskRunnerModule.start).toHaveBeenCalledTimes(1);
+	expect(initModules).toHaveBeenCalledWith(expect.anything(), [
+		'policy-infrastructure',
+		'type-availability-policies',
+	]);
 });
 
 test('should not seed the instance identity and should tolerate deployment key read errors', async () => {
 	// arrange
 
-	deploymentKeyRepository.insertOrIgnore.mockClear();
-	deploymentKeyRepository.findActiveByType.mockRejectedValueOnce(new Error('permission denied'));
+	deploymentKeyRepository.seedActiveIdentifier.mockClear();
+	deploymentKeyRepository.findActiveIdentifier.mockRejectedValueOnce(
+		new Error('permission denied'),
+	);
 
-	// minimal command: Execute.init() chains singletons that cannot init twice per process
-	class ReadOnlyCommand extends BaseCommand {}
 	const cmd = new ReadOnlyCommand();
 
 	// act
@@ -123,5 +152,384 @@ test('should not seed the instance identity and should tolerate deployment key r
 
 	// assert
 
-	expect(deploymentKeyRepository.insertOrIgnore).not.toHaveBeenCalled();
+	expect(deploymentKeyRepository.seedActiveIdentifier).not.toHaveBeenCalled();
 });
+
+test('should not init the expression engine for commands that do not need it', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue(undefined);
+	const setEngineSpy = vi.spyOn(Expression, 'setExpressionEngine').mockReturnValue(undefined);
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: { engine: 'vm' },
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+
+	const cmd = new ReadOnlyCommand();
+
+	// act
+
+	await cmd.init();
+
+	// assert
+
+	expect(initSpy).not.toHaveBeenCalled();
+	// the configured engine is still recorded, so evaluating an expression without
+	// an initialized engine throws instead of silently using the legacy engine
+	expect(setEngineSpy).toHaveBeenCalledWith('vm');
+});
+
+test('should exit with a crash when expression engine init fails', async () => {
+	// arrange
+
+	const initSpy = vi
+		.spyOn(Expression, 'initExpressionEngine')
+		.mockRejectedValue(new Error('isolated-vm failed to load'));
+	const exitSpy = vi
+		.spyOn(BaseCommand.prototype, 'exitWithCrash')
+		.mockResolvedValue(undefined as never);
+
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: {
+				engine: 'vm',
+				poolSize: 4,
+				maxCodeCacheSize: 1024,
+				bridgeTimeout: 5000,
+				bridgeMemoryLimit: 128,
+				idleTimeout: 30,
+				lazyAcquire: false,
+				compileCache: false,
+				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
+			},
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+	errorReporter.isSentryActive.mockReturnValue(true);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+	const cmd = new ExpressionCommand();
+
+	// act
+
+	await cmd.init();
+
+	// assert
+
+	expect(initSpy).toHaveBeenCalledTimes(1);
+	expect(initSpy).toHaveBeenCalledWith({
+		engine: 'vm',
+		poolSize: 4,
+		maxCodeCacheSize: 1024,
+		bridgeTimeout: 5000,
+		bridgeMemoryLimit: 128,
+		idleTimeoutMs: 30_000, // the config value is in seconds
+		lazyAcquire: false,
+		compileCache: false,
+		nativeEvaluation: false,
+		nativeEvaluationVerifySample: 0.01,
+		reportNativeVerifyMismatch: expect.any(Function),
+		canReportNativeVerifyMismatch: expect.any(Function),
+		observability: expressionObservability,
+	});
+	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));
+});
+
+test('reports a native verify mismatch to Sentry without the request scope', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: {
+				engine: 'vm',
+				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
+			},
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+	errorReporter.isSentryActive.mockReturnValue(true);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+	await new ExpressionCommand().init();
+
+	// act
+
+	const [{ reportNativeVerifyMismatch }] = initSpy.mock.calls[0];
+	reportNativeVerifyMismatch?.({
+		skeleton: '{{ $json.<id> }}',
+		engine: 'vm',
+		nativeResultType: 'string',
+		engineResultType: 'number',
+		workflowId: 'wf-1',
+	});
+
+	// assert
+
+	expect(errorReporter.info).toHaveBeenCalledWith(
+		'Native evaluation result differs from the expression engine',
+		{
+			tags: { expressionEngine: 'vm' },
+			extra: {
+				skeleton: '{{ $json.<id> }}',
+				nativeResultType: 'string',
+				engineResultType: 'number',
+				workflowId: 'wf-1',
+			},
+			fingerprint: ['native-evaluation-verify-mismatch', '{{ $json.<id> }}'],
+			shouldIsolate: true,
+		},
+	);
+});
+
+test('stops native verify reports when Sentry turns off', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: {
+				engine: 'vm',
+				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
+			},
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+	errorReporter.isSentryActive.mockReturnValue(true);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+	await new ExpressionCommand().init();
+	const [{ canReportNativeVerifyMismatch }] = initSpy.mock.calls[0];
+
+	// act
+
+	errorReporter.isSentryActive.mockReturnValue(false);
+
+	// assert
+
+	expect(canReportNativeVerifyMismatch?.()).toBe(false);
+});
+
+const verifyLog = {
+	active: 'Native evaluation verify mode is active',
+	nativeEnabled: 'Native evaluation verify mode does nothing because native evaluation is enabled',
+	legacy: 'Native evaluation verify mode does nothing because the expression engine is legacy',
+	noSentry: 'Native evaluation verify mode does nothing because Sentry is not active',
+};
+
+test.each([
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'vm',
+		sentryActive: true,
+		warn: undefined,
+		info: verifyLog.active,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'quickjs',
+		sentryActive: true,
+		warn: undefined,
+		info: verifyLog.active,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'vm',
+		sentryActive: false,
+		warn: verifyLog.noSentry,
+		info: undefined,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0.01,
+		engine: 'legacy',
+		sentryActive: true,
+		warn: verifyLog.legacy,
+		info: undefined,
+	},
+	{
+		nativeEvaluation: true,
+		sample: 0.01,
+		engine: 'vm',
+		sentryActive: true,
+		warn: verifyLog.nativeEnabled,
+		info: undefined,
+	},
+	{
+		nativeEvaluation: false,
+		sample: 0,
+		engine: 'vm',
+		sentryActive: true,
+		warn: undefined,
+		info: undefined,
+	},
+] as const)(
+	'logs verify mode status at startup: native $nativeEvaluation, sample $sample on $engine, Sentry active $sentryActive',
+	async ({ nativeEvaluation, sample, engine, sentryActive, warn, info }) => {
+		// arrange
+
+		vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				taskRunners: {},
+				nodes: {},
+				expressionEngine: { engine, nativeEvaluation, nativeEvaluationVerifySample: sample },
+				generic: { gracefulShutdownTimeout: 30 },
+			}),
+		);
+		errorReporter.isSentryActive.mockReturnValue(sentryActive);
+
+		class ExpressionCommand extends BaseCommand {
+			override needsExpressionEngine = true;
+		}
+
+		// act
+
+		await new ExpressionCommand().init();
+
+		// assert
+
+		const verifyWarnings = logger.warn.mock.calls.filter(([message]) =>
+			message.startsWith('Native evaluation verify mode'),
+		);
+		const verifyInfos = logger.info.mock.calls.filter(([message]) =>
+			message.startsWith('Native evaluation verify mode'),
+		);
+		expect(verifyWarnings).toEqual(warn ? [[warn]] : []);
+		expect(verifyInfos).toEqual(info ? [[info, { sample, engine }]] : []);
+	},
+);
+
+test('passes no verify reporter when Sentry is not active', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: {
+				engine: 'vm',
+				nativeEvaluation: false,
+				nativeEvaluationVerifySample: 0.01,
+			},
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+	errorReporter.isSentryActive.mockReturnValue(false);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+
+	// act
+
+	await new ExpressionCommand().init();
+
+	// assert
+
+	expect(initSpy.mock.calls[0][0].reportNativeVerifyMismatch).toBeUndefined();
+});
+
+test('exitWithCrash logs the crash message to the console', async () => {
+	// arrange
+
+	const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+	vi.useFakeTimers();
+
+	const cmd = new ReadOnlyCommand();
+	// @ts-expect-error Protected property, set directly to avoid another init() traversal
+	cmd.errorReporter = errorReporter;
+
+	const cause = new Error('isolated-vm failed to load');
+
+	// act
+
+	try {
+		// @ts-expect-error Protected method
+		const promise: Promise<void> = cmd.exitWithCrash('something broke', cause);
+		await vi.advanceTimersByTimeAsync(2000);
+		await promise;
+	} finally {
+		vi.useRealTimers();
+	}
+
+	// assert
+
+	// the error reporter may only reach Sentry, so the message must also hit the console
+	expect(logger.error).toHaveBeenCalledWith('something broke', { error: cause });
+	expect(exitSpy).toHaveBeenCalledWith(1);
+});
+
+test('execute needs the expression engine', () => {
+	expect(new Execute().needsExpressionEngine).toBe(true);
+});
+
+test.each([true, false])(
+	'starts from the selected trigger when pinned data is %s',
+	async (pinned) => {
+		const startingNode = mock<INode>({
+			name: 'Execute Workflow Trigger',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+		});
+		const workflow = mock<WorkflowEntity>({
+			id: '123',
+			nodes: [
+				mock<INode>({ name: 'Manual Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+				startingNode,
+			],
+			pinData: pinned ? { [startingNode.name]: [{ json: {} }] } : undefined,
+		});
+		workflowRepository.findOneBy.mockResolvedValue(workflow);
+		ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: 'owner-id' }));
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-id', name: 'Project' }),
+		);
+		workflowRunner.run.mockResolvedValue('execution-id');
+		activeExecutions.getPostExecutePromise.mockResolvedValue(
+			mock<IRun>({ data: { resultData: { error: undefined } } }),
+		);
+		workflowRunner.run.mockClear();
+
+		const cmd = new Execute();
+		// @ts-expect-error Protected property
+		cmd.flags = { id: workflow.id };
+
+		await cmd.run();
+
+		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith({
+			executionMode: 'cli',
+			triggerToStartFrom: { name: startingNode.name },
+			workflowData: workflow,
+			userId: 'owner-id',
+		});
+	},
+);

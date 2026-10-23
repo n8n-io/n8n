@@ -1,35 +1,25 @@
-import type { BuiltTool, CredentialProvider, InterruptibleToolContext } from '@n8n/agents';
+import type { BuiltTool, CredentialListItem, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	GENERIC_AUTH_CREDENTIAL_TYPES,
 	MANAGED_CREDENTIAL_TOKEN,
 	askCredentialInputSchema,
 	credentialResumeSchema,
 	credentialSuspendPayloadSchema,
+	shouldAutoResolveCredential,
 	type AskCredentialInput,
 	type CredentialResumeData,
 	type CredentialSuspendPayload,
+	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
-
+import type { BuilderCredentialService } from '../builder-session';
 import type { BuilderTrackFn } from '../builder-config-telemetry';
+import type { CredentialSetupDeps } from './setup-tool.types';
 
-export interface AskCredentialToolDeps {
-	credentialProvider: CredentialProvider;
-	isCredentialTypeKnown?: (credentialType: string) => boolean;
-	/**
-	 * Credential ids of the agent's configured chat channel integrations. When
-	 * one of them matches the requested credential type, it is reused for the
-	 * tool instead of asking the user to pick a credential.
-	 */
-	listIntegrationCredentialIds?: () => Promise<string[]>;
-	track: BuilderTrackFn;
-}
-
-export interface AskEmbeddingCredentialToolDeps extends AskCredentialToolDeps {
+export interface AskEmbeddingCredentialToolDeps extends CredentialSetupDeps {
 	isAssistantProxyEnabled: () => boolean;
 }
 
@@ -38,7 +28,7 @@ type AskCredentialToolResult =
 	| {
 			credentialId: string;
 			credentialName: string;
-			credentials: Record<string, { id: string; name: string }>;
+			credentials: Record<string, Pick<CredentialListItem, 'id' | 'name'>>;
 	  };
 
 function withNodeCredentialMap(
@@ -58,18 +48,20 @@ function withNodeCredentialMap(
 
 /** Existing credentials of the requested type — used both for the suspend card and to resolve a display name on resume. */
 async function listExistingCredentials(
-	credentialProvider: CredentialProvider,
+	credentialService: BuilderCredentialService,
+	projectId: string,
 	credentialType: string,
-): Promise<Array<{ id: string; name: string }>> {
-	const all = await credentialProvider.list();
-	return all.filter((c) => c.type === credentialType).map((c) => ({ id: c.id, name: c.name }));
+): Promise<Array<Pick<CredentialListItem, 'id' | 'name'>>> {
+	const all = await credentialService.list({ type: credentialType, projectId });
+	return all.map((c) => ({ id: c.id, name: c.name }));
 }
 
 /** Resolve the resume leg — a selection, a denial, or a dismissal — into the tool's output shape. */
 async function resolveResume(
 	input: AskCredentialInput,
 	resumeData: CredentialResumeData,
-	credentialProvider: CredentialProvider,
+	credentialService: BuilderCredentialService,
+	projectId: string,
 	track: BuilderTrackFn,
 ): Promise<AskCredentialToolResult> {
 	if (!('credentials' in resumeData)) {
@@ -90,7 +82,8 @@ async function resolveResume(
 	}
 
 	const existingCredentials = await listExistingCredentials(
-		credentialProvider,
+		credentialService,
+		projectId,
 		input.credentialType,
 	);
 	const match = existingCredentials.find((c) => c.id === credentialId);
@@ -104,10 +97,16 @@ async function resolveResume(
 async function resolveCredentialSelection(
 	input: AskCredentialInput,
 	ctx: InterruptibleToolContext<CredentialSuspendPayload, CredentialResumeData>,
-	deps: AskCredentialToolDeps,
+	deps: CredentialSetupDeps,
 ): Promise<AskCredentialToolResult> {
 	if (ctx.resumeData !== undefined && ctx.resumeData !== null) {
-		return await resolveResume(input, ctx.resumeData, deps.credentialProvider, deps.track);
+		return await resolveResume(
+			input,
+			ctx.resumeData,
+			deps.credentialService,
+			deps.projectId,
+			deps.track,
+		);
 	}
 
 	if (deps.isCredentialTypeKnown && !deps.isCredentialTypeKnown(input.credentialType)) {
@@ -117,7 +116,8 @@ async function resolveCredentialSelection(
 	}
 
 	const existingCredentials = await listExistingCredentials(
-		deps.credentialProvider,
+		deps.credentialService,
+		deps.projectId,
 		input.credentialType,
 	);
 
@@ -137,10 +137,7 @@ async function resolveCredentialSelection(
 	// a card the user can only confirm. Generic auth types are excluded: the
 	// type alone does not identify a service, so the sole credential must not
 	// be attached to an arbitrary destination without the user picking it.
-	if (
-		existingCredentials.length === 1 &&
-		!GENERIC_AUTH_CREDENTIAL_TYPES.has(input.credentialType)
-	) {
+	if (shouldAutoResolveCredential(input.credentialType, existingCredentials.length)) {
 		return withNodeCredentialMap(input, existingCredentials[0].id, existingCredentials[0].name);
 	}
 
@@ -159,16 +156,18 @@ async function resolveCredentialSelection(
 			},
 		],
 		credentialFlow: { stage: 'generic' as const },
+		projectId: deps.projectId,
 	});
 }
 
-export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
+export function buildAskCredentialTool(deps: CredentialSetupDeps): BuiltTool {
 	return new Tool(ASK_CREDENTIAL_TOOL_NAME)
+		.legacyNames(...getLegacyBuilderToolNames(ASK_CREDENTIAL_TOOL_NAME))
 		.description(
 			'Show a credential picker card in the chat UI and suspend until the user selects ' +
 				'a credential. Call ONCE per credential slot. For an addition to an existing agent, ' +
-				'call it before the write_config / patch_config that introduces the tool. Never call ' +
-				'this during an initial build — follow the Initial Build rules in your system prompt; ' +
+				'call it before the agent_builder_write_config / agent_builder_patch_config that introduces the tool. Never call ' +
+				'this during an initial build — follow the Initial Build rules in the agent-builder skill; ' +
 				'use it for additions to an existing agent and follow-up setup turns. ' +
 				'Returns { credentialId, credentialName, credentials } on success ' +
 				'or { skipped: true } if the user skips credential setup so the tool can be added ' +
@@ -194,9 +193,10 @@ export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
 
 export function buildAskEmbeddingCredentialTool(deps: AskEmbeddingCredentialToolDeps): BuiltTool {
 	return new Tool(ASK_EMBEDDING_CREDENTIAL_TOOL_NAME)
+		.legacyNames(...getLegacyBuilderToolNames(ASK_EMBEDDING_CREDENTIAL_TOOL_NAME))
 		.description(
 			'Resolve the OpenAI embedding credential for Episodic Memory. Tries to resolve n8n managed credential. Otherwise behaves ' +
-				'like ask_credential: show a credential picker card in the chat UI and suspend until ' +
+				'like agent_builder_ask_credential: show a credential picker card in the chat UI and suspend until ' +
 				'the user selects a credential. Returns { credentialId, credentialName, credentials } ' +
 				'on success or { skipped: true } if the user skips credential setup.',
 		)

@@ -172,7 +172,7 @@ function extractThinkingMetadata(
 					if (typeof rc === 'string' && rc.length > 0) reasoningContent = rc;
 				}
 
-				if (thoughtSignature || thinkingContent || reasoningContent) break;
+				if (thoughtSignature || thinkingContent !== undefined || reasoningContent) break;
 			}
 		}
 	}
@@ -182,7 +182,8 @@ function extractThinkingMetadata(
 		result.google = { thoughtSignature };
 	}
 
-	if (thinkingContent && thinkingType) {
+	// Empty thinking text is valid because the signature carries the reasoning.
+	if (thinkingContent !== undefined && thinkingType) {
 		result.anthropic = {
 			thinkingContent,
 			thinkingType,

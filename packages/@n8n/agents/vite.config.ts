@@ -18,6 +18,7 @@ import { configDefaults } from 'vitest/config';
 const REWRITE_REQUIRE_TARGETS = [
 	'/src/runtime/model/lazy-ai.ts',
 	'/src/runtime/model/model-factory.ts',
+	'/src/runtime/model/google-vertex.ts',
 ];
 
 function rewriteSourceRequire(): Plugin {
@@ -53,6 +54,7 @@ export default mergeConfig(
 	createVitestConfig({
 		// Integration tests run via vitest.integration.config.mjs (real providers, long timeouts).
 		exclude: [...configDefaults.exclude, '**/__tests__/integration/**'],
+		setupFiles: ['src/__tests__/setup.ts'],
 	}),
 	{
 		plugins: [rewriteSourceRequire()],

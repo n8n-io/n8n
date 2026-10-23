@@ -4,6 +4,6 @@ import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
 export class ListWorkflowHistoryQueryDto extends Z.class({
-	...publicApiPaginationSchema,
+	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),
 }) {}

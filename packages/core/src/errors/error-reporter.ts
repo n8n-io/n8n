@@ -4,7 +4,6 @@ import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { ErrorEvent, EventHint } from '@sentry/core';
-import type { NodeOptions } from '@sentry/node';
 import {
 	ApplicationError,
 	ExecutionCancelledError,
@@ -90,6 +89,8 @@ type ErrorReportingOptions = ReportingOptions & {
 	 * otherwise inherit whatever unrelated request is active at capture time.
 	 */
 	shouldIsolate?: boolean;
+	/** Groups the event into the Sentry issue for this key, instead of Sentry's default grouping. */
+	fingerprint?: string[];
 };
 
 /**
@@ -114,6 +115,8 @@ export class ErrorReporter {
 	private report: (error: Error | string, options?: ErrorReportingOptions) => void;
 
 	private beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
+
+	private sentryActive = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -199,6 +202,7 @@ export class ErrorReporter {
 					this.logger.warn(RELEASE_EXPIRATION_WARNING);
 					// eslint-disable-next-line @typescript-eslint/unbound-method
 					this.report = this.defaultReport;
+					this.sentryActive = false;
 				} else {
 					this.expirationTimer = setTimeout(checkForExpiration, ONE_DAY_IN_MS);
 				}
@@ -281,7 +285,7 @@ export class ErrorReporter {
 					}
 				: {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
-			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
+			beforeSend: this.beforeSend.bind(this),
 			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			integrations: (integrations) => [
@@ -341,7 +345,12 @@ export class ErrorReporter {
 			}
 			captureException(error, options);
 		};
+		this.sentryActive = true;
 		this.beforeSendFilter = beforeSendFilter;
+	}
+
+	isSentryActive() {
+		return this.sentryActive;
 	}
 
 	async beforeSend(event: ErrorEvent, hint: EventHint) {
@@ -362,6 +371,7 @@ export class ErrorReporter {
 			return null;
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (isAxiosError(originalException)) return null;
 
 		if (originalException instanceof BaseError) {
@@ -407,7 +417,7 @@ export class ErrorReporter {
 		this.error(warning, { ...options, level: 'warning' });
 	}
 
-	info(msg: string, options?: ReportingOptions) {
+	info(msg: string, options?: ErrorReportingOptions) {
 		this.report(msg, { ...options, level: 'info' });
 	}
 

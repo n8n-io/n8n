@@ -1,15 +1,26 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nText } from '@n8n/design-system';
-import { useSpeechSynthesis } from '@vueuse/core';
-import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { computed, inject, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
+import { useSessionStorage } from '@vueuse/core';
+import { TIME } from '@/app/constants/durations';
 import {
-	buildDisplayGroups,
+	DISPLAY_GROUP_KIND,
+	isAssistantGroup,
 	type DisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	appendHostEventSources,
+	findHostEventRenderer,
+	findToolResultRenderer,
+	getHostEventItems,
+	type AgentsChatHostEventItems,
+	type AgentsChatToolResultRenderer,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
 import {
 	getMessageThinkingSegments,
 	getThinkingDurationSec,
@@ -22,13 +33,27 @@ import type {
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
+import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
+import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
+import AgentChatRetryError from './AgentChatRetryError.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
+import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
-import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
+import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
+import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
+import { isRetryableChatError } from '../utils/errors';
+import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
+import {
+	CHAT_MESSAGE_ROLE,
+	CHAT_MESSAGE_STATUS,
+	HOST_EVENT_PLACEMENT,
+	TOOL_CALL_STATE,
+} from '../constants';
 
 const props = defineProps<{
 	messages: ChatMessage[];
@@ -37,11 +62,23 @@ const props = defineProps<{
 	agentId?: string;
 	sessionId?: string;
 	canSendToAssistant?: boolean;
+	dismissedFixToolCallIds?: string[];
+	canIncreaseBudget?: boolean;
+	budgetIncreasePending?: boolean;
+	retryMessageId?: string;
+	retryDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
+	retry: [messageId: string];
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
-	sendToAssistant: [executionId?: string];
+	sendToAssistant: [event?: AgentSendToAssistantEvent];
+	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
+}>();
+
+defineSlots<{
+	/** Host actions for a finished agent reply, next to the default copy action. */
+	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 }>();
 
 const i18n = useI18n();
@@ -49,9 +86,12 @@ const canSendToAssistant = computed(() =>
 	Boolean(props.canSendToAssistant && props.agentId && props.sessionId),
 );
 
-function onFixWithAssistant(group: DisplayGroup) {
-	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
-	emit('sendToAssistant', executionId);
+function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistantFailure[]) {
+	if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return;
+	const executionId =
+		group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ? group.executionId : group.message.executionId;
+	if (!executionId || failures.length === 0) return;
+	emit('sendToAssistant', { executionId, failures });
 }
 
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
@@ -81,12 +121,11 @@ function externalWaitPlatform(tc: ToolCall): string | undefined {
 }
 
 /**
- * Open cards always render. Once resolved, answered interactive cards clear
- * from the chat (both approval and n8n chat cards collapse into their
- * tool-step summary) — but display-only n8n chat cards persist: they are
- * content, and being born resolved they would otherwise never render at all.
+ * Tool approvals replace the composer. Answered chat cards collapse into
+ * their tool-step summary. Display-only cards remain in the conversation.
  */
 function shouldRenderInteractive(payload: InteractivePayload): boolean {
+	if (payload.toolName === APPROVAL_TOOL_NAME) return false;
 	if (!payload.resolvedAt) return !!payload.runId;
 	return payload.toolName === N8N_CHAT_ACTION_TOOL_NAME && !isAwaitingCard(payload.input.card);
 }
@@ -138,9 +177,213 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 	return items;
 }
 
+const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
+
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
-const displayGroups = computed(() => buildDisplayGroups(props.messages));
+/** True when the bubble of `message` shows something besides host events. */
+function hasBubbleContent(message: ChatMessage): boolean {
+	return !!(
+		message.content.trim() ||
+		message.renderParts?.length ||
+		message.toolCalls?.length ||
+		message.thinkingSegments?.length ||
+		message.thinking ||
+		message.interactive ||
+		message.interactives?.length ||
+		message.attachments?.length ||
+		message.budgetNotices?.length
+	);
+}
+
+/**
+ * Keeps only the host events that an extension renders: on assistant messages,
+ * and `transient` events only while the turn runs or waits for the user. A
+ * message that then shows nothing is dropped, so no empty bubble shows. A
+ * streaming message stays for the typing indicator.
+ */
+const visibleMessages = computed(() => {
+	if (!props.messages.some((message) => message.hostEvents?.length)) return props.messages;
+	const extensions = interactionExtensions?.value ?? [];
+	return props.messages.flatMap((message) => {
+		if (!message.hostEvents?.length) return [message];
+		const live =
+			message.status === CHAT_MESSAGE_STATUS.STREAMING ||
+			message.status === CHAT_MESSAGE_STATUS.AWAITING_USER;
+		const hostEvents =
+			message.role === CHAT_MESSAGE_ROLE.ASSISTANT
+				? message.hostEvents.filter((event) => {
+						const renderer = findHostEventRenderer(event, extensions);
+						if (!renderer) return false;
+						return renderer.placement !== HOST_EVENT_PLACEMENT.TRANSIENT || live;
+					})
+				: [];
+		if (hostEvents.length === message.hostEvents.length) return [message];
+		const keep =
+			hostEvents.length > 0 ||
+			hasBubbleContent(message) ||
+			!!message.backgroundJobSignal ||
+			message.status === CHAT_MESSAGE_STATUS.STREAMING;
+		return keep ? [{ ...message, hostEvents: hostEvents.length ? hostEvents : undefined }] : [];
+	});
+});
+
+const displayGroups = computed(() => buildAgentPlanDisplayGroups(visibleMessages.value));
+
+interface GroupToolCalls {
+	/** Calls that render as default tool steps. */
+	steps: ToolCall[];
+	/** Finished calls that a host extension renders in place of a step. */
+	hostResults: Array<{ toolCall: ToolCall; renderer: AgentsChatToolResultRenderer }>;
+}
+
+const NO_GROUP_TOOL_CALLS: GroupToolCalls = { steps: [], hostResults: [] };
+
+/**
+ * The tool calls of each group, split into default steps and host results.
+ * History can hold the same `toolCallId` twice (suspended, then resolved), so
+ * each group checks its own copy of the call.
+ */
+const toolCallsByGroupId = computed(() => {
+	const extensions = interactionExtensions?.value ?? [];
+	const byGroupId = new Map<string, GroupToolCalls>();
+	for (const group of displayGroups.value) {
+		if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) continue;
+		const toolCalls =
+			group.kind === DISPLAY_GROUP_KIND.TOOL_RUN
+				? group.toolCalls
+				: (group.message.toolCalls ?? []);
+		const split: GroupToolCalls = { steps: [], hostResults: [] };
+		for (const toolCall of toolCalls) {
+			const renderer =
+				extensions.length > 0 ? findToolResultRenderer(toolCall, extensions) : undefined;
+			if (renderer) split.hostResults.push({ toolCall, renderer });
+			else split.steps.push(toolCall);
+		}
+		byGroupId.set(group.id, split);
+	}
+	return byGroupId;
+});
+
+function getGroupToolCalls(groupId: string): GroupToolCalls {
+	return toolCallsByGroupId.value.get(groupId) ?? NO_GROUP_TOOL_CALLS;
+}
+
+const retryErrorMessageId = computed(() => {
+	const message = props.messages.at(-1);
+	return props.retryMessageId && isRetryableChatError(message) ? message?.id : undefined;
+});
+
+const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = { start: [], end: [] };
+
+/** Host event components of each assistant group. `transient` events show only before text. */
+const hostEventItems = computed(() => {
+	const itemsByGroupId = new Map<string, AgentsChatHostEventItems>();
+	const extensions = interactionExtensions?.value ?? [];
+	for (const group of displayGroups.value) {
+		switch (group.kind) {
+			case DISPLAY_GROUP_KIND.TOOL_RUN: {
+				if (!group.hostEvents) break;
+				const showTransient = !group.finalMessage?.content.trim();
+				itemsByGroupId.set(
+					group.id,
+					getHostEventItems(group.hostEvents, extensions, showTransient),
+				);
+				break;
+			}
+			case DISPLAY_GROUP_KIND.MESSAGE: {
+				const { message } = group;
+				if (!message.hostEvents) break;
+				const sources = appendHostEventSources([], message);
+				const showTransient = !message.content.trim();
+				itemsByGroupId.set(group.id, getHostEventItems(sources, extensions, showTransient));
+				break;
+			}
+			case DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL:
+				// Signal groups have no host events.
+				break;
+			default: {
+				// A new group kind fails the type check here. Add a case for it.
+				const unhandled: never = group;
+				if (import.meta.env.DEV) {
+					console.warn('[AgentChatMessageList] Host events skip a display group kind', unhandled);
+				}
+			}
+		}
+	}
+	return itemsByGroupId;
+});
+
+function getGroupHostEventItems(groupId: string): AgentsChatHostEventItems {
+	return hostEventItems.value.get(groupId) ?? EMPTY_HOST_EVENT_ITEMS;
+}
+
+const streamingGroupId = computed(() =>
+	props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
+		? displayGroups.value.at(-1)?.id
+		: undefined,
+);
+
+const formatChatDividerTimestamp = useChatDividerTimestamp();
+
+/**
+ * Divider label by group id: the first user message gets one, and so does any
+ * later user message whose gap since the previous one exceeds the window above.
+ * Messages without a `createdAt` (older history) are skipped and never become
+ * the "previous" reference.
+ */
+const dividerLabels = computed(() => {
+	const labels = new Map<string, string>();
+	let previousUserCreatedAt: number | undefined;
+	for (const group of displayGroups.value) {
+		if (group.kind !== DISPLAY_GROUP_KIND.MESSAGE || group.message.role !== CHAT_MESSAGE_ROLE.USER)
+			continue;
+		const createdAt = group.message.createdAt;
+		if (createdAt === undefined) continue;
+		// A new local day always earns a divider, even inside the window: without
+		// it a chat that crosses midnight files today's messages under a
+		// "Yesterday at ..." heading.
+		if (
+			previousUserCreatedAt === undefined ||
+			createdAt - previousUserCreatedAt > TIME.HOUR ||
+			!isSameLocalDay(new Date(createdAt), new Date(previousUserCreatedAt))
+		) {
+			labels.set(group.id, formatChatDividerTimestamp(createdAt));
+		}
+		previousUserCreatedAt = createdAt;
+	}
+	return labels;
+});
+
+/**
+ * Dismissing the note silences it for the rest of this preview chat, so a user
+ * who does not want the hand-off is not asked again on every request in the
+ * conversation. A new chat asks again.
+ */
+const changeNoteDismissedKey = computed(function getChangeNoteDismissedKey() {
+	return `N8N_AGENT_PREVIEW_CHANGE_NOTE_DISMISSED:${props.sessionId ?? ''}`;
+});
+const changeNoteDismissed = useSessionStorage(changeNoteDismissedKey, false);
+
+/**
+ * Newest user message that reads as a request to change the agent itself. Only
+ * the newest one carries the hand-off note, so a chat full of such asks doesn't
+ * repeat the same banner.
+ */
+const changeRequestGroupId = computed(() =>
+	canSendToAssistant.value && !changeNoteDismissed.value
+		? displayGroups.value.findLast(
+				(group) =>
+					group.kind === DISPLAY_GROUP_KIND.MESSAGE &&
+					group.message.role === CHAT_MESSAGE_ROLE.USER &&
+					looksLikeAgentChangeRequest(group.message.content),
+			)?.id
+		: undefined,
+);
+
+function onEditWithAssistant(changeRequest: string) {
+	emit('sendToAssistant', { changeRequest });
+}
 
 function isThinkingActive(message: ChatMessage): boolean {
 	return (
@@ -150,15 +393,12 @@ function isThinkingActive(message: ChatMessage): boolean {
 }
 
 function getAssistantGroupContent(group: DisplayGroup): string {
-	if (group.kind === 'toolRun') {
+	if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return '';
+	if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
 		return group.finalMessage?.content ?? '';
 	}
 
-	return group.message.role === 'assistant' ? group.message.content : '';
-}
-
-function isAssistantGroup(group: DisplayGroup): boolean {
-	return group.kind === 'toolRun' || group.message.role === 'assistant';
+	return group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT ? group.message.content : '';
 }
 
 function getAssistantRunContent(groupId: string): string {
@@ -175,6 +415,12 @@ function getAssistantRunContent(groupId: string): string {
 	}
 
 	return lines.join('\n\n');
+}
+
+function canIncreaseForNotice(notice: NonNullable<ChatMessage['budgetNotices']>[number]) {
+	return (
+		props.canIncreaseBudget && (notice.agentId === undefined || notice.agentId === props.agentId)
+	);
 }
 
 interface RecallMemoryOutputEntry {
@@ -221,7 +467,8 @@ function parseMemoryOutput(output: unknown): MemoryUsed[] {
 }
 
 function isCompletedAssistantGroup(group: DisplayGroup): boolean {
-	if (group.kind === 'toolRun') {
+	if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return false;
+	if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
 		return (
 			group.finalMessage !== undefined &&
 			group.finalMessage.status !== CHAT_MESSAGE_STATUS.STREAMING &&
@@ -230,7 +477,7 @@ function isCompletedAssistantGroup(group: DisplayGroup): boolean {
 	}
 
 	return (
-		group.message.role === 'assistant' &&
+		group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
 		group.message.status !== CHAT_MESSAGE_STATUS.STREAMING &&
 		group.message.status !== CHAT_MESSAGE_STATUS.AWAITING_USER
 	);
@@ -258,7 +505,10 @@ function getMemoriesUsedInAssistantRun(groupId: string): MemoryUsed[] {
 		const group = displayGroups.value[i];
 		if (!isAssistantGroup(group)) break;
 
-		const toolCalls = group.kind === 'toolRun' ? group.toolCalls : (group.message.toolCalls ?? []);
+		const toolCalls =
+			group.kind === DISPLAY_GROUP_KIND.TOOL_RUN
+				? group.toolCalls
+				: (group.message.toolCalls ?? []);
 		for (let j = toolCalls.length - 1; j >= 0; j--) {
 			const toolCall = toolCalls[j];
 			if (toolCall.tool !== 'recall_memory') continue;
@@ -284,18 +534,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			? null
 			: openMemoryFooterGroupId.value;
 }
-
-const spokenMessageId = ref<string | null>(null);
-const spokenText = computed(() => {
-	if (!spokenMessageId.value) return '';
-	return getAssistantRunContent(spokenMessageId.value);
-});
-const speech = useSpeechSynthesis(spokenText, {
-	pitch: 1,
-	rate: 1,
-	volume: 1,
-});
-const isSpeechSynthesisAvailable = computed(() => speech.isSupported.value);
 
 // How close to the bottom the user has to be for incoming chunks to keep
 // following them. Small enough that a deliberate scroll-up breaks the lock,
@@ -340,24 +578,6 @@ function autoScrollIfSticky(): void {
 	if (isStickToBottom.value) scrollToBottom();
 }
 
-function isSpeakingMessage(messageId: string): boolean {
-	return spokenMessageId.value === messageId && speech.status.value === 'play';
-}
-
-function toggleReadAloud(messageId: string): void {
-	if (!isSpeechSynthesisAvailable.value) return;
-
-	if (spokenMessageId.value === messageId && speech.status.value === 'play') {
-		speech.stop();
-		spokenMessageId.value = null;
-		return;
-	}
-
-	speech.stop();
-	spokenMessageId.value = messageId;
-	speech.speak();
-}
-
 // Snap to the bottom on initial render with a preloaded history. Two hooks on
 // purpose: the watcher with `immediate: true` fires after setup / initial
 // render, and `onMounted` covers cases where the post-flush scroll measured an
@@ -376,7 +596,7 @@ watch(
 	(newLen, oldLen) => {
 		if ((oldLen ?? 0) < newLen) {
 			const last = props.messages[newLen - 1];
-			if (last?.role === 'user') {
+			if (last?.role === CHAT_MESSAGE_ROLE.USER) {
 				scrollToBottom();
 				return;
 			}
@@ -388,56 +608,67 @@ watch(
 
 watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
 
-// Content within the last message grew (streaming text, tool calls, thinking).
-// Only follow the stream down if the user is still near the bottom — otherwise
-// we yank them away from whatever they scrolled up to read.
+// Content within the last message grew (streaming text, tool calls, thinking,
+// host events). Only follow the stream down if the user is still near the
+// bottom — otherwise we yank them away from whatever they scrolled up to read.
 watch(
-	() => {
-		const last = props.messages[props.messages.length - 1];
-		if (!last) return '';
-		const thinking = getMessageThinkingSegments(last)
-			.map((segment) => segment.content)
-			.join('');
-		return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${thinking}`;
-	},
+	[
+		() => {
+			const last = props.messages[props.messages.length - 1];
+			if (!last) return '';
+			const thinking = getMessageThinkingSegments(last)
+				.map((segment) => segment.content)
+				.join('');
+			return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${thinking}`;
+		},
+		// A new host event, or a keyed update of one, sets a new `hostEvents`
+		// array, so the reference changes even when the text does not.
+		() => props.messages.at(-1)?.hostEvents,
+	],
 	autoScrollIfSticky,
 	{ flush: 'post' },
 );
-
-watch(
-	() => speech.status.value,
-	(status) => {
-		if (status === 'end') {
-			spokenMessageId.value = null;
-		}
-	},
-);
-
-watch(spokenText, (value) => {
-	if (!value && spokenMessageId.value) {
-		speech.stop();
-		spokenMessageId.value = null;
-	}
-});
-
-onBeforeUnmount(() => {
-	speech.stop();
-});
 </script>
 
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
-			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
+			<div
+				v-if="dividerLabels.has(group.id)"
+				:class="$style.timestampDivider"
+				data-testid="agent-chat-timestamp-divider"
+			>
+				<N8nText size="small" color="text-light">{{ dividerLabels.get(group.id) }}</N8nText>
+			</div>
+			<div
+				v-if="group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL"
+				:class="[$style.message, $style.assistant]"
+			>
+				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
+			</div>
+			<div
+				v-else-if="group.kind === DISPLAY_GROUP_KIND.TOOL_RUN"
+				:class="[$style.message, $style.assistant]"
+			>
 				<div :class="$style.content">
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
 					<AgentChatToolSteps
-						v-if="group.toolCalls.length"
-						:tool-calls="group.toolCalls"
+						v-if="getGroupToolCalls(group.id).steps.length"
+						:tool-calls="getGroupToolCalls(group.id).steps"
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
+						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.executionId"
-						@fix-with-assistant="onFixWithAssistant(group)"
+						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
+					<div
+						v-for="result in getGroupToolCalls(group.id).hostResults"
+						:key="`result-${result.toolCall.toolCallId}`"
+						:class="$style.toolResult"
+						data-testid="agent-chat-host-tool-result"
+					>
+						<component :is="result.renderer.component" :tool-call="result.toolCall" />
+					</div>
 					<template v-for="tc in group.toolCalls" :key="`wait-${tc.toolCallId}`">
 						<N8nText
 							v-if="externalWaitPlatform(tc)"
@@ -460,8 +691,17 @@ onBeforeUnmount(() => {
 							@submit="onInteractiveSubmit(payload, $event)"
 						/>
 					</div>
+					<AgentChatRetryError
+						v-if="group.finalMessage && isRetryableChatError(group.finalMessage)"
+						:message="group.finalMessage.content"
+						:retry-message-id="
+							group.finalMessage.id === retryErrorMessageId ? retryMessageId : undefined
+						"
+						:retry-disabled="retryDisabled"
+						@retry="emit('retry', $event)"
+					/>
 					<div
-						v-if="group.finalMessage?.content"
+						v-else-if="group.finalMessage?.content"
 						:class="[
 							$style.chatMessage,
 							{ [$style.chatMessageError]: group.finalMessage.status === 'error' },
@@ -471,6 +711,15 @@ onBeforeUnmount(() => {
 							<AgentMarkdownChunk :source="group.finalMessage.content" />
 						</div>
 					</div>
+					<AgentBudgetNoticeCard
+						v-for="notice in group.budgetNotices"
+						:key="notice.id"
+						:code="notice.code"
+						:can-increase="canIncreaseForNotice(notice)"
+						:pending="budgetIncreasePending"
+						@increase="emit('increase-budget', $event)"
+					/>
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -500,17 +749,22 @@ onBeforeUnmount(() => {
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
-						/>
+						>
+							<template v-if="group.finalMessage" #extra-actions>
+								<slot
+									name="message-actions"
+									:message="group.finalMessage"
+									:execution-id="group.executionId ?? group.finalMessage.executionId"
+								/>
+							</template>
+						</AgentChatMessageActions>
 					</div>
 					<AgentTypingIndicator
 						v-if="
-							group.finalMessage?.status === CHAT_MESSAGE_STATUS.STREAMING &&
-							!group.finalMessage.content &&
+							group.id === streamingGroupId &&
+							!group.finalMessage?.content &&
 							!group.toolCalls.length &&
 							!group.thinkingSegments.length
 						"
@@ -520,17 +774,30 @@ onBeforeUnmount(() => {
 			</div>
 			<div
 				v-else
-				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
+				:class="[
+					$style.message,
+					group.message.role === CHAT_MESSAGE_ROLE.USER ? $style.user : $style.assistant,
+				]"
 			>
 				<div :class="$style.content">
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
 					<AgentChatToolSteps
-						v-if="group.message.toolCalls?.length"
-						:tool-calls="group.message.toolCalls"
+						v-if="getGroupToolCalls(group.id).steps.length"
+						:tool-calls="getGroupToolCalls(group.id).steps"
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
+						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.message.executionId"
-						@fix-with-assistant="onFixWithAssistant(group)"
+						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
+					<div
+						v-for="result in getGroupToolCalls(group.id).hostResults"
+						:key="`result-${result.toolCall.toolCallId}`"
+						:class="$style.toolResult"
+						data-testid="agent-chat-host-tool-result"
+					>
+						<component :is="result.renderer.component" :tool-call="result.toolCall" />
+					</div>
 					<template v-for="tc in group.message.toolCalls ?? []" :key="`wait-${tc.toolCallId}`">
 						<N8nText
 							v-if="externalWaitPlatform(tc)"
@@ -552,14 +819,32 @@ onBeforeUnmount(() => {
 						:project-id="projectId"
 						:agent-id="agentId"
 					/>
+					<N8nText
+						v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.author"
+						size="xsmall"
+						color="text-light"
+						:class="$style.author"
+						data-testid="agent-chat-message-author"
+					>
+						{{ group.message.author.name }}
+					</N8nText>
 					<div
-						v-if="group.message.role === 'user' && group.message.content"
+						v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
 					>
 						{{ group.message.content }}
 					</div>
 					<template v-else>
-						<template v-for="item in getMessageRenderItems(group.message)" :key="item.key">
+						<AgentChatRetryError
+							v-if="isRetryableChatError(group.message)"
+							:message="group.message.content"
+							:retry-message-id="
+								group.message.id === retryErrorMessageId ? retryMessageId : undefined
+							"
+							:retry-disabled="retryDisabled"
+							@retry="emit('retry', $event)"
+						/>
+						<template v-for="item in getMessageRenderItems(group.message)" v-else :key="item.key">
 							<div
 								v-if="item.type === 'text'"
 								:class="[
@@ -578,7 +863,50 @@ onBeforeUnmount(() => {
 								/>
 							</div>
 						</template>
+						<AgentBudgetNoticeCard
+							v-for="notice in group.message.budgetNotices ?? []"
+							:key="notice.id"
+							:code="notice.code"
+							:can-increase="canIncreaseForNotice(notice)"
+							:pending="budgetIncreasePending"
+							@increase="emit('increase-budget', $event)"
+						/>
 					</template>
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
+					<N8nCallout
+						v-if="group.id === changeRequestGroupId"
+						theme="info"
+						icon="wand-sparkles"
+						slim
+						:class="$style.changeRequestNote"
+						data-testid="agent-preview-change-request-note"
+					>
+						{{ i18n.baseText('agents.builder.preview.editRequest.note') }}
+						<template #actions>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="xsmall"
+								:class="$style.changeRequestDismiss"
+								:aria-label="i18n.baseText('generic.dismiss')"
+								:title="i18n.baseText('generic.dismiss')"
+								data-testid="agent-preview-change-request-dismiss"
+								@click="changeNoteDismissed = true"
+							/>
+						</template>
+						<template #trailingContent>
+							<N8nButton
+								size="small"
+								variant="outline"
+								:class="$style.changeRequestAction"
+								data-testid="agent-preview-change-request-link"
+								@click="onEditWithAssistant(group.message.content)"
+							>
+								<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+								{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -607,12 +935,17 @@ onBeforeUnmount(() => {
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
-						/>
+						>
+							<template #extra-actions>
+								<slot
+									name="message-actions"
+									:message="group.message"
+									:execution-id="group.message.executionId"
+								/>
+							</template>
+						</AgentChatMessageActions>
 						<AgentChatMemoryUsed
 							:memories="getMemoriesUsedInAssistantRun(group.id)"
 							@update:open="setMemoryFooterOpen(group.id, $event)"
@@ -620,7 +953,7 @@ onBeforeUnmount(() => {
 					</div>
 					<AgentTypingIndicator
 						v-if="
-							group.message.role === 'assistant' &&
+							group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
 							group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.message.content &&
 							!group.message.toolCalls?.length &&
@@ -643,6 +976,7 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .messages {
 	flex: 1;
+	width: 100%;
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
@@ -651,6 +985,8 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	scrollbar-width: none;
+	max-width: 800px;
+	margin: 0 auto;
 
 	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 
@@ -661,6 +997,11 @@ onBeforeUnmount(() => {
 
 .message {
 	padding-top: var(--spacing--4xs);
+}
+
+.timestampDivider {
+	align-self: center;
+	padding: var(--spacing--sm) 0 var(--spacing--xs);
 }
 
 .content {
@@ -704,10 +1045,42 @@ onBeforeUnmount(() => {
 	margin-bottom: var(--spacing--2xs);
 }
 
+/* A host component that replaces the default step of a finished tool call. */
+.toolResult {
+	margin-top: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
+}
+
+/* Stretches past the right-aligned user bubble it follows, and stacks the
+   hand-off button under the note instead of squeezing it in beside the text.
+   `stretch` gives the text row the full width the dismiss button needs to sit
+   at its right edge, as the panel's error and warning banners do. */
+.changeRequestNote {
+	align-self: stretch;
+	margin-top: var(--spacing--2xs);
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--2xs);
+}
+
+.changeRequestDismiss {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+/* Hugs its label instead of stretching with the row above it. */
+.changeRequestAction {
+	align-self: flex-start;
+}
+
 .chatMessage {
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+
+	& + .chatMessage {
+		margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
+	}
 }
 
 .chatMessageUser {
@@ -719,6 +1092,10 @@ onBeforeUnmount(() => {
 	max-width: 100%;
 }
 
+.author {
+	padding: 0 var(--spacing--sm) var(--spacing--4xs);
+}
+
 .chatMessageError {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
@@ -728,8 +1105,8 @@ onBeforeUnmount(() => {
 }
 
 .markdownContent {
+	--n8n-markdown--base-font-size: var(--font-size--sm);
 	color: var(--text-color);
-	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
 	> *:last-child > *:last-child {

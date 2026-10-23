@@ -16,26 +16,26 @@ export interface IListColumnType {
 
 export interface IDriveItem {
 	id: string;
-	name: string;
+	name?: string;
 	file?: IDataObject;
 	folder?: IDataObject;
 }
 
 export interface IListItem {
 	id: string;
-	fields: {
-		Title: string;
+	fields?: {
+		Title?: string;
 	};
 }
 
 export interface IList {
 	id: string;
-	displayName: string;
+	displayName?: string;
 }
 
 export interface ISite {
 	id: string;
-	title: string;
+	title?: string;
 }
 
 export interface IErrorResponse {

@@ -17,7 +17,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
-import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nSegmentControl, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	node: INodeUi;
 	nodeTypeDescription: INodeTypeDescription | null;
@@ -215,7 +215,7 @@ watch(
 				<div v-if="!isProductionOnly" class="url-selection">
 					<ElRow>
 						<ElCol :span="24">
-							<N8nRadioButtons v-model="showUrlFor" :options="urlOptions" />
+							<N8nSegmentControl v-model="showUrlFor" :options="urlOptions" />
 						</ElCol>
 					</ElRow>
 				</div>
@@ -227,20 +227,13 @@ watch(
 					:content="baseText.clickToCopy"
 					placement="left"
 				>
-					<div v-if="item.isMethodVisible" class="webhook-wrapper">
-						<div class="http-field">
-							<div class="http-method">{{ item.httpMethod }}<br /></div>
+					<div class="webhook-wrapper">
+						<div v-if="item.isMethodVisible" class="http-field">
+							<div class="http-method">{{ item.httpMethod }}</div>
 						</div>
 						<div class="url-field">
 							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
-								{{ item.url }}<br />
-							</div>
-						</div>
-					</div>
-					<div v-else class="webhook-wrapper">
-						<div class="url-field-full-width">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
-								{{ item.url }}<br />
+								{{ item.url }}
 							</div>
 						</div>
 					</div>
@@ -251,6 +244,8 @@ watch(
 </template>
 
 <style scoped lang="scss">
+@use '@/app/css/variables' as *;
+
 .webhooks {
 	padding-bottom: var(--spacing--xs);
 	margin: var(--spacing--xs) 0;
@@ -258,28 +253,23 @@ watch(
 
 	.headline {
 		color: $color-primary;
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--2xs);
 	}
 }
 
 .http-field {
-	position: absolute;
-	width: 50px;
-	display: inline-block;
-	top: calc(50% - 8px);
+	flex: 0 0 var(--spacing--3xl);
 }
 
 .http-method {
 	background-color: var(--color--foreground--shade-2);
-	width: 40px;
-	height: 16px;
-	line-height: 16px;
-	margin-left: 5px;
+	padding: 0 var(--spacing--4xs);
+	line-height: var(--height--3xs);
 	text-align: center;
-	border-radius: 2px;
+	border-radius: var(--radius--4xs);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--foreground--tint-2);
 }
 
@@ -297,13 +287,8 @@ watch(
 }
 
 .url-field {
-	display: inline-block;
-	width: calc(100% - 60px);
-	margin-left: 55px;
-}
-.url-field-full-width {
-	display: inline-block;
-	margin: 5px 10px;
+	flex: 1;
+	min-width: 0;
 }
 
 .url-selection {
@@ -330,8 +315,6 @@ watch(
 }
 
 .webhook-url {
-	position: relative;
-	top: 0;
 	width: 100%;
 	font-size: var(--font-size--2xs);
 	white-space: normal;
@@ -344,10 +327,13 @@ watch(
 }
 
 .webhook-wrapper {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	line-height: 1.5;
-	position: relative;
 	margin-top: var(--spacing--xs);
 	background-color: var(--color--foreground--tint-2);
-	border-radius: 3px;
+	border-radius: var(--radius--3xs);
 }
 </style>

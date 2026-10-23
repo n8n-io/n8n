@@ -1,11 +1,14 @@
 import type { MockedFunction } from 'vitest';
 import { z } from 'zod';
 
+vi.mock('../../tracing/langsmith-tracing', () => ({ getCurrentHelperTelemetry: vi.fn() }));
+
 vi.mock('../eval-agents', async () => {
 	const actual: object = await vi.importActual('../eval-agents');
 	return { ...actual, createEvalAgent: vi.fn(), extractText: vi.fn() };
 });
 
+import { getCurrentHelperTelemetry } from '../../tracing/langsmith-tracing';
 import { createEvalAgent, extractText } from '../eval-agents';
 import { generateValidatedJson } from '../generate-validated-json';
 
@@ -65,19 +68,47 @@ describe('generateValidatedJson', () => {
 		if (!result.ok) expect(result.issues?.length).toBeGreaterThan(0);
 	});
 
+	it('still calls the model, without telemetry, when tracing fails', async () => {
+		vi.mocked(getCurrentHelperTelemetry).mockImplementationOnce(() => {
+			throw new Error('tracing unavailable');
+		});
+		setupAgentMock('{"ok": true}');
+		expect(await generate()).toEqual({ ok: true, data: { ok: true } });
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'test-agent',
+			expect.objectContaining({ telemetry: undefined }),
+		);
+	});
+
 	it('reports generation_failed when the LLM call throws', async () => {
 		const generateMock = vi.fn().mockRejectedValue(new Error('boom'));
 		mockCreateEvalAgent.mockReturnValue({ generate: generateMock } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
-		expect(await generate()).toEqual({ ok: false, reason: 'generation_failed' });
+		expect(await generate()).toEqual({ ok: false, reason: 'generation_failed', message: 'boom' });
+	});
+
+	it('reports generation_failed with the model error when the call returned an error', async () => {
+		setupAgentMock('');
+		mockExtractText.mockImplementation(() => {
+			throw new Error('Eval model provider call failed (HTTP 401): invalid x-api-key');
+		});
+		expect(await generate()).toEqual({
+			ok: false,
+			reason: 'generation_failed',
+			message: 'Eval model provider call failed (HTTP 401): invalid x-api-key',
+		});
 	});
 
 	it('reports generation_failed when agent creation throws', async () => {
 		mockCreateEvalAgent.mockImplementation(() => {
 			throw new Error('no api key');
 		});
-		expect(await generate()).toEqual({ ok: false, reason: 'generation_failed' });
+		expect(await generate()).toEqual({
+			ok: false,
+			reason: 'generation_failed',
+			message: 'no api key',
+		});
 	});
 
 	it('forwards the fallback model config to agent creation', async () => {
@@ -98,4 +129,16 @@ describe('generateValidatedJson', () => {
 			expect.objectContaining({ fallbackModelConfig }),
 		);
 	});
+});
+
+it('passes the current product trace to verification helpers', async () => {
+	const telemetry = { enabled: true, recordInputs: false, recordOutputs: false, integrations: [] };
+	vi.mocked(getCurrentHelperTelemetry).mockReturnValueOnce(telemetry);
+	setupAgentMock('{"ok": true}');
+	await generate();
+	expect(getCurrentHelperTelemetry).toHaveBeenCalledWith('test-agent');
+	expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+		'test-agent',
+		expect.objectContaining({ telemetry }),
+	);
 });

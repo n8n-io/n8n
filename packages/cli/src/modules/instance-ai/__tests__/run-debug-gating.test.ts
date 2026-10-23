@@ -1,11 +1,13 @@
 import type { User } from '@n8n/db';
-import { RunDebugBuffer } from '@n8n/instance-ai';
+import { RunDebugBuffer, RunStateRegistry } from '@n8n/instance-ai';
 
 import { InstanceAiService } from '../instance-ai.service';
 
 type RunDebugGatingInternals = {
 	instanceAiConfig: { runDebugEnabled: boolean };
+	aiConfig: { modelStreamIdleTimeoutMs: number; modelStreamFirstOutputTimeoutMs: number };
 	runDebugBuffer: RunDebugBuffer;
+	runState: RunStateRegistry<User>;
 	buildOrchestratorAgentStreamOptions: (
 		user: User,
 		threadId: string,
@@ -26,7 +28,9 @@ type RunDebugGatingInternals = {
 function createRunDebugGatingService(runDebugEnabled: boolean): RunDebugGatingInternals {
 	const service = Object.create(InstanceAiService.prototype) as RunDebugGatingInternals;
 	service.instanceAiConfig = { runDebugEnabled };
+	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
 	service.runDebugBuffer = new RunDebugBuffer();
+	service.runState = new RunStateRegistry((user: User) => user.id);
 	return service;
 }
 
@@ -64,6 +68,10 @@ describe('InstanceAiService run debug gating', () => {
 		// Both terminal paths opt into raw-usage recovery so stopped/errored runs bill.
 		expect(streamOptions.recoverUsageOnAbort).toBe(true);
 		expect(resumeOptions.recoverUsageOnAbort).toBe(true);
+		expect(streamOptions.modelStreamIdleTimeoutMs).toBe(90_000);
+		expect(resumeOptions.modelStreamIdleTimeoutMs).toBe(90_000);
+		expect(streamOptions.modelStreamFirstOutputTimeoutMs).toBe(180_000);
+		expect(resumeOptions.modelStreamFirstOutputTimeoutMs).toBe(180_000);
 		// Both paths must carry the run's signal, or a stop cannot reach the agent
 		// loop and its sub-agents (AGENT-453).
 		expect(streamOptions.abortSignal).toBe(signal);

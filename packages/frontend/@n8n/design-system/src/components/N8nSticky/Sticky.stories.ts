@@ -47,9 +47,6 @@ const meta: Meta<typeof N8nSticky> = {
 				component: 'An editable sticky-note component with markdown content and color variants.',
 			},
 		},
-		themePreview: {
-			minHeight: 240,
-		},
 	},
 	render: (args) => ({
 		components: { N8nSticky },
@@ -94,7 +91,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Sticky: Story = {
+export const Default: Story = {
 	args: {
 		height: 180,
 		width: 240,
@@ -109,7 +106,7 @@ export const Sticky: Story = {
 
 export const Resizable: Story = {
 	args: {
-		...Sticky.args,
+		...Default.args,
 	},
 	render: (args) => ({
 		components: {

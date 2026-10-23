@@ -1,6 +1,7 @@
 import type { BaseResource } from '@/Interface';
 import type {
 	AgentJsonToolConfig,
+	AgentCreationState,
 	AgentReasoningLevel,
 	AgentSkill,
 	AgentSkillReference,
@@ -14,6 +15,27 @@ export interface AgentContinueLoadedEvent {
 	count: number;
 }
 
+export interface AgentFixWithAssistantFailure {
+	toolCallId: string;
+	toolName: string;
+	toolDisplayName: string;
+	error: string;
+	startedAt?: number;
+	endedAt?: number;
+}
+
+export interface AgentFixWithAssistantEvent {
+	executionId: string;
+	failures: AgentFixWithAssistantFailure[];
+}
+
+/** A preview-chat message that asks the agent to change its own setup. */
+export interface AgentEditRequestEvent {
+	changeRequest: string;
+}
+
+export type AgentSendToAssistantEvent = AgentFixWithAssistantEvent | AgentEditRequestEvent;
+
 /**
  * Agent resource type definition.
  * This extends the ModuleResources interface to add Agent as a resource type.
@@ -22,6 +44,8 @@ export type AgentResource = BaseResource &
 	Agent & {
 		resourceType: 'agent';
 	};
+
+export type AgentCreationResource = AgentResource & AgentCreationState;
 
 // Extend the ModuleResources interface to include Agent
 declare module '@/Interface' {

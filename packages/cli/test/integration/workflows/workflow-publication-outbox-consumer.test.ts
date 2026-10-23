@@ -5,7 +5,14 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
-import { WorkflowPublicationOutboxRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
+import {
+	WorkflowHistoryRepository,
+	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationTriggerStatusRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
@@ -18,6 +25,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
+import { Telemetry } from '@/telemetry';
 import { PublishedWorkflowTriggerDeactivator } from '@/workflows/publication/published-workflow-trigger-deactivator';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
@@ -34,15 +42,19 @@ mockInstance(ActiveExecutions);
 mockInstance(Push);
 mockInstance(ExternalSecretsProxy);
 mockInstance(ExecutionService);
-mockInstance(WorkflowService);
+const workflowService = mockInstance(WorkflowService);
 mockInstance(OwnershipService);
 mockInstance(ExternalHooks);
+mockInstance(Telemetry);
+
+const abortSignal = new AbortController().signal;
 
 let consumer: WorkflowPublicationOutboxConsumer;
 let activeWorkflowManager: ActiveWorkflowManager;
 let activeWorkflowTriggers: ActiveWorkflowTriggers;
 let outboxRepository: WorkflowPublicationOutboxRepository;
 let publishedVersionRepository: WorkflowPublishedVersionRepository;
+let triggerStatusRepository: WorkflowPublicationTriggerStatusRepository;
 let originalUseWorkflowPublicationService: boolean;
 
 const scheduleNode = (suffix: string): INode => ({
@@ -72,6 +84,7 @@ beforeAll(async () => {
 	activeWorkflowTriggers = Container.get(ActiveWorkflowTriggers);
 	outboxRepository = Container.get(WorkflowPublicationOutboxRepository);
 	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+	triggerStatusRepository = Container.get(WorkflowPublicationTriggerStatusRepository);
 });
 
 afterEach(async () => {
@@ -121,11 +134,11 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			connections: {},
 		});
 
-		await outboxRepository.enqueue(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 		expect(record).not.toBeNull();
 
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		// Surgical in-memory result: unchanged kept, removed gone, added registered.
 		const state = activeWorkflowTriggers.get(workflow.id);
@@ -162,10 +175,10 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		expect(presentResponse).toBeDefined();
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(missing.id)).toBe(false);
 
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		// `missing` got re-registered; `present` was left untouched (same response object).
 		const state = activeWorkflowTriggers.get(workflow.id);
@@ -189,10 +202,10 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		const responseBefore = activeWorkflowTriggers.get(workflow.id)?.get(trigger.id);
 		expect(responseBefore).toBeDefined();
 
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		// Nothing re-registered (same response object) and the version is unchanged.
 		expect(activeWorkflowTriggers.get(workflow.id)?.get(trigger.id)).toBe(responseBefore);
@@ -223,10 +236,10 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			connections: {},
 		});
 
-		await outboxRepository.enqueue(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
 		const published = await publishedVersionRepository.getPublishedVersionWithRelations(
@@ -234,6 +247,93 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		);
 		expect(published?.publishedVersionId).toBe(newVersionId);
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('completes the publication of a trigger whose node id has the maximum length', async () => {
+		const owner = await createOwner();
+
+		// The public API and source control accept ids other than generated UUIDs.
+		const trigger = { ...scheduleNode('long-id'), id: 'n'.repeat(NODE_ID_MAX_LENGTH) };
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!, abortSignal);
+
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('completed');
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([
+			expect.objectContaining({ nodeId: trigger.id, status: 'activated' }),
+		]);
+	});
+
+	test('publishes a healed version for duplicate trigger node ids, then activates it', async () => {
+		const owner = await createOwner();
+
+		const nodeA = { ...scheduleNode('a'), id: 'shared' };
+		const nodeB = { ...scheduleNode('b'), id: 'shared' };
+		const workflow = await createWorkflowWithHistory(
+			{ active: true, nodes: [nodeA, nodeB] },
+			owner,
+		);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		// The real publishAsSystem is covered by its own integration suite; this
+		// stand-in performs its minimal effect (system-authored version row,
+		// advanced active version, enqueued record) against the real repositories,
+		// so the consumer loop under test runs end to end.
+		workflowService.publishAsSystem.mockReset().mockImplementation(async (id, versionData) => {
+			const versionId = uuid();
+			await Container.get(WorkflowHistoryRepository).insert({
+				versionId,
+				workflowId: id,
+				nodes: versionData.nodes,
+				connections: versionData.connections,
+				nodeGroups: versionData.nodeGroups ?? [],
+				authors: 'n8n',
+				autosaved: false,
+			});
+			await Container.get(WorkflowRepository).update({ id }, { activeVersionId: versionId });
+			await outboxRepository.enqueue(id, versionId, 'publish');
+			return { published: true, versionId };
+		});
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const brokenRecord = await outboxRepository.claimNextPendingRecord();
+		await consumer.processRecord(brokenRecord!, abortSignal);
+
+		// The broken version was never applied: nothing registered, published
+		// version not advanced, but a healed record is waiting.
+		expect(activeWorkflowTriggers.get(workflow.id)?.has('shared') ?? false).toBe(false);
+		expect(
+			await publishedVersionRepository.getPublishedVersionWithRelations(workflow.id),
+		).toBeNull();
+
+		const healedRecord = await outboxRepository.claimNextPendingRecord();
+		expect(healedRecord).not.toBeNull();
+		await consumer.processRecord(healedRecord!, abortSignal);
+
+		// The healed version is published and its triggers run under unique ids,
+		// with the contested id surviving on one of them.
+		const published = await publishedVersionRepository.getPublishedVersionWithRelations(
+			workflow.id,
+		);
+		const healedIds = published!.publishedVersion.nodes.map((node) => node.id);
+		expect(new Set(healedIds).size).toBe(2);
+		expect(healedIds).toContain('shared');
+		const state = activeWorkflowTriggers.get(workflow.id);
+		for (const id of healedIds) {
+			expect(state?.has(id)).toBe(true);
+		}
+
+		// Healing converged: one system publish, both records completed, nothing pending.
+		expect(workflowService.publishAsSystem).toHaveBeenCalledTimes(1);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+		const records = await outboxRepository.findBy({ workflowId: workflow.id });
+		expect(records.map(({ status }) => status).sort()).toEqual(['completed', 'completed']);
 	});
 });
 
@@ -257,13 +357,14 @@ describe('leader stepdown (integration)', () => {
 
 		// Hold the workflow's lock to stand in for an in-flight record being processed.
 		let releaseHolder!: () => void;
-		const holder = lifecycleLock.runExclusive(
-			workflow.id,
-			async () =>
+		const holder = lifecycleLock.runExclusive({
+			workflowId: workflow.id,
+			fn: async () =>
 				await new Promise<void>((resolve) => {
 					releaseHolder = resolve;
 				}),
-		);
+			signal: new AbortController().signal,
+		});
 
 		// The instance was demoted; the stepdown teardown must neither wait on the
 		// held lock nor tear the workflow down without it — it skips.

@@ -1,5 +1,11 @@
 export { getProviderPrefix, splitModelId } from './model-id';
 export {
+	getModelPromptCachingCapability,
+	isGoogleVertexAnthropicModel,
+	isOpenRouterAnthropicModel,
+	isRoutedAnthropicModel,
+} from '@n8n/api-types';
+export {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
@@ -12,3 +18,11 @@ export {
 	rejectIfUnsupportedNativeWebSearch,
 	type AgentConfigValidationMessages,
 } from './config-normalization';
+export {
+	classifyMcpTool,
+	compileMcpToolPermissions,
+	resolveMcpToolPermission,
+	type CompiledMcpToolPermissions,
+	type McpToolAnnotations,
+	type McpToolDescriptor,
+} from './mcp-tool-permissions';

@@ -18,6 +18,11 @@ class TagGenerator {
 			versionSuffix = '-distroless';
 		}
 
+		if (image === 'n8n-pc') {
+			imageName = 'n8n';
+			versionSuffix = '-pc';
+		}
+
 		const platformSuffix = platform ? `-${platform.split('/').pop()}` : '';
 		const fullVersion = `${version}${versionSuffix}${platformSuffix}`;
 
@@ -82,12 +87,12 @@ class TagGenerator {
 	}
 
 	generateAll({ version, platform, includeDockerHub = false, sha = '', date = '' }) {
-		const images = ['n8n', 'runners', 'runners-distroless'];
+		const images = ['n8n', 'n8n-pc', 'runners', 'runners-distroless'];
 		const results = {};
 
 		for (const image of images) {
 			const tags = this.generate({ image, version, platform, includeDockerHub, sha, date });
-			const prefix = image.replace('-distroless', '_distroless');
+			const prefix = image.replaceAll('-', '_');
 			results[prefix] = tags;
 
 			if (this.githubOutput) {

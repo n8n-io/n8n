@@ -41,21 +41,24 @@ const IntroStub = defineComponent({
 	props: {
 		incomplete: Boolean,
 		connectModelOnly: Boolean,
+		returnVisit: Boolean,
 		modelValue: String,
 		sandboxValue: String,
 		searchValue: String,
 	},
-	emits: ['setup', 'openStep', 'turnOff'],
+	emits: ['setup', 'setupLater', 'openStep', 'turnOff'],
 	template: `
 		<div
 			data-test-id="intro-stub"
 			:data-incomplete="String(incomplete)"
 			:data-connect-model-only="String(connectModelOnly)"
+			:data-return-visit="String(returnVisit)"
 			:data-model-value="modelValue"
 			:data-sandbox-value="sandboxValue"
 			:data-search-value="searchValue"
 		>
 			<button data-test-id="intro-setup" @click="$emit('setup')" />
+			<button data-test-id="intro-setup-later" @click="$emit('setupLater')" />
 			<button data-test-id="intro-open-model" @click="$emit('openStep', 'model')" />
 			<button data-test-id="intro-open-search" @click="$emit('openStep', 'search')" />
 			<button data-test-id="intro-turn-off" @click="$emit('turnOff')" />
@@ -125,11 +128,10 @@ function setupStore(overrides: Record<string, unknown> = {}) {
 				sandbox: { provider: false, serviceUrl: false, apiKey: false },
 				search: { provider: false, apiKey: false, url: false },
 			},
-			localGatewayDisabled: false,
 			...overrides,
 		} as never,
 	});
-	vi.mocked(store.fetch).mockResolvedValue(undefined);
+	vi.mocked(store.fetch).mockResolvedValue(true);
 	vi.mocked(store.persistEnabled).mockResolvedValue(true);
 	const credentialsStore = useCredentialsStore();
 	vi.mocked(credentialsStore.fetchCredentialTypes).mockResolvedValue(undefined as never);
@@ -139,6 +141,7 @@ function setupStore(overrides: Record<string, unknown> = {}) {
 describe('InstanceAiOnboardingView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		localStorage.clear();
 	});
 
 	it('fetches setup data and opens at the first unmet step', async () => {
@@ -157,7 +160,7 @@ describe('InstanceAiOnboardingView', () => {
 	it('shows saved setup progress and opens a selected checklist step', async () => {
 		const { pinia, store } = setupStore({
 			modelCredentialId: 'model-credential',
-			modelName: 'claude-opus-5',
+			modelName: 'claude-opus-5-5',
 		});
 		store.$patch({
 			instanceModelCredentials: [
@@ -169,7 +172,7 @@ describe('InstanceAiOnboardingView', () => {
 		expect(getByTestId('intro-stub')).toHaveAttribute('data-incomplete', 'true');
 		expect(getByTestId('intro-stub')).toHaveAttribute(
 			'data-model-value',
-			'anthropic/claude-opus-5',
+			'anthropic/claude-opus-5-5',
 		);
 
 		await fireEvent.click(getByTestId('intro-open-search'));
@@ -263,6 +266,20 @@ describe('InstanceAiOnboardingView', () => {
 		await fireEvent.click(completeView.getByTestId('wizard-close'));
 		expect(completeView.emitted().completed).toEqual([[]]);
 		expect(completeView.getByTestId('wizard-stub')).toHaveAttribute('data-open', 'false');
+	});
+
+	it('marks the intro as seen and returns home on set-up-later', async () => {
+		const first = setupStore();
+		const firstView = renderView({ pinia: first.pinia });
+
+		expect(firstView.getByTestId('intro-stub')).toHaveAttribute('data-return-visit', 'false');
+		await fireEvent.click(firstView.getByTestId('intro-setup-later'));
+		expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
+		firstView.unmount();
+
+		const second = setupStore();
+		const secondView = renderView({ pinia: second.pinia });
+		expect(secondView.getByTestId('intro-stub')).toHaveAttribute('data-return-visit', 'true');
 	});
 
 	it('keeps the assistant enabled when turn-off is cancelled', async () => {

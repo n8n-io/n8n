@@ -2,15 +2,6 @@ import type { InstanceAiCredits, ToolCategory } from '../schemas/instance-ai.sch
 
 export type InstanceAiPushMessage =
 	| {
-			type: 'instanceAiGatewayStateChanged';
-			data: {
-				connected: boolean;
-				directory: string | null;
-				hostIdentifier: string | null;
-				toolCategories: ToolCategory[];
-			};
-	  }
-	| {
 			type: 'instanceAiBrowserStateChanged';
 			data: {
 				connected: boolean;
@@ -28,5 +19,11 @@ export type InstanceAiPushMessage =
 					threadId: string;
 					totalCreditsUsed: number;
 				};
+			};
+	  }
+	| {
+			type: 'instanceAiMcpToolCallFailed';
+			data: {
+				connectionId: string;
 			};
 	  };

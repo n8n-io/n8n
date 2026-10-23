@@ -13,6 +13,7 @@ export interface ToggleProps extends Pick<ButtonProps, 'variant' | 'size' | 'dis
 	modelValue?: boolean | null;
 	value?: AcceptableValue;
 	label: string;
+	showTooltip?: boolean;
 	icon?: IconName;
 	name?: string;
 	required?: boolean;
@@ -22,6 +23,7 @@ const props = withDefaults(defineProps<ToggleProps>(), {
 	variant: 'solid',
 	size: 'medium',
 	disabled: false,
+	showTooltip: true,
 });
 
 const emit = defineEmits<{
@@ -36,22 +38,16 @@ const effectiveSize = computed(() => {
 	return props.size;
 });
 
-const effectiveVariant = computed(() => {
-	if (props.variant === 'highlight') return 'ghost';
-	if (props.variant === 'highlight-fill') return 'ghost';
-	return props.variant;
-});
-
 const computedIconSize = computed((): IconSize => {
 	if (effectiveSize.value === 'xsmall') return 'xsmall';
-	return effectiveSize.value as IconSize;
+	return effectiveSize.value;
 });
 
 const classes = computed(() =>
 	cn(
 		'button',
 		$style.toggle,
-		$style[effectiveVariant.value],
+		$style[props.variant],
 		$style[effectiveSize.value],
 		$style.iconOnly,
 		props.disabled && $style.disabled,
@@ -72,7 +68,7 @@ const pressed = computed({
 </script>
 
 <template>
-	<N8nTooltip :content="label" :disabled="disabled">
+	<N8nTooltip v-if="showTooltip" :content="label" :disabled="disabled">
 		<ToggleGroupItem
 			v-if="value !== undefined"
 			v-bind="attrs"
@@ -105,6 +101,38 @@ const pressed = computed({
 			</span>
 		</TogglePrimitive>
 	</N8nTooltip>
+
+	<ToggleGroupItem
+		v-else-if="value !== undefined"
+		v-bind="attrs"
+		:value="value"
+		:disabled="disabled"
+		:class="classes"
+		:aria-label="label"
+		data-icon-only="true"
+	>
+		<span :class="$style['toggle-inner']">
+			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
+			<slot />
+		</span>
+	</ToggleGroupItem>
+
+	<TogglePrimitive
+		v-else
+		v-bind="attrs"
+		v-model="pressed"
+		:disabled="disabled"
+		:name="name"
+		:required="required"
+		:class="classes"
+		:aria-label="label"
+		data-icon-only="true"
+	>
+		<span :class="$style['toggle-inner']">
+			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
+			<slot />
+		</span>
+	</TogglePrimitive>
 </template>
 
 <style lang="scss" module>

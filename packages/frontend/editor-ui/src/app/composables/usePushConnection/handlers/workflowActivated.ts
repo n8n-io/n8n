@@ -5,6 +5,8 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { consumePendingActivationModal } from '@/app/composables/workflowPublicationConfirmation';
+import { WORKFLOW_ACTIVE_MODAL_KEY } from '@/app/constants';
 import type { PushHandlerOptions } from './types';
 
 export async function workflowActivated(
@@ -19,7 +21,19 @@ export async function workflowActivated(
 
 	const { workflowId, activeVersionId } = data;
 
+	// Publication confirmed - resolve the intent in this tab
+	const showActivationModal = consumePendingActivationModal(workflowId, activeVersionId);
+
 	const workflowIsBeingViewed = workflowDocumentStore.workflowId === workflowId;
+
+	// First publish initiated in this tab: show the one-time success modal (ADO-4969).
+	// Open it before the refresh below: the awaits can yield long enough for
+	// navigation to change what is on screen, and the modal does not depend on
+	// the fetched data.
+	if (workflowIsBeingViewed && showActivationModal) {
+		uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
+	}
+
 	const activeVersionChanged = workflowDocumentStore.activeVersionId !== activeVersionId;
 	if (workflowIsBeingViewed && activeVersionChanged) {
 		const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflowId);

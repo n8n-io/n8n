@@ -3,7 +3,7 @@ import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
@@ -20,13 +20,18 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('@/features/shared/commandBar/composables/useCommandBar', () => ({
 	useCommandBar: () => ({
-		initialize: vi.fn(),
-		items: computed(() => []),
+		isOpen: ref(false),
+		query: ref(''),
+		activeTab: ref('all'),
+		tabs: computed(() => []),
+		sections: ref([]),
 		placeholder: computed(() => ''),
-		context: computed(() => undefined),
-		isLoading: ref(false),
-		onCommandBarChange: vi.fn(),
-		onCommandBarNavigateTo: vi.fn(),
+		breadcrumb: computed(() => undefined),
+		isLoading: computed(() => false),
+		hasMore: computed(() => false),
+		select: vi.fn(),
+		back: vi.fn(),
+		loadMore: vi.fn(),
 	}),
 }));
 
@@ -66,19 +71,31 @@ describe('AppCommandBar', () => {
 		await waitFor(() => expect(getByTestId('command-bar-stub').dataset.open).toBe('true'));
 	});
 
-	it('closes the command bar on Cmd+F and refocuses the canvas', async () => {
-		const emitSpy = vi.spyOn(canvasEventBus, 'emit');
-		const { getByTestId } = renderComponent({ pinia });
+	it.each([{ metaKey: true }, { ctrlKey: true }])(
+		'closes the command bar with the find shortcut and refocuses the canvas: %o',
+		async (modifiers) => {
+			const emitSpy = vi.spyOn(canvasEventBus, 'emit');
+			const { getByTestId } = renderComponent({ pinia });
 
-		commandBarEventBus.emit('open:request');
-		await waitFor(() => expect(getByTestId('command-bar-stub').dataset.open).toBe('true'));
+			commandBarEventBus.emit('open:request');
+			await waitFor(() => expect(getByTestId('command-bar-stub').dataset.open).toBe('true'));
 
-		document.dispatchEvent(
-			new KeyboardEvent('keydown', { key: 'f', metaKey: true, cancelable: true }),
-		);
+			const event = new KeyboardEvent('keydown', { key: 'f', ...modifiers, cancelable: true });
+			document.dispatchEvent(event);
+			expect(event.defaultPrevented).toBe(true);
 
-		await waitFor(() => expect(getByTestId('command-bar-stub').dataset.open).toBe('false'));
-		await waitFor(() => expect(emitSpy).toHaveBeenCalledWith('focus'));
+			await waitFor(() => expect(getByTestId('command-bar-stub').dataset.open).toBe('false'));
+			await waitFor(() => expect(emitSpy).toHaveBeenCalledWith('focus'));
+		},
+	);
+
+	it('keeps native find when the command bar is closed', () => {
+		renderComponent({ pinia });
+		const event = new KeyboardEvent('keydown', { key: 'f', metaKey: true, cancelable: true });
+
+		document.dispatchEvent(event);
+
+		expect(event.defaultPrevented).toBe(false);
 	});
 
 	it('does not render the command bar in canvas-only mode', () => {

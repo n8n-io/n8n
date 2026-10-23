@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useCssModule } from 'vue';
+import { computed, inject, useCssModule } from 'vue';
 import TitledList from '@/app/components/TitledList.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useCanvasNode } from '../../../../../composables/useCanvasNode';
@@ -7,7 +7,8 @@ import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils
 import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { useRoute } from 'vue-router';
-import { VIEWS } from '@/app/constants';
+import { EditorEnabledFeaturesKey, VIEWS } from '@/app/constants';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import CanvasNodeStatusMark from './CanvasNodeStatusMark.vue';
@@ -26,6 +27,7 @@ const i18n = useI18n();
 const $style = useCssModule();
 
 const {
+	id,
 	name,
 	validationErrors,
 	hasValidationErrors,
@@ -35,10 +37,44 @@ const {
 	isDisabled,
 	render,
 	isNotInstalledCommunityNode,
+	isRestricted,
+	restrictionScope,
+	isDeprecated,
+	deprecatedReplacementName,
 } = useCanvasNode();
 const renderData = injectCanvasRenderData();
+
+const deprecatedTooltip = computed(() =>
+	deprecatedReplacementName.value
+		? i18n.baseText('node.deprecatedWithReplacement', {
+				interpolate: { nodeTypeName: deprecatedReplacementName.value },
+			})
+		: i18n.baseText('node.deprecated'),
+);
+
+const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const needsCredentialSetup = computed(() => {
+	if (!editorFeatures?.value.credentialSetupWarnings) return false;
+	const node = workflowDocumentStore.value.getNodeById(id.value);
+	const issues = node?.issues;
+	const credentialTypes = Object.keys(issues?.credentials ?? {});
+	if (!node || !credentialTypes.length) return false;
+	if (
+		Object.entries(issues ?? {}).some(
+			([kind, issue]) =>
+				kind !== 'credentials' &&
+				(typeof issue === 'boolean' ? issue : Object.keys(issue ?? {}).length > 0),
+		)
+	)
+		return false;
+	return credentialTypes.every((type) => {
+		const credential = node.credentials?.[type];
+		return !credential?.id && !credential?.__aiGatewayManaged;
+	});
+});
 const executionErrors = computed(
-	() => renderData.value.executionIssuesByNodeName.get(name.value)?.value ?? [],
+	() => renderData.value.executionIssuesByNodeId.get(id.value)?.value ?? [],
 );
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
 const hasPinnedData = computed(
@@ -49,7 +85,7 @@ const hasPinnedData = computed(
 const hasExecutionPinData = computed(
 	() =>
 		renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.executionPinDataByNodeName[name.value],
+		!!renderData.value.executionPinDataByNodeId.get(id.value)?.value,
 );
 const hasVisiblePinData = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const route = useRoute();
@@ -65,6 +101,14 @@ const commonClasses = computed(() => [
 	spinnerScrim ? $style.spinnerScrim : '',
 	spinnerLayout === 'absolute' ? $style.absoluteSpinner : '',
 ]);
+
+const restrictionTitle = computed(() =>
+	i18n.baseText(
+		restrictionScope.value === 'project'
+			? 'node.restricted.project.title'
+			: 'node.restricted.instance.title',
+	),
+);
 
 const groupedExecutionErrors = computed(() => {
 	const errorCounts = executionErrors.value.reduce(
@@ -83,7 +127,17 @@ const groupedExecutionErrors = computed(() => {
 
 <template>
 	<div
-		v-if="isNotInstalledCommunityNode && !isDemoRoute"
+		v-if="isRestricted"
+		:class="[...commonClasses, $style.issues]"
+		data-test-id="node-restricted"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>{{ restrictionTitle }}</template>
+			<N8nIcon icon="lock" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="isNotInstalledCommunityNode && !isDemoRoute"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-not-installed"
 	>
@@ -108,15 +162,28 @@ const groupedExecutionErrors = computed(() => {
 		</N8nTooltip>
 	</div>
 	<div
+		v-else-if="isDeprecated"
+		:class="[...commonClasses, $style.deprecated]"
+		data-test-id="canvas-node-status-deprecated"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content> {{ deprecatedTooltip }} </template>
+			<N8nIcon icon="triangle-alert" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
 		v-else-if="hasValidationErrors && !hideNodeIssues"
-		:class="[...commonClasses, $style.issues]"
-		data-test-id="node-issues"
+		:class="[...commonClasses, needsCredentialSetup ? $style.warning : $style.issues]"
+		:data-test-id="needsCredentialSetup ? 'node-setup-required' : 'node-issues'"
 	>
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>
-				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="validationErrors" />
+				<TitledList
+					:title="i18n.baseText(needsCredentialSetup ? 'node.setupRequired' : 'node.issues')"
+					:items="validationErrors"
+				/>
 			</template>
-			<N8nIcon icon="node-validation-error" :size="size" />
+			<N8nIcon :icon="needsCredentialSetup ? 'key-round' : 'node-validation-error'" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
@@ -161,7 +228,7 @@ const groupedExecutionErrors = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--5xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .waiting {
@@ -194,6 +261,10 @@ const groupedExecutionErrors = computed(() => {
 		background-color: rgba(255, 255, 255, 0.82);
 		border-radius: var(--radius--lg);
 	}
+}
+
+.deprecated {
+	color: var(--color--danger);
 }
 
 .issues {

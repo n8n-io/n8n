@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, useCssModule, watch } from 'vue';
+import { computed, useCssModule, watch, watchEffect } from 'vue';
+import { useVueFlow } from '@vue-flow/core';
 import type { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeAgentRender } from '../../../../canvas.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
@@ -19,7 +22,8 @@ import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
 import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
-import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 // Width comes from the shared constant so canvas placement and tidy-up layout
 // stay in sync with the rendered card.
@@ -34,7 +38,9 @@ const emit = defineEmits<{
 const $style = useCssModule();
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const settingsStore = useSettingsStore();
 const nav = useAgentNavigation();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const { catalog: modelCatalog, ensureLoaded: ensureModelsLoaded } = useModelCatalog();
 
 const {
@@ -85,7 +91,15 @@ const isConfigured = computed(() => isInline.value || agentId.value !== '');
 // the same agent record).
 const projectId = useAgentScopeProjectId();
 
-const { summary: fetchedSummary, error } = useAgentCapabilitySummary(projectId, agentId);
+// The agents API is not registered while agents are off: skip every agent fetch and say why.
+const agentsDisabled = computed(() => !settingsStore.isAgentsEnabled);
+const summaryAgentId = computed(() => (agentsDisabled.value ? '' : agentId.value));
+
+const {
+	summary: fetchedSummary,
+	isLoading,
+	error,
+} = useAgentCapabilitySummary(projectId, summaryAgentId);
 
 // Inline cards render from the pre-projected summary in the render options —
 // no fetch, no event-bus refresh; reactivity comes from the render options.
@@ -94,6 +108,23 @@ const summary = computed(() =>
 );
 
 const hasError = computed(() => !isInline.value && Boolean(error.value));
+
+// The canvas re-centers the card when new content (a picked or edited agent)
+// changes its height, but must not move it while load-time rendering settles.
+// Report the content by value: a refetch that returns the same summary is not
+// new content. `undefined` while nothing is loaded yet.
+const { id: canvasId } = useVueFlow();
+const geometryStore = useAgentNodeCanvasGeometryStore();
+const contentKey = computed(() => {
+	if (agentsDisabled.value) return 'agents-disabled';
+	if (isLoading.value) return undefined;
+	if (summary.value) return JSON.stringify(summary.value);
+	if (hasError.value) return 'error';
+	return isConfigured.value ? undefined : 'empty';
+});
+watchEffect(() => {
+	geometryStore.setNodeContentKey(canvasId, id.value, contentKey.value);
+});
 
 const agentName = computed(
 	() =>
@@ -131,6 +162,11 @@ function resolveNodeTypeLabel(nodeType: string, version?: number): string | unde
 const chips = computed(() =>
 	summary.value ? buildAgentCardChips(summary.value, resolveNodeTypeLabel) : [],
 );
+const activeCapabilityKeys = computed(
+	() =>
+		workflowExecutionStateStore.value.activeAgentCapabilityKeysByNodeId.get(id.value) ??
+		new Set<string>(),
+);
 
 // The picker is NDV-parameter-input shaped; it only reads `parameter.name`, so a
 // minimal synthesized definition matching the node's `agentId` property is enough.
@@ -157,7 +193,7 @@ function onOpenContextMenu(event: MouseEvent) {
 
 function openAgent() {
 	// Inline agents have no builder page — they are edited in the node's NDV.
-	if (isInline.value || !isConfigured.value || !projectId.value) return;
+	if (agentsDisabled.value || isInline.value || !isConfigured.value || !projectId.value) return;
 
 	// No origin node id: this trip starts from the canvas, so "Back to
 	// workflow" must land on the canvas — a set node id would reopen the
@@ -172,7 +208,7 @@ function openAgent() {
 watch(
 	projectId,
 	(id) => {
-		if (!id) return;
+		if (!id || agentsDisabled.value) return;
 		void ensureModelsLoaded(id).catch(() => {});
 	},
 	{ immediate: true },
@@ -194,7 +230,7 @@ watch(
 					<N8nText :bold="true" :class="$style.name">{{ agentName }}</N8nText>
 				</div>
 				<N8nTooltip
-					v-if="isConfigured && !isInline"
+					v-if="isConfigured && !isInline && !agentsDisabled"
 					:content="i18n.baseText('agentNode.card.openAgent')"
 					placement="top"
 				>
@@ -212,7 +248,15 @@ watch(
 
 			<div :class="$style.bodyWrap">
 				<div :class="$style.body">
-					<template v-if="isConfigured">
+					<N8nText
+						v-if="agentsDisabled"
+						size="small"
+						color="danger"
+						data-test-id="canvas-node-agent-disabled"
+					>
+						{{ i18n.baseText('agentNode.agentsDisabled') }}
+					</N8nText>
+					<template v-else-if="isConfigured">
 						<N8nText v-if="hasError" size="small" color="danger">
 							{{ i18n.baseText('agentNode.card.loadError') }}
 						</N8nText>
@@ -230,7 +274,11 @@ watch(
 									{{ modelName || i18n.baseText('agentNode.card.noModel') }}
 								</N8nText>
 							</div>
-							<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
+							<CanvasNodeAgentChips
+								v-if="chips.length"
+								:chips="chips"
+								:active-capability-keys="activeCapabilityKeys"
+							/>
 						</template>
 					</template>
 					<div v-else :class="[$style.picker, 'nodrag', 'nowheel']">

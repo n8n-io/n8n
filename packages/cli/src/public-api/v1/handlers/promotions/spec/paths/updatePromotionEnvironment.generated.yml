@@ -1,0 +1,99 @@
+operationId: updatePromotionEnvironment
+tags:
+  - Promotions
+summary: Update a promotion environment
+description: Updates the name, provider, remote, or settings. A remote replaces the whole saved remote, and settings replace the whole saved settings. The settings must match the direction of the environment, so `createBranchOnPromotion` is always required for Promote. GitLab environments store a repository path and derive remoteUrl from the provider. Plain Git environments keep the full remote URL. If the provider changes during the update, the update returns 409. Reload the environment and try again. Direction and scope cannot change.
+x-required-scope: gitConnection:update
+parameters:
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          providerId:
+            type: string
+            minLength: 1
+            maxLength: 36
+          remote:
+            type: object
+            properties:
+              schemaVersion:
+                type: number
+                enum:
+                  - 1
+              remoteUrl:
+                type: string
+                minLength: 1
+            required:
+              - schemaVersion
+              - remoteUrl
+            additionalProperties: false
+          settings:
+            anyOf:
+              - type: object
+                properties:
+                  schemaVersion:
+                    type: number
+                    enum:
+                      - 1
+                  branchName:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+                required:
+                  - schemaVersion
+                  - branchName
+                additionalProperties: false
+              - type: object
+                properties:
+                  schemaVersion:
+                    type: number
+                    enum:
+                      - 1
+                  baseBranchName:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+                  createBranchOnPromotion:
+                    type: boolean
+                required:
+                  - schemaVersion
+                  - baseBranchName
+                  - createBranchOnPromotion
+                additionalProperties: false
+        additionalProperties: false
+        minProperties: 1
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionEnvironmentPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

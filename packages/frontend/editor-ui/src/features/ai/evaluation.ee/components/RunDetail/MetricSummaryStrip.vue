@@ -5,6 +5,7 @@ import type { MetricScale } from '@n8n/api-types';
 import { normalizeMetricScore } from '@n8n/api-types';
 import {
 	getUserDefinedMetricNames,
+	isUnscaledCustomMetric,
 	normalizeMetricValue,
 	type MetricSource,
 } from '../../evaluation.utils';
@@ -26,26 +27,46 @@ const props = defineProps<{
 
 const metricNames = computed(() => getUserDefinedMetricNames(props.currentMetrics));
 
-// Delta as the difference of the two runs' normalized [0, 1] scores, each on its
-// own scale — so a metric whose scale changed between runs isn't compared raw.
-// The result is already in score space, rendered directly as percentage points.
-function scoreDelta(name: string): number | undefined {
+// Compare score deltas on each run's own scale. Compare unscaled custom metrics
+// as raw numbers so the delta uses the same unit as the displayed value.
+function metricDelta(
+	name: string,
+	category: MetricSource['category'] | undefined,
+): { value: number | undefined; scale?: MetricScale } {
 	const current = normalizeMetricValue(props.currentMetrics?.[name]);
 	const previous = normalizeMetricValue(props.previousMetrics?.[name]);
-	if (current === undefined || previous === undefined) return undefined;
-	const currentScore = normalizeMetricScore(name, current, props.metricScales?.[name]);
-	const previousScore = normalizeMetricScore(name, previous, props.previousMetricScales?.[name]);
-	if (currentScore === null || previousScore === null) return undefined;
-	return currentScore - previousScore;
+	if (current === undefined || previous === undefined) return { value: undefined };
+
+	const currentScale = props.metricScales?.[name];
+	const previousScale = props.previousMetricScales?.[name];
+	const currentIsUnscaled = isUnscaledCustomMetric({
+		key: name,
+		category,
+		scale: currentScale,
+	});
+	const previousIsUnscaled = isUnscaledCustomMetric({
+		key: name,
+		category,
+		scale: previousScale,
+	});
+	if (currentIsUnscaled !== previousIsUnscaled) return { value: undefined };
+	if (currentIsUnscaled) return { value: current - previous };
+
+	const currentScore = normalizeMetricScore(name, current, currentScale);
+	const previousScore = normalizeMetricScore(name, previous, previousScale);
+	if (currentScore === null || previousScore === null) return { value: undefined };
+	return { value: currentScore - previousScore, scale: 'unit' };
 }
 
 const cards = computed(() =>
 	metricNames.value.map((name) => {
 		const source = props.metricSources?.[name];
+		const delta = metricDelta(name, source?.category);
 		return {
 			name,
 			currentValue: normalizeMetricValue(props.currentMetrics?.[name]),
-			delta: scoreDelta(name),
+			delta: delta.value,
+			deltaScale: delta.scale,
 			category: source?.category,
 			scale: props.metricScales?.[name],
 			sourceNodeName: source?.nodeName,
@@ -69,6 +90,7 @@ const cards = computed(() =>
 				:name="card.name"
 				:current-value="card.currentValue"
 				:delta="card.delta"
+				:delta-scale="card.deltaScale"
 				:category="card.category"
 				:scale="card.scale"
 				:source-node-name="card.sourceNodeName"
@@ -97,5 +119,6 @@ const cards = computed(() =>
 
 .row {
 	display: flex;
+	min-width: 100%;
 }
 </style>

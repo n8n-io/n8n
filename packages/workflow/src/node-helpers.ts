@@ -512,6 +512,99 @@ export function displayParameterPath(
 }
 
 /**
+ * Returns the credential types a node actively uses given its current configuration,
+ * or `null` when the active set cannot be determined statically. A credential type is
+ * active when:
+ * - its description in the node type is currently displayed (its `displayOptions` match), or
+ * - it is referenced by the `nodeCredentialType` / `genericAuthType` parameters — nodes like
+ *   HTTP Request select credential types dynamically through these parameters instead of
+ *   declaring them in the node type description.
+ *
+ * Returns `null` when the node type description is unavailable, a credential-type
+ * parameter is an expression (it only resolves at runtime), or evaluating the
+ * configuration throws. Callers must fall back conservatively for their use case:
+ * treat all referenced credentials as active when validating, and clean nothing
+ * when removing stale entries.
+ */
+export function getActiveCredentialTypes(
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription | null,
+): Set<string> | null {
+	if (!nodeTypeDescription) {
+		return null;
+	}
+
+	try {
+		// Saved nodes drop parameters that hold their default value, but the Workflow
+		// constructor restores those defaults before a node reads its credentials.
+		// Resolve the same defaults here so the credential display options evaluate
+		// what execution evaluates. Resolved values win — this keeps nested defaults
+		// and stripped expression prefixes in step with execution — and raw values
+		// fill in only the parameters the node type does not declare.
+		const resolved =
+			getNodeParameters(
+				nodeTypeDescription.properties ?? [],
+				node.parameters,
+				true,
+				true,
+				node,
+				nodeTypeDescription,
+			) ?? {};
+		const declaredNames = new Set((nodeTypeDescription.properties ?? []).map((p) => p.name));
+		const parameters: INodeParameters = { ...resolved };
+		for (const name of Object.keys(node.parameters)) {
+			if (!declaredNames.has(name)) parameters[name] = node.parameters[name];
+		}
+
+		const activeTypes = new Set<string>();
+
+		for (const credentialDescription of nodeTypeDescription.credentials ?? []) {
+			if (displayParameter(parameters, credentialDescription, node, nodeTypeDescription)) {
+				activeTypes.add(credentialDescription.name);
+			}
+		}
+
+		const { nodeCredentialType, genericAuthType } = parameters;
+		for (const paramName of ['nodeCredentialType', 'genericAuthType'] as const) {
+			const paramValue = paramName === 'nodeCredentialType' ? nodeCredentialType : genericAuthType;
+			if (typeof paramValue !== 'string' || !paramValue) {
+				continue;
+			}
+
+			// These parameters select the credential type dynamically, so their own
+			// displayOptions (e.g. shown only for a given `authentication` value) decide
+			// whether the value they hold is actually in use. A stale value left over from
+			// a previous selection must not be reported as active just because it's
+			// non-empty. Node types that don't declare the property at all (e.g. tests)
+			// keep the previous, unconditional behaviour.
+			const paramDescription = (nodeTypeDescription.properties ?? []).find(
+				(p) => p.name === paramName,
+			);
+			if (
+				paramDescription &&
+				!displayParameter(parameters, paramDescription, node, nodeTypeDescription)
+			) {
+				continue;
+			}
+
+			// Checked after the hidden check: a hidden parameter holds no active value,
+			// expression or not, so a leftover expression must not make the whole node
+			// indeterminable and block cleanup.
+			if (isExpression(paramValue)) {
+				return null;
+			}
+
+			activeTypes.add(paramValue);
+		}
+
+		return activeTypes;
+	} catch {
+		// Malformed display options must not break callers that never evaluated them before
+		return null;
+	}
+}
+
+/**
  * Returns the context data
  *
  * @param {IRunExecutionData} runExecutionData The run execution data
@@ -1172,6 +1265,19 @@ export function getNodeInputs(
 	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
+	options: {
+		/**
+		 * Surface a broken `inputs` expression instead of reporting no inputs.
+		 * Swallowing suits rendering; a caller judging validity wants the error.
+		 *
+		 * Only a thrown error counts. An expression that evaluates but yields a
+		 * non-list is left alone: that is almost always an unconfigured node
+		 * (the LangChain Code node maps over an empty `Inputs` collection), and
+		 * the engine reads the same case as "no inputs" and runs. Failing here
+		 * would block publishing a workflow the runtime is happy with.
+		 */
+		throwOnExpressionError?: boolean;
+	} = {},
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
@@ -1186,6 +1292,7 @@ export function getNodeInputs(
 			{},
 		) || []) as NodeConnectionType[];
 	} catch (e) {
+		if (options.throwOnExpressionError) throw e;
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
 	}
@@ -1822,7 +1929,7 @@ export function isExecutable(
 	);
 }
 
-export function isNodeWithWorkflowSelector(node: INode) {
+export function isNodeWithWorkflowSelector(node: Pick<INode, 'type'>) {
 	return [
 		EXECUTE_WORKFLOW_NODE_TYPE,
 		WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
@@ -2083,7 +2190,10 @@ export function getToolDescriptionForNode(
 /**
  * Attempts to retrieve the ID of a subworkflow from a execute workflow node.
  */
-export function getSubworkflowId(node: INode): string | undefined {
+export function getSubworkflowId(node: {
+	type: string;
+	parameters: Record<string, unknown>;
+}): string | undefined {
 	if (isNodeWithWorkflowSelector(node) && isResourceLocatorValue(node.parameters.workflowId)) {
 		return node.parameters.workflowId.value as string;
 	}

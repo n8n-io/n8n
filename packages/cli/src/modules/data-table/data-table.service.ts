@@ -11,7 +11,8 @@ import type {
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectRelationRepository, type User } from '@n8n/db';
+import { EventService, RoleService } from '@n8n/backend-services';
+import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
@@ -31,9 +32,6 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
-
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableCsvImportService } from './data-table-csv-import.service';
@@ -42,11 +40,14 @@ import { DataTableSizeValidator } from './data-table-size-validator.service';
 import type { DataTable } from './data-table.entity';
 import { DataTableRepository } from './data-table.repository';
 import { columnTypeToFieldType } from './data-table.types';
+import { DataTableAccessDeniedError } from './errors/data-table-access-denied.error';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
+
+import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
 
 @Service()
 export class DataTableService {
@@ -60,6 +61,8 @@ export class DataTableService {
 		private readonly roleService: RoleService,
 		private readonly csvImportService: DataTableCsvImportService,
 		private readonly eventService: EventService,
+		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -80,12 +83,49 @@ export class DataTableService {
 		return dataTable.projectId;
 	}
 
+	async getOne(dataTableId: string, projectId: string): Promise<DataTable> {
+		const dataTable = await this.dataTableRepository.findOne({
+			where: { id: dataTableId, project: { id: projectId } },
+			relations: ['project', 'columns'],
+		});
+
+		if (!dataTable) {
+			throw new DataTableNotFoundError(dataTableId);
+		}
+
+		return dataTable;
+	}
+
+	async resolveOwningProjectId(user: User, projectId?: string): Promise<string> {
+		if (!projectId) {
+			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+			return personalProject.id;
+		}
+
+		const existingProject = await this.projectService.findProject(projectId);
+		if (!existingProject) {
+			throw new ProjectNotFoundError(projectId);
+		}
+
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			'dataTable:create',
+		]);
+		if (!project) throw new DataTableAccessDeniedError('create');
+
+		return project.id;
+	}
+
 	/**
-	 * `id` is package-import-only: it keeps the id the table had on the exporting
-	 * instance (mirrors `FolderService.createFolder`). REST callers never pass it —
-	 * the public create endpoint always mints a fresh id.
+	 * `id` and `columnIds` are package-import-only: they keep the ids the table and
+	 * its columns had on the exporting instance (mirrors `FolderService.createFolder`).
+	 * REST callers never pass them. The public create endpoint always mints fresh ids.
 	 */
-	async createDataTable(projectId: string, dto: CreateDataTableDto, id?: string) {
+	async createDataTable(
+		projectId: string,
+		dto: CreateDataTableDto,
+		id?: string,
+		columnIds?: Array<string | undefined>,
+	) {
 		if (dto.fileId && dto.columns.length === 0) {
 			throw new DataTableValidationError(
 				'At least one column must be included when importing from CSV',
@@ -100,6 +140,7 @@ export class DataTableService {
 			dto.columns,
 			undefined,
 			id,
+			columnIds,
 		);
 
 		if (dto.fileId) {
@@ -140,6 +181,13 @@ export class DataTableService {
 			where: { id: In(dataTableIds) },
 			relations: { columns: true },
 		});
+	}
+
+	/** Instance-wide column id lookup used by package import to detect column ids that another table uses. */
+	async findTableIdsByColumnIds(
+		columnIds: string[],
+	): Promise<Array<Pick<DataTableColumn, 'id' | 'dataTableId'>>> {
+		return await this.dataTableColumnRepository.findTableIdsByColumnIds(columnIds);
 	}
 
 	/** Project-scoped name lookup used by package import to detect name conflicts before creating tables. */
@@ -249,6 +297,20 @@ export class DataTableService {
 		return result;
 	}
 
+	async replaceSchema(
+		dataTableId: string,
+		projectId: string,
+		schema: {
+			name: string;
+			columns: Array<Pick<DataTableColumn, 'name' | 'type'> & { id?: string }>;
+		},
+	) {
+		const table = await this.validateDataTableExists(dataTableId, projectId);
+		if (table.name !== schema.name) await this.validateUniqueName(schema.name, projectId);
+
+		await this.dataTableColumnRepository.replaceSchema(dataTableId, projectId, schema);
+	}
+
 	async moveColumn(
 		dataTableId: string,
 		projectId: string,
@@ -299,6 +361,15 @@ export class DataTableService {
 
 		return await this.dataTableColumnRepository.manager.transaction(async (em) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, em);
+			const sortColumn = dto.sortBy?.[0];
+			if (
+				sortColumn &&
+				!Object.hasOwn(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, sortColumn) &&
+				!columns.some((column) => column.name === sortColumn)
+			) {
+				throw new DataTableValidationError(`unknown column name '${sortColumn}'`);
+			}
+
 			const transformedDto = dto.filter
 				? { ...dto, filter: this.validateAndTransformFilters(dto.filter, columns) }
 				: dto;
@@ -767,8 +838,26 @@ export class DataTableService {
 			true,
 		);
 
+		const columnTypeMap = new Map<string, DataTableColumnType>([
+			...Object.entries(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP),
+			...columns.map((c) => [c.name, c.type] as const),
+		]);
+
 		const transformedFilters = filterObject.filters.map((filter, index) => {
 			const transformedValue = transformedRows[index][filter.columnName];
+
+			// Empty/not-empty use an empty-string comparison that only makes sense for string
+			// columns. On any other type "empty" can only mean NULL, so map to eq/neq null
+			// (mirrors the DataTable node). This keeps the API path consistent and avoids an
+			// invalid `col = ''` comparison the DB would reject.
+			if (columnTypeMap.get(filter.columnName) !== 'string') {
+				if (filter.condition === 'isEmpty') {
+					return { ...filter, condition: 'eq' as const, value: null };
+				}
+				if (filter.condition === 'isNotEmpty') {
+					return { ...filter, condition: 'neq' as const, value: null };
+				}
+			}
 
 			if (['like', 'ilike'].includes(filter.condition)) {
 				if (transformedValue === null || transformedValue === undefined) {
@@ -839,6 +928,20 @@ export class DataTableService {
 			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
 			dataTables,
 		};
+	}
+
+	/**
+	 * Sizes in bytes from the shared size cache, so callers add no query load.
+	 * Does no project filtering, so callers must have authorised these ids.
+	 */
+	async getCachedSizeBytesByIds(dataTableIds: string[]): Promise<Map<string, number>> {
+		if (dataTableIds.length === 0) return new Map();
+
+		const sizeData = await this.dataTableSizeValidator.getCachedSizeData(
+			async () => await this.dataTableRepository.findDataTablesSize(),
+		);
+
+		return new Map(dataTableIds.map((id) => [id, sizeData.dataTables[id]?.sizeBytes ?? 0]));
 	}
 
 	async findDataTablesByIdsForUser(

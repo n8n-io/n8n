@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import AnnotationTagsDropdown from '@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue';
-import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -15,6 +14,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
+import cloneDeep from 'lodash/cloneDeep';
 
 import { ElDatePicker } from 'element-plus';
 import {
@@ -30,6 +30,7 @@ import {
 } from '@n8n/design-system';
 
 export type ExecutionFilterProps = {
+	initialFilters?: ExecutionFilterType;
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
 	workflowId?: string;
 	popoverSide?: 'top' | 'right' | 'bottom' | 'left';
@@ -64,12 +65,10 @@ const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
 const isAnnotationFiltersEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
-const showTags = computed(() => false);
 
 const getDefaultFilter = (): ExecutionFilterType => ({
 	status: 'all',
 	workflowId: 'all',
-	tags: [],
 	annotationTags: [],
 	startDate: '',
 	endDate: '',
@@ -77,7 +76,8 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	vote: 'all',
 	workflowVersionId: 'all',
 });
-const filter = reactive(getDefaultFilter());
+// Copy, so nested edits do not change the caller's filters before this component emits them.
+const filter = reactive({ ...getDefaultFilter(), ...cloneDeep(props.initialFilters) });
 
 type ExecutionVersion = { versionId: string; name: string | null; createdAt: string };
 const workflowVersions = ref<ExecutionVersion[]>([]);
@@ -156,7 +156,6 @@ const countSelectedFilterProps = computed(() => {
 	const nonDefaultFilters = [
 		filter.status !== 'all',
 		filter.workflowId !== 'all' && props.workflows.length,
-		!isEmpty(filter.tags),
 		!isEmpty(filter.annotationTags),
 		filter.vote !== 'all',
 		filter.workflowVersionId !== 'all',
@@ -192,12 +191,8 @@ const onFilterMetaChange = <K extends keyof ExecutionFilterMetadata>(
 	debouncedEmit('filterChanged', filter);
 };
 
-// Can't use v-model on TagsDropdown component and thus vModel.tags is useless
+// Can't use v-model on TagsDropdown component and thus vModel.annotationTags is useless
 // We just emit the updated filter
-const onTagsChange = () => {
-	emit('filterChanged', filter);
-};
-
 const onAnnotationTagsChange = () => {
 	emit('filterChanged', filter);
 };
@@ -232,7 +227,7 @@ onBeforeMount(() => {
 	>
 		<template #trigger>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				iconOnly
 				icon="funnel"
 				size="medium"
@@ -243,7 +238,7 @@ onBeforeMount(() => {
 			>
 				<template v-if="!!countSelectedFilterProps" #default>
 					<N8nBadge
-						theme="primary"
+						variant="primary"
 						class="mr-4xs"
 						data-test-id="execution-filter-badge"
 						:class="$style.filterBadge"
@@ -274,17 +269,6 @@ onBeforeMount(() => {
 							/>
 						</div>
 					</N8nSelect>
-				</div>
-				<div v-if="showTags" :class="$style.group">
-					<label for="execution-filter-tags">{{ locale.baseText('workflows.filters.tags') }}</label>
-					<WorkflowTagsDropdown
-						id="execution-filter-tags"
-						v-model="filter.tags"
-						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
-						:create-enabled="false"
-						data-test-id="executions-filter-tags-select"
-						@update:model-value="onTagsChange"
-					/>
 				</div>
 				<div :class="$style.group">
 					<label for="execution-filter-status">{{

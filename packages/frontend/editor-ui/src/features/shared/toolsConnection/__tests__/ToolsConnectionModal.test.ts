@@ -39,7 +39,7 @@ vi.mock('@n8n/design-system', async () => {
 			scrollTo: scrollToMock,
 		},
 		template: `
-			<div>
+			<div class="recycle-scroller-wrapper">
 				<div v-for="item in items" :key="item[itemKey]">
 					<slot :item="item" :update-item-size="() => {}" />
 				</div>
@@ -91,6 +91,14 @@ function renderWith(
 		categories: ToolCategoryKey[];
 		detailItem: ToolConnectionItem | null;
 		detailMode: 'detail' | 'settings';
+		showSuggestionFooter: boolean;
+		groupSearchResults: boolean;
+		hideEmptyCategories: boolean;
+		createAction: {
+			category?: ToolCategoryKey;
+			label: string;
+			testId?: string;
+		};
 	}>,
 ) {
 	return renderModal({
@@ -100,6 +108,13 @@ function renderWith(
 			categories: props.categories ?? ALL_CATEGORIES,
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
+			showSuggestionFooter: props.showSuggestionFooter,
+			groupSearchResults: props.groupSearchResults,
+			hideEmptyCategories: props.hideEmptyCategories,
+			createAction: props.createAction,
+		},
+		slots: {
+			'suggestion-footer': '<div data-test-id="suggest-tool-footer">Suggest a tool</div>',
 		},
 		pinia: createTestingPinia(),
 	});
@@ -147,6 +162,25 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('Notion onboarding flow')).toBeNull();
 	});
 
+	it('treats every status except none as having a connection', () => {
+		const items: ToolConnectionItem[] = [
+			{ ...connectedMcpFixture, id: 'connected', title: 'Operational', status: 'connected' },
+			{ ...connectedMcpFixture, id: 'connecting', title: 'In progress', status: 'connecting' },
+			{ ...connectedMcpFixture, id: 'disconnected', title: 'Unavailable', status: 'disconnected' },
+			{ ...connectedMcpFixture, id: 'none', title: 'Never added', status: 'none' },
+		];
+		const { getByTestId, queryByText } = renderWith({
+			items,
+			categories: ['connected', 'mcp'],
+		});
+
+		expect(getByTestId('tab-connected')).toHaveTextContent('(3)');
+		expect(queryByText('Operational')).toBeTruthy();
+		expect(queryByText('In progress')).toBeTruthy();
+		expect(queryByText('Unavailable')).toBeTruthy();
+		expect(queryByText('Never added')).toBeNull();
+	});
+
 	it('gathers every item under the all tab, connected ones included', () => {
 		const { getByTestId, queryByText } = renderWith({
 			categories: ['all', ...ALL_CATEGORIES],
@@ -157,6 +191,131 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('GitHub')).toBeTruthy();
 		expect(queryByText('OpenAI')).toBeTruthy();
 		expect(queryByText('Notion onboarding flow')).toBeTruthy();
+	});
+
+	it('supports a flat all-items list with a suggestion footer', () => {
+		const { getByTestId, queryByTestId, queryByText } = renderWith({
+			categories: ['all'],
+			showSuggestionFooter: true,
+		});
+
+		expect(queryByTestId('tab-all')).not.toBeInTheDocument();
+		expect(queryByText('Notion')).toBeTruthy();
+		expect(queryByText('GitHub')).toBeTruthy();
+		expect(queryByText('OpenAI')).toBeTruthy();
+		expect(getByTestId('suggest-tool-footer')).toBeTruthy();
+	});
+
+	it('lists restricted tools after every usable tool on the all tab and in their category', async () => {
+		const restrictedGateway: ToolConnectionItem = {
+			id: 'n8n-connect:gmail',
+			kind: 'node',
+			title: 'Gmail',
+			status: 'none',
+			category: 'n8n-connect',
+			freeCredits: true,
+			nodeTypeName: 'n8n-nodes-base.gmailTool',
+			restriction: { name: 'n8n-nodes-base.gmailTool', available: false, scope: 'instance' },
+		};
+		const restrictedApp: ToolConnectionItem = {
+			id: 'nodeType:gmail',
+			kind: 'node',
+			title: 'Gmail',
+			status: 'none',
+			category: 'app-action',
+			nodeTypeName: 'n8n-nodes-base.gmailTool',
+			restriction: { name: 'n8n-nodes-base.gmailTool', available: false, scope: 'project' },
+		};
+		const usableApp: ToolConnectionItem = {
+			id: 'nodeType:sheets',
+			kind: 'node',
+			title: 'Google Sheets',
+			status: 'none',
+			category: 'app-action',
+			nodeTypeName: 'n8n-nodes-base.googleSheetsTool',
+		};
+		const { getAllByTestId, getByTestId } = renderWith({
+			// Restricted first, and one of them gateway-backed: the all-tab rank sort alone
+			// would keep it above the usable tool.
+			items: [restrictedGateway, restrictedApp, usableApp],
+			categories: ['all', 'app-action'],
+		});
+
+		const titlesOnAll = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+		expect(titlesOnAll[0]).toContain('Google Sheets');
+		expect(titlesOnAll[1]).toContain('Gmail');
+		expect(titlesOnAll[2]).toContain('Gmail');
+		expect(getAllByTestId('node-restricted-icon')).toHaveLength(2);
+
+		await fireEvent.click(getByTestId('tab-app-action'));
+		await waitFor(() => {
+			const titles = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+			expect(titles).toHaveLength(2);
+			expect(titles[0]).toContain('Google Sheets');
+			expect(titles[1]).toContain('Gmail');
+		});
+	});
+
+	it('lists connectors on Gateway credits first on the Connectors tab, keeping their order', async () => {
+		const connector = (title: string, freeCredits = false): ToolConnectionItem => ({
+			id: `registry:${title}`,
+			kind: 'mcp-server',
+			title,
+			description: `${title} MCP`,
+			status: 'none',
+			availableTools: [],
+			freeCredits,
+		});
+		const { getAllByTestId } = renderWith({
+			items: [
+				connector('Notion'),
+				connector('Firecrawl', true),
+				connector('GitHub'),
+				connector('Brave', true),
+			],
+			categories: ['mcp'],
+		});
+
+		await waitFor(() => {
+			const titles = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+			expect(titles.map((title) => title?.match(/Notion|Firecrawl|GitHub|Brave/)?.[0])).toEqual([
+				'Firecrawl',
+				'Brave',
+				'Notion',
+				'GitHub',
+			]);
+		});
+	});
+
+	it('labels and populates the n8n-connect tab and finds its items in search', async () => {
+		const gatewayItem: ToolConnectionItem = {
+			id: 'n8n-connect:slack',
+			kind: 'node',
+			title: 'Slack',
+			description: 'Send messages',
+			status: 'none',
+			category: 'n8n-connect',
+			freeCredits: true,
+			nodeTypeName: 'n8n-nodes-base.slackTool',
+		};
+		const { getByTestId, getByPlaceholderText, queryByText } = renderWith({
+			items: [gatewayItem, ...realisticItems],
+			categories: ['n8n-connect', 'all', ...ALL_CATEGORIES],
+		});
+
+		const tab = getByTestId('tab-n8n-connect');
+		expect(tab.textContent).toContain('Gateway credits');
+		expect(tab.textContent).toContain('(1)');
+		// First tab is active, so the gateway item is visible immediately.
+		expect(queryByText('Slack')).toBeTruthy();
+
+		const inputEl = getByPlaceholderText('Search all tools...') as HTMLInputElement;
+		// A non-matching query empties the tab, proving the debounced filter runs.
+		await fireEvent.update(inputEl, 'zzzznomatch');
+		await waitFor(() => expect(getByTestId('tab-n8n-connect').textContent).toContain('(0)'));
+		// Searching the item's description text brings it back.
+		await fireEvent.update(inputEl, 'send messages');
+		await waitFor(() => expect(getByTestId('tab-n8n-connect').textContent).toContain('(1)'));
 	});
 
 	it('keeps connected items in their own category when the connected tab is omitted', () => {
@@ -171,21 +330,79 @@ describe('ToolsConnectionModal', () => {
 	});
 
 	it('shows the empty state when items is empty', () => {
-		const { getByTestId } = renderWith({ items: [] });
+		const { getByTestId } = renderWith({ items: [], categories: ['mcp'] });
 		expect(getByTestId('tools-connection-empty')).toBeTruthy();
+		expect(getByTestId('suggest-tool-footer')).toBeTruthy();
+	});
+
+	it('renders the suggestion footer after the tool rows inside the scroller', () => {
+		const { getByTestId, getAllByTestId, container } = renderWith({
+			items: makeLargeMcpList(20),
+			categories: ['mcp'],
+		});
+		const scroller = container.querySelector('.recycle-scroller-wrapper');
+		const footer = getByTestId('suggest-tool-footer');
+		const rows = getAllByTestId('tools-connection-row');
+
+		expect(scroller).toContainElement(footer);
+		expect(rows.at(-1)?.compareDocumentPosition(footer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+	});
+
+	it('does not render the suggestion footer outside the MCP category', async () => {
+		const { getByTestId, queryByTestId } = renderWith({
+			categories: ['mcp', 'ai'],
+		});
+
+		expect(queryByTestId('suggest-tool-footer')).toBeTruthy();
+		await fireEvent.click(getByTestId('tab-ai'));
+		expect(queryByTestId('suggest-tool-footer')).toBeNull();
+	});
+
+	it('offers workflow creation when the workflows category is empty', async () => {
+		const { emitted, getByTestId, queryByTestId } = renderWith({
+			items: [],
+			categories: ['mcp', 'workflows'],
+			createAction: {
+				category: 'workflows',
+				label: 'Create workflow',
+				testId: 'tools-connection-create-workflow',
+			},
+		});
+
+		expect(queryByTestId('tools-connection-create-workflow')).toBeNull();
+
+		await fireEvent.click(getByTestId('tab-workflows'));
+		expect(getByTestId('tools-connection-empty')).toBeTruthy();
+
+		await fireEvent.click(getByTestId('tools-connection-create-workflow'));
+		expect(emitted().create).toEqual([['workflows']]);
+	});
+
+	it('offers the create action on every tab when it has no category', async () => {
+		const { getByTestId } = renderWith({
+			categories: ['all', 'mcp', 'workflows'],
+			createAction: { label: 'Create', testId: 'tools-connection-create-any' },
+		});
+
+		expect(getByTestId('tools-connection-create-any')).toBeTruthy();
+		await fireEvent.click(getByTestId('tab-mcp'));
+		expect(getByTestId('tools-connection-create-any')).toBeTruthy();
+		await fireEvent.click(getByTestId('tab-workflows'));
+		expect(getByTestId('tools-connection-create-any')).toBeTruthy();
 	});
 
 	it('renders the detail view when a detailItem is set', () => {
-		const unconnectedMcp = { ...connectedMcpFixture, isConnected: false, settings: undefined };
-		const { queryByTestId, queryByText, queryAllByTestId } = renderWith({
+		const unconnectedMcp = {
+			...connectedMcpFixture,
+			status: 'none' as const,
+			settings: undefined,
+		};
+		const { queryByTestId, queryByText } = renderWith({
 			detailItem: unconnectedMcp,
 		});
 
 		expect(queryByTestId('tools-connection-detail')).toBeTruthy();
-		const chips = queryAllByTestId('tools-connection-detail-tool');
-		expect(chips.length).toBeGreaterThan(0);
-		expect(queryByText('search')).toBeTruthy();
-		expect(queryByText('create-pages')).toBeTruthy();
+		expect(queryByText(connectedMcpFixture.longDescription ?? '')).toBeTruthy();
 		expect(queryByTestId('tools-connection-search')).toBeNull();
 	});
 
@@ -201,7 +418,7 @@ describe('ToolsConnectionModal', () => {
 	it('renders the slotted settings body when a consumer supplies #settings-body', () => {
 		const { queryByTestId } = renderWithMcpSettingsSlot(connectedMcpFixture);
 		expect(queryByTestId('tools-connection-settings')).toBeTruthy();
-		expect(queryByTestId('tools-connection-settings-inclusion')).toBeTruthy();
+		expect(queryByTestId('tools-connection-permission-read')).toBeTruthy();
 		expect(queryByTestId('tools-connection-settings-save')).toBeTruthy();
 		expect(queryByTestId('tools-connection-settings-remove')).toBeTruthy();
 	});
@@ -248,8 +465,80 @@ describe('ToolsConnectionModal', () => {
 		expect(populated.queryByTestId('tab-community')).toBeTruthy();
 	});
 
+	describe('with hideEmptyCategories', () => {
+		const SKILL_CATEGORIES: ToolCategoryKey[] = ['all', 'project', 'this-agent', 'global'];
+
+		function skill(id: string, category: ToolCategoryKey, attached = false): ToolConnectionItem {
+			return {
+				id: `skill:${id}`,
+				kind: 'skill',
+				skillId: id,
+				title: id,
+				category,
+				status: 'none',
+				attached,
+			};
+		}
+
+		it('hides empty tabs but keeps the all tab', () => {
+			const { getByTestId, queryByTestId } = renderWith({
+				items: [skill('tone', 'project'), skill('digest', 'this-agent')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+
+			expect(getByTestId('tab-all').textContent).toContain('(2)');
+			expect(getByTestId('tab-project').textContent).toContain('(1)');
+			expect(getByTestId('tab-this-agent').textContent).toContain('(1)');
+			expect(queryByTestId('tab-global')).toBeNull();
+		});
+
+		it('hides the tab strip when only the all tab is left', () => {
+			const empty = renderWith({
+				items: [],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+			expect(empty.queryByTestId('tools-connection-tabs')).toBeNull();
+			empty.unmount();
+
+			const oneScope = renderWith({
+				items: [skill('tone', 'global')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+			expect(oneScope.getByTestId('tab-global')).toBeTruthy();
+		});
+
+		it('keeps every tab while a search matches nothing in it', async () => {
+			const { getByTestId, getByPlaceholderText } = renderWith({
+				items: [skill('tone', 'project'), skill('digest', 'global')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+
+			await fireEvent.update(getByPlaceholderText('Search all tools...'), 'tone');
+
+			await waitFor(() => {
+				expect(getByTestId('tab-global').textContent).toContain('(0)');
+			});
+		});
+	});
+
+	it('opens on the first visible tab when the first declared one starts hidden', () => {
+		const withoutCommunity = realisticItems.filter((item) => item.category !== 'community');
+		const { getByTestId, queryByTestId } = renderWith({
+			items: withoutCommunity,
+			categories: ['community', 'mcp', 'workflows'],
+		});
+
+		expect(queryByTestId('tab-community')).toBeNull();
+		expect(getByTestId('tab-mcp')).toHaveAttribute('aria-selected', 'true');
+		expect(queryByTestId('tools-connection-empty')).toBeNull();
+	});
+
 	it('states a count on every tab, zero included', () => {
-		const items = realisticItems.filter((item) => !item.isConnected);
+		const items = realisticItems.filter((item) => item.status !== 'connected');
 		const { getByTestId } = renderWith({ items, categories: ALL_CATEGORIES });
 
 		expect(getByTestId('tab-ai').textContent).toContain('(2)');
@@ -279,6 +568,25 @@ describe('ToolsConnectionModal', () => {
 		// Categories with no hits stay in the strip, reading zero.
 		expect(getByTestId('tab-workflows').textContent).toContain('(0)');
 		expect(getByTestId('tab-connected').textContent).toContain('(0)');
+	});
+
+	it('groups search matches from all categories under category headings', async () => {
+		const { getByPlaceholderText, getByTestId, queryByTestId, queryByText } = renderWith({
+			categories: ['all', 'mcp', 'app-action', 'workflows'],
+			groupSearchResults: true,
+		});
+
+		await fireEvent.update(getByPlaceholderText('Search all tools...'), 'notion');
+
+		await waitFor(() => {
+			expect(getByTestId('tools-connection-search-category-mcp')).toHaveTextContent('Connectors');
+		});
+		expect(getByTestId('tools-connection-search-category-workflows')).toHaveTextContent(
+			'Workflows',
+		);
+		expect(queryByText('Notion')).toBeTruthy();
+		expect(queryByText('Notion onboarding flow')).toBeTruthy();
+		expect(queryByTestId('tools-connection-tabs')).not.toBeInTheDocument();
 	});
 
 	it('filters the list down to the clicked category', async () => {
@@ -360,7 +668,11 @@ describe('ToolsConnectionModal', () => {
 	});
 
 	it('emits update:detailItem(null) when the back button is clicked', async () => {
-		const unconnectedMcp = { ...connectedMcpFixture, isConnected: false, settings: undefined };
+		const unconnectedMcp = {
+			...connectedMcpFixture,
+			status: 'none' as const,
+			settings: undefined,
+		};
 		const { getByTestId, emitted } = renderWith({ detailItem: unconnectedMcp });
 
 		await fireEvent.click(getByTestId('tools-connection-detail-back'));
@@ -397,6 +709,17 @@ describe('ToolsConnectionModal', () => {
 		await waitFor(() => {
 			expect(queryByText('Gmail')).toBeTruthy();
 			expect(queryByText('GitHub')).toBeNull();
+		});
+	});
+
+	it('ignores surrounding whitespace in a search query', async () => {
+		const { getByPlaceholderText, queryByText } = renderWith({ categories: ['mcp'] });
+
+		await fireEvent.update(getByPlaceholderText('Search all tools...'), '  github  ');
+
+		await waitFor(() => {
+			expect(queryByText('GitHub')).toBeTruthy();
+			expect(queryByText('Gmail')).toBeNull();
 		});
 	});
 

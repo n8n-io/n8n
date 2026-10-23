@@ -71,6 +71,40 @@ describe('UserRepository', () => {
 			]);
 		});
 
+		test('pages by ID, even when the timestamps disagree', async () => {
+			// The timestamps descend while the IDs ascend, so a timestamp order
+			// would page these rows in the opposite order.
+			const now = DateTime.utc();
+			const workflow = await createWorkflow({}, owner);
+			const first = await createExecution(
+				{ startedAt: now.plus({ minute: 3 }).toJSDate() },
+				workflow,
+			);
+			const second = await createExecution(
+				{ startedAt: now.plus({ minute: 2 }).toJSDate() },
+				workflow,
+			);
+			const third = await createExecution({ startedAt: null }, workflow);
+
+			const page = async (beforeId?: string) =>
+				await executionRepository.findManyByRangeQuery({
+					workflowId: workflow.id,
+					user: owner,
+					kind: 'range',
+					range: { limit: 1, beforeId },
+				});
+
+			// Walk the pages the way the cursor does: the first page has no cursor.
+			const [newest] = await page();
+			expect(newest.id).toBe(third.id);
+
+			const [middle] = await page(newest.id);
+			expect(middle.id).toBe(second.id);
+
+			const [oldest] = await page(middle.id);
+			expect(oldest.id).toBe(first.id);
+		});
+
 		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {
 			const workflow = await createWorkflow({}, owner);
 			const execution = await createExecution(

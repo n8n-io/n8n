@@ -1,7 +1,7 @@
 // Decision schema (structured-output target) + encoders to InstanceAiConfirmRequest.
 
 import { domainAccessActionSchema, instanceGatewayResourceDecisionSchema } from '@n8n/api-types';
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest, InstanceAiCredentialSetupHint } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
@@ -64,7 +64,7 @@ const pickResourceDecisionSchema = z.object({
 });
 
 /**
- * Response to a standalone credential-setup card (`credentials(action='setup')`
+ * Response to a standalone credential-setup card (`workflow_builder_credentials(action='setup')`
  * suspending — TRUST-349). This action is always part of `confirmationDecisionSchema`
  * and always listed in the tool descriptions, same as `approve_or_reject` —
  * it isn't conditionally offered. What's gated is whether the *event* ever
@@ -82,7 +82,7 @@ const pickResourceDecisionSchema = z.object({
  * no build attached (e.g. "connect my Slack account now, before I build
  * anything") — confirmed live against a real instance, all three outcomes:
  *
- * Live-captured suspend (`credentials(action='setup')` call args):
+ * Live-captured suspend (`workflow_builder_credentials(action='setup')` call args):
  * ```json
  * { "action": "setup", "credentials": [{ "credentialType": "slackApi", "reason": "...", "suggestedName": "Slack account" }] }
  * ```
@@ -104,9 +104,9 @@ const pickResourceDecisionSchema = z.object({
  *  - `auto`   → `{kind:'credentialAutoSetup', credentialType}` — triggers an
  *    agent rebuild server-side (tool State 4). Live-captured tool result:
  *    `{success:false, needsBrowserSetup:true, credentialType:"slackApi", docsUrl:"...", requiredFields:[...]}`,
- *    followed by the assistant loading the `credential-setup-with-computer-use`
+ *    followed by the assistant loading the `credential-setup-with-browser-use`
  *    skill as designed. Reachable and its shape is real, but not further
- *    implemented — the harness has no Computer Use tools attached, so a case
+ *    implemented — the harness has no Browser Use tools attached, so a case
  *    scripting this will stall afterward. Do not push such a case to the
  *    gated CI suite.
  *  - `skip`   → `{kind:'approval', approved:false}` — tool State 2 (deferred).
@@ -126,9 +126,31 @@ const chooseCredentialSetupOptionDecisionSchema = z.object({
 	existingCredentialId: z.string().optional(),
 });
 
+const RUN_WORKFLOW_DESCRIPTION =
+	'Workflow to run before sending this message. Set only when the director says the user runs it. Select the intended workflow, not a prerequisite or cleanup workflow. This runs normally, without mocks, and supports credential-free manual or schedule workflows only.';
+
 const sendFollowUpMessageDecisionSchema = z.object({
 	action: z.literal('send_follow_up_message'),
 	message: z.string(),
+	/**
+	 * Rename the workflow this run last saved, from outside the conversation, at
+	 * this turn boundary — the agent is idle and is never told. `name` is one of
+	 * WORKFLOW_CHECKSUM_FIELDS, so the rename conflicts the agent's next save
+	 * without touching any node, which is how a case reaches the "modified
+	 * outside this conversation" path on purpose instead of by accident.
+	 *
+	 * Set it ONLY when a stage direction says something changed the workflow
+	 * behind the user's back. The harness performs the rename; the agent sees
+	 * nothing but `message`. A specific field rather than a general patch because
+	 * anything richer would have the model authoring workflow JSON — and
+	 * structured output cannot take a nested object here anyway (see
+	 * `nodeParametersJson` above).
+	 *
+	 * The harness ignores it when the run has saved no workflow yet, and when
+	 * that workflow already carries this name.
+	 */
+	renameWorkflowTo: z.string().min(1).optional(),
+	runWorkflowId: z.string().min(1).optional().describe(RUN_WORKFLOW_DESCRIPTION),
 });
 
 const declareDoneDecisionSchema = z.object({
@@ -144,6 +166,11 @@ const declareDoneDecisionSchema = z.object({
  * The schema handed to the model per mode IS the action menu — actions that
  * cannot function at that moment are not offered at all.
  */
+export const userTurnWithoutExecutionSchema = z.discriminatedUnion('action', [
+	sendFollowUpMessageDecisionSchema.omit({ runWorkflowId: true }).strict(),
+	declareDoneDecisionSchema,
+]);
+
 export type ProxyDecisionMode = 'confirmation' | 'user-turn';
 
 export const confirmationDecisionSchema = z.discriminatedUnion('action', [
@@ -155,10 +182,20 @@ export const confirmationDecisionSchema = z.discriminatedUnion('action', [
 	chooseCredentialSetupOptionDecisionSchema,
 ]);
 
-export const userTurnDecisionSchema = z.discriminatedUnion('action', [
-	sendFollowUpMessageDecisionSchema,
-	declareDoneDecisionSchema,
-]);
+export function createUserTurnDecisionSchema(savedWorkflowIds: string[]) {
+	const [firstId, ...remainingIds] = savedWorkflowIds;
+	if (firstId === undefined) return userTurnWithoutExecutionSchema;
+
+	return z.discriminatedUnion('action', [
+		sendFollowUpMessageDecisionSchema.extend({
+			runWorkflowId: z
+				.enum([firstId, ...remainingIds])
+				.optional()
+				.describe(RUN_WORKFLOW_DESCRIPTION),
+		}),
+		declareDoneDecisionSchema,
+	]);
+}
 
 /** Full union — the type every decision consumer handles. Agents are only ever
  *  offered the mode-scoped subsets above. */
@@ -189,6 +226,9 @@ export interface SetupWizardParseContext {
 		credentialRequests: Array<{
 			credentialType: string;
 			existingCredentials: Array<{ id: string; name: string }>;
+			/** Simplified Custom Auth's recipe (template + placeholders) for minting
+			 *  the credential — only present for `httpTemplatedCustomAuth` requests. */
+			setupHint?: InstanceAiCredentialSetupHint;
 		}>;
 	}>;
 }
@@ -213,7 +253,7 @@ export interface CredentialSetupParseContext {
 
 export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmation responses. A widget is on screen: the agent paused mid-run and is waiting for the user to respond to the event shown in this prompt. Pick the action that matches the widget:
 
-- answer_questions(answers[]): The agent fired an ask-user confirmation (inputType=questions). Answer every question with a plausible value — stated → implied → invented. Invent rather than skip. Set skipped=true only when the question has no plausible answer of any shape, OR when a [stage direction] in the script tells the user to decline or withhold that value — in that case you MUST set skipped=true with an empty selectedOptions and pick NO option (not even one that looks standard or obvious); picking a value defeats the test.
+- answer_questions(answers[]): The agent fired an workflow_builder_ask_user confirmation (inputType=questions). Answer every question with a plausible value — stated → implied → invented. Invent rather than skip. Set skipped=true only when the question has no plausible answer of any shape, OR when a [stage direction] in the script tells the user to decline or withhold that value — in that case you MUST set skipped=true with an empty selectedOptions and pick NO option (not even one that looks standard or obvious); picking a value defeats the test.
 
 - apply_setup_wizard(nodeParametersJson, nodeCredentialsJson?, workingCredentialTypes?): The agent fired a setup-wizard / "configure your workflow" setup card with placeholder parameters and/or credential slots (the event's payload has \`setupRequests\`). \`nodeParametersJson\` decodes to { "<setup node name>": { "<paramName>": <value>, ... }, ... } — fill every non-credential placeholder with a plausible value (stated → implied → invented). Credential slots (a request entry with \`credentialType\`) stay unset by default — omit \`nodeCredentialsJson\` or leave that node/type out of it — UNLESS a stage direction governing this exact card tells the user to engage; then set \`nodeCredentialsJson\` to { "<setup node name>": { "<credentialType>": "<id>" } }. What \`<id>\` should be depends on that request's \`existingCredentials\`: zero entries → put any placeholder string, a real credential will be created for you; exactly one → put its \`id\`; two or more → put the \`id\` of the one the direction names (match by its \`name\`). This is the ONLY correct way to fill a setup card — do NOT answer it with answer_questions. To deliberately leave a value unset (e.g. a stage direction says the user skips it), dismiss the whole card with approve_or_reject(approved=false) instead of filling it. Whenever you fill a credential slot, list that slot's credential type in \`workingCredentialTypes\` — completing a setup card means the credential the user entered authenticates, which is what the real product requires before it will let the card be applied. Leave a type out ONLY when a stage direction says that particular credential is invalid, expired, revoked or otherwise won't authenticate; with several credentials on one card a direction may make one work and another fail, so list exactly the working ones.
 
@@ -227,7 +267,7 @@ export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmatio
 
 export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user's turn. The agent finished its run, no widget is on screen, and the chat input is waiting. The user either types a message or ends the conversation:
 
-- send_follow_up_message(message): Send the user's next chat message. Everything the user wants to say right now goes here — including answering a question the agent asked in plain text, and approving or rejecting a plan the agent presented in plain text ("No — two changes first: …" or "Yes, go ahead." ARE follow-up messages).
+- send_follow_up_message(message, renameWorkflowTo?): Send the user's next chat message. Everything the user wants to say right now goes here — including answering a question the agent asked in plain text, and approving or rejecting a plan the agent presented in plain text ("No — two changes first: …" or "Yes, go ahead." ARE follow-up messages). Set \`renameWorkflowTo\` ONLY when a [stage direction] says the workflow was changed outside this conversation — e.g. renamed in another tab, or edited by a colleague. The harness renames the last saved workflow for real at this exact moment, and the agent is told nothing about it; \`message\` must NOT mention the rename, because the whole point is that the agent discovers the conflict on its next save. Leave it unset on every other turn.
 
 - declare_done(): The user got what they wanted (or has nothing left to say) and walks away; the conversation ends. Never pick this while the agent is waiting for an answer.`;
 
@@ -239,7 +279,7 @@ export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user
  *  case — see `UserProxyConfig.credentialCreation` in `user-proxy/index.ts`. */
 export type CreateCredentialFn = (
 	credentialType: string,
-	options?: { works?: boolean },
+	options?: { works?: boolean; setupHint?: InstanceAiCredentialSetupHint },
 ) => Promise<{ id: string; name: string }>;
 
 /**
@@ -253,7 +293,7 @@ async function tryCreateCredential(
 	credentialType: string,
 	actionLabel: string,
 	onFailure?: (raw: string, error: unknown) => void,
-	options?: { works?: boolean },
+	options?: { works?: boolean; setupHint?: InstanceAiCredentialSetupHint },
 ): Promise<{ id: string; name: string } | undefined> {
 	if (!createCredential) {
 		onFailure?.(
@@ -333,18 +373,66 @@ export async function encodeConfirmationDecision(
 			};
 		}
 
-		case 'choose_credential_setup_option':
+		case 'choose_credential_setup_option': {
+			const wizardFill = wizardFillForStandaloneDecision(
+				decision,
+				credentialSetupContext,
+				setupContext,
+			);
+			if (wizardFill) {
+				return await encodeConfirmationDecision(
+					{
+						action: 'apply_setup_wizard',
+						nodeParametersJson: '{}',
+						nodeCredentialsJson: JSON.stringify(wizardFill.nodeCredentials),
+						workingCredentialTypes: [wizardFill.credentialType],
+					},
+					onParseFailure,
+					setupContext,
+					credentialSetupContext,
+					createCredential,
+				);
+			}
 			return await encodeCredentialSetupDecision(
 				decision,
 				onParseFailure,
 				credentialSetupContext,
 				createCredential,
 			);
+		}
 
 		case 'send_follow_up_message':
 		case 'declare_done':
 			return null;
 	}
+}
+
+/**
+ * The model answered a setup-wizard card with the standalone-card action. A
+ * `manual` pick still names the credential the direction wants filled, so route
+ * it to the wizard slot(s) of that type instead of dismissing the card. Generic
+ * auth types such as httpTemplatedCustomAuth only ever arrive as wizard slots.
+ */
+function wizardFillForStandaloneDecision(
+	decision: Extract<Decision, { action: 'choose_credential_setup_option' }>,
+	credentialSetupContext: CredentialSetupParseContext | undefined,
+	setupContext: SetupWizardParseContext | undefined,
+): { credentialType: string; nodeCredentials: Record<string, Record<string, string>> } | undefined {
+	if (decision.option !== 'manual' || credentialSetupContext || !setupContext) return undefined;
+	const slots = setupContext.nodes.flatMap((node) =>
+		node.credentialRequests
+			.filter((r) => !decision.credentialType || r.credentialType === decision.credentialType)
+			.map((r) => ({ nodeName: node.nodeName, credentialType: r.credentialType })),
+	);
+	const types = new Set(slots.map((slot) => slot.credentialType));
+	if (types.size !== 1) return undefined;
+	const [credentialType] = types;
+	const nodeCredentials: Record<string, Record<string, string>> = {};
+	for (const slot of slots) {
+		(nodeCredentials[slot.nodeName] ??= {})[credentialType] =
+			decision.existingCredentialId ?? 'new';
+	}
+	return { credentialType, nodeCredentials };
 }
 
 async function encodeCredentialSetupDecision(
@@ -401,7 +489,7 @@ async function resolveManualCredentialSelection(
 ): Promise<InstanceAiConfirmRequest> {
 	const credentialType = request?.credentialType ?? decision.credentialType;
 
-	if (request && request.existingCredentials.length === 0) {
+	if (request?.existingCredentials.length === 0) {
 		const created = await tryCreateCredential(
 			createCredential,
 			request.credentialType,
@@ -522,7 +610,10 @@ async function parseNodeCredentialsJson(
 					credentialType,
 					'apply_setup_wizard',
 					onFailure,
-					{ works: workingCredentialTypes?.has(credentialType) === true },
+					{
+						works: workingCredentialTypes?.has(credentialType) === true,
+						setupHint: request.setupHint,
+					},
 				);
 				if (created) (result[node.nodeName] ??= {})[credentialType] = created.id;
 				continue;

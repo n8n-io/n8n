@@ -1,14 +1,13 @@
 import {
+	CORE_WORKSPACE_TOOL_NAMES,
 	Workspace,
 	type CommandResult,
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
-import {
-	INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST,
-	createLazyRuntimeWorkspace,
-} from '../lazy-runtime-workspace';
+import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
 
 function createMockWorkspace() {
 	const executeCommand = vi.fn<
@@ -69,7 +68,6 @@ function createMockWorkspace() {
 			await Promise.resolve();
 		}),
 		getInstructions: vi.fn(() => 'Real sandbox instructions.'),
-		getDefaultCommandEnv: vi.fn(() => ({ CUSTOM_ENV: 'enabled' })),
 		executeCommand,
 	};
 
@@ -91,9 +89,7 @@ describe('createLazyRuntimeWorkspace', () => {
 		lazyWorkspace.getInstructions();
 
 		expect(ensureWorkspace).not.toHaveBeenCalled();
-		expect(tools.map((tool) => tool.name).sort()).toEqual(
-			[...INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST].sort(),
-		);
+		expect(tools.map((tool) => tool.name).sort()).toEqual([...CORE_WORKSPACE_TOOL_NAMES].sort());
 		expect(tools.some((tool) => tool.name === 'workspace_list_files')).toBe(false);
 		expect(tools.some((tool) => tool.name === 'workspace_append_file')).toBe(false);
 
@@ -103,22 +99,34 @@ describe('createLazyRuntimeWorkspace', () => {
 		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
 	});
 
-	it('merges sandbox default env after the real workspace is created', async () => {
+	it('reports cancellation when an active command returns a transport cancellation', async () => {
 		const { workspace, executeCommand } = createMockWorkspace();
-		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
-		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
-		const executeCommandTool = lazyWorkspace
-			.getTools()
-			.find((tool) => tool.name === 'workspace_execute_command');
-
-		const result = await executeCommandTool?.handler?.({ command: 'echo $CUSTOM_ENV' }, {});
-
-		expect(result).toMatchObject({ stdout: 'enabled' });
-		expect(executeCommand.mock.calls[0]?.[0]).toBe('echo $CUSTOM_ENV');
-		expect(executeCommand.mock.calls[0]?.[1]).toEqual([]);
-		expect(executeCommand.mock.calls[0]?.[2]?.env).toMatchObject({
-			CUSTOM_ENV: 'enabled',
+		const started = createDeferredPromise();
+		executeCommand.mockImplementation(
+			async (_command, _args, options) =>
+				await new Promise<CommandResult>((_resolve, reject) => {
+					options?.abortSignal?.addEventListener(
+						'abort',
+						() => {
+							const error = new Error('canceled');
+							error.name = 'CanceledError';
+							reject(error);
+						},
+						{ once: true },
+					);
+					started.resolve();
+				}),
+		);
+		const lazyWorkspace = createLazyRuntimeWorkspace({
+			ensureWorkspace: async () => await Promise.resolve(workspace),
 		});
+		const controller = new AbortController();
+		const operation = lazyWorkspace.sandbox!.executeCommand!('sleep 10', [], {
+			abortSignal: controller.signal,
+		});
+		await started.promise;
+		controller.abort();
+		await expect(operation).rejects.toMatchObject({ name: 'AbortError' });
 	});
 
 	it('retries workspace creation after the first lazy initialization fails', async () => {

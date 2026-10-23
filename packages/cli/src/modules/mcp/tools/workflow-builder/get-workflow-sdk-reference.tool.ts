@@ -8,7 +8,7 @@ import { getSdkReferenceContent, type SdkReferenceSection } from './sdk-referenc
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
-const BASE_SECTIONS: SdkReferenceSection[] = [
+const VALID_SECTIONS: SdkReferenceSection[] = [
 	'patterns',
 	'patterns_detailed',
 	'expressions',
@@ -17,28 +17,18 @@ const BASE_SECTIONS: SdkReferenceSection[] = [
 	'import',
 	'guidelines',
 	'design',
+	'groups',
 	'all',
 ];
 
-// `'groups'` is only advertised (and accepted) when the canvas-groups flag is on,
-// so with the flag off the accepted `section` values are exactly what they were
-// before groups existed.
-const buildInputSchema = (canvasGroupsEnabled: boolean) => {
-	const validSections: SdkReferenceSection[] = canvasGroupsEnabled
-		? [...BASE_SECTIONS, 'groups']
-		: BASE_SECTIONS;
-
-	return {
-		section: z
-			.enum(validSections as [string, ...string[]])
-			.optional()
-			.describe(
-				'Optional section to retrieve. Omit this for the full reference, or use a section for targeted lookup.',
-			),
-	} satisfies z.ZodRawShape;
-};
-
-type SdkReferenceInputSchema = ReturnType<typeof buildInputSchema>;
+const inputSchema = {
+	section: z
+		.enum(VALID_SECTIONS as [string, ...string[]])
+		.optional()
+		.describe(
+			'Optional section to retrieve. Omit this for the full reference, or use a section for targeted lookup.',
+		),
+} satisfies z.ZodRawShape;
 
 const outputSchema = {
 	reference: z.string().describe('SDK reference documentation content for the requested section'),
@@ -51,13 +41,12 @@ const outputSchema = {
 export const createGetWorkflowSdkReferenceTool = (
 	user: User,
 	telemetry: Telemetry,
-	{ canvasGroupsEnabled }: { canvasGroupsEnabled: boolean },
-): ToolDefinition<SdkReferenceInputSchema> => ({
+): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_SDK_REFERENCE_TOOL.toolName,
 	config: {
 		description:
 			'Required reference when building a workflow, and only then. Call this BEFORE writing workflow code to learn workflow(), trigger()/node(), .add()/.to(), expr(), and credential patterns.',
-		inputSchema: buildInputSchema(canvasGroupsEnabled),
+		inputSchema,
 		outputSchema,
 		annotations: {
 			title: MCP_GET_SDK_REFERENCE_TOOL.displayTitle,
@@ -74,9 +63,7 @@ export const createGetWorkflowSdkReferenceTool = (
 			parameters: { section },
 		};
 
-		const content = getSdkReferenceContent(section as SdkReferenceSection | undefined, {
-			includeGroups: canvasGroupsEnabled,
-		});
+		const content = getSdkReferenceContent(section as SdkReferenceSection | undefined);
 
 		telemetryPayload.results = { success: true };
 		telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

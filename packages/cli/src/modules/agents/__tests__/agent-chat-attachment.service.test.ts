@@ -4,18 +4,56 @@ import { mock } from 'vitest-mock-extended';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentChatAttachmentRepository } from '../repositories/agent-chat-attachment.repository';
 
 describe('AgentChatAttachmentService', () => {
 	let binaryDataService = mock<BinaryDataService>();
 	let repository = mock<AgentChatAttachmentRepository>();
 	let service: AgentChatAttachmentService;
+	let threadRepository = mock<AgentExecutionThreadRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		binaryDataService = mock<BinaryDataService>();
 		repository = mock<AgentChatAttachmentRepository>();
-		service = new AgentChatAttachmentService(mock<Logger>(), binaryDataService, repository);
+		threadRepository = mock<AgentExecutionThreadRepository>();
+		service = new AgentChatAttachmentService(
+			mock<Logger>(),
+			binaryDataService,
+			repository,
+			threadRepository,
+		);
+	});
+
+	it('checks attachment access through the session and falls back to its persisted resource', async () => {
+		const scope = { agentId: 'agent-1', projectId: 'project-1', userId: 'user-1' };
+		const attachment = mock<AgentChatAttachment>({
+			threadId: 'thread-1',
+			resourceId: 'draft-chat:user-1',
+		});
+		repository.findByIdForAgent.mockResolvedValue(attachment);
+		const thread = mock<AgentExecutionThread>({
+			agentId: scope.agentId,
+			projectId: scope.projectId,
+			accessScope: 'user',
+			ownerId: scope.userId,
+		});
+		threadRepository.findOneBy.mockResolvedValue(thread);
+		expect(await service.getForAgent('att-1', scope)).toEqual(attachment);
+		expect(await service.getForAgent('att-1', { ...scope, userId: 'user-2' })).toBeNull();
+		threadRepository.findOneBy.mockResolvedValue({ ...thread, ownerId: null });
+		expect(await service.getForAgent('att-1', scope)).toBeNull();
+		threadRepository.findOneBy.mockResolvedValue(null);
+		expect(await service.getForAgent('att-1', scope)).toEqual(attachment);
+		expect(await service.getForAgent('att-1', { ...scope, userId: 'user-2' })).toBeNull();
+		threadRepository.findOneBy.mockResolvedValue({
+			...thread,
+			accessScope: 'project',
+			ownerId: null,
+		});
+		expect(await service.getForAgent('att-1', { ...scope, userId: 'user-2' })).toEqual(attachment);
 	});
 
 	describe('storeInbound', () => {
@@ -222,6 +260,106 @@ describe('AgentChatAttachmentService', () => {
 			repository.findByThread.mockResolvedValue([]);
 			await service.deleteByThread('thread-1', { agentId: 'agent-1' });
 			expect(repository.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deleteFromSourceCreatedBefore', () => {
+		const BATCH_SIZE = 500;
+		const scope = { agentId: 'agent-1', source: 'whatsapp' };
+		const before = new Date('2026-01-01T00:00:00.000Z');
+
+		const attachments = (count: number, prefix: string) =>
+			Array.from({ length: count }, (_, i) => ({
+				id: `${prefix}-${i}`,
+				binaryDataId: `filesystem-v2:${prefix}-${i}`,
+			})) as AgentChatAttachment[];
+
+		beforeEach(() => {
+			binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
+		});
+
+		it('deletes in batches until a batch is smaller than the batch size', async () => {
+			repository.findFromSourceCreatedBefore
+				.mockResolvedValueOnce(attachments(BATCH_SIZE, 'a'))
+				.mockResolvedValueOnce(attachments(BATCH_SIZE, 'b'))
+				.mockResolvedValueOnce(attachments(3, 'c'));
+
+			const deleted = await service.deleteFromSourceCreatedBefore(scope, before);
+
+			expect(deleted).toBe(BATCH_SIZE * 2 + 3);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(3);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledWith(
+				scope,
+				before,
+				BATCH_SIZE,
+			);
+			expect(repository.delete).toHaveBeenCalledTimes(3);
+			expect(repository.delete).toHaveBeenLastCalledWith(['c-0', 'c-1', 'c-2']);
+			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenLastCalledWith([
+				'filesystem-v2:c-0',
+				'filesystem-v2:c-1',
+				'filesystem-v2:c-2',
+			]);
+		});
+
+		it('queries again after a full batch and stops at an empty one', async () => {
+			repository.findFromSourceCreatedBefore
+				.mockResolvedValueOnce(attachments(BATCH_SIZE, 'a'))
+				.mockResolvedValueOnce([]);
+
+			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(BATCH_SIZE);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(2);
+			expect(repository.delete).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns 0 and deletes nothing when no file is overdue', async () => {
+			repository.findFromSourceCreatedBefore.mockResolvedValueOnce([]);
+
+			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(0);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(1);
+			expect(repository.delete).not.toHaveBeenCalled();
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
+		});
+
+		it('deletes the bytes before the rows', async () => {
+			repository.findFromSourceCreatedBefore.mockResolvedValueOnce(attachments(2, 'a'));
+
+			await service.deleteFromSourceCreatedBefore(scope, before);
+
+			expect(binaryDataService.deleteManyByBinaryDataId.mock.invocationCallOrder[0]).toBeLessThan(
+				repository.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the rows and throws when the bytes cannot be deleted', async () => {
+			repository.findFromSourceCreatedBefore.mockResolvedValueOnce(attachments(2, 'a'));
+			binaryDataService.deleteManyByBinaryDataId.mockRejectedValueOnce(new Error('storage down'));
+
+			await expect(service.deleteFromSourceCreatedBefore(scope, before)).rejects.toThrow(
+				'storage down',
+			);
+			expect(repository.delete).not.toHaveBeenCalled();
+		});
+
+		it('stops between batches when the signal aborts', async () => {
+			const controller = new AbortController();
+			repository.findFromSourceCreatedBefore.mockImplementationOnce(async () => {
+				controller.abort();
+				return attachments(BATCH_SIZE, 'a');
+			});
+
+			const deleted = await service.deleteFromSourceCreatedBefore(scope, before, controller.signal);
+
+			expect(deleted).toBe(BATCH_SIZE);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(1);
+		});
+
+		it('deletes nothing when the signal is already aborted', async () => {
+			const controller = new AbortController();
+			controller.abort();
+
+			expect(await service.deleteFromSourceCreatedBefore(scope, before, controller.signal)).toBe(0);
+			expect(repository.findFromSourceCreatedBefore).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -14,6 +14,22 @@ export type StepType = 'trigger' | 'v1-node' | 'wait' | 'subworkflow' | 'batch';
  */
 export type StepConfig = unknown;
 
+/**
+ * A batch node's configuration. Unlike a `v1-node`, whose config the engine
+ * carries without reading, the engine runs a batch node itself and so has to
+ * understand this.
+ */
+export interface BatchStepConfig {
+	/** How many items each pass takes. At least 1, so every pass makes progress. */
+	batchSize: number;
+}
+
+export function isBatchStepConfig(config: unknown): config is BatchStepConfig {
+	if (typeof config !== 'object' || config === null) return false;
+	const { batchSize } = config as { batchSize?: unknown };
+	return typeof batchSize === 'number' && Number.isInteger(batchSize) && batchSize >= 1;
+}
+
 export interface GraphNode {
 	/** Deterministic from the source workflow, so re-converting yields the same graph. */
 	id: string;
@@ -33,15 +49,24 @@ export interface GraphEdge {
 	outputIndex: number;
 	/** Which input slot of `to` this edge feeds; `0` unless `to` has several inputs (e.g. Merge). */
 	inputIndex: number;
-	/**
-	 * Closes a cycle (loop iteration).
-	 *
-	 * TODO(CAT-3854): validate that back-edges really close loops.
-	 */
+	/** Closes a cycle (loop iteration). `validateLoops` checks that it really does. */
 	isBackEdge?: boolean;
 }
 
 export interface WorkflowGraph {
 	nodes: GraphNode[];
 	edges: GraphEdge[];
+}
+
+/**
+ * The graph as stored with an execution: as sent, plus what the engine records
+ * on it at start. A caller cannot set that part; the request type has none.
+ */
+export interface StoredWorkflowGraph extends WorkflowGraph {
+	/**
+	 * Ids of the nodes whose outputs the caller supplied, so the engine records
+	 * each as completed with them instead of running it. The outputs live in
+	 * their own table.
+	 */
+	seeded: string[];
 }

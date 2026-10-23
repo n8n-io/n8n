@@ -1,29 +1,18 @@
-import type { StoryFn } from '@storybook/vue3-vite';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
 import N8nCallout from './Callout.vue';
 import N8nLink from '../N8nLink';
-import N8nText from '../N8nText';
 
-export default {
+const meta = {
 	title: 'Core/Callout',
 	component: N8nCallout,
 	argTypes: {
 		theme: {
-			control: {
-				type: 'select',
-			},
+			control: 'select',
 			options: ['info', 'secondary', 'success', 'warning', 'danger', 'custom'],
 		},
-		message: {
-			control: {
-				type: 'text',
-			},
-		},
-		icon: {
-			control: {
-				type: 'text',
-			},
-		},
+		icon: { control: 'text' },
+		default: { control: 'text' },
 	},
 	parameters: {
 		docs: {
@@ -36,80 +25,66 @@ export default {
 			url: 'https://www.figma.com/file/tPpJvbrnHbP8C496cYuwyW/Node-pinning?node-id=15%3A5777',
 		},
 	},
-};
+} satisfies Meta<typeof N8nCallout>;
 
-interface Args {
-	theme: string;
-	icon: string;
-	default: string;
-	actions: string;
-	trailingContent: string;
-}
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-const template: StoryFn<Args> = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nLink,
-		N8nText,
-		N8nCallout,
+export const Default: Story = {
+	render: (args) => ({
+		components: { N8nCallout },
+		setup() {
+			return { args };
+		},
+		template: `
+			<N8nCallout v-bind="args">
+				{{ args.default }}
+			</N8nCallout>
+		`,
+	}),
+	args: {
+		theme: 'success',
+		default: 'This is a default callout.',
 	},
-	template: `
-		<n8n-callout v-bind="args">
-			${args.default}
-			<template #actions v-if="args.actions">
-				${args.actions}
-			</template>
-			<template #trailingContent v-if="args.trailingContent">
-				${args.trailingContent}
-			</template>
-		</n8n-callout>
-	`,
-});
-
-export const defaultCallout = template.bind({});
-defaultCallout.args = {
-	theme: 'success',
-	default: `
-		This is a default callout.
-	`,
 };
 
-export const customCallout = template.bind({});
-customCallout.args = {
-	theme: 'custom',
-	icon: 'git-branch',
-	default: `
-		This is a custom callout.
-	`,
-	actions: `
-		<n8n-link size="small">
-			Do something!
-		</n8n-link>
-	`,
+export const Variants: Story = {
+	render: () => ({
+		components: { N8nCallout },
+		template: `
+			<div style="display: flex; flex-direction: column; gap: var(--spacing--xs);">
+				<N8nCallout theme="info">This is an info callout.</N8nCallout>
+				<N8nCallout theme="secondary">This is a secondary callout.</N8nCallout>
+				<N8nCallout theme="success">This is a success callout.</N8nCallout>
+				<N8nCallout theme="warning">This is a warning callout.</N8nCallout>
+				<N8nCallout theme="danger">This is a danger callout.</N8nCallout>
+				<N8nCallout theme="custom" icon="git-branch">This is a custom callout.</N8nCallout>
+			</div>
+		`,
+	}),
+	args: {
+		theme: 'info',
+	},
 };
 
-export const secondaryCallout = template.bind({});
-secondaryCallout.args = {
-	theme: 'secondary',
-	icon: 'pin',
-	default: `
-		This data is pinned.
-	`,
-	actions: `
-		<n8n-link theme="secondary" size="small" :bold="true" :underline="true">
-			Unpin
-		</n8n-link>
-	`,
-	trailingContent: `
-		<n8n-link
-			theme="secondary"
-			size="small"
-			:bold="true"
-			:underline="true"
-			to="https://n8n.io"
-		>
-			Learn more
-		</n8n-link>
-	`,
+export const Custom: Story = {
+	render: (args) => ({
+		components: { N8nCallout, N8nLink },
+		setup() {
+			return { args };
+		},
+		template: `
+			<N8nCallout v-bind="args">
+				{{ args.default }}
+				<template #actions>
+					<N8nLink size="small">Do something!</N8nLink>
+				</template>
+			</N8nCallout>
+		`,
+	}),
+	args: {
+		theme: 'custom',
+		icon: 'git-branch',
+		default: 'This is a custom callout.',
+	},
 };

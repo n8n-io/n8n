@@ -11,21 +11,28 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	ExecuteAgentInvocationContext,
 	WorkflowExpression,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
 	ExpressionError,
 	NodeConnectionTypes,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+	WAIT_INDEFINITELY,
+	WAIT_FOR_SUB_EXECUTION,
+	MAX_IN_PROCESS_WAIT_MS,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
 import * as validateUtil from '../utils/validate-value-against-schema';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 describe('ExecuteContext', () => {
 	const testCredentialType = 'testCredential';
@@ -247,6 +254,46 @@ describe('ExecuteContext', () => {
 	});
 
 	describe('logNodeOutput', () => {
+		// NODE-5746: Forward valid Code node logs to the editor without server warnings.
+		it.each([
+			{ logCall: 'console.log("x", 42)', args: ['x', 42], messages: ['x', 42] },
+			{ logCall: 'console.log(null)', args: [null], messages: ['null'] },
+			{ logCall: 'console.log(undefined)', args: [undefined], messages: ['undefined'] },
+			{ logCall: 'console.log("x", null)', args: ['x', null], messages: ['x', 'null'] },
+		])(
+			'should forward $logCall to the editor in manual mode without warnings',
+			({ args, messages }) => {
+				const sendDataToUI = vi.fn();
+				const codeNode = mock<INode>({
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+				});
+				const context = new ExecuteContext(
+					mock<Workflow>({ settings: { redactionPolicy: 'none' } }),
+					codeNode,
+					mock<IWorkflowExecuteAdditionalData>({ sendDataToUI }),
+					'manual',
+					mock<IRunExecutionData>(),
+					runIndex,
+					connectionInputData,
+					inputData,
+					executeData,
+					[],
+				);
+				const warnSpy = vi.spyOn(context.logger, 'warn').mockImplementation(() => {});
+
+				context.logNodeOutput(...args);
+
+				expect.soft(warnSpy).not.toHaveBeenCalled();
+				expect(sendDataToUI).toHaveBeenCalledTimes(1);
+				expect(sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+					source: '[Node: "Code"]',
+					messages,
+				});
+			},
+		);
+
 		it('when in manual mode, should parse JSON', () => {
 			const json = '{"key": "value", "nested": {"foo": "bar"}}';
 			const expectedParsedObject = { key: 'value', nested: { foo: 'bar' } };
@@ -391,29 +438,6 @@ describe('ExecuteContext', () => {
 		});
 	});
 
-	describe('getRuntimeCredential', () => {
-		beforeEach(() => {
-			additionalData.getRuntimeCredential.mockReset();
-		});
-
-		it('forwards the alias to the additionalData callback and returns its value', async () => {
-			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
-
-			const result = await executeContext.getRuntimeCredential('api_key');
-
-			expect(result).toBe('Bearer xyz');
-			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
-		});
-
-		it('returns undefined when the underlying callback yields undefined', async () => {
-			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
-
-			const result = await executeContext.getRuntimeCredential('missing');
-
-			expect(result).toBeUndefined();
-		});
-	});
-
 	describe('executeAgent', () => {
 		const webhookNode: INode = {
 			id: 'webhook-node-id',
@@ -447,6 +471,40 @@ describe('ExecuteContext', () => {
 			[closeFn],
 			abortSignal,
 		);
+		const createStreamingAgentContext = (
+			contextRunIndex = runIndex,
+			contextInputData = inputData,
+		) => {
+			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
+			const sendChunkHandler = vi.fn();
+			hooks.addHandler('sendChunk', sendChunkHandler);
+			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				rootExecutionMode: undefined,
+				streamingEnabled: true,
+			});
+			additionalData.executeAgent =
+				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			return {
+				context: new ExecuteContext(
+					agentWorkflow,
+					node,
+					additionalData,
+					'manual',
+					runExecutionData,
+					contextRunIndex,
+					connectionInputData,
+					contextInputData,
+					executeData,
+					[closeFn],
+					abortSignal,
+				),
+				executeAgentMock,
+				sendChunkHandler,
+			};
+		};
 
 		it('passes the workflow context to additionalData.executeAgent', async () => {
 			agentAdditionalData.executeAgent = vi
@@ -464,7 +522,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				agentAdditionalData,
 				'manual',
 				undefined,
@@ -483,7 +541,75 @@ describe('ExecuteContext', () => {
 					],
 					runExecutionData,
 				},
+				{
+					nodeId: node.id,
+					nodeName: node.name,
+					runIndex,
+					itemIndex: 0,
+				},
 			);
+		});
+
+		it('passes a response chunk callback when workflow streaming is available', async () => {
+			const { context, executeAgentMock, sendChunkHandler } = createStreamingAgentContext(2, {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			});
+
+			await context.executeAgent({ agentId: 'agent-1' }, 'hello', 'exec-1', 1);
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+
+			expect(invocationContext).toMatchObject({
+				nodeId: node.id,
+				nodeName: node.name,
+				runIndex: 2,
+				itemIndex: 1,
+				sendResponseChunk: expect.any(Function),
+			});
+
+			await invocationContext.sendResponseChunk?.('item', 'partial');
+
+			expect(sendChunkHandler).toHaveBeenCalledWith({
+				type: 'item',
+				content: 'partial',
+				metadata: {
+					nodeId: node.id,
+					nodeName: node.name,
+					runIndex: 2,
+					itemIndex: 1,
+					timestamp: expect.any(Number),
+				},
+			});
+		});
+
+		it('omits the response chunk callback when structured output is configured', async () => {
+			const { context, executeAgentMock } = createStreamingAgentContext();
+
+			await context.executeAgent(
+				{ agentId: 'agent-1', outputSchema: { type: 'object' } },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
+		});
+
+		it('omits the response chunk callback when agent streaming is disabled', async () => {
+			const { context, executeAgentMock } = createStreamingAgentContext();
+
+			await context.executeAgent(
+				{ agentId: 'agent-1', enableStreaming: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
 		});
 
 		it('passes all input items when inputDataScope is all', async () => {
@@ -502,7 +628,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				agentAdditionalData,
 				'manual',
 				undefined,
@@ -511,6 +637,7 @@ describe('ExecuteContext', () => {
 					inputDataScope: 'all',
 					exposeWorkflowData: true,
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -550,11 +677,12 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-1',
+				expect.stringMatching(UUID_PATTERN),
 				twoItemAdditionalData,
 				'manual',
 				undefined,
 				expect.objectContaining({ inputData: [{ json: { idx: 1 } }], inputDataScope: 'item' }),
+				expect.objectContaining({ itemIndex: 1, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -594,7 +722,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				twoItemAdditionalData,
 				'manual',
 				undefined,
@@ -602,6 +730,7 @@ describe('ExecuteContext', () => {
 					inputData: [{ json: { idx: 0 } }, { json: { idx: 1 } }],
 					inputDataScope: 'all',
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -641,7 +770,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				multiBranchAdditionalData,
 				'manual',
 				undefined,
@@ -649,6 +778,7 @@ describe('ExecuteContext', () => {
 					inputData: [{ json: { branch: 0 } }, { json: { branch: 2 } }],
 					inputDataScope: 'all',
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -688,11 +818,12 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-5',
+				expect.stringMatching(UUID_PATTERN),
 				outOfRangeAdditionalData,
 				'manual',
 				undefined,
 				expect.objectContaining({ inputData: [], inputDataScope: 'item' }),
+				expect.objectContaining({ itemIndex: 5, nodeId: node.id, runIndex }),
 			);
 		});
 	});
@@ -744,6 +875,19 @@ describe('ExecuteContext', () => {
 			});
 		});
 
+		it('redacts console messages when a sub-workflow reported the channel', () => {
+			const context = makeContext('manual', {
+				executionData: {
+					runtimeData: {
+						redaction: { version: 2, production: false, manual: false },
+						subWorkflowRedaction: { production: true, manual: true },
+					},
+				},
+			} as unknown as IRunExecutionData);
+
+			expect(context.isConsoleOutputRedacted()).toBe(true);
+		});
+
 		it('fails closed when resolving the policy throws', () => {
 			const throwingRunData = {
 				get executionData(): never {
@@ -785,6 +929,138 @@ describe('ExecuteContext', () => {
 
 				expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[Workflow'), 'hello');
 			});
+		});
+	});
+
+	describe('putExecutionToWait', () => {
+		const SHORT_MS = MAX_IN_PROCESS_WAIT_MS / 2;
+		const LONG_MS = MAX_IN_PROCESS_WAIT_MS * 10;
+
+		const makeWaitContext = (abortSignal?: AbortSignal) => {
+			const waitRunExecutionData = {
+				resultData: { runData: {} },
+			} as unknown as IRunExecutionData;
+			const waitAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+			const context = new ExecuteContext(
+				workflow,
+				node,
+				waitAdditionalData,
+				mode,
+				waitRunExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[],
+				abortSignal,
+			);
+			return { context, waitRunExecutionData, waitAdditionalData };
+		};
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('keeps the threshold at the value the tracker poll interval sets', () => {
+			expect(MAX_IN_PROCESS_WAIT_MS).toBe(65_000);
+		});
+
+		it('sleeps in the process when only a deadline can end a short wait', async () => {
+			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
+
+			const pending = context.putExecutionToWait(new Date(Date.now() + SHORT_MS), {
+				acceptsResumeRequest: false,
+			});
+			let settled = false;
+			void pending.then(() => {
+				settled = true;
+			});
+
+			await vi.advanceTimersByTimeAsync(SHORT_MS - 1_000);
+			expect(settled).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			await pending;
+
+			expect(waitRunExecutionData.waitTill).toBeUndefined();
+			expect(waitAdditionalData.setExecutionStatus).not.toHaveBeenCalled();
+		});
+
+		it('suspends a short wait that a resume request can end', async () => {
+			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
+			const waitTill = new Date(Date.now() + SHORT_MS);
+
+			await context.putExecutionToWait(waitTill, { acceptsResumeRequest: true });
+
+			expect(waitRunExecutionData.waitTill).toEqual(waitTill);
+			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
+		});
+
+		it('suspends a wait that lands exactly on the threshold', async () => {
+			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
+			const waitTill = new Date(Date.now() + MAX_IN_PROCESS_WAIT_MS);
+
+			await context.putExecutionToWait(waitTill, { acceptsResumeRequest: false });
+
+			expect(waitRunExecutionData.waitTill).toEqual(waitTill);
+			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
+		});
+
+		it('suspends a long wait that only a deadline can end', async () => {
+			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
+			const waitTill = new Date(Date.now() + LONG_MS);
+
+			await context.putExecutionToWait(waitTill, { acceptsResumeRequest: false });
+
+			expect(waitRunExecutionData.waitTill).toEqual(waitTill);
+			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
+		});
+
+		it.each([
+			['WAIT_INDEFINITELY', WAIT_INDEFINITELY],
+			['WAIT_FOR_SUB_EXECUTION', WAIT_FOR_SUB_EXECUTION],
+		])('suspends on the %s sentinel and does not sleep', async (_name, sentinel) => {
+			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
+
+			await context.putExecutionToWait(sentinel, { acceptsResumeRequest: false });
+
+			expect(waitRunExecutionData.waitTill).toEqual(sentinel);
+			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
+		});
+
+		it('leaves no cancellation listener behind when a sleep ends normally', async () => {
+			const abortController = new AbortController();
+			const added = vi.spyOn(abortController.signal, 'addEventListener');
+			const removed = vi.spyOn(abortController.signal, 'removeEventListener');
+			const { context } = makeWaitContext(abortController.signal);
+
+			const pending = context.putExecutionToWait(new Date(Date.now() + SHORT_MS), {
+				acceptsResumeRequest: false,
+			});
+			await vi.advanceTimersByTimeAsync(SHORT_MS);
+			await pending;
+
+			// A workflow can reach many short waits. Each one must release its listener.
+			expect(removed.mock.calls.length).toBe(added.mock.calls.length);
+		});
+
+		it('ends a sleep early when the execution is cancelled', async () => {
+			const abortController = new AbortController();
+			const { context, waitRunExecutionData } = makeWaitContext(abortController.signal);
+
+			const pending = context.putExecutionToWait(new Date(Date.now() + SHORT_MS), {
+				acceptsResumeRequest: false,
+			});
+
+			abortController.abort();
+			await pending;
+
+			expect(vi.getTimerCount()).toBe(0);
+			expect(waitRunExecutionData.waitTill).toBeUndefined();
 		});
 	});
 });

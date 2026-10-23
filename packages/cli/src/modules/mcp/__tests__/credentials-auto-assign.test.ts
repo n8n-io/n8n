@@ -397,12 +397,12 @@ describe('autoPopulateNodeCredentials', () => {
 			);
 
 			expect(node.credentials).toEqual({
-				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(result.assignments).toEqual([
 				{
 					nodeName: 'Test Node',
-					credentialName: 'n8n credits',
+					credentialName: 'Gateway credits',
 					credentialType: 'slackApi',
 					source: 'aiGateway',
 				},
@@ -473,13 +473,13 @@ describe('autoPopulateNodeCredentials', () => {
 			);
 
 			expect(node.credentials).toEqual({
-				serviceApiKey: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				serviceApiKey: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(node.parameters.authentication).toBe('apiKey');
 			expect(result.assignments).toEqual([
 				{
 					nodeName: 'Test Node',
-					credentialName: 'n8n credits',
+					credentialName: 'Gateway credits',
 					credentialType: 'serviceApiKey',
 					source: 'aiGateway',
 				},
@@ -551,7 +551,7 @@ describe('autoPopulateNodeCredentials', () => {
 			);
 
 			expect(node.credentials).toEqual({
-				serviceApiKey: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				serviceApiKey: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(node.parameters.authentication).toBe('apiKey');
 		});
@@ -616,7 +616,7 @@ describe('autoPopulateNodeCredentials', () => {
 			);
 
 			expect(node.credentials).toEqual({
-				serviceApiKey: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				serviceApiKey: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(node.parameters.authentication).toBe('apiKeyLegacy');
 		});
@@ -807,7 +807,7 @@ describe('autoPopulateNodeCredentials', () => {
 				// Canonicalized to the sentinel and kept — the explicit n8n Connect request
 				// wins over the owned credential, and no assignment is recorded for it.
 				expect(node.credentials).toEqual({
-					slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+					slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 				});
 				expect(result.assignments).toEqual([]);
 				expect(result.outcomes).toEqual([]);

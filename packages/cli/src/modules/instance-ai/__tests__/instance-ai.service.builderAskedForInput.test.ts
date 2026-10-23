@@ -12,18 +12,15 @@ vi.mock('@n8n/instance-ai', async () => {
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(),
-		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		setupSandboxWorkspace: vi.fn(),
-		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
-			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
-			loadSkill: vi.fn(),
-		})),
-		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
 		createInstanceAgent: vi.fn(),
-		createAllTools: vi.fn(),
+		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 	};
 });
 
@@ -235,6 +232,49 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 		expect(service.telemetry.track).not.toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.BUILDER_SPECCED_TEMPLATED_CRED,
 			expect.anything(),
+		);
+	});
+
+	it('derives mcp-connect type and server count from an mcpConnectRequest', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest('user-1', 'thread-a', {
+			payload: {
+				mcpConnectRequest: {
+					servers: [
+						{
+							serverSlug: 'brave',
+							title: 'Brave',
+							usesCredentials: [
+								{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
+						{
+							serverSlug: 'linear',
+							title: 'Linear',
+							usesCredentials: [
+								{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
+					],
+				},
+			},
+		});
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Builder asked for input',
+			expect.objectContaining({ type: 'mcp-connect', num_steps: 2 }),
+		);
+	});
+
+	it('falls back to approval when the payload carries no recognised request', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest('user-1', 'thread-a', { payload: {} });
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Builder asked for input',
+			expect.objectContaining({ type: 'approval', num_steps: 1 }),
 		);
 	});
 });

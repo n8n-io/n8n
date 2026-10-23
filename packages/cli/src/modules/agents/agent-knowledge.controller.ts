@@ -1,12 +1,12 @@
-import { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
+
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
@@ -22,13 +22,13 @@ const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 export class AgentKnowledgeController {
 	constructor(
 		private readonly agentKnowledgeService: AgentKnowledgeService,
-		private readonly agentsConfig: AgentsConfig,
+		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 	) {}
 
-	/** Knowledge base endpoints are gated behind the Agents sandbox opt-in. */
+	/** Knowledge base endpoints require the knowledge module and an enabled Agent sandbox. */
 	private assertKnowledgeBaseEnabled() {
-		if (!this.agentsConfig.sandboxEnabled) {
+		if (!this.knowledgeAvailabilityService.isFileKnowledgeEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}

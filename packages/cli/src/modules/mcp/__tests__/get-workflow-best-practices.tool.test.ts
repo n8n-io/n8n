@@ -32,8 +32,7 @@ describe('get-workflow-best-practices MCP tool', () => {
 		telemetry = mock<Telemetry>();
 	});
 
-	const createTool = (canvasGroupsEnabled = false) =>
-		createGetWorkflowBestPracticesTool(user, telemetry, { canvasGroupsEnabled });
+	const createTool = () => createGetWorkflowBestPracticesTool(user, telemetry);
 
 	const textOf = (result: { content: Array<{ type: string; text?: string }> }) =>
 		result.content.map((c) => c.text ?? '').join('\n');
@@ -46,6 +45,37 @@ describe('get-workflow-best-practices MCP tool', () => {
 		expect(tool.config.annotations?.destructiveHint).toBe(false);
 		expect(tool.config.annotations?.idempotentHint).toBe(true);
 		expect(tool.config.inputSchema?.technique).toBeDefined();
+	});
+
+	describe('technique input schema', () => {
+		const techniqueSchema = () => createTool().config.inputSchema!.technique;
+
+		test('accepts every technique key and the list sentinel', () => {
+			const schema = techniqueSchema();
+
+			for (const value of ['list', ...Object.values(WorkflowTechnique)]) {
+				expect(schema.safeParse(value).success).toBe(true);
+			}
+		});
+
+		test('names the accepted values when the technique is unknown', () => {
+			const result = techniqueSchema().safeParse('webhook');
+
+			expect(result.success).toBe(false);
+			const message = result.error?.issues[0]?.message ?? '';
+			expect(message).not.toBe('Invalid input');
+			expect(message).toContain('list');
+			expect(message).toContain(WorkflowTechnique.CHATBOT);
+			expect(message).toContain(WorkflowTechnique.WEB_APP);
+		});
+
+		test('lists the accepted values in the parameter description', () => {
+			const description = techniqueSchema().description ?? '';
+
+			for (const value of ['list', ...Object.values(WorkflowTechnique)]) {
+				expect(description).toContain(value);
+			}
+		});
 	});
 
 	test('returns the full technique catalog when technique="list"', async () => {
@@ -109,30 +139,13 @@ describe('get-workflow-best-practices MCP tool', () => {
 	});
 
 	describe('node grouping guidance', () => {
-		const listText = async (canvasGroupsEnabled: boolean) => {
-			const result = await createTool(canvasGroupsEnabled).handler(
-				{ technique: 'list' },
-				{} as never,
-			);
-			return textOf(result);
-		};
+		test('appends a grouping guidance section to the technique list', async () => {
+			const result = await createTool().handler({ technique: 'list' }, {} as never);
+			const text = textOf(result);
 
-		describe('when canvasGroupsEnabled is true', () => {
-			test('appends a grouping guidance section to the technique list', async () => {
-				const text = await listText(true);
-
-				expect(text).toContain('## Grouping');
-				expect(text).toMatch(/sub-workflow/i); // groups vs sub-workflows
-				expect(text).toMatch(/collapsed/i); // created collapsed by default
-			});
-		});
-
-		describe('when canvasGroupsEnabled is false', () => {
-			test('does not mention grouping in the technique list', async () => {
-				const text = await listText(false);
-
-				expect(text).not.toContain('## Grouping');
-			});
+			expect(text).toContain('## Grouping');
+			expect(text).toMatch(/sub-workflow/i); // groups vs sub-workflows
+			expect(text).toMatch(/collapsed/i); // created collapsed by default
 		});
 	});
 });

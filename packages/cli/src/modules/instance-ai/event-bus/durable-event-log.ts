@@ -1,4 +1,10 @@
-import { INSTANCE_AI_EPHEMERAL_EVENT_TYPES, type InstanceAiEvent } from '@n8n/api-types';
+import {
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
+	acceptInstanceAiEvent,
+	createInstanceAiEventLifecycle,
+	type InstanceAiEventLifecycle,
+	type InstanceAiEvent,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -38,6 +44,7 @@ const MAX_APPEND_ATTEMPTS = 5;
  * line published after run-finish, or a liveness timeout notice) would sit in
  * the coalescer forever; after this quiet period the open buffers are flushed
  * as blocks so they reach the durable log and replay/history stay complete.
+ * The same tick releases the thread's drain state.
  */
 const IDLE_FLUSH_MS = 3_000;
 
@@ -46,6 +53,17 @@ export interface DrainedEvent {
 	id?: number;
 	event: InstanceAiEvent;
 	live: boolean;
+}
+
+interface PlannedEvent {
+	event: InstanceAiEvent;
+	persistIndex?: number;
+	live: boolean;
+}
+
+interface PersistedBatch {
+	firstSeq?: number;
+	entries: PlannedEvent[];
 }
 
 interface PendingEvent {
@@ -120,6 +138,9 @@ export class DurableEventLog {
 
 	private readonly emitters = new Map<string, EmitFn>();
 
+	/** Token deltas use this cache. Durable batches re-read terminal facts on each attempt. */
+	private readonly activityByThread = new Map<string, InstanceAiEventLifecycle>();
+
 	/**
 	 * Lifecycle token per thread, compared by identity. A drain captures it at
 	 * batch start and re-checks after every await: clearThread() replaces the
@@ -160,12 +181,86 @@ export class DurableEventLog {
 		if (existing) clearTimeout(existing);
 		const timer = setTimeout(() => {
 			this.idleFlushTimers.delete(threadId);
-			void this.flush(threadId).catch((error) => {
+			void this.settleIdleThread(threadId).catch((error) => {
 				this.logger.error('Instance AI event log idle flush failed', { threadId, error });
 			});
 		}, this.idleFlushMs);
 		timer.unref();
 		this.idleFlushTimers.set(threadId, timer);
+	}
+
+	/**
+	 * Flush the quiet thread's trailing deltas, then drop its drain state so the
+	 * per-thread maps don't accumulate one entry per thread the process has ever
+	 * served — a thread is only cleared explicitly or by the TTL prune,
+	 * which never reaches a non-leader main at all.
+	 *
+	 * All three are caches: `lastSeq` re-seeds from MAX(seq) (the append path
+	 * already drops it on a conflict), `emitters` is re-set by every publish, and
+	 * `lifecycles` mints a fresh token on demand — so a later publish for the
+	 * same thread just pays one seed query.
+	 */
+	private async settleIdleThread(threadId: string): Promise<void> {
+		await this.flush(threadId);
+		// flush() resolves from inside the drain, before the loop clears its
+		// `draining` entry — await the drain itself so "quiet" really means quiet.
+		await this.draining.get(threadId);
+		// Everything below is synchronous, so a publish cannot interleave between
+		// the checks and the deletes; one arriving after them simply recreates
+		// the state. Releasing under work in flight is not merely wasteful —
+		// dropping `emitters` while a drain is queued makes drainBatch bail and
+		// discard that batch — so bail on any sign of it.
+		//
+		// A publish during the awaits above already re-armed the timer, so that
+		// tick does the release.
+		if (this.idleFlushTimers.has(threadId)) return;
+		// The rest have no tick of their own: flush() enqueues a marker and calls
+		// ensureDraining without ever arming a timer (every run boundary does this
+		// via readRunEvents), and a drain batch that throws resolves its flush
+		// signals in ensureDraining's catch while leaving open buffers behind.
+		// Re-arm rather than deferring the release to a publish that may never
+		// come — a thread going silent in that window would keep its drain state
+		// for the process lifetime.
+		//
+		// `draining` is belt-and-braces: reaching here with a drain in flight
+		// needs one started without arming a timer, which today cannot happen
+		// (flush() only drains when pending/buffers are already non-empty, and
+		// both only fill via publish, which always arms one). Cheap to check, and
+		// releasing under an in-flight batch is not merely wasteful — dropping
+		// `lifecycles` makes the resuming batch bail, and its coalesced blocks are
+		// already out of `buffers`, so that streamed text would be lost.
+		if (
+			this.pendingByThread.has(threadId) ||
+			this.draining.has(threadId) ||
+			(this.buffers.get(threadId)?.size ?? 0) > 0
+		) {
+			this.scheduleIdleFlush(threadId);
+			return;
+		}
+		this.buffers.delete(threadId);
+		this.activityByThread.delete(threadId);
+		this.lastSeq.delete(threadId);
+		this.emitters.delete(threadId);
+		this.lifecycles.delete(threadId);
+	}
+
+	/**
+	 * Threads holding any drain state in this process. Every per-thread map, so
+	 * the count stays honest mid-drain too: a flush() with no prior publish
+	 * starts a drain without an emitter, leaving the thread in `draining` alone
+	 * until the batch bails.
+	 */
+	retainedThreadCount(): number {
+		return new Set([
+			...this.pendingByThread.keys(),
+			...this.draining.keys(),
+			...this.lastSeq.keys(),
+			...this.buffers.keys(),
+			...this.activityByThread.keys(),
+			...this.emitters.keys(),
+			...this.lifecycles.keys(),
+			...this.idleFlushTimers.keys(),
+		]).size;
 	}
 
 	async getEventsAfter(threadId: string, afterSeq: number): Promise<StoredEvent[]> {
@@ -174,6 +269,27 @@ export class DurableEventLog {
 
 	async getEventsForRuns(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
 		return await this.repo.getForRuns(threadId, runIds);
+	}
+
+	/** Latest persisted setup panel snapshot per workflow (see repository). */
+	async getSetupItemsSnapshots(threadId: string) {
+		await this.flush(threadId);
+		return await this.repo.getSetupItemsSnapshots(threadId);
+	}
+
+	/** The run that sent the ai-preferences block the thread still carries (see repository). */
+	async getLastPreferencesInjectionRunId(threadId: string) {
+		await this.flush(threadId);
+		return await this.repo.getLastPreferencesInjectionRunId(threadId);
+	}
+
+	/**
+	 * What the thread's latest turn reported as applied (see repository). No flush: the
+	 * caller reads the SSE cursor first, so a fact still queued here replays over SSE,
+	 * and a flush would cut an open text segment in two on every thread open.
+	 */
+	async getLastAppliedPreferences(threadId: string) {
+		return await this.repo.getLastAppliedPreferences(threadId);
 	}
 
 	/**
@@ -225,6 +341,7 @@ export class DurableEventLog {
 		this.pendingByThread.delete(threadId);
 		this.lastSeq.delete(threadId);
 		this.buffers.delete(threadId);
+		this.activityByThread.delete(threadId);
 		this.emitters.delete(threadId);
 		// Invalidates any drain currently awaiting the DB for this thread: it
 		// re-checks the token when it resumes and aborts its persist/emits.
@@ -240,6 +357,7 @@ export class DurableEventLog {
 		this.pendingByThread.clear();
 		this.lastSeq.clear();
 		this.buffers.clear();
+		this.activityByThread.clear();
 		this.emitters.clear();
 		this.lifecycles.clear();
 		for (const timer of this.idleFlushTimers.values()) clearTimeout(timer);
@@ -339,7 +457,9 @@ export class DurableEventLog {
 		// Build the batch plan first; seqs are assigned inside persistWithRetry so
 		// an append conflict can re-assign them from a re-seeded counter.
 		const toPersist: InstanceAiEvent[] = [];
-		const toEmit: Array<{ event: InstanceAiEvent; persistIndex?: number; live: boolean }> = [];
+		const toEmit: PlannedEvent[] = [];
+		const activity = this.activityByThread.get(threadId) ?? createInstanceAiEventLifecycle();
+		this.activityByThread.set(threadId, activity);
 
 		for (const entry of batch) {
 			if (isFlushMarker(entry)) {
@@ -353,6 +473,7 @@ export class DurableEventLog {
 				continue;
 			}
 			const { event } = entry;
+			if (!acceptInstanceAiEvent(activity, event)) continue;
 			if (EPHEMERAL_TYPES.has(event.type)) {
 				// A delta with a new responseId starts a new segment: close the old
 				// one as a block first, so blocks stay exactly 1:1 with segments and
@@ -376,8 +497,11 @@ export class DurableEventLog {
 		}
 
 		let firstSeq: number | undefined;
+		let admitted = toEmit;
 		if (toPersist.length > 0) {
-			firstSeq = await this.persistWithRetry(threadId, toPersist, lifecycle);
+			const persisted = await this.persistWithRetry(threadId, toEmit, lifecycle);
+			firstSeq = persisted.firstSeq;
+			admitted = persisted.entries;
 			// The thread was cleared while the persist was in flight: its next
 			// lifecycle (a recreated id, or nothing) must not receive this batch's
 			// emissions. Flush waiters still settle — there is nothing left to flush.
@@ -391,7 +515,7 @@ export class DurableEventLog {
 			}
 		}
 
-		for (const drained of toEmit) {
+		for (const drained of admitted) {
 			const id =
 				drained.persistIndex !== undefined && firstSeq !== undefined
 					? firstSeq + drained.persistIndex
@@ -432,19 +556,21 @@ export class DurableEventLog {
 	}
 
 	/**
-	 * Append `events` with contiguous seqs, retrying on (threadId, seq) PK
-	 * collision — another main won the range (multi-main only), so re-seed from
-	 * the DB and try again. Returns the first assigned seq, or undefined when
-	 * the batch had to be dropped (logged; live delivery still happens).
-	 * INS-844 merges the shared-sequence drain (#33558) here: its Redis INCRBY
-	 * becomes this batch-INSERT's id assignment, one round trip.
+	 * Append admitted events with contiguous seqs. Re-read terminal facts on
+	 * each retry so a competing cancellation can close the run. Return the
+	 * admitted entries and their first seq when persistence succeeds.
 	 */
 	private async persistWithRetry(
 		threadId: string,
-		events: InstanceAiEvent[],
+		entries: PlannedEvent[],
 		lifecycle: object,
-	): Promise<number | undefined> {
+	): Promise<PersistedBatch> {
 		let lastError: unknown;
+		let attemptedFirstSeq: number | undefined;
+		let admitted = entries;
+		let events = entries
+			.filter((entry) => entry.persistIndex !== undefined)
+			.map((entry) => entry.event);
 		for (let attempt = 1; attempt <= MAX_APPEND_ATTEMPTS; attempt++) {
 			// The thread was cleared while an earlier attempt was in flight: stop
 			// instead of appending into the id's next lifecycle (deleted threads
@@ -455,20 +581,58 @@ export class DurableEventLog {
 					threadId,
 					events: events.length,
 				});
-				return undefined;
+				return { entries: [] };
 			}
 			// The seed read lives inside the try: a transient failure there must
 			// consume an attempt and retry, not reject the (unawaited) drain.
 			let firstSeq: number | undefined;
 			try {
+				// Confirm a lost response before terminal facts can filter our own committed batch.
+				if (attemptedFirstSeq !== undefined) {
+					const payload = await this.repo.payloadAt(threadId, attemptedFirstSeq);
+					if (this.lifecycles.get(threadId) !== lifecycle) return { entries: [] };
+					if (payload === JSON.stringify(events[0])) {
+						this.lastSeq.set(threadId, attemptedFirstSeq + events.length - 1);
+						this.metrics.recordDrainBatch(events.length, serializedBytes(events));
+						return { firstSeq: attemptedFirstSeq, entries: admitted };
+					}
+					attemptedFirstSeq = undefined;
+				}
+				// Seed seq before the read. A concurrent terminal write then forces an append conflict.
 				firstSeq = (await this.currentSeq(threadId)) + 1;
+				const activity = createInstanceAiEventLifecycle();
+				const runIds = [...new Set(entries.map((entry) => entry.event.runId))];
+				for (const event of await this.repo.getActivityTerminalEvents(threadId, runIds)) {
+					acceptInstanceAiEvent(activity, event);
+				}
+				admitted = [];
+				events = [];
+				for (const entry of entries) {
+					if (!acceptInstanceAiEvent(activity, entry.event)) continue;
+					if (entry.persistIndex === undefined) admitted.push(entry);
+					else {
+						admitted.push({ ...entry, persistIndex: events.length });
+						events.push(entry.event);
+					}
+				}
+				if (this.lifecycles.get(threadId) !== lifecycle) return { entries: [] };
+				const cached = this.activityByThread.get(threadId);
+				if (cached) {
+					Object.assign(cached.closedRuns, activity.closedRuns);
+					for (const [runId, agents] of Object.entries(activity.closedAgents)) {
+						Object.assign((cached.closedAgents[runId] ??= {}), agents);
+					}
+				}
+				if (events.length === 0) return { entries: admitted };
+				attemptedFirstSeq = firstSeq;
 				const bytes = await this.repo.appendBatch(threadId, firstSeq, events);
 				this.lastSeq.set(threadId, firstSeq + events.length - 1);
 				this.metrics.recordDrainBatch(events.length, bytes);
-				return firstSeq;
+				return { firstSeq, entries: admitted };
 			} catch (error) {
 				lastError = error;
 				if (isUniqueConstraintError(error)) {
+					attemptedFirstSeq = undefined;
 					// (threadId, seq) collision: another main won the range — re-seed
 					// from the DB and try again.
 					this.lastSeq.delete(threadId);
@@ -487,7 +651,7 @@ export class DurableEventLog {
 				if (firstSeq !== undefined && (await this.didBatchCommit(threadId, firstSeq, events))) {
 					this.lastSeq.set(threadId, firstSeq + events.length - 1);
 					this.metrics.recordDrainBatch(events.length, serializedBytes(events));
-					return firstSeq;
+					return { firstSeq, entries: admitted };
 				}
 				// Also covers a PK violation a driver reports under a code the
 				// detector doesn't know: the committed row differs from ours, so the
@@ -506,7 +670,7 @@ export class DurableEventLog {
 			events: events.length,
 			error: lastError,
 		});
-		return undefined;
+		return { entries: admitted };
 	}
 
 	/**
@@ -590,6 +754,9 @@ export class DurableEventLog {
 			const text = this.takeBlock('text', fact.runId, agentId, buffer);
 			if (text) flushed.push(text);
 		}
+		// Don't leave an empty map behind: it would outlive the run and pin one
+		// entry per thread the process has served.
+		if (threadBuffers.size === 0) this.buffers.delete(threadId);
 		return flushed;
 	}
 
@@ -650,8 +817,6 @@ export class DurableEventLog {
 		const cached = this.lastSeq.get(threadId);
 		if (cached !== undefined) return cached;
 		const max = await this.repo.maxSeq(threadId);
-		// Cutover note (RFC Q&A on cursors): INS-844 seeds from max(DB, Redis
-		// high-water mark) so cursors minted by the live shared sequence stay valid.
 		this.lastSeq.set(threadId, max);
 		return max;
 	}

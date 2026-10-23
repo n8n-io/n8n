@@ -132,7 +132,7 @@
 	outline: none;
 }
 .el-tabs__item.is-active {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .el-tabs__content {
@@ -165,22 +165,6 @@
 	opacity: 0.8;
 }
 
-// Pagination
-.el-pager li,
-.el-pagination .btn-prev,
-.el-pagination .btn-next {
-	background: none;
-	color: var(--color--text--shade-1);
-}
-.el-pagination button:disabled {
-	background: none;
-	color: var(--color--text--tint-2);
-}
-.el-pager li.btn-quicknext,
-.el-pager li.btn-quickprev {
-	color: var(--color--text--shade-1);
-}
-
 // Notification
 .el-notification {
 	border-radius: 4px;
@@ -206,7 +190,7 @@
 			font-family: var(--font-family);
 			font-size: var(--font-size--sm);
 			font-style: normal;
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 			line-height: 1.4;
 		}
 

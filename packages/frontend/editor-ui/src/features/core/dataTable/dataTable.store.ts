@@ -348,6 +348,18 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return inserted[0];
 	};
 
+	// Data-carrying sibling of `insertEmptyRow`, for callers that build the row up
+	// front instead of letting the grid fill in a blank one cell by cell.
+	const insertRow = async (dataTableId: string, projectId: string, row: DataTableRow) => {
+		const inserted = await insertDataTableRowApi(
+			rootStore.restApiContext,
+			dataTableId,
+			row,
+			projectId,
+		);
+		return inserted[0];
+	};
+
 	const updateRow = async (
 		dataTableId: string,
 		projectId: string,
@@ -449,6 +461,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		renameDataTableColumn,
 		fetchDataTableContent,
 		insertEmptyRow,
+		insertRow,
 		updateRow,
 		deleteRows,
 		downloadDataTableCsv,

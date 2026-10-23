@@ -9,7 +9,8 @@ import { Z } from '../../zod-class';
 
 export class CreateWorkflowReviewRequestDto extends Z.class({
 	title: z.string().trim().min(1).max(128),
-	description: z.string().max(512).optional(),
+	// An empty/whitespace string is stored as no description
+	description: z.string().trim().max(512).optional(),
 	workflows: z
 		.array(
 			z.object({
@@ -21,6 +22,6 @@ export class CreateWorkflowReviewRequestDto extends Z.class({
 			}),
 		)
 		.length(1),
-	// UI sends at most one reviewer for now; array for future multi-reviewer support (LIGO-601)
-	reviewerUserIds: z.array(n8nIdSchema).max(10).optional(),
+	// UI sends exactly one reviewer for now; array for future multi-reviewer support (LIGO-601)
+	reviewerUserIds: z.array(n8nIdSchema).min(1).max(10),
 }) {}

@@ -1,0 +1,71 @@
+{
+  "name": "@n8n/backend-module-workflow-builder",
+  "version": "0.2.0",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./module": {
+      "types": "./dist/workflow-builder.module.d.ts",
+      "import": "./dist/workflow-builder.module.js",
+      "require": "./dist/workflow-builder.module.js"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint --type-aware . --quiet",
+    "lint:fix": "oxlint --type-aware . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
+    "test:postgres": "N8N_LOG_LEVEL=silent vitest run --config vitest.config.postgres.ts"
+  },
+  "dependencies": {
+    "@n8n/ai-workflow-builder": "workspace:*",
+    "@n8n/db": "workspace:*",
+    "@n8n/decorators": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "@n8n/typeorm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@langchain/core": "catalog:"
+  },
+  "devDependencies": {
+    "@langchain/core": "catalog:",
+    "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-test-utils": "workspace:*",
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "n8n-containers": "workspace:*",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use",
+  "typesVersions": {
+    "*": {
+      "module": [
+        "dist/workflow-builder.module.d.ts"
+      ]
+    }
+  }
+}

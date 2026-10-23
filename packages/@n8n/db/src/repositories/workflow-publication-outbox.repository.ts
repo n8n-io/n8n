@@ -1,34 +1,43 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { BaseRepository } from './base-repository';
 import {
 	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus as Status,
+	WorkflowPublicationReason,
 } from '../entities/workflow-publication-outbox';
+import { WorkflowPublicationRetryState } from '../entities/workflow-publication-retry-state';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
-/** Sqlite bound-variable budget per statement; safely under every build's cap. */
-const SQLITE_ENQUEUE_CHUNK_SIZE = 999;
+/** Sqlite bound-variable budget per statement (ids + the reason); safely under every build's cap. */
+const SQLITE_ENQUEUE_CHUNK_SIZE = 998;
 
 @Service()
-export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPublicationOutbox> {
+export class WorkflowPublicationOutboxRepository extends BaseRepository<WorkflowPublicationOutbox> {
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
+		transactionRunner: TransactionRunner,
 	) {
-		super(WorkflowPublicationOutbox, dataSource.manager);
+		super(WorkflowPublicationOutbox, dataSource.manager, transactionRunner);
 	}
 
 	/**
 	 * The in-flight (pending or in_progress) publication for a workflow, or null.
 	 * In-progress is preferred when both exist.
 	 */
-	async findInFlightByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
-		const inFlight = await this.findBy({
+	async findInFlightByWorkflowId(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowPublicationOutbox | null> {
+		const inFlight = await this.managerFor(ctx).findBy(WorkflowPublicationOutbox, {
 			workflowId,
 			status: In([Status.InProgress, Status.Pending]),
 		});
@@ -45,25 +54,47 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * record per workflow without an explicit transaction. Callers only need to
 	 * know the enqueue succeeded, so no row is returned.
 	 *
+	 * An explicit user publication also clears retry suppression in the same
+	 * transaction. Automatic reconciliation enqueues leave suppression intact.
+	 *
 	 * Pass `trx` to run the UPSERT inside an existing transaction, e.g. to make
 	 * the enqueue atomic with a `workflow_entity` update.
+	 *
+	 * The conflict path also supersedes `reason`: a fresher enqueue's intent
+	 * wins (e.g. a user publish replacing a pending startup record).
 	 */
 	async enqueue(
 		workflowId: string,
 		publishedVersionId: string,
+		reason: WorkflowPublicationReason,
 		trx?: EntityManager,
 	): Promise<void> {
-		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId, trx ?? this.manager);
+		const enqueueWithManager = async (manager: EntityManager) => {
+			if (this.globalConfig.database.type === 'postgresdb') {
+				await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId, reason, manager);
+				return;
+			}
+
+			await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId, reason, manager);
+		};
+
+		if (reason === WorkflowPublicationReason.Publish) {
+			const enqueuePublish = async (manager: EntityManager) => {
+				await manager.delete(WorkflowPublicationRetryState, { workflowId });
+				await enqueueWithManager(manager);
+			};
+			if (trx) await enqueuePublish(trx);
+			else await this.manager.transaction(enqueuePublish);
 			return;
 		}
 
-		await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId, trx ?? this.manager);
+		await enqueueWithManager(trx ?? this.manager);
 	}
 
 	private async enqueueWithPostgresUpsert(
 		workflowId: string,
 		publishedVersionId: string,
+		reason: WorkflowPublicationReason,
 		trx: EntityManager,
 	): Promise<void> {
 		const tableName = this.getTableName('workflow_publication_outbox');
@@ -71,27 +102,28 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		// `createdAt`/`updatedAt` carry DB-level defaults, so the insert omits
 		// them; the conflict path bumps `updatedAt` explicitly.
 		await trx.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
-			 VALUES ($1, $2, '${Status.Pending}')
+			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status", "reason")
+			 VALUES ($1, $2, '${Status.Pending}', $3)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
-			[workflowId, publishedVersionId],
+			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "reason" = EXCLUDED."reason", "updatedAt" = CURRENT_TIMESTAMP(3)`,
+			[workflowId, publishedVersionId, reason],
 		);
 	}
 
 	private async enqueueWithSqliteUpsert(
 		workflowId: string,
 		publishedVersionId: string,
+		reason: WorkflowPublicationReason,
 		trx: EntityManager,
 	): Promise<void> {
 		const tableName = this.getTableName('workflow_publication_outbox');
 
 		await trx.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
-			 VALUES (?, ?, '${Status.Pending}')
+			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status", "reason")
+			 VALUES (?, ?, '${Status.Pending}', ?)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
-			[workflowId, publishedVersionId],
+			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "reason" = excluded."reason", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+			[workflowId, publishedVersionId, reason],
 		);
 	}
 
@@ -104,18 +136,24 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * an unpublish record that clears their stale trigger-status rows. Idempotent
 	 * via the same partial-unique-index upsert as {@link enqueue}.
 	 */
-	async enqueueByWorkflowIds(workflowIds: string[]): Promise<void> {
+	async enqueueByWorkflowIds(
+		workflowIds: string[],
+		reason: WorkflowPublicationReason,
+	): Promise<void> {
 		if (workflowIds.length === 0) return;
 
 		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueByWorkflowIdsWithPostgresUpsert(workflowIds);
+			await this.enqueueByWorkflowIdsWithPostgresUpsert(workflowIds, reason);
 			return;
 		}
 
-		await this.enqueueByWorkflowIdsWithSqliteUpsert(workflowIds);
+		await this.enqueueByWorkflowIdsWithSqliteUpsert(workflowIds, reason);
 	}
 
-	private async enqueueByWorkflowIdsWithPostgresUpsert(workflowIds: string[]): Promise<void> {
+	private async enqueueByWorkflowIdsWithPostgresUpsert(
+		workflowIds: string[],
+		reason: WorkflowPublicationReason,
+	): Promise<void> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 
@@ -131,17 +169,20 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		// earlier snapshot). Such a record is at least as fresh as this statement's
 		// snapshot — overwriting it could roll the workflow back to a stale version.
 		await this.query(
-			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status", "reason")
+			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}', $2
 			 FROM ${workflowTableName} w
 			 WHERE w."id" = ANY($1)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 DO NOTHING`,
-			[workflowIds],
+			[workflowIds, reason],
 		);
 	}
 
-	private async enqueueByWorkflowIdsWithSqliteUpsert(workflowIds: string[]): Promise<void> {
+	private async enqueueByWorkflowIdsWithSqliteUpsert(
+		workflowIds: string[],
+		reason: WorkflowPublicationReason,
+	): Promise<void> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 
@@ -154,13 +195,13 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			const placeholders = chunk.map(() => '?').join(', ');
 
 			await this.query(
-				`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-				 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
+				`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status", "reason")
+				 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}', ?
 				 FROM ${workflowTableName} w
 				 WHERE w."id" IN (${placeholders})
 				 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 				 DO NOTHING`,
-				chunk,
+				[reason, ...chunk],
 			);
 		}
 	}
@@ -181,15 +222,26 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * skew visible with no in-flight record is a real divergence (e.g. a stalled
 	 * processor writing the mapping after losing its lease), never a normal
 	 * mid-flight state.
+	 *
+	 * Workflows whose retry state suppresses the version that is currently active
+	 * are excluded, as in
+	 * {@link findTriggerStatusDriftedWorkflowIds}: a publication failing before the
+	 * mapping advances leaves the skew forever, so this would loop every pass.
+	 * Matching on the version keeps the unpublish direction healing — there the
+	 * active version is null, so a failed teardown never matches and is retried.
 	 */
 	async findVersionSkewedWorkflowIds(): Promise<string[]> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const retryStateTableName = this.getTableName('workflow_publication_retry_state');
 		const workflowTableName = this.getTableName('workflow_entity');
 		const publishedVersionTableName = this.getTableName('workflow_published_version');
 
 		// `(x IS NULL) <> (y IS NULL) OR x <> y` is the portable spelling of
 		// `activeVersionId IS DISTINCT FROM publishedVersionId`, which sqlite
 		// lacks; both-null (never published, no mapping) compares as equal.
+		//
+		// The retry-state match relies on plain `=`: an unpublished workflow has a
+		// null `activeVersionId`, so nothing matches and its skew stays detectable.
 		const rows: Array<{ workflowId: string }> = await this.query(
 			`SELECT w."id" AS "workflowId"
 			 FROM ${workflowTableName} w
@@ -202,6 +254,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 				 SELECT 1 FROM ${outboxTableName} o
 				 WHERE o."workflowId" = w."id"
 				 AND o."status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 )
+			 AND NOT EXISTS (
+				 SELECT 1 FROM ${retryStateTableName} retry
+				 WHERE retry."workflowId" = w."id"
+				 AND retry."targetVersionId" = w."activeVersionId"
 			 )`,
 		);
 
@@ -221,7 +278,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * with no in-flight record is a real divergence, never a normal mid-flight
 	 * state.
 	 *
-	 * Workflows whose most recent record is terminal `failed` are excluded for
+	 * Workflows whose retry state suppresses the active version are excluded for
 	 * the same reason as in {@link findUnreportedPublishedWorkflowIds}: a
 	 * publication that deterministically fails before reporting leaves the rows
 	 * drifted forever, so re-enqueueing would loop every pass. A user republish
@@ -229,6 +286,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 */
 	async findTriggerStatusDriftedWorkflowIds(): Promise<string[]> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const retryStateTableName = this.getTableName('workflow_publication_retry_state');
 		const workflowTableName = this.getTableName('workflow_entity');
 		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
 
@@ -245,11 +303,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 				 WHERE o."workflowId" = w."id"
 				 AND o."status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 )
-			 AND COALESCE((
-				 SELECT o."status" FROM ${outboxTableName} o
-				 WHERE o."workflowId" = w."id"
-				 ORDER BY o."id" DESC LIMIT 1
-			 ), '') <> '${Status.Failed}'`,
+			 AND NOT EXISTS (
+				 SELECT 1 FROM ${retryStateTableName} retry
+				 WHERE retry."workflowId" = w."id"
+				 AND retry."targetVersionId" = w."activeVersionId"
+			 )`,
 		);
 
 		return rows.map((row) => row.workflowId);
@@ -262,8 +320,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * writes rows), and publications that terminally failed before reporting any
 	 * per-trigger status (a consumer-wrapped unexpected throw, `version-missing`).
 	 *
-	 * The failed population is why workflows whose most recent outbox record is
-	 * terminal `failed` are excluded: re-enqueueing them would fail before
+	 * The failed population is why workflows whose retry state suppresses the
+	 * active version are excluded: re-enqueueing them would fail before
 	 * reporting again, still leave zero rows, and so be re-detected on every
 	 * pass forever, reporting an error each round. Recovery is not lost — a user
 	 * republish enqueues a fresh pending record, which is excluded here as
@@ -275,12 +333,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 */
 	async findUnreportedPublishedWorkflowIds(): Promise<string[]> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const retryStateTableName = this.getTableName('workflow_publication_retry_state');
 		const workflowTableName = this.getTableName('workflow_entity');
 		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
 
-		// "Most recent" is the highest id: ids are monotonically assigned, the
-		// same FIFO assumption the claim query relies on. Sqlite (>= 3.23) accepts
-		// the `false` literal, so one statement serves both dialects.
+		// Sqlite (>= 3.23) accepts the `false` literal, so one statement serves
+		// both dialects.
 		const rows: Array<{ workflowId: string }> = await this.query(
 			`SELECT w."id" AS "workflowId"
 			 FROM ${workflowTableName} w
@@ -295,11 +353,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 				 WHERE o."workflowId" = w."id"
 				 AND o."status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 )
-			 AND COALESCE((
-				 SELECT o."status" FROM ${outboxTableName} o
-				 WHERE o."workflowId" = w."id"
-				 ORDER BY o."id" DESC LIMIT 1
-			 ), '') <> '${Status.Failed}'`,
+			 AND NOT EXISTS (
+				 SELECT 1 FROM ${retryStateTableName} retry
+				 WHERE retry."workflowId" = w."id"
+				 AND retry."targetVersionId" = w."activeVersionId"
+			 )`,
 		);
 
 		return rows.map((row) => row.workflowId);
@@ -435,20 +493,29 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		}
 	}
 
-	/** Mark a claimed record as successfully processed. Pass `trx` to enroll in an existing transaction. */
-	async markCompleted(id: number, trx?: EntityManager): Promise<void> {
-		const manager = trx ?? this.manager;
+	/**
+	 * Mark a claimed record as successfully processed. Pass `trx` to enroll in an
+	 * existing transaction. An optional `warningMessage` is stored in
+	 * `errorMessage` for a record that completed with a non-fatal side effect
+	 * (e.g. an abandoned external webhook deregistration).
+	 */
+	async markCompleted(
+		id: number,
+		ctx: OperationContext = {},
+		warningMessage?: string,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.Completed, errorMessage: null },
+			{ status: Status.Completed, errorMessage: warningMessage ?? null },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Completed);
 	}
 
 	/** Mark a claimed record as failed and record the error for diagnostics. Pass `trx` to enroll in an existing transaction. */
-	async markFailed(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
-		const manager = trx ?? this.manager;
+	async markFailed(id: number, errorMessage: string, ctx: OperationContext = {}): Promise<void> {
+		const manager = this.managerFor(ctx);
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
@@ -463,8 +530,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * carries per-node detail for diagnostics. The workflow stays published. Pass
 	 * `trx` to enroll in an existing transaction.
 	 */
-	async markPartialSuccess(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
-		const manager = trx ?? this.manager;
+	async markPartialSuccess(
+		id: number,
+		errorMessage: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },

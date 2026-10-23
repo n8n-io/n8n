@@ -4,11 +4,13 @@ import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 
+import { AuthService } from '@/auth/auth.service';
 import { ScopedJwtStrategy } from '@/modules/token-exchange/services/scoped-jwt.strategy';
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { JwtService } from '@/services/jwt.service';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
+import { JwtService } from '@n8n/backend-services';
+import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
@@ -19,7 +21,7 @@ function makeScopedJwt(
 	opts: { actSub?: string; expired?: boolean } = {},
 ): string {
 	const now = Math.floor(Date.now() / 1000);
-	return jwtService.sign({
+	return jwtService.sign('tokenExchange', {
 		iss: TOKEN_EXCHANGE_ISSUER,
 		sub,
 		...(opts.actSub && { act: { sub: opts.actSub } }),
@@ -40,10 +42,11 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 	beforeAll(async () => {
 		await testDb.init();
 
-		// Mirror the registration order set up by public API + token-exchange module init.
+		// Mirror the registration order set up by server.ts + token-exchange module init.
 		const registry = Container.get(AuthStrategyRegistry);
 		jwtService = Container.get(JwtService);
 		registry.register(Container.get(ApiKeyAuthStrategy));
+		registry.register(Container.get(SessionCookieAuthStrategy));
 		registry.register(Container.get(ScopedJwtStrategy));
 
 		service = Container.get(McpServerApiKeyService);
@@ -63,9 +66,10 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 
 		const result = await service.verifyApiKey(apiKey);
 
-		expect(result.user?.id).toBe(owner.id);
-		expect(result.actor).toBeUndefined();
-		expect(result.context).toBeUndefined();
+		expect(result?.user?.id).toBe(owner.id);
+		expect(result?.actor).toBeUndefined();
+		expect(result?.context).toBeUndefined();
+		expect(result?.authMethod).toBe('api-key');
 	});
 
 	it('accepts a scoped JWT and returns the subject when no actor is present', async () => {
@@ -73,9 +77,10 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 
 		const result = await service.verifyApiKey(makeScopedJwt(jwtService, subject.id));
 
-		expect(result.user?.id).toBe(subject.id);
-		expect(result.actor).toBeUndefined();
-		expect(result.context).toBeUndefined();
+		expect(result?.user?.id).toBe(subject.id);
+		expect(result?.actor).toBeUndefined();
+		expect(result?.context).toBeUndefined();
+		expect(result?.authMethod).toBe('scoped-jwt');
 	});
 
 	it('accepts a scoped JWT with delegation and returns the actor as user', async () => {
@@ -86,8 +91,18 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 			makeScopedJwt(jwtService, subject.id, { actSub: actor.id }),
 		);
 
-		expect(result.user?.id).toBe(actor.id);
-		expect(result.actor?.id).toBe(actor.id);
+		expect(result?.user?.id).toBe(actor.id);
+		expect(result?.actor?.id).toBe(actor.id);
+	});
+
+	it('abstains on a valid browser session JWT, so the caller can send it down another path', async () => {
+		// SessionCookieAuthStrategy is registered into the same registry above, so this proves
+		// its buildTokenGrant genuinely abstains: the mcp-server-api audience is never satisfied.
+		const owner = await createOwner();
+
+		const result = await service.verifyApiKey(Container.get(AuthService).issueJWT(owner, false));
+
+		expect(result).toBeNull();
 	});
 
 	describe('rejects tokens that fail validation', () => {
@@ -143,8 +158,8 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 		])('rejects $name', async ({ token }) => {
 			const result = await service.verifyApiKey(await token());
 
-			expect(result.user).toBeNull();
-			expect(result.context?.reason).toBe('invalid_token');
+			expect(result?.user).toBeNull();
+			expect(result?.context?.reason).toBe('invalid_token');
 		});
 	});
 
@@ -153,10 +168,9 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 		// the JWT verify step (with the expected audience) must still reject a token signed
 		// with a different aud claim.
 		const owner = await createOwner();
-		const jwt = jwtService.sign({
+		const jwt = jwtService.sign('publicApiKey', {
 			sub: owner.id,
 			iss: 'n8n',
-			aud: 'public-api',
 			jti: 'tampered',
 		});
 
@@ -171,7 +185,7 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 
 		const result = await service.verifyApiKey(jwt);
 
-		expect(result.user).toBeNull();
-		expect(result.context?.reason).toBe('invalid_token');
+		expect(result?.user).toBeNull();
+		expect(result?.context?.reason).toBe('invalid_token');
 	});
 });

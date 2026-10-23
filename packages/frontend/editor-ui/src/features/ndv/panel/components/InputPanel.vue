@@ -35,7 +35,7 @@ import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
-import { N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { N8nSegmentControl, N8nText } from '@n8n/design-system';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
@@ -108,7 +108,14 @@ const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const {
+	canReveal,
+	isDynamicCredentials,
+	isSubWorkflowRedaction,
+	revealData,
+	credentialToShare,
+	openCredentialSharing,
+} = useExecutionRedaction();
 const uiStore = useUIStore();
 
 const workflowObject = computed(() =>
@@ -443,7 +450,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				>
 					{{ i18n.baseText('ndv.input') }}
 				</N8nText>
-				<N8nRadioButtons
+				<N8nSegmentControl
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
 					:options="inputModes"
@@ -505,13 +512,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						v-else-if="isMappingEnabled || hasRootNodeRun"
 						:title="i18n.baseText('ndv.input.noOutputData.title')"
 						icon="arrow-right-to-line"
+						has-compact-action
 					>
 						<I18nT tag="span" keypath="ndv.input.noOutputData.description" scope="global">
 							<template #link>
 								<NodeExecuteButton
 									hide-icon
 									transparent
-									variant="subtle"
+									variant="outline"
 									:node-name="nodeNameToExecute"
 									:label="i18n.baseText('ndv.input.noOutputData.action')"
 									:tooltip="i18n.baseText('ndv.input.noOutputData.tooltip')"
@@ -524,6 +532,21 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<br />
 							</template>
 						</I18nT>
+						<template #actions>
+							<NodeExecuteButton
+								icon-only
+								hide-label
+								variant="outline"
+								size="medium"
+								:node-name="nodeNameToExecute"
+								:aria-label="i18n.baseText('ndv.input.noOutputData.action')"
+								:tooltip="i18n.baseText('ndv.input.noOutputData.action')"
+								telemetry-source="inputs"
+								data-test-id="execute-previous-node-compact"
+								execution-mode="exclusive"
+								@execute="onNodeExecute"
+							/>
+						</template>
 					</NDVEmptyState>
 					<NDVEmptyState v-else :title="i18n.baseText('ndv.input.rootNodeHasNotRun.title')">
 						<template #icon>
@@ -593,7 +616,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<RedactedDataState
 				:title="i18n.baseText('ndv.input.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
+				:is-sub-workflow-redaction="isSubWorkflowRedaction"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
@@ -603,7 +629,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<RedactedDataState
 				:title="i18n.baseText('ndv.input.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
+				:is-sub-workflow-redaction="isSubWorkflowRedaction"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>

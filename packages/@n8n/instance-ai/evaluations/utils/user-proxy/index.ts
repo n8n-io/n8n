@@ -1,5 +1,6 @@
 // LLM-backed user simulator for multi-turn workflow evals.
 
+import { credentialSetupHintSchema } from '@n8n/api-types';
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -18,6 +19,7 @@ import { createOneCredential } from '../../credentials/seeder';
 import { buildAutoApprovePayload } from '../../harness/chat-loop';
 import type { NextMessageDecision } from '../../harness/chat-loop';
 import type { EvalLogger } from '../../harness/logger';
+import { savedWorkflowsFromEvents } from '../../outcome/event-parser';
 import type { CapturedEvent, ConversationTurn } from '../../types';
 import { getEventPayload } from '../confirmation-payload';
 import { getNestedRecord, getString } from '../safe-extract';
@@ -49,6 +51,8 @@ export interface CredentialCreationConfig {
 	 *  credentials with no way to tell which one an agent picked). Defaults to
 	 *  a fresh, unshared `Map` if omitted. */
 	nameCounts?: Map<string, number>;
+	/** The build's project. Absent: the client's personal project. */
+	projectId?: string;
 }
 
 /**
@@ -91,6 +95,7 @@ const DEFAULT_MESSAGE_BUDGET = 5;
 export interface UserProxyConfig {
 	conversation: ConversationTurn[];
 	messageBudget?: number;
+	allowUserExecution?: boolean;
 	modelId?: string;
 	logger?: EvalLogger;
 	/** Test seam — inject a fake agent. */
@@ -122,6 +127,8 @@ export class UserProxyLlm {
 	private readonly responseByRequestId = new Map<string, InstanceAiConfirmRequest>();
 	private readonly sentScriptUserTurnIndexes = new Set<number>();
 	private readonly decisionStats: ProxyDecisionStats = {};
+	private readonly allowUserExecution: boolean;
+	private savedWorkflows: ReturnType<typeof savedWorkflowsFromEvents> = [];
 
 	private readonly credentialCreation?: CredentialCreationConfig;
 	/** Mutable running copy of `credentialCreation.allowlistedCredentialIds` —
@@ -138,10 +145,16 @@ export class UserProxyLlm {
 
 	constructor(config: UserProxyConfig) {
 		this.script = config.conversation;
+		this.allowUserExecution = config.allowUserExecution ?? false;
 		this.messageBudget = config.messageBudget ?? DEFAULT_MESSAGE_BUDGET;
 		this.logger = config.logger;
 		this.agent =
-			config.agent ?? createUserProxyAgent({ modelId: config.modelId, logger: config.logger });
+			config.agent ??
+			createUserProxyAgent({
+				modelId: config.modelId,
+				logger: config.logger,
+				allowUserExecution: config.allowUserExecution,
+			});
 		this.credentialCreation = config.credentialCreation;
 		this.allowlistedCredentialIds = config.credentialCreation?.allowlistedCredentialIds ?? [];
 		this.bypassCredentialTestIds = config.credentialCreation?.bypassCredentialTestIds ?? [];
@@ -160,6 +173,14 @@ export class UserProxyLlm {
 	}
 
 	ingestEvents(events: CapturedEvent[]): void {
+		if (this.allowUserExecution) {
+			this.savedWorkflows = [
+				...new Map(
+					savedWorkflowsFromEvents(events).map((workflow) => [workflow.id, workflow]),
+				).values(),
+			];
+		}
+
 		const newEvents = events.slice(this.ingestedEventCount);
 		this.ingestedEventCount = events.length;
 
@@ -253,13 +274,13 @@ export class UserProxyLlm {
 			// throw here means that invariant broke, not a normal runtime failure.
 			throw new Error('createCredential invoked without a credentialCreation config');
 		}
-		const { client, threadId, createdCredentialIds } = this.credentialCreation;
+		const { client, threadId, createdCredentialIds, projectId } = this.credentialCreation;
 		const created = await createOneCredential(
 			client,
 			credentialType,
 			undefined,
 			this.createdCredentialNameCounts,
-			{ logger: this.logger },
+			{ logger: this.logger, setupHint: options?.setupHint, projectId },
 		);
 		createdCredentialIds?.add(created.id);
 		this.allowlistedCredentialIds = [...this.allowlistedCredentialIds, created.id];
@@ -309,7 +330,11 @@ export class UserProxyLlm {
 		}
 
 		const prompt = buildFollowUpPrompt(this.promptContext());
-		const decision = await this.agent.decide(prompt, 'user-turn');
+		const decision = await this.agent.decide(
+			prompt,
+			'user-turn',
+			this.savedWorkflows.map(({ id }) => id),
+		);
 		if (!decision) {
 			const [next] = this.remainingUserScriptTurns();
 			if (!next || hasStageDirection(next.text)) {
@@ -329,7 +354,17 @@ export class UserProxyLlm {
 			if (!message) return { kind: 'done' };
 			this.messagesSent++;
 			this.actualTranscript.push({ role: 'user', text: message });
-			return { kind: 'followUp', message };
+			// The rename is a side effect the harness performs at this turn boundary,
+			// not something the user says — it stays out of `actualTranscript` so the
+			// judge reads the conversation the agent actually saw.
+			return {
+				kind: 'followUp',
+				message,
+				...(decision.renameWorkflowTo ? { renameWorkflowTo: decision.renameWorkflowTo } : {}),
+				// Like the rename, the mid-run execution is a harness side effect at
+				// this turn boundary, not something the user says.
+				...(decision.runWorkflowId ? { runWorkflowId: decision.runWorkflowId } : {}),
+			};
 		}
 		if (decision.action !== 'declare_done') {
 			// The user-turn schema offers only the two actions above, so this only
@@ -349,6 +384,7 @@ export class UserProxyLlm {
 		return {
 			script: this.script,
 			actualTranscript: this.actualTranscript,
+			savedWorkflows: this.allowUserExecution ? this.savedWorkflows : undefined,
 		};
 	}
 
@@ -405,7 +441,7 @@ export class UserProxyLlm {
 			return undefined;
 		}
 
-		// ask-user questions go to the LLM; only single-blob plan-review/text are scripted here.
+		// workflow_builder_ask_user questions go to the LLM; only single-blob plan-review/text are scripted here.
 		if (inputType === 'plan-review') {
 			const userInput = this.consumeAllRemainingUserScriptTurns(
 				'Before I approve, use these details:',
@@ -447,7 +483,7 @@ export class UserProxyLlm {
 		const turns: Array<{ index: number; text: string }> = [];
 		for (let index = 0; index < this.script.length; index++) {
 			const turn = this.script[index];
-			if (!turn || turn.role !== 'user' || this.sentScriptUserTurnIndexes.has(index)) continue;
+			if (turn?.role !== 'user' || this.sentScriptUserTurnIndexes.has(index)) continue;
 			turns.push({ index, text: turn.text });
 		}
 		return turns;
@@ -519,9 +555,17 @@ function extractSetupWizardParseContext(event: CapturedEvent): SetupWizardParseC
 
 		const credentialType = getString(item, 'credentialType');
 		if (credentialType) {
+			// Only httpTemplatedCustomAuth carries a setupHint; every other type's
+			// wire payload simply omits the field, so a failed parse is the norm,
+			// not an error — drop it silently rather than log/throw.
+			const setupHint = credentialSetupHintSchema.safeParse(item.setupHint);
 			existing.credentialRequests = [
 				...existing.credentialRequests,
-				{ credentialType, existingCredentials: extractExistingCredentials(item) },
+				{
+					credentialType,
+					existingCredentials: extractExistingCredentials(item),
+					...(setupHint.success ? { setupHint: setupHint.data } : {}),
+				},
 			];
 		}
 

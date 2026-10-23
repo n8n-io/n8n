@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	ActiveWorkflowTriggers,
 	SpanStatus,
@@ -165,9 +166,17 @@ export class NonWebhookTriggerRegistrar {
 	}
 
 	/**
-	 * Deregister one active, poll, or schedule trigger node from memory.
+	 * Deregister one active, poll, or schedule trigger node from memory, and drop
+	 * the durable jobs it provisioned. When a durable removal failure propagates
+	 * while the in-memory teardown is still pending, that teardown is handed to
+	 * `onDetached`: it may still mutate the registry when it settles, so the
+	 * caller must not release the workflow's lifecycle lock until it does.
 	 */
-	async deregister(workflowId: WorkflowId, nodeId: INode['id']) {
+	async deregister(
+		workflowId: WorkflowId,
+		nodeId: INode['id'],
+		onDetached?: (work: Promise<unknown>) => void,
+	) {
 		await this.tracing.startSpan(
 			{
 				name: 'Non-webhook trigger deregister',
@@ -178,12 +187,51 @@ export class NonWebhookTriggerRegistrar {
 				},
 			},
 			async (span) => {
-				await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
-				await this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId);
-				await this.pollTriggerJobRegistrar.remove(workflowId, nodeId);
+				// Start the in-memory teardown now, but await it only after the durable
+				// removal below. The durable rows are database state the node no longer
+				// owns, so a durable failure must reach the caller for a retry even when
+				// the in-memory teardown never settles.
+				const inMemory = this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
+				// Logs an in-memory failure a durable failure would otherwise swallow, and
+				// keeps its rejection handled while the durable removal is awaited first.
+				void inMemory.catch((error: unknown) => {
+					this.logger.error('Failed to deregister a trigger node from memory', {
+						workflowId,
+						nodeId,
+						error: ensureError(error),
+					});
+				});
+
+				try {
+					await this.removeDurableJobs(workflowId, nodeId);
+				} catch (error) {
+					// The in-memory teardown may still be pending, so hand it back before
+					// this failure lets the caller release the lifecycle lock.
+					onDetached?.(inMemory);
+					throw ensureError(error);
+				}
+
+				try {
+					await inMemory;
+				} catch (error) {
+					throw ensureError(error);
+				}
 
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	private async removeDurableJobs(workflowId: WorkflowId, nodeId: INode['id']) {
+		const results = await Promise.allSettled([
+			this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId),
+			this.pollTriggerJobRegistrar.remove(workflowId, nodeId),
+		]);
+		const failure = results.find(
+			(result): result is PromiseRejectedResult => result.status === 'rejected',
+		);
+		if (failure) {
+			throw ensureError(failure.reason);
+		}
 	}
 }

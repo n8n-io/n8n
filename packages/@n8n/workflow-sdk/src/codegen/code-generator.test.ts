@@ -987,7 +987,7 @@ describe('code-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain('sticky(');
-				expect(code).toContain('## Documentation\\n\\nThis is a note.');
+				expect(code).toContain('sticky(`## Documentation\n\nThis is a note.`');
 				expect(code).toContain('color: 4');
 				expect(code).toContain('width: 300');
 				expect(code).toContain('height: 200');

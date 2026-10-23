@@ -1,0 +1,36 @@
+// This package is L1. The `paths` below are the structural half of that rule: `@n8n/stores`,
+// `@n8n/composables` and every `@n8n/frontend-module-*` are absent, so a helper that reached up to
+// L2 fails the typecheck here rather than in the module that consumes it. `eslint.config.mjs`
+// carries the same list with the reason in the message.
+//
+// The base cannot carry `rootDirs`, `types` or `include`: relative entries in those three resolve
+// against the file that declares them. `paths` is the exception.
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"compilerOptions": {
+		"moduleResolution": "bundler",
+		"noEmit": true,
+		"rootDirs": [".", "../design-system/src"],
+		// `~icons/*` and `markdown-it-task-lists` are ambient declarations that design-system's
+		// source needs. Consuming that package from source rather than from a built `dist` is what
+		// makes them this package's problem.
+		"types": [
+			"vite/client",
+			"vitest/globals",
+			"@testing-library/jest-dom",
+			"unplugin-icons/types/vue",
+			"../design-system/src/shims-modules.d.ts"
+		],
+		"paths": {
+			"@n8n/api-types": ["../../../@n8n/api-types/src/index.ts"],
+			"@n8n/api-types/*": ["../../../@n8n/api-types/src/*"],
+			"@n8n/design-system": ["../design-system/src/index.ts"],
+			"@n8n/design-system/*": ["../design-system/src/*"],
+			"@n8n/i18n": ["../i18n/src/index.ts"],
+			"@n8n/i18n/*": ["../i18n/src/*"]
+		},
+		// The cost of consuming L1 packages from source; the same waiver every module package takes.
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["src/**/*.ts", "vite.config.ts"]
+}
