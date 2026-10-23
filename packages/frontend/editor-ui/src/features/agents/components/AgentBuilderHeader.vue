@@ -16,6 +16,7 @@ import {
 	N8nDropdownMenuItem,
 	N8nIcon,
 	N8nHoverCard,
+	N8nText,
 } from '@n8n/design-system';
 import type { IconOrEmoji, PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
@@ -255,13 +256,13 @@ function onMenuSelect(id: string) {
 						:class="$style.documentationLink"
 						data-testid="agent-documentation-link"
 					>
-						<span :class="$style.documentationTitle">
+						<N8nText step="sm" :class="$style.documentationTitle">
 							{{ i18n.baseText('agents.builder.header.documentation') }}
 							<N8nIcon icon="arrow-up-right" size="small" />
-						</span>
-						<span :class="$style.documentationDescription">{{
+						</N8nText>
+						<N8nText step="xs" color="text-base">{{
 							i18n.baseText('agents.builder.header.documentation.description')
-						}}</span>
+						}}</N8nText>
 					</a>
 				</template>
 			</N8nHoverCard>
@@ -393,11 +394,5 @@ function onMenuSelect(id: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--sm);
-}
-
-.documentationDescription {
-	font-size: var(--font-size--xs);
-	color: var(--text-color--subtle);
 }
 </style>

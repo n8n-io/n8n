@@ -334,13 +334,13 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.emitted('open-preview')).toBeUndefined();
 	});
 
-	it('shows the primary test action beside the Agent title', async () => {
+	it('shows the outlined test action beside the Agent title', async () => {
 		const wrapper = await mountColumn();
 		const titleRow = wrapper.get('[data-testid="agent-builder-identity-header"]');
 		expect(titleRow.find('[data-testid="agent-identity-header"]').exists()).toBe(true);
 		expect(
 			titleRow.get('[data-testid="agent-header-preview-btn"]').attributes('data-variant'),
-		).toBe('solid');
+		).toBe('outline');
 	});
 
 	it('keeps initialization, programmatic tab changes, and Evals telemetry silent', async () => {

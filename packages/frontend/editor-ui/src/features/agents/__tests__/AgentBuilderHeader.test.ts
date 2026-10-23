@@ -44,6 +44,7 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<i data-testid="stub-assistant-icon" />',
 		props: ['size'],
 	},
+	N8nText: { template: '<span><slot /></span>', props: ['step', 'color'] },
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		template:

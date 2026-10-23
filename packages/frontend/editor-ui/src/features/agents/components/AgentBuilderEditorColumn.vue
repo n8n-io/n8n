@@ -181,7 +181,6 @@ defineExpose({ onSetupTaskAction });
 						@update:config="emit('update:config', $event)"
 					/>
 					<AgentPreviewButton
-						variant="solid"
 						:is-runnable="props.agent?.isRunnable === true"
 						:is-preview-open="props.isPreviewOpen"
 						:validation-issues="props.configValidationIssues ?? []"
