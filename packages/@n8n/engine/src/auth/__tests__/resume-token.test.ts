@@ -57,6 +57,13 @@ describe('verifyResumeToken', () => {
 		expect(verify(token)).toBe(true);
 	});
 
+	it.each(['exec-1', '0199a1b2-0000-4000-8000-000000000001', `${executionId}${'0'.repeat(1000)}`])(
+		'rejects a token whose execution id is not a UUID v7, even when it matches %#',
+		(id) => {
+			expect(verify(mintResumeToken(secret, id), id)).toBe(false);
+		},
+	);
+
 	it.each([{}, { k: 'step-bound' }])(
 		'rejects a token whose kind is not execution-bound %#',
 		(kind) => {
