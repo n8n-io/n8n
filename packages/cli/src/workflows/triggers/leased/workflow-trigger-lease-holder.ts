@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository } from '@n8n/db';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Lease, LeaseHandler } from '@n8n/leases';
 import { UnexpectedError, Workflow } from 'n8n-workflow';
@@ -10,6 +11,7 @@ import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-tri
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { LeasedTriggerExecutions } from './leased-trigger-executions';
 import { LeasedTriggerRegistry } from './leased-trigger-registry';
 
 /**
@@ -18,10 +20,11 @@ import { LeasedTriggerRegistry } from './leased-trigger-registry';
  * leader's reconciliation, ghost sweeps and stepdown teardown never see them.
  *
  * A trigger that fails at runtime ends the hold with its error; the scheduler
- * then hands the lease out again after a backoff, on this main or another.
+ * then hands the lease out again after a backoff, on this main or another. An
+ * execution refused because the lease is lost ends the hold without an error.
  */
 @Service()
-export class WorkflowTriggerLeaseHolder implements LeaseHandler {
+export class WorkflowTriggerLeaseHolder implements LeaseHandler<OperationContext> {
 	constructor(
 		private readonly logger: Logger,
 		private readonly registry: LeasedTriggerRegistry,
@@ -30,11 +33,12 @@ export class WorkflowTriggerLeaseHolder implements LeaseHandler {
 		private readonly registrar: NonWebhookTriggerRegistrar,
 		private readonly executionContexts: TriggerExecutionContextFactory,
 		private readonly staticData: WorkflowStaticDataService,
+		private readonly executions: LeasedTriggerExecutions,
 	) {
 		this.logger = this.logger.scoped('workflow-activation');
 	}
 
-	async hold(lease: Lease): Promise<void> {
+	async hold(lease: Lease<OperationContext>): Promise<void> {
 		const { workflowId, nodeId } = parseLeaseData(lease);
 		const dbWorkflow = await this.workflows.findOneBy({ id: workflowId });
 		if (!dbWorkflow?.activeVersionId) {
@@ -67,6 +71,11 @@ export class WorkflowTriggerLeaseHolder implements LeaseHandler {
 		const runtimeFailure = new Promise<Error>((resolve) => {
 			failRuntime = resolve;
 		});
+		let loseLease: () => void = () => {};
+		const leaseLost = new Promise<void>((resolve) => {
+			loseLease = resolve;
+		});
+		const leasedRun = { fence: lease, onLeaseLost: loseLease };
 		const registration = this.registrar.createRegistrationContext(dbWorkflow, {
 			activationMode: 'activate',
 			executionMode: 'trigger',
@@ -74,6 +83,7 @@ export class WorkflowTriggerLeaseHolder implements LeaseHandler {
 			resolveWorkflowData: async () =>
 				await this.executionContexts.loadPublishedWorkflowData(workflowId),
 			onTriggerFailure: ({ error }) => failRuntime(error),
+			runWorkflow: async (...args) => await this.executions.run(leasedRun, ...args),
 		});
 
 		await workflow.expression.acquireIsolate();
@@ -98,7 +108,7 @@ export class WorkflowTriggerLeaseHolder implements LeaseHandler {
 		});
 
 		await lease.ready();
-		const ended = await Promise.race([leaseEnd(lease.signal), runtimeFailure]);
+		const ended = await Promise.race([leaseEnd(lease.signal), runtimeFailure, leaseLost]);
 
 		try {
 			await this.registry.removeTriggers(workflowId, new Set([nodeId]));
@@ -114,7 +124,7 @@ export class WorkflowTriggerLeaseHolder implements LeaseHandler {
 	}
 }
 
-function parseLeaseData(lease: Lease): { workflowId: string; nodeId: string } {
+function parseLeaseData(lease: Lease<OperationContext>): { workflowId: string; nodeId: string } {
 	const { workflowId, nodeId } = lease.data;
 	if (typeof workflowId !== 'string' || typeof nodeId !== 'string') {
 		throw new UnexpectedError('Leased trigger has invalid lease data', {

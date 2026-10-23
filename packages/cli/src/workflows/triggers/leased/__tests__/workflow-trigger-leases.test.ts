@@ -1,4 +1,4 @@
-import type { WorkflowPublishedVersionRepository } from '@n8n/db';
+import type { OperationContext, WorkflowPublishedVersionRepository } from '@n8n/db';
 import type { LeaseKind } from '@n8n/leases';
 import { mock } from 'vitest-mock-extended';
 
@@ -31,8 +31,9 @@ const setup = ({ enabled = true } = {}) => {
 	return { clusterLeases, publishedVersions, holder, leases };
 };
 
-const registeredKind = (clusterLeases: ReturnType<typeof setup>['clusterLeases']): LeaseKind =>
-	clusterLeases.registerKind.mock.calls[0][0];
+const registeredKind = (
+	clusterLeases: ReturnType<typeof setup>['clusterLeases'],
+): LeaseKind<OperationContext> => clusterLeases.registerKind.mock.calls[0][0];
 
 describe('WorkflowTriggerLeases', () => {
 	it('registers the workflow-trigger kind with the lease holder', () => {
