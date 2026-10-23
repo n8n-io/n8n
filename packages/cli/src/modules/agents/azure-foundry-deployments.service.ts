@@ -11,17 +11,28 @@ import {
 	type ProviderModel,
 } from '@n8n/ai-utilities/model-discovery';
 import { AZURE_FOUNDRY_ANTHROPIC_PREFIX, type AgentModelsUnavailableReason } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { UserError } from 'n8n-workflow';
 
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
+/** A redeployed model shows up within this time. */
+const UNDERLYING_MODEL_CACHE_TTL_MS = 10 * Time.minutes.toMilliseconds;
+
 import { mapCredentialForProvider } from './json-config/credential-field-mapping';
 
+/** A deployment as the model picker offers it, plus the model it serves. */
+export interface FoundryDeployment extends ProviderModel {
+	modelName?: string;
+}
+
 export type FoundryDeploymentsResult =
-	| { status: 'success'; deployments: ProviderModel[] }
+	| { status: 'success'; deployments: FoundryDeployment[] }
 	| { status: 'unavailable'; reason?: AgentModelsUnavailableReason; error?: unknown };
 
 /**
@@ -32,11 +43,20 @@ export type FoundryDeploymentsResult =
  */
 @Service()
 export class AzureFoundryDeploymentsService {
+	/** Model each deployment serves, for each credential, keyed by the agent model id. */
+	private readonly underlyingModels = new Map<
+		string,
+		{ expiresAt: number; byModelId: Map<string, string | undefined> }
+	>();
+
 	constructor(
+		private readonly logger: Logger,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
-	) {}
+	) {
+		this.logger = this.logger.scoped('agents');
+	}
 
 	async list(credential: ResolvedCredential): Promise<FoundryDeploymentsResult> {
 		const mapped = mapCredentialForProvider('azure-openai', credential);
@@ -62,6 +82,44 @@ export class AzureFoundryDeploymentsService {
 		}
 	}
 
+	/**
+	 * The model a deployment serves, for cost and capability lookups. The result
+	 * is cached for each credential, so a run does not list the deployments every
+	 * time. A listed deployment without a model name is cached as undefined. A
+	 * deployment that is not in the cache causes a new listing, so a new
+	 * deployment resolves on its first run. A failed listing returns undefined and
+	 * is not cached.
+	 */
+	async findUnderlyingModel(
+		credentialId: string,
+		credential: ResolvedCredential,
+		agentModelName: string,
+	): Promise<string | undefined> {
+		const cached = this.underlyingModels.get(credentialId);
+		if (cached && cached.expiresAt > Date.now() && cached.byModelId.has(agentModelName)) {
+			return cached.byModelId.get(agentModelName);
+		}
+
+		const result = await this.list(credential);
+		if (result.status !== 'success') {
+			this.logger.warn(
+				'Could not resolve the model a Foundry deployment serves. Its usage has no cost.',
+				{
+					credentialId,
+					reason: result.reason,
+					error: result.error === undefined ? undefined : getErrorMessage(result.error),
+				},
+			);
+			return undefined;
+		}
+		const byModelId = new Map(result.deployments.map(({ id, modelName }) => [id, modelName]));
+		this.underlyingModels.set(credentialId, {
+			expiresAt: Date.now() + UNDERLYING_MODEL_CACHE_TTL_MS,
+			byModelId,
+		});
+		return byModelId.get(agentModelName);
+	}
+
 	/** Takes the credential mapped for `azure-openai`, as the Agents runtime uses it. */
 	private async authHeaders(mapped: Record<string, unknown>): Promise<Record<string, string>> {
 		if (hasAzureApiKey(mapped)) return { 'api-key': String(mapped.apiKey) };
@@ -74,8 +132,17 @@ export class AzureFoundryDeploymentsService {
 	}
 }
 
-function toAgentModel({ id, name, modelFamily }: AzureDeploymentModel): ProviderModel {
-	return { id: modelFamily === 'anthropic' ? `${AZURE_FOUNDRY_ANTHROPIC_PREFIX}${id}` : id, name };
+function toAgentModel({
+	id,
+	name,
+	modelFamily,
+	modelName,
+}: AzureDeploymentModel): FoundryDeployment {
+	return {
+		id: modelFamily === 'anthropic' ? `${AZURE_FOUNDRY_ANTHROPIC_PREFIX}${id}` : id,
+		name,
+		...(modelName ? { modelName } : {}),
+	};
 }
 
 /** Rejects a missing or invalid endpoint with a message the picker can log. */

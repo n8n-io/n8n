@@ -920,6 +920,32 @@ describe('createModel', () => {
 			expect(model.baseURL).toBe('https://my-resource.services.ai.azure.com/anthropic/v1');
 		});
 
+		it('builds a Foundry Claude deployment for its served model and still names the deployment', async () => {
+			let sentBody: Record<string, unknown> | undefined;
+			const baseFetch = vi.fn(async (_input: unknown, init?: RequestInit) => {
+				sentBody = JSON.parse(init?.body as string) as Record<string, unknown>;
+				return new Response('{}', { status: 200 });
+			}) as unknown as typeof globalThis.fetch;
+
+			const model = createModel(
+				{
+					id: 'azure-openai/anthropic/my-claude',
+					apiKey: 'az-key',
+					endpointType: 'foundry',
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+					catalogModelId: 'azure-openai/claude-opus-4-5',
+				},
+				baseFetch,
+			) as unknown as { modelId: string; fetch: typeof globalThis.fetch };
+
+			expect(model.modelId).toBe('claude-opus-4-5');
+			await model.fetch('https://example.com', {
+				method: 'POST',
+				body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 64000 }),
+			});
+			expect(sentBody).toEqual({ model: 'my-claude', max_tokens: 64000 });
+		});
+
 		it('rejects a Claude deployment on a classic credential', () => {
 			expect(() =>
 				createModel({

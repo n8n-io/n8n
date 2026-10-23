@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { resolveCredentialAwareModelConfig } from '../model-config';
 import type { AiGatewayModelCredentialResolver } from '../../agent-credential-provider.contracts';
+import { AzureFoundryDeploymentsService } from '../../azure-foundry-deployments.service';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
@@ -138,6 +139,70 @@ describe('resolveCredentialAwareModelConfig', () => {
 			id: 'openai/gpt-5',
 			apiKey: 'real-key',
 			baseURL: 'https://api.openai.com',
+		});
+	});
+
+	describe('azure-openai', () => {
+		const foundryDeployments = mock<AzureFoundryDeploymentsService>();
+		beforeEach(() => {
+			Container.set(AzureFoundryDeploymentsService, foundryDeployments);
+			foundryDeployments.findUnderlyingModel.mockReset();
+		});
+
+		const foundryCredential = {
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+			apiKey: 'az-key',
+			project: 'my-project',
+		};
+
+		it('adds the catalog id of the model a Foundry deployment serves', async () => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue(foundryCredential);
+			foundryDeployments.findUnderlyingModel.mockResolvedValue('gpt-4.1');
+
+			const result = await resolveCredentialAwareModelConfig(
+				'azure-openai/my-chat',
+				'cred-1',
+				credentialProvider,
+			);
+
+			expect(foundryDeployments.findUnderlyingModel).toHaveBeenCalledWith(
+				'cred-1',
+				foundryCredential,
+				'my-chat',
+			);
+			expect(result).toMatchObject({
+				id: 'azure-openai/my-chat',
+				catalogModelId: 'azure-openai/gpt-4.1',
+			});
+		});
+
+		it('leaves the catalog id out when the served model is unknown', async () => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue(foundryCredential);
+			foundryDeployments.findUnderlyingModel.mockResolvedValue(undefined);
+
+			const result = await resolveCredentialAwareModelConfig(
+				'azure-openai/my-chat',
+				'cred-1',
+				credentialProvider,
+			);
+
+			expect(result).not.toHaveProperty('catalogModelId');
+		});
+
+		it('does not look up deployments for a classic credential', async () => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue({
+				endpointType: 'classic',
+				resourceName: 'my-resource',
+				apiKey: 'az-key',
+			});
+
+			await resolveCredentialAwareModelConfig('azure-openai/gpt-4o', 'cred-1', credentialProvider);
+
+			expect(foundryDeployments.findUnderlyingModel).not.toHaveBeenCalled();
 		});
 	});
 

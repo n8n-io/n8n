@@ -8,6 +8,7 @@ import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
+import { AzureFoundryDeploymentsService } from '../azure-foundry-deployments.service';
 
 export async function resolveCredentialAwareModelConfig(
 	model: string,
@@ -50,12 +51,40 @@ export async function resolveCredentialAwareModelConfig(
 		const sdk = catalog?.[provider]?.models[modelName]?.sdk;
 		return { id: model, ...mapped, ...(sdk !== undefined && { sdk }) };
 	}
-	return { id: model, ...mapped, ...entraSsrfBridge(provider, raw) };
+	if (provider === 'azure-openai') {
+		const catalogModelId = await findFoundryCatalogModelId(credential, raw, modelName);
+		return {
+			id: model,
+			...mapped,
+			...entraSsrfBridge(raw),
+			...(catalogModelId ? { catalogModelId } : {}),
+		};
+	}
+	return { id: model, ...mapped };
 }
 
 /** Entra ID token mints for Azure OpenAI must follow the instance's outbound policy. */
-function entraSsrfBridge(provider: string, raw: ResolvedCredential) {
-	if (provider !== 'azure-openai' || !isAzureEntraCredential(raw)) return {};
+function entraSsrfBridge(raw: ResolvedCredential) {
+	if (!isAzureEntraCredential(raw)) return {};
 	if (!Container.get(SsrfProtectionConfig).enabled) return {};
 	return { ssrfBridge: Container.get(SsrfProtectionService) };
+}
+
+/**
+ * A Foundry deployment name does not say which model it serves. Look the model
+ * up, so cost and capabilities come from its catalog entry. Undefined when the
+ * lookup fails or the credential is not a Foundry credential.
+ */
+async function findFoundryCatalogModelId(
+	credentialId: string,
+	credential: ResolvedCredential,
+	modelName: string,
+): Promise<string | undefined> {
+	if (credential.endpointType !== 'foundry') return undefined;
+	const underlying = await Container.get(AzureFoundryDeploymentsService).findUnderlyingModel(
+		credentialId,
+		credential,
+		modelName,
+	);
+	return underlying ? `azure-openai/${underlying}` : undefined;
 }

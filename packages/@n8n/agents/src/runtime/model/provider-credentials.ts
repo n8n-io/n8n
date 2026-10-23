@@ -76,6 +76,12 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			 */
 			endpointType: z.enum(['classic', 'foundry']).optional(),
 			/**
+			 * Catalog id of the model a Foundry deployment serves, for example
+			 * `azure-openai/claude-opus-4-5`. The SDK reads limits and thinking
+			 * support from the model id, and a deployment name does not reveal them.
+			 */
+			catalogModelId: z.string().optional(),
+			/**
 			 * Entra OAuth2 fields. The model factory mints a Bearer token from these
 			 * via `@n8n/client-oauth2` (client-credentials), mirroring the LangChain
 			 * Azure node. Mutually exclusive with `apiKey`.

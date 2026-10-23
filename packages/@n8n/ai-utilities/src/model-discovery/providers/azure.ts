@@ -31,6 +31,8 @@ export interface AzureOpenAiListModelsOptions {
  */
 export interface AzureDeploymentModel extends ProviderModel {
 	modelFamily: 'openai' | 'anthropic';
+	/** The model the deployment serves, for example `gpt-4.1`, when Azure reports it. */
+	modelName?: string;
 }
 
 /**
@@ -127,6 +129,7 @@ export async function listAzureOpenAiModels(
 						? `${deployment.name} (${deployment.modelName})`
 						: deployment.name,
 				modelFamily: isAnthropicDeployment(deployment) ? 'anthropic' : 'openai',
+				...(typeof deployment.modelName === 'string' ? { modelName: deployment.modelName } : {}),
 			}),
 		)
 		.sort(byName);
