@@ -971,11 +971,16 @@ describe('InstanceAiThreadView', () => {
 
 	// Leaving it open puts the agent chat beside the Assistant composer that now
 	// holds the same request — two places to ask the same thing.
-	it('shows the artifact mode selector only after readiness and keeps it disabled during work', async () => {
+	it('shows the selector after the first build even if Test is unavailable, and disables it during work', async () => {
 		artifactChatModeState.value.visible = false;
 		const { queryByRole, getByRole, user, getByTestId } = await renderAgentArtifact();
 		expect(queryByRole('button', { name: 'Test', exact: true })).not.toBeInTheDocument();
 		artifactChatModeState.value.visible = true;
+		artifactChatModeState.value.testDisabledReason = "Can't test agent yet";
+		await nextTick();
+		expect(getByRole('button', { name: 'Build', exact: true })).toBeEnabled();
+		expect(getByRole('button', { name: 'Test', exact: true })).toBeDisabled();
+		artifactChatModeState.value.testDisabledReason = undefined;
 		await nextTick();
 		expect(getByRole('button', { name: 'Test', exact: true })).toBeEnabled();
 		artifactChatModeState.value.disabled = true;
@@ -993,6 +998,13 @@ describe('InstanceAiThreadView', () => {
 			'true',
 		);
 		expect(getByTestId('instance-ai-input-stub')).toBeVisible();
+	});
+
+	it('removes the selector when the agent artifact is closed', async () => {
+		const { getByRole, queryByRole, getByTestId, user } = await renderAgentArtifact();
+		expect(getByRole('button', { name: 'Test', exact: true })).toBeVisible();
+		await user.click(getByTestId('instance-ai-artifacts-preview-toggle'));
+		expect(queryByRole('button', { name: 'Test', exact: true })).not.toBeInTheDocument();
 	});
 
 	it('closes the preview dock once the request is staged in the composer', async () => {

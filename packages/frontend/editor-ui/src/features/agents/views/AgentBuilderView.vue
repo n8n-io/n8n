@@ -1088,27 +1088,34 @@ const builderTelemetry = useAgentBuilderTelemetry({
  * Preview or stays in the builder.
  */
 const isBuilt = computed(() => agent.value?.isRunnable === true);
-const hasBeenReadyToTest = ref(false);
+const hasFinishedInitialBuild = ref(false);
 watch(
-	[projectId, agentId, isBuilt, chatModeBusy, initialized],
-	([project, id, ready, busy, loaded], previous) => {
+	[projectId, agentId, agent, chatModeBusy, initialized],
+	([project, id, persistedAgent, busy, loaded], previous) => {
 		if (previous && (project !== previous[0] || id !== previous[1])) {
-			hasBeenReadyToTest.value = false;
+			hasFinishedInitialBuild.value = false;
 		}
-		if (loaded && agent.value?.id === id && ready && !busy) hasBeenReadyToTest.value = true;
+		if (loaded && persistedAgent?.id === id && !busy) hasFinishedInitialBuild.value = true;
 	},
 	{ immediate: true },
 );
 const testModeDisabledReason = computed(() => {
 	if (!canExecuteAgent.value) return locale.baseText('agents.builder.chatMode.noPermission');
 	if (chatModeBusy.value) return locale.baseText('agents.builder.chatMode.building');
-	if (!isBuilt.value) return locale.baseText('agents.builder.chatMode.unavailable');
+	if (!isBuilt.value) return locale.baseText('agents.builder.preview.disabledTooltip');
 	return undefined;
 });
+const testValidationIssues = computed(() =>
+	!isBuilt.value && !chatModeBusy.value && canExecuteAgent.value
+		? (configValidation.value?.issues ?? [])
+		: [],
+);
+const chatModeVisible = computed(() => !isArtifactMode.value || hasFinishedInitialBuild.value);
 const chatModeState = computed(() => ({
-	visible: hasBeenReadyToTest.value,
+	visible: chatModeVisible.value,
 	disabled: chatModeBusy.value,
 	testDisabledReason: testModeDisabledReason.value,
+	testValidationIssues: testValidationIssues.value,
 }));
 defineExpose({ chatModeState, setChatMode });
 
@@ -3547,11 +3554,12 @@ useKeybindings({
 							</template>
 							<template v-if="inlineTestChat" #composer-start>
 								<AgentBuilderChatMode
-									v-if="hasBeenReadyToTest"
+									v-if="chatModeVisible"
 									:model-value="chatMode"
 									:disabled="chatModeBusy"
 									:test-disabled="!!testModeDisabledReason"
 									:test-disabled-reason="testModeDisabledReason"
+									:validation-issues="testValidationIssues"
 									:discovery="!hasSentBuilderMessage && !isPreviewDockOpen && !showConfiguration"
 									@update:model-value="setChatMode"
 								/>
@@ -3752,11 +3760,12 @@ useKeybindings({
 								</template>
 								<template v-if="inlineTestChat" #composer-start>
 									<AgentBuilderChatMode
-										v-if="hasBeenReadyToTest"
+										v-if="chatModeVisible"
 										:model-value="chatMode"
 										:disabled="chatModeBusy"
 										:test-disabled="!!testModeDisabledReason"
 										:test-disabled-reason="testModeDisabledReason"
+										:validation-issues="testValidationIssues"
 										:discovery="!hasSentBuilderMessage && isPreviewDockOpen && !showConfiguration"
 										@update:model-value="setChatMode"
 									/>

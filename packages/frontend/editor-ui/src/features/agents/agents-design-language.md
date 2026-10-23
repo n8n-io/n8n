@@ -77,9 +77,13 @@ existing docks. An Agent artifact uses the main Assistant chat area for Test and
 keeps configuration in the artifact panel. On narrow Assistant layouts, use one
 panel at a time. The preview button switches between chat and configuration.
 Keep both mounted and preserve the selected chat mode.
-Show the selector after the Agent can run and its first build finishes. Keep it
-visible during later Assistant work, with both modes disabled. Do not show a
-link from the standalone build chat to the full Assistant. Test links and task
+Always show the selector in the standalone builder. In the Assistant, show it
+when an Agent artifact is open and its initial build finishes. Test readiness
+does not control visibility. Disable Test when the Agent cannot run. Use the
+same validation tooltip as the header Test button to explain the setup issues.
+Keep the selector visible during later Assistant work, with both modes disabled.
+Hide it when the Agent artifact closes. Do not show a link from the standalone
+build chat to the full Assistant. Test links and task
 previews select Test. An accepted Fix with Assistant request selects Build.
 Keep Test selected if the Assistant refuses the request to preserve a draft.
 

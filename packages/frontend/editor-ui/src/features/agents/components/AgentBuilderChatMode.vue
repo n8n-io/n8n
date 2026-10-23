@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import AgentValidationTooltip from './AgentValidationTooltip.vue';
 
 defineProps<{
 	modelValue: 'build' | 'test';
 	disabled?: boolean;
 	testDisabled?: boolean;
 	testDisabledReason?: string;
+	validationIssues?: AgentConfigValidationIssue[];
 	discovery?: boolean;
 }>();
 const emit = defineEmits<{ 'update:modelValue': [mode: 'build' | 'test'] }>();
@@ -31,9 +34,11 @@ const i18n = useI18n();
 			<N8nIcon icon="wrench" size="medium" />
 			{{ i18n.baseText('agents.builder.chatMode.build') }}
 		</N8nButton>
-		<N8nTooltip
-			:disabled="!testDisabled"
-			:content="testDisabledReason ?? i18n.baseText('agents.builder.chatMode.unavailable')"
+		<AgentValidationTooltip
+			:disabled="!disabled && !testDisabled"
+			:fallback="testDisabledReason ?? i18n.baseText('agents.builder.preview.disabledTooltip')"
+			action="preview"
+			:issues="validationIssues"
 		>
 			<span>
 				<N8nButton
@@ -48,7 +53,7 @@ const i18n = useI18n();
 					{{ i18n.baseText('agents.builder.chatMode.test') }}
 				</N8nButton>
 			</span>
-		</N8nTooltip>
+		</AgentValidationTooltip>
 	</div>
 </template>
 

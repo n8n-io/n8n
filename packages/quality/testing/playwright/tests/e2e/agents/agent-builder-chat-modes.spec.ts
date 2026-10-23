@@ -267,5 +267,45 @@ test.describe(
 				await builder.getModeButton('test').click();
 			}
 		});
+		test('keeps the mode selector visible with setup warnings before an agent can run', async ({
+			n8n,
+			api,
+		}, testInfo) => {
+			setContextModuleSettings(n8n.page.context(), {
+				'instance-ai': { enabled: true, setupCompleted: true, workflowBuilderAvailable: true },
+			});
+			const project = await api.projects.getMyPersonalProject();
+			const name = `Agent setup ${nanoid(6)}`;
+			const agent = await api.agents.create(project.id, name);
+			await n8n.page.setViewportSize({ width: 1440, height: 900 });
+			await n8n.start.fromHome();
+			await n8n.agentBuilder.goto(project.id, agent.id);
+			const builder = n8n.agentBuilder;
+			await expect(builder.getModeButton('build')).toBeEnabled();
+			await expect(builder.getModeButton('test')).toBeDisabled();
+			await builder.hoverTestMode();
+			await expect(builder.getTestModeWarning()).toBeVisible();
+			await expect(builder.getTestModeWarning()).toContainText(/instructions/i);
+			await n8n.page.screenshot({
+				path: testInfo.outputPath('standalone-agent-setup-warning.png'),
+			});
+			const threadId = randomUUID();
+			await api.instanceAi.createAgentArtifactThread({
+				threadId,
+				projectId: project.id,
+				agentId: agent.id,
+				name,
+			});
+			await n8n.instanceAi.gotoThread(threadId);
+			await expect(builder.getModeButton('build')).toBeEnabled();
+			await expect(builder.getModeButton('test')).toBeDisabled();
+			await builder.hoverTestMode();
+			await expect(builder.getTestModeWarning()).toBeVisible();
+			await expect(builder.getTestModeWarning()).toContainText(/instructions/i);
+			await n8n.page.screenshot({ path: testInfo.outputPath('assistant-agent-setup-warning.png') });
+			await builder.getArtifactPanelToggle().click();
+			await expect(builder.getModeButton('build')).toBeHidden();
+			await expect(builder.getModeButton('test')).toBeHidden();
+		});
 	},
 );

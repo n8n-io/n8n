@@ -66,6 +66,14 @@ export class AgentBuilderPage extends BasePage {
 		return this.page.locator(`[data-testid="agent-builder-mode-${mode}"]:visible`);
 	}
 
+	async hoverTestMode(): Promise<void> {
+		await this.getModeButton('test').locator('..').hover();
+	}
+
+	getTestModeWarning(): Locator {
+		return this.page.locator('.n8n-tooltip:visible').filter({ hasText: "Can't test agent yet" });
+	}
+
 	getComposer(mode: 'build' | 'test'): Locator {
 		return (mode === 'build' ? this.getAssistantChat() : this.getPreviewDock()).locator('textarea');
 	}

@@ -6558,28 +6558,43 @@ describe('chat-first builder', () => {
 		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).vm).toBe(preview.vm);
 	});
 
-	it('hides the mode selector until the agent can run', async () => {
+	it('keeps the standalone selector visible when the agent cannot run', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
 		const wrapper = await renderView({ props: { builderLayout: undefined } });
-		expect(wrapper.findComponent({ name: 'AgentBuilderChatMode' }).exists()).toBe(false);
+		const selector = wrapper.getComponent({ name: 'AgentBuilderChatMode' });
+		expect(selector.props('testDisabled')).toBe(true);
+		expect(selector.props('testDisabledReason')).toBe('agents.builder.preview.disabledTooltip');
+		expect(
+			selector.get('[data-testid="agent-builder-mode-test"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			selector.get('[data-testid="agent-builder-mode-build"]').attributes('disabled'),
+		).toBeUndefined();
 	});
 
-	it('waits for the first artifact build to finish, then preserves readiness during later work', async () => {
-		const wrapper = await renderView({
-			props: {
-				artifactMode: true,
-				artifactProjectId: 'p1',
-				artifactAgentId: 'a1',
-				artifactAssistantWorking: true,
-			},
-		});
-		expect(wrapper.vm.chatModeState.visible).toBe(false);
-		await wrapper.setProps({ artifactAssistantWorking: false });
-		expect(wrapper.vm.chatModeState.visible).toBe(true);
-		await wrapper.setProps({ artifactAssistantWorking: true });
-		expect(wrapper.vm.chatModeState.visible).toBe(true);
-		expect(wrapper.vm.chatModeState.disabled).toBe(true);
-	});
+	it.each([true, false])(
+		'shows the artifact selector after its initial build, with runnable status %s',
+		async (runnable) => {
+			getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: runnable }));
+			const wrapper = await renderView({
+				props: {
+					artifactMode: true,
+					artifactProjectId: 'p1',
+					artifactAgentId: 'a1',
+					artifactAssistantWorking: true,
+				},
+			});
+			expect(wrapper.vm.chatModeState.visible).toBe(false);
+			await wrapper.setProps({ artifactAssistantWorking: false });
+			expect(wrapper.vm.chatModeState.visible).toBe(true);
+			expect(wrapper.vm.chatModeState.testDisabledReason).toBe(
+				runnable ? undefined : 'agents.builder.preview.disabledTooltip',
+			);
+			await wrapper.setProps({ artifactAssistantWorking: true });
+			expect(wrapper.vm.chatModeState.visible).toBe(true);
+			expect(wrapper.vm.chatModeState.disabled).toBe(true);
+		},
+	);
 
 	it('keeps both mode selectors visible and disabled while the Assistant works', async () => {
 		const wrapper = await renderView({ props: { builderLayout: undefined } });

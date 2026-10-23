@@ -986,6 +986,7 @@ function handleNewThreadClick() {
 							:disabled="agentChatModeState.disabled"
 							:test-disabled="!!agentChatModeState.testDisabledReason"
 							:test-disabled-reason="agentChatModeState.testDisabledReason"
+							:validation-issues="agentChatModeState.testValidationIssues"
 							@update:model-value="setAgentChatMode"
 						/>
 					</template>
