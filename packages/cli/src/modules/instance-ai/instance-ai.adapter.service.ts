@@ -197,6 +197,7 @@ import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registr
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { isAiGatewayMcpServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import {
 	getModuleDisabledNodeTypes,
@@ -728,7 +729,7 @@ export class InstanceAiAdapterService {
 		try {
 			const moduleRegistry = Container.get(ModuleRegistry);
 			if (!moduleRegistry.isActive('agents')) return undefined;
-			if (moduleRegistry.settings.get('agents')?.skillsHubEnabled !== true) return undefined;
+			if (!Container.get(SkillsHubRollout).isEnabled) return undefined;
 			return Container.get(InstanceAiSkillsAdapterService).createService(user);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {

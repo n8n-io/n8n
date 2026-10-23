@@ -24,7 +24,11 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { assertSingleConnections } from './integrations/single-connection';
 import { composeJsonConfig } from './json-config/agent-config-composition';
-import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
+import {
+	fromAgentDocument,
+	keepLegacySkillRefs,
+	type AgentSkillRefs,
+} from './json-config/agent-document';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -115,7 +119,7 @@ export class AgentConfigService {
 			});
 		assertSingleConnections(this.chatIntegrationRegistry, replacement.nextIntegrations);
 		const next = fromAgentDocument(replacement.nextSchema);
-		entity.schema = next.config;
+		entity.schema = keepLegacySkillRefs(entity.schema, next.config);
 		entity.name = validatedConfig.name;
 		entity.integrations = replacement.nextIntegrations;
 		markAgentDraftDirty(entity);
@@ -222,14 +226,6 @@ export class AgentConfigService {
 	): void {
 		if (writesField(config, 'tools', clearOmitted)) {
 			this.removeUnreferencedCustomTools(entity, config);
-		}
-		// With the hub off, bodies live on the agent row: drop the ones no ref keeps, as on
-		// master. With the hub on, a detached skill stays in the hub.
-		if (!this.agentSkillRefs.usesSkillsHub && writesField(config, 'skills', clearOmitted)) {
-			const referenced = new Set((config.skills ?? []).map((ref) => ref.id));
-			entity.skills = Object.fromEntries(
-				Object.entries(entity.skills ?? {}).filter(([id]) => referenced.has(id)),
-			);
 		}
 	}
 

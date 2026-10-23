@@ -40,7 +40,6 @@ export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 			agentId: string;
 			schema: StoredAgentConfig | null;
 			tools: Agent['tools'] | null;
-			skills?: Agent['skills'] | null;
 			publishedBy: User | string;
 		},
 		ctx: OperationContext = {},
@@ -60,7 +59,7 @@ export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 			agentId: data.agentId,
 			schema: data.schema as InsertShape['schema'],
 			tools: data.tools as InsertShape['tools'],
-			skills: (data.skills ?? null) as InsertShape['skills'],
+			// The legacy `skills` column stays null. The skill pins hold the skills of a version.
 			author,
 			publishedById,
 		});

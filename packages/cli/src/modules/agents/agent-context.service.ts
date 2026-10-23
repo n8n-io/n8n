@@ -243,7 +243,7 @@ export class AgentContextService {
 				};
 			case 'skills': {
 				// The skills hub keeps no skill on an agent that is not attached.
-				const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
+				const skills = await this.agentSkillRefs.skillsForRefs(skillRefs, {});
 				return {
 					skills: Object.entries(skills).map(([id, skill]) => ({
 						id,

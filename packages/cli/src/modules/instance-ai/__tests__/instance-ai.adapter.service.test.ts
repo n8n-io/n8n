@@ -1982,6 +1982,7 @@ import type {
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -9004,10 +9005,11 @@ describe('createContext — skill service wiring', () => {
 		const skillService = mock<InstanceAiSkillService>();
 		const moduleRegistry = {
 			isActive: vi.fn().mockReturnValue(moduleActive),
-			settings: new Map([['agents', { enabled: agentsEnabled, skillsHubEnabled: hubEnabled }]]),
+			settings: new Map([['agents', { enabled: agentsEnabled }]]),
 		};
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return moduleRegistry;
+			if (token === SkillsHubRollout) return { isEnabled: hubEnabled };
 			if (token === InstanceAiSkillsAdapterService) {
 				return { createService: vi.fn().mockReturnValue(skillService) };
 			}

@@ -468,10 +468,8 @@ export class AgentPublishService {
 	): Promise<void> {
 		await this.enforceRevertPolicy(agent, context.user, version.schema);
 
+		// The refs carry their pins, so comparing the refs is enough.
 		const previousSkillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		// With the hub on, the refs carry their pins. With it off, a revert can keep the ids
-		// and change the bodies, so compare the bodies too.
-		const previousSkills = structuredClone(agent.skills ?? {});
 		const previousSchema = agent.schema ? toAgentDocument(agent.schema, previousSkillRefs) : null;
 		const previousTools = agent.tools ?? {};
 		const { tasksChanged, nextSchema, nextSkillRefs } = await this.transactionRunner.run(
@@ -500,9 +498,7 @@ export class AgentPublishService {
 				by: context.modifiedBy,
 				changedParts: diffAgentConfigParts(previousSchema, nextSchema, integrations, integrations, {
 					tools: !isEqual(previousTools, agent.tools),
-					skills:
-						!isEqual(previousSkillRefs, nextSkillRefs) ||
-						(!this.agentSkillRefs.usesSkillsHub && !isEqual(previousSkills, agent.skills ?? {})),
+					skills: !isEqual(previousSkillRefs, nextSkillRefs),
 					tasks: tasksChanged,
 				}),
 				changedSettings: diffAgentConfigSettings(previousSchema, nextSchema),
@@ -728,7 +724,7 @@ export class AgentPublishService {
 	) {
 		try {
 			const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx);
-			const { schema, skills } = snapshot;
+			const { schema } = snapshot;
 			const history = await this.agentHistoryRepository.saveVersion(
 				{
 					versionId,
@@ -742,7 +738,6 @@ export class AgentPublishService {
 							}
 						: null,
 					tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-					skills,
 					publishedBy: user,
 				},
 				ctx,

@@ -7,10 +7,10 @@ import { SkillAgentsProxy } from './skill-agents-proxy.service';
  * its `SkillAgentsProvider`. Every entry point (REST, MCP, n8n Assistant) and every agent read
  * checks this one gate.
  *
- * The skills module calls `init` once at startup, before the agents module starts. With the
- * skills module off, the hub stays off and agents run their inline skills. With the agents
- * module off, the hub stays off too: only agents use skills today, and only they can tell
- * which agents use one, which the delete guard needs.
+ * The skills module calls `init` once at startup, before the agents module starts. The skills
+ * module cannot be disabled while the agents module is on, so agents always use the hub. With
+ * the agents module off, the hub stays off: only agents use skills today, and only they can
+ * tell which agents use one, which the delete guard needs.
  */
 @Service()
 export class SkillsHubRollout {

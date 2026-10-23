@@ -49,7 +49,6 @@ export function createAgentSkillRefsService(
 		bodies,
 		draftRefs,
 		versionPins,
-		usesSkillsHub: true,
 	});
 	const readDraftRefs = (agent: Pick<Agent, 'id'>): AgentJsonSkillConfig[] =>
 		draftRefs.get(agent.id) ?? storedSkillRefs(agent);
@@ -81,7 +80,7 @@ export function createAgentSkillRefsService(
 		const skillRefs = storedSkillRefs(version);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
-	service.skillsForRefs.mockImplementation(async (_agent, refs) => pickBodies(refs));
+	service.skillsForRefs.mockImplementation(async (refs) => pickBodies(refs));
 	service.effectiveDraftRefs.mockImplementation(async (_agent, refs) => refs);
 	service.replaceDraftRefs.mockImplementation(async (agent, refs) => writeRefs(agent, refs));
 	service.restoreDraftRefs.mockImplementation(async (agent, version, refs) =>
@@ -104,16 +103,12 @@ export function createAgentSkillRefsService(
 			),
 		),
 	);
-	// As the real seam: the legacy columns get the refs and bodies the draft runs.
+	// As the real seam: the schema has no legacy `skills` key, and the pins hold the skills.
 	service.versionSnapshot.mockImplementation(async (agent) => {
-		if (!agent.schema) return { schema: null, skills: null, pins: new Map() };
+		if (!agent.schema) return { schema: null, pins: new Map() };
 		const skillRefs = readDraftRefs(agent);
 		return {
-			schema: {
-				...withoutLegacySkillRefs(agent.schema),
-				skills: skillRefs.map(({ id }) => ({ type: 'skill', id })),
-			} as unknown as StoredAgentConfig,
-			skills: pickBodies(skillRefs),
+			schema: withoutLegacySkillRefs(agent.schema),
 			pins: new Map(skillRefs.map((ref) => [ref.id, ref.versionId ?? `${ref.id}-latest`])),
 		};
 	});

@@ -6,7 +6,7 @@ import { deepCopy } from 'n8n-workflow';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
-import { fromAgentDocument } from './json-config/agent-document';
+import { fromAgentDocument, keepLegacySkillRefs } from './json-config/agent-document';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -40,7 +40,7 @@ export class AgentDefinitionService {
 		const skillRefs = pending
 			? pending.skillRefs
 			: await this.agentSkillRefs.refsForDraft(agent, ctx);
-		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, ctx);
+		const skills = await this.agentSkillRefs.skillsForRefs(skillRefs, ctx);
 		return {
 			...getAgentDefinitionContent(agent, skillRefs, skills),
 			tasks: new Map(tasks.map((task) => [task.id, getAgentTaskBody(task)])),
@@ -67,7 +67,7 @@ export class AgentDefinitionService {
 		agent: Agent,
 		definition: AgentDefinition,
 		ctx: OperationContext = {},
-		skillPinsFrom?: Pick<AgentHistory, 'versionId' | 'skills'>,
+		skillPinsFrom?: Pick<AgentHistory, 'versionId'>,
 	): Promise<boolean> {
 		// Preserve workflow input names in the JSON configuration.
 		const document = structuredClone(definition.schema);
@@ -75,7 +75,7 @@ export class AgentDefinitionService {
 			? fromAgentDocument(document)
 			: { config: null, skillRefs: undefined };
 		return await this.transactionRunner.run(ctx, async (txCtx) => {
-			agent.schema = config;
+			agent.schema = config ? keepLegacySkillRefs(agent.schema, config) : null;
 			agent.tools = deepCopy(definition.tools);
 			if (agent.schema) agent.name = agent.schema.name;
 			await saveAgentDraftFenced(this.agentRepository, agent, txCtx);

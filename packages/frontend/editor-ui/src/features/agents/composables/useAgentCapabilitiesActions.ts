@@ -150,8 +150,9 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const { showError, showMessage } = useToast();
 	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
 
+	// Agents keep their skills in the skills hub. Inline agents keep them in the node.
 	const hubSkillsEnabled = computed(
-		() => !localSkills && settingsStore.moduleSettings.agents?.skillsHubEnabled === true,
+		() => !localSkills && settingsStore.isModuleActive('agents') === true,
 	);
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
