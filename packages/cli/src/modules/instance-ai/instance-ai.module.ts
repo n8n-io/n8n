@@ -76,6 +76,10 @@ export class InstanceAiModule implements ModuleInterface {
 			);
 		}
 
+		if (Container.get(InstanceAiConfig).assistantAgentEnabled) {
+			await this.registerAssistantAgent();
+		}
+
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
@@ -90,6 +94,26 @@ export class InstanceAiModule implements ModuleInterface {
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');
 		}
+	}
+
+	/** Run the n8n Assistant as a system agent on the Agents runtime, next to its own runtime. */
+	private async registerAssistantAgent(): Promise<void> {
+		const { ModuleRegistry } = await import('@n8n/backend-common');
+		if (!Container.get(ModuleRegistry).isActive('agents')) {
+			Container.get(Logger)
+				.scoped('instance-ai')
+				.warn('The n8n Assistant agent needs the agents module, so it is not registered');
+			return;
+		}
+		const { SystemAgentExecutionService } = await import(
+			'@/modules/agents/system-agents/system-agent-execution.service.js'
+		);
+		const { AssistantAgentProvider } = await import(
+			'./assistant-agent/assistant-agent.provider.js'
+		);
+		await Container.get(SystemAgentExecutionService).register(
+			Container.get(AssistantAgentProvider),
+		);
 	}
 
 	private async reconcileInterruptedRuns(): Promise<void> {
