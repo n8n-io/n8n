@@ -102,21 +102,29 @@ export class PromotionReviewInboxService {
 	/**
 	 * One live look at a review on the host. A merged or closed review is recorded the same way
 	 * as in the Inbox sync, so the next caller finds the new state without a host call. Callers
-	 * that ask for the same review at the same time share one host call.
+	 * that ask for the same review at the same time share one host call. `runs` are the runs of
+	 * this review that the caller already loaded.
 	 */
 	async refreshState(
 		review: PromotionReview,
+		runs: PromotionRun[],
 		{ timeoutMs }: { timeoutMs: number },
 	): Promise<LiveReviewState> {
 		const inFlight = this.liveReads.get(review.id);
 		if (inFlight) return await inFlight;
-		const read = this.readLive(review, timeoutMs).finally(() => this.liveReads.delete(review.id));
+		const read = this.readLive(review, runs, timeoutMs).finally(() =>
+			this.liveReads.delete(review.id),
+		);
 		this.liveReads.set(review.id, read);
 		return await read;
 	}
 
-	private async readLive(review: PromotionReview, timeoutMs: number): Promise<LiveReviewState> {
-		const run = (await this.newestRuns([review])).get(review.id);
+	private async readLive(
+		review: PromotionReview,
+		runs: PromotionRun[],
+		timeoutMs: number,
+	): Promise<LiveReviewState> {
+		const run = newestFirst(runs)[0];
 		const { mergeRequest, remoteError } = await this.readOne(review, run, timeoutMs);
 		if (!mergeRequest) return { ok: false, remoteError: remoteError ?? 'unreachable' };
 		try {
@@ -140,9 +148,7 @@ export class PromotionReviewInboxService {
 	private async newestRuns(reviews: PromotionReview[]): Promise<Map<string, PromotionRun>> {
 		const runs = await this.runRepository.findByReviewIds(reviews.map(({ id }) => id));
 		const newest = new Map<string, PromotionRun>();
-		for (const run of runs.toSorted(
-			(a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id),
-		)) {
+		for (const run of newestFirst(runs)) {
 			if (run.reviewId && !newest.has(run.reviewId)) newest.set(run.reviewId, run);
 		}
 		return newest;
@@ -218,6 +224,11 @@ const toReviewUser = (user: User | null) =>
 	user
 		? { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email }
 		: null;
+
+const newestFirst = (runs: PromotionRun[]) =>
+	runs.toSorted(
+		(a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id),
+	);
 
 const branchOf = (run: PromotionRun | undefined) => {
 	if (!run) return null;

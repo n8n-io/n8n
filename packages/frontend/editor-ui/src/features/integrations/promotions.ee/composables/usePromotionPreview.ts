@@ -1,9 +1,4 @@
-import type {
-	ApplyCheckResult,
-	PromotionBlocker,
-	PromotionDirection,
-	PromotionPreview,
-} from '@n8n/api-types';
+import type { ApplyCheckResult, PromotionDirection, PromotionPreview } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
@@ -53,7 +48,6 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 	const environment = computed(
 		() => environments.value.find((candidate) => candidate.direction === direction.value) ?? null,
 	);
-	const blocker = computed<PromotionBlocker | null>(() => preview.value?.blocker ?? null);
 	const repositoryName = computed(() =>
 		environment.value ? repositoryDisplayName(environment.value.remote) : null,
 	);
@@ -120,7 +114,6 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 		preview,
 		check,
 		graph,
-		blocker,
 		repositoryName,
 		refreshing,
 		refreshFailed,

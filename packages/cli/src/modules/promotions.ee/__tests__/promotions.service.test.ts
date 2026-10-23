@@ -461,7 +461,9 @@ describe('PromotionsService', () => {
 				expect(result.warnings).toBeUndefined();
 				expect(runRepository.insertRun).toHaveBeenCalledWith(
 					expect.objectContaining({
-						details: expect.objectContaining({ projectIds: ['project-a', 'project-b'] }),
+						details: expect.objectContaining({
+							contents: { projectIds: ['project-a', 'project-b'] },
+						}),
 					}),
 				);
 			});

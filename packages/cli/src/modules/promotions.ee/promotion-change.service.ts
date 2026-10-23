@@ -184,7 +184,12 @@ export class PromotionChangeService {
 			// The gate runs before the git and export work, so a blocked project skips both.
 			this.assertCanPreview(user, direction);
 			const input = await this.environmentResolver.resolveForProject(projectId, direction);
-			const blocker = await this.reviewGate.findPromoteBlocker(projectId, input.environmentId);
+			// Only a branched promote opens a review. A direct push has nothing to wait for, even
+			// when an older review of the environment is still open.
+			const blocker =
+				input.config.direction === 'promote' && input.config.settings.createBranchOnPromotion
+					? await this.reviewGate.findPromoteBlocker(projectId, input.environmentId)
+					: null;
 			if (blocker) {
 				return {
 					commitSha: null,

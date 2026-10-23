@@ -18,7 +18,7 @@ export const PROMOTE_GATE_READ_TIMEOUT_MS = 3_000;
 const BLOCKING_STATES: PromotionReviewState[] = ['open', 'changes_requested'];
 
 /**
- * Whether the runs of one review cover a project. A run without `projectIds` covers every
+ * Whether the runs of one review cover a project. A run without `contents.projectIds` covers every
  * project of its environment, so the live read decides. This is the safe direction.
  */
 export const reviewCoversProject = (runs: PromotionRun[], projectId: string) => {
@@ -26,8 +26,9 @@ export const reviewCoversProject = (runs: PromotionRun[], projectId: string) => 
 	const covered = new Set<string>();
 	for (const run of runs) {
 		const parsed = promotionRunDetailsSchemas[run.type].safeParse(run.details);
-		if (!parsed.success || !parsed.data.projectIds) return true;
-		for (const id of parsed.data.projectIds) covered.add(id);
+		const projectIds = parsed.success ? parsed.data.contents?.projectIds : undefined;
+		if (!projectIds) return true;
+		for (const id of projectIds) covered.add(id);
 	}
 	return covered.has(projectId);
 };
@@ -57,14 +58,10 @@ export class PromotionReviewGateService {
 			const open = await this.reviewRepository.findOpenByEnvironmentId(environmentId);
 			if (open.length === 0) return null;
 			const runs = await this.runRepository.findByReviewIds(open.map(({ id }) => id));
-			const covering = open.filter((review) =>
-				reviewCoversProject(
-					runs.filter((run) => run.reviewId === review.id),
-					projectId,
-				),
-			);
+			const runsOf = (review: PromotionReview) => runs.filter((run) => run.reviewId === review.id);
+			const covering = open.filter((review) => reviewCoversProject(runsOf(review), projectId));
 			const states = await Promise.all(
-				covering.map(async (review) => await this.readState(review)),
+				covering.map(async (review) => await this.readState(review, runsOf(review))),
 			);
 			const blocking = covering.find((_, index) => states[index]);
 			return blocking ? { code: 'reviewOpen', reviewId: blocking.id } : null;
@@ -75,9 +72,9 @@ export class PromotionReviewGateService {
 	}
 
 	/** True when the host reports the review as still open. */
-	private async readState(review: PromotionReview): Promise<boolean> {
+	private async readState(review: PromotionReview, runs: PromotionRun[]): Promise<boolean> {
 		try {
-			const result = await this.inbox.refreshState(review, {
+			const result = await this.inbox.refreshState(review, runs, {
 				timeoutMs: PROMOTE_GATE_READ_TIMEOUT_MS,
 			});
 			if (!result.ok) {

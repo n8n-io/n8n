@@ -25,7 +25,7 @@ const run = (reviewId: string, projectIds?: string[], details: unknown = undefin
 			schemaVersion: 1,
 			branchName: `branch-${reviewId}`,
 			commitSha: 'a'.repeat(40),
-			...(projectIds && { projectIds }),
+			...(projectIds && { contents: { projectIds } }),
 		},
 	}) as PromotionRun;
 
@@ -93,9 +93,11 @@ describe('PromotionReviewGateService', () => {
 				code: 'reviewOpen',
 				reviewId: 'r1',
 			});
-			expect(inbox.refreshState).toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }), {
-				timeoutMs: PROMOTE_GATE_READ_TIMEOUT_MS,
-			});
+			expect(inbox.refreshState).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'r1' }),
+				[expect.objectContaining({ reviewId: 'r1' })],
+				{ timeoutMs: PROMOTE_GATE_READ_TIMEOUT_MS },
+			);
 		},
 	);
 

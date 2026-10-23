@@ -17,11 +17,13 @@ describe('promotion run details', () => {
 		expect(() => parsePromotionRunDetails('git', { ...gitDetails, schemaVersion: 2 })).toThrow();
 	});
 
-	it('accepts the projects that the run exported', () => {
-		const details = { ...gitDetails, projectIds: ['p1', 'p2'] };
+	it('accepts the contents that the run pushed', () => {
+		const details = { ...gitDetails, contents: { projectIds: ['p1', 'p2'] } };
 
 		expect(parsePromotionRunDetails('git', details)).toEqual(details);
-		expect(() => parsePromotionRunDetails('git', { ...gitDetails, projectIds: [''] })).toThrow();
+		expect(() =>
+			parsePromotionRunDetails('git', { ...gitDetails, contents: { projectIds: [''] } }),
+		).toThrow();
 	});
 });
 

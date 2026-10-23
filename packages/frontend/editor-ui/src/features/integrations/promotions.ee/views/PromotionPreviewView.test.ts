@@ -2,6 +2,7 @@ import type { ApplyCheckResult } from '@n8n/api-types';
 import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { render as renderToast, waitFor, within } from '@testing-library/vue';
@@ -350,11 +351,16 @@ describe('PromotionPreviewView', () => {
 				blocker: { code: 'reviewOpen', reviewId: 'review-1' },
 			});
 
-		async function renderBlocked(canReadReviews: boolean) {
+		async function renderBlocked(canReadReviews: boolean, inboxEnabled = true) {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(blocked());
 			await router.push('/projects/p1/promotions/promote');
 			const pinia = createTestingPinia();
 			mockedStore(useRBACStore).hasScope.mockReturnValue(canReadReviews);
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings = {
+				...settingsStore.settings,
+				inbox: { enabled: inboxEnabled, availableTypes: [], failedTypes: [] },
+			};
 			const result = renderComponent({ pinia, props: { projectId: 'p1', direction: 'promote' } });
 			await waitAllPromises();
 			return result;
@@ -374,6 +380,15 @@ describe('PromotionPreviewView', () => {
 
 		it('should ask for an admin when the user cannot read reviews', async () => {
 			const { getByTestId, queryByText } = await renderBlocked(false);
+
+			expect(getByTestId('promotion-review-blocker')).toHaveTextContent(
+				'Ask an admin to merge or close the review.',
+			);
+			expect(queryByText('Open the Inbox')).not.toBeInTheDocument();
+		});
+
+		it('should not link to the Inbox when the Inbox is off', async () => {
+			const { getByTestId, queryByText } = await renderBlocked(true, false);
 
 			expect(getByTestId('promotion-review-blocker')).toHaveTextContent(
 				'Ask an admin to merge or close the review.',

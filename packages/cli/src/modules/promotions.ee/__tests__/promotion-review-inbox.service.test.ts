@@ -55,9 +55,10 @@ describe('PromotionReviewInboxService.refreshState', () => {
 			createdAt: new Date('2026-10-05T10:00:00Z'),
 		}) as PromotionRun;
 
+	const runs = () => [runOf('review-1')];
+
 	beforeEach(() => {
 		vi.resetAllMocks();
-		runRepository.findByReviewIds.mockImplementation(async ([id]) => [runOf(id)]);
 		hostResolver.resolveForEnvironment.mockResolvedValue({
 			baseUrl: 'https://gitlab.example.com',
 			accessToken: 'token',
@@ -68,7 +69,7 @@ describe('PromotionReviewInboxService.refreshState', () => {
 	it('reads the merge request with the given timeout', async () => {
 		mergeRequests.getMergeRequest.mockResolvedValue(mergeRequest());
 
-		await expect(service.refreshState(review(), { timeoutMs: 3_000 })).resolves.toEqual({
+		await expect(service.refreshState(review(), runs(), { timeoutMs: 3_000 })).resolves.toEqual({
 			ok: true,
 			state: 'open',
 		});
@@ -78,6 +79,8 @@ describe('PromotionReviewInboxService.refreshState', () => {
 			{ projectId: 7, iid: 3 },
 			{ timeoutMs: 3_000 },
 		);
+		// The caller passes the runs it already loaded.
+		expect(runRepository.findByReviewIds).not.toHaveBeenCalled();
 	});
 
 	it.each(['merged', 'closed'] as const)(
@@ -87,7 +90,7 @@ describe('PromotionReviewInboxService.refreshState', () => {
 			reviewRepository.recordHostState.mockResolvedValue(true);
 			mergeRequests.getMergeRequest.mockResolvedValue(mergeRequest({ state }));
 
-			await service.refreshState(stored, { timeoutMs: 3_000 });
+			await service.refreshState(stored, runs(), { timeoutMs: 3_000 });
 
 			expect(reviewRepository.recordHostState).toHaveBeenCalledWith(
 				'review-1',
@@ -101,7 +104,7 @@ describe('PromotionReviewInboxService.refreshState', () => {
 	it('records nothing when the read fails', async () => {
 		mergeRequests.getMergeRequest.mockRejectedValue(new ServiceUnavailableError('slow'));
 
-		await service.refreshState(review(), { timeoutMs: 3_000 });
+		await service.refreshState(review(), runs(), { timeoutMs: 3_000 });
 
 		expect(reviewRepository.recordHostState).not.toHaveBeenCalled();
 	});
@@ -111,13 +114,13 @@ describe('PromotionReviewInboxService.refreshState', () => {
 		mergeRequests.getMergeRequest.mockResolvedValue(mergeRequest());
 		reviewRepository.recordHostState.mockClear();
 
-		await expect(service.refreshState(review(), { timeoutMs: 3_000 })).resolves.toEqual({
+		await expect(service.refreshState(review(), runs(), { timeoutMs: 3_000 })).resolves.toEqual({
 			ok: true,
 			state: 'open',
 		});
 
 		mergeRequests.getMergeRequest.mockResolvedValue(mergeRequest({ state: 'merged' }));
-		await expect(service.refreshState(review(), { timeoutMs: 3_000 })).resolves.toEqual({
+		await expect(service.refreshState(review(), runs(), { timeoutMs: 3_000 })).resolves.toEqual({
 			ok: true,
 			state: 'merged',
 		});
@@ -126,7 +129,7 @@ describe('PromotionReviewInboxService.refreshState', () => {
 	it('rejects a merge request on a branch that n8n did not push', async () => {
 		mergeRequests.getMergeRequest.mockResolvedValue(mergeRequest({ source_branch: 'other' }));
 
-		await expect(service.refreshState(review(), { timeoutMs: 3_000 })).resolves.toEqual({
+		await expect(service.refreshState(review(), runs(), { timeoutMs: 3_000 })).resolves.toEqual({
 			ok: false,
 			remoteError: 'not_found',
 		});
@@ -140,8 +143,8 @@ describe('PromotionReviewInboxService.refreshState', () => {
 			}),
 		);
 
-		const first = service.refreshState(review(), { timeoutMs: 3_000 });
-		const second = service.refreshState(review(), { timeoutMs: 3_000 });
+		const first = service.refreshState(review(), runs(), { timeoutMs: 3_000 });
+		const second = service.refreshState(review(), runs(), { timeoutMs: 3_000 });
 		await vi.waitFor(() => expect(mergeRequests.getMergeRequest).toHaveBeenCalledTimes(1));
 		release(mergeRequest());
 
@@ -150,7 +153,7 @@ describe('PromotionReviewInboxService.refreshState', () => {
 		expect(mergeRequests.getMergeRequest).toHaveBeenCalledTimes(1);
 
 		mergeRequests.getMergeRequest.mockResolvedValueOnce(mergeRequest());
-		await service.refreshState(review(), { timeoutMs: 3_000 });
+		await service.refreshState(review(), runs(), { timeoutMs: 3_000 });
 		expect(mergeRequests.getMergeRequest).toHaveBeenCalledTimes(2);
 	});
 });
