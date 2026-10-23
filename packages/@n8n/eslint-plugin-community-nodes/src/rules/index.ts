@@ -32,6 +32,7 @@ import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OpenEndedNodeFieldsRule } from './open-ended-node-fields.js';
+import { OperationNameRepeatsResourceRule } from './operation-name-repeats-resource.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireHomepageRule } from './require-homepage.js';
@@ -56,6 +57,7 @@ export const rules = {
 	'no-emoji-in-options': NoEmojiInOptionsRule,
 	'node-usable-as-tool': NodeUsableAsToolRule,
 	'open-ended-node-fields': OpenEndedNodeFieldsRule,
+	'operation-name-repeats-resource': OperationNameRepeatsResourceRule,
 	'package-name-convention': PackageNameConventionRule,
 	'credential-test-required': CredentialTestRequiredRule,
 	'credential-unnecessary-password': CredentialUnnecessaryPasswordRule,
