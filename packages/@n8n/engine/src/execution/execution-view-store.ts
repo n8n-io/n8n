@@ -2,6 +2,7 @@ import type { StoredWorkflowGraph } from '../graph';
 import type {
 	ExecutionMode,
 	ExecutionStatus,
+	ParentLink,
 	StepError,
 	StepSlots,
 	StepStatus,
@@ -20,6 +21,8 @@ export interface ExecutionListItemView {
 	mode: ExecutionMode;
 	/** The host's finer execution mode. */
 	hostMode: string;
+	/** The execution that started this one, or `null` for a top-level one. */
+	parent: ParentLink | null;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;
@@ -29,6 +32,8 @@ export interface ExecutionListQuery {
 	workflowIds: readonly string[] | 'all';
 	status?: ExecutionStatus[];
 	hostMode?: string;
+	/** Only the executions this one started. */
+	parentExecutionId?: string;
 	createdAfter?: string;
 	createdBefore?: string;
 	before?: { createdAt: string; id: string };
@@ -55,6 +60,8 @@ export interface ExecutionView {
 	graph: StoredWorkflowGraph;
 	/** The workflow captured at start, alongside the graph and just as immutable. */
 	workflow: WorkflowDocument;
+	/** The execution that started this one, or `null` for a top-level one. */
+	parent: ParentLink | null;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;

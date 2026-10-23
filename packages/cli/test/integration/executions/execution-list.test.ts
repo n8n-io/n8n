@@ -48,6 +48,7 @@ const row = (workflowId: string): ExecutionListItem => ({
 	status: 'completed',
 	mode: 'manual',
 	hostMode: 'manual',
+	parent: null,
 	createdAt: time,
 	updatedAt: time,
 	finishedAt: time,
