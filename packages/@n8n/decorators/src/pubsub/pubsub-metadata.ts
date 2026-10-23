@@ -44,6 +44,7 @@ export type PubSubEventName =
 	| 'reload-mcp-registry'
 	| 'reload-otel-config'
 	| 'reload-instance-ai-settings'
+	| 'self-healing-failure'
 	| 'reload-agents-settings'
 	| 'cancel-test-run'
 	| 'cancel-collection'
@@ -55,7 +56,9 @@ export type PubSubEventName =
 	| 'cancel-agent-background-job'
 	| 'wake-agent-background-job'
 	| 'agent-tasks-changed'
-	| 'redaction-floor-changed';
+	| 'redaction-floor-changed'
+	| 'reload-type-availability-policies'
+	| 'pubsub-reconnected';
 
 export type PubSubEventFilter =
 	| {

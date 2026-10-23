@@ -8,7 +8,22 @@ export class AppsModule implements ModuleInterface {
 	async init() {
 		await import('./apps.controller.js');
 		await import('./apps-list.controller.js');
+		const { AppBlobStore } = await import('./storage/app-blob-store.js');
+		await Container.get(AppBlobStore).init();
+		const { AppSourceVersionStore, AppBuildResultStore } = await import(
+			'./storage/app-version-stores.js'
+		);
+		const { SnapshotAppSourceVersionStore, SnapshotAppBuildResultStore } = await import(
+			'./storage/snapshot-app-version-stores.js'
+		);
+		Container.set(AppSourceVersionStore, Container.get(SnapshotAppSourceVersionStore));
+		Container.set(AppBuildResultStore, Container.get(SnapshotAppBuildResultStore));
 		Container.get(Logger).warn('The apps module is experimental.');
+	}
+
+	async systemTasks() {
+		const { AppStorageCleanupTask } = await import('./app-storage-cleanup.task.js');
+		return [AppStorageCleanupTask];
 	}
 
 	async entities() {

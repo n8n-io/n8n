@@ -539,7 +539,8 @@ export function useCanvasOperations() {
 		newName: string,
 		{ trackHistory = false, trackBulk = true, showErrorToast = true } = {},
 	): Promise<string | false> {
-		if (currentName === newName) {
+		const node = workflowDocumentStore.value.getNodeByName(currentName);
+		if (currentName === newName || (node && nodeTypesStore.isNodeDeprecated(node))) {
 			return false;
 		}
 
@@ -1115,11 +1116,13 @@ export function useCanvasOperations() {
 	}
 
 	function toggleNodesDisabled(ids: string[], { trackHistory = true, trackBulk = true } = {}) {
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return;
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
-		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 		nodeHelpers.disableNodes(nodes, { trackHistory, trackBulk: false });
 
 		if (trackHistory && trackBulk) {
@@ -3685,6 +3688,7 @@ export function useCanvasOperations() {
 
 	async function duplicateNodes(ids: string[], options: { viewport?: ViewportBoundaries } = {}) {
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return [];
 		if (refuseRestrictedNodes(nodes)) return [];
 
 		const workflowData = deepCopy(getNodesToSave(nodes));
@@ -3717,6 +3721,8 @@ export function useCanvasOperations() {
 	}
 
 	async function cutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return;
 		await copyNodes(ids);
 		deleteNodes(ids, { deleteWholeGroupIds });
 	}

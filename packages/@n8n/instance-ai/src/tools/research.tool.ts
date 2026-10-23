@@ -120,6 +120,7 @@ async function handleWebSearch(
 			if (check.blocked) {
 				return { query: input.query, results: [] };
 			}
+
 			if (ctx.suspend) return await ctx.suspend(check.suspendPayload!);
 			return { query: input.query, results: [] };
 		}
@@ -203,6 +204,7 @@ async function handleFetchUrl(
 					contentLength: 0,
 				};
 			}
+
 			if (ctx.suspend) return await ctx.suspend(check.suspendPayload!);
 			return {
 				url: input.url,

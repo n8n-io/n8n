@@ -37,7 +37,9 @@ import {
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import AgentChannelTeamsOptionLabel from './AgentChannelTeamsOptionLabel.vue';
 import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
+import type { AgentChannelRestart } from '../types';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
+import { useTeamsSetupRestart } from './useTeamsSetupRestart';
 import { useTeamsUploadInstruction } from './useTeamsUploadInstruction';
 
 const selectedCredentialId = defineModel<string>({ default: '' });
@@ -68,6 +70,8 @@ const emit = defineEmits<{
 	provisioned: [credentialId: string];
 	/** The user is finished here, whether or not Microsoft is. */
 	done: [];
+	/** The sign-in changed under a saved channel: remove it and start from the first step. */
+	restart: [restart: AgentChannelRestart];
 }>();
 
 const TEAMS_MANAGE_APPS_URL = 'https://admin.teams.microsoft.com/policies/manage-apps';
@@ -235,6 +239,36 @@ const persisted = ref(false);
  * credential back to the agent at all.
  */
 const canFinish = computed(() => persisted.value || published.value);
+
+/**
+ * A saved channel runs on the bot this sign-in made. Another sign-in would
+ * make a second bot beside it, so switching it sets the channel up again.
+ */
+const signInLocked = computed(() => persisted.value || props.channelConnected === true);
+const { confirmRestart } = useTeamsSetupRestart();
+
+// Under a saved channel the new sign-in is applied only once the host has
+// removed the channel, so a removal that fails leaves this setup as it was.
+async function selectSignIn(credentialId: string) {
+	if (credentialId === selectedCredentialId.value) return;
+	if (!signInLocked.value) {
+		selectedCredentialId.value = credentialId;
+		return;
+	}
+	if (await confirmRestart()) {
+		emit('restart', { credentialId: '', signInCredentialId: credentialId });
+	}
+}
+
+async function addSignIn() {
+	if (!signInLocked.value) {
+		await connect();
+		return;
+	}
+	if (!(await confirmRestart())) return;
+	const signedIn = await connect(undefined, { select: false });
+	if (signedIn) emit('restart', { credentialId: '', signInCredentialId: signedIn });
+}
 
 /**
  * Every step after the first runs on the sign-in, so a sign-in that has to be
@@ -423,10 +457,16 @@ async function run(name: string, action: () => Promise<void>) {
  * credential first. The picker already names one whenever the project has any,
  * so passing it is what keeps a second sign-in from piling up beside it.
  */
-async function connect(credentialId?: string) {
+async function connect(
+	credentialId?: string,
+	options?: { select?: boolean },
+): Promise<string | null> {
+	let signedIn: string | null = null;
 	await run('connect', async () => {
-		connectFailed.value = !(await props.runtime.connectManagerCredential(credentialId));
+		signedIn = await props.runtime.connectManagerCredential(credentialId, options);
+		connectFailed.value = !signedIn;
 	});
+	return signedIn;
 }
 
 const provisionApp = async () =>
@@ -614,9 +654,10 @@ const downloadPackage = async () =>
 							:selected-credential-id="selectedCredentialId"
 							:permissions="credentialPermissions"
 							:loading="loading"
+							:disabled="busy !== null"
 							data-testid="teams-manager-credential-select"
-							@credential-selected="selectedCredentialId = $event"
-							@new-credential="connect()"
+							@credential-selected="selectSignIn"
+							@new-credential="addSignIn"
 						/>
 						<N8nIconButton
 							v-if="credentialPermissions.update"
@@ -637,9 +678,10 @@ const downloadPackage = async () =>
 							:selected-credential-id="selectedCredentialId"
 							:permissions="credentialPermissions"
 							:loading="loading"
+							:disabled="busy !== null"
 							data-testid="teams-manager-credential-select"
-							@credential-selected="selectedCredentialId = $event"
-							@new-credential="connect()"
+							@credential-selected="selectSignIn"
+							@new-credential="addSignIn"
 						/>
 					</div>
 					<N8nText
