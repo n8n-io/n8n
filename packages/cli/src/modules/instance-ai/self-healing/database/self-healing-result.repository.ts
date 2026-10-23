@@ -4,6 +4,7 @@ import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
 	TransactionRunner,
+	WorkflowEntity,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
@@ -16,6 +17,7 @@ import { SelfHealingConfigurationReviewer } from './self-healing-configuration-r
 import { SelfHealingInvestigation } from './self-healing-investigation.entity';
 import { SelfHealingResult } from './self-healing-result.entity';
 
+// Keep in sync with getSelfHealingReviewState(), which returns 'open' for the same rows.
 const inboxState = `CASE WHEN result.dismissedAt IS NULL
 	AND result.outcome <> 'could_not_fix'
 	AND (result.suggestionId IS NULL OR suggestion.state = 'pending')
@@ -52,6 +54,12 @@ type SelfHealingInboxQuery = {
 	state: InboxState;
 	limit: number;
 	boundary?: SelfHealingInboxBoundary;
+};
+
+type RecentCannotFixQuery = {
+	workflowId: string;
+	projectId: string;
+	completedAfter: Date;
 };
 
 @Service()
@@ -96,19 +104,32 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 	}
 
 	async hasRecentCannotFixForVersion(
-		{
-			workflowId,
-			projectId,
-			publishedVersionId,
-			completedAfter,
-		}: {
-			workflowId: string;
-			projectId: string;
-			publishedVersionId: string;
-			completedAfter: Date;
-		},
+		{ publishedVersionId, ...recent }: RecentCannotFixQuery & { publishedVersionId: string },
 		ctx: OperationContext,
 	): Promise<boolean> {
+		const versionIds = await this.getRecentCannotFixVersionIds(recent, ctx);
+		return versionIds.includes(publishedVersionId);
+	}
+
+	/** Checks the workflow's current published version. Reads it only when a recent result exists. */
+	async hasRecentCannotFixForActiveVersion(
+		recent: RecentCannotFixQuery,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const versionIds = await this.getRecentCannotFixVersionIds(recent, ctx);
+		if (versionIds.length === 0) return false;
+
+		const workflow = await this.managerFor(ctx).findOne(WorkflowEntity, {
+			select: { activeVersionId: true },
+			where: { id: recent.workflowId },
+		});
+		return !!workflow?.activeVersionId && versionIds.includes(workflow.activeVersionId);
+	}
+
+	private async getRecentCannotFixVersionIds(
+		{ workflowId, projectId, completedAfter }: RecentCannotFixQuery,
+		ctx: OperationContext,
+	): Promise<string[]> {
 		const investigations = await this.managerFor(ctx).find(SelfHealingInvestigation, {
 			select: ['baseline'],
 			where: {
@@ -122,9 +143,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		});
 
 		// PostgreSQL accepts escaped NUL in json columns, but JSON extraction rejects it.
-		return investigations.some(
-			({ baseline }) => baseline.expectedBaseline.publishedVersionId === publishedVersionId,
-		);
+		return investigations.map(({ baseline }) => baseline.expectedBaseline.publishedVersionId);
 	}
 
 	async listForInbox(

@@ -87,7 +87,7 @@ describe('SelfHealingInvestigationService', () => {
 		configurations,
 		configurationService,
 	);
-	const investigation = mock<SelfHealingInvestigation>({
+	const investigationFields = {
 		...input,
 		id: 'investigation',
 		configurationId: configuration.id,
@@ -96,6 +96,9 @@ describe('SelfHealingInvestigationService', () => {
 		runId: 'run',
 		resultId: null,
 		finishedAt: null,
+	};
+	const investigation = mock<SelfHealingInvestigation>({
+		...investigationFields,
 		createdAt: new Date(Date.now() - 300_000),
 	});
 	let run: SelfHealingRunResult;
@@ -110,7 +113,6 @@ describe('SelfHealingInvestigationService', () => {
 		configurationService.resolveActorOrPause.mockResolvedValue(user);
 		execution = undefined;
 		controller = new AbortController();
-		investigation.createdAt = new Date(Date.now() - 300_000);
 		run = {
 			threadId: investigation.threadId,
 			runId: investigation.runId,
@@ -132,6 +134,7 @@ describe('SelfHealingInvestigationService', () => {
 		investigations.getUnfinishedForWorkflow.mockResolvedValue(null);
 		investigations.createInvestigation.mockResolvedValue(investigation);
 		resultRepository.getOpenForWorkflow.mockResolvedValue(null);
+		resultRepository.hasRecentCannotFixForActiveVersion.mockResolvedValue(false);
 		resultRepository.hasRecentCannotFixForVersion.mockResolvedValue(false);
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
@@ -454,6 +457,33 @@ describe('SelfHealingInvestigationService', () => {
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 	});
 
+	it('skips a cooldown before capturing a baseline or opening the claim', async () => {
+		resultRepository.hasRecentCannotFixForActiveVersion.mockResolvedValue(true);
+
+		await expect(service.start(input)).resolves.toBeNull();
+
+		expect(resultRepository.hasRecentCannotFixForActiveVersion).toHaveBeenCalledWith({
+			workflowId: input.workflowId,
+			projectId: input.projectId,
+			completedAfter: expect.any(Date),
+		});
+		expect(suggestions.captureBaseline).not.toHaveBeenCalled();
+		expect(executions.validateFailure).not.toHaveBeenCalled();
+		expect(suggestions.readWorkflowTargetForApply).not.toHaveBeenCalled();
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+	});
+
+	it('returns existing work for the same execution during a cooldown', async () => {
+		investigations.getForExecution.mockResolvedValue(investigation);
+		resultRepository.hasRecentCannotFixForActiveVersion.mockResolvedValue(true);
+
+		await expect(service.start(input)).resolves.toEqual({
+			kind: 'investigation',
+			investigationId: investigation.id,
+		});
+		expect(resultRepository.hasRecentCannotFixForActiveVersion).not.toHaveBeenCalled();
+	});
+
 	it('checks a newly completed cannot-fix result inside the locked claim transaction', async () => {
 		const ctx: OperationContext = { trx: mock<Transaction>() };
 		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
@@ -525,8 +555,11 @@ describe('SelfHealingInvestigationService', () => {
 	});
 
 	it('does not reap a claim while another main can still be starting it', async () => {
-		investigation.createdAt = new Date();
-		investigations.listUnfinished.mockResolvedValue([investigation]);
+		const startingInvestigation = mock<SelfHealingInvestigation>({
+			...investigationFields,
+			createdAt: new Date(),
+		});
+		investigations.listUnfinished.mockResolvedValue([startingInvestigation]);
 		await service.reconcile();
 		expect(sweeper.sweepRun).not.toHaveBeenCalled();
 		expect(investigations.finishWithoutResult).not.toHaveBeenCalled();

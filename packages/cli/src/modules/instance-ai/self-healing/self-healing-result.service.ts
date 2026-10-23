@@ -51,7 +51,8 @@ export function getSelfHealingReviewState(
 	result: Pick<SelfHealingResult, 'dismissedAt' | 'outcome'>,
 	suggestion: Pick<WorkflowSuggestionProposalDetail, 'closedReason'> | null,
 ): SelfHealingResultDetail['reviewState'] {
-	if (result.dismissedAt || result.outcome === 'could_not_fix') return 'dismissed';
+	if (result.dismissedAt) return 'dismissed';
+	if (result.outcome === 'could_not_fix') return 'closed';
 	return suggestion?.closedReason ?? 'open';
 }
 
