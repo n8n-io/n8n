@@ -34,16 +34,6 @@ const renderComponent = createComponentRenderer(ApplyInstanceDialog, {
 });
 
 describe('ApplyInstanceDialog', () => {
-	it.each(['Development', 'Staging'])(
-		'shows the configured %s environment in the heading',
-		async (environmentName) => {
-			const { findByRole } = renderComponent({ props: { environmentName } });
-			expect(
-				await findByRole('heading', { name: `Apply changes from ${environmentName}` }),
-			).toBeVisible();
-		},
-	);
-
 	beforeEach(() => {
 		vi.resetAllMocks();
 		createTestingPinia();
@@ -76,7 +66,10 @@ describe('ApplyInstanceDialog', () => {
 				},
 			},
 		});
-		const { findByTestId, emitted } = renderComponent();
+		const { findByTestId, findByRole, emitted } = renderComponent({
+			props: { environmentName: 'Staging' },
+		});
+		expect(await findByRole('heading', { name: 'Apply changes from Staging' })).toBeVisible();
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 
