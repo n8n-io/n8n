@@ -4,6 +4,8 @@ import {
 	type AgentConfigValidationResponse,
 	type AgentJsonConfig,
 	type AgentVersionListItemDto,
+	type AgentPublishHistoryItemDto,
+	type UpdateAgentVersionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
@@ -35,6 +37,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentValidationService } from './agent-validation.service';
+import type { AgentPublishHistory } from './entities/agent-publish-history.entity';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
@@ -132,16 +135,16 @@ export class AgentPublishService {
 		emitter: AgentPublishEmitter,
 		versionId?: string,
 		pushRef?: string,
+		metadata?: UpdateAgentVersionDto,
 	): Promise<PublishAgentResult> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const expectedRevision = agent.publicationRevision;
 
-		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
-			return { agent };
-		}
-
-		if (versionId !== undefined && versionId === agent.activeVersionId) {
+		const selectedVersionId = versionId ?? agent.versionId;
+		if (selectedVersionId && selectedVersionId === agent.activeVersionId) {
+			if (metadata)
+				await this.updateVersionMetadata(agentId, projectId, selectedVersionId, metadata);
 			return { agent };
 		}
 
@@ -166,7 +169,7 @@ export class AgentPublishService {
 
 		const knowledgeTotals = await this.readKnowledgeTotalsForTelemetry(agent.id);
 
-		await this.commitPublication(agent, expectedRevision, user, targetHistory);
+		await this.commitPublication(agent, expectedRevision, user, targetHistory, metadata);
 		this.eventService.emit('agent-saved', { agentId });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: emitter.by }, pushRef);
 
@@ -501,7 +504,7 @@ export class AgentPublishService {
 		return { agent, version, definition };
 	}
 
-	async listPublishHistory(
+	async listVersions(
 		agentId: string,
 		projectId: string,
 		take: number,
@@ -511,13 +514,95 @@ export class AgentPublishService {
 
 		const versions = await this.agentHistoryRepository.findByAgentId(agentId, take, skip);
 
-		return versions.map((v) => ({
-			versionId: v.versionId,
-			agentId: v.agentId,
-			createdAt: v.createdAt.toISOString(),
-			updatedAt: v.updatedAt.toISOString(),
-			author: v.author,
-			isActive: v.versionId === agent.activeVersionId,
+		const publications = await this.publishHistory.findLatestForVersions(
+			agentId,
+			versions.map(({ versionId }) => versionId),
+		);
+		return versions.map((version) =>
+			this.versionSummary(agent, version, publications.get(version.versionId)),
+		);
+	}
+
+	private versionSummary(
+		agent: Agent,
+		version: AgentHistory,
+		publication?: AgentPublishHistory,
+	): AgentVersionListItemDto {
+		return {
+			versionId: version.versionId,
+			agentId: version.agentId,
+			createdAt: version.createdAt.toISOString(),
+			updatedAt: version.updatedAt.toISOString(),
+			author: version.author,
+			isActive: version.versionId === agent.activeVersionId,
+			isCurrent: version.versionId === agent.versionId,
+			name: version.name ?? null,
+			description: version.description ?? null,
+			...(publication
+				? {
+						lastPublished: {
+							author: publication.author,
+							createdAt: publication.createdAt.toISOString(),
+							isLegacy: publication.isLegacy,
+						},
+					}
+				: {}),
+		};
+	}
+
+	async getVersionSummary(
+		agentId: string,
+		projectId: string,
+		versionId: string,
+	): Promise<AgentVersionListItemDto> {
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const version = await this.agentHistoryRepository.findSummary(agentId, versionId);
+		if (!version) throw new NotFoundError(`Version "${versionId}" not found`);
+		const publications = await this.publishHistory.findLatestForVersions(agentId, [versionId]);
+		return this.versionSummary(agent, version, publications.get(versionId));
+	}
+
+	async hasVersionHistory(agentId: string): Promise<boolean> {
+		return await this.agentHistoryRepository.existsForAgent(agentId);
+	}
+
+	async updateVersionMetadata(
+		agentId: string,
+		projectId: string,
+		versionId: string,
+		metadata: UpdateAgentVersionDto,
+	): Promise<void> {
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
+		if (!version) throw new NotFoundError(`Version "${versionId}" not found`);
+		await this.agentHistoryRepository.updateMetadata(agentId, versionId, metadata);
+	}
+
+	async listPublishHistory(
+		agentId: string,
+		projectId: string,
+		take: number,
+		skip: number,
+	): Promise<AgentPublishHistoryItemDto[]> {
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		// Include the preceding event so durations remain correct across page boundaries.
+		const offset = skip > 0 ? 1 : 0;
+		const rows = await this.publishHistory.list(agentId, take + offset, skip - offset);
+		const latest = skip === 0 ? rows[0] : (await this.publishHistory.list(agentId, 1, 0))[0];
+		return rows.slice(offset).map((row, index) => ({
+			id: row.id,
+			versionId: row.versionId,
+			name: row.version?.name ?? null,
+			description: row.version?.description ?? null,
+			event: row.event,
+			author: row.author,
+			createdAt: row.createdAt.toISOString(),
+			endedAt: row.isLegacy ? null : (rows[index + offset - 1]?.createdAt.toISOString() ?? null),
+			isLegacy: row.isLegacy,
+			isActive:
+				row.event === 'activated' &&
+				row.versionId === agent.activeVersionId &&
+				(row.isLegacy ? Boolean(latest?.isLegacy) : row.id === latest?.id),
 		}));
 	}
 
@@ -608,6 +693,7 @@ export class AgentPublishService {
 		expectedRevision: number,
 		user: User,
 		target: AgentHistory,
+		metadata?: UpdateAgentVersionDto,
 	): Promise<void> {
 		await this.transactionRunner.run({}, async (ctx) => {
 			await this.agentSkillRefs.assertVersionAccess(agent, target, ctx);
@@ -621,6 +707,8 @@ export class AgentPublishService {
 				throw new ConflictError('Agent publication changed concurrently; please retry');
 			}
 
+			if (metadata)
+				await this.agentHistoryRepository.updateMetadata(agent.id, target.versionId, metadata, ctx);
 			await this.agentHistoryRepository.recordPublisher(target.versionId, user.id, ctx);
 			await this.publishHistory.record(agent.id, target.versionId, 'activated', user, ctx);
 

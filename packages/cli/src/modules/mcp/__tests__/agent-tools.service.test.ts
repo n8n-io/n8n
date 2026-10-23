@@ -1,7 +1,7 @@
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentPublishHistoryItemDto } from '@n8n/api-types';
 import { type EventService, ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -1683,14 +1683,18 @@ describe('McpAgentToolsService', () => {
 
 	describe('list_agent_versions', () => {
 		it('lists the publish history', async () => {
-			const versions = [
+			const versions: AgentPublishHistoryItemDto[] = [
 				{
+					id: 1,
 					versionId: 'v1',
-					agentId: 'agent-1',
+					name: null,
+					description: null,
+					event: 'activated',
 					createdAt: '2026-01-02T00:00:00.000Z',
-					updatedAt: '2026-01-02T00:00:00.000Z',
+					endedAt: null,
 					author: 'Ada Lovelace',
 					isActive: true,
+					isLegacy: false,
 				},
 			];
 			agentPublishService.listPublishHistory.mockResolvedValue(versions);

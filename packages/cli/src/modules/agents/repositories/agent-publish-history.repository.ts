@@ -35,6 +35,28 @@ export class AgentPublishHistoryRepository extends BaseRepository<AgentPublishHi
 		});
 	}
 
+	async findLatestForVersions(
+		agentId: string,
+		versionIds: string[],
+	): Promise<Map<string, AgentPublishHistory>> {
+		if (versionIds.length === 0) return new Map();
+		const rows = await this.createQueryBuilder('publication')
+			.where((qb) => {
+				const latest = qb
+					.subQuery()
+					.select('MAX(event.id)')
+					.from(AgentPublishHistory, 'event')
+					.where('event.agentId = :agentId', { agentId })
+					.andWhere('event.versionId IN (:...versionIds)', { versionIds })
+					.andWhere("event.event = 'activated'")
+					.groupBy('event.versionId')
+					.getQuery();
+				return `publication.id IN ${latest}`;
+			})
+			.getMany();
+		return new Map(rows.flatMap((row) => (row.versionId ? [[row.versionId, row]] : [])));
+	}
+
 	async list(agentId: string, take: number, skip: number): Promise<AgentPublishHistory[]> {
 		return await this.createQueryBuilder('publication')
 			.leftJoin('publication.version', 'version')
