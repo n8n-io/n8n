@@ -1,0 +1,127 @@
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion.service.integration.test.ts
+  ai_agent 27,43
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  ai_agent 139-144,532-537
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  ai_agent 5203
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion-actions.service.integration.test.ts
+  ai_agent 36,84
+packages/cli/src/modules/instance-ai/workflow-suggestions/workflow-suggestion-event-relay.service.ts
+  ai_agent 13-24,27,29,32,36-38
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  ai_agent 130-135,523-528
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-investigation.repository.integration.test.ts
+  ai_agent 11,57,80,92,95,102,104,106,108,110,112,115
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  ai_agent 111-116,504-509
+packages/cli/src/modules/instance-ai/self-healing/self-healing-result.service.ts
+  ai_agent 28,79,90,99,111-112,121,130,165-172,197-199,259,262-271,293,298
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowVersion.generated.yml
+  ai_agent 109-114
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  ai_agent 4
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getDeprecatedWorkflowVersion.generated.yml
+  ai_agent 110-115
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  ai_agent 242-243,472-481
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  ai_agent 115,120
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-setup.service.test.ts
+  ai_agent 529,538,558-559,562-564
+packages/cli/src/modules/instance-ai/instance-ai-execution-reader.ts
+  ai_agent 15
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  ai_agent 403-417
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-inbox.service.test.ts
+  ai_agent 1,4-5,7,9-10,12-13,17-18,21-46
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  ai_agent 1728-1731,2160,2232,2235
+packages/cli/src/modules/promotions.ee/promotion-reviews.controller.ts
+  ai_agent 1,4,11
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  ai_agent 75,91,94,102,106
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.controller.test.ts
+  ai_agent 6-9,11-16,18-22
+packages/cli/test/integration/environments/source-control.api.test.ts
+  ai_agent 57,87,99,131-133,135,149-172
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-handoff.integration.test.ts
+  ai_agent 81
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  ai_agent 126,316,681
+packages/cli/src/modules/source-control.ee/__tests__/source-control-preferences.service.ee.test.ts
+  ai_agent 8,472-531
+packages/cli/src/modules/source-control.ee/source-control-preferences.service.ee.ts
+  ai_agent 344,347,354-364,367-371
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  ai_agent 1012
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-app-icons.test.ts
+  ai_agent 1,135-136,139-142,164-167,186
+packages/cli/src/events/maps/relay.event-map.ts
+  ai_agent 761-765
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-investigation.service.test.ts
+  ai_agent 4,14-15,38,52,103,348-350,352,388-389
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  ai_agent 6,53
+packages/cli/src/modules/instance-ai/self-healing/self-healing-investigation.service.ts
+  ai_agent 11,20,34,40,48,60-61,65,71-73,75-86,90,110-111,114
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion.repository.integration.test.ts
+  ai_agent 68
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  ai_agent 24-25,76,84-85
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-app-icons.fallback.test.ts
+  ai_agent 88-90
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  ai_agent 119-122
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-result.repository.ts
+  ai_agent 49-52,72
+packages/@n8n/telemetry/src/telemetry-events.ts
+  ai_agent 13,30
+packages/cli/src/modules/source-control.ee/types/source-control-preferences.ts
+  ai_agent 52-55,74-75
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-app-icons.ts
+  ai_agent 1,55,62,81-85,90-91
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-result.service.integration.test.ts
+  ai_agent 152,177,243,257,272-273,313,362,365,370,385,411,444,454,479,511,528,540,772,892,919
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  ai_agent 111-116,408-413
+packages/@n8n/telemetry/src/events/source-control.ts
+  ai_agent 1-22
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-manifest.service.ts
+  ai_agent 20-21,60
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  ai_agent 64-67,124,198-199,203,592-593,631,691-735
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  ai_agent 927,1016,1064
+packages/cli/src/modules/instance-ai/self-healing/README.md
+  ai_agent 10-11,21-22,25-26,29-30,33,93,139,171,187,220
+packages/cli/src/modules/instance-ai/workflow-suggestions/README.md
+  ai_agent 13,23
+packages/cli/src/modules/source-control.ee/source-control.controller.ee.ts
+  ai_agent 50,83,106,154-158,163,170-178
+packages/cli/src/modules/source-control.ee/__tests__/source-control.controller.ee.test.ts
+  ai_agent 45-46,237-284
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 699-704,996-1001
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-investigation.repository.ts
+  ai_agent 4,15-18
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  ai_agent 687-692,1080-1085
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  ai_agent 166-171,486-491
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion-event-relay.service.test.ts
+  ai_agent 2,28,83,90,100,105-106
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  ai_agent 13,200-202
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  ai_agent 301,313,340,351-352,356,358-359,363,365-366,374-380,384,399
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  ai_agent 376
+packages/cli/src/executions/execution.service.ts
+  ai_agent 224-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c04acc8fa3344833c398af2147a925fd2a32460f",
+  "prompts": {}
+}
