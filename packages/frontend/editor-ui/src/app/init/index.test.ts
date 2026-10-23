@@ -339,6 +339,7 @@ describe('Init', () => {
 			settingsStore.isTemplatesEnabled = true;
 			sourceControlStore.isEnterpriseSourceControlEnabled = true;
 			rootStore.defaultLocale = 'es';
+			credentialsStore.fetchAllCredentials.mockResolvedValue([]);
 		});
 
 		afterEach(() => {
@@ -362,49 +363,38 @@ describe('Init', () => {
 			expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
 		});
 
-		it('loads node types before authenticated pages render', async () => {
+		it('loads node types, credential types and credentials without waiting for them', async () => {
 			settingsStore.isCloudDeployment = false;
 			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
-			const { promise, resolve } = Promise.withResolvers<void>();
-			nodeTypesStore.loadNodeTypesIfNotLoaded.mockReturnValueOnce(promise);
-			let initialized = false;
-			const initializing = initializeAuthenticatedFeatures(false).then(() => {
-				initialized = true;
-			});
+			// Requests that never settle: init must still finish.
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockReturnValueOnce(new Promise(() => {}));
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(new Promise(() => {}));
+			credentialsStore.fetchAllCredentials.mockReturnValueOnce(new Promise(() => {}));
 
-			await flushPromises();
-			expect(initialized).toBe(false);
+			await initializeAuthenticatedFeatures(false);
 
-			resolve();
-			await initializing;
-			expect(initialized).toBe(true);
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalledTimes(1);
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledTimes(1);
 		});
 
-		it('loads credentials and credential types before authenticated pages render', async () => {
+		it('logs background loading failures without failing init', async () => {
 			settingsStore.isCloudDeployment = false;
 			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
-			const credentials = Promise.withResolvers<[]>();
-			const credentialTypes = Promise.withResolvers<void>();
-			credentialsStore.fetchAllCredentials.mockReturnValueOnce(credentials.promise);
-			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(credentialTypes.promise);
-			let initialized = false;
-			const initializing = initializeAuthenticatedFeatures(false).then(() => {
-				initialized = true;
-			});
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const nodeTypesError = new Error('node types');
+			const credentialTypesError = new Error('credential types');
+			const credentialsError = new Error('credentials');
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockRejectedValueOnce(nodeTypesError);
+			credentialsStore.fetchCredentialTypes.mockRejectedValueOnce(credentialTypesError);
+			credentialsStore.fetchAllCredentials.mockRejectedValueOnce(credentialsError);
 
+			await expect(initializeAuthenticatedFeatures(false)).resolves.toBeUndefined();
 			await flushPromises();
-			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledTimes(1);
-			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
-			expect(initialized).toBe(false);
 
-			// Each request must hold up init on its own.
-			credentials.resolve([]);
-			await flushPromises();
-			expect(initialized).toBe(false);
-
-			credentialTypes.resolve();
-			await initializing;
-			expect(initialized).toBe(true);
+			expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(String), nodeTypesError);
+			expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(String), credentialTypesError);
+			expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(String), credentialsError);
 		});
 
 		it('fetches credentials and credential types only once across repeated calls', async () => {
