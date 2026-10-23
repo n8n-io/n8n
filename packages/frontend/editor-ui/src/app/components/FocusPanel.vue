@@ -207,7 +207,7 @@ const expression = computed(() => {
 		: resolvedParameter.value;
 });
 
-const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
+const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value || isDeprecated.value);
 
 const resolvedAdditionalExpressionData = computed(() => {
 	return {
