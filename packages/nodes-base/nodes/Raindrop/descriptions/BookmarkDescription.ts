@@ -212,7 +212,6 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 10,
 		},
 		default: 5,
 		description: 'Max number of results to return',
