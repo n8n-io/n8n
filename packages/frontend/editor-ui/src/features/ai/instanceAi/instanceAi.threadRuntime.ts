@@ -1676,7 +1676,7 @@ export function createThreadRuntime(
 				handoffContext,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
-				instanceAiSettingsStore.computerUseChannels,
+				instanceAiSettingsStore.isBrowserUseAvailable,
 				openTabs.value === null
 					? undefined
 					: buildThreadArtifactsContext(

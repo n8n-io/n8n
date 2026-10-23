@@ -516,7 +516,7 @@ function getSetupDescription(context: InstanceAiContext): string {
 		isSetupPanelEnabled(context)
 			? 'Announce workflow credential requirements without waiting by passing filePath before generating source. Omit filePath for existing workflow or standalone setup. Follow the returned guidance: announced means continue working, while a resumed card reports the completed interaction.'
 			: '',
-		'When `setup_credentials` returns `needsBrowserSetup=true`, load `credential-setup-with-computer-use`, then use Computer Use `browser_*` tools directly.',
+		'When `setup_credentials` returns `needsBrowserSetup=true`, load `credential-setup-with-browser-use`, then use Browser Use `browser_*` tools directly.',
 	]
 		.filter(Boolean)
 		.join(' ');

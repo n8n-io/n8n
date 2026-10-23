@@ -110,7 +110,7 @@ export function usePromotionBindingCreation(
 				id: project.id,
 				name: missing.name,
 				permissions: {
-					create: projectsStore.canCreateProjects && projectsStore.hasPermissionToCreateProjects,
+					create: projectsStore.hasTeamProjectQuota && projectsStore.hasPermissionToCreateProjects,
 				},
 			},
 			notice: () => {
@@ -200,6 +200,7 @@ export function usePromotionBindingCreation(
 			initialValues: { key: binding.name, value: '' },
 			fixedKey: true,
 			projectId: project?.id ?? null,
+			allowOnProtectedInstance: true,
 			appendToBody: true,
 			onCreate: async (values) => {
 				session.checkActive();

@@ -1107,6 +1107,28 @@ describe('nodes tool', () => {
 			expect(result).toEqual(serviceResult);
 		});
 
+		it('resumes an approval saved under the former combined nodes tool through execute_node', async () => {
+			const serviceResult = { status: 'success', output: [[{ json: {} }]] };
+			const executeNodeService = { execute: vi.fn().mockResolvedValue(serviceResult) };
+			const tool = createExecuteNodeTool(createMockContext({ executeNodeService }));
+
+			expect(tool.legacyNames).toEqual(expect.arrayContaining(['workflow_builder_nodes', 'nodes']));
+
+			const result = await executeTool(
+				tool,
+				{
+					action: 'execute',
+					type: 'n8n-nodes-base.slack',
+					version: 2.7,
+					config: { parameters: { resource: 'message', operation: 'post', text: 'hi' } },
+				},
+				{ resumeData: { approved: true } } as never,
+			);
+
+			expect(executeNodeService.execute).toHaveBeenCalled();
+			expect(result).toEqual(serviceResult);
+		});
+
 		it('should persist a session grant split by type, resource, and operation on "always allow"', async () => {
 			const executeNodeService = { execute: vi.fn().mockResolvedValue({ status: 'success' }) };
 			const grantSessionToolApproval = vi.fn();
@@ -1316,6 +1338,49 @@ describe('nodes tool', () => {
 					query: undefined,
 					gatewayCreditsOnly: true,
 				});
+			});
+
+			it('maps category recommendations to executable tool nodes for agent_tool scope', async () => {
+				const context = createMockContext();
+				(context.nodeService.listSearchable as Mock).mockResolvedValue(
+					['webhook', 'scheduleTrigger', 'gmail', 'gmailTool', 'slack', 'slackTool'].map(
+						(name) => ({
+							name: `n8n-nodes-base.${name}`,
+							displayName: name,
+							description: '',
+							version: 1,
+							inputs: [],
+							outputs: [],
+						}),
+					),
+				);
+				const tool = createSearchNodesTool(context);
+				const toNames = (result: Record<string, unknown>) =>
+					(
+						result.results as Array<{ suggestedNodes: Array<{ name: string }> }>
+					)[0]!.suggestedNodes.map((n) => n.name);
+
+				const categoryOnly = await executeTool(tool, {
+					categories: ['notification'],
+					scope: 'agent_tool',
+				});
+				expect(toNames(categoryOnly)).toEqual([
+					'n8n-nodes-base.gmailTool',
+					'n8n-nodes-base.slackTool',
+				]);
+
+				const mixed = await executeTool(tool, {
+					categories: ['notification'],
+					queries: ['slack'],
+					scope: 'agent_tool',
+				});
+				const mixedCategoryNames = (
+					mixed.categoryResults as Array<{ suggestedNodes: Array<{ name: string }> }>
+				)[0]!.suggestedNodes.map((n) => n.name);
+				expect(mixedCategoryNames).toEqual([
+					'n8n-nodes-base.gmailTool',
+					'n8n-nodes-base.slackTool',
+				]);
 			});
 
 			it('sends every batched query to the Gateway credits lookup and merges the results', async () => {

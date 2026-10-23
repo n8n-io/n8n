@@ -881,7 +881,7 @@ guidance. Only boolean `true` enables them. When the flag is false or missing,
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
-> `setup_credentials`) or Computer Use browser credential capture.
+> `setup_credentials`) or Browser Use credential capture.
 
 ### `list_credentials`
 
@@ -955,7 +955,7 @@ means setup is already complete, and the card is never open once a result is
 returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
 but always require an explicit Continue, since the type alone does not identify
 a service. When `needsBrowserSetup=true`, the orchestrator should load the
-`credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
+`credential-setup-with-browser-use` skill, use Browser Use `browser_*` tools
 directly, then call `setup_credentials` again to select the created
 credential.
 
@@ -1367,11 +1367,10 @@ carries *what* it does.
 
 ---
 
-## Filesystem Tools (dynamic, conditional)
+## Browser Use Tools (dynamic, conditional)
 
-Only registered when a `localMcpServer` (computer-use gateway) is connected.
+Only registered when a `localMcpServer` (the Browser Use session) is connected.
 Tools are dynamically created from the MCP server's advertised capabilities.
-See `docs/filesystem-access.md`.
 
 ---
 
