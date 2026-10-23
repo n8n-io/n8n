@@ -214,8 +214,6 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
-	// CET-79: an unsaved execution used to be soft-deleted without its final state,
-	// so the row stayed `running` until pruning hard-deleted it.
 	describe('deleteInFlightExecution', () => {
 		const executionsConfig = Container.get(ExecutionsConfig);
 		const originalPruneData = executionsConfig.pruneData;
