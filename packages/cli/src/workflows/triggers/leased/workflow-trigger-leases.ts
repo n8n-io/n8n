@@ -13,6 +13,9 @@ import { WorkflowTriggerLeaseHolder } from './workflow-trigger-lease-holder';
 
 export const WORKFLOW_TRIGGER_LEASE_KIND = 'workflow-trigger';
 
+/** Short enough that a crashed holder's triggers move within about 20 seconds. */
+const WORKFLOW_TRIGGER_LEASE_SECONDS = 20;
+
 /** What a holder needs to arm one trigger node, and what hands the lease over when it changes. */
 export interface WorkflowTriggerLeaseData extends Record<string, unknown> {
 	workflowId: string;
@@ -47,6 +50,7 @@ export class WorkflowTriggerLeases {
 			name: WORKFLOW_TRIGGER_LEASE_KIND,
 			handler: this.holder,
 			listDesired: async (keys) => await this.listDesired(keys),
+			options: { leaseSeconds: WORKFLOW_TRIGGER_LEASE_SECONDS },
 		});
 	}
 
