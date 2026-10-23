@@ -1,5 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import { HeldTaskFenceRepository, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import type { OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Lease, LeaseKind, LeaseSpec } from '@n8n/leases';
 import { LeaseEndedError, LeaseService } from '@n8n/leases';
@@ -21,13 +22,13 @@ describe('leases on the durable scheduler across two mains', () => {
 	let holds: Hold[];
 	const mains: Array<Scheduler & SchedulerPasses> = [];
 
-	const kindFor = (host: string): LeaseKind => ({
+	const kindFor = (host: string): LeaseKind<OperationContext> => ({
 		name: KIND,
 		options: { leaseSeconds: LEASE_SECONDS, startTimeoutSeconds: 10, maxFailedStarts: 3 },
 		listDesired: async (keys) =>
 			desired.filter((spec) => keys === undefined || keys.includes(spec.key)),
 		handler: {
-			hold: async (lease: Lease) => {
+			hold: async (lease: Lease<OperationContext>) => {
 				const hold: Hold = {
 					host,
 					key: lease.key,
@@ -55,6 +56,8 @@ describe('leases on the durable scheduler across two mains', () => {
 					registerJobOwner: () => {},
 				},
 				Container.get(HeldTaskProvisioner),
+				Container.get(HeldTaskFenceRepository),
+				host,
 			),
 		);
 		leases.registerKind(kindFor(host));

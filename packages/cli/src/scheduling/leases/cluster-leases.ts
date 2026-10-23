@@ -1,7 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import { HeldTaskFenceRepository } from '@n8n/db';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LeaseService } from '@n8n/leases';
 import type { LeaseKind } from '@n8n/leases';
+import { InstanceSettings } from 'n8n-core';
 
 import { DurableSchedulerLeaseProvider } from './durable-scheduler-lease-provider';
 import { DurableScheduler } from '../durable-scheduler';
@@ -13,15 +16,19 @@ import { HeldTaskProvisioner } from '../held-tasks/held-task-provisioner';
  */
 @Service()
 export class ClusterLeases {
-	private readonly service: LeaseService | undefined;
+	private readonly service: LeaseService<OperationContext> | undefined;
 
 	constructor(
 		private readonly logger: Logger,
 		scheduler: DurableScheduler,
 		provisioner: HeldTaskProvisioner,
+		fence: HeldTaskFenceRepository,
+		instanceSettings: InstanceSettings,
 	) {
 		this.service = scheduler.holdsTasks()
-			? new LeaseService(new DurableSchedulerLeaseProvider(scheduler, provisioner))
+			? new LeaseService(
+					new DurableSchedulerLeaseProvider(scheduler, provisioner, fence, instanceSettings.hostId),
+				)
 			: undefined;
 	}
 
@@ -30,7 +37,7 @@ export class ClusterLeases {
 	}
 
 	/** Register before {@link start}, so the first sync includes the kind. */
-	registerKind(kind: LeaseKind): void {
+	registerKind(kind: LeaseKind<OperationContext>): void {
 		this.service?.registerKind(kind);
 	}
 

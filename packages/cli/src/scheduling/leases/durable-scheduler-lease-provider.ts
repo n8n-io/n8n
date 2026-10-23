@@ -5,6 +5,7 @@ import type {
 	LeaseProvider,
 	LeaseSpec,
 } from '@n8n/leases';
+import type { HeldTaskFenceRepository, OperationContext } from '@n8n/db';
 import { LeaseEndedError } from '@n8n/leases';
 import { HolderShutdownError, TaskTimeoutError } from '@n8n/scheduler';
 import type { ClaimedTask } from '@n8n/scheduler';
@@ -28,6 +29,9 @@ export type LeaseScheduler = Pick<DurableScheduler, 'registerHoldTaskHandler' | 
 /** The provisioner operation the provider needs. */
 export type LeaseProvisioner = Pick<HeldTaskProvisioner, 'sync'>;
 
+/** The fence check the provider needs. */
+export type LeaseFenceCheck = Pick<HeldTaskFenceRepository, 'isHeld'>;
+
 interface LeasePayload {
 	key: string;
 	data: Record<string, unknown>;
@@ -37,26 +41,30 @@ interface LeasePayload {
  * Binds the lease port to the durable scheduler: each lease is one hold job,
  * owned by `lease:<kind>` with the lease key as owner id. The scheduler claims,
  * renews, fences and hands over the hold task; the task's lease epoch is the
- * fencing token.
+ * fencing token. A lease is held while its task is `running` at that epoch,
+ * claimed by `host`, and not past its lease expiry.
  */
-export class DurableSchedulerLeaseProvider implements LeaseProvider {
+export class DurableSchedulerLeaseProvider implements LeaseProvider<OperationContext> {
 	private readonly options = new Map<string, LeaseKindOptions>();
 
 	constructor(
 		private readonly scheduler: LeaseScheduler,
 		private readonly provisioner: LeaseProvisioner,
+		private readonly fence: LeaseFenceCheck,
+		private readonly host: string,
 	) {}
 
 	registerHolder(
 		kind: string,
 		options: LeaseKindOptions,
-		hold: (lease: Lease) => Promise<void>,
+		hold: (lease: Lease<OperationContext>) => Promise<void>,
 	): void {
 		this.options.set(kind, options);
 		this.scheduler.registerHoldTaskHandler(leaseOwnerType(kind), {
 			mode: 'hold',
 			hold: async (task, holder, run) => {
 				const { key, data } = parsePayload(task);
+				const claim = { id: task.id, claimedEpoch: task.leaseEpoch, host: this.host };
 				await hold({
 					kind,
 					key,
@@ -64,6 +72,7 @@ export class DurableSchedulerLeaseProvider implements LeaseProvider {
 					fencingToken: task.leaseEpoch,
 					signal: leaseSignal(run.signal),
 					ready: async () => await holder.ready(),
+					isHeld: async (ctx) => await this.fence.isHeld(claim, ctx),
 				});
 			},
 		});

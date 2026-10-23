@@ -1,10 +1,15 @@
+import type { OperationContext } from '@n8n/db';
 import type { Lease, LeaseKindOptions } from '@n8n/leases';
 import { LeaseEndedError } from '@n8n/leases';
 import type { ClaimedTask, HoldReporter, HoldTaskHandler } from '@n8n/scheduler';
 import { HolderShutdownError, LeaseLostError, TaskTimeoutError } from '@n8n/scheduler';
 import { mock } from 'vitest-mock-extended';
 
-import type { LeaseProvisioner, LeaseScheduler } from '../durable-scheduler-lease-provider';
+import type {
+	LeaseFenceCheck,
+	LeaseProvisioner,
+	LeaseScheduler,
+} from '../durable-scheduler-lease-provider';
 import {
 	DurableSchedulerLeaseProvider,
 	MAX_LEASE_KEY_LENGTH,
@@ -15,8 +20,9 @@ const OPTIONS: LeaseKindOptions = { startTimeoutSeconds: 30, maxFailedStarts: 4,
 const setup = () => {
 	const scheduler = mock<LeaseScheduler>();
 	const provisioner = mock<LeaseProvisioner>();
-	const provider = new DurableSchedulerLeaseProvider(scheduler, provisioner);
-	return { scheduler, provisioner, provider };
+	const fence = mock<LeaseFenceCheck>();
+	const provider = new DurableSchedulerLeaseProvider(scheduler, provisioner, fence, 'main-a');
+	return { scheduler, provisioner, fence, provider };
 };
 
 const claimedTask = (payload: Record<string, unknown>): ClaimedTask => ({
@@ -43,7 +49,7 @@ const registeredHandler = (scheduler: ReturnType<typeof setup>['scheduler']): Ho
 describe('DurableSchedulerLeaseProvider', () => {
 	it('hands a held task to the kind as a lease fenced by the lease epoch', async () => {
 		const { scheduler, provider } = setup();
-		const hold = vi.fn(async (_lease: Lease) => {});
+		const hold = vi.fn(async (_lease: Lease<OperationContext>) => {});
 		provider.registerHolder('workflow-trigger', OPTIONS, hold);
 		const holder = mock<HoldReporter>();
 
@@ -63,6 +69,28 @@ describe('DurableSchedulerLeaseProvider', () => {
 		await lease.ready();
 		expect(holder.ready).toHaveBeenCalledOnce();
 	});
+
+	it.each([true, false])(
+		'answers the lease fence from the held task claim of this host (%s)',
+		async (held) => {
+			const { scheduler, fence, provider } = setup();
+			let lease: Lease<OperationContext> | undefined;
+			provider.registerHolder('workflow-trigger', OPTIONS, async (l) => {
+				lease = l;
+			});
+			fence.isHeld.mockResolvedValue(held);
+			const ctx = mock<OperationContext>();
+
+			await registeredHandler(scheduler).hold(
+				claimedTask({ key: 'wf-1:node-1', data: {} }),
+				mock<HoldReporter>(),
+				{ signal: new AbortController().signal },
+			);
+
+			await expect(lease?.isHeld(ctx)).resolves.toBe(held);
+			expect(fence.isHeld).toHaveBeenCalledWith({ id: '7', claimedEpoch: 12, host: 'main-a' }, ctx);
+		},
+	);
 
 	it.each([
 		[new HolderShutdownError(), 'shutdown'],

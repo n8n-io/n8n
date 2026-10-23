@@ -9,12 +9,12 @@ const LEASE_KIND_PATTERN = /^[a-z][a-z0-9-]*$/;
  * Where kinds register and report changes to the leases they want. The
  * {@link LeaseProvider} decides which process holds each lease.
  */
-export class LeaseService {
-	private readonly kinds = new Map<string, LeaseKind>();
+export class LeaseService<TTransaction> {
+	private readonly kinds = new Map<string, LeaseKind<TTransaction>>();
 
-	constructor(private readonly provider: LeaseProvider) {}
+	constructor(private readonly provider: LeaseProvider<TTransaction>) {}
 
-	registerKind(kind: LeaseKind): void {
+	registerKind(kind: LeaseKind<TTransaction>): void {
 		if (!LEASE_KIND_PATTERN.test(kind.name) || kind.name.length > MAX_LEASE_KIND_LENGTH) {
 			throw new InvalidLeaseKindError(kind.name);
 		}

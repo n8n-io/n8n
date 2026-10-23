@@ -77,6 +77,7 @@ export type {
 	ScheduledJobDefinitionUpdate,
 } from './scheduled-job.repository';
 export { ScheduledTaskRepository } from './scheduled-task.repository';
+export { HeldTaskFenceRepository } from './held-task-fence.repository';
 export type {
 	ClaimDueTasksOptions,
 	ClaimedRef,

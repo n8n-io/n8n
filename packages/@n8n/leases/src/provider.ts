@@ -4,17 +4,19 @@ import type { Lease, LeaseKindOptions, LeaseSpec } from './types';
  * The port a host binds to the system that decides which process holds each
  * lease, for example the durable scheduler's held tasks. The provider claims,
  * renews, fences and hands over leases; this package only routes kinds to it.
+ * `TTransaction` is the transaction handle each {@link Lease} checks itself in.
  */
-export interface LeaseProvider {
+export interface LeaseProvider<TTransaction> {
 	/**
 	 * Route the leases of `kind` that this process gets to `hold`. The provider
 	 * builds each {@link Lease}, aborts its signal with a `LeaseEndedError`, and
-	 * counts a failed start when `hold` throws or returns before `ready()`.
+	 * counts a failed start when `hold` throws or returns before `ready()`. Each
+	 * lease must answer {@link Lease.isHeld} with the guarantee its fence states.
 	 */
 	registerHolder(
 		kind: string,
 		options: LeaseKindOptions,
-		hold: (lease: Lease) => Promise<void>,
+		hold: (lease: Lease<TTransaction>) => Promise<void>,
 	): void;
 
 	/**

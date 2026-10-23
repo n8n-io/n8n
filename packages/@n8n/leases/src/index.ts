@@ -11,6 +11,7 @@ export {
 	MAX_LEASE_KIND_LENGTH,
 	type Lease,
 	type LeaseEndReason,
+	type LeaseFence,
 	type LeaseHandler,
 	type LeaseKind,
 	type LeaseKindOptions,

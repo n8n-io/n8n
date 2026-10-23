@@ -14,8 +14,23 @@ export interface LeaseSpec {
  */
 export type LeaseEndReason = 'lost' | 'shutdown' | 'start-timeout';
 
+/**
+ * Checks a lease inside a transaction of the consumer's own store, so a write
+ * that depends on the lease commits only while this process holds it.
+ * `TTransaction` is the store's transaction handle; this package never looks
+ * inside it.
+ */
+export interface LeaseFence<TTransaction> {
+	/**
+	 * Whether this process still holds the lease at its fencing token. The
+	 * provider keeps a `true` answer valid until `transaction` ends, so no other
+	 * process can take the lease between this check and the commit.
+	 */
+	isHeld(transaction: TTransaction): Promise<boolean>;
+}
+
 /** One lease held by this process. */
-export interface Lease {
+export interface Lease<TTransaction> extends LeaseFence<TTransaction> {
 	readonly kind: string;
 	readonly key: string;
 	readonly data: Record<string, unknown>;
@@ -34,8 +49,8 @@ export interface Lease {
  * Keeps one lease for as long as it is held: arm the resource, call
  * `lease.ready()`, wait on `lease.signal`, disarm, return.
  */
-export interface LeaseHandler {
-	hold(lease: Lease): Promise<void>;
+export interface LeaseHandler<TTransaction> {
+	hold(lease: Lease<TTransaction>): Promise<void>;
 }
 
 export interface LeaseKindOptions {
@@ -48,10 +63,10 @@ export interface LeaseKindOptions {
 }
 
 /** A family of leases with one handler, for example the triggers of published workflows. */
-export interface LeaseKind {
+export interface LeaseKind<TTransaction> {
 	/** Lower case letters, digits and dashes, at most {@link MAX_LEASE_KIND_LENGTH} characters. */
 	name: string;
-	handler: LeaseHandler;
+	handler: LeaseHandler<TTransaction>;
 	/**
 	 * The leases this kind wants held, from its own source of truth. With `keys`,
 	 * only the desired leases among them.
