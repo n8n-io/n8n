@@ -100,7 +100,7 @@ const renderAt = async (path: string) => {
 	return router;
 };
 
-const allowClone = () => {
+const allowConnect = () => {
 	mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['promotions:connect'] });
 };
 
@@ -168,7 +168,7 @@ describe('PromotionEnvironmentView', () => {
 	});
 
 	it('keeps the environment and remembers the connect error for the overview when the first connect fails', async () => {
-		allowClone();
+		allowConnect();
 		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment()]);
 		api.createPromotionEnvironment.mockResolvedValue(
 			applyEnvironment({
@@ -235,7 +235,7 @@ describe('PromotionEnvironmentView', () => {
 	});
 
 	it('saves a changed branch and connects again', async () => {
-		allowClone();
+		allowConnect();
 		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment());
 		api.updatePromotionEnvironment.mockResolvedValue(
 			applyEnvironment({ checkout: { hasCheckout: true, matchesEnvironment: false } }),
