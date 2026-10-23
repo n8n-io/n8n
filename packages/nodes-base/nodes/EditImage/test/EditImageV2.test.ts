@@ -257,7 +257,7 @@ describe('Edit Image v2', () => {
 		expect(editImage.description.defaultVersion).toBe(2);
 	});
 
-	it('shows a deprecation notice only on versions below 2', () => {
+	it('shows an unsupported-version notice only on versions below 2', () => {
 		const editImage = new EditImage();
 		const notice = editImage.description.properties.find(
 			(property) => property.name === 'legacyVersionNotice',
@@ -271,7 +271,7 @@ describe('Edit Image v2', () => {
 				},
 			},
 		});
-		expect(notice?.displayName).toContain('deprecated');
+		expect(notice?.displayName).toContain('no longer supported');
 		expect(notice?.displayName).toContain('version 2');
 	});
 
