@@ -18,6 +18,7 @@ export type {
 	RuntimeSkillLinkedFiles,
 	RuntimeSkillLoader,
 	RuntimeSkillMcpServerDependency,
+	RuntimeSkillLifetime,
 	RuntimeSkillPolicyContract,
 	RuntimeSkillReferenceContract,
 	RuntimeSkillReferenceLocation,

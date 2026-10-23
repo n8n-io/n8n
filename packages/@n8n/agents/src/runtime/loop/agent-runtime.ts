@@ -894,7 +894,7 @@ export class AgentRuntime {
 		state: LoopState;
 	}> {
 		const { list, options } = ctx;
-		await this.activeSkills?.restore(list, options?.persistence);
+		await this.activeSkills?.restore(list, options?.persistence, { freshRun: ctx.isFreshRun });
 		this.context.hydrateDeferredToolsFromList(list);
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
