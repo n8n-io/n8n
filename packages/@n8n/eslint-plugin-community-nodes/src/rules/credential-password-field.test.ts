@@ -86,6 +86,10 @@ ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
 			code: createCredentialCode([createProperty('API Key', 'apiKey', { password: true })]),
 		},
 		{
+			name: 'access key field with typeOptions.password = true',
+			code: createCredentialCode([createProperty('Access Key', 'accessKey', { password: true })]),
+		},
+		{
 			name: 'field name is not sensitive',
 			code: createCredentialCode([createProperty('Base URL', 'baseUrl')]),
 		},
@@ -165,6 +169,13 @@ ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
 			code: createCredentialCode([createProperty('API Key', 'apiKey')]),
 			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'apiKey' } }],
 			output: createCredentialCode([createProperty('API Key', 'apiKey', { password: true })]),
+		},
+		// CE-3601: Access keys need the same field options as API keys.
+		{
+			name: 'access key field missing typeOptions.password = true',
+			code: createCredentialCode([createProperty('Access Key', 'accessKey')]),
+			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'accessKey' } }],
+			output: createCredentialCode([createProperty('Access Key', 'accessKey', { password: true })]),
 		},
 		{
 			name: 'secret field missing typeOptions.password = true',
