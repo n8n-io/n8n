@@ -44,6 +44,11 @@ export interface ChildStarter {
 	start(request: StartExecutionRequest): Promise<StartExecutionResult>;
 }
 
+/** Cancels the children of an execution. `CancelExecutionService` implements it. */
+export interface ChildCanceller {
+	cancelChildren(parentExecutionId: string): Promise<void>;
+}
+
 /**
  * Handles the `step:ready` step event: claims the step (`queued -> running`),
  * runs it through the executor for its step type, records what came back, and
@@ -67,6 +72,7 @@ export class StepReadyHandler {
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly childStarter: ChildStarter,
+		private readonly childCanceller: ChildCanceller,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},
 	) {}
@@ -231,10 +237,18 @@ export class StepReadyHandler {
 				callerContext: execution.callerContext,
 				parent: { executionId: execution.id, stepId: step.id, awaited: true },
 			});
-			return { kind: 'started' };
 		} catch (error) {
 			return { kind: 'error', error };
 		}
+
+		// A cancel that ran between the liveness check above and this start
+		// found no child to cascade to. Read the parent again, so a child of an
+		// ended parent is cancelled here instead of running on.
+		const parent = await this.executionStore.loadExecution(execution.id);
+		if (!isLiveExecutionStatus(parent.status)) {
+			await this.childCanceller.cancelChildren(execution.id);
+		}
+		return { kind: 'started' };
 	}
 
 	private async runStep(

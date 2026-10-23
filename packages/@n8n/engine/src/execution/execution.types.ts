@@ -180,14 +180,16 @@ export type ChildResult = Array<{ nodeId: string; iteration: number; outputs: St
 /**
  * A child execution ended, so its awaiting parent step resumes. Unlike the
  * other causes, this one re-runs the node: the shim answers the node's
- * `executeWorkflow` call from `result` instead of starting a child again.
+ * `executeWorkflow` call from `result`, or throws `error`, instead of starting
+ * a child again. A child that failed carries the error of the step that
+ * failed it; a cancelled one carries an error that says so.
  */
-export type ChildResumeCause = {
-	kind: 'child';
-	executionId: string;
-	status: 'completed';
-	result: ChildResult;
-};
+export type ChildResumeCause = { kind: 'child'; executionId: string } & ChildOutcome;
+
+/** How a child execution ended, and what it hands back. */
+export type ChildOutcome =
+	| { status: 'completed'; result: ChildResult }
+	| { status: 'failed' | 'cancelled'; error: StepError };
 
 /**
  * What ended a step's wait, recorded on the row when it resumed. A deadline

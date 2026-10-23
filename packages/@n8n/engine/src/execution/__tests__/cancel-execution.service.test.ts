@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
+import type { StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import { CancelExecutionService } from '../cancel-execution.service';
 import {
@@ -38,13 +39,17 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
+		loadLiveChildIds: vi.fn().mockResolvedValue([]),
 		...overrides,
 	};
 }
 
-/** Only the sweep is exercised here; everything else is unreachable from a cancel. */
+/** Only the sweep and the parent resume are reachable from a cancel. */
 function makeStepStore(): StepStore {
-	return { cancelPendingSteps: vi.fn() } as unknown as StepStore;
+	return {
+		cancelPendingSteps: vi.fn(),
+		resumeStep: vi.fn().mockResolvedValue(true),
+	} as unknown as StepStore;
 }
 
 function makeService(executionStore: ExecutionStore) {
@@ -54,8 +59,15 @@ function makeService(executionStore: ExecutionStore) {
 		send: vi.fn(),
 		stop: vi.fn(),
 	};
-	const service = new CancelExecutionService(executionStore, stepStore, publisher, responseSender);
-	return { service, stepStore, publisher, responseSender };
+	const stepQueue: WorkQueue<StepMessage> = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	const service = new CancelExecutionService(
+		executionStore,
+		stepStore,
+		publisher,
+		responseSender,
+		stepQueue,
+	);
+	return { service, stepStore, publisher, responseSender, stepQueue };
 }
 
 describe('CancelExecutionService', () => {
@@ -121,6 +133,110 @@ describe('CancelExecutionService', () => {
 			expect(responseSender.send).not.toHaveBeenCalled();
 		},
 	);
+
+	it('cancels every live child of the execution, and their children, after it', async () => {
+		const children: Record<string, string[]> = {
+			'exec-1': ['child-1', 'child-2'],
+			'child-1': ['grandchild'],
+		};
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockImplementation(async (id: string) => {
+				return await Promise.resolve({
+					...execution,
+					id,
+					status: 'cancelled',
+					finishedAt: new Date(),
+				});
+			}),
+			loadLiveChildIds: vi.fn().mockImplementation(async (id: string) => {
+				return await Promise.resolve(children[id] ?? []);
+			}),
+		});
+		const { service, stepStore } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(vi.mocked(executionStore.cancelExecution).mock.calls.map(([id]) => id)).toEqual([
+			'exec-1',
+			'child-1',
+			'grandchild',
+			'child-2',
+		]);
+		expect(vi.mocked(stepStore.cancelPendingSteps).mock.calls.map(([id]) => id)).toEqual([
+			'exec-1',
+			'child-1',
+			'grandchild',
+			'child-2',
+		]);
+	});
+
+	it('cancels no child when the execution had already ended', async () => {
+		const executionStore = makeExecutionStore({
+			cancelExecution: vi.fn().mockResolvedValue(null),
+			loadExecution: vi.fn().mockResolvedValue({ ...execution, status: 'completed' }),
+		});
+		const { service } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(executionStore.loadLiveChildIds).not.toHaveBeenCalled();
+	});
+
+	it('resumes the awaiting parent step with a cancelled cause when a child is cancelled on its own', async () => {
+		const parent = { executionId: 'exec-parent', stepId: 'step-call', awaited: true };
+		const executionStore = makeExecutionStore({
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue({ ...execution, parent, status: 'cancelled', finishedAt: new Date() }),
+		});
+		const { service, stepStore, stepQueue } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(stepStore.resumeStep).toHaveBeenCalledExactlyOnceWith('step-call', {
+			kind: 'child',
+			executionId: 'exec-1',
+			status: 'cancelled',
+			error: { name: 'ExecutionCancelledError', message: 'Execution exec-1 was cancelled' },
+		});
+		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:ready',
+			executionId: 'exec-parent',
+			stepId: 'step-call',
+		});
+		expect(executionStore.refreshLiveStatus).toHaveBeenCalledWith('exec-parent');
+	});
+
+	it('resumes no parent for a child it does not wait for', async () => {
+		const parent = { executionId: 'exec-parent', stepId: 'step-fire', awaited: false };
+		const executionStore = makeExecutionStore({
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue({ ...execution, parent, status: 'cancelled', finishedAt: new Date() }),
+		});
+		const { service, stepStore, stepQueue } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+	});
+
+	it('announces no resume when the parent step no longer waits', async () => {
+		// The parent was cancelled first, and its cascade is what cancels this child.
+		const parent = { executionId: 'exec-parent', stepId: 'step-call', awaited: true };
+		const executionStore = makeExecutionStore({
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue({ ...execution, parent, status: 'cancelled', finishedAt: new Date() }),
+		});
+		const { service, stepStore, stepQueue } = makeService(executionStore);
+		vi.mocked(stepStore.resumeStep).mockResolvedValue(false);
+
+		await service.cancel('exec-1');
+
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+	});
 
 	it('throws for an unknown execution', async () => {
 		const executionStore = makeExecutionStore({
