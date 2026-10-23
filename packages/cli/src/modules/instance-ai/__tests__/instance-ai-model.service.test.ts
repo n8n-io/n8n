@@ -74,7 +74,7 @@ describe('InstanceAiModelService', () => {
 			);
 			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
 
-			await service.getModelFetch({ runId: 'run-1', threadId: 'thread-1' })(
+			await service.getLabeledModelFetch({ runId: 'run-1', threadId: 'thread-1' })(
 				'https://api.example.test/v1/chat/completions',
 				{ method: 'POST', headers: { authorization: 'Bearer key' } },
 			);
@@ -86,6 +86,21 @@ describe('InstanceAiModelService', () => {
 			expect(headers.get('x-n8n-run-id')).toBe('run-1');
 			expect(headers.get('x-n8n-thread-id')).toBe('thread-1');
 			expect(outboundHttp.transport).toHaveBeenCalledTimes(1);
+		});
+
+		it('sends no labels through the plain transport for helper calls', async () => {
+			const baseFetch = vi.fn(
+				async (_input: RequestInfo | URL, _init?: RequestInit) =>
+					await Promise.resolve(new Response('{}')),
+			);
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+
+			await service.getModelFetch()('https://api.example.test/v1/chat/completions', {
+				method: 'POST',
+			});
+
+			const headers = new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
+			expect(headers.get('x-n8n-feature')).toBeNull();
 		});
 	});
 

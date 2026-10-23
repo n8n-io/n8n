@@ -7,6 +7,7 @@ type MockAgentInstance = {
 	configuration: Mock;
 	telemetry: Mock;
 	modelFetch: Mock;
+	functionId: Mock;
 };
 
 const mockAgentInstances: MockAgentInstance[] = [];
@@ -19,6 +20,7 @@ vi.mock('@n8n/agents', () => ({
 		this.configuration = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
 		this.modelFetch = vi.fn().mockReturnThis();
+		this.functionId = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Tool: vi.fn(),
@@ -140,6 +142,7 @@ describe('eval agent model config', () => {
 
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(fallbackModelConfig);
 		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('test-agent');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
 			effort: 'medium',

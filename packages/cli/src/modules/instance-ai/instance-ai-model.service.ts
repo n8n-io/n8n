@@ -50,12 +50,18 @@ export class InstanceAiModelService {
 
 	private modelFetch?: CustomFetch;
 
+	/** Transport for Instance AI model calls on the direct path (long AI timeouts, env proxy). */
+	getModelFetch(): CustomFetch {
+		return (this.modelFetch ??= createAiProxyFetch(this.outboundHttp));
+	}
+
 	/**
-	 * Transport for Instance AI model calls on the direct path (long AI timeouts, env proxy).
-	 * Each request carries the same feature, version, run and thread headers as the AI service proxy path.
+	 * The same transport for the Assistant's agent calls. Each request carries the feature,
+	 * version, run and thread headers that the AI service proxy path sends. Utility helper
+	 * calls use `getModelFetch()` and are named by `x-n8n-function-id` only.
 	 */
-	getModelFetch(proxyContext?: ProxyContext): CustomFetch {
-		const baseFetch = (this.modelFetch ??= createAiProxyFetch(this.outboundHttp));
+	getLabeledModelFetch(proxyContext: ProxyContext): CustomFetch {
+		const baseFetch = this.getModelFetch();
 		const labels = buildProxyHeaders({
 			feature: 'instance-ai',
 			n8nVersion: N8N_VERSION,
