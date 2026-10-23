@@ -36,6 +36,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { ClusterLeases } from '@/scheduling/leases/cluster-leases';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { Server } from '@/server';
@@ -438,6 +439,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// before the scheduler can claim one.
 		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
 		Container.get(DurableScheduler).start();
+		await Container.get(ClusterLeases).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			const { EnqueuedExecutionRecoveryService } = await import(
