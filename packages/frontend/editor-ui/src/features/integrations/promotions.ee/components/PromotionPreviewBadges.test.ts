@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
 import { waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { IUser } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -75,7 +76,7 @@ describe('PromotionPreviewBadges', () => {
 		] as unknown as settingsApi.PromotionEnvironmentSummary[]);
 	});
 
-	it('should link each direction with changes to its preview page and hide a direction without changes', async () => {
+	it('should link changes to their preview and keep a direction without changes disabled', async () => {
 		vi.mocked(api.getPromotionPreview).mockImplementation(
 			async (_context, _projectId, direction) =>
 				direction === 'promote' ? billingPreview() : billingPreview({ resources: [] }),
@@ -83,20 +84,50 @@ describe('PromotionPreviewBadges', () => {
 
 		const { findByTestId, getByTestId } = renderComponent();
 
-		const promote = await findByTestId('promotion-preview-badge-promote');
+		await findByTestId('promotion-preview-badge-promote');
+		await waitAllPromises();
+		const promote = getByTestId('promotion-preview-badge-promote');
 		// All selected workflows bring the folder rename, the changed table and the new variable.
 		expect(promote).toHaveTextContent('5');
 		expect(promote).toHaveAttribute('data-route', `${PROMOTION_PREVIEW_VIEWS.promote}:p1`);
 		expect(promote).toHaveAttribute('aria-label', '5 changes to promote');
-		// Wait for the apply preview too, so the check covers its loaded state.
-		await waitAllPromises();
-		expect(getByTestId('promotion-preview-badges').children).toHaveLength(1);
+		const apply = getByTestId('promotion-preview-badge-apply');
+		expect(apply).toHaveTextContent('0');
+		expect(apply).toHaveAttribute('aria-disabled', 'true');
+		expect(apply).not.toHaveAttribute('data-route');
+		expect(promote).not.toHaveAttribute('aria-disabled');
+		expect(getByTestId('promotion-preview-badges').children).toHaveLength(2);
 	});
+
+	it.each(['promote', 'apply'] as const)(
+		'should show a non-interactive zero %s badge with an explanatory tooltip',
+		async (direction) => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview({ resources: [] }));
+			const { findByTestId, findByText } = renderComponent();
+			const badge = await findByTestId(`promotion-preview-badge-${direction}`);
+			await waitAllPromises();
+
+			expect(badge).toHaveTextContent('0');
+			expect(badge).toHaveAttribute('aria-disabled', 'true');
+			expect(badge.tagName).toBe('SPAN');
+			expect(badge).not.toHaveAttribute('href');
+			expect(badge).not.toHaveAttribute('tabindex');
+			expect(badge.querySelector('[data-icon]')).toHaveAttribute(
+				'data-icon',
+				direction === 'promote' ? 'arrow-up' : 'arrow-down',
+			);
+			badge.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
+			expect(await findByText(`No changes to ${direction}`)).toBeVisible();
+			await userEvent.click(badge);
+			expect(router.currentRoute.value.path).toBe('/p1');
+		},
+	);
 
 	it('should show that the check failed instead of a count', async () => {
 		vi.mocked(api.getPromotionPreview).mockRejectedValue(new Error('offline'));
 
 		const { findByTestId } = renderComponent();
+		await waitAllPromises();
 
 		expect(await findByTestId('promotion-preview-badge-apply')).toHaveAttribute(
 			'aria-label',
@@ -163,6 +194,7 @@ describe('PromotionPreviewBadges', () => {
 		const { findByTestId, unmount } = renderComponent();
 		await findByTestId('promotion-preview-badge-promote');
 		await findByTestId('promotion-preview-badge-apply');
+		await waitAllPromises();
 		vi.mocked(api.getPromotionPreview).mockClear();
 		promotionEventBus.emit('promoted', { projectId: 'p1' });
 		await waitAllPromises();
@@ -181,9 +213,10 @@ describe('PromotionPreviewBadges', () => {
 	});
 
 	it('should update the project and both counts after Apply', async () => {
-		const { findByTestId, queryByTestId } = renderComponent();
+		const { findByTestId, getByTestId } = renderComponent();
 		await findByTestId('promotion-preview-badge-promote');
 		await findByTestId('promotion-preview-badge-apply');
+		await waitAllPromises();
 		vi.mocked(api.getPromotionPreview)
 			.mockClear()
 			.mockResolvedValue(billingPreview({ resources: [] }));
@@ -194,7 +227,11 @@ describe('PromotionPreviewBadges', () => {
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
 		expect(api.getPromotionPreview).toHaveBeenCalledWith(expect.anything(), 'p1', 'promote');
 		expect(api.getPromotionPreview).toHaveBeenCalledWith(expect.anything(), 'p1', 'apply');
-		expect(queryByTestId('promotion-preview-badges')).not.toBeInTheDocument();
+		for (const direction of ['promote', 'apply']) {
+			const badge = getByTestId(`promotion-preview-badge-${direction}`);
+			expect(badge).toHaveTextContent('0');
+			expect(badge).toHaveAttribute('aria-disabled', 'true');
+		}
 	});
 
 	it('should leave a removed project', async () => {
@@ -221,14 +258,16 @@ describe('PromotionPreviewBadges', () => {
 
 	it('should retry a failed connection lookup when the project changes', async () => {
 		vi.mocked(settingsApi.fetchPromotionEnvironments).mockRejectedValueOnce(new Error('offline'));
-		const { findByTestId, queryByTestId } = renderComponent();
+		const { findByTestId, queryByTestId, getByTestId } = renderComponent();
 		await waitAllPromises();
 		expect(queryByTestId('promotion-preview-badges')).not.toBeInTheDocument();
 		mockedStore(useProjectsStore).currentProject = createTestProject({
 			id: 'p2',
 			scopes: ['project:export'],
 		});
-		expect(await findByTestId('promotion-preview-badge-apply')).toHaveAttribute(
+		await findByTestId('promotion-preview-badge-apply');
+		await waitAllPromises();
+		expect(getByTestId('promotion-preview-badge-apply')).toHaveAttribute(
 			'data-route',
 			`${PROMOTION_PREVIEW_VIEWS.apply}:p2`,
 		);

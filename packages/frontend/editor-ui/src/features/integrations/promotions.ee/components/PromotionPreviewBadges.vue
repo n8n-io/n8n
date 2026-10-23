@@ -104,17 +104,20 @@ const badges = computed(() => {
 		{ direction: 'promote' as const, show: showPromote.value, changes: promote },
 	];
 	return entries
-		.filter(({ show, changes }) => show && (changes.failed.value || changes.changeCount.value > 0))
+		.filter(({ show }) => show)
 		.map(({ direction, changes }) => ({
 			direction,
 			failed: changes.failed.value,
 			changeCount: changes.changeCount.value,
+			disabled: !changes.failed.value && changes.changeCount.value === 0,
 			label: changes.failed.value
 				? i18n.baseText(`promotions.preview.badge.failed.${direction}`)
-				: i18n.baseText(`promotions.preview.badge.${direction}`, {
-						adjustToNumber: changes.changeCount.value,
-						interpolate: { count: String(changes.changeCount.value) },
-					}),
+				: changes.changeCount.value === 0
+					? i18n.baseText(`promotions.preview.badge.empty.${direction}`)
+					: i18n.baseText(`promotions.preview.badge.${direction}`, {
+							adjustToNumber: changes.changeCount.value,
+							interpolate: { count: String(changes.changeCount.value) },
+						}),
 			to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },
 		}));
 });
@@ -123,10 +126,12 @@ const badges = computed(() => {
 <template>
 	<div v-if="badges.length > 0" :class="$style.badges" data-test-id="promotion-preview-badges">
 		<N8nTooltip v-for="badge in badges" :key="badge.direction" :content="badge.label">
-			<RouterLink
-				:to="badge.to"
+			<component
+				:is="badge.disabled ? 'span' : RouterLink"
+				v-bind="badge.disabled ? {} : { to: badge.to }"
 				:aria-label="badge.label"
-				:class="$style.link"
+				:aria-disabled="badge.disabled || undefined"
+				:class="[$style.link, { [$style.disabled]: badge.disabled }]"
 				:data-test-id="`promotion-preview-badge-${badge.direction}`"
 			>
 				<N8nBadge
@@ -136,7 +141,7 @@ const badges = computed(() => {
 				>
 					<template v-if="!badge.failed">{{ badge.changeCount }}</template>
 				</N8nBadge>
-			</RouterLink>
+			</component>
 		</N8nTooltip>
 	</div>
 </template>
@@ -156,6 +161,14 @@ const badges = computed(() => {
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
 		outline-offset: var(--focus--border-width);
+	}
+}
+
+.disabled {
+	cursor: default;
+
+	:global(.n8n-badge) {
+		--n8n-badge--text-color: var(--text-color--disabled);
 	}
 }
 </style>
