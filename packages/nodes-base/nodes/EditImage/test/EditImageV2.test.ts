@@ -141,10 +141,7 @@ async function nonWhiteBounds(
 	return { left, top, right, bottom };
 }
 
-// Removing a font unregisters every family loaded from the same file.
-let measureFontFamily: string | undefined;
-
-function measureTextBounds({
+function renderTextBounds({
 	font,
 	text,
 	fontSize,
@@ -165,12 +162,42 @@ function measureTextBounds({
 	width: number;
 	height: number;
 }): { left: number; top: number; right: number; bottom: number } {
-	if (!measureFontFamily) {
-		const family = 'n8n-edit-image-test-font';
-		if (!GlobalFonts.registerFromPath(font, family)) {
-			throw new Error('Expected the test font to load');
+	const family = 'n8n-edit-image-test-font';
+	const fontKey = GlobalFonts.registerFromPath(font, family);
+	if (!fontKey) throw new Error('Expected the test font to load');
+
+	try {
+		const context = createCanvas(width, height).getContext('2d');
+		context.fillStyle = '#ffffff';
+		context.fillRect(0, 0, width, height);
+		context.font = `${fontSize}px "${family}"`;
+		context.textAlign = horizontalAlignment === 'east' ? 'right' : 'left';
+		context.textBaseline = 'alphabetic';
+		const x = horizontalAlignment === 'east' ? width - positionX : positionX;
+		const y = verticalAlignment === 'south' ? height - positionY : positionY;
+		context.fillStyle = '#111111';
+		context.fillText(text, x, y);
+
+		const pixels = context.getImageData(0, 0, width, height).data;
+		let left = width;
+		let top = height;
+		let right = 0;
+		let bottom = 0;
+
+		for (let pixelY = 0; pixelY < height; pixelY++) {
+			for (let pixelX = 0; pixelX < width; pixelX++) {
+				const index = (pixelY * width + pixelX) * 4;
+				if (pixels[index] > 240 && pixels[index + 1] > 240 && pixels[index + 2] > 240) continue;
+				left = Math.min(left, pixelX);
+				top = Math.min(top, pixelY);
+				right = Math.max(right, pixelX + 1);
+				bottom = Math.max(bottom, pixelY + 1);
+			}
 		}
-		measureFontFamily = family;
+
+		return { left, top, right, bottom };
+	} finally {
+		GlobalFonts.remove(fontKey);
 	}
 
 	const context = createCanvas(width, height).getContext('2d');
@@ -944,7 +971,7 @@ describe('Edit Image v2', () => {
 
 			const result = await new EditImage().execute.call(executeFunctions);
 			const bounds = await nonWhiteBounds(outputBuffer(result));
-			const expected = measureTextBounds({
+			const expected = renderTextBounds({
 				font,
 				text,
 				fontSize,
