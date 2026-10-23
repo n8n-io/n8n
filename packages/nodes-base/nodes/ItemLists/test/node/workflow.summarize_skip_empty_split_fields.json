@@ -1,0 +1,239 @@
+{
+	"name": "itemLists test - summarize skip empty split fields",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "aa11a301-8d5b-4e11-8f0c-796f4d9c4f10",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-400, 420]
+		},
+		{
+			"parameters": {
+				"data": [
+					{
+						"active": true,
+						"amount": 10
+					},
+					{
+						"active": false,
+						"amount": 20
+					},
+					{
+						"active": false,
+						"amount": 30
+					},
+					{
+						"active": 0,
+						"amount": 40
+					},
+					{
+						"active": "",
+						"amount": 50
+					},
+					{
+						"active": null,
+						"amount": 60
+					},
+					{
+						"amount": 70
+					}
+				]
+			},
+			"id": "ba22b412-9e6c-4f22-900d-80705ead5f21",
+			"name": "Code",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [-180, 420]
+		},
+		{
+			"parameters": {
+				"operation": "summarize",
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "sum",
+							"field": "amount"
+						}
+					]
+				},
+				"fieldsToSplitBy": "active",
+				"options": {
+					"skipEmptySplitFields": true
+				}
+			},
+			"id": "cc33c523-af7d-4a33-a11e-91716fbe6032",
+			"name": "Item Lists",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [40, 220]
+		},
+		{
+			"parameters": {
+				"operation": "summarize",
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "sum",
+							"field": "amount"
+						}
+					]
+				},
+				"fieldsToSplitBy": "active",
+				"options": {
+					"skipEmptySplitFields": true
+				}
+			},
+			"id": "dd44d634-b08e-4b44-b22f-a28270cf7143",
+			"name": "Item Lists1",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 2.1,
+			"position": [40, 420]
+		},
+		{
+			"parameters": {
+				"operation": "summarize",
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "sum",
+							"field": "amount"
+						}
+					]
+				},
+				"fieldsToSplitBy": "active",
+				"options": {
+					"skipEmptySplitFields": true
+				}
+			},
+			"id": "ee55e745-c19f-4c55-c330-b39381d08254",
+			"name": "Item Lists2",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3.1,
+			"position": [40, 620]
+		}
+	],
+	"pinData": {
+		"Item Lists": [
+			{
+				"json": {
+					"active": "0",
+					"sum_amount": 40
+				}
+			},
+			{
+				"json": {
+					"active": "true",
+					"sum_amount": 10
+				}
+			},
+			{
+				"json": {
+					"active": "false",
+					"sum_amount": 50
+				}
+			},
+			{
+				"json": {
+					"active": "null",
+					"sum_amount": 60
+				}
+			}
+		],
+		"Item Lists1": [
+			{
+				"json": {
+					"active": "0",
+					"sum_amount": 40
+				}
+			},
+			{
+				"json": {
+					"active": "true",
+					"sum_amount": 10
+				}
+			},
+			{
+				"json": {
+					"active": "false",
+					"sum_amount": 50
+				}
+			},
+			{
+				"json": {
+					"active": "null",
+					"sum_amount": 60
+				}
+			}
+		],
+		"Item Lists2": [
+			{
+				"json": {
+					"active": "0",
+					"sum_amount": 40
+				}
+			},
+			{
+				"json": {
+					"active": "true",
+					"sum_amount": 10
+				}
+			},
+			{
+				"json": {
+					"active": "false",
+					"sum_amount": 50
+				}
+			},
+			{
+				"json": {
+					"active": "null",
+					"sum_amount": 60
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Item Lists",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "0f1e2d3c-4b5a-6978-8a9b-0c1d2e3f4a5b",
+	"id": "105",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}
