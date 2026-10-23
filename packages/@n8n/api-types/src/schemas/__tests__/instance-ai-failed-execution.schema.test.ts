@@ -40,6 +40,13 @@ describe('Instance AI failed execution schemas', () => {
 		expect(parsed.execution.data).toBe(envelope.execution.data);
 	});
 
+	it('accepts a crashed run', () => {
+		const crashed = { ...envelope, execution: { ...envelope.execution, status: 'crashed' } };
+		expect(instanceAiEvalFailedExecutionEnvelopeSchema.parse(crashed).execution.status).toBe(
+			'crashed',
+		);
+	});
+
 	it.each([
 		{ ...envelope, version: 2 },
 		{ ...envelope, execution: { ...envelope.execution, status: 'success' } },

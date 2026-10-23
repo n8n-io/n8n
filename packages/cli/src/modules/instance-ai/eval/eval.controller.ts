@@ -155,14 +155,6 @@ export class InstanceAiEvalController {
 		return await this.instanceAiService.getThreadMemory(req.user.id, threadId);
 	}
 
-	/**
-	 * Seed an existing (owned) thread with a previously exported conversation:
-	 * recreate the artifacts the history references — workflows (node credentials
-	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
-	 * and agents — publish the workflows the seed flags `published`, then write the
-	 * native message log verbatim. The thread then continues as if the
-	 * conversation really happened, so an eval can drive the next turn live.
-	 */
 	/** Export one failed execution of a thread's project as a portable envelope. */
 	@Post('/eval/export-execution')
 	@GlobalScope('instanceAi:manage')
@@ -205,6 +197,14 @@ export class InstanceAiEvalController {
 		return projectId;
 	}
 
+	/**
+	 * Seed an existing (owned) thread with a previously exported conversation:
+	 * recreate the artifacts the history references — workflows (node credentials
+	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
+	 * and agents — publish the workflows the seed flags `published`, then write the
+	 * native message log verbatim. The thread then continues as if the
+	 * conversation really happened, so an eval can drive the next turn live.
+	 */
 	@Post('/eval/restore-thread')
 	@GlobalScope('instanceAi:manage')
 	async restoreEvalThread(

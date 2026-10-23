@@ -9,6 +9,7 @@ import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import {
 	generateSecureToken,
+	UnexpectedError,
 	migrateRunExecutionData,
 	type IConnections,
 	type INode,
@@ -170,6 +171,10 @@ export class FailedExecutionPortabilityService {
 	): Promise<FailedExecutionRestoreResult> {
 		await this.assertWorkflowAccess(user, workflowId, projectId, 'workflow:execute');
 		this.assertEnvelopeConsistency(envelope);
+		// Export never produces one, but the envelope schema accepts every mode.
+		if (envelope.execution.mode === 'retry') {
+			throw new BadRequestError('A retry execution cannot be restored');
+		}
 
 		const data = await this.parsePortableData(envelope.execution.data, envelope.source.executionId);
 		this.assertPortableData(data);
@@ -228,7 +233,7 @@ export class FailedExecutionPortabilityService {
 				unflattenData: true,
 			});
 			if (!restored || restored.workflowId !== workflowId || restored.data === undefined) {
-				throw new Error('Imported execution could not be read back completely');
+				throw new UnexpectedError('Imported execution could not be read back completely');
 			}
 			const expectedSnapshot: HistoricalWorkflowSnapshot = { ...snapshot, id: workflowId };
 			const restoredSnapshot = this.toHistoricalSnapshot(restored.workflowData);
@@ -245,7 +250,9 @@ export class FailedExecutionPortabilityService {
 				!isDeepStrictEqual(restoredSnapshot, expectedSnapshot) ||
 				!isDeepStrictEqual(restored.data, data)
 			) {
-				throw new Error('Imported execution readback did not match the native transformed payload');
+				throw new UnexpectedError(
+					'Imported execution readback did not match the native transformed payload',
+				);
 			}
 
 			return {
@@ -337,6 +344,7 @@ export class FailedExecutionPortabilityService {
 	private assertPortableData(data: IRunExecutionData): void {
 		if (data.waitTill !== undefined) throw dependencyError('run data waitTill is present');
 		if (data.parentExecution) throw dependencyError('run data has a parent execution');
+		if (data.parentAgentRun) throw dependencyError('run data has a parent agent run');
 		if (data.redactionInfo?.isRedacted) throw dependencyError('run data is redacted');
 
 		const runtimeData = data.executionData?.runtimeData;

@@ -403,4 +403,26 @@ describe('FailedExecutionPortabilityService', () => {
 		).rejects.toThrow('runData.Fail.0 must be an object');
 		expect(executionPersistence.create).not.toHaveBeenCalled();
 	});
+
+	it('rejects a retry-mode envelope before writing', async () => {
+		const envelope = makeEnvelope();
+		envelope.execution.mode = 'retry';
+
+		await expect(
+			service.restoreExecution(user, projectId, targetWorkflowId, envelope),
+		).rejects.toThrow('A retry execution cannot be restored');
+		expect(executionPersistence.create).not.toHaveBeenCalled();
+	});
+
+	it('rejects run data that belongs to a parent agent run', async () => {
+		const envelope = makeEnvelope();
+		const data = parse(envelope.execution.data) as IRunExecutionData;
+		data.parentAgentRun = { agentId: 'agent-1', runId: 'run-1' } as never;
+		envelope.execution.data = stringify(data);
+
+		await expect(
+			service.restoreExecution(user, projectId, targetWorkflowId, envelope),
+		).rejects.toThrow('run data has a parent agent run');
+		expect(executionPersistence.create).not.toHaveBeenCalled();
+	});
 });

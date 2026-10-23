@@ -171,4 +171,10 @@ describe('hasExternalBinaryData', () => {
 			false,
 		);
 	});
+
+	it('detects an offloaded binary reference in pin data', () => {
+		const data = runDataWith([]);
+		data.resultData.pinData = { Node: [itemWith({ file: binary({ id: 'filesystem:2' }) })] };
+		expect(hasExternalBinaryData(data)).toBe(true);
+	});
 });
