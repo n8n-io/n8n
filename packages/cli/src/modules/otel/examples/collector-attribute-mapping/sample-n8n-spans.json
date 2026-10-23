@@ -1,0 +1,135 @@
+{
+	"resourceSpans": [
+		{
+			"resource": {
+				"attributes": [
+					{
+						"key": "service.name",
+						"value": {
+							"stringValue": "n8n"
+						}
+					},
+					{
+						"key": "service.version",
+						"value": {
+							"stringValue": "1.120.0"
+						}
+					},
+					{
+						"key": "n8n.instance.id",
+						"value": {
+							"stringValue": "inst-123"
+						}
+					},
+					{
+						"key": "n8n.instance.role",
+						"value": {
+							"stringValue": "main"
+						}
+					}
+				]
+			},
+			"scopeSpans": [
+				{
+					"scope": {
+						"name": "n8n-otel"
+					},
+					"spans": [
+						{
+							"traceId": "11111111111111111111111111111111",
+							"spanId": "aaaaaaaaaaaaaaa1",
+							"name": "workflow.execute",
+							"kind": 1,
+							"startTimeUnixNano": "START_NS",
+							"endTimeUnixNano": "END_NS",
+							"attributes": [
+								{
+									"key": "n8n.workflow.id",
+									"value": {
+										"stringValue": "wf-1"
+									}
+								},
+								{
+									"key": "n8n.execution.id",
+									"value": {
+										"stringValue": "exec-1"
+									}
+								},
+								{
+									"key": "n8n.project.id",
+									"value": {
+										"stringValue": "proj-uuid"
+									}
+								},
+								{
+									"key": "n8n.project.custom.project.id",
+									"value": {
+										"stringValue": "acme-proj-1"
+									}
+								},
+								{
+									"key": "n8n.project.custom.gen_ai.agent.id",
+									"value": {
+										"stringValue": "agent-v1"
+									}
+								}
+							]
+						},
+						{
+							"traceId": "11111111111111111111111111111111",
+							"spanId": "aaaaaaaaaaaaaaa2",
+							"parentSpanId": "aaaaaaaaaaaaaaa1",
+							"name": "node.execute",
+							"kind": 1,
+							"startTimeUnixNano": "START_NS",
+							"endTimeUnixNano": "END_NS",
+							"attributes": [
+								{
+									"key": "n8n.node.name",
+									"value": {
+										"stringValue": "AI Agent"
+									}
+								},
+								{
+									"key": "n8n.node.type",
+									"value": {
+										"stringValue": "@n8n/n8n-nodes-langchain.agent"
+									}
+								},
+								{
+									"key": "n8n.node.custom.gen_ai_request.model",
+									"value": {
+										"stringValue": "gpt-4o"
+									}
+								}
+							]
+						},
+						{
+							"traceId": "11111111111111111111111111111111",
+							"spanId": "aaaaaaaaaaaaaaa3",
+							"parentSpanId": "aaaaaaaaaaaaaaa1",
+							"name": "node.execute",
+							"kind": 1,
+							"startTimeUnixNano": "START_NS",
+							"endTimeUnixNano": "END_NS",
+							"attributes": [
+								{
+									"key": "n8n.node.name",
+									"value": {
+										"stringValue": "HTTP Request"
+									}
+								},
+								{
+									"key": "n8n.node.type",
+									"value": {
+										"stringValue": "n8n-nodes-base.httpRequest"
+									}
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	]
+}
