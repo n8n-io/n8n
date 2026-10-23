@@ -656,5 +656,29 @@ describe('SessionTimelineTable', () => {
 
 			expect(w.find('[data-test-id="timeline-notice-row"]').exists()).toBe(false);
 		});
+
+		it('keeps the notice inside the measured virtual row', async () => {
+			const w = mountWithNotice();
+			await w.setProps({
+				items: [
+					...makeItems(),
+					...Array.from(
+						{ length: 100 },
+						(_, index): TimelineItem => ({
+							kind: 'agent',
+							executionId: 'e1',
+							timestamp: 3000 + index,
+							content: 'Update',
+						}),
+					),
+				],
+			});
+
+			const noticeRows = w.findAll('[data-test-id="timeline-notice-row"]');
+			expect(noticeRows).toHaveLength(1);
+			expect(
+				w.get('[data-timeline-row-id="event-2"]').find('[data-test-id="notice-content"]').exists(),
+			).toBe(true);
+		});
 	});
 });

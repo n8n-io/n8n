@@ -244,8 +244,8 @@ describe('AgentSessionTimelineView', () => {
 	it('does not delete after switching sessions during confirmation', async () => {
 		let confirm: (value: string) => void = () => {};
 		confirmDeletion.mockImplementationOnce(
-			() =>
-				new Promise<string>((resolve) => {
+			async () =>
+				await new Promise<string>((resolve) => {
 					confirm = resolve;
 				}),
 		);
@@ -260,8 +260,8 @@ describe('AgentSessionTimelineView', () => {
 	it('ignores a second delete request while confirmation is open', async () => {
 		let confirm: (value: string) => void = () => {};
 		confirmDeletion.mockImplementationOnce(
-			() =>
-				new Promise<string>((resolve) => {
+			async () =>
+				await new Promise<string>((resolve) => {
 					confirm = resolve;
 				}),
 		);
@@ -280,8 +280,8 @@ describe('AgentSessionTimelineView', () => {
 	it('does not delete after leaving the trace during confirmation', async () => {
 		let confirm: (value: string) => void = () => {};
 		confirmDeletion.mockImplementationOnce(
-			() =>
-				new Promise<string>((resolve) => {
+			async () =>
+				await new Promise<string>((resolve) => {
 					confirm = resolve;
 				}),
 		);

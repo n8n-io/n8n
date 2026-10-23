@@ -106,6 +106,9 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 				theme="medium"
 				@item-selected="emit('breadcrumb-select', $event)"
 			>
+				<template #prepend>
+					<ProjectIcon :icon="props.projectIcon" size="mini" />
+				</template>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu

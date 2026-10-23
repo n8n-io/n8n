@@ -347,7 +347,9 @@ describe('AgentSessionTimelineHeader menu', () => {
 			canDeleteSession: true,
 			showLangsmithExport: true,
 		});
-		const menu = wrapper.getComponent('[data-testid="agent-session-timeline-more-menu"]');
+		const menu = wrapper.getComponent(
+			'[data-testid="agent-session-timeline-more-menu"]',
+		) as DropdownStubWrapper;
 		expect(menu.props('items')).toEqual([
 			expect.objectContaining({ id: 'copy-link', disabled: false }),
 			expect.objectContaining({ id: 'export-session', disabled: false }),
@@ -369,7 +371,9 @@ describe('AgentSessionTimelineHeader menu', () => {
 			canDeleteSession: true,
 			showLangsmithExport: true,
 		});
-		const menu = wrapper.getComponent('[data-testid="agent-session-timeline-more-menu"]');
+		const menu = wrapper.getComponent(
+			'[data-testid="agent-session-timeline-more-menu"]',
+		) as DropdownStubWrapper;
 		for (const action of ['copy-link', 'export-session', 'delete-session'])
 			menu.vm.$emit('select', action);
 		expect(wrapper.emitted('copy-link')).toEqual([[]]);
@@ -379,7 +383,9 @@ describe('AgentSessionTimelineHeader menu', () => {
 
 	it('omits unavailable export and delete actions', () => {
 		const wrapper = mountHeader({ hasSession: true });
-		const menu = wrapper.getComponent('[data-testid="agent-session-timeline-more-menu"]');
+		const menu = wrapper.getComponent(
+			'[data-testid="agent-session-timeline-more-menu"]',
+		) as DropdownStubWrapper;
 		expect(menu.props('items')).toEqual([expect.objectContaining({ id: 'copy-link' })]);
 		menu.vm.$emit('select', 'export-session');
 		menu.vm.$emit('select', 'delete-session');
@@ -392,7 +398,9 @@ describe('AgentSessionTimelineHeader menu', () => {
 		{ hasSession: true, langsmithExportLoading: true, isDeletingSession: true },
 	])('blocks unavailable or pending actions: %j', (state) => {
 		const wrapper = mountHeader({ canDeleteSession: true, showLangsmithExport: true, ...state });
-		const menu = wrapper.getComponent('[data-testid="agent-session-timeline-more-menu"]');
+		const menu = wrapper.getComponent(
+			'[data-testid="agent-session-timeline-more-menu"]',
+		) as DropdownStubWrapper;
 		expect(menu.props('items').slice(1)).toEqual([
 			expect.objectContaining({ id: 'export-session', disabled: true }),
 			expect.objectContaining({ id: 'delete-session', disabled: true }),

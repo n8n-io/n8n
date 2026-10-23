@@ -22,6 +22,7 @@ const props = defineProps<{
 	selectedIndex: number | null;
 	visibleKinds: Set<string>;
 	searchQuery?: string;
+	noticeIndex?: number;
 }>();
 
 const emit = defineEmits<{ select: [index: number | null] }>();
@@ -294,6 +295,14 @@ onBeforeUnmount(() => {
 					</div>
 					<div v-if="rowIndex < rows.length - 1" :class="$style.divider"><span></span></div>
 				</div>
+				<div
+					v-if="$slots.notice && row.index === props.noticeIndex"
+					:class="$style.rowWrapper"
+					data-test-id="timeline-notice-row"
+					role="row"
+				>
+					<div role="gridcell"><slot name="notice" /></div>
+				</div>
 			</template>
 		</div>
 		<N8nRecycleScroller
@@ -329,6 +338,13 @@ onBeforeUnmount(() => {
 							:search-query="props.searchQuery"
 							:personalisation="props.personalisation"
 						/>
+					</div>
+					<div
+						v-if="$slots.notice && row.index === props.noticeIndex"
+						data-test-id="timeline-notice-row"
+						role="gridcell"
+					>
+						<slot name="notice" />
 					</div>
 					<div v-if="row.id !== rows[rows.length - 1].id" :class="$style.divider">
 						<span></span>

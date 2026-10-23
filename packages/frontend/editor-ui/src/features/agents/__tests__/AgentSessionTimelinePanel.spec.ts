@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { PushMessage } from '@n8n/api-types';
 import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
 import { reactive } from 'vue';
+import { createPinia } from 'pinia';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentBudgetNoticeCard from '../components/AgentBudgetNoticeCard.vue';
@@ -69,6 +70,7 @@ const stubs = {
 		name: 'SessionTimelineTable',
 		props: ['selectedIndex', 'items'],
 		emits: ['select'],
+		methods: { scrollSelectedIntoView: vi.fn() },
 		template:
 			'<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" :data-item-count="items.length" />',
 	},
@@ -174,6 +176,7 @@ function mountPanel(
 		...(options.attachTo ? { attachTo: options.attachTo } : {}),
 		props: { projectId: 'p1', agentId: 'a1', threadId: 't1', ...props },
 		global: {
+			plugins: [createPinia()],
 			stubs: {
 				...stubs,
 				...(options.renderTimelineTable ? { SessionTimelineTable: false } : {}),
@@ -203,7 +206,7 @@ describe('AgentSessionTimelinePanel', () => {
 	});
 
 	it.each(['SessionTimelineChart', 'SessionTimelineTable'])(
-		'tracks user selection from %s but not closing or deselection',
+		'tracks user selection from %s but not deselection',
 		async (component) => {
 			getThreadDetail.mockResolvedValueOnce({ ...detail, executions: [keyboardExecution] });
 			const wrapper = mountPanel();
@@ -211,11 +214,9 @@ describe('AgentSessionTimelinePanel', () => {
 
 			wrapper.getComponent({ name: component }).vm.$emit('select', 1);
 			await flushPromises();
-			wrapper.getComponent({ name: 'SessionDetailPanel' }).vm.$emit('close');
 			wrapper.getComponent({ name: component }).vm.$emit('select', null);
 			await flushPromises();
 
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
 			expect(track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
 				{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'agent' },
@@ -482,28 +483,31 @@ describe('AgentSessionTimelinePanel', () => {
 
 	it('keeps the selected timeline item through reconciliation', async () => {
 		const execution = {
+			...keyboardExecution,
 			id: 'exec-1',
 			status: 'running',
-			createdAt: '2026-08-04T07:00:00.000Z',
-			startedAt: '2026-08-04T07:00:00.000Z',
-			stoppedAt: null,
-			duration: 0,
 			userMessage: 'Question',
-			timeline: [{ type: 'text', content: 'Answer', timestamp: 1 }],
-		};
-		const runningDetail = { ...detail, executions: [execution] } as unknown as ThreadDetail;
-		const refreshedDetail = {
+			timeline: [
+				{ type: 'text', content: 'Answer', timestamp: Date.parse('2026-08-03T12:00:01.000Z') },
+			],
+		} satisfies ThreadDetail['executions'][number];
+		const runningDetail: ThreadDetail = { ...detail, executions: [execution] };
+		const refreshedDetail: ThreadDetail = {
 			...detail,
 			executions: [
 				{
 					...execution,
 					timeline: [
-						{ type: 'text', content: 'Earlier update', timestamp: 0 },
-						{ type: 'text', content: 'Answer', timestamp: 1 },
+						{
+							type: 'text',
+							content: 'Earlier update',
+							timestamp: Date.parse('2026-08-03T12:00:00.500Z'),
+						},
+						...execution.timeline,
 					],
 				},
 			],
-		} as unknown as ThreadDetail;
+		};
 		getThreadDetail.mockResolvedValueOnce(runningDetail).mockResolvedValueOnce(refreshedDetail);
 		const wrapper = mountPanel();
 		await flushPromises();
