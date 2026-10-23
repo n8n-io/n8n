@@ -45,6 +45,7 @@ const setupSnapshotProps = {
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const workflowPreviewsAboveAssistantVariant = z.enum(['control', 'variant']);
+const taxonomyInspirationVariant = z.enum(['control', 'variant', 'variant-bis']);
 const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
 const assistantMentionTriggerSource = z.enum(['typed', 'button']);
 /** Cap on the query text the empty-search event carries; the emitter cuts to it after redaction. */
@@ -204,6 +205,20 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			),
 			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/124_workflow_previews_above_assistant': workflowPreviewsAboveAssistantVariant,
+		}),
+	},
+	// EOF Experiment cleanup
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	INSPIRATION_FROM_TAXONOMY_EXPOSED: {
+		name: 'AI Assistant inspiration from taxonomy exposed',
+		description:
+			'A sales-and-marketing respondent assigned to 129_aia_inspiration_from_taxonomy_v2 reached the n8n Assistant empty state, the view that shows the prompt suggestions, including the control variant. Fires once per visit. Does not fire on a thread, nor for the proactive starter, split empty-state, n8n Chat agent picker, or workflow-preview layouts, which replace this suggestion list. Not fired for any other experiment.',
+		properties: z.object({
+			variant: taxonomyInspirationVariant.describe(
+				'Variant of the 129_aia_inspiration_from_taxonomy_v2 feature flag the user saw: control, variant, or variant-bis',
+			),
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/129_aia_inspiration_from_taxonomy_v2': taxonomyInspirationVariant,
 		}),
 	},
 	// EOF Experiment cleanup
