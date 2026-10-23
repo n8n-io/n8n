@@ -109,4 +109,140 @@ describe('useExecutingNode composable', () => {
 		addExecutingNode('nodeB', 1);
 		expect(lastAddedExecutingNode.value).toBe('nodeB');
 	});
+
+	describe('concurrent strategy', () => {
+		const useConcurrentExecutingNode = () =>
+			useExecutingNode({ allowsConcurrentNodes: () => true });
+
+		it('shows every node that runs at the same time', () => {
+			const { executingNode, addExecutingNode, isNodeExecuting } = useConcurrentExecutingNode();
+
+			addExecutingNode('nodeA', 0);
+			addExecutingNode('nodeB', 1);
+
+			expect(executingNode.value).toEqual(['nodeA', 'nodeB']);
+			expect(isNodeExecuting('nodeA')).toBe(true);
+			expect(isNodeExecuting('nodeB')).toBe(true);
+		});
+
+		it('clears each node on its own nodeExecuteAfter', () => {
+			const { addExecutingNode, removeExecutingNode, isNodeExecuting } =
+				useConcurrentExecutingNode();
+
+			addExecutingNode('nodeA', 0);
+			addExecutingNode('nodeB', 1);
+			removeExecutingNode('nodeA');
+
+			expect(isNodeExecuting('nodeA')).toBe(false);
+			expect(isNodeExecuting('nodeB')).toBe(true);
+
+			removeExecutingNode('nodeB');
+
+			expect(isNodeExecuting('nodeB')).toBe(false);
+		});
+
+		it('keeps a node with two runs in flight until both finish', () => {
+			const { executingNode, addExecutingNode, removeExecutingNode, isNodeExecuting } =
+				useConcurrentExecutingNode();
+
+			addExecutingNode('nodeA', 0);
+			addExecutingNode('nodeA', 1);
+			expect(executingNode.value).toEqual(['nodeA']);
+
+			removeExecutingNode('nodeA');
+			expect(isNodeExecuting('nodeA')).toBe(true);
+
+			removeExecutingNode('nodeA');
+			expect(isNodeExecuting('nodeA')).toBe(false);
+		});
+
+		it('ignores a nodeExecuteAfter for a node that is not running', () => {
+			const { executingNode, lastAddedExecutingNode, addExecutingNode, removeExecutingNode } =
+				useConcurrentExecutingNode();
+
+			addExecutingNode('nodeA', 0);
+			removeExecutingNode('nodeB');
+
+			expect(executingNode.value).toEqual(['nodeA']);
+			expect(lastAddedExecutingNode.value).toBe('nodeA');
+		});
+
+		it('tracks the node that finished last', () => {
+			const { lastAddedExecutingNode, addExecutingNode, removeExecutingNode } =
+				useConcurrentExecutingNode();
+
+			addExecutingNode('nodeB', 0);
+			addExecutingNode('nodeA', 1);
+			removeExecutingNode('nodeA');
+			removeExecutingNode('nodeB');
+
+			expect(lastAddedExecutingNode.value).toBe('nodeB');
+		});
+
+		it('ignores a nodeExecuteAfter before any node started', () => {
+			const { executingNode, lastAddedExecutingNode, removeExecutingNode } =
+				useConcurrentExecutingNode();
+
+			removeExecutingNode('nodeA');
+
+			expect(executingNode.value).toEqual([]);
+			expect(lastAddedExecutingNode.value).toBeNull();
+		});
+
+		it('clears every running node', () => {
+			const {
+				executingNode,
+				lastAddedExecutingNode,
+				addExecutingNode,
+				removeExecutingNode,
+				clearNodeExecutionQueue,
+				isNodeExecuting,
+			} = useConcurrentExecutingNode();
+
+			addExecutingNode('nodeA', 0);
+			addExecutingNode('nodeA', 1);
+			addExecutingNode('nodeB', 2);
+			clearNodeExecutionQueue();
+
+			expect(executingNode.value).toEqual([]);
+			expect(lastAddedExecutingNode.value).toBeNull();
+
+			// The run counts reset too, so one nodeExecuteAfter clears a node of the next run.
+			addExecutingNode('nodeA', 0);
+			removeExecutingNode('nodeA');
+			expect(isNodeExecuting('nodeA')).toBe(false);
+		});
+
+		it('selects the strategy again after a clear', () => {
+			let allowsConcurrentNodes = false;
+			const { executingNode, addExecutingNode, clearNodeExecutionQueue } = useExecutingNode({
+				allowsConcurrentNodes: () => allowsConcurrentNodes,
+			});
+
+			addExecutingNode('nodeA', 0);
+			addExecutingNode('nodeB', 1);
+			expect(executingNode.value).toEqual(['nodeB']);
+
+			// A settings change during a run applies from the next run.
+			allowsConcurrentNodes = true;
+			addExecutingNode('nodeC', 2);
+			expect(executingNode.value).toEqual(['nodeC']);
+
+			clearNodeExecutionQueue();
+			addExecutingNode('nodeA', 0);
+			addExecutingNode('nodeB', 1);
+			expect(executingNode.value).toEqual(['nodeA', 'nodeB']);
+		});
+
+		it('shows only the latest node after a clear when the option is not set', () => {
+			const { executingNode, addExecutingNode, clearNodeExecutionQueue } = useExecutingNode();
+
+			addExecutingNode('nodeA', 0);
+			clearNodeExecutionQueue();
+			addExecutingNode('nodeA', 0);
+			addExecutingNode('nodeB', 1);
+
+			expect(executingNode.value).toEqual(['nodeB']);
+		});
+	});
 });
