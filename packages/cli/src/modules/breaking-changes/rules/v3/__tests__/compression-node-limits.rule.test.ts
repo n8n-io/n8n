@@ -56,8 +56,27 @@ describe('CompressionNodeLimitsRule', () => {
 	});
 
 	describe('getMetadata()', () => {
-		it('should report an executionsFail impact because oversized archives throw', () => {
-			expect(rule.getMetadata().impact).toBe('executionsFail');
+		it('should report an executionsMightFail impact because only a default changes and the admin can override it', () => {
+			expect(rule.getMetadata().impact).toBe('executionsMightFail');
+		});
+
+		it('should say that only the defaults change', () => {
+			const { description } = rule.getMetadata();
+
+			expect(description).toMatch(/only the default/i);
+			expect(description).not.toMatch(/will fail|will be aborted|start failing/);
+		});
+	});
+
+	describe('recommendation', () => {
+		it('should name the variables that keep the current limits, and say when to set them', async () => {
+			const { recommendations } = await rule.detect();
+			const { description } = recommendations[0];
+
+			expect(description).toContain('N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES');
+			expect(description).toContain('N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES');
+			expect(description).toMatch(/only when .*not set/i);
+			expect(description).toMatch(/do not need to do anything/i);
 		});
 	});
 });

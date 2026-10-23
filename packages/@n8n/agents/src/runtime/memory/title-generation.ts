@@ -303,8 +303,9 @@ export async function generateThreadTitle(opts: {
 }
 
 /**
- * Price a title-generation model turn and forward it to the host. Best-effort:
- * a catalog lookup or host failure is logged and never breaks title generation.
+ * Price a title-generation model turn and forward it to the host. An unpriced
+ * call is still forwarded without `cost`. Best-effort: a host failure is
+ * logged and never breaks title generation.
  */
 async function reportTitleUsage(
 	onSideCallUsage: (report: SideCallUsageReport) => void | Promise<void>,
@@ -314,12 +315,11 @@ async function reportTitleUsage(
 ): Promise<void> {
 	try {
 		const cost = await computeSideCallCost(modelId, usage, promptCaching);
-		if (cost === undefined) return;
 		await onSideCallUsage({
 			task: 'title',
 			model: modelId,
 			usage,
-			cost,
+			...(cost !== undefined ? { cost } : {}),
 			reportId: crypto.randomUUID(),
 		});
 	} catch (error) {

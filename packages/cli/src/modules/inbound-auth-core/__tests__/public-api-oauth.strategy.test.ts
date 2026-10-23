@@ -194,7 +194,7 @@ describe('PublicApiOAuthStrategy', () => {
 
 		describe('on success', () => {
 			const contextWith = (tokenScopes?: string[]): SecurityContext => ({
-				subject: { id: 'user-1', type: 'human', role: mock() },
+				subject: { id: 'user-1', type: 'person', role: mock() },
 				authMethod: 'oauth-access-token',
 				subjectClaim: { sourceId: 'source-1', issuer: 'https://idp.example', subject: 'alice' },
 				...(tokenScopes && { tokenScopes }),
