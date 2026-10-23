@@ -43,7 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showExpressionSelector: true,
 	showFocusPanel: true,
 	customActions: () => [],
-	iconOrientation: 'vertical',
+	iconOrientation: 'horizontal',
 	loading: false,
 	loadingMessage: () => useI18n().baseText('genericHelpers.loading'),
 	isContentOverridden: false,
