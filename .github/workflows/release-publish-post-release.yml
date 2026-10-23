@@ -28,7 +28,7 @@ on:
         required: true
         type: string
       prerelease:
-        description: 'Whether this is a standalone early-access prerelease.'
+        description: 'Whether this is a standalone v3 prerelease.'
         required: true
         type: boolean
 
