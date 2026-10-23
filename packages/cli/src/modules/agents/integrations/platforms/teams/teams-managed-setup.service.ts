@@ -121,6 +121,10 @@ export class TeamsManagedSetupService {
 	 * list, which is what makes it span both APIs — a sign-in cannot, because a
 	 * code is redeemed for one resource at a time. An administrator does this once
 	 * per organisation and nobody sees a consent screen afterwards.
+	 *
+	 * The link serves a new sign-in, so it names the default app, like the sign-in does. The
+	 * setup shows it only while the sign-in is missing or must be redone. A connected
+	 * credential keeps the app that it stores.
 	 */
 	adminConsentUrl(): string | null {
 		const overwrite = this.credentialsOverwrites.getOverwrites(TEAMS_MANAGER_CREDENTIAL_TYPE);
