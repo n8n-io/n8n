@@ -44,6 +44,7 @@ import {
 } from '../promotionOperation';
 import {
 	includedChangeCount,
+	resolveInclusion,
 	totalChangeCount,
 	type ResourceKey,
 } from '../promotionPreview.selection';
@@ -205,6 +206,13 @@ const submitBlockedReason = computed(() => {
 	}
 	return hasSelectedBlocked.value ? i18n.baseText('promotions.preview.submit.blocked') : undefined;
 });
+const actionableChanges = computed(() => {
+	if (!graph.value || folderConflicts.value.length > 0) return 0;
+	const actionable = new Set(
+		[...selection.selected.value].filter((key) => !blockers.value.blocked.has(key)),
+	);
+	return includedChangeCount(graph.value, resolveInclusion(graph.value, actionable));
+});
 const canSubmit = computed(
 	() =>
 		state.value === 'ready' &&
@@ -212,17 +220,15 @@ const canSubmit = computed(
 		!operation.isBusy.value &&
 		!submitBlockedReason.value &&
 		request.value.workflowIds.length > 0 &&
+		actionableChanges.value > 0 &&
 		(props.direction === 'promote' || !!check.value),
 );
-const submitLabel = computed(() => {
-	if (props.direction === 'apply' && request.value.confirmDestructiveChanges) {
-		return i18n.baseText('promotions.bindings.applyDataTableChanges');
-	}
-	return i18n.baseText(`promotions.preview.submit.${props.direction}`, {
-		adjustToNumber: includedChanges.value,
-		interpolate: { count: String(includedChanges.value) },
-	});
-});
+const submitLabel = computed(() =>
+	i18n.baseText(`promotions.preview.submit.${props.direction}`, {
+		adjustToNumber: actionableChanges.value,
+		interpolate: { count: String(actionableChanges.value) },
+	}),
+);
 
 type PreviewTab = 'changes' | 'blockers';
 const activeTab = ref<PreviewTab>('changes');

@@ -160,6 +160,55 @@ const answerWorkflowDetails = () =>
 		}));
 
 describe('PromotionPreviewView', () => {
+	it.each(['promote', 'apply'] as const)(
+		'shows the selected change count and omits zero for %s',
+		async (direction) => {
+			vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment(direction)]);
+			const preview = billingPreview();
+			vi.mocked(api.getPromotionPreview).mockResolvedValue({
+				...preview,
+				resources: preview.resources.filter(({ key }) =>
+					['workflow:w1', 'workflow:w3'].includes(key),
+				),
+				dependencies: [],
+			});
+			const { getByTestId, getAllByTestId } = await render(
+				`/projects/p1/promotions/${direction}`,
+				direction,
+			);
+			const action = direction === 'promote' ? 'Promote' : 'Apply';
+			const submit = getByTestId('promotion-preview-submit');
+			expect(submit).toHaveTextContent(`${action} 2 changes`);
+			expect(submit).toBeEnabled();
+
+			await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+			expect(submit).toHaveTextContent(`${action} 1 change`);
+			expect(submit).toBeEnabled();
+
+			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
+			expect(submit).toHaveTextContent(`${action} changes`);
+			expect(submit).toBeDisabled();
+		},
+	);
+
+	it.each([false, true])(
+		'omits the count when all changes are blocked after refresh: %s',
+		async (afterRefresh) => {
+			const allBlocked = check({
+				missingBindings: [{ ...variable, consumers: consumers('w1', 'w2', 'w3', 'w4') }],
+			});
+			vi.mocked(api.getApplyBlockers).mockResolvedValue(allBlocked);
+			if (afterRefresh) vi.mocked(api.getApplyBlockers).mockResolvedValueOnce(check());
+			const { getByTestId } = await renderApply();
+			if (afterRefresh) {
+				await userEvent.click(getByTestId('promotion-preview-refresh'));
+				await waitAllPromises();
+			}
+			expect(getByTestId('promotion-preview-submit')).toHaveTextContent('Apply changes');
+			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+		},
+	);
+
 	it.each([
 		{
 			direction: 'promote',
@@ -495,7 +544,7 @@ describe('PromotionPreviewView', () => {
 
 		const { getAllByTestId, getByTestId } = await renderApply();
 		const submit = getByTestId('promotion-preview-submit');
-		expect(submit).toHaveTextContent('Apply data table changes');
+		expect(submit).toHaveTextContent(/^Apply \d+ changes?$/);
 
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox'));
