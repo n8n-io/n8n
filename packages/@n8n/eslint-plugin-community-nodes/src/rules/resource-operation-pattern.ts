@@ -20,15 +20,13 @@ export const ResourceOperationPatternRule = createRule({
 		messages: {
 			tooManyOperationsWithoutResources:
 				'Node has {{ operationCount }} operations without resources. Use resources to organize operations when there are more than 5 operations.',
+			getAllActionWrong:
+				'Start the action of the "getAll" operation with "Get many", not "{{ action }}". For example, use "Get many contacts".',
 		},
 		schema: [],
 	},
 	defaultOptions: [],
 	create(context) {
-		if (!isFileType(context.filename, '.node.ts')) {
-			return {};
-		}
-
 		const analyzeNodeDescription = (descriptionValue: TSESTree.Expression | null): void => {
 			if (descriptionValue?.type !== AST_NODE_TYPES.ObjectExpression) {
 				return;
@@ -84,8 +82,52 @@ export const ResourceOperationPatternRule = createRule({
 		};
 
 		return {
+			ObjectExpression(node) {
+				const nameProperty = findObjectProperty(node, 'name');
+				const typeProperty = findObjectProperty(node, 'type');
+				if (
+					!nameProperty ||
+					getStringLiteralValue(nameProperty.value) !== 'operation' ||
+					!typeProperty ||
+					getStringLiteralValue(typeProperty.value) !== 'options'
+				) {
+					return;
+				}
+
+				const optionsProperty = findObjectProperty(node, 'options');
+				if (optionsProperty?.value.type !== AST_NODE_TYPES.ArrayExpression) {
+					return;
+				}
+
+				for (const option of optionsProperty.value.elements) {
+					if (option?.type !== AST_NODE_TYPES.ObjectExpression) {
+						continue;
+					}
+
+					const valueProperty = findObjectProperty(option, 'value');
+					const actionProperty = findObjectProperty(option, 'action');
+					if (
+						!valueProperty ||
+						getStringLiteralValue(valueProperty.value) !== 'getAll' ||
+						!actionProperty
+					) {
+						continue;
+					}
+
+					const action = getStringLiteralValue(actionProperty.value);
+					if (action === null || action.startsWith('Get many') || action.startsWith('Get all')) {
+						continue;
+					}
+
+					context.report({
+						node: actionProperty.value,
+						messageId: 'getAllActionWrong',
+						data: { action },
+					});
+				}
+			},
 			ClassDeclaration(node) {
-				if (!isNodeTypeClass(node)) {
+				if (!isFileType(context.filename, '.node.ts') || !isNodeTypeClass(node)) {
 					return;
 				}
 
