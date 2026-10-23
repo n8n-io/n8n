@@ -724,8 +724,8 @@ export class AgentExecutionService {
 	async deleteMemoryThreadsForAgent(agentId: string): Promise<void> {
 		const memory = this.n8nMemory.getImplementation(agentId);
 		const threadIds = await this.agentExecutionThreadRepository.findIdsByAgentId(agentId);
-		for (const threadId of threadIds) {
-			await memory.deleteThread(threadId);
+		for (const batch of chunk(threadIds, AgentExecutionService.logDeletionBatchSize)) {
+			await memory.deleteThreads(batch);
 		}
 	}
 
