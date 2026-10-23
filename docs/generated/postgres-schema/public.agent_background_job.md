@@ -128,6 +128,8 @@ erDiagram
   boolean acceptsSteering
   json attachments
   json author
+  integer cacheReadTokens
+  integer cacheWriteTokens
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
@@ -139,6 +141,7 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
+  varchar_36_ parentExecutionId FK
   integer promptTokens
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
