@@ -16,14 +16,6 @@ import { InstanceSettings, Tracing } from 'n8n-core';
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
-import { HeldTaskProvisioner } from './held-tasks/held-task-provisioner';
-import {
-	readTestHolderSettings,
-	TEST_HOLDER_OWNER_TYPE,
-	TEST_HOLDER_TASK_TYPE,
-	TestHolder,
-	TestHolderOwner,
-} from './held-tasks/test-holder/test-holder';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
@@ -42,10 +34,6 @@ import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 export class DurableScheduler implements Scheduler {
 	private readonly scheduler: Scheduler | undefined; // undefined means the scheduler is disabled
 
-	private readonly testHolderOwner: TestHolderOwner | undefined;
-
-	readonly testHolder: TestHolder | undefined;
-
 	constructor(
 		private readonly logger: Logger,
 		dataSource: DataSource,
@@ -61,20 +49,11 @@ export class DurableScheduler implements Scheduler {
 		agentOwner: AgentScheduledJobOwner,
 		systemTaskOwner: SystemTaskScheduledJobOwner,
 		eventService: EventService,
-		private readonly heldTaskProvisioner: HeldTaskProvisioner,
 	) {
 		const config = globalConfig.scheduler;
 		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
 		const tracer = createSchedulerTracer(tracing);
-		const testHolderSettings =
-			enabled && config.enabledForHeldTasks ? readTestHolderSettings() : undefined;
-		this.testHolderOwner =
-			testHolderSettings === undefined ? undefined : new TestHolderOwner(testHolderSettings);
-		const owners = createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner);
-		if (this.testHolderOwner !== undefined) {
-			owners.register(TEST_HOLDER_OWNER_TYPE, this.testHolderOwner);
-		}
 		this.scheduler = enabled
 			? createScheduler({
 					hostId: instanceSettings.hostId,
@@ -111,7 +90,7 @@ export class DurableScheduler implements Scheduler {
 					reconciliation: config.ownerReconciliationEnabled
 						? {
 								jobStore: jobs,
-								owners,
+								owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner),
 								options: {
 									settleSeconds: config.ownerSettleSeconds,
 									quarantineGraceSeconds: config.ownerQuarantineGraceSeconds,
@@ -148,10 +127,6 @@ export class DurableScheduler implements Scheduler {
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
-		if (this.testHolderOwner !== undefined) {
-			this.testHolder = new TestHolder(instanceSettings.hostId, logger);
-			this.registerHoldTaskHandler(TEST_HOLDER_TASK_TYPE, this.testHolder);
-		}
 	}
 
 	isActive(): boolean {
@@ -178,13 +153,6 @@ export class DurableScheduler implements Scheduler {
 
 	start(): void {
 		this.scheduler?.start();
-		if (this.testHolderOwner !== undefined) {
-			this.testHolderOwner.provision(this.heldTaskProvisioner).then(
-				(jobs) => this.logger.info('Provisioned test hold jobs', { jobs }),
-				(error: unknown) =>
-					this.logger.error('Could not provision test hold jobs', { error: String(error) }),
-			);
-		}
 	}
 
 	@OnShutdown()

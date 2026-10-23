@@ -18,7 +18,6 @@ import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedu
 import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
 import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
-import type { HeldTaskProvisioner } from '../held-tasks/held-task-provisioner';
 
 // Keep the real exports (e.g. pollLookaheadSeconds) so the wiring is tested
 // against the actual formula; only the scheduler factory is stubbed.
@@ -94,7 +93,6 @@ describe('DurableScheduler', () => {
 			agentOwner,
 			systemTaskOwner,
 			eventService,
-			mock<HeldTaskProvisioner>(),
 		);
 		return {
 			scheduler,

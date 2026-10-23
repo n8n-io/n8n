@@ -29,7 +29,6 @@ import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-o
 
 import { retryUntil } from '../shared/retry-until';
 import { selfOwned } from './shared/job-factory';
-import { HeldTaskProvisioner } from '@/scheduling/held-tasks/held-task-provisioner';
 
 const TASK_NAME = 'integration-runner';
 const TASK_TYPE = `system:${TASK_NAME}`;
@@ -132,7 +131,6 @@ describe('system task runner across mains over one database', () => {
 			agentOwner,
 			owner,
 			eventService,
-			Container.get(HeldTaskProvisioner),
 		);
 		const provisioner = new DurableJobProvisioner(
 			logger,

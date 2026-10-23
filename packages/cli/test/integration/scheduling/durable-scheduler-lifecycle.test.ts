@@ -18,7 +18,6 @@ import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-o
 
 import { retryUntil } from '../shared/retry-until';
 import { createDueJobFactory, seedDueTask, selfOwned } from './shared/job-factory';
-import { HeldTaskProvisioner } from '@/scheduling/held-tasks/held-task-provisioner';
 
 /**
  * The process lifecycle wired in `start.ts`: `DurableScheduler.start()` driving
@@ -86,7 +85,6 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 			Container.get(AgentScheduledJobOwner),
 			Container.get(SystemTaskScheduledJobOwner),
 			Container.get(EventService),
-			Container.get(HeldTaskProvisioner),
 		);
 	};
 
