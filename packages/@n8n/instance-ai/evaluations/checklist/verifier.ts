@@ -49,7 +49,8 @@ export const VERIFIER_MAX_OUTPUT_TOKENS = 16_384;
 /**
  * Native OpenAI Responses `text.format` for the verifier: the JSON-schema twin of
  * `checklistResultSchema`. `reasoning` comes before `pass` for the same reason.
- * Shared with `export-latest-verifier-request.ts`, so a replayed request asks the same thing.
+ * Shared with `export-latest-verifier-request.ts`, so a replayed request has the same
+ * instructions, schema and request settings (the export builds its own user message).
  */
 export const VERIFIER_RESPONSE_FORMAT = {
 	type: 'json_schema',
@@ -201,7 +202,8 @@ export function supportsOpenAiReasoning(modelId: string): boolean {
 
 /**
  * The OpenAI Responses request the native verifier sends. The replay export builds its
- * request here too, so the two cannot drift apart.
+ * request here too, so both send the same instructions, schema and request settings. The
+ * user message is the caller's: the export builds its own, so that part can differ.
  */
 export function buildNativeVerifierRequestBody(userMessage: string, providerModelId: string) {
 	return {

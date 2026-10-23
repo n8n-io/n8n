@@ -100,7 +100,7 @@ describe('export-latest-verifier-request helpers', () => {
 		expect(body.reasoning).toEqual({ effort: 'high' });
 	});
 
-	it('replays exactly the body the live verifier builds for the judge model', () => {
+	it('uses the same instructions, schema and request settings as the live verifier', () => {
 		expect(buildVerifierRequestBody('user message', 'openai/gpt-5.5')).toEqual(
 			buildNativeVerifierRequestBody('user message', 'gpt-5.5'),
 		);
@@ -114,6 +114,14 @@ describe('export-latest-verifier-request helpers', () => {
 		} finally {
 			vi.unstubAllEnvs();
 		}
+	});
+
+	it('refuses an openai id with an empty model, which the live verifier does not route to OpenAI', () => {
+		// resolveEvalModelConfig('openai/').provider is '' (splitModelId keeps a blank model
+		// as the raw id), so the live verifier sends no native Responses request for it.
+		expect(() => buildVerifierRequestBody('user message', 'openai/')).toThrow(
+			/only an OpenAI judge/i,
+		);
 	});
 
 	it('refuses a judge model that does not use the native OpenAI request', () => {

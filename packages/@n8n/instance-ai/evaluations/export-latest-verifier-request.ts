@@ -1,3 +1,4 @@
+import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { jsonParse } from 'n8n-workflow';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -322,13 +323,14 @@ function getWorkflowJson(workflowId: string): WorkflowJson {
  * native Responses request; any other judge goes through the agents wrapper instead.
  */
 function buildVerifierRequestBody(userMessage: string, judgeModelId = resolveJudgeModel()) {
-	const [provider, ...modelParts] = judgeModelId.split('/');
+	// The same split the live verifier routes on (`resolveEvalModelConfig(...).provider`).
+	const { provider, model } = splitModelId(judgeModelId);
 	if (provider !== 'openai') {
 		throw new Error(
 			`The judge model is "${judgeModelId}". Only an OpenAI judge sends the native Responses request this script replays; set N8N_INSTANCE_AI_EVAL_JUDGE_MODEL to an openai/... model.`,
 		);
 	}
-	return buildNativeVerifierRequestBody(userMessage, modelParts.join('/'));
+	return buildNativeVerifierRequestBody(userMessage, model);
 }
 
 function main(): void {
