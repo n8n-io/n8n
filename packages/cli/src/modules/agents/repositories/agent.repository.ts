@@ -123,8 +123,8 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return agent;
 	}
 
-	async hasRevision(id: string, revision: number): Promise<boolean> {
-		return await this.existsBy({ id, revision });
+	async hasRevision(id: string, revision: number, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(Agent, { id, revision });
 	}
 
 	async findByProjectId(projectId: string): Promise<ProjectAgent[]> {
@@ -507,9 +507,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * for callers whose access check does not hinge on a specific project (e.g.
 	 * users with global agent scopes). Returns no instance agent.
 	 */
-	async findById(id: string): Promise<ProjectAgent | null> {
+	async findById(id: string, ctx: OperationContext = {}): Promise<ProjectAgent | null> {
 		return projectAgentOrNull(
-			await this.findOne({
+			await this.managerFor(ctx).findOne(Agent, {
 				where: { id, scope: projectScope },
 				relations: { activeVersion: true },
 			}),
@@ -671,22 +671,25 @@ export class AgentRepository extends BaseRepository<Agent> {
 		integrations: AgentIntegrationConfig[],
 		expected: Pick<Agent, 'revision' | 'versionId' | 'activeVersionId'>,
 		versionId: string | null,
+		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const result = await this.update(
-			{
-				id,
-				scope: projectScope,
-				revision: expected.revision,
-				versionId: expected.versionId ?? IsNull(),
-				activeVersionId: expected.activeVersionId ?? IsNull(),
-			},
-			{
-				integrations,
-				versionId,
-				revision: () => 'revision + 1',
-				publicationRevision: () => '"publicationRevision" + 1',
-			},
-		);
+		const result = await this.managerFor(ctx)
+			.getRepository(Agent)
+			.update(
+				{
+					id,
+					scope: projectScope,
+					revision: expected.revision,
+					versionId: expected.versionId ?? IsNull(),
+					activeVersionId: expected.activeVersionId ?? IsNull(),
+				},
+				{
+					integrations,
+					versionId,
+					revision: () => 'revision + 1',
+					publicationRevision: () => '"publicationRevision" + 1',
+				},
+			);
 
 		return (result.affected ?? 0) > 0;
 	}

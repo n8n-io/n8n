@@ -301,6 +301,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			saveCompletion,
 			skillRefs,
 			mock<ChatIntegrationRegistry>(),
+			mock<AgentDefinitionService>(),
 		);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
@@ -338,6 +339,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<AgentSetupCompletionService>(),
 			skillRefs,
+			mock<AgentDefinitionService>(),
+			transactionRunner,
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,
@@ -391,6 +394,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentConfigPreparationService>(),
 			saveCompletion,
 			mock<AgentSetupCompletionService>(),
+			mock<AgentDefinitionService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

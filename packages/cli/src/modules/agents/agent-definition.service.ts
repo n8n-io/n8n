@@ -1,4 +1,4 @@
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import { type AgentActor, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
@@ -8,7 +8,7 @@ import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
 import { fromAgentDocument } from './json-config/agent-document';
-import { AgentHistoryRepository } from './repositories/agent-history.repository';
+import { AgentHistoryRepository, renderAuthor } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -36,6 +36,7 @@ export class AgentDefinitionService {
 		agent: Agent,
 		savedBy: User | string,
 		ctx: OperationContext,
+		source?: AgentActor,
 	): Promise<AgentHistory> {
 		if (!agent.versionId) throw new ConflictError('Agent has no saved version');
 
@@ -65,7 +66,10 @@ export class AgentDefinitionService {
 					: null,
 				tools: agent.tools,
 				skills: snapshot.skills,
-				savedBy,
+				savedBy:
+					source && source !== 'user'
+						? `${typeof savedBy === 'string' ? savedBy : renderAuthor(savedBy)}${source === 'mcp' ? ' (via MCP)' : ' (with n8n Assistant)'}`
+						: savedBy,
 			},
 			ctx,
 		);
@@ -93,8 +97,8 @@ export class AgentDefinitionService {
 		ctx: OperationContext = {},
 		pending?: PendingSkillRefs,
 	): Promise<AgentDefinition> {
-		const tasks = await this.taskRepository.findByAgentId(agent.id);
-		if (!(await this.agentRepository.hasRevision(agent.id, agent.revision))) {
+		const tasks = await this.taskRepository.findByAgentId(agent.id, ctx);
+		if (!(await this.agentRepository.hasRevision(agent.id, agent.revision, ctx))) {
 			throw new ConflictError('Agent was modified concurrently; please retry');
 		}
 		const skillRefs = pending

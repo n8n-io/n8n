@@ -996,7 +996,7 @@ describe('AgentPublishService', () => {
 			activeVersion.schema as AgentJsonConfig;
 		expect(agent.schema).toEqual(publishedConfig);
 		expect(agent.name).toBe(schema.name);
-		expect(agent.versionId).toBe('published-v1');
+		expect(agent.versionId).not.toBe('published-v1');
 		expect(agent.tools).toEqual(activeVersion.tools);
 		// The skill refs are pinned to the versions that the published version ran.
 		expect(skillRefs.restoreDraftRefs).toHaveBeenCalledWith(

@@ -344,7 +344,7 @@ export class SkillService {
 				userId,
 				txCtx,
 			);
-			const followingIds = await this.skillAgents.markFollowersChanged(skillId, txCtx);
+			const followingIds = await this.skillAgents.markFollowersChanged(skillId, txCtx, userId);
 			const result = { versionId, version, created: true, skill, followingAgentIds: followingIds };
 			return { saved: result, following: followingIds };
 		});
