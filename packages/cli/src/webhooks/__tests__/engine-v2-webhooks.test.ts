@@ -1,6 +1,6 @@
 import type { StepSlots } from '@n8n/engine';
 import type { INode, WebhookResponseMode } from 'n8n-workflow';
-import { WorkflowOperationError } from 'n8n-workflow';
+import { FORM_NODE_TYPE, WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -123,18 +123,26 @@ describe('EngineV2Webhooks.toRun', () => {
 describe('EngineV2Webhooks.assertSupported on a resume', () => {
 	const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 
-	const assertResume = (responseMode: WebhookResponseMode, available = true) => {
+	const assertResume = (
+		responseMode: WebhookResponseMode,
+		available = true,
+		type = 'n8n-nodes-base.wait',
+	) => {
 		const proxy = mock<EngineDataPlaneProxyService>();
 		proxy.isAvailable.mockReturnValue(available);
 		new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy).assertSupported({
-			workflowStartNode: mock<INode>({ name: 'Wait', type: 'n8n-nodes-base.wait', parameters: {} }),
+			workflowStartNode: mock<INode>({ name: 'Wait', type, parameters: {} }),
 			responseMode,
 			executionId: EXECUTION_ID,
 		});
 	};
 
-	it.each(['onReceived', 'lastNode'] as const)('lets the waiting node answer with %s', (mode) => {
-		expect(() => assertResume(mode)).not.toThrow();
+	it('lets the waiting node answer with lastNode', () => {
+		expect(() => assertResume('lastNode')).not.toThrow();
+	});
+
+	it('skips the trigger checks, so a waiting Form node can resume', () => {
+		expect(() => assertResume('onReceived', true, FORM_NODE_TYPE)).not.toThrow();
 	});
 
 	it.each(['responseNode', 'formPage'] as const)(
@@ -145,6 +153,10 @@ describe('EngineV2Webhooks.assertSupported on a resume', () => {
 			);
 		},
 	);
+
+	it('refuses a response mode that engine v2 does not support', () => {
+		expect(() => assertResume('hostedChat')).toThrow("'hostedChat' response mode");
+	});
 
 	it('still needs the engine module', () => {
 		expect(() => assertResume('onReceived', false)).toThrow('N8N_ENABLED_MODULES');

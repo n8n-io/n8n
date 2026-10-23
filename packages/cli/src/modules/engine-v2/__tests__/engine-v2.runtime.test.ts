@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig } from '@n8n/config';
-import type { ExecutionResponseSender } from '@n8n/engine';
+import { mintResumeToken, type ExecutionResponseSender } from '@n8n/engine';
 import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -259,6 +259,7 @@ describe('EngineV2Runtime', () => {
 				resumeToken?: (context: { executionId: string }) => string;
 			};
 			expect(deps.resumeToken?.({ executionId: 'exec-1' })).toBe('token-for-exec-1');
+			expect(mintResumeToken).toHaveBeenCalledWith(resumeSecret, 'exec-1');
 		});
 
 		it('passes an unset secret through and gives the executor no minter', async () => {
