@@ -7,15 +7,21 @@ import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import type { Inclusion, ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
 import PromotionChangeCard from './PromotionChangeCard.vue';
 
-const props = defineProps<{
-	order: ResourceKey[];
-	graph: SelectionGraph;
-	direction: PromotionDirection;
-	inclusion: Inclusion;
-	entries: ReadonlyMap<ResourceKey, DetailEntry>;
-	inspectedKey?: ResourceKey;
-	blockers: BlockerIndex;
-}>();
+const props = withDefaults(
+	defineProps<{
+		order: ResourceKey[];
+		graph: SelectionGraph;
+		direction: PromotionDirection;
+		inclusion: Inclusion;
+		entries: ReadonlyMap<ResourceKey, DetailEntry>;
+		inspectedKey?: ResourceKey;
+		blockers: BlockerIndex;
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
+
+const activeWorkflow = defineModel<ResourceKey | undefined>('activeWorkflow');
 
 const emit = defineEmits<{
 	retry: [key: ResourceKey];
@@ -31,7 +37,7 @@ const resources = computed(() =>
 	}),
 );
 
-// Scrolls the card to the top. An instant jump keeps loading cards from pushing it away.
+// Tree navigation scrolls to the requested card. Card toggles keep their position.
 async function scrollToCard(key: ResourceKey | undefined) {
 	if (!key) return;
 	await nextTick();
@@ -57,6 +63,10 @@ defineExpose({ scrollToCard });
 			:entry="entries.get(resource.key)"
 			:inspected="inspectedKey === resource.key"
 			:blockers="blockersOf(blockers, resource)"
+			:diff-active="activeWorkflow === resource.key"
+			:selectable="selectable"
+			@activate-diff="activeWorkflow = resource.key"
+			@deactivate-diff="activeWorkflow = undefined"
 			@inspect="emit('inspect', $event)"
 			@retry="emit('retry', resource.key)"
 			@refresh="emit('refresh')"

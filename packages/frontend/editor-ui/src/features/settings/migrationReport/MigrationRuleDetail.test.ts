@@ -1515,6 +1515,86 @@ describe('MigrationRuleDetail', () => {
 			expect(screen.getByTestId('migration-rule-filters-count')).toHaveTextContent('1');
 		});
 
+		describe('project filter', () => {
+			const projectWorkflows = [
+				{
+					...mockWorkflowWithIssue,
+					id: 'wf-1',
+					name: 'Billing sync',
+					homeProjectId: 'p-2',
+					homeProjectName: 'Sales',
+					homeProjectType: 'team' as const,
+				},
+				{
+					...mockWorkflowWithIssue,
+					id: 'wf-2',
+					name: 'Lead import',
+					homeProjectId: 'p-1',
+					homeProjectName: 'Finance',
+					homeProjectType: 'team' as const,
+				},
+				{
+					...mockWorkflowWithIssue,
+					id: 'wf-3',
+					name: 'My draft',
+					homeProjectId: 'p-3',
+					homeProjectName: 'Ada Lovelace <ada@example.com>',
+					homeProjectType: 'personal' as const,
+				},
+			];
+
+			const projectOptions = async (content: HTMLElement) => {
+				await userEvent.click(within(content).getByTestId('migration-rule-filter-project'));
+				return await screen.findAllByTestId('migration-rule-filter-project-item');
+			};
+
+			it('should list Personal first and the team projects by name', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({ affectedWorkflows: projectWorkflows }),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await waitFor(() => expect(screen.getByText('My draft')).toBeInTheDocument());
+
+				const options = await projectOptions(await openFilters());
+				expect(options.map((option) => option.textContent?.trim())).toEqual([
+					'Personal',
+					'Finance',
+					'Sales',
+				]);
+			});
+
+			it('should not list Personal when no workflow is in a personal project', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({ affectedWorkflows: projectWorkflows.slice(0, 2) }),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await waitFor(() => expect(screen.getByText('Lead import')).toBeInTheDocument());
+
+				const options = await projectOptions(await openFilters());
+				expect(options.map((option) => option.textContent?.trim())).toEqual(['Finance', 'Sales']);
+			});
+
+			it('should show only the workflows of the picked project', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({ affectedWorkflows: projectWorkflows }),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await waitFor(() => expect(screen.getByText('My draft')).toBeInTheDocument());
+
+				const options = await projectOptions(await openFilters());
+				const finance = options.find((option) => option.textContent?.includes('Finance'));
+				if (!finance) throw new Error('No Finance option');
+				await userEvent.click(finance);
+
+				await waitFor(() => {
+					expect(screen.getByText('Lead import')).toBeInTheDocument();
+					expect(screen.queryByText('Billing sync')).not.toBeInTheDocument();
+					expect(screen.queryByText('My draft')).not.toBeInTheDocument();
+				});
+				expect(screen.getByTestId('migration-rule-filters-count')).toHaveTextContent('1');
+			});
+		});
+
 		it('should filter workflows by executions and clear every filter', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(screen.getByText('Test Workflow 2')).toBeInTheDocument());

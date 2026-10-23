@@ -22,7 +22,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
-import PromotionBanners from '@/features/integrations/promotions.ee/components/PromotionBanners.vue';
 import PromotionPreviewBadges from '@/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -546,7 +545,6 @@ const onSelect = (action: string, source: CreateSource) => {
 				:additional-tabs="customProjectTabs"
 			/>
 		</div>
-		<PromotionBanners />
 	</div>
 </template>
 

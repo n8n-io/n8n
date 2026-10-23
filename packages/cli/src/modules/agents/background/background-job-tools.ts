@@ -13,7 +13,7 @@ import {
 	BACKGROUND_PAUSE_USER_TURN_KEY,
 	PARENT_TASK_CANCELLED_REASON,
 } from './sub-agent-background-state';
-import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
+import { EXECUTION_METADATA_KEY, hostMetadataExecutionId } from '../types/agent-queued-message';
 import type {
 	BackgroundSubAgentRunContext,
 	SubAgentBackgroundRunner,
@@ -89,6 +89,7 @@ export function createBackgroundSubAgentHandler(
 				note: 'Background jobs need a valid parent identity; none is active.',
 			};
 		}
+		const parentExecutionId = hostMetadataExecutionId(ctx.persistence?.hostMetadata);
 		const receipt = await options.backgroundRunner.spawn(
 			{
 				subAgentId: source.agentId,
@@ -101,6 +102,7 @@ export function createBackgroundSubAgentHandler(
 					? { difficulty: input.difficulty }
 					: {}),
 				parentThreadId,
+				...(parentExecutionId !== undefined ? { parentExecutionId } : {}),
 				parentResourceId,
 				parentSandboxPrincipalHash: sandboxScope.principalHash,
 				parentMessageContext: readIntegrationMessageContext(ctx.persistence) ?? null,
