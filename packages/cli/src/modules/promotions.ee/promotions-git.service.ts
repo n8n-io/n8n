@@ -588,6 +588,135 @@ export class PromotionsGitService {
 		}
 	}
 
+	/** The blob SHA of each file under `directory` at the commit, by repository path. */
+	async listFilesAtCommit({
+		paths,
+		branchName,
+		environmentId,
+		commitSha,
+		directory,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'> & {
+		commitSha: string;
+		directory: string;
+	}): Promise<Map<string, string>> {
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const tree = await git.raw(['ls-tree', '-r', '-l', '-z', commitSha, '--', `${directory}/`]);
+				return new Map(
+					parseTreeEntries(tree, directory).map(({ path: entryPath, objectName }) => [
+						`${directory}/${entryPath}`,
+						objectName,
+					]),
+				);
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Makes the commits of one review available in the checkout and returns its baseline.
+	 * An open review diffs against the merge base with the latest target branch, so it always
+	 * fetches: an old target branch gives an old merge base after a rebase. The commits of a
+	 * merged or closed review do not change, so it fetches only when the checkout lacks one.
+	 */
+	async fetchReviewCommits({
+		headRef,
+		headCommitSha,
+		baseline,
+		...operation
+	}: GitOperation & {
+		/** The host ref that holds the review head. */
+		headRef: string;
+		headCommitSha: string;
+		/** A pinned baseline can name the target branch, which can still hold the commits. */
+		baseline: { targetBranchName: string } | { commitSha: string; targetBranchName?: string };
+	}): Promise<{ baselineCommitSha: string }> {
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
+		const commitShas = [headCommitSha, ...('commitSha' in baseline ? [baseline.commitSha] : [])];
+		if (!commitShas.every((sha) => COMMIT_SHA.test(sha))) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		if (baseline.targetBranchName) await this.validateBranchName(baseline.targetBranchName);
+		const missingCommits = new BadRequestError(
+			'The remote no longer has the commits of this review. Open the review on the Git host.',
+		);
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const hasCommits = async () => {
+					for (const sha of commitShas) if (!(await hasCommit(git, sha))) return false;
+					return true;
+				};
+				const remoteGit = {
+					remoteUrl,
+					credentials,
+					repoDir: paths.repositoryFolder,
+					sshDir: paths.sshDir,
+				};
+				const fetch = async (refspecs: string[]) =>
+					await this.withGit(
+						remoteGit,
+						// --progress keeps the stall-timeout timer fed during a healthy transfer.
+						async (remote) => await remote.raw(['fetch', '--progress', 'origin', ...refspecs]),
+					);
+				// A fetch of a ref that the remote does not have fails, so check the refs first.
+				const listRemoteRefs = async (refs: string[]) => {
+					const output = await this.withGit(
+						remoteGit,
+						async (remote) => await remote.raw(['ls-remote', 'origin', ...refs]),
+					);
+					return new Set(
+						output
+							.split('\n')
+							.map((line) => line.split('\t')[1])
+							.filter(Boolean),
+					);
+				};
+
+				if ('commitSha' in baseline) {
+					if (!(await hasCommits())) {
+						// GitLab deletes the head ref 14 days after a review closes or merges. The commits
+						// of a merged review can still be on the target branch, so fetch what is left.
+						const sources = [{ ref: headRef, refspec: headRef }];
+						const target = baseline.targetBranchName;
+						if (target) {
+							const ref = `refs/heads/${target}`;
+							sources.push({ ref, refspec: `+${ref}:refs/remotes/origin/${target}` });
+						}
+						const existing = await listRemoteRefs(sources.map(({ ref }) => ref));
+						const available = sources.filter(({ ref }) => existing.has(ref));
+						if (available.length > 0) await fetch(available.map(({ refspec }) => refspec));
+					}
+					if (!(await hasCommits())) throw missingCommits;
+					return { baselineCommitSha: baseline.commitSha };
+				}
+
+				const targetRef = `refs/remotes/origin/${baseline.targetBranchName}`;
+				await fetch([headRef, `+refs/heads/${baseline.targetBranchName}:${targetRef}`]);
+				if (!(await hasCommits())) throw missingCommits;
+				let mergeBase = '';
+				try {
+					mergeBase = (await git.raw(['merge-base', headCommitSha, targetRef])).trim();
+				} catch {
+					// Git exits with an error when the commits share no history.
+				}
+				if (!COMMIT_SHA.test(mergeBase)) {
+					throw new BadRequestError(
+						`The review has no common commit with the target branch ${baseline.targetBranchName}.`,
+					);
+				}
+				return { baselineCommitSha: mergeBase };
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
 	/**
 	 * Reads every file under `directory` at the commit, keyed by its path inside `directory`.
 	 * One `cat-file --batch` reads all files: a `git show` per file takes seconds for a large package.
