@@ -915,6 +915,32 @@ describe('earlier writes ledger', () => {
 				'- [1] PUT /v4/x ("A")\n- [2] PUT /v4/x ("B")',
 			);
 		});
+
+		it('drops the oldest shown writes when the newest 8 exceed the total budget', () => {
+			// Each body is at the 600-character cut, so each line is about 630
+			// characters: the newest 8 are about 5,000, and only the newest 6 fit in 4,000.
+			const writes = Array.from({ length: 12 }, (_, i) => ({
+				...entry,
+				nodeName: `W${i + 1}`,
+				body: `row-${i + 1}-`.padEnd(600, 'x'),
+			}));
+
+			const ledger = formatWriteLedger(writes, 'sheets.googleapis.com') ?? '';
+			const lines = ledger.split('\n');
+
+			expect(lines[0]).toBe('(6 earlier writes to this service not shown)');
+			expect(lines.slice(1).map((line) => line.slice(0, line.indexOf(' PUT')))).toEqual([
+				'- [7]',
+				'- [8]',
+				'- [9]',
+				'- [10]',
+				'- [11]',
+				'- [12]',
+			]);
+			expect(ledger).not.toContain('row-6-');
+			expect(ledger).toContain('- [12] PUT /v4/x ("W12") body: row-12-');
+			expect(lines.slice(1).join('\n').length).toBeLessThanOrEqual(4000);
+		});
 	});
 });
 
