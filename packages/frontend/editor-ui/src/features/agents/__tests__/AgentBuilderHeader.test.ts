@@ -38,7 +38,9 @@ vi.mock('vue-router', () => ({
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
-vi.mock('@n8n/design-system', () => ({
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
+		.useDropdownSearch,
 	N8nAssistantIcon: {
 		name: 'N8nAssistantIcon',
 		template: '<i data-testid="stub-assistant-icon" />',
@@ -80,13 +82,27 @@ vi.mock('@n8n/design-system', () => ({
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
 		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
-		props: ['items', 'placement', 'extraPopperClass'],
-		emits: ['select'],
+		props: {
+			items: Array,
+			placement: String,
+			extraPopperClass: String,
+			searchable: Boolean,
+			searchPlaceholder: String,
+			emptyText: String,
+		},
+		emits: ['select', 'search'],
 	},
 	'n8n-dropdown-menu': {
 		name: 'N8nDropdownMenu',
 		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
-		props: ['items', 'placement', 'extraPopperClass'],
+		props: {
+			items: Array,
+			placement: String,
+			extraPopperClass: String,
+			searchable: Boolean,
+			searchPlaceholder: String,
+			emptyText: String,
+		},
 		emits: ['select'],
 	},
 	N8nActionDropdown: {
@@ -97,13 +113,17 @@ vi.mock('@n8n/design-system', () => ({
 	},
 }));
 
+vi.mock('../components/AgentPublishButton.vue', () => ({
+	default: { name: 'AgentPublishButton', template: '<div />' },
+}));
+
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 
 type DropdownStubWrapper = VueWrapper<{
 	items: Array<{ id: string; label?: string; disabled?: boolean }>;
 	extraPopperClass?: string;
 	$options: unknown;
-	$emit: (event: 'select', value: string) => void;
+	$emit: (event: 'select' | 'search', value: string) => void;
 }>;
 
 function getDropdown(wrapper: ReturnType<typeof mountHeader>, testId: string) {
@@ -289,6 +309,47 @@ describe('AgentBuilderHeader', () => {
 		await flushPromises();
 		const options = getSwitcherOptions(wrapper);
 		expect(options.map((option) => option.id)).toEqual(['a2']);
+	});
+
+	it('filters the switcher by agent name and restores the list when search clears', async () => {
+		agentsListRef.value = [
+			baseAgent,
+			{ ...baseAgent, id: 'a2', name: 'Researcher' },
+			{ ...baseAgent, id: 'a3', name: 'News brief' },
+		];
+		const wrapper = mountHeader();
+		const switcher = getDropdown(wrapper, 'agent-header-switcher');
+
+		expect(switcher.props()).toMatchObject({
+			searchable: true,
+			searchPlaceholder: 'agents.builder.header.switcher.searchPlaceholder',
+			emptyText: 'agents.builder.header.switcher.noMatch',
+		});
+		switcher.vm.$emit('search', ' RESEARCH ');
+		await flushPromises();
+		expect(getSwitcherOptions(wrapper).map((item) => item.id)).toEqual(['a2']);
+
+		switcher.vm.$emit('select', 'a2');
+		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
+
+		switcher.vm.$emit('search', 'Darwin');
+		await flushPromises();
+		expect(getSwitcherOptions(wrapper)).toEqual([]);
+		expect(wrapper.find('[data-testid="agent-header-new-agent"]').exists()).toBe(true);
+
+		switcher.vm.$emit('search', '');
+		await flushPromises();
+		expect(getSwitcherOptions(wrapper).map((item) => item.id)).toEqual(['a2', 'a3']);
+	});
+
+	it('excludes the empty placeholder from search results', async () => {
+		agentsListRef.value = [baseAgent];
+		const wrapper = mountHeader();
+
+		getDropdown(wrapper, 'agent-header-switcher').vm.$emit('search', 'switcher.empty');
+		await flushPromises();
+
+		expect(getSwitcherOptions(wrapper)).toEqual([]);
 	});
 
 	it('shows a disabled "No other agents" entry when the project has only this agent', async () => {
