@@ -155,6 +155,7 @@ describe('AgentSkillsService', () => {
 				[skill, second],
 				'user-1',
 				'project',
+				'agent',
 				{},
 			);
 			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
@@ -196,6 +197,24 @@ describe('AgentSkillsService', () => {
 			expect(skillsTelemetry.created).toHaveBeenCalledWith('user-1', ['skill_new1'], source, 'ai');
 		});
 
+		it.each([
+			['builder', 'agent'],
+			['mcp', 'mcp'],
+		] as const)('stores a skill that %s wrote with the %s source', async (modifiedBy, source) => {
+			givenAgent({ schema: baseConfig });
+
+			await service.createAndAttachSkills(agentId, projectId, [skill], { user, modifiedBy });
+
+			expect(skillRefs.createSkills).toHaveBeenCalledWith(
+				expect.anything(),
+				[skill],
+				'user-1',
+				'project',
+				source,
+				{},
+			);
+		});
+
 		it('reports nothing with the skills hub off', async () => {
 			Object.assign(skillRefs, { usesSkillsHub: false });
 			givenAgent({ schema: baseConfig });
@@ -221,6 +240,7 @@ describe('AgentSkillsService', () => {
 				[{ ...skill, allowedTools: ['search'] }],
 				'user-1',
 				'project',
+				'agent',
 				{},
 			);
 		});
@@ -241,6 +261,7 @@ describe('AgentSkillsService', () => {
 				[skill],
 				'user-1',
 				'project',
+				'agent',
 				{},
 			);
 		});
@@ -300,6 +321,7 @@ describe('AgentSkillsService', () => {
 				expect.anything(),
 				[skill],
 				'user-1',
+				'agent',
 				'agent',
 				{},
 			);

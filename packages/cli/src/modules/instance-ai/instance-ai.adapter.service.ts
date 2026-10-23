@@ -154,6 +154,7 @@ import {
 	jsonParse,
 	createRunExecutionData,
 	calculateWorkflowChecksum,
+	isMcpAiGatewayAuthentication,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
@@ -168,7 +169,11 @@ import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import {
+	getExecutionRedaction,
+	loadExecutionForViewer,
+} from '@/executions/execution-viewer-reader';
+import { type CredentialRefusal, findCredentialRefusal } from '@/executions/pre-execution-checks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
@@ -189,6 +194,7 @@ import {
 import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { isAiGatewayMcpServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import {
 	getModuleDisabledNodeTypes,
@@ -224,7 +230,6 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { isAgentsAccessEnabled } from './agents-access';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
-import { getExecutionRedaction, loadExecutionForViewer } from './instance-ai-execution-reader';
 import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
@@ -876,9 +881,13 @@ export class InstanceAiAdapterService {
 		// Templated rows are dropped rather than offered: this path reads credentials
 		// without resolving expressions, so `createConnection` refuses them. Offering
 		// one would walk the user to a credential picker and then an error.
+		// Gateway-only rows are dropped for the same reason: this path connects with a
+		// stored credential only.
+		const isAiGatewayOnly = (server: McpRegistrySearchResult) =>
+			server.authentication === 'none' && server.credential === AI_GATEWAY_MANAGED_TAG;
 		const toSummaries = (servers: McpRegistrySearchResult[]): McpRegistryServerSummary[] =>
 			servers
-				.filter((server) => !server.isTemplated)
+				.filter((server) => !server.isTemplated && !isAiGatewayOnly(server))
 				.map((server) => ({
 					slug: server.slug,
 					title: server.title,
@@ -901,7 +910,7 @@ export class InstanceAiAdapterService {
 				const servers = await Container.get(McpRegistryService).getBySlugs(slugs);
 				return servers
 					.filter((server) => {
-						if (server.status !== 'active') return false;
+						if (server.status !== 'active' || isAiGatewayMcpServer(server)) return false;
 						const connection = resolveMcpRegistryConnection(server);
 						return connection !== null && !connection.isTemplated;
 					})
@@ -909,7 +918,10 @@ export class InstanceAiAdapterService {
 						slug: server.slug,
 						title: server.title,
 						description: server.tagline,
-						usesCredentials: getMcpRegistryCredentialOptions(server),
+						// A paired server keeps its own options: this path never offers Gateway credits.
+						usesCredentials: getMcpRegistryCredentialOptions(server).filter(
+							({ credentialType }) => !isMcpAiGatewayAuthentication(credentialType),
+						),
 						tools: server.tools.map((tool) => tool.name),
 					}));
 			},
@@ -1716,12 +1728,13 @@ export class InstanceAiAdapterService {
 			},
 
 			async getLatestRunData(workflowId: string) {
-				// Caller must be able to read the workflow to see its execution history.
-				// Silent null on no-access keeps validation usable even when access was
-				// revoked between fetches — validation degrades gracefully instead of
-				// throwing in the middle of a per-node loop.
+				// Caller must be able to read the workflow's executions, the same scopes
+				// the executions API requires. Silent null on no-access keeps validation
+				// usable even when access was revoked between fetches — validation
+				// degrades gracefully instead of throwing in the middle of a per-node loop.
 				const accessible = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
+					'execution:read',
 				]);
 				if (!accessible) return null;
 
@@ -2144,11 +2157,13 @@ export class InstanceAiAdapterService {
 
 		/**
 		 * Verify that the user has access to the workflow that owns this execution.
+		 * Reads require `execution:read`, as in the executions API, because a
+		 * custom role can grant `workflow:read` without it.
 		 * Returns the execution or throws "not found" if unauthorized/missing.
 		 */
 		const assertExecutionAccess = async (
 			executionId: string,
-			scopes: Scope[] = ['workflow:read'],
+			scopes: Scope[] = ['workflow:read', 'execution:read'],
 		) => {
 			const execution = await executionRepository.findSingleExecution(executionId, {
 				includeData: false,
@@ -2179,31 +2194,6 @@ export class InstanceAiAdapterService {
 			return execution;
 		};
 
-		/**
-		 * The credential check `WorkflowRunner.run` makes for this user, made up
-		 * front for its message. The runner saves a refused run as a failed
-		 * execution, and redaction strips the reason from that execution when the
-		 * credential is one this user cannot use. The runner still makes the
-		 * check that counts.
-		 */
-		const findCredentialRefusal = async (
-			workflowId: string,
-			nodes: INode[],
-		): Promise<CredentialRefusal | undefined> => {
-			try {
-				await Container.get(CredentialsPermissionChecker).check(workflowId, nodes, user.id);
-				return undefined;
-			} catch (error) {
-				if (!(error instanceof UserError)) return undefined;
-				const node: unknown = Reflect.get(error, 'node');
-				return {
-					message: error.message,
-					...(error.description ? { description: error.description } : {}),
-					...(isNodeLike(node) ? { nodeName: node.name } : {}),
-				};
-			}
-		};
-
 		/** The outcome of a run, read back for the agent. Missing data reads as `unknown`. */
 		const readOutcome = async (executionId: string, subNodeTarget?: string) => {
 			const execution = await loadExecutionForViewer(executionId, user);
@@ -2220,10 +2210,10 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
-				const scope: Scope = 'workflow:read';
+				const scope: Scope = 'execution:read';
 
 				// Visibility from role scopes, not the sharing license — mirrors
-				// ExecutionService.buildSharingOptions and the REST executions list.
+				// ExecutionListService.buildSharingOptions and the REST executions list.
 				const projectRoles = await roleService.rolesWithScope('project', [scope]);
 				const workflowRoles = await roleService.rolesWithScope('workflow', [scope]);
 				const sharingOptions: ExecutionSummaries.RangeQuery['sharingOptions'] = {
@@ -2301,7 +2291,7 @@ export class InstanceAiAdapterService {
 					? omitWorkflowConnections(workflow.connections, options.omitConnections)
 					: workflow.connections;
 
-				const credentialRefusal = await findCredentialRefusal(workflowId, nodes);
+				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
 
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
@@ -2789,7 +2779,7 @@ export class InstanceAiAdapterService {
 					};
 				};
 
-				const credentialRefusal = await findCredentialRefusal(workflowId, nodes);
+				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
 
 				try {
 					const executionId = await workflowRunner.run(runData);
@@ -4875,15 +4865,6 @@ export async function extractExecutionResult(
 	return (await extractExecutionOutcome(execution, includeOutputData, nodeTypes)).result;
 }
 
-/** Why `WorkflowRunner.run` refuses to run a workflow for a user. */
-type CredentialRefusal = { message: string; description?: string; nodeName?: string };
-
-function isNodeLike(value: unknown): value is { name: string } {
-	return (
-		typeof value === 'object' && value !== null && typeof Reflect.get(value, 'name') === 'string'
-	);
-}
-
 /**
  * Put the refusal reason on a refused run's result, since redaction can reduce
  * the saved error to its type. Telemetry gets the message without the
@@ -5160,6 +5141,17 @@ function capItemsBySerializedSize<T>(items: T[], maxBytes: number): T[] {
 const EXECUTE_NODE_DETAILS_SUPPRESSED =
 	'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)';
 
+/** What the model can do next about a redacted one-off node run. */
+function describeExecuteNodeRedaction(reason: string): string {
+	if (reason === 'credential_inaccessible') {
+		return (
+			'The node used a credential that is not owned by or shared with the user, so n8n hides the data. ' +
+			'Do not run the node again with this credential. Use a credential that the user owns or that is shared with them.'
+		);
+	}
+	return 'n8n hides the data of every run like this one, so do not run the node again to see it. Tell the user that n8n redacted the data.';
+}
+
 /**
  * The standalone execution row is deleted after the result is read, so unlike
  * workflow runs there is no get-node-output fallback for truncated or
@@ -5169,8 +5161,31 @@ export function redactExecuteNodeResult(
 	result: ExecuteNodeResult,
 	allowSendingParameterValues: boolean,
 ): InstanceAiExecuteNodeResult {
+	if (result.status === 'redacted') {
+		// The execution row is deleted after the read, so nothing is left to reveal.
+		const redaction = { reason: result.reason, canReveal: false };
+		const guidance = describeExecuteNodeRedaction(result.reason);
+		if (result.failed) {
+			return {
+				status: 'error',
+				error: {
+					message: formatRedactedError(result.error ?? { type: '' }),
+					description: guidance,
+					...(result.error?.type ? { nodeErrorType: result.error.type } : {}),
+				},
+				redaction,
+			};
+		}
+		return {
+			status: 'success',
+			output: '',
+			outputSuppressed: `The node executed successfully, but n8n redacted its output for this user (${result.reason}). ${guidance}`,
+			redaction,
+		};
+	}
+
 	if (result.status === 'error') {
-		const { message, description, nodeErrorType } = result.error;
+		const { message, description, nodeErrorType, refused } = result.error;
 		const cappedDescription =
 			description && description.length > MAX_ERROR_CHARS
 				? `${description.slice(0, MAX_ERROR_CHARS)}…`
@@ -5179,11 +5194,13 @@ export function redactExecuteNodeResult(
 			status: 'error',
 			error: {
 				message,
-				description: allowSendingParameterValues
-					? cappedDescription
-					: description
-						? EXECUTE_NODE_DETAILS_SUPPRESSED
-						: undefined,
+				// A refusal is n8n's own text, so the privacy setting does not apply to it.
+				description:
+					allowSendingParameterValues || refused
+						? cappedDescription
+						: description
+							? EXECUTE_NODE_DETAILS_SUPPRESSED
+							: undefined,
 				nodeErrorType,
 			},
 		};

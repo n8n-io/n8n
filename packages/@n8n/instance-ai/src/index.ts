@@ -537,6 +537,8 @@ export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspac
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
+export const isSandboxWorkspaceInitialized: typeof SandboxSetupMod.isSandboxWorkspaceInitialized =
+	lazyFunction(() => loadSandboxSetup().isSandboxWorkspaceInitialized);
 export type BuilderTemplatesService = BuilderTemplatesServiceMod.BuilderTemplatesService;
 export const BuilderTemplatesService: typeof BuilderTemplatesServiceMod.BuilderTemplatesService =
 	lazyClass(() => loadBuilderTemplatesService().BuilderTemplatesService);
@@ -841,9 +843,7 @@ export type {
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
 	InstanceAiSkillService,
-	ComputerUseChannel,
-	ComputerUseChannelState,
-	ComputerUseState,
+	BrowserUseState,
 } from './types';
 export {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,

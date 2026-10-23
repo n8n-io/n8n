@@ -276,6 +276,11 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		return buildWhatsAppOriginDraft(decoded);
 	}
 
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const config = {
 			accessToken: this.extractAccessToken(ctx.credential),

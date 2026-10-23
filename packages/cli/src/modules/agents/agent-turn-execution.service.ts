@@ -18,7 +18,7 @@ import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
-import type { AgentTurnFinalizeOutcome } from './types/agent-turn-outcome';
+import type { AgentTurnFinalizeOutcome, FormattedTurnError } from './types/agent-turn-outcome';
 import { AgentToolApprovalService } from './agent-tool-approval.service';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
@@ -71,10 +71,18 @@ interface ExecuteTurnConfig {
 	onSettled?: (suspended: boolean) => Promise<void>;
 	/**
 	 * Called once when the outcome of the turn is known, before the runtime
-	 * stores the turn record. The runtime does not call it when the turn has
-	 * no execution record.
+	 * stores the turn record. Events that the host records here are stored
+	 * with the turn. The runtime does not call it when the turn has no
+	 * execution record.
 	 */
 	onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
+	/**
+	 * Map a turn error to the text to store on the execution. Return
+	 * `undefined` to store the raw error. Must not reject.
+	 */
+	formatError?: (error: unknown) => Promise<FormattedTurnError | undefined>;
+	/** Called once with the recorder of the turn, so that a host can record its own events. */
+	onRecorderCreated?: (recorder: ExecutionRecorder) => void;
 }
 
 interface TurnExecutionState {
@@ -138,8 +146,8 @@ export class AgentTurnExecutionService {
 			config.backgroundJobSignal,
 			config.admittedExecution?.startedAt,
 		);
-
 		try {
+			config.onRecorderCreated?.(recorder);
 			turn = await config.prepare();
 			const preparedTurn = turn;
 			if (config.chatSurface !== undefined) {
@@ -161,7 +169,8 @@ export class AgentTurnExecutionService {
 				return;
 
 			state.executionError = error;
-			recorder.record({ type: 'error', error });
+			const formatted = await config.formatError?.(error);
+			recorder.record({ type: 'error', error: formatted?.message ?? error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
@@ -272,7 +281,12 @@ export class AgentTurnExecutionService {
 				chunk = { ...chunk, finishReason: 'cancelled' };
 			}
 
-			recorder.record(chunk);
+			if (chunk.type === 'error') {
+				const formatted = await config.formatError?.(chunk.error);
+				recorder.record({ ...chunk, error: formatted?.message ?? chunk.error });
+			} else {
+				recorder.record(chunk);
+			}
 
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;
@@ -608,10 +622,14 @@ export class AgentTurnExecutionService {
 		// Forward side-call model costs (title generation, observation-log
 		// observer/reflector, episodic-memory model calls) onto this execution
 		// row and its thread. The SDK prices each call; the host only adds the
-		// cost. Best-effort and idempotent per reportId.
+		// cost. Best-effort and idempotent per reportId. A caller's own callback
+		// still receives every report, for example to bill it. The SDK awaits
+		// that callback and logs its failure, so the caller decides how to handle it.
 		const threadId = config.context.threadId;
-		turn.options.onSideCallUsage = (report: SideCallUsageReport) => {
+		const callerOnSideCallUsage = turn.options.onSideCallUsage;
+		turn.options.onSideCallUsage = async (report: SideCallUsageReport) => {
 			void this.agentExecutionService.recordSideCallUsage(executionId, threadId, report);
+			await callerOnSideCallUsage?.(report);
 		};
 		return await this.startTurn(turn, config, recorder, state);
 	}

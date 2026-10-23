@@ -4,6 +4,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { proxyFetch } from '@n8n/ai-utilities';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type {
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	INode,
 	LiteralMcpRegistryConnection,
@@ -21,6 +22,7 @@ import {
 	getAuthHeaders,
 	isMcpContentArray,
 	mapToNodeOperationError,
+	tryRefreshAiGatewayToken,
 	tryRefreshOAuth2Token,
 } from '../utils';
 
@@ -55,6 +57,39 @@ describe('utils', () => {
 	describe('isMcpContentArray', () => {
 		it('should reject sparse arrays', () => {
 			expect(isMcpContentArray(new Array(1))).toBe(false);
+		});
+	});
+
+	describe('tryRefreshAiGatewayToken', () => {
+		const aiGatewayType = 'n8nConnectFirecrawlMcpAiGatewayApi';
+
+		it('should replace the expired token and keep the other headers', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({ token: 'fresh' });
+
+			const headers = await tryRefreshAiGatewayToken(ctx, aiGatewayType, {
+				Foo: 'bar',
+				authorization: 'Bearer expired',
+			});
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith(aiGatewayType);
+			expect(headers).toEqual({ Foo: 'bar', Authorization: 'Bearer fresh' });
+		});
+
+		it('should return null when the credential has no token', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({});
+
+			expect(await tryRefreshAiGatewayToken(ctx, aiGatewayType)).toBeNull();
+		});
+
+		it('should throw the mint error instead of returning null', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockRejectedValue(new Error('No Gateway credits left'));
+
+			await expect(tryRefreshAiGatewayToken(ctx, aiGatewayType)).rejects.toThrow(
+				'No Gateway credits left',
+			);
 		});
 	});
 
@@ -321,6 +356,27 @@ describe('utils', () => {
 				headers: { Authorization: 'Bearer access-token' },
 				credentials,
 			});
+		});
+
+		it.each<{
+			case: string;
+			credentials: ICredentialDataDecryptedObject;
+			headers?: Record<string, string>;
+		}>([
+			{
+				case: 'the minted token',
+				credentials: { token: 'minted' },
+				headers: { Authorization: 'Bearer minted' },
+			},
+			{ case: 'no headers without a token', credentials: {}, headers: undefined },
+		])('should return $case for a Gateway credits credential', async ({ credentials, headers }) => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'n8nConnectFirecrawlMcpAiGatewayApi');
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith('n8nConnectFirecrawlMcpAiGatewayApi');
+			expect(result).toEqual(headers ? { headers, credentials } : { credentials });
 		});
 
 		it('should return the headers and credentials for multipleHeadersAuth', async () => {

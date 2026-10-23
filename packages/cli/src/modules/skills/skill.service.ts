@@ -1,6 +1,11 @@
 import { AGENT_SKILL_NAME_MAX_LENGTH, skillNameKey, type AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectScopeService } from '@n8n/backend-services';
+import {
+	ProjectScopeService,
+	type AssistantSkillContext,
+	type AssistantSkillContent,
+	type AssistantSkillSummary,
+} from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
@@ -106,7 +111,7 @@ export type SkillMoveOptions = {
 
 /**
  * The rules of skills: which version a skill ref runs, save, edit permission, moves and
- * the delete guard. The runtime loads skills by id with no permission check. What
+ * the delete guard. The agent runtime loads skills by id with no permission check. What
  * depends on agents (who uses a skill, the project of an agent skill) comes from
  * `SkillAgentsProxy`.
  */
@@ -121,6 +126,53 @@ export class SkillService {
 	) {}
 
 	// ---------------------------------------------------------------- reads
+
+	async listForAssistant(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
+		return await this.skillRepository.findAssistantSkillSummaries(
+			await this.authorizedAssistantProject(context),
+		);
+	}
+
+	async readForAssistant(
+		context: AssistantSkillContext,
+		skillId: string,
+	): Promise<AssistantSkillContent | null> {
+		const projectId = await this.authorizedAssistantProject(context);
+		const row = await this.skillRepository.findAssistantSkill(skillId, projectId);
+		if (!row) return null;
+		const { skill, version, files } = row;
+		if (
+			skill.agentId !== null ||
+			!skill.availableToAssistant ||
+			!(await this.canAccess(context.user, skill, 'read'))
+		)
+			return null;
+		const skillProjectId = skill.projectId;
+		if (skillProjectId !== null && skillProjectId !== projectId) return null;
+		return {
+			id: skill.id,
+			projectId: skillProjectId,
+			name: version.name,
+			description: version.description,
+			versionId: version.id,
+			version: version.version,
+			instructions: version.instructions,
+			frontmatter: version.frontmatter,
+			files: files.map(({ path, content }) => ({ path, content })),
+		};
+	}
+
+	private async authorizedAssistantProject({
+		user,
+		projectId,
+	}: AssistantSkillContext): Promise<string | null> {
+		if (!projectId) return null;
+		const projects = await this.projectScopeService.getProjectIds(user, [
+			'projectSkill:list',
+			'projectSkill:read',
+		]);
+		return projects === null || projects.includes(projectId) ? projectId : null;
+	}
 
 	/**
 	 * What an agent draft runs, keyed by ref id: the latest version, or the pinned version
@@ -210,6 +262,28 @@ export class SkillService {
 		);
 		this.logger.debug('Created skill', { skillId: id });
 		return id;
+	}
+
+	async setAssistantAvailability(
+		skillId: string,
+		available: boolean,
+		checkedTarget: SkillTarget,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.skillRepository.lockForEdit([skillId], txCtx);
+			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
+			if (!skill) throw new NotFoundError('Skill not found');
+			if (skill.projectId !== checkedTarget.projectId || skill.agentId !== checkedTarget.agentId) {
+				throw new ConflictError('The skill scope changed. Reload the skill and try again.');
+			}
+			if (available && skill.agentId !== null) {
+				throw new UserError(
+					"The n8n Assistant can't use skills scoped to an agent. Move the skill to a project or the instance first.",
+				);
+			}
+			await this.skillRepository.setAssistantAvailability(skillId, available, txCtx);
+		});
 	}
 
 	/**

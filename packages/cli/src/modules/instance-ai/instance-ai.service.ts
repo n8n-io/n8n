@@ -17,7 +17,6 @@ import {
 	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
-	type ComputerUseChannel,
 	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -177,6 +176,7 @@ import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
+import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
 import { isAgentsAccessEnabled } from './agents-access';
 import {
 	INSTANCE_CONTEXT_CURSOR,
@@ -185,9 +185,8 @@ import {
 	toContextInjection,
 	shouldTraceContextInjection,
 } from './instance-context.service';
-import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
+import { resolveBrowserUseState } from './browser/browser-use-availability';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
-import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -199,7 +198,6 @@ import {
 	getAgentErrorSeverity,
 	InstanceAiErrorReporterService,
 } from './instance-ai-error-reporter.service';
-import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
@@ -855,7 +853,6 @@ export class InstanceAiService {
 		private readonly eventLog: DurableEventLog,
 		private readonly interruptedRunSweeper: InterruptedRunSweeper,
 		private readonly settingsService: InstanceAiSettingsService,
-		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
@@ -1609,7 +1606,7 @@ export class InstanceAiService {
 		pushRef?: string,
 		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
-		computerUseChannels?: ComputerUseChannel[],
+		browserUseAvailable?: boolean,
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
 		observerThresholdTokens?: number,
 	): string {
@@ -1634,8 +1631,8 @@ export class InstanceAiService {
 		}
 
 		// Same reason: a resumed or background run has no request of its own to ask
-		// which + menu entries the client renders.
-		this.runState.setComputerUseChannels(threadId, computerUseChannels);
+		// whether the client renders the Browser Use + menu entry.
+		this.runState.setBrowserUseAvailable(threadId, browserUseAvailable);
 
 		// A new user message resets selection. Explicit eval modes take precedence;
 		// otherwise environment creation selects and stores the backend assignment.
@@ -2085,8 +2082,6 @@ export class InstanceAiService {
 		await this.liveness.sweepTimedOutWork(now);
 	}
 
-	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
-
 	// ── Test-only trace replay API ───────────────────────────────────────────
 
 	loadTraceEvents(slug: string, events: unknown[]): void {
@@ -2270,7 +2265,6 @@ export class InstanceAiService {
 			});
 		}
 
-		this.gatewayService.disconnectAll();
 		await this.browserSessionService.shutdown();
 		this.sandboxService.stopSandboxExpiryTimers();
 
@@ -2731,13 +2725,8 @@ export class InstanceAiService {
 		}
 
 		const adminSettings = await this.settingsService.getAdminSettings();
-		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
 		const mcpConnectionsAvailable = this.areMcpConnectionsAvailable();
-		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
-			user.id,
-		);
-		const userGateway = this.gatewayService.findGateway(user.id);
 
 		// Stop before this run resolves a model. A cached proxy token stays valid
 		// after the balance hits zero, so a later token request would not 403.
@@ -2823,23 +2812,11 @@ export class InstanceAiService {
 			allowSendingParameterValues,
 		});
 
-		// Merge both local gateway and direct browser-use into a single
-		// composite server, since context has a single `localMcpServer`.
-		// Perhaps a better solution would be to have multiple local MCP
-		// servers? But that requires more changes where `localMcpServer`
-		// is currently used
-
-		// When Browser Use is disabled instance-wide, hide the gateway's browser tools
-		// too so they are neither advertised to nor callable by the agent.
-		this.gatewayService.applyToolPolicy(user.id);
-		const gatewayMcpServer =
-			!localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined;
 		const browserMcpServer = browserUseEnabledGlobally
 			? this.browserSessionService.findMcpServer(user.id)
 			: undefined;
-		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
-		if (localMcpServer) {
-			context.localMcpServer = localMcpServer;
+		if (browserMcpServer) {
+			context.localMcpServer = browserMcpServer;
 		}
 
 		context.permissions = this.settingsService.getPermissions();
@@ -2934,17 +2911,12 @@ export class InstanceAiService {
 			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
 
-		// The client reports which + menu entries it renders, because only it can see
-		// its own rollout and the device. The admin switches are still applied here,
-		// so the report can only narrow.
-		context.computerUseState = resolveComputerUseState({
-			localGatewayDisabledGlobally,
-			localGatewayDisabledForUser,
+		// The client reports whether it renders the Browser Use + menu entry, because
+		// only it can see the device. The admin switch is still applied here, so the
+		// report can only narrow.
+		context.browserUseState = resolveBrowserUseState({
+			reportedByClient: this.runState.getBrowserUseAvailable(threadId) ?? false,
 			browserUseEnabledGlobally,
-			clientChannels: this.runState.getComputerUseChannels(threadId),
-			localComputerToolCategories: gatewayMcpServer
-				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
-				: undefined,
 			browserConnected: browserMcpServer !== undefined,
 		});
 
@@ -4654,17 +4626,20 @@ export class InstanceAiService {
 			// After the stream settles, so the do-not-harm pair (latency, input tokens) rides the
 			// same event. Covers suspended and terminal outcomes alike, once per turn: a resume is
 			// a follow-up segment that skips the preferences path.
-			if (aiPreferencesTurn) {
-				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN, {
-					user_id: user.id,
-					count: aiPreferencesTurn.payload.preferences.length,
-					scope_types: [...new Set(aiPreferencesTurn.payload.preferences.map((p) => p.scope))],
-					rendered_length: aiPreferencesTurn.payload.renderedLength,
-					surface: 'aia',
-					injected_this_turn: aiPreferencesTurn.payload.injectedThisTurn,
-					turn_latency_ms: Date.now() - turnStartedAt.getTime(),
-					...(result.usage ? { turn_token_count: result.usage.promptTokens } : {}),
+			const preferencesApplied =
+				aiPreferencesTurn &&
+				buildPreferencesAppliedTelemetry(aiPreferencesTurn.payload, {
+					userId: user.id,
+					threadId,
+					runId,
+					latencyMs: Date.now() - turnStartedAt.getTime(),
+					promptTokens: result.usage?.promptTokens,
 				});
+			if (preferencesApplied) {
+				this.telemetry.track(
+					TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN,
+					preferencesApplied,
+				);
 			}
 
 			if (result.status === 'suspended') {
