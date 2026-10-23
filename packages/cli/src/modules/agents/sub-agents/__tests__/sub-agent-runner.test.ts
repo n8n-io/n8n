@@ -37,6 +37,7 @@ import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import { AgentSpendLedger } from '../../budget-guardrail';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
+import type { SystemAgentUsageRelay } from '../../system-agents/system-agent-usage-relay';
 import { SubAgentRunner } from '../sub-agent-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
@@ -134,6 +135,7 @@ describe('SubAgentRunner', () => {
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
 	let executionRepository: Mocked<AgentExecutionRepository>;
+	let usageRelay: Mocked<SystemAgentUsageRelay>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -155,6 +157,7 @@ describe('SubAgentRunner', () => {
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
 		executionRepository = mock<AgentExecutionRepository>();
+		usageRelay = mock<SystemAgentUsageRelay>();
 		executionRepository.findLinksForChildOf.mockResolvedValue(null);
 		executionRepository.findFirstLinksInThread.mockResolvedValue(null);
 		runner = new SubAgentRunner(
@@ -172,6 +175,7 @@ describe('SubAgentRunner', () => {
 			aiConfigMock,
 			toolApprovalService,
 			executionRepository,
+			usageRelay,
 		);
 
 		childAgent = mock<BuiltAgent>();
@@ -749,6 +753,130 @@ describe('SubAgentRunner', () => {
 				}),
 				expect.any(Date),
 			);
+		});
+
+		describe('delegated run usage', () => {
+			const finishUsage = {
+				promptTokens: 150_000,
+				completionTokens: 900,
+				totalTokens: 150_900,
+				cost: 0.21,
+				inputTokenDetails: { noCache: 10_000, cacheRead: 130_000, cacheWrite: 10_000 },
+				byPromptSize: [
+					{
+						promptTokensOver: 128_000,
+						maxPromptTokens: 150_000,
+						usage: { promptTokens: 150_000, completionTokens: 900, totalTokens: 150_900 },
+					},
+				],
+			};
+
+			function streamFinishing(usage: StreamChunk & { type: 'finish' }) {
+				childAgent.stream.mockResolvedValue(makeStreamResult([usage]));
+			}
+
+			it('reports the full finish usage of the child with its parent link', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				streamFinishing({
+					type: 'finish',
+					finishReason: 'stop',
+					model: 'anthropic/claude-haiku-5-5',
+					usage: finishUsage,
+				});
+
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+
+				expect(usageRelay.reportDelegatedRun).toHaveBeenCalledTimes(1);
+				expect(usageRelay.reportDelegatedRun).toHaveBeenCalledWith({
+					executionId: 'agent-execution-1',
+					threadId: expect.any(String),
+					parentExecutionId: 'turn-1',
+					status: 'completed',
+					model: 'anthropic/claude-haiku-5-5',
+					// Not the recorder's totals: the cache details and the split stay.
+					usage: finishUsage,
+				});
+			});
+
+			it('reports the usage after the execution record is stored', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				streamFinishing({ type: 'finish', finishReason: 'stop', usage: finishUsage });
+
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+
+				const [finalizeOrder] = agentExecutionService.finalizeExecution.mock.invocationCallOrder;
+				const [reportOrder] = usageRelay.reportDelegatedRun.mock.invocationCallOrder;
+				expect(reportOrder).toBeGreaterThan(finalizeOrder);
+			});
+
+			it('still reports the usage when storing the execution record fails', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				streamFinishing({ type: 'finish', finishReason: 'stop', usage: finishUsage });
+				agentExecutionService.finalizeExecution.mockRejectedValue(
+					new Error('database unavailable'),
+				);
+
+				await runner
+					.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext())
+					.catch(() => {});
+
+				expect(usageRelay.reportDelegatedRun).toHaveBeenCalledTimes(1);
+			});
+
+			it('reports nothing without a parent link or without usage', async () => {
+				streamFinishing({ type: 'finish', finishReason: 'stop', usage: finishUsage });
+				await runner.run(spawnRequest, runContext());
+
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				streamFinishing({ type: 'finish', finishReason: 'stop' });
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+
+				expect(usageRelay.reportDelegatedRun).not.toHaveBeenCalled();
+			});
+
+			it('reports an errored child with the usage it reached', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				childAgent.stream.mockResolvedValue(
+					makeStreamResult([
+						{ type: 'error', error: new Error('model failed') },
+						{ type: 'finish', finishReason: 'error', usage: finishUsage },
+					]),
+				);
+
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+
+				expect(usageRelay.reportDelegatedRun).toHaveBeenCalledWith(
+					expect.objectContaining({ status: 'errored', usage: finishUsage }),
+				);
+			});
+
+			it('reports the side calls of a linked child with its parent link', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				const sideCall = {
+					task: 'observer' as const,
+					model: 'anthropic/claude-haiku-5-5',
+					usage: { promptTokens: 2000, completionTokens: 200, totalTokens: 2200 },
+					cost: 0.003,
+					reportId: 'report-1',
+				};
+
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+				const options = childAgent.stream.mock.calls[0][1];
+				await options?.onSideCallUsage?.(sideCall);
+
+				expect(usageRelay.reportDelegatedSideCall).toHaveBeenCalledWith({
+					...sideCall,
+					executionId: 'agent-execution-1',
+					threadId: expect.any(String),
+					parentExecutionId: 'turn-1',
+				});
+			});
+
+			it('sets no side-call callback on a child without a parent link', async () => {
+				await runner.run(spawnRequest, runContext());
+
+				expect(childAgent.stream.mock.calls[0][1]).not.toHaveProperty('onSideCallUsage');
+			});
 		});
 	});
 

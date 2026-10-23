@@ -5,6 +5,7 @@ import type {
 	ResumeOptions,
 	RunOptions,
 	SideCallUsageReport,
+	TokenUsage,
 } from '@n8n/agents';
 import type { User } from '@n8n/db';
 
@@ -204,4 +205,64 @@ export interface SystemAgentProvider<TLease = unknown> {
 	): Promise<SystemAgentTurnOptions>;
 	/** Convert a resume payload from a client into the tool's resume data. */
 	normalizeResumeData?(resumeData: unknown): unknown;
+	/**
+	 * Called once for each execution of a run that a turn of this agent
+	 * delegated, foreground or background, after the runner tries to store
+	 * the execution record. The report is sent even when storing fails, so the
+	 * row can be missing or not final. `thread` is the thread of that turn. A
+	 * failing callback only logs a warning. A report that is still in progress
+	 * at shutdown is lost.
+	 */
+	onDelegatedRunUsage?(
+		report: SystemAgentDelegatedRunUsageReport,
+		scope: { thread: AgentExecutionThread },
+	): void | Promise<void>;
+	/**
+	 * Called once for each side call of a run that a turn of this agent
+	 * delegated: title generation, the observation-log observer and
+	 * reflector, and episodic memory. A side call can finish after the run.
+	 * `thread` is the thread of the delegating turn. A failing callback only
+	 * logs a warning.
+	 */
+	onDelegatedSideCallUsage?(
+		report: SystemAgentDelegatedSideCallUsageReport,
+		scope: { thread: AgentExecutionThread },
+	): void | Promise<void>;
+}
+
+/** The usage of one execution of a delegated run. */
+export interface SystemAgentDelegatedRunUsageReport {
+	/** The execution of the delegated run. Stable, so a provider can bill it once. */
+	executionId: string;
+	/** The child thread of the delegated run. */
+	threadId: string;
+	/** The execution of the turn that delegated the run. */
+	parentExecutionId: string;
+	/**
+	 * The outcome of the execution, not of the task. A budget stop and a
+	 * paused run are `completed`, as for a top-level turn. A max-iterations
+	 * stop and a `mark_session_failed` call are also `completed` here, but the
+	 * stored row has status `error`.
+	 */
+	status: AgentTurnStatus;
+	model: string | null;
+	/**
+	 * The usage from the run's `finish` chunk: tokens, cache details, the
+	 * prompt-size split and the cost. Side calls of the run are not included.
+	 */
+	usage: TokenUsage;
+}
+
+/**
+ * The usage of one side call of a delegated run. `reportId` is stable for the
+ * call, so a provider can bill it once. `cost` is absent when the model has no
+ * pricing.
+ */
+export interface SystemAgentDelegatedSideCallUsageReport extends SideCallUsageReport {
+	/** The execution of the delegated run that made the side call. */
+	executionId: string;
+	/** The child thread of the delegated run. */
+	threadId: string;
+	/** The execution of the turn that delegated the run. */
+	parentExecutionId: string;
 }

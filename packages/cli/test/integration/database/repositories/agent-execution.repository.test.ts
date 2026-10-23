@@ -94,6 +94,7 @@ import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import type { SystemAgentUsageRelay } from '@/modules/agents/system-agents/system-agent-usage-relay';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SystemAgentRegistry } from '@/modules/agents/system-agents/system-agent-registry';
 import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
@@ -508,6 +509,7 @@ describe('AgentExecutionRepository', () => {
 						new AiConfig(),
 						mock<AgentToolApprovalService>(),
 						repository,
+						mock<SystemAgentUsageRelay>(),
 					),
 					service,
 					mockLogger(),
@@ -4624,6 +4626,17 @@ describe('AgentExecutionRepository', () => {
 				parentExecutionId: turn.id,
 			});
 			expect(await repository.findFirstLinksInThread(uuid())).toBeNull();
+		});
+
+		it('finds the thread of an execution', async () => {
+			const { parentThread, childThread, turn, child } = await createDelegation();
+
+			expect(await repository.findThreadOf(turn.id)).toMatchObject({
+				id: parentThread.id,
+				agentId: parentThread.agentId,
+			});
+			expect(await repository.findThreadOf(child.id)).toMatchObject({ id: childThread.id });
+			expect(await repository.findThreadOf(uuid())).toBeNull();
 		});
 
 		it('keeps delegated executions and clears their link when the parent execution is deleted', async () => {
