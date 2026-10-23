@@ -120,6 +120,7 @@ describe('IsolatedVmBridge', () => {
 			expect(dataRef.deref()).toBeUndefined();
 		});
 
+<<<<<<< HEAD
 		it('should free the data of a call whose callbacks fail to build', async () => {
 			setFlagsFromString('--expose_gc');
 			const gc = runInNewContext('gc') as unknown as () => void;
@@ -142,6 +143,8 @@ describe('IsolatedVmBridge', () => {
 			expect(dataRef.deref()).toBeUndefined();
 		});
 
+=======
+>>>>>>> ae7eeef9 (fix(core): Release workflow data when a `vm` engine expression ends (#41804))
 		it('should return an error from a callback that runs after its call failed', () => {
 			expect(() =>
 				bridge.execute('globalThis.__getValueAtPath = $0; throw new Error("boom")', {
@@ -149,12 +152,18 @@ describe('IsolatedVmBridge', () => {
 				}),
 			).toThrow('boom');
 
+<<<<<<< HEAD
 			expect(
 				bridge.execute('return globalThis.__getValueAtPath(["$json", "value"])', {}),
 			).toMatchObject({
 				__isError: true,
 				message: 'Host callback called after its expression finished',
 			});
+=======
+			expect(() =>
+				bridge.execute('return globalThis.__getValueAtPath(["$json", "value"])', {}),
+			).toThrow('Host callback called after its expression finished');
+>>>>>>> ae7eeef9 (fix(core): Release workflow data when a `vm` engine expression ends (#41804))
 		});
 	});
 });

@@ -114,6 +114,16 @@ function loadRuntimeBundle(): string {
 	);
 }
 
+/** Workflow data for one `execute()` call, cleared when the call ends. */
+interface DataHolder {
+	data?: WorkflowData;
+}
+
+function heldData(holder: DataHolder): WorkflowData {
+	if (!holder.data) throw new Error('Host callback called after its expression finished');
+	return holder.data;
+}
+
 /**
  * IsolatedVmBridge - Runtime bridge using isolated-vm for secure expression evaluation.
  *
@@ -356,7 +366,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createCallHostRef(holder: DataHolder): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
+<<<<<<< HEAD
 				return escapeHostResult(dispatchHostCall(rawMsg, heldData(holder)));
+=======
+				return dispatchHostCall(rawMsg, heldData(holder));
+>>>>>>> ae7eeef9 (fix(core): Release workflow data when a `vm` engine expression ends (#41804))
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -411,6 +425,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// next isolated-vm call in the process, even after the isolate is disposed.
 		// So the callbacks read the data from a holder that `finally` clears.
 		const holder: DataHolder = { data };
+<<<<<<< HEAD
+=======
+		const getValueAtPath = this.createGetValueAtPathRef(holder);
+		const getArrayElement = this.createGetArrayElementRef(holder);
+		const callHost = this.createCallHostRef(holder);
+>>>>>>> ae7eeef9 (fix(core): Release workflow data when a `vm` engine expression ends (#41804))
 
 		try {
 			const getValueAtPath = this.createGetValueAtPathRef(holder);
