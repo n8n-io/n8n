@@ -1,3 +1,4 @@
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { TelemetryOptions } from 'ai';
 
@@ -124,7 +125,7 @@ function buildGenAiRootAttributes(
 	const threadId = t.metadata?.thread_id;
 	const agentId = t.metadata?.agent_id;
 	const providerName =
-		typeof modelId === 'string' ? getGenAiProviderName(modelId.split('/')[0]) : undefined;
+		typeof modelId === 'string' ? getGenAiProviderName(getProviderPrefix(modelId)) : undefined;
 	return {
 		'gen_ai.operation.name': 'invoke_agent',
 		'gen_ai.agent.name': config.name,
