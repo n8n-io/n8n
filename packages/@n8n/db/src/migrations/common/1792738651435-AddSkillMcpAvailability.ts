@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddSkillMcpAvailability1792599090126 implements ReversibleMigration {
+export class AddSkillMcpAvailability1792738651435 implements ReversibleMigration {
 	async up({ runQuery, escape, isPostgres }: MigrationContext) {
 		const table = escape.tableName('skill');
 		const column = escape.columnName('availableToMCP');
