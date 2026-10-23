@@ -204,12 +204,6 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		);
 	}
 
-	/**
-	 * The resume token travels in the body, opaque: this client never reads it
-	 * and holds no secret that could verify it. Only the identity token in the
-	 * header is this plane's. A refusal comes back as an outcome, not an error,
-	 * because the route answers each status differently.
-	 */
 	private async postResume<T>(
 		url: string,
 		body: ResumeTargetRequest | ResolveStepRequest,
@@ -224,8 +218,8 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			disableFollowRedirect: true,
 		});
 
-		// A failure of the engine is not a refusal of the request, so the route
-		// must not answer it as one. 501 is a refusal: the engine has no secret.
+		// A 5xx is an engine failure, not a refusal. 501 is a refusal: the engine
+		// has no resume secret.
 		if (response.statusCode >= 500 && response.statusCode !== 501) {
 			throw this.toError(response.statusCode, response.body);
 		}

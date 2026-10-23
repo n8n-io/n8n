@@ -68,11 +68,10 @@ export class EngineConfig {
 	authSecret: string = '';
 
 	/**
-	 * Secret the data plane derives resume tokens from. Only the data plane reads
-	 * it: the control plane forwards a resume token without reading it, and in
-	 * remote mode refuses to start with it set. Unset, the engine accepts no
-	 * resume request, and a node that needs a resume URL fails. How the secret
-	 * rotates is a later decision.
+	 * Secret the data plane derives resume tokens from. A control plane in remote
+	 * mode refuses to start with it set. Unset, the engine accepts no resume
+	 * request. A value shorter than 32 characters counts as unset. A change
+	 * invalidates every open resume URL.
 	 *
 	 * This is in development and not ready for use.
 	 */

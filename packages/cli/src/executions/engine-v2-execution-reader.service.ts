@@ -58,7 +58,7 @@ export type EngineV2LatestQuery = Pick<
 const MAX_SCOPE_SIZE = 10_000;
 
 /**
- * Reads an engine v2 execution for display. The data plane is its only store:
+ * Reads an engine v2 execution. The data plane is its only store:
  * the workflow comes from the copy captured when the run started, so an edit
  * after the run does not change what the execution reports.
  */
@@ -207,10 +207,9 @@ export class EngineV2ExecutionReader {
 	}
 
 	/**
-	 * The v1 shape of a snapshot the caller already holds, with its steps as run
-	 * data. `undefined` when the document the run started with lacks what the v1
-	 * paths read. Shared with the resume route, where the data plane's token check
-	 * stands in for `findOne`'s share check.
+	 * The v1 shape of a snapshot that the caller already holds, or `undefined`
+	 * when the run's document lacks what the v1 paths read. It checks no workflow
+	 * access, so the caller must authorize the read.
 	 */
 	async fromSnapshot(snapshot: ExecutionSnapshot): Promise<IExecutionResponse | undefined> {
 		const workflow = asWorkflowSnapshot(snapshot.workflow);

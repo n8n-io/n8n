@@ -1097,7 +1097,7 @@ export async function executeWebhook(
 
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
-	/** The id of the v2 run, created before the webhook node runs. */
+	/** The id of the v2 run, set before the webhook node runs. */
 	let engineV2ExecutionId: ExecutionIdV2 | undefined;
 	/** What the webhook node produced for a v2 run, until the dispatcher takes it. */
 	let engineV2Payload: INodeExecutionData[][] | undefined;
@@ -1115,9 +1115,7 @@ export async function executeWebhook(
 			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
 			// Created before the node runs, so a file the node stores is written under
 			// the path of its run from the start, and no rename is needed later. A
-			// resume keeps the id of the execution that waits: a file the node stores
-			// then lands under that run, and a response subscription names a run that
-			// answers.
+			// resume reuses the id of the waiting execution.
 			engineV2ExecutionId =
 				executionId !== undefined && isExecutionIdV2(executionId)
 					? executionId
@@ -1651,8 +1649,8 @@ export async function executeWebhook(
 		return;
 	} finally {
 		await cleanupMultipartFiles?.();
-		// The run never reached the dispatcher, so the files the webhook node stored
-		// belong to no execution and the control plane deletes them.
+		// The run never reached the dispatcher, so no run uses the files that the
+		// webhook node stored.
 		if (engineV2Payload !== undefined) {
 			await Container.get(EngineV2PayloadFiles).discard(engineV2Payload);
 		}

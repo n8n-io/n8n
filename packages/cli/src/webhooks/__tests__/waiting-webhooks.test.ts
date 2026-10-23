@@ -2174,10 +2174,9 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			executeWebhookSpy.mock.calls[0];
 		expect(executionId).toBe(EXECUTION_ID);
 		expect(startNode.name).toBe('Wait');
-		// The node is at the top of the stack and is the last node executed, as v1 leaves it.
 		expect(runExecutionData?.resultData.lastNodeExecuted).toBe('Wait');
 		expect(runExecutionData?.executionData?.nodeExecutionStack[0]?.node.name).toBe('Wait');
-		// The dispatcher ends this wait with this token; the node never sees the token.
+		// The node never sees the token.
 		expect(options).toEqual(
 			expect.objectContaining({ engineResume: { stepId: 'step-1', token: 'token' } }),
 		);
