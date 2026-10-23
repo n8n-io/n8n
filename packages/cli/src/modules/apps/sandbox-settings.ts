@@ -1,15 +1,19 @@
 import type { SandboxConfig } from '@n8n/agents/sandbox';
+import type { AppSandboxResolveOptions } from '@n8n/backend-module-apps';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { N8N_VERSION } from '@/constants';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
-export async function resolveAppSandboxConfig(projectId: string): Promise<SandboxConfig> {
+export async function resolveAppSandboxConfig(
+	projectId: string,
+	{ checkEnabled = true }: AppSandboxResolveOptions = {},
+): Promise<SandboxConfig> {
 	const settings = Container.get(SandboxSettingsService);
 	const provider = settings.getProvider();
 	const config = Container.get(GlobalConfig).instanceAi;
-	if (!config.sandboxEnabled) return { enabled: false, provider };
+	if (checkEnabled && !config.sandboxEnabled) return { enabled: false, provider };
 
 	settings.registerCredentialUses();
 	if (provider === 'daytona') {

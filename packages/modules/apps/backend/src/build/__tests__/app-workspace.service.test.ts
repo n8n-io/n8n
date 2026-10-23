@@ -68,7 +68,7 @@ describe('AppWorkspaceService', () => {
 		async (provider) => {
 			const { build, settings } = setup(provider);
 			await build();
-			expect(settings.resolve).toHaveBeenCalledWith('project');
+			expect(settings.resolve).toHaveBeenCalledWith('project', {});
 			const first = vi.mocked(createSandbox).mock.calls.at(-1)?.[0];
 			await build();
 			expect(vi.mocked(createSandbox).mock.calls.at(-1)?.[0]).toEqual(first);
@@ -79,6 +79,18 @@ describe('AppWorkspaceService', () => {
 				id: appId,
 			});
 			if (provider === 'daytona') expect(first).toMatchObject({ name: `app-build-${appId}` });
+		},
+	);
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'blocks builds when %s sandboxes are disabled',
+		async (provider) => {
+			const { build, settings } = setup(provider);
+			settings.resolve.mockResolvedValue({ enabled: false, provider });
+
+			await expect(build()).rejects.toThrow(BadRequestError);
+			expect(settings.resolve).toHaveBeenCalledWith('project', {});
+			expect(createSandbox).not.toHaveBeenCalled();
 		},
 	);
 
@@ -169,16 +181,26 @@ describe('AppWorkspaceService', () => {
 	});
 
 	it.each(['daytona', 'n8n-sandbox'] as const)(
-		'deletes the app sandbox through %s without starting a workspace',
+		'deletes the %s app sandbox when sandboxes are disabled',
 		async (provider) => {
 			const { service, settings, sandbox } = setup(provider);
+			settings.resolve.mockImplementation(async (_projectId, options) => {
+				if (options?.checkEnabled !== false) return { enabled: false, provider };
+				return provider === 'daytona'
+					? { enabled: true, provider, daytonaApiKey: 'test-key' }
+					: { enabled: true, provider, serviceUrl: 'http://sandbox.test' };
+			});
+
 			await service.delete('project', appId);
-			expect(settings.resolve).toHaveBeenCalledExactlyOnceWith('project');
+			expect(settings.resolve).toHaveBeenCalledExactlyOnceWith('project', { checkEnabled: false });
 			expect(vi.mocked(createSandbox).mock.calls.at(-1)?.[0]).toMatchObject({
+				enabled: true,
 				provider,
 				id: appId,
+				...(provider === 'daytona' ? { name: `app-build-${appId}` } : {}),
 			});
 			expect(sandbox.deleteRemote).toHaveBeenCalledOnce();
+			expect(sandbox._start).not.toHaveBeenCalled();
 			expect(sandbox.executeCommand).not.toHaveBeenCalled();
 			expect(createFilesystem).not.toHaveBeenCalled();
 		},

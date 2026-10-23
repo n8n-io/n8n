@@ -11,7 +11,7 @@ import { raceAbort } from '@n8n/utils/race-abort';
 
 import { APP_BUILD_SCRIPT } from './app-build-script';
 import { APP_DEPENDENCY_KEY } from '../scaffold/app-scaffold';
-import { AppSandboxSettings } from './app-sandbox-settings';
+import { AppSandboxSettings, type AppSandboxResolveOptions } from './app-sandbox-settings';
 import { AppBuildError, type AppBuildAttempt, type AppBuildStage } from './app-build.types';
 import { AppsConfig } from '../apps.config';
 import { AppArchive } from '../app-archive';
@@ -155,9 +155,10 @@ export class AppWorkspaceService {
 	}
 
 	async delete(projectId: string, appId: string): Promise<void> {
-		const sandbox = await createSandbox(await this.sandboxConfig(projectId, appId), {
-			logger: this.logger,
-		});
+		const sandbox = await createSandbox(
+			await this.sandboxConfig(projectId, appId, { checkEnabled: false }),
+			{ logger: this.logger },
+		);
 		if (sandbox?.deleteRemote) {
 			await sandbox.deleteRemote();
 			this.logger.debug('Deleted app sandbox.', { appId });
@@ -167,8 +168,12 @@ export class AppWorkspaceService {
 		}
 	}
 
-	private async sandboxConfig(projectId: string, appId: string): Promise<SandboxConfig> {
-		const config = await this.settings.resolve(projectId);
+	private async sandboxConfig(
+		projectId: string,
+		appId: string,
+		options: AppSandboxResolveOptions = {},
+	): Promise<SandboxConfig> {
+		const config = await this.settings.resolve(projectId, options);
 		if (!config.enabled) return config;
 		return config.provider === 'daytona'
 			? {

@@ -74,6 +74,34 @@ describe('resolveAppSandboxConfig', () => {
 		},
 	);
 
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'resolves %s connections for cleanup when sandboxes are disabled',
+		async (provider) => {
+			settings.getProvider.mockReturnValue(provider);
+			const connection = await resolveAppSandboxConfig('project');
+			config.sandboxEnabled = false;
+
+			await expect(resolveAppSandboxConfig('project', { checkEnabled: false })).resolves.toEqual(
+				connection,
+			);
+		},
+	);
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'keeps %s disabled for cleanup when its connection is missing',
+		async (provider) => {
+			settings.getProvider.mockReturnValue(provider);
+			config.sandboxEnabled = false;
+			settings.resolveDaytonaSandboxConfig.mockResolvedValue({});
+			settings.resolveN8nSandboxConfig.mockResolvedValue({});
+
+			await expect(resolveAppSandboxConfig('project', { checkEnabled: false })).resolves.toEqual({
+				enabled: false,
+				provider,
+			});
+		},
+	);
+
 	it('uses Instance AI settings when Agent sandboxes are disabled', async () => {
 		await expect(resolveAppSandboxConfig('project')).resolves.toEqual({
 			enabled: true,
