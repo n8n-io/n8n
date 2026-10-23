@@ -63,7 +63,7 @@ export class GmailTrigger implements INodeType {
 		},
 		builderHint: {
 			searchHint:
-				'When downstream nodes create records (tasks, rows, tickets) per email, guarantee each email is processed exactly once: filter to unread AND mark each email read/labelled after its record is created, or track handled message ids in a Data Table. Otherwise the same email can be reprocessed into duplicates.',
+				"When downstream nodes create records (tasks, rows, tickets) per email, guarantee each email is processed exactly once. Poll cursors reset when the trigger is recreated or renamed, and every still-matching email is then delivered again. Either filter to unread AND mark each email read, or apply a label only if the trigger's search query excludes that label (a label does not mark an email read); or track handled message ids in a Data Table: skip ids already seen and insert an id only after its record is created. An unread filter alone is not enough: if no step marks the email read, it excludes nothing. Wire the mark-as-handled step after the record-creating node, so a failed run never consumes an email without its record.",
 			relatedNodes: [
 				{
 					nodeType: 'n8n-nodes-base.gmail',
