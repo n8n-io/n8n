@@ -529,6 +529,49 @@ describe('SkillsController', () => {
 		});
 	});
 
+	describe('MCP availability', () => {
+		it('is off by default and stores the value sent on create', async () => {
+			const off = await create(editor, { scope: 'project', projectId: project.id, skill: body });
+			const on = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: { ...body, name: 'Tone' },
+				availableToMCP: true,
+			});
+
+			const list = await editor.get(`/skills?projectId=${project.id}`).expect(200);
+			const read = await editor.get(`/skills/${on.id}`).expect(200);
+
+			const items = list.body.data.data as Array<{ id: string; availableToMCP: boolean }>;
+			expect(Object.fromEntries(items.map((item) => [item.id, item.availableToMCP]))).toEqual({
+				[off.id]: false,
+				[on.id]: true,
+			});
+			expect(read.body.data.availableToMCP).toBe(true);
+		});
+
+		it('changes without a new version, and only for users who may edit the skill', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+
+			await viewer
+				.patch(`/skills/${id}`)
+				.send({ availableToMCP: true, baseSkillHash: skillHash })
+				.expect(403);
+			const saved = await editor
+				.patch(`/skills/${id}`)
+				.send({ availableToMCP: true, baseSkillHash: skillHash })
+				.expect(200);
+			const read = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(saved.body.data).toMatchObject({ version: 1, created: false });
+			expect(read.body.data).toMatchObject({ availableToMCP: true, latestVersion: 1 });
+		});
+	});
+
 	describe('unique names', () => {
 		it('refuses a name like one that another skill in the same scope has', async () => {
 			await create(editor, { scope: 'project', projectId: project.id, skill: body });

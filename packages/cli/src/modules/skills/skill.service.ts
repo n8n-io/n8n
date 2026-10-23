@@ -176,7 +176,7 @@ export class SkillService {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
 		const page = await this.skillRepository.findVisiblePage(
 			{ projectIds: projectIds ?? 'all', agentIds: [] },
-			{ skip, take },
+			{ skip, take, availableToMCP: true },
 		);
 		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
 		return {
@@ -190,7 +190,12 @@ export class SkillService {
 
 	async readForMcp(user: User, skillId: string): Promise<McpSkillContent | null> {
 		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
-		if (!row || row.skill.agentId !== null || !(await this.canAccess(user, row.skill, 'read'))) {
+		if (
+			!row ||
+			row.skill.agentId !== null ||
+			!row.skill.availableToMCP ||
+			!(await this.canAccess(user, row.skill, 'read'))
+		) {
 			return null;
 		}
 		return toMcpSkillContent(row);
@@ -280,6 +285,7 @@ export class SkillService {
 			source: SkillSource;
 			createdById: string;
 			checkNameTaken?: boolean;
+			availableToMCP?: boolean;
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -290,7 +296,13 @@ export class SkillService {
 		}
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
-			{ id, target: input.target, source: input.source, createdById: input.createdById },
+			{
+				id,
+				target: input.target,
+				source: input.source,
+				createdById: input.createdById,
+				availableToMCP: input.availableToMCP,
+			},
 			toSkillContent(skill),
 			ctx,
 		);

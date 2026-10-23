@@ -102,6 +102,7 @@ export class SkillsApiService {
 			skill: payload.skill,
 			source,
 			createdById: user.id,
+			availableToMCP: payload.availableToMCP,
 		});
 		await this.skillsTelemetry.created(
 			user.id,
@@ -129,7 +130,7 @@ export class SkillsApiService {
 			throw new NotFoundError('Skill not found');
 		}
 		const skill = await this.requireAccess(user, skillId, 'update');
-		const { scope, projectId, availableToAssistant, ...update } = payload;
+		const { scope, projectId, availableToAssistant, availableToMCP, ...update } = payload;
 		const target = scope ? await this.targetForCreate(user, { scope, projectId }) : undefined;
 		const moves =
 			target !== undefined &&
@@ -137,7 +138,7 @@ export class SkillsApiService {
 
 		const checkedSource = moves ? await this.skillService.assertCanMove(user, skillId) : undefined;
 
-		if (!moves && availableToAssistant === undefined) {
+		if (!moves && availableToAssistant === undefined && availableToMCP === undefined) {
 			const { followingAgentIds: _following, ...saved } = await this.skillService.save(
 				skillId,
 				update,
@@ -169,6 +170,9 @@ export class SkillsApiService {
 					target ?? skill,
 					ctx,
 				);
+			}
+			if (availableToMCP !== undefined) {
+				await this.skillRepository.updateAvailableToMCP(skillId, availableToMCP, ctx);
 			}
 			return await this.skillService.save(skillId, update, user.id, ctx);
 		});
@@ -325,6 +329,7 @@ export class SkillsApiService {
 				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
 				availableToAssistant: skill.availableToAssistant,
+				availableToMCP: skill.availableToMCP,
 				canEdit: canEdit(skill, projectId),
 				canDelete: canDelete(skill, projectId),
 				createdAt: skill.createdAt.toISOString(),

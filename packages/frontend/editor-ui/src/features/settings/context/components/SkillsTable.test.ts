@@ -33,6 +33,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		latestVersion: 1,
 		availableToAssistant: false,
 		usedByAgents: 0,
+		availableToMCP: false,
 		canEdit: true,
 		canDelete: true,
 		createdAt: '2026-10-01T00:00:00.000Z',
@@ -43,9 +44,9 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 
 const renderTable = createComponentRenderer(SkillsTable);
 
-function render(skills: SkillListItem[]) {
+function render(skills: SkillListItem[], showAvailableToMCP = false) {
 	return renderTable({
-		props: { skills, itemsLength: skills.length, loading: false },
+		props: { skills, itemsLength: skills.length, loading: false, showAvailableToMCP },
 	});
 }
 
@@ -126,6 +127,21 @@ describe('SkillsTable', () => {
 
 		expect(getByTestId('skill-created-by-none')).toHaveTextContent('—');
 		expect(queryByTestId('skill-created-by')).not.toBeInTheDocument();
+	});
+
+	it('marks a skill that is available to MCP clients', () => {
+		const { getAllByTestId } = render(
+			[skill({ id: 's1', availableToMCP: true }), skill({ id: 's2', availableToMCP: false })],
+			true,
+		);
+
+		expect(getAllByTestId('skill-available-to-mcp-icon')).toHaveLength(1);
+	});
+
+	it('does not mark skills while the MCP skills extension is off', () => {
+		const { queryByTestId } = render([skill({ availableToMCP: true })]);
+
+		expect(queryByTestId('skill-available-to-mcp-icon')).not.toBeInTheDocument();
 	});
 
 	it('shows a dash for a skill that no agent uses', () => {

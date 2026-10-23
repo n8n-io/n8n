@@ -38,6 +38,7 @@ function skill(
 		agentId: target.agentId ?? null,
 		source: 'ui',
 		availableToAssistant: false,
+		availableToMCP: false,
 		createdById: target.createdById ?? null,
 		createdAt: DATE,
 		updatedAt: DATE,
@@ -283,6 +284,7 @@ describe('SkillsApiService', () => {
 				latestVersion: 2,
 				usedByAgents: 2,
 				availableToAssistant: false,
+				availableToMCP: false,
 				canEdit: true,
 				canDelete: false,
 				createdAt: DATE.toISOString(),
@@ -396,6 +398,16 @@ describe('SkillsApiService', () => {
 			);
 
 			expect(detail).toMatchObject({ id: 'skill_new', name: 'Skill', canEdit: false });
+		});
+
+		it('creates the skill with the MCP availability the client sent', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({ availableToMCP: true }));
+
+			expect(skillService.create).toHaveBeenCalledWith(
+				expect.objectContaining({ availableToMCP: true }),
+			);
 		});
 
 		it('reports the create with the method the client sent', async () => {
@@ -593,6 +605,26 @@ describe('SkillsApiService', () => {
 				3,
 				false,
 			);
+		});
+
+		it('stores an MCP availability change in the transaction of the save, without a move', async () => {
+			skillService.save.mockResolvedValue({ ...saved, created: false });
+
+			await service.update(
+				user,
+				'skill_a',
+				update({ availableToMCP: true, baseSkillHash: 'base' }),
+			);
+
+			expect(repository.updateAvailableToMCP).toHaveBeenCalledWith('skill_a', true, TX_CTX);
+			expect(skillService.save).toHaveBeenCalledWith(
+				'skill_a',
+				{ baseSkillHash: 'base' },
+				user.id,
+				TX_CTX,
+			);
+			expect(skillService.changeTarget).not.toHaveBeenCalled();
+			expect(skillsTelemetry.updated).not.toHaveBeenCalled();
 		});
 
 		it('refuses a user who may not edit the skill', async () => {

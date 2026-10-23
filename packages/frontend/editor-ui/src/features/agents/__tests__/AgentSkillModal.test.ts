@@ -128,6 +128,7 @@ function renderModal({
 		| 'getDefaultName'
 		| 'availableToAssistant'
 		| 'usedBy'
+		| 'availableToMCP'
 	>;
 } & Pick<
 	AgentSkillModalData,
@@ -1577,6 +1578,42 @@ describe('AgentSkillModal from Settings', () => {
 
 		expect(queryByTestId('agent-skill-scope')).not.toBeInTheDocument();
 	});
+
+	it('hides the MCP toggle when Settings gives no MCP availability', () => {
+		const { queryByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+			},
+		});
+
+		expect(queryByTestId('skill-available-to-mcp')).not.toBeInTheDocument();
+	});
+
+	it('saves a change of the MCP toggle as a change of the skill', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId, getByText } = renderModal({
+			onConfirm,
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+				availableToMCP: false,
+			},
+		});
+
+		expect(getByText('settings.context.skills.modal.mcp.label')).toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+		await userEvent.click(getByTestId('skill-available-to-mcp'));
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 's1', skill: SAVED_SKILL, availableToMCP: true }),
+		);
+	});
 });
 
 function makeListItem(
@@ -1594,6 +1631,7 @@ function makeListItem(
 		latestVersion: 1,
 		availableToAssistant: false,
 		usedByAgents: 0,
+		availableToMCP: false,
 		canEdit: true,
 		canDelete: true,
 		createdAt: '2026-10-01T00:00:00.000Z',

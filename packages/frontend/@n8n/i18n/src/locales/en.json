@@ -3614,6 +3614,8 @@
 	"settings.context.skills.modal.scope.label": "Where can this skill be added?",
 	"settings.context.skills.modal.scope.tooltip": "A global skill can be added to any agent. A project skill can be added to the agents of that project. An agent skill belongs to one agent.",
 	"settings.context.skills.modal.scope.noDelete": "You need permission to delete this skill to move it, because moving removes it from where it is now.",
+	"settings.context.skills.modal.mcp.label": "Available to MCP clients",
+	"settings.context.skills.modal.mcp.tooltip": "The n8n MCP server serves this skill to connected MCP clients. Only clients that support the MCP skills extension can get it. Scope and permissions still apply.",
 	"settings.context.skills.delete.inUse": "Used by {count} agent. Remove the skill from the agent first. | Used by {count} agents. Remove the skill from each agent first.",
 	"settings.context.skills.delete.confirm.title": "Delete skill?",
 	"settings.context.skills.delete.confirm.message": "You cannot undo this.",

@@ -5,6 +5,7 @@ import {
 	N8nActionToggle,
 	N8nBadge,
 	N8nDataTableServer,
+	N8nIcon,
 	N8nText,
 	N8nTooltip,
 	N8nUserInfo,
@@ -37,6 +38,7 @@ const props = defineProps<{
 	showAssistantAvailability?: boolean;
 	/** The table renders its cover row whenever the slot exists, so the slot is withheld. */
 	showEmpty?: boolean;
+	showAvailableToMCP?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -189,6 +191,18 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							>
 								{{ i18n.baseText('settings.context.skills.assistant.badge') }}
 							</N8nBadge>
+						</N8nTooltip>
+						<N8nTooltip
+							v-if="props.showAvailableToMCP && item.scope !== 'agent' && item.availableToMCP"
+							placement="right"
+							:content="i18n.baseText('settings.context.skills.modal.mcp.label')"
+						>
+							<N8nIcon
+								icon="mcp"
+								size="medium"
+								color="text-light"
+								data-test-id="skill-available-to-mcp-icon"
+							/>
 						</N8nTooltip>
 					</div>
 					<N8nText size="small" color="text-light" :class="$style.description">

@@ -13,6 +13,7 @@ import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
 export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
+export const MCP_SKILLS_EXTENSION_FLAG = '128_mcp_skills_extension';
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
 const optionalTake = z
@@ -65,6 +66,7 @@ export type SkillListItem = {
 	/** Distinct agents that use the skill: draft refs plus published pins. */
 	usedByAgents: number;
 	availableToAssistant: boolean;
+	availableToMCP: boolean;
 	canEdit: boolean;
 	canDelete: boolean;
 	createdAt: string;
@@ -156,6 +158,7 @@ export class CreateSkillDto extends Z.class({
 	agentId: z.string().max(36).optional(),
 	/** Hub skills ignore `allowedTools`, so a create that sends it is refused. */
 	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
+	availableToMCP: z.boolean().optional(),
 	/** For telemetry only. Absent counts as `manual`. */
 	method: skillCreateMethodSchema.optional(),
 }) {}
@@ -179,4 +182,5 @@ export class SaveSkillDto extends Z.class({
 	scope: z.enum(['project', 'instance']).optional(),
 	/** Required when `scope` is `project`, absent otherwise. */
 	projectId: z.string().max(36).optional(),
+	availableToMCP: z.boolean().optional(),
 }) {}

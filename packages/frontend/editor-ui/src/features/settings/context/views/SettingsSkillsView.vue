@@ -3,7 +3,13 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
-import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
+import {
+	MCP_SKILLS_EXTENSION_FLAG,
+	type AgentSkill,
+	type SkillCreateMethod,
+	type SkillListItem,
+	type SkillScope,
+} from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -26,6 +32,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -60,6 +67,7 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
 const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
+const posthogStore = usePostHog();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
@@ -72,6 +80,7 @@ const tableOptions = ref<TableOptions>({
 const search = ref('');
 const scopeFilter = ref<ScopeFilter>(ALL_SCOPES);
 const loadFailed = ref(false);
+const mcpSkillsEnabled = computed(() => posthogStore.isFeatureEnabled(MCP_SKILLS_EXTENSION_FLAG));
 
 // The empty states describe the rows on screen, so they follow the query that loaded
 // them, not the live search input.
@@ -214,14 +223,15 @@ function openCreateModal() {
 	openModal({
 		scopeOptions: options,
 		initialScope: options[0].value,
+		...(mcpSkillsEnabled.value ? { availableToMCP: false } : {}),
 		existingSkillNames: [],
 		getDefaultName: async (scopeValue) =>
 			await skillsStore.fetchNewSkillName({
 				...parseScope(scopeValue),
 				name: i18n.baseText('agents.builder.skills.defaultName'),
 			}),
-		onConfirm: async ({ skill, scope, method }) =>
-			await onCreate(skill, scope ?? options[0].value, method),
+		onConfirm: async ({ skill, scope, method, availableToMCP }) =>
+			await onCreate(skill, scope ?? options[0].value, method, availableToMCP),
 	});
 }
 
@@ -257,6 +267,7 @@ async function onCreate(
 	skill: AgentSkill,
 	scopeValue: string,
 	method?: SkillCreateMethod,
+	availableToMCP?: boolean,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let createdId: string;
 	try {
@@ -265,6 +276,7 @@ async function onCreate(
 				...parseScope(scopeValue),
 				skill,
 				...(method ? { method } : {}),
+				availableToMCP,
 			})
 		).id;
 	} catch (error) {
@@ -320,16 +332,20 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
+			...(mcpSkillsEnabled.value && detail.scope !== 'agent'
+				? { availableToMCP: detail.availableToMCP }
+				: {}),
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
 			existingSkillNames: [],
-			onConfirm: async ({ skill, scope, availableToAssistant }) =>
+			onConfirm: async ({ skill, scope, availableToAssistant, availableToMCP }) =>
 				await onSave(
 					detail.id,
 					skill,
 					detail.skillHash,
 					scope !== currentValue ? scope : undefined,
 					availableToAssistant,
+					availableToMCP,
 				),
 		});
 	} catch (error) {
@@ -345,6 +361,7 @@ async function onSave(
 	baseSkillHash: string,
 	newScope?: string,
 	availableToAssistant?: boolean,
+	availableToMCP?: boolean,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let created: boolean;
 	try {
@@ -357,12 +374,18 @@ async function onSave(
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
 			...(availableToAssistant !== undefined ? { availableToAssistant } : {}),
+			availableToMCP,
 		}));
 	} catch (error) {
 		return saveFailed(error);
 	}
 	// Scope and availability changes do not create a content version.
-	if (created || newScope !== undefined || availableToAssistant !== undefined) {
+	if (
+		created ||
+		newScope !== undefined ||
+		availableToAssistant !== undefined ||
+		availableToMCP !== undefined
+	) {
 		await load();
 		confirmIfHidden(id, 'saved');
 	} else {
@@ -501,6 +524,7 @@ onMounted(async () => {
 			:loading="showLoading"
 			:show-empty="emptyState !== 'none'"
 			:show-assistant-availability="assistantSkillsEnabled"
+			:show-available-to-mcp="mcpSkillsEnabled"
 			@open="openEditModal"
 			@download="onDownload"
 			@delete="onDelete"

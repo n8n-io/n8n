@@ -650,6 +650,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			latestVersion: 1,
 			availableToAssistant: false,
 			usedByAgents: 0,
+			availableToMCP: false,
 			canEdit: false,
 			canDelete: false,
 			createdAt: '2026-10-01T00:00:00.000Z',

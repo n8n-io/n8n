@@ -48,6 +48,7 @@ export type SkillListFilter = {
 	/** What this agent may attach: instance skills, its project's skills and its own. */
 	attachableTo?: { agentId: string; projectId: string };
 	search?: string;
+	availableToMCP?: boolean;
 	skip: number;
 	take?: number;
 };
@@ -137,6 +138,11 @@ export class SkillRepository extends BaseRepository<Skill> {
 					),
 					{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
 				);
+		}
+		if (filter.availableToMCP !== undefined) {
+			query.andWhere('skill.availableToMCP = :availableToMCP', {
+				availableToMCP: filter.availableToMCP,
+			});
 		}
 		query.orderBy('skill.updatedAt', 'DESC').addOrderBy('skill.id', 'ASC').offset(filter.skip);
 		if (filter.take !== undefined) query.limit(filter.take);
@@ -267,7 +273,13 @@ export class SkillRepository extends BaseRepository<Skill> {
 
 	/** Inserts the skill with its v1 and returns the id of that version. */
 	async createSkill(
-		skill: { id: string; target: SkillTarget; source: SkillSource; createdById: string | null },
+		skill: {
+			id: string;
+			target: SkillTarget;
+			source: SkillSource;
+			createdById: string | null;
+			availableToMCP?: boolean;
+		},
 		content: SkillContent,
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -278,6 +290,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 				agentId: skill.target.agentId,
 				source: skill.source,
 				createdById: skill.createdById,
+				availableToMCP: skill.availableToMCP ?? false,
 			});
 			return await insertVersion(manager, skill.id, 1, content, skill.createdById);
 		});
@@ -390,6 +403,14 @@ export class SkillRepository extends BaseRepository<Skill> {
 				updatedAt: new Date(),
 			},
 		);
+	}
+
+	async updateAvailableToMCP(
+		skillId: string,
+		availableToMCP: boolean,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.managerFor(ctx).update(Skill, { id: skillId }, { availableToMCP });
 	}
 
 	/** Name and type of each project, keyed by project id. A missing project is absent. */
