@@ -46,7 +46,7 @@ export class AzureFoundryDeploymentsService {
 	/** Model each deployment serves, for each credential, keyed by the agent model id. */
 	private readonly underlyingModels = new Map<
 		string,
-		{ expiresAt: number; byModelId: Map<string, string> }
+		{ expiresAt: number; byModelId: Map<string, string | undefined> }
 	>();
 
 	constructor(
@@ -85,7 +85,8 @@ export class AzureFoundryDeploymentsService {
 	/**
 	 * The model a deployment serves, for cost and capability lookups. The result
 	 * is cached for each credential, so a run does not list the deployments every
-	 * time. A deployment that is not in the cache causes a new listing, so a new
+	 * time. A listed deployment without a model name is cached as undefined. A
+	 * deployment that is not in the cache causes a new listing, so a new
 	 * deployment resolves on its first run. A failed listing returns undefined and
 	 * is not cached.
 	 */
@@ -95,8 +96,9 @@ export class AzureFoundryDeploymentsService {
 		agentModelName: string,
 	): Promise<string | undefined> {
 		const cached = this.underlyingModels.get(credentialId);
-		const cachedModel = cached?.byModelId.get(agentModelName);
-		if (cachedModel && cached && cached.expiresAt > Date.now()) return cachedModel;
+		if (cached && cached.expiresAt > Date.now() && cached.byModelId.has(agentModelName)) {
+			return cached.byModelId.get(agentModelName);
+		}
 
 		const result = await this.list(credential);
 		if (result.status !== 'success') {
@@ -110,11 +112,7 @@ export class AzureFoundryDeploymentsService {
 			);
 			return undefined;
 		}
-		const byModelId = new Map(
-			result.deployments.flatMap(
-				({ id, modelName }): Array<[string, string]> => (modelName ? [[id, modelName]] : []),
-			),
-		);
+		const byModelId = new Map(result.deployments.map(({ id, modelName }) => [id, modelName]));
 		this.underlyingModels.set(credentialId, {
 			expiresAt: Date.now() + UNDERLYING_MODEL_CACHE_TTL_MS,
 			byModelId,

@@ -186,6 +186,18 @@ describe('AzureFoundryDeploymentsService', () => {
 			expect(listAzureOpenAiModels).toHaveBeenCalledTimes(2);
 		});
 
+		it('caches a listed deployment without a model name', async () => {
+			const { service } = makeService();
+
+			await expect(
+				service.findUnderlyingModel('cred-1', credential, 'my-chat'),
+			).resolves.toBeUndefined();
+			await expect(
+				service.findUnderlyingModel('cred-1', credential, 'my-chat'),
+			).resolves.toBeUndefined();
+			expect(listAzureOpenAiModels).toHaveBeenCalledTimes(1);
+		});
+
 		it('returns undefined when no listing has the deployment', async () => {
 			const { service } = makeService();
 
