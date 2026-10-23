@@ -16,9 +16,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},
 	() => {
-		// Bug - Public API sends no WWW-Authenticate challenge when a request has no credential:
-		// https://linear.app/n8n/issue/IAM-1631
-		test.fixme('should challenge a request with no credential', async ({ caller }) => {
+		test('should challenge a request with no credential', async ({ caller }) => {
 			const { resource } = await waitForResourceMetadata(caller, 'api/v1');
 
 			const response = await caller.publicApi.listWorkflowsWithBearerRaw();
