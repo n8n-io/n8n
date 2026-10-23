@@ -144,7 +144,7 @@ const respondNodesResponseMode = {
 };
 
 const responseModeBuilderHint =
-	"'streaming' (preferred for Agent-backed chats): the connected Agent streams its reply to the widget directly — no extra wiring. Place logging or side-effects on a PARALLEL branch off the trigger or Agent, never inline after the Agent. 'lastNode': the last-executed node's output is sent to the widget — that node MUST emit `{ output: '<reply text>' }` (typically the Agent itself, or a Set node re-shaping data). NEVER terminate the chain with a Data Table insert, HTTP Request, or other side-effect node — their output is not a chat reply and the widget will error. 'responseNodes': requires one or more `@n8n/n8n-nodes-langchain.chat` nodes inside the flow (hosted and embedded mode). 'responseNode' (embedded mode only): requires a `n8n-nodes-base.respondToWebhook` node.";
+	"'streaming' (preferred for Agent-backed chats): the connected Agent streams its reply to the widget directly — no extra wiring. Place logging or side-effects on a PARALLEL branch off the trigger or Agent, never inline after the Agent. 'lastNode': the last-executed node's output is sent to the widget — that node MUST emit `{ output: '<reply text>' }` (typically the Agent itself, or a Set node re-shaping data). NEVER terminate the chain with a Data Table insert, HTTP Request, or other side-effect node — their output is not a chat reply and the widget will error. 'responseNodes': requires one or more `@n8n/n8n-nodes-langchain.chat` nodes inside the flow (hosted and embedded mode). 'responseNode': requires a `n8n-nodes-base.respondToWebhook` node.";
 
 const commonOptionsFields: INodeProperties[] = [
 	// CORS parameters are only valid for when chat is used in hosted or webhook mode
