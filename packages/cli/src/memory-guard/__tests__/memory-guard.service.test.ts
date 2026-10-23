@@ -910,6 +910,31 @@ describe('MemoryGuardService', () => {
 			expect(deactivateWorkflowAsSystem).not.toHaveBeenCalled();
 		});
 
+		it('should finish a started deactivation after a successful execution of the workflow', async () => {
+			let endLookup = () => {};
+			workflowRepository.findOne.mockReturnValueOnce(
+				new Promise((resolve) => {
+					endLookup = () =>
+						resolve(mock<WorkflowEntity>({ id: 'repeat', activeVersionId: 'version' }));
+				}),
+			);
+			await stopOnce('1');
+			await stopOnce('2');
+			await stopOnce('3');
+			guard.onExecutionEnd(
+				mock<WorkflowExecuteAfterContext>({
+					workflow: { id: 'repeat' },
+					mode: 'webhook',
+					runData: { status: 'success' },
+				}),
+			);
+
+			endLookup();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(deactivateWorkflowAsSystem).toHaveBeenCalledWith('repeat');
+		});
+
 		it('should start the count again after a successful execution of the workflow', async () => {
 			await stopOnce('1');
 			await stopOnce('2');
