@@ -1,3 +1,11 @@
+## [2.45.3](https://github.com/n8n-io/n8n/compare/n8n@2.45.2...n8n@2.45.3) (2026-10-23)
+
+
+### Bug Fixes
+
+* **editor:** Increase light-mode text contrast ([#41807](https://github.com/n8n-io/n8n/issues/41807)) ([9f41c0f](https://github.com/n8n-io/n8n/commit/9f41c0f5d4acd5cf96a58974aec35a3151dea38d))
+
+
 ## [2.45.2](https://github.com/n8n-io/n8n/compare/n8n@2.45.1...n8n@2.45.2) (2026-10-22)
 
 
