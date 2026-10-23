@@ -1,0 +1,47 @@
+packages/workflow/src/node-annotations.ts
+  s_9fa44fd7f5f4f9::t_50350766abff06 80-91,93
+  s_9fa44fd7f5f4f9::t_1af9338374fc65 92
+  s_9fa44fd7f5f4f9::t_00bf9a7721e06b 51-52
+  s_9fa44fd7f5f4f9::t_ffce9fcec8a84a 107-109
+packages/nodes-base/nodes/Postgres/v2/actions/database/deleteTable.operation.ts
+  s_9fa44fd7f5f4f9::t_4de2679771f53b 31,38,44
+packages/nodes-base/nodes/Google/Sheet/v2/actions/sheet/Sheet.resource.ts
+  s_9fa44fd7f5f4f9::t_549f90d810b12e 32
+packages/workflow/docs/adr/ADR-20261020-annotate-node-operations-with-their-effect-and-idempotency.md
+  s_9fa44fd7f5f4f9::t_389fef4aa0542e 76-78
+  s_9fa44fd7f5f4f9::t_30622878f42393 49-50
+  s_9fa44fd7f5f4f9::t_5f26cfdd638ced 33-35
+  s_9fa44fd7f5f4f9::t_d93257bcd7de2f 85-88
+packages/nodes-base/nodes/Google/Sheet/test/v2/annotations.test.ts
+  s_9fa44fd7f5f4f9::t_c101a04240152a 17-32
+packages/nodes-base/nodes/Postgres/test/v2/descriptions.test.ts
+  s_9fa44fd7f5f4f9::t_f708f4f42f350c 44
+  s_9fa44fd7f5f4f9::t_4c436ae5a43347 52
+packages/workflow/test/node-annotations.test.ts
+  s_9fa44fd7f5f4f9::t_a19381bb2bf715 150-152,157-191
+  s_9fa44fd7f5f4f9::t_e4279826d6e025 131
+  s_9fa44fd7f5f4f9::t_10c646d12c37b9 192
+packages/nodes-base/nodes/Postgres/v2/actions/database/Database.resource.ts
+  s_9fa44fd7f5f4f9::t_4a47f916fc0365 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93ede12d09fa485d87750009cd47fdf2471b90da",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9fa44fd7f5f4f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4f2caf8-81a4-4cde-81be-cbe4f2b17bd8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

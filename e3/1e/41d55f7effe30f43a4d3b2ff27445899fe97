@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/azure-foundry-deployments.service.ts
+  s_db23049c32d561::t_f4ff43bffc8f28 14,53,57-59,102-107,109-112
+  s_db23049c32d561::t_cd1400b61af847 19,108
+  s_db23049c32d561::t_35b6dc7e708fe2 88-90
+  s_db23049c32d561::t_6c2df4af0b8798 98-99
+packages/cli/src/modules/agents/__tests__/azure-foundry-deployments.service.test.ts
+  s_db23049c32d561::t_c5b6781b7cc555 189-200,203-207,212-214
+  s_db23049c32d561::t_9a370fb44cffa8 171,173-188
+  s_db23049c32d561::t_f4ff43bffc8f28 2,36-37,39,44,201-202,217-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e31e41d55f7effe30f43a4d3b2ff27445899fe97",
+  "prompts": {},
+  "sessions": {
+    "s_db23049c32d561": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9a3ce8b-c177-449e-974c-d77f50f50c5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
