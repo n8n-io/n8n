@@ -66,6 +66,11 @@ test.describe(
 			await n8n.page.screenshot({ path: testInfo.outputPath('desktop-build.png') });
 			await builder.getModeButton('test').click();
 			await expect(builder.getComposer('test')).toBeVisible();
+			await expect(builder.getComposer('test')).toBeEmpty();
+			await expect
+				.poll(async () => await builder.getComposerTextInset('test'))
+				.toEqual({ top: 14, left: 14 });
+			await n8n.page.screenshot({ path: testInfo.outputPath('desktop-test-placeholder.png') });
 			await builder.getComposer('test').fill(longPrompt);
 			await expect.poll(async () => await builder.isComposerScrollable('test')).toBe(true);
 			await expect
@@ -153,6 +158,35 @@ test.describe(
 				.toBeCloseTo(0.35, 3);
 			await expect(builder.getComposer('build')).toHaveValue('Add a project knowledge tool');
 			await expect(builder.getCloseChatButton('build')).toBeHidden();
+			await builder.dismissBuildAgentAttachment();
+			await builder.getComposer('build').fill('');
+			await expect
+				.poll(async () => await builder.getComposerTextInset('build'))
+				.toEqual({ top: 14, left: 14 });
+			await expect
+				.poll(async () => (await builder.getComposerFrame('build').boundingBox())?.height)
+				.toBe(184);
+			await n8n.page.screenshot({ path: testInfo.outputPath('desktop-build-placeholder.png') });
+			await builder.getModeButton('test').click();
+			await builder.removeTestAttachment();
+			await builder.getComposer('test').fill('');
+			for (const colorScheme of ['light', 'dark'] as const) {
+				await n8n.page.emulateMedia({ colorScheme });
+				await n8n.page.setViewportSize({ width: 375, height: 667 });
+				for (const mode of ['test', 'build'] as const) {
+					await builder.getModeButton(mode).click();
+					await expect(builder.getComposer(mode)).toBeEmpty();
+					await expect
+						.poll(async () => await builder.getComposerTextInset(mode))
+						.toEqual({ top: 14, left: 14 });
+					await expect
+						.poll(async () => (await builder.getComposerFrame(mode).boundingBox())?.height)
+						.toBe(184);
+					await n8n.page.screenshot({
+						path: testInfo.outputPath(`375-${mode}-placeholder-${colorScheme}.png`),
+					});
+				}
+			}
 		});
 	},
 );

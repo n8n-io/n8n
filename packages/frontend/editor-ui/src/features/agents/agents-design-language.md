@@ -59,15 +59,17 @@ to 65/35. Reserve at least 360 pixels for configuration and 320 pixels for chat.
 Do not cap configuration at a fixed maximum width. Below 680 pixels of available
 workspace, fill the viewport with one panel at a time, above the sidebar. Measure
 the original workspace to keep this layout stable when the sidebar is open.
-Close either chat to show the
-full-width configuration. Use Chat to reopen the selected mode. Keep both panels
-mounted. Keep the mode selector and composer actions inside the input at narrow
-widths. Show the same preview disclaimer below both composers, including empty
+Close either chat to show the full-width configuration. Use Chat to reopen the
+selected mode. Keep both panels mounted. Keep the mode selector and composer
+actions inside the input at narrow widths. Show the same preview disclaimer
+below both composers, including empty
 chats. Use the same footer spacing.
 
-Keep both composers at the same fixed height. Reserve an attachment row, including
-when it is empty. Scroll long prompts and attachment lists inside the composer.
-Use a plus icon for the Test file picker, in the same position as the Build menu.
+Keep both composers at the same fixed height. Put the placeholder and prompt text
+at the top left. Show the attachment row only when it has content. Put attached
+agents and files above the text. Scroll long prompts and attachment lists inside
+the composer. Use a plus icon for the Test file picker, in the same position as
+the Build menu.
 
 Keep chat width and test placement independent. The control layout and the
 artifact builder keep their existing docks. Test links and task previews select

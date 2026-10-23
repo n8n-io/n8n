@@ -71,10 +71,31 @@ export class AgentBuilderPage extends BasePage {
 		return this.getComposerFrame('test').getByText(name, { exact: true });
 	}
 
+	async removeTestAttachment(): Promise<void> {
+		await this.getPreviewDock().getByTestId('chat-file-remove').click();
+	}
+
 	async isComposerScrollable(mode: 'build' | 'test'): Promise<boolean> {
 		return await this.getComposer(mode).evaluate(
 			(element) => element.scrollHeight > element.clientHeight,
 		);
+	}
+
+	async getComposerTextInset(mode: 'build' | 'test') {
+		const frame = await this.getComposerFrame(mode).boundingBox();
+		if (!frame) throw new Error('The composer is not visible');
+		return await this.getComposer(mode).evaluate((textarea, bounds) => {
+			const rect = textarea.getBoundingClientRect();
+			const style = getComputedStyle(textarea);
+			return {
+				top: rect.top + Number.parseFloat(style.paddingTop) - bounds.y,
+				left: rect.left + Number.parseFloat(style.paddingLeft) - bounds.x,
+			};
+		}, frame);
+	}
+
+	async dismissBuildAgentAttachment(): Promise<void> {
+		await this.getAssistantChat().getByTestId('instance-ai-handoff-context-chip-dismiss').click();
 	}
 
 	getOpenChatButton(): Locator {

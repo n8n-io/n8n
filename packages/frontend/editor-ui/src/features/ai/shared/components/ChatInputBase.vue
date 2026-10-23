@@ -384,6 +384,10 @@ defineExpose({
 	min-height: var(--height--xs);
 	max-height: var(--height--3xl);
 	overflow-y: auto;
+
+	&:empty {
+		display: none;
+	}
 }
 
 .dropOverlay {
