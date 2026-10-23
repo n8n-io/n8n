@@ -19,7 +19,7 @@ const CEILINGS = {
 	systemPrompt: 21_000,
 	skillCatalog: 9_000,
 	alwaysLoadedTools: 72_000,
-	buildSkills: 135_000,
+	buildSkills: 120_000,
 };
 
 /** The skills that a typical workflow build loads and keeps for the rest of the thread. */
