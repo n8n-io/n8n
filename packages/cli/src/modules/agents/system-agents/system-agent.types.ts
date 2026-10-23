@@ -12,7 +12,11 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import type { ToolRegistry } from '../tool-registry';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
-import type { AgentTurnFinalizeOutcome, AgentTurnStatus } from '../types/agent-turn-outcome';
+import type {
+	AgentTurnFinalizeOutcome,
+	AgentTurnStatus,
+	FormattedTurnError,
+} from '../types/agent-turn-outcome';
 
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
@@ -79,6 +83,23 @@ export interface SystemAgentTurnHandle {
 	 * turn record. A turn without an execution record settles after it fails.
 	 */
 	onSettled?: (outcome: SystemAgentTurnOutcome) => Promise<void>;
+	/**
+	 * Give the user-facing form of a turn error: the text, and an optional
+	 * client code such as `quota_exhausted`. The runtime awaits this once per
+	 * error, before it sends the `error` event and stores the execution error,
+	 * so it can do async work such as a credit check. Keep it short: the error
+	 * event waits for it.
+	 *
+	 * The provider owns the text. The runtime sends the text and code to the
+	 * client unchanged. It stores the text as the execution error, where the
+	 * usual secret redaction of execution records applies. The code is not
+	 * stored, so the history shows the text without it. Return `undefined`, or
+	 * an empty message, to keep the raw error.
+	 * When it throws, the runtime logs the failure and keeps the raw error.
+	 * Errors that already have a client code, such as `turn_already_running`,
+	 * are not formatted.
+	 */
+	formatError?: (error: unknown) => Promise<FormattedTurnError | undefined>;
 }
 
 /** The sandbox scope of one thread of a system agent. */

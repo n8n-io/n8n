@@ -50,7 +50,9 @@ export const mcpRegistryDiscoveryRequestSchema = z
 		slug: z.string().trim().min(1),
 		credentialId: z.string().trim().min(1),
 	})
-	.strict();
+	.strict()
+	// Gateway credits need no stored credential: the server mints one for the request user.
+	.or(z.object({ slug: z.string().trim().min(1), aiGateway: z.literal(true) }).strict());
 
 export type McpRegistryDiscoveryRequest = z.infer<typeof mcpRegistryDiscoveryRequestSchema>;
 

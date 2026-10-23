@@ -106,6 +106,8 @@ export interface AgentExecution {
 	failureSummary: AgentExecutionFailureSummary | null;
 	hitlStatus: AgentExecutionHitlStatus | null;
 	source: string | null;
+	finishReason: string | null;
+	guardrailCode: string | null;
 }
 
 export interface ThreadDetail {

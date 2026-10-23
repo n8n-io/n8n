@@ -17,6 +17,11 @@ import type { TableOptions } from '@n8n/design-system';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { PREFERENCES_EMPTY_STATE_EXPERIMENT } from '@/app/constants/experiments';
+import PreferencesEmptyStateAssistant from '@/experiments/preferencesEmptyState/components/PreferencesEmptyStateAssistant.vue';
+import PreferencesEmptyStateExamples from '@/experiments/preferencesEmptyState/components/PreferencesEmptyStateExamples.vue';
+import type { PreferenceExample } from '@/experiments/preferencesEmptyState/preferenceExamples';
+import { usePreferencesEmptyStateExperiment } from '@/experiments/preferencesEmptyState/usePreferencesEmptyStateExperiment';
 
 import PreferenceModal from '../components/PreferenceModal.vue';
 import PreferencesTable from '../components/PreferencesTable.vue';
@@ -33,6 +38,8 @@ const documentTitle = useDocumentTitle();
 const message = useMessage();
 const telemetry = useTelemetry();
 const contextStore = useContextStore();
+const preferencesEmptyStateExperiment = usePreferencesEmptyStateExperiment();
+const emptyStateVariant = preferencesEmptyStateExperiment.variant;
 const { showError, showMessage } = useToast();
 
 const tableOptions = ref<TableOptions>({
@@ -44,10 +51,20 @@ const selection = ref<string[]>([]);
 const loadFailed = ref(false);
 
 const dialogTarget = ref<Preference | 'new' | null>(null);
+const openedExample = ref<PreferenceExample>();
 
 // A failed load also reports zero rows, so the empty state must not stand in for it.
 const showEmptyState = computed(
 	() => !contextStore.loading && !loadFailed.value && contextStore.count === 0,
+);
+const showAssistantEmptyState = computed(
+	() =>
+		showEmptyState.value &&
+		emptyStateVariant.value === PREFERENCES_EMPTY_STATE_EXPERIMENT.assistant,
+);
+const showExamplesEmptyState = computed(
+	() =>
+		showEmptyState.value && emptyStateVariant.value === PREFERENCES_EMPTY_STATE_EXPERIMENT.examples,
 );
 const selectedCount = computed(() => selection.value.length);
 
@@ -89,6 +106,12 @@ async function onOptionsUpdate(options: TableOptions) {
 }
 
 function openCreateModal() {
+	openedExample.value = undefined;
+	dialogTarget.value = 'new';
+}
+
+function openExampleModal(example: PreferenceExample) {
+	openedExample.value = example;
 	dialogTarget.value = 'new';
 }
 
@@ -190,6 +213,7 @@ onMounted(async () => {
 		count: contextStore.count,
 		scope_types: [...new Set(contextStore.preferences.map((row) => preferenceScope(row)))],
 	});
+	if (contextStore.count === 0) preferencesEmptyStateExperiment.trackExposure();
 });
 </script>
 
@@ -208,7 +232,13 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<div :class="$style.tableArea">
+		<PreferencesEmptyStateAssistant v-if="showAssistantEmptyState" @write-own="openCreateModal" />
+		<PreferencesEmptyStateExamples
+			v-else-if="showExamplesEmptyState"
+			@use-example="openExampleModal"
+			@write-own="openCreateModal"
+		/>
+		<div v-else :class="$style.tableArea">
 			<div :class="$style.toolbar">
 				<N8nText v-if="selectedCount > 0" color="text-light" size="small">
 					{{
@@ -264,6 +294,7 @@ onMounted(async () => {
 		<PreferenceModal
 			:open="dialogTarget !== null"
 			:preference="dialogTarget === 'new' ? null : dialogTarget"
+			:example="dialogTarget === 'new' ? openedExample : undefined"
 			@update:open="(open) => (dialogTarget = open ? dialogTarget : null)"
 			@saved="onSaved"
 		/>

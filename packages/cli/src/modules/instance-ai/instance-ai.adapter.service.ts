@@ -42,6 +42,7 @@ import {
 	ExecutionRepository,
 	FolderRepository,
 	ProjectRepository,
+	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	WorkflowEntity,
 	WorkflowRepository,
@@ -114,6 +115,7 @@ import {
 	WorkflowNotFoundError,
 	FolderResolutionError,
 	WorkflowEditorLockedError,
+	OutsideThreadProjectError,
 	formatRedactedError,
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -152,6 +154,7 @@ import {
 	jsonParse,
 	createRunExecutionData,
 	calculateWorkflowChecksum,
+	isMcpAiGatewayAuthentication,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
@@ -187,6 +190,7 @@ import {
 import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { isAiGatewayMcpServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import {
 	getModuleDisabledNodeTypes,
@@ -596,9 +600,24 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest,
 			getCredentialTestTarget,
 		);
+		const dataTableService = this.createDataTableAdapter(user, projectId);
+		const { assertInBoundProject, assertWorkflowInBoundProject, assertCredentialInBoundProject } =
+			this.createProjectScopeHelpers(user, projectId);
+		const assertInThreadProject: InstanceAiContext['assertInThreadProject'] = async (target) => {
+			if (projectId === undefined) return;
+			if (target.kind === 'workflow') return await assertWorkflowInBoundProject(target.id);
+			if (target.kind === 'credential') return await assertCredentialInBoundProject(target.id);
+			if (target.kind === 'project') return assertInBoundProject(target.id);
+			const table = await dataTableService.resolveTableReference?.(target.id, {
+				projectId: target.projectId,
+			});
+			// Without a resolver the owner is unknown, so the check rejects.
+			assertInBoundProject(table?.projectId);
+		};
 		return {
 			userId: user.id,
 			projectId,
+			assertInThreadProject,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
 			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
@@ -614,15 +633,17 @@ export class InstanceAiAdapterService {
 				allowSendingParameterValues,
 				pushRef,
 				threadId,
+				projectId,
 			),
 			credentialService,
 			nodeService: this.createNodeAdapter(user),
-			dataTableService: this.createDataTableAdapter(user, projectId),
+			dataTableService,
 			...(configEvalsEnabled && this.evaluationConfigService
 				? {
 						evaluationConfigService: this.createEvaluationConfigAdapter(
 							this.evaluationConfigService,
 							user,
+							projectId,
 						),
 					}
 				: {}),
@@ -857,9 +878,13 @@ export class InstanceAiAdapterService {
 		// Templated rows are dropped rather than offered: this path reads credentials
 		// without resolving expressions, so `createConnection` refuses them. Offering
 		// one would walk the user to a credential picker and then an error.
+		// Gateway-only rows are dropped for the same reason: this path connects with a
+		// stored credential only.
+		const isAiGatewayOnly = (server: McpRegistrySearchResult) =>
+			server.authentication === 'none' && server.credential === AI_GATEWAY_MANAGED_TAG;
 		const toSummaries = (servers: McpRegistrySearchResult[]): McpRegistryServerSummary[] =>
 			servers
-				.filter((server) => !server.isTemplated)
+				.filter((server) => !server.isTemplated && !isAiGatewayOnly(server))
 				.map((server) => ({
 					slug: server.slug,
 					title: server.title,
@@ -882,7 +907,7 @@ export class InstanceAiAdapterService {
 				const servers = await Container.get(McpRegistryService).getBySlugs(slugs);
 				return servers
 					.filter((server) => {
-						if (server.status !== 'active') return false;
+						if (server.status !== 'active' || isAiGatewayMcpServer(server)) return false;
 						const connection = resolveMcpRegistryConnection(server);
 						return connection !== null && !connection.isTemplated;
 					})
@@ -890,7 +915,10 @@ export class InstanceAiAdapterService {
 						slug: server.slug,
 						title: server.title,
 						description: server.tagline,
-						usesCredentials: getMcpRegistryCredentialOptions(server),
+						// A paired server keeps its own options: this path never offers Gateway credits.
+						usesCredentials: getMcpRegistryCredentialOptions(server).filter(
+							({ credentialType }) => !isMcpAiGatewayAuthentication(credentialType),
+						),
 						tools: server.tools.map((tool) => tool.name),
 					}));
 			},
@@ -1054,7 +1082,41 @@ export class InstanceAiAdapterService {
 			return boundProjectId;
 		};
 
-		return { getPersonalProjectId, assertProjectScope, resolveProjectId, resolveBoundProjectId };
+		/** A bound conversation may read across projects but writes only to its own project. */
+		const assertInBoundProject = (projectId: string | undefined) => {
+			if (boundProjectId !== undefined && projectId !== boundProjectId) {
+				throw new OutsideThreadProjectError();
+			}
+		};
+
+		const assertWorkflowInBoundProject = async (workflowId: string) => {
+			if (boundProjectId === undefined) return;
+			// A workflow shared into the bound project counts as part of it, as in the project's list.
+			// A missing workflow falls through to the caller's not-found path.
+			const projectIds = await this.sharedWorkflowRepository.findProjectIds(workflowId);
+			if (projectIds.length > 0 && !projectIds.includes(boundProjectId)) {
+				throw new OutsideThreadProjectError();
+			}
+		};
+
+		const assertCredentialInBoundProject = async (credentialId: string) => {
+			if (boundProjectId === undefined) return;
+			const owner = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
+				credentialId,
+			);
+			// A missing credential falls through to the caller's not-found path.
+			if (owner) assertInBoundProject(owner.id);
+		};
+
+		return {
+			getPersonalProjectId,
+			assertProjectScope,
+			resolveProjectId,
+			resolveBoundProjectId,
+			assertInBoundProject,
+			assertWorkflowInBoundProject,
+			assertCredentialInBoundProject,
+		};
 	}
 
 	private createWorkflowAdapter(
@@ -1115,7 +1177,10 @@ export class InstanceAiAdapterService {
 			projectId?: string;
 			scope?: 'project' | 'instance';
 		}) => options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
-		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
+		const { resolveBoundProjectId, assertWorkflowInBoundProject } = this.createProjectScopeHelpers(
+			user,
+			boundProjectId,
+		);
 		const redactParameters = !(
 			options.allowSendingParameterValues ?? this.allowSendingParameterValues
 		);
@@ -1526,6 +1591,7 @@ export class InstanceAiAdapterService {
 
 			async archive(workflowId: string) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				await assertNotLockedByEditor(workflowId);
 				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
 				if (!result) {
@@ -1536,6 +1602,7 @@ export class InstanceAiAdapterService {
 
 			async unarchive(workflowId: string) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				const result = await workflowService.unarchive(user, workflowId);
 				if (!result) {
 					throw new WorkflowNotFoundError(workflowId);
@@ -1576,6 +1643,7 @@ export class InstanceAiAdapterService {
 				workflowId: string,
 				options?: { versionId?: string; name?: string; description?: string },
 			) {
+				await assertWorkflowInBoundProject(workflowId);
 				await assertNotLockedByEditor(workflowId);
 				const wf = await workflowService.activateWorkflow(user, workflowId, {
 					versionId: options?.versionId,
@@ -1603,6 +1671,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async unpublish(workflowId: string) {
+				await assertWorkflowInBoundProject(workflowId);
 				await assertNotLockedByEditor(workflowId);
 				await workflowService.deactivateWorkflow(user, workflowId, {
 					source: 'n8n-ai',
@@ -1854,6 +1923,7 @@ export class InstanceAiAdapterService {
 			) {
 				assertNotReadOnly();
 				assertParameterValuesAvailable();
+				await assertWorkflowInBoundProject(workflowId);
 				await assertNotLockedByEditor(workflowId);
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				// Loaded on first use only. The checks below share one query.
@@ -2021,6 +2091,7 @@ export class InstanceAiAdapterService {
 
 			async restoreVersion(workflowId, versionId) {
 				assertParameterValuesAvailable();
+				await assertWorkflowInBoundProject(workflowId);
 				await assertNotLockedByEditor(workflowId);
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 
@@ -2047,6 +2118,7 @@ export class InstanceAiAdapterService {
 							versionId: string,
 							data: { name?: string | null; description?: string | null },
 						) {
+							await assertWorkflowInBoundProject(workflowId);
 							await workflowHistoryService.updateVersionForUser(user, workflowId, versionId, data);
 						},
 					}
@@ -2059,6 +2131,7 @@ export class InstanceAiAdapterService {
 		allowSendingParameterValues: boolean,
 		pushRef?: string,
 		threadId?: string,
+		boundProjectId?: string,
 	): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
@@ -2073,6 +2146,7 @@ export class InstanceAiAdapterService {
 			globalConfig,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
+		const { assertWorkflowInBoundProject } = this.createProjectScopeHelpers(user, boundProjectId);
 
 		const DEFAULT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
 		const MAX_TIMEOUT_MS = 10 * Time.minutes.toMilliseconds;
@@ -2208,6 +2282,7 @@ export class InstanceAiAdapterService {
 
 			async run(workflowId: string, inputData, options) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
@@ -2433,6 +2508,7 @@ export class InstanceAiAdapterService {
 
 			async runStep(workflowId: string, nodeName: string, options) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
@@ -2780,7 +2856,8 @@ export class InstanceAiAdapterService {
 
 			async stop(executionId: string) {
 				assertNotReadOnly();
-				await assertExecutionAccess(executionId, ['workflow:execute']);
+				const execution = await assertExecutionAccess(executionId, ['workflow:execute']);
+				await assertWorkflowInBoundProject(execution.workflowId);
 				if (!activeExecutions.has(executionId)) {
 					return {
 						success: false,
@@ -2875,6 +2952,7 @@ export class InstanceAiAdapterService {
 			aiGatewayService,
 		} = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
+		const { assertCredentialInBoundProject } = this.createProjectScopeHelpers(user, boundProjectId);
 
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
@@ -2949,6 +3027,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async delete(credentialId: string) {
+				await assertCredentialInBoundProject(credentialId);
 				await credentialsService.delete(user, credentialId);
 			},
 
@@ -3326,9 +3405,11 @@ export class InstanceAiAdapterService {
 	private createEvaluationConfigAdapter(
 		evaluationConfigService: EvaluationConfigService,
 		user: User,
+		boundProjectId?: string,
 	): InstanceAiEvaluationConfigService {
 		const { workflowFinderService, credentialsFinderService, llmJudgeProviderRegistry } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('evaluations');
+		const { assertWorkflowInBoundProject } = this.createProjectScopeHelpers(user, boundProjectId);
 
 		const findWorkflow = async (
 			workflowId: string,
@@ -3370,6 +3451,7 @@ export class InstanceAiAdapterService {
 			},
 			async create(workflowId, input) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
 				const resolved = await resolveProviders(input);
 				const config = await evaluationConfigService.create(
@@ -3382,6 +3464,7 @@ export class InstanceAiAdapterService {
 			},
 			async update(workflowId, configId, input) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
 				const resolved = await resolveProviders(input);
 				const config = await evaluationConfigService.update(
@@ -3395,6 +3478,7 @@ export class InstanceAiAdapterService {
 			},
 			async delete(workflowId, configId) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				await findWorkflow(workflowId, 'workflow:update');
 				await evaluationConfigService.delete(workflowId, configId);
 			},
@@ -3405,10 +3489,8 @@ export class InstanceAiAdapterService {
 		const { dataTableService, dataTableRepository } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('data tables');
 
-		const { resolveProjectId, resolveBoundProjectId } = this.createProjectScopeHelpers(
-			user,
-			boundProjectId,
-		);
+		const { resolveProjectId, resolveBoundProjectId, assertInBoundProject } =
+			this.createProjectScopeHelpers(user, boundProjectId);
 
 		const logger = this.logger;
 
@@ -3520,6 +3602,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				await dataTableService.deleteDataTable(resolvedId, projectId);
 			},
 
@@ -3556,6 +3639,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				const result = await dataTableService.addColumn(resolvedId, projectId, column);
 				return {
 					id: result.id,
@@ -3572,6 +3656,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				await dataTableService.deleteColumn(resolvedId, projectId, columnId);
 			},
 
@@ -3582,6 +3667,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				await dataTableService.renameColumn(resolvedId, projectId, columnId, {
 					name: newName,
 				});
@@ -3606,6 +3692,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				const result = await dataTableService.insertRows(
 					resolvedId,
 					projectId,
@@ -3626,6 +3713,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				const result = await dataTableService.updateRows(
 					resolvedId,
 					projectId,
@@ -3646,6 +3734,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				const result = await dataTableService.deleteRows(resolvedId, projectId, { filter }, true);
 				return {
 					deletedCount: Array.isArray(result) ? result.length : 0,
@@ -4248,7 +4337,8 @@ export class InstanceAiAdapterService {
 			eventService,
 		} = this;
 		const assertNotReadOnly = (resource: string) => this.assertInstanceNotReadOnly(resource);
-		const { assertProjectScope } = this.createProjectScopeHelpers(user);
+		const { assertProjectScope, assertInBoundProject, assertWorkflowInBoundProject } =
+			this.createProjectScopeHelpers(user, boundProjectId);
 		const teamProjectsLicensed = this.teamProjectsLicensed();
 
 		const adapter: InstanceAiWorkspaceService = {
@@ -4294,6 +4384,7 @@ export class InstanceAiAdapterService {
 							parentFolderId?: string,
 						): Promise<FolderSummary> {
 							assertNotReadOnly('folders');
+							assertInBoundProject(projectId);
 							await assertProjectScope(['folder:create'], projectId);
 							const folder = await folderService.createFolder(
 								{ name, parentFolderId: parentFolderId ?? undefined },
@@ -4312,6 +4403,7 @@ export class InstanceAiAdapterService {
 							transferToFolderId?: string,
 						): Promise<void> {
 							assertNotReadOnly('folders');
+							assertInBoundProject(projectId);
 							await assertProjectScope(['folder:delete'], projectId);
 							await folderService.deleteFolder(user, folderId, projectId, {
 								transferToFolderId: transferToFolderId ?? undefined,
@@ -4320,6 +4412,7 @@ export class InstanceAiAdapterService {
 
 						async moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void> {
 							assertNotReadOnly('workflows');
+							await assertWorkflowInBoundProject(workflowId);
 							const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 								'workflow:update',
 							]);
@@ -4336,6 +4429,7 @@ export class InstanceAiAdapterService {
 
 			async tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]> {
 				assertNotReadOnly('workflows');
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:update',
 				]);
@@ -4391,6 +4485,7 @@ export class InstanceAiAdapterService {
 				options?: { olderThanHours?: number },
 			): Promise<{ deletedCount: number }> {
 				assertNotReadOnly('executions');
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'execution:delete',
 				]);

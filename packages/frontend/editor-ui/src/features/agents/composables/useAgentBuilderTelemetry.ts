@@ -72,11 +72,8 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	}
 
 	/**
-	 * Compute the agent's `config_version` fingerprint asynchronously, then hand
-	 * it to `emit`. Centralizes the async-IIFE + try/catch boilerplate that
-	 * every fingerprint-bearing event would otherwise duplicate. `crypto.subtle`
-	 * can throw in insecure contexts, so failures are swallowed — individual
-	 * track calls are already wrapped inside `useAgentTelemetry`.
+	 * Compute the fingerprint before each event. Ignore failures so telemetry
+	 * does not interrupt editing. Track calls also handle errors in `useAgentTelemetry`.
 	 */
 	function withFingerprint(
 		config: AgentJsonConfig | null,

@@ -116,6 +116,12 @@ catalog:
   '@modelcontextprotocol/server': 2.3.0
   '@mozilla/readability': ^0.6.0
   '@n8n_io/ai-assistant-sdk': 1.27.0
+  '@napi-rs/canvas': 1.0.11
+  '@napi-rs/canvas-linux-arm64-musl': 1.0.11
+  '@napi-rs/canvas-linux-x64-musl': 1.0.11
+  '@napi-rs/image': 1.15.0
+  '@napi-rs/image-linux-arm64-musl': 1.15.0
+  '@napi-rs/image-linux-x64-musl': 1.15.0
   '@openrouter/ai-sdk-provider': ^3.0.0
   '@opentelemetry/api': 1.9.1
   '@pinecone-database/pinecone': ^5.0.2
@@ -200,7 +206,6 @@ catalog:
   cross-env: ^7.0.3
   csv-parse: 7.0.2
   dotenv: 17.2.3
-  electron: 41.10.6
   esbuild: ^0.28.1
   eslint: 9.29.0
   eslint-plugin-n8n-nodes-base: ^2.0.0
@@ -491,7 +496,7 @@ overrides:
   prosemirror-model: 1.25.12
   'prosemirror-view@<1.42.3': 1.42.3
   # Only the pdf-parse CommonJS build loads this copy. Match pdfjs-dist so the image ships one binary.
-  'pdf-parse>@napi-rs/canvas': ^1.0.0
+  'pdf-parse>@napi-rs/canvas': 'catalog:'
   # The @icetee/ftp patch replaces xregexp with native RegExp.
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
   'toml@<4.2.0': 4.2.0

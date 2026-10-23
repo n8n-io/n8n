@@ -330,6 +330,11 @@ export class TeamsIntegration extends AgentChatIntegration {
 		return buildTeamsOriginDraft(input, decoded);
 	}
 
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const { appId, appPassword, appTenantId } = this.extractBotCredentials(ctx.credential);
 		const { createTeamsAdapter } = await loadTeamsAdapter();

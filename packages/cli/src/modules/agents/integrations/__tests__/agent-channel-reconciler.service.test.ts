@@ -41,6 +41,10 @@ class FakeIntegration extends AgentChatIntegration {
 		return undefined;
 	}
 
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(): Promise<unknown> {
 		return {};
 	}

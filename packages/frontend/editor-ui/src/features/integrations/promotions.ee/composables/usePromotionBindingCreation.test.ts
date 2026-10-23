@@ -20,7 +20,8 @@ const stores = vi.hoisted(() => ({
 	projects: {
 		fetchProject: vi.fn(),
 		getMyProjects: vi.fn(),
-		canCreateProjects: true,
+		canCreateProjects: false,
+		hasTeamProjectQuota: true,
 		hasPermissionToCreateProjects: true,
 	},
 	credentials: { fetchCredentialTypes: vi.fn(), getCredentialTypeByName: vi.fn() },
@@ -111,7 +112,11 @@ it('keeps a created project after a failed credential save and resolves on closu
 	const pending = adapter.createBinding(credential).then(complete);
 	await flushPromises();
 	expect(createPublicProject).not.toHaveBeenCalled();
-	expect(credentialOptions.destination).toMatchObject({ kind: 'pending', id: project.id });
+	expect(credentialOptions.destination).toMatchObject({
+		kind: 'pending',
+		id: project.id,
+		permissions: { create: true },
+	});
 	vi.mocked(createPublicCredential).mockRejectedValueOnce(new Error('Save failed'));
 	const details = {
 		id: '',
@@ -215,6 +220,7 @@ it.each([null, 'owner-team'])('creates a variable in its required scope: %s', as
 		initialValues: { key: variable.name, value: '' },
 		projectId,
 		fixedKey: true,
+		allowOnProtectedInstance: true,
 	});
 	await variableOptions.onCreate!({ key: variable.name, value: '' });
 	expect(stores.environments.createVariable).toHaveBeenCalledWith({

@@ -10,7 +10,6 @@ export class N8n extends VersionedNodeType {
 			displayName: 'n8n',
 			name: 'n8n',
 			icon: 'node:n8n',
-			iconColor: 'pink-red',
 			group: ['transform'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Handle events and perform actions on your n8n instance',
