@@ -974,6 +974,41 @@ describe('EngineV2Dispatcher', () => {
 			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow(ConflictError);
 		});
 
+		describe('the files the resume method stored', () => {
+			const main = [
+				[
+					{
+						json: {},
+						binary: { data: { data: '', mimeType: 'text/plain', id: 'filesystem-v2:file-1' } },
+					},
+				],
+			];
+
+			it('deletes them when the data plane refuses the resume', async () => {
+				proxy.resolveStep.mockResolvedValue({ ok: false, status: 409, error: 'not_waiting' });
+
+				await expect(dispatcher.resume(existing, resumeData(main))).rejects.toThrow(ConflictError);
+
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(main);
+			});
+
+			it('deletes them when the credential check refuses the resume', async () => {
+				credentialsPermissionChecker.check.mockRejectedValueOnce(new UserError('no access'));
+
+				await expect(dispatcher.resume(existing, resumeData(main))).rejects.toThrow('no access');
+
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(main);
+			});
+
+			it('keeps them when the data plane fails, since it may have accepted the step', async () => {
+				proxy.resolveStep.mockRejectedValueOnce(new Error('engine down'));
+
+				await expect(dispatcher.resume(existing, resumeData(main))).rejects.toThrow('engine down');
+
+				expect(payloadFiles.discard).not.toHaveBeenCalled();
+			});
+		});
+
 		it('answers a step that went away with its execution as a missing execution', async () => {
 			proxy.resolveStep.mockResolvedValue({ ok: false, status: 401, error: 'invalid_token' });
 
