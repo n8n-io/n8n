@@ -219,7 +219,7 @@ export class Executor {
 			hold !== undefined &&
 			(store.markHeld === undefined ||
 				store.releaseHeld === undefined ||
-				(hold.renewal === 'batched' && store.renewLeases === undefined))
+				store.renewLeases === undefined)
 		) {
 			throw new HoldStoreMissingError();
 		}
@@ -545,7 +545,7 @@ export class Executor {
 				this.hooks.onHoldReady?.(task);
 			},
 		};
-		const stopLease = this.keepHoldLease(task, claim, leaseMs, leaseSetAt, (result) => {
+		const stopLease = this.keepHoldLease(claim, leaseMs, leaseSetAt, (result) => {
 			this.hooks.onLeaseRenewal?.(task, result);
 			if (result !== 'renewed' && !run.signal.aborted) {
 				run.abort(new LeaseLostError());
@@ -625,29 +625,17 @@ export class Executor {
 
 	/** Renew a held task's lease until the returned function is called. */
 	private keepHoldLease(
-		task: ClaimedTask,
 		claim: ClaimedTaskRef,
 		leaseMs: number,
 		leaseSetAt: number,
 		onRenewal: (result: LeaseRenewalResult) => void,
 	): () => void {
 		const fenceMarginMs = this.options.hold?.fenceMarginMs ?? defaultFenceMarginMs(leaseMs);
-		if (this.options.hold?.renewal === 'batched') {
-			return this.renewerFor(claim.host).add(
-				claim,
-				{ leaseMs, leaseSetAt, fenceMarginMs },
-				onRenewal,
-			);
-		}
-		const heartbeat = new LeaseHeartbeat(
-			async (expiresInMs) => await this.store.renewLease(claim, expiresInMs),
-			{ leaseDurationMs: leaseMs, leaseSetAt, fenceMarginMs },
-			{
-				onRenewal,
-				onRenewalError: (error) => this.hooks.onLeaseRenewalError?.(task, error),
-			},
+		return this.renewerFor(claim.host).add(
+			claim,
+			{ leaseMs, leaseSetAt, fenceMarginMs },
+			onRenewal,
 		);
-		return () => heartbeat.stop();
 	}
 
 	private renewerFor(host: string): BatchedLeaseRenewer {

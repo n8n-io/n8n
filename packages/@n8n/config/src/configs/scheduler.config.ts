@@ -10,8 +10,6 @@ import { positiveIntSchema } from '../schemas';
  */
 const jitterRatioSchema = z.number({ coerce: true }).nonnegative().lt(1);
 
-const heldTaskRenewalSchema = z.enum(['per-row', 'batched']);
-
 /**
  * Configuration for the durable scheduler: the engine that runs time-based
  * workflows (such as Schedule Trigger nodes) from a database-backed queue.
@@ -340,14 +338,6 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_HELD_TASKS_ENABLED')
 	enabledForHeldTasks: boolean = false;
-
-	/**
-	 * How a main renews the leases of the held tasks it keeps. `per-row` writes
-	 * one update for each held task. `batched` writes one update for all of them.
-	 * Defaults to `per-row`.
-	 */
-	@Env('N8N_SCHEDULER_HELD_TASK_RENEWAL', heldTaskRenewalSchema)
-	heldTaskRenewal: z.infer<typeof heldTaskRenewalSchema> = 'per-row';
 
 	/**
 	 * How long, in seconds, a main that shuts down waits for its held tasks to

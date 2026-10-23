@@ -29,8 +29,6 @@ export interface ExecutorOptions {
 }
 
 export interface HoldOptions {
-	/** `per-row`: one renewal write per held task. `batched`: one write per beat for all of them. */
-	renewal: 'per-row' | 'batched';
 	/**
 	 * How long before its lease runs out a holder is told to let go. Defaults to half
 	 * a renewal interval, at most 5 seconds.

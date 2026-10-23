@@ -523,7 +523,6 @@ describe('GlobalConfig', () => {
 			enabledForSystemTasks: false,
 			enabledForAgentTasks: false,
 			enabledForHeldTasks: false,
-			heldTaskRenewal: 'per-row',
 			heldTaskShutdownGraceSeconds: 10,
 			ownerReconciliationEnabled: true,
 			ownerReconciliationIntervalSeconds: 900,

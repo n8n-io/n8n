@@ -25,7 +25,7 @@ import type {
 const HOST = 'main-abc';
 const LEASE_SECONDS = 60;
 const RENEWAL_INTERVAL_MS = 15_000;
-const HOLD: HoldOptions = { renewal: 'per-row', shutdownGraceMs: 1_000 };
+const HOLD: HoldOptions = { shutdownGraceMs: 1_000 };
 
 const heldTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	id: '1',
@@ -65,7 +65,9 @@ const setup = (options: Partial<ExecutorOptions> = {}) => {
 	store.markHeld.mockResolvedValue(1);
 	store.releaseHeld.mockResolvedValue(1);
 	store.releaseClaim.mockResolvedValue(1);
-	store.renewLease.mockResolvedValue(true);
+	store.renewLeases.mockImplementation(
+		async (_host, renewals) => new Set(renewals.map((renewal) => renewal.id)),
+	);
 	store.rescheduleTask.mockResolvedValue(1);
 	store.failTaskTerminal.mockResolvedValue(1);
 	const executor = new Executor(
@@ -121,39 +123,23 @@ describe('Executor hold mode', () => {
 	});
 
 	describe('construction', () => {
-		it.each<[string, keyof ExecutorTaskStore, HoldOptions]>([
-			['markHeld', 'markHeld', HOLD],
-			['releaseHeld', 'releaseHeld', HOLD],
-			['renewLeases with batched renewal', 'renewLeases', { ...HOLD, renewal: 'batched' }],
-		])('throws HoldStoreMissingError when the store lacks %s', (_case, method, hold) => {
-			const store = mock<ExecutorTaskStore>();
-			Object.assign(store, { [method]: undefined });
+		it.each<keyof ExecutorTaskStore>(['markHeld', 'releaseHeld', 'renewLeases'])(
+			'throws HoldStoreMissingError when the store lacks %s',
+			(method) => {
+				const store = mock<ExecutorTaskStore>();
+				Object.assign(store, { [method]: undefined });
 
-			expect(
-				() =>
-					new Executor(store, mock<TaskHandlerRegistry>(), mock<PrecisionTimer>(), {
-						leaseSeconds: LEASE_SECONDS,
-						lookaheadSeconds: 5,
-						batchSize: 100,
-						hold,
-					}),
-			).toThrow(HoldStoreMissingError);
-		});
-
-		it('accepts a store without renewLeases for per-row renewal', () => {
-			const store = mock<ExecutorTaskStore>();
-			Object.assign(store, { renewLeases: undefined });
-
-			expect(
-				() =>
-					new Executor(store, mock<TaskHandlerRegistry>(), mock<PrecisionTimer>(), {
-						leaseSeconds: LEASE_SECONDS,
-						lookaheadSeconds: 5,
-						batchSize: 100,
-						hold: HOLD,
-					}),
-			).not.toThrow();
-		});
+				expect(
+					() =>
+						new Executor(store, mock<TaskHandlerRegistry>(), mock<PrecisionTimer>(), {
+							leaseSeconds: LEASE_SECONDS,
+							lookaheadSeconds: 5,
+							batchSize: 100,
+							hold: HOLD,
+						}),
+				).toThrow(HoldStoreMissingError);
+			},
+		);
 
 		it('accepts a store without hold operations when hold is not set', () => {
 			const store = mock<ExecutorTaskStore>();
@@ -473,7 +459,7 @@ describe('Executor hold mode', () => {
 		});
 	});
 
-	describe('per-row lease renewal', () => {
+	describe('lease renewal', () => {
 		it('renews the lease while the holder runs and stops once it returns', async () => {
 			const { store, registry, executor } = setup();
 			const { handler, finish } = holding();
@@ -482,13 +468,15 @@ describe('Executor hold mode', () => {
 
 			const firing = executor.fire(HOST, task);
 			await vi.advanceTimersByTimeAsync(2 * RENEWAL_INTERVAL_MS);
-			expect(store.renewLease).toHaveBeenCalledTimes(2);
-			expect(store.renewLease).toHaveBeenCalledWith(claimOf(task), LEASE_SECONDS * 1_000);
+			expect(store.renewLeases).toHaveBeenCalledTimes(2);
+			expect(store.renewLeases).toHaveBeenCalledWith(HOST, [
+				{ id: task.id, claimedEpoch: task.leaseEpoch, expiresInMs: LEASE_SECONDS * 1_000 },
+			]);
 
 			finish();
 			await firing;
 			await vi.advanceTimersByTimeAsync(3 * RENEWAL_INTERVAL_MS);
-			expect(store.renewLease).toHaveBeenCalledTimes(2);
+			expect(store.renewLeases).toHaveBeenCalledTimes(2);
 		});
 
 		it.each([
@@ -504,7 +492,7 @@ describe('Executor hold mode', () => {
 				});
 				const { handler, signal } = holding();
 				registry.resolve.mockReturnValue(handler);
-				store.renewLease.mockRejectedValue(new Error('db down'));
+				store.renewLeases.mockRejectedValue(new Error('db down'));
 				const task = heldTask();
 
 				const firing = executor.fire(HOST, task);
@@ -521,28 +509,8 @@ describe('Executor hold mode', () => {
 			},
 		);
 
-		it('aborts with a LeaseLostError when a renewal finds the claim gone', async () => {
-			const { store, registry, hooks, executor } = setup();
-			const { handler, signal } = holding();
-			registry.resolve.mockReturnValue(handler);
-			store.renewLease.mockResolvedValue(false);
-			const task = heldTask();
-
-			void executor.fire(HOST, task);
-			await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS - 1);
-			expect(signal().aborted).toBe(false);
-
-			await vi.advanceTimersByTimeAsync(1);
-			expect(signal().reason).toBeInstanceOf(LeaseLostError);
-			expect(hooks.onLeaseRenewal).toHaveBeenCalledWith(task, 'lost');
-		});
-	});
-
-	describe('batched lease renewal', () => {
-		const BATCHED: HoldOptions = { ...HOLD, renewal: 'batched' };
-
 		it('renews every holder of a host with one write per beat', async () => {
-			const { store, registry, hooks, executor } = setup({ hold: BATCHED });
+			const { store, registry, hooks, executor } = setup();
 			const first = holding();
 			const second = holding();
 			registry.resolve.mockReturnValueOnce(first.handler).mockReturnValueOnce(second.handler);
@@ -567,7 +535,7 @@ describe('Executor hold mode', () => {
 		});
 
 		it('aborts only the holder whose id the batch did not renew', async () => {
-			const { store, registry, hooks, executor } = setup({ hold: BATCHED });
+			const { store, registry, hooks, executor } = setup();
 			const first = holding();
 			const second = holding();
 			registry.resolve.mockReturnValueOnce(first.handler).mockReturnValueOnce(second.handler);

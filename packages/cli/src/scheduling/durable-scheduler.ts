@@ -76,10 +76,7 @@ export class DurableScheduler implements Scheduler {
 						),
 						batchSize: config.claimBatchSize,
 						hold: config.enabledForHeldTasks
-							? {
-									renewal: config.heldTaskRenewal,
-									shutdownGraceMs: config.heldTaskShutdownGraceSeconds * 1000,
-								}
+							? { shutdownGraceMs: config.heldTaskShutdownGraceSeconds * 1000 }
 							: undefined,
 					},
 					reaper: { batchSize: config.reaperBatchSize },
