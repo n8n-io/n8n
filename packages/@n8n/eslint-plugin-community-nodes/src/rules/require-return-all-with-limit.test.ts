@@ -3,6 +3,7 @@ import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 
 import { configs } from '../plugin.js';
+import { RequireReturnAllWithLimitRule } from './require-return-all-with-limit.js';
 
 const ruleId = '@n8n/community-nodes/require-return-all-with-limit';
 const languageOptions = RuleTester.getDefaultConfig().languageOptions as Linter.LanguageOptions;
@@ -126,32 +127,43 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 					displayOptions: { show: { returnAll: [true] } },
 				}`;
 
-				expect(lint(properties)).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({
-							ruleId,
-							severity: 1,
-							message: ungatedLimitMessage,
-						}),
-					]),
-				);
+				expect(lint(properties)).toEqual([
+					expect.objectContaining({ ruleId, severity: 1, message: ungatedLimitMessage }),
+					expect.objectContaining({ ruleId, severity: 1, message: ungatedLimitMessage }),
+				]);
 			});
 
-			it.each(['[true]', '[false, true]'])('warns when Limit uses returnAll: %s', (gate) => {
-				const properties = `${returnAll}, ${limitProperty(
-					`displayOptions: { show: { returnAll: ${gate} } },`,
-				)}`;
+			it('does not report Return All when it also gates a Limit', () => {
+				const properties = `${returnAll}, ${limitProperty()}, ${limitProperty(
+					'displayOptions: { show: { returnAll: [false] } },',
+				)}, {
+					name: 'maxPages', type: 'number', default: 10,
+					displayOptions: { show: { returnAll: [true] } },
+				}`;
 
-				expect(lint(properties)).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({
-							ruleId,
-							severity: 1,
-							message: ungatedLimitMessage,
-						}),
-					]),
-				);
+				expect(lint(properties)).toEqual([
+					expect.objectContaining({ ruleId, severity: 1, message: ungatedLimitMessage }),
+				]);
 			});
+
+			it.each(['[true]', '[false, true]', '[]', "['false']", 'false'])(
+				'warns when Limit uses returnAll: %s',
+				(gate) => {
+					const properties = `${returnAll}, ${limitProperty(
+						`displayOptions: { show: { returnAll: ${gate} } },`,
+					)}`;
+
+					expect(lint(properties)).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({
+								ruleId,
+								severity: 1,
+								message: ungatedLimitMessage,
+							}),
+						]),
+					);
+				},
+			);
 
 			it('accepts Return All with Limit gated on returnAll: [false]', () => {
 				const properties = `${returnAll}, ${limitProperty(
@@ -160,6 +172,64 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 
 				expect(lint(properties)).toEqual([]);
 			});
+
+			it('matches companion conditions regardless of key and value order', () => {
+				const properties = `{
+					name: 'returnAll', type: 'boolean', default: false,
+					displayOptions: { show: { resource: ['record'], operation: ['getMany', 'search'] } },
+				}, ${limitProperty(`displayOptions: {
+					show: { returnAll: [false], operation: ['search', 'getMany'], resource: ['record'] },
+				},`)}`;
+
+				expect(lint(properties)).toEqual([]);
+			});
+
+			it.each([
+				"operation: ['search'], resource: ['record']",
+				"operation: ['getMany'], resource: ['other']",
+				"operation: ['getMany']",
+			])('rejects a companion with different conditions: %s', (conditions) => {
+				const properties = `{
+					name: 'returnAll', type: 'boolean', default: false,
+					displayOptions: { show: { ${conditions} } },
+				}, ${limitProperty(`displayOptions: {
+					show: { returnAll: [false], operation: ['getMany'], resource: ['record'] },
+				},`)}`;
+
+				expect(lint(properties)).toEqual([
+					expect.objectContaining({ message: missingCompanionMessage, severity: 1 }),
+				]);
+			});
+
+			it('allows a documented suppression for a similarity search limit', () => {
+				expect(
+					lint(`
+						// eslint-disable-next-line ${ruleId} -- Similarity search returns the top K matches.
+						${limitProperty("displayOptions: { show: { operation: ['search'] } },")}
+					`),
+				).toEqual([]);
+			});
 		});
 	},
 );
+
+new RuleTester().run('require-return-all-with-limit', RequireReturnAllWithLimitRule, {
+	valid: [
+		{
+			name: 'ignores a class that does not implement INodeType',
+			filename: 'TestNode.node.ts',
+			code: nodeCode(limitProperty()).replace('implements INodeType', ''),
+		},
+		{
+			name: 'ignores node classes outside node files',
+			filename: 'unrelated.ts',
+			code: nodeCode(limitProperty()),
+		},
+		{
+			name: 'ignores an exported array with an unrelated type',
+			filename: 'unrelated.ts',
+			code: descriptionCode(limitProperty()).replace('INodeProperties[]', 'OtherProperties[]'),
+		},
+	],
+	invalid: [],
+});
