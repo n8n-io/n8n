@@ -8,11 +8,7 @@ import {
 	getStringLiteralValue,
 	isFileType,
 	createRule,
-	getOptionObjects,
-	isOperationParameter,
 } from '../utils/index.js';
-
-const BASE_RULE_GET_ALL_PREFIX = 'Get all ';
 
 export const ResourceOperationPatternRule = createRule({
 	name: 'resource-operation-pattern',
@@ -24,14 +20,14 @@ export const ResourceOperationPatternRule = createRule({
 		messages: {
 			tooManyOperationsWithoutResources:
 				'Node has {{ operationCount }} operations without resources. Use resources to organize operations when there are more than 5 operations.',
-			wrongGetManyAction:
-				'Start the action of the "getAll" operation with "Get many", not "{{ action }}". For example, use "Get many contacts".',
 		},
 		schema: [],
 	},
 	defaultOptions: [],
 	create(context) {
-		const isNodeFile = isFileType(context.filename, '.node.ts');
+		if (!isFileType(context.filename, '.node.ts')) {
+			return {};
+		}
 
 		const analyzeNodeDescription = (descriptionValue: TSESTree.Expression | null): void => {
 			if (descriptionValue?.type !== AST_NODE_TYPES.ObjectExpression) {
@@ -87,41 +83,9 @@ export const ResourceOperationPatternRule = createRule({
 			}
 		};
 
-		const checkGetManyAction = (operationParameter: TSESTree.ObjectExpression): void => {
-			for (const option of getOptionObjects(operationParameter)) {
-				const value = getStringLiteralValue(findObjectProperty(option, 'value')?.value ?? null);
-				if (value !== 'getAll') {
-					continue;
-				}
-
-				const actionProperty = findObjectProperty(option, 'action');
-				const action = getStringLiteralValue(actionProperty?.value ?? null);
-				if (
-					!actionProperty ||
-					action === null ||
-					/^Get many\b/.test(action) ||
-					action.startsWith(BASE_RULE_GET_ALL_PREFIX)
-				) {
-					continue;
-				}
-
-				context.report({
-					node: actionProperty.value,
-					messageId: 'wrongGetManyAction',
-					data: { action },
-				});
-			}
-		};
-
 		return {
-			// Most nodes define their operations in description files outside the node class.
-			ObjectExpression(node) {
-				if (isOperationParameter(node)) {
-					checkGetManyAction(node);
-				}
-			},
 			ClassDeclaration(node) {
-				if (!isNodeFile || !isNodeTypeClass(node)) {
+				if (!isNodeTypeClass(node)) {
 					return;
 				}
 
