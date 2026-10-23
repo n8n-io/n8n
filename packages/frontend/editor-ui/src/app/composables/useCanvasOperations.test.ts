@@ -32,11 +32,13 @@ import {
 	AddNodeCommand,
 	AddNodeGroupCommand,
 	BulkCommand,
+	MoveNodeCommand,
 	RemoveNodeCommand,
 	RemoveNodeGroupCommand,
 	ReplaceNodeParametersCommand,
 	UpdateNodeGroupCommand,
 } from '@/app/models/history';
+import type { Command } from '@/app/models/history';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -68,6 +70,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import {
 	AGENT_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
@@ -76,6 +79,7 @@ import {
 	NO_OP_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
+	SLACK_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
@@ -99,6 +103,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentGraph } from '@/app/stores/workflowDocument/useWorkflowDocumentGraph';
 
 import { useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -271,6 +276,7 @@ describe('useCanvasOperations', () => {
 		allowMultipleBoundaryNodes.value = false;
 		// These actions are stubbed by createTestingPinia, so provide safe defaults.
 		// Tests that need custom behavior can override via vi.spyOn.
+		mockGraphTraversalDefaults();
 		vi.mocked(workflowDocumentStoreInstance.getParentNodesByDepth).mockReturnValue([]);
 		vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
 		vi.mocked(workflowDocumentStoreInstance.getWorkflowObjectAccessorSnapshot).mockReturnValue({
@@ -287,6 +293,20 @@ describe('useCanvasOperations', () => {
 			getParentNodesByDepth: workflowDocumentStoreInstance.getParentNodesByDepth,
 		});
 	});
+
+	// createTestingPinia stubs the traversal actions to return undefined, so the
+	// port maps never fill. Tests that need a real graph override these defaults.
+	function mockGraphTraversalDefaults() {
+		vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockReturnValue([]);
+		vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockReturnValue([]);
+	}
+
+	// Mock: createWorkflowObject is stubbed, so build a test Workflow from the given data.
+	function mockCreateWorkflowObject() {
+		vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+			(nodes, connections) => createTestWorkflowObject({ nodes, connections }),
+		);
+	}
 
 	function mockStoreNodePositions(positionsByNodeId: Record<string, XYPosition>) {
 		const nodesById = new Map(
@@ -6483,9 +6503,7 @@ describe('useCanvasOperations', () => {
 					nodeGroups: [{ id: 'group', name: 'Group 2', nodeIds: [anchorNode.id] }],
 				};
 
-				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
-					(nodes, connections) => createTestWorkflowObject({ nodes, connections }),
-				);
+				mockCreateWorkflowObject();
 
 				const canvasOperations = useCanvasOperations();
 				const result = await canvasOperations.importWorkflowData(
@@ -7386,9 +7404,7 @@ describe('useCanvasOperations', () => {
 				],
 			};
 
-			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
-				(nodes, connections) => createTestWorkflowObject({ nodes, connections }),
-			);
+			mockCreateWorkflowObject();
 			vi.mocked(workflowDocumentStoreInstance.getNextDefaultName).mockImplementation(
 				(name) => name,
 			);
@@ -8711,6 +8727,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [nodeA, nodeB, nodeC];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[nodeA.name]: {
@@ -8775,6 +8792,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -8837,6 +8855,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -8903,6 +8922,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -8965,6 +8985,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -9043,6 +9064,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [
 				sourceNode,
 				targetNode,
@@ -9117,6 +9139,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -9193,6 +9216,7 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
+			mockGraphTraversalDefaults();
 			workflowDocumentStoreInstance.allNodes = [sourceNode, targetNode1, targetNode2, stickyNote];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {
 				[sourceNode.name]: {
@@ -9224,6 +9248,263 @@ describe('useCanvasOperations', () => {
 			expect(associatedNodes).toBeDefined();
 			expect(associatedNodes).toHaveLength(2);
 			expect(associatedNodes?.map((n) => n.id).sort()).toEqual(['target1', 'target2']);
+		});
+	});
+
+	describe('edge insert before a node with sub-nodes', () => {
+		const MEMORY_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
+		const TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCalculator';
+
+		const mainNodeTypeDescription = mockNodeTypeDescription({
+			name: SET_NODE_TYPE,
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+		});
+
+		/**
+		 * Prepares an insert on the source → target edge. The traversal actions
+		 * run on a test Workflow, so `getConnectedNodes` is the real one. The
+		 * history mocks copy the store's bulk recording into `undoStack`.
+		 */
+		function setupEdgeInsert({
+			nodes,
+			connections,
+			source,
+			target,
+		}: {
+			nodes: TestNode[];
+			connections: IConnections;
+			source: TestNode;
+			target: TestNode;
+		}) {
+			const historyStore = mockedStore(useHistoryStore);
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const nodesById = new Map(nodes.map((node) => [node.id, node]));
+			const undoStack: Array<Command | BulkCommand> = [];
+
+			nodeTypesStore.nodeTypes = { [SET_NODE_TYPE]: { 1: mainNodeTypeDescription } };
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mainNodeTypeDescription);
+			workflowDocumentStoreInstance.allNodes = nodes;
+			workflowDocumentStoreInstance.connectionsBySourceNode = connections;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name) => [...nodesById.values()].find((node) => node.name === name) ?? null,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'addNode').mockImplementation((addedNode) => {
+				nodesById.set(addedNode.id, addedNode);
+			});
+			vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById').mockImplementation(
+				(id, position) => {
+					const node = nodesById.get(id);
+					if (node) node.position = position;
+				},
+			);
+
+			const nodeTypes = createMockNodeTypes(
+				Object.fromEntries(nodes.map((node) => [node.type, mockLoadedNodeType(node.type)])),
+			);
+			const graph = useWorkflowDocumentGraph(
+				shallowRef(createTestWorkflowObject({ nodes, connections, nodeTypes })),
+			);
+			vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockImplementation(
+				graph.getParentNodes,
+			);
+			vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockImplementation(
+				graph.getChildNodes,
+			);
+			vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockImplementation(
+				graph.getConnectedNodes,
+			);
+
+			historyStore.startRecordingUndo.mockImplementation(() => {
+				historyStore.currentBulkAction = new BulkCommand([]);
+			});
+			historyStore.pushCommandToUndo.mockImplementation((command) => {
+				if (historyStore.currentBulkAction) {
+					historyStore.currentBulkAction.commands.push(command);
+				} else {
+					undoStack.push(command);
+				}
+			});
+			historyStore.stopRecordingUndo.mockImplementation(() => {
+				if (historyStore.currentBulkAction?.commands.length) {
+					undoStack.push(historyStore.currentBulkAction);
+				}
+				historyStore.currentBulkAction = null;
+			});
+
+			uiStore.lastInteractedWithNodeId = source.id;
+			uiStore.lastInteractedWithNodeConnection = canvasConnection(source, target);
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.Main}/0`;
+
+			const positionOf = (node: TestNode) => nodesById.get(node.id)?.position;
+
+			return { positionOf, undoStack };
+		}
+
+		function createAgentWithSubNodes() {
+			const trigger = createTestNode({
+				id: 'trigger',
+				name: 'Chat Trigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
+				position: [0, 0],
+			});
+			const agent = createTestNode({
+				id: 'agent',
+				name: 'AI Agent',
+				type: AGENT_NODE_TYPE,
+				position: [224, 0],
+			});
+			const slack = createTestNode({
+				id: 'slack',
+				name: 'Slack',
+				type: SLACK_NODE_TYPE,
+				position: [576, 0],
+			});
+			const model = createTestNode({
+				id: 'model',
+				name: 'Model',
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				position: [96, 208],
+			});
+			const memory = createTestNode({
+				id: 'memory',
+				name: 'Memory',
+				type: MEMORY_NODE_TYPE,
+				position: [240, 208],
+			});
+			const tool = createTestNode({
+				id: 'tool',
+				name: 'Tool',
+				type: TOOL_NODE_TYPE,
+				position: [384, 208],
+			});
+			const connections = createConnectionsBySource(
+				workflowConnection(trigger, agent),
+				workflowConnection(agent, slack),
+				workflowConnection(model, agent, { sourceType: NodeConnectionTypes.AiLanguageModel }),
+				workflowConnection(memory, agent, { sourceType: NodeConnectionTypes.AiMemory }),
+				workflowConnection(tool, agent, { sourceType: NodeConnectionTypes.AiTool }),
+			);
+
+			return {
+				trigger,
+				agent,
+				slack,
+				model,
+				memory,
+				tool,
+				nodes: [trigger, agent, slack, model, memory, tool],
+				connections,
+			};
+		}
+
+		it('should move the sub-nodes of an AI Agent with it when an insert shifts the agent', async () => {
+			const { trigger, agent, slack, model, memory, tool, nodes, connections } =
+				createAgentWithSubNodes();
+			const { positionOf } = setupEdgeInsert({
+				nodes,
+				connections,
+				source: trigger,
+				target: agent,
+			});
+
+			const { addNodesAndConnections } = useCanvasOperations();
+			await addNodesAndConnections([{ type: SET_NODE_TYPE }], [], {});
+
+			expect(positionOf(agent)).toEqual([448, 0]);
+			expect(positionOf(slack)).toEqual([800, 0]);
+			expect(positionOf(model)).toEqual([320, 208]);
+			expect(positionOf(memory)).toEqual([464, 208]);
+			expect(positionOf(tool)).toEqual([608, 208]);
+		});
+
+		it('should record the insert and every shift in one undo step', async () => {
+			const { trigger, agent, nodes, connections } = createAgentWithSubNodes();
+			const { undoStack } = setupEdgeInsert({ nodes, connections, source: trigger, target: agent });
+
+			const { addNodesAndConnections } = useCanvasOperations();
+			const { addedNodes } = await addNodesAndConnections([{ type: SET_NODE_TYPE }], [], {});
+
+			expect(undoStack).toHaveLength(1);
+			const bulk = undoStack[0];
+			expect(bulk).toBeInstanceOf(BulkCommand);
+			const commands = bulk instanceof BulkCommand ? bulk.commands : [];
+
+			const addCommands = commands.filter((command) => command instanceof AddNodeCommand);
+			expect(addCommands).toEqual([
+				expect.objectContaining({ node: expect.objectContaining({ id: addedNodes[0].id }) }),
+			]);
+
+			const oldPositionByName = Object.fromEntries(
+				commands
+					.filter((command) => command instanceof MoveNodeCommand)
+					.map((command) => [command.nodeName, command.oldPosition]),
+			);
+			expect(oldPositionByName).toEqual({
+				'AI Agent': [224, 0],
+				Slack: [576, 0],
+				Model: [96, 208],
+				Memory: [240, 208],
+				Tool: [384, 208],
+			});
+		});
+
+		it('should keep a sub-node in place when it also feeds a root node that stays', async () => {
+			const trigger = createTestNode({
+				id: 'trigger',
+				name: 'Trigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
+				position: [0, 0],
+			});
+			const set1 = createTestNode({
+				id: 'set1',
+				name: 'Set1',
+				type: SET_NODE_TYPE,
+				position: [224, 0],
+			});
+			const agentA = createTestNode({
+				id: 'agent-a',
+				name: 'Agent A',
+				type: AGENT_NODE_TYPE,
+				position: [448, 0],
+			});
+			const agentB = createTestNode({
+				id: 'agent-b',
+				name: 'Agent B',
+				type: AGENT_NODE_TYPE,
+				position: [448, 400],
+			});
+			const model = createTestNode({
+				id: 'model',
+				name: 'Model',
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				position: [448, 208],
+			});
+			const aiLanguageModel = { sourceType: NodeConnectionTypes.AiLanguageModel };
+			const connections = createConnectionsBySource(
+				workflowConnection(trigger, set1),
+				workflowConnection(set1, agentA),
+				workflowConnection(model, agentA, aiLanguageModel),
+				workflowConnection(model, agentB, aiLanguageModel),
+			);
+			const { positionOf } = setupEdgeInsert({
+				nodes: [trigger, set1, agentA, agentB, model],
+				connections,
+				source: trigger,
+				target: set1,
+			});
+
+			const { addNodesAndConnections } = useCanvasOperations();
+			await addNodesAndConnections([{ type: SET_NODE_TYPE }], [], {});
+
+			expect(positionOf(set1)).toEqual([448, 0]);
+			expect(positionOf(agentA)).toEqual([672, 0]);
+			expect(positionOf(model)).toEqual([448, 208]);
+			expect(positionOf(agentB)).toEqual([448, 400]);
 		});
 	});
 

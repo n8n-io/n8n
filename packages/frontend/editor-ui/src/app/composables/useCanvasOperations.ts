@@ -2049,7 +2049,8 @@ export function useCanvasOperations() {
 	 *
 	 * Algorithm:
 	 * 1. Find regular nodes that overlap with or are to the right of insertion area
-	 * 2. Add downstream connected nodes
+	 * 2. Add downstream connected nodes and the sub-nodes of each node that moves,
+	 *    except sub-nodes that also feed a node that stays
 	 * 3. Classify sticky notes based on:
 	 *    - Whether they contain the source node (anchored = stretch only)
 	 *    - Whether they contain nodes that will move
@@ -2164,6 +2165,21 @@ export function useCanvasOperations() {
 					return overlapsInsertX(node);
 				})
 				.forEach((name) => candidateNames.add(name));
+		}
+
+		// Sub-nodes (model, memory, tools) move with the node they feed, wherever they are
+		for (const name of [...candidateNames]) {
+			for (const parent of workflowDocumentStore.value.getParentNodes(name, 'ALL_NON_MAIN')) {
+				candidateNames.add(parent);
+			}
+		}
+
+		// A sub-node that also feeds a node that stays, stays too
+		for (const name of [...candidateNames]) {
+			const fedNodes = workflowDocumentStore.value.getChildNodes(name, 'ALL_NON_MAIN');
+			if (fedNodes.some((fedNode) => !candidateNames.has(fedNode))) {
+				candidateNames.delete(name);
+			}
 		}
 
 		// Step 3: Get all candidate regular nodes (they overlap with or are downstream of insertion)
