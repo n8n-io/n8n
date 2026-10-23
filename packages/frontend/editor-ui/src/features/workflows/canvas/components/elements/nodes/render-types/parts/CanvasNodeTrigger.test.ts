@@ -67,7 +67,10 @@ describe('CanvasNodeTrigger', () => {
 		it('should disable the execute workflow button', () => {
 			const { getByTestId } = renderWithCredentials(false);
 
-			expect(getByTestId('execute-workflow-button-Schedule Trigger')).toBeDisabled();
+			expect(getByTestId('execute-workflow-button-Schedule Trigger')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('should show the reason in a tooltip', async () => {

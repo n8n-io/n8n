@@ -133,13 +133,16 @@ async function handleClickExecute() {
 				<N8nTooltip
 					v-else
 					:disabled="!unusableCredentialReason"
+					as-child
 					:content="unusableCredentialReason"
 				>
+					<template #content>{{ unusableCredentialReason }}</template>
 					<N8nButton
 						variant="solid"
 						icon="flask-conical"
 						size="large"
 						:disabled="isExecuting || !!unusableCredentialReason"
+						:focusable-when-disabled="!!unusableCredentialReason"
 						:data-test-id="testId"
 						:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
 						@click.capture="handleClickExecute"
@@ -180,17 +183,19 @@ async function handleClickExecute() {
 	}
 
 	/* Override N8nButton's .disabled { opacity: 0.5 } which has higher specificity */
-	& button[disabled] {
+	& button[aria-disabled='true'] {
 		opacity: 0;
 	}
 
-	&.interactive.hovered button {
+	&.interactive.hovered button,
+	& button:focus-visible {
 		opacity: 1;
 		translate: 0 0;
 		pointer-events: all;
 	}
 
-	&.interactive.hovered button[disabled] {
+	&.interactive.hovered button[aria-disabled='true'],
+	& button[aria-disabled='true']:focus-visible {
 		opacity: 0.5;
 	}
 
@@ -210,7 +215,8 @@ async function handleClickExecute() {
 		translate 0.1s ease-in,
 		opacity 0.1s ease-in;
 
-	.container.interactive.hovered & {
+	.container.interactive.hovered &,
+	.container:focus-within & {
 		translate: -12px 0;
 		opacity: 0;
 	}

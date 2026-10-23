@@ -9,6 +9,12 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import type { INodeProperties } from 'n8n-workflow';
+import { createComponentRenderer } from '@/__tests__/render';
+import userEvent from '@testing-library/user-event';
+import { getTooltip } from '@/__tests__/utils';
+import { waitFor } from '@testing-library/vue';
+
+const editorContext = vi.hoisted(() => ({ askAi: { value: true } }));
 
 vi.mock('@/features/ndv/shared/ndv.store');
 vi.mock('@/app/stores/workflows.store');
@@ -29,22 +35,12 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 		injectWorkflowDocumentStore: vi.fn(() => shallowRef(mockStore)),
 	};
 });
-vi.mock('@n8n/i18n', async (importOriginal) => ({
-	...(await importOriginal()),
-	useI18n: () => ({
-		baseText: vi.fn().mockReturnValue('Mocked Text'),
-		nodeText: () => ({
-			inputLabelDisplayName: vi.fn().mockReturnValue('Mocked Display Name'),
-			inputLabelDescription: vi.fn().mockReturnValue('Mocked Description'),
-		}),
-	}),
-}));
 vi.mock('@n8n/composables/useToast');
 vi.mock('@/app/composables/useEditorContext', () => ({
 	useEditorContext: () => ({
 		aiAssistant: { value: true },
 		aiBuilder: { value: true },
-		askAi: { value: true },
+		askAi: editorContext.askAi,
 		readOnly: { value: false },
 	}),
 }));
@@ -80,6 +76,7 @@ describe('ButtonParameter', () => {
 	};
 
 	beforeEach(() => {
+		editorContext.askAi.value = true;
 		vi.mocked(useNDVStore).mockReturnValue({
 			ndvInputData: [{}],
 			activeNode: { name: 'TestNode', parameters: {} },
@@ -147,12 +144,12 @@ describe('ButtonParameter', () => {
 			ndvInputData: [],
 		} as any);
 		const wrapper = mountComponent();
-		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('button').attributes('aria-disabled')).toBe('true');
 	});
 
 	it('disables submit button when prompt is empty', async () => {
 		const wrapper = mountComponent();
-		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('button').attributes('aria-disabled')).toBe('true');
 	});
 
 	it('enables submit button when there is execution data and prompt', async () => {
@@ -176,6 +173,51 @@ describe('ButtonParameter', () => {
 	it('disables input and button when in read only mode', async () => {
 		const wrapper = mountComponent({ isReadOnly: true });
 		expect(wrapper.find('textarea').attributes('disabled')).toBeDefined();
-		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('button').attributes('aria-disabled')).toBe('true');
+		expect(wrapper.find('button').attributes('disabled')).toBeUndefined();
+	});
+
+	it.each([
+		{ reason: "You can't generate code in read-only mode", isReadOnly: true },
+		{ reason: 'AI code generation is unavailable in this editor', aiAvailable: false },
+		{ reason: 'Shorten the prompt to 3 characters or fewer', maxLength: 3 },
+		{ reason: 'First enter a prompt above before generating code', value: '' },
+		{
+			reason:
+				'You can generate code once this node has incoming input data (from a node earlier in your workflow)',
+			hasExecutionData: false,
+		},
+	])('explains the disabled action: $reason', async (state) => {
+		const user = userEvent.setup();
+		editorContext.askAi.value = state.aiAvailable ?? true;
+		if (state.hasExecutionData === false) {
+			injectNDVStore().value.ndvInputData = [];
+		}
+		const { getByRole, emitted } = createComponentRenderer(ButtonParameter)({
+			pinia: createTestingPinia(),
+			props: {
+				...defaultProps,
+				value: state.value ?? 'Test prompt',
+				isReadOnly: state.isReadOnly,
+				parameter: {
+					...defaultProps.parameter,
+					typeOptions: {
+						buttonConfig: {
+							...defaultProps.parameter.typeOptions?.buttonConfig,
+							inputFieldMaxLength: state.maxLength,
+						},
+					},
+				},
+			},
+		});
+		const button = getByRole('button', { name: 'Generate' });
+		expect(button).toHaveAttribute('aria-disabled', 'true');
+		expect(button).not.toBeDisabled();
+		button.focus();
+		await waitFor(() => expect(getTooltip()).toHaveTextContent(state.reason));
+		expect(button).toHaveAccessibleDescription(state.reason);
+		await user.keyboard('{Enter} ');
+		await user.click(button);
+		expect(emitted('valueChanged')).toBeUndefined();
 	});
 });

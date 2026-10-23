@@ -202,13 +202,20 @@ function onAddToChat() {
 		@click.stop
 	>
 		<div :class="[$style.canvasNodeToolbarItems, itemsClass]">
-			<N8nTooltip v-if="isExecuteNodeVisible" placement="top" :content="executeNodeTooltip">
+			<N8nTooltip
+				v-if="isExecuteNodeVisible"
+				as-child
+				placement="top"
+				:content="executeNodeTooltip"
+			>
+				<template #content>{{ executeNodeTooltip }}</template>
 				<N8nIconButton
 					variant="ghost"
 					data-test-id="execute-node-button"
 					size="small"
 					icon="node-play"
 					:disabled="isExecuting || isDisabled || !!unusableCredentialReason"
+					:focusable-when-disabled="!isExecuting && (isDisabled || !!unusableCredentialReason)"
 					:aria-label="i18n.baseText('node.testStep')"
 					@click.stop="executeNode"
 				/>

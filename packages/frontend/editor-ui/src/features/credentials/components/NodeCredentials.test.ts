@@ -3517,7 +3517,11 @@ describe('NodeCredentials', () => {
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
+			expect(screen.getByTestId('node-credential-private-connect')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(screen.getByTestId('node-credential-private-connect')).not.toBeDisabled();
 		});
 
 		it('keeps the Connect button enabled in readonly mode for a user who can connect', async () => {

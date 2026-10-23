@@ -416,6 +416,7 @@ watch(
 				</div>
 				<!-- Ghost, so it never outranks Run check or Actually fine. -->
 				<N8nTooltip
+					as-child
 					:content="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
 					placement="top-end"
 				>
@@ -424,6 +425,7 @@ watch(
 						size="medium"
 						icon-only
 						:disabled="disabled"
+						focusable-when-disabled
 						:aria-label="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
 						:data-test-id="testId && `${testId}-delete-check`"
 						@click="onDeleteCheck"

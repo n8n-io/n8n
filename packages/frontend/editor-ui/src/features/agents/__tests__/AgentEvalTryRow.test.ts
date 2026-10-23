@@ -430,10 +430,18 @@ describe('AgentEvalTryRow', () => {
 
 		it('disables the delete button for a read-only viewer', async () => {
 			const user = userEvent.setup();
-			const { getByTestId } = renderWithRule({ testId: 'row', disabled: true });
+			const { getByTestId, emitted } = renderWithRule({ testId: 'row', disabled: true });
 			await user.click(getByTestId('row-toggle'));
 
-			expect(getByTestId('row-delete-check')).toBeDisabled();
+			const button = getByTestId('row-delete-check');
+			expect(button).toHaveAttribute('aria-disabled', 'true');
+			expect(button).not.toBeDisabled();
+			button.focus();
+			expect(button).toHaveFocus();
+			await user.click(button);
+			await user.keyboard('{Enter} ');
+			expect(openAgentConfirmationModal).not.toHaveBeenCalled();
+			expect(emitted('delete-check')).toBeUndefined();
 		});
 
 		it.each([

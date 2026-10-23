@@ -243,7 +243,12 @@ const overflowLabel = computed(() =>
 </script>
 
 <template>
-	<N8nTooltip :disabled="props.disabled" :content="props.fallback" :content-class="$style.tooltip">
+	<N8nTooltip
+		as-child
+		:disabled="props.disabled"
+		:content="props.fallback"
+		:content-class="$style.tooltip"
+	>
 		<template #content>
 			<div v-if="details.length > 0" :class="$style.content">
 				<div :class="$style.heading">{{ props.fallback }}</div>

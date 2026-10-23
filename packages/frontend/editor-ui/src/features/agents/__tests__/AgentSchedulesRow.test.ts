@@ -1,6 +1,6 @@
 import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
-import { screen } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -62,14 +62,8 @@ function mountRow(taskRefs: AgentJsonTaskConfig[] = [], extraProps: Record<strin
 		},
 		global: {
 			stubs: {
-				N8nButton: {
-					props: ['disabled'],
-					template:
-						'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
-				},
 				N8nIcon: { template: '<span />' },
 				N8nText: { template: '<span><slot /></span>' },
-				N8nTooltip: { template: '<span><slot /></span>' },
 			},
 		},
 	});
@@ -79,6 +73,36 @@ describe('AgentSchedulesRow', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getAgentTasksSpy.mockResolvedValue([]);
+	});
+
+	it('keeps the disabled add action reachable and blocks task changes', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeTask()]);
+		const wrapper = mountRow([taskRef()], { disabled: true });
+		await flushPromises();
+		const user = userEvent.setup();
+		const add = screen.getByRole('button', { name: 'agents.builder.tasks.add' });
+		expect(add.closest('[inert]')).toBeNull();
+		expect(add).not.toBeDisabled();
+		expect(add).toHaveAttribute('aria-disabled', 'true');
+		await user.tab();
+		expect(add).toHaveFocus();
+		await waitFor(() =>
+			expect(screen.getByTestId('tooltip-content')).toHaveTextContent('agents.builder.tasks.add'),
+		);
+		await user.keyboard('{Escape}');
+		expect(add).toHaveFocus();
+		await user.click(add);
+		await user.keyboard('{Enter} ');
+		await wrapper.get('[data-testid="agent-capabilities-task-row"]').trigger('contextmenu');
+		expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+		expect(openModalWithDataSpy).not.toHaveBeenCalled();
+		expect(deleteAgentTaskSpy).not.toHaveBeenCalled();
+		expect(wrapper.emitted('toggle-task')).toBeUndefined();
+
+		await wrapper.setProps({ disabled: false });
+		expect(add).not.toHaveAttribute('aria-disabled');
+		await user.click(add);
+		expect(openModalWithDataSpy).toHaveBeenCalledOnce();
 	});
 
 	it('renders fetched task bodies with their config state', async () => {

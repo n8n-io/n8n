@@ -463,7 +463,7 @@ describe('ProjectVariables', () => {
 
 			await waitFor(() => expect(getByTestId('variables-row')).toBeVisible());
 			expect(getByTestId('variable-row-edit-button')).toBeEnabled();
-			expect(getByTestId('variable-row-delete-button')).toBeDisabled();
+			expect(getByTestId('variable-row-delete-button')).toHaveAttribute('aria-disabled', 'true');
 		});
 	});
 
@@ -496,7 +496,7 @@ describe('ProjectVariables', () => {
 
 			await userEvent.hover(getByTestId('variables-row'));
 			const editButton = getByTestId('variable-row-edit-button');
-			expect(editButton).toBeDisabled();
+			expect(editButton).toHaveAttribute('aria-disabled', 'true');
 		});
 
 		it('should disable delete button when user lacks both global and project delete permission', async () => {
@@ -528,7 +528,7 @@ describe('ProjectVariables', () => {
 
 			await userEvent.hover(getByTestId('variables-row'));
 			const deleteButton = getByTestId('variable-row-delete-button');
-			expect(deleteButton).toBeDisabled();
+			expect(deleteButton).toHaveAttribute('aria-disabled', 'true');
 		});
 
 		it('should enable edit button when user has global update permission', async () => {

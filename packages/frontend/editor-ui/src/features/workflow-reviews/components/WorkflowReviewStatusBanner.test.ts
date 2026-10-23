@@ -142,7 +142,7 @@ describe('WorkflowReviewStatusBanner', () => {
 				if (secondaryEnabled) {
 					expect(secondary).toBeEnabled();
 				} else {
-					expect(secondary).toBeDisabled();
+					expect(secondary).toHaveAttribute('aria-disabled', 'true');
 				}
 			},
 		);
@@ -229,7 +229,10 @@ describe('WorkflowReviewStatusBanner', () => {
 			});
 
 			const button = getByTestId('workflow-review-submit-changes-button');
-			expect(button).toBeDisabled();
+			expect(button).toHaveAttribute('aria-disabled', 'true');
+			expect(button).not.toBeDisabled();
+			expect(button).toHaveAccessibleDescription('This workflow has no trigger node');
+			expect(document.getElementById(button.getAttribute('aria-describedby')!)).toBeVisible();
 
 			await userEvent.hover(button);
 

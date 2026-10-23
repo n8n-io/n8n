@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
+import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
@@ -98,8 +100,17 @@ describe('ChatInputBase', () => {
 
 		expect(getByTestId('instance-ai-stop-button')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
-		expect(getByTestId('chat-input-attach-button')).toBeDisabled();
-		expect(getByTestId('chat-input-voice-button')).toBeDisabled();
+		expect(getByTestId('chat-input-attach-button')).not.toBeDisabled();
+		expect(getByTestId('chat-input-attach-button')).toHaveAttribute('aria-disabled', 'true');
+		expect(getByTestId('chat-input-voice-button')).toHaveAttribute('aria-disabled', 'true');
+		expect(getByTestId('chat-input-voice-button')).toHaveAccessibleDescription(
+			'Stop the response to dictate',
+		);
+		expect(
+			document.getElementById(
+				getByTestId('chat-input-voice-button').getAttribute('aria-describedby')!,
+			),
+		).toBeVisible();
 
 		await rerender({ isStreaming: false, showStopButton: true });
 		expect(getByTestId('instance-ai-stop-button')).toBeEnabled();
@@ -250,19 +261,24 @@ describe('ChatInputBase', () => {
 	});
 
 	it('explains why dictation is disabled while streaming', async () => {
-		const { getByTestId, getByText, rerender } = renderComponent({
+		const user = userEvent.setup();
+		const { getByTestId, rerender } = renderComponent({
 			props: makeProps({ showVoice: true, isStreaming: true }),
 		});
 		const voiceButton = getByTestId('chat-input-voice-button');
-		expect(voiceButton).toBeDisabled();
-		await fireEvent.pointerMove(voiceButton.parentElement!, { pointerType: 'mouse' });
-		await waitFor(() => expect(getByText('Stop the response to dictate')).toBeVisible());
+		expect(voiceButton).toHaveAttribute('aria-disabled', 'true');
+		voiceButton.focus();
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('Stop the response to dictate'));
+		expect(voiceButton).toHaveAccessibleDescription('Stop the response to dictate');
+		await user.keyboard('{Enter} ');
+		await user.click(voiceButton);
+		expect(mockStart).not.toHaveBeenCalled();
 
-		await fireEvent.pointerLeave(voiceButton.parentElement!);
+		await fireEvent.pointerLeave(voiceButton);
 		await rerender({ isStreaming: false });
 		expect(voiceButton).toBeEnabled();
-		await fireEvent.pointerMove(voiceButton.parentElement!, { pointerType: 'mouse' });
-		await waitFor(() => expect(getByText('Dictate')).toBeVisible());
+		await fireEvent.pointerMove(voiceButton, { pointerType: 'mouse' });
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('Dictate'));
 	});
 
 	it('should expose the native textarea', () => {

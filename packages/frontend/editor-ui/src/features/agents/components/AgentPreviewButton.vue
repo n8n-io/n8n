@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { N8nButton, N8nToggle } from '@n8n/design-system';
+import { N8nButton } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import AgentValidationTooltip from './AgentValidationTooltip.vue';
@@ -52,31 +52,34 @@ function onClick() {
 
 <template>
 	<AgentValidationTooltip
-		:disabled="!isDisabled"
-		:fallback="disabledTooltip"
+		:disabled="!isDisabled && !props.iconOnly"
+		:fallback="isDisabled ? disabledTooltip : label"
 		action="preview"
-		:issues="props.validationIssues"
+		:issues="isDisabled ? props.validationIssues : []"
 	>
-		<N8nToggle
-			v-if="props.iconOnly"
-			:model-value="props.isPreviewOpen"
-			variant="outline"
-			size="medium"
-			icon="flask-conical"
-			:label="label"
-			:disabled="isDisabled"
-			:data-testid="props.testId"
-			@click="onClick"
-		/>
 		<N8nButton
-			v-else
-			:variant="props.variant"
+			:variant="props.iconOnly ? 'outline' : props.variant"
 			size="medium"
 			icon="flask-conical"
-			:label="label"
+			:label="props.iconOnly ? undefined : label"
+			:aria-label="label"
+			:icon-only="props.iconOnly"
+			:aria-pressed="props.iconOnly ? props.isPreviewOpen : undefined"
+			:data-state="props.iconOnly ? (props.isPreviewOpen ? 'on' : 'off') : undefined"
+			:class="{ [$style.pressed]: props.iconOnly && props.isPreviewOpen }"
 			:disabled="isDisabled"
+			focusable-when-disabled
 			:data-testid="props.testId"
 			@click="onClick"
 		/>
 	</AgentValidationTooltip>
 </template>
+
+<style lang="scss" module>
+.pressed[aria-pressed='true'] {
+	background-color: var(--button--color--background-active);
+	box-shadow:
+		inset var(--button--border--shadow--active),
+		var(--button--shadow--active);
+}
+</style>

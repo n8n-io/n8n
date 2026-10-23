@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { screen } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import QuickConnectButton from './QuickConnectButton.vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useCredentialsStore } from '../../credentials.store';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, getTooltip, queryTooltip } from '@/__tests__/utils';
 import type { ICredentialType } from 'n8n-workflow';
 
 const googleSheetsOAuth2Api: ICredentialType = {
@@ -89,4 +89,28 @@ describe('QuickConnectButton', () => {
 
 		expect(screen.getByRole('button')).toBeDisabled();
 	});
+
+	it.each(['slackOAuth2Api', 'googleSheetsOAuth2Api'])(
+		'explains disabled %s connections on focus and blocks activation',
+		async (credentialTypeName) => {
+			const user = userEvent.setup();
+			const { emitted, rerender } = renderComponent({
+				props: { credentialTypeName, disabled: true, disabledTooltip: 'Ask an admin to connect' },
+			});
+			const button = screen.getByRole('button');
+			expect(button).toHaveAttribute('aria-disabled', 'true');
+			await user.tab();
+			expect(button).toHaveFocus();
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Ask an admin to connect'));
+			expect(button).toHaveAccessibleDescription('Ask an admin to connect');
+			await user.keyboard('{Escape}');
+			await waitFor(() => expect(queryTooltip()).not.toBeInTheDocument());
+			await user.keyboard('{Enter} ');
+			await user.click(button);
+			expect(emitted('click')).toBeUndefined();
+			await rerender({ disabled: false });
+			await user.click(button);
+			expect(emitted('click')).toHaveLength(1);
+		},
+	);
 });

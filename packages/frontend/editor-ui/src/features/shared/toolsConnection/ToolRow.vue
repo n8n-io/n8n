@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, ref, watch } from 'vue';
+import { computed, inject, nextTick, ref, useId, watch } from 'vue';
 import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
@@ -31,6 +31,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const installReasonId = useId();
 const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
 const creditsLabelKey = inject(TOOL_CONNECTION_CREDITS_LABEL_KEY, null);
 
@@ -251,6 +252,14 @@ function handleConnect() {
 					>
 						{{ item.description }}
 					</N8nText>
+					<N8nText
+						v-if="installBlocked && !item.installing"
+						:id="installReasonId"
+						tag="span"
+						size="small"
+						color="text-light"
+						>{{ i18n.baseText('tools.connection.install.contactAdmin') }}</N8nText
+					>
 				</span>
 			</template>
 		</component>
@@ -331,20 +340,17 @@ function handleConnect() {
 				{{ i18n.baseText('tools.connection.action.connecting') }}
 			</span>
 			<template v-else-if="hasDirectAction">
-				<N8nTooltip
-					v-if="installBlocked && !item.installing"
-					:content="i18n.baseText('tools.connection.install.contactAdmin')"
-					placement="top"
-				>
-					<span>
-						<N8nButton
-							:label="actionLabel"
-							variant="outline"
-							size="small"
-							disabled
-							data-test-id="tools-connection-row-install"
-						/>
-					</span>
+				<N8nTooltip v-if="installBlocked && !item.installing" as-child placement="top">
+					<template #content>{{ i18n.baseText('tools.connection.install.contactAdmin') }}</template>
+					<N8nButton
+						:label="actionLabel"
+						variant="outline"
+						size="small"
+						disabled
+						focusable-when-disabled
+						:aria-describedby="installReasonId"
+						data-test-id="tools-connection-row-install"
+					/>
 				</N8nTooltip>
 				<N8nButton
 					v-else

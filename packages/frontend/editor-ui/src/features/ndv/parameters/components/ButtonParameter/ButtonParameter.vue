@@ -58,15 +58,24 @@ const isAiTransformButton = computed(() => {
 	const action = props.parameter.typeOptions?.buttonConfig?.action;
 	return typeof action === 'object' && action?.type === 'askAiCodeGeneration';
 });
-const isSubmitEnabled = computed(() => {
-	if (isAiTransformButton.value && !askAi.value) return false;
-	if (!hasExecutionData.value || !prompt.value || props.isReadOnly) return false;
+const disabledReason = computed(() => {
+	if (props.isReadOnly) return i18n.baseText('codeNodeEditor.askAi.readOnly');
+	if (isAiTransformButton.value && !askAi.value) {
+		return i18n.baseText('codeNodeEditor.askAi.unavailable');
+	}
+	if (!hasExecutionData.value) return i18n.baseText('codeNodeEditor.askAi.noInputData');
+	if (!prompt.value) return i18n.baseText('codeNodeEditor.askAi.noPrompt');
 
 	const maxlength = inputFieldMaxLength.value;
-	if (maxlength && prompt.value.length > maxlength) return false;
+	if (maxlength && prompt.value.length > maxlength) {
+		return i18n.baseText('codeNodeEditor.askAi.promptTooLong', {
+			interpolate: { maxLength: maxlength },
+		});
+	}
 
-	return true;
+	return '';
 });
+const isSubmitEnabled = computed(() => !disabledReason.value);
 const promptUpdated = computed(() => {
 	const lastPrompt = activeNode.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] as string;
 	if (!lastPrompt) return false;
@@ -260,28 +269,18 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			</DraggableTarget>
 		</div>
 		<div :class="$style.controls">
-			<N8nTooltip :disabled="isSubmitEnabled">
-				<div>
-					<N8nButton
-						variant="outline"
-						:disabled="!isSubmitEnabled"
-						size="small"
-						:loading="isLoading"
-						@click="onSubmit"
-					>
-						{{ buttonLabel }}
-					</N8nButton>
-				</div>
-				<template #content>
-					<span
-						v-if="!hasExecutionData"
-						v-text="i18n.baseText('codeNodeEditor.askAi.noInputData')"
-					/>
-					<span
-						v-else-if="prompt.length === 0"
-						v-text="i18n.baseText('codeNodeEditor.askAi.noPrompt')"
-					/>
-				</template>
+			<N8nTooltip as-child :disabled="!disabledReason || isLoading">
+				<N8nButton
+					variant="outline"
+					:disabled="!isSubmitEnabled"
+					:focusable-when-disabled="!!disabledReason"
+					size="small"
+					:loading="isLoading"
+					@click="onSubmit"
+				>
+					{{ buttonLabel }}
+				</N8nButton>
+				<template #content>{{ disabledReason }}</template>
 			</N8nTooltip>
 		</div>
 	</div>

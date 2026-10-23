@@ -79,7 +79,7 @@ describe('CanvasNodeToolbar', () => {
 		});
 
 		const button = getByTestId('execute-node-button');
-		expect(button).toBeDisabled();
+		expect(button).toHaveAttribute('aria-disabled', 'true');
 
 		// Verify tooltip shows deactivated message on hover
 		await hoverTooltipTrigger(button);
@@ -379,7 +379,7 @@ describe('CanvasNodeToolbar', () => {
 		it('should disable the execute node button', () => {
 			const { getByTestId } = renderWithCredentials(false);
 
-			expect(getByTestId('execute-node-button')).toBeDisabled();
+			expect(getByTestId('execute-node-button')).toHaveAttribute('aria-disabled', 'true');
 		});
 
 		it('should show the reason in the execute node tooltip', async () => {

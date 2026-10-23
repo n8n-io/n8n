@@ -1048,9 +1048,9 @@ describe('CredentialSharing.ee', () => {
 				expect(row).toHaveTextContent('Used in "Email summary"');
 
 				const share = getByTestId('credential-used-in-project-share');
-				expect(share).toBeDisabled();
+				expect(share).toHaveAttribute('aria-disabled', 'true');
 
-				await userEvent.hover(share.parentElement as HTMLElement);
+				await userEvent.hover(share);
 				expect(
 					await findAllByText("You don't have permission to share personal credentials"),
 				).not.toHaveLength(0);

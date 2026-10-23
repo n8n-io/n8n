@@ -284,11 +284,18 @@ async function deleteRole() {
 				</N8nText>
 				<N8nTooltip
 					:disabled="!isDeleteDisabled"
+					as-child
 					placement="top-start"
 					content-class="instanceRoleDeleteTooltip"
 					:content="deleteBlockedTooltip"
 				>
-					<N8nButton variant="destructive" :disabled="isDeleteDisabled" @click="deleteRole">
+					<template #content>{{ deleteBlockedTooltip }}</template>
+					<N8nButton
+						variant="destructive"
+						:disabled="isDeleteDisabled"
+						focusable-when-disabled
+						@click="deleteRole"
+					>
 						{{ i18n.baseText('roles.instance.action.delete.button') }}
 					</N8nButton>
 				</N8nTooltip>

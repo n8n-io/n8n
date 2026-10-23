@@ -377,11 +377,14 @@ function onOpenScopes(apiKey: ApiKey) {
 					</div>
 					<N8nTooltip
 						:disabled="canCreateKeys"
+						as-child
 						:content="i18n.baseText('settings.api.create.disabledTooltip')"
 					>
+						<template #content>{{ i18n.baseText('settings.api.create.disabledTooltip') }}</template>
 						<N8nButton
 							size="medium"
 							:disabled="!canCreateKeys"
+							focusable-when-disabled
 							data-test-id="api-key-create-button"
 							@click="onCreateApiKey"
 						>

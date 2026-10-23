@@ -464,7 +464,12 @@ describe('ToolRow', () => {
 		const { getByTestId, emitted } = render(item);
 
 		const install = getByTestId('tools-connection-row-install');
-		expect(install).toBeDisabled();
+		expect(install).toHaveAttribute('aria-disabled', 'true');
+		expect(install).not.toBeDisabled();
+		expect(install).toHaveAccessibleDescription(
+			'Ask an administrator to install this community node',
+		);
+		expect(document.getElementById(install.getAttribute('aria-describedby')!)).toBeVisible();
 
 		await fireEvent.click(install);
 		expect(emitted().connect).toBeUndefined();
