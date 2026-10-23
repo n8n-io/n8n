@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_fc89baa43a0d3c::t_09bd4304f9690b 3982-3996,4032-4036,4081-4116,4118-4126,4128-4136
+  s_fc89baa43a0d3c::t_8173c5f489993f 4137-4138,4140-4144,4226,4264,4266-4268
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_fc89baa43a0d3c::t_db94a4fbcb02d8 360-366,371,398,400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc2a23ef368fb10d844b19bb84538e48cfbe503a",
+  "prompts": {},
+  "sessions": {
+    "s_fc89baa43a0d3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15f07-c638-74e0-aed0-251af56be3fb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

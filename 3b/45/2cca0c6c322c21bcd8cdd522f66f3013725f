@@ -1,0 +1,40 @@
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_2f11138676dd94::t_079af27b1cb533 91-93
+  s_2f11138676dd94::t_19bc52a876055d 94-96
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_2f11138676dd94::t_eb42e520ee7c70 218-219,226-230,295
+packages/@n8n/agents/src/runtime/__tests__/title-generation-side-call.test.ts
+  s_2f11138676dd94::t_d35a43a7415ac0 161-166
+  s_2f11138676dd94::t_ef8be4e0e5ed11 160
+  s_2f11138676dd94::t_d1ed538802dc4e 149
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_2f11138676dd94::t_d8f6bde07952a0 198-209
+packages/@n8n/agents/src/runtime/memory/title-generation.ts
+  s_2f11138676dd94::t_d1ed538802dc4e 306-308,322
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_2f11138676dd94::t_eb42e520ee7c70 945-947,958-964
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_2f11138676dd94::t_d8f6bde07952a0 1215-1216,1231,1233-1234,1240
+packages/@n8n/agents/src/runtime/loop/side-call-cost.ts
+  s_2f11138676dd94::t_d1ed538802dc4e 9-10
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-side-call.test.ts
+  s_2f11138676dd94::t_ef8be4e0e5ed11 153
+  s_2f11138676dd94::t_d35a43a7415ac0 154-159
+  s_2f11138676dd94::t_d1ed538802dc4e 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3b452cca0c6c322c21bcd8cdd522f66f3013725f",
+  "prompts": {},
+  "sessions": {
+    "s_2f11138676dd94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e08c8945-18a8-4472-b774-b45c212b0e6f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
