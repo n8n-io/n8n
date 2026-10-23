@@ -83,9 +83,8 @@ jobs:
     # Also runs on beta patches: standalone packages pin `latest` to the newest
     # beta, so every beta publish needs a re-pin, not just stable promotions.
     if: |
-      inputs.bump == 'minor' ||
-      (inputs.track == 'stable' && inputs.release_type != 'rc') ||
-      (inputs.track == 'beta' && inputs.release_type != 'rc')
+      inputs.release_type != 'rc' &&
+      (inputs.bump == 'minor' || inputs.track == 'stable' || inputs.track == 'beta')
     uses: ./.github/workflows/release-set-stable-npm-packages-to-latest.yml
     secrets: inherit
 
