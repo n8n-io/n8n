@@ -714,7 +714,7 @@ describe('ExecutionRecoveryService', () => {
 
 				const workflow = await createActiveWorkflow({ ...OOM_WORKFLOW });
 				for (let i = 0; i < 3; i++) {
-					const execution = await createExecution({ status: 'crashed' }, workflow);
+					const execution = await createExecution({ status: 'crashed', mode: 'trigger' }, workflow);
 					await executionPersistence.deleteInFlightExecution({
 						workflowId: workflow.id,
 						executionId: execution.id,
@@ -745,12 +745,12 @@ describe('ExecutionRecoveryService', () => {
 				const now = Date.now();
 				for (let i = 3; i > 0; i--) {
 					await createExecution(
-						{ status: 'crashed', startedAt: new Date(now - i * 1000) },
+						{ status: 'crashed', mode: 'trigger', startedAt: new Date(now - i * 1000) },
 						workflow,
 					);
 				}
 				const success = await createExecution(
-					{ status: 'success', startedAt: new Date(now) },
+					{ status: 'success', mode: 'trigger', startedAt: new Date(now) },
 					workflow,
 				);
 				await executionPersistence.deleteInFlightExecution({
