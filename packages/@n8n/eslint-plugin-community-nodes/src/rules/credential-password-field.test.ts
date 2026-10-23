@@ -167,7 +167,7 @@ ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
 		...['api_key', 'access_key', 'private-key', 'client_secret'].map((fieldName) => ({
 			name: `${fieldName} requires password masking`,
 			code: createCredentialCode([createProperty(fieldName, fieldName)]),
-			errors: [{ messageId: 'missingPasswordOption', data: { fieldName } }],
+			errors: [{ messageId: 'missingPasswordOption' as const, data: { fieldName } }],
 			output: createCredentialCode([createProperty(fieldName, fieldName, { password: true })]),
 		})),
 		{

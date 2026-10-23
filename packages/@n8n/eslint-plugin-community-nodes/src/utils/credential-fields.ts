@@ -1,4 +1,5 @@
 import { TSESTree } from '@typescript-eslint/utils';
+import { split } from 'change-case';
 
 import { findObjectProperty, getBooleanLiteralValue } from './ast-utils.js';
 
@@ -9,6 +10,7 @@ const SENSITIVE_PATTERNS = [
 	'cert',
 	'passphrase',
 	'apikey',
+	'accesskey',
 	'secretkey',
 	'privatekey',
 	'authkey',
@@ -33,13 +35,13 @@ export function isSensitiveName(
 	options: { extra?: string[]; exclusions?: string[] } = {},
 ): boolean {
 	const { extra = [], exclusions = NON_SENSITIVE_PATTERNS } = options;
-	const lowerName = name.toLowerCase();
+	const normalizedName = split(name).join('').toLowerCase();
 
-	if (exclusions.some((pattern) => lowerName.includes(pattern))) {
+	if (exclusions.some((pattern) => normalizedName.includes(pattern))) {
 		return false;
 	}
 
-	return [...SENSITIVE_PATTERNS, ...extra].some((pattern) => lowerName.includes(pattern));
+	return [...SENSITIVE_PATTERNS, ...extra].some((pattern) => normalizedName.includes(pattern));
 }
 
 /** Whether the credential field element sets `typeOptions: { password: true }`. */

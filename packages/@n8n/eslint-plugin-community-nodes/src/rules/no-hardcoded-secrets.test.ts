@@ -70,7 +70,7 @@ ruleTester.run('no-hardcoded-secrets', NoHardcodedSecretsRule, {
 		...['access_key', 'private-key'].map((fieldName) => ({
 			name: `reports a hardcoded value on ${fieldName}`,
 			code: `const config = { '${fieldName}': '${HEX_SECRET}' };`,
-			errors: [{ messageId: 'hardcodedSecret', data: { name: fieldName } }],
+			errors: [{ messageId: 'hardcodedSecret' as const, data: { name: fieldName } }],
 		})),
 		{
 			name: 'SECURITY: exactly 16 chars is flagged (minimum length)',
