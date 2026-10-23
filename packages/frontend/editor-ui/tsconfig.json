@@ -27,6 +27,8 @@
 			"@n8n/frontend-module-sdk": ["../@n8n/frontend-module-sdk/src/index.ts"],
 			"@n8n/frontend-module-llm-usage": ["../../modules/llm-usage/frontend/src/index.ts"],
 			"@n8n/frontend-module-llm-usage/*": ["../../modules/llm-usage/frontend/src/*"],
+			"@n8n/frontend-module-self-healing": ["../../modules/self-healing/frontend/src/index.ts"],
+			"@n8n/frontend-module-self-healing/*": ["../../modules/self-healing/frontend/src/*"],
 			"@n8n/frontend-module-inbox": ["../../modules/inbox/frontend/src/index.ts"],
 			"@n8n/frontend-module-inbox/*": ["../../modules/inbox/frontend/src/*"],
 			"@n8n/frontend-module-mcp": ["../../modules/mcp/frontend/src/index.ts"],

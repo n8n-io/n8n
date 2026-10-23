@@ -12,8 +12,10 @@ import type { WorkflowReviewVersionSnapshot } from '@n8n/api-types';
  * `features/collaboration/projects`, which sits above the module layer. A module
  * that needs to filter by project renders this instead of importing any of it.
  * `workflow-diff` renders plain workflow snapshots with the editor canvas.
+ * `promotion-changes` lists what a promotion review changes. It loads the changes itself, so
+ * the module needs no knowledge of the promotion types.
  */
-export type ModuleComponentSlot = 'project-filter' | 'workflow-diff';
+export type ModuleComponentSlot = 'project-filter' | 'workflow-diff' | 'promotion-changes';
 
 /**
  * The `v-model` value of the `project-filter` slot. `null` means "all projects".
@@ -36,3 +38,16 @@ export type SlotWorkflowDiffProps = {
 	canvasIdPrefix?: string;
 	hideTitle?: boolean;
 };
+
+export type SlotPromotionChangesProps = {
+	reviewId: string;
+};
+
+/**
+ * What the `promotion-changes` slot shows, emitted as `state`. Approve sends the head commit of
+ * the changes that the reviewer saw, so it waits for `ready`.
+ */
+export type PromotionChangesState =
+	| { status: 'loading' }
+	| { status: 'ready'; headCommitSha: string }
+	| { status: 'unavailable' };

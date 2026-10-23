@@ -7,16 +7,19 @@ import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import type { Inclusion, ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
 import PromotionChangeCard from './PromotionChangeCard.vue';
 
-const props = defineProps<{
-	order: ResourceKey[];
-	graph: SelectionGraph;
-	direction: PromotionDirection;
-	inclusion: Inclusion;
-	entries: ReadonlyMap<ResourceKey, DetailEntry>;
-	inspectedKey?: ResourceKey;
-	blockers: BlockerIndex;
-	branchName?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		order: ResourceKey[];
+		graph: SelectionGraph;
+		direction: PromotionDirection;
+		inclusion: Inclusion;
+		entries: ReadonlyMap<ResourceKey, DetailEntry>;
+		inspectedKey?: ResourceKey;
+		blockers: BlockerIndex;
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
 
 const activeWorkflow = defineModel<ResourceKey | undefined>('activeWorkflow');
 
@@ -60,8 +63,8 @@ defineExpose({ scrollToCard });
 			:entry="entries.get(resource.key)"
 			:inspected="inspectedKey === resource.key"
 			:blockers="blockersOf(blockers, resource)"
-			:branch-name="branchName"
 			:diff-active="activeWorkflow === resource.key"
+			:selectable="selectable"
 			@activate-diff="activeWorkflow = resource.key"
 			@deactivate-diff="activeWorkflow = undefined"
 			@inspect="emit('inspect', $event)"
