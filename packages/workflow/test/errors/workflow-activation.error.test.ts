@@ -93,6 +93,20 @@ describe('WorkflowActivationError', () => {
 
 			expect(error.level).toBe('warning');
 		});
+
+		it('should set level warning when the cause declares configuration-invalid', () => {
+			const nodeCause = new NodeOperationError(
+				node,
+				'The folder this node watches no longer exists.',
+				{
+					failure: { cause: 'configuration-invalid' },
+				},
+			);
+
+			const error = new WorkflowActivationError('activation failed', { cause: nodeCause });
+
+			expect(error.level).toBe('warning');
+		});
 	});
 
 	describe('with a frozen Error.prototype', () => {

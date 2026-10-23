@@ -5,7 +5,10 @@ import type { ActionableCause } from './failure';
 import type { INode } from '../interfaces';
 
 /** Declared failure causes that make an activation error a warning. */
-const WARNING_FAILURE_CAUSES: readonly ActionableCause[] = ['credential-invalid'];
+const WARNING_FAILURE_CAUSES: readonly ActionableCause[] = [
+	'credential-invalid',
+	'configuration-invalid',
+];
 
 function hasWarningFailure(cause: Error | undefined): boolean {
 	return errorChain(cause).some(
