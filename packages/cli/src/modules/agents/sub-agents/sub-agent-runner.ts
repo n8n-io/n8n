@@ -518,7 +518,8 @@ export class SubAgentRunner {
 					},
 				});
 			} finally {
-				// After the record is stored, so a provider that reads it sees the final row.
+				// After the store attempt, so a provider usually sees the final row.
+				// Report even when storing fails, so the usage is not lost.
 				this.reportDelegatedRunUsage({
 					executionId,
 					threadId,
