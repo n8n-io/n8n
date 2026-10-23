@@ -63,6 +63,11 @@ export type WorkflowPlanItem =
 			action: 'update';
 			existing: WorkflowEntity;
 			archiveTransition: WorkflowArchiveTransition | null;
+			/**
+			 * Set under `placementPolicy=follow-package`: the folder the update moves the workflow to.
+			 * `null` is the project root.
+			 */
+			moveToFolderId?: string | null;
 	  } & PreparedWorkflow)
 	| ({ action: 'skip'; existing: WorkflowEntity } & PreparedWorkflow);
 

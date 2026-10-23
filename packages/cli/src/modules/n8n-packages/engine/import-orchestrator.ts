@@ -110,6 +110,11 @@ export interface ImportOrchestrationInput {
 	explicitDeleteWorkflowIds?: string[];
 	/** Treat the project root as a workflow location (project packages, which set the layout). */
 	checkRootPlacement: boolean;
+	/**
+	 * Under `placementPolicy=follow-package`, the folders a move may touch. A selection moves only the
+	 * folders that hold a selected workflow, so unselected content stays where it is. Omitted means all.
+	 */
+	movableFolderIds?: ReadonlySet<string>;
 }
 
 /**
@@ -325,6 +330,7 @@ export class ImportOrchestrator {
 		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options, {
 			checkRootPlacement: input.checkRootPlacement,
+			placementPolicy: options.placementPolicy,
 		});
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
 		const tagPlan = await this.tagImporter.plan(
@@ -332,7 +338,12 @@ export class ImportOrchestrator {
 			tagRequest,
 			workflowPlan.items.filter((item) => item.action !== 'skip'),
 		);
-		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
+		const folderContext = {
+			...context,
+			folderConflictPolicy: options.folderConflictPolicy,
+			placementPolicy: options.placementPolicy,
+			movableFolderIds: input.movableFolderIds,
+		};
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
 		const packageFolderIds = folders.map(({ sourceFolderId }) => sourceFolderId);
@@ -347,13 +358,14 @@ export class ImportOrchestrator {
 			explicitDeleteIds: input.explicitDeleteWorkflowIds,
 		});
 
-		// Which folders end up empty depends on which workflows survive, so this follows the plan above
-		// and reads the surviving placements off it.
+		// Which folders end up empty depends on which workflows survive and where the planned moves put
+		// workflows and folders, so this follows both plans above.
 		const folderRemovalPlan =
 			removesUnpackagedWorkflows(options.folderConflictPolicy) && !input.projectPendingCreation
 				? await this.folderRemover.plan(context, {
 						packageFolderIds,
 						occupiedFolderIds: removalPlan.occupiedFolderIds,
+						folderItems: folderPlan.items,
 					})
 				: { removals: [], failures: [] };
 

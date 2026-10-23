@@ -60,10 +60,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const nameOf = (key: string) => props.graph.resources.get(key)?.name ?? key;
 const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
-// A moved folder explains itself in the card body.
-const blocker = computed(() =>
-	props.resource.type === 'folder' ? undefined : blockerMessage(props.resource, props.blockers),
-);
+const blocker = computed(() => blockerMessage(props.resource, props.blockers));
 
 // Cards start open. Inspecting a resource from the tree opens its card again.
 const open = defineModel<boolean>('open', { default: true });
@@ -139,12 +136,6 @@ const absentSides = computed((): DetailSide[] => {
 		(side) => sideState(current, side).kind === 'absent',
 	);
 });
-const isApplyMove = computed(
-	() =>
-		props.direction === 'apply' &&
-		props.resource.type === 'folder' &&
-		props.resource.previousParentKey !== undefined,
-);
 // Tags belong to the whole instance, so Apply changes them outside this project too.
 const tagNote = computed(() => {
 	const { direction, resource } = props;
@@ -272,9 +263,6 @@ const tagNote = computed(() => {
 						:class="$style.padded"
 					>
 						{{ i18n.baseText('promotions.preview.variable.valueHidden') }}
-					</N8nText>
-					<N8nText v-if="isApplyMove" step="2xs" color="text-light" :class="$style.padded">
-						{{ i18n.baseText('promotions.preview.folder.moveConflict') }}
 					</N8nText>
 					<N8nText v-if="tagNote" step="2xs" color="text-light" :class="$style.padded">
 						{{ tagNote }}

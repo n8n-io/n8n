@@ -17,9 +17,10 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { UnexpectedError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
@@ -40,6 +41,7 @@ import {
 	FolderConflictPolicy,
 	MissingNodeTypeMode,
 	OverwriteDeletionPolicy,
+	PlacementPolicy,
 	ProjectConflictPolicy,
 	TagConflictPolicy,
 	TagMissingMode,
@@ -52,6 +54,7 @@ import {
 	type ImportResult,
 	type ImportSelection,
 } from '@/modules/n8n-packages/n8n-packages.types';
+import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
@@ -127,6 +130,7 @@ export class PromotionsService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectService: ProjectService,
+		private readonly folderService: FolderService,
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly bindingPreflight: PromotionBindingPreflightService,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
@@ -185,6 +189,7 @@ export class PromotionsService {
 		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
 		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
+		await this.assertNoWorkflowsMovedOutOfTeamProjects(input, branchName, credentials);
 
 		// The instance environment covers every team project, including projects with
 		// their own environment. Personal projects stay out of scope.
@@ -351,6 +356,7 @@ export class PromotionsService {
 		actor: User,
 		request: { commitMessage: string; canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
+		movedOwnerNames: ReadonlyMap<string, string> = new Map(),
 	): Promise<PromotePackageResultDto> {
 		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
@@ -384,7 +390,11 @@ export class PromotionsService {
 			);
 		}
 
-		const branch = await this.workingCopy.assertSelectionFitsBranch(packageFolder, selection);
+		const branch = await this.workingCopy.assertSelectionFitsBranch(
+			packageFolder,
+			selection,
+			movedOwnerNames,
+		);
 
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
 		const prePushBackup = `${packageFolder}.pre-selection`;
@@ -502,8 +512,8 @@ export class PromotionsService {
 	/**
 	 * Promotes a client-chosen set of a project's workflows. The client sends ids
 	 * only; the server reads each one now, so the push carries the current state.
-	 * Live and archived workflows export; an id this project no longer owns (gone,
-	 * or moved to another project) leaves the branch, matching the change list.
+	 * Live and archived workflows export; an id that is gone from the instance leaves
+	 * the branch. A workflow that moved to another project is refused.
 	 */
 	async promoteProjectSelection(
 		projectId: string,
@@ -518,7 +528,10 @@ export class PromotionsService {
 		// the user previewed. resolveForProject validates the project and environment too.
 		const input = await this.resolver.resolveForProject(projectId, 'promote');
 
-		const selection = await this.classifySelection(projectId, request.workflowIds);
+		const { selection, movedOwnerNames } = await this.classifySelection(
+			projectId,
+			request.workflowIds,
+		);
 
 		return await this.promoteSelectionResolved(
 			input,
@@ -528,40 +541,44 @@ export class PromotionsService {
 				canExportVariableValues: request.canExportVariableValues,
 			},
 			selection,
+			movedOwnerNames,
 		);
 	}
 
 	/**
 	 * Splits selected ids into pushes and deletions, using the current instance
 	 * state. A live or archived workflow this project owns exports; an id it no
-	 * longer owns — gone from the instance, or moved to another project — leaves
-	 * the branch. This matches the change list, which shows both as deletions.
-	 * assertDeletionsOnBranch rejects a deletion the branch does not hold under
-	 * this project, so a foreign id never writes.
+	 * longer owns leaves the branch. An id that another project owns now is also
+	 * returned in `movedOwnerNames`: assertSelectionFitsBranch refuses it when the
+	 * branch holds it under this project (a move), and assertDeletionsOnBranch
+	 * rejects it when the branch holds it elsewhere (a foreign id).
 	 */
 	private async classifySelection(
 		projectId: string,
 		workflowIds: string[],
-	): Promise<SelectivePushOptions> {
+	): Promise<{ selection: SelectivePushOptions; movedOwnerNames: Map<string, string> }> {
 		const ownerProjects =
 			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 
 		const live: string[] = [];
 		const deleted: string[] = [];
+		const movedOwnerNames = new Map<string, string>();
 		for (const id of workflowIds) {
-			// This project does not own the workflow: it is gone, or it moved to
-			// another project. Either way the project has dropped it, so promote it
-			// as a deletion.
-			if (ownerProjects.get(id)?.id !== projectId) {
-				deleted.push(id);
+			const owner = ownerProjects.get(id);
+			if (owner?.id === projectId) {
+				// Archived workflows travel like live ones, so the branch keeps them
+				// archived instead of removing them, matching a full promote.
+				live.push(id);
 				continue;
 			}
-			// Archived workflows travel like live ones, so the branch keeps them
-			// archived instead of removing them, matching a full promote.
-			live.push(id);
+			if (owner) movedOwnerNames.set(id, owner.name);
+			deleted.push(id);
 		}
 
-		return { projectId, workflowIds: live, deletedWorkflowIds: deleted };
+		return {
+			selection: { projectId, workflowIds: live, deletedWorkflowIds: deleted },
+			movedOwnerNames,
+		};
 	}
 
 	/** Checks package bindings and imports only when no blocking issues remain. */
@@ -613,36 +630,32 @@ export class PromotionsService {
 		);
 	}
 
+	/** `moves` comes from findCrossProjectMoves, so a moved workflow is never planned as a deletion. */
 	private async classifyApplySelection(
 		inventory: PackageDirectoryInventory,
 		projectId: string,
 		workflowIds: string[],
-	): Promise<{ selection: ImportSelection; movedWorkflowIds: string[] }> {
+		moves: CrossProjectMoves,
+	): Promise<{ selection: ImportSelection }> {
 		const branchWorkflowIds = new Set(
 			inventory.workflows
 				.filter((workflow) => workflow.projectId === projectId)
 				.map(({ id }) => id),
 		);
-		const packageWorkflowIds = new Set(inventory.workflows.map(({ id }) => id));
+		const movedWorkflowIds = new Set(moves.workflows.map(({ id }) => id));
 		const ownerProjects =
 			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 
 		const selectedWorkflowIds: string[] = [];
 		const deletedWorkflowIds: string[] = [];
-		const movedWorkflowIds: string[] = [];
 		const invalidWorkflowIds: string[] = [];
 		for (const id of workflowIds) {
 			if (branchWorkflowIds.has(id)) {
 				selectedWorkflowIds.push(id);
 			} else if (ownerProjects.get(id)?.id === projectId) {
-				// The instance still owns it here. If the package holds it under another
-				// project it is a cross-project move, which a selective apply cannot make;
-				// otherwise the package dropped it, so it is a deletion.
-				if (packageWorkflowIds.has(id)) {
-					movedWorkflowIds.push(id);
-				} else {
-					deletedWorkflowIds.push(id);
-				}
+				// The instance still owns it here. A move is reported, not deleted; otherwise the
+				// package dropped it, so it is a deletion.
+				if (!movedWorkflowIds.has(id)) deletedWorkflowIds.push(id);
 			} else {
 				invalidWorkflowIds.push(id);
 			}
@@ -656,7 +669,64 @@ export class PromotionsService {
 
 		return {
 			selection: { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds },
-			movedWorkflowIds,
+		};
+	}
+
+	/**
+	 * Workflows and folders that the package holds under one project and this instance holds under
+	 * another. Apply cannot move them between projects. With `projectId`, workflows count when they
+	 * move into or out of that project, and folders only when the package holds them under it: the
+	 * import of that project never touches a folder that the package holds elsewhere.
+	 */
+	private async findCrossProjectMoves(
+		inventory: PackageDirectoryInventory,
+		projectId?: string,
+	): Promise<CrossProjectMoves> {
+		const branchProjects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
+		const branchProjectOf = (id: string) => {
+			const project = branchProjects.get(id);
+			// The reader requires a project file for every project directory.
+			if (!project) throw new UnexpectedError(`Package inventory has no project "${id}"`);
+			return project;
+		};
+		const toMove = (
+			{ id, name }: { id: string; name: string },
+			branchProjectId: string,
+			instanceProject: { id: string; name: string } | undefined,
+		): CrossProjectMove[] =>
+			instanceProject &&
+			instanceProject.id !== branchProjectId &&
+			(projectId === undefined || projectId === branchProjectId || projectId === instanceProject.id)
+				? [
+						{
+							id,
+							name,
+							project: branchProjectOf(branchProjectId),
+							instanceProject: { id: instanceProject.id, name: instanceProject.name },
+						},
+					]
+				: [];
+		const byId = (a: CrossProjectMove, b: CrossProjectMove) => a.id.localeCompare(b.id);
+
+		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+			inventory.workflows.map(({ id }) => id),
+		);
+		const homes = new Map(
+			(
+				await this.folderService.getFoldersByIds(inventory.folders.map(({ folder }) => folder.id))
+			).map(({ id, homeProject }) => [id, homeProject]),
+		);
+
+		return {
+			workflows: inventory.workflows
+				.flatMap((workflow) => toMove(workflow, workflow.projectId, owners.get(workflow.id)))
+				.sort(byId),
+			folders: inventory.folders
+				.filter((entry) => projectId === undefined || entry.projectId === projectId)
+				.flatMap(({ folder, projectId: branchProjectId }) =>
+					toMove(folder, branchProjectId, homes.get(folder.id)),
+				)
+				.sort(byId),
 		};
 	}
 
@@ -700,10 +770,12 @@ export class PromotionsService {
 		const ownedWorkflowIds = await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([
 			projectId,
 		]);
-		const { selection, movedWorkflowIds } = await this.classifyApplySelection(
+		const moves = await this.findCrossProjectMoves(inventory, projectId);
+		const { selection } = await this.classifyApplySelection(
 			inventory,
 			projectId,
 			[...new Set([...branchWorkflowIds, ...ownedWorkflowIds])],
+			moves,
 		);
 		const preflight = await this.bindingPreflight.checkInventory({
 			inventory,
@@ -713,23 +785,12 @@ export class PromotionsService {
 			},
 		});
 
-		const projects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
-		const movedWorkflows = inventory.workflows
-			.filter(({ id }) => movedWorkflowIds.includes(id))
-			.map(({ id, name, projectId: branchProjectId }) => {
-				const project = projects.get(branchProjectId);
-				// The reader requires a project file for every project directory.
-				if (!project)
-					throw new UnexpectedError(`Package inventory has no project "${branchProjectId}"`);
-				return { id, name, project };
-			})
-			.sort((a, b) => a.id.localeCompare(b.id));
-
 		return {
 			environmentId: input.environmentId,
 			git: { commitSha, branchName },
 			preflight,
-			movedWorkflows,
+			movedWorkflows: moves.workflows,
+			movedFolders: moves.folders,
 		};
 	}
 
@@ -779,16 +840,22 @@ export class PromotionsService {
 
 		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
-		const { selection, movedWorkflowIds } = await this.classifyApplySelection(
+		const moves = await this.findCrossProjectMoves(inventory, projectId);
+		const { selection } = await this.classifyApplySelection(
 			inventory,
 			projectId,
 			workflowIds,
+			moves,
 		);
-		if (movedWorkflowIds.length > 0) {
-			// Mirror the import engine, which rejects a move-shaped change with 409.
-			throw new ConflictError(
-				`These workflows moved to another project: ${movedWorkflowIds.join(', ')}. A selective apply cannot move them. Apply all projects instead.`,
-			);
+		// A folder the package holds under this project but this instance holds elsewhere blocks
+		// every selection: the import would meet it whatever the user selected.
+		const requested = new Set(workflowIds);
+		const blocking = {
+			workflows: moves.workflows.filter(({ id }) => requested.has(id)),
+			folders: moves.folders,
+		};
+		if (blocking.workflows.length > 0 || blocking.folders.length > 0) {
+			throw new ConflictError(describeCrossProjectMoves(blocking));
 		}
 		const preflight = await this.bindingPreflight.checkInventory({
 			inventory,
@@ -834,6 +901,7 @@ export class PromotionsService {
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
 				tagConflictPolicy: IMPORT_POLICY.tagConflictPolicy,
+				placementPolicy: PlacementPolicy.FollowPackage,
 			},
 			{ sourceDir: packageFolder },
 			selection,
@@ -895,9 +963,15 @@ export class PromotionsService {
 			);
 		}
 
-		const preflight = await this.bindingPreflight.checkDirectory({
-			sourceDir: packageFolder,
-		});
+		const inventory = await this.inventoryReader.read(
+			new DirectoryPackageReader(packageFolder, this.packageImportConfig),
+		);
+		const moves = await this.findCrossProjectMoves(inventory);
+		if (moves.workflows.length > 0 || moves.folders.length > 0) {
+			throw new ConflictError(describeCrossProjectMoves(moves));
+		}
+
+		const preflight = await this.bindingPreflight.checkInventory({ inventory });
 		const blockingConflicts = confirmDestructiveChanges
 			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
 			: preflight.conflicts;
@@ -928,6 +1002,7 @@ export class PromotionsService {
 			{
 				user: actor,
 				...IMPORT_POLICY,
+				placementPolicy: PlacementPolicy.FollowPackage,
 				dataTableSchemaConflictPolicy: confirmDestructiveChanges
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
@@ -1093,6 +1168,70 @@ export class PromotionsService {
 	}
 
 	/**
+	 * A workflow on the branch that a personal project owns now is not exported, because personal
+	 * projects stay out of scope. The promote would drop it from the branch, and Apply would then
+	 * delete it on the destination. Refuse until the workflow moves back to its team project.
+	 *
+	 * This reads the manifest at the remote branch head, not the checkout on disk, which can be
+	 * behind the remote. It does not apply the import limits, which a promote never needed.
+	 */
+	private async assertNoWorkflowsMovedOutOfTeamProjects(
+		input: PromotionOperationInput,
+		branchName: string,
+		credentials: PromotionGitCredentials,
+	): Promise<void> {
+		const paths = this.workingDirectory.paths(input.environmentId);
+		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
+		let head: { commitSha: string | null; lsTreeOutput: string };
+		try {
+			head = await this.gitService.listBranchTree({
+				remoteUrl: repositoryUrl(input),
+				credentials,
+				paths,
+				branchName,
+				environmentId: input.environmentId,
+				pathspecs: [manifestPath],
+			});
+		} catch (error) {
+			// A missing branch holds no workflow to drop, and a fetch that fails also fails the push,
+			// so the promote can go on. It creates the branch when the branch is missing.
+			this.logger.warn('Skipped the moved-workflow check because the branch could not be read', {
+				error,
+			});
+			return;
+		}
+		// An empty remote, or a branch without a package: nothing on the branch can be dropped.
+		if (head.commitSha === null || head.lsTreeOutput === '') return;
+
+		const files = await this.gitService.readFilesAtCommit({
+			paths,
+			branchName,
+			environmentId: input.environmentId,
+			commitSha: head.commitSha,
+			filePaths: [manifestPath],
+		});
+		const workflows = readBranchWorkflowPlacements(files.get(manifestPath), manifestPath);
+		if (workflows.length === 0) return;
+
+		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+			workflows.map(({ id }) => id),
+		);
+		const moved = workflows.flatMap(({ id, name, projectName }) => {
+			const owner = owners.get(id);
+			return owner !== undefined && owner.type !== 'team'
+				? [
+						`"${name}" (${id}) is in personal project "${owner.name}" here and in team project "${projectName}" on the branch`,
+					]
+				: [];
+		});
+		if (moved.length > 0) {
+			throw new BadRequestError(
+				`A promotion does not include personal projects, so these workflows would be deleted on the destination: ${moved.join('; ')}. Move them back to the team project the branch holds them in, then promote again.`,
+			);
+		}
+	}
+
+	/**
 	 * Project environments can be configured and resolved, but running a package
 	 * operation on one is not implemented. The current export and import cover the
 	 * whole instance, so this rejects before any export, import, or Git write.
@@ -1198,11 +1337,12 @@ export class PromotionsService {
 				deleted: projectReconciliation.deletedProjectIds.length,
 			},
 			folders: {
-				...tally(importResult.folders, ['created', 'skipped'] as const),
+				...tally(importResult.folders, ['created', 'skipped', 'moved'] as const),
 				removed: importResult.removedFolders.length,
 			},
 			workflows: {
 				...tally(importResult.workflows, ['created', 'updated', 'skipped'] as const),
+				moved: importResult.workflows.filter(({ moved }) => moved).length,
 				archived: importResult.removedWorkflows.filter(({ deletion }) => deletion === 'archived')
 					.length,
 				deleted: importResult.removedWorkflows.filter(({ deletion }) => deletion === 'deleted')
@@ -1257,4 +1397,57 @@ async function isDirectory(folder: string): Promise<boolean> {
 	} catch {
 		return false;
 	}
+}
+
+type CrossProjectMove = ApplyCheckResult['movedWorkflows'][number];
+type CrossProjectMoves = { workflows: CrossProjectMove[]; folders: CrossProjectMove[] };
+
+/** Names each item and both of its projects, so the user knows what to move and where. */
+function describeCrossProjectMoves({ workflows, folders }: CrossProjectMoves): string {
+	const describe =
+		(type: 'workflow' | 'folder') =>
+		({ id, name, project, instanceProject }: CrossProjectMove) =>
+			`${type} "${name}" (${id}) is in project "${instanceProject.name}" here and in project "${project.name}" on the branch`;
+	const moved = [...workflows.map(describe('workflow')), ...folders.map(describe('folder'))];
+	return `Apply can't move workflows or folders between projects: ${moved.join('; ')}. Move them on this instance to match the branch, or move them back on the source instance and promote again.`;
+}
+
+/**
+ * The id, name and team project of every workflow that the branch manifest lists. It fails closed:
+ * a manifest it cannot read could hide a workflow that Apply would delete.
+ */
+function readBranchWorkflowPlacements(
+	raw: string | undefined,
+	manifestPath: string,
+): Array<{ id: string; name: string; projectName: string }> {
+	let manifest: unknown;
+	try {
+		manifest = raw === undefined ? undefined : jsonParse(raw);
+	} catch {
+		manifest = undefined;
+	}
+	if (!isRecord(manifest) || !Array.isArray(manifest.workflows)) {
+		throw new BadRequestError(
+			`"${manifestPath}" on the branch is not readable, so promote can't check it for workflows that moved to a personal project. Fix the file on the branch, then promote again.`,
+		);
+	}
+	const projects = (Array.isArray(manifest.projects) ? manifest.projects : []).filter(
+		isManifestRef,
+	);
+
+	return manifest.workflows.filter(isManifestRef).map(({ id, name, target }) => ({
+		id,
+		name,
+		projectName:
+			projects.find((project) => target.startsWith(`${project.target}/`))?.name ?? 'unknown',
+	}));
+}
+
+function isManifestRef(value: unknown): value is { id: string; name: string; target: string } {
+	return (
+		isRecord(value) &&
+		typeof value.id === 'string' &&
+		typeof value.name === 'string' &&
+		typeof value.target === 'string'
+	);
 }

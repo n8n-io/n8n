@@ -269,7 +269,27 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 		{ workflowId: modified.id, role: 'workflow:owner' },
 		{ projectId: otherProject.id },
 	);
-	const movedOut = (await agent.get(endpoint).expect(200)).body.data.changes;
+	const movedOutPreview = (await agent.get(endpoint).expect(200)).body.data;
+	// Promote refuses a workflow that moved to another project, so the preview names that project.
+	expect(movedOutPreview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			change: 'deleted',
+			movedToProject: { id: otherProject.id, name: otherProject.name },
+		}),
+	);
+	// The other side of the same move: the branch still holds the workflow in the first project.
+	const movedInPreview = (
+		await agent.get(`/promotions/${otherProject.id}/changes/promote`).expect(200)
+	).body.data;
+	expect(movedInPreview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			change: 'added',
+			movedFromProject: { id: project.id, name: project.name },
+		}),
+	);
+	const movedOut = movedOutPreview.changes;
 	expect(movedOut).toHaveLength(2);
 	expect(movedOut).toContainEqual(
 		expect.objectContaining({

@@ -4,6 +4,7 @@ import type {
 	PromotionChangesQueryDto,
 	PromotionDirection,
 	PromotionPreview,
+	PromotionResource,
 	PromotionResourceDetail,
 	PromotionResourceDetails,
 	PromotionResourceDetailsRequestDto,
@@ -23,6 +24,7 @@ import {
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	CredentialsRepository,
+	SharedWorkflowRepository,
 	VariablesRepository,
 	WorkflowRepository,
 	type User,
@@ -137,6 +139,7 @@ export class PromotionChangeService {
 		private readonly promotionsService: PromotionsService,
 		private readonly packagesService: N8nPackagesService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly tagImporter: TagImporter,
@@ -199,7 +202,94 @@ export class PromotionChangeService {
 			desired: direction === 'promote' ? instanceSide : branchSide,
 			isArchived: (path) => archiveState.get(path) ?? false,
 		});
-		return { ...toChanges(comparison, query), resources, dependencies };
+		return {
+			...toChanges(comparison, query),
+			resources:
+				direction === 'promote'
+					? await this.markCrossProjectMoves(projectId, resources, branch)
+					: resources,
+			dependencies,
+		};
+	}
+
+	/**
+	 * A project promote refuses a workflow that moved between projects (`assertSelectionFitsBranch`),
+	 * so the preview names the other project on both sides of the move:
+	 * - a deleted workflow that another project owns now on this instance moved out;
+	 * - an added workflow that the branch holds under another project moved in.
+	 */
+	private async markCrossProjectMoves(
+		projectId: string,
+		resources: PromotionResource[],
+		branch: BranchPackage,
+	): Promise<PromotionResource[]> {
+		const workflowsWith = (change: PromotionResource['change']) =>
+			resources.filter((resource) => resource.type === 'workflow' && resource.change === change);
+		const deleted = workflowsWith('deleted');
+		const added = workflowsWith('added');
+
+		const owners =
+			deleted.length > 0
+				? await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+						deleted.map(({ id }) => id),
+					)
+				: new Map<string, { id: string; name: string }>();
+		const branchProjects =
+			added.length > 0 && branch.commitSha !== null
+				? await this.readBranchWorkflowProjects(branch)
+				: new Map<string, { id: string; name: string }>();
+
+		const movedOut = new Map(
+			deleted.flatMap(({ key, id }) => {
+				const owner = owners.get(id);
+				return owner && owner.id !== projectId
+					? [[key, { id: owner.id, name: owner.name }] as const]
+					: [];
+			}),
+		);
+		const movedIn = new Map(
+			added.flatMap(({ key, id }) => {
+				const project = branchProjects.get(id);
+				return project && project.id !== projectId ? [[key, project] as const] : [];
+			}),
+		);
+		if (movedOut.size === 0 && movedIn.size === 0) return resources;
+
+		return resources.map((resource) => {
+			const movedToProject = movedOut.get(resource.key);
+			if (movedToProject) return { ...resource, movedToProject };
+			const movedFromProject = movedIn.get(resource.key);
+			return movedFromProject ? { ...resource, movedFromProject } : resource;
+		});
+	}
+
+	/**
+	 * Workflow id -> the project that holds it on the branch, across every project of the package.
+	 * Empty when the branch has no readable manifest, for example before the first promote. The
+	 * marker only helps: promote refuses a moved workflow and names its project either way.
+	 */
+	private async readBranchWorkflowProjects(
+		branch: BranchPackage,
+	): Promise<Map<string, { id: string; name: string }>> {
+		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
+		let raw: string | undefined;
+		try {
+			raw = (await branch.readFiles([manifestPath])).get(manifestPath);
+		} catch (error) {
+			this.logger.debug('No branch manifest to mark workflows that moved into the project', {
+				error,
+			});
+			return new Map();
+		}
+		const manifest = parsePackageManifest(raw);
+		if (!manifest) return new Map();
+		const projects = manifest.projects ?? [];
+		return new Map(
+			(manifest.workflows ?? []).flatMap(({ id, target }) => {
+				const project = projects.find((p) => target.startsWith(`${p.target}/`));
+				return project ? [[id, { id: project.id, name: project.name }] as const] : [];
+			}),
+		);
 	}
 
 	/**

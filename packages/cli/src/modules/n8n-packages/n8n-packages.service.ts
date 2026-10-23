@@ -50,6 +50,7 @@ import {
 	ExportDependencyPolicy,
 	ExportVersionPolicy,
 	OverwriteDeletionPolicy,
+	PlacementPolicy,
 	TagConflictPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
@@ -65,6 +66,7 @@ import {
 	type ImportSelection,
 	type ImportSelectionRequest,
 	type PackageImportSource,
+	type PromotionPlacementProperties,
 	type ResolvedImportPackageRequest,
 	type ResolvedImportRequest,
 	createBindings,
@@ -96,8 +98,8 @@ type DirectoryProjectPackage =
  * A cherry-pick import acts only on its selection, so most policies are fixed here. Deletion mode is
  * left to the caller (`overwriteDeletionPolicy`): promotion passes `hard-delete` for diff convergence,
  * while the public selection import defaults to the safe `archive`. The caller also sets
- * `dataTableSchemaConflictPolicy`, which defaults to `fail`, and `tagConflictPolicy`, which defaults
- * to `skip`.
+ * `dataTableSchemaConflictPolicy`, which defaults to `fail`, `tagConflictPolicy`, which defaults
+ * to `skip`, and `placementPolicy`, which defaults to `strict`.
  */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
@@ -125,6 +127,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'workflowIdPolicy'
 	| 'dataTableSchemaConflictPolicy'
 	| 'tagConflictPolicy'
+	| 'placementPolicy'
 >;
 
 @Service()
@@ -523,7 +526,7 @@ export class N8nPackagesService {
 	}
 
 	async importPackageFromDirectory(
-		request: ImportRequest,
+		request: ImportRequest & PromotionPlacementProperties,
 		source: { sourceDir: string },
 	): Promise<ImportResult> {
 		const opened = await this.readDirectoryProjectPackage(source);
@@ -631,6 +634,7 @@ export class N8nPackagesService {
 			dataTableSchemaConflictPolicy:
 				request.dataTableSchemaConflictPolicy ?? DataTableSchemaConflictPolicy.Fail,
 			tagConflictPolicy: request.tagConflictPolicy ?? TagConflictPolicy.Skip,
+			placementPolicy: request.placementPolicy ?? PlacementPolicy.Strict,
 			selection,
 		};
 
@@ -644,7 +648,7 @@ export class N8nPackagesService {
 	}
 
 	private async dispatchImport(
-		request: ImportRequest,
+		request: ImportRequest & PromotionPlacementProperties,
 		reader: PackageReader,
 		manifest: PackageManifest,
 		importSource: PackageImportSource,

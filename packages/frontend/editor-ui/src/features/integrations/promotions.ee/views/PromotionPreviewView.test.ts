@@ -102,6 +102,7 @@ const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyChe
 		...preflight,
 	},
 	movedWorkflows: [],
+	movedFolders: [],
 });
 
 const expectedSource = {
@@ -370,6 +371,35 @@ describe('PromotionPreviewView', () => {
 		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
 	});
 
+	it('should leave out a workflow that moved to another project and say where it went', async () => {
+		const preview = billingPreview();
+		vi.mocked(api.getPromotionPreview).mockResolvedValue({
+			...preview,
+			resources: preview.resources.map((resource) =>
+				resource.key === 'workflow:w2'
+					? { ...resource, change: 'deleted', movedToProject: { id: 'p2', name: 'Ops' } }
+					: resource,
+			),
+		});
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+		const { getAllByTestId, getByTestId, getAllByLabelText } = await render();
+		const moved = treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox');
+		expect(moved).not.toBeChecked();
+		expect(moved).toBeDisabled();
+		expect(getAllByLabelText(/This workflow moved to Ops on this instance/).length).toBeGreaterThan(
+			0,
+		);
+
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w3', 'w4'],
+		});
+	});
+
 	it('should keep the promotion toast open and link the merge request', async () => {
 		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
 			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
@@ -488,27 +518,29 @@ describe('PromotionPreviewView', () => {
 		);
 	});
 
-	it('should not apply any selection while a folder on the branch moved, and say why', async () => {
-		// The branch holds "Payments" under "Reports". This instance holds it at the project root.
-		const preview = billingPreview();
-		vi.mocked(api.getPromotionPreview).mockResolvedValue({
-			...preview,
-			resources: preview.resources.map((resource) =>
-				resource.key === 'folder:f1'
-					? { ...resource, parentKey: 'folder:f2', previousParentKey: 'project:p1' }
-					: resource,
-			),
+	it('should not apply any selection while a folder moved into the project from another one, and say why', async () => {
+		vi.mocked(api.getApplyBlockers).mockResolvedValue({
+			...check(),
+			// The branch holds "Payments" in this project, while this instance holds it in Ops.
+			movedFolders: [
+				{
+					id: 'f1',
+					name: 'Payments',
+					project: { id: 'p1', name: 'Billing' },
+					instanceProject: { id: 'p2', name: 'Ops' },
+				},
+			],
 		});
 
 		const { getByTestId } = await renderApply();
 
 		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
 		expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
-			'Apply is disabled. The folder "Payments" moved on the branch',
+			'Apply is disabled. The folder "Payments" is in a different project on the branch',
 		);
 	});
 
-	it('should leave out a workflow that the branch holds in another folder, because Apply cannot move it', async () => {
+	it('should apply a workflow that the branch holds in another folder of the project', async () => {
 		// The branch holds "Payment reminders" at the project root. This instance holds it in "Payments".
 		const preview = billingPreview();
 		vi.mocked(api.getPromotionPreview).mockResolvedValue({
@@ -523,15 +555,15 @@ describe('PromotionPreviewView', () => {
 
 		const { getAllByTestId, getByTestId } = await renderApply();
 		const moved = treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox');
-		expect(moved).not.toBeChecked();
-		expect(moved).toBeDisabled();
+		expect(moved).not.toBeDisabled();
 
 		await userEvent.click(getByTestId('promotion-preview-submit'));
 
-		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
-			workflowIds: ['w1', 'w3', 'w4'],
-			expectedSource,
-		});
+		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			expect.objectContaining({ workflowIds: expect.arrayContaining(['w2']) }),
+		);
 	});
 
 	it('should tell users whether to retry, resolve a conflict or check the changes after a failed apply', async () => {

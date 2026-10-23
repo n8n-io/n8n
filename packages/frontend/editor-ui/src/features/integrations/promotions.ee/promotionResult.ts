@@ -1,5 +1,8 @@
 import type { PromotePackageResultDto } from '@n8n/api-types';
+import type { I18nClass } from '@n8n/i18n';
 import { h, type VNode } from 'vue';
+
+import type { AppliedResult } from './promotions.types';
 
 type PromoteOutcome = Pick<PromotePackageResultDto, 'git' | 'review' | 'warnings'>;
 type PromoteWarning = NonNullable<PromoteOutcome['warnings']>[number];
@@ -60,3 +63,28 @@ const warningNodes = (warning: PromoteWarning, reviewNotRecorded: string) =>
 	warningSegments(warning, reviewNotRecorded).map((segment) =>
 		segment.kind === 'link' ? externalLink(segment.url, segment.url) : segment.text,
 	);
+
+/**
+ * Appends how many workflows and folders an Apply moved within their projects, so prod does not
+ * change without notice. Moved workflows are part of the updated count.
+ */
+export function withMovedNote(
+	i18n: I18nClass,
+	message: string,
+	{ workflows, folders }: AppliedResult['counts'],
+): string {
+	if (workflows.moved + folders.moved === 0) return message;
+	const note = i18n.baseText('promotions.applied.moved', {
+		interpolate: {
+			workflows: i18n.baseText('promotions.applied.moved.workflows', {
+				adjustToNumber: workflows.moved,
+				interpolate: { count: String(workflows.moved) },
+			}),
+			folders: i18n.baseText('promotions.applied.moved.folders', {
+				adjustToNumber: folders.moved,
+				interpolate: { count: String(folders.moved) },
+			}),
+		},
+	});
+	return `${message} ${note}`;
+}

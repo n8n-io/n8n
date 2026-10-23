@@ -311,7 +311,8 @@ export interface ImportSelection {
  * Match or create the destination project from the package. Callers cannot override its location.
  * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`,
  * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
- * `dataTableSchemaConflictPolicy` (defaults to `fail`), and `tagConflictPolicy` (defaults to `skip`).
+ * `dataTableSchemaConflictPolicy` (defaults to `fail`), `tagConflictPolicy` (defaults to `skip`), and
+ * `placementPolicy` (defaults to `strict`; only promotions set it).
  */
 export type ImportSelectionRequest = {
 	user: User;
@@ -322,6 +323,7 @@ export type ImportSelectionRequest = {
 	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
 	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
 	tagConflictPolicy?: TagConflictPolicy;
+	placementPolicy?: PlacementPolicy;
 };
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
@@ -348,13 +350,34 @@ export type ImportProjectProperties = {
 };
 
 /** Folder options once the dispatcher has settled what the caller left to the project policy. */
-export type ResolvedImportFolderProperties = ImportFolderProperties & {
-	folderConflictPolicy: FolderConflictPolicy;
+export type ResolvedImportFolderProperties = ImportFolderProperties &
+	PromotionPlacementProperties & {
+		folderConflictPolicy: FolderConflictPolicy;
+	};
+
+/**
+ * Promotion-only. The public import request does not carry it, so a public import keeps `strict`.
+ * Omitted means `strict`.
+ */
+export type PromotionPlacementProperties = {
+	placementPolicy?: PlacementPolicy;
 };
 
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
 
 export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImportFolderProperties;
+
+/**
+ * Whether a matched folder or workflow that sits somewhere else in the package moves to that place.
+ * `strict` reports the difference as a conflict. `follow-package` moves it within its own project.
+ * Only promotions set it: the public import keeps `strict`.
+ */
+export const PlacementPolicy = {
+	Strict: 'strict',
+	FollowPackage: 'follow-package',
+} as const;
+
+export type PlacementPolicy = (typeof PlacementPolicy)[keyof typeof PlacementPolicy];
 
 export type ImportFolderProperties = {
 	/**
@@ -519,6 +542,8 @@ export interface ImportedWorkflowSummary {
 	isArchived: boolean;
 	publishing: WorkflowPublishingOutcome;
 	status: 'created' | 'updated' | 'skipped';
+	/** Set when the update also moved the workflow to another folder (`placementPolicy=follow-package`). */
+	moved?: true;
 }
 
 export interface ImportedFolderSummary {
@@ -526,7 +551,8 @@ export interface ImportedFolderSummary {
 	localId: string;
 	name: string;
 	parentFolderId: string | null;
-	status: 'created' | 'skipped';
+	/** `moved` only under `placementPolicy=follow-package`, which the public import never sets. */
+	status: 'created' | 'skipped' | 'moved';
 }
 
 /**

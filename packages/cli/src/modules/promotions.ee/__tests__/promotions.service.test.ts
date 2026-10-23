@@ -21,6 +21,7 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import type { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
@@ -70,6 +71,7 @@ describe('PromotionsService', () => {
 	const projectRepository = mock<ProjectRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectService = mock<ProjectService>();
+	const folderService = mock<FolderService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const bindingPreflight = mock<PromotionBindingPreflightService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
@@ -125,6 +127,9 @@ describe('PromotionsService', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
+		folderService.getFoldersByIds.mockResolvedValue([]);
+		// An empty remote by default, so the promote check for moved workflows has nothing to read.
+		gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
 		service = new PromotionsService(
@@ -139,6 +144,7 @@ describe('PromotionsService', () => {
 			projectRepository,
 			sharedWorkflowRepository,
 			projectService,
+			folderService,
 			n8nPackagesService,
 			bindingPreflight,
 			inventoryReader,
@@ -231,6 +237,15 @@ describe('PromotionsService', () => {
 			resolver.resolveForEnvironment.mockResolvedValue(input);
 			await markCloned(input, 'staging');
 			projectRepository.findTeamProjectIds.mockResolvedValue(['project-a', 'project-b']);
+			inventoryReader.read.mockResolvedValue({
+				projects: [],
+				workflows: [],
+				folders: [],
+				credentials: [],
+				variables: [],
+				dataTables: [],
+			});
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
 			gitService.commitAndPush.mockResolvedValue({ commitSha: 'newsha' });
 			n8nPackagesService.exportPackageToDirectory.mockImplementation(
 				async (_request, { targetDir }) => {
@@ -251,6 +266,115 @@ describe('PromotionsService', () => {
 					};
 				},
 			);
+		});
+
+		describe('workflows on the branch that moved to another project', () => {
+			const manifest = {
+				projects: [{ id: 'p-billing', name: 'Billing', target: 'projects/billing' }],
+				workflows: [
+					{ id: 'w1', name: 'Invoices', target: 'projects/billing/workflows/w1' },
+					{ id: 'w2', name: 'Reminders', target: 'projects/billing/folders/f/workflows/w2' },
+				],
+			};
+
+			beforeEach(() => {
+				gitService.listBranchTree.mockResolvedValue({
+					commitSha: 'a'.repeat(40),
+					lsTreeOutput: 'n8n/manifest.json',
+				});
+				gitService.readFilesAtCommit.mockResolvedValue(
+					new Map([['n8n/manifest.json', JSON.stringify(manifest)]]),
+				);
+			});
+
+			it('refuses a promote while a branch workflow belongs to a personal project', async () => {
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([
+						['w1', mock<Project>({ id: 'p-billing', type: 'team', name: 'Billing' })],
+						['w2', mock<Project>({ id: 'p-personal', type: 'personal', name: 'Ada Lovelace' })],
+					]),
+				);
+
+				await expect(
+					service.promote(ENVIRONMENT_ID, actor, {
+						canExportVariableValues: true,
+						commitMessage: 'sync projects',
+					}),
+				).rejects.toMatchObject({
+					httpStatusCode: 400,
+					message: expect.stringContaining(
+						'"Reminders" (w2) is in personal project "Ada Lovelace" here and in team project "Billing" on the branch',
+					),
+				});
+				// The check reads the manifest at the remote head, not the checkout on disk.
+				expect(gitService.readFilesAtCommit).toHaveBeenCalledWith(
+					expect.objectContaining({
+						commitSha: 'a'.repeat(40),
+						filePaths: ['n8n/manifest.json'],
+					}),
+				);
+				expect(gitService.readTreeAtCommit).not.toHaveBeenCalled();
+				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			});
+
+			it('promotes when branch workflows moved to team projects or are gone', async () => {
+				// A move between team projects is exported as it is. w2 has no owner any more.
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([['w1', mock<Project>({ id: 'p-other', type: 'team', name: 'Ops' })]]),
+				);
+
+				await service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'sync projects',
+				});
+
+				expect(gitService.commitAndPush).toHaveBeenCalled();
+			});
+
+			it('refuses a promote when the branch manifest cannot be read', async () => {
+				gitService.readFilesAtCommit.mockResolvedValue(
+					new Map([['n8n/manifest.json', 'not json {']]),
+				);
+
+				await expect(
+					service.promote(ENVIRONMENT_ID, actor, {
+						canExportVariableValues: true,
+						commitMessage: 'sync projects',
+					}),
+				).rejects.toMatchObject({
+					httpStatusCode: 400,
+					message: expect.stringContaining('"n8n/manifest.json" on the branch is not readable'),
+				});
+				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			});
+
+			it('skips the check on an empty remote or a branch without a package', async () => {
+				gitService.listBranchTree.mockResolvedValue({
+					commitSha: 'a'.repeat(40),
+					lsTreeOutput: '',
+				});
+
+				await service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'first promote',
+				});
+
+				expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
+				expect(gitService.commitAndPush).toHaveBeenCalled();
+			});
+
+			it('promotes, and so creates the branch, when the branch cannot be read', async () => {
+				gitService.listBranchTree.mockRejectedValue(new Error("couldn't find remote ref staging"));
+
+				await service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'first promote',
+				});
+
+				expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
+				expect(gitService.commitAndPush).toHaveBeenCalled();
+			});
 		});
 
 		it('writes the package into n8n and leaves the repository root alone', async () => {
@@ -1169,6 +1293,7 @@ describe('PromotionsService', () => {
 					commitMessage: 'Promote a selection of project changes',
 				}),
 				{ projectId: 'p1', workflowIds: ['w1', 'w2', 'w4'], deletedWorkflowIds: ['w3'] },
+				new Map(),
 			);
 		});
 
@@ -1189,17 +1314,38 @@ describe('PromotionsService', () => {
 				actor,
 				expect.objectContaining({ commitMessage: 'Promote checkout flow' }),
 				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				new Map(),
 			);
 		});
 
-		it('pushes a workflow this project no longer owns as a deletion', async () => {
-			// w9 moved to another project, so p1 no longer owns it. The change list
-			// shows it as a deletion for p1, so the promote drops it from the branch.
+		it('pushes a workflow that is gone from the instance as a deletion', async () => {
+			// w9 has no owner any more. The change list shows it as a deletion for p1.
 			// assertDeletionsOnBranch rejects it later if the branch does not hold it.
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['w1', mock<Project>({ id: 'p1' })]]),
+			);
+			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue({} as never);
+
+			await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1', 'w9'],
+				canExportVariableValues: false,
+			});
+
+			expect(promoteSelectionResolved).toHaveBeenCalledWith(
+				promoteInput(),
+				actor,
+				expect.anything(),
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
+				new Map(),
+			);
+		});
+
+		it('passes a workflow that another project owns now as a deletion with its owner name', async () => {
+			// w9 moved to "Ops". The branch check refuses it as a move when the branch holds it under p1.
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
 				new Map([
 					['w1', mock<Project>({ id: 'p1' })],
-					['w9', mock<Project>({ id: 'other' })],
+					['w9', mock<Project>({ id: 'other', name: 'Ops' })],
 				]),
 			);
 			const promoteSelectionResolved = spyPromoteSelectionResolved().mockResolvedValue({} as never);
@@ -1214,6 +1360,7 @@ describe('PromotionsService', () => {
 				actor,
 				expect.anything(),
 				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
+				new Map([['w9', 'Ops']]),
 			);
 		});
 
@@ -1321,11 +1468,16 @@ describe('PromotionsService', () => {
 					{ status: 'created', localId: 'p1' },
 					{ status: 'updated', localId: 'p2' },
 				],
-				folders: [{ status: 'created' }, { status: 'skipped' }, { status: 'created' }],
+				folders: [
+					{ status: 'created' },
+					{ status: 'skipped' },
+					{ status: 'created' },
+					{ status: 'moved' },
+				],
 				workflows: [
 					{ status: 'created', publishing: { state: 'published' } },
 					{ status: 'created', publishing: { state: 'blocked', blockedReason: 'stub-credential' } },
-					{ status: 'updated', publishing: { state: 'unchanged' } },
+					{ status: 'updated', moved: true, publishing: { state: 'unchanged' } },
 				],
 				removedWorkflows: [
 					{ deletion: 'archived' },
@@ -1343,7 +1495,7 @@ describe('PromotionsService', () => {
 		let packageFolder: string;
 
 		beforeEach(async () => {
-			bindingPreflight.checkDirectory.mockResolvedValue({
+			bindingPreflight.checkInventory.mockResolvedValue({
 				missingProjects: [],
 				missingBindings: [],
 				accessRequirements: [],
@@ -1357,6 +1509,107 @@ describe('PromotionsService', () => {
 			gitService.refreshCheckout.mockResolvedValue({ commitSha: 'remotesha' });
 			n8nPackagesService.importPackageFromDirectory.mockResolvedValue(importResult());
 			projectRepository.findTeamProjectIds.mockResolvedValue(['p1', 'p2']);
+			inventoryReader.read.mockResolvedValue({
+				projects: [],
+				workflows: [],
+				folders: [],
+				credentials: [],
+				variables: [],
+				dataTables: [],
+			});
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
+			folderService.getFoldersByIds.mockResolvedValue([]);
+		});
+
+		describe('moves between projects', () => {
+			const alpha = { id: 'p1', name: 'Alpha', path: 'projects/alpha' };
+			const beta = { id: 'p2', name: 'Beta', path: 'projects/beta' };
+
+			beforeEach(async () => {
+				await mkdir(packageFolder, { recursive: true });
+			});
+
+			it('refuses a workflow that the branch holds in another project, and names it', async () => {
+				inventoryReader.read.mockResolvedValue({
+					projects: [alpha, beta],
+					workflows: [
+						mock<InventoryWorkflow>({ id: 'wa1', name: 'Invoices', projectId: 'p2' }),
+						mock<InventoryWorkflow>({ id: 'wa2', name: 'Reminders', projectId: 'p1' }),
+					],
+					folders: [],
+					credentials: [],
+					variables: [],
+					dataTables: [],
+				});
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([
+						['wa1', mock<Project>({ id: 'p1', name: 'Alpha' })],
+						['wa2', mock<Project>({ id: 'p1', name: 'Alpha' })],
+					]),
+				);
+
+				await expect(service.apply(ENVIRONMENT_ID, actor)).rejects.toMatchObject({
+					httpStatusCode: 409,
+					message: expect.stringContaining(
+						'workflow "Invoices" (wa1) is in project "Alpha" here and in project "Beta" on the branch',
+					),
+				});
+				expect(bindingPreflight.checkInventory).not.toHaveBeenCalled();
+				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+			});
+
+			it('refuses a folder that the branch holds in another project, and names it', async () => {
+				inventoryReader.read.mockResolvedValue({
+					projects: [alpha, beta],
+					workflows: [],
+					folders: [
+						{
+							path: 'projects/beta/folders/payments/folder.json',
+							projectId: 'p2',
+							folder: { id: 'f1', name: 'Payments', parentFolderId: null },
+						},
+					],
+					credentials: [],
+					variables: [],
+					dataTables: [],
+				});
+				folderService.getFoldersByIds.mockResolvedValue([
+					{ id: 'f1', homeProject: { id: 'p1', name: 'Alpha' } },
+				] as never);
+
+				await expect(service.apply(ENVIRONMENT_ID, actor)).rejects.toMatchObject({
+					httpStatusCode: 409,
+					message: expect.stringContaining(
+						'folder "Payments" (f1) is in project "Alpha" here and in project "Beta" on the branch',
+					),
+				});
+				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+			});
+
+			it('imports when workflows and folders stay in their own project', async () => {
+				inventoryReader.read.mockResolvedValue({
+					projects: [alpha],
+					workflows: [mock<InventoryWorkflow>({ id: 'wa1', name: 'Invoices', projectId: 'p1' })],
+					folders: [
+						{
+							path: 'projects/alpha/folders/payments/folder.json',
+							projectId: 'p1',
+							folder: { id: 'f1', name: 'Payments', parentFolderId: null },
+						},
+					],
+					credentials: [],
+					variables: [],
+					dataTables: [],
+				});
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([['wa1', mock<Project>({ id: 'p1' })]]),
+				);
+				folderService.getFoldersByIds.mockResolvedValue([
+					{ id: 'f1', homeProject: { id: 'p1' } },
+				] as never);
+
+				expect(await service.apply(ENVIRONMENT_ID, actor)).toMatchObject({ status: 'applied' });
+			});
 		});
 
 		it('imports n8n with the fixed policy and counts the result by status', async () => {
@@ -1384,6 +1637,7 @@ describe('PromotionsService', () => {
 					variableConflictPolicy: 'keep-existing',
 					tagMissingMode: 'create',
 					tagConflictPolicy: 'rename',
+					placementPolicy: 'follow-package',
 				},
 				{ sourceDir: packageFolder },
 			);
@@ -1399,11 +1653,12 @@ describe('PromotionsService', () => {
 				environmentId: ENVIRONMENT_ID,
 				counts: {
 					projects: { created: 1, updated: 1, skipped: 0, deleted: 0 },
-					folders: { created: 2, skipped: 1, removed: 2 },
+					folders: { created: 2, skipped: 1, moved: 1, removed: 2 },
 					workflows: {
 						created: 2,
 						updated: 1,
 						skipped: 0,
+						moved: 1,
 						archived: 1,
 						deleted: 2,
 						publishing: { published: 1, unpublished: 0, unchanged: 1, blocked: 1, failed: 0 },
@@ -1469,7 +1724,7 @@ describe('PromotionsService', () => {
 
 		it('imports when only projects are missing', async () => {
 			await mkdir(packageFolder, { recursive: true });
-			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+			bindingPreflight.checkInventory.mockResolvedValueOnce({
 				missingProjects: [{ id: 'p1', name: 'Orders' }],
 				missingBindings: [],
 				accessRequirements: [],
@@ -1492,15 +1747,15 @@ describe('PromotionsService', () => {
 					warnings: [],
 					[group]: unresolved[group],
 				};
-				bindingPreflight.checkDirectory.mockResolvedValueOnce(preflight);
+				bindingPreflight.checkInventory.mockResolvedValueOnce(preflight);
 				expect(await service.apply(ENVIRONMENT_ID, actor)).toEqual({
 					status: 'blocked',
 					environmentId: ENVIRONMENT_ID,
 					git: { commitSha: 'remotesha', branchName: 'dev' },
 					preflight,
 				});
-				expect(bindingPreflight.checkDirectory).toHaveBeenCalledWith({
-					sourceDir: packageFolder,
+				expect(bindingPreflight.checkInventory).toHaveBeenCalledWith({
+					inventory: expect.objectContaining({ workflows: [] }),
 				});
 				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 				expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
@@ -1510,19 +1765,19 @@ describe('PromotionsService', () => {
 
 		it('returns fresh groups on Continue and imports only after they clear', async () => {
 			await mkdir(packageFolder, { recursive: true });
-			bindingPreflight.checkDirectory.mockResolvedValueOnce(unresolved);
+			bindingPreflight.checkInventory.mockResolvedValueOnce(unresolved);
 			expect(await service.apply(ENVIRONMENT_ID, actor)).toMatchObject({
 				status: 'blocked',
 				preflight: unresolved,
 			});
 			const fresh = { ...unresolved, missingBindings: [] };
-			bindingPreflight.checkDirectory.mockResolvedValueOnce(fresh);
+			bindingPreflight.checkInventory.mockResolvedValueOnce(fresh);
 			expect(await service.continueApply(ENVIRONMENT_ID, actor, request)).toMatchObject({
 				status: 'blocked',
 				preflight: fresh,
 			});
 			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
-			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+			bindingPreflight.checkInventory.mockResolvedValueOnce({
 				missingProjects: [],
 				missingBindings: [],
 				accessRequirements: [],
@@ -1533,7 +1788,7 @@ describe('PromotionsService', () => {
 				status: 'applied',
 				warnings: unresolved.warnings,
 			});
-			expect(bindingPreflight.checkDirectory).toHaveBeenCalledTimes(3);
+			expect(bindingPreflight.checkInventory).toHaveBeenCalledTimes(3);
 			expect(n8nPackagesService.importPackageFromDirectory).toHaveBeenCalledWith(
 				expect.objectContaining({
 					credentialMissingMode: 'must-preexist',
@@ -1546,7 +1801,7 @@ describe('PromotionsService', () => {
 
 		it('imports with warnings on initial Apply', async () => {
 			await mkdir(packageFolder, { recursive: true });
-			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+			bindingPreflight.checkInventory.mockResolvedValueOnce({
 				missingProjects: [],
 				missingBindings: [],
 				accessRequirements: [],
@@ -1572,7 +1827,7 @@ describe('PromotionsService', () => {
 					git: { branchName: 'dev', commitSha: 'remotesha' },
 				});
 				expect(gitService.refreshCheckout).toHaveBeenCalledOnce();
-				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+				expect(bindingPreflight.checkInventory).not.toHaveBeenCalled();
 				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 				expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
 			},
@@ -1610,11 +1865,15 @@ describe('PromotionsService', () => {
 			const foreignWorkflow = mock<InventoryWorkflow>({ id: 'foreign', projectId: 'p2' });
 			// Owned by p1 on the instance, but the package now holds it under p2: a move.
 			const movedWorkflow = mock<InventoryWorkflow>({ id: 'moved', projectId: 'p2' });
-			const project = mock<Project>({ id: 'p1' });
-			const foreignProject = mock<Project>({ id: 'p2' });
+			const project = mock<Project>({ id: 'p1', name: 'Alpha' });
+			const foreignProject = mock<Project>({ id: 'p2', name: 'Ops' });
 			const inventory = {
-				projects: [],
+				projects: [
+					{ id: 'p1', name: 'Alpha', path: 'projects/alpha' },
+					{ id: 'p2', name: 'Ops', path: 'projects/ops' },
+				],
 				workflows: [branchWorkflow, foreignWorkflow, movedWorkflow],
+				folders: [],
 				credentials: [],
 				variables: [],
 				dataTables: [],
@@ -1668,6 +1927,7 @@ describe('PromotionsService', () => {
 						overwriteDeletionPolicy: 'hard-delete',
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 						tagConflictPolicy: 'rename',
+						placementPolicy: 'follow-package',
 					},
 					{ sourceDir: packageFolder },
 					{
@@ -1695,16 +1955,88 @@ describe('PromotionsService', () => {
 				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
 			});
 
-			it('rejects a cross-project move before preflight or import', async () => {
+			it('rejects a workflow that moved out of the project before preflight or import', async () => {
 				await expect(
 					service.applyProjectSelection('p1', actor, { workflowIds: ['w1', 'moved'] }),
 				).rejects.toMatchObject({
 					httpStatusCode: 409,
-					message:
-						'These workflows moved to another project: moved. A selective apply cannot move them. Apply all projects instead.',
+					message: expect.stringContaining(
+						'(moved) is in project "Alpha" here and in project "Ops" on the branch',
+					),
 				});
 				expect(bindingPreflight.checkInventory).not.toHaveBeenCalled();
 				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
+			});
+
+			it('rejects a workflow that moved into the project, and names both projects', async () => {
+				// The branch holds `moved-in` under p1, while this instance still has it in p2.
+				inventoryReader.read.mockResolvedValue({
+					...inventory,
+					workflows: [
+						...inventory.workflows,
+						mock<InventoryWorkflow>({ id: 'moved-in', name: 'Moved in', projectId: 'p1' }),
+					],
+				});
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([['moved-in', foreignProject]]),
+				);
+
+				await expect(
+					service.applyProjectSelection('p1', actor, { workflowIds: ['moved-in'] }),
+				).rejects.toMatchObject({
+					httpStatusCode: 409,
+					message: expect.stringContaining(
+						'workflow "Moved in" (moved-in) is in project "Ops" here and in project "Alpha" on the branch',
+					),
+				});
+				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
+			});
+
+			it('rejects a folder that the branch holds in this project but the instance holds elsewhere', async () => {
+				inventoryReader.read.mockResolvedValue({
+					...inventory,
+					folders: [
+						{
+							path: 'projects/alpha/folders/payments/folder.json',
+							projectId: 'p1',
+							folder: { id: 'f1', name: 'Payments', parentFolderId: null },
+						},
+					],
+				});
+				folderService.getFoldersByIds.mockResolvedValue([
+					{ id: 'f1', homeProject: { id: 'p2', name: 'Ops' } },
+				] as never);
+
+				await expect(
+					service.applyProjectSelection('p1', actor, { workflowIds: ['w1'] }),
+				).rejects.toMatchObject({
+					httpStatusCode: 409,
+					message: expect.stringContaining(
+						'folder "Payments" (f1) is in project "Ops" here and in project "Alpha" on the branch',
+					),
+				});
+				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
+			});
+
+			it('applies while a folder of this project moved to another project on the branch', async () => {
+				// The import of this project never reads a folder the branch holds elsewhere.
+				inventoryReader.read.mockResolvedValue({
+					...inventory,
+					folders: [
+						{
+							path: 'projects/ops/folders/payments/folder.json',
+							projectId: 'p2',
+							folder: { id: 'f1', name: 'Payments', parentFolderId: null },
+						},
+					],
+				});
+				folderService.getFoldersByIds.mockResolvedValue([
+					{ id: 'f1', homeProject: { id: 'p1', name: 'Alpha' } },
+				] as never);
+
+				await service.applyProjectSelection('p1', actor, { workflowIds: ['w1'] });
+
+				expect(n8nPackagesService.importPackageSelectionFromDirectory).toHaveBeenCalled();
 			});
 
 			// Duplicate ids are rejected by ApplySelectionDto before the service runs.
@@ -1789,6 +2121,7 @@ describe('PromotionsService', () => {
 								overwriteDeletionPolicy: 'hard-delete',
 								dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 								tagConflictPolicy: 'rename',
+								placementPolicy: 'follow-package',
 							},
 							{ sourceDir: packageFolder },
 							{

@@ -40,7 +40,7 @@ export function usePromotionPreviewLabels() {
 		}
 	}
 
-	/** Why the resource stops Apply. `undefined` when it does not. */
+	/** Why the resource stops the operation. `undefined` when it does not. */
 	function blockerMessage(
 		resource: PromotionResource,
 		blockers: readonly Blocker[] = [],
@@ -48,8 +48,15 @@ export function usePromotionPreviewLabels() {
 		const blocking = blockers.filter(isBlocking);
 		if (blocking.length === 0) return undefined;
 		if (resource.type === 'workflow') {
-			if (blocking.every(({ kind }) => kind === 'location')) {
-				return i18n.baseText('promotions.preview.blockers.workflowLocation');
+			if (resource.movedToProject) {
+				return i18n.baseText('promotions.preview.marker.movedOut', {
+					interpolate: { project: resource.movedToProject.name },
+				});
+			}
+			if (resource.movedFromProject) {
+				return i18n.baseText('promotions.preview.marker.movedIn', {
+					interpolate: { project: resource.movedFromProject.name },
+				});
 			}
 			return i18n.baseText('promotions.preview.marker.workflow', {
 				adjustToNumber: blocking.length,
@@ -57,7 +64,9 @@ export function usePromotionPreviewLabels() {
 			});
 		}
 		const [first] = blocking;
-		if (first.kind === 'location') return i18n.baseText('promotions.preview.folder.moveConflict');
+		if (first.kind === 'moved' && resource.type === 'folder') {
+			return i18n.baseText('promotions.preview.marker.movedFolder');
+		}
 		const count = new Set(blocking.flatMap(({ workflowKeys }) => workflowKeys)).size;
 		const options = { adjustToNumber: count, interpolate: { count: String(count) } };
 		if (first.kind === 'access') return i18n.baseText('promotions.preview.marker.access', options);

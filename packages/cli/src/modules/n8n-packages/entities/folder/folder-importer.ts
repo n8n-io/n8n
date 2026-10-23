@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { FolderService } from '@/services/folder.service';
 
@@ -10,6 +10,7 @@ import type {
 	FolderPlanItem,
 	PreparedFolder,
 } from './folder-import.types';
+import { PlacementPolicy } from '../../n8n-packages.types';
 import type { FolderConflict, ImportedFolderSummary } from '../../n8n-packages.types';
 
 interface ExistingFolder {
@@ -55,8 +56,26 @@ export class FolderImporter {
 				continue;
 			}
 
-			//	If this is different then it's essentially a folder "move" which we don't want.
 			if (match.parentFolderId !== targetParentFolderId) {
+				if (context.placementPolicy === PlacementPolicy.FollowPackage) {
+					if (decideMatchedFolder(context.folderConflictPolicy).blocked) {
+						conflicts.push({
+							kind: 'fail-policy',
+							sourceFolderId: folder.sourceFolderId,
+							name: folder.name,
+						});
+						continue;
+					}
+					// A folder outside the selection stays where it is, with everything inside it.
+					const movable = context.movableFolderIds?.has(folder.sourceFolderId) ?? true;
+					items.push({
+						action: movable ? 'move' : 'skip',
+						sourceFolderId: folder.sourceFolderId,
+						name: folder.name,
+						targetParentFolderId: movable ? targetParentFolderId : match.parentFolderId,
+					});
+					continue;
+				}
 				conflicts.push({
 					kind: 'parent-mismatch',
 					sourceFolderId: folder.sourceFolderId,
@@ -97,6 +116,14 @@ export class FolderImporter {
 		for (const item of plan.items) {
 			if (item.action === 'skip') {
 				summaries.push(toSummary(item, 'skipped'));
+				continue;
+			}
+
+			if (item.action === 'move') {
+				await this.folderService.updateFolder(item.sourceFolderId, context.projectId, {
+					parentFolderId: item.targetParentFolderId ?? PROJECT_ROOT,
+				});
+				summaries.push(toSummary(item, 'moved'));
 				continue;
 			}
 

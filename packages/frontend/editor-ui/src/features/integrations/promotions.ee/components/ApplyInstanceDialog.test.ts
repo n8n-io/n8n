@@ -81,6 +81,34 @@ describe('ApplyInstanceDialog', () => {
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 	});
 
+	it('says how many workflows and folders the apply moved within their projects', async () => {
+		api.applyPromotion.mockResolvedValue({
+			...applied,
+			counts: {
+				...applied.counts,
+				folders: { ...applied.counts.folders, moved: 2 },
+				workflows: {
+					...applied.counts.workflows,
+					moved: 1,
+					publishing: { published: 3, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
+				},
+			},
+		});
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringMatching(
+						/Moved within their projects: 1 updated workflow and 2 folders\.$/,
+					),
+				}),
+			),
+		);
+	});
+
 	it('reloads the project list after a successful apply', async () => {
 		api.applyPromotion.mockResolvedValue(applied);
 		const projectsStore = useProjectsStore();

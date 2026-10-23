@@ -41,7 +41,7 @@ const cases: Case[] = [
 		shows: ['Before', 'Invoicing', 'After', 'Billing'],
 	},
 	{
-		name: 'only the move of a folder, which stops Apply',
+		name: 'only the move of a folder',
 		direction: 'apply',
 		resource: resource({
 			key: 'folder:f3',
@@ -57,12 +57,7 @@ const cases: Case[] = [
 			after: { id: 'f3', name: 'Old invoices', parentFolderId: 'f2' },
 			revision,
 		},
-		shows: [
-			'Location',
-			'Payments',
-			'Reports',
-			"Apply can't move a folder that already exists on this instance",
-		],
+		shows: ['Location', 'Payments', 'Reports'],
 	},
 	{
 		name: 'that Apply renames a tag in other projects too',

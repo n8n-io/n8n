@@ -282,7 +282,7 @@ function applyOperationRules(
 	}
 
 	// Apply keeps the names and properties of existing projects and folders, and the values of
-	// existing credentials and variables. It renames tags. A folder move stays: Apply reports it as a conflict.
+	// existing credentials and variables. It renames tags. It moves a folder within its project.
 	if (change === 'modified') {
 		if (type === 'folder' && resource.previousParentKey !== undefined) {
 			return {

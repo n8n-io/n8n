@@ -75,11 +75,13 @@ export interface ExportPackageResult {
 
 export interface ImportPackageCounts {
 	projects: { created: number; updated: number; skipped: number; deleted: number };
-	folders: { created: number; skipped: number; removed: number };
+	folders: { created: number; skipped: number; moved: number; removed: number };
 	workflows: {
 		created: number;
 		updated: number;
 		skipped: number;
+		/** Part of `updated`: workflows that Apply also moved to another folder of their project. */
+		moved: number;
 		archived: number;
 		deleted: number;
 		publishing: {

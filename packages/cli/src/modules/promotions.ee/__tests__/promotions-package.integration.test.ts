@@ -70,6 +70,7 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import { createFolder } from '@test-integration/db/folders';
@@ -192,6 +193,7 @@ beforeEach(async () => {
 		projectRepository,
 		Container.get(SharedWorkflowRepository),
 		projectService,
+		Container.get(FolderService),
 		packagesService,
 		Container.get(PromotionBindingPreflightService),
 		Container.get(PackageDirectoryInventoryReader),
@@ -473,6 +475,7 @@ async function listApplyChanges(projectId: string) {
 		service,
 		packagesService,
 		Container.get(WorkflowRepository),
+		Container.get(SharedWorkflowRepository),
 		Container.get(VariablesRepository),
 		Container.get(CredentialsRepository),
 		Container.get(TagImporter),
@@ -1454,7 +1457,7 @@ describe('Apply a project selection', () => {
 		expect(await repository.count()).toBe(1);
 	});
 
-	it('rejects a selected workflow with a different folder placement before writes', async () => {
+	it('moves a selected workflow to the folder the branch places it in', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id);
@@ -1469,36 +1472,59 @@ describe('Apply a project selection', () => {
 			commitMessage: 'Export foldered workflow',
 		});
 		// Move the same workflow to a different folder on the instance so the branch and instance
-		// disagree on its placement.
+		// disagree on its placement. Apply follows the branch within the project.
 		const localFolder = await createFolder(project, { name: 'Local folder' });
 		await repository.update(workflows[0].id, { parentFolder: localFolder });
-		const before = await snapshotApplyState();
 
-		// The diff over-labels any path change as `renamed`; a real reparent/move is refused rather than
-		// applied as a silent partial. The engine raises a 409 ConflictError (workflow-folder-conflict).
-		// 1168 adds no move support (out of scope; inherited from LIGO-1165).
-		await expect(
-			service.applyProjectSelection(project.id, owner, {
+		expect(
+			await service.applyProjectSelection(project.id, owner, {
 				workflowIds: [workflows[0].id],
 			}),
-		).rejects.toMatchObject({
-			httpStatusCode: 409,
-			meta: {
-				issues: expect.arrayContaining([
-					expect.objectContaining({
-						type: 'workflow-folder-conflict',
-						sourceWorkflowId: workflows[0].id,
-						existingWorkflowId: workflows[0].id,
-						existingParentFolderId: localFolder.id,
-						targetFolderId: branchFolder.id,
-					}),
-				]),
-			},
+		).toMatchObject({ status: 'applied', counts: { workflows: { updated: 1, moved: 1 } } });
+
+		const applied = await repository.findOne({
+			where: { id: workflows[0].id },
+			relations: { parentFolder: true },
 		});
-		expect(await snapshotApplyState()).toEqual(before);
+		expect(applied?.parentFolder?.id).toBe(branchFolder.id);
 	});
 
-	it('rejects a selected workflow at the branch project root that is in a folder on the instance', async () => {
+	it('moves only the folders that hold a selected workflow', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		await service.clone(environments.apply.id);
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Root', 'Inside']);
+		const folders = Container.get(FolderRepository);
+		const repository = Container.get(WorkflowRepository);
+		// The branch holds folder X under Y, with the "Inside" workflow in X.
+		const outer = await createFolder(project, { name: 'Y' });
+		const inner = await createFolder(project, { name: 'X', parentFolder: outer });
+		await repository.update(workflows[1].id, { parentFolder: inner });
+		await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export nested folders',
+		});
+		// On this instance X sits at the project root.
+		await folders.update(inner.id, { parentFolder: null });
+		const parentOfX = async () =>
+			(await folders.findOne({ where: { id: inner.id }, relations: { parentFolder: true } }))
+				?.parentFolder?.id ?? null;
+
+		// The root workflow is unrelated to X, so X stays where it is.
+		expect(
+			await service.applyProjectSelection(project.id, owner, { workflowIds: [workflows[0].id] }),
+		).toMatchObject({ status: 'applied', counts: { folders: { moved: 0 } } });
+		expect(await parentOfX()).toBeNull();
+
+		// A workflow inside X needs X where the branch holds it.
+		expect(
+			await service.applyProjectSelection(project.id, owner, { workflowIds: [workflows[1].id] }),
+		).toMatchObject({ status: 'applied', counts: { folders: { moved: 1 } } });
+		expect(await parentOfX()).toBe(outer.id);
+	});
+
+	it('moves a selected workflow to the project root when the branch holds it there', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id);
@@ -1508,29 +1534,50 @@ describe('Apply a project selection', () => {
 			canExportVariableValues: true,
 			commitMessage: 'Export root workflow',
 		});
+		const repository = Container.get(WorkflowRepository);
 		const localFolder = await createFolder(project, { name: 'Local folder' });
-		await Container.get(WorkflowRepository).update(workflows[0].id, { parentFolder: localFolder });
-		const before = await snapshotApplyState();
+		await repository.update(workflows[0].id, { parentFolder: localFolder });
 
-		await expect(
-			service.applyProjectSelection(project.id, owner, {
+		expect(
+			await service.applyProjectSelection(project.id, owner, {
 				workflowIds: [workflows[0].id],
 			}),
-		).rejects.toMatchObject({
-			httpStatusCode: 409,
-			meta: {
-				issues: expect.arrayContaining([
-					expect.objectContaining({
-						type: 'workflow-folder-conflict',
-						sourceWorkflowId: workflows[0].id,
-						existingWorkflowId: workflows[0].id,
-						existingParentFolderId: localFolder.id,
-						targetFolderId: null,
-					}),
-				]),
-			},
+		).toMatchObject({ status: 'applied' });
+
+		const applied = await repository.findOne({
+			where: { id: workflows[0].id },
+			relations: { parentFolder: true },
 		});
-		expect(await snapshotApplyState()).toEqual(before);
+		expect(applied?.parentFolder ?? null).toBeNull();
+	});
+
+	it('moves a workflow back to the branch placement on instance Apply and removes the emptied folder', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		await service.clone(environments.apply.id);
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
+		await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export root workflow',
+		});
+		// The branch holds the workflow at the root and has no `Local` folder.
+		const repository = Container.get(WorkflowRepository);
+		const localFolder = await createFolder(project, { name: 'Local' });
+		await repository.update(workflows[0].id, { parentFolder: localFolder });
+
+		const result = await service.apply(environments.apply.id, owner);
+
+		assert(result.status === 'applied');
+		expect(result.counts.workflows.moved).toBe(1);
+		expect(result.counts.folders.removed).toBe(1);
+		const applied = await repository.findOne({
+			where: { id: workflows[0].id },
+			relations: { parentFolder: true },
+		});
+		expect(applied?.isArchived).toBe(false);
+		expect(applied?.parentFolder ?? null).toBeNull();
+		expect(await Container.get(FolderRepository).findOneBy({ id: localFolder.id })).toBeNull();
 	});
 
 	it('continues after the selected bindings are created while unselected bindings stay missing', async () => {
@@ -1758,7 +1805,12 @@ describe('Check Apply blockers', () => {
 		const check = await service.checkApplyBlockers(orders.id, promoted.git.commitSha);
 
 		expect(check.movedWorkflows).toEqual([
-			{ id: moved.id, name: moved.name, project: { id: billing.id, name: billing.name } },
+			{
+				id: moved.id,
+				name: moved.name,
+				project: { id: billing.id, name: billing.name },
+				instanceProject: { id: orders.id, name: orders.name },
+			},
 		]);
 		expect(check.preflight.missingBindings).toEqual([
 			expect.objectContaining({
@@ -1988,29 +2040,39 @@ describe('Apply a project selection over the public API', () => {
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 
-	it('maps a folder-placement clash to 409 without importing', async () => {
+	it('maps a move between projects to 409 without importing', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id);
 		await service.clone(environments.apply.id);
-		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
-		const repository = Container.get(WorkflowRepository);
-		const branchFolder = await createFolder(project, { name: 'Branch folder' });
-		await repository.update(workflows[0].id, { parentFolder: branchFolder });
+		const {
+			project: orders,
+			workflows: [moved],
+		} = await setupProjectWithWorkflows('Orders', ['Process order']);
+		const { project: billing } = await setupProjectWithWorkflows('Billing', []);
+		// The branch holds the workflow in Billing, while this instance still has it in Orders.
+		const sharedWorkflows = Container.get(SharedWorkflowRepository);
+		await sharedWorkflows.update(
+			{ workflowId: moved.id, role: 'workflow:owner' },
+			{ projectId: billing.id },
+		);
 		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
-			commitMessage: 'Export foldered workflow',
+			commitMessage: 'Move a workflow to Billing',
 		});
-		const localFolder = await createFolder(project, { name: 'Local folder' });
-		await repository.update(workflows[0].id, { parentFolder: localFolder });
+		await sharedWorkflows.update(
+			{ workflowId: moved.id, role: 'workflow:owner' },
+			{ projectId: orders.id },
+		);
 		const before = await snapshotApplyState();
 
 		const response = await testServer
 			.publicApiAgentFor(owner)
-			.post(`/promotions/projects/${project.id}/apply`)
-			.send({ workflowIds: [workflows[0].id] });
+			.post(`/promotions/projects/${orders.id}/apply`)
+			.send({ workflowIds: [moved.id] });
 
 		expect(response.status, JSON.stringify(response.body)).toBe(409);
+		expect(response.body.message).toContain(`workflow "${moved.name}" (${moved.id})`);
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 });
@@ -2758,7 +2820,7 @@ describe('Promote a project selection', () => {
 		expect(onBranch).toContain(workflows[0].id);
 	});
 
-	it('drops a workflow that moved to another project from the branch as a deletion', async () => {
+	it('refuses to drop a workflow that moved to another project, and pushes nothing', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id);
@@ -2769,23 +2831,29 @@ describe('Promote a project selection', () => {
 			canExportVariableValues: true,
 			commitMessage: 'Full promote',
 		});
+		const headBefore = (await simpleGit(remote.bareDir).revparse(['main'])).trim();
 
-		// Move w1 to Billing. Orders no longer owns it, so its change list shows it
-		// as a deletion. The branch still holds it under Orders from the full promote.
+		// Move w1 to Billing. The branch still holds it under Orders from the full promote.
+		// Dropping it from Orders would make the destination delete it, so the promote refuses.
 		await Container.get(SharedWorkflowRepository).update(
 			{ workflowId: workflows[0].id, role: 'workflow:owner' },
 			{ projectId: billing.id },
 		);
 
-		await service.promoteProjectSelection(orders.id, owner, {
-			workflowIds: [workflows[0].id],
-			canExportVariableValues: true,
+		await expect(
+			service.promoteProjectSelection(orders.id, owner, {
+				workflowIds: [workflows[0].id],
+				canExportVariableValues: true,
+			}),
+		).rejects.toMatchObject({
+			httpStatusCode: 400,
+			message: expect.stringContaining(`${workflows[0].id} (now in project "Billing" here)`),
 		});
 
+		expect((await simpleGit(remote.bareDir).revparse(['main'])).trim()).toBe(headBefore);
 		const { dir } = await inspectBranch(remote.bareDir);
 		const onBranch = (await readBranchEntities(dir, 'workflow.json')).map((w) => w.id);
-		expect(onBranch).not.toContain(workflows[0].id);
-		expect(onBranch).toContain(workflows[1].id);
+		expect(onBranch).toContain(workflows[0].id);
 	});
 
 	it('rejects a selection with a workflow that belongs to another project on the branch and pushes nothing', async () => {

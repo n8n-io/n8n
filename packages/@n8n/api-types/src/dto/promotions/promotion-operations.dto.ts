@@ -65,11 +65,22 @@ export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.
 /** What the import changed. Partial results are visible here too. */
 export const applyPackageCountsSchema = z.object({
 	projects: z.object({ created: count(), updated: count(), skipped: count(), deleted: count() }),
-	folders: z.object({ created: count(), skipped: count(), removed: count() }),
+	folders: z.object({
+		created: count(),
+		skipped: count(),
+		moved: count().openapi({
+			description: 'Existing folders that Apply moved under another parent of their project.',
+		}),
+		removed: count(),
+	}),
 	workflows: z.object({
 		created: count(),
 		updated: count(),
 		skipped: count(),
+		moved: count().openapi({
+			description:
+				'Updated workflows that Apply also moved to another folder of their project. Included in `updated`.',
+		}),
 		archived: count(),
 		deleted: count(),
 		publishing: z.object({
@@ -192,12 +203,24 @@ export class ApplyCheckQueryDto extends Z.class(
 	{ strict: true },
 ) {}
 
+const crossProjectMoveSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	/** The project that holds the item on the branch. */
+	project: promotionBindingProjectSchema,
+	/** The project that holds the item on this instance. */
+	instanceProject: promotionBindingProjectSchema,
+});
+
 const applyCheckResultSchema = applyPackageIdentitySchema.extend({
 	preflight: promotionBindingPreflightResultSchema,
-	/** Workflows of this project that the branch holds in another project. A selective Apply cannot move them. */
-	movedWorkflows: z.array(
-		z.object({ id: z.string(), name: z.string(), project: promotionBindingProjectSchema }),
-	),
+	/**
+	 * Workflows that the branch holds in one project and this instance holds in another, where one of
+	 * the two is this project. Apply cannot move them between projects.
+	 */
+	movedWorkflows: z.array(crossProjectMoveSchema),
+	/** Folders that the branch and this instance hold in different projects, as for workflows. */
+	movedFolders: z.array(crossProjectMoveSchema),
 });
 
 export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;
