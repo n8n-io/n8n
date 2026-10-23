@@ -3,10 +3,12 @@ import { Logger } from '@n8n/backend-common';
 import { DbLock, DbLockService } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { raceAbort } from '@n8n/utils/race-abort';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { AppBuildError, type AppBuildStage } from './app-build.types';
+import { AppBuildError, type AppBuildAttempt, type AppBuildStage } from './app-build.types';
 import { checkBuildSource } from '../scaffold/app-scaffold';
 import { appStorageLockSubKey } from '../storage/app-storage-lock';
 import type { AppVersion } from '../versions/app-version.entity';
@@ -44,10 +46,42 @@ export class AppBuildService {
 		versionId: string,
 		retry = false,
 	): Promise<AppBuildResponse> {
+		return await this.execute(projectId, appId, versionId, retry);
+	}
+
+	async startBuild(
+		projectId: string,
+		appId: string,
+		versionId: string,
+		retry = false,
+	): Promise<AppBuildResponse> {
+		// Wait for the first claim so invalid retries still fail in the request.
+		const started = createDeferredPromise<AppBuildResponse>();
+		void this.execute(projectId, appId, versionId, retry, (attempt) => {
+			started.resolve({
+				versionId,
+				status: 'running',
+				attempts: attempt.attemptNumber,
+				statusUpdatedAt: attempt.startedAt.toISOString(),
+			});
+		}).catch((error: unknown) => {
+			started.reject(ensureError(error));
+			this.logger.warn('App build could not complete.', { projectId, appId, versionId, error });
+		});
+		return await started.promise;
+	}
+
+	private async execute(
+		projectId: string,
+		appId: string,
+		versionId: string,
+		retry: boolean,
+		onStarted?: (attempt: AppBuildAttempt) => void,
+	): Promise<AppBuildResponse> {
 		await this.versionService.getVersion(projectId, appId, versionId);
 		this.assertNotStopping();
 		const startedAt = Date.now();
-		const work = this.run(projectId, appId, versionId, retry);
+		const work = this.run(projectId, appId, versionId, retry, onStarted);
 		this.active.add(work);
 		try {
 			const result = await work;
@@ -70,6 +104,7 @@ export class AppBuildService {
 		appId: string,
 		versionId: string,
 		retry: boolean,
+		onStarted?: (attempt: AppBuildAttempt) => void,
 	): Promise<AppBuildResponse> {
 		let previousAttemptNumber: number | undefined;
 		for (let index = 0; index < this.config.maxBuildAttempts; index++) {
@@ -92,6 +127,7 @@ export class AppBuildService {
 				versionId,
 				attempt: attempt.attemptNumber,
 			});
+			if (index === 0) onStarted?.(attempt);
 			const deadline = AbortSignal.timeout(this.config.buildTimeoutMs);
 			const signal = AbortSignal.any([deadline, this.stopping.signal]);
 			let stage: 'source' | 'sandbox' | 'store' = 'source';

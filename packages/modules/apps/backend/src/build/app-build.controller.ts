@@ -1,5 +1,6 @@
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Get, Post, ProjectScope, RestController } from '@n8n/decorators';
+import type { Response } from 'express';
 
 import { AppBuildService } from './app-build.service';
 
@@ -9,10 +10,19 @@ type BuildRequest = AuthenticatedRequest<{ projectId: string; appId: string; ver
 export class AppBuildController {
 	constructor(private readonly builds: AppBuildService) {}
 
+	@Get('/')
+	@ProjectScope('app:read')
+	async status(req: BuildRequest) {
+		const { projectId, appId, versionId } = req.params;
+		return await this.builds.status(projectId, appId, versionId);
+	}
+
 	@Post('/retry')
 	@ProjectScope('app:update')
-	async retry(req: BuildRequest) {
+	async retry(req: BuildRequest, res: Response) {
 		const { projectId, appId, versionId } = req.params;
-		return await this.builds.build(projectId, appId, versionId, true);
+		const status = await this.builds.startBuild(projectId, appId, versionId, true);
+		res.status(202);
+		return status;
 	}
 }

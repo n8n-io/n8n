@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import { AppBuildService } from '../app-build.service';
@@ -50,11 +51,126 @@ function setup() {
 		return version;
 	});
 	const service = new AppBuildService(versions, source, workspaces, locks, logger, config);
-	return { service, versions, source, workspaces, locks, version, bundle, ctx, config };
+	return { service, versions, source, workspaces, locks, version, bundle, ctx, config, logger };
 }
 
 describe('AppBuildService', () => {
 	afterEach(() => vi.restoreAllMocks());
+
+	it('returns a claimed build before the workspace finishes', async () => {
+		const { service, workspaces, version, bundle } = setup();
+		version.buildStatus = 'failed';
+		const pending = createDeferredPromise<typeof bundle>();
+		workspaces.build.mockReturnValue(pending.promise);
+
+		try {
+			expect(await service.startBuild('project', 'app', 'version', true)).toEqual({
+				versionId: 'version',
+				status: 'running',
+				attempts: 1,
+				statusUpdatedAt: expect.any(String),
+			});
+			expect(await service.status('project', 'app', 'version')).toMatchObject({
+				status: 'running',
+			});
+		} finally {
+			pending.resolve(bundle);
+		}
+		await vi.waitFor(async () => {
+			expect(await service.status('project', 'app', 'version')).toMatchObject({
+				status: 'succeeded',
+				attempts: 1,
+			});
+		});
+	});
+
+	it('accepts only one of two concurrent retries', async () => {
+		const { service, version, workspaces, bundle } = setup();
+		version.buildStatus = 'failed';
+		const pending = createDeferredPromise<typeof bundle>();
+		workspaces.build.mockReturnValue(pending.promise);
+		try {
+			const results = await Promise.allSettled([
+				service.startBuild('project', 'app', 'version', true),
+				service.startBuild('project', 'app', 'version', true),
+			]);
+			expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
+			expect(results.find(({ status }) => status === 'rejected')).toMatchObject({
+				reason: expect.any(ConflictError),
+			});
+		} finally {
+			pending.resolve(bundle);
+			await service.shutdown();
+		}
+	});
+
+	it('reports failed background builds through status and logs their errors', async () => {
+		const { service, workspaces, version, logger } = setup();
+		version.buildStatus = 'failed';
+		workspaces.build.mockRejectedValueOnce(
+			new AppBuildError('build', 'Compilation failed.', 'Build output'),
+		);
+
+		await service.startBuild('project', 'app', 'version', true);
+		await vi.waitFor(async () => {
+			expect(await service.status('project', 'app', 'version')).toEqual({
+				versionId: 'version',
+				status: 'failed',
+				attempts: 1,
+				statusUpdatedAt: expect.any(String),
+			});
+		});
+		expect(logger.warn).toHaveBeenCalledWith('App build attempt failed.', {
+			appId: 'app',
+			versionId: 'version',
+			attempt: 1,
+			stage: 'build',
+			error: 'Compilation failed.',
+			log: 'Build output',
+		});
+	});
+
+	it('returns lookup errors before accepting a background build', async () => {
+		const { service, source, versions } = setup();
+		source.getVersion.mockRejectedValue(new NotFoundError('App not found.'));
+		await expect(service.startBuild('wrong-project', 'app', 'version', true)).rejects.toThrow(
+			NotFoundError,
+		);
+		expect(versions.claimBuild).not.toHaveBeenCalled();
+	});
+
+	it('handles unexpected background errors after acceptance', async () => {
+		const { service, workspaces, versions, logger } = setup();
+		const error = new Error('Database unavailable.');
+		workspaces.build.mockRejectedValue(new AppBuildError('build', 'Compilation failed.'));
+		versions.failBuild.mockRejectedValue(error);
+
+		await expect(service.startBuild('project', 'app', 'version')).resolves.toMatchObject({
+			status: 'running',
+		});
+		await vi.waitFor(() => {
+			expect(logger.warn).toHaveBeenCalledWith('App build could not complete.', {
+				projectId: 'project',
+				appId: 'app',
+				versionId: 'version',
+				error,
+			});
+		});
+	});
+
+	it('stops accepted background builds on shutdown', async () => {
+		const { service, workspaces } = setup();
+		workspaces.build.mockImplementation(async () => await new Promise(() => undefined));
+		await service.startBuild('project', 'app', 'version');
+		await service.shutdown();
+		expect(await service.status('project', 'app', 'version')).toMatchObject({
+			status: 'failed',
+			attempts: 1,
+		});
+		await expect(service.startBuild('project', 'app', 'version', true)).rejects.toThrow(
+			ConflictError,
+		);
+	});
 
 	it('records a timeout without retrying the attempt', async () => {
 		const deadline = new AbortController();
