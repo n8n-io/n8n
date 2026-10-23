@@ -1,0 +1,56 @@
+packages/@n8n/agents/src/evals/parse-judge-response.ts
+  s_65c4c5f8ca1455::t_06fcc8fb91d725 16
+  s_a26381a4168256::t_6fc86400b9e470 47-48,52-59
+packages/@n8n/agents/src/evals/__tests__/parse-judge-response.test.ts
+  s_65c4c5f8ca1455::t_06fcc8fb91d725 22,24-25,27-30,45
+  s_65c4c5f8ca1455::t_0cc476fed417d8 108-109
+  s_a26381a4168256::t_3665ffd920b402 42-43,68,77-81
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a26381a4168256::t_7ec73c28cb1819 8115,8162,8169,9500
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalChecksPanel.test.ts
+  s_a26381a4168256::t_ef88f67cdc25cb 48,70,358-386
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalTryRow.test.ts
+  s_a26381a4168256::t_da0502d3321caa 235-289
+packages/frontend/editor-ui/src/features/agents/components/AgentAvatar.vue
+  s_a26381a4168256::t_0f4b7431c09062 16-17,53
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalChecksPanel.vue
+  s_a26381a4168256::t_5e40b1856252ca 24,92-93,112,118-121,196,525
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalTryRow.vue
+  s_a26381a4168256::t_6c1a0e388eccd1 67-68,99-102,121-125,141-151,237,271,349-350,422-444
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agent-eval-review.test.ts
+  s_a26381a4168256::t_e041c189f297b0 11,248-266
+packages/frontend/editor-ui/src/features/agents/utils/agent-eval-review.ts
+  s_a26381a4168256::t_39cc296b1f5ef3 132-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b769a0ed3634d792043a814b123537a11f5588d7",
+  "prompts": {},
+  "sessions": {
+    "s_65c4c5f8ca1455": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2810a254-410f-4bd8-b1c6-ae4c2ba999cd",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thiago Pacheco <thiago.pacheco@n8n.io>"
+    },
+    "s_a26381a4168256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de9744d5-d4a6-4ca6-9d6e-70d7c82d2184",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_cdb8e2d26dadad": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1600a-d56d-71c5-97e1-b1e6fe7943fe",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
