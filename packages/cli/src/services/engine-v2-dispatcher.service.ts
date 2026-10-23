@@ -140,12 +140,24 @@ export class EngineV2Dispatcher {
 		const { executionId, engineResume } = existingExecution;
 		assert(engineResume, 'A v2 resume needs the step and the token the route located');
 
-		const { workflowData } = data;
-		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes, data.userId);
-
 		const items = data.executionData?.executionData?.nodeExecutionStack[0]?.data.main;
 		if (!items) {
 			throw new UnexpectedError('The resume request carries no payload for the waiting node');
+		}
+
+		// The files the node stored belong to the run only once the data plane takes
+		// the outputs. A refusal deletes them. A failed call keeps them, because the
+		// data plane may have taken the outputs before the answer was lost.
+		const { workflowData } = data;
+		try {
+			await this.credentialsPermissionChecker.check(
+				workflowData.id,
+				workflowData.nodes,
+				data.userId,
+			);
+		} catch (error) {
+			await this.payloadFiles.discard(items);
+			throw error;
 		}
 
 		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
@@ -153,7 +165,10 @@ export class EngineV2Dispatcher {
 			token: engineResume.token,
 			outputs: toStepOutputs(withoutNullSlots(items)),
 		});
-		if (!outcome.ok) throw toResumeRefusal(executionId, outcome.status, outcome.error);
+		if (!outcome.ok) {
+			await this.payloadFiles.discard(items);
+			throw toResumeRefusal(executionId, outcome.status, outcome.error);
+		}
 
 		return executionId;
 	}
