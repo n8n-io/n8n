@@ -265,6 +265,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
+	const isEnterprisePlan = computed(() => planName.value.toLowerCase() === 'enterprise');
+
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
 	const endpointHealth = computed(() => settings.value.endpointHealth);
@@ -513,6 +515,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveManualExecutions,
 		saveDataProgressExecution,
 		isCommunityPlan,
+<<<<<<< HEAD
+=======
+		isEnterprisePlan,
+		isAskAiEnabled,
+>>>>>>> 8cb0242b079b8867c055143522b46747c6dfe8a5
 		isAiBuilderEnabled,
 		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,

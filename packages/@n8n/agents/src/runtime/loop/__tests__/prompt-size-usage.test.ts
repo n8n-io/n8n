@@ -1,5 +1,10 @@
 import type { TokenUsage } from '../../../types';
-import { mergePromptSizeUsage, promptSizeOf, withPromptSizeBreakdown } from '../prompt-size-usage';
+import {
+	mergePromptSizeUsage,
+	mergeTokenCounts,
+	promptSizeOf,
+	withPromptSizeBreakdown,
+} from '../prompt-size-usage';
 import { mergeUsage } from '../runtime-helpers';
 
 function callUsage(promptTokens: number, completionTokens = 10): TokenUsage {
@@ -112,5 +117,35 @@ describe('mergeUsage — prompt-size split', () => {
 
 		expect(merged?.promptTokens).toBe(30);
 		expect(merged?.byPromptSize).toBeUndefined();
+	});
+});
+
+describe('mergeTokenCounts — reported details', () => {
+	it('keeps a detail that both sides reported as zero', () => {
+		const zeroCache: TokenUsage = {
+			...callUsage(100),
+			inputTokenDetails: { noCache: 100, cacheRead: 0, cacheWrite: 0 },
+			outputTokenDetails: { reasoning: 0 },
+		};
+
+		expect(mergeTokenCounts(zeroCache, zeroCache)).toMatchObject({
+			inputTokenDetails: { noCache: 200, cacheRead: 0, cacheWrite: 0 },
+			outputTokenDetails: { reasoning: 0 },
+		});
+	});
+
+	it('sums a detail that only one side reported', () => {
+		const withCache: TokenUsage = { ...callUsage(100), inputTokenDetails: { cacheRead: 80 } };
+
+		expect(mergeTokenCounts(withCache, callUsage(50)).inputTokenDetails).toEqual({
+			cacheRead: 80,
+		});
+	});
+
+	it('leaves out details that neither side reported', () => {
+		const merged = mergeTokenCounts(callUsage(100), callUsage(50));
+
+		expect(merged.inputTokenDetails).toBeUndefined();
+		expect(merged.outputTokenDetails).toBeUndefined();
 	});
 });

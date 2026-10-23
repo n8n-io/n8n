@@ -179,6 +179,7 @@ async function handleTagWorkflow(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Tag ${input.workflowName ?? input.workflowId} (ID: ${input.workflowId}) with [${input.tags.join(', ')}]`,
@@ -220,6 +221,7 @@ async function handleCleanupTestExecutions(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const hours = input.olderThanHours ?? 1;
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -279,6 +281,7 @@ async function handleCreateFolder(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'project', id: input.projectId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Create ${name} in project ${input.projectId}`,
@@ -321,6 +324,7 @@ async function handleDeleteFolder(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'project', id: input.projectId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete ${input.folderName ?? input.folderId}`,
@@ -357,6 +361,7 @@ async function handleMoveWorkflowToFolder(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Move ${input.workflowName ?? input.workflowId} to folder ${input.folderName ?? input.folderId}`,

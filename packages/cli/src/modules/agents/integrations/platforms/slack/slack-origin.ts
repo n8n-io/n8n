@@ -1,5 +1,4 @@
 import { isRecord } from '@n8n/utils/is-record';
-import type { Thread } from 'chat';
 
 import {
 	fetchChannelName,
@@ -14,10 +13,10 @@ export async function buildSlackOriginDraft(
 	decoded: DecodedThread,
 ): Promise<OriginDraft> {
 	const raw = isRecord(message.raw) ? message.raw : {};
-	const conversationKind = slackConversationKind(thread, raw);
+	const conversationKind = slackConversationKind(raw);
 	return {
 		type: 'slack',
-		workspaceId: text(raw.team_id) ?? text(raw.team),
+		workspaceId: typeof raw.n8nWorkspaceId === 'string' ? text(raw.n8nWorkspaceId) : undefined,
 		conversationKind,
 		channelId: text(decoded.channel),
 		channelName: conversationKind === 'dm' ? undefined : await fetchChannelName(thread),
@@ -25,9 +24,19 @@ export async function buildSlackOriginDraft(
 }
 
 function slackConversationKind(
-	thread: Thread<unknown, unknown>,
 	raw: Record<string, unknown>,
-): 'dm' | 'group' | 'channel' {
-	if (thread.isDM) return 'dm';
-	return raw.channel_type === 'mpim' ? 'group' : 'channel';
+): 'dm' | 'group' | 'channel' | undefined {
+	switch (raw.channel_type) {
+		case 'im':
+			return 'dm';
+		case 'mpim':
+			return 'group';
+		case 'channel':
+		case 'group':
+			return 'channel';
+		case undefined:
+			return raw.type === 'app_mention' ? 'channel' : undefined;
+		default:
+			return undefined;
+	}
 }

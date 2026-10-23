@@ -1187,6 +1187,12 @@ export interface SchedulingFunctions {
 }
 
 export type NodeTypeAndVersion = {
+	/**
+	 * Stable canvas node ID. Unlike `name`, it survives a rename.
+	 * Optional so that existing callers that build this type by hand keep compiling;
+	 * the execution engine always sets it.
+	 */
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion: number;
@@ -2915,6 +2921,12 @@ export interface INodeTypeBaseDescription {
 	deprecated?: true;
 
 	/**
+	 * The node type to suggest as the replacement for this deprecated node.
+	 * The editor's deprecation notice and the error for a refused save name it.
+	 */
+	replacedByNodeType?: string;
+
+	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally replacing provided parts of the description
 	 */
@@ -4585,7 +4597,6 @@ export interface IUserSettings {
 	instanceAi?: {
 		credentialId?: string | null;
 		modelName?: string;
-		localGatewayDisabled?: boolean;
 	};
 	mcpJsonNudge?: {
 		impressions: number;

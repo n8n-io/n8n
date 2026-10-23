@@ -9,11 +9,12 @@
 //
 // What's tested: the orchestrator's first dispatch decision. Most tools are
 // NOT stubbed — when the orchestrator loads a skill or reaches for a
-// Computer Use browser tool, the tool-call event fires before any downstream
+// Browser Use tool, the tool-call event fires before any downstream
 // failure, so the discovery check still sees the dispatch intent. The Agent
-// Builder tools are the exception: they accept any input and report success,
-// and `agent_builder_select_agent` runs against a stub builder delegate. Only
-// the routing to them is graded, not the Agent build itself. The wall-clock
+// Builder tools are the exception: they have the production names, descriptions,
+// input schemas, and reference skills, but they report success without doing
+// work, and `agent_builder_select_agent` runs against a stub builder delegate.
+// Only the routing to them is graded, not the Agent build itself. The wall-clock
 // timeout bounds the trial, not the run: at the budget the trial stops and fails,
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.
@@ -26,7 +27,10 @@
 // (see ./seeded-turn.ts).
 // ---------------------------------------------------------------------------
 
-import { Tool, type BuiltTool, type GuardrailsOptions } from '@n8n/agents';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
+import { Tool, type BuiltTool, type GuardrailsOptions, type RuntimeSkill } from '@n8n/agents';
 import { AGENT_BUILDER_TOOL_NAMES, type InstanceAiEvent, type TaskList } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
@@ -71,7 +75,7 @@ import { AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES } from '../../src/tools/tool-ids'
 import type {
 	InstanceAiContext,
 	InstanceAiBuilderDelegate,
-	ComputerUseState,
+	BrowserUseState,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
@@ -356,27 +360,14 @@ function applyInstanceState(
 	const state = scenario.instanceState;
 	if (!state) return base;
 
-	const computerUse: ComputerUseState | undefined = state.computerUse;
-	// Both channels can serve tools, so the stub server gets the union.
-	const liveToolCategories = computerUse
-		? Object.values(computerUse).flatMap((channel) =>
-				channel.status === 'connected' ? channel.toolCategories : [],
-			)
-		: [];
+	const browserUse: BrowserUseState | undefined = state.browserUse;
 
 	const localMcpServer =
-		liveToolCategories.length > 0
-			? createStubLocalMcpServer({
-					capabilities: liveToolCategories.filter(
-						(c): c is 'browser' | 'filesystem' | 'shell' =>
-							c === 'browser' || c === 'filesystem' || c === 'shell',
-					),
-				})
-			: base.localMcpServer;
+		browserUse?.status === 'connected' ? createStubLocalMcpServer() : base.localMcpServer;
 
 	return {
 		...base,
-		...(computerUse ? { computerUseState: computerUse } : {}),
+		...(browserUse ? { browserUseState: browserUse } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
 		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
 		...(state.folderExploration !== undefined
@@ -409,18 +400,45 @@ async function stopAtAgentBuild(
 	return await Promise.resolve(agentSelected && STUB_BUILDER_TOOL_NAMES.includes(call.toolName));
 }
 
-/** Builder tools that accept any input and report success, so routing is all that is graded. */
-function createStubBuilderTools(): BuiltTool[] {
-	return STUB_BUILDER_TOOL_NAMES.map((name) =>
-		new Tool(name)
-			.description(`Discovery stub for ${name}.`)
-			.input(z.object({}).passthrough())
+/**
+ * A copy of the builder tools and reference skills that the agents module in packages/cli
+ * supplies, which this package cannot import. Nothing updates the copy automatically.
+ */
+const agentBuilderFileSchema = z.object({
+	tools: z.array(
+		z.object({
+			name: z.string(),
+			description: z.string(),
+			inputSchema: z.custom<NonNullable<BuiltTool['inputSchema']>>(isRecord),
+		}),
+	),
+	skills: z.array(
+		z.custom<RuntimeSkill>(
+			(skill) =>
+				isRecord(skill) && typeof skill.id === 'string' && typeof skill.instructions === 'string',
+		),
+	),
+});
+
+type AgentBuilderFile = z.infer<typeof agentBuilderFileSchema>;
+
+/** Builder tools with the production names, descriptions, and input schemas that report success. */
+function createStubBuilderTools(tools: AgentBuilderFile['tools']): BuiltTool[] {
+	return STUB_BUILDER_TOOL_NAMES.map((name) => {
+		const tool = tools.find((candidate) => candidate.name === name);
+		if (!tool) throw new Error(`agent-builder.json has no "${name}" tool`);
+		return new Tool(name)
+			.description(tool.description)
+			.input(tool.inputSchema)
 			.handler(async () => await Promise.resolve({ ok: true }))
-			.build(),
-	);
+			.build();
+	});
 }
 
 function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+	const agentBuilder = agentBuilderFileSchema.parse(
+		JSON.parse(readFileSync(path.join(__dirname, 'agent-builder.json'), 'utf8')),
+	);
 	return {
 		createAgent: async (name) =>
 			await Promise.resolve({
@@ -428,8 +446,8 @@ function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
 				projectId: 'discovery-project',
 				name,
 			}),
-		getBuilderTools: () => createStubBuilderTools(),
-		getRuntimeSkills: () => [],
+		getBuilderTools: () => createStubBuilderTools(agentBuilder.tools),
+		getRuntimeSkills: () => agentBuilder.skills,
 		getBuilderSessionContext: async () => await Promise.resolve('## Session context'),
 		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
@@ -465,7 +483,7 @@ function createStubOrchestrationContext(
 		skills: loadInstanceAiSkills(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
-		// Surface the localMcpServer so Computer Use browser tools are available to the
+		// Surface the localMcpServer so Browser Use tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
 		// Registers the `workspace_*` file tools for workflow_builder_build_workflow

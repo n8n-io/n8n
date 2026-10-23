@@ -65,6 +65,39 @@ jobs:
           fi
           echo "✅ Version '$INPUT_VERSION' is allowed for '$CHANNEL' channel"
 
+<<<<<<< HEAD
+=======
+  release-to-npm:
+    name: Release to NPM
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    timeout-minutes: 5
+    environment: release
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24.22.1
+
+      # Remove after https://github.com/npm/cli/issues/8547 gets resolved
+      - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Add beta/next tags to NPM
+        if: needs.validate-inputs.outputs.release_channel == 'beta'
+        run: |
+          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" next
+          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" beta
+
+      - name: Add latest/stable tags to NPM
+        if: needs.validate-inputs.outputs.release_channel == 'stable'
+        run: |
+          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" latest
+          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" stable
+
+>>>>>>> 8cb0242b079b8867c055143522b46747c6dfe8a5
   release-to-docker-hub:
     name: Release to DockerHub
     runs-on: ubuntu-latest

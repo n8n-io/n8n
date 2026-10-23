@@ -12,6 +12,7 @@ import {
 } from '@n8n/api-types';
 import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -19,6 +20,7 @@ import { z } from 'zod';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import { isOutsideThreadProjectError } from '../errors/outside-thread-project.error';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { FolderResolutionFailure, InstanceAiContext, SetupItemsEmitter } from '../types';
 import {
@@ -854,6 +856,24 @@ async function handleGetAsCode(
 		const nodeCount = json.nodes?.length ?? 0;
 		const base = { workflowId: input.workflowId, name: json.name, nodeCount };
 
+		// A workflow this conversation cannot save stays inline and unbound, so the model
+		// learns before it edits a file that a build would reject.
+		let readOnlyReason: string | undefined;
+		try {
+			await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
+		} catch (error) {
+			if (!isOutsideThreadProjectError(error)) throw error;
+			readOnlyReason = getErrorMessage(error);
+		}
+		if (readOnlyReason) {
+			return {
+				...base,
+				nodes: await indexSourceNodes(json, code),
+				code,
+				note: `Read-only: the source was not written to a file. ${readOnlyReason}`,
+			};
+		}
+
 		// Without a workspace there is no file to write; the code stays inline and the
 		// conversation's view of the workflow still moves to the current version.
 		if (!context.workspace) {
@@ -916,6 +936,7 @@ async function handleDelete(
 
 	// First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -954,6 +975,7 @@ async function handleUnarchive(
 	const needsApproval = context.permissions?.deleteWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -1621,6 +1643,7 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null || destinationDecision !== undefined) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		// The setup panel lists bound slots too (rendered as done), so its snapshot
 		// needs the settled requests the card logic below must not see.
 		const setupPanelEnabled = isSetupPanelEnabled(context);
@@ -1920,6 +1943,11 @@ async function handlePublish(
 	}
 
 	const supportingWorkflowIds = await resolveSupportingWorkflowIds(context, input.workflowId);
+	// Checked up front, even when approval is skipped, so nothing goes live before a
+	// workflow outside the thread's project would fail the publish.
+	for (const id of [input.workflowId, ...supportingWorkflowIds]) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id });
+	}
 	const verification = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
 	const unverifiedDisclosure = verification?.message;
 
@@ -2105,6 +2133,7 @@ async function handleUnpublish(
 	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -2160,6 +2189,7 @@ async function handleRestoreVersion(
 	const needsApproval = context.permissions?.restoreWorkflowVersion !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const version = await context.workflowService.getVersion!(
 			input.workflowId,
@@ -2233,6 +2263,7 @@ async function handleUpdateVersion(
 	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const fields: string[] = [];
 		if (input.name !== undefined) fields.push(`name to ${formatFieldValue(input.name)}`);

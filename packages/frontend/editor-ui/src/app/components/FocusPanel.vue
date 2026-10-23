@@ -138,8 +138,10 @@ const node = computed<INodeUi | undefined>(() => {
 });
 const multipleNodesSelected = computed(() => vueFlow.getSelectedNodes.value.length > 1);
 
+const isDeprecated = computed(() => !!node.value && nodeTypesStore.isNodeDeprecated(node.value));
+
 const isExecutable = computed(() => {
-	if (!node.value) return false;
+	if (!node.value || isDeprecated.value) return false;
 
 	if (!isDisplayed.value) return false;
 
@@ -205,7 +207,15 @@ const expression = computed(() => {
 		: resolvedParameter.value;
 });
 
+<<<<<<< HEAD
 const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
+=======
+const shouldCaptureForPosthog = computed(
+	() => resolvedParameter.value?.node.type === AI_TRANSFORM_NODE_TYPE,
+);
+
+const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value || isDeprecated.value);
+>>>>>>> 8cb0242b079b8867c055143522b46747c6dfe8a5
 
 const resolvedAdditionalExpressionData = computed(() => {
 	return {
@@ -404,7 +414,7 @@ function onRenameNode(value: string) {
 			:node="node"
 			:parameter="resolvedParameter?.parameter"
 			:is-executable="isExecutable"
-			:read-only="isCanvasReadOnly"
+			:read-only="isCanvasReadOnly || isDeprecated"
 			@execute="onExecute"
 			@open-ndv="onOpenNdv"
 			@clear-parameter="closeFocusPanel"
