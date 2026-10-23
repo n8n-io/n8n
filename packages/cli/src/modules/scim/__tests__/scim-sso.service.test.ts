@@ -105,9 +105,19 @@ describe('ScimSsoService', () => {
 		// SSO code reads the switch through the reader, without an import of
 		// the SCIM module.
 		it.each([true, false])('lets SSO code read the SCIM switch as %s', async (enabled) => {
-			scimSettingsService.isEnabled.mockResolvedValue(enabled);
+			scimSettingsService.isSavedEnabled.mockResolvedValue(enabled);
 
 			expect(await scimSwitchReader.isEnabled()).toBe(enabled);
+		});
+
+		// The cache can say off while an enable that committed a moment before
+		// says on. `sso-login-disabled` must report the switch that SCIM turns off.
+		it('lets SSO code read the saved switch, not the cached one', async () => {
+			scimSettingsService.isEnabled.mockResolvedValue(false);
+			scimSettingsService.isSavedEnabled.mockResolvedValue(true);
+
+			expect(await scimSwitchReader.isEnabled()).toBe(true);
+			expect(scimSettingsService.isEnabled).not.toHaveBeenCalled();
 		});
 
 		it.each(['saml', 'oidc'] as const)(

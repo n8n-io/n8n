@@ -55,11 +55,13 @@ export class ScimSsoService {
 	 * variable.
 	 *
 	 * SSO code reads the switch and turns SCIM off through
-	 * `ScimSwitchReader`, which this module sets here.
+	 * `ScimSwitchReader`, which this module sets here. The read uses the saved
+	 * switch and its lock, as `turnOff` does. Thus `sso-login-disabled` also
+	 * reports an enable that the cache does not show yet.
 	 */
 	async init() {
 		this.scimSwitchReader.register(
-			async () => await this.scimSettingsService.isEnabled(),
+			async () => await this.scimSettingsService.isSavedEnabled(),
 			async (protocol) =>
 				await this.turnOffScim(`${protocol.toUpperCase()} single sign-on turned off`),
 		);

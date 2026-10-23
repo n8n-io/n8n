@@ -493,12 +493,19 @@ describe('SCIM and single sign-on', () => {
 		expect(response.body.data).toMatchObject({ enabled: false, hasToken: true });
 	});
 
-	// An enable can commit while the cache still says off. The cascade reads
-	// the saved switch, so SCIM still ends off.
+	// An enable can commit while the cache still says off. The cascade and
+	// the event read the saved switch, so SCIM still ends off, and the event
+	// reports that SCIM was on.
 	it('turns SCIM off when the cache says off and the saved switch says on', async () => {
 		await Container.get(CacheService).set('scim.provisioning.enabled', 'false');
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		await toggleSamlLogin(false);
+
+		expect(emit).toHaveBeenCalledWith('sso-login-disabled', {
+			protocol: 'saml',
+			scimWasEnabled: true,
+		});
 
 		await vi.waitFor(async () =>
 			expect(

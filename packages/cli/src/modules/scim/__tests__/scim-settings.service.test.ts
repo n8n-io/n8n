@@ -245,4 +245,30 @@ describe('ScimSettingsService', () => {
 			expect(cacheService.set).toHaveBeenCalledTimes(1);
 		});
 	});
+
+	describe('isSavedEnabled', () => {
+		const ENABLED_KEY = 'scim.provisioning.enabled';
+
+		// An enable can commit while the cache still holds the old value.
+		it.each([
+			['true', true],
+			['false', false],
+		])('reads the saved switch %s under the read lock, not the cache', async (saved, enabled) => {
+			cacheService.get.mockResolvedValue(enabled ? 'false' : 'true');
+			settingsRepository.getOrCreateWithReadLock.mockResolvedValue(
+				mock<Settings>({ key: ENABLED_KEY, value: saved }),
+			);
+
+			await expect(service.isSavedEnabled()).resolves.toBe(enabled);
+
+			expect(settingsRepository.getOrCreateWithReadLock).toHaveBeenCalledExactlyOnceWith(
+				ENABLED_KEY,
+				'false',
+				true,
+				trxCtx,
+			);
+			expect(cacheService.get).not.toHaveBeenCalled();
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+	});
 });
