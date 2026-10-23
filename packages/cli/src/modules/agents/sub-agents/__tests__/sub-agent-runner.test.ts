@@ -824,6 +824,34 @@ describe('SubAgentRunner', () => {
 					expect.objectContaining({ status: 'errored', usage: finishUsage }),
 				);
 			});
+
+			it('reports the side calls of a linked child with its parent link', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				const sideCall = {
+					task: 'observer' as const,
+					model: 'anthropic/claude-haiku-5-5',
+					usage: { promptTokens: 2000, completionTokens: 200, totalTokens: 2200 },
+					cost: 0.003,
+					reportId: 'report-1',
+				};
+
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+				const options = childAgent.stream.mock.calls[0][1];
+				await options?.onSideCallUsage?.(sideCall);
+
+				expect(usageRelay.reportDelegatedSideCall).toHaveBeenCalledWith({
+					...sideCall,
+					executionId: 'agent-execution-1',
+					threadId: expect.any(String),
+					parentExecutionId: 'turn-1',
+				});
+			});
+
+			it('sets no side-call callback on a child without a parent link', async () => {
+				await runner.run(spawnRequest, runContext());
+
+				expect(childAgent.stream.mock.calls[0][1]).not.toHaveProperty('onSideCallUsage');
+			});
 		});
 	});
 

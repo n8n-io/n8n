@@ -15,6 +15,7 @@ import {
 	type JSONObject,
 	type JSONValue,
 	type SerializableAgentState,
+	type SideCallUsageReport,
 	type StreamChunk,
 	type StreamResult,
 	type SubAgentTaskDifficulty,
@@ -384,6 +385,17 @@ export class SubAgentRunner {
 					...modelStreamStallOptions(this.aiConfig),
 					executionCounter: context.executionCounter,
 					shouldPause: context.shouldPause,
+					...(executionLinks !== undefined
+						? {
+								onSideCallUsage: (report: SideCallUsageReport) =>
+									this.usageRelay.reportDelegatedSideCall({
+										...report,
+										executionId,
+										threadId,
+										parentExecutionId: executionLinks.parentExecutionId,
+									}),
+							}
+						: {}),
 				},
 				{
 					useRootSessionCap: true,
