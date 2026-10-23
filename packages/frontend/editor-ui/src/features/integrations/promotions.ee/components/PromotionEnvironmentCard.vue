@@ -171,6 +171,7 @@ function onAction(action: 'edit' | 'remove') {
 			:open="dialogOpen"
 			:environment-id="environment.id"
 			:base-branch-name="environment.settings.baseBranchName"
+			:environment-name="environment.name"
 			:create-branch-on-promotion="environment.settings.createBranchOnPromotion"
 			:provider-type="environment.provider.type"
 			@update:open="dialogOpen = $event"
@@ -180,6 +181,7 @@ function onAction(action: 'edit' | 'remove') {
 			:open="dialogOpen"
 			:environment-id="environment.id"
 			:branch-name="environment.settings.branchName"
+			:environment-name="environment.name"
 			@update:open="dialogOpen = $event"
 		/>
 	</div>

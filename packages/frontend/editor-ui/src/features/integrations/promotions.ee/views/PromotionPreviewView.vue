@@ -70,6 +70,7 @@ const {
 	preview,
 	check,
 	graph,
+	environment,
 	repositoryName,
 	refreshing,
 	refreshFailed,
@@ -108,7 +109,24 @@ const details = usePromotionResourceDetails(
 	activeWorkflowKey,
 );
 
-const title = computed(() => i18n.baseText(`promotions.preview.title.${props.direction}`));
+const projectName = computed(() =>
+	projectsStore.currentProject?.id === props.projectId
+		? projectsStore.currentProject.name
+		: preview.value?.resources.find(
+				(resource) => resource.type === 'project' && resource.id === props.projectId,
+			)?.name,
+);
+const title = computed(() => {
+	if (!environment.value?.name) {
+		return i18n.baseText(`promotions.preview.title.${props.direction}`);
+	}
+	return i18n.baseText(
+		projectName.value
+			? `promotions.preview.title.project.${props.direction}`
+			: `settings.promotions.${props.direction}.dialog.title`,
+		{ interpolate: { project: projectName.value ?? '', environment: environment.value.name } },
+	);
+});
 watch(title, (value) => documentTitle.set(value), { immediate: true });
 
 const tree = computed(() =>

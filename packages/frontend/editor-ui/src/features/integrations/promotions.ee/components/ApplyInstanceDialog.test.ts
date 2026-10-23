@@ -25,10 +25,25 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 const renderComponent = createComponentRenderer(ApplyInstanceDialog, {
-	props: { open: true, environmentId: 'environment-1', branchName: 'main' },
+	props: {
+		open: true,
+		environmentId: 'environment-1',
+		environmentName: 'Development',
+		branchName: 'main',
+	},
 });
 
 describe('ApplyInstanceDialog', () => {
+	it.each(['Development', 'Staging'])(
+		'shows the configured %s environment in the heading',
+		async (environmentName) => {
+			const { findByRole } = renderComponent({ props: { environmentName } });
+			expect(
+				await findByRole('heading', { name: `Apply changes from ${environmentName}` }),
+			).toBeVisible();
+		},
+	);
+
 	beforeEach(() => {
 		vi.resetAllMocks();
 		createTestingPinia();

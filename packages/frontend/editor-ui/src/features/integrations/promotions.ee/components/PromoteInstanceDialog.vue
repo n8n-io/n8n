@@ -23,6 +23,7 @@ import { promotePackage } from '../promotionsSettings.api';
 const props = defineProps<{
 	open: boolean;
 	environmentId: string;
+	environmentName: string;
 	baseBranchName: string;
 	createBranchOnPromotion: boolean;
 	providerType: PromotionProviderType;
@@ -50,6 +51,7 @@ const dialogTitle = computed(() =>
 		result.value
 			? 'settings.promotions.promote.dialog.result.title'
 			: 'settings.promotions.promote.dialog.title',
+		{ interpolate: { environment: props.environmentName } },
 	),
 );
 

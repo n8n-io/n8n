@@ -39,12 +39,23 @@ const renderComponent = createComponentRenderer(PromoteInstanceDialog, {
 		open: true,
 		environmentId: 'environment-1',
 		baseBranchName: 'main',
+		environmentName: 'Production',
 		createBranchOnPromotion: false,
 		providerType: 'git',
 	},
 });
 
 describe('PromoteInstanceDialog', () => {
+	it.each(['Production', 'Staging'])(
+		'shows the configured %s environment in the heading',
+		async (environmentName) => {
+			const { findByRole } = renderComponent({ props: { environmentName } });
+			expect(
+				await findByRole('heading', { name: `Promote changes to ${environmentName}` }),
+			).toBeVisible();
+		},
+	);
+
 	beforeEach(() => {
 		vi.resetAllMocks();
 		createTestingPinia();

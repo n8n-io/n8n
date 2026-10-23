@@ -70,6 +70,7 @@ const environment = (direction: 'promote' | 'apply') =>
 		id: `environment-${direction}`,
 		scope: 'instance',
 		direction,
+		name: direction === 'promote' ? 'Production' : 'Development',
 		remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
 	}) as unknown as settingsApi.PromotionEnvironmentSummary;
 
@@ -159,6 +160,49 @@ const answerWorkflowDetails = () =>
 		}));
 
 describe('PromotionPreviewView', () => {
+	it.each([
+		{
+			direction: 'promote',
+			project: 'Marketing',
+			environmentName: 'Production',
+			title: 'Promote Marketing changes to Production',
+		},
+		{
+			direction: 'apply',
+			project: 'Marketing',
+			environmentName: 'Development',
+			title: 'Apply Marketing changes from Development',
+		},
+		{
+			direction: 'promote',
+			project: 'Engineering',
+			environmentName: 'Staging',
+			title: 'Promote Engineering changes to Staging',
+		},
+		{
+			direction: 'apply',
+			project: 'Engineering',
+			environmentName: 'QA',
+			title: 'Apply Engineering changes from QA',
+		},
+	] as const)(
+		'shows the project and environment in the $direction heading',
+		async ({ direction, project, environmentName, title }) => {
+			vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([
+				{ ...environment(direction), name: environmentName },
+			]);
+			const preview = billingPreview();
+			vi.mocked(api.getPromotionPreview).mockResolvedValue({
+				...preview,
+				resources: preview.resources.map((resource) =>
+					resource.key === 'project:p1' ? { ...resource, name: project } : resource,
+				),
+			});
+			const { getByRole } = await render(`/projects/p1/promotions/${direction}`, direction);
+			expect(getByRole('heading', { level: 1, name: title })).toBeVisible();
+		},
+	);
+
 	beforeEach(() => {
 		invalidateInstancePromotionConnection();
 		Element.prototype.scrollIntoView = vi.fn();
