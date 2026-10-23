@@ -129,8 +129,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
-| [scheduled_job](scheduled_job.md) | 25 |  | table |
-| [scheduled_task](scheduled_task.md) | 19 |  | table |
+| [scheduled_job](scheduled_job.md) | 26 |  | table |
+| [scheduled_task](scheduled_task.md) | 22 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
 | [self_healing_configuration](self_healing_configuration.md) | 7 |  | table |
@@ -1672,6 +1672,7 @@ erDiagram
   INTEGER intervalSeconds
   varchar_16_ kind
   datetime_3_ lastFiredAt
+  INT leaseSeconds
   INTEGER maxAttempts
   INT misfireGraceSeconds
   varchar_16_ misfirePolicy
@@ -1696,12 +1697,15 @@ erDiagram
   datetime_3_ dispatchedAt
   TEXT errorMessage
   datetime_3_ finishedAt
+  datetime_3_ heldSince
   INTEGER id
   INTEGER jobId FK
   INTEGER leaseEpoch
   datetime_3_ leaseExpiresAt
+  INT leaseSeconds
   INTEGER maxAttempts
   datetime_3_ missedAfter
+  varchar_16_ mode
   TEXT payload
   datetime_3_ runAt
   datetime_3_ scheduledFor

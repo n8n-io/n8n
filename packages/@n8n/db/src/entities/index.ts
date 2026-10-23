@@ -65,6 +65,7 @@ import {
 } from './scheduled-job';
 import {
 	ScheduledTask,
+	ScheduledTaskMode,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,
 	type TerminalTaskStatus,
@@ -177,6 +178,7 @@ export {
 	type ScheduledJobOwnerRef,
 	ScheduledJobOwnerType,
 	ScheduledTask,
+	ScheduledTaskMode,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,
 	type TerminalTaskStatus,

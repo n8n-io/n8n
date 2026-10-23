@@ -5,9 +5,11 @@ import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ScheduledJob } from '../entities/scheduled-job';
+import { HELD_TASK_SCHEDULED_FOR } from '@n8n/constants';
+
+import { ScheduledJob, ScheduledJobKind } from '../entities/scheduled-job';
 import type { ScheduledJobOwner, ScheduledJobOwnerRef } from '../entities/scheduled-job';
-import { ScheduledTask, ScheduledTaskStatus } from '../entities/scheduled-task';
+import { ScheduledTask, ScheduledTaskMode, ScheduledTaskStatus } from '../entities/scheduled-task';
 import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 
 /** The new clock values for one advanced job. */
@@ -39,7 +41,8 @@ export type NewScheduledJob = Pick<
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
 	| 'concurrencyLimit'
->;
+> &
+	Partial<Pick<ScheduledJob, 'leaseSeconds'>>;
 
 /** A changed schedule definition, plus the fresh clock it restarts from. */
 export type ScheduledJobDefinitionUpdate = Pick<
@@ -476,7 +479,10 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			.createQueryBuilder()
 			.delete()
 			.from(ScheduledTask)
-			.where('"status" = :status', { status: ScheduledTaskStatus.Pending })
+			.where('("status" = :status OR "mode" = :hold)', {
+				status: ScheduledTaskStatus.Pending,
+				hold: ScheduledTaskMode.Hold,
+			})
 			.andWhere(
 				`"jobId" IN (SELECT "id" FROM ${jobTable} WHERE "ownerType" = :ownerType AND "ownerId" IN (:...ownerIds) AND "orphanedAt" IS NOT NULL)`,
 				{ ownerType, ownerIds },
@@ -543,7 +549,40 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			{ id, orphanedAt: Not(IsNull()) },
 			{ orphanedAt: null, nextRunAt },
 		);
-		return result.affected ?? 0;
+		const lifted = result.affected ?? 0;
+		if (lifted > 0) {
+			await this.seedHeldTasks(this.manager, [id]);
+		}
+		return lifted;
+	}
+
+	/**
+	 * Give each live hold job among `jobIds` its one task, if it has none. A job
+	 * that is not `hold`, or is quarantined, is skipped. Safe to repeat: the fixed
+	 * `scheduledFor` makes a second seed a no-op.
+	 */
+	async seedHeldTasks(manager: EntityManager, jobIds: number[]): Promise<void> {
+		if (jobIds.length === 0) return;
+		const taskTable = manager.connection.getMetadata(ScheduledTask).tablePath;
+		const jobTable = this.metadata.tablePath;
+		const ignore = this.isPostgres ? 'ON CONFLICT DO NOTHING' : '';
+		const insert = this.isPostgres ? 'INSERT INTO' : 'INSERT OR IGNORE INTO';
+		const placeholders = jobIds.map((_, i) => (this.isPostgres ? `$${i + 3}` : '?')).join(', ');
+		const scheduledFor = this.isPostgres
+			? HELD_TASK_SCHEDULED_FOR
+			: HELD_TASK_SCHEDULED_FOR.toISOString().replace('T', ' ').replace('Z', '');
+		await manager.query(
+			`${insert} ${taskTable}
+			   ("jobId", "taskType", "payload", "scheduledFor", "runAt", "maxAttempts", "timeoutSeconds", "mode", "leaseSeconds")
+			 SELECT j."id", j."taskType", j."payload", ${this.isPostgres ? '$1' : '?'}, ${dbNowLiteral(this.isPostgres)},
+			        j."maxAttempts", j."timeoutSeconds", ${this.isPostgres ? '$2' : '?'}, j."leaseSeconds"
+			   FROM ${jobTable} j
+			  WHERE j."kind" = '${ScheduledJobKind.Hold}'
+			    AND j."orphanedAt" IS NULL
+			    AND j."id" IN (${placeholders})
+			 ${ignore}`,
+			[scheduledFor, ScheduledTaskMode.Hold, ...jobIds],
+		);
 	}
 
 	/**

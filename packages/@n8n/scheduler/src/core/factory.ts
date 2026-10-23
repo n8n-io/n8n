@@ -15,6 +15,7 @@ import {
 import {
 	DEFAULT_EXECUTOR_OPTIONS,
 	Executor,
+	isHoldTaskHandler,
 	PrecisionTimer,
 	TaskHandlerRegistry,
 } from './executor';
@@ -377,6 +378,21 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 						{ taskId: task.id, taskType: task.taskType },
 					);
 				}
+			},
+			onHoldReady: (task) => {
+				emit('debug', 'Scheduler holder reported ready', {
+					taskId: task.id,
+					taskType: task.taskType,
+					leaseEpoch: task.leaseEpoch,
+				});
+			},
+			onHoldReleased: (task, reason) => {
+				emit('debug', 'Scheduler released a held task', {
+					taskId: task.id,
+					taskType: task.taskType,
+					leaseEpoch: task.leaseEpoch,
+					reason,
+				});
 			},
 		},
 		createExecutorTracing(tracer),
@@ -770,7 +786,10 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		registerTaskHandler(taskType, handler) {
 			// Wrapped here, at registration, so the executor calls handlers without
 			// knowing a tracing span surrounds each run.
-			registry.register(taskType, withHandoffTracing(tracer, handler));
+			registry.register(
+				taskType,
+				isHoldTaskHandler(handler) ? handler : withHandoffTracing(tracer, handler),
+			);
 		},
 
 		materialize: runMaterialize,

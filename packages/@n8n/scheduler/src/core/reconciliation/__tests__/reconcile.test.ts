@@ -38,7 +38,7 @@ const quarantinedJob = (over: Partial<QuarantinedJob> = {}): QuarantinedJob => (
 });
 
 describe('reconcile', () => {
-	const store = mock<ReconciliationJobStore>();
+	const store = mock<Required<ReconciliationJobStore>>();
 	const now = async () => await Promise.resolve(NOW);
 
 	let registry: ScheduledJobOwnerRegistry;
@@ -306,6 +306,24 @@ describe('reconcile', () => {
 				jobId: 42,
 				error: expect.any(Error) as Error,
 			});
+			expect(summary.revived).toBe(1);
+		});
+
+		it('revives a hold job with no clock and reports no clock failure', async () => {
+			registry.register('workflow', {
+				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-1']);
+			store.findQuarantinedByOwnerIds.mockResolvedValue([
+				quarantinedJob({ id: 42, kind: 'hold', intervalSeconds: null }),
+			]);
+			const onReviveClockFailed = vi.fn();
+
+			const summary = await run({ onReviveClockFailed });
+
+			expect(store.liftQuarantine).toHaveBeenCalledWith(42, null);
+			expect(onReviveClockFailed).not.toHaveBeenCalled();
 			expect(summary.revived).toBe(1);
 		});
 
