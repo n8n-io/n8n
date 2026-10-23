@@ -13,7 +13,7 @@ import {
 } from '../utils/index.js';
 
 // n8n-nodes-base/node-param-operation-option-action-wrong-for-get-many reports and fixes these.
-const DEPRECATED_GET_MANY_START = 'Get all ';
+const BASE_RULE_GET_ALL_PREFIX = 'Get all ';
 
 export const ResourceOperationPatternRule = createRule({
 	name: 'resource-operation-pattern',
@@ -101,7 +101,7 @@ export const ResourceOperationPatternRule = createRule({
 					!actionProperty ||
 					action === null ||
 					/^Get many\b/.test(action) ||
-					action.startsWith(DEPRECATED_GET_MANY_START)
+					action.startsWith(BASE_RULE_GET_ALL_PREFIX)
 				) {
 					continue;
 				}
