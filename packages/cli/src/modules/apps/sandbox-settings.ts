@@ -6,9 +6,12 @@ import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
 export async function resolveAppSandboxConfig(): Promise<SandboxConfig> {
 	const settings = Container.get(SandboxSettingsService);
+	const provider = settings.getProvider();
+	if (!settings.isAgentSandboxEnabled()) return { enabled: false, provider };
+
 	settings.registerCredentialUses();
 	const config = Container.get(GlobalConfig).instanceAi;
-	if (settings.getProvider() === 'daytona') {
+	if (provider === 'daytona') {
 		const credentials = await settings.resolveDaytonaConfig();
 		if (!credentials.apiKey) return { enabled: false, provider: 'daytona' };
 		return {

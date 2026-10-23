@@ -16,6 +16,7 @@ describe('resolveAppSandboxConfig', () => {
 		config.sandboxImage = 'test-image';
 		config.sandboxSnapshot = 'test-snapshot';
 		config.sandboxTimeout = 120_000;
+		settings.isAgentSandboxEnabled.mockReturnValue(true);
 		settings.getProvider.mockReturnValue('daytona');
 		settings.resolveDaytonaConfig.mockResolvedValue({
 			apiUrl: 'https://daytona.example.com/api',
@@ -30,6 +31,19 @@ describe('resolveAppSandboxConfig', () => {
 	});
 
 	afterEach(() => Container.reset());
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'disables %s when sandbox use is disabled',
+		async (provider) => {
+			settings.getProvider.mockReturnValue(provider);
+			settings.isAgentSandboxEnabled.mockReturnValue(false);
+
+			await expect(resolveAppSandboxConfig()).resolves.toEqual({ enabled: false, provider });
+			expect(settings.registerCredentialUses).not.toHaveBeenCalled();
+			expect(settings.resolveDaytonaConfig).not.toHaveBeenCalled();
+			expect(settings.resolveN8nSandboxConfig).not.toHaveBeenCalled();
+		},
+	);
 
 	it('resolves the Daytona credentials and build settings', async () => {
 		await expect(resolveAppSandboxConfig()).resolves.toEqual({
