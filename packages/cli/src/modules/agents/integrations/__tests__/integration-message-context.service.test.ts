@@ -36,6 +36,15 @@ describe('IntegrationMessageContextService', () => {
 				return undefined as never;
 			},
 		);
+		threadRepository.patchThread.mockImplementation(async (id, update) => {
+			const row = threads.get(id);
+			if (!row) return null as never;
+			const patch = update(row as never);
+			if (patch?.metadata !== undefined) {
+				await threadRepository.save({ ...row, metadata: patch.metadata } as never);
+			}
+			return row as never;
+		});
 		const service = new IntegrationMessageContextService(
 			threadRepository,
 			resourceRepository,

@@ -3314,9 +3314,10 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
-					memory: expect.objectContaining({
-						threadId: expect.not.objectContaining({ id: 'task-1-uuid' }),
-					}),
+					memory: {
+						threadId: expect.objectContaining({ id: 'agent-1:slack:D123:1001' }),
+						resourceId: 'integration:slack:u1',
+					},
 				}),
 			);
 		});
