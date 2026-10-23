@@ -430,7 +430,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw UPDATE
 		// ... RETURNING, so destructure the rows out of the tuple.
 		const leaseSql = opts.takeExpiredHeld
-			? `now() + (COALESCE("leaseSeconds" * 1000, $2::int) || ' milliseconds')::interval`
+			? 'now() + (COALESCE("leaseSeconds" * 1000, $2::int) || \' milliseconds\')::interval'
 			: "now() + ($2 || ' milliseconds')::interval";
 		const heldResetSql = opts.takeExpiredHeld
 			? ', "heldSince" = NULL, "startedAt" = NULL, "dispatchedAt" = NULL'
