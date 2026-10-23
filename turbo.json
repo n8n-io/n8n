@@ -17,7 +17,7 @@
 			"outputs": ["dist/**"]
 		},
 		"@n8n/n8n-node-codegen#build": {
-			"dependsOn": ["^build"],
+			"dependsOn": ["^build", "n8n#build"],
 			"inputs": [
 				"$TURBO_DEFAULT$",
 				"$TURBO_ROOT$/packages/cli/src/public-api/v1/**/*.yml",

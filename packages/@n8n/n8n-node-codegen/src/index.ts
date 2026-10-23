@@ -4,7 +4,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { format } from 'prettier';
 
-import type { Overrides } from '../../../nodes-base/nodes/N8n/v2/define-overrides';
+import type { Overrides } from 'n8n-nodes-base/nodes/N8n/v2/define-overrides';
 import { buildProperties, checkMethodNames } from './build';
 import { diffContracts, emptyContract, resolveOperations, toContract } from './contract';
 import {

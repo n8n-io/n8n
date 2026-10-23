@@ -3507,9 +3507,6 @@ importers:
       '@redocly/openapi-core':
         specifier: 1.34.21
         version: 1.34.21(supports-color@8.1.1)
-      n8n:
-        specifier: workspace:*
-        version: link:../../cli
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base

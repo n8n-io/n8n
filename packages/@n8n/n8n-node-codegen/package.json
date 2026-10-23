@@ -17,7 +17,6 @@
   "devDependencies": {
     "@redocly/openapi-core": "1.34.21",
     "@n8n/vitest-config": "workspace:*",
-    "n8n": "workspace:*",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
     "openapi-types": "catalog:",

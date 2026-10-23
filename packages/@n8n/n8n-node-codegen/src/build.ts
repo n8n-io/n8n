@@ -4,7 +4,7 @@ import type {
 	IN8nRequestOperationPaginationGeneric,
 } from 'n8n-workflow';
 
-import type { Overrides, ParamTemplate } from '../../../nodes-base/nodes/N8n/v2/define-overrides';
+import type { Overrides, ParamTemplate } from 'n8n-nodes-base/nodes/N8n/v2/define-overrides';
 import { OVERRIDES_FILE } from './paths';
 import { operationDisplayName, words } from './naming';
 import { isFlatObjectList } from './spec';

@@ -4,7 +4,7 @@ import {
 	collectMethods,
 	param,
 	type Overrides,
-} from '../../../nodes-base/nodes/N8n/v2/define-overrides';
+} from 'n8n-nodes-base/nodes/N8n/v2/define-overrides';
 import { buildProperties, checkMethodNames } from './build';
 import { diffContracts, emptyContract, resolveOperations, toContract } from './contract';
 import { operationName, resourceName } from './naming';

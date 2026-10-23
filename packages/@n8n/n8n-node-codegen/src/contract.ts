@@ -1,4 +1,4 @@
-import type { Overrides, OperationConfig } from '../../../nodes-base/nodes/N8n/v2/define-overrides';
+import type { Overrides, OperationConfig } from 'n8n-nodes-base/nodes/N8n/v2/define-overrides';
 import { operationName, resourceName } from './naming';
 import { OVERRIDES_FILE } from './paths';
 import type {

@@ -1,6 +1,6 @@
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
-import type { Placement } from '../../../nodes-base/nodes/N8n/v2/define-overrides';
+import type { Placement } from 'n8n-nodes-base/nodes/N8n/v2/define-overrides';
 
 export type { Placement };
 
