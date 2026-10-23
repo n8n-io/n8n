@@ -2,11 +2,6 @@ import { TSESTree } from '@typescript-eslint/utils';
 
 import { findObjectProperty, getStringLiteralValue } from './ast-utils.js';
 
-/**
- * Whether an object is the operation parameter of a node:
- * `{ name: 'operation', type: 'options', options: [...] }`. Most nodes define it
- * in a description file outside the node class, so rules match it by shape.
- */
 export function isOperationParameter(node: TSESTree.ObjectExpression): boolean {
 	const name = findObjectProperty(node, 'name');
 	const type = findObjectProperty(node, 'type');
@@ -17,7 +12,6 @@ export function isOperationParameter(node: TSESTree.ObjectExpression): boolean {
 	);
 }
 
-/** The option objects of an options parameter. */
 export function getOptionObjects(node: TSESTree.ObjectExpression): TSESTree.ObjectExpression[] {
 	const options = findObjectProperty(node, 'options')?.value;
 	if (options?.type !== TSESTree.AST_NODE_TYPES.ArrayExpression) {
