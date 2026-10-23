@@ -551,7 +551,8 @@ export class Executor {
 		const settled = new Promise<void>((resolve) => {
 			settle = resolve;
 		});
-		this.holders.set(task.id, { claim, run, settled });
+		const entry: HolderEntry = { claim, run, settled };
+		this.holders.set(task.id, entry);
 
 		let failure: { error: unknown } | undefined;
 		try {
@@ -570,7 +571,8 @@ export class Executor {
 				abortReason: run.signal.reason,
 			});
 		} finally {
-			this.holders.delete(task.id);
+			// A later claim of the same task on this host may have replaced the entry.
+			if (this.holders.get(task.id) === entry) this.holders.delete(task.id);
 			settle();
 		}
 	}
@@ -595,6 +597,18 @@ export class Executor {
 					: failure !== undefined
 						? 'error'
 						: 'returned';
+
+		const leaseLost = abortReason instanceof LeaseLostError;
+		if (failure === undefined && !isReady && !shutdown && !leaseLost) {
+			const error =
+				abortReason instanceof TaskTimeoutError
+					? abortReason
+					: new Error('The holder returned before it reported ready');
+			return await this.recordHandlerFailure(task, claim, error, {
+				dispatchWasReported: false,
+				abortReason,
+			});
+		}
 
 		if (failure === undefined || shutdown) {
 			const errorMessage = failure === undefined ? null : ensureError(failure.error).message;

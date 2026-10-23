@@ -324,7 +324,10 @@ describe('Executor hold mode', () => {
 
 		it('reports a lost claim when the release matches no row', async () => {
 			const { store, registry, hooks, executor } = setup();
-			const handler: HoldTaskHandler = { mode: 'hold', hold: async () => {} };
+			const handler: HoldTaskHandler = {
+				mode: 'hold',
+				hold: async (_task, holder) => await holder.ready(),
+			};
 			registry.resolve.mockReturnValue(handler);
 			store.releaseHeld.mockResolvedValue(0);
 
@@ -411,9 +414,32 @@ describe('Executor hold mode', () => {
 			expect(signal().reason).toBeInstanceOf(TaskTimeoutError);
 			expect(hooks.onTaskTimeout).toHaveBeenCalledWith(task);
 
-			await expect(firing).resolves.toEqual({ outcome: 'released' });
-			expect(store.releaseHeld).toHaveBeenCalledWith(claimOf(task), 0, null);
-			expect(hooks.onHoldReleased).toHaveBeenCalledWith(task, 'start-timeout');
+			await expect(firing).resolves.toMatchObject({ outcome: 'rescheduled' });
+			expect(store.rescheduleTask).toHaveBeenCalledWith(
+				claimOf(task),
+				backoff(1),
+				new TaskTimeoutError(TIMEOUT_SECONDS).message,
+			);
+			expect(store.releaseHeld).not.toHaveBeenCalled();
+			expect(hooks.onHoldReleased).not.toHaveBeenCalled();
+		});
+
+		it('counts an attempt when the holder returns before ready', async () => {
+			const { store, registry, executor } = setup();
+			const handler: HoldTaskHandler = { mode: 'hold', hold: async () => {} };
+			registry.resolve.mockReturnValue(handler);
+			const task = heldTask();
+
+			await expect(executor.fire(HOST, task)).resolves.toEqual({
+				outcome: 'rescheduled',
+				errorMessage: 'The holder returned before it reported ready',
+			});
+			expect(store.rescheduleTask).toHaveBeenCalledWith(
+				claimOf(task),
+				backoff(1),
+				'The holder returned before it reported ready',
+			);
+			expect(store.releaseHeld).not.toHaveBeenCalled();
 		});
 
 		it('counts an attempt when the holder throws on the start timeout', async () => {
@@ -606,6 +632,26 @@ describe('Executor hold mode', () => {
 			await stopping;
 			expect(store.releaseClaim).toHaveBeenCalledWith(claimOf(task));
 			expect(store.releaseHeld).not.toHaveBeenCalled();
+		});
+
+		it('still stops a newer holder of the same task after the older one returns', async () => {
+			const { registry, executor } = setup();
+			const older = holding({ ignoreSignal: true });
+			const newer = holding();
+			registry.resolve.mockReturnValueOnce(older.handler).mockReturnValueOnce(newer.handler);
+
+			const firstFire = executor.fire(HOST, heldTask({ leaseEpoch: 1 }));
+			await vi.advanceTimersByTimeAsync(0);
+			void executor.fire(HOST, heldTask({ leaseEpoch: 2 }));
+			await vi.advanceTimersByTimeAsync(0);
+			older.finish();
+			await firstFire;
+
+			const stopping = executor.stop();
+			await vi.advanceTimersByTimeAsync(0);
+			await stopping;
+
+			expect(newer.signal().reason).toBeInstanceOf(HolderShutdownError);
 		});
 
 		it('releases with no attempt a holder that throws on shutdown before ready', async () => {
