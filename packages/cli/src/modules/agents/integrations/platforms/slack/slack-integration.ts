@@ -38,6 +38,7 @@ import {
 	createSlackResumeExecutionContext,
 	getSlackPlatformAgentContext,
 	getSlackReplyExpectation,
+	isSlackDirectMessage,
 	prepareSlackInboundText,
 	type SlackThreadContext,
 } from './slack-bridge-behavior';
@@ -165,6 +166,22 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	prepareInboundText(text: string, context: PlatformAgentContext): string {
 		return prepareSlackInboundText(text, context);
+	}
+
+	shouldHandleInboundMessage({
+		message,
+		integration,
+	}: {
+		message: BridgeMessageContextParams['message'];
+		integration: AgentIntegrationConfig;
+	}): boolean {
+		// The SDK can route DMs through the mention handler. Check the message itself.
+		return (
+			integration.type !== 'slack' ||
+			integration.settings?.onlyRespondWhenMentioned !== true ||
+			message.isMention === true ||
+			isSlackDirectMessage(message.raw)
+		);
 	}
 
 	getReplyExpectation(params: {

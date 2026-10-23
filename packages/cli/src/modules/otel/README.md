@@ -87,6 +87,19 @@ or a node started, before the real span ends.
 - Both flags follow `N8N_OTEL_TRACES_PRODUCTION_ONLY`. Set them on workers too.
 - A marker that fails logs a warning. It does not stop the real span or the execution.
 
+### Custom attribute prefixes
+
+n8n adds a prefix to the keys of custom telemetry tags: `n8n.project.custom.`,
+`n8n.workflow.custom.` and `n8n.node.custom.`. `N8N_OTEL_TRACES_CUSTOM_ATTRIBUTE_PREFIXES`
+replaces them with a JSON object, for example `{"project":"","node":""}`.
+
+- An empty string removes the prefix for that level. A level that is left out keeps its default.
+- An invalid value logs a warning, and n8n uses the default prefixes.
+- When keys collide, the more specific level wins: node, then workflow, then project.
+- n8n compares the key after it adds the prefix. If that key matches a built-in key in `ATTR`, n8n drops it and keeps the built-in value.
+- Node metadata from the Tools Agent (`ai.agent.*`) uses the node prefix too.
+- Set the same value on main, workers and webhook processes.
+
 ### Module architecture
 ```mermaid
 graph TD

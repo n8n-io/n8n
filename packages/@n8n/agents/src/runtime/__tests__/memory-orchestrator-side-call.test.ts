@@ -128,7 +128,7 @@ describe('MemoryOrchestrator side-call cost forwarding', () => {
 		expect(reports).toHaveLength(0);
 	});
 
-	it('does not forward a report when the model has no catalog pricing', async () => {
+	it('forwards a report without cost when the model has no catalog pricing', async () => {
 		mockGetModelCost.mockResolvedValue(undefined);
 		const { orchestrator } = buildOrchestrator({
 			observerThresholdTokens: 10,
@@ -150,7 +150,13 @@ describe('MemoryOrchestrator side-call cost forwarding', () => {
 			list,
 			runOptions((report) => reports.push(report)),
 		);
-		expect(reports).toHaveLength(0);
+		expect(reports).toHaveLength(1);
+		const report = reports[0];
+		expect(report.task).toBe('observer');
+		expect(report.model).toBe('unknown/model');
+		expect(report.usage.promptTokens).toBe(80);
+		expect(report.usage.completionTokens).toBe(20);
+		expect(report).not.toHaveProperty('cost');
 	});
 
 	it('does not break the run when onSideCallUsage throws', async () => {

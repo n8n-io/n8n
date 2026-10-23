@@ -11,9 +11,19 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8
 
 import { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
 
+import { SelfHealingConfiguration } from './self-healing-configuration.entity';
+
 @Entity('self_healing_result')
 @Index(['suggestionId'], { unique: true, where: '"suggestionId" IS NOT NULL' })
 export class SelfHealingResult extends WithTimestampsAndStringId {
+	@Index()
+	@Column({ type: 'int' })
+	configurationId: number;
+
+	@ManyToOne(() => SelfHealingConfiguration, { nullable: false, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'configurationId' })
+	configuration: Relation<SelfHealingConfiguration>;
+
 	@Index()
 	@Column({ type: 'varchar', length: 36 })
 	workflowId: string;

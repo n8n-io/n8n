@@ -349,9 +349,9 @@ function onOpenAutoFocus(event: Event) {
 }
 
 .body[data-slot='dialog-body'][data-scrollable] {
-	/* `DialogBody` reads the region padding, which this modal sets to 0, so the
-	   plain `.body` padding loses. Match its specificity to keep space above the footer. */
+	// The base dialog reduces this inset when a footer is present.
 	padding-block-end: var(--agent-modal-body--padding-block-end);
+	margin-block-end: 0;
 }
 
 .body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
@@ -360,6 +360,11 @@ function onOpenAutoFocus(event: Event) {
 
 .body[data-scrollable='false'] {
 	overflow: hidden;
+}
+
+.body[data-scrollable='true'] > * {
+	// Keep the bottom inset after scrolling past a tall form.
+	flex-shrink: 0;
 }
 
 .bodyStableHeight {

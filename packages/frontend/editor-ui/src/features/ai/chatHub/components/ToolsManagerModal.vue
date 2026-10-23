@@ -330,13 +330,14 @@ async function handleAddTool(nodeType: INodeTypeDescription) {
 				type: 'verified',
 				packageName,
 				nodeType: baseName,
+				selectedNodeType: nodeType.name,
 				telemetry: { source: 'chat hub tools manager', hasQuickConnect: false },
 			});
 			if (!result.success) return;
 
 			const installedName = removePreviewToken(nodeType.name);
 			const installed = nodeTypesStore.getNodeType(installedName) ?? nodeType;
-			if (warnIfRestricted(installed.name)) return;
+			if (result.restricted) return;
 			openSettingsFor(installed);
 		} finally {
 			installingToolName.value = null;
