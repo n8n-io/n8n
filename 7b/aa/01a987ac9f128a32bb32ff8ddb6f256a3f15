@@ -1,0 +1,47 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpTrigger.node.test.ts
+  s_07421de65746e1::t_ac3cc5b1d6dcf8 497-515,518-540,542-556,558-632
+  s_07421de65746e1::t_21bd332d876328 1,3,12-21
+  s_07421de65746e1::t_80a9ac81e21e07 516-517
+  s_07421de65746e1::t_d2ac0837bbf638 541
+  s_07421de65746e1::t_c5fb82e46acefe 557
+  s_07421de65746e1::t_613a5745395a37 83,85-86
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/CredentialGateTool.ts
+  s_07421de65746e1::t_05a687edc7f771 40
+  s_07421de65746e1::t_3c00c66c5e2683 1-32,36-39,41
+  s_07421de65746e1::t_3278fb80270527 33-35
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_07421de65746e1::t_0bd3e6098dc75a 287-288
+  s_07421de65746e1::t_1dbac7c8aa5998 13,18-43
+  s_07421de65746e1::t_d76381a2b5ca1f 235
+  s_07421de65746e1::t_564340db7c8732 248-249,251-253,256
+  s_16453cac85f858::t_db57a6300fb171 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7baa01a987ac9f128a32bb32ff8ddb6f256a3f15",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_07421de65746e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c69a0c2-0268-4341-a094-3198b8dd0c49",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_16453cac85f858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398bf54f-42db-4a1a-8d95-4f932ca49cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

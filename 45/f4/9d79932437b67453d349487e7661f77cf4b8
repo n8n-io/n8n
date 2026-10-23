@@ -1,0 +1,28 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_78d96f7c8d922e::t_b5667921a161bc 2859-2867
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_78d96f7c8d922e::t_8f1a9325afb153 129
+  s_78d96f7c8d922e::t_76c494065477e0 99-100
+  s_78d96f7c8d922e::t_089d8f478852dc 62-84
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_78d96f7c8d922e::t_b3f59cd2e45c6e 63-70
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.vue
+  s_78d96f7c8d922e::t_880b160709bd64 79-83
+  s_78d96f7c8d922e::t_00dfe9dd6eb303 48-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "45f49d79932437b67453d349487e7661f77cf4b8",
+  "prompts": {},
+  "sessions": {
+    "s_78d96f7c8d922e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6542cf9a-f188-442b-84bc-fa44188df322",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

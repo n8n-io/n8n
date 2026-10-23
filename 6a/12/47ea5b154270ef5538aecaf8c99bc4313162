@@ -1,0 +1,45 @@
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_b2694b68ec0a88::t_88268f713c69c3 157-329
+  s_b2694b68ec0a88::t_26667bafa2e890 6
+packages/@n8n/cli/src/client.ts
+  s_b2694b68ec0a88::t_42eff2c50aa20d 439-461
+  s_b2694b68ec0a88::t_0b311af88decf1 122-129,136-144
+  s_b2694b68ec0a88::t_e190a28ee542a1 130
+  s_5a4eef182281a0::t_2c542287d69489 145
+packages/@n8n/cli/src/index.ts
+  s_b2694b68ec0a88::t_a0919579f7a042 128
+  s_b2694b68ec0a88::t_cce55b61d71af7 40
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_b2694b68ec0a88::t_6f8744e43da3f7 81-116
+packages/@n8n/cli/src/commands/promotion-connection/apply-selection.ts
+  s_b2694b68ec0a88::t_2c0d5eeded9aa3 1-93
+packages/@n8n/cli/docs/commands/promotions.md
+  s_b2694b68ec0a88::t_48742e35ca55ef 277-322
+  s_b2694b68ec0a88::t_4d4c0f47d1de65 242
+packages/@n8n/cli/README.md
+  s_b2694b68ec0a88::t_210e572a48d7ef 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a1247ea5b154270ef5538aecaf8c99bc4313162",
+  "prompts": {},
+  "sessions": {
+    "s_5a4eef182281a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90352aea-51aa-4274-8139-34a3a2d9f9e7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b2694b68ec0a88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fdd94cab-0dd4-436e-90fd-35ee07b392cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

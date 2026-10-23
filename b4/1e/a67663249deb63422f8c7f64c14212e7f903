@@ -1,0 +1,37 @@
+packages/cli/src/controllers/__tests__/security-settings.controller.test.ts
+  s_12eddead375d86::t_02675ad9d3465b 84
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-feature-gate.service.ts
+  s_12eddead375d86::t_a92090321c576e 10-13
+  s_12eddead375d86::t_cf45f8a8df153d 34
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_12eddead375d86::t_31cd9ab7ba9bf5 1193-1194
+  s_12eddead375d86::t_15b24144862c01 1288-1289
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_12eddead375d86::t_ceb2a4c505ecfd 144
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewsFeature.ts
+  s_12eddead375d86::t_904b8b2dec73ed 11
+packages/cli/src/controllers/security-settings.controller.ts
+  s_12eddead375d86::t_a7d4faed4bd2b9 83
+packages/cli/src/services/frontend.service.ts
+  s_12eddead375d86::t_95337b3f602d82 625
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-feature-gate.service.test.ts
+  s_12eddead375d86::t_a61492e74d9b89 32
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewsFeature.test.ts
+  s_12eddead375d86::t_e0b1e08b0921b0 34-37,39,41-42,45,53,68-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b41ea67663249deb63422f8c7f64c14212e7f903",
+  "prompts": {},
+  "sessions": {
+    "s_12eddead375d86": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6f7125ef-6ae9-4348-8827-183bb5fda9fe",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+packages/cli/test/integration/database/repositories/workflow-publish-history.repository.test.ts
+  s_a4556b837ab6e9::t_36691801f736f3 205-206,209-301
+  s_a4556b837ab6e9::t_15c0080b9c1c7a 207-208
+packages/cli/src/webhooks/webhook.service.ts
+  s_a4556b837ab6e9::t_36691801f736f3 475-478
+packages/cli/src/workflows/__tests__/workflow-publisher.service.test.ts
+  s_a4556b837ab6e9::t_36691801f736f3 1-64,90-99
+  s_6e5e6dade5599e::t_e1396c0b41e3f0 65-89
+packages/cli/src/workflows/workflow-publisher.service.ts
+  s_a4556b837ab6e9::t_36691801f736f3 1-33,38,43-44,54-56,58-70
+  s_6e5e6dade5599e::t_efe8377135d1af 34-37,39-42,45-53,57
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_a4556b837ab6e9::t_36691801f736f3 97,236,449,709,896-897,921,1345,1375,1564,1644
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task-handler.ts
+  s_6e5e6dade5599e::t_efe8377135d1af 86-89
+  s_a4556b837ab6e9::t_36691801f736f3 16,46,85
+packages/cli/src/active-workflow-manager.ts
+  s_a4556b837ab6e9::t_36691801f736f3 61,98,638-640,644
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_a4556b837ab6e9::t_36691801f736f3 121,1090
+packages/cli/src/webhooks/live-webhooks.ts
+  s_a4556b837ab6e9::t_36691801f736f3 23,53,141-142
+  s_6e5e6dade5599e::t_efe8377135d1af 143-146
+packages/cli/src/workflow-execute-additional-data.ts
+  s_6e5e6dade5599e::t_a81a94fc4fbc16 576-585,589-594
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-task-handler.test.ts
+  s_a4556b837ab6e9::t_36691801f736f3 44
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_a4556b837ab6e9::t_36691801f736f3 50-77
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_a4556b837ab6e9::t_36691801f736f3 36,56,73,207-246,250-266
+  s_6e5e6dade5599e::t_d4e7c9df526e83 247-249
+  s_a4556b837ab6e9::t_4d43a42da5b3e7 267
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_6e5e6dade5599e::t_efe8377135d1af 527-530
+  s_a4556b837ab6e9::t_36691801f736f3 50,89,526
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_6e5e6dade5599e::t_dd82dbd717da3c 326,337-364,369-379
+  s_6e5e6dade5599e::t_b6e1431f176458 316-321,365-368
+  s_6e5e6dade5599e::t_7dd5bf31521eee 380
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9eda1bbf5ac20d50aeb5425520d080233ef9540a",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_a4556b837ab6e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5eb18d59-43bb-430f-8f1b-0d965479bf74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

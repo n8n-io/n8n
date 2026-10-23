@@ -1,0 +1,21 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_0ec3afa837486c::t_4987b437be5552 67,2008-2012,2057,2071-2072
+packages/cli/test/integration/agents/n8n-chat-production.api.test.ts
+  s_0ec3afa837486c::t_bc62afdce4d976 59-65,73,172-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0db6372ab1e009abd99c462debbf5bb868b640bc",
+  "prompts": {},
+  "sessions": {
+    "s_0ec3afa837486c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ef09fe7-b159-4d07-9034-a43daeb2abd2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

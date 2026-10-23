@@ -1,0 +1,15 @@
+packages/cli/src/services/canvas-only-personal-space-role.service.ts
+  h_c63dce324dfc7b 18
+  h_c63dce324dfc7b 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "44b3bb8123e747d40df1013038dae93c114dfc8a",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

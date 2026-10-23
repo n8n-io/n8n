@@ -1,0 +1,28 @@
+packages/cli/test/integration/shared/utils/index.ts
+  s_da8144f22e829f::t_8366578325c2d9 129
+  h_c63dce324dfc7b 126-128
+  s_da8144f22e829f::t_5f6582eff8a9c0 130-131
+packages/cli/test/integration/external-secrets/external-secrets.expression-access.test.ts
+  s_da8144f22e829f::t_b051347195ae14 105-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "21ca89b77ff1d3477c86dbdd220865e834e59a0c",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_da8144f22e829f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2addffba-88a5-48b3-9df0-2e90f336b5b1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

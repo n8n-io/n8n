@@ -1,0 +1,21 @@
+packages/@n8n/db/package.json
+  s_8f90a48c0964aa::t_4cc05b744df1fc 5
+packages/@n8n/db/scripts/schema-docs.mjs
+  s_8f90a48c0964aa::t_327f24ce0fed0f 26,28-32,40,43,71-72,113-114,116-119,121,124-125,129-130,141,150,154,158,167,185-186,195,199,203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed2a22be346bd7f2061a0884aef27539b0191a16",
+  "prompts": {},
+  "sessions": {
+    "s_8f90a48c0964aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae791531-91f1-44f0-a6d6-d06f9af49565",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

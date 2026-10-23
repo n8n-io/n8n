@@ -1,0 +1,16 @@
+packages/frontend/@n8n/design-system/src/components/N8nFormBox/FormBox.vue
+  h_f8b427917eda26 2-8,15-16,23,35,79
+packages/frontend/editor-ui/src/features/core/auth/views/AuthView.vue
+  h_f8b427917eda26 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "270898443cc11623c9d2c4323fa7af5ce9da97c7",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

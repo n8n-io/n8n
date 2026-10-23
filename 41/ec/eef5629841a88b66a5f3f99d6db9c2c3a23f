@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_c31a79bd607050::t_d746a8449f851c 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41eceef5629841a88b66a5f3f99d6db9c2c3a23f",
+  "prompts": {},
+  "sessions": {
+    "s_c31a79bd607050": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cea4d277-d175-4e35-a676-4f5787522b8c",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

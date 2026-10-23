@@ -1,0 +1,68 @@
+packages/@n8n/api-types/src/agent-sse.ts
+  s_c5954c3047b5ed::t_9f249e9fb5e714 77
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_c5954c3047b5ed::t_b5da491e3bd475 743
+  s_c5954c3047b5ed::t_7cdb31f0dade0b 17,25,101,131-183,506,718,720,727-731,737,739-742,744-757,762-839,1019-1027
+  s_c5954c3047b5ed::t_fb595a45cdbb12 1028
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_c5954c3047b5ed::t_b7484e3a442e98 14-23
+  s_c5954c3047b5ed::t_0c68efd0fad69e 356
+  s_c5954c3047b5ed::t_9f249e9fb5e714 5,347-355,357-366
+  s_c5954c3047b5ed::t_0062284f8e31da 367-368
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c5954c3047b5ed::t_b7484e3a442e98 27,59,3636-3686
+  s_c5954c3047b5ed::t_9b5e8c920b2b8d 3687-3689
+packages/@n8n/api-types/src/agents/dto.ts
+  s_c5954c3047b5ed::t_9f249e9fb5e714 262-265
+packages/cli/src/modules/agents/PREVIEW_CHAT_RECOVERY.md
+  s_c5954c3047b5ed::t_b7484e3a442e98 18-19
+  s_c5954c3047b5ed::t_42bd13af1e6b8b 17
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_c5954c3047b5ed::t_9f249e9fb5e714 45-58
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_c5954c3047b5ed::t_9f249e9fb5e714 7,134-161
+  s_c5954c3047b5ed::t_8711d43b66efe7 162-163
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_c5954c3047b5ed::t_54a7dacc500f40 7,563-575
+  s_c5954c3047b5ed::t_bd23d94299a4df 576-578
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_c5954c3047b5ed::t_b7484e3a442e98 161-162
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_c5954c3047b5ed::t_b7484e3a442e98 1105-1121,1123-1126,1130-1132,1135-1138,1143-1145,1148-1153,1172,1176,1179
+  s_c5954c3047b5ed::t_d682d8644b8fb5 1173-1174
+  s_c5954c3047b5ed::t_6791739984b8fc 1096-1104,1122,1127-1129,1133-1134,1139-1142,1146-1147,1154-1155,1197-1201
+  s_c5954c3047b5ed::t_bd120c26179ee2 1171
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_c5954c3047b5ed::t_b5da491e3bd475 101-102,124-129
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_c5954c3047b5ed::t_9f249e9fb5e714 144
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_c5954c3047b5ed::t_be7580c484262d 336
+  s_c5954c3047b5ed::t_54a7dacc500f40 25,312-335,337-344,696-700,1477
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_c5954c3047b5ed::t_6791739984b8fc 31,90,199,235,326,335-360
+  s_c5954c3047b5ed::t_b7484e3a442e98 327-334,361-388
+  s_c5954c3047b5ed::t_e943245d061284 389
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_c5954c3047b5ed::t_1e8c7c632f90af 172-196
+  s_c5954c3047b5ed::t_6791739984b8fc 163
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c5954c3047b5ed::t_7cdb31f0dade0b 7898-7900,7902
+  s_c5954c3047b5ed::t_911d3b8cdb5795 7901
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f881f8e493abafd47d3611c20e6b0f40f9ec0dc7",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

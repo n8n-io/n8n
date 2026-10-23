@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/json-config/__tests__/mcp-verification.test.ts
+  s_95de11c49048b8::t_27be1026f2e7af 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ff803de5d40bd7f11f90b2a9ddad938bcfb0f7e9",
+  "prompts": {},
+  "sessions": {
+    "s_95de11c49048b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28dcfb2e-d83c-4b2d-9160-5bf3bcf6d168",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

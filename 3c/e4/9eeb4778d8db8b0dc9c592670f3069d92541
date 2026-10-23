@@ -1,0 +1,19 @@
+packages/cli/test/integration/agents/agent-thread-grant.repository.test.ts
+  s_2c3a7616769b3f::t_d00854d8f29262 104-106,109,111-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3ce49eeb4778d8db8b0dc9c592670f3069d92541",
+  "prompts": {},
+  "sessions": {
+    "s_2c3a7616769b3f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f702-a61d-74f2-9a4c-95a8370abebb",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_782619aac31c26::t_3ab474fdd7cdfc 4,14,135,147-164,168,172-179,191-199,246,248-251
+packages/cli/test/integration/agents/agent-session-fence.test.ts
+  s_782619aac31c26::t_dd2a6e7bfc1a7b 6,235
+  s_782619aac31c26::t_3ab474fdd7cdfc 2-3,8-9,12,16,24,61,176-234
+  s_782619aac31c26::t_cffdbe818c43bc 236-237
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_782619aac31c26::t_3ab474fdd7cdfc 1,3,48-50,53-54,63,65-67,74,77-79,86-92,129-133,136-138
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_782619aac31c26::t_3ab474fdd7cdfc 148,150,247
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_782619aac31c26::t_3ab474fdd7cdfc 1,27,89,98,102,140,145-181,291,520,699
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_782619aac31c26::t_3ab474fdd7cdfc 70,331,344,371-372,402,655-659
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fed940c5d92996770271dee85d1c3f60adce131c",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

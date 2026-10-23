@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/components/WorkflowDescriptionModal.vue
+  s_23ac9e46ab1748::t_0d1be74feb66dc 128-129,138-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "80a2bb095776ffd0fee798ad10144bddb0dc2c69",
+  "prompts": {},
+  "sessions": {
+    "s_23ac9e46ab1748": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b113851a-c3ab-49d5-8c97-0a2c96719d51",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

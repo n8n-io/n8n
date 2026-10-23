@@ -1,0 +1,11 @@
+packages/cli/src/modules/external-secrets.ee/__tests__/retry-manager.service.test.ts
+  ai_agent 68-95
+packages/cli/src/modules/external-secrets.ee/retry-manager.service.ts
+  ai_agent 70-74,87,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fc831facbeb7fef0f31e6d1eba70451504a9af34",
+  "prompts": {}
+}

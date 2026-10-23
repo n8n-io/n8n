@@ -1,0 +1,21 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_79af5857ce7d3e::t_776b335ac03b02 8292,8294
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_79af5857ce7d3e::t_45679098ca49e1 362
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6e7e1c96dfb5e0b1e0e607e52466a357b47c806",
+  "prompts": {},
+  "sessions": {
+    "s_79af5857ce7d3e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aefa-0fde-75ad-a4a2-9c959686fc7d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

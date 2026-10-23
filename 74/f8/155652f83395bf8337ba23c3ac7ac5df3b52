@@ -1,0 +1,24 @@
+packages/frontend/@n8n/stores/src/constants.ts
+  s_8c2da1cd113c5b::t_c264b3a2f601ff 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "74f8155652f83395bf8337ba23c3ac7ac5df3b52",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8c2da1cd113c5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58ceada5-b2bb-47fb-9531-c90fbf110f72",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

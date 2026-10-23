@@ -1,0 +1,25 @@
+packages/cli/test/migration/1791454646995-normalize-agent-skill-ids.test.ts
+  s_7c67b2f5561b1e::t_c367241bdb0aa3 204-205,215,305,338-344,369-396,415,442,509-511,562-572,585-588,590-591,593-610,615-618,620-638,641,647-658
+  s_7c67b2f5561b1e::t_8b328b83e4c753 640,643-644,669-749
+  s_7c67b2f5561b1e::t_01d47cc5f385d0 199-203,639,642,645-646,659-663,665-668,750-751
+packages/@n8n/db/src/migrations/common/1791454646995-NormalizeAgentSkillIds.ts
+  s_7c67b2f5561b1e::t_12cdb937f068f4 8,36,52-53,56,58,61,64,127,129-146,185-187,205,208,211-212,215,219,222,226,229,243,245,251,254,258,262,266,270,284-285
+  s_7c67b2f5561b1e::t_94d812f1582c7a 291-294
+  s_7c67b2f5561b1e::t_3be43bdb6b96b4 3,286-287,299,302-303,306-307,309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b9721fb4fd7c11b603e6bed8e877167dc43eade",
+  "prompts": {},
+  "sessions": {
+    "s_7c67b2f5561b1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11a84-1db0-74f0-8284-8cd79b3c5e60",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

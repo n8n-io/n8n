@@ -1,0 +1,16 @@
+packages/cli/src/utils/is-billable-execution.ts
+  h_ed1b2d65e81e8e 1
+packages/cli/src/utils/__tests__/is-billable-execution.test.ts
+  h_ed1b2d65e81e8e 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "19e3bf5bf6bf9d173e7cfc70a007aa6c703a0237",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

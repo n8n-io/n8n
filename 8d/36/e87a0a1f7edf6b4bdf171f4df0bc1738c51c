@@ -1,0 +1,29 @@
+packages/cli/src/modules/insights/database/repositories/__tests__/insights-by-period.repository.integration.test.ts
+  s_75c6052c0a2e5a::t_6390dd89652131 1-8,13,16-18
+  s_75c6052c0a2e5a::t_2ed1b98ca1f751 136-283
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  s_75c6052c0a2e5a::t_3f755c3d53a42e 1344-1353
+  s_75c6052c0a2e5a::t_fef38330ea645f 374-384
+  s_75c6052c0a2e5a::t_497bde88f4596f 867-877
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8d36e87a0a1f7edf6b4bdf171f4df0bc1738c51c",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_75c6052c0a2e5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5afab556-446e-456d-8c68-e81478bb836b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

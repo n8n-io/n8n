@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/NodeIssueItem.test.ts
+  s_8ab5ba2d436c6d::t_7fd30e57f7a192 71-90
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/NodeIssueItem.vue
+  s_8ab5ba2d436c6d::t_64c146f55bd11f 42,45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6359e42d7cebef8661efb5bddb8e47a4706f9176",
+  "prompts": {},
+  "sessions": {
+    "s_8ab5ba2d436c6d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3eacd850-21bb-4125-8c8c-5fb63227eeac",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_ddc904fa1cfea9::t_3c11a47fc4d273 173-176
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  s_ddc904fa1cfea9::t_2f4a375c759a80 888-891
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/ChatTrigger.node.test.ts
+  s_ddc904fa1cfea9::t_062e7c7f24e14a 324,326-332,346,350-352,354
+packages/cli/src/webhooks/test-webhooks.ts
+  s_ddc904fa1cfea9::t_ea78f1ddfc772c 489-490
+packages/cli/test/integration/chat-trigger-test-webhook-auth.api.test.ts
+  s_ddc904fa1cfea9::t_b3d173b7d03b85 60-62
+  s_ddc904fa1cfea9::t_6938f7be29f319 1-59,63-250
+packages/workflow/src/interfaces.ts
+  s_ddc904fa1cfea9::t_c1469e5433c509 1587-1588
+  s_ddc904fa1cfea9::t_c867507cf88644 3073-3079
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f122b671ab7e71cadb9d2d8a2bb15e67aef03e49",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ddc904fa1cfea9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "61e65709-b908-4eba-8a68-bc548add1b98",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

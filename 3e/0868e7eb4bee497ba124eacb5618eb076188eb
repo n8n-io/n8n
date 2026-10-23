@@ -1,0 +1,19 @@
+packages/cli/src/public-api/__tests__/fake-redis.factory.ts
+  s_925dcfedebf0c9::t_6ee30c12c30b25 16,44-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e0868e7eb4bee497ba124eacb5618eb076188eb",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

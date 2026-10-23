@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_d27d09d94cc9ff::t_b2f15393ee4bc9 459-461
+  s_d27d09d94cc9ff::t_a37a6ea7ffae52 446-447,449-458,462-463
+packages/cli/src/modules/agents/agent-conversation-lease.service.ts
+  s_d27d09d94cc9ff::t_a37a6ea7ffae52 84,94,99
+packages/cli/test/integration/agents/agent-conversation-lease.test.ts
+  s_d27d09d94cc9ff::t_5e69a95e8dd70b 247-253
+packages/cli/src/modules/agents/__tests__/mock-conversation-lease.ts
+  s_d27d09d94cc9ff::t_a37a6ea7ffae52 21-23,25
+  s_d27d09d94cc9ff::t_b2f15393ee4bc9 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "11108a980b3e46ce5906bfe64738057944326adc",
+  "prompts": {},
+  "sessions": {
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

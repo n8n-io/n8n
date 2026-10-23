@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_7b00f24a2c361f::t_5737bd35ca657c 374-376,380-420
+  s_7b00f24a2c361f::t_b77829fe8dd38d 19
+  s_7b00f24a2c361f::t_4c34ab5c569964 22-23
+packages/nodes-base/nodes/Kafka/test/schema-registry-agent.test.ts
+  s_7b00f24a2c361f::t_e341f347d64352 39-48
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_7b00f24a2c361f::t_553076c8010ea3 772-785,794-849,851-862,864-907,909-935
+  s_7b00f24a2c361f::t_c7c0f6ab516552 786-793
+  s_7b00f24a2c361f::t_b80e240ca84a15 10,12-15,18
+  s_7b00f24a2c361f::t_06657c4f019433 624-627
+  s_7b00f24a2c361f::t_2d442d751ff648 654-657
+  s_7b00f24a2c361f::t_9bd1411b3411a8 635-653
+  s_7b00f24a2c361f::t_a1f96e60c0e7a9 610,615
+  s_7b00f24a2c361f::t_ee14f28304d32c 850,863,908,1097
+  s_7b00f24a2c361f::t_3ba3004b05b482 1078-1096,1098-1113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "f715df7eb46ad97292abfd34d740efef3e86c989",
+  "prompts": {},
+  "sessions": {
+    "s_7b00f24a2c361f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd528b76-9b06-411f-bab0-e52ce73257e9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_fbba0b32ee6f59::t_840fe441648aa8 186,468,470,531-542,544-561,563-565,567,571-623,1162-1166,1185-1192
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_fbba0b32ee6f59::t_183e5787793a06 217-218
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_fbba0b32ee6f59::t_840fe441648aa8 6,19,102-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8cd24b41950d98613f7d762b8b5a0e5e14f012a3",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

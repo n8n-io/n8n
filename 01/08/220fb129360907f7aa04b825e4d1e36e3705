@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.ts
+  s_9eede8cb7d9e61::t_a7f5b7d170a75a 68
+packages/@n8n/nodes-langchain/credentials/AzureOpenAiApi.credentials.ts
+  s_9eede8cb7d9e61::t_c42ea368e50077 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0108220fb129360907f7aa04b825e4d1e36e3705",
+  "prompts": {},
+  "sessions": {
+    "s_9eede8cb7d9e61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cedc78e-75ca-408d-aea0-b07f90cbad00",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

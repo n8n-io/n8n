@@ -1,0 +1,28 @@
+.github/WORKFLOWS.md
+  s_716c5144ea2746::t_9c7528ce62c5ab 184
+packages/@n8n/eslint-config/src/rules/no-defaulted-item-index.ts
+  s_716c5144ea2746::t_9fe4cc1ea0acc9 27-46
+  s_716c5144ea2746::t_723e2dfae2778c 102-104,106
+packages/nodes-base/scripts/check-released-scopes.mjs
+  s_716c5144ea2746::t_3b37cea63d6719 116-117,119-122
+packages/@n8n/eslint-config/src/rules/no-defaulted-item-index.test.ts
+  s_716c5144ea2746::t_f14525626b1616 49-58
+.github/workflows/ci-credential-scopes.yml
+  s_716c5144ea2746::t_ddb54317444079 14-16,29-30,35-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0c22a141542869159e34e1863287937f8e166f6f",
+  "prompts": {},
+  "sessions": {
+    "s_716c5144ea2746": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e10bd622-3863-483b-8737-b0d99bd0c883",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

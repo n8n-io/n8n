@@ -1,0 +1,20 @@
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.test.ts
+  s_78e08d3ee6ec18::t_1832ec5f7c0973 9
+  s_78e08d3ee6ec18::t_3cffa6a527af4f 37,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "87d687f47afb0818a5b2a505a459a701d98301c1",
+  "prompts": {},
+  "sessions": {
+    "s_78e08d3ee6ec18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "619b1607-7750-422e-bf87-979fc68026dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

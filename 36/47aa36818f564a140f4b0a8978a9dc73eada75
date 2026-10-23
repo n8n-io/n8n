@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.test.ts
+  s_e8b96ca75e92a4::t_6d037526cc646d 167
+  s_e8b96ca75e92a4::t_badad0a4510dcd 169,172,176-179
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.ts
+  s_e8b96ca75e92a4::t_9e8ccdbe90defd 106-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3647aa36818f564a140f4b0a8978a9dc73eada75",
+  "prompts": {},
+  "sessions": {
+    "s_e8b96ca75e92a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdaa0091-0080-478a-91a2-a2ed36ea9d01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

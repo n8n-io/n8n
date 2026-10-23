@@ -1,0 +1,27 @@
+packages/cli/src/services/__tests__/api-key-auth.strategy.integration.test.ts
+  s_925dcfedebf0c9::t_eead31dfa52883 78,88
+packages/cli/src/services/__tests__/session-cookie-auth.strategy.integration.test.ts
+  s_925dcfedebf0c9::t_eead31dfa52883 66
+packages/@n8n/db/src/entities/types-db.ts
+  s_925dcfedebf0c9::t_b5b872ad840544 461-462
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.integration.test.ts
+  s_925dcfedebf0c9::t_eead31dfa52883 131
+packages/cli/src/services/api-key-auth.strategy.ts
+  s_925dcfedebf0c9::t_b5b872ad840544 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "60174ac2d2995a7693ed0f229f974b0f21ef5cd2",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

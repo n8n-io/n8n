@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.vue
+  s_d187a68a363af6::t_f69a8d8de5d093 46
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.test.ts
+  s_d187a68a363af6::t_efc31eea4032c7 10
+  s_d187a68a363af6::t_b2b66f5c435175 111-122
+packages/cli/src/modules/chat-hub/chat-hub.settings.controller.ts
+  s_d187a68a363af6::t_7e550b44055bc7 26-36
+  s_d187a68a363af6::t_f0d12954480687 94
+  s_d187a68a363af6::t_9f3c359e868805 81
+  s_d187a68a363af6::t_845a46c9e0e68d 68
+packages/frontend/editor-ui/src/app/stores/settings.store.ts
+  s_d187a68a363af6::t_e75077976130c1 174
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.settings.controller.test.ts
+  s_d187a68a363af6::t_890ba9dc1e6a92 41-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a75460ed4371bbe5c790728efaf4ff66da686bb",
+  "prompts": {},
+  "sessions": {
+    "s_d187a68a363af6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a657a77-c0d7-401e-b08b-5f7d646d3582",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

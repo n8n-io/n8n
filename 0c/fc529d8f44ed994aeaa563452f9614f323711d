@@ -1,0 +1,44 @@
+packages/@n8n/mcp-browser/src/tools/response-envelope.ts
+  s_14325c8d38891c::t_54143ddc5db595 48
+  s_14325c8d38891c::t_74f9963c87ed97 142
+packages/@n8n/mcp-browser/src/tools/tabs.test.ts
+  s_14325c8d38891c::t_73a442378f7b58 66
+packages/@n8n/mcp-browser/src/tools/interaction.test.ts
+  s_14325c8d38891c::t_323888bf05ad3c 539-602
+packages/@n8n/mcp-browser/src/tools/schemas.ts
+  s_14325c8d38891c::t_ac6a87659d9a0b 12-18
+packages/@n8n/mcp-browser/src/tools/interaction.ts
+  s_14325c8d38891c::t_25ccd203ab8418 263
+  s_14325c8d38891c::t_93cec46e09b5a7 10
+  s_14325c8d38891c::t_2f662812567e28 45,88,130,162,193,224,309,342
+  s_14325c8d38891c::t_d24833b6d68e93 255
+packages/@n8n/mcp-browser/src/tools/helpers.ts
+  s_14325c8d38891c::t_8a0e0bb815e813 45-46
+  s_14325c8d38891c::t_99064580588d95 139
+  s_14325c8d38891c::t_c7728abb18250e 36
+  s_14325c8d38891c::t_8a5a1fc4b2b720 27
+  s_14325c8d38891c::t_17be71619a60be 120
+  s_14325c8d38891c::t_e495a2cba18067 144
+  s_14325c8d38891c::t_5cdd97336fc2b9 97-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0cfc529d8f44ed994aeaa563452f9614f323711d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_14325c8d38891c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3064c342-e5e8-42bd-a277-7854bf577fbe",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

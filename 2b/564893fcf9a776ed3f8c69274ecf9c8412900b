@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedSummary.vue
+  s_dd64aae38c8902::t_5dd86ed1378b4d 100-102
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_dd64aae38c8902::t_5dd86ed1378b4d 209-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b564893fcf9a776ed3f8c69274ecf9c8412900b",
+  "prompts": {},
+  "sessions": {
+    "s_dd64aae38c8902": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c6dc1ab-2fad-4bdb-8e7b-175fcf16ad2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

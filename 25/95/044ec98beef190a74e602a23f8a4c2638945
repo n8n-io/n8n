@@ -1,0 +1,21 @@
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.test.ts
+  s_072e9720268b15::t_8a60142f736748 258,264-269,271,320,340
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_072e9720268b15::t_1af1778faa0ddf 259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2595044ec98beef190a74e602a23f8a4c2638945",
+  "prompts": {},
+  "sessions": {
+    "s_072e9720268b15": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f658-2bd9-7e31-97da-6fce525c6fe6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

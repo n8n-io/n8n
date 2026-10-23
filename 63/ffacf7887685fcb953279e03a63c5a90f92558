@@ -1,0 +1,19 @@
+packages/cli/test/migration/1787056876306-create-git-connection-table.test.ts
+  s_78ddf591ea62f7::t_621742ded6669a 5,10,62-63,65,73,83-122,164-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63ffacf7887685fcb953279e03a63c5a90f92558",
+  "prompts": {},
+  "sessions": {
+    "s_78ddf591ea62f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7d1ae33-ff2b-4731-9910-6033114bf424",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

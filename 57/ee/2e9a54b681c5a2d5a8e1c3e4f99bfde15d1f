@@ -1,0 +1,21 @@
+packages/@n8n/engine/src/database/migrations/1788354900000-AddStepWait.ts
+  s_77655ca8fe3a59::t_0607acddc945e6 1,39-45,50
+packages/@n8n/engine/src/execution/wait-sweeper.ts
+  s_77655ca8fe3a59::t_0607acddc945e6 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "57ee2e9a54b681c5a2d5a8e1c3e4f99bfde15d1f",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

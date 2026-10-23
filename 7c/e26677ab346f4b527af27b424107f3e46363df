@@ -1,0 +1,41 @@
+packages/cli/src/modules/n8n-packages/engine/package-entries.ts
+  ai_agent 5-8,10,12-13,17-19,23,27-31,33,35-36,46-55,58,60,63-64,67-69,72
+packages/cli/src/modules/n8n-packages/spec/constants.ts
+  ai_agent 2-31
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  ai_agent 17,116,160,192,220,256
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_14c81f99812a6b 21-24
+  s_5ddf40544fde37::t_f31eb350e9bfde 47-50
+  s_5ddf40544fde37::t_b45a172ba777ac 105-109
+  s_5ddf40544fde37::t_e7f254be620e13 122
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-entries.test.ts
+  s_5ddf40544fde37::t_2192fc4226a02e 5-6,8-15,26-27,30,48,69,78,85,88,92,95,100-103,105,108,117-118,127-128
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_efd900a5f0dfd1 23
+  s_5ddf40544fde37::t_79beb0352441a0 50-51
+  s_5ddf40544fde37::t_8fdc68f35c6ebb 118
+packages/cli/src/modules/git-connections.ee/__tests__/working-copy-updater.test.ts
+  s_5ddf40544fde37::t_c4d4a4142e7e77 76-79
+  s_5ddf40544fde37::t_fbc3cf0188b6e1 419-431,443,448,454
+  s_5ddf40544fde37::t_ae09db140df892 7,14-19
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_ae09db140df892 16,32-37
+  s_5ddf40544fde37::t_8fdc68f35c6ebb 63,282,548,845
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ce26677ab346f4b527af27b424107f3e46363df",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+packages/cli/src/modules/mcp/__tests__/get-execution.tool.test.ts
+  s_6dca3f2d602625::t_d0811e1fedc893 48
+packages/cli/src/modules/mcp/tools/list-credentials.tool.ts
+  s_6dca3f2d602625::t_678681edc741c2 121
+packages/cli/src/modules/mcp/tools/search-projects.tool.ts
+  s_6dca3f2d602625::t_70fc1b5f1787cf 71
+packages/cli/src/modules/mcp/tools/prepare-workflow-pin-data.tool.ts
+  s_6dca3f2d602625::t_d2efac799e41b9 82
+  s_6dca3f2d602625::t_644707402f3974 65
+  s_6dca3f2d602625::t_8316fe0bf8140c 72
+packages/cli/src/modules/mcp/tools/test-workflow.tool.ts
+  s_6dca3f2d602625::t_9394f2edc9868f 70
+  s_6dca3f2d602625::t_852ffe7e28a948 34
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/constants.ts
+  s_6dca3f2d602625::t_3d81cfa3afa855 118-119
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_6dca3f2d602625::t_98b45c2e9c4c2c 59
+  s_6dca3f2d602625::t_d7e70654450e0b 23,38,42-43
+  s_6dca3f2d602625::t_11000db46318df 71
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_6dca3f2d602625::t_97ac4336badc5c 68-69
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_6dca3f2d602625::t_edcfed6f0567c5 74-76
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-node-types.tool.ts
+  s_6dca3f2d602625::t_78f5cc3ac4326a 69
+packages/cli/src/modules/mcp/tools/list-tags.tool.ts
+  s_6dca3f2d602625::t_c5ae4bb6727692 81
+  s_6dca3f2d602625::t_f575454951765b 65,71
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_6dca3f2d602625::t_841a5df8d8a0e6 175
+packages/cli/src/modules/mcp/tools/get-execution.tool.ts
+  s_6dca3f2d602625::t_7f591400e193b0 71,78
+  s_6dca3f2d602625::t_cb8fd66d63aadf 94
+  s_6dca3f2d602625::t_28039e95e7c00b 74
+packages/cli/src/modules/mcp/tools/workflow-builder/validate-workflow-code.tool.ts
+  s_6dca3f2d602625::t_1c68b3a8895a38 59
+packages/cli/src/modules/mcp/tools/search-executions.tool.ts
+  s_6dca3f2d602625::t_2e2d22d3a4d590 70,77
+  s_6dca3f2d602625::t_465ebf6de10758 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a75dff524db2d8054c582542f170bb04f5bc18ed",
+  "prompts": {},
+  "sessions": {
+    "s_6dca3f2d602625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0dbf5a1-d0c2-4f6b-a4d5-7e7dbda06a7b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

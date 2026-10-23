@@ -1,0 +1,117 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupInputs.ts
+  s_fcefc933468f6e::t_c2547621b84295 158,163,167-178
+packages/@n8n/api-types/src/index.ts
+  s_fcefc933468f6e::t_ec3093223e5ab8 293-294
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  s_fcefc933468f6e::t_0f2f45b910ce9e 25-32
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_fcefc933468f6e::t_38cd81381ab28f 282-283
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.schema.ts
+  s_fcefc933468f6e::t_cac465b87d3f46 30-32
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_fcefc933468f6e::t_6668bab5d8dd29 76-104
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/guidance.test.ts
+  s_fcefc933468f6e::t_f8259b43e5bb7e 110-123
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/workflowSetup.types.ts
+  s_fcefc933468f6e::t_67289473865eda 43-45
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_fcefc933468f6e::t_3b3812df4b982b 2341-2344
+  s_fcefc933468f6e::t_4e98a7c3315af6 577
+  s_fcefc933468f6e::t_d5dd302c70b05a 4976
+  s_fcefc933468f6e::t_b7043a13510a55 955-975
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-thread-grant.repository.test.ts
+  s_fcefc933468f6e::t_ee130a59d7d887 35-49
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_fcefc933468f6e::t_d99c5f6a9a0d25 202-206
+  s_fcefc933468f6e::t_c2593a0e28215d 848-854
+  s_fcefc933468f6e::t_323af52fd2d117 934
+  s_fcefc933468f6e::t_362eca6ecdd9de 21
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_fcefc933468f6e::t_044c0ecaf2841d 451-463,467-469
+  ai_agent 464-466
+  s_fcefc933468f6e::t_fec75e99c065e2 6-7
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-controller.ts
+  s_fcefc933468f6e::t_f57aece192b164 214,292,314
+  s_fcefc933468f6e::t_d0f8259ac6693a 175-179,184
+packages/cli/src/modules/instance-ai/repositories/instance-ai-thread-grant.repository.ts
+  s_fcefc933468f6e::t_4195495018b864 24-28
+packages/@n8n/instance-ai/src/tools/workflows/setup-skip-state.ts
+  s_fcefc933468f6e::t_28296ffe4aa1ed 1-96
+  s_fcefc933468f6e::t_2ae0ae1aa5449a 97-98
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_fcefc933468f6e::t_bf735dfad9842b 1625-1632
+  s_fcefc933468f6e::t_7fa918012e1e47 1576-1577,1580-1581
+  s_fcefc933468f6e::t_31f6a1ca6aa449 1558-1575,1578-1579,1582-1624,1633-1707
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/workflow-loop-controller.test.ts
+  s_fcefc933468f6e::t_659714b2522901 73-85,87-103
+  ai_agent 86
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_fcefc933468f6e::t_157f65a9561386 170
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_fcefc933468f6e::t_75a87bd6619772 154-169,175
+  s_fcefc933468f6e::t_ebbb72a14f2240 170-174
+  s_fcefc933468f6e::t_814f1e849a5702 264-270
+  s_fcefc933468f6e::t_a82b5c3f32ac72 48-50
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupInputs.test.ts
+  s_fcefc933468f6e::t_6d3bfb697a47fe 258-269
+  s_fcefc933468f6e::t_8680ea549546fa 581-584
+packages/@n8n/instance-ai/skills/planned-task-runtime/SKILL.md
+  s_fcefc933468f6e::t_236cf656d00d69 138-140
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_fcefc933468f6e::t_ff06f0b0b9f578 86-88
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-state.ts
+  s_fcefc933468f6e::t_0da67110765732 467
+  s_fcefc933468f6e::t_eb87b314a2b333 216-222
+  s_fcefc933468f6e::t_643158dfdfe4bf 96-100
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-build-routing.test.ts
+  s_fcefc933468f6e::t_e090f871b95bc1 106-139
+packages/@n8n/instance-ai/src/tools/orchestration/complete-checkpoint.tool.ts
+  s_fcefc933468f6e::t_6d15acfda78e17 17-20
+  s_fcefc933468f6e::t_e12f58138cd893 86-92
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_fcefc933468f6e::t_f2d159a9bc4ac0 802-811,817,829-830,840
+  s_fcefc933468f6e::t_221498e10c5334 870-871,880-885
+  s_fcefc933468f6e::t_95be20fbb10478 777-788
+  s_fcefc933468f6e::t_f86483adca1e22 677,697-729
+  s_fcefc933468f6e::t_4e8d8d015bdb7d 872-879
+  s_fcefc933468f6e::t_a133be599cbac0 960-966,971-976
+  s_fcefc933468f6e::t_9cab672190def5 678-696
+  s_fcefc933468f6e::t_8313d82092fcfb 930-937
+  s_fcefc933468f6e::t_d33ceb046316a0 151,154
+  s_fcefc933468f6e::t_40253bac625611 21-29,31
+  s_fcefc933468f6e::t_70f7263078c7ea 150,152-153,155
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-routing.ts
+  s_fcefc933468f6e::t_b80cf6d2a2c2f6 13-15
+  s_fcefc933468f6e::t_f9d6b8164ec3af 70,77-86
+  s_fcefc933468f6e::t_55b23092130ecf 117
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-skip-state.test.ts
+  s_fcefc933468f6e::t_362eca6ecdd9de 39-41
+  s_fcefc933468f6e::t_3eff20c5640561 2-8,10-25,28-29,32-38,42-91
+  s_fcefc933468f6e::t_7fa918012e1e47 1,26-27,30-31
+  s_fcefc933468f6e::t_06704b1f510060 9
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_fcefc933468f6e::t_0bc8e079cc305e 70-71
+packages/@n8n/instance-ai/src/types.ts
+  s_fcefc933468f6e::t_a6e73e3cb6626d 1107-1109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b10f926c597e12f3b04a50d9edf0d9d127ae3f4a",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fcefc933468f6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f9019bc-9f38-4aaf-a179-b0ec89062304",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_a2fc4d6eda4ac0::t_41baf41f598d9d 1-80
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_a2fc4d6eda4ac0::t_c5df2f202cdf0e 53-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "956352e286505b0883d90f72d1d227d9c87c4d6a",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a2fc4d6eda4ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5c4bbfe-f834-4658-bbbd-c8e0e65c6a80",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_3aaa503f47ada7::t_a52ec242f9bf87 746
+  s_3aaa503f47ada7::t_e601c71b7fd1bc 753-755
+  s_3aaa503f47ada7::t_5787138ce92b09 41
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_3aaa503f47ada7::t_6ea84a71bbd01f 138
+  s_3aaa503f47ada7::t_5787138ce92b09 323,350,440
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_3aaa503f47ada7::t_5787138ce92b09 701
+  s_3aaa503f47ada7::t_5bc346d4deeaa2 706,711-712,714
+  s_3aaa503f47ada7::t_35f20bb2a7c0e2 35
+  s_3aaa503f47ada7::t_6ea84a71bbd01f 716-723
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_3aaa503f47ada7::t_35f20bb2a7c0e2 1107
+  s_3aaa503f47ada7::t_5787138ce92b09 1091,1110,1144
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_3aaa503f47ada7::t_5787138ce92b09 666,854,927,937,960,964,967,971,974,978
+  s_3aaa503f47ada7::t_e601c71b7fd1bc 940-942,947-949
+  s_3aaa503f47ada7::t_35f20bb2a7c0e2 885,890,930,935
+  s_3aaa503f47ada7::t_a52ec242f9bf87 936,943-946
+  s_3aaa503f47ada7::t_6067570d3ac107 928-929
+  s_3aaa503f47ada7::t_149e2caeeeef44 938
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_3aaa503f47ada7::t_5787138ce92b09 387,587,855
+  s_3aaa503f47ada7::t_ca2eae58c093c7 592
+  s_3aaa503f47ada7::t_199879b3484283 349,355-356,392,456
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_3aaa503f47ada7::t_5787138ce92b09 69,416
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_3aaa503f47ada7::t_5bc346d4deeaa2 170,175,264
+  s_3aaa503f47ada7::t_5787138ce92b09 259
+  s_3aaa503f47ada7::t_6ea84a71bbd01f 35,165
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_3aaa503f47ada7::t_5787138ce92b09 199,1091
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  s_3aaa503f47ada7::t_35f20bb2a7c0e2 25,33
+  s_3aaa503f47ada7::t_6067570d3ac107 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "af0ba27bc27466ea46cfba00efe0ee45ac4c73ea",
+  "prompts": {},
+  "sessions": {
+    "s_3aaa503f47ada7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b33a-46e6-7610-aa08-a734250d28b4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

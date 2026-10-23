@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/MailerLite/MailerLite.node.ts
+  s_2e1fa95fc44f8f::t_1d8352690fb001 16,22
+packages/nodes-base/nodes/MailerLite/tests/subscriberPath.test.ts
+  s_2e1fa95fc44f8f::t_99dd029492603d 1-75
+packages/nodes-base/nodes/MailerLite/v1/MailerLiteV1.node.ts
+  s_2e1fa95fc44f8f::t_7af62f7f4bc7f1 9,122,183
+packages/nodes-base/nodes/MailerLite/v2/MailerLiteV2.node.ts
+  s_2e1fa95fc44f8f::t_f4ffb529c66972 9,28,77,126,192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "47144de0866644d865ef8152369dead98f82290e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

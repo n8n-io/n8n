@@ -1,0 +1,35 @@
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_72c806d61e12d2::t_d06fdfb0788735 230-234,236-242
+  s_72c806d61e12d2::t_de0a7ce953ddc6 60
+  s_72c806d61e12d2::t_326511e2fc3e0d 235
+packages/cli/src/metrics/prometheus/__tests__/workflow-publication-metrics.service.test.ts
+  s_72c806d61e12d2::t_ba40d2b878a79a 192-197
+packages/cli/src/events/maps/workflow-publication-metrics.event-map.ts
+  s_72c806d61e12d2::t_63e439238f2082 60-65
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_72c806d61e12d2::t_f1edcd090bbb30 9
+  s_72c806d61e12d2::t_354c85f8c34281 37
+  s_72c806d61e12d2::t_b36aee2a268d40 99-101
+packages/cli/src/workflows/publication/__tests__/published-workflow-trigger-deactivator.test.ts
+  s_72c806d61e12d2::t_b4a2685347dfbd 6
+  s_72c806d61e12d2::t_944ffa99e8fcfb 39
+  s_72c806d61e12d2::t_326078dd1a5003 153-155
+  s_72c806d61e12d2::t_006e68b7c1c4a9 229
+  s_72c806d61e12d2::t_af804b9293b191 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2a1d6c9f59799d1fbcc6f599c59335a2cfea7665",
+  "prompts": {},
+  "sessions": {
+    "s_72c806d61e12d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3454581-e439-4779-af65-52bc313bbe43",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

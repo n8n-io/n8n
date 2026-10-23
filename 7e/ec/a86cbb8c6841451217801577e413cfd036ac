@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_8f364f7c5743a0::t_6dc97987ef7689 28-29
+  s_8f364f7c5743a0::t_aa4c7300baa733 59
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.ts
+  s_8f364f7c5743a0::t_20b7d96b08e441 4
+  s_8f364f7c5743a0::t_7283830ede2f6e 37-39
+  s_8f364f7c5743a0::t_8b910b6825fb67 77
+  s_8f364f7c5743a0::t_3e0304953e8c24 146,150
+  s_8f364f7c5743a0::t_959017b59749fd 205-217
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsFlow.vue
+  s_8f364f7c5743a0::t_044cfbe3a82946 14-19
+  s_8f364f7c5743a0::t_3bc0921444b56c 39
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  s_8f364f7c5743a0::t_d8b44180474bc2 95-114
+  s_8f364f7c5743a0::t_b880a444b44aa7 7
+  s_8f364f7c5743a0::t_5aee0eac807a06 115-117
+  s_8f364f7c5743a0::t_15a02bdadcbc94 118
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.test.ts
+  s_8f364f7c5743a0::t_b4780a9b655ebb 178-215,217
+  s_8f364f7c5743a0::t_930de29e49569b 5
+  s_8f364f7c5743a0::t_230c3996c3f8c9 216
+  s_8f364f7c5743a0::t_87162a2fbf8171 218-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7eeca86cbb8c6841451217801577e413cfd036ac",
+  "prompts": {},
+  "sessions": {
+    "s_8f364f7c5743a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f77a805c-fda4-413a-87ea-7588e5f68260",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

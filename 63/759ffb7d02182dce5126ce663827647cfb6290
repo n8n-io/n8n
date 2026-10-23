@@ -1,0 +1,52 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/ThinkingBlock.test.ts
+  s_2f3443ac9403d2::t_8185955624c130 59-62,64-70,72-76,78-84
+  s_2f3443ac9403d2::t_811de9544d8ce9 63,71,77,85
+  s_2f3443ac9403d2::t_dd50bf784ce54b 86-87
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_2f3443ac9403d2::t_03a44d54d8ff11 352
+  s_2f3443ac9403d2::t_1e8fab5a9e9cbb 218-223,236-260
+  s_2f3443ac9403d2::t_811de9544d8ce9 119-128,204-217,224-235,261-341,350-351,353-358
+  s_2f3443ac9403d2::t_39993822236305 342-349
+  s_2f3443ac9403d2::t_4b6676a3865be1 359
+packages/@n8n/api-types/src/schemas/instance-ai-event-lifecycle.ts
+  s_2f3443ac9403d2::t_7237df026be089 1-56
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_2f3443ac9403d2::t_7237df026be089 1-7,58-68,146,246,264,349,365,465,476-480,482,521,523-525,539,580-582,586,588,590-593,604,610,612-627,638,642,664,683
+  s_2f3443ac9403d2::t_a2130d4da9b6c6 69-73,147,466-475,481,483,497,628-637
+  s_2f3443ac9403d2::t_55d49ad23743bd 148
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_2f3443ac9403d2::t_ababffb678efcd 470-578
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_2f3443ac9403d2::t_a2130d4da9b6c6 719,735-738,748-749
+  s_2f3443ac9403d2::t_7237df026be089 22-26,52-54,93,213,217,228,238-240,274,370,434-437,453,608-629,645,673-675,689-692,704-707,711,720-734,739-747,750-759
+packages/@n8n/api-types/src/index.ts
+  s_2f3443ac9403d2::t_d8642e5f4a38b7 968-974
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_2f3443ac9403d2::t_e9dd73ef8813ed 1,2011-2012,2060-2063
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_2f3443ac9403d2::t_84f02b621cd1e5 90-101
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.reducer.test.ts
+  s_2f3443ac9403d2::t_38d2810521f4ef 247-263
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ThinkingBlock.vue
+  s_2f3443ac9403d2::t_9482366f625d02 112
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.reducer.ts
+  s_2f3443ac9403d2::t_10bbe981a195f2 4,120-124,202-209
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_2f3443ac9403d2::t_2db01bb036e3ec 475-478,1298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "63759ffb7d02182dce5126ce663827647cfb6290",
+  "prompts": {},
+  "sessions": {
+    "s_2f3443ac9403d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11bf3-b9fa-7581-9200-dcf2f203c629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

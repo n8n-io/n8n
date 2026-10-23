@@ -1,0 +1,64 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_8f38577809ca61::t_606e0d1bc321d1 678
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_8f38577809ca61::t_483101a276b1a6 88-89
+  s_8f38577809ca61::t_d238c2c5e329c5 618,634,639-643,669-670,675-679,728,731,733-735,739-740,744,751,756-760,796,812,821-827,829-838,841-843
+  s_8f38577809ca61::t_a0cac3719777c1 645-651,696-698,711,715-727,732,741-743,745-750,752-755,761-780,782
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.detail.service.test.ts
+  s_8f38577809ca61::t_104baae52099d9 204
+  s_8f38577809ca61::t_6c928a4698298c 226
+packages/@n8n/api-types/src/dto/workflow-reviews/get-workflow-review-request-detail.dto.ts
+  s_8f38577809ca61::t_7b69df89d53509 35-38
+packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts
+  s_8f38577809ca61::t_1392e9ba58fc74 63-75
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_8f38577809ca61::t_5e5341df8fd475 40
+  s_8f38577809ca61::t_cfb2a05a9f6edc 88
+  s_8f38577809ca61::t_5ec5960b03497a 105,125,127
+  s_8f38577809ca61::t_1a6a9c2578de5e 175
+  s_8f38577809ca61::t_cad46102b1f3ef 186,192-198
+  s_8f38577809ca61::t_4552d01cf13497 191
+  s_8f38577809ca61::t_de21d9783b13dc 217,220,255,268
+  s_8f38577809ca61::t_a5332b5703ee99 404
+  s_8f38577809ca61::t_79665c0a09fdfe 411,417,434-437,475-476,514
+  s_8f38577809ca61::t_cbfff9d1ffffe7 474,477-494
+  s_8f38577809ca61::t_f296ab34e04e68 495-513
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_8f38577809ca61::t_fda3867d1af3f6 1348,1373-1378,1415,1426,1429
+  s_8f38577809ca61::t_67d5f339ed24aa 1433-1434,1438-1492
+  s_8f38577809ca61::t_9056319f21ba21 1435-1437
+  s_8f38577809ca61::t_6f948be9515e4e 1614
+  s_8f38577809ca61::t_40ff26df326d75 1615-1622,1624-1638
+  s_8f38577809ca61::t_d8a64ffce080f9 1623
+  s_8f38577809ca61::t_10c6107208c23a 1757
+  s_8f38577809ca61::t_afad0d63f27adc 1768-1769,1783,1786
+  s_8f38577809ca61::t_5e400a4f627a63 1836
+  h_760178ed151f13 2888
+  s_8f38577809ca61::t_703fb5e9f681f4 2891-2894,2903-2908,2917-2920,2938,2949
+  s_8f38577809ca61::t_a0d41823d7b3ff 2902
+  s_8f38577809ca61::t_b87b04ef66e287 2909-2911
+  s_8f38577809ca61::t_e5efbbe0ff6f78 2912-2914
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.test.ts
+  s_8f38577809ca61::t_7cf9fc40094567 313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad1c13ccd035ba0e3549038abbe0a0d4a8917609",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8f38577809ca61": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a628c489-42e7-4ebc-8adb-a0559c7b6dc8",
+        "model": "auto-smart"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/cli/templates/form-shell.handlebars
+  s_ee9fc015d564ff::t_06b5d5c3eb4ace 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9fbe42454f546e9dcfac71bed463a8bb291c2a79",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ee9fc015d564ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b47fb4fb-51d9-41ea-a0b7-2953db20f37d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

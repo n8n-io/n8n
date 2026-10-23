@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/Jwt/Jwt.node.ts
+  s_716c5144ea2746::t_f17042643e9223 30
+packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/GenericFunctions.ts
+  s_716c5144ea2746::t_f17042643e9223 10
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.ts
+  s_716c5144ea2746::t_f17042643e9223 114
+packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.ts
+  s_716c5144ea2746::t_f17042643e9223 486
+packages/@n8n/nodes-langchain/utils/aws/test/resolveAwsCredentials.test.ts
+  s_716c5144ea2746::t_f17042643e9223 72,91,109,141-142,155,169,192,228-229,239-240,250-251,261-262,289,324,342,360
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_716c5144ea2746::t_f17042643e9223 172-174,179,408
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/utils.ts
+  s_716c5144ea2746::t_f17042643e9223 42-46,50
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_716c5144ea2746::t_f17042643e9223 8
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/loadOptions.ts
+  s_716c5144ea2746::t_f17042643e9223 9,54
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/listSearch.ts
+  s_716c5144ea2746::t_f17042643e9223 192,208
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_716c5144ea2746::t_f17042643e9223 9,39,93,123,217,274,335
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_716c5144ea2746::t_f17042643e9223 23
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_716c5144ea2746::t_f17042643e9223 957,972,987
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7c9150b8f6514071dbf7e9a8e65f88b8c8aa654d",
+  "prompts": {},
+  "sessions": {
+    "s_716c5144ea2746": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e10bd622-3863-483b-8737-b0d99bd0c883",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

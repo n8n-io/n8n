@@ -1,0 +1,19 @@
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_ba5bfc90f07699::t_d8a1811fe84a33 80-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "224b2b69e06b82acd9342300e5cd25cb407350de",
+  "prompts": {},
+  "sessions": {
+    "s_ba5bfc90f07699": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8e6c1c4-7c36-48fb-81c1-98ec7fd3fca3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,98 @@
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeWebhooks.vue
+  s_f884cab3034245::t_7b73cc6de48c95 11
+packages/frontend/editor-ui/src/features/setupPanel/components/WebhookUrlPreview.vue
+  s_f884cab3034245::t_7b73cc6de48c95 7
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatFloatingMenu.vue
+  s_f884cab3034245::t_d42a98faaa61e5 6
+packages/frontend/editor-ui/src/features/execution/logs/composables/usePopOutWindow.ts
+  s_f884cab3034245::t_d42a98faaa61e5 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_f884cab3034245::t_7b73cc6de48c95 10
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingModal.test.ts
+  s_f884cab3034245::t_7b73cc6de48c95 11
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useAgGrid.test.ts
+  s_f884cab3034245::t_7b73cc6de48c95 4,18
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsViewKeyboardEventListener.vue
+  s_f884cab3034245::t_d42a98faaa61e5 3
+packages/frontend/editor-ui/src/features/settings/orchestration.ee/components/WorkerNetAccordion.vue
+  s_f884cab3034245::t_7b73cc6de48c95 4
+packages/frontend/editor-ui/src/app/components/AboutModal.vue
+  s_f884cab3034245::t_7b73cc6de48c95 8
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariablesUsageBadge.test.ts
+  s_f884cab3034245::t_7b73cc6de48c95 13
+packages/frontend/editor-ui/src/app/composables/useKeybindings.ts
+  s_f884cab3034245::t_d42a98faaa61e5 1
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_f884cab3034245::t_7b73cc6de48c95 113
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsViewRunData.vue
+  s_f884cab3034245::t_d42a98faaa61e5 12
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataSearch.vue
+  s_f884cab3034245::t_d42a98faaa61e5 9
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue
+  s_f884cab3034245::t_7b73cc6de48c95 13
+packages/frontend/editor-ui/src/features/core/auth/components/MfaSetupModal.vue
+  s_f884cab3034245::t_7b73cc6de48c95 15
+packages/frontend/editor-ui/src/features/settings/sso/components/SamlSettingsForm.vue
+  s_f884cab3034245::t_7b73cc6de48c95 8
+packages/frontend/editor-ui/src/features/ndv/runData/components/error/NodeErrorView.vue
+  s_f884cab3034245::t_7b73cc6de48c95 5
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CopyButton.vue
+  s_f884cab3034245::t_7b73cc6de48c95 3
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useAgGrid.ts
+  s_f884cab3034245::t_7b73cc6de48c95 13
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/header/connectPopover/ConnectionParameter.vue
+  s_f884cab3034245::t_7b73cc6de48c95 3
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataParsedAiContent.vue
+  s_f884cab3034245::t_7b73cc6de48c95 2
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.test.ts
+  s_f884cab3034245::t_7b73cc6de48c95 10
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_f884cab3034245::t_7b73cc6de48c95 28
+packages/frontend/editor-ui/src/features/agents/components/AgentJsonCopyButton.vue
+  s_f884cab3034245::t_7b73cc6de48c95 5
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingCopyBlock.vue
+  s_f884cab3034245::t_7b73cc6de48c95 2
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariablesUsageBadge.vue
+  s_f884cab3034245::t_7b73cc6de48c95 5
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ToolResultCode.vue
+  s_f884cab3034245::t_7b73cc6de48c95 4
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatHubPanel.vue
+  s_f884cab3034245::t_7b73cc6de48c95 6
+packages/frontend/editor-ui/src/app/components/CopyInput.vue
+  s_f884cab3034245::t_7b73cc6de48c95 2
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataJsonActions.test.ts
+  s_f884cab3034245::t_7b73cc6de48c95 34
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingClientSetup.test.ts
+  s_f884cab3034245::t_7b73cc6de48c95 7
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsPanelActions.vue
+  s_f884cab3034245::t_d42a98faaa61e5 3
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.vue
+  s_f884cab3034245::t_7b73cc6de48c95 5
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_f884cab3034245::t_7b73cc6de48c95 15
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataJsonActions.vue
+  s_f884cab3034245::t_7b73cc6de48c95 14
+  s_f884cab3034245::t_75158904afa68b 12-13
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_f884cab3034245::t_7b73cc6de48c95 15
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.test.ts
+  s_f884cab3034245::t_7b73cc6de48c95 66
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatSessionDropdown.vue
+  s_f884cab3034245::t_d42a98faaa61e5 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "cb824f4c00cf416d5abdeb9af9e2ce9566a4d506",
+  "prompts": {},
+  "sessions": {
+    "s_f884cab3034245": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "058072dd-dfcc-4d3b-9d45-13f8082f5021",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

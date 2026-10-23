@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_8f364f7c5743a0::t_f50fef619b70ea 369
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8f364f7c5743a0::t_61266f51b8a27b 9049
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0fb92f25f9a81a7551dd4e7a83c561b66885ec95",
+  "prompts": {},
+  "sessions": {
+    "s_8f364f7c5743a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f77a805c-fda4-413a-87ea-7588e5f68260",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

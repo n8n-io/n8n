@@ -1,0 +1,28 @@
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/CreateWorkflowRow.vue
+  s_69e862a8712a35::t_5314cf5a3a4fbf 1-44,46-79
+  s_69e862a8712a35::t_676bbb8888ee7f 45
+  s_69e862a8712a35::t_18e3ea2ca9f4fc 80-82
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.vue
+  s_69e862a8712a35::t_07661ab862e91c 201-203,229-234,256,342,344-349,353,355,360,364-365,369,373-384,401,403,411,430,435-437
+  s_69e862a8712a35::t_4702dd2d8f4d1c 211-212,215-228,565,572
+  s_69e862a8712a35::t_75e32f1b344086 18,540,542-548,566-567,569-570,577
+  s_69e862a8712a35::t_fc185fbd7a1f3e 568,574,576
+  s_69e862a8712a35::t_126c384e96efda 571
+  s_69e862a8712a35::t_89796486bd2eb4 578
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82654de45a6bece1924721988f5c5cc6cfb135ce",
+  "prompts": {},
+  "sessions": {
+    "s_69e862a8712a35": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aebb-32e6-723a-817d-2447b18c6f59",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_380e1731f553e3::t_2eef8585c85d3f 37
+  s_380e1731f553e3::t_d556cb103c53e7 758,761-788
+  s_6e5a9c966ec0d7::t_4edb1b2e03787e 759-760
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_6e5a9c966ec0d7::t_40207368133ff2 1383
+packages/core/src/execution-engine/execution-context.ts
+  s_48666b319f2b46::t_c9116000171e19 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "5ecaad99e3cca01a8494b29ff62a37919e8765a7",
+  "prompts": {},
+  "sessions": {
+    "s_380e1731f553e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06cd51bd-5ad6-4e0d-aa9f-0702b45de1a5",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_48666b319f2b46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "585d7875-ccb1-4510-abff-ea3f6af2eb67",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_6e5a9c966ec0d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bab59a47-a313-416d-8979-dcca48e92b30",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

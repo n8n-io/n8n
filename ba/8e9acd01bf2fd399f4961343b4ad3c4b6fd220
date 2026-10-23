@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/SecurityScorecard/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_3ee0d77b7cc70e 48,55,59
+packages/nodes-base/nodes/SecurityScorecard/SecurityScorecard.node.ts
+  s_934c90533bfcca::t_e037c5b7a71e3d 9,242
+packages/nodes-base/nodes/SecurityScorecard/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_926e8870e95d21 2,91,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba8e9acd01bf2fd399f4961343b4ad3c4b6fd220",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_934c90533bfcca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a438d6fc6ea14759a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

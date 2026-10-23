@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_06bc7f3c2041cd::t_a95b44d33d6313 117
+  s_06bc7f3c2041cd::t_7222ab794b7d7d 18
+packages/frontend/editor-ui/src/features/ndv/parameters/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue
+  s_06bc7f3c2041cd::t_c9345ee051d3b3 21
+  s_06bc7f3c2041cd::t_fb8199f8dbe373 99
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useResourceLocatorDropdown.ts
+  s_06bc7f3c2041cd::t_579ffe2ee21240 4-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "75d16f671b4122de8b39ffe0a0f9a9ae25a4b020",
+  "prompts": {},
+  "sessions": {
+    "s_06bc7f3c2041cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "340cc0d0-3bb1-46b2-aaf6-697dfc7f4960",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

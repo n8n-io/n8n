@@ -1,0 +1,19 @@
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_02972e2c436d8a::t_6ec3744a9d512d 254-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3ca273ea09b594a2d146dd7ef91c624c38002192",
+  "prompts": {},
+  "sessions": {
+    "s_02972e2c436d8a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "288d4719-b01e-42e0-bcfd-9ef695c5c336",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

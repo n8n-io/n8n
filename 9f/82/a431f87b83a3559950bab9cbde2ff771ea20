@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Microsoft/Entra/__schema__/v1.0.0/user/get.json
+  s_93c0126193f42d::t_2ad552c370897d 2-26
+packages/nodes-base/nodes/Microsoft/Entra/__schema__/v1.0.0/user/create.json
+  s_93c0126193f42d::t_2ad552c370897d 2-29
+packages/nodes-base/nodes/Microsoft/Entra/GenericFunctions.ts
+  s_93c0126193f42d::t_11047070d4b8fa 110-116,120,127-132,134,140-152,179
+packages/nodes-base/nodes/Microsoft/Entra/__schema__/v1.0.0/user/update.json
+  s_93c0126193f42d::t_2ad552c370897d 2-8
+packages/nodes-base/nodes/Microsoft/Entra/__schema__/v1.0.0/group/getAll.json
+  s_93c0126193f42d::t_2ad552c370897d 2-26
+packages/nodes-base/nodes/Microsoft/Entra/__schema__/v1.0.0/group/get.json
+  s_93c0126193f42d::t_2ad552c370897d 2-55
+packages/nodes-base/nodes/Microsoft/Entra/__schema__/v1.0.0/user/getAll.json
+  s_93c0126193f42d::t_2ad552c370897d 2-23
+packages/nodes-base/nodes/Microsoft/Entra/test/GenericFunctions.test.ts
+  s_93c0126193f42d::t_40c73dc0af0ef7 350-380,389,396-420,423
+  s_93c0126193f42d::t_d6b352b714e152 421-422,424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9f82a431f87b83a3559950bab9cbde2ff771ea20",
+  "prompts": {},
+  "sessions": {
+    "s_93c0126193f42d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fb9674f-1f49-4b71-aa19-064d4c683e90",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

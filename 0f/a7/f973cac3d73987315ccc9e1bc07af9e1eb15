@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/audit/audit-public.dto.ts
+  s_858c3de874467c::t_8138a8c0e2ffb3 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0fa7f973cac3d73987315ccc9e1bc07af9e1eb15",
+  "prompts": {},
+  "sessions": {
+    "s_858c3de874467c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c2ee938-cfbf-4eba-8151-d913eed42e6d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

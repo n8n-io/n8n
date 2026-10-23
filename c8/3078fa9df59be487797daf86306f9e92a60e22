@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_2f3443ac9403d2::t_d857a53d6d220c 399-433
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_2f3443ac9403d2::t_393e28792f4e18 593
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c83078fa9df59be487797daf86306f9e92a60e22",
+  "prompts": {},
+  "sessions": {
+    "s_2f3443ac9403d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11bf3-b9fa-7581-9200-dcf2f203c629",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

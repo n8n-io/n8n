@@ -1,0 +1,21 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_135f2da74c7ef1::t_e79a16e1b45801 970
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_135f2da74c7ef1::t_d6fdd480ac2ece 2024
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4c5b2799e5c98f62dd8d64787c17bca2c04f5395",
+  "prompts": {},
+  "sessions": {
+    "s_135f2da74c7ef1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1467e872-8495-4580-bd3d-fe79e10d162e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

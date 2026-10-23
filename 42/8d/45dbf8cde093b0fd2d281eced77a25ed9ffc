@@ -1,0 +1,623 @@
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/AskAssistantChat.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 7
+packages/frontend/editor-ui/src/app/components/app/AppCommandBar.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-61
+packages/frontend/@n8n/design-system/src/components/N8nChatMessage/ChatMessage.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 9
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 7,20-21,27,35,51-53,69,93-99,104,123-125,132,136,141-150,169,174,186-200,202,204,209,211,219,249-253,255,263,277,283,295-309,422-429
+packages/@n8n/instance-ai/evaluations/__tests__/build-orchestrator.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 92
+packages/nodes-base/nodes/Kafka/v2/KafkaV2.node.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-436
+packages/nodes-base/nodes/Schedule/ScheduleTrigger.node.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 19,448-449
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-2,114
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 166
+packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 11-24
+packages/frontend/@n8n/design-system/src/styleguide/colour.mdx
+  s_331f35b0ef50db::t_7de99f27d35a9b 5
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalsSection.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-43
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowConfigure/SettingsRowConfigure.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 6
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1626-1630
+packages/@n8n/engine/src/execution/__tests__/execution-start.integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 23,62-63,113-114,137
+packages/cli/src/modules/agents/integrations/platforms/telegram-bridge-behavior.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 9,53-57
+packages/@n8n/instance-ai/evaluations/__tests__/case-pipeline.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 59
+packages/frontend/@n8n/design-system/src/components/AskAssistantIcon/AssistantIcon.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 6
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 9,53,78-81
+docker/get-n8n-compose.yml
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-104
+packages/cli/src/modules/agents/agent-credential-index.service.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-55
+packages/@n8n/instance-ai/evaluations/README.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 184,417,676,840-846,853-885,1002
+packages/@n8n/instance-ai/evaluations/__tests__/n8n-client-data-tables.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-65
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.clients.catalog.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 139-142
+.github/test-metrics/e2e-impact-map.json
+  s_331f35b0ef50db::t_7de99f27d35a9b 1
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 189-195
+packages/@n8n/engine/src/execution/start-execution.service.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 3,24,28-31
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 298-353,607-613,618,620-627,633,641-642,1149-1192
+packages/frontend/@n8n/design-system/package.json
+  s_331f35b0ef50db::t_7de99f27d35a9b 62-63,101-103
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5,7,74-79
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-text.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1,5,93-158
+packages/nodes-base/nodes/Schedule/SchedulerInterface.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 51-65,67
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 28,207
+packages/frontend/@n8n/design-system/src/components/AskAssistantButton/AskAssistantButton.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 7
+packages/cli/src/events/maps/relay.event-map.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1060-1063
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 12-13,27
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpConnectClientDialog.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 73,86,88-93
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolLabels.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 105
+packages/frontend/@n8n/design-system/src/styleguide/css-tokens.mdx
+  s_331f35b0ef50db::t_7de99f27d35a9b 3
+packages/frontend/editor-ui/src/app/components/app/AppCommandBar.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 10,14,28-30
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowGroup/SettingsRowGroup.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 11
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_331f35b0ef50db::t_7de99f27d35a9b 14-15,146-163,485-487,504-506,512-516
+packages/@n8n/instance-ai/src/types.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 489-499,1008-1010
+packages/frontend/@n8n/storybook/.storybook/preview.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 55
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-71
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 23,67-69
+packages/@n8n/engine/src/graph/validate-executable-graph.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-31
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 17,21,155-157,224-234,287-292,307-320,422,572,576,586-589,591-596,598-603,605,737-746,759,780-784,788-800
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 189-212,294-308,321
+packages/@n8n/engine/src/execution/step-store.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 47-53,55,88,94-106
+packages/cli/src/modules/agents/__tests__/agent-credential-dependency.repository.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-171
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_331f35b0ef50db::t_7de99f27d35a9b 4802,7039-7040,7739,7772-7776,7837-7848,7875,7946
+docs/generated/sqlite-schema/agents.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 21,58,130-133
+docs/generated/postgres-schema/public.agents.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 10,55,127-130
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-411
+packages/cli/src/modules/agents/utils/extract-agent-credential-ids.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-42
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 16-22,52-53
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 28,47,83,123,262-271
+packages/cli/src/modules/agents/integrations/integration-tool-schema.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 150,171-175,179-180
+packages/frontend/editor-ui/src/app/components/ModalRoot.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-103
+.github/scripts/pnpm-lock.yaml
+  ai_agent 9,593-594,1527,1830
+packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 126-137,166-176,182-184,201,207-210,212-215,217-218,220,228-238,240-241,249-251,254-264,266-270,327-331,364-367
+packages/frontend/@n8n/frontend-module-sdk/src/registries/modalRegistry.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 31,113-158
+packages/frontend/@n8n/design-system/src/styleguide/type.mdx
+  s_331f35b0ef50db::t_7de99f27d35a9b 3
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 82,91
+packages/cli/src/modules/agents/integrations/platforms/slack-integration.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 21,29,85-91
+docs/generated/postgres-schema/README.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 14,162-163,367-370
+packages/cli/src/modules/agents/utils/__tests__/extract-agent-credential-ids.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-105
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 81-115
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 201-205
+packages/@n8n/instance-ai/src/tools/mcp-servers.tool.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-128
+packages/@n8n/instance-ai/evaluations/run/lane-setup.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 17,83,91
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 7,333-338
+packages/@n8n/instance-ai/evaluations/harness/schema.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 8,36-46,66-67,69,202-245
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5,310,531
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 80-132
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 147-152,801-829
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/import-request.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-32
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 89-92
+docker/test-get-n8n.sh
+  s_331f35b0ef50db::t_7de99f27d35a9b 16-19,107-118
+packages/@n8n/engine/src/graph/__tests__/validate-executable-graph.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-42
+packages/nodes-base/nodes/Kafka/v2/transport/producer.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-34
+packages/frontend/@n8n/design-system/src/components/CodeDiff/CodeDiff.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 6
+pnpm-workspace.yaml
+  s_331f35b0ef50db::t_7de99f27d35a9b 25-28,203
+packages/cli/src/modules/agents/agent-credential-index.listener.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-43
+packages/cli/src/modules/n8n-packages/entities/project/project-conflict-policy.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-22
+packages/cli/src/posthog/index.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 6-7,16-17,143-144,190-191
+packages/cli/src/modules/agents/integrations/__tests__/callback-store.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-90
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 8,20,50-54,60-62,139-141,187-237,251-255,376-381,390,396-400,408-411,436-448
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry-search.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 40,63-81
+packages/@n8n/engine/src/graph/workflow-graph-queries.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 22-36
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 19,103,179,268,421,473
+packages/nodes-base/nodes/Schedule/test/GenericFunctions.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 2-3,11,13,214-258
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 18
+packages/frontend/@n8n/storybook/.storybook/main.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 11-14
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project-importer.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 7,78-166
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 4,620,622,624,629-630,752-753,763,766,817-874,1655-1663
+packages/@n8n/config/test/config.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 361
+packages/frontend/editor-ui/src/app/components/MainSidebarHeader.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 164
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-89
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 13
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 41-43
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 8,56,70,79,128-129,142
+packages/@n8n/instance-ai/evaluations/__tests__/scenario-seed-tables.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5,10,13,207-319
+packages/@n8n/instance-ai/evaluations/__tests__/build-workflow-conversation-seed.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5,18-36,86-88,94,282-410,422-471
+packages/@n8n/instance-ai/evaluations/clients/n8n-client.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 19,82-85,216-220,222-226,229,731-741,743-745
+packages/@n8n/api-types/src/index.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 330-331
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 18-19,72-82,138,147,153
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 94
+packages/frontend/@n8n/design-system/src/styleguide/spacing-size.mdx
+  s_331f35b0ef50db::t_7de99f27d35a9b 3
+packages/frontend/editor-ui/src/features/agents/agentEvals.api.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-41
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 60
+docs/generated/sqlite-schema/README.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 14,145-146,354-357
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 12,42,122,165
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 37,58-60
+packages/@n8n/cli/src/client.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 22
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project-conflict-policy.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1,3-6,8-10,12-14
+packages/@n8n/cli/docs/commands/package.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 66,93
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 124
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 45-50
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 9,165-166,227,254-263
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 19,48,79,109,306-341,443
+.github/scripts/package.json
+  s_331f35b0ef50db::t_7de99f27d35a9b 28-29
+packages/cli/src/modules/agents/integrations/component-mapper.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 64,121
+packages/frontend/@n8n/frontend-module-sdk/src/registries/modalRegistry.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 48-55
+packages/frontend/editor-ui/src/app/components/ModalRoot.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 2,5,22-25,29,33-36
+packages/cli/src/modules/agents/builder/__tests__/search-mcp-servers.tool.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 18
+packages/@n8n/instance-ai/evaluations/__tests__/langtracer-to-exported.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-2,114,116,119,138-249
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 241-242,486-487
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 19
+docker/get-n8n.sh
+  s_331f35b0ef50db::t_7de99f27d35a9b 15,22-26,116-131,183,245-249,251-273,330,406
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 4,19-39,94-114
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 4,14,19,23,32-34,50,56,61,63-64,69-70,73-74,76,85-86,92,95-101,105-107,109-111,113,116-119,123-125,127-129,131-133
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/recorded-integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 327,337-340,349-353,356-361
+packages/@n8n/db/src/migrations/common/1785828155092-CreateAgentCredentialDependencyTable.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-26
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 7,31-32,56-71,161-164,175,177,310-357,360-361
+packages/cli/test/migration/1785840970000-allow-discord-agent-chat-subscriptions.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-147
+packages/@n8n/engine/src/execution/index.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 13
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 468-495
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 11,23,49,65-66,177-202,204-209,211-214,239-263,265,334-354,400-404
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 47-59,151-153,200,218-222,356,358,381,396-400
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 191,200,211,258,265,270,276,281,352
+packages/cli/src/modules/agents/repositories/agent-credential-dependency.repository.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-107
+packages/cli/src/modules/agents/integrations/recording/recording-adapter.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 29-39
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 24,65-67
+packages/@n8n/engine/src/execution/step-completed-handler.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-124
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 9,62,92,105,222,251
+packages/cli/src/modules/agents/integrations/__tests__/discord-operations.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-326
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 79-83,331,374-378,382,564-569,683-805,1115-1119,1123,1125,1197-1214
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  ai_agent 39,58-59,62-64
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.clients.catalog.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 43,45
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 17,50,269
+packages/cli/test/integration/workflows/workflow-dependency.controller.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-2,8-9,12-18,25-34,43-46,64-103,164-180,385-429
+packages/frontend/editor-ui/src/app/components/DependencyPill.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 14,67-70,94,109,181-185
+packages/@n8n/instance-ai/docs/tools.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 749-759
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-109
+.github/WORKFLOWS.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 184
+packages/cli/src/modules/agents/agents.module.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 32-34,80,86,173-175,209
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 513,518,525-536,547-552,556-564,886-913
+packages/@n8n/engine/src/execution/__tests__/step-completed-handler.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-295
+packages/nodes-base/credentials/DiscordBotApi.credentials.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 26-44
+.agents/skills/create-instance-ai-eval/sourcing-cases.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 65-96
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 233-234,468-469
+packages/@n8n/engine/src/serve.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 16,48-49
+packages/frontend/editor-ui/src/app/components/MainSidebarHeader.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 116-135
+packages/cli/src/modules/agents/integrations/callback-store.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1,3-5,12,16-19,24-27,30-35,38-42,46-57,63-82,84-90,93-95
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/Examples.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 42
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelDiscordSetup.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-226
+packages/@n8n/instance-ai/evaluations/harness/seed-tables.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 11-16,89-140
+packages/frontend/@n8n/design-system/src/components/TableHeaderControlsButton/TableHeaderControlsButton.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 17
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 20,100-105,111-116
+packages/frontend/editor-ui/src/app/components/DependencyPill.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 8-9,161-180,254-269
+packages/@n8n/instance-ai/evaluations/langtracer/client.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 40-45
+packages/@n8n/instance-ai/evaluations/run/build-orchestrator.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 60-62,441,470,473-476
+packages/cli/src/modules/agents/integrations/__tests__/discord-gateway-lifecycle.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-363
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 42-51,124-126,131-132,135-144,280-292,316-333,377-396,425-426
+.agents/skills/design-system/SKILL.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 27-35
+packages/nodes-base/nodes/Kafka/v2/transport/index.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1
+packages/@n8n/instance-ai/evaluations/outcome/workflow-discovery.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 30-38
+.agents/skills/create-instance-ai-eval/SKILL.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 32-37,210-212,671-676
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalsSection.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 3-5,7,10-17,23-29,31-45,50-51,54,58-60,64-70,73,76-80,83-84,87-91
+packages/cli/src/modules/agents/integrations/esm-loader.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 39-42
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 16-17,36-47
+packages/cli/src/modules/agents/integrations/platforms/typing-indicator.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-78
+packages/frontend/@n8n/design-system/src/utils/markdown.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-8
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-75
+packages/cli/src/modules/agents/integrations/agent-chat-message-context.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 40-44,48,54-60
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 4,23,73-100
+packages/frontend/editor-ui/src/features/agents/agentEvals.types.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-13
+packages/cli/src/modules/agents/integrations/platforms/discord-gateway.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-277
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 16,105
+packages/@n8n/api-types/src/schemas/dependency-counts.schema.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 2
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 208
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSaveBar/SettingsSaveBar.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 27
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 7,10,37-38,90,138-143,154-159,166,180-184,188-198,202
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 43-46
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentIntegrationsCatalog.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 57-82
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 748-876
+packages/@n8n/engine/src/execution/orchestration-worker.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 4,13,23
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 9,29
+packages/cli/src/modules/agents/integrations/__tests__/fixtures/telegram/recorded-session.json
+  s_331f35b0ef50db::t_7de99f27d35a9b 4,7,20,28
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 230-246,254-286
+packages/cli/src/modules/agents/integrations/platforms/slack-operations.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5-6
+packages/@n8n/instance-ai/evaluations/build-expectations/select.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 12-15,70-75
+packages/nodes-base/nodes/Kafka/Kafka.node.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5,20
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 4,40-43,216-228
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-584
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 32-44
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 10,25-26,33-38,62,102-105,116-118,125-131,134,161,165,267-269,337-339,438-443,476-483,487-499,510,515-516,532-559,587-588,591-596,785-786,806
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 162-188
+packages/frontend/editor-ui/src/features/agents/composables/useAgentIntegrationsCatalog.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 12,28-31,35
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 33-35,153-157
+packages/nodes-base/nodes/Schedule/test/ScheduleTrigger.node.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 152-177
+.github/workflows/test-get-n8n.yml
+  s_331f35b0ef50db::t_7de99f27d35a9b 15
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlModal.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 26,62-63
+packages/frontend/@n8n/design-system/src/components/N8nSettingsPageHeader/SettingsPageHeader.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 6
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/utils.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 232-233
+packages/nodes-base/nodes/Kafka/test/v2/transport/producer.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-113
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 23,33-35,41,504-525,587-597
+package.json
+  s_331f35b0ef50db::t_7de99f27d35a9b 124
+docs/generated/sqlite-schema/credentials_entity.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 20,53,78-81
+packages/cli/src/modules/agents/__tests__/agent-credential-index.service.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-67
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 22,73,102,209-217
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 2118,2128
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows-schema.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 218-267,378-532
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 55-56,62-65,3532,3565-3569,3855-4004
+packages/@n8n/engine/src/graph/__tests__/workflow-graph-queries.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 4-8,50-79
+packages/@n8n/engine/src/graph/index.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 8-13
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-85
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSection/SettingsSection.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 11
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 270-279,286-288
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 10,43-44
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 18,64-67
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 16,27,69-83,93-95,123
+packages/frontend/@n8n/design-system/src/styleguide/motion.mdx
+  s_331f35b0ef50db::t_7de99f27d35a9b 4
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 7,10,12-17,23,29-31,39,53,69,88-97,107-109,111-112,114
+packages/@n8n/instance-ai/evaluations/__tests__/langtracer-push.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 2,18-36,76,80,84-234,400-450
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_331f35b0ef50db::t_7de99f27d35a9b 90-110
+packages/@n8n/api-types/src/schemas/dependency.schema.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 2,16
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/discord.svg
+  s_331f35b0ef50db::t_7de99f27d35a9b 1
+packages/frontend/@n8n/design-system/src/components/InlineAskAssistantButton/InlineAskAssistantButton.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 7
+packages/nodes-base/nodes/Schedule/GenericFunctions.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5-52
+packages/@n8n/db/src/migrations/common/1785840970000-AllowDiscordAgentChatSubscriptions.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-21
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5-6,132,135,138,168,250,259-272
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 24,67-69
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 336-337
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_331f35b0ef50db::t_7de99f27d35a9b 2,14-38,149-151,156-174,177
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 6,28-33
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-seed.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5,216-241,277
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 18,65-70,76-79
+packages/frontend/@n8n/design-system/src/components/AskAssistantAvatar/AssistantAvatar.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 6
+packages/@n8n/instance-ai/evaluations/utils/conversation-text.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 6-32,37-38,49-50,75,77-80,84-88
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 44-45,60,62,71,146,309-311,326,358,429-477
+packages/frontend/@n8n/stores/src/constants.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 39
+packages/@n8n/engine/src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 43-45,47,49
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 38,69,188
+packages/cli/src/modules/agents/entities/agent-credential-dependency.entity.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-22
+packages/frontend/@n8n/design-system/src/styleguide/shadow.mdx
+  s_331f35b0ef50db::t_7de99f27d35a9b 3
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 11
+packages/@n8n/instance-ai/evaluations/cli/langtracer-push.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 14,17,255-256,262-297
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.discovery.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 148-169
+packages/cli/src/modules/agents/integrations/platforms/discord-operations.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-298
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-search.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 10-13,16,42,44,85-95,102-108
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 41-48
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 37,59-67,204-205,215-300,1825-1827
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 120-121
+packages/@n8n/instance-ai/src/index.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 595-596
+packages/@n8n/instance-ai/src/tools/mcp-servers.tool.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1,4-16,19-28,31-69
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 56,124,345-368,1622,1643
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 234-251
+packages/cli/src/modules/n8n-packages/entities/project/project-import.types.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1,12,14-15,22-34
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 17-19
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 122-137,440-446,448-454,798
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 9,117,157,176,269,336
+pnpm-lock.yaml
+  ai_agent 54-56,708,742,1111,3165,4068-4070,4483-4484,5325-5330,6531-6532,8341-8343,8511-8538,10579-10580,11533-11544,13518-13521,15594-15607,18162-18164,18282-18284,21645-21646,21887-21889,25511-25522,25852,25876-25924,26759,26799,26826,26857,27253,28120,28186,28871-28879,31340-31341,31938,32588,33691-33715,36784-36785,36894-36895,38148,38163,40704,41257,41537
+packages/@n8n/engine/src/index.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 43
+packages/frontend/@n8n/design-system/src/components/BlinkingCursor/BlinkingCursor.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 6
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-118
+packages/frontend/@n8n/design-system/src/components/AskAssistantText/AssistantText.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 6
+packages/@n8n/cli/src/commands/package/import.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 53-58,149
+.agents/skills/create-instance-ai-eval/running-evals.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 72
+packages/@n8n/instance-ai/evaluations/langtracer/push.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 38-40,45-49,55,94-100,103,131-140,146-160
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 8-9,19,39,107,117-121,145-147,219-223,235-239,288-292,398-401,485-487,530-533
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5,10-21,30-34,36-37,49,58-72,79,86-120,122-137,156
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 4-6,40-44,77-79,83-85,95,109-127
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 898,946
+packages/nodes-base/nodes/Kafka/test/v2/KafkaV2.node.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-595
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 20,57-58,60-64,69-75,80-81,96-97,102-104,108,121-124,126-127,152-153,155-157,168-203,219,223
+packages/@n8n/instance-ai/evaluations/harness/workflow-context.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 21-27
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 8-9,77-81
+packages/@n8n/engine/src/execution/load-step-context.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-37
+packages/cli/src/modules/agents/builder/interactive/__tests__/configure-channel.tool.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 75,85
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/SettingsLayout.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 15
+packages/@n8n/engine/src/execution/execution-start-handler.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 1-3,9-13,19,35-37,42-43,46-49,51-57
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelsSection.vue
+  s_331f35b0ef50db::t_7de99f27d35a9b 7-8,19,29,127-135,235
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 257,282,308
+packages/nodes-base/nodes/Kafka/test/Kafka.node.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 14-19,100-104,159-176,434-455
+packages/@n8n/instance-ai/evaluations/langtracer/to-exported.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 5,24-31,41-44,53-56,59-76,110-111
+packages/cli/package.json
+  s_331f35b0ef50db::t_7de99f27d35a9b 135
+packages/@n8n/instance-ai/evaluations/run/eval-session.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 148
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRow/SettingsRow.stories.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 14
+.agents/skills/create-instance-ai-eval/case-shapes.md
+  s_331f35b0ef50db::t_7de99f27d35a9b 446-451,489-495,498-558
+packages/cli/src/modules/agents/builder/__tests__/resolve-integration.tool.test.ts
+  s_331f35b0ef50db::t_7de99f27d35a9b 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "428d45dbf8cde093b0fd2d281eced77a25ed9ffc",
+  "prompts": {},
+  "sessions": {
+    "s_331f35b0ef50db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a0bfa08d-efcf-45e0-a748-0d196fdeafa3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

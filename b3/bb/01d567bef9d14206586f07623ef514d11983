@@ -1,0 +1,23 @@
+packages/workflow/src/trigger-identity.ts
+  s_ff953bd5fa5eff::t_e855eed33f40ad 96-98
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_ff953bd5fa5eff::t_964c30472a777b 888-890
+packages/workflow/src/constants.ts
+  s_ff953bd5fa5eff::t_6be92da5b06961 126-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b3bb01d567bef9d14206586f07623ef514d11983",
+  "prompts": {},
+  "sessions": {
+    "s_ff953bd5fa5eff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a86677f-f714-4b73-9d32-32cecd91c41c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

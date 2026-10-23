@@ -1,0 +1,19 @@
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_7a2db5f67669fb::t_bd976b00f83a5a 440-459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4b860f4d547bbecc4fbacfe554fd644f8904bee2",
+  "prompts": {},
+  "sessions": {
+    "s_7a2db5f67669fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51cbd279-8268-44dd-ada6-dd76b730eb94",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

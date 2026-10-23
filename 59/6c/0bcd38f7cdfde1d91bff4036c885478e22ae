@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatQueue.test.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 1-406
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 7,21,26,31-33,84,152,183-185,191,199-201,226-227,232,283-307,440,476,644,646-655,686,731-775,831,858,862-877,880,882-894,897,899-900,902-904,906-907,910,912-917,919-920,922-923,955-956,993,999,1004,1010
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 15-16
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 7719-7726
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 1994-1999,2010
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatQueue.test.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 1-117
+packages/frontend/editor-ui/src/features/agents/components/AgentChatQueue.vue
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 1-225
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 10-11,54-56,65-103,105,108-118,125-128,136,182,204-205,225-235,247-252,260-262,265-267,273,275-276,278,281-282,301-316,318,320,322-325,327,329,331-332,344,349,366,405,456,481,507,526,533,545,567,573,579,600-601,621,641,661,680,705,729,764,799,829,866,895,923,960,1000,1046,1108,1191,1218-1227,1310,1352,1393,1423,1457,1502,1610,1632,1638-1639,1655,1663,1729,1820-1821,1825,1854
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 12-13,23-28,70,73-77,94-113,154,184,186,193-198,216-218,220,222-303,307,309-310,327-338,343,350-355,361,379,383-388,415,467-469,530,561,770-779,790,814-901,903-906,911,913-919,921,923-928,930-934,936,940-964,966-968,974-995,997-1009,1011-1012,1016-1032,1035-1049,1066-1070,1072-1087,1090-1091,1093-1095,1101,1113-1115
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 12,1835,1837-1842,1870,1872-1877,1888-1924
+  s_d27d09d94cc9ff::t_63991af7e6dd6b 1925
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 69-70
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 3-4,32-35,84-94
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 34,101-104,111,113-118,367,371-377,399-401,432-435,539,544,550,552,619-624,640,642
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 5-9,599-681
+  s_d27d09d94cc9ff::t_7eb15091298a74 682
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "596c0bcd38f7cdfde1d91bff4036c885478e22ae",
+  "prompts": {},
+  "sessions": {
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

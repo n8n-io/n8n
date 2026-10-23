@@ -1,0 +1,23 @@
+packages/cli/test/migration/shared/index-columns.ts
+  s_589f8be7454a93::t_bbed5a1ad4407a 4-71,75-78,104
+packages/cli/test/unit/migration-index-columns.test.ts
+  ai_agent 26,56
+  s_589f8be7454a93::t_816f64c952ab90 79
+  s_589f8be7454a93::t_220aa832b334bd 1-25,27-55,57-78,80-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3d974ef274e5b771af183ef9b808bdc8c05d4cd3",
+  "prompts": {},
+  "sessions": {
+    "s_589f8be7454a93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce56a8-933a-450c-a1c0-550bab4f8591",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

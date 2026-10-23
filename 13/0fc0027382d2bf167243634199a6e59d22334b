@@ -1,0 +1,29 @@
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_33e4193011b52f::t_869757b193693a 471
+  s_33e4193011b52f::t_f06952e15f095e 234
+packages/@n8n/db/src/migrations/common/1785162364001-AddIsFirstPartyToOAuthClients.ts
+  s_33e4193011b52f::t_c4bc68664d85c3 6
+packages/@n8n/db/src/migrations/sqlite/1785162364001-AddIsFirstPartyToOAuthClients.ts
+  s_33e4193011b52f::t_d9831ebfc61643 6
+packages/cli/test/migration/1785162364001-add-is-first-party-to-oauth-clients.test.ts
+  s_33e4193011b52f::t_1ab0e79ec45f1f 14
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_33e4193011b52f::t_602e1b0dc3d4a3 62
+  s_33e4193011b52f::t_414383cda2cee7 453
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "130fc0027382d2bf167243634199a6e59d22334b",
+  "prompts": {},
+  "sessions": {
+    "s_33e4193011b52f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24c61839-4881-488e-a715-3c8d0cb0af9d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

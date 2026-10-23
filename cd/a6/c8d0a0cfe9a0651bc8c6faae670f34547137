@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/cli/reshape.ts
+  s_49774f0fb0b969::t_1a5300c139aa5f 53-54
+packages/@n8n/instance-ai/evaluations/cli/index.ts
+  s_49774f0fb0b969::t_1a5300c139aa5f 503,560,588,620-623
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cda6c8d0a0cfe9a0651bc8c6faae670f34547137",
+  "prompts": {},
+  "sessions": {
+    "s_49774f0fb0b969": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "058ef848-ef42-44ad-bc5c-fa740d82f66f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

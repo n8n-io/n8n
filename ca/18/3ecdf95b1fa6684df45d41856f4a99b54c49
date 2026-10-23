@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/Autopilot/test/AutopilotTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_3d12c359c41128 1-21
+packages/nodes-base/nodes/Aws/Transcribe/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_a26f1daaf4f9a5 1-111
+packages/nodes-base/nodes/Autopilot/test/workflow/Autopilot.workflow.test.ts
+  s_2e1fa95fc44f8f::t_41f2ffe95bc0aa 1-44
+  s_2e1fa95fc44f8f::t_db348921f2b7a2 45-46
+packages/nodes-base/nodes/Aws/Textract/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_0afc8d729c990f 56-67
+  s_2e1fa95fc44f8f::t_9771ad3aa7dc97 68-70
+  s_55edf857ff6cab::t_00513d002fc1ae 71
+packages/nodes-base/nodes/Aws/Transcribe/test/workflow/AwsTranscribe.workflow.test.ts
+  s_2e1fa95fc44f8f::t_c38d3351f20fa7 1-38
+packages/nodes-base/nodes/Autopilot/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_9483a4f423998a 1-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca183ecdf95b1fa6684df45d41856f4a99b54c49",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_55edf857ff6cab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa2595f2b5dc240d0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

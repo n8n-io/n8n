@@ -1,0 +1,49 @@
+packages/cli/src/modules/agents/agents.module.ts
+  s_701c3478d6707a::t_a9c3e0977057e7 48-53
+packages/cli/test/migration/1784900752603-replace-agent-file-binary-data-id-with-stored-at.test.ts
+  s_701c3478d6707a::t_d52b6fde3484aa 12,80-107,130-143,165-170,174-183
+packages/cli/src/modules/agents/register-blob-byte-stores.ts
+  s_701c3478d6707a::t_cd75c66c38917f 1-34
+packages/cli/src/modules/agents/__tests__/agent-knowledge-file-store.test.ts
+  s_701c3478d6707a::t_af00e1a2409209 53
+packages/@n8n/db/src/entities/binary-data-file.ts
+  s_701c3478d6707a::t_6b07552e3f7bf1 6
+packages/cli/src/modules/agents/__tests__/register-blob-byte-stores.test.ts
+  s_701c3478d6707a::t_4763df01f51642 1-86
+packages/@n8n/db/src/migrations/common/1784900752603-ReplaceAgentFileBinaryDataIdWithStoredAt.ts
+  s_31928fdf26e616::t_0ef1a3e690c708 1,13
+  s_701c3478d6707a::t_552275aa6a011f 7-11,30-33
+  s_701c3478d6707a::t_c7b87aacde63f1 14-15,20,34
+packages/cli/src/modules/agents/agent-knowledge-file-store.ts
+  s_701c3478d6707a::t_7e962603d9cf8b 13-14,30,49,54
+packages/cli/src/modules/agents/agent-knowledge-storage.ts
+  s_701c3478d6707a::t_1c70ef8081f1f0 8
+docs/generated/postgres-schema/public.binary_data.md
+  s_701c3478d6707a::t_2b76c27a10b927 21
+docs/generated/sqlite-schema/binary_data.md
+  s_701c3478d6707a::t_d38303a4744c89 9,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5a1f35612aeaba9387319b4931f1fe3b79e1f345",
+  "prompts": {},
+  "sessions": {
+    "s_31928fdf26e616": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7c0db9ff-f074-4ba7-9d82-84870ddf3524",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_701c3478d6707a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ff033f2c-41d7-434c-b328-ad4b53b50d81",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

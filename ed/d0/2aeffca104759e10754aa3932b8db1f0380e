@@ -1,0 +1,374 @@
+packages/cli/src/blob-storage/types.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-46
+packages/@n8n/client-oauth2/src/client-assertion.ts
+  s_17f95be7845aae::t_e187de0f76316f 16,44
+  s_17f95be7845aae::t_0131aac782126d 1
+packages/cli/src/credentials/credentials.service.ee.ts
+  s_17f95be7845aae::t_e187de0f76316f 117-129
+.github/workflows/util-sync-api-docs.yml
+  s_17f95be7845aae::t_e187de0f76316f 85,90
+packages/nodes-base/nodes/Jwt/Jwt.node.ts
+  s_17f95be7845aae::t_e187de0f76316f 408,445
+  s_17f95be7845aae::t_0131aac782126d 1
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 39
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-8,40-46,54-58,209-210,213,305-307,436-438,754-756,939-1157
+.github/workflows/release-push-to-channel.yml
+  s_17f95be7845aae::t_e187de0f76316f 172-173,176
+packages/nodes-base/nodes/Google/GenericFunctions.ts
+  s_17f95be7845aae::t_0131aac782126d 1
+  s_17f95be7845aae::t_e187de0f76316f 89
+docker/images/n8n/Dockerfile
+  s_17f95be7845aae::t_e187de0f76316f 7-8,31-32,45-47
+packages/@n8n/nodes-langchain/package.json
+  s_17f95be7845aae::t_e187de0f76316f 283
+packages/@n8n/client-oauth2/package.json
+  s_17f95be7845aae::t_e187de0f76316f 26
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_17f95be7845aae::t_e187de0f76316f 3,21,131
+  s_17f95be7845aae::t_0131aac782126d 4
+packages/@n8n/instance-ai/evaluations/data/workflows/weather-monitoring.json
+  s_17f95be7845aae::t_e187de0f76316f 41-42
+packages/cli/src/blob-storage/s3-byte-store.ee.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-38
+packages/@n8n/instance-ai/evaluations/system-prompts/mock-execution-verify.ts
+  s_17f95be7845aae::t_e187de0f76316f 55,59-60,74-75
+packages/testing/playwright/tests/e2e/ai/assistant-credential-help.spec.ts
+  s_17f95be7845aae::t_e187de0f76316f 34,59
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 7,562-673
+packages/cli/src/controllers/oauth/oauth2-credential.controller.ts
+  s_17f95be7845aae::t_e187de0f76316f 31
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_17f95be7845aae::t_e187de0f76316f 7,17,30,33-39,91,126-127,129-130,132-137,139-145,148-181,183-193,196-198,200-203,205-217,219-221,223-226,228-237,240,242-297,299,419,569
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_17f95be7845aae::t_62708ed8992693 33
+packages/cli/src/modules/insights/__tests__/insights.settings.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 4,9,14-16,19,23,30,34,47,51,64,68,81,85,98,102
+packages/@n8n/db/src/repositories/index.ts
+  s_17f95be7845aae::t_e187de0f76316f 51-54
+packages/nodes-base/package.json
+  s_17f95be7845aae::t_e187de0f76316f 927
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_17f95be7845aae::t_e187de0f76316f 332-333
+packages/nodes-base/nodes/Postgres/transport/index.ts
+  s_17f95be7845aae::t_0131aac782126d 1
+  s_17f95be7845aae::t_e187de0f76316f 2-3,144
+packages/testing/playwright/tests/e2e/regression/ADO-2372-prevent-clipping-params.spec.ts
+  s_17f95be7845aae::t_e187de0f76316f 68-71
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 126-148
+packages/nodes-base/nodes/Ftp/Ftp.node.ts
+  s_17f95be7845aae::t_0131aac782126d 1
+  s_17f95be7845aae::t_e187de0f76316f 2,561,616
+packages/cli/src/commands/base-command.ts
+  s_17f95be7845aae::t_e187de0f76316f 6,135-142
+packages/cli/test/integration/ai/ai.api.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 75
+packages/nodes-base/credentials/test/SalesforceJwtApi.credentials.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 18
+  s_17f95be7845aae::t_62708ed8992693 17
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_17f95be7845aae::t_e187de0f76316f 192-197
+packages/@n8n/instance-ai/evaluations/data/workflows/weather-alert.json
+  s_17f95be7845aae::t_e187de0f76316f 33,39
+docker/images/n8n-base/Dockerfile
+  s_17f95be7845aae::t_e187de0f76316f 1-4,21,30-33,35-37
+packages/cli/src/scaling/redis-lock.service.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-180
+packages/@n8n/permissions/src/roles/scopes/credential-sharing-scopes.ee.ts
+  s_17f95be7845aae::t_e187de0f76316f 10,13
+packages/cli/src/controllers/oauth/oauth1-credential.controller.ts
+  s_17f95be7845aae::t_e187de0f76316f 22
+packages/nodes-base/nodes/FacebookLeadAds/FacebookLeadAdsTrigger.node.ts
+  s_17f95be7845aae::t_e187de0f76316f 37-40
+packages/@n8n/benchmark/scripts/run.mjs
+  s_17f95be7845aae::t_e187de0f76316f 11,140
+packages/testing/playwright/pages/CanvasPage.ts
+  s_17f95be7845aae::t_e187de0f76316f 656-661
+packages/nodes-base/credentials/SalesforceJwtApi.credentials.ts
+  s_17f95be7845aae::t_e187de0f76316f 101
+  s_17f95be7845aae::t_0131aac782126d 1
+packages/nodes-base/nodes/MySql/v2/transport/index.ts
+  s_17f95be7845aae::t_e187de0f76316f 2,34,38-39,67
+  s_17f95be7845aae::t_0131aac782126d 1
+packages/workflow/src/jmespath-query.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-30
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_17f95be7845aae::t_e187de0f76316f 27,176-199,208
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  s_17f95be7845aae::t_e187de0f76316f 3,7-28,67-118
+packages/cli/src/modules/agents/tools/input-data-tool.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-64
+packages/@n8n/workflow-sdk/src/prompts/best-practices/guides/document-processing.ts
+  s_17f95be7845aae::t_e187de0f76316f 177
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_17f95be7845aae::t_e187de0f76316f 568
+packages/nodes-base/credentials/GithubAppApi.credentials.ts
+  s_17f95be7845aae::t_0131aac782126d 1
+  s_17f95be7845aae::t_e187de0f76316f 2,67
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/LmChatGoogleVertex.test.ts
+  s_17f95be7845aae::t_62708ed8992693 11
+  s_17f95be7845aae::t_e187de0f76316f 12
+packages/@n8n/backend-common/src/locking/__tests__/in-process-lock.service.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-216
+packages/@n8n/backend-common/src/locking/lock.service.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-26
+packages/cli/src/blob-storage/__tests__/fs-byte-store.integration.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-150
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_17f95be7845aae::t_e187de0f76316f 109-131,192-194
+.github/workflows/ci-instance-ai-evals.yml
+  s_17f95be7845aae::t_e187de0f76316f 15-18,20,24,26,41-43,47-52,56-132,135-136,140-143
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 202,215,228,235,242-244,247,256-273
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 17,26,34,156,220-223,355-360,379-382
+packages/@n8n/instance-ai/evaluations/data/workflows/whatsapp-verify-token-not-a-credential-field.json
+  s_17f95be7845aae::t_e187de0f76316f 1-33
+packages/cli/src/scaling/__tests__/redis-lock.service.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-158
+packages/nodes-base/credentials/test/GithubAppApi.credentials.test.ts
+  s_17f95be7845aae::t_62708ed8992693 11
+  s_17f95be7845aae::t_e187de0f76316f 12
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  s_17f95be7845aae::t_e187de0f76316f 44-45
+packages/testing/playwright/pages/components/InlineExpressionEditor.ts
+  s_17f95be7845aae::t_e187de0f76316f 46-55
+packages/testing/playwright/pages/components/ResourceMoveModal.ts
+  s_17f95be7845aae::t_e187de0f76316f 29-33
+pnpm-lock.yaml
+  ai_agent 1552-1554,2915-2917,5452-5454
+packages/@n8n/backend-common/src/locking/lock-service.interface.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-49
+packages/@n8n/utils/src/format-pem-block.ts
+  s_17f95be7845aae::t_e187de0f76316f 3-4,7,24-30,32,34,37-38,40,45-46,49,54,56,60
+packages/frontend/editor-ui/data/node-popularity.json
+  s_17f95be7845aae::t_e187de0f76316f 4,8,12,16,24,28,32,36,39-40,43-44,48,52,55-56,59-60,63-64,67-80,84,88,92,96,100,104,108,111-112,115-116,119-120,123-124,127-128,131-132,136,139-140,143-144,147-148,151-152,155-156,159-160,163-164,168-172,176,179-180,184,187-188,191-192,195-196,199-200,203-204,207-208,211-212,215-216,219-220,223-224,227-236,240,243-244,247-248,251-252,255,259-260,264,267-268,271-272,275-276,279-280,283-284,287-288,291,295-296,299-300,303,307-308,311-312,316,320,323-324,327-328,331-332,335-336,339-340,343-344,347-352,356,359-360,363-364,368,371-372,375-376,379-380,383-384,387-388,392,395-399,403,407,411,415-416,419-420,423-424,427-428,431-432,435-436,439-440,447-448,451-452,455,459,463-464,467-468,471-472,475,479,483-484,487,491-492,495-496,499-500,503-504,507-508,511-512,516,519-520,523-524,527-531,535-536,539,543-544,547-548,552,555-556,559-560,563-564,567-568,571-572,575,579-580,583-584,587,591,595-596,599-600,607-608,611-612,615-616,619-620,623-624,627-628,631-632,635-636,639-640,643-644,647-648,651-652,656,660,664,668,672,676,679-680,683,687-688,691-692,695-696,699-700,703-704,707-708,711-712,715-716,719-720,723-724,728,731-732,736,740,743-744,747-752,756,759-760,763-764,767-768,771-780,787-788,791-796,800,803-804,807-808,811-812,815-816,819-820,823-828,832,835-836,839-840,843-844,847-848,851-852,855-856,859-860,863-864,867-868,871-872,875-876,879-880,883-884,887-888,891-892,895-896,899-900,903-904,907-908,911-912,915-916,920,923,927-928,931-932,935,939,943,947-948,951-991,995,1003,1007,1011,1015,1019,1023,1031-1032,1035-1036,1039-1040,1043-1044,1047-1048,1052,1056,1059-1060,1063-1064,1067-1068,1071-1076,1080,1083-1084,1087-1088,1091-1092,1095-1096,1099-1100,1103-1104,1107-1108,1111-1112,1115-1116,1119-1120,1123-1124,1127-1128,1131-1132,1135-1136,1139-1140,1143-1144,1147-1148,1151-1152,1155-1156,1159-1160,1163-1164,1167-1168,1171-1172,1175-1179,1183,1187-1188,1191-1192,1195-1196,1199-1200,1203-1204,1207-1208,1211-1212,1215-1216,1219-1220,1223-1224,1227-1228,1231-1232,1235,1239-1240,1243,1247-1248,1251,1255-1256,1259-1260,1263-1264,1267-1268,1271-1272,1275-1276,1279-1280,1283-1284,1287-1288,1291-1292,1295-1296,1299-1300,1303-1304,1307-1308,1311-1312,1315-1316,1319-1320,1323-1324,1327-1328,1331-1332,1335-1339,1343,1347,1351-1359,1363-1367,1371-1407,1411-1415,1419,1423-1427,1431,1435,1443,1447,1451,1455-1456,1459-1460,1463-1464,1467-1468,1471-1472,1475-1476,1479-1480,1483-1484,1487-1488,1492,1495-1496,1499-1500,1504,1507-1532,1536,1539-1540,1543-1544,1547-1548,1551-1552,1555-1556,1559-1560,1563-1564,1568,1572,1576,1580,1584,1588,1592,1596,1600,1604,1612,1619-1620,1623-1627,1631-1632,1635-1636,1639-1640,1643-1644,1647-1648,1651-1652,1655,1659-1660,1663-1664,1668,1671-1672,1675-1676,1679-1680,1683-1684,1687-1688,1691-1692,1695-1696,1699-1700,1703-1704,1707-1708,1711-1712,1715-1716,1719-1720,1723-1724,1727-1728,1731-1732,1735-1736,1739-1740,1743-1744,1747-1748,1751-1752,1755-1756,1759-1760,1763-1764,1767-1768,1771-1772,1775-1776,1780,1783-1784,1787-1788,1791-1792,1795-1796,1799-1800,1803-1804,1807-1808,1811-1812,1816,1819-1820,1823-1824,1827-1828,1831-1832,1835-1836,1839-1840,1843-1844,1847-1848,1851-1852,1855-1856,1859-1860,1863-1864,1867-1868,1871-1872,1875-1876,1879-1880,1883-1884,1887-1888,1891-1892,1896,1900,1903-1904,1907-1908,1911-1912,1915-1916,1919-1920,1923-1924,1927-1928,1931-1932,1935-1936,1939-1940,1943-1944,1947-1948,1951-1952,1955-1956,1959-1960,1963-1964,1967-1968,1971-1972,1975-1976,1979-1980,1983-1984,1987-1988,1991-1992,1995-1996,2000,2007-2008,2011-2012,2015-2016,2019-2020,2023-2024,2027-2028,2031-2032,2035-2036,2039-2040,2043-2044,2047-2048,2051-2052,2055-2056,2059-2060,2063-2064,2067-2068,2071-2072,2075-2076,2079-2080,2083-2084,2087-2088,2091-2092,2095-2096,2099-2100,2103-2104,2107-2108,2111-2112,2115-2116,2119-2120,2123-2124,2127-2128,2131-2132,2135-2136,2139-2140,2143-2144,2155-2156,2159-2160,2163-2164,2167-2168,2171-2172,2175-2176,2179-2180,2183-2184,2187-2188,2191-2192,2195-2196,2199-2200,2203-2204,2207-2208,2211-2212,2215-2216,2219-2220,2223-2224,2227-2228,2231-2232,2235-2236,2239-2240,2243-2244,2247-2248,2251-2252,2255-2256,2259-2260,2263-2264,2267-2268,2271-2272,2275-2276,2279-2280,2283-2284,2287-2288,2291-2292,2295-2296,2299-2300,2303-2304,2307-2308,2311-2312,2315-2316,2319-2320,2323-2324,2327-2328,2331-2332,2335-2336,2339-2340,2343-2344,2347-2348,2351-2352,2355-2356,2359-2360,2363-2364,2367-2368,2371-2372,2375-2376,2379-2380,2383-2384,2387-2388,2391-2392,2395-2396,2399-2400,2403-2404,2407-2408,2412,2415-2416,2419-2420,2423-2424,2427-2428,2431-2432,2435-2436,2439-2440,2443-2444,2447-2448,2451-2452,2456,2459-2460,2463-2464,2467-2468,2471-2472,2476,2479-2480,2483-2484,2487-2488,2491-2492,2495-2496,2499-2500,2503-2504,2507-2508,2511-2512,2515-2516,2519-2520,2523-2524,2527-2528,2531-2532,2535-2536,2540,2543-2544,2547-2548,2551-2552,2555-2556,2559-2560,2563-2564,2567-2568,2571-2572,2575-2576,2579-2580,2583-2584,2587-2588,2591-2592,2595-2596,2599-2600,2603-2604,2607-2608,2611-2612,2615-2616,2619-2620,2623-2624,2627-2628,2631-2632,2636,2640,2643-2644,2647-2648,2652,2655-2656,2659-2660,2663-2664,2667-2668,2671-2672,2675-2676,2679-2680,2683-2684,2687-2688,2692,2695-2696,2699-2700,2704,2708,2712,2716,2719-2720,2724,2727-2728,2732,2736,2744,2748,2756,2760,2764,2771-2772,2775-2776,2780,2783-2784,2787-2788,2791-2792,2795-2796,2799-2800,2803-2804,2807-2808,2812,2815-2816,2819-2820,2823-2824,2827-2828,2831-2832,2835-2836,2839-2840,2843,2847-2848,2852,2855-2856,2859,2863-2864,2867-2868,2871-2872,2875-2876,2879-2880,2883-2884,2887-2888,2891-2892,2895-2896,2899-2900,2903-2904,2907-2908,2911-2912,2915-2916,2919-2920,2924,2927-2928,2931-2932,2935-2936,2939-2940,2943-2944,2948,2951-2952,2955-2956,2959-2960,2963-2964,2967,2971-2972,2975-2976,2979-2980,2983-2984,2987-2988,2991-2996,3003-3004,3007-3008,3011-3012,3015-3016,3019-3020,3023-3024,3031-3032,3035-3036,3039-3040,3043-3044,3047-3048,3051-3052,3055-3056,3059-3060,3063-3064,3067-3068,3071-3072,3075-3076,3079,3083-3084,3087-3088,3091-3092,3095-3096,3099-3100,3103-3104,3107-3108,3111-3112,3115-3116,3119-3120,3123-3124,3127-3128,3131-3132,3135-3136,3139-3140,3143-3144,3151-3152,3155-3156,3159-3160,3163-3164,3167-3168,3171-3172,3175,3179-3180,3183-3184,3187-3188,3191-3192,3195-3196,3199-3200,3204-3207,3211-3212,3215-3216,3220,3223-3224,3228,3231-3232,3236,3239-3240,3243-3244,3247-3248,3252,3255-3256,3259-3260,3263,3267-3268,3271-3272,3275-3276,3279-3280,3283-3284,3287-3288,3291-3292,3295-3296,3299-3300,3303,3307-3308,3311-3312,3315-3316,3319-3320,3323-3324,3328,3332,3335-3336,3339-3340,3343-3344,3347-3348,3351-3352,3355-3356,3360,3363-3364,3367,3371-3372,3375-3376,3379-3380,3383-3384,3387-3388,3391-3392,3395-3396,3399-3400,3403-3404,3407-3408,3411-3412,3415-3416,3419-3420,3423-3424,3427-3428,3431-3432,3436,3439-3440,3443,3447-3448,3451-3452,3455-3456,3459-3460,3463-3464,3467-3468,3471-3472,3475-3476,3479-3480,3483-3484,3487-3488,3491-3492,3495-3496,3499-3500,3504,3507-3508,3511-3512,3515-3516,3519-3520,3524,3528,3531-3532,3535,3540,3543-3544,3547-3548,3551-3552,3556,3559-3560,3563-3564,3567-3568,3571-3572,3579-3580,3583,3587-3588,3591-3592,3596,3599-3600,3603-3604,3607-3608,3611-3612,3615-3616,3619-3620,3623-3624,3627-3628,3631-3632,3635-3636,3639-3640,3643-3644,3647-3648,3651-3652,3655-3656,3659-3660,3663-3664,3667-3668,3671-3672,3675-3676,3679-3680,3683-3684,3687-3688,3691-3692,3695-3696,3699-3700,3703-3704,3707-3708,3711-3712,3715-3716,3719-3720,3723-3724,3727-3728,3731-3732,3735-3736,3739-3740,3743-3744,3747-3748,3751-3752,3755-3756,3759-3760,3763-3764,3767-3768,3771-3772,3775-3776,3779-3780,3783-3784,3787-3788,3791-3792,3795-3796,3799-3800,3803-3804,3807-3808,3811-3812,3815-3816,3819-3820,3823-3824,3827-3828,3831-3832,3835-3836,3839-3840,3843-3844,3847-3848,3851-3852,3855-3856,3859-3860,3863-3864,3867-3868,3871-3872,3875-3876,3879-3880,3883-3884,3887-3888,3891-3892,3895-3896,3899-3900,3903-3904,3907-3908,3911-3912,3915-3916,3919-3920,3923-3924,3927-3928,3931-3932,3935-3936,3939-3940,3943-3944,3947-3948,3951-3952,3955-3956,3959-3960,3963-3964,3967-3968,3971-3972,3975-3976,3979-3980,3983-3984,3987-3988,3991-3992,3995-3996,3999-4000
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_17f95be7845aae::t_e187de0f76316f 40,98,144
+packages/cli/src/modules/agents/tools/__tests__/input-data-tool.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-104
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_17f95be7845aae::t_e187de0f76316f 52-69,114-116
+packages/cli/src/active-workflow-manager.ts
+  s_17f95be7845aae::t_e187de0f76316f 643
+packages/cli/src/blob-storage/json-store.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-140
+packages/cli/src/modules/agents/tools/__tests__/agent-data-utils.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-88
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_17f95be7845aae::t_e187de0f76316f 586
+packages/workflow/src/interfaces.ts
+  s_17f95be7845aae::t_e187de0f76316f 2049-2083,3373
+packages/nodes-base/nodes/WhatsApp/WhatsAppTrigger.node.ts
+  s_17f95be7845aae::t_e187de0f76316f 59-62
+packages/testing/playwright/pages/NodeDetailsViewPage.ts
+  s_17f95be7845aae::t_e187de0f76316f 459-462
+packages/testing/playwright/tests/e2e/ai/workflow-builder.spec.ts
+  s_17f95be7845aae::t_e187de0f76316f 86,117
+packages/nodes-base/nodes/Crypto/v2/CryptoV2.node.ts
+  s_17f95be7845aae::t_e187de0f76316f 606,629,639
+  s_17f95be7845aae::t_0131aac782126d 1
+packages/cli/src/modules/insights/insights.module.ts
+  s_17f95be7845aae::t_e187de0f76316f 29
+packages/cli/src/workflow-execute-additional-data.ts
+  s_17f95be7845aae::t_e187de0f76316f 17,352,400
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_17f95be7845aae::t_e187de0f76316f 275
+packages/cli/src/modules/insights/insights.settings.ts
+  s_17f95be7845aae::t_e187de0f76316f 5,9-12,14-15,20
+packages/testing/playwright/pages/components/AIBuilderPage.ts
+  s_17f95be7845aae::t_e187de0f76316f 38-45
+packages/cli/test/integration/credentials/credentials.api.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 195,207,224-229,235,260,277,346,358,367,410,427,447,864,1252
+packages/frontend/editor-ui/src/features/integrations/logStreaming.ee/logStreaming.utils.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-100
+packages/workflow/test/jmespath-query.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-32
+.github/workflows/docker-build-push.yml
+  s_17f95be7845aae::t_e187de0f76316f 65,70,247-248,251
+packages/cli/test/integration/workflows/workflow-published-data.service.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 82-106
+packages/cli/src/blob-storage/azure-byte-store.ee.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-40
+packages/@n8n/backend-common/src/index.ts
+  s_17f95be7845aae::t_e187de0f76316f 15-21
+packages/cli/src/workflows/workflow-published-data.service.ts
+  s_17f95be7845aae::t_e187de0f76316f 1,4,9-22,27,29-32,35-37,39,49-100
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 410-690
+packages/@n8n/instance-ai/evaluations/cli/index.ts
+  s_17f95be7845aae::t_e187de0f76316f 42-46,221,1133-1141,1152,1239
+packages/cli/src/modules/insights/__tests__/insights.module.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 9,33
+packages/nodes-base/nodes/Facebook/FacebookTrigger.node.ts
+  s_17f95be7845aae::t_e187de0f76316f 33-36
+packages/testing/playwright/composables/WorkflowComposer.ts
+  s_17f95be7845aae::t_e187de0f76316f 136
+packages/nodes-base/nodes/RabbitMQ/GenericFunctions.ts
+  s_17f95be7845aae::t_e187de0f76316f 30,33,35
+  s_17f95be7845aae::t_0131aac782126d 1
+packages/nodes-base/credentials/test/SalesforceJwtApi.credentials.integration.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 13
+  s_17f95be7845aae::t_62708ed8992693 12
+packages/nodes-base/nodes/MQTT/GenericFunctions.ts
+  s_17f95be7845aae::t_0131aac782126d 1
+  s_17f95be7845aae::t_e187de0f76316f 46-48
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.vue
+  s_17f95be7845aae::t_e187de0f76316f 11,27,118-127,132,250-256
+packages/cli/src/oauth/oauth.service.ts
+  s_17f95be7845aae::t_e187de0f76316f 254,263-270,274
+packages/cli/src/modules/agents/tools/workflow-context-tool.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-116
+packages/cli/src/controllers/oauth/__tests__/oauth1-credential.controller.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 36
+packages/@n8n/permissions/src/scope-information.ts
+  s_17f95be7845aae::t_e187de0f76316f 95-98
+.github/workflows/release-publish-new-package.yml
+  s_17f95be7845aae::t_e187de0f76316f 50-52
+packages/@n8n/instance-ai/evaluations/comparison/format.ts
+  s_17f95be7845aae::t_e187de0f76316f 40-48,52-53,80,281-291,294-299
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 3,26-29,425,428-449,451,453,456-470,474-475,477-478
+packages/@n8n/instance-ai/src/agent/__tests__/apply-agent-thinking.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 31-45
+packages/@n8n/client-oauth2/test/client-assertion.test.ts
+  s_17f95be7845aae::t_0131aac782126d 1
+  s_17f95be7845aae::t_e187de0f76316f 40
+packages/@n8n/config/test/config.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 326-327
+packages/cli/src/credentials/__tests__/credentials.service.ee.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 191-262
+packages/cli/src/blob-storage/__tests__/json-store.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-201
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDateRangeAlert.vue
+  s_17f95be7845aae::t_e187de0f76316f 1-90
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_17f95be7845aae::t_e187de0f76316f 138-156,217-224,264-266,268,276-279,281,292-298
+packages/nodes-base/nodes/Webhook/utils.ts
+  s_17f95be7845aae::t_e187de0f76316f 345
+  s_17f95be7845aae::t_0131aac782126d 1
+packages/workflow/src/index.ts
+  s_17f95be7845aae::t_e187de0f76316f 102
+.github/actions/load-n8n-docker/action.yml
+  s_17f95be7845aae::t_e187de0f76316f 21-24,33,46
+packages/@n8n/backend-common/src/locking/in-process-lock.service.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-116
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_17f95be7845aae::t_e187de0f76316f 103,106,109,113
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_17f95be7845aae::t_e187de0f76316f 55-58
+packages/frontend/editor-ui/src/features/integrations/logStreaming.ee/logStreaming.utils.ts
+  s_17f95be7845aae::t_e187de0f76316f 6-10,31-55
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDateRangeAlert.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-134
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 2,55-56,64-69,93-101,107-112,121-129,135-140,154-155,171-172,193-198,204-209,228-229,260-261,292-293,309-310,327,348,374-375,383-389,405,425,435-511
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-format.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 195-220
+packages/@n8n/backend-common/src/locking/__tests__/lock.service.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-48
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 23-24,1065,1101-1140,1171,1227
+packages/cli/src/blob-storage/skipped-entry-deletion.error.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-11
+packages/cli/src/workflows/__tests__/workflow-published-data.service.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1,5-9,12-13,15,18-19,22-26,29,49-100,102,104-105,108-113,115,117-121,124-154,156-161,163-220
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_17f95be7845aae::t_e187de0f76316f 253-254
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_17f95be7845aae::t_e187de0f76316f 21,40,184-187,259-262,267
+.gitignore
+  s_17f95be7845aae::t_e187de0f76316f 36
+packages/nodes-base/nodes/Ssh/Ssh.node.ts
+  s_17f95be7845aae::t_0131aac782126d 1
+  s_17f95be7845aae::t_e187de0f76316f 303,356
+packages/testing/playwright/.janitor-baseline.json
+  s_17f95be7845aae::t_e187de0f76316f 3-4,37-42,458-479,564-571,605,613
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_17f95be7845aae::t_e187de0f76316f 439-445
+.github/workflows/test-evals-instance-ai.yml
+  s_17f95be7845aae::t_e187de0f76316f 36-55,113-114,249-250,255,346,349-350,364,368,370
+packages/cli/src/modules/agents/tools/__tests__/workflow-context-tool.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-243
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_17f95be7845aae::t_e187de0f76316f 5743-5746
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 84,268-307,319,725-751
+packages/@n8n/instance-ai/evaluations/README.md
+  s_17f95be7845aae::t_e187de0f76316f 262-271
+packages/frontend/editor-ui/src/features/execution/insights/insights.store.ts
+  s_17f95be7845aae::t_e187de0f76316f 71-74,85
+packages/nodes-base/nodes/RespondToWebhook/RespondToWebhook.node.ts
+  s_17f95be7845aae::t_e187de0f76316f 28,454
+  s_17f95be7845aae::t_0131aac782126d 1
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_17f95be7845aae::t_e187de0f76316f 5,14-19,35-36,518,535-555,575,591-597,603
+packages/@n8n/instance-ai/evaluations/data/workflows/honors-missing-credential-field-correction.json
+  s_17f95be7845aae::t_e187de0f76316f 1-36
+packages/testing/playwright/tests/e2e/ai/hitl-for-tools.spec.ts
+  s_17f95be7845aae::t_e187de0f76316f 88-91
+packages/cli/src/controllers/oauth/__tests__/oauth2-credential.controller.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 41
+packages/testing/playwright/tests/e2e/mcp/mcp-oauth.spec.ts
+  s_17f95be7845aae::t_e187de0f76316f 394-403
+packages/nodes-base/nodes/HttpRequest/GenericFunctions.ts
+  s_17f95be7845aae::t_0131aac782126d 1
+  s_17f95be7845aae::t_e187de0f76316f 16,287-289,291
+packages/nodes-base/nodes/MongoDb/GenericFunctions.ts
+  s_17f95be7845aae::t_0131aac782126d 1
+  s_17f95be7845aae::t_e187de0f76316f 199-201
+packages/cli/src/scaling/redis/redis.types.ts
+  s_17f95be7845aae::t_e187de0f76316f 15-16
+packages/@n8n/instance-ai/src/agent/apply-agent-thinking.ts
+  s_17f95be7845aae::t_e187de0f76316f 5-6,9-19,21-33
+  s_17f95be7845aae::t_8597fca1ffae63 3
+packages/@n8n/permissions/src/constants.ee.ts
+  s_17f95be7845aae::t_e187de0f76316f 11-18
+packages/@n8n/instance-ai/evaluations/data/workflows/no-self-run-after-partial-verify.json
+  s_17f95be7845aae::t_e187de0f76316f 1-44
+packages/frontend/editor-ui/src/features/integrations/logStreaming.ee/components/EventDestinationSettingsModal.vue
+  s_17f95be7845aae::t_e187de0f76316f 38,365
+packages/testing/playwright/pages/WorkflowsPage.ts
+  s_17f95be7845aae::t_e187de0f76316f 7,17,172,185
+.github/workflows/test-evals-ai.yml
+  s_17f95be7845aae::t_e187de0f76316f 117,124
+packages/@n8n/instance-ai/docs/configuration.md
+  s_17f95be7845aae::t_e187de0f76316f 77-78
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_17f95be7845aae::t_e187de0f76316f 276-278,282-286,290,294
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_17f95be7845aae::t_e187de0f76316f 5-8,109,137
+  s_17f95be7845aae::t_0131aac782126d 9
+packages/testing/playwright/pages/AIAssistantPage.ts
+  s_17f95be7845aae::t_e187de0f76316f 109
+packages/cli/src/blob-storage/fs-byte-store.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-92
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_17f95be7845aae::t_e187de0f76316f 30
+packages/@n8n/utils/src/format-pem-block.test.ts
+  s_17f95be7845aae::t_e187de0f76316f 1,3-5,9,19,30,34,40,45-53,57,66,74,83-94,100-111,119
+packages/nodes-base/nodes/Snowflake/GenericFunctions.ts
+  s_17f95be7845aae::t_0131aac782126d 1
+  s_17f95be7845aae::t_e187de0f76316f 38
+packages/cli/src/modules/agents/tools/agent-data-utils.ts
+  s_17f95be7845aae::t_e187de0f76316f 1-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "edd02aeffca104759e10754aa3932b8db1f0380e",
+  "prompts": {},
+  "sessions": {
+    "s_17f95be7845aae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be842455-fb42-4a82-b874-9558a3113383",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

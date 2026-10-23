@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/v1-wire.test.ts
+  s_e0a4b6e5f00c16::t_70a21174b19367 36-38
+  s_e0a4b6e5f00c16::t_8413fe8f01395d 20-33
+  s_e0a4b6e5f00c16::t_bcb1bd1b7597a0 1-19,34-35,39-217
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/azure-v1-mock-server.ts
+  s_e0a4b6e5f00c16::t_401d44e485b5f1 1-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "750d01e36ef37a134761e0609f60cc543516c233",
+  "prompts": {},
+  "sessions": {
+    "s_e0a4b6e5f00c16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67937716-f0ef-4711-83a6-859d370c569a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

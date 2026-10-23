@@ -1,0 +1,44 @@
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  s_d5bf1e6ff01465::t_0fc5495e2c2c43 6
+  s_d5bf1e6ff01465::t_bebdb083724985 207,215
+packages/@n8n/cli/src/client.ts
+  s_f7bcf7990a7fc7::t_1e9eeded332a6c 256
+  s_f7bcf7990a7fc7::t_895e05f6e391ee 64
+  s_f7bcf7990a7fc7::t_7ec5a2719bafb4 62,65
+  s_f7bcf7990a7fc7::t_9daff381f2ef9a 61,63,66
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_d5bf1e6ff01465::t_bebdb083724985 311-321
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_f7bcf7990a7fc7::t_e92dbcf8f62bf0 61-74,76-77,79-82
+  s_f7bcf7990a7fc7::t_4f841fdc8b7492 75,78
+packages/@n8n/cli/src/commands/git-connections/push.ts
+  s_d5bf1e6ff01465::t_bebdb083724985 16,20
+packages/@n8n/api-types/src/dto/index.ts
+  s_f7bcf7990a7fc7::t_42a05dce8f01e7 106
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_d5bf1e6ff01465::t_bebdb083724985 4,139,148-150,164,166,185-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f6d6ecd53488ddef53ccd35281b9faac37b5a7ef",
+  "prompts": {},
+  "sessions": {
+    "s_d5bf1e6ff01465": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b929915-e768-4794-b2f6-2ab60cb9fb3e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_f7bcf7990a7fc7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96f382b3-b3e8-4424-91c2-da35234b4ef0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

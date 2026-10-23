@@ -1,0 +1,21 @@
+packages/cli/src/commands/ldap/reset.ts
+  s_2b3e713f853fb2::t_867de350c0cce5 62-64
+packages/cli/src/commands/import/workflow.ts
+  s_2b3e713f853fb2::t_7e3929ba8133f0 104-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4c50a57974420b5b715e0c0b74d538bce097cdd0",
+  "prompts": {},
+  "sessions": {
+    "s_2b3e713f853fb2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c8122fe-54a5-42f2-89ae-b2ec231bd2bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

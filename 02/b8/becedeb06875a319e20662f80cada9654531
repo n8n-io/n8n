@@ -1,0 +1,28 @@
+packages/nodes-base/utils/__tests__/templated-auth.test.ts
+  s_ed9a87cac51448::t_0fbd5f10a10d32 1-162
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_ed9a87cac51448::t_0fbd5f10a10d32 1-108
+packages/nodes-base/package.json
+  s_ed9a87cac51448::t_0fbd5f10a10d32 200
+packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+  s_ed9a87cac51448::t_0fbd5f10a10d32 31,129,204-209,613-629
+  s_ed9a87cac51448::t_333c408a78a12a 630
+packages/nodes-base/utils/templated-auth.ts
+  s_ed9a87cac51448::t_0fbd5f10a10d32 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "02b8becedeb06875a319e20662f80cada9654531",
+  "prompts": {},
+  "sessions": {
+    "s_ed9a87cac51448": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7913c882-9152-4638-8f4e-20d120c07171",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

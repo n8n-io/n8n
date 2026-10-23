@@ -1,0 +1,22 @@
+packages/@n8n/cli/docs/commands/package.md
+  h_0ff5b37e8b04b1 62
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-schema-conflict-policy.ts
+  h_0ff5b37e8b04b1 13
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  h_0ff5b37e8b04b1 71
+packages/@n8n/cli/src/commands/package/import.ts
+  h_0ff5b37e8b04b1 67
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  h_0ff5b37e8b04b1 181,186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c64b5f11b8656e779c59a8f3b0d3bafccfc8f65e",
+  "prompts": {},
+  "humans": {
+    "h_0ff5b37e8b04b1": {
+      "author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

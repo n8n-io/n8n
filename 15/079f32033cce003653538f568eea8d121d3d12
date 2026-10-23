@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Iterable/__tests__/Iterable.node.test.ts
+  s_2e1fa95fc44f8f::t_36850ee9597b0c 26
+  s_2e1fa95fc44f8f::t_a0c2b71d4c7183 1-25,27-43
+packages/nodes-base/nodes/Iterable/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_fd2276293dd633 11-14
+packages/nodes-base/nodes/Iterable/Iterable.node.ts
+  s_2e1fa95fc44f8f::t_6519d5d892567f 15,26-27,99,212,215,244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "15079f32033cce003653538f568eea8d121d3d12",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

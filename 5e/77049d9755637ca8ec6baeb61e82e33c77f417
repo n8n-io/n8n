@@ -1,0 +1,259 @@
+packages/@n8n/mcp-apps/src/apps/workflow-preview/type-guards.ts
+  ai_agent 1
+packages/@n8n/instance-ai/evaluations/utils/safe-extract.ts
+  ai_agent 4
+packages/@n8n/instance-ai/src/error-formatting.ts
+  ai_agent 1
+packages/@n8n/ai-workflow-builder.ee/src/utils/stream-processor.ts
+  ai_agent 8
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  ai_agent 3
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  ai_agent 19
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  ai_agent 2
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/workflow-executor.ts
+  ai_agent 297-298
+packages/@n8n/instance-ai/evaluations/cli/compare-pairwise.ts
+  ai_agent 16
+packages/frontend/editor-ui/src/features/ai/assistant/composables/useBuilderTodos.ts
+  ai_agent 11
+packages/@n8n/db/src/migrations/common/1714133768519-CreateProject.ts
+  ai_agent 2
+packages/@n8n/agents/src/skills/validator.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  ai_agent 7
+packages/@n8n/db/src/migrations/common/1724951148974-AddApiKeysTable.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/workflows/detect-array-input-collapse.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/evals/column-ref-utils.ts
+  ai_agent 1
+packages/cli/src/modules/mcp/mcp.typeguards.ts
+  ai_agent 4
+packages/cli/src/modules/chat-hub/chat-hub.controller.ts
+  ai_agent 40
+packages/cli/src/modules/agents/utils/agent-resource-id.ts
+  ai_agent 1
+packages/@n8n/mcp-apps/src/server/register-mcp-app-tool.ts
+  ai_agent 6
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  ai_agent 5
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  ai_agent 2
+packages/cli/src/controllers/security-settings.controller.ts
+  ai_agent 9
+packages/cli/src/modules/agents/integrations/platforms/slack-operations.ts
+  ai_agent 2
+packages/@n8n/instance-ai/evaluations/outcome/transcript-from-events.ts
+  ai_agent 10
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  ai_agent 10
+packages/@n8n/ai-workflow-builder.ee/evaluations/langsmith/trace-filters.ts
+  ai_agent 1
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/item-flow-independent-source-execute-once.ts
+  ai_agent 1
+packages/cli/src/modules/instance-ai/storage/db-iteration-log-storage.ts
+  ai_agent 3
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  ai_agent 2
+packages/@n8n/ai-workflow-builder.ee/src/tools/engines/node-search-engine.ts
+  ai_agent 1
+packages/cli/src/modules/agents/integrations/agent-chat-suspension-cards.ts
+  ai_agent 1
+packages/@n8n/instance-ai/evaluations/outcome/event-parser.ts
+  ai_agent 5
+packages/@n8n/instance-ai/evaluations/outcome/workflow-discovery.ts
+  ai_agent 6
+packages/@n8n/instance-ai/src/tools/evals/extract-rows-from-history.service.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/filesystem/create-tools-from-mcp-server.ts
+  ai_agent 16
+packages/@n8n/workflow-sdk/src/validation/index.ts
+  ai_agent 1
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/set-node-validator.ts
+  ai_agent 8
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.service.test.ts
+  ai_agent 2
+packages/cli/src/modules/oauth-jwe/oauth-jwe-key.service.ts
+  ai_agent 5
+packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts
+  ai_agent 5-6
+lefthook.yml
+  ai_agent 50-53
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  ai_agent 13
+packages/cli/src/modules/agents/integrations/platforms/slack-bridge-behavior.ts
+  ai_agent 1
+packages/@n8n/ai-workflow-builder.ee/src/tools/get-node-context.tool.ts
+  ai_agent 3
+packages/@n8n/db/src/utils/generators.ts
+  ai_agent 2
+packages/frontend/editor-ui/src/app/router.ts
+  ai_agent 9
+packages/@n8n/agents/src/runtime/model/raw-usage.ts
+  ai_agent 1
+packages/@n8n/instance-ai/evaluations/cli/pairwise.ts
+  ai_agent 22
+packages/@n8n/instance-ai/src/workspace/template-telemetry.ts
+  ai_agent 18-19
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  ai_agent 11
+packages/@n8n/instance-ai/src/tools/evals/generate-sample-rows.service.ts
+  ai_agent 1
+packages/@n8n/ai-workflow-builder.ee/eslint.config.mjs
+  ai_agent 5,8-13,15-19,21
+packages/@n8n/agents/src/__tests__/workspace/sandbox/create-workspace.test.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/utils/stream-helpers.ts
+  ai_agent 6
+packages/@n8n/instance-ai/src/workspace/workspace-manifest.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/stream/output-redaction.ts
+  ai_agent 9
+packages/@n8n/ai-workflow-builder.ee/src/utils/token-usage-tracking-handler.ts
+  ai_agent 3
+packages/@n8n/instance-ai/src/tools/orchestration/complete-checkpoint.tool.ts
+  ai_agent 13
+packages/@n8n/instance-ai/evaluations/harness/langsmith-seed.ts
+  ai_agent 6
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  ai_agent 10-11
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  ai_agent 3
+packages/@n8n/instance-ai/src/utils/__tests__/stream-helpers.test.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/evals/describe-metric-for-workflow.service.ts
+  ai_agent 1
+packages/frontend/editor-ui/src/features/ai/modelSelector/AiModelSelectorDropdown.vue
+  ai_agent 15
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/item-flow-paired-item-references.ts
+  ai_agent 1
+packages/@n8n/local-gateway/eslint.config.mjs
+  ai_agent 5
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ToolResultRenderer.vue
+  ai_agent 4
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  ai_agent 15
+packages/@n8n/db/src/index.ts
+  ai_agent 13
+packages/@n8n/mcp-apps/src/telemetry/sanitize.ts
+  ai_agent 1-2
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/binary-checks/checks/no-empty-set-nodes.ts
+  ai_agent 1
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  ai_agent 23
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  ai_agent 21
+packages/@n8n/instance-ai/evaluations/utils/conversation-text.ts
+  ai_agent 1
+packages/@n8n/agents/src/runtime/memory/observation-log-reflector.ts
+  ai_agent 1
+packages/cli/src/__tests__/utils.test.ts
+  ai_agent 1
+packages/cli/src/modules/agents/execution-recorder.ts
+  ai_agent 2-3
+packages/@n8n/agents/src/runtime/tools/deferred-tool-manager.ts
+  ai_agent 1
+packages/cli/src/modules/chat-hub/chat-hub.attachment.service.ts
+  ai_agent 5
+packages/@n8n/agents/src/workspace/sandbox/daytona-auth-manager.ts
+  ai_agent 2
+packages/@n8n/instance-ai/src/tools/nodes/node-search-engine.ts
+  ai_agent 9
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  ai_agent 6
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  ai_agent 17
+packages/cli/src/modules/agents/integrations/integration-helpers.ts
+  ai_agent 1
+packages/@n8n/agents/eslint.config.mjs
+  ai_agent 8-15
+packages/@n8n/mcp-apps/src/apps/workflow-preview/composables/use-workflow-preview.ts
+  ai_agent 3
+packages/cli/src/modules/agents/integrations/platforms/linear-operations.ts
+  ai_agent 3
+packages/@n8n/scan-community-package/scanner/scanner.test.mjs
+  ai_agent 45,62,79
+packages/@n8n/instance-ai/src/debug/run-debug-buffer.ts
+  ai_agent 1
+packages/@n8n/utils/package.json
+  ai_agent 20-24
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/binary-checks/checks/no-code-imports.ts
+  ai_agent 9-13
+packages/@n8n/agents/src/skills/registry.ts
+  ai_agent 1
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/workflowSetupParameterIssues.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/workflows/workflow-json-utils.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tracing/langsmith-tracing.ts
+  ai_agent 10
+packages/@n8n/ai-utilities/src/node-catalog/search-engine.ts
+  ai_agent 12
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderSession.ts
+  ai_agent 3
+packages/cli/src/services/proxy-token-manager.ts
+  ai_agent 1
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  ai_agent 2
+packages/@n8n/instance-ai/src/debug/sanitize-debug-snapshot.ts
+  ai_agent 1-2
+packages/cli/src/modules/agents/integrations/integration-message-context.service.ts
+  ai_agent 2
+packages/cli/src/modules/mcp/mcp.utils.ts
+  ai_agent 5
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  ai_agent 3
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  ai_agent 2
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows.test.ts
+  ai_agent 166-168
+packages/@n8n/agents/src/runtime/model/messages.ts
+  ai_agent 2
+packages/@n8n/instance-ai/src/tools/evals/detect-tool-refs.service.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-compiler.ts
+  ai_agent 2
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-schemas.ts
+  ai_agent 15
+packages/@n8n/instance-ai/src/tools/evals/evals.tool.ts
+  ai_agent 3
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  ai_agent 8
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/lucideIconData.ts
+  ai_agent 13-15526,15531-15573
+packages/@n8n/instance-ai/src/tools/workflows/classify-node-destructiveness.service.ts
+  ai_agent 19
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/runner-langsmith.test.ts
+  ai_agent 11
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  ai_agent 27
+packages/@n8n/db/src/migrations/sqlite/1724951148974-AddApiKeysTable.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  ai_agent 8
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  ai_agent 10
+packages/cli/src/load-nodes-and-credentials.ts
+  ai_agent 4
+packages/@n8n/db/src/entities/abstract-entity.ts
+  ai_agent 12
+packages/@n8n/mcp-apps/src/utils/post-message.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/evals/eval-data-requirements.service.ts
+  ai_agent 1
+packages/@n8n/agents/src/sdk/guardrails/patterns.ts
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/evals/metric-catalog.ts
+  ai_agent 1
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/memory-session-key-validator.ts
+  ai_agent 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5e77049d9755637ca8ec6baeb61e82e33c77f417",
+  "prompts": {}
+}

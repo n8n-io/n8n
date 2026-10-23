@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/matches-instance-conventions-when-adding-a-sibling-sync.json
+  s_d7dc19b022f345::t_4a8e63b9ebafe0 1-1122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f995afd07c7bb8dbfd2bf0542123267633659ba0",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

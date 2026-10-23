@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_4c9018992022bf::t_6e1750f9f5f8f6 1-325,332,336,341,346-347,352,354-355,360,363,368,373-374,379,381-382,387,392-393,398,401,406,409,414,419-421
+packages/@n8n/nodes-langchain/package.json
+  s_4c9018992022bf::t_416cce048d7d63 215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "b502f6dc0c5979fb53676208937c431ad8f3402e",
+  "prompts": {},
+  "sessions": {
+    "s_4c9018992022bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2e73215-528d-402b-98e1-c147c0745f14",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

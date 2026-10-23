@@ -1,0 +1,27 @@
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_05d5c15120e21e::t_538a860d6ff868 74
+  s_05d5c15120e21e::t_50a0895d186c58 874-882
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_05d5c15120e21e::t_0876c736195b9e 2456-2461,2463,2465-2476
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "830920ba717ed9c8e3f0959190afb37051aa5649",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05d5c15120e21e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00bd33c2-462c-4055-b4a8-587d5d7a4757",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

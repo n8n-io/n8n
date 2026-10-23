@@ -1,0 +1,21 @@
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_a5c113d3dab7cc::t_86b4b7351018d4 46-75
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_a5c113d3dab7cc::t_e5c48e1053d4eb 57-68,71-92,151-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "34a26c1762c21b50834925f5202b884f00101110",
+  "prompts": {},
+  "sessions": {
+    "s_a5c113d3dab7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aff32f9-b97d-43bb-b0cd-f1499312b90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

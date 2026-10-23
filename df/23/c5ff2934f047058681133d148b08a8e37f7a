@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_a5c113d3dab7cc::t_2c3ad3ea756ab0 242-244
+packages/@n8n/cli/docs/commands/package.md
+  s_a5c113d3dab7cc::t_2c3ad3ea756ab0 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "df23c5ff2934f047058681133d148b08a8e37f7a",
+  "prompts": {},
+  "sessions": {
+    "s_a5c113d3dab7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aff32f9-b97d-43bb-b0cd-f1499312b90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

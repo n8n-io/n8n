@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_fad358ef69fdc9::t_e1b9c5f989c31c 216-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "9bd3ad5fea27be4e80ba6a965e51ec8f04becae0",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fad358ef69fdc9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3fe3a64f-4672-4318-8866-cacd239e702c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

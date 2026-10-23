@@ -1,0 +1,46 @@
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_29f51a98e4384d::t_3c8cad5cf9a6e7 123-124
+  s_29f51a98e4384d::t_d9cc3d5a7c4aaa 84-85,87-88,92-99,107-115
+  s_29f51a98e4384d::t_0d1b1f0c5656e2 150-152
+packages/cli/src/modules/instance-reporting.ee/LOCAL_VERIFICATION.md
+  s_29f51a98e4384d::t_3d961ba9d13787 187
+  s_29f51a98e4384d::t_720a0e394cd22e 149
+  s_29f51a98e4384d::t_403c9328735cf4 18-20
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.module.test.ts
+  s_29f51a98e4384d::t_1d0fc0de53a524 30,36
+  s_29f51a98e4384d::t_9d5ae749ae9af0 132-139
+  s_29f51a98e4384d::t_7a9dc2ff8b7b15 90-98
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_29f51a98e4384d::t_ccd0cd9825d433 35
+  s_29f51a98e4384d::t_929fd35723281a 218
+  s_29f51a98e4384d::t_8dd9badb6737cb 286-314
+  s_29f51a98e4384d::t_ede5b656fcbec3 176-184
+  s_29f51a98e4384d::t_7d039d25a24d0e 257-259
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.module.ts
+  s_29f51a98e4384d::t_4113b0b7915ba5 60-61
+  s_29f51a98e4384d::t_65874a9030f0c6 85,87,97-98,101-104
+  s_29f51a98e4384d::t_fa3cff05e9fc80 42,44
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.config.ts
+  s_29f51a98e4384d::t_22b2c70511e9d0 19-27
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_29f51a98e4384d::t_85ee62d5431173 98-100,105-108
+  s_29f51a98e4384d::t_e92a3fe8e48ed7 157
+  s_29f51a98e4384d::t_11297b887bf989 145
+  s_29f51a98e4384d::t_836affcd7dae1b 71-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "98b3a149834873d1cceb89dbf964eab9fb281a93",
+  "prompts": {},
+  "sessions": {
+    "s_29f51a98e4384d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f65bfa8a-3072-4d32-815a-476f2fbb6c87",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

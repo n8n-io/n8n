@@ -1,0 +1,87 @@
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_9d8ef652ce7177::t_a8438ad4fcd48b 182-183
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_2c14548cabdf41::t_fef2b124878368 784-788
+  s_2c14548cabdf41::t_2bd1baab3c76b0 789
+  s_df7e029a7c8d36::t_ffbaada36c0ade 140-141,783,790-791,793-796,799
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_e596506e83d3e0::t_59314af38440db 813
+  s_2832b667b2fecf::t_852d3b374b4b27 61,197-204
+  s_9d8ef652ce7177::t_b55b2ea60e6929 780-783,787
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_9d8ef652ce7177::t_c87cc1af1d66d1 409
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_df7e029a7c8d36::t_a24744c01e6475 6377-6380,6386-6422
+  s_2c14548cabdf41::t_ce0e243103b321 6381-6385
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_2832b667b2fecf::t_f541e20f7fae11 35-41,80-87,486-490,1378-1381
+  s_e596506e83d3e0::t_046351e9e656db 1497
+  s_9d8ef652ce7177::t_a05e06e7f2e4ef 1450-1468
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_e596506e83d3e0::t_a868be1244340c 13-18,22
+packages/@n8n/db/src/migrations/common/1789121244489-AddAgentExecutionAuthorAndMessagesResourceThreadIndex.ts
+  s_751e025e4b9653::t_91003ebd4ee2fb 11-33,37-42,44-50
+docs/generated/sqlite-schema/agent_execution.md
+  s_2c14548cabdf41::t_f697946412ed28 9,45-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "89d9c195747688a0b2aa459fbb6a82ee826d0214",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2832b667b2fecf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "492e4b80-f9d6-4e97-8f3f-e32b210754fc",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_2c14548cabdf41": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44a65183-869a-4c57-b1c4-7c10f11a4da2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_751e025e4b9653": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c3ea88d3-424e-4aa8-b319-8ed4e68944de",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9d8ef652ce7177": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eaea5708-b7c3-4347-b8da-571498eec8ee",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_df7e029a7c8d36": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0c1be78f-7bf0-40b0-a45d-a0d0adae49ba",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e596506e83d3e0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1950895e-f491-4e38-9ddd-514eab952422",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

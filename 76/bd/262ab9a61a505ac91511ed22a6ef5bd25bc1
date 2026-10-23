@@ -1,0 +1,26 @@
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_54174d0d3e0009::t_ac17fe7c6865a8 913-930
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  h_32d8cd6a0d6aad 80,85-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "76bd262ab9a61a505ac91511ed22a6ef5bd25bc1",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_54174d0d3e0009": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6912abca-8767-41fb-9f27-3c111d28131b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

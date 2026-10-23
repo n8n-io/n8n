@@ -1,0 +1,19 @@
+docs/adr/ADR-20261005-store-public-api-idempotency-keys-in-the-instance-database.md
+  s_97b2e2a4f3d080::t_2557bdabc44078 57-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27ce3daf15772d9f8d933a06add06eb2041999fb",
+  "prompts": {},
+  "sessions": {
+    "s_97b2e2a4f3d080": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ac7b07c7-7d74-41fb-80d6-220b6bac9b5a",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

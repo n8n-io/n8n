@@ -1,0 +1,42 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_b04c58447561ba::t_28079ba174e896 350
+  s_b04c58447561ba::t_edd71d97b3e960 349,355,357,363
+  s_b04c58447561ba::t_b8da4d643e0f2a 351-354
+packages/cli/test/migration/1789138249046-add-active-thread-claim-to-agent-execution.test.ts
+  s_b04c58447561ba::t_302de408f1dfa3 71-82,88,98,101-102,105-107,109,111-113
+  s_b04c58447561ba::t_52885c57b613db 124
+  s_b04c58447561ba::t_e3b4bcdbabc160 41,45
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_b04c58447561ba::t_90d6cf6bd3541e 14
+  s_b04c58447561ba::t_1957d398bb34fc 1482-1483,1490-1494,1498-1499
+  s_b04c58447561ba::t_c2bd31323b238b 1475
+  s_b04c58447561ba::t_7571dcf16c21d8 1528-1529,1531,1538
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_b04c58447561ba::t_a5bf4d12e43bfb 246,248,251
+  s_b04c58447561ba::t_7d70ae16b59ff3 302-306,309-317,319-320,327,331,333,335,344-348
+  s_b04c58447561ba::t_71972398649f79 1325,1328-1343,1345-1346,1348,1353,1357-1367
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_b04c58447561ba::t_788240744b25df 15
+  s_b04c58447561ba::t_182cde944c9bf5 526-529
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f368633f13ab13e0f9aada38623dc98c37ee2d24",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

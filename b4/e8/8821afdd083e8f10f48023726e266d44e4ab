@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_5764093526a398::t_20aa430e24deb7 145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "b4e88821afdd083e8f10f48023726e266d44e4ab",
+  "prompts": {},
+  "sessions": {
+    "s_5764093526a398": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e67bb3b7-fc34-496f-b06e-9f2a8b28056f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_d9bc3ef89069b9::t_2e3fb1f79d9d41 47-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d37ddb464a4c25f4fe3d3f47006b58be3722cee",
+  "prompts": {},
+  "sessions": {
+    "s_d9bc3ef89069b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da69f88a-7f72-469b-b6a9-a9b9e62980a9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+packages/cli/src/modules/instance-registry/instance-registry.service.ts
+  s_8e2e609b325f0e::t_666b15dc7330b7 110-113
+packages/cli/src/scaling/hypervisor/ipc-queue.ts
+  s_8e2e609b325f0e::t_cae6caa3e696de 1-196
+packages/cli/src/commands/hypervisor.ts
+  s_8e2e609b325f0e::t_e1f3045c64f431 136-138
+  s_8e2e609b325f0e::t_93f598b5565c3d 109-110,112,115
+  s_8e2e609b325f0e::t_2d60175cad1334 1-108,111,113-114,116-135,139-213
+packages/cli/src/commands/base-command.ts
+  s_8e2e609b325f0e::t_5840b18b6eb0a5 146,148-151
+packages/cli/src/scaling/hypervisor/ipc-messages.ts
+  s_8e2e609b325f0e::t_46f0f811f0aa8d 1-85
+packages/cli/src/services/redis-client.service.ts
+  s_8e2e609b325f0e::t_8bb659f41702d4 7
+  s_8e2e609b325f0e::t_56b4e45ecc135b 68-74
+packages/cli/src/abstract-server.ts
+  s_8e2e609b325f0e::t_345f90aeca1232 224-242
+packages/cli/src/scaling/pubsub/subscriber.service.ts
+  s_8e2e609b325f0e::t_4d7ca56af40446 12-13
+  s_8e2e609b325f0e::t_8c5115d7d9c708 69-71
+packages/cli/src/scaling/leader-election-client.ts
+  s_8e2e609b325f0e::t_0ddfa5f5de6073 82-87
+  s_8e2e609b325f0e::t_5c1f765a8f5379 10-12
+packages/cli/src/scaling/pubsub/publisher.service.ts
+  s_8e2e609b325f0e::t_582853b1850879 55-57
+  s_8e2e609b325f0e::t_ecbd64ca5f2f14 10-11
+packages/cli/src/commands/start.ts
+  s_8e2e609b325f0e::t_b4448ae05f367c 346-349
+packages/cli/src/modules/chat-hub/chat-hub-execution-store.service.ts
+  s_8e2e609b325f0e::t_d965908b3ebc48 10
+  s_8e2e609b325f0e::t_e2ed6f987dd5b1 68-70
+packages/cli/src/modules/chat-hub/chat-stream-state.service.ts
+  s_8e2e609b325f0e::t_b02f8abb8e81f1 10
+  s_8e2e609b325f0e::t_edf56d5b78e2d7 78-80
+packages/cli/src/scaling/hypervisor/ipc-redis-shim.ts
+  s_8e2e609b325f0e::t_36ff7662a4a9f1 1-113
+packages/@n8n/db/src/connection/db-connection-options.ts
+  s_8e2e609b325f0e::t_6408d9555131b7 79-81
+packages/cli/src/scaling/hypervisor/ipc-client.ts
+  s_8e2e609b325f0e::t_bf2924f49adc62 1-87
+packages/cli/src/scaling/hypervisor/broker.ts
+  s_8e2e609b325f0e::t_c2da600d244907 225-227
+  s_8e2e609b325f0e::t_e76360e4b50be2 1-224,228-398
+packages/cli/src/scaling/scaling.service.ts
+  s_8e2e609b325f0e::t_4f1e8681a3bc98 62-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5066740f0bfe6b694bfc4a0f4f831b4baa4a4777",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8e2e609b325f0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7782743-954e-4bfb-9f59-d29166ab53e9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

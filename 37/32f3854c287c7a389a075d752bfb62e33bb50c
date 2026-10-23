@@ -1,0 +1,41 @@
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_dd6ea240bb5dca::t_b97c402008d2e0 66-69,71-72
+packages/@n8n/config/test/config.test.ts
+  s_dd6ea240bb5dca::t_1df9d5092cc7eb 635
+packages/cli/src/commands/base-command.ts
+  s_dd6ea240bb5dca::t_c8c33504a68614 29,229-230
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_dd6ea240bb5dca::t_0e956ad0ca1639 46-48,55,843
+packages/cli/src/webhooks/__tests__/webhook-description-resolver.test.ts
+  s_dd6ea240bb5dca::t_cb696a31519c3d 1-167
+packages/cli/src/webhooks/__tests__/webhook-execution-context.test.ts
+  s_dd6ea240bb5dca::t_11e8316762f80a 1,5,8-10,12-15,17-22,27,29,32-33,35-36,38-39,41,43,47,50-51,53-54,56
+packages/cli/src/webhooks/__tests__/webhook.service.test.ts
+  s_dd6ea240bb5dca::t_b90f7add134f57 1,18,33-42,476-533
+packages/cli/src/webhooks/live-webhooks.ts
+  s_dd6ea240bb5dca::t_4471e08885c009 218
+packages/cli/src/webhooks/webhook-description-resolver.ts
+  s_dd6ea240bb5dca::t_d32ae58a6dbb1c 1-103
+packages/cli/src/webhooks/webhook-execution-context.ts
+  s_dd6ea240bb5dca::t_3b2af93a4e5984 1,13,20-21,38-39,41-42,47,58-59,61-62,67
+packages/cli/src/webhooks/webhook.service.ts
+  s_dd6ea240bb5dca::t_88f2600559365e 30,39,337-338,340-341,360-361,363-364,370-371,373-374,388-389,391-392
+packages/workflow/src/node-parameters/native-parameter-resolution.ts
+  s_dd6ea240bb5dca::t_d5c2058858eb6a 108-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "3732f3854c287c7a389a075d752bfb62e33bb50c",
+  "prompts": {},
+  "sessions": {
+    "s_dd6ea240bb5dca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_dd6ea240bb5dca",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

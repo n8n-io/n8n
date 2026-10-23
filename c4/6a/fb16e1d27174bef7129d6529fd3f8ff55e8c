@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/__tests__/setup.ts
+  s_dae7b98fe363b1::t_290f5567db22ef 1,15-19
+  s_dae7b98fe363b1::t_62dc9dd1df567a 89-103
+packages/@n8n/vitest-config/frontend-setup/index.ts
+  s_dae7b98fe363b1::t_20297c7967b8fd 1-175,186-188,190-424
+  s_dae7b98fe363b1::t_749f890bda1444 176-185,189
+packages/@n8n/vitest-config/frontend.ts
+  s_dae7b98fe363b1::t_6811bfa029fe42 28-33
+packages/frontend/@n8n/i18n/src/__tests__/setup.ts
+  s_dae7b98fe363b1::t_6b508600355e97 1
+packages/frontend/@n8n/frontend-utils/src/__tests__/setup.ts
+  s_dae7b98fe363b1::t_78069147a43138 1
+packages/frontend/@n8n/chat/src/__tests__/setup.ts
+  s_dae7b98fe363b1::t_af93dfaf8ec6cd 1
+packages/testing/janitor/src/core/global-triggers.ts
+  s_dae7b98fe363b1::t_147a70e602afa5 28-33,42
+packages/@n8n/vitest-config/package.json
+  s_dae7b98fe363b1::t_f73490a0e9c56b 6-7,11-18,22-23
+  s_dae7b98fe363b1::t_15628f7ce8a8d4 43-47
+packages/frontend/@n8n/frontend-module-sdk/src/__tests__/setup.ts
+  s_dae7b98fe363b1::t_209ce78f92c885 1
+packages/frontend/@n8n/composables/src/__tests__/setup.ts
+  s_dae7b98fe363b1::t_3e2f14274308da 1
+packages/frontend/@n8n/stores/src/__tests__/setup.ts
+  s_dae7b98fe363b1::t_654b1453dacf3e 1
+packages/frontend/@n8n/design-system/src/__tests__/setup.ts
+  s_dae7b98fe363b1::t_6ff5361d810c94 1,3,14-18
+pnpm-lock.yaml
+  s_dae7b98fe363b1::t_cef9f1da4e29fb 3973-3978,29777-29785
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c46afb16e1d27174bef7129d6529fd3f8ff55e8c",
+  "prompts": {},
+  "sessions": {
+    "s_dae7b98fe363b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27a54e1f-8deb-445a-9fae-240739c76bab",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

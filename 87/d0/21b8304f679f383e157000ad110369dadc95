@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_e825ad369f15b9::t_fd2e987453a845 45,602-605,970,972-973,976-978,982-983
+  s_346e64beb969af::t_08a9e368725066 971,974-975,979-981
+  s_e825ad369f15b9::t_9e15f2b57d53ce 984-985
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_346e64beb969af::t_4630609a89ff4a 712,714,720-721,723-751,756
+  s_e825ad369f15b9::t_0c4180a32b546f 696-711,713,715-719,722,752-755
+  s_e825ad369f15b9::t_3231234006dc18 20
+  s_346e64beb969af::t_5ab7cc269ec6cb 757
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "87d021b8304f679f383e157000ad110369dadc95",
+  "prompts": {},
+  "sessions": {
+    "s_346e64beb969af": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "931737db-45b6-441d-bd22-5690ed5073da",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e825ad369f15b9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6f7f3285-5e54-4967-ab65-53d53df0cc36",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

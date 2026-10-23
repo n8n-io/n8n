@@ -1,0 +1,85 @@
+packages/@n8n/constants/src/scheduler.ts
+  s_e44e1976cd4c72::t_ffdf19f04f482c 3,7
+  s_f4c41e79462bf8::t_94c1cd4c4daec9 6
+  h_32d8cd6a0d6aad 4-5,8,55-91
+packages/@n8n/decorators/src/system-task/__tests__/system-task.test.ts
+  s_8176f666d0c4b1::t_bf8642009764bc 1-41,43-77
+  h_32d8cd6a0d6aad 42
+  s_e44e1976cd4c72::t_10e03d8a1855fb 78-99
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  s_8176f666d0c4b1::t_925fcd010fd43b 1-60
+packages/@n8n/decorators/src/system-task/system-task-metadata.ts
+  s_f4c41e79462bf8::t_54404eaf1062d8 15-18
+  h_32d8cd6a0d6aad 1-14,19-32,36-37
+  s_e44e1976cd4c72::t_e99a1af7d0417a 33-35
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_e44e1976cd4c72::t_bc4d850caa3354 81
+  h_32d8cd6a0d6aad 14,16,42-44,129
+  s_8176f666d0c4b1::t_24adecc5dfaac6 34,37,48-63
+  s_e44e1976cd4c72::t_ffdf19f04f482c 12-13,41
+  s_f4c41e79462bf8::t_8ff47c06624f0f 24-28,127
+  s_f4c41e79462bf8::t_1f44cb0a85ece1 87
+  s_e44e1976cd4c72::t_9724d212192c89 128
+  s_8176f666d0c4b1::t_9d00ba0ba67f1c 1-5,68-80,82-86,88-106
+  s_0ac44de25b3a5c::t_2142ae4873735c 35-36
+packages/@n8n/scheduler/src/core/provisioning/types.ts
+  s_58930f65c9ae67::t_0a30a2fd1cac48 2
+packages/@n8n/decorators/src/system-task/index.ts
+  s_8176f666d0c4b1::t_bb2eb5db0b31e4 2-8
+  s_e44e1976cd4c72::t_bc4d850caa3354 1
+packages/@n8n/decorators/src/system-task/__tests__/system-task-metadata.test.ts
+  s_f4c41e79462bf8::t_469d1e803ec5b6 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b21e0cfa2a278d07e7049b12df4dcb461aa9510a",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0ac44de25b3a5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69feafde-6602-4d00-a60a-91da847e3c10",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_58930f65c9ae67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae9c7bba-1f83-48e0-a7bc-a468ee8c2161",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_8176f666d0c4b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877b6e5e-0f8d-466e-af04-7e9d08760554",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_e44e1976cd4c72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e84bf757-034e-42bd-b272-35c333b7ed4c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_f4c41e79462bf8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ceb9d13-9a84-4333-82f1-58e3ef338d9c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

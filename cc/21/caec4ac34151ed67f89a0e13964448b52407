@@ -1,0 +1,26 @@
+packages/cli/src/workflow-hook-context.service.ts
+  s_32854310b34019::t_60442366db5733 31-33,36-41
+packages/cli/src/__tests__/workflow-hook-context.service.test.ts
+  s_32854310b34019::t_8d62c2f33d9504 32,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cc21caec4ac34151ed67f89a0e13964448b52407",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_32854310b34019": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "29f57537-0c49-430f-af46-3de442b66717",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

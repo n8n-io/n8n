@@ -1,0 +1,38 @@
+packages/cli/src/deprecation/__tests__/deprecation.service.test.ts
+  s_db82e27b87b35e::t_6e105f952b77ce 76-78
+packages/@n8n/config/test/config.test.ts
+  s_db82e27b87b35e::t_15ed8f474c2853 622-624
+packages/@n8n/config/src/configs/outbound-proxy.config.ts
+  s_db82e27b87b35e::t_26343b87e3c50f 1-11,16,18-22,27-36
+  s_db82e27b87b35e::t_d1d8fdcfba60a7 12-15,17,23-26
+packages/cli/src/deprecation/deprecation.service.ts
+  s_6e360942898e30::t_166aa991196680 116
+  s_db82e27b87b35e::t_4435b80753bdc0 114-115,117
+packages/@n8n/config/src/index.ts
+  s_db82e27b87b35e::t_521a138ba91466 39
+  s_db82e27b87b35e::t_a731ff6c9483cc 236-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4646158e884c309dce55c926413d410e5341ee33",
+  "prompts": {},
+  "sessions": {
+    "s_6e360942898e30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e49f818e-927b-477a-8b5a-9c3d496ba19b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_db82e27b87b35e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c007baaa-5d25-4b75-8191-c13a6d0b6028",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

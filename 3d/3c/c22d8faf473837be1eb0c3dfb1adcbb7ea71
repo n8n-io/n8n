@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/project-roles/InstanceRolesView.test.ts
+  s_e968d10a2e4d25::t_480ba4dc4778e0 84,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "3d3cc22d8faf473837be1eb0c3dfb1adcbb7ea71",
+  "prompts": {},
+  "sessions": {
+    "s_e968d10a2e4d25": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8aebc5bd-3430-43da-b585-4df998bf8c07",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

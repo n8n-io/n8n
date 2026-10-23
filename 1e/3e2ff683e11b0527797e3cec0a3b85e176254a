@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/helpers/interfaces.ts
+  s_8d349550a4341a::t_73e50980ca9dba 18
+  s_8d349550a4341a::t_249ce166a34bc3 17,21,28-29,35,40
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/methods/listSearch.ts
+  s_8d349550a4341a::t_7586a5877829f6 149,153
+  s_8d349550a4341a::t_6f5bc223a71721 197,201
+  s_8d349550a4341a::t_ec5fe99b68caa2 98,103
+  s_8d349550a4341a::t_3e3538e608b517 49,54
+  s_8d349550a4341a::t_5dcc1c70f0aa4a 238,242
+packages/nodes-base/nodes/Microsoft/SharePoint/test/methods/listSearch.test.ts
+  s_8d349550a4341a::t_b049bed39dce2b 535-577,579-583,586-620
+  s_8d349550a4341a::t_07dbe26e5c2127 578,584-585
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1e3e2ff683e11b0527797e3cec0a3b85e176254a",
+  "prompts": {},
+  "sessions": {
+    "s_8d349550a4341a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f1bb678-bf8b-490e-8e42-2d690a68589a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

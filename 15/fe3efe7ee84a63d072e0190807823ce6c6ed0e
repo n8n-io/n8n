@@ -1,0 +1,38 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b0e06f9d9140a8::t_def578ca921fa5 6994
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_b0e06f9d9140a8::t_f3304990edf9d1 1356-1368,1372
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelActions.ts
+  s_b0e06f9d9140a8::t_2a08387c8733a7 255-256
+  s_b0e06f9d9140a8::t_1dc6c8f91874c2 21
+  s_b0e06f9d9140a8::t_3037468316cd8e 1-20,22-254,257-312
+  s_b0e06f9d9140a8::t_e6c96e281e6c23 313
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.handoffContext.ts
+  s_b0e06f9d9140a8::t_01182786f0c418 13-16
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_b0e06f9d9140a8::t_6cb3ac9f40dbb6 141,144-145
+  s_b0e06f9d9140a8::t_02f5faaa2e0be9 176-179,187-188,190
+  s_b0e06f9d9140a8::t_e706d0927253dd 146
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelActions.test.ts
+  s_b0e06f9d9140a8::t_64ef474bc747ba 1-195,198-202,208-297
+  s_b0e06f9d9140a8::t_c6528122ff4ee6 196-197,203-207
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_b0e06f9d9140a8::t_dd9d26cadd15f6 36
+  s_b0e06f9d9140a8::t_bdb0949b68c3eb 1063-1089
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "15fe3efe7ee84a63d072e0190807823ce6c6ed0e",
+  "prompts": {},
+  "sessions": {
+    "s_b0e06f9d9140a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b9d2e9f-79b9-45e5-ae63-64c961832ac6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

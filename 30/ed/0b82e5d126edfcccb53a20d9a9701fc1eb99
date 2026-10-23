@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/methods/listSearch.servicePrincipal.test.ts
+  s_51def3912d3fc1::t_902d8fa774eb27 1
+  s_51def3912d3fc1::t_6630fbabb07192 2-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "30ed0b82e5d126edfcccb53a20d9a9701fc1eb99",
+  "prompts": {},
+  "sessions": {
+    "s_51def3912d3fc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31afa3d2-fd0e-4f42-93c3-95839cb0136c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

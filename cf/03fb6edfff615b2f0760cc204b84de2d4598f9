@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Mailchimp/Mailchimp.node.ts
+  s_2e1fa95fc44f8f::t_7d53281e3100e5 59-60
+  s_2e1fa95fc44f8f::t_6d455629fd9422 1686
+  s_2e1fa95fc44f8f::t_618f7a79730f1f 17,1829,1841,1915,2022,2053
+packages/nodes-base/nodes/Mailchimp/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_62108c193c3132 12-15
+packages/nodes-base/nodes/Mailchimp/__tests__/request-urls.test.ts
+  s_2e1fa95fc44f8f::t_063f7845db7dc7 1-6,73-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf03fb6edfff615b2f0760cc204b84de2d4598f9",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeChoicePrompt.vue
+  s_794a1be4bba94d::t_d6a6a83625b7ac 134,143
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_794a1be4bba94d::t_f794ac6dd46d31 711
+  s_794a1be4bba94d::t_ec9fbaf4ddaeb2 743-746
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_794a1be4bba94d::t_d2614e7d07311c 166-178
+  s_794a1be4bba94d::t_56b73b5b17b125 609
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_794a1be4bba94d::t_6b2195ea22442a 2556-2564
+packages/frontend/editor-ui/src/features/execution/executions/views/ExecutionsView.vue
+  s_794a1be4bba94d::t_672f64b833f9b6 38,48-67,70
+  s_794a1be4bba94d::t_6213e722799528 172
+  s_794a1be4bba94d::t_03a1a58facc547 16-17,19,21-23,26
+  s_794a1be4bba94d::t_dc7f7f2835372b 125-131,136-143,146,165-171,173-177
+  s_794a1be4bba94d::t_7dc014d9724f4b 132-135,144
+  s_794a1be4bba94d::t_7bdc23c01391d4 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7204023888428ee3314b79469e44639b1b459cd7",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

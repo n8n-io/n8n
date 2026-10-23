@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_8631ec10eb1199::t_40044ceab23d41 1-271
+  s_8631ec10eb1199::t_487f78eb657181 272-276
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_8631ec10eb1199::t_e59c60d053fab6 5-40,48-50,59,74,81-82,85,95-96,99,107-110,112,119-121,124,131,133,141-155,157,164,166,172,175,182,184,197,199-206,216-217,220,232-235,237-240,242,247,250,255-256,259,264,266-269,271,276-277
+  s_8631ec10eb1199::t_9b84dd985188ce 278,280,285,289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f1ffb512083267443cbe24f08ff123524fb7016",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

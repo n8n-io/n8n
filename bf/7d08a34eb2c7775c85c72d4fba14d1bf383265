@@ -1,0 +1,38 @@
+packages/cli/src/modules/token-exchange/services/__tests__/token-exchange.service.test.ts
+  s_16453cac85f858::t_9d00ae409eb9ad 25-28,31,38
+  s_16453cac85f858::t_cb1774be1cb493 14
+packages/cli/src/modules/identity/services/jwt-verifier-driver.service.ts
+  s_16453cac85f858::t_1ff1c1b5e4f9f2 1-178
+packages/cli/src/modules/identity/services/trusted-key.service.ts
+  s_16453cac85f858::t_bac15923f7ce96 618
+  s_16453cac85f858::t_d9a68b80eeeec4 552
+  s_16453cac85f858::t_77b0b082e2b6bf 599
+  s_16453cac85f858::t_a3507aee848cb7 197
+  s_16453cac85f858::t_8e69308c88a57b 189
+packages/cli/src/modules/token-exchange/services/token-exchange.service.ts
+  s_16453cac85f858::t_a62682cdf17b40 45-48,55-57,59,61-62,64,66-98,102-112
+  s_16453cac85f858::t_1290ce37bb6b66 22
+  s_16453cac85f858::t_3716bd5c303701 23-25,36
+packages/cli/src/modules/identity/services/__tests__/jwt-verifier-driver.service.test.ts
+  s_16453cac85f858::t_f5a6c0a25a296d 1-39,41-184,186-197
+  s_16453cac85f858::t_b18cac9cee1f97 40
+  s_16453cac85f858::t_b40eb716522052 185
+packages/cli/src/modules/identity/identity.schemas.ts
+  s_16453cac85f858::t_2ce48ba4863853 112-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bf7d08a34eb2c7775c85c72d4fba14d1bf383265",
+  "prompts": {},
+  "sessions": {
+    "s_16453cac85f858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398bf54f-42db-4a1a-8d95-4f932ca49cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

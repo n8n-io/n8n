@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Google/Sheet/test/workflow/sheet-v1.workflow.test.ts
+  s_2e1fa95fc44f8f::t_00671279697fce 1-3,11-13,65-76
+  s_2e1fa95fc44f8f::t_ddca3c7d0d3b0f 4-10,14-64
+packages/nodes-base/nodes/Google/Sheet/test/workflow/sheet-v1.workflow.json
+  s_16204bc5c53227::t_84eb03c94b8e4d 1-360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d7d4eae9d9fe4e485fb1d605c58a36abe78e232b",
+  "prompts": {},
+  "sessions": {
+    "s_16204bc5c53227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaf0bdea6f1d472d9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

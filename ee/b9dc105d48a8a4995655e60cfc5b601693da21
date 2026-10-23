@@ -1,0 +1,43 @@
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_1331befce43f06::t_0da3ff9514526b 120-121
+  s_1331befce43f06::t_3021d0670611d5 130-154
+packages/@n8n/cli/src/client.ts
+  s_1331befce43f06::t_a69005c4b18df6 404,407-408
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_1331befce43f06::t_0a7455f15ccb15 51
+  s_1331befce43f06::t_5b7c2f8dd9abe8 52
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_1331befce43f06::t_521c3ee2951af8 966-969,974-991
+  s_1331befce43f06::t_e439b4427df1c4 992-993
+packages/@n8n/cli/docs/commands/promotions.md
+  s_1331befce43f06::t_eb3bc4f298a52a 251,257
+packages/cli/src/modules/promotions.ee/constants.ts
+  s_1331befce43f06::t_30ac01bd3c391c 7
+packages/@n8n/cli/src/commands/promotion-connection/promote-selection.ts
+  s_1331befce43f06::t_4db1fb5293eaf6 25-28,37
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_1331befce43f06::t_f83a7f0dd76a47 405
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_1331befce43f06::t_93a64a70ac07ee 634
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_1331befce43f06::t_1482e1d8c44156 848
+  s_1331befce43f06::t_23cdcaaba66362 828,834-838
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_1331befce43f06::t_436307743011b3 5,31-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eeb9dc105d48a8a4995655e60cfc5b601693da21",
+  "prompts": {},
+  "sessions": {
+    "s_1331befce43f06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56fb43e8-fa2b-499a-9395-a1c03a3693a8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

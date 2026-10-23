@@ -1,0 +1,41 @@
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_4d4515bb8fac55::t_aa20435cd12de6 26,33
+packages/@n8n/workflow-sdk/eslint.config.mjs
+  s_4d4515bb8fac55::t_77c4e7e147d3a0 19-40
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.ts
+  s_4d4515bb8fac55::t_aa20435cd12de6 30
+  s_4d4515bb8fac55::t_089c91208fe7aa 13
+packages/@n8n/workflow-sdk/src/workflow-builder/node-builders/subnode-builders.test.ts
+  s_4d4515bb8fac55::t_5a1a4126785e48 319-321
+  s_4d4515bb8fac55::t_aa20435cd12de6 316-318
+turbo.json
+  s_4d4515bb8fac55::t_e2cae4d1089d04 146-148
+packages/@n8n/workflow-sdk/package.json
+  s_4d4515bb8fac55::t_e2cae4d1089d04 50-51,96,103-104
+scripts/lint-parity/oxlint-parity.mjs
+  s_4d4515bb8fac55::t_535323f3a4ce15 68,159,163,166
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_4d4515bb8fac55::t_52201c6b23cd94 60
+  s_4d4515bb8fac55::t_e2cae4d1089d04 57-59,61-62
+packages/@n8n/workflow-sdk/oxlint.config.mts
+  s_4d4515bb8fac55::t_77c4e7e147d3a0 19-40
+  s_4d4515bb8fac55::t_e2cae4d1089d04 1-18,41-55
+pnpm-lock.yaml
+  s_4d4515bb8fac55::t_f16a8f7be28591 4567-4569,4588-4593
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c368f0b40b5a1fceab79a659bdcff426c0055254",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

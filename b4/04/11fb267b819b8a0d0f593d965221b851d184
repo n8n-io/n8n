@@ -1,0 +1,383 @@
+packages/cli/src/public-api/v1/handlers/security-policy/security-policy.handler.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-59
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-103
+.github/workflows/community-pr-close-stale.yml
+  s_d278a9ca262ecc::t_be8b8df5630e2d 40
+packages/cli/src/controllers/security-settings.controller.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 26-27,56-63,73
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/item/Item.resource.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-142
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/methods/index.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-2
+packages/testing/playwright/pages/components/CommandBar.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 31-35
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/MicrosoftSharePointV1.node.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-77
+packages/testing/playwright/tests/e2e/workflows/executions/list.spec.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 111-120
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupWizardFooter.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-111
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 30,54,130,285-290,324-344,361-377,404-413,1313-1314,1630-1638,2168-2170,2191-2194,2199,2207-2208,2214-2222,2226,2244-2245,2290,2308-2309,2347
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-45
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 150-153,190,194
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/list/List.resource.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-66
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 67-71
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/item/upsert.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-77
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 10-34,39-43,47
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 2,6,13
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 6,635-671
+  s_d278a9ca262ecc::t_3d162a079f63c6 672
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 22,24,26-42,44-47,49-67,70,94
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 4,337-345,388,408-413,418,421-428,599-602
+packages/cli/src/services/project.service.ee.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 67-71,361,373-378,387-391,395
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 33-38,152
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-requirements.extractor.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-141
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/helpers/interfaces.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-46
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 402-505,1186-1300
+  s_d278a9ca262ecc::t_72895ffe215204 1301
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiWorkflowPreview.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 17,387-445
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/methods/resourceMapping.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-95
+packages/@n8n/instance-ai/src/tools/workflows/credential-utils.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 12-18,26-32,58,97,100
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 30-31
+packages/nodes-base/nodes/Odoo/v2/actions/custom/getAll.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 9-10,47-88,108,120
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-prefers-supported-node.json
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-23
+packages/cli/src/services/__tests__/security-settings.service.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 13-14,24-25,32-33,36-43,277-436
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_d278a9ca262ecc::t_be8b8df5630e2d 156,291-317
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 35-37,76,84,156,202-222
+  s_d278a9ca262ecc::t_643b5f95fffc09 223-224
+packages/cli/test/integration/public-api/security-policy.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-226
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-respects-named-provider.json
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-22
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-confirmations.spec.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 238-242,276-277
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 16-17,297-302,337-363,366-374,406,408-422,455-465,507,550,890-931,939,943,947-953,956-961,1013-1016
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_d278a9ca262ecc::t_be8b8df5630e2d 309-317,2060
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/file/File.resource.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-74
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue
+  s_d278a9ca262ecc::t_be8b8df5630e2d 31-34,37,40
+packages/cli/src/modules/n8n-packages/spec/serialized/data-table.schema.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-21
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 242,258,271,735
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/item/getAll.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-186
+packages/@n8n/api-types/src/dto/security-settings/security-policy.dto.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-31
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-263
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiWorkflowPreviewExecution.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 3,47,137-140
+packages/@n8n/instance-ai/docs/configuration.md
+  s_d278a9ca262ecc::t_be8b8df5630e2d 11,211
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/index.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 189-194,196,198-199
+packages/@n8n/instance-ai/src/index.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 617
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.serializer.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-57
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 72
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 332-405,629-675
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 2,14-17,21-25,29,33-37,40,44
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_d278a9ca262ecc::t_89a7c5ca665bf7 250
+  s_d278a9ca262ecc::t_be8b8df5630e2d 226-249,435-446
+  s_d278a9ca262ecc::t_2c620587ec3e92 225
+packages/nodes-base/nodes/Microsoft/SharePoint/test/methods/listSearch.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 5,13,22
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/index.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-3
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/item/get.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-69
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-129
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 48-61
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/useN8nCreditsCredentialSelectionExperiment.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-39
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 289-373,490-492
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_d278a9ca262ecc::t_be8b8df5630e2d 261-265,272-277,284-322
+  s_d278a9ca262ecc::t_224bb227140dd6 323
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/validate-workflow.service.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1,78-88,235-257,872-1078
+  s_d278a9ca262ecc::t_fa399edebdd07c 1079
+packages/@n8n/instance-ai/src/tools/workflows/validate-workflow.service.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 7,20,23-24,215-219,297-404,557-564,603
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 2,12,106-109,112
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.serializer.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-25
+packages/cli/src/public-api/v1/handlers/security-policy/spec/schemas/security-policy.update.yml
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-23
+packages/cli/src/public-api/v1/handlers/security-policy/spec/schemas/security-policy.yml
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-44
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupWizardFooter.vue
+  s_d278a9ca262ecc::t_be8b8df5630e2d 34-43,125
+packages/nodes-base/nodes/Microsoft/SharePoint/test/MicrosoftSharePoint.node.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-26
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/file/update.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-122
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 58-60,68
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 34,63-68,185,566-590,1599-1649,1839-1845,1849-1853,1873-1899,1915-1930
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/transport/index.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-37
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/authentication.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-48
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_d278a9ca262ecc::t_be8b8df5630e2d 136-140,148
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 8,29,46
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d278a9ca262ecc::t_be8b8df5630e2d 2116,2196-2197,2202,2206,6239
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/file/download.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-44
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-4
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_d278a9ca262ecc::t_be8b8df5630e2d 27-28,30-33,36-37
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 136,223,255,333-339,389-395,531-611,613-627
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 16,296
+packages/nodes-base/nodes/Microsoft/SharePoint/MicrosoftSharePoint.node.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-2,4-6,8-15,17-20,22-29,31-32
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/methods/listSearch.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-250
+packages/cli/src/modules/data-table/data-table.service.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 16-17,42,774-799
+  s_d278a9ca262ecc::t_fd5c02100a0f2b 800-801
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/test/LmChatAwsBedrock.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 4,427-475
+  s_d278a9ca262ecc::t_f2a3a7addae6f8 476
+packages/nodes-base/nodes/Microsoft/SharePoint/test/helpers/utils.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 5
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-state.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 3-4,274
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-default-when-clean-slate.json
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-24
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 10-11,36-40,47-48,247-268
+  s_d278a9ca262ecc::t_a2604950ff73cc 269
+packages/cli/src/modules/n8n-packages/entities/project/project-import.types.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-18
+packages/@n8n/api-types/src/index.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 204,286
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 17-18,42-46,115-119
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 34,44-46,48
+packages/frontend/editor-ui/src/app/components/AiGatewaySelector.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 18,27-32,50,66,70-86,132,154
+packages/nodes-base/nodes/Odoo/test/v2/node/custom/getAll.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-2,7,137-159
+  s_d278a9ca262ecc::t_b60f7f59225a17 160
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupInputs.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 100-148
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 133-164
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 86
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_d278a9ca262ecc::t_9e378d1d96b179 9
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-2,4,6-8,10-13,914-1003,1440-1487
+  s_d278a9ca262ecc::t_e560f64f9cc713 1488
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 17,770-808
+  s_d278a9ca262ecc::t_78d0b97caddb68 809
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_d278a9ca262ecc::t_be8b8df5630e2d 51,137-138,319-320,561-574,684-687,690,703,716-726
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 3220-3504
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 21-29,39,48,53,57,60-61,65,68-69,84-87,92,97-98,101-107,111,114-115,117,120,122,125,128-129,131,142,163,171-173
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 790,941,949,959
+packages/@n8n/nodes-langchain/utils/aws/createBedrockRuntimeClient.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-46
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/file/upload.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-54
+packages/cli/src/modules/data-table/__tests__/data-table.service.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 5,480-546
+  s_d278a9ca262ecc::t_0a0f6dbd74ad30 547-548
+packages/nodes-base/credentials/common/aws/types.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 13-14
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 398,401,404,415-432
+  s_d278a9ca262ecc::t_ab134b83a0f6f2 433-434
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupSections.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 96-155
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1058
+packages/cli/src/services/security-settings.service.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1,13,15-17,20-49,60-61,64-156,207-217
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  s_d278a9ca262ecc::t_be8b8df5630e2d 98-101,106
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 15-17
+packages/frontend/editor-ui/src/app/components/AiGatewaySelector.vue
+  s_d278a9ca262ecc::t_be8b8df5630e2d 10-12,30-31,34-36,90-112,115-128,130-153,156-157
+packages/@n8n/permissions/src/constants.ee.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 92
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 12,86-95,267-279,281,285-308,310-311,322-326,377-382,387-392
+  s_d278a9ca262ecc::t_3b07c7eaee8e46 393
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/item/create.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-77
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-510
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-respects-stored-key.json
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-21
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 107-177
+packages/nodes-base/credentials/common/aws/descriptions.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 119-146
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 120-134
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_d278a9ca262ecc::t_be8b8df5630e2d 172-177
+packages/cli/src/controllers/__tests__/security-settings.controller.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 2,7,28-38,42-44,47-76,79-88,90,92,95-110,112-116,118-122,124-128,130-141,144-145,147-151,153-163,165-178
+packages/frontend/editor-ui/src/features/credentials/__tests__/credentials.store.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 43-55
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 146
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupSections.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 6,40-43,87-110
+  s_d278a9ca262ecc::t_0fddcc73d0c2ab 111-112
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/common.descriptions.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-161
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/item/delete.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-44
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 2284,2295
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-requirements.extractor.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-42
+packages/@n8n/api-types/src/dto/index.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 243-246
+packages/cli/src/modules/n8n-packages/__tests__/utils/test-builders.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 77-109
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 11,18,64-74,119-133,136-137
+  s_d278a9ca262ecc::t_204ba49a4ebfa9 134-135,138
+packages/cli/src/public-api/v1/openapi.yml
+  s_d278a9ca262ecc::t_be8b8df5630e2d 23-24,57-58
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 222
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 158-186
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialTestInBackground.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1,18-51
+  s_d278a9ca262ecc::t_9f83e292958c20 52-53
+packages/nodes-base/nodes/Microsoft/SharePoint/test/methods/resourceMapping.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 5
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialTestInBackground.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 44,46-49,51-58,60-65,68-71,73-80,88
+packages/@n8n/instance-ai/src/types.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 228-246,269,462-463,501,560
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 233,244-245
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/helpers/utils.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-279
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/useN8nCreditsCredentialSelectionExperiment.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-16
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/EmbeddingsAwsBedrock.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 4,6,131-169
+  s_d278a9ca262ecc::t_b61b4035b1b969 170
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-207
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 9,12,26-31,40,44,101-108,120-124,133,158,168-170,178-192
+packages/nodes-base/credentials/common/aws/index.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 4
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 425
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/list/get.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-42
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 12-13,37,57,77,80
+packages/frontend/editor-ui/src/app/composables/useEditorContext.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 61
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/list/getAll.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-83
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 17
+packages/cli/src/public-api/v1/handlers/security-policy/spec/paths/security-policy.yml
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-57
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/MicrosoftSharePointV2.node.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-79
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 7
+packages/@n8n/instance-ai/src/tools/workflows/resolved-credential.schema.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-26
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/item/update.operation.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1-77
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 437-451
+packages/cli/src/public-api/types.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 10,382-389
+  s_d278a9ca262ecc::t_c9b808bd66a8e9 390
+packages/cli/templates/form-trigger-completion.handlebars
+  s_d278a9ca262ecc::t_be8b8df5630e2d 204,206,208-211
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 12-13,16-17,76-77,80-82,85-97,122-134,197-227,236,253-256
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 85-97
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 1,9,21,315-319,350
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_d278a9ca262ecc::t_be8b8df5630e2d 131,153-159,237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "b40411fb267b819b8a0d0f593d965221b851d184",
+  "prompts": {},
+  "sessions": {
+    "s_d278a9ca262ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c99811d-f39d-45e0-b61a-52bfa6ade3fc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

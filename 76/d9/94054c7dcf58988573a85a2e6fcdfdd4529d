@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/If/V2/IfV2.node.ts
+  s_f67faa38fc0e31::t_cc8b7308accf0d 139
+packages/nodes-base/nodes/Switch/V3/test/switch.node.test.ts
+  s_f67faa38fc0e31::t_f908a0086446af 7
+packages/nodes-base/nodes/Filter/V2/FilterV2.node.ts
+  h_8fb27e0cdf6d1e 139
+packages/nodes-base/nodes/Switch/V3/SwitchV3.node.ts
+  s_f67faa38fc0e31::t_ceb3426dcdbbb9 13
+  h_8fb27e0cdf6d1e 487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "76d994054c7dcf58988573a85a2e6fcdfdd4529d",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_f67faa38fc0e31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "431427fc-b0cf-4236-b633-78ff77b13c2f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

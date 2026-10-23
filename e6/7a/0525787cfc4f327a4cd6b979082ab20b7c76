@@ -1,0 +1,62 @@
+packages/@n8n/local-gateway/src/renderer/chat/chat-thread.ts
+  s_4aa50c08d4840d::t_5bdc3106fb302e 15-19
+  s_4aa50c08d4840d::t_4ff4443ed0a7bf 108,119-120
+  s_4aa50c08d4840d::t_95a0ae4df4f5f1 86-87
+  s_4aa50c08d4840d::t_cb769b2172177e 52-56
+  s_4aa50c08d4840d::t_d4d8bfbf215e5c 61,72
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4aa50c08d4840d::t_2ed2541a7eeaaa 42-43
+packages/@n8n/local-gateway/src/renderer/App.vue
+  s_4aa50c08d4840d::t_a89523042c88e1 69-71,88-99
+  s_4aa50c08d4840d::t_a148931004e2b2 58
+  s_4aa50c08d4840d::t_5f6c66f7ac98f2 5,14
+  s_4aa50c08d4840d::t_023c6b845208dd 114-115,122-138
+packages/@n8n/local-gateway/src/renderer/chat/chat-thread.test.ts
+  s_4aa50c08d4840d::t_c0a219cd8ab30d 39-42,44
+  s_4aa50c08d4840d::t_1d223d94872014 120-153
+  s_4aa50c08d4840d::t_be2554165de969 3
+packages/@n8n/local-gateway/src/renderer/chat/chat-overlay.ts
+  s_4aa50c08d4840d::t_b410c835a0ca33 1-48
+packages/@n8n/local-gateway/src/renderer/components/AppHeader.vue
+  s_4aa50c08d4840d::t_f3f50b3a59cfee 110-115
+  s_4aa50c08d4840d::t_519beb23dada96 46
+  s_4aa50c08d4840d::t_b1900391c0b102 3,9-14,16-18
+  s_4aa50c08d4840d::t_75205d26f92829 38-45,47-52
+  s_4aa50c08d4840d::t_a70828a92b15c7 97-98
+packages/@n8n/local-gateway/src/renderer/components/ChatPanel.vue
+  s_4aa50c08d4840d::t_3ff8ee072a3fb8 1-64
+packages/@n8n/local-gateway/src/renderer/views/HomeView.vue
+  s_4aa50c08d4840d::t_ed93639924bc7d 98-99,104
+  s_4aa50c08d4840d::t_0c45206f01186a 10-15
+  s_4aa50c08d4840d::t_ddcae7780e7678 16,23
+  s_4aa50c08d4840d::t_c33aa6906a7a83 112
+packages/@n8n/local-gateway/src/renderer/chat/chat-overlay.test.ts
+  s_4aa50c08d4840d::t_6be0db8ce2c845 1-57
+packages/@n8n/local-gateway/src/renderer/components/ChatMessages.vue
+  s_4aa50c08d4840d::t_35782120993eb4 59
+  s_4aa50c08d4840d::t_20277eb722c538 9-19,27
+  s_4aa50c08d4840d::t_6802e5630f533d 54-58,60-61,63
+  s_4aa50c08d4840d::t_7cb9fe20816b31 21-22
+  s_4aa50c08d4840d::t_1e245210198bc1 76-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "e67a0525787cfc4f327a4cd6b979082ab20b7c76",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4aa50c08d4840d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca3ec3e5-c3e7-4e8a-bc04-705d68d7b331",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

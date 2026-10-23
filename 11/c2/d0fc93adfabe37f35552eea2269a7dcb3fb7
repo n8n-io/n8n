@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailMetadata.test.ts
+  s_4c3a3a7c531ee0::t_4e65acf6f1b11a 67
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_4c3a3a7c531ee0::t_4e65acf6f1b11a 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "11c2d0fc93adfabe37f35552eea2269a7dcb3fb7",
+  "prompts": {},
+  "sessions": {
+    "s_4c3a3a7c531ee0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e687f596-d1ab-4eb6-ad52-9192ae9bb164",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 44,68,501
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-eligibility.service.ts
+  s_4c3a3a7c531ee0::t_aebe8c7ea42be9 29,71,78,86,89
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 32,77
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.vue
+  s_4c3a3a7c531ee0::t_6e7415b150182c 7-8,59
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-access.service.test.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 1-199
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 20
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-access.service.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 1-131
+packages/cli/src/modules/agents/__tests__/test-utils/controller-route-metadata.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 1,3-7,9
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 37,67,88
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 32,55,76
+packages/cli/test/shared/controller-route-metadata.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 1-20
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.list.service.test.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 16-17,23,48,55,61
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_4c3a3a7c531ee0::t_6e7415b150182c 25,63
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-inbox.service.ts
+  s_4c3a3a7c531ee0::t_355a1de505d390 30-31,45,52,61,104,117-121,124-125,128,141,145-149
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-eligibility.service.test.ts
+  s_4c3a3a7c531ee0::t_6bea0efd437add 12,20,25
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.detail.service.test.ts
+  s_4c3a3a7c531ee0::t_f3eb194e3e3ff7 10,19-20,27,62,69,74,81,84-93,99,104,106,110,115,123,130,167-168,175-176,178,187,190-196,198,203,216
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.utils.ts
+  s_4c3a3a7c531ee0::t_6e7415b150182c 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c48239c8688c4de26f28ef4034211356f633c8ef",
+  "prompts": {},
+  "sessions": {
+    "s_4c3a3a7c531ee0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e687f596-d1ab-4eb6-ad52-9192ae9bb164",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

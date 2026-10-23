@@ -1,0 +1,14 @@
+packages/frontend/@n8n/design-system/src/css/fonts/geist.scss
+  h_f8b427917eda26 7,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a829afc997ea1ec0d96d4ac6a25438f509d5fb89",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

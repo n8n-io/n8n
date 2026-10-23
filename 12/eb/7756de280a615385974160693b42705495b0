@@ -1,0 +1,40 @@
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_91c597c7193a8c::t_3b9ac2d5de04dc 5,126-142
+  s_91c597c7193a8c::t_18cdd3f0b72ad5 143-144
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_91c597c7193a8c::t_166bce21a9fe0d 26-27
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_91c597c7193a8c::t_88d9366cb7a6e3 9-12,98-119,243,253,255,257,259
+  s_91c597c7193a8c::t_01703dd1ff6a88 262
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_91c597c7193a8c::t_c15dfd55b239eb 1471-1473
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_91c597c7193a8c::t_926774e3948458 238
+  s_91c597c7193a8c::t_44c82476d27667 52-54,80-83,163,232-237,240,242,244-248
+packages/cli/src/modules/agents/__tests__/execution-failure-summary.test.ts
+  s_91c597c7193a8c::t_595ea1b0509818 24-32,34-57
+packages/cli/src/modules/agents/utils/execution-failure-summary.ts
+  s_91c597c7193a8c::t_2da44cfc0db6a0 35-40,67
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_91c597c7193a8c::t_8120f8abe26984 819,822-823,835,843-849,854-857
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_91c597c7193a8c::t_2277af0106b9b2 78,519,523,533,613-618
+  s_91c597c7193a8c::t_7474d8a81ae1f0 17
+  s_91c597c7193a8c::t_e47dc291d0909d 619-620
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "12eb7756de280a615385974160693b42705495b0",
+  "prompts": {},
+  "sessions": {
+    "s_91c597c7193a8c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7122e3e1-00de-42c5-8307-a90549fc03e2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/@n8n/mcp-browser-extension/src/ui/components/TabItem.vue
+  s_0caa833f1ff183::t_76cb1ff1339ec8 35-43,63,75-78
+  s_0caa833f1ff183::t_1f0a44597034a6 79-80
+packages/@n8n/mcp-browser-extension/src/ui/App.vue
+  s_0caa833f1ff183::t_7a9f7966d27628 79
+packages/@n8n/mcp-browser-extension/src/ui/components/InfoRow.vue
+  s_0caa833f1ff183::t_7a9f7966d27628 15
+  s_0caa833f1ff183::t_76cb1ff1339ec8 37-38
+packages/@n8n/mcp-browser-extension/src/ui/tokens.scss
+  s_0caa833f1ff183::t_76cb1ff1339ec8 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c88339680911af1840db455a2b525dd5f75a4933",
+  "prompts": {},
+  "sessions": {
+    "s_0caa833f1ff183": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc298244-08df-4b3a-82d4-257993a0b5cd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/Aws/S3/test/V2/AwsS3.node.operation.test.ts
+  cd3c6f4a7b5a7479 355-411,413-514,516-520
+packages/nodes-base/nodes/Aws/S3/V2/BucketDescription.ts
+  cd3c6f4a7b5a7479 275-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "f0f441fd2cb12319c7719a03456f348124d2912a",
+  "prompts": {
+    "0a87b489b3b72f0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2af9aa26-b48d-48de-899f-4639eaafcd9f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 236,
+      "total_deletions": 3,
+      "accepted_lines": 0,
+      "overriden_lines": 3
+    },
+    "cd3c6f4a7b5a7479": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d98dd0fc-2221-437e-9c5e-fc0834d6c5b6",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 1267,
+      "total_deletions": 14,
+      "accepted_lines": 1256,
+      "overriden_lines": 1
+    }
+  }
+}

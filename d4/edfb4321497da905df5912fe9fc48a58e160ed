@@ -1,0 +1,22 @@
+packages/testing/containers/services/postgres.ts
+  s_6292f7a6ebb209::t_08b39d8e02fe48 162-163,173,186-190,193-194
+packages/testing/containers/tests/postgres-helper.test.ts
+  s_6292f7a6ebb209::t_2444b9d68700a0 1-29,34-37
+  s_6292f7a6ebb209::t_c561c02750ceff 30-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d4edfb4321497da905df5912fe9fc48a58e160ed",
+  "prompts": {},
+  "sessions": {
+    "s_6292f7a6ebb209": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79d76b24-efed-47cf-aba8-09fbf6fffd6a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

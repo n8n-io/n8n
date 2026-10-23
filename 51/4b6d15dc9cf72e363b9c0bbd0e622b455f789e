@@ -1,0 +1,51 @@
+packages/cli/src/modules/slack-comms/slack-runner.service.ts
+  s_60dfaf9586b4e7::t_35a6b4b56ba0c0 293,298-303,305-307
+  s_60dfaf9586b4e7::t_cbc79aa85740be 147-149
+  s_60dfaf9586b4e7::t_246f5a6e6faf2a 187
+  ai_agent 222-225
+  s_60dfaf9586b4e7::t_b045101bc2f909 226,230,242
+  s_60dfaf9586b4e7::t_98b7c378b3f099 342-355
+packages/cli/src/modules/slack-comms/__tests__/slack-identity.service.test.ts
+  s_60dfaf9586b4e7::t_29eeda480f880b 4,8,10,18-19,24-33,35-39,43,50,59,68,74
+packages/cli/src/modules/slack-comms/__tests__/slack-stream-renderer.test.ts
+  s_60dfaf9586b4e7::t_bd41a6769fff1a 782-783,788-791,794,798,802,804-807,809-812,821,826-828,837-839,843-844,848-865,867,869,872-873,886
+  s_60dfaf9586b4e7::t_80cc507a8b1278 131-139
+  s_60dfaf9586b4e7::t_ddb428871ba9a5 555-581
+packages/cli/src/modules/slack-comms/slack-stream-renderer.ts
+  s_60dfaf9586b4e7::t_728b0973122131 101-114,119
+  s_60dfaf9586b4e7::t_927101d77a1dff 377-378
+  s_60dfaf9586b4e7::t_70580433662f8f 414-421,429-430,439-449
+  s_60dfaf9586b4e7::t_fa16de97af5a71 517
+  s_60dfaf9586b4e7::t_791be18657c46d 479-480,484-487,494
+  s_60dfaf9586b4e7::t_60064394c70c35 529-533
+  s_60dfaf9586b4e7::t_c7195b6ff2f0c7 350,354
+  s_60dfaf9586b4e7::t_85bea2fd3f8797 473-475
+  s_60dfaf9586b4e7::t_491734bfba2c00 207
+  s_60dfaf9586b4e7::t_5e3f5d66b7de9b 269-276
+packages/cli/src/modules/slack-comms/__tests__/slack-runner.service.test.ts
+  s_60dfaf9586b4e7::t_7eac436828bc87 136
+  s_60dfaf9586b4e7::t_f449a5788b9370 223,230
+  s_60dfaf9586b4e7::t_73fca59c85e2e7 248-259
+  s_60dfaf9586b4e7::t_5a32af60c1bb47 13
+  s_60dfaf9586b4e7::t_4033eac818914f 405,407-434
+  ai_agent 406
+  s_60dfaf9586b4e7::t_ab3fd41b43adc3 74-80
+packages/cli/src/modules/slack-comms/slack-identity.service.ts
+  s_60dfaf9586b4e7::t_35dbd282681696 5-14,20,24-25,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "514b6d15dc9cf72e363b9c0bbd0e622b455f789e",
+  "prompts": {},
+  "sessions": {
+    "s_60dfaf9586b4e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc0705c0-a9e7-42d1-901f-f21c693be3e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

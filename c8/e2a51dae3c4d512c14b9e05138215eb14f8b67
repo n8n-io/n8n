@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_fc1a41fd88eb5b::t_5a83a247723fd2 4,13,165-166,193-204
+  s_fc1a41fd88eb5b::t_7762c98d66d6d7 95,101,103-106,108-126
+  s_fc1a41fd88eb5b::t_4659c7071b2043 96-100,102,107
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_da18386a9930c0::t_7aedf184dcda7f 122,160,188
+  s_da18386a9930c0::t_0e6b321125bc4c 174-175
+  s_da18386a9930c0::t_5de3bbbfd4c3ef 192
+  s_da18386a9930c0::t_d88bcb47ecacfa 123-129,185-186,189
+  s_da18386a9930c0::t_7a6855e498531c 152
+  s_fc1a41fd88eb5b::t_b102b74b878fa7 25,296-298,936
+  s_fc1a41fd88eb5b::t_7762c98d66d6d7 26,937-940
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_da18386a9930c0::t_02e8d6daa22601 3-4,2401-2404,2434,2440,2447,2453,2457,2463,2468,2480-2493,2522-2523,2526,2519
+  s_da18386a9930c0::t_0f932166bb1dfc 23-38,2398-2399,2405-2433,2435-2439,2441-2446,2448-2452,2454-2456,2458-2462,2464-2467,2469-2479,2524-2525,2527-2528,2508,2511,2517,2521,437,442,452,480,484,491
+  s_da18386a9930c0::t_57e918f65776e4 2400
+  s_da18386a9930c0::t_94a0e1f49e5b19 2494-2496,2497-2503,2506-2507,2509-2510,2512-2516,2518,2520,448-449,451,478,490
+  s_da18386a9930c0::t_b19f382b1c5ff0 2504-2505
+  s_fc1a41fd88eb5b::t_de5c8834f0815f 382-395,397,399-402,405-416,420-427,429-435,440-441,443-447,450
+  s_fc1a41fd88eb5b::t_b50b20b1e42a12 396,398,403-404,417-419,428,436,438-439,453-477,479,481-483,485-489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c8e2a51dae3c4d512c14b9e05138215eb14f8b67",
+  "prompts": {},
+  "sessions": {
+    "s_da18386a9930c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "036af95a-e433-49fd-afd4-648c48e9f64b",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_fc1a41fd88eb5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbadcb29-0d8e-46b0-95a2-3ecb4d90ae2c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/frontend/@n8n/rest-api-client/src/api/cloudPlans.ts
+  s_93bfa2eb2d7de3::t_63fc1b0b63c2ca 2
+  s_93bfa2eb2d7de3::t_155e30b0798aef 107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d5cff57eff5ba84a37d4cd29e91d98b58d8a0a80",
+  "prompts": {},
+  "sessions": {
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

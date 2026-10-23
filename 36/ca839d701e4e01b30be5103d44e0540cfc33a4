@@ -1,0 +1,47 @@
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_ea9df07f781518::t_f9ecf9c1901bc9 11,30,51,71
+  s_ea9df07f781518::t_780aa0b2ca609f 122,124,130,135-141,144
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ea9df07f781518::t_5eaf84f5868b61 50,59-66
+  s_ea9df07f781518::t_f2afca97f38048 87
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_ea9df07f781518::t_0c5a756b4316db 1498
+  s_ea9df07f781518::t_16add11a09af71 1457
+  s_ea9df07f781518::t_ae076a87b2c62b 56,66
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_ea9df07f781518::t_bfa278c13ba7e0 171
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_ea9df07f781518::t_54e951725afae8 72
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_ea9df07f781518::t_96a7bdb67a30c5 129-131
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_ea9df07f781518::t_df9ff0cda6fe90 79,83-88
+  s_ea9df07f781518::t_0ac2bdf538625f 14
+packages/cli/src/modules/n8n-packages/__tests__/utils/import-package-upload.test.ts
+  s_ea9df07f781518::t_2f2592e76cc61a 108
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_ea9df07f781518::t_9eaf6fd17ef9e6 74
+  s_ea9df07f781518::t_f8f5650f6c2240 11
+  s_ea9df07f781518::t_447de98583653d 35-44,47,54,58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "36ca839d701e4e01b30be5103d44e0540cfc33a4",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_ea9df07f781518": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "561b2377-dc3a-4b00-be4a-71eea021a9af",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

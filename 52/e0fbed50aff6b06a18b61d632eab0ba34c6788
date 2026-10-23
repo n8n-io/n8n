@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/saml/__tests__/saml-configuration-public.dto.test.ts
+  s_aaa596f5a4b613::t_007d636ed5aba2 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "52e0fbed50aff6b06a18b61d632eab0ba34c6788",
+  "prompts": {},
+  "sessions": {
+    "s_aaa596f5a4b613": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1a15da90-db1a-41b9-8206-a0a9b69b4891",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

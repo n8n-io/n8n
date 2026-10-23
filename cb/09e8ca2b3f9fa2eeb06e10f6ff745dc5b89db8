@@ -1,0 +1,23 @@
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_13d0f2e1be0144::t_32ab422dc18b83 83-86,119-122,185-188
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_13d0f2e1be0144::t_9f0e14296bd2d4 65-67
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_13d0f2e1be0144::t_3aaf073c2059b7 64-66,68-70,73-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cb09e8ca2b3f9fa2eeb06e10f6ff745dc5b89db8",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

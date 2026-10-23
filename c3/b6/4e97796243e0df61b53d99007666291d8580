@@ -1,0 +1,28 @@
+packages/@n8n/local-gateway/src/renderer/components/AppHeader.vue
+  s_4aa50c08d4840d::t_39963a0b46ff77 22-25
+  s_4aa50c08d4840d::t_4b2d265ffd653f 61-68
+  s_4aa50c08d4840d::t_300afb1629b96c 5-6
+packages/@n8n/local-gateway/src/renderer/views/HomeView.vue
+  s_4aa50c08d4840d::t_2e468a8ae3ae87 92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "c3b64e97796243e0df61b53d99007666291d8580",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4aa50c08d4840d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca3ec3e5-c3e7-4e8a-bc04-705d68d7b331",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

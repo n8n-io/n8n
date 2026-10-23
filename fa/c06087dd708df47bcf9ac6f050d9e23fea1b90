@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/RecentChatIcon.vue
+  s_e3560b551eac11::t_a063801b23362f 2,9,13-15,19
+  s_e3560b551eac11::t_d7b2d2935e78eb 1,3-8,16-18,25
+  s_e3560b551eac11::t_7a59dc93969c32 10-12,20-24
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_e3560b551eac11::t_7a59dc93969c32 42,387
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_e3560b551eac11::t_f0db60ce9f7df8 104-123,126-143,145-146,153-156
+  s_e3560b551eac11::t_6455bc5a0b32e2 59,64-72,74
+  s_e3560b551eac11::t_c4ecc38a457087 16,18
+  s_e3560b551eac11::t_5207a95ea7deff 263-264
+  s_e3560b551eac11::t_a063801b23362f 328-329
+  s_e3560b551eac11::t_8e974d7da180d1 281-286,289-292
+  s_e3560b551eac11::t_96f7d0ba136202 343,346,355
+  s_e3560b551eac11::t_d7b2d2935e78eb 17,60-63,73,144,149-150,287-288
+  s_e3560b551eac11::t_f49ad1d2a60d9f 309,319
+  s_e3560b551eac11::t_3b8ec1f97b8827 388,397,402
+  s_e3560b551eac11::t_bdea0c5e62bc3b 19-23,396
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useMergedChatHistory.test.ts
+  s_e3560b551eac11::t_a6ad97fec951e7 3,60,63,97-102
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_e3560b551eac11::t_7551f72f82bbc7 13,17,33-54
+  s_e3560b551eac11::t_498b424a10006b 94-97
+  s_e3560b551eac11::t_154793a77b6972 346,348-350
+  s_e3560b551eac11::t_3a72debc35f565 347
+  s_e3560b551eac11::t_727de5584596f9 311-331,333-336,340-345,352-423
+  s_e3560b551eac11::t_0a00fa9b38ffc9 332
+  s_e3560b551eac11::t_98ed9b39825d8d 337-339,351
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.vue
+  s_e3560b551eac11::t_0351248e827276 63
+  s_e3560b551eac11::t_ac0e42557acb76 220-223
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadsView.vue
+  s_e3560b551eac11::t_7a59dc93969c32 21,160
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useMergedChatHistory.ts
+  s_e3560b551eac11::t_d7b2d2935e78eb 1,16-21,31-34
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/RecentChatIcon.test.ts
+  s_e3560b551eac11::t_a6ad97fec951e7 28-32
+  s_e3560b551eac11::t_0c5f41553c4a03 9-14
+  s_e3560b551eac11::t_77b2afc6077721 1-8,15-27,33-43
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadsView.test.ts
+  s_e3560b551eac11::t_77b2afc6077721 4,229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fac06087dd708df47bcf9ac6f050d9e23fea1b90",
+  "prompts": {},
+  "sessions": {
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

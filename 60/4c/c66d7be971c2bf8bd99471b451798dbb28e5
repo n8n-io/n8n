@@ -1,0 +1,23 @@
+packages/@n8n/config/src/configs/activity-log.config.ts
+  s_088ff38dd5d51f::t_e8f6479f02b844 18-21,24
+packages/@n8n/config/test/config.test.ts
+  s_088ff38dd5d51f::t_e8f6479f02b844 204
+packages/cli/src/services/pruning/__tests__/activity-pruning.task.test.ts
+  s_088ff38dd5d51f::t_e8f6479f02b844 18,36,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "604cc66d7be971c2bf8bd99471b451798dbb28e5",
+  "prompts": {},
+  "sessions": {
+    "s_088ff38dd5d51f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95b8e2c8-0712-4f25-a78d-8e30044b968c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

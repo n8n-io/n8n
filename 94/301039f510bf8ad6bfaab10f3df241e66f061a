@@ -1,0 +1,21 @@
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_9c60c2b98d557d::t_1c52d5d245dbd1 1324-1358
+  s_9c60c2b98d557d::t_9475b98602e266 53-60
+  s_9c60c2b98d557d::t_c1883167529611 7,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "94301039f510bf8ad6bfaab10f3df241e66f061a",
+  "prompts": {},
+  "sessions": {
+    "s_9c60c2b98d557d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f18b5373-de5c-4e42-ab80-c6b7d0235553",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

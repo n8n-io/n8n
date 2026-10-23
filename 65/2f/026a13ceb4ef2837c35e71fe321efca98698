@@ -1,0 +1,22 @@
+packages/core/src/execution-engine/index.ts
+  s_52a3f7b1eed565::t_d9d94e5392d051 101
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_52a3f7b1eed565::t_e88699a22682e3 8-13
+  s_52a3f7b1eed565::t_d9d94e5392d051 686-692,694,696,698,763
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "652f026a13ceb4ef2837c35e71fe321efca98698",
+  "prompts": {},
+  "sessions": {
+    "s_52a3f7b1eed565": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efd98-6631-7cd1-abbc-77721cd06b9f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

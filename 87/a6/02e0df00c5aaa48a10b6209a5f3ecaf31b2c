@@ -1,0 +1,30 @@
+packages/@n8n/scheduler/README.md
+  s_a2c0d20cbf22fa::t_18aebc7a3a9d7a 141
+  s_a2c0d20cbf22fa::t_813a75048411c7 149-153,155,157,160-171
+  s_a2c0d20cbf22fa::t_5fccafa6190f47 23-25
+  s_a2c0d20cbf22fa::t_5b2df3da52a959 3-4,9-22,26-130,134,142-145,158-159,175,179-180,184,186,207-220,223-315
+  s_a2c0d20cbf22fa::t_d01f286b7f3264 183,185,187-206,221-222
+  s_a2c0d20cbf22fa::t_cc7528b09d7115 316-358,360-369
+  s_a2c0d20cbf22fa::t_ab50df0db503eb 5-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "87a602e0df00c5aaa48a10b6209a5f3ecaf31b2c",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a2c0d20cbf22fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "690c56b3-10ef-472e-ae89-2d9900990d66",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

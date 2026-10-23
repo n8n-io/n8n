@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/BambooHr/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_c6706306174b08 5
+  s_2e1fa95fc44f8f::t_39e1348d7338d7 21-39
+packages/nodes-base/nodes/BambooHr/v1/actions/employee/get/execute.ts
+  s_2e1fa95fc44f8f::t_a57247918de430 14-19
+packages/nodes-base/nodes/Bitwarden/test/Bitwarden.node.test.ts
+  s_2e1fa95fc44f8f::t_f047db44a6b3cb 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9754359eec51768d0ecf4da0b2aae093ea974d4b",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

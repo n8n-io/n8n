@@ -1,0 +1,21 @@
+packages/testing/playwright/services/mcp-api-helper.ts
+  s_86e1d171a9a875::t_9d44cd4200fb70 955,962,965
+packages/testing/playwright/tests/e2e/mcp/mcp-service.spec.ts
+  s_86e1d171a9a875::t_9d44cd4200fb70 312-316,342,364-368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "281eb55343bfe21925e8e503678d647d85139da1",
+  "prompts": {},
+  "sessions": {
+    "s_86e1d171a9a875": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5f70-bfd5-7fd3-b144-932c3c4abe6f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

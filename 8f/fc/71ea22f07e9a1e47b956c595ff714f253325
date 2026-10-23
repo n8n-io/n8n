@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/shared/services/source-controlled-file-pagination.service.ts
+  h_5d40c27a8fdfd1 6,8,19-22
+  h_5d40c27a8fdfd1 9-12
+packages/cli/src/public-api/v1/shared/services/__tests__/source-controlled-file-pagination.service.test.ts
+  s_f132370d90443c::t_0b8a66ef96b6aa 3,19-25,27,29-30,32-36,38,40-41,43-47,49,51-52,54-60,62-63,65-66,69,71-73,76-77,79-80,82-83,85-86,88-89,91-92,94-96,98-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "8ffc71ea22f07e9a1e47b956c595ff714f253325",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

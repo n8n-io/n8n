@@ -1,0 +1,66 @@
+packages/nodes-base/utils/sendAndWait/test/util.test.ts
+  s_2f64531d4927ce::t_437f111ea6fe7d 643-660,662-686,688-708,710-715,717-727,729-734,736-751,753-770,772-784
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_2f64531d4927ce::t_1654730eaf4159 253-258
+  s_2f64531d4927ce::t_fce0c5473a7aa5 27
+  s_2f64531d4927ce::t_50e63c9450864c 49-51
+  s_2f64531d4927ce::t_9dea0606160a71 127
+  s_2f64531d4927ce::t_32e46073777298 205
+packages/frontend/editor-ui/src/experiments/enhancedHitlGmail/gmailHitlParameters.test.ts
+  s_2f64531d4927ce::t_1fd9c4d197efdc 1-63
+packages/nodes-base/utils/sendAndWait/descriptions.ts
+  s_2f64531d4927ce::t_840094ab2eedd2 24,29-36,42-43
+  s_2f64531d4927ce::t_10c4184de19312 25-28,37-41
+packages/nodes-base/nodes/Google/Gmail/v2/hitl/descriptions.ts
+  s_2f64531d4927ce::t_52345605a977f3 2-19,32-97
+  s_2f64531d4927ce::t_a1a963581605de 20-31
+  s_2f64531d4927ce::t_000a2568ba2465 1
+packages/frontend/editor-ui/src/experiments/enhancedHitlGmail/gmailHitlParameters.ts
+  s_2f64531d4927ce::t_cfc7fbe5a20978 1-14
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.test.ts
+  s_2f64531d4927ce::t_d4a482b2c2762f 2426-2527
+  s_2f64531d4927ce::t_f1f369d4a4ad62 68-73
+packages/nodes-base/utils/sendAndWait/email-templates.ts
+  s_2f64531d4927ce::t_2e76d85e6d068a 14
+  s_2f64531d4927ce::t_65e92bae4ffd00 15-17
+  s_2f64531d4927ce::t_c20f1272d89b09 1-2
+  s_2f64531d4927ce::t_f14486ae1bdbfa 7,52
+  s_2f64531d4927ce::t_3d870cda235d11 9-13,18-51,53-60
+packages/frontend/editor-ui/src/experiments/enhancedHitlGmail/index.ts
+  s_2f64531d4927ce::t_89d9c8fffc5173 2
+packages/nodes-base/nodes/Google/Gmail/test/v2/hitl.email.test.ts
+  s_2f64531d4927ce::t_ca8a13d430f151 1-2,5-7,9-33,36-69,71-108,110-154
+  s_2f64531d4927ce::t_1c0f5b120ed3bd 34-35
+  s_2f64531d4927ce::t_000a2568ba2465 3-4,8
+packages/nodes-base/utils/sendAndWait/utils.ts
+  s_2f64531d4927ce::t_9cf404ecd2597c 489,491-503,505-507
+  s_2f64531d4927ce::t_9e593d1589f3a7 490
+  s_2f64531d4927ce::t_94b1d3eceb216f 26
+packages/nodes-base/nodes/Google/Gmail/v2/GmailV2.node.ts
+  s_2f64531d4927ce::t_f7ab90546a6b81 136-149
+  s_2f64531d4927ce::t_bb41db0966b0d4 188,193
+  s_2f64531d4927ce::t_000a2568ba2465 13-14
+packages/nodes-base/nodes/Google/Gmail/test/v2/sendAndWait.operation.test.ts
+  s_2f64531d4927ce::t_4c5ac40d5cef9c 49-50
+  s_2f64531d4927ce::t_9e680c0eb6f322 36-48,51-52
+  s_2f64531d4927ce::t_e4763dab5a1da4 89-134
+packages/nodes-base/nodes/Google/Gmail/v2/hitl/email.ts
+  s_2f64531d4927ce::t_000a2568ba2465 7,32
+  s_2f64531d4927ce::t_08c2ba6579fdae 1-6,8-25,27-31,33-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e1c1c85beb3eaf2c29b2ccc4c540e9ccfe409ac",
+  "prompts": {},
+  "sessions": {
+    "s_2f64531d4927ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ebc7f5c-6cc6-415c-a9e3-59aec8d97ec5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

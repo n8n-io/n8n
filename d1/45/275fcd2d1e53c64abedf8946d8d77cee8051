@@ -1,0 +1,14 @@
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  h_760178ed151f13 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d145275fcd2d1e53c64abedf8946d8d77cee8051",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

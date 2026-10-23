@@ -1,0 +1,9 @@
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-compat.test.ts
+  ai_agent 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b54c9d0e3ef211bed31a26579d32dad568c18f36",
+  "prompts": {}
+}

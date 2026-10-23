@@ -1,0 +1,52 @@
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_281efd42004ec0::t_0d3b3ce183b22f 445-446
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_281efd42004ec0::t_b079100e6964c1 990-1003
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_281efd42004ec0::t_4810847dcabb09 912-921
+  s_281efd42004ec0::t_d9c4e6f171d2bf 900-911,922-934
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_281efd42004ec0::t_d31e67c8a7384a 779-794
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_281efd42004ec0::t_536e0d0fbdc94c 55-57
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_281efd42004ec0::t_536e0d0fbdc94c 147-149
+packages/cli/test/integration/agents/n8n-chat-production.model.test.ts
+  s_281efd42004ec0::t_61d663c7e5e003 151,178,203-209
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_281efd42004ec0::t_c6df97023f3d95 808-809,828-829
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_281efd42004ec0::t_c11e14cd57c414 10-16
+  s_281efd42004ec0::t_26300eaf1a63a0 3-7
+  s_281efd42004ec0::t_2410ad8050e8a2 36-39,42,193-201,235,261
+  s_281efd42004ec0::t_ba51a9bbc4d9e6 233-234,236-260,262-279
+  s_1e70957d1bf574::t_52b37016f6ba3f 280
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_281efd42004ec0::t_16e5c841295d5d 17
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_281efd42004ec0::t_d5c779671fdc91 201,223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a54a7b8ae5201ffed048f891f4ac343005cafcd5",
+  "prompts": {},
+  "sessions": {
+    "s_1e70957d1bf574": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceb7-709c-7422-b951-1aa57d997a3e",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_281efd42004ec0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceb8-26d9-7362-a99e-66779bbf1d1d",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

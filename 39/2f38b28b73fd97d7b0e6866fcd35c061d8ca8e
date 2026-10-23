@@ -1,0 +1,42 @@
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  h_8fb27e0cdf6d1e 136-141,143,145
+  ai_agent 142
+packages/cli/src/distributed-scheduler/distributed-schedule-executor.service.ts
+  h_8fb27e0cdf6d1e 56
+  s_5b0f3d5f2911b6::t_cbac35335c47c9 3,23-24,31-32,65-68,89,91-92,95-110,112
+packages/cli/src/distributed-scheduler/distributed-scheduler.service.ts
+  h_8fb27e0cdf6d1e 40
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_5b0f3d5f2911b6::t_40cdf36700175e 194-202,204-205,218
+  s_5b0f3d5f2911b6::t_7acd6eb5b72eb7 10-11,203
+packages/cli/src/distributed-scheduler/distributed-schedule-trigger.service.ts
+  h_8fb27e0cdf6d1e 33-38,64,79,87
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  ai_agent 203
+  s_5b0f3d5f2911b6::t_3d158b5e9d1fb8 70,84-86,88-89
+  s_5b0f3d5f2911b6::t_428a2b4ece47ff 20-25,27,30,37,51,53,57,67,75,78
+  s_5b0f3d5f2911b6::t_dea06a1fc2ede3 7-10,36,41,43-50,52,54-56,60,66,72,87,99-122,126-153,157-186,202,204-209
+  s_5b0f3d5f2911b6::t_1f787f9deadd0c 38,68,94
+  s_5b0f3d5f2911b6::t_a2622c7df1e0c7 73-74,76-77,80-81,83,90-92,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "392f38b28b73fd97d7b0e6866fcd35c061d8ca8e",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_5b0f3d5f2911b6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed1d8-5500-74b0-97ff-c1b3dfb259c4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

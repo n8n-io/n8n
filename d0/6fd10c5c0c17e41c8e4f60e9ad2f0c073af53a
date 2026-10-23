@@ -1,0 +1,14 @@
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  h_32d8cd6a0d6aad 606,639
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d06fd10c5c0c17e41c8e4f60e9ad2f0c073af53a",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

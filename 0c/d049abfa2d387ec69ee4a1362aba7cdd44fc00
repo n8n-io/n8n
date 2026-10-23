@@ -1,0 +1,50 @@
+packages/@n8n/api-types/src/index.ts
+  s_5da2fe073f2f3a::t_ba6f170313faef 352-354,526-527
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/verdict-disclosure.test.ts
+  s_5da2fe073f2f3a::t_e0184c0d22244c 29,45,53,56-78,117-119
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-state.ts
+  s_5da2fe073f2f3a::t_c4c89c18c377e1 168,171-174,176-177,179-180
+  s_5da2fe073f2f3a::t_069700e167d8fe 1-6
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/VerificationVerdictCard.test.ts
+  s_5da2fe073f2f3a::t_2ad7827182676b 21
+  s_5da2fe073f2f3a::t_d1cf474d7c4a1d 1-7,11-20,22-80
+  ai_agent 8-10
+packages/@n8n/instance-ai/src/workflow-loop/verdict-disclosure.ts
+  s_5da2fe073f2f3a::t_57100b29fd21ee 6-11,30,52-59,80-82,88,92-95
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_5da2fe073f2f3a::t_f5760e1bd22926 735-791
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_5da2fe073f2f3a::t_487359cc39ce83 510-533
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/VerificationVerdictCard.vue
+  s_5da2fe073f2f3a::t_af87e597e3e2fa 1-127
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5da2fe073f2f3a::t_7eb03217ca279d 7146-7154
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_5da2fe073f2f3a::t_4228211408fd9e 52,55-56,201-204
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_5da2fe073f2f3a::t_93912bf027251a 28,286-289
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_5da2fe073f2f3a::t_0a0673d4d362b0 188
+  s_5da2fe073f2f3a::t_37ca3ad4d0c141 1049-1091,1167-1173,1565-1571
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0cd049abfa2d387ec69ee4a1362aba7cdd44fc00",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5da2fe073f2f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c08877c-0969-4b5a-9bc2-3d40e58743ff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

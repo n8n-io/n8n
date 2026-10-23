@@ -1,0 +1,150 @@
+packages/@n8n/engine/package.json
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 31
+packages/@n8n/engine/src/response-channel/__tests__/execution-response.schema.test.ts
+  s_4c46dcfe1ba789::t_bb90bdbd5b7cc4 1-21,28,33-36,44-59,61-78,87-96
+  s_9a2a7a8eef9b2d::t_df6b21aba09276 22-27,29-32,37-38,43
+  s_719e037cee4d57::t_31432b56d038f7 39,42,79-86
+  ai_agent 40-41
+  s_9a2a7a8eef9b2d::t_6c772bb6b20afb 60
+packages/@n8n/engine/src/response-channel/execution-response-sender.ts
+  s_9aca2e09ff6b67::t_410a8660d7214f 5-6,11,17-18,20-24,57
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-sender.test.ts
+  s_9aca2e09ff6b67::t_beca356d5b1175 1-2,4-7,15-35,76-84
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 1-2,10,17,23-24,26-31
+  s_71c6da2ee47cd3::t_d67313882bd806 3-5,7,18-19
+  h_8fb27e0cdf6d1e 6,8-9,11-16
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 20-21
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 22
+  s_bfdc3c9bc21b40::t_9d239a1839201d 25
+packages/cli/src/services/pending-webhook-response.ts
+  s_4c46dcfe1ba789::t_9317a33118b923 1-8,10-11,13-14,23-24,26,28,30-31,33,36,38,40,49-51,53-55,57-59
+  s_4c46dcfe1ba789::t_08563fce175542 9,15-22,25,27,29,32,34-35,37,41,44-46
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 12
+  s_4c46dcfe1ba789::t_da2277d78fbcda 39,47-48,52
+  s_4c46dcfe1ba789::t_137eda4ee8a1b2 42-43,56
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-3,10-12,20-23,26,29,31,34
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 4-5,7-9,15,19,24-25,27-28,30,32-33
+  s_719e037cee4d57::t_4893d08f7d8961 6
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 14,16-18
+pnpm-lock.yaml
+  ai_agent 2473-2475
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_71c6da2ee47cd3::t_d405134f94920e 1-2,8-14,17-18,21,28,30-47,51-59,71,87,89-90,104-105,107-115,117-118,120-121,123-126,128-129
+  s_bfdc3c9bc21b40::t_3d0737ff1431aa 3
+  s_4c46dcfe1ba789::t_ab1cf56a8e54a1 4,60-65,69-70,119,122
+  s_4c46dcfe1ba789::t_a519961dfa21ce 5-7,74-76,80,85-86
+  s_4c46dcfe1ba789::t_533d342b8bac27 15-16,19-20,23-27,48-50,130
+  ai_agent 22,29,68
+  s_bd2476b2677534::t_3d0654ed5c9186 66-67,72,81-83,91-92
+  s_9aca2e09ff6b67::t_d2e6bc1a9a6aa4 78,141,178,189
+  s_719e037cee4d57::t_d73bc028dc08bb 94-97,99-101,106
+  s_794845deccc20b::t_9bbbf1f363a95f 131
+  s_29ea1cc2a1dbf5::t_c87e077050280b 132-134,136-137,158,163,165-175
+packages/@n8n/engine/src/response-channel/index.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-2,5
+  s_4c46dcfe1ba789::t_1e1da3f2d7a8d1 6
+  s_9aca2e09ff6b67::t_410a8660d7214f 7
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_794845deccc20b::t_cd754a091a395e 1,6,22-23,40-42,45-51,68-74
+  s_9aca2e09ff6b67::t_81c4baaea16543 24,55-57,60,78-79
+  s_794845deccc20b::t_9bbbf1f363a95f 43-44
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 1-3,20-21,24,26-29,33-35,39-46,49-52,56,60,63,68,79,84,96-99,111,120-121,125
+  s_9aca2e09ff6b67::t_81c4baaea16543 7
+  ai_agent 10,12
+  s_4c46dcfe1ba789::t_16f6ec4d91ae85 11,37
+  s_bd2476b2677534::t_16413e0e77bad9 18,124
+  s_4c46dcfe1ba789::t_f9dae768d9a165 22-23,25,57,59,64-67
+  s_4c46dcfe1ba789::t_08563fce175542 30-32,38,53-55,61,69-74,94-95,123
+  s_4c46dcfe1ba789::t_9317a33118b923 36,47-48,62
+  s_9aca2e09ff6b67::t_3dcdb251f0e175 75-76,83,93,103-104,106
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 80-82
+  s_bfdc3c9bc21b40::t_3d0737ff1431aa 92,118-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "922b613c6877f4c2062cec7ccf5d3ca8ddd683ea",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_29ea1cc2a1dbf5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b5ba-8e93-70b1-adff-401cf2df2ddf",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_4c46dcfe1ba789": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1251ab8-7233-47da-89f9-16babffdf579",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_719e037cee4d57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27f603bd-170c-453c-b9f6-0405967390f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_794845deccc20b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b43d-9fd7-7372-ae87-3043b41ce227",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_9a2a7a8eef9b2d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b0a9-aea8-7a51-a10e-19a41029ada1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_9aca2e09ff6b67": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c54e-dd44-7bb0-975c-7f43d2ff8e1f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_bd2476b2677534": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b3a1-17ea-78e0-94e2-443c3571931f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_bfdc3c9bc21b40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e768b0c7-e08a-400c-bc83-3cc0967415bb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+packages/@n8n/db/src/migrations/common/1790672501346-CreateTrustedSourceTables.ts
+  s_fd1da3617c3e1d::t_81116383c6d5cc 1-55
+packages/cli/src/modules/inbound-auth-core/database/entities/trusted-source-identity.entity.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 1-45
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_fd1da3617c3e1d::t_0879677b473ed0 91,130
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  s_fd1da3617c3e1d::t_8904b2b5fa7ad3 5-6
+  s_fd1da3617c3e1d::t_bd557b72f517a9 1-4,7-18
+docs/generated/sqlite-schema/trusted_source_identity.md
+  s_fd1da3617c3e1d::t_b1b1e6fbf2ff28 1-97
+docs/generated/postgres-schema/README.md
+  s_fd1da3617c3e1d::t_c5f8bb71e472e8 132-133,355-356,1608-1631
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_fd1da3617c3e1d::t_0879677b473ed0 1-26
+docs/generated/sqlite-schema/README.md
+  s_fd1da3617c3e1d::t_b179068cf97cb2 132-133,339-340,1596-1619
+packages/cli/src/modules/inbound-auth-core/database/entities/trusted-source.entity.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 1-40
+docs/generated/postgres-schema/public.trusted_source.md
+  s_fd1da3617c3e1d::t_7454caf3ebfa1c 1-79
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 43
+docs/generated/postgres-schema/public.trusted_source_identity.md
+  s_fd1da3617c3e1d::t_b35a8a99cdb072 1-91
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 1-21
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 81
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 1-21
+packages/cli/test/migration/1790672501346-create-trusted-source-tables.test.ts
+  s_fd1da3617c3e1d::t_81116383c6d5cc 1-267
+docs/generated/sqlite-schema/trusted_source.md
+  s_fd1da3617c3e1d::t_daf9ccfcea6597 1-81
+docs/generated/postgres-schema/public.user.md
+  s_fd1da3617c3e1d::t_468571dfa869dc 11,74,357-366
+docs/generated/sqlite-schema/user.md
+  s_fd1da3617c3e1d::t_ac306ae125b109 22,80,363-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee3322626bf2a5a235784552fec61ed816588fe1",
+  "prompts": {},
+  "sessions": {
+    "s_fd1da3617c3e1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "761dcd9b-c988-4822-b9d3-fb779b27d043",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}

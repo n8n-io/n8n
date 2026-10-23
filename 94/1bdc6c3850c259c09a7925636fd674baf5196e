@@ -1,0 +1,15 @@
+packages/@n8n/inbound-auth/package.json
+  h_435b1d7d3e52c0 28-29
+  h_435b1d7d3e52c0 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "941bdc6c3850c259c09a7925636fd674baf5196e",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/testing/playwright/services/metrics-api-helper.ts
+  h_ba1c90e6b641fa 1,10-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b032fe14e50ff8ac60d60a4bc0880aec8490f826",
+  "prompts": {},
+  "humans": {
+    "h_ba1c90e6b641fa": {
+      "author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

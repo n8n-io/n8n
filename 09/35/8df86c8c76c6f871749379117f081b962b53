@@ -1,0 +1,24 @@
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_cee4e828ffcc82::t_bcc5135ddf216c 243-244
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_cee4e828ffcc82::t_682af0028c79ec 46-50,60-61,64
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/verify-built-workflow.tool.test.ts
+  s_cee4e828ffcc82::t_8a9039a9ec56b2 1550-1555,1572-1577
+  s_cee4e828ffcc82::t_bcc5135ddf216c 1608-1609,1618,1620-1634,1642-1645,1649,1654-1656,1664
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "09358df86c8c76c6f871749379117f081b962b53",
+  "prompts": {},
+  "sessions": {
+    "s_cee4e828ffcc82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3f04aa7-b442-4926-accf-09cf2f8803d0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

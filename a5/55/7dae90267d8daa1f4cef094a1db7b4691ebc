@@ -1,0 +1,93 @@
+packages/nodes-base/nodes/Kafka/v2/KafkaTriggerV2.node.ts
+  s_bc83fb448b2fad::t_58bdc9d2680ed0 1
+  s_bc83fb448b2fad::t_3196432f8299c3 62,65
+  s_bc83fb448b2fad::t_b7f0044b41f75d 13,15,29,40,49,55-61,63-64,66,70-72
+  s_bc83fb448b2fad::t_b26c2497e31494 25-28,38-39,41-45,50,54,73-84
+  s_bc83fb448b2fad::t_bb605f38396cb8 101-105
+  s_bc83fb448b2fad::t_e6adaa6bb4551c 2-8,10,17-24,30-37,47-48,51-53,67-69,85-97
+  s_bc83fb448b2fad::t_2667a547423865 11
+  s_bc83fb448b2fad::t_2f5e544f3053ee 98-100
+  s_bc83fb448b2fad::t_45207682a0f3a0 46
+  s_bc83fb448b2fad::t_bbf78bcff36a9e 9,12,14,16
+packages/nodes-base/nodes/Kafka/test/KafkaTrigger.node.test.ts
+  s_bc83fb448b2fad::t_401b4d9898ca1c 2532-2535,2537,2542-2543,2546,2549-2551,2555-2556
+  s_bc83fb448b2fad::t_abfea206cacb95 27
+  s_bc83fb448b2fad::t_c554d80f5cb90b 2557-2558
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.test.ts
+  s_bc83fb448b2fad::t_46177bf0fdfde8 100,205-211,215-219,223-228,233,235
+  s_bc83fb448b2fad::t_d4a4e0244a094c 273-275
+  s_bc83fb448b2fad::t_9bee2e62414f0f 144-160,166-178,180-204,243-244
+  s_bc83fb448b2fad::t_2fd9349331247c 9
+  s_bc83fb448b2fad::t_9a1ae130070dd4 11
+  s_bc83fb448b2fad::t_15ffdd00cbbe4b 398-402
+  s_bc83fb448b2fad::t_6a3f613df28378 212-214,220-222,229-232,234,236-242
+  s_bc83fb448b2fad::t_8cc4ff07a14729 29,31
+  s_bc83fb448b2fad::t_b7587576e812c8 253,662
+  s_bc83fb448b2fad::t_88c7f9d7ae2893 422-459
+  s_bc83fb448b2fad::t_5f2a69d25c1cdd 24-28,30,32-35
+  s_bc83fb448b2fad::t_a568e8fbf6bac5 644-646
+  s_bc83fb448b2fad::t_fa4241432045b9 3,5,21-23,58-80,82,84-98,102,104-116,118-124,126,128-131,133,136-139,141,245-248,250,270-272,276-277,279-286,288-289,291-294,297-298,301-303,307,310-313,316-337,340-362,364,366-376,378-393,395,405-408,410-411,414-415,417-420,462-475,478-502,505-516,518,520-542,545-570,572-587,589-596,598-599,601,603-624,626-638,640-643,647-660,709-723,725,727,729,731,733-735,737-755,758-772
+  s_bc83fb448b2fad::t_293b9f143423b3 2,161-165,179
+  s_bc83fb448b2fad::t_4f0076f2a72c4e 663-688,690-708
+  s_bc83fb448b2fad::t_4f914db91736f1 263,689
+  s_bc83fb448b2fad::t_d45a2f984d4753 254-262,264-269
+  s_bc83fb448b2fad::t_bc272efcada6a1 10
+  s_bc83fb448b2fad::t_0f645b6eadd056 143
+  s_bc83fb448b2fad::t_54f4c86dca3119 1,4,6-8,12-20,36-57,81,83,99,101,103,117,125,127,132,134-135,140,142,251-252,278,299-300,304-306,308-309,314-315,338-339,363,365,377,397,403-404,409,412-413,416,421,460-461,600,602,625,639,661,726,728,730,732,736,756-757,773-774
+  s_bc83fb448b2fad::t_85e01367bb781f 287,290,295-296
+  s_bc83fb448b2fad::t_31bf02f5f96e1f 394
+  s_bc83fb448b2fad::t_ba0c6dfd60c6b3 396
+  s_bc83fb448b2fad::t_74fbf49d723f96 249
+  s_bc83fb448b2fad::t_ea84b2e6c669b6 476-477,503-504,517,519,543-544,571,588,597
+  s_bc83fb448b2fad::t_a2de9df83f610c 724
+packages/nodes-base/nodes/Kafka/v2/transport/consumer.ts
+  s_bc83fb448b2fad::t_fbe3a51afc0420 47-51
+packages/nodes-base/nodes/Kafka/v2/TriggerSettings.ts
+  s_bc83fb448b2fad::t_bcc8c20b18e975 25-42
+  s_bc83fb448b2fad::t_bbf78bcff36a9e 1,3,5-24,43-60,95,143-215,224-250
+  s_bc83fb448b2fad::t_063cd3ead9d8a9 96-142
+  s_bc83fb448b2fad::t_435fdf5f00c631 61
+  s_bc83fb448b2fad::t_c02c3eeeacdd2e 62-94
+  s_bc83fb448b2fad::t_7a67f4b01b8222 216-223
+  s_bc83fb448b2fad::t_bc272efcada6a1 4
+  s_bc83fb448b2fad::t_9c31b51323cdd1 2
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerIsolation.test.ts
+  s_bc83fb448b2fad::t_4731f531ba5507 1-87
+packages/nodes-base/nodes/Kafka/KafkaTrigger.node.ts
+  s_bc83fb448b2fad::t_30389a67d1aecf 5,23
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.description.test.ts
+  s_bc83fb448b2fad::t_326d7fbb895f0f 3
+  s_bc83fb448b2fad::t_fedf88bbb89229 32
+  s_bc83fb448b2fad::t_a0d37678f9e172 22-26,28,70
+  s_bc83fb448b2fad::t_dada8b63fb03f7 30
+  s_bc83fb448b2fad::t_4e93b74df31a1e 1-2,4-7,21,27,29,33-34,37,40-48,54-55,57-60,63-66,69,71,73,75-76,79-84,86,93-96
+  s_bc83fb448b2fad::t_4aea91c6564fae 35-36,38-39
+  s_bc83fb448b2fad::t_634bcc699d7419 51-53,56
+  s_bc83fb448b2fad::t_7d9538359f9081 49-50
+  s_bc83fb448b2fad::t_074c415a5bf0f1 8-20,68,78,97
+  s_bc83fb448b2fad::t_6189d7e7957ebb 67
+  s_bc83fb448b2fad::t_aecdc6aecf265f 72,74,77,85,88-91
+  s_bc83fb448b2fad::t_1c0dd6d7a5c2bf 31
+  s_bc83fb448b2fad::t_170f443daa2d04 61-62
+  s_bc83fb448b2fad::t_eda0674a5592de 87,92
+packages/nodes-base/nodes/Kafka/v2/KafkaTriggerV2Description.ts
+  s_bc83fb448b2fad::t_6cafad2155b264 1-4
+  s_bc83fb448b2fad::t_bbf78bcff36a9e 5-186,191-310
+  s_bc83fb448b2fad::t_fbe3a51afc0420 187-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a5557dae90267d8daa1f4cef094a1db7b4691ebc",
+  "prompts": {},
+  "sessions": {
+    "s_bc83fb448b2fad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb78bb6a-b140-4f08-b6bf-9dc97db6e22d",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

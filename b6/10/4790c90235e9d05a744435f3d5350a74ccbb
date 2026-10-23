@@ -1,0 +1,47 @@
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 43-47
+packages/@n8n/node-engine-compatibility/src/__tests__/fixtures.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 2,265
+packages/@n8n/engine/src/index.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 41,47-48
+packages/@n8n/node-engine-compatibility/src/v1-response-hooks.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1-83
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 394
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1155-1158
+packages/@n8n/engine/src/response-channel/__tests__/execution-response.schema.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1,63
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-response-hooks.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1-50
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 4,46-51
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 11,45,139-141
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 3,28-41
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 6-7,54,62,163-164
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 143-178
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 114
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 20,65-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b6104790c90235e9d05a744435f3d5350a74ccbb",
+  "prompts": {},
+  "sessions": {
+    "s_9a2a7a8eef9b2d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b0a9-aea8-7a51-a10e-19a41029ada1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

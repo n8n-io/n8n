@@ -1,0 +1,32 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.refineTitle.test.ts
+  s_e3f94b9fd16cbd::t_9c27d4b3918384 25
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_e3f94b9fd16cbd::t_8b5854a5d8e726 802
+  s_e3f94b9fd16cbd::t_9c85171543a41f 849
+  s_e3f94b9fd16cbd::t_3954059d194d4f 35
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.threadPushRef.test.ts
+  s_e3f94b9fd16cbd::t_05fa25414e9be1 21
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.builderAskedForInput.test.ts
+  s_e3f94b9fd16cbd::t_30b23d2d0ef086 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "de3119aefcc9880b8f7dbcd55dc50d96af1bdb90",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e3f94b9fd16cbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dd59d7d-fa76-4956-a49d-751dbc6cde33",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/cli/src/node-execution/execute-node.service.ts
+  s_be6d12de03f718::t_2124ae9963fe88 5
+  s_be6d12de03f718::t_13d154d3b3f1bd 311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a1355999eeaec626ff04129048f296072c0c3440",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

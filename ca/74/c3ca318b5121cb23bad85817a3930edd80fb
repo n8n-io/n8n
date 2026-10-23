@@ -1,0 +1,28 @@
+packages/testing/playwright/tests/infrastructure/agents/message-queue.spec.ts
+  s_c5954c3047b5ed::t_cde671ba091194 243-245
+packages/cli/src/modules/agents/__tests__/agent-queued-preview-stream.service.test.ts
+  s_c5954c3047b5ed::t_cde671ba091194 52-53,66,80-82,86-117
+packages/cli/src/modules/agents/agent-queued-preview-stream.service.ts
+  s_c5954c3047b5ed::t_cde671ba091194 19-20,26,119,128-134
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweeper.test.ts
+  s_c5954c3047b5ed::t_cde671ba091194 32-33,35-36,52
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_c5954c3047b5ed::t_f23a67cb1ddb4b 437-440,444-451
+  s_c5954c3047b5ed::t_cde671ba091194 441-443,452,458-459,484-489,491-493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ca74c3ca318b5121cb23bad85817a3930edd80fb",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

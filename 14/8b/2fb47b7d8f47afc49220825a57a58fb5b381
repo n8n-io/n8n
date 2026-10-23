@@ -1,0 +1,21 @@
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  s_607123fb4bcef3::t_bd16cdf800d3fd 109-136
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_607123fb4bcef3::t_bd16cdf800d3fd 140,156-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "148b2fb47b7d8f47afc49220825a57a58fb5b381",
+  "prompts": {},
+  "sessions": {
+    "s_607123fb4bcef3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc939797-f478-4574-a8ee-6aa05b3ffd06",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

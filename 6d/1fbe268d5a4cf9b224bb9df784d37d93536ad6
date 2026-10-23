@@ -1,0 +1,21 @@
+packages/cli/src/modules/ldap.ee/README.md
+  s_1c953e0b08c977::t_8f02aa416d9594 92
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1c953e0b08c977::t_8f02aa416d9594 6036
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d1fbe268d5a4cf9b224bb9df784d37d93536ad6",
+  "prompts": {},
+  "sessions": {
+    "s_1c953e0b08c977": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "271de31e-c31a-4998-89ef-c1c819906c18",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

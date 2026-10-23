@@ -1,0 +1,72 @@
+packages/@n8n/instance-ai/src/tools/workflows/reconcile-simulation-plan.ts
+  s_4a69e2e2d37005::t_12f2611c4dcbb0 79-80,82
+  s_4a69e2e2d37005::t_8a41c49396d439 137
+  s_4a69e2e2d37005::t_4bf143b3ef1fe8 23
+packages/@n8n/instance-ai/src/utils/generate-validated-json.ts
+  s_4a69e2e2d37005::t_8c36edf57646de 48
+  s_4a69e2e2d37005::t_52102dc0904b7c 29-30
+  s_4a69e2e2d37005::t_25c4ad369d0a69 11
+packages/@n8n/instance-ai/src/tools/workflows/plan-verification-simulation.ts
+  s_4a69e2e2d37005::t_7f51f9be9c2e80 41-42
+  s_4a69e2e2d37005::t_28a42b63b88bbc 25
+  s_4a69e2e2d37005::t_21bf22d1882fc0 261,268-272
+  s_4a69e2e2d37005::t_983196c578f4d8 291-292
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_4a69e2e2d37005::t_e7820ac6a0857a 325
+  s_4a69e2e2d37005::t_28913dea1da42b 44
+  s_4a69e2e2d37005::t_17268d1ee95e1e 300-302,313
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/classify-node-destructiveness.service.test.ts
+  s_4a69e2e2d37005::t_9e5ffb3e353fac 204-231
+packages/@n8n/instance-ai/src/types.ts
+  s_4a69e2e2d37005::t_a3a7d02d3878c4 954-960
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_4a69e2e2d37005::t_74911a82f73dfa 139
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_4a69e2e2d37005::t_2edf39ffe14c63 1981-1985,1994
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  s_4a69e2e2d37005::t_5273175d59173f 65-92
+packages/@n8n/instance-ai/src/tools/workflows/apply-workflow-credentials.tool.ts
+  s_4a69e2e2d37005::t_62d351f37c1151 111
+packages/@n8n/instance-ai/src/utils/eval-agents.ts
+  s_4a69e2e2d37005::t_4a2c86bf2b2dd1 3
+  s_4a69e2e2d37005::t_0268da8a3c5f81 103-118,125-126,129-130,138
+packages/@n8n/instance-ai/src/tools/workflows/classify-node-destructiveness.service.ts
+  s_4a69e2e2d37005::t_01d78fa6fab67d 360
+  s_4a69e2e2d37005::t_48659ba9ebfa06 25,36-37
+  s_4a69e2e2d37005::t_2578b558dce76f 375
+  s_4a69e2e2d37005::t_15aa983719597a 434
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_4a69e2e2d37005::t_a9d4ba3d3beaa8 123-158
+packages/@n8n/instance-ai/src/utils/__tests__/generate-validated-json.test.ts
+  s_4a69e2e2d37005::t_993f3795089045 82-100
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_4a69e2e2d37005::t_cbc2ae69024ed0 3770-3802
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_4a69e2e2d37005::t_e7dfde0654ca04 764
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_4a69e2e2d37005::t_a659a424ef4024 35-36
+  s_4a69e2e2d37005::t_80464c43d0afd8 58-60
+  s_4a69e2e2d37005::t_0d61a1cddb5f74 204,206-212
+packages/@n8n/instance-ai/src/utils/__tests__/eval-agents.test.ts
+  s_4a69e2e2d37005::t_4d9da67c1004a2 84-122
+packages/@n8n/instance-ai/src/tools/orchestration/verification/reconcile-plan.ts
+  s_4a69e2e2d37005::t_c243bff850e9ec 21-22,24-25
+  s_4a69e2e2d37005::t_59d1804ca8b253 26-28
+  s_4a69e2e2d37005::t_62fb2531187ed2 29-31,44-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "93d3cba461c7e7580fdcb11a6998a4697f16a7ad",
+  "prompts": {},
+  "sessions": {
+    "s_4a69e2e2d37005": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a0f022f-6faf-4638-b532-d7d15cd928c9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

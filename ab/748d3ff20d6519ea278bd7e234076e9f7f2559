@@ -1,0 +1,48 @@
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_2aa332997f69a5::t_bfef4432d7695d 395
+  s_2aa332997f69a5::t_9247384f4dd457 310-316
+  s_2aa332997f69a5::t_6a5567539b146e 1-5,72,320,323-332,388-394,396-399
+  s_2aa332997f69a5::t_cf352b50b65b18 19-20,44-46,65-71,73-75,149-152,304-309,317-319,321-322,333-345,350-370,374-377,379-384,386-387
+  s_2aa332997f69a5::t_dc011f7852f384 64,147,153-156,346-349,371-373,378,385
+  s_2aa332997f69a5::t_112a990f3b0735 400-401
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_2aa332997f69a5::t_c9ff204947b8f2 14,108-109,132-133
+  s_2aa332997f69a5::t_425ee70e0c1cc5 1,15-16,48-49,59-60,94-95,154-155,197,200-211,270,305-309,340-341,381-390,400-404,428-429,441-448,461-465,479-480,491-499,510-514,530-531,540-548,558-562,578-579,601-602,623-624
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_2aa332997f69a5::t_2ad7f1371baebd 47
+  s_2aa332997f69a5::t_bfef4432d7695d 268
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_2aa332997f69a5::t_bfef4432d7695d 195-199
+  s_2aa332997f69a5::t_ebfacc647131de 4,35,163,165-166,168,183,187-188,190-194,200,218,262,302,331,370-371,398-401,403,420
+  s_2aa332997f69a5::t_2389743ac1629a 36,162,167,170-182,184-186,189,402,421
+  s_2aa332997f69a5::t_232b50ad539242 20
+  s_2aa332997f69a5::t_26bccf24417817 34,164,169
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_2aa332997f69a5::t_41d2479acfd26e 1-6,19-20,68,93-94,106-107,111,122,134-135,307-331
+  s_2aa332997f69a5::t_bfef4432d7695d 722-727,734-735
+  s_2aa332997f69a5::t_1e49add871f769 332-333,382-435,720-721,728-733,736-768
+  s_2aa332997f69a5::t_830c01068acf51 334-335,769-770
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_2aa332997f69a5::t_2038e297dc9b04 593,596-638
+  s_2aa332997f69a5::t_815240bc2688b7 1,15-16,77,101-102,113-115,119-120,130,140-142,264-314,566-591
+  s_2aa332997f69a5::t_30a17e8bc1afd4 592,594-595,639-640
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_2aa332997f69a5::t_7e3a518454e5bb 1-7,36-38,69,72-81,104-105,125,138,151,156-161,186,188,199-204,234-235,250-251,292-293,411,425,433-434,518,539,548-549,633-638
+  s_2aa332997f69a5::t_2ab4cdb593eb1b 639
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "ab748d3ff20d6519ea278bd7e234076e9f7f2559",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

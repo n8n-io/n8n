@@ -1,0 +1,32 @@
+packages/cli/src/auth/auth.service.ts
+  s_f4037ec3e84992::t_7ab5a5e12bbbcf 178-180,182
+packages/cli/src/modules/mcp/mcp-oauth.config.ts
+  h_44f8d1c0f2f8c4 8,47
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_f4037ec3e84992::t_7eb40bb06cb1f7 28-31
+packages/cli/src/modules/mcp/mcp-oauth-service.ts
+  s_f4037ec3e84992::t_8ba2dfc2567586 123-140
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  h_44f8d1c0f2f8c4 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "143a82bd3312ca671d95bb06230ae760a58b63ce",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f4037ec3e84992": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c047bb52-f9ff-424b-8fe6-ebf66afb06bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

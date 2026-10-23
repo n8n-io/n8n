@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.vue
+  s_f8a6e00f7935d6::t_e1533bf1b35eb2 265-267
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f8a6e00f7935d6::t_b9db59891e08a5 5288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "d521c78b3e25b656872cd66b732893b583fc6881",
+  "prompts": {},
+  "sessions": {
+    "s_f8a6e00f7935d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0b28d60-2d9f-42d2-a9c2-704da0b61b41",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

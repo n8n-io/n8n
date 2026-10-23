@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Microsoft/ToDo/test/GenericFunctions.test.ts
+  s_622e6646e7b730::t_4d7725ea0320b0 4,17,61-71,93-103,124-134,156-166,188-198,220-230,252-262,284-294,319-329,338-348,357-367,376-386,394-404,467-477,490-500,513-523,536-546,559-569,583-593,605-615,621-622,626-636,639-756
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItem.test.ts
+  s_622e6646e7b730::t_f8511cb4010393 1-29
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItem.workflow.json
+  s_622e6646e7b730::t_d2c366986f8518 1-98
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItemContinueOnFail.test.ts
+  s_622e6646e7b730::t_e3de2b4f9a14bf 1-22
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItemContinueOnFail.workflow.json
+  s_622e6646e7b730::t_5791d8622bb7ae 1-75
+packages/nodes-base/nodes/Microsoft/test/GenericFunctions.test.ts
+  s_622e6646e7b730::t_e395e8979bf771 3-7,166-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "2872738f2799aea3e20fdcc5090610513a591e08",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

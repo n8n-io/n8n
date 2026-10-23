@@ -1,0 +1,84 @@
+packages/workflow/src/interfaces.ts
+  s_198bac45d5149d::t_9a398ddb098d6d 4175-4176
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_198bac45d5149d::t_eb0627e63426a4 146-149
+  s_198bac45d5149d::t_d7e038756045c7 324-327
+  s_198bac45d5149d::t_8225a7915444f4 92,98-100
+  s_198bac45d5149d::t_ac85e15027375d 21
+  s_198bac45d5149d::t_ae154e86ae248f 506-526
+  s_198bac45d5149d::t_b7573f95af357a 101
+  s_198bac45d5149d::t_ac4abb8699aad6 527-529
+packages/cli/src/controllers/translation.controller.ts
+  s_198bac45d5149d::t_1a3a47af70ff4a 11-12,19,27
+  s_198bac45d5149d::t_8bced4e2dc64eb 67-76
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_198bac45d5149d::t_9c090ec15163bb 71
+packages/frontend/editor-ui/src/app/App.vue
+  s_198bac45d5149d::t_f7dbf06a434f53 16,20,22
+  s_198bac45d5149d::t_beb7507363e9ff 107-108,110,112-129
+  s_198bac45d5149d::t_f13ad9dc977a11 72-77
+  s_198bac45d5149d::t_dd5e7536cce381 40
+packages/cli/src/controllers/__tests__/translation.controller.test.ts
+  s_198bac45d5149d::t_f131c825512d73 8-9
+  s_198bac45d5149d::t_f2e60324949e70 70-86
+  s_198bac45d5149d::t_f5d7bddceed1aa 42,46
+packages/cli/src/services/frontend.service.ts
+  s_198bac45d5149d::t_7fd2be91105aac 37
+  s_198bac45d5149d::t_3274c484d21934 145
+  s_198bac45d5149d::t_f4fc68217c9669 274
+packages/@n8n/config/src/index.ts
+  s_198bac45d5149d::t_8d83b90a31a0a8 62-63
+  s_198bac45d5149d::t_a9127cc04aa478 30
+  s_198bac45d5149d::t_ce15cad2ff29ad 233,237-238
+  s_198bac45d5149d::t_187c56737edda9 239
+packages/cli/src/services/user.service.ts
+  s_198bac45d5149d::t_520869c4e0e345 59
+  s_198bac45d5149d::t_b9a53a3b683022 38
+  s_198bac45d5149d::t_794ff024d3e250 89-92
+packages/cli/src/services/language.service.ts
+  s_198bac45d5149d::t_3f5dc0ef5e6d85 1-63
+packages/frontend/@n8n/rest-api-client/src/api/settings.ts
+  s_198bac45d5149d::t_7968f264843276 9-15
+packages/@n8n/config/test/config.test.ts
+  s_198bac45d5149d::t_6de6bf050b2211 61-63
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_198bac45d5149d::t_7eab1eb9ae2273 150
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_198bac45d5149d::t_792e096c6d0d04 19
+  s_198bac45d5149d::t_57c3e872e65deb 196-199
+  s_198bac45d5149d::t_3aee91b7ac5b85 56
+  s_198bac45d5149d::t_28b83e32973548 229
+packages/@n8n/config/src/configs/languages.config.ts
+  s_198bac45d5149d::t_1bb342ba916fb2 1-49
+packages/frontend/@n8n/i18n/src/index.ts
+  s_198bac45d5149d::t_d19cb51e889372 422
+packages/@n8n/api-types/src/dto/user/user-self-settings-update-request.dto.ts
+  s_198bac45d5149d::t_b7ce40e1628f87 18-19
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_198bac45d5149d::t_222989f3d8e994 5653-5654
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_198bac45d5149d::t_812a3b0d108e89 331-335
+packages/frontend/@n8n/stores/src/useRootStore.ts
+  s_198bac45d5149d::t_1cba030116fed1 45
+  s_198bac45d5149d::t_0be75c3b8a9124 224-227
+  s_198bac45d5149d::t_b7e638d0d60594 256
+  s_198bac45d5149d::t_7ae1e0475b82cb 283
+  s_198bac45d5149d::t_20b5f5d7c49a2a 107-108
+  s_198bac45d5149d::t_dbf1d40e71287a 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9d3dfd0b32b1efd7c437bef16b0ca683fafa2637",
+  "prompts": {},
+  "sessions": {
+    "s_198bac45d5149d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51687197-b0e4-4982-a3b3-6565d2def6e0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

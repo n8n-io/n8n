@@ -1,0 +1,29 @@
+packages/cli/test/migration/1789717191125-add-thread-id-to-agent-checkpoints.test.ts
+  s_c2c4eb93834365::t_bb18c401a87a38 15-20
+  s_c2c4eb93834365::t_c63ba10b643ae6 21-22
+  s_c2c4eb93834365::t_bbc9bd4128428a 24
+packages/cli/src/modules/agents/entities/agent-checkpoint.entity.ts
+  s_c2c4eb93834365::t_bbc9bd4128428a 7
+packages/@n8n/db/src/migrations/common/1789717191125-AddThreadIdToAgentCheckpoints.ts
+  s_c2c4eb93834365::t_bbc9bd4128428a 4,25-30,33-36,40-41,45-46,53-56,61-85
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_c2c4eb93834365::t_b9ba630c4bc34b 31
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_c2c4eb93834365::t_489da3dee953b7 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2dbedf65d0981ece8d52e8569ded5358c6ba84b5",
+  "prompts": {},
+  "sessions": {
+    "s_c2c4eb93834365": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c414-6eca-7133-bfa3-60491332c4f5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

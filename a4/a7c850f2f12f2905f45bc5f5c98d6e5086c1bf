@@ -1,0 +1,95 @@
+packages/cli/src/active-executions.ts
+  s_108a686650a6bc::t_439ba744cd2986 67
+  s_108a686650a6bc::t_4fc85d7f20c3ea 69
+  s_108a686650a6bc::t_28e9fdf44f8786 26-28,30
+  s_108a686650a6bc::t_2dd99ffdaeeefa 85-86,88
+  s_108a686650a6bc::t_39ac01b4bbcd30 106-107
+  s_108a686650a6bc::t_0d51d7ffa84c40 110,114,119,122,126,134,136-137,142
+  s_108a686650a6bc::t_ea4492ca9a8b4e 29
+packages/cli/test/integration/commands/start.cmd.test.ts
+  s_108a686650a6bc::t_fc0d2667ef0aed 60-63
+  s_108a686650a6bc::t_d5dbcd66956e66 27
+  s_108a686650a6bc::t_68d2585ef84bdd 122
+packages/cli/src/chat/chat-execution-manager.ts
+  s_108a686650a6bc::t_c4fc4623231d4a 39-42
+packages/cli/src/executions/__tests__/execution-persistence.integration.test.ts
+  s_108a686650a6bc::t_7e000dad943c6c 144-150,158,167,173
+  s_108a686650a6bc::t_79dd0bb0752370 151-157,159-166,168-172,174-179
+packages/cli/src/interfaces.ts
+  s_108a686650a6bc::t_439ba744cd2986 140
+  s_108a686650a6bc::t_ff7eb360637f07 136-138,142-143
+  s_108a686650a6bc::t_fc831d99664d2d 135,139,141,144-145
+packages/cli/src/chat/__tests__/chat-execution-manager.test.ts
+  s_108a686650a6bc::t_429a0304e700d3 68-71
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_108a686650a6bc::t_e9a0341a07fbd7 154,156-160
+  s_108a686650a6bc::t_a4c8b72eadae73 155,373,388
+  s_108a686650a6bc::t_119de840376401 24
+  s_108a686650a6bc::t_bc4d533d0e8446 380-387,389-393
+packages/cli/src/executions/enqueued-execution-recovery.service.ts
+  s_108a686650a6bc::t_5c593acd07aea9 107
+  s_108a686650a6bc::t_e168697c282040 86
+  s_108a686650a6bc::t_31aef990d2ebc0 99
+  s_108a686650a6bc::t_2b270d7ebf144c 1-7,9-19,21-36,40-46,49-50,55-61,63-66,71-80,82-84,87,89-98,100-104,108-111
+  s_108a686650a6bc::t_25ea34882e4458 37-39,47-48,51-54,62
+  s_108a686650a6bc::t_9ef24560902fef 67-70,81,85,88
+  s_108a686650a6bc::t_c70a5ee869bec5 105-106
+  s_108a686650a6bc::t_61edcebdab8b06 8
+  s_108a686650a6bc::t_d6a572d5c7d6a9 20
+packages/cli/src/commands/start.ts
+  s_108a686650a6bc::t_989433e71d5e2c 17
+  s_108a686650a6bc::t_ad4fd0b62f81f8 411-414
+packages/@n8n/config/src/configs/logging.config.ts
+  s_108a686650a6bc::t_3cfa212f5519d1 54
+packages/cli/src/wait-tracker.ts
+  s_108a686650a6bc::t_36d5967d0d2410 155-158
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_108a686650a6bc::t_a1bd9cef1733df 242-272
+  s_108a686650a6bc::t_3034aaf226f683 154
+packages/cli/src/__tests__/wait-tracker.test.ts
+  s_108a686650a6bc::t_8e43ea0b99b41f 414-417,454-457,661-664,689-692
+  s_108a686650a6bc::t_9cf3bd06cf38fc 165,188,267,288,337,528,555
+packages/cli/src/executions/__tests__/enqueued-execution-recovery.service.test.ts
+  s_108a686650a6bc::t_854c2cd7af8150 2
+  s_108a686650a6bc::t_3bfaddaa15eeae 124-126
+  s_108a686650a6bc::t_9e3d0177e2886b 108
+  s_108a686650a6bc::t_da39297387bb45 1,5-8,13-19,21-48,50-51,55-74,79-82,84,90,95-107,109-123,127-130,140-141
+  s_108a686650a6bc::t_50d9fa787ad42b 4,9-12,20
+  s_108a686650a6bc::t_27819f320fd6a9 49,52-54
+  s_108a686650a6bc::t_2a2d76504a95d2 75-78,83,85-89,91-94
+  s_108a686650a6bc::t_79dd0bb0752370 131-139
+  s_108a686650a6bc::t_ad1165177dfb55 3
+packages/cli/src/workflow-runner.ts
+  s_108a686650a6bc::t_cc4adc85787448 288
+  s_108a686650a6bc::t_3f10c78a75cc29 238
+  s_108a686650a6bc::t_b6f81eb38e53bc 285
+  s_108a686650a6bc::t_439ba744cd2986 48,190
+packages/cli/test/integration/execution.repository.test.ts
+  s_108a686650a6bc::t_e833e1442e556e 147-159
+  s_108a686650a6bc::t_6797f84dd3006c 324-367
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_108a686650a6bc::t_6ea354ff3d7254 837-838
+packages/cli/src/__tests__/active-executions.test.ts
+  s_108a686650a6bc::t_da5716f7af92d1 323-326
+  s_108a686650a6bc::t_dfb9af2694d576 343
+  s_108a686650a6bc::t_bf6a0992a80893 119-122,130-146
+  s_108a686650a6bc::t_156bf761d4065c 167-172
+  s_108a686650a6bc::t_307df17a60c9ca 311-314
+  s_108a686650a6bc::t_3c874d774ade3a 183-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a4a7c850f2f12f2905f45bc5f5c98d6e5086c1bf",
+  "prompts": {},
+  "sessions": {
+    "s_108a686650a6bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09635ede-5a17-4b01-b9f6-aac69811811c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

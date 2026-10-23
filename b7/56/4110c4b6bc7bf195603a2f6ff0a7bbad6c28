@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardPersistence.ts
+  s_1ad479b703b9e9::t_6154a21b03cbf4 106
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.vue
+  s_1ad479b703b9e9::t_579eed895b4fd5 64-65
+  s_1ad479b703b9e9::t_72cc2bbc293265 66
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/SuiteConfig.vue
+  s_1ad479b703b9e9::t_9d85718cbd0fe7 66-68
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/buildEvaluationConfigDto.ts
+  s_1ad479b703b9e9::t_9fd5d7dad19cfc 10
+  s_1ad479b703b9e9::t_bc744f6803dae2 64
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/wizardSidepanel.store.ts
+  s_1ad479b703b9e9::t_67b4465acf8f01 248-249
+  s_1ad479b703b9e9::t_3408811dc7bef0 57-58
+  s_1ad479b703b9e9::t_78a90fb4898582 250
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useTestCasePersistence.ts
+  s_1ad479b703b9e9::t_e23423b1a3823c 110,313,363,414
+  s_1ad479b703b9e9::t_2c0bf3e02256bf 336-337
+  s_1ad479b703b9e9::t_72c7873e78c86b 334-335
+  s_1ad479b703b9e9::t_87e2301ca9fca2 193-195
+  s_1ad479b703b9e9::t_7a7997f30125e9 149-150
+  s_1ad479b703b9e9::t_91c3cc84f5a3cd 34-38
+  s_1ad479b703b9e9::t_552d635dc939a8 192
+  s_1ad479b703b9e9::t_b03e325ebdeb03 153-154,162-165
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardHydration.ts
+  s_1ad479b703b9e9::t_9d3344ba542eec 40-42
+  s_1ad479b703b9e9::t_19b7d094398867 18
+  s_1ad479b703b9e9::t_e097b62d1d115b 67
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/wizardSidepanel.store.test.ts
+  s_1ad479b703b9e9::t_1cba93f38dcd20 254,256-259,261-262
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.constants.ts
+  s_1ad479b703b9e9::t_1f2f3c1c8fc0b6 14-16
+  s_1ad479b703b9e9::t_d246397fd6bf52 17-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b7564110c4b6bc7bf195603a2f6ff0a7bbad6c28",
+  "prompts": {},
+  "sessions": {
+    "s_1ad479b703b9e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "531442b7-0583-436f-9a77-9dd90b67f68a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

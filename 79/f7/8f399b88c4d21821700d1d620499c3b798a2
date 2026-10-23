@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.test.ts
+  s_ed4219c8dc7981::t_bebb0372f55dd1 7,51
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.ts
+  s_ed4219c8dc7981::t_cc54bd609d74e4 180
+  s_ed4219c8dc7981::t_7d197c74e68120 8
+  s_ed4219c8dc7981::t_108c8cb1e881c3 88-89,96
+  s_ed4219c8dc7981::t_9bc5eea00f8404 210
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.ts
+  s_ed4219c8dc7981::t_d205430e4a7d47 398,405
+  s_ed4219c8dc7981::t_5fa516adef8380 421
+  s_ed4219c8dc7981::t_8a9194b1e22914 181
+  s_ed4219c8dc7981::t_1d7c30ba517d00 519-520
+  s_ed4219c8dc7981::t_c1df545768ed84 439,443
+  s_ed4219c8dc7981::t_71136abfc8de0f 304,544
+  s_ed4219c8dc7981::t_bc4aa81a4c8d7f 357
+  s_ed4219c8dc7981::t_ad93123c3994de 367
+  s_ed4219c8dc7981::t_702682864e839e 25,31-32,34-42
+  s_ed4219c8dc7981::t_2f131ebb6296ed 149,371-372,475-476
+  s_ed4219c8dc7981::t_eef663baaf65a1 341,366,370
+  s_ed4219c8dc7981::t_f269b64b3a0874 342
+  s_ed4219c8dc7981::t_a1ae903f663fbb 478
+  s_ed4219c8dc7981::t_5a325cdd8d58d2 536
+  s_ed4219c8dc7981::t_49ec5bac0e976e 188,196,448,457,460,467,487,493,502-503,515,523,531,555,559,569,574
+  s_ed4219c8dc7981::t_8223a5466ab374 60,285,328,358,385,450,543
+  s_ed4219c8dc7981::t_6cfa8c969bdf26 384
+  s_11e1615c6411fe::t_d5aa94b5b34ad9 33,43
+  s_ed4219c8dc7981::t_30b1ea380bb2d4 191-195
+  s_ed4219c8dc7981::t_88e6e463daebb1 52,542
+  s_ed4219c8dc7981::t_119f3681beb4d8 314,319
+  ai_agent 412-413,469
+  s_ed4219c8dc7981::t_85475919b90e4f 532
+  s_ed4219c8dc7981::t_a43297f81e0dd0 517
+  s_ed4219c8dc7981::t_f2b639704de90c 406
+  s_ed4219c8dc7981::t_77efee3e60042f 565
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "79f78f399b88c4d21821700d1d620499c3b798a2",
+  "prompts": {},
+  "sessions": {
+    "s_11e1615c6411fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e82aa-358d-72b3-bf35-70d39b30c372",
+        "model": "gpt-5.5"
+      },
+      "human_author": null
+    },
+    "s_ed4219c8dc7981": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbfe0dab-2f81-4365-813d-39714f1163f6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

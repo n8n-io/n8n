@@ -1,0 +1,67 @@
+packages/cli/src/modules/oauth-server/oauth-consent.service.ts
+  s_57ff5e8198ea60::t_f4eb3b32e7582f 33-36
+  s_57ff5e8198ea60::t_cf15554a55a27a 118-119
+  s_57ff5e8198ea60::t_0afa56e1af5d93 99-100
+  s_57ff5e8198ea60::t_40bfda16345334 1
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/form-trigger-test-resource.resolver.ts
+  s_57ff5e8198ea60::t_50203dedab214d 97
+  s_57ff5e8198ea60::t_987e825f55709b 14
+packages/frontend/@n8n/rest-api-client/src/api/consent.ts
+  s_57ff5e8198ea60::t_afa72c17e1437c 1-2
+  s_57ff5e8198ea60::t_d30b491fabe313 20-23
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_57ff5e8198ea60::t_3720ff09c76991 1-2
+  s_57ff5e8198ea60::t_0f6ae2a956aa36 13-15
+  s_57ff5e8198ea60::t_ee1beb2159763b 16-18
+packages/cli/src/services/protected-resource.registry.ts
+  s_57ff5e8198ea60::t_589a5c3f6509ee 1
+  s_57ff5e8198ea60::t_67fc7e6c385b82 23-25
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/form-trigger-resource.resolver.ts
+  s_57ff5e8198ea60::t_4acd89fb8c3c19 95
+  s_57ff5e8198ea60::t_13441744928723 15
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_57ff5e8198ea60::t_53e480adc7f77d 290-291,293
+  s_57ff5e8198ea60::t_d34f1982a024a6 218-225
+  s_57ff5e8198ea60::t_9b68ca487c957f 53-58,61-63
+  s_57ff5e8198ea60::t_63ccf98a3b4f73 5
+  s_57ff5e8198ea60::t_8436c581d55a0f 289
+  s_57ff5e8198ea60::t_8abcbbdd1bdb30 240-247
+  s_57ff5e8198ea60::t_6978af54f948c9 158-168
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_57ff5e8198ea60::t_2164ddbb551032 211
+  s_57ff5e8198ea60::t_7543ecdafedde7 180-206,209-210,213-227
+  s_57ff5e8198ea60::t_5ed88d9e6883a0 207-208,212
+packages/cli/src/modules/oauth-server/oauth-consent.controller.ts
+  s_57ff5e8198ea60::t_8ddd1c74e57e9a 56-57
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_57ff5e8198ea60::t_ce498dae890061 2549-2552
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_57ff5e8198ea60::t_1ffff9e21baa21 72
+  s_57ff5e8198ea60::t_8619e9273aa9a0 115
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.service.test.ts
+  s_57ff5e8198ea60::t_b72ef8f40d1687 248-252,272
+  s_57ff5e8198ea60::t_85ce29fad1f196 82,149
+  s_57ff5e8198ea60::t_0051ad8292bc4b 97,164
+  s_57ff5e8198ea60::t_f5aa89a232bddf 288-292,313
+  s_57ff5e8198ea60::t_bdc16c5e09885e 317-378
+packages/@n8n/api-types/src/index.ts
+  s_57ff5e8198ea60::t_ce902b424b460e 8
+packages/@n8n/api-types/src/consent.ts
+  s_57ff5e8198ea60::t_9c64cea7630fae 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b7e5e62930205f4bf05a12266a561e3e53bf2993",
+  "prompts": {},
+  "sessions": {
+    "s_57ff5e8198ea60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cf65481-da87-4aa7-ba35-19ac57b79ca6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

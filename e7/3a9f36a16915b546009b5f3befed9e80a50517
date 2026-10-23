@@ -1,0 +1,33 @@
+packages/testing/playwright/tests/dev-server-smoke/dev-server-boots.spec.ts
+  s_3abcbb0b42c321::t_b95dd459c58b97 14-16,30-43
+  s_3abcbb0b42c321::t_8c6df451d32e75 95,99-102
+  s_3abcbb0b42c321::t_b18bdfed628b39 51,55-62,64-65
+  s_3abcbb0b42c321::t_17066218df5558 120
+  s_22f099a7f7e9ac::t_2693cb0045f65d 44
+.github/workflows/ci-pull-requests.yml
+  s_3abcbb0b42c321::t_6e6ab6d3cc5112 105-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e73a9f36a16915b546009b5f3befed9e80a50517",
+  "prompts": {},
+  "sessions": {
+    "s_22f099a7f7e9ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce589c62-6d99-4e6d-859c-3ea0a2c1d929",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_3abcbb0b42c321": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b6f53a7-3312-4c23-987d-fc7fb995ec26",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

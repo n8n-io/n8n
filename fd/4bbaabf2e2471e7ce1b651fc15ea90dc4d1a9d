@@ -1,0 +1,83 @@
+packages/nodes-base/nodes/Kafka/v2/KafkaTriggerV2.node.ts
+  s_bc83fb448b2fad::t_3bb8a1bbfb9b2e 2
+  s_bc83fb448b2fad::t_4a05dc64677508 314-318
+  s_bc83fb448b2fad::t_1d113299a6caa5 494-498
+  s_bc83fb448b2fad::t_c0f4072deb97b8 29,31
+  s_bc83fb448b2fad::t_f1dc0100ec2df2 119-122
+  s_bc83fb448b2fad::t_faa4ceadfb5ff9 490
+  s_bc83fb448b2fad::t_2f5e544f3053ee 584-586
+  s_bc83fb448b2fad::t_c05394b2aa96b6 9,539
+  s_bc83fb448b2fad::t_7d95c940d76d02 64-81
+  s_bc83fb448b2fad::t_e6adaa6bb4551c 3-8,10,12,28,30,161-313,319-478,491-493,499-506,516-519,524-526,551-557,571-583
+  s_bc83fb448b2fad::t_1df847926b105a 530-538,540
+  s_bc83fb448b2fad::t_ab9062aea3e548 51-63
+  s_bc83fb448b2fad::t_45207682a0f3a0 515,550
+  s_bc83fb448b2fad::t_3196432f8299c3 541-549
+  s_bc83fb448b2fad::t_0dc94fe70760c4 14-15,17,19-20,22
+  s_bc83fb448b2fad::t_bb605f38396cb8 587-591
+  s_bc83fb448b2fad::t_58bdc9d2680ed0 1,11,16,18,21,23-27,32-50,82-88,92-94,96-100,102,125-128,130-160
+  s_bc83fb448b2fad::t_f83bef3a7e57b0 89-91,95,101,103-118,123-124,129
+  s_bc83fb448b2fad::t_b26c2497e31494 479-489,507-514,520-523,527-529,558-570
+  s_bc83fb448b2fad::t_2667a547423865 13
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerIsolation.test.ts
+  s_bc83fb448b2fad::t_4731f531ba5507 1-87
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.test.ts
+  s_bc83fb448b2fad::t_8cc4ff07a14729 33,35
+  s_bc83fb448b2fad::t_31bf02f5f96e1f 360
+  s_bc83fb448b2fad::t_b7587576e812c8 219,628
+  s_bc83fb448b2fad::t_4f914db91736f1 229,655
+  s_bc83fb448b2fad::t_9bee2e62414f0f 147-163,169-181,183-210
+  s_bc83fb448b2fad::t_15ffdd00cbbe4b 364-368
+  s_bc83fb448b2fad::t_a2de9df83f610c 690
+  s_bc83fb448b2fad::t_74fbf49d723f96 215
+  s_bc83fb448b2fad::t_d45a2f984d4753 220-228,230-235
+  s_bc83fb448b2fad::t_88c7f9d7ae2893 388-425
+  s_bc83fb448b2fad::t_ea84b2e6c669b6 442-443,469-470,483,485,509-510,537,554,563
+  s_bc83fb448b2fad::t_d4a4e0244a094c 239-241
+  s_bc83fb448b2fad::t_fa4241432045b9 3,5,25-27,62-84,86,88-102,105,107-119,121-127,129,131-134,136,139-142,144,211-214,216,236-238,242-243,245-252,254-255,257-260,263-264,267-269,273,276-279,282-303,306-328,330,332-342,344-359,361,371-374,376-377,380-381,383-386,428-441,444-468,471-482,484,486-508,511-536,538-553,555-562,564-565,567,569-590,592-604,606-609,613-626,675-689,691,693,695,697,699-701,703-721,724-738
+  s_bc83fb448b2fad::t_4f0076f2a72c4e 629-654,656-674
+  s_bc83fb448b2fad::t_9a1ae130070dd4 9-15
+  s_bc83fb448b2fad::t_293b9f143423b3 2,164-168,182
+  s_bc83fb448b2fad::t_85e01367bb781f 253,256,261-262
+  s_bc83fb448b2fad::t_ba0c6dfd60c6b3 362
+  s_bc83fb448b2fad::t_54f4c86dca3119 1,4,6-8,16-24,40-61,85,87,103-104,106,120,128,130,135,137-138,143,145,217-218,244,265-266,270-272,274-275,280-281,304-305,329,331,343,363,369-370,375,378-379,382,387,426-427,566,568,591,605,627,692,694,696,698,702,722-723,739-740
+  s_bc83fb448b2fad::t_a568e8fbf6bac5 610-612
+  s_bc83fb448b2fad::t_5f2a69d25c1cdd 28-32,34,36-39
+  s_bc83fb448b2fad::t_0f645b6eadd056 146
+packages/nodes-base/nodes/Kafka/KafkaTrigger.node.ts
+  s_bc83fb448b2fad::t_30389a67d1aecf 5,23
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.description.test.ts
+  s_bc83fb448b2fad::t_634bcc699d7419 48-50,53
+  s_bc83fb448b2fad::t_326d7fbb895f0f 3
+  s_bc83fb448b2fad::t_170f443daa2d04 58-59
+  s_bc83fb448b2fad::t_074c415a5bf0f1 8-20,65,75,94
+  s_bc83fb448b2fad::t_aecdc6aecf265f 69,71,74,82,85-88
+  s_bc83fb448b2fad::t_eda0674a5592de 84,89
+  s_bc83fb448b2fad::t_7d9538359f9081 46-47
+  s_bc83fb448b2fad::t_1c0dd6d7a5c2bf 27-28
+  s_bc83fb448b2fad::t_fedf88bbb89229 29
+  s_bc83fb448b2fad::t_4e93b74df31a1e 1-2,4-7,21-26,30-31,34,37-45,51-52,54-57,60-63,66,68,70,72-73,76-81,83,90-93
+  s_bc83fb448b2fad::t_4aea91c6564fae 32-33,35-36
+  s_bc83fb448b2fad::t_6189d7e7957ebb 64
+  s_bc83fb448b2fad::t_f08d97e45755eb 67
+packages/nodes-base/nodes/Kafka/test/KafkaTrigger.node.test.ts
+  s_bc83fb448b2fad::t_401b4d9898ca1c 2532-2535,2537,2542-2543,2546,2549-2551,2555-2556
+  s_bc83fb448b2fad::t_c554d80f5cb90b 2557-2558
+  s_bc83fb448b2fad::t_abfea206cacb95 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fd4bbaabf2e2471e7ce1b651fc15ea90dc4d1a9d",
+  "prompts": {},
+  "sessions": {
+    "s_bc83fb448b2fad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb78bb6a-b140-4f08-b6bf-9dc97db6e22d",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

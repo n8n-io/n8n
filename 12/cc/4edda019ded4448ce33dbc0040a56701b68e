@@ -1,0 +1,52 @@
+packages/cli/src/server.ts
+  s_171483a61c0a5f::t_90dc8097c88959 195
+packages/cli/src/modules/inbound-auth-core/__tests__/resource-admission.test.ts
+  s_171483a61c0a5f::t_607c07ee7cb2fa 86,91-92
+packages/@n8n/backend-services/src/services/auth-strategy.types.ts
+  s_171483a61c0a5f::t_90dc8097c88959 23-29
+  s_171483a61c0a5f::t_3fb4530df98415 9-19,32
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.test.ts
+  s_171483a61c0a5f::t_607c07ee7cb2fa 215-216,227
+packages/cli/test/integration/public-api/oauth-bearer.test.ts
+  s_171483a61c0a5f::t_c92757001ff90f 97-107,113
+packages/cli/src/services/__tests__/session-cookie-auth.strategy.integration.test.ts
+  s_171483a61c0a5f::t_607c07ee7cb2fa 63,85,93
+  s_171483a61c0a5f::t_90dc8097c88959 52,58,71,77,88
+  s_171483a61c0a5f::t_557b38db1dcbae 53-55,72-74
+packages/cli/src/modules/inbound-auth-core/__tests__/public-api-oauth.strategy.test.ts
+  s_171483a61c0a5f::t_557b38db1dcbae 125-135
+  s_171483a61c0a5f::t_607c07ee7cb2fa 83-100,104,107,109,117,122-124,163,173-176,184,187,193,197,199,208,212-215,234-238,251,298
+packages/cli/src/services/__tests__/api-key-auth.strategy.integration.test.ts
+  s_171483a61c0a5f::t_607c07ee7cb2fa 210,218,232
+  s_171483a61c0a5f::t_90dc8097c88959 209,213,223
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_171483a61c0a5f::t_c92757001ff90f 80,204,222-264,475,714,859
+  s_171483a61c0a5f::t_557b38db1dcbae 695-698
+packages/@n8n/backend-services/src/services/auth-strategy.registry.ts
+  s_171483a61c0a5f::t_90dc8097c88959 13-16,18-19,25,58,60
+  s_171483a61c0a5f::t_cc3510bd5c7269 26
+  s_171483a61c0a5f::t_ba80841be06b09 6-9,51-52,55-57
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.integration.test.ts
+  s_171483a61c0a5f::t_053a56db08e027 127
+packages/@n8n/backend-services/src/services/__tests__/auth-strategy.registry.test.ts
+  s_171483a61c0a5f::t_557b38db1dcbae 122
+  s_171483a61c0a5f::t_48d9f69bf1a5cb 20-23,26,29-30,35,38,41,46-47,55,62,70,75,78-79,84,89,92-94,98,100-101,104,108-110,116-119,125-131,135,137-140,143-147,149-150,152,157,162
+packages/cli/src/public-api/__tests__/public-api-rate-limit.test.ts
+  s_171483a61c0a5f::t_7bc8a904bf07ef 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12cc4edda019ded4448ce33dbc0040a56701b68e",
+  "prompts": {},
+  "sessions": {
+    "s_171483a61c0a5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "434f5545-fc22-4bca-a08c-d5c23af2706b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

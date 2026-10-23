@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_f5e2bfa214eb0b::t_c4917f63a34235 621-623
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f5e2bfa214eb0b::t_5faaf0e3a46a96 1013
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_f5e2bfa214eb0b::t_b1109dcb44f421 631
+  s_f5e2bfa214eb0b::t_321bae687821ef 351-359
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  s_f5e2bfa214eb0b::t_9921b6c987537e 230
+  s_f5e2bfa214eb0b::t_6b92f6bd46ced3 64-70
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_f5e2bfa214eb0b::t_f9741cc1e5417b 207
+  s_f5e2bfa214eb0b::t_9650683ff56aea 104
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_f5e2bfa214eb0b::t_d2e3d56c5f4c77 484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d1036194c221bfdf6ca5a3f7df3ba23088f46970",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_f5e2bfa214eb0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f8a4da8-579e-4485-b05b-d3e4651913e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/@n8n/workflow-sdk/src/mock-data/placeholder.test.ts
+  s_540fd25d19a415::t_7a09464a7ab1af 116-199
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_540fd25d19a415::t_3dba469b7574c8 368-475
+packages/@n8n/workflow-sdk/src/mock-data/placeholder.ts
+  s_540fd25d19a415::t_5d4566f70679c4 48,68,74-78,83,86,88,118-133,191,216-220,237,241-245,247-257,260-273,275
+  s_540fd25d19a415::t_7f8866f29ab63d 151,156,181,213
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_540fd25d19a415::t_bb6709d2126c9a 147-257,282-287,289-293
+  s_540fd25d19a415::t_004ddae75b1f5b 323-329,371-377,400-406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "14342c3f7a91c0db325be130f7edf84641eb1f41",
+  "prompts": {},
+  "sessions": {
+    "s_540fd25d19a415": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61e5f24f-b000-415e-9d80-2ad29a2a5224",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

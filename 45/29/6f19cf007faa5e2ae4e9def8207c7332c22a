@@ -1,0 +1,82 @@
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_7d48ada9cf20b6::t_e24dcad0cf80d8 44
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_7d48ada9cf20b6::t_3af816b78622b3 159-181
+  s_7d48ada9cf20b6::t_28d09077f1bee9 18,41,66,90
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-schema-conflict-policy.ts
+  s_7d48ada9cf20b6::t_8be22204a38d35 1-44
+packages/@n8n/cli/src/commands/package/import.ts
+  s_7d48ada9cf20b6::t_7c79dbd812ac55 65-70
+  s_7d48ada9cf20b6::t_0c58ba851d4ce0 101
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_7d48ada9cf20b6::t_d30b1ac7f07a92 33
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-compat.ts
+  s_7d48ada9cf20b6::t_5dd53f8b2e4ea8 7-8
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_7d48ada9cf20b6::t_1f5a6209ad40aa 42,71,85,99
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_7d48ada9cf20b6::t_4759396c01ceb0 69
+  s_7d48ada9cf20b6::t_4241bb3b74a5eb 39-40,48-51
+  s_7d48ada9cf20b6::t_d3c1e3e0ad3462 1-5
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_7d48ada9cf20b6::t_f71ffc7b2f2f89 83
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_7d48ada9cf20b6::t_6593ed2a142e03 121
+  s_7d48ada9cf20b6::t_567854617dffc4 60-66
+  s_7d48ada9cf20b6::t_424442915caed3 81-83
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_7d48ada9cf20b6::t_ee9d8181760503 181
+packages/@n8n/cli/docs/commands/package.md
+  s_7d48ada9cf20b6::t_c1a6adc7e97fc4 61
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_7d48ada9cf20b6::t_ab960d596d283e 48
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_7d48ada9cf20b6::t_c3cc6826f4b908 250
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_7d48ada9cf20b6::t_e513887f861b76 163,170
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_7d48ada9cf20b6::t_047b7d496cd4b6 12,19-23
+  s_7d48ada9cf20b6::t_e92bb059437f15 85
+  s_7d48ada9cf20b6::t_b2e1be5d77269b 167,170-171
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_7d48ada9cf20b6::t_8f807e34add31d 172-186
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_7d48ada9cf20b6::t_b29046a97ac927 65
+  s_7d48ada9cf20b6::t_4bb6b52396c50c 333-365
+  s_7d48ada9cf20b6::t_3846993bc3fa9b 262-283
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_7d48ada9cf20b6::t_912bef3f9868e4 18
+  s_7d48ada9cf20b6::t_cee6d80a41b7af 85-88
+packages/@n8n/cli/src/client.ts
+  s_7d48ada9cf20b6::t_32bf4414c33537 23
+packages/cli/src/modules/n8n-packages/CONTEXT.md
+  s_f38eb6a6383110::t_b4fbef1c23ad15 1-83
+  s_7d48ada9cf20b6::t_919265b84e9b82 84-87
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-schema-conflict-policy.test.ts
+  s_7d48ada9cf20b6::t_505f3845d08308 1-52,59-61
+  ai_agent 53-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45296f19cf007faa5e2ae4e9def8207c7332c22a",
+  "prompts": {},
+  "sessions": {
+    "s_7d48ada9cf20b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d125bd-0770-4362-a74d-8364298b52a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_f38eb6a6383110": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6210298e-5c34-4114-aa5a-a990cfea49fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

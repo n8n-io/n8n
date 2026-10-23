@@ -1,0 +1,20 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_302391aec95cb2::t_396ae6a3966c8a 1550
+  s_302391aec95cb2::t_f4d6b937988628 1629
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e56b2a7654802e5dbb7b008247249a06d3112e2a",
+  "prompts": {},
+  "sessions": {
+    "s_302391aec95cb2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "40f3fdd1-0f9b-4598-ad15-07acab675a8e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_fd4b8b6aa97b3d::t_1edaa309f5ce60 160-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1690c786d618955d0be31ef6d09ec4246d5abe32",
+  "prompts": {},
+  "sessions": {
+    "s_fd4b8b6aa97b3d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea795-115a-7440-bb84-fd6cb163e382",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/app/stores/npsSurvey.store.ts
+  s_be8d87bd743f20::t_4623e7bdd428d2 36
+packages/frontend/editor-ui/src/app/stores/npsStore.store.test.ts
+  s_be8d87bd743f20::t_cfccfc714c5fcd 304-316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "76cdc424318ba804c91e72e9deada6cc26a1923c",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be8d87bd743f20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da939e1f-0363-49cf-b9a2-0a0f0f392222",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

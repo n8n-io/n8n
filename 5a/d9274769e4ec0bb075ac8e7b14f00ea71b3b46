@@ -1,0 +1,21 @@
+packages/@n8n/engine/src/auth/__tests__/authenticate.test.ts
+  s_c0aabdb659304f::t_0a7a7d09fecbda 68-73
+packages/@n8n/engine/src/auth/authenticate.ts
+  s_c0aabdb659304f::t_0a7a7d09fecbda 13-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5ad9274769e4ec0bb075ac8e7b14f00ea71b3b46",
+  "prompts": {},
+  "sessions": {
+    "s_c0aabdb659304f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17309fe5-d4c8-4ebb-8853-75c403b35009",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

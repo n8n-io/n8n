@@ -1,0 +1,32 @@
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_d278a9ca262ecc::t_e4597f8496b4d6 218-223,227-229,231-234,249-263
+  s_d278a9ca262ecc::t_f8bcb9ad2fec66 617-619
+  s_d278a9ca262ecc::t_22831e04062012 217
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  s_d278a9ca262ecc::t_cf8fd8cbee6f94 259-291
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_d278a9ca262ecc::t_0821efea748f9f 2
+  s_d278a9ca262ecc::t_96d3b38ebdf100 749-758
+  s_d278a9ca262ecc::t_368c3ca2520400 46
+  s_d278a9ca262ecc::t_5ed0aa66fdadba 667-746
+  s_d278a9ca262ecc::t_91b37c3276daa3 986-1052
+  s_d278a9ca262ecc::t_afafb25e733b0c 1103-1118
+  s_d278a9ca262ecc::t_048456afe758ef 648-652
+  s_d278a9ca262ecc::t_f140193a8f585f 747-748
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "ed77eb968e3353530b42273a5b2ce3e679e143d3",
+  "prompts": {},
+  "sessions": {
+    "s_d278a9ca262ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c99811d-f39d-45e0-b61a-52bfa6ade3fc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_3aaa503f47ada7::t_6c8d7aff2bf7ef 153
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_3aaa503f47ada7::t_6c8d7aff2bf7ef 94,98
+  s_3aaa503f47ada7::t_9fda737e2c3f1d 99-110
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_3aaa503f47ada7::t_156f72971fcf9a 231,233-244,265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "57151e1f0b4596244d3255f05066b26abdbbfdae",
+  "prompts": {},
+  "sessions": {
+    "s_3aaa503f47ada7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b33a-46e6-7610-aa08-a734250d28b4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_4d4515bb8fac55::t_9ca40e5d973e9f 44,46,48-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "214d1a43ceb910ca2b36746d11a218104fe47834",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

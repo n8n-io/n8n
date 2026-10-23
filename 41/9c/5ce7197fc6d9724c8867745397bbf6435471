@@ -1,0 +1,21 @@
+packages/cli/src/deprecation/__tests__/deprecation.service.test.ts
+  s_8ee0cc9d7eb2cb::t_9ffe3b61b9d369 77
+packages/cli/src/deprecation/deprecation.service.ts
+  s_8ee0cc9d7eb2cb::t_9e46f139acbcdc 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "419c5ce7197fc6d9724c8867745397bbf6435471",
+  "prompts": {},
+  "sessions": {
+    "s_8ee0cc9d7eb2cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d44665bd-e66a-420e-88e2-e3f45c6d538b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

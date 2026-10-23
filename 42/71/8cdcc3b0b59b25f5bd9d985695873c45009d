@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/folders.test.ts
+  s_8cacfc7fe455ed::t_e45c395942c0c6 949-970
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "42718cdcc3b0b59b25f5bd9d985695873c45009d",
+  "prompts": {},
+  "sessions": {
+    "s_8cacfc7fe455ed": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6bb905d0-86f7-46eb-9eec-b1337cf0527b",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

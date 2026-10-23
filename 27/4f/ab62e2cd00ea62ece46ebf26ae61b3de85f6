@@ -1,0 +1,24 @@
+packages/cli/src/modules/project-files/DEMO.md
+  s_d17c97348a38d0::t_35b243ba173800 149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "274fab62e2cd00ea62ece46ebf26ae61b3de85f6",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d17c97348a38d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ec56860-7a10-44b4-8e9f-931ec2bd7886",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

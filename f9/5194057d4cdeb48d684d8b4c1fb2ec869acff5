@@ -1,0 +1,29 @@
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_101038ccbc858a::t_e834c3af14db7a 14,24,26,36-37,248-301
+  s_101038ccbc858a::t_49ca5388e90dbf 302-303
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_101038ccbc858a::t_2ea92e5891f700 136-140,240-243,245-251,253
+  s_101038ccbc858a::t_bddc56eec1fdce 252,254-258
+  s_101038ccbc858a::t_53bc7330835282 20
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_101038ccbc858a::t_53bc7330835282 35-37
+  s_101038ccbc858a::t_cd8d2dd38c5198 40-45,48-50,257
+  s_101038ccbc858a::t_d3f3852b90d348 32-34
+  s_101038ccbc858a::t_c4a72447b1d3e5 38-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f95194057d4cdeb48d684d8b4c1fb2ec869acff5",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

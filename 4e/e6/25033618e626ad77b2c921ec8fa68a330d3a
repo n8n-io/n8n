@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/DitherTrailGrid.vue
+  s_64d504ce059b1f::t_37ff6b25ee6503 354,356,369-378
+  s_64d504ce059b1f::t_1f26d30a6eab12 57,355
+  s_64d504ce059b1f::t_9675798ab31e4c 19-20,52-56,59,301,358
+  s_64d504ce059b1f::t_a815d28ebdaf12 18,122
+  s_64d504ce059b1f::t_fc4f2c4ae5476d 58,357
+  s_64d504ce059b1f::t_aecda9d4f7b8e1 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ee625033618e626ad77b2c921ec8fa68a330d3a",
+  "prompts": {},
+  "sessions": {
+    "s_64d504ce059b1f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d8da-63b6-717b-8103-1dad807ae025",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+packages/nodes-base/nodes/Discord/test/v2/transport/discord.api.test.ts
+  s_2e1fa95fc44f8f::t_0ab75f2930e2d3 243,267,282-289,307
+  s_2e1fa95fc44f8f::t_705d5d0224c828 242
+  s_2e1fa95fc44f8f::t_c538822efdfc76 244
+  s_2e1fa95fc44f8f::t_50acea88d001a8 264-266
+  s_2e1fa95fc44f8f::t_730e93288169f4 268-270
+  s_2e1fa95fc44f8f::t_c065f2c55bdda7 290-291
+  s_2e1fa95fc44f8f::t_2ef12d07349381 304-306
+  s_2e1fa95fc44f8f::t_a903ca7dddf442 308-310
+  s_24dbac2e9c1d82::t_60f655e1d2d263 2,98,120,140,159,177,200,219-226,271,301-303,311-313,319-321,340,365
+packages/nodes-base/nodes/Discord/test/v2/node/message/sendAndWait.test.ts
+  s_01a6cef1dba9b2::t_bd9622020ee34b 3,76
+packages/nodes-base/nodes/Discord/v2/actions/channel/create.operation.ts
+  s_24dbac2e9c1d82::t_f220f9aeeabf68 7,185
+packages/nodes-base/nodes/Discord/v2/actions/member/ban.operation.ts
+  s_24dbac2e9c1d82::t_aecc71e1b0b10f 2,51
+packages/nodes-base/nodes/Discord/v2/actions/member/getAll.operation.ts
+  s_24dbac2e9c1d82::t_b2ea1a3a9f83ed 7,76,88
+packages/nodes-base/nodes/Discord/v2/actions/member/kick.operation.ts
+  s_24dbac2e9c1d82::t_131fbbfd5635a9 2,39
+packages/nodes-base/nodes/Discord/v2/actions/member/roleAdd.operation.ts
+  s_24dbac2e9c1d82::t_868f8262f7084d 2,42
+packages/nodes-base/nodes/Discord/v2/actions/member/roleRemove.operation.ts
+  s_24dbac2e9c1d82::t_49e0ae280ef5a4 2,42
+packages/nodes-base/nodes/Discord/v2/actions/member/timeout.operation.ts
+  s_24dbac2e9c1d82::t_bb7b1e8ce867cb 3,56
+packages/nodes-base/nodes/Discord/v2/actions/member/unban.operation.ts
+  s_24dbac2e9c1d82::t_1ccc065f6331ab 2,39
+packages/nodes-base/nodes/Discord/v2/actions/message/get.operation.ts
+  s_24dbac2e9c1d82::t_bec0cc1483c58c 7,71
+packages/nodes-base/nodes/Discord/v2/actions/message/getAll.operation.ts
+  s_24dbac2e9c1d82::t_a03d1d79e392b0 7,79,91
+packages/nodes-base/nodes/Discord/v2/actions/message/react.operation.ts
+  s_24dbac2e9c1d82::t_2c2b4a3b25fbac 7,59
+packages/nodes-base/nodes/Discord/v2/actions/router.ts
+  s_24dbac2e9c1d82::t_3297701277aa31 2,37
+packages/nodes-base/nodes/Discord/v2/methods/loadOptions.ts
+  s_24dbac2e9c1d82::t_b6fee34cd95429 2,18,24,34
+packages/nodes-base/nodes/Discord/v2/transport/discord.api.ts
+  s_01a6cef1dba9b2::t_880f4c7a06c047 9-10,12,16-27,31,40,45,63,73,77
+packages/nodes-base/nodes/Discord/v2/transport/helpers.ts
+  s_01a6cef1dba9b2::t_837c89233c14e4 7-8,57,59,61-62
+packages/nodes-base/nodes/Discord/v2/actions/channel/deleteChannel.operation.ts
+  s_24dbac2e9c1d82::t_533cdfc42eedda 7,42-46
+packages/nodes-base/nodes/Discord/v2/actions/channel/get.operation.ts
+  s_24dbac2e9c1d82::t_df637b6ad58b8a 7,42-46
+packages/nodes-base/nodes/Discord/v2/actions/channel/getAll.operation.ts
+  s_24dbac2e9c1d82::t_bed28f7c95e288 7,67-71
+packages/nodes-base/nodes/Discord/v2/actions/channel/update.operation.ts
+  s_24dbac2e9c1d82::t_0ab33c47be1cbf 7,134-139
+packages/nodes-base/nodes/Discord/v2/actions/message/deleteMessage.operation.ts
+  s_24dbac2e9c1d82::t_8633edd23b374a 7,44-48
+packages/nodes-base/nodes/Discord/v2/actions/webhook/sendLegacy.operation.ts
+  s_24dbac2e9c1d82::t_2c4ea5283cdfcc 7,142-147,149
+packages/nodes-base/nodes/Discord/v2/helpers/utils.ts
+  s_24dbac2e9c1d82::t_c6eaf80d27d39a 5,271,331-335,354,392,396-401
+packages/nodes-base/nodes/Discord/v2/methods/listSearch.ts
+  s_24dbac2e9c1d82::t_f84008be215c65 5,22,36,51,59,80-84,102-106,122-126,152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "395c48487405825802e7e24b13c7651b98d4c725",
+  "prompts": {},
+  "sessions": {
+    "s_01a6cef1dba9b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a04ba7208f8c81e30",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_24dbac2e9c1d82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8dcc9e1b96250fc1",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

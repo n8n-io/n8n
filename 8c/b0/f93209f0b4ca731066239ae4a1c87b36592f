@@ -1,0 +1,49 @@
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/prepare-run.test.ts
+  s_2f9edc7375597a::t_a5a1cd14ff3df9 170-187,190,192-194,204,211
+  s_2f9edc7375597a::t_4f284da998ae86 195-203,205-210
+  s_2f9edc7375597a::t_8892bc39b0140e 188-189,191
+packages/@n8n/instance-ai/src/tools/workflows/plan-verification-simulation.ts
+  s_2f9edc7375597a::t_ab7ffb4cdb6e30 37
+  s_2f9edc7375597a::t_4230246479f3ad 327,374
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_2f9edc7375597a::t_d0c8d5af0fbac4 200
+  s_2f9edc7375597a::t_4230246479f3ad 298,338
+  s_2f9edc7375597a::t_dd268db611f7bb 339-341
+  s_2f9edc7375597a::t_ab7ffb4cdb6e30 44
+packages/cli/src/modules/instance-ai/instance-ai-run-pin-data.ts
+  s_2f9edc7375597a::t_82ee6e8b78b1fa 90-92
+  s_2f9edc7375597a::t_a0db5395403483 89,95-101
+  s_2f9edc7375597a::t_33b50ff9e8e6a3 155-158,161-163,165-171
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-run-pin-data.test.ts
+  s_2f9edc7375597a::t_91e50992d81cae 157-165,168-170
+  s_2f9edc7375597a::t_8892bc39b0140e 166-167
+  s_2f9edc7375597a::t_dd1212188f5473 171-206
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_2f9edc7375597a::t_07af7ad77ad971 740-741,743-749,751-752,754-756
+  s_2f9edc7375597a::t_2f8e1c3b6c41ef 738
+  s_2f9edc7375597a::t_a1ad2443670830 735-737,739,742,750,753
+packages/@n8n/instance-ai/src/tools/orchestration/verification/prepare-run.ts
+  s_2f9edc7375597a::t_4230246479f3ad 2,64
+  s_2f9edc7375597a::t_5fe8b3a65fc1c0 61,65,71
+  s_2f9edc7375597a::t_a6737e53280eb2 47-50
+  s_2f9edc7375597a::t_3dce88b2cf05a6 80
+packages/@n8n/instance-ai/src/utils/node-keyed-items.ts
+  s_2f9edc7375597a::t_1af194c35e028f 1-5,9-19
+  s_2f9edc7375597a::t_b56019279a1901 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8cb0f93209f0b4ca731066239ae4a1c87b36592f",
+  "prompts": {},
+  "sessions": {
+    "s_2f9edc7375597a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7d6ebc5-efad-405d-aa1d-4d826005a533",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

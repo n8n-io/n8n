@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_05cd7ab5f956cf::t_d576ddf1e82633 286,290
+  h_7555c3ee6524cf 279,281,285,287,291-295,298-299
+  s_05cd7ab5f956cf::t_a89fd654b5e082 288-289
+  s_05cd7ab5f956cf::t_2d4008e0200aef 282-283
+  s_05cd7ab5f956cf::t_5f983902151413 280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eba43df357a472e7c4988cedbb226b31395198e0",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05cd7ab5f956cf": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782375244911",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

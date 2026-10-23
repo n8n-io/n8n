@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_3212317a4a58a0::t_f65e8235ee295b 205-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "6ebcd0891af517f6729920d25eb7b7a9f15e03ef",
+  "prompts": {},
+  "sessions": {
+    "s_3212317a4a58a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca9f387a-3d3f-46b4-811c-31fee3fac143",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

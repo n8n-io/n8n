@@ -1,0 +1,132 @@
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_281efd42004ec0::t_28c355e3a6201a 88-89
+  s_281efd42004ec0::t_381b3e45a08d3e 5,221,226-232
+  s_281efd42004ec0::t_b3edb5da50559f 144,152
+  s_281efd42004ec0::t_5010f4fa339132 29-30,38-39,49-50,99-143,145-151,153-172,233
+  s_281efd42004ec0::t_56b72613f31958 9-10,218-220,222-225
+  s_281efd42004ec0::t_6308af311253fb 173
+  s_281efd42004ec0::t_382818ec0e4da8 234
+packages/@n8n/instance-ai/src/tools/agent-context.tool.ts
+  s_281efd42004ec0::t_558fe973f3b505 125-129,133
+  s_281efd42004ec0::t_d9def9d312c9c1 91-94
+  s_281efd42004ec0::t_f4cc0e5c43da83 8,139-144
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_281efd42004ec0::t_c020165f0b245f 198
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_281efd42004ec0::t_fd50608bdc50a5 757,761,763,774,792,795,797,806,980,984,1031
+  s_281efd42004ec0::t_1ccd514469627e 164-166
+  s_281efd42004ec0::t_41379c36e00a0e 100,113
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_281efd42004ec0::t_b136f1ac840460 337,361
+  s_281efd42004ec0::t_035d440aaf3ace 22,26,31,45,145,174,180,184,193-194,235,258,273,277,281-282,287,298,306,314,321,335,349,367
+  s_281efd42004ec0::t_5d42fcf93ab9e4 166,399
+  s_281efd42004ec0::t_aed253131dcd3c 312
+  s_281efd42004ec0::t_87e02fbf2d319e 187-189
+packages/@n8n/instance-ai/docs/tools.md
+  s_281efd42004ec0::t_4a71695fa86fc7 63,1372
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_281efd42004ec0::t_2ba862e766122b 649-655
+  s_281efd42004ec0::t_bcb5c37476ff95 680,716,718-727
+  s_281efd42004ec0::t_df5ed928b88736 56,66,731-740
+  s_281efd42004ec0::t_8e13c7ad0ffd39 681-705,707-715,728-729
+  s_281efd42004ec0::t_8a99bf207a68fe 706,717
+packages/cli/src/modules/agents/builder/skills/memory.skill.ts
+  s_281efd42004ec0::t_07bd4ba2f486b4 15,23
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_281efd42004ec0::t_775b829d2d2613 187,446
+packages/cli/src/modules/agents/builder/skills/resource-locators.skill.ts
+  s_281efd42004ec0::t_80db2c7794d4fb 16,25
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_281efd42004ec0::t_ad6d28773db0e9 305
+  s_281efd42004ec0::t_1ccd514469627e 291-299
+  s_281efd42004ec0::t_cf56f1455d82f8 277,280-289
+  s_281efd42004ec0::t_89fbc468a343ba 290,300-302
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_281efd42004ec0::t_d380d742ab754b 10,18,71,156-158
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_281efd42004ec0::t_c020165f0b245f 242
+packages/cli/src/modules/agents/builder/skills/sub-agents.skill.ts
+  s_281efd42004ec0::t_a8de482f749b1e 51-52,56,70
+  s_281efd42004ec0::t_1ccd514469627e 15
+  s_281efd42004ec0::t_f9da1fbb52bc76 48-50,69
+  s_281efd42004ec0::t_9ae6fc5fd351a0 55,64,75
+  s_281efd42004ec0::t_a81609e0360294 14
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_281efd42004ec0::t_11c85cf9026f4f 417-422,489
+  s_281efd42004ec0::t_a66f86fa2d6dff 104
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_281efd42004ec0::t_c26f810788e97a 125,128,131,138-140
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_281efd42004ec0::t_775b829d2d2613 126
+  s_281efd42004ec0::t_7e3da4b499019c 23
+packages/@n8n/instance-ai/src/tools/shared/safe-error-message.ts
+  s_281efd42004ec0::t_f4cc0e5c43da83 1-12
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_281efd42004ec0::t_896bc7f2136979 15,19
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_281efd42004ec0::t_2adf89e70d6e8d 383-384,400,452-453,455-456,469,474-475,479
+packages/cli/src/modules/agents/agents-tools.service.ts
+  s_281efd42004ec0::t_c020165f0b245f 66,85,145
+packages/cli/src/modules/agents/builder/interactive/configure-channel.tool.ts
+  s_281efd42004ec0::t_775b829d2d2613 17,26,65
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_281efd42004ec0::t_0358bd87747393 13,20,126
+  s_281efd42004ec0::t_8d6dfd88a8bb85 83-86
+  s_281efd42004ec0::t_aed253131dcd3c 40,61-63
+packages/cli/src/modules/agents/builder/skills/target-tasks.skill.ts
+  s_281efd42004ec0::t_ebf8879f5a4ffd 13,21,35,83
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_281efd42004ec0::t_775b829d2d2613 312
+packages/cli/src/modules/agents/instance-ai-agent-context.adapter.ts
+  s_281efd42004ec0::t_56b72613f31958 14-15,98-104
+  s_281efd42004ec0::t_f4cc0e5c43da83 96
+  s_281efd42004ec0::t_9b8e7b30ed9c4d 97
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_281efd42004ec0::t_a66f86fa2d6dff 828
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_281efd42004ec0::t_a66f86fa2d6dff 326
+packages/@n8n/instance-ai/src/tools/__tests__/agent-context.tool.test.ts
+  s_281efd42004ec0::t_900cc7760a084c 81-92,122
+  s_281efd42004ec0::t_70cbcdb8de1260 2,108-121
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_281efd42004ec0::t_df5ed928b88736 333,505,531-533,535-536
+  s_281efd42004ec0::t_8e13c7ad0ffd39 534
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_281efd42004ec0::t_ebbfa9c9a2d2a3 201-205
+  s_281efd42004ec0::t_df5ed928b88736 68,195-200,206-210,594
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_281efd42004ec0::t_8e13c7ad0ffd39 20,3209-3222
+  s_281efd42004ec0::t_82710a843d93c0 3223-3225
+packages/cli/src/modules/agents/builder/skills/target-skills.skill.ts
+  s_281efd42004ec0::t_d4368c7100f78f 16,23,80,82,85,90,109
+packages/cli/src/modules/agents/builder/skills/custom-tools.skill.ts
+  s_281efd42004ec0::t_a120d83c3cf89b 9,13
+packages/@n8n/instance-ai/src/tools/conversation-history.tool.ts
+  s_281efd42004ec0::t_f4cc0e5c43da83 15,128-133,156-161
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_281efd42004ec0::t_83426660bde083 12,21-22,30,40,43-44,92-93,95
+  s_281efd42004ec0::t_45a089d8ae90c9 20,45,53
+  s_281efd42004ec0::t_62731e6e62e7b0 11
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_281efd42004ec0::t_aed253131dcd3c 107-109,185-187,198-199
+  s_281efd42004ec0::t_1a3198ad20f7cf 17,24,91,126,136,146,158,224,230,237,281,283,301
+  s_281efd42004ec0::t_7aa423e961488a 166,179,343,347
+packages/cli/src/modules/agents/builder/prompts/initial-build.prompt.ts
+  s_281efd42004ec0::t_1ad008673f4c46 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9f4eea3a2166db2422b44bbdf8713a563bf32b2f",
+  "prompts": {},
+  "sessions": {
+    "s_281efd42004ec0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceb8-26d9-7362-a99e-66779bbf1d1d",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

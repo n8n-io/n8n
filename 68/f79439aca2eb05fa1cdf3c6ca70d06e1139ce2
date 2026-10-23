@@ -1,0 +1,173 @@
+pnpm-lock.yaml
+  ai_agent 2513-2515,34281-34289,34334-34337,34442-34456,34501-34511,38021,38035,45439-45441
+packages/@n8n/eslint-config/src/configs/base.ts
+  ai_agent 358-366,375-405
+packages/@n8n/blob-storage/eslint.config.mjs
+  ai_agent 2,5,10-12
+packages/@n8n/errors/eslint.config.mjs
+  ai_agent 4
+scripts/lint-parity/samples.mjs
+  ai_agent 16-18
+packages/@n8n/computer-use/eslint.config.mjs
+  ai_agent 2,4
+packages/@n8n/task-runner/eslint.config.mjs
+  ai_agent 2,5,10,16-21
+packages/frontend/editor-ui/eslint.config.mjs
+  ai_agent 56,234-269,290,315
+packages/testing/code-health/src/rules/encryption-boundary.rule.test.ts
+  ai_agent 10,12,15-16,18,67,73-74,89-90,134,136
+packages/@n8n/json-schema-to-zod/eslint.config.mjs
+  ai_agent 2,5,12,18-21
+packages/core/eslint.config.mjs
+  ai_agent 2,5,14-20,27-37
+packages/@n8n/engine/eslint.config.mjs
+  ai_agent 2,6-13
+packages/@n8n/eslint-config/src/configs/backend-network-boundary.ts
+  ai_agent 9,12-15,26-30
+packages/@n8n/benchmark/eslint.config.mjs
+  ai_agent 2,5
+packages/@n8n/telemetry/eslint.config.mjs
+  ai_agent 4
+packages/@n8n/cli/eslint.config.mjs
+  ai_agent 2,4-9,11
+packages/frontend/@n8n/composables/eslint.config.mjs
+  ai_agent 7,10
+packages/frontend/@n8n/design-system/eslint.config.mjs
+  ai_agent 12-14,21
+packages/@n8n/tournament/eslint.config.mjs
+  ai_agent 4-11,13-20
+packages/@n8n/client-oauth2/eslint.config.mjs
+  ai_agent 2,5,15-27
+packages/@n8n/constants/eslint.config.mjs
+  ai_agent 4
+packages/cli/eslint.config.mjs
+  ai_agent 2,43,90-111,409,418-419,421-427
+scripts/lint-parity/diff.mjs
+  ai_agent 43-49,54-60,69-70,76-82,92-94,117-123
+packages/@n8n/chat-hub/eslint.config.mjs
+  ai_agent 4
+packages/frontend/@n8n/stores/eslint.config.mjs
+  ai_agent 6
+packages/@n8n/mcp-browser/eslint.config.mjs
+  ai_agent 2,4
+packages/modules/insights/frontend/eslint.config.mjs
+  ai_agent 24-31
+packages/@n8n/db/eslint.config.mjs
+  ai_agent 2,17,25-27,33
+packages/frontend/@n8n/frontend-module-sdk/eslint.config.mjs
+  ai_agent 6
+packages/workflow/eslint.config.mjs
+  ai_agent 12-20,22,29-35
+packages/@n8n/eslint-config/src/plugins.d.ts
+  ai_agent 2
+packages/node-dev/eslint.config.mjs
+  ai_agent 2,4-7,9
+packages/@n8n/eslint-plugin-community-nodes/eslint.config.mjs
+  ai_agent 2,6
+AGENTS.md
+  ai_agent 268-290,297-298,309-311
+packages/testing/playwright/eslint.config.mjs
+  ai_agent 1,5,24-25,27,74-78
+packages/frontend/@n8n/frontend-utils/eslint.config.mjs
+  ai_agent 10-13
+packages/testing/rules-engine/eslint.config.mjs
+  ai_agent 2,5
+packages/@n8n/codemirror-lang/eslint.config.mjs
+  ai_agent 6
+packages/@n8n/eslint-config/src/configs/frontend.ts
+  ai_agent 20-24
+packages/@n8n/workflow-sdk/eslint.config.mjs
+  ai_agent 2,10
+packages/@n8n/instance-ai/eslint.config.mjs
+  ai_agent 2,21,96-108
+packages/@n8n/codemirror-lang-sql/eslint.config.mjs
+  ai_agent 6
+packages/@n8n/crdt/eslint.config.mjs
+  ai_agent 2,4
+packages/frontend/@n8n/frontend-constants/eslint.config.mjs
+  ai_agent 21
+packages/@n8n/permissions/eslint.config.mjs
+  ai_agent 4
+packages/frontend/@n8n/rest-api-client/eslint.config.mjs
+  ai_agent 4
+packages/@n8n/backend-network/eslint.config.mjs
+  ai_agent 2,4
+packages/@n8n/imap/eslint.config.mjs
+  ai_agent 2,4,9-10
+packages/@n8n/node-engine-compatibility/eslint.config.mjs
+  ai_agent 2,4-12,14
+packages/testing/code-health/src/rules/encryption-boundary.rule.ts
+  ai_agent 38,40-41,137,152
+packages/testing/containers/eslint.config.mjs
+  ai_agent 2,4-17,19-20,22-30
+packages/@n8n/di/eslint.config.mjs
+  ai_agent 4
+packages/testing/test-impact/eslint.config.mjs
+  ai_agent 2,5
+scripts/lint-parity/expected-pr1.json
+  ai_agent 1-288
+packages/@n8n/eslint-config/src/configs/nodes.ts
+  ai_agent 1-178
+packages/@n8n/config/eslint.config.mjs
+  ai_agent 2,4-7,9
+packages/@n8n/ai-node-sdk/eslint.config.mjs
+  ai_agent 2,4,6
+packages/frontend/@n8n/chat/eslint.config.mjs
+  ai_agent 4
+packages/@n8n/utils/eslint.config.mjs
+  ai_agent 2,4,7
+packages/frontend/@n8n/i18n/eslint.config.mjs
+  ai_agent 6
+packages/@n8n/decorators/eslint.config.mjs
+  ai_agent 2,5,8-9,15-18
+packages/@n8n/backend-common/eslint.config.mjs
+  ai_agent 2,5,8,14-18
+packages/@n8n/scheduler/eslint.config.mjs
+  ai_agent 2,10
+packages/nodes-base/eslint.config.mjs
+  ai_agent 2,9,27-31,33-34,38,40
+scripts/lint-parity/config-blocks.mjs
+  ai_agent 1-159
+scripts/lint-parity/layers.json
+  ai_agent 1-80
+packages/@n8n/eslint-config/src/configs/backend.ts
+  ai_agent 7-15
+scripts/lint-parity/samples.json
+  ai_agent 7,22,27-28,33,41-42,55,70,75,80-81,89-90,124-126,131-132,324,330,336,346,381,389-393
+packages/@n8n/local-gateway/eslint.config.mjs
+  ai_agent 2,5-6
+scripts/lint-parity/majority.mjs
+  ai_agent 1-104
+packages/@n8n/backend-test-utils/eslint.config.mjs
+  ai_agent 2,4
+packages/@n8n/ai-workflow-builder.ee/eslint.config.mjs
+  ai_agent 2,5-6,8-10,12-16,18-24,26
+packages/@n8n/agents/eslint.config.mjs
+  ai_agent 2,8-16,56-57
+packages/@n8n/node-cli/eslint.config.mjs
+  ai_agent 2,6,17-22
+packages/@n8n/ai-utilities/eslint.config.mjs
+  ai_agent 2,4-11,13-20
+.boundaries-baseline.json
+  ai_agent 2
+packages/@n8n/api-types/eslint.config.mjs
+  ai_agent 4
+packages/@n8n/syslog-client/eslint.config.mjs
+  ai_agent 2,4-7,9
+packages/@n8n/extension-sdk/eslint.config.mjs
+  ai_agent 7-8
+packages/@n8n/eslint-config/package.json
+  ai_agent 2-70
+packages/testing/code-health/eslint.config.mjs
+  ai_agent 2,5
+packages/@n8n/nodes-langchain/eslint.config.mjs
+  ai_agent 2,5-10,12,14-15,17
+packages/testing/janitor/eslint.config.mjs
+  ai_agent 2,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "68f79439aca2eb05fa1cdf3c6ca70d06e1139ce2",
+  "prompts": {}
+}

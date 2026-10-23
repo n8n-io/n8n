@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/FileMaker/FileMaker.node.ts
+  s_85fa82f1944d28::t_40693550d601d8 28,38-39,697,711,770
+packages/nodes-base/nodes/FileMaker/GenericFunctions.ts
+  s_85fa82f1944d28::t_de1f5291b575f4 11-17,39-42,170-173,199-202
+packages/nodes-base/nodes/FileMaker/__tests__/GenericFunctions.test.ts
+  s_85fa82f1944d28::t_de23d8c921c06b 10,16,27,36,99-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99741dda6399b55cbf721095013897ec9cfd1319",
+  "prompts": {},
+  "sessions": {
+    "s_85fa82f1944d28": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a97c5d61e5b724560",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

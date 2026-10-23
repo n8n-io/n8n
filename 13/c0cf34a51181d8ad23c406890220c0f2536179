@@ -1,0 +1,29 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_3ed9d32328b843::t_b19991b4df1a55 181,204-205,207,210-216,230-235
+  s_3ed9d32328b843::t_b6331274de5729 194-196,206
+  s_3ed9d32328b843::t_e247dfe8a67a63 208
+  s_3ed9d32328b843::t_51d63ecdf678da 222
+  s_3ed9d32328b843::t_ee110a3cd24c12 182-193,209,217-221,223-229,236-237
+  s_3ed9d32328b843::t_227d5227b3b303 22-23
+  s_3ed9d32328b843::t_46a4dace1b6955 197-203
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  s_3ed9d32328b843::t_874cfbb957d00b 91-115
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_3ed9d32328b843::t_1804fd72c899c8 259-264,266-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "13c0cf34a51181d8ad23c406890220c0f2536179",
+  "prompts": {},
+  "sessions": {
+    "s_3ed9d32328b843": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fa0b01d-c8c2-4984-a373-92463bb9d959",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

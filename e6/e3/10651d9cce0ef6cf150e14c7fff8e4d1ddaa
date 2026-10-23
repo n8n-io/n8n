@@ -1,0 +1,20 @@
+packages/cli/src/public-api/v1/shared/middlewares/global.middleware.ts
+  s_e2203a10d11968::t_610b3fbd808be1 179
+  s_e2203a10d11968::t_83b28e961e8f42 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e6e310651d9cce0ef6cf150e14c7fff8e4d1ddaa",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

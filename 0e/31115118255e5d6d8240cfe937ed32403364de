@@ -1,0 +1,23 @@
+packages/cli/src/modules/identity/identity.types.ts
+  s_16453cac85f858::t_84286ae3901d59 105
+packages/cli/src/modules/identity/services/__tests__/jwt-verifier-driver.service.test.ts
+  s_16453cac85f858::t_84286ae3901d59 49
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_16453cac85f858::t_84286ae3901d59 579-580
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0e31115118255e5d6d8240cfe937ed32403364de",
+  "prompts": {},
+  "sessions": {
+    "s_16453cac85f858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398bf54f-42db-4a1a-8d95-4f932ca49cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

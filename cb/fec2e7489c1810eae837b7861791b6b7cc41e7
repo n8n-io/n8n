@@ -1,0 +1,19 @@
+packages/@n8n/db/src/migrations/common/1787213245846-CreateAgentChannelStatusTable.ts
+  s_ef0622ff196ca2::t_7f68fae6864bbc 38,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "cbfec2e7489c1810eae837b7861791b6b7cc41e7",
+  "prompts": {},
+  "sessions": {
+    "s_ef0622ff196ca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae38a62b-1b3b-480b-bec5-fa2f557a6855",
+        "model": "unknown"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

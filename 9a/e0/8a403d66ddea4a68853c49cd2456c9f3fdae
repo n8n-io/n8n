@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_525ac6f38238f8::t_ac406c67ae3c85 259,263-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ae08a403d66ddea4a68853c49cd2456c9f3fdae",
+  "prompts": {},
+  "sessions": {
+    "s_525ac6f38238f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c13ff40-8b17-44e4-94f4-91879130bebd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

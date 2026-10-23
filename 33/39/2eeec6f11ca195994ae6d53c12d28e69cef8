@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/ConnectionsCard.test.ts
+  s_1b6caa20acb1a5::t_1ef896439d72df 173-199
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  h_44f8d1c0f2f8c4 44
+  s_1b6caa20acb1a5::t_a71e9d62d239a4 55-56
+  s_1b6caa20acb1a5::t_73cc39bc804f09 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "33392eeec6f11ca195994ae6d53c12d28e69cef8",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1b6caa20acb1a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d880b255-9aab-4b8c-91ba-82ef9cde12ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

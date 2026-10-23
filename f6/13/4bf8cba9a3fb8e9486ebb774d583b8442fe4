@@ -1,0 +1,78 @@
+packages/@n8n/scheduler/src/core/scheduler.ts
+  s_d0e9b43a636764::t_73f8f18dd02437 56-57
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  s_d0e9b43a636764::t_73f8f18dd02437 48
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_d0e9b43a636764::t_1be3fe3e5d192e 238-239
+packages/@n8n/scheduler/src/core/reconciliation/owner.ts
+  s_d0e9b43a636764::t_67acb30d958fbe 8-11,15-20,26-28,37-40
+packages/@n8n/scheduler/src/core/provisioning/provisioner.ts
+  s_d0e9b43a636764::t_e25d5c15547552 36,38-40,57-58,91-93
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_d0e9b43a636764::t_455654b5ec7fc5 61-64,75,81-82,85-86,88-89,155-156,158-160,162-164,178-179,203,229-230,238-240,248-250,262-263,276,278-280,282,306-308,310-312,314-315,317,347-348,350-352,360-362,377-378,381,415,417-418,434,445,486-488,505-507
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_d0e9b43a636764::t_34553b194cf02b 353,355-356,362-363,365-366,387-388,390-392,401-402
+packages/@n8n/scheduler/src/core/materializer/owner-key.ts
+  s_d0e9b43a636764::t_b5a6c3ede5826e 13-15,17-18,23-25
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_d0e9b43a636764::t_9662d34c6c16cb 32-33,41-43,49-50,52-53,61-63,180-181,183-185,199-200
+packages/@n8n/db/src/migrations/common/1787306400000-GeneralizeScheduledJobOwner.ts
+  s_d0e9b43a636764::t_0e5e0d6b7c4d4f 13-15,34-36,40-42,44-46,99-101,122-124,172-175,202-203
+packages/@n8n/scheduler/src/core/errors.ts
+  s_d0e9b43a636764::t_22b6bb9e1f4f77 62,74-76,98-100,109,120
+packages/cli/test/integration/scheduling/scheduled-job-owner-teardown.test.ts
+  s_d0e9b43a636764::t_b82baddf44eb73 24-199
+packages/cli/test/integration/scheduling/system-job.test.ts
+  s_d0e9b43a636764::t_1be3fe3e5d192e 12-18,137-139
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_d0e9b43a636764::t_e44f6782dc5d29 20-21,25-26,35,43,49-50,52-55,57-58,60-67,70-72,74-75,77-79,81-82,159,169-170,279-282,284-286,325-327
+packages/cli/src/workflows/workflow.service.ts
+  s_d0e9b43a636764::t_c45711b38564b1 1342-1344,1346-1347
+  s_d0e9b43a636764::t_f390fe6be62117 1345,1348-1355
+packages/@n8n/scheduler/src/core/types/schedule.ts
+  s_d0e9b43a636764::t_73f8f18dd02437 71-73
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_d0e9b43a636764::t_73f8f18dd02437 282-288
+packages/cli/src/scheduling/schedule-columns.ts
+  s_d0e9b43a636764::t_b5a6c3ede5826e 6-8,23,58-61,63-65
+packages/cli/test/integration/scheduling/shared/job-factory.ts
+  s_d0e9b43a636764::t_b82baddf44eb73 7,37-38,60
+packages/cli/src/scheduling/scheduled-job-owner-registry.ts
+  s_d0e9b43a636764::t_73f8f18dd02437 7-8,10-11
+packages/cli/test/integration/scheduling/scheduler-materialize.test.ts
+  s_d0e9b43a636764::t_1be3fe3e5d192e 441-442
+packages/@n8n/scheduler/src/core/factory.ts
+  s_d0e9b43a636764::t_e25d5c15547552 85-87
+packages/@n8n/constants/src/scheduler.ts
+  s_d0e9b43a636764::t_9662d34c6c16cb 79-80,101,113-114,116-117,120,122
+packages/cli/test/migration/1787306400000-generalize-scheduled-job-owner.test.ts
+  s_d0e9b43a636764::t_b82baddf44eb73 18,54,238,337,349,364
+packages/cli/test/integration/scheduling/scheduled-job-owner-reconciliation.test.ts
+  s_d0e9b43a636764::t_5553fa0dacd6a5 24-26,43,49,339-340,344,377-379
+packages/@n8n/scheduler/src/core/reconciliation/store.ts
+  s_d0e9b43a636764::t_67acb30d958fbe 8,17-19,30-31,34-35,47,61-63
+packages/@n8n/scheduler/src/core/reconciliation/options.ts
+  s_d0e9b43a636764::t_67acb30d958fbe 3,15-16
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_d0e9b43a636764::t_680fca3b8a113a 1886-1910
+  s_d0e9b43a636764::t_1be3fe3e5d192e 1883-1885
+  s_d0e9b43a636764::t_87b598f8488c78 1756,1759,1782-1784,1789-1799,1828-1829,1846,1859,1870,1879,1925,1964,1976
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_d0e9b43a636764::t_148bcbefd03646 97-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f6134bf8cba9a3fb8e9486ebb774d583b8442fe4",
+  "prompts": {},
+  "sessions": {
+    "s_d0e9b43a636764": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dae7824-17ea-4f33-8099-6a9b1af82418",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

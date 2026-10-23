@@ -1,0 +1,119 @@
+packages/cli/src/controllers/__tests__/ai.controller.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 676
+packages/@n8n/api-types/src/dto/ai/ai-gateway-wallet-response.dto.ts
+  s_305955daf24d02::t_c16679ef61adfd 1-5
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 1-29
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_305955daf24d02::t_c16679ef61adfd 856,868
+packages/frontend/editor-ui/src/features/ai/assistant/assistant.api.ts
+  s_305955daf24d02::t_c16679ef61adfd 12-16,140
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_305955daf24d02::t_c16679ef61adfd 98
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 725-736,744
+packages/cli/src/services/ai-gateway.service.ts
+  s_305955daf24d02::t_c16679ef61adfd 5,281,300-301,305-309
+packages/frontend/editor-ui/src/app/composables/useAiGateway.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 64-68
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_305955daf24d02::t_c16679ef61adfd 434-435,441,453
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-credential.tool.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 30-31,35-38,194
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 367-385
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_305955daf24d02::t_c16679ef61adfd 377
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 151,156,159,164,169
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.types.ts
+  s_305955daf24d02::t_c16679ef61adfd 6
+docker/images/n8n/Dockerfile
+  s_305955daf24d02::t_c16679ef61adfd 32-37,45
+packages/@n8n/api-types/src/dto/index.ts
+  s_305955daf24d02::t_c16679ef61adfd 27
+packages/frontend/@n8n/design-system/src/components/N8nActionPill/ActionPill.stories.ts
+  s_305955daf24d02::t_c16679ef61adfd 1-40
+packages/frontend/editor-ui/src/app/stores/aiGateway.store.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 4,127-132,139,165-215
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 93,1957,1995,2056,2107,2176,2213,2254,2300
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_305955daf24d02::t_c16679ef61adfd 22-23,164
+.github/pull_request_title_conventions.md
+  s_305955daf24d02::t_c16679ef61adfd 14,56
+packages/frontend/editor-ui/src/app/composables/useAiGateway.ts
+  s_305955daf24d02::t_c16679ef61adfd 16,63
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_305955daf24d02::t_c16679ef61adfd 49,60,144,238,276-285
+  s_305955daf24d02::t_7ed2e039746f5e 286-288
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.ts
+  s_305955daf24d02::t_c16679ef61adfd 307-308
+packages/cli/src/controllers/ai.controller.ts
+  s_305955daf24d02::t_c16679ef61adfd 1-5,266
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 1613-1614,1617-1618
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 1619-1639
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.vue
+  s_305955daf24d02::t_c16679ef61adfd 50-55
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_305955daf24d02::t_c16679ef61adfd 672-676,683,906-910,917
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 187,238-254
+  s_305955daf24d02::t_d47057165ffe94 255-256
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_305955daf24d02::t_c16679ef61adfd 229-231,234-236
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.ts
+  s_305955daf24d02::t_c16679ef61adfd 361,363-365
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_305955daf24d02::t_c16679ef61adfd 477-481,489-498
+packages/workflow/src/interfaces.ts
+  s_305955daf24d02::t_c16679ef61adfd 3811
+packages/frontend/@n8n/design-system/src/components/N8nActionPill/ActionPill.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 4,49-61
+  s_305955daf24d02::t_086597226c28bf 62
+packages/frontend/@n8n/design-system/src/components/N8nActionPill/ActionPill.vue
+  s_305955daf24d02::t_c16679ef61adfd 20-21,45,95-100
+  s_305955daf24d02::t_2a9aa946115595 101-103
+packages/frontend/editor-ui/src/app/stores/aiGateway.store.ts
+  s_305955daf24d02::t_c16679ef61adfd 1,25-32,39-44,52,70-83,213-214
+packages/@n8n/api-types/src/agents/agent-interaction.schema.ts
+  s_305955daf24d02::t_c16679ef61adfd 104-106
+packages/@n8n/ai-utilities/package.json
+  s_305955daf24d02::t_c16679ef61adfd 147
+.github/scripts/update-changelog.mjs
+  s_305955daf24d02::t_c16679ef61adfd 30-32,34-35
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 76
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_305955daf24d02::t_c16679ef61adfd 389-395
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 71,794,806-831,859,875,893,905,920,1047
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_305955daf24d02::t_c16679ef61adfd 579-581,584
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_305955daf24d02::t_c16679ef61adfd 59,1477,1549,1580,1675,1721,1873,2038,2079,2119,2160,2303,2431,2537
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_305955daf24d02::t_c16679ef61adfd 6-10,15-17,22
+packages/frontend/@n8n/design-system/src/components/N8nActionPill/__snapshots__/ActionPill.test.ts.snap
+  s_305955daf24d02::t_51456f467bafe9 64-75
+pnpm-lock.yaml
+  s_305955daf24d02::t_485e15149663f2 1179-1180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cd343e0a25d7ac5e942eeadba30bc326624a14e7",
+  "prompts": {},
+  "sessions": {
+    "s_305955daf24d02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb56-d72e-7fb2-bb76-81cc38f4e9a6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

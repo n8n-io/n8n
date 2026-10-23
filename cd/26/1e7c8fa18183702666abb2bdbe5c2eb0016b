@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_69f0f345c55132::t_3a68d0f5af1b57 386
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cd261e7c8fa18183702666abb2bdbe5c2eb0016b",
+  "prompts": {},
+  "sessions": {
+    "s_69f0f345c55132": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "138879b6-9eeb-4d2c-9768-76825ef2c5c2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

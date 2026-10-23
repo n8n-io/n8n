@@ -1,0 +1,33 @@
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_f4876d43d1babd::t_9246d3ee9e45cf 67-69,248-260,564-565,573-575
+packages/@n8n/instance-ai/skills/progressive-building/SKILL.md
+  s_f4876d43d1babd::t_c02e31dfa5cb50 67-68
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_f4876d43d1babd::t_2c810e5e1e1ac1 15,976-981,986,989-996,1183-1188
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_f4876d43d1babd::t_3b885ac6889e4f 122,162-163,177-180,1094,1799-1803,4931-4934,4941-4945,4961-4968,4990,5025,5039-5053,5056-5059,5071-5380
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_f4876d43d1babd::t_756cd91c9ff871 94,1087-1107
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_f4876d43d1babd::t_8774c1aeaf35db 29,112,200-202,460-461,463-467,1970,1982-1984,2016-2047,2723-2854,2856-2857
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_f4876d43d1babd::t_bd5759cbb0140f 706-709,946-947,4259-4260
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_f4876d43d1babd::t_8ed2fe6609ba02 82,174-175,181-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b1f50655b9c3efa3b3c6bf7be908c9a4776faad7",
+  "prompts": {},
+  "sessions": {
+    "s_f4876d43d1babd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "af51ae32-1546-4f05-b981-05e15fb39150",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

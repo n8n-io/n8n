@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_60dc2ad9ff7de2::t_ad5d8637fc3197 157-159
+  s_60dc2ad9ff7de2::t_b648b9e16e6b41 53-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "595a827d50e43811f9bf41032600bf45c6c4ea57",
+  "prompts": {},
+  "sessions": {
+    "s_60dc2ad9ff7de2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "469357ba-a39d-4452-ac53-8a787319ebd9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

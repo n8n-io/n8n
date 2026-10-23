@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_c77c9c67421351::t_9b8208648456c3 1932-1972
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_c77c9c67421351::t_bc32c7813d2003 593-597,686-690
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "32faa6203fe5c3eb8462e0f90f0eaa4a46d77112",
+  "prompts": {},
+  "sessions": {
+    "s_c77c9c67421351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd7b1752-695a-4039-902a-08408f1d312e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_dd85f6d6552f69::t_164ee0070d9689 102
+  s_dd85f6d6552f69::t_667c5eb111f1bc 16,21,56
+  s_dd85f6d6552f69::t_f50fdf453bb808 129
+  s_dd85f6d6552f69::t_cc5285e471ca23 164
+  s_dd85f6d6552f69::t_e281a3d161b6f9 1380-1381,1385-1404
+  s_dd85f6d6552f69::t_bee1cf8204f523 1382-1384
+  s_dd85f6d6552f69::t_9e840a15c24ecc 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9d040d10deb81f60cbafd9997a1ae8f8a437ebe4",
+  "prompts": {},
+  "sessions": {
+    "s_dd85f6d6552f69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7afa0ce8-7d1f-4ba9-834a-182ab3064acc",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

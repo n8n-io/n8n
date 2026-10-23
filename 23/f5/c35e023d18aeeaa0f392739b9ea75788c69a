@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/promotion-connections.service.ts
+  s_936f83bec01a75::t_29b199b26be817 278,287-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "23f5c35e023d18aeeaa0f392739b9ea75788c69a",
+  "prompts": {},
+  "sessions": {
+    "s_936f83bec01a75": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b13a-ec85-7932-a5ce-ac96dbb150f4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

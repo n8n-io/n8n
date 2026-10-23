@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/DitherTrailGrid.vue
+  s_369bbfce0d63e8::t_16bab58cecc405 456-458
+  s_369bbfce0d63e8::t_1c39d505e435e9 50-52
+  s_369bbfce0d63e8::t_9d0b82b81d145c 130-152,171-172,190,203-204,216
+  s_369bbfce0d63e8::t_01f04e95c80b24 12-16,37-39,41-49,53-60,153-170,173-189,217,223
+  s_369bbfce0d63e8::t_778a91385396a2 501,503-519,553,564
+  s_369bbfce0d63e8::t_265a7c03c0fbf8 2,390,411,454,571-575
+  s_369bbfce0d63e8::t_28e7ce88ae695f 309-316,329,385-389,391-410,412-453,455,459-500,524,552,561,563,596,606
+  s_369bbfce0d63e8::t_ee185e8323ea5a 502
+  s_369bbfce0d63e8::t_2bf4caf40fcecb 593-595
+  s_369bbfce0d63e8::t_784feb050c1d02 597-599
+  s_369bbfce0d63e8::t_878dbb15e2853e 605
+  s_369bbfce0d63e8::t_536bbc09015a64 607-608
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91d86e95da45d83510afafc59791dc07f4985fd4",
+  "prompts": {},
+  "sessions": {
+    "s_369bbfce0d63e8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0e842-8f3e-70fe-93d0-af671e8ea3e9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

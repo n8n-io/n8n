@@ -1,0 +1,61 @@
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-connection-status.service.ts
+  s_4ca7f0a7399847::t_3dc09a35f0e3ae 1-5,7-10,13,18-24,26-29,35-39
+  s_4ca7f0a7399847::t_136783cfd4f332 6,11-12,14-17,30-34
+packages/cli/src/credentials/credentials.service.ts
+  s_4ca7f0a7399847::t_f92e8da26e59d6 570-579,590-592
+  s_4ca7f0a7399847::t_70ad096200bcb0 476,478,481
+  s_4ca7f0a7399847::t_26eaf1cc8c2a87 477
+  s_4ca7f0a7399847::t_89126e1eddcf2f 1155-1157,1161-1170,1173,1175
+  s_4ca7f0a7399847::t_a37b8ac33dac2e 124,128
+  s_4ca7f0a7399847::t_fe2b56d0a7ae30 61
+  s_4ca7f0a7399847::t_9dfe637c2d72ce 113,116-123,125-127,129-139
+packages/cli/src/credentials/credentials.service.ee.ts
+  s_4ca7f0a7399847::t_7a271ffdf11255 129-131,135-144,147,150
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  s_4ca7f0a7399847::t_4b124c234720c2 40-41
+  s_4ca7f0a7399847::t_307ae0b0fdb7d9 19-20
+packages/cli/test/integration/credentials/credentials.connected-by-me.api.test.ts
+  s_4ca7f0a7399847::t_26df45c7da1211 12-16,18
+  s_4ca7f0a7399847::t_fb7a47b4c34419 1-11,17,19-37,39-62,74-76,84-85,87-107,109-149,152-161,174-228,231-269
+  s_4ca7f0a7399847::t_98a634be071ffd 229-230
+  s_4ca7f0a7399847::t_5ecc1ff0c0909e 150-151,162-173
+  s_4ca7f0a7399847::t_9e1f6b896bd9c0 63-73,77-83
+  s_4ca7f0a7399847::t_b9da89364f18bc 38
+  s_4ca7f0a7399847::t_4cfa34e618e264 86
+  s_4ca7f0a7399847::t_45fc4bf320dc25 108
+packages/@n8n/api-types/src/dto/credentials/credential-connection-status.ts
+  s_4ca7f0a7399847::t_e53b62aa557801 1-8
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_4ca7f0a7399847::t_bad8c1010bc215 60
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.module.ts
+  s_4ca7f0a7399847::t_e9c1ae05bf9430 25,39-47
+packages/cli/src/public-api/v1/handlers/credentials/__tests__/credentials.service.test.ts
+  s_4ca7f0a7399847::t_7ebe6bd52fd984 441
+packages/cli/src/modules/dynamic-credentials.ee/services/index.ts
+  s_4ca7f0a7399847::t_b6ed3f9b87c4b5 8
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_4ca7f0a7399847::t_1afa651d77659c 26
+  s_4ca7f0a7399847::t_05405cd84eee26 80,100
+packages/cli/src/credentials/credential-connection-status-provider.interface.ts
+  s_4ca7f0a7399847::t_c3f5836ed40438 1-22
+packages/cli/src/credentials/credential-connection-status-proxy.ts
+  s_4ca7f0a7399847::t_83fde0cbdfda53 1-18,20-23
+packages/@n8n/api-types/src/dto/index.ts
+  s_4ca7f0a7399847::t_027b3a3e9bf940 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "9f7d39de399b2a329f9cd1d4daff0a6f0d0be90f",
+  "prompts": {},
+  "sessions": {
+    "s_4ca7f0a7399847": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78314d73-bc82-47ae-8d2c-33c8f58a1511",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

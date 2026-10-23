@@ -1,0 +1,19 @@
+packages/cli/src/modules/mcp/tools/get-instance-context.tool.ts
+  s_7e8ab22823b2f0::t_0ad8840479a02c 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "82a00ffaec3a1ec0b15e95e8e1f6f47f5952de70",
+  "prompts": {},
+  "sessions": {
+    "s_7e8ab22823b2f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f74a-1de6-7b90-a5dd-3a1f7084d180",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

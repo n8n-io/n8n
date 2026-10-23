@@ -1,0 +1,111 @@
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_3d28bd03882b18::t_42772b7ee098b5 67
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_3d28bd03882b18::t_42772b7ee098b5 57
+docs/generated/postgres-schema/README.md
+  s_3d28bd03882b18::t_30574245f323e2 26,529
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_3d28bd03882b18::t_64f0b7ae2b5733 77
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_3d28bd03882b18::t_9673e0afcb20ae 58
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_3d28bd03882b18::t_fa4b8d1281b5ee 56
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_3d28bd03882b18::t_2913b9aead33d1 71
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_3d28bd03882b18::t_d1603fd558c3a9 92
+docs/generated/postgres-schema/public.agent_files.md
+  s_3d28bd03882b18::t_d48c2a25a2c070 72
+docs/generated/postgres-schema/public.agent_history.md
+  s_3d28bd03882b18::t_fc8c38d9ed6399 68
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_3d28bd03882b18::t_f9a665dedbf446 61
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_3d28bd03882b18::t_a816a648213a24 57
+docs/generated/postgres-schema/public.agents.md
+  s_3d28bd03882b18::t_bd844208151e84 15,80
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_3d28bd03882b18::t_828de9fef52bdc 84
+docs/generated/postgres-schema/public.agents_memory_entry_cursors.md
+  s_3d28bd03882b18::t_ab6f55a678749a 60
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_3d28bd03882b18::t_033a2c7a903f25 60
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_3d28bd03882b18::t_faebe9eca5a3c5 76
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_3d28bd03882b18::t_4ecdd0ec657ef1 60
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_3d28bd03882b18::t_58a86f0e397ccd 64
+docs/generated/postgres-schema/public.agents_observations.md
+  s_3d28bd03882b18::t_6c598f98593918 83
+docs/generated/postgres-schema/public.project.md
+  s_3d28bd03882b18::t_7db5be5bdcf8b9 127
+docs/generated/sqlite-schema/README.md
+  s_3d28bd03882b18::t_371fd17909cfe1 26,165,516
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_3d28bd03882b18::t_582bbe264a3e9c 79
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_3d28bd03882b18::t_5b2c5562ed6ab8 67
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_3d28bd03882b18::t_1ab7ef80064ebd 64
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_3d28bd03882b18::t_8d3dc8f32ce0d2 76
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_3d28bd03882b18::t_a9742d0194ce36 93
+docs/generated/sqlite-schema/agent_files.md
+  s_3d28bd03882b18::t_077782325a1490 75
+docs/generated/sqlite-schema/agent_history.md
+  s_3d28bd03882b18::t_de5234865e8688 75
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_3d28bd03882b18::t_caa7693d48c846 66
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_3d28bd03882b18::t_1222a0a38eecba 64
+docs/generated/sqlite-schema/agents.md
+  s_3d28bd03882b18::t_10d14d7f49c8f9 9,26,36-37,83
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_3d28bd03882b18::t_351e085b8effc0 87
+docs/generated/sqlite-schema/agents_memory_entry_cursors.md
+  s_3d28bd03882b18::t_65f6454a3e055f 67
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_3d28bd03882b18::t_bd7d5a28ae522f 67
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_3d28bd03882b18::t_e18c00796de17f 79
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_3d28bd03882b18::t_d8d51effa39632 67
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_3d28bd03882b18::t_6b3a7d19462d49 71
+docs/generated/sqlite-schema/agents_observations.md
+  s_3d28bd03882b18::t_9a3201d5310eb9 86
+docs/generated/sqlite-schema/project.md
+  s_3d28bd03882b18::t_d0d3151db72f8c 133
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_3d28bd03882b18::t_05a19673150570 5,11-12,15,17,31-34,46,60-61,63-66,68,89,101-102,641-675
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_3d28bd03882b18::t_61c736acb1d124 20,45,244-252,256
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_3d28bd03882b18::t_d378945d6f92f2 239,482
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_3d28bd03882b18::t_b2c78970647b4c 65,464
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_3d28bd03882b18::t_789547d9f1dc8e 15,51,121,154,331-365
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_3d28bd03882b18::t_8b5a032b166e80 45,257,303
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_3d28bd03882b18::t_147f4fca785d14 26,93,141-150,189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "aad21971cb042da3b8c19bbcdb55ea9b0ba8ccb8",
+  "prompts": {},
+  "sessions": {
+    "s_3d28bd03882b18": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb89e-acec-7202-b52b-60e2978f8887",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

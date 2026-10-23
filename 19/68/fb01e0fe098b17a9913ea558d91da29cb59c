@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.vue
+  s_794a1be4bba94d::t_8721aa4fbd2027 28,222-223,225,227
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.test.ts
+  s_794a1be4bba94d::t_8721aa4fbd2027 209,216,242,255,270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1968fb01e0fe098b17a9913ea558d91da29cb59c",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_2faaa46542c225::t_22479b0f51d065 1070,1088,1125,1129,1140,1362,1394
+packages/workflow/src/trigger-identity.ts
+  s_2faaa46542c225::t_94f1cf106de455 73-74,76
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_2faaa46542c225::t_a4abb0f7f77400 448,453,476-478,480-481,486
+packages/nodes-base/nodes/Webhook/description.ts
+  s_2faaa46542c225::t_94f1cf106de455 11-12,14,120
+packages/testing/playwright/tests/e2e/dynamic-credentials/webhook-trigger-private-credential.spec.ts
+  s_2faaa46542c225::t_22479b0f51d065 19-21
+packages/workflow/test/trigger-identity.test.ts
+  s_2faaa46542c225::t_533c5a9d148ea0 120,123,126-129
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_2faaa46542c225::t_94f1cf106de455 26,381-383,441
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_2faaa46542c225::t_7aedc090f764a4 712-713,891,1098,1146,1160,1234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f9cd077e8704f6bc5b0bd0e220bef6afb08d1a1c",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2faaa46542c225": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ef44c73-1b3e-484b-afa8-06cbf75baae9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

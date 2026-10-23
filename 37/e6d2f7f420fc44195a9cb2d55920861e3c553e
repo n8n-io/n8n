@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Notion/test/node/trigger/query.test.ts
+  s_2e1fa95fc44f8f::t_583b38aa3913f6 1-28
+packages/nodes-base/nodes/Notion/test/node/trigger/dataSourceQuery.workflow.json
+  s_2e1fa95fc44f8f::t_c83dcbe2f14432 1-49
+packages/nodes-base/nodes/Notion/test/node/v3/requestPaths.workflow.json
+  s_2e1fa95fc44f8f::t_c83dcbe2f14432 1-514
+packages/nodes-base/nodes/Notion/test/node/v1/requestPaths.test.ts
+  s_2e1fa95fc44f8f::t_851612605ec903 1-43
+packages/nodes-base/nodes/Notion/test/node/v3/requestPaths.test.ts
+  s_2e1fa95fc44f8f::t_00ea0b72d28fc7 1-82
+packages/nodes-base/nodes/Notion/test/node/v1/requestPaths.workflow.json
+  s_2e1fa95fc44f8f::t_c83dcbe2f14432 1-271
+packages/nodes-base/nodes/Notion/test/node/trigger/databaseQuery.workflow.json
+  s_2e1fa95fc44f8f::t_c83dcbe2f14432 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37e6d2f7f420fc44195a9cb2d55920861e3c553e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

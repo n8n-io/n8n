@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/recorded-integration.test.ts
+  s_6c87ec0dcdd6f8::t_2ef82cab74bfa6 171,175
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/synthetic-integration.test.ts
+  s_6c87ec0dcdd6f8::t_2ef82cab74bfa6 110,113
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_6c87ec0dcdd6f8::t_2ef82cab74bfa6 135,140-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "68159d4e8324fb371b8c7365707d1f855256625d",
+  "prompts": {},
+  "sessions": {
+    "s_6c87ec0dcdd6f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a000ce-fde1-7460-ae0d-af65b325e101",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

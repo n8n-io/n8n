@@ -1,0 +1,19 @@
+packages/workflow/test/connections-diff.test.ts
+  s_5e62dac7c72fd4::t_bfac70c706fb9b 678-704
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3855d61610d1b2ced272b87f31a2d59db9e7eba0",
+  "prompts": {},
+  "sessions": {
+    "s_5e62dac7c72fd4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4354ac48-0049-46ef-a6c9-665145cdb7c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

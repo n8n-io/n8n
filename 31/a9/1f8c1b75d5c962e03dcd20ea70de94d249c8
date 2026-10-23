@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_adb5d982725a9c::t_4329e20c62a84c 590-599,617,816
+  ai_agent 618-620,817-819
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_adb5d982725a9c::t_4329e20c62a84c 1191-1192,1310,1355-1359,1479-1485,1491-1494,1498-1499,1509-1511,1550
+  s_adb5d982725a9c::t_f6b007b6e7c6c8 1495
+  ai_agent 1486-1490
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_adb5d982725a9c::t_4329e20c62a84c 46-49,77,196,221,286
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_adb5d982725a9c::t_4329e20c62a84c 8269
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentConfigAutosave.test.ts
+  s_adb5d982725a9c::t_4329e20c62a84c 31-53
+  ai_agent 30
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_adb5d982725a9c::t_4329e20c62a84c 822-848,898-942,2698-2725
+  s_adb5d982725a9c::t_cb6e63bb457997 943-944
+  s_adb5d982725a9c::t_f516fd0d31151f 2726-2727
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_adb5d982725a9c::t_4329e20c62a84c 74-80,561-568
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_adb5d982725a9c::t_4329e20c62a84c 314-325,329-335
+  ai_agent 326-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "31a91f8c1b75d5c962e03dcd20ea70de94d249c8",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

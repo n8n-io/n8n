@@ -1,0 +1,44 @@
+packages/@n8n/agents/src/runtime/__tests__/crash-resume.test.ts
+  s_8c0bb2d06aee91::t_3837c68d55d856 441
+  s_8c0bb2d06aee91::t_a3382a5625c1e1 398-400,455-457
+  s_8c0bb2d06aee91::t_0ed821ddd4a648 388
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_8c0bb2d06aee91::t_2576bbbec9f5e0 298-311
+  s_8c0bb2d06aee91::t_15cd7ec0c8e65b 295
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_8c0bb2d06aee91::t_bbe3aa8152f2fc 355-357,512-514,594-596
+packages/@n8n/agents/src/runtime/loop/hydrate-file-parts.ts
+  s_8c0bb2d06aee91::t_9d0df80852a5f5 4-8,14-18,22,27,43-57
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  ai_agent 129-132,146-149
+  s_8c0bb2d06aee91::t_db9a00dabb2712 121-128,133-145,150-154
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_8c0bb2d06aee91::t_53d5c072c08970 646
+  s_8c0bb2d06aee91::t_670f44ef7a227a 721-723
+  s_8c0bb2d06aee91::t_81217d2ff5b8fa 715-720,724-742,744-746
+  s_8c0bb2d06aee91::t_dfe0e9a629a7ba 743
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_8c0bb2d06aee91::t_127994f77a372e 163-167,171-180
+packages/@n8n/agents/src/types/sdk/file-store.ts
+  s_8c0bb2d06aee91::t_1492e98d067605 13-19
+packages/@n8n/agents/src/runtime/__tests__/file-parts.test.ts
+  s_8c0bb2d06aee91::t_12e510cd088543 89-138
+  s_8c0bb2d06aee91::t_c2215674d1248b 10-14
+  s_8c0bb2d06aee91::t_fdde0ef56bc36a 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "faec99025b17c7da9411ea33066a74592aa499fd",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

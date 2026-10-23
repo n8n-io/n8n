@@ -1,0 +1,33 @@
+packages/@n8n/db/src/migrations/common/1792417570699-ReplacePromotionConnectionsWithEnvironments.ts
+  s_94656d667b5d5c::t_21f967d869e6da 272,298-304,426
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_94656d667b5d5c::t_876fa70a3f83f0 69,79,155-157
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-provider.repository.ts
+  s_94656d667b5d5c::t_fd64d3b4078384 69
+packages/cli/src/modules/promotions.ee/database/promotion-conflict.error.ts
+  s_94656d667b5d5c::t_876fa70a3f83f0 7
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment-project.repository.ts
+  s_94656d667b5d5c::t_85c039dccb2968 2,23
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  s_94656d667b5d5c::t_876fa70a3f83f0 30
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_94656d667b5d5c::t_dfff870b95dd01 1971-1973,1976-1980,1984-1999
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment.repository.ts
+  s_94656d667b5d5c::t_85c039dccb2968 2,30-31,40,50,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed478267ae49da854e50588fc114cfd172158026",
+  "prompts": {},
+  "sessions": {
+    "s_94656d667b5d5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9efc452-e997-4e58-ac9d-601ed3e76ac7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

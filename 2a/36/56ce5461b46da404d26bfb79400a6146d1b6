@@ -1,0 +1,60 @@
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_cf3985c8e2753c::t_8e771b4baeb2f0 52-53,67-87
+packages/@n8n/instance-ai/src/tools/orchestration/builder-required-artifact.ts
+  s_cf3985c8e2753c::t_b6b3398cf474ff 43-48,50
+  s_cf3985c8e2753c::t_d43ec4399f2c99 1-9,11-42,49
+  s_cf3985c8e2753c::t_9aa683b53a2727 10
+packages/@n8n/instance-ai/src/index.ts
+  s_cf3985c8e2753c::t_d43ec4399f2c99 201-204,206
+  s_cf3985c8e2753c::t_b6b3398cf474ff 205,207-210
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_cf3985c8e2753c::t_8968ded84c87e3 89,100-101
+  s_cf3985c8e2753c::t_46792d28b519fa 39,56-61,66-71,90-93,97-99,102-103
+  s_cf3985c8e2753c::t_b6b3398cf474ff 94-96
+  s_cf3985c8e2753c::t_cfbb677949057b 104
+packages/@n8n/instance-ai/src/types.ts
+  s_cf3985c8e2753c::t_daf2767d9d62fb 49,1017
+  s_cf3985c8e2753c::t_d43ec4399f2c99 1016
+packages/@n8n/instance-ai/docs/tools.md
+  s_cf3985c8e2753c::t_8e771b4baeb2f0 730-732,742-747
+  s_b40e563cdbe595::t_3f59c4f2b67de8 748
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_cf3985c8e2753c::t_d5008851102a50 48-51,236-240,253-254,405,416-421,432-437,468-469,485,583-589,649,762,1075
+  s_cf3985c8e2753c::t_9aa683b53a2727 125-132,533,538,549,629
+  s_cf3985c8e2753c::t_8e771b4baeb2f0 996-999
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_cf3985c8e2753c::t_070e39ff1412e7 49-52,57-60,71,75,101-104,115,146,154,156,162,172,174
+  s_cf3985c8e2753c::t_46792d28b519fa 37
+  s_cf3985c8e2753c::t_b25144bc9d89a5 4-9
+  s_cf3985c8e2753c::t_2e3f28469b8f8a 36
+  s_cf3985c8e2753c::t_8968ded84c87e3 38
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_cf3985c8e2753c::t_b6b3398cf474ff 19,25,309-311
+  s_cf3985c8e2753c::t_070e39ff1412e7 18,23,84-85,253,303-308,312-321
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_cf3985c8e2753c::t_2e3f28469b8f8a 145,230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "2a3656ce5461b46da404d26bfb79400a6146d1b6",
+  "prompts": {},
+  "sessions": {
+    "s_b40e563cdbe595": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02451-5c7b-7f91-a86e-6d27f183056d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_cf3985c8e2753c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02002-2da6-72d3-9ee8-98e1c462e146",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

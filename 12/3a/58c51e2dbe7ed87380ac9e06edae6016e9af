@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_208a7c96834666::t_901e2fbfca4704 34-35
+  s_208a7c96834666::t_e214754294c7ef 9,12-13
+  s_208a7c96834666::t_bb79136f814302 30
+  s_208a7c96834666::t_3a2856ec039dbe 32-33
+  s_208a7c96834666::t_fdeb70d14b4cc3 31
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_208a7c96834666::t_71013600788fa0 37-39
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_208a7c96834666::t_504fac70babaf6 61-77
+packages/nodes-base/nodes/Confluence/actions/attachment/delete.operation.ts
+  s_208a7c96834666::t_d8d69eb9b51ae5 1-118
+packages/nodes-base/nodes/Confluence/actions/attachment/index.ts
+  s_208a7c96834666::t_e67f784f855cd4 3,6,20-25,33,36
+packages/nodes-base/nodes/Confluence/test/actions/attachment/delete.operation.test.ts
+  s_208a7c96834666::t_091ed07a49be65 1-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "123a58c51e2dbe7ed87380ac9e06edae6016e9af",
+  "prompts": {},
+  "sessions": {
+    "s_208a7c96834666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9996a3c5-7637-487a-99bb-db72780d34e4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

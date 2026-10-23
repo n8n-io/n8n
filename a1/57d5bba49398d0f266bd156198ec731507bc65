@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/agent-plan.test.ts
+  s_fbba0b32ee6f59::t_d5d672c6f6cd84 143-169,175,186-197,208-209
+  s_fbba0b32ee6f59::t_80fab32d81c0a0 170-174,176-185,198-207
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_fbba0b32ee6f59::t_804b43155cf6e4 129-130,85-89,114-115,131-143,147-150
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 26-34
+  s_fbba0b32ee6f59::t_80fab32d81c0a0 90-110,144-146,195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a157d5bba49398d0f266bd156198ec731507bc65",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

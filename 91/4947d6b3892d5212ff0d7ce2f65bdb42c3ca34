@@ -1,0 +1,24 @@
+packages/@n8n/local-gateway/src/main/main-window.test.ts
+  s_22dba21f85aaca::t_c2627ac44a13e0 197-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "914947d6b3892d5212ff0d7ce2f65bdb42c3ca34",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_22dba21f85aaca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e80c488b-60c5-4815-a664-397181ee7c3c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

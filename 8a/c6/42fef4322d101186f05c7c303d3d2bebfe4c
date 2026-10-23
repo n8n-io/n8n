@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_f2be74e4f2dda6::t_2ef341d3e5efc8 18,50-54,174-175,633,765-830,1068,1114-1122
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_f2be74e4f2dda6::t_2ef341d3e5efc8 482-486,646,658,677
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_f2be74e4f2dda6::t_2ef341d3e5efc8 16,775-935
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_f2be74e4f2dda6::t_2ef341d3e5efc8 30
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_f2be74e4f2dda6::t_2ef341d3e5efc8 11-12,18,39,57-60,71-72,86,340-414
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_f2be74e4f2dda6::t_2ef341d3e5efc8 3,9,15-19,23,43-44,56-62,92-119
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_f2be74e4f2dda6::t_2ef341d3e5efc8 2,6-7,18-20,23-35,61,68,78,82,335-522
+packages/@n8n/instance-ai/evaluations/data/workflows/credential-connection-test-before-blaming-key.json
+  s_f2be74e4f2dda6::t_2ef341d3e5efc8 1-45
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_f2be74e4f2dda6::t_2ef341d3e5efc8 183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8ac642fef4322d101186f05c7c303d3d2bebfe4c",
+  "prompts": {},
+  "sessions": {
+    "s_f2be74e4f2dda6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45d015dc-b15d-4645-9885-38ba98f92a11",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

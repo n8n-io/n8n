@@ -1,0 +1,20 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_64b25f7870433e::t_40f05dfbb9acab 10
+  s_64b25f7870433e::t_3121989c0818d8 107-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "de451194c42a29486810a064b8ea4dc942392e92",
+  "prompts": {},
+  "sessions": {
+    "s_64b25f7870433e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7982e0a1-aecb-4030-87f8-a365a9366e45",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

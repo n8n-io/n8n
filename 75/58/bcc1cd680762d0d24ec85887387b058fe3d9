@@ -1,0 +1,33 @@
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_c0d897eb920d42::t_35fd42b7da75ac 2163
+  s_c0d897eb920d42::t_4ca0683797da86 2160-2162,2164-2166
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  s_c0d897eb920d42::t_7fa01cd0391ed6 89-92
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-step-run.test.ts
+  s_c0d897eb920d42::t_984124d565a5d1 2-9,385-388,391,394-408,453-480,482-486,489-494,497-514,517-558,602
+  s_c0d897eb920d42::t_76e3a1f77295b8 426
+packages/cli/src/modules/instance-ai/instance-ai-step-run.ts
+  s_c0d897eb920d42::t_4ca0683797da86 56-58,60-62,65,390-394,399,408,459-463,466,561-566,568-577,624-625
+  s_c0d897eb920d42::t_76e3a1f77295b8 554-557
+  s_c0d897eb920d42::t_b35e2af164b04b 558-560,567
+packages/@n8n/instance-ai/docs/tools.md
+  s_c0d897eb920d42::t_a9cb86bf418750 641-653
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_c0d897eb920d42::t_20582c51946114 5848-5883
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7558bcc1cd680762d0d24ec85887387b058fe3d9",
+  "prompts": {},
+  "sessions": {
+    "s_c0d897eb920d42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0060558-aafe-4f7c-8765-ddd1c8646426",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_5fc5f4c07cd999::t_ce672a39cf46d6 21-24,35-36,869-876,905-906
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d5311e765682d842f8e5969873b9eb3334c57583",
+  "prompts": {},
+  "sessions": {
+    "s_5fc5f4c07cd999": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05d66-0771-78e2-b6fe-5d1f5f686565",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/addUser/execute.ts
+  h_52a137d26d774c 2,15
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/create/execute.ts
+  h_52a137d26d774c 1-6,17
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/del/execute.ts
+  h_52a137d26d774c 2,12
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/members/execute.ts
+  h_52a137d26d774c 2,18,39
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/restore/execute.ts
+  h_52a137d26d774c 2,15
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/search/execute.ts
+  h_52a137d26d774c 2,15
+packages/nodes-base/nodes/Mattermost/v1/actions/channel/statistics/execute.ts
+  h_52a137d26d774c 2,15
+packages/nodes-base/nodes/Mattermost/v1/actions/message/del/execute.ts
+  h_52a137d26d774c 1-6,16
+packages/nodes-base/nodes/Mattermost/v1/actions/message/post/execute.ts
+  h_52a137d26d774c 1-6,15
+packages/nodes-base/nodes/Mattermost/v1/actions/message/postEphemeral/execute.ts
+  h_52a137d26d774c 1-6,16
+packages/nodes-base/nodes/Mattermost/v1/actions/reaction/create/execute.ts
+  h_52a137d26d774c 1-6,16
+packages/nodes-base/nodes/Mattermost/v1/actions/reaction/del/execute.ts
+  h_52a137d26d774c 2,13
+packages/nodes-base/nodes/Mattermost/v1/actions/reaction/getAll/execute.ts
+  h_52a137d26d774c 2,15
+packages/nodes-base/nodes/Mattermost/v1/actions/user/create/execute.ts
+  h_52a137d26d774c 1-6,20
+packages/nodes-base/nodes/Mattermost/v1/actions/user/deactive/execute.ts
+  h_52a137d26d774c 2,13
+packages/nodes-base/nodes/Mattermost/v1/actions/user/getAll/execute.ts
+  h_52a137d26d774c 3,16
+packages/nodes-base/nodes/Mattermost/v1/actions/user/getByEmail/execute.ts
+  h_52a137d26d774c 2,14
+packages/nodes-base/nodes/Mattermost/v1/actions/user/getById/execute.ts
+  h_52a137d26d774c 1-6,16
+packages/nodes-base/nodes/Mattermost/v1/actions/user/invite/execute.ts
+  h_52a137d26d774c 2,16
+packages/nodes-base/nodes/Mattermost/v1/methods/loadOptions.ts
+  h_52a137d26d774c 2,8,50,93,129
+packages/nodes-base/nodes/Mattermost/v1/transport/index.ts
+  h_52a137d26d774c 1-9,18,25,29,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff265f569619fb241e8784bdadf69d6b40dad819",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

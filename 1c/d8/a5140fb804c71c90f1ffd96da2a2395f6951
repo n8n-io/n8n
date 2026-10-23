@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/__snapshots__/CanvasControlButtons.test.ts.snap
+  s_df6c397ba2c129::t_0fe48096fc6830 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1cd8a5140fb804c71c90f1ffd96da2a2395f6951",
+  "prompts": {},
+  "sessions": {
+    "s_df6c397ba2c129": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f6f8-24d9-73c1-a804-786ea56c9af8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

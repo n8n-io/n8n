@@ -1,0 +1,23 @@
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_3adc5e3b9c1c50::t_ab9d19c9080022 69
+packages/nodes-base/utils/__tests__/templated-auth.test.ts
+  s_3adc5e3b9c1c50::t_ab9d19c9080022 82-108
+packages/nodes-base/utils/templated-auth.ts
+  s_3adc5e3b9c1c50::t_ab9d19c9080022 30-42,77,80-82,85-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "900dee498b375c10be1dcc9f1735087e35ef1874",
+  "prompts": {},
+  "sessions": {
+    "s_3adc5e3b9c1c50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb348-412f-7363-a731-817990745551",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

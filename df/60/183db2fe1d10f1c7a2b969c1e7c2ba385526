@@ -1,0 +1,58 @@
+packages/@n8n/api-types/src/push/index.ts
+  s_51358def49561a::t_2c13d4b19eceb0 8,25-26
+packages/frontend/editor-ui/src/app/push-connection/useWebSocketClient.ts
+  s_51358def49561a::t_a8a6ebeba7f02d 8-13
+  s_51358def49561a::t_56c5a62401bc8e 51-52
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionFinished.ts
+  s_51358def49561a::t_19b26c2e013806 62-65,67-75
+  s_51358def49561a::t_b2853b63ae7534 196,203
+  s_51358def49561a::t_3f129a9935d10f 168
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/index.ts
+  s_51358def49561a::t_aab1e6b0b50067 11
+packages/frontend/editor-ui/src/app/push-connection/__tests__/useWebSocketClient.test.ts
+  s_51358def49561a::t_2c65f6ffaa2a22 122-140
+packages/@n8n/api-types/src/push/execution.ts
+  s_51358def49561a::t_10adb1ef36d6b4 10-27
+  s_51358def49561a::t_2929293e092b7f 68-69
+  s_51358def49561a::t_b1a2821bbfc952 52-53
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/resumeComplete.ts
+  s_51358def49561a::t_b852c2eb72aae7 1-15
+packages/@n8n/api-types/src/index.ts
+  s_51358def49561a::t_0c1dd39c728e0e 116-117
+packages/frontend/editor-ui/src/app/stores/pushConnection.store.ts
+  s_51358def49561a::t_95e1af30ca16c1 114
+  s_51358def49561a::t_d293bf999245e2 232
+  s_51358def49561a::t_e68e7ce6833547 47-70
+packages/frontend/editor-ui/src/app/stores/pushConnection.store.test.ts
+  s_51358def49561a::t_237e1b2b60ad05 52,62,68-71,73,76-78
+  s_51358def49561a::t_2ea94fc84780ec 101-118
+packages/@n8n/api-types/src/push/resume.ts
+  s_51358def49561a::t_cfcc6a1fa4f796 1-30,33-35,37
+  s_51358def49561a::t_522efe0ea30b21 31-32,36
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_51358def49561a::t_d9466694cec681 3,23,31,47,53,60-76
+  s_51358def49561a::t_d21859e06c0a77 123-124
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionFinished.test.ts
+  s_51358def49561a::t_ce3afb3e93d490 774-845
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.test.ts
+  s_51358def49561a::t_c250c34d324e1d 80,93-136,138-151
+  s_51358def49561a::t_11896954502590 137
+  s_51358def49561a::t_f7e227ab51531b 5,9,17-20,25-26,30-40,58
+  s_51358def49561a::t_afd7f453423685 152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "df60183db2fe1d10f1c7a2b969c1e7c2ba385526",
+  "prompts": {},
+  "sessions": {
+    "s_51358def49561a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f9865e7-e8a5-4c02-adaa-db24a5c89eef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

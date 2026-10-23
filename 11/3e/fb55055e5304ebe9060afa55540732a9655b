@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/planned-tasks/planned-task-permissions.ts
+  s_b9ca9ee7b6b039::t_af5edb2139a06c 3
+packages/@n8n/instance-ai/src/planned-tasks/__tests__/planned-task-permissions.test.ts
+  s_b9ca9ee7b6b039::t_50cf88102447e5 1,3,6,17-18,20-24,28-33,36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "113efb55055e5304ebe9060afa55540732a9655b",
+  "prompts": {},
+  "sessions": {
+    "s_b9ca9ee7b6b039": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c4c175d-750a-4ca4-a24e-de6726aad0f0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_d0e9b43a636764::t_73f8f18dd02437 282-288
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_d0e9b43a636764::t_1be3fe3e5d192e 238-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3c3ba0b4efe17b1c63e1bf47c9fdbbb2d5dec2cd",
+  "prompts": {},
+  "sessions": {
+    "s_d0e9b43a636764": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dae7824-17ea-4f33-8099-6a9b1af82418",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

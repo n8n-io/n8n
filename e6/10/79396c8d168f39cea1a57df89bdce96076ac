@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  ai_agent 24,38,40,78,96,114,125,135
+  s_2fbe0cbfce0784::t_8d9ddfae542fb8 3,137
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_2fbe0cbfce0784::t_8d9ddfae542fb8 142,147,151-153
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.ts
+  s_2fbe0cbfce0784::t_db971bceebece3 9,18,38-40,44-45,54-55,60-61,63-64,72,75-77,83,86,136-137,142,146,183,227
+  s_2fbe0cbfce0784::t_8d9ddfae542fb8 4-5,90,102,149,167,173,182,207,213,229,245
+  s_2fbe0cbfce0784::t_e769cc608d4b5b 70,209,211,218,220,247,251
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.test.ts
+  s_2fbe0cbfce0784::t_8d9ddfae542fb8 33,41,52
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.ts
+  s_2fbe0cbfce0784::t_8d9ddfae542fb8 7,71
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_2fbe0cbfce0784::t_8d9ddfae542fb8 20,27,204,247,250,490,578,890,898-899,1038
+  s_2fbe0cbfce0784::t_0ae8eec9b3ea5a 154,171,254,377,381-382,397,544,897,1262-1263
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_2fbe0cbfce0784::t_8d9ddfae542fb8 15,26
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/useWorkflowDiff.test.ts
+  s_2fbe0cbfce0784::t_ca010bffdf2d77 166-168
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_2fbe0cbfce0784::t_36421e6e4fa076 81
+  s_2fbe0cbfce0784::t_eda373475d8bfa 188
+  s_2fbe0cbfce0784::t_0ae8eec9b3ea5a 72,85
+  s_2fbe0cbfce0784::t_8c7ee0f4a14ad4 90-93
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.test.ts
+  ai_agent 64,85,244,266,294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e61079396c8d168f39cea1a57df89bdce96076ac",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2fbe0cbfce0784": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e971e-e60a-7b13-af02-4b824d4ba81c",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

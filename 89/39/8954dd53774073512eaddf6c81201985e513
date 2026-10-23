@@ -1,0 +1,83 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_f3c9e6db456d8f::t_b09da580fcb71b 1,3-9,11,13-14,17-32,34-36,38,54-78,96-105,108-125,143,147-162,164-173,175-180,194-196,213,261-274,277,281,297-298,347-382,393,395,399-400,402,406-419,425,427-430,436,438-439,445,448,455,468,473,291
+  s_3c8860b713ddc9::t_755c98718e442b 2
+  s_f3c9e6db456d8f::t_215638f4be1e5f 10
+  s_3c8860b713ddc9::t_cc22927ffce6fe 12
+  s_f3c9e6db456d8f::t_2a2c426e89a273 15
+  s_f3c9e6db456d8f::t_41d81852c0cb47 16
+  s_f3c9e6db456d8f::t_8e341613919eae 33
+  s_f3c9e6db456d8f::t_ba2b1f7ef0b75a 37
+  s_f3c9e6db456d8f::t_546f61ee1155e0 39-41
+  s_f3c9e6db456d8f::t_489963625ad545 43-53,197-202,299-300,312
+  s_3c8860b713ddc9::t_6b9223a9e5ffe2 79,81-84,86-91
+  s_f3c9e6db456d8f::t_40d80601d668de 80,95,107,174,276,311,394,420-424,426,431,433,435,437,444,446
+  s_bfe6a865a3bf73::t_e9293ef5a348ba 85,92-94,181-193
+  s_f3c9e6db456d8f::t_341d441fc1aa70 106
+  s_f3c9e6db456d8f::t_be6fa6ee389de5 126-128,130-134
+  h_7555c3ee6524cf 129,135,296,323,325,329,331,335-339,342-343,346,388
+  s_f3c9e6db456d8f::t_715b40c294a666 136-142,144-146
+  ai_agent 163,229-247,249-254,256-260
+  s_f3c9e6db456d8f::t_3f2570ab5f926b 203-212,214-225
+  s_f3c9e6db456d8f::t_b908cf851754d0 226-228
+  s_f3c9e6db456d8f::t_bfe4881e1ecc7b 248
+  s_3c8860b713ddc9::t_175ac9df7161b4 255
+  s_f3c9e6db456d8f::t_1d2e99b0cddfb7 275,282,301-302
+  s_f3c9e6db456d8f::t_173aa9faa6c0c2 278-280
+  s_f3c9e6db456d8f::t_6f661ba94caf8b 292-294,303-305,313-322,328,340-341
+  s_f3c9e6db456d8f::t_495bf9bc203fff 295,306-310
+  s_05cd7ab5f956cf::t_d576ddf1e82633 324,330,334,345
+  s_05cd7ab5f956cf::t_a89fd654b5e082 326-327,332-333,344
+  s_f3c9e6db456d8f::t_c2fcc6f66f43ab 383-387,389,391-392,396-397
+  s_f3c9e6db456d8f::t_0758910a50cc74 390,398,401
+  s_f3c9e6db456d8f::t_1e453de502744e 403,405
+  s_05cd7ab5f956cf::t_35616ad850b841 404
+  s_f3c9e6db456d8f::t_4ce1ef0cd4469b 432,434,447,452
+  s_f3c9e6db456d8f::t_ee8ffe0dde1b9c 440-443,449-450,453-454,456,458-460,462-467,469-472,283
+  s_f3c9e6db456d8f::t_b923d23f7ad7e1 461
+  s_3c8860b713ddc9::t_c4c6ccd1eaf51f 284-290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "89398954dd53774073512eaddf6c81201985e513",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05cd7ab5f956cf": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782375244911",
+        "model": "unknown"
+      },
+      "human_author": null
+    },
+    "s_3c8860b713ddc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdaa2f6a-d47e-49df-930b-860d7d20015f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_bfe6a865a3bf73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "430bf789-cf05-4910-9dda-8fa7dfba9d21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_f3c9e6db456d8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8298b541-e801-4d7c-9c0d-b2ace99ba5cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

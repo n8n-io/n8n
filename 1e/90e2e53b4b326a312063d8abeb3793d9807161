@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  ai_agent 439-440,879,1077-1095,1119
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/agentsChat/InstanceAiConfirmationCard.vue
+  ai_agent 1-193
+packages/frontend/editor-ui/src/features/ai/instanceAi/planReview.utils.ts
+  ai_agent 32-39,41-43
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  ai_agent 142-143
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/DomainAccessApproval.vue
+  ai_agent 4,13-14,23,32-33,89,92-98
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/assistantConfirmation.test.ts
+  ai_agent 1-99
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  ai_agent 2,7,10-15,65-71
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentsChatMode.ts
+  ai_agent 1-14
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentsConversation.vue
+  ai_agent 1-18,20-22,24-28,30-31,33-34,37-41,43-48,50-67,69-86,88-107,109-113,115-116,118-146
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/assistantConfirmation.ts
+  ai_agent 1-66
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  ai_agent 10-12,184-195
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  ai_agent 9-12,114-123
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 43,94-99,113,807-826
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConfirmationCard.test.ts
+  ai_agent 1-68
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  ai_agent 3,49-50,77-79,859-863,865
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  ai_agent 33-34,598-608,614-623,660
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1e90e2e53b4b326a312063d8abeb3793d9807161",
+  "prompts": {}
+}

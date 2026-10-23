@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_17c9758bfdf7df::t_bc70a6cdfef040 215-216,221
+  s_df8243638347b9::t_066e5e972ac4e3 217-220
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolInputs.vue
+  s_17c9758bfdf7df::t_bc70a6cdfef040 3
+  s_df8243638347b9::t_34a763f52cfc1f 28,109,114,116-121,136,145-146,222
+packages/cli/src/modules/agents/tools/__tests__/infer-input-schema.test.ts
+  s_17c9758bfdf7df::t_2c9027175bf77d 157,163-164,167,169
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_df8243638347b9::t_3440767d2946fc 368,371,374
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_17c9758bfdf7df::t_80b945c6dc8725 2789-2790
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_17c9758bfdf7df::t_12126c979f03fd 6,12,441,444-461,464,468,470,473-477,483,485-495,497-499,520,524
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.test.ts
+  s_17c9758bfdf7df::t_e2d7eb499418d4 159,167-169,172,179,183,190
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputOverrides/FromAiOverrideField.vue
+  s_df8243638347b9::t_891e2f92b1f148 2,5,11,15-38,43,45-55,58-64,67-68,71-73,76-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d676ef0371080a0fb93dfd53cb75348bf1bf06ff",
+  "prompts": {},
+  "sessions": {
+    "s_17c9758bfdf7df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fc9a-3908-7400-bb29-7f163fd0d787",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_df8243638347b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10b2f-3eee-7921-b1a8-80453ec84034",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

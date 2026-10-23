@@ -1,0 +1,19 @@
+packages/testing/playwright/services/api-helper.ts
+  s_200b5a760e287c::t_ca2425aac8b933 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "226908bd5b7697e6e10ec4445f9753767783d9fc",
+  "prompts": {},
+  "sessions": {
+    "s_200b5a760e287c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_200b5a760e287c",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/test/integration/workflows/durable-poller-gate.test.ts
+  s_5c28558b5e8d58::t_c09a7a2c2f1ab6 166-169
+packages/@n8n/db/src/repositories/poller-state.repository.ts
+  s_5c28558b5e8d58::t_6629afa264d0d5 130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "66cbb8d85b674a192563c15caeb022506177202a",
+  "prompts": {},
+  "sessions": {
+    "s_5c28558b5e8d58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebdd8402-ff44-4aa2-a4cd-54dcb8c3a3e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

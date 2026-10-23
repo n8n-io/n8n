@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/roles/composables/useRoleEditorForm.ts
+  s_61f239750b5cf3::t_a244bdeb085032 141
+  s_61f239750b5cf3::t_03faeeb1ad410d 111,118
+  s_61f239750b5cf3::t_7cb0d8a682e387 11-12
+  s_61f239750b5cf3::t_f261fb7f8f8ce4 108,112-116
+  s_61f239750b5cf3::t_c61d4b45b97a00 140
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_61f239750b5cf3::t_52e4a0bcc661a5 39
+  s_61f239750b5cf3::t_4addfe2bc48fd9 40
+  s_61f239750b5cf3::t_77c49a13ca829a 78-86
+  s_61f239750b5cf3::t_5667c1e8497c8e 87-88
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_61f239750b5cf3::t_2beec242e7724e 49
+  s_61f239750b5cf3::t_2078de9b0b010a 50
+  s_61f239750b5cf3::t_a99bfa8b62d759 136-144
+  s_61f239750b5cf3::t_ab13661104fc62 145-146
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.test.ts
+  s_61f239750b5cf3::t_43d68ed94ab9c3 122-149
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.test.ts
+  s_61f239750b5cf3::t_8de4792d63c49b 232-259
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_61f239750b5cf3::t_a67ee4d24bc124 2838
+  s_61f239750b5cf3::t_3689c0a83f6f67 2802
+  s_61f239750b5cf3::t_9f263f109fa389 2837
+packages/frontend/editor-ui/src/features/roles/components/RoleEditorLayout.vue
+  s_61f239750b5cf3::t_8413b21d77f3e1 119
+  s_61f239750b5cf3::t_88dfc594920582 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "38c8d9618ba30c4f039bfccfcff1243cbb6b5a6e",
+  "prompts": {},
+  "sessions": {
+    "s_61f239750b5cf3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5690a99e-d100-4c91-930b-bfc7f4a1ff6d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

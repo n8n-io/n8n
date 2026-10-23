@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAvailability.ts
+  s_4728f9f407e457::t_e735e236c01eb8 34-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9599ad5e767012f7f215c04f8b55fc8e8261a887",
+  "prompts": {},
+  "sessions": {
+    "s_4728f9f407e457": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5da17f5e-d739-4879-aa63-e7767cdf458b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_7193dffb3f83fd::t_811222f6a4ac89 85-93
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_7193dffb3f83fd::t_dd497e7a2973ce 680
+  s_7193dffb3f83fd::t_0ef4c6f83459a0 757
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c0ab3e78c9382b81ec100b044913d7a1d8725d57",
+  "prompts": {},
+  "sessions": {
+    "s_7193dffb3f83fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab901c44-110d-43eb-82c5-3ad427037d7c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

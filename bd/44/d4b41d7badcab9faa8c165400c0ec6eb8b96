@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/utils/credentialGuardedFetch.test.ts
+  s_e7fd77acc32ff9::t_f0b5dc4439429f 33-44,74-90
+packages/@n8n/nodes-langchain/utils/credentialGuardedFetch.ts
+  s_e7fd77acc32ff9::t_229965b3fa827f 15-19,34,36-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bd44d4b41d7badcab9faa8c165400c0ec6eb8b96",
+  "prompts": {},
+  "sessions": {
+    "s_e7fd77acc32ff9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f598ad3-86af-4bc2-b933-d215fa971ed0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

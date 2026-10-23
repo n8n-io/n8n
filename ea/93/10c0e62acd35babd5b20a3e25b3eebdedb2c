@@ -1,0 +1,73 @@
+packages/cli/src/services/project.service.ee.ts
+  s_cc728b598484e1::t_d1541980d4945c 536,554-562
+  s_cc728b598484e1::t_94e4869ab28e07 38
+  s_cc728b598484e1::t_38baae29eb1079 689
+  s_cc728b598484e1::t_b88eec12ab8d82 95
+  s_cc728b598484e1::t_993d4731f00915 752
+  s_cc728b598484e1::t_93d7c212288855 690
+  s_cc728b598484e1::t_9761d928046658 627-639
+  s_cc728b598484e1::t_387e79e9039f24 788,802-803
+  s_cc728b598484e1::t_c88f34df718278 753-754
+  s_cc728b598484e1::t_207ed18007e50e 319-326
+  s_cc728b598484e1::t_b1df95ec9d0d5f 519-529,531-532
+  s_cc728b598484e1::t_ee8b727a25967f 640-649,657
+  s_cc728b598484e1::t_7d9a2447ef266d 678-680,688
+  s_cc728b598484e1::t_7f57d36f997f85 94
+  s_cc728b598484e1::t_3fdfba1b65e100 39
+  s_cc728b598484e1::t_d74a9695edde4e 841-842
+  s_cc728b598484e1::t_61df2e54908f20 700
+  s_cc728b598484e1::t_b2081a4499de5e 806-811
+packages/cli/src/controllers/project.controller.ts
+  s_cc728b598484e1::t_0f6c5220de549d 204-205,207-208
+  s_cc728b598484e1::t_4e2e5d67044fa0 182
+  s_cc728b598484e1::t_e7076f0ca82af6 238
+  s_cc728b598484e1::t_fd1372e0008539 257
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  s_cc728b598484e1::t_fcb3da014a6622 117
+packages/cli/test/integration/services/project.service.test.ts
+  s_cc728b598484e1::t_3123ab6cc955af 257,274,332,408,438
+  s_cc728b598484e1::t_695cd977f97209 301
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_cc728b598484e1::t_8123e99c9fa844 505,507-524,526-544
+  s_cc728b598484e1::t_c1af18b2979ba6 649-652
+  s_cc728b598484e1::t_a821599c938775 868-875
+  s_cc728b598484e1::t_9a5abd630199c4 696-703
+  s_cc728b598484e1::t_a61876c2736820 49
+  s_cc728b598484e1::t_c4d44154850939 62
+  s_cc728b598484e1::t_fe0708e3320804 139-189
+  s_cc728b598484e1::t_83981c7941f532 26
+  s_cc728b598484e1::t_0034b87711bca3 118,120,134,402,423,439,461,480,491,501,503,582,618,629,638
+  s_cc728b598484e1::t_938471f53f58a0 10
+  s_cc728b598484e1::t_f1c2a87b95c4aa 47,61
+  s_cc728b598484e1::t_eb444d6ad5a139 580,595-604
+  s_cc728b598484e1::t_edfaab21f6ecc3 48
+  s_cc728b598484e1::t_b0a149ed47641d 67
+  s_cc728b598484e1::t_fb1e0ceba454d3 794
+packages/cli/test/integration/project.service.integration.test.ts
+  s_cc728b598484e1::t_3b3915b468f6da 56,77
+  s_cc728b598484e1::t_31814d83a8f359 15-16
+packages/cli/src/controllers/__tests__/project.controller.test.ts
+  s_cc728b598484e1::t_199cb21bde55cf 125,133,155,161,174-175,177-179,183,194
+  s_cc728b598484e1::t_c959cb9b7d7238 136
+packages/cli/src/public-api/v1/handlers/projects/projects.handler.ts
+  s_cc728b598484e1::t_d1425f7bd03fbe 83
+  s_cc728b598484e1::t_48d777b8b3eafe 224
+  s_cc728b598484e1::t_ac94226f1199eb 185
+  ai_agent 206-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea9310c0e62acd35babd5b20a3e25b3eebdedb2c",
+  "prompts": {},
+  "sessions": {
+    "s_cc728b598484e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e67a9c6-e181-4e1f-895c-e5e45bed4238",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

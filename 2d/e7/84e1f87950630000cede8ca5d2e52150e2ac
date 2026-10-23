@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_46eb4b10188b58::t_a0b344d3de5a73 116-120
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_46eb4b10188b58::t_b94334929cf41a 504-519
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2de784e1f87950630000cede8ca5d2e52150e2ac",
+  "prompts": {},
+  "sessions": {
+    "s_46eb4b10188b58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cddba6c1-6e60-4ba9-aa3c-af3c1a47c1c1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

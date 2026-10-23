@@ -1,0 +1,33 @@
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_fb30b1b6ca962d::t_a3b56fa67e0c98 426-429,450,452,458,460
+  s_fb30b1b6ca962d::t_cbf943f2c8a8c5 410-414
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_fb30b1b6ca962d::t_d999c440fb4a00 963-967,975-980,993-1008
+  s_fb30b1b6ca962d::t_97f5a24700bc3f 1009
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_fb30b1b6ca962d::t_2bee03170e4aa9 1119-1137,1187-1195
+  s_fb30b1b6ca962d::t_f598fa123fd83e 1196-1197
+packages/cli/test/integration/executions/pre-execution-checks/credentials-permission-checker.test.ts
+  s_fb30b1b6ca962d::t_97f23b4abae24a 2,24,88-167
+  s_fb30b1b6ca962d::t_d599b8b6e02035 168-169
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_fb30b1b6ca962d::t_a3b56fa67e0c98 266-276
+packages/cli/src/services/project.service.ee.ts
+  s_fb30b1b6ca962d::t_a3b56fa67e0c98 345-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a53fdbfd6ea14363369b3666f13246e81647726",
+  "prompts": {},
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

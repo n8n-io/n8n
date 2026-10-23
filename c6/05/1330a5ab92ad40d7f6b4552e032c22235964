@@ -1,0 +1,63 @@
+packages/nodes-base/nodes/Telegram/tests/node/sendAndWait.operation.test.ts
+  s_60ce6e746ce9d3::t_0656666a5dbb1c 40,90,118
+packages/nodes-base/nodes/Telegram/IEvent.ts
+  s_60ce6e746ce9d3::t_4626c50c47c6bf 50
+  s_60ce6e746ce9d3::t_ae7638e50408aa 2-3,23-25,28-30
+packages/nodes-base/nodes/Telegram/hitl/tokens.ts
+  s_60ce6e746ce9d3::t_c1bf58d54a7e7f 1-27
+packages/nodes-base/nodes/Telegram/hitl/webhook.ts
+  s_60ce6e746ce9d3::t_ff1fa8409ebf3b 25-34
+  s_60ce6e746ce9d3::t_38da9abe40aefd 46-48
+  s_60ce6e746ce9d3::t_ffe6b96b3f94cd 89
+  s_60ce6e746ce9d3::t_8a7d3c07a6bd03 84-88,90-94
+  s_60ce6e746ce9d3::t_c5cc603ad46ccb 146
+  s_60ce6e746ce9d3::t_e730c33537249d 1-6,9-24,35-45,49-83,95-145,147-156
+  s_60ce6e746ce9d3::t_890ef5ac8b8fd4 7
+  s_60ce6e746ce9d3::t_a06d79ed655196 8
+packages/nodes-base/nodes/Telegram/tests/node/prepareChatApproval.test.ts
+  s_60ce6e746ce9d3::t_8d914085a35a4c 29
+  s_60ce6e746ce9d3::t_8af371319abc60 79-81,95-97,113-115,130-132,150-152,162-164,175-177,187-189,200-202
+  s_60ce6e746ce9d3::t_4c4834049588cf 1-5,7-28,30-39,44-48,50-58,60,77-78,82-83,85-90,92-94,98-108,110-112,116-124,127-129,133-144,147-149,153-157,159-161,165-170,172-174,178-181,184-186,190-195,197-199,209-217,220
+  s_60ce6e746ce9d3::t_9605352a551fb9 40-43,49,59,91,109,126,146,158,171,183,196,219
+  s_60ce6e746ce9d3::t_2185f4cd580557 6
+  s_60ce6e746ce9d3::t_fe5edd4375c623 84,125,145,182,203-208,218
+  s_60ce6e746ce9d3::t_d1f2f860cc8948 61-76
+packages/nodes-base/nodes/Telegram/GenericFunctions.ts
+  s_60ce6e746ce9d3::t_5491cf1607ace8 1-2
+  s_60ce6e746ce9d3::t_8ed4d0ef2c75ac 271-274,279-284,297-299,309-318
+  s_60ce6e746ce9d3::t_af3091d8fc6ed6 275-278
+packages/nodes-base/nodes/Telegram/hitl/descriptions.ts
+  s_60ce6e746ce9d3::t_063b754dbae7c7 1-71
+packages/nodes-base/nodes/Telegram/Telegram.node.ts
+  s_60ce6e746ce9d3::t_ff6589c0f199f5 2037,2047
+  s_60ce6e746ce9d3::t_c02b8cb34a8a13 2069-2070
+  s_60ce6e746ce9d3::t_7a8ff32c108b49 26-28
+packages/nodes-base/nodes/Telegram/hitl/setup.ts
+  s_60ce6e746ce9d3::t_ec85dc68f1f20b 79
+  s_60ce6e746ce9d3::t_19dbb88c6017fc 67
+  s_60ce6e746ce9d3::t_e467412fce0ee0 2-35,49-62,69-78,80-136
+  s_60ce6e746ce9d3::t_9354477404c063 68
+  s_60ce6e746ce9d3::t_078d9dbf51ecef 1
+  s_60ce6e746ce9d3::t_2190bb2d08b68f 36-48
+  s_60ce6e746ce9d3::t_a21edd46cb036e 63-66
+packages/nodes-base/nodes/Telegram/tests/node/telegramHitlWebhook.test.ts
+  s_60ce6e746ce9d3::t_81b03d90201c99 1-22,26-71,85-230,235-280
+  s_60ce6e746ce9d3::t_e7fc24f0599d26 72-84
+  s_60ce6e746ce9d3::t_fe5edd4375c623 23-25,231-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "c6051330a5ab92ad40d7f6b4552e032c22235964",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

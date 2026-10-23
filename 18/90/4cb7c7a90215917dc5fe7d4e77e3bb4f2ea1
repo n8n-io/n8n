@@ -1,0 +1,103 @@
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_245defbcefb1bb::t_b572de47536d55 9-10,20-21,107-109,119-120
+  s_245defbcefb1bb::t_354b81eb0e66b4 1185
+  s_245defbcefb1bb::t_a32dc48e528150 121-124,635,656,819,1178-1184,1197-1198
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_245defbcefb1bb::t_ee1774555592f7 1157,1162,1165,1167,1184-1186,1191,1193
+packages/cli/src/modules/agents/json-config/prune-missing-config-references.ts
+  s_245defbcefb1bb::t_f06162f980fa1d 1-32
+  s_245defbcefb1bb::t_751475e95d6e5d 33
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_245defbcefb1bb::t_b572de47536d55 3,20
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  s_245defbcefb1bb::t_f3ca6395c46214 8,44-45
+  s_245defbcefb1bb::t_a12b18f0970adc 1-2,4-5,11-13,16-20,26-43,46-62
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_245defbcefb1bb::t_e6fccaafc869a7 37-38,88,162-173,175-176,198-203,221-228,230,232,244
+  s_245defbcefb1bb::t_d70e0bd9b04a45 233-239,245-248,251
+packages/cli/src/modules/agents/repositories/agent-task-snapshot.repository.ts
+  s_245defbcefb1bb::t_cde3f4982387d0 1,3,13-15,18-20
+  s_245defbcefb1bb::t_f9181465f07fb0 21,23,27-31
+packages/cli/src/modules/agents/utils/agent-published-snapshot.ts
+  s_245defbcefb1bb::t_f06162f980fa1d 4,7-8,16
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_245defbcefb1bb::t_e108c33fabfcdd 1234,1241
+  s_245defbcefb1bb::t_b572de47536d55 10,82
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_245defbcefb1bb::t_45fa3a925dc3d7 8,20,33,311,313
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_245defbcefb1bb::t_e108c33fabfcdd 829,837-838,852-854,869-872,874-875,884-887,899,903
+  s_245defbcefb1bb::t_f3ca6395c46214 1,149-153,707-713,778-779,830-836,839-851,855-868,900-902
+  s_245defbcefb1bb::t_bb7d0b798af162 888-898
+  s_245defbcefb1bb::t_c7246e0e776dce 5,16-17,19,106-111,148,154,172,371,434,438,598,625,663,688,699-702,734,743-746,814,941,954,1036,1046
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_245defbcefb1bb::t_cde3f4982387d0 3,5,31-33,461,463,485,490
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_245defbcefb1bb::t_45fa3a925dc3d7 14,18,31,73,109,156-158,161-162,164
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_245defbcefb1bb::t_bb4505711f351a 3-4,7,9-13,15-16,18,20-21,26-27,62-63,72,77-162,171,184
+  s_245defbcefb1bb::t_aec870f66edee3 163-170,172-183,185-196
+packages/cli/src/modules/agents/repositories/agent-history.repository.ts
+  s_245defbcefb1bb::t_cde3f4982387d0 2,4,23-25,29,46,51,73,75
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_245defbcefb1bb::t_45fa3a925dc3d7 23,78,169,171,223,225,252,254
+  s_245defbcefb1bb::t_dcca6285a488f1 5,80,165-167,217,219-220,238,248-250
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_245defbcefb1bb::t_b572de47536d55 3,11,62
+  s_245defbcefb1bb::t_c0d89e51785680 63-66,133,374
+packages/cli/src/modules/agents/agent-save-completion.service.ts
+  s_245defbcefb1bb::t_e37904a8ccedc7 1-56
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_245defbcefb1bb::t_b572de47536d55 4-5,15,139-140,161-165,167,188-190,241-242,366-375,385,400
+  s_245defbcefb1bb::t_e1f072a1e4212f 411,424,474,513,544,565,582,600
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_245defbcefb1bb::t_a770c25e62452f 14,59-60,262-263,265,267-273,283-284,286,323,343-345
+packages/cli/src/modules/agents/utils/agent-draft.utils.ts
+  s_245defbcefb1bb::t_cde3f4982387d0 1,29,31
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_245defbcefb1bb::t_b572de47536d55 1-2,11-12,60,64
+  s_245defbcefb1bb::t_1e302f7a6e0a30 65-68,101,178
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_245defbcefb1bb::t_b572de47536d55 240
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_245defbcefb1bb::t_e37904a8ccedc7 82
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_245defbcefb1bb::t_a770c25e62452f 7-8,39-40,234-241,245,256-257,1925
+  s_245defbcefb1bb::t_960f2fd900d232 1926,1929,1934-1943
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_245defbcefb1bb::t_473f6ed8529198 185,187,189
+  s_245defbcefb1bb::t_dcca6285a488f1 12,78,202,237,239,241,254,268-269,271-272
+  s_245defbcefb1bb::t_45fa3a925dc3d7 26,79,270,273-281,283
+  s_245defbcefb1bb::t_7d7174d3d1aeab 190-192,203-206,208,210,385,422-426
+  s_245defbcefb1bb::t_e6fccaafc869a7 32,419-420,427-435,437,440
+  s_245defbcefb1bb::t_f9da2555e80e0f 243-245
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_245defbcefb1bb::t_7d7174d3d1aeab 12-17,38,401,416,432-453,667-672
+  s_245defbcefb1bb::t_dcca6285a488f1 125,512,542,589,599,629-630,635,648,662-663,690
+  s_245defbcefb1bb::t_ee1774555592f7 30-32,126-127,399-400,411-412,414-415,418-429,472,480-481
+  s_245defbcefb1bb::t_473f6ed8529198 379-382
+  s_245defbcefb1bb::t_b5827f367fb882 431
+packages/cli/src/modules/agents/agent-definition.service.ts
+  s_245defbcefb1bb::t_f3ca6395c46214 8-12,25,33
+  s_245defbcefb1bb::t_f06162f980fa1d 1-7,13-24,26-32,34-36
+packages/cli/src/modules/agents/utils/agent-definition.ts
+  s_245defbcefb1bb::t_7d7174d3d1aeab 6
+  s_245defbcefb1bb::t_f3ca6395c46214 12-14,16-20
+  s_245defbcefb1bb::t_f06162f980fa1d 1-5,7-11,15,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18904cb7c7a90215917dc5fe7d4e77e3bb4f2ea1",
+  "prompts": {},
+  "sessions": {
+    "s_245defbcefb1bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10cad-0201-75d2-853e-9cbbe33991f2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

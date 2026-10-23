@@ -1,0 +1,35 @@
+packages/cli/src/workflows/workflow-history/workflow-history.service.ts
+  s_13c8bf58633137::t_dbaa501b2495ed 143
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_13c8bf58633137::t_dbaa501b2495ed 251
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_13c8bf58633137::t_dbaa501b2495ed 164,183,195-220
+packages/cli/src/workflows/workflow-history/__tests__/workflow-history.service.test.ts
+  s_13c8bf58633137::t_dbaa501b2495ed 506,525
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_ba069146fc39d6::t_10bceaf3e7baa3 3157-3158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c0d187dcea9a02eb3f4a5096c0e74e29de0a9c5f",
+  "prompts": {},
+  "sessions": {
+    "s_13c8bf58633137": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019edfc0-85da-7f32-8126-8f36e8771f0e",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    },
+    "s_ba069146fc39d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2112a7e0-8517-43a7-a5d8-b7c85f8a803a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

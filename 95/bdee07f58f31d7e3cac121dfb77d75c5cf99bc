@@ -1,0 +1,43 @@
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-manager.ee.test.ts
+  s_c7f0a2b3e0a627::t_e167227e3aa35a 1356-1421
+  s_c7f0a2b3e0a627::t_17200d8998d461 1168,1181-1183,1187-1190
+packages/cli/src/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee.ts
+  s_c7f0a2b3e0a627::t_93823f60e1a3c3 118
+  s_c7f0a2b3e0a627::t_638a6c126503cb 50-54
+  s_c7f0a2b3e0a627::t_a2ba40f9ae6636 39
+  s_c7f0a2b3e0a627::t_3b99d03d7c1d6c 211-226,228,232,236-243,252
+  s_c7f0a2b3e0a627::t_d6bf765276e734 352-353,360-361,364-370,379-389,391-402,408-411
+  s_c7f0a2b3e0a627::t_16bfa26869a60e 140
+  s_c7f0a2b3e0a627::t_41fdbd053a4bf8 422,424,427,430,436-446,450
+  s_c7f0a2b3e0a627::t_80f3b7c1586626 310-327,330-336,344
+  s_c7f0a2b3e0a627::t_51483f18d093a6 471
+  s_c7f0a2b3e0a627::t_e9aecaae58c34b 278,282
+  s_c7f0a2b3e0a627::t_e863c1eb91de2a 487-498,500-506
+  s_c7f0a2b3e0a627::t_2e21f8e0673258 89,92-98
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-provider-connection-manager.ee.test.ts
+  s_c7f0a2b3e0a627::t_63c807115fbea0 741
+  s_c7f0a2b3e0a627::t_ab3dbcfc09d67a 627
+  s_c7f0a2b3e0a627::t_18968282070e09 695,702-704
+  s_c7f0a2b3e0a627::t_4e0b7af38f74e3 664
+  s_c7f0a2b3e0a627::t_c377447badcf52 83-86,88-92,94
+  s_c7f0a2b3e0a627::t_9984000a695e53 676
+  s_c7f0a2b3e0a627::t_abe43cb0be7bd8 345-366
+  s_c7f0a2b3e0a627::t_5c6d639ae334f2 367-601
+  s_c7f0a2b3e0a627::t_8a1fd845f06325 38,53-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "95bdee07f58f31d7e3cac121dfb77d75c5cf99bc",
+  "prompts": {},
+  "sessions": {
+    "s_c7f0a2b3e0a627": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e60472a-615d-4741-aacc-ba03dc7489a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

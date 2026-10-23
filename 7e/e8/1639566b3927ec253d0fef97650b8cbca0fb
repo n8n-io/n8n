@@ -1,0 +1,29 @@
+packages/@n8n/nodes-langchain/package.json
+  s_edd46406845dc7::t_fc432ce4c6e811 306
+packages/nodes-base/package.json
+  s_edd46406845dc7::t_fc432ce4c6e811 971
+packages/frontend/@n8n/design-system/package.json
+  s_edd46406845dc7::t_fc432ce4c6e811 81
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/templates.ts
+  s_edd46406845dc7::t_5bcad049095d4d 5-8,10
+pnpm-workspace.yaml
+  s_edd46406845dc7::t_55e120327af67b 134
+pnpm-lock.yaml
+  ai_agent 336-338,2628-2629,3939-3940,4930-4931,14040-14043,15181-15183,16178-16180,19162-19163,21226,32403-32404,33943-33949,35231-35234,38842,38846,38848
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ee81639566b3927ec253d0fef97650b8cbca0fb",
+  "prompts": {},
+  "sessions": {
+    "s_edd46406845dc7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cf38d62-8850-4fc9-a9a8-9c8d129b6350",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_5614fe25678684::t_fde428dc457ab8 262
+packages/@n8n/scheduler/src/core/executor/__tests__/lease-heartbeat.test.ts
+  s_5614fe25678684::t_242c9ff85e5577 170-171,179-194
+  s_5614fe25678684::t_3bb254b3bead39 172-178
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_5614fe25678684::t_242c9ff85e5577 929-933,939-954
+  s_5614fe25678684::t_3bb254b3bead39 934-938
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "562c8ae64757f3ca488cce23a7cf35b7853d99d8",
+  "prompts": {},
+  "sessions": {
+    "s_5614fe25678684": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fd0a-cb45-7481-96f9-d72826656d72",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

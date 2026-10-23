@@ -1,0 +1,19 @@
+packages/@n8n/utils/src/sleep.test.ts
+  s_80b46b026ad886::t_55499fdf4c7878 4-11,13-20,24-25,27-28,40,42,44-46,48,56-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d3961c998bbd9096e188bac3b9df0bf23ebf23ad",
+  "prompts": {},
+  "sessions": {
+    "s_80b46b026ad886": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9a5a8d2-a316-4511-ab5b-1e3e5ec8b3ee",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

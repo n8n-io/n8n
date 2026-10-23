@@ -1,0 +1,29 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/split-in-batches-handler.ts
+  s_d80ee869eb4336::t_3efb817efae6a0 86-90
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_d80ee869eb4336::t_4a719938012320 161-186
+  s_d80ee869eb4336::t_5f4df286ddfc66 153
+  s_d80ee869eb4336::t_e3edb65edd569f 272
+  s_d80ee869eb4336::t_450b40b92abf43 399
+  s_d80ee869eb4336::t_980496b061bac2 213-214,219,225
+packages/@n8n/workflow-sdk/src/workflow-builder.test.ts
+  s_d80ee869eb4336::t_8db0ad4eef2257 1934-1938,1942,1951-1952
+  s_d80ee869eb4336::t_4bb74b0e7de7ad 1922-1933,1939-1941,1943-1950,1953-2011
+  s_d80ee869eb4336::t_691e7de2170307 1886-1921
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "891650c458cd3822fca02e7ec096d3649eaa4e83",
+  "prompts": {},
+  "sessions": {
+    "s_d80ee869eb4336": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c34fd956-4373-49a4-8175-5376ec350bf7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

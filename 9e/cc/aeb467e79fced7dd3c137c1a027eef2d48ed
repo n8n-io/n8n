@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_e8b6a276a2100e::t_f5469c483da408 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9eccaeb467e79fced7dd3c137c1a027eef2d48ed",
+  "prompts": {},
+  "sessions": {
+    "s_e8b6a276a2100e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a07c16-051f-760f-a257-229d95a983e4",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

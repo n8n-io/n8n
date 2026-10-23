@@ -1,0 +1,32 @@
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_e6454ae550915c::t_dcb01e883932c9 7
+packages/cli/src/public-api/v1/controllers/variables.public.controller.ts
+  s_e6454ae550915c::t_b3af5cd1b2a8c2 1-2,4-25,27-167
+  s_e6454ae550915c::t_ba8fdb44231fc9 3,26
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/createVariable.generated.yml
+  s_e6454ae550915c::t_c07467852dfc72 1-43
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/deleteVariable.generated.yml
+  s_e6454ae550915c::t_21285201b92e8b 1-24
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/getVariables.generated.yml
+  s_e6454ae550915c::t_c3d7ed9c31aa32 1-28,32-78
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/updateVariable.generated.yml
+  s_e6454ae550915c::t_7afd9f70067ba9 1-12,14-18,20-49
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_e6454ae550915c::t_4f87d91a4b1f67 9-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "8a6f56889cc6a4562ed46b24be5f6cda0065cffa",
+  "prompts": {},
+  "sessions": {
+    "s_e6454ae550915c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d50437f-80ab-427e-86b5-73792ecfdbf9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

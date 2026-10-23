@@ -1,0 +1,106 @@
+packages/frontend/editor-ui/tsconfig.json
+  s_6d27884ffc85e2::t_85e8a629bb7911 24
+  s_6d27884ffc85e2::t_2ef26479a7ee6b 10-11
+packages/frontend/@n8n/module-sdk/src/resourceRegistry.ts
+  s_6d27884ffc85e2::t_f4db6a544e5350 1-48
+packages/frontend/@n8n/module-sdk/src/__tests__/setup.ts
+  s_6d27884ffc85e2::t_3f64157fe69097 1-4
+packages/frontend/editor-ui/src/features/ai/mcpAccess/module.descriptor.ts
+  s_6d27884ffc85e2::t_70e7a1bda30759 2
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+  s_6d27884ffc85e2::t_84b92625a50a91 9-10
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/modals.ts
+  s_6d27884ffc85e2::t_70e7a1bda30759 1
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_6d27884ffc85e2::t_70e7a1bda30759 2
+packages/frontend/@n8n/module-sdk/eslint.config.mjs
+  s_6d27884ffc85e2::t_ba83512143b926 1-7
+packages/frontend/editor-ui/src/features/execution/insights/module.descriptor.ts
+  s_6d27884ffc85e2::t_70e7a1bda30759 2
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_6d27884ffc85e2::t_9f382a4524042e 1-21
+packages/frontend/editor-ui/src/Interface.ts
+  s_6d27884ffc85e2::t_ee7af17ee8a981 13
+  s_6d27884ffc85e2::t_90844fac39b28e 649-651
+packages/frontend/editor-ui/src/features/core/dataTable/module.descriptor.ts
+  s_6d27884ffc85e2::t_70e7a1bda30759 2
+packages/frontend/editor-ui/src/app/utils/modules/tabUtils.ts
+  s_6d27884ffc85e2::t_f01b4a4568e444 1
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_6d27884ffc85e2::t_62ffdfe6a8dbaf 106
+packages/frontend/editor-ui/src/features/ai/chatHub/module.descriptor.ts
+  s_6d27884ffc85e2::t_70e7a1bda30759 1
+packages/frontend/@n8n/module-sdk/src/index.ts
+  s_6d27884ffc85e2::t_8b7e3315d97d85 2-3
+  s_6d27884ffc85e2::t_580ae2b7ac67f2 1
+packages/frontend/editor-ui/src/features/settings/otel/module.descriptor.ts
+  s_6d27884ffc85e2::t_70e7a1bda30759 1
+packages/frontend/@n8n/module-sdk/vite.config.ts
+  s_6d27884ffc85e2::t_0b849c9c5cca40 1-4
+packages/frontend/@n8n/module-sdk/src/resourceRegistry.test.ts
+  s_6d27884ffc85e2::t_a1ca373c559691 1,3-6,9,11-24,26-90
+  s_6d27884ffc85e2::t_b280867843a76e 2
+  s_6d27884ffc85e2::t_99a8da3f86b576 7-8,10
+  s_6d27884ffc85e2::t_4ef529c117f989 25
+packages/frontend/editor-ui/vite.config.mts
+  s_6d27884ffc85e2::t_a0992f2add130e 55-57
+  s_6d27884ffc85e2::t_2819ca0b721d75 54
+packages/frontend/@n8n/module-sdk/src/module.types.ts
+  s_6d27884ffc85e2::t_4314fb632a6445 1-52
+packages/frontend/@n8n/module-sdk/package.json
+  s_6d27884ffc85e2::t_ffffcb96a2bf0c 1-29,31-36
+  s_6d27884ffc85e2::t_19f4b660076585 30
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+  s_6d27884ffc85e2::t_e41edcb9d460ef 2,4
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/modals.ts
+  s_6d27884ffc85e2::t_70e7a1bda30759 1
+packages/frontend/@n8n/module-sdk/src/modalRegistry.test.ts
+  s_6d27884ffc85e2::t_dbd11340f73879 1-2,4,6-299
+  s_6d27884ffc85e2::t_35a60bf23eb7a0 3,5
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_6d27884ffc85e2::t_70e7a1bda30759 3
+packages/frontend/@n8n/module-sdk/README.md
+  s_6d27884ffc85e2::t_fdd4fce7c8423e 1-16
+packages/frontend/@n8n/module-sdk/src/modalRegistry.ts
+  s_6d27884ffc85e2::t_1b14a77ab082a0 1-47
+packages/frontend/@n8n/module-sdk/biome.jsonc
+  s_6d27884ffc85e2::t_de587cfba1a11d 1-4
+packages/frontend/@n8n/module-sdk/.gitignore
+  s_6d27884ffc85e2::t_78926804269595 1-24
+packages/frontend/editor-ui/src/app/components/DynamicModalLoader.vue
+  s_6d27884ffc85e2::t_c8957bb7f5e848 4
+packages/frontend/editor-ui/src/app/components/DynamicModalLoader.test.ts
+  s_6d27884ffc85e2::t_22c89f22272497 9-14
+  s_6d27884ffc85e2::t_464b501c9f7824 5-6
+packages/frontend/editor-ui/package.json
+  s_6d27884ffc85e2::t_330bee6117e75e 52
+packages/frontend/@n8n/module-sdk/tsconfig.json
+  s_6d27884ffc85e2::t_1445023db9d6ae 7-12
+  s_6d27884ffc85e2::t_95b8fbe871ac63 1-6,13-20
+pnpm-lock.yaml
+  s_258a35577cba90::t_f8dbb0fee31a6f 5107-5143,5461-5463,21708-21709,24827,27733,28527,30858,40703
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "800276e9353eb2d4134cf1f22b3e2e259e1d5d34",
+  "prompts": {},
+  "sessions": {
+    "s_258a35577cba90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c029deb7-690c-4c7f-92eb-e33c861b7941",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    },
+    "s_6d27884ffc85e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3099e6f-2780-48af-99a8-15d2fd947bf2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

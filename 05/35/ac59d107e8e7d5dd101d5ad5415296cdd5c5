@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.test.ts
+  s_477346de661333::t_745633992fff3b 105-143
+  s_477346de661333::t_c38114ae43c076 6
+  s_477346de661333::t_39f08d5a756c93 100-104
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_477346de661333::t_db76dca54f5b18 220-222
+  s_477346de661333::t_0bcb9a6a36324c 51-61
+  s_477346de661333::t_b2236d465025b9 102
+  s_477346de661333::t_b6632cb17087b9 216
+  s_477346de661333::t_afb5903ae861f8 233
+  s_477346de661333::t_2c0f358dba0663 212-215,217-219,223-232,234-235
+  s_477346de661333::t_1d879637e086f2 103
+  s_477346de661333::t_0664d1f1574ad3 236
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_477346de661333::t_d20f0a92a55096 207-208
+  s_477346de661333::t_0c1e9905740f07 8
+  s_477346de661333::t_5667a5087c0c44 194-206,209-224
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.vue
+  s_477346de661333::t_48691d1f154b23 67
+  s_477346de661333::t_81c4eb2c362764 96-97
+  s_477346de661333::t_370ec9a23f0054 92-95,98-99
+  s_477346de661333::t_a4be37239514d4 144-147
+  s_477346de661333::t_a13ecc227cc1ea 84-91,101-104
+  s_477346de661333::t_42219e0a560db5 100
+  s_477346de661333::t_2362d0359e2e6b 2,4-5,9
+  s_477346de661333::t_84d6cdddb89060 38,41-42,44
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_477346de661333::t_d747cd21d80197 2850
+  s_477346de661333::t_72121a69959c9d 2852-2854
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0535ac59d107e8e7d5dd101d5ad5415296cdd5c5",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_477346de661333": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78e16817-7aae-4006-acd8-8c4460627ecf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

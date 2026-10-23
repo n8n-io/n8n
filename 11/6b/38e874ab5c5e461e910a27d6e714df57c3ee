@@ -1,0 +1,11 @@
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  ai_agent 2229-2244,2248
+packages/cli/src/scaling/job-processor.ts
+  ai_agent 200-206,217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "116b38e874ab5c5e461e910a27d6e714df57c3ee",
+  "prompts": {}
+}

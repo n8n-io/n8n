@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_5e086fee025135::t_ffb45fd573a8d8 415-422,491,510-511,578-582
+  s_5e086fee025135::t_4ae1c21cb844e8 471-477
+packages/cli/test/integration/agents/agent-message-queue.test.ts
+  s_5e086fee025135::t_023417e72f42ef 752,755,770-777,789-816,1029-1050
+  s_5e086fee025135::t_24655bbe51c231 1051-1053
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_5e086fee025135::t_a73ac9ba456f9c 105-108
+  s_5e086fee025135::t_ffb45fd573a8d8 45-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "06db821f9c38180ade1479aafaf9db735ba57b71",
+  "prompts": {},
+  "sessions": {
+    "s_5e086fee025135": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aa2b-2f7f-7372-94a6-218b9a368b72",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

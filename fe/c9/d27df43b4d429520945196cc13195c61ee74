@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_f3c9e6db456d8f::t_e04d6e04cb69ad 163,173-186
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_f3c9e6db456d8f::t_4ce1ef0cd4469b 422-424,426
+  s_f3c9e6db456d8f::t_a095b9f6c1b2f1 15
+  s_f3c9e6db456d8f::t_0758910a50cc74 388
+  s_f3c9e6db456d8f::t_c2fcc6f66f43ab 375-384,386-387
+  s_f3c9e6db456d8f::t_183d5254951233 146-152
+  s_f3c9e6db456d8f::t_173aa9faa6c0c2 275-277,279-280
+  s_f3c9e6db456d8f::t_ee8ffe0dde1b9c 432-435,441-442,445-446,450-451,456,459
+  ai_agent 220-224,226-240,242-254
+  s_f3c9e6db456d8f::t_b908cf851754d0 217-219
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_f3c9e6db456d8f::t_e7d5d358c3aed8 9
+  s_f3c9e6db456d8f::t_2f8e704630dc36 59-62
+  s_f3c9e6db456d8f::t_f20f621b1f9ee9 113-123
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_f3c9e6db456d8f::t_03257b329c370e 43-47
+  s_f3c9e6db456d8f::t_34e3481c2d2ef1 159-161,163
+  s_f3c9e6db456d8f::t_1f999785f5daae 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fec9d27df43b4d429520945196cc13195c61ee74",
+  "prompts": {},
+  "sessions": {
+    "s_f3c9e6db456d8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8298b541-e801-4d7c-9c0d-b2ace99ba5cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

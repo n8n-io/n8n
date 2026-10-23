@@ -1,0 +1,58 @@
+packages/cli/src/__tests__/controller.registry.body-media.test.ts
+  s_8631ec10eb1199::t_96286f920cb9e5 50-51
+  s_8631ec10eb1199::t_5710a819c7f5b7 14-15
+packages/cli/src/public-api/media-types/request-body/json.request-body.ts
+  s_8631ec10eb1199::t_b3b50c3d75c886 8
+  s_8631ec10eb1199::t_41803c71ca0dcd 29-32
+  s_8631ec10eb1199::t_b30e0d4874a14c 1
+  s_8631ec10eb1199::t_50f60acba772ce 23-27
+packages/cli/src/public-api/media-types/request-body/__tests__/multipart-errors.test.ts
+  s_8631ec10eb1199::t_a2aac9a2d5c548 2,7-16,19,26
+  s_8631ec10eb1199::t_9f78e8b090088c 39
+packages/@n8n/decorators/src/controller/args.ts
+  s_8631ec10eb1199::t_ffd52d14b6d0ac 50,53
+  s_8631ec10eb1199::t_288abb5d080fba 49
+  s_8631ec10eb1199::t_86fb362a18d7f0 51-52
+  s_8631ec10eb1199::t_035e68d246e3ea 54
+packages/cli/src/public-api/media-types/request-body/__tests__/multipart.request-body.test.ts
+  s_8631ec10eb1199::t_3450a82ec3eded 88-89,91,93-95,99-100,102-106
+  s_8631ec10eb1199::t_8126449b11c2d0 90
+  s_8631ec10eb1199::t_fe09e629e60c41 12-13
+  s_8631ec10eb1199::t_78728b372c3dca 3
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_8631ec10eb1199::t_8763c4efb40083 356-357,451,457-463,465-466,468-473,475-476,478-482,484-485,487-493,495-496,498-512,514-515,517-521,523-524,526-536,539-558,560,562-568,570-571,573-593,597,599-600,605
+  s_8631ec10eb1199::t_4ba86dad1ffd6c 320-332,335,337,359-366,371-373,375,377,385,400,410
+  s_8631ec10eb1199::t_15cfdf8df4bb08 315-319,343,347,349
+  s_8631ec10eb1199::t_e8c6d704d76092 358
+  s_8631ec10eb1199::t_e6e5c786da63a1 598
+  s_8631ec10eb1199::t_5cbc77a1430707 601
+  s_8631ec10eb1199::t_bbeddc572ee00c 603-604
+packages/cli/src/public-api/media-types/request-body/index.ts
+  s_8631ec10eb1199::t_b3b50c3d75c886 5,7
+  s_8631ec10eb1199::t_2a8bef05c44ea8 10
+packages/cli/src/public-api/media-types/request-body/multipart.request-body.ts
+  s_8631ec10eb1199::t_b3b50c3d75c886 11,28,35,38-42,44
+  s_8631ec10eb1199::t_9150092095043a 74-77
+  s_8631ec10eb1199::t_880e6ac389af16 1
+  s_8631ec10eb1199::t_07e3f9a1843ec9 58-59,68-70,72
+packages/cli/src/public-api/media-types/__tests__/content-type.test.ts
+  s_8631ec10eb1199::t_c12f0bc0b9174a 7-13,17-19,32,36-38,42-44,48-50
+  s_8631ec10eb1199::t_a71d276dacdf98 20-22
+  s_8631ec10eb1199::t_1148b810720014 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "715b295e917f2a941280da58f177f638b409d18e",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

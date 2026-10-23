@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/sdk/tool.ts
+  s_7b16f513886b0b::t_68e615073bd920 73
+  s_7b16f513886b0b::t_43a5a251d05fec 74,84,87,93,100
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_7b16f513886b0b::t_8bec01c4ebe30a 179-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "d10df8a812f49a8bfe84a1959a73620f475a75df",
+  "prompts": {},
+  "sessions": {
+    "s_7b16f513886b0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9304-76d7-74f1-b63c-5a944947c0e0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/shared/editors/components/InlineExpressionEditor/ExpressionOutput.test.ts
+  s_1a989ec3fe1094::t_21d5b161a1cc3f 559-595
+  s_1a989ec3fe1094::t_a2add83fa2b9a3 5,9-12
+  s_1a989ec3fe1094::t_80465eb645254a 13
+packages/frontend/editor-ui/src/features/shared/editors/components/InlineExpressionEditor/ExpressionOutput.vue
+  s_1a989ec3fe1094::t_bed48668a65eb2 99-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d58bdb8920f0a185f4f074fef16865a64329c37e",
+  "prompts": {},
+  "sessions": {
+    "s_1a989ec3fe1094": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed07d959-061c-403f-98ad-bbae84e6a6f6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

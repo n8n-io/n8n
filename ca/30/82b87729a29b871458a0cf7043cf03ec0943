@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.test.ts
+  s_ebf7066ef9c9df::t_64bd833f519f25 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca3082b87729a29b871458a0cf7043cf03ec0943",
+  "prompts": {},
+  "sessions": {
+    "s_ebf7066ef9c9df": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11572-6101-7430-bda6-f0964e70609a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

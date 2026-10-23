@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/agentReturnContext.store.ts
+  s_fca2302987ca57::t_9642d47598d044 10-14
+packages/frontend/editor-ui/src/features/agents/composables/useAgentNavigation.ts
+  s_fca2302987ca57::t_358d9ebe43c18f 17-21
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_fca2302987ca57::t_c5026790070812 103
+  s_fca2302987ca57::t_db8c815fc465c9 10-11,19-28,30
+  s_fca2302987ca57::t_a020e15fcdd6c5 198,213-215
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_fca2302987ca57::t_cfc16f860fbf60 150-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f801813c6934986950163a8313bd5f34aaeefd33",
+  "prompts": {},
+  "sessions": {
+    "s_fca2302987ca57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3ee84d5-1fd7-46c3-ba48-70e2c843ec51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

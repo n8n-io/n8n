@@ -1,0 +1,53 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalResultsPanel.test.ts
+  s_9c25df37a9054c::t_a57355e9039d17 105-149
+  s_9c25df37a9054c::t_4ebff4b23e467e 47,62
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalResultsPanel.vue
+  s_9c25df37a9054c::t_f230ea4b5e915d 47-56
+  s_9c25df37a9054c::t_8eea038f43e71f 11,259-261
+  s_9c25df37a9054c::t_b1c208cf79a6a9 133-134,136-144
+  s_9c25df37a9054c::t_32e4962d6e6528 135,258
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9c25df37a9054c::t_879081f89d89ec 7802,7806
+  s_9c25df37a9054c::t_4b92af5ef813e3 7782,7784-7785
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_9c25df37a9054c::t_ca2a75fc39aa51 590-595,601-602
+  s_9c25df37a9054c::t_2672329f80ea0e 566-589,596-600,603-621
+  s_9c25df37a9054c::t_7a6edf48f62b92 630-631,651-653,658-660,664,677-678,690-694
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalResultRow.vue
+  s_9c25df37a9054c::t_b9f6f1c7c17835 12,354-357
+  s_9c25df37a9054c::t_519b873af35dd1 145-152
+  s_9c25df37a9054c::t_a454efc35bf51b 66-72,80
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_9c25df37a9054c::t_3285b1784b2d15 16,70
+  s_9c25df37a9054c::t_14c4a87b43b32a 423
+  s_9c25df37a9054c::t_bcb7fdf89b62f8 430-459,462-483,494-496,503-507,511-513,516,518
+  s_9c25df37a9054c::t_c547a3b8b09e9e 42-47
+  s_9c25df37a9054c::t_76f3a083443341 460-461,486
+  s_9c25df37a9054c::t_49b2e12e5402af 104-107,109
+  s_9c25df37a9054c::t_5ff17e4011a9b0 487,491,499,510,514-515,517
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalResultRow.test.ts
+  s_9c25df37a9054c::t_75da51a59842e9 267-268,276-277
+  s_9c25df37a9054c::t_c6ecdcf0347ee0 269-272,274-275
+  s_9c25df37a9054c::t_1a40b9570faf26 93-110
+  s_9c25df37a9054c::t_76f3a083443341 273
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalsSection.test.ts
+  s_9c25df37a9054c::t_974ca21038c69c 128-145
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalsSection.vue
+  s_9c25df37a9054c::t_c33aba5925f02a 82-84,95-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed1005b2d47db5f493866a227032f7a79671401d",
+  "prompts": {},
+  "sessions": {
+    "s_9c25df37a9054c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f128968-9989-4751-bf80-3aa4ad58d755",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

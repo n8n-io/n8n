@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/execution/insights/insights.api.test.ts
+  h_c63dce324dfc7b 3,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9d484f4b70f821727aa540418fca9fb7d46d054b",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

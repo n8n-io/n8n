@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue
+  s_6e5e6dade5599e::t_20011d34452a53 121
+  s_6e5e6dade5599e::t_304d20ea1283a8 11,52,81-101,111-115,130,132,139-144,147-182,193-195,197-199,202-205,208-213,216-224
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.test.ts
+  s_6e5e6dade5599e::t_c9c0710f74c2bf 92,108,132-135,184,195,200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "72425f4cb575da3282bac2c36dd6c05b0f88681c",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

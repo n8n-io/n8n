@@ -1,0 +1,21 @@
+packages/cli/test/integration/credentials/credentials.resolvable.api.test.ts
+  s_4e3d3e4345da23::t_97b96799e51fe1 601-648
+packages/cli/src/credentials/credentials.controller.ts
+  s_4e3d3e4345da23::t_bd2c6e51e0c33e 238-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "55ae5c7d4768b5629382c7bc6bc2a43a948e14b0",
+  "prompts": {},
+  "sessions": {
+    "s_4e3d3e4345da23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97a09d56-678f-4b6b-9440-b4810e176788",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

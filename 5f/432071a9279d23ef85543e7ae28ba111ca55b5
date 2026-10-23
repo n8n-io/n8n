@@ -1,0 +1,32 @@
+packages/@n8n/nodes-langchain/utils/aws/test/listBedrockInferenceProfiles.test.ts
+  s_2e1fa95fc44f8f::t_8c961887250bda 46-55
+  s_2e1fa95fc44f8f::t_1702507e418606 23-24
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/methods/listSearch.test.ts
+  s_2e1fa95fc44f8f::t_d6687435db588c 1-25
+packages/@n8n/nodes-langchain/nodes/tools/ToolSearXng/ToolSearXng.node.test.ts
+  s_2e1fa95fc44f8f::t_488c64eef847c0 73
+  s_2e1fa95fc44f8f::t_d9db0143649125 131
+  s_2e1fa95fc44f8f::t_842dc41145b3bb 84
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsNvidia.test.ts
+  s_2e1fa95fc44f8f::t_99dbc3edb72cf0 182-185
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/LmChatDatabricks.test.ts
+  s_2e1fa95fc44f8f::t_75a59c556078ea 421-422
+  s_2e1fa95fc44f8f::t_301065a5719e9c 547
+  s_2e1fa95fc44f8f::t_cf71296937208a 423
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f432071a9279d23ef85543e7ae28ba111ca55b5",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

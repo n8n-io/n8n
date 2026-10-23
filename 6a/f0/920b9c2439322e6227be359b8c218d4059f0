@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/app/components/SettingsSidebar.vue
+  h_f8b427917eda26 32,45,68
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  h_f8b427917eda26 47,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6af0920b9c2439322e6227be359b8c218d4059f0",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  ai_agent 2529-2531
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  ai_agent 388,415,430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a97abdffe416985f007c688ac0e58c13d0fca2ef",
+  "prompts": {}
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/breaking-changes/__tests__/breaking-changes.rule-discovery.test.ts
+  s_c7d3ec27de92f8::t_b1ad2272bb02ce 1,4,10-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d8063dd81f9a418fe7274ddeed059aa3755bafa",
+  "prompts": {},
+  "sessions": {
+    "s_c7d3ec27de92f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cfa0ee9-aef3-4e54-bed2-0cc22cc972c2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

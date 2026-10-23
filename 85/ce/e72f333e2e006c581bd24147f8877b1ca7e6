@@ -1,0 +1,62 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_e3560b551eac11::t_5b7aac3cd66c65 89-90
+  s_e3560b551eac11::t_d7d7ff27e5ead8 159-161
+  s_e3560b551eac11::t_0877e7bf39c747 174-176
+  s_e3560b551eac11::t_2e9495aa1be88f 189
+  s_e3560b551eac11::t_bb3fd0090ae138 206
+  s_e3560b551eac11::t_e271aebc928041 399-403
+  s_e3560b551eac11::t_4a9c421e300dc4 480-483
+  s_e3560b551eac11::t_37d04bea73c03b 719
+  s_e3560b551eac11::t_1b42f8cd0fe4aa 804-806
+packages/frontend/editor-ui/src/features/agents/composables/useAgentsN8nChatFlag.ts
+  ai_agent 6-9,11,17-18,36-46,19,23,34-35
+  s_9a6001e67297f0::t_3da763ba2ec00e 5
+  s_9a6001e67297f0::t_3bfdf51b3ea653 10
+  s_e3560b551eac11::t_8a0e61a94aaacb 2,22,26-29
+  s_e3560b551eac11::t_2366ba2bcb904b 20-21,24-25,33
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentSection.test.ts
+  s_e3560b551eac11::t_c99a432dad6c35 1-127
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 8121-8124
+  s_9a6001e67297f0::t_bb886ef6ac8b01 8125-8127,8129-8130
+  s_9a6001e67297f0::t_c4260eb699eabd 8128
+  s_9a6001e67297f0::t_80e20563184827 1498
+  s_e3560b551eac11::t_85762fcb294f3e 8131-8132
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentSection.vue
+  s_e3560b551eac11::t_018736ddf70376 1-33,35-55,57-80
+  s_e3560b551eac11::t_089819d3b6bfa0 34,56
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_e3560b551eac11::t_70c6d277173029 2
+  s_e3560b551eac11::t_8a0e61a94aaacb 34,85,268-269,1336,1340,1353,1365-1375
+  s_e3560b551eac11::t_18f22b995308cc 263,271-279
+  s_e3560b551eac11::t_20816cb48c3d70 264-267,270
+  s_e3560b551eac11::t_8d845c9c2b79ef 1333-1335,1337-1339,1341-1352,1354-1364,1376
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentsN8nChatFlag.test.ts
+  s_e3560b551eac11::t_8a0e61a94aaacb 2,26-29,42-49
+  s_e3560b551eac11::t_4b6f0c40ad2271 6
+  s_e3560b551eac11::t_9a1d7c5be04479 24-25,30-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "85cee72f333e2e006c581bd24147f8877b1ca7e6",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

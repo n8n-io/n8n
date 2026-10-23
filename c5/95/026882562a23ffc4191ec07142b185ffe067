@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/NodeToolSettingsContent.test.ts
+  s_0bf6d2ccb779ff::t_7daa5591ddc8b4 199,206-208
+  s_0bf6d2ccb779ff::t_29bc55e75947cb 164-198,200-205,209-212
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigNodeContent.test.ts
+  s_0bf6d2ccb779ff::t_86d92b6cd90549 1-36
+packages/@n8n/api-types/src/agents/agent-node-tool-operations.ts
+  s_0bf6d2ccb779ff::t_d81389c6a1dc08 1-10
+packages/cli/src/node-execution/node-tool-operation-support.ts
+  s_0bf6d2ccb779ff::t_43e44a936ba3ed 1,3
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/toolConfig.utils.test.ts
+  s_0bf6d2ccb779ff::t_fd608d4f6923ba 1-90
+packages/@n8n/api-types/src/agents/index.ts
+  s_0bf6d2ccb779ff::t_01f09a639719a9 5
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_0bf6d2ccb779ff::t_043b5805fe8c65 50-51
+  s_0bf6d2ccb779ff::t_3d4512e6e6cb71 82-86
+  s_0bf6d2ccb779ff::t_a400bd416c10da 24
+packages/frontend/editor-ui/src/features/shared/toolConfig/toolConfig.utils.ts
+  s_0bf6d2ccb779ff::t_543aff4865bd41 1-32
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigNodeContent.vue
+  s_0bf6d2ccb779ff::t_778d7c46f64959 4
+  s_0bf6d2ccb779ff::t_72b69427621ed2 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c595026882562a23ffc4191ec07142b185ffe067",
+  "prompts": {},
+  "sessions": {
+    "s_0bf6d2ccb779ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d96b4f2b-f082-42a2-bd81-8d59d0458b78",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/cli/src/controller.registry.ts
+  s_8631ec10eb1199::t_0e9ab61e6a5f3f 85-86
+packages/cli/src/public-api/media-types/content-type.ts
+  s_8631ec10eb1199::t_0f75bee009367f 39-40
+  s_8631ec10eb1199::t_06f6dc8b3229ce 13-14
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_8631ec10eb1199::t_eccf8c61bbd795 138-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d7040fbde09b142801afdfc10a3831e130b6caa1",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

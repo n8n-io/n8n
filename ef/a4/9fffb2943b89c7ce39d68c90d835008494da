@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/Microsoft/GraphSecurity/GenericFunctions.ts
+  s_9412036cb02fc4::t_ea7b62264ab2e6 35
+  s_9412036cb02fc4::t_405b7cddddab46 10
+  s_9412036cb02fc4::t_aa56d251bd0691 19-22
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/GenericFunctions.test.ts
+  s_9412036cb02fc4::t_498f8c3819d25c 578,664,678,728
+  s_9412036cb02fc4::t_79c8964a527cd4 662,676,700
+  s_9412036cb02fc4::t_23deb8fd7c0e80 33-37
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/workflow/secureScore.get.genericOAuth2.workflow.json
+  s_9412036cb02fc4::t_039ce93d3d575b 14
+packages/nodes-base/nodes/Microsoft/GraphSecurity/MicrosoftGraphSecurity.node.ts
+  s_9412036cb02fc4::t_0b52e2d7604324 43,52
+  s_9412036cb02fc4::t_aa10222dc74e39 65-66,69-70,72,75
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/MicrosoftGraphSecurity.node.test.ts
+  s_9412036cb02fc4::t_8a9961e5ed134f 12,20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "efa49fffb2943b89c7ce39d68c90d835008494da",
+  "prompts": {},
+  "sessions": {
+    "s_9412036cb02fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a47dd9c-8df0-42f0-8f23-9f47fc6c27e8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

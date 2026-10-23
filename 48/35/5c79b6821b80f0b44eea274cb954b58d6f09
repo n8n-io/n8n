@@ -1,0 +1,19 @@
+packages/@n8n/decorators/src/system-task/__tests__/placement.test.ts
+  s_95bb7825ae2330::t_5e40adca8458b2 3-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "48355c79b6821b80f0b44eea274cb954b58d6f09",
+  "prompts": {},
+  "sessions": {
+    "s_95bb7825ae2330": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fb494c6-e41e-4bae-9e68-2792c780b102",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Google/YouTube/__test__/node/YouTube.node.test.ts
+  s_2e1fa95fc44f8f::t_649a0fa7fec167 180-228
+packages/nodes-base/nodes/Google/YouTube/__test__/node/videos.workflow.json
+  s_29fe1f61565b6f::t_ad7d907ab7c645 1-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d24c12a668be02771e30af01e0ffe48887c2e1f9",
+  "prompts": {},
+  "sessions": {
+    "s_29fe1f61565b6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad2b09f5b20b4c7e5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

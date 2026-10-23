@@ -1,0 +1,170 @@
+packages/core/src/utils/__tests__/request-auth.test.ts
+  s_2a88d9b86bc7be::t_3b553fa359bd39 1-91
+packages/@n8n/api-types/src/agents/index.ts
+  s_2a88d9b86bc7be::t_2309274be3e8a7 6
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_2a88d9b86bc7be::t_ebca3ca98dc854 296-298
+  s_2a88d9b86bc7be::t_5f24291c67945c 299
+packages/@n8n/api-types/src/agents/__tests__/agent-webhook.schema.test.ts
+  s_2a88d9b86bc7be::t_57b43b8dbfecfc 1-49
+packages/nodes-base/nodes/Webhook/utils.ts
+  s_2a88d9b86bc7be::t_512d80db75cfbe 337,340
+  s_2a88d9b86bc7be::t_998b80d838eb17 342,345,350,353-355
+  s_2a88d9b86bc7be::t_974a3ac7a83be9 338
+  s_2a88d9b86bc7be::t_e5f6d3e2fafcbe 3-8
+  s_2a88d9b86bc7be::t_0b43d3478be66f 279,287,297,306,318,322,335
+packages/nodes-base/nodes/Webhook/test/utils.test.ts
+  s_2a88d9b86bc7be::t_8d3cc73b2aa1ef 878,881
+  s_2a88d9b86bc7be::t_5f1c34f73aff23 743
+packages/core/src/utils/index.ts
+  s_2a88d9b86bc7be::t_a1a359f54a573a 2
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_2a88d9b86bc7be::t_876261d5082d28 1431
+  s_2a88d9b86bc7be::t_26dfc044019fd9 8-13
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_2a88d9b86bc7be::t_f4a6f7a7ad3c84 21,30,38
+  s_2a88d9b86bc7be::t_1802cc9287e1e3 51,58
+  s_2a88d9b86bc7be::t_d37e26da7cc734 12
+  s_2a88d9b86bc7be::t_c4dfdfc6f4c8d1 224-246
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_2a88d9b86bc7be::t_3f5e56f1128f9f 500
+  s_2a88d9b86bc7be::t_27760a78b8fbd7 509
+packages/@n8n/api-types/src/agents/agent-webhook.schema.ts
+  s_2a88d9b86bc7be::t_a764a78f24d99d 1-46
+packages/cli/src/modules/agents/integrations/__tests__/webhook-integration.test.ts
+  s_2a88d9b86bc7be::t_fbf1a61d31fc87 1-43
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_2a88d9b86bc7be::t_335f493c71e035 862
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpTrigger.node.test.ts
+  s_2a88d9b86bc7be::t_0f44d2e07bd059 519,521
+packages/@n8n/api-types/src/agents/dto.ts
+  s_2a88d9b86bc7be::t_0641e40e4db4b9 281,286
+  s_2a88d9b86bc7be::t_2a68bbb6f51b0b 47
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_2a88d9b86bc7be::t_030d723f1b64df 5
+  s_2a88d9b86bc7be::t_ec049dc92032b6 267
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_2a88d9b86bc7be::t_8f34ce17cfa19b 242-244
+  s_2a88d9b86bc7be::t_66232f00b31df5 375-377
+  s_2a88d9b86bc7be::t_00b5fee9ab324a 596
+  s_2a88d9b86bc7be::t_ce1c45bd8e4d64 357-358
+  s_2a88d9b86bc7be::t_453172a13e4a41 366
+packages/frontend/editor-ui/src/features/agents/channels/registry.ts
+  s_2a88d9b86bc7be::t_d617bba1ffcb15 110-115
+  s_2a88d9b86bc7be::t_f32e8f4e15e98d 16
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2a88d9b86bc7be::t_efe61b7f825c9a 1473
+  s_2a88d9b86bc7be::t_5c2c66ee9255c6 8718-8724
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_2a88d9b86bc7be::t_9b6455518b9ad8 1
+  s_2a88d9b86bc7be::t_356e8aaa5eaaf0 263
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_2a88d9b86bc7be::t_2923a9f669ef3e 158
+packages/frontend/editor-ui/src/features/agents/channels/linear/AgentChannelLinearSetup.vue
+  s_2a88d9b86bc7be::t_c3e5ab7ee8c0ce 11
+  s_2a88d9b86bc7be::t_d4ab0e761d4a6b 79-81
+packages/frontend/editor-ui/src/features/agents/channels/agentChannelWebhookUrl.ts
+  s_2a88d9b86bc7be::t_4c7847e34a2ad7 1-9
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_2a88d9b86bc7be::t_ceda1ace50f938 1964-2014
+packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
+  s_2a88d9b86bc7be::t_7e07072aa5be08 53
+  s_2a88d9b86bc7be::t_02869322f3cb9e 316-341
+packages/core/src/errors/index.ts
+  s_2a88d9b86bc7be::t_a1a359f54a573a 1
+packages/frontend/editor-ui/src/features/agents/components/AgentCredentialSelect.vue
+  s_2a88d9b86bc7be::t_b2f2832a1b39c7 11
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_2a88d9b86bc7be::t_acc6338a06f52c 132-202
+  s_2a88d9b86bc7be::t_f02ca80da31e35 1
+packages/frontend/editor-ui/src/features/agents/channels/webhook/AgentChannelWebhookView.test.ts
+  s_2a88d9b86bc7be::t_554a937754dd31 1-39,41,45-74
+  s_2a88d9b86bc7be::t_b943b37d2255c1 40,42-44
+  s_2a88d9b86bc7be::t_40edb50f4851a2 75-76
+packages/core/src/errors/authorization.error.ts
+  s_2a88d9b86bc7be::t_99424157b947ff 1-16
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_2a88d9b86bc7be::t_1aeb1dc33c77ea 526-530
+packages/cli/src/modules/agents/integrations/agent-webhook.service.ts
+  s_2a88d9b86bc7be::t_79b9c2e0fad657 21
+  s_2a88d9b86bc7be::t_657e7c47cab6e4 29-33
+  s_2a88d9b86bc7be::t_9c99fbb74dc9f1 98-100
+  s_2a88d9b86bc7be::t_eb85bab7a3be82 1-20,22-28,34-97,101-166,175-177,179-183,185-186,188-191,194-198,200-279
+  s_2a88d9b86bc7be::t_ddfb782551b179 167-174,178,184,187,192-193,199
+packages/cli/src/modules/agents/integrations/__tests__/agent-webhook.service.test.ts
+  s_2a88d9b86bc7be::t_a3a926447468c5 1-274
+  s_2a88d9b86bc7be::t_60ac72e39e359f 275-277
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_2a88d9b86bc7be::t_8846a7b3437763 65
+  s_2a88d9b86bc7be::t_7677b19a089ae7 371-374
+  s_2a88d9b86bc7be::t_01b59272536546 430,432-438,443-451
+  s_2a88d9b86bc7be::t_14099ca95e2141 411
+  s_2a88d9b86bc7be::t_1474a33ca04f10 452-454
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelSetup.ts
+  s_2a88d9b86bc7be::t_5e316f20ff6256 134,137-138
+  s_2a88d9b86bc7be::t_f509658399cda8 146
+  s_2a88d9b86bc7be::t_69ac10fff61f14 111
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_2a88d9b86bc7be::t_b80faffb06d8ee 704
+  s_2a88d9b86bc7be::t_6e9ebfb8a2060d 1009
+  s_2a88d9b86bc7be::t_1e3f3813189c7e 915-919,925-926
+  s_2a88d9b86bc7be::t_2dca0752d2aee4 617
+  s_2a88d9b86bc7be::t_c3251d42b88344 320-321
+  s_2a88d9b86bc7be::t_809b542b09df7e 927-928
+packages/cli/src/modules/agents/integrations/platforms/webhook-integration.ts
+  s_2a88d9b86bc7be::t_3e6787b812cf9f 1-43,45,47,49-50
+  s_2a88d9b86bc7be::t_9d1cc0cfebe6fe 44,46,48
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_2a88d9b86bc7be::t_0d4ada9c9457c0 107-125,127-128,134
+  s_2a88d9b86bc7be::t_9b214c5e61ac3c 154
+  s_2a88d9b86bc7be::t_4935235fd4861f 126
+  s_2a88d9b86bc7be::t_c185dfbb87f6e8 170
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_2a88d9b86bc7be::t_a69e1019d09331 33
+  s_2a88d9b86bc7be::t_d522ba38a6f9a3 15
+  s_2a88d9b86bc7be::t_9060ac4365acca 99-113
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_2a88d9b86bc7be::t_30effe63b7e51e 45
+packages/frontend/editor-ui/src/features/agents/channels/types.ts
+  s_2a88d9b86bc7be::t_6e07f197b802eb 24
+packages/@n8n/api-types/src/agents/agent-config-lifecycle.ts
+  s_2a88d9b86bc7be::t_240e0a071ba765 7-8
+  s_2a88d9b86bc7be::t_b7eb9d630b9d41 15-22,25-32
+  s_2a88d9b86bc7be::t_d328f1d5f64f3b 33
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_2a88d9b86bc7be::t_7688ab7792359d 447
+  s_2a88d9b86bc7be::t_35e3366f1b3d66 437
+packages/frontend/editor-ui/src/features/agents/channels/webhook/AgentChannelWebhookView.vue
+  s_2a88d9b86bc7be::t_049a62431f4c6c 1-79,81-95,97-126,128-135,137-164
+  s_2a88d9b86bc7be::t_5ea3cfd3a81f36 136
+  s_2a88d9b86bc7be::t_e5f994e15dacd4 96
+  s_2a88d9b86bc7be::t_6e202520c192ed 127
+  s_2a88d9b86bc7be::t_54ed6d1066b91e 80
+  s_2a88d9b86bc7be::t_e3b6454a23c857 165-166
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_2a88d9b86bc7be::t_0dbee84560b546 945-947
+packages/cli/src/modules/agents/agents.module.ts
+  s_2a88d9b86bc7be::t_83b38b5c889982 98
+  s_2a88d9b86bc7be::t_141c82a32052ad 91
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelDiscordSetup.vue
+  s_2a88d9b86bc7be::t_b0c888f657100b 10
+  s_2a88d9b86bc7be::t_d3fd5cd575b379 82-84
+packages/core/src/utils/request-auth.ts
+  s_2a88d9b86bc7be::t_42351f9d1c4ab0 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2bbfcc676ea10e7599bd4209b6474163c9119e26",
+  "prompts": {},
+  "sessions": {
+    "s_2a88d9b86bc7be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36cc495a-118d-4abf-bacd-805dfe3851ae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

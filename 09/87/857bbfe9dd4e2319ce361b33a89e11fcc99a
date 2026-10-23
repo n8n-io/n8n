@@ -1,0 +1,14 @@
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  h_5d40c27a8fdfd1 66,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0987857bbfe9dd4e2319ce361b33a89e11fcc99a",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,99 @@
+packages/frontend/editor-ui/src/features/apps/components/AddPageModal.vue
+  s_8fed88675c1307::t_678228a5e08b71 5,26-35,88
+packages/cli/src/modules/apps/serving/render-page.ts
+  s_8fed88675c1307::t_162b457e6cdeb5 1-11,15,21,31-34,37-45
+  s_8fed88675c1307::t_001134a200d2cc 12-14,16-20,22-30,35-36
+packages/cli/src/modules/apps/serving/page-menu.ts
+  s_8fed88675c1307::t_eef9562b56fc47 7,34-42,44-47,62-63,68-69,78,81,85-86,88
+  s_8fed88675c1307::t_5055adcc902cfd 1-6,8-13,19,21-33,43,48-61,64-67,70-77,79-80,82-84,87,89
+  s_8fed88675c1307::t_5fa678d59ed2ad 14-18,20
+packages/cli/src/modules/apps/apps.module.ts
+  s_8fed88675c1307::t_3e270e5c061fcc 8
+packages/cli/src/modules/apps/apps.service.ts
+  s_8fed88675c1307::t_6f0229e2e60e18 7,47,75-79
+packages/cli/src/modules/apps/serving/resolve-page-path.ts
+  s_8fed88675c1307::t_9c0419b96ccbf7 1-75
+packages/cli/src/modules/apps/app.repository.ts
+  s_8fed88675c1307::t_c444df0bdb40c2 22-26
+  s_8fed88675c1307::t_2f74caed08d54a 14,35
+packages/cli/src/modules/apps/serving/__tests__/resolve-page-path.test.ts
+  s_8fed88675c1307::t_9d9bbac69fa580 1-94
+packages/cli/templates/app-page.handlebars
+  s_8fed88675c1307::t_6d31f75c593cdf 1-39,41-44,46-57,59-60,62-65
+  s_8fed88675c1307::t_8fcf7902c80246 40,58
+  s_8fed88675c1307::t_57074550c85d43 45,61
+packages/cli/src/modules/apps/app.entity.ts
+  s_8fed88675c1307::t_4519f592cc8464 5
+packages/cli/src/modules/apps/serving/app-serving.controller.ts
+  s_8fed88675c1307::t_e1eeee4de11e0d 1,27
+  s_8fed88675c1307::t_162b457e6cdeb5 6,46
+  s_8fed88675c1307::t_bf2bc50afe08a8 10-11,39-42
+  s_8fed88675c1307::t_3e270e5c061fcc 2-5,7-9,12-26,28-38,43-45,47-48
+packages/cli/src/modules/apps/serving/app-serving.service.ts
+  s_8fed88675c1307::t_59b187b8224ebd 1-4,6-21,23-33,38-40
+  s_8fed88675c1307::t_7fd2a8b4db4281 5,34-37
+  s_8fed88675c1307::t_bf2bc50afe08a8 22
+packages/cli/src/modules/apps/errors/index-page-must-be-top-level.error.ts
+  s_8fed88675c1307::t_d3b68d35b6a95e 1-5,7-10
+  s_8fed88675c1307::t_bf2bc50afe08a8 6
+packages/cli/test/migration/1788786749129-make-app-namespace-globally-unique.test.ts
+  s_8fed88675c1307::t_d498e3218a0eb7 1-105,109-124,126-132
+  s_8fed88675c1307::t_bf2bc50afe08a8 106-108
+  s_8fed88675c1307::t_747c8573b0206d 125
+packages/cli/src/modules/apps/serving/__tests__/app-serving.service.test.ts
+  s_8fed88675c1307::t_1ae1cf5a948b0b 59-63,65
+  s_8fed88675c1307::t_b9023f9b294901 1-10,15,17-42,44-45,47-48,50-51,53-58,66-68,70-76
+  s_8fed88675c1307::t_4e628db47cd0e7 64
+  s_8fed88675c1307::t_05cdcd3039db84 69
+  s_8fed88675c1307::t_7223030103b127 11-14,16,43,46,49,52
+packages/cli/templates/app-page-404.handlebars
+  s_8fed88675c1307::t_f6431c633e735b 1-37
+packages/@n8n/db/src/migrations/common/1788786749129-MakeAppNamespaceGloballyUnique.ts
+  s_8fed88675c1307::t_e1f8d76218ea0e 3-12,14-16,19-21
+  s_8fed88675c1307::t_2e39378733573a 1-2,13,17-18,22-23
+packages/cli/test/integration/apps/apps.controller.integration.test.ts
+  s_8fed88675c1307::t_a7e4c6aa6f6e1f 69-80,148-167
+  s_8fed88675c1307::t_6f6308cc19c599 168
+packages/cli/src/modules/apps/errors/app-namespace-conflict.error.ts
+  s_8fed88675c1307::t_c37ccef37abf21 5
+packages/cli/test/integration/apps/app-serving.controller.integration.test.ts
+  s_8fed88675c1307::t_5fa678d59ed2ad 102,105-127
+  s_8fed88675c1307::t_bf2bc50afe08a8 88
+  s_8fed88675c1307::t_6da5b648a1a600 1-79,81-83,85-87,93-94,96-97,99,101,103-104,128-138
+  s_8fed88675c1307::t_1f1d6e575ff226 95,98,100
+  s_8fed88675c1307::t_5d723db164978f 80,84,89-92
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8fed88675c1307::t_678228a5e08b71 5168
+packages/cli/templates/partials/app-page-menu.handlebars
+  s_8fed88675c1307::t_8fcf7902c80246 1-15
+packages/cli/src/modules/apps/serving/__tests__/page-menu.test.ts
+  s_8fed88675c1307::t_0293d5bcc5be15 1,17-34,42-44,48-53,56,60-80,87,92-94,109-112,114
+  s_8fed88675c1307::t_d3bde5d02b2db9 2-16,35-41,45-47,54-55,57-59,81-86,88-91,96-108,115-117
+  s_8fed88675c1307::t_4e628db47cd0e7 95,113
+docs/generated/postgres-schema/README.md
+  s_8fed88675c1307::t_889ea0b2fc12d0 42,100,222,300-301,719-727,1271-1279
+docs/generated/postgres-schema/public.app.md
+  s_8fed88675c1307::t_2b7b6d41683a5d 1-76
+docs/generated/postgres-schema/public.page.md
+  s_8fed88675c1307::t_9da583a3ed7c7d 1-66
+docs/generated/postgres-schema/public.project.md
+  s_8fed88675c1307::t_41af606a959e7a 12,46,152-160
+docs/generated/sqlite-schema/app.md
+  s_8fed88675c1307::t_e73f467e577ff3 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c7bf2753b5397bf1a66beea57d20aa29206eb480",
+  "prompts": {},
+  "sessions": {
+    "s_8fed88675c1307": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a96b2f2-c9aa-4ec0-94bd-4ee430cd7c07",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

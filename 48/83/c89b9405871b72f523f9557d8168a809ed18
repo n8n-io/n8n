@@ -1,0 +1,17 @@
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  ai_agent 55,953-999
+packages/@n8n/scheduler/src/core/factory.ts
+  ai_agent 322-328
+packages/@n8n/scheduler/src/core/executor/lease-constants.ts
+  ai_agent 16-22
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  ai_agent 1,6,58-60,395-403,407
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  ai_agent 1869-1892
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4883c89b9405871b72f523f9557d8168a809ed18",
+  "prompts": {}
+}

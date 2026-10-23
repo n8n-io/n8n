@@ -1,0 +1,66 @@
+packages/testing/performance/benchmarks/expression-engine/micro.bench.ts
+  s_e9d5fcf6062349::t_87f2381ad6c14d 19
+  s_e9d5fcf6062349::t_4c0a3b080330ef 30
+packages/workflow/src/errors/expression.error.ts
+  s_e9d5fcf6062349::t_a8ce6613ce4933 26-27
+packages/core/src/execution-engine/node-execution-context/__tests__/undefined-coercion.test.ts
+  s_e9d5fcf6062349::t_22b4d4f71fbf5d 220-322
+  s_059f1fbd909f52::t_754323756a41c5 123,215
+  s_e9d5fcf6062349::t_0a045f9ee43cd3 1-122,124-214,216-219
+packages/workflow/src/expression-sandboxing.ts
+  s_e9d5fcf6062349::t_3d4e46340a70fd 2,633-635
+  s_e9d5fcf6062349::t_6397b5b6cc6a82 616-617,679
+  s_e9d5fcf6062349::t_f973c163eb3496 565-615,618-632,636-678,680-684
+packages/workflow/src/expression.ts
+  s_e9d5fcf6062349::t_8eede794fae22a 279
+  s_e9d5fcf6062349::t_98520fe55cb58d 551,557
+  s_e9d5fcf6062349::t_f2c648266e0baa 621-630
+  s_e9d5fcf6062349::t_d11c5deab6096d 13-16,19-20
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_e9d5fcf6062349::t_1e0ed9d08f0587 59-63
+  s_e9d5fcf6062349::t_8739d6ae243e2d 546,552-555
+packages/workflow/src/workflow-expression.ts
+  s_e9d5fcf6062349::t_a3d3e225342ee2 67-72
+  s_e9d5fcf6062349::t_1fbd26c4afd835 93-98
+  s_e9d5fcf6062349::t_f9d200c026a53e 162
+  s_e9d5fcf6062349::t_49da64f7128ae3 124,142
+  s_e9d5fcf6062349::t_014eabe19a5861 44
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_e9d5fcf6062349::t_3387b609921135 136-149
+  s_e9d5fcf6062349::t_497a102e96c898 6-12
+packages/@n8n/expression-runtime/src/runtime/safe-globals.ts
+  s_e9d5fcf6062349::t_36ef61ed3f3c89 206
+  s_e9d5fcf6062349::t_420fb83340f206 161-163,166-173,178,181-205,207-210
+  s_e9d5fcf6062349::t_2e482b2b9582d6 174-177,179-180
+  s_e9d5fcf6062349::t_77493abb093578 164-165
+packages/workflow/test/expression-undefined-coercion.test.ts
+  s_e9d5fcf6062349::t_773209336e1620 1-74,76-77,79-109,111-136,138-148,150-170,172-198
+  s_059f1fbd909f52::t_1754e038c0edea 75,78,110,137,149,171
+packages/workflow/src/expression-evaluator-proxy.ts
+  s_e9d5fcf6062349::t_2bf913a64636e2 3-8
+  s_e9d5fcf6062349::t_5e097f6393663a 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "711e9c8976172dd2e17ae33716fde0970abef1e1",
+  "prompts": {},
+  "sessions": {
+    "s_059f1fbd909f52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c93666e-aedf-44c1-a919-b1edbbd58e8d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_e9d5fcf6062349": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "850737c0-5177-4e20-92f7-29fadae635c2",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

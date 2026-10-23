@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/workbook/addWorksheet.operation.ts
+  s_dcea52ad05f3e5::t_0f0a510d111c70 8-14
+  s_dcea52ad05f3e5::t_94c48c6e0e11b1 75-78,88
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/workbook/deleteWorkbook.operation.ts
+  s_dcea52ad05f3e5::t_588615e8e9a949 26-29,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "52acd454e19c7f3e7bb38858028d548d309ae442",
+  "prompts": {},
+  "sessions": {
+    "s_dcea52ad05f3e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa86040e-4be6-4812-92fc-f4f87bbbe2ba",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

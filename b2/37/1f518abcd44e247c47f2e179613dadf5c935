@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowDiff.vue
+  s_356f82909b181c::t_bcb390366cb999 68
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffView.vue
+  s_356f82909b181c::t_b25fb83b5778f5 357-358,378-379,383-384
+  s_356f82909b181c::t_bcb390366cb999 3,35,48,62-76,80,84-86,172-180,182-184,307-312,314-347,351,360,366-377,380-382,385-390,392,399
+  s_356f82909b181c::t_e3616eefce240d 349,391,393,398
+  s_356f82909b181c::t_1a1e594c4cdcf5 348,395
+  s_356f82909b181c::t_c04e71392d8814 350,394,396-397
+  s_356f82909b181c::t_8b2a441f91fc59 400
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_356f82909b181c::t_1a1e594c4cdcf5 9991
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffView.test.ts
+  s_356f82909b181c::t_bcb390366cb999 4,339-398
+  s_356f82909b181c::t_3ddeb57e393f44 399-400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2371f518abcd44e247c47f2e179613dadf5c935",
+  "prompts": {},
+  "sessions": {
+    "s_356f82909b181c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1586f-1e01-73b2-bf79-e76c23cde950",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

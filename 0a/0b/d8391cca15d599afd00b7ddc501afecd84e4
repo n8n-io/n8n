@@ -1,0 +1,36 @@
+packages/@n8n/ai-workflow-builder.ee/src/utils/operations-processor.ts
+  ai_agent 144
+  s_bc63a262ac8b3b::t_537d6ffebae802 2,66,72,157,199,206,264
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/connection.utils.ts
+  s_bc63a262ac8b3b::t_537d6ffebae802 8,143,204
+packages/@n8n/workflow-sdk/src/utils/workflow-json-engine-helpers.ts
+  s_bc63a262ac8b3b::t_537d6ffebae802 5,42
+packages/@n8n/ai-workflow-builder.ee/src/validation/auto-fix/__tests__/auto-fix-connections.test.ts
+  s_bc63a262ac8b3b::t_537d6ffebae802 654-692
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/workflow-sanitization.test.ts
+  s_bc63a262ac8b3b::t_537d6ffebae802 1,154-185
+packages/workflow/src/index.ts
+  s_bc63a262ac8b3b::t_537d6ffebae802 78
+packages/workflow/src/utils.ts
+  s_bc63a262ac8b3b::t_537d6ffebae802 394-411
+packages/@n8n/ai-workflow-builder.ee/src/validation/auto-fix/auto-fix-connections.ts
+  s_bc63a262ac8b3b::t_537d6ffebae802 2,148,183,243,291
+packages/@n8n/ai-workflow-builder.ee/src/utils/workflow-sanitization.ts
+  s_bc63a262ac8b3b::t_537d6ffebae802 2,13,32,40,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0a0bd8391cca15d599afd00b7ddc501afecd84e4",
+  "prompts": {},
+  "sessions": {
+    "s_bc63a262ac8b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "333c9079-31ea-4739-a3e4-941d76e5eacf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

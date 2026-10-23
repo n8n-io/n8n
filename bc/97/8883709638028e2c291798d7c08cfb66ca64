@@ -1,0 +1,37 @@
+packages/cli/src/public-api/index.ts
+  s_f5bbe38e38b45d::t_8ef2a2a6527227 5
+  s_f5bbe38e38b45d::t_1188bb0220b396 231-234
+packages/cli/src/services/session-cookie-auth.strategy.ts
+  s_f5bbe38e38b45d::t_b27a8ebaa852c4 1-65
+packages/cli/src/server.ts
+  s_f5bbe38e38b45d::t_29aa8e887a68d7 192
+  s_f5bbe38e38b45d::t_f5fd6f09b9d186 81
+packages/cli/src/services/__tests__/session-cookie-auth.strategy.integration.test.ts
+  s_f5bbe38e38b45d::t_7ebac1204d28e7 2-13,33-61,63-112
+  s_f5bbe38e38b45d::t_48f7afe3ce2fdf 62
+  s_f5bbe38e38b45d::t_f22a5b8f4d0a66 1,14-32
+packages/frontend/editor-ui/src/features/execution/insights/insights.api.ts
+  s_f5bbe38e38b45d::t_a096526fd6e54b 1
+  s_f5bbe38e38b45d::t_2d4178265f919d 40-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bc978883709638028e2c291798d7c08cfb66ca64",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f5bbe38e38b45d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42e75e82-b1c1-4817-84b9-959be14af5da",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

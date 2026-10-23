@@ -1,0 +1,32 @@
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_c128925404d6f5::t_600604c38125ce 266-271,277-279,296-297,299-300,303-308,320-329,357,415-421,423,432-441
+.agents/skills/create-instance-ai-eval/sourcing-cases.md
+  s_c128925404d6f5::t_6bd1063d3e7c26 308-311,315-318
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_c128925404d6f5::t_fe00c71b49e22b 183-189,191,195,198-206,208-212,223,225-228,254,261-264,269-273
+  s_c128925404d6f5::t_0b6a8d9da27436 207
+  s_c128925404d6f5::t_d61f6c8cfd26ff 274-276
+packages/cli/src/workflows/workflow-history/workflow-history.service.ts
+  s_c128925404d6f5::t_64304a057fd0ed 171-176,189-195,197-202,205-206
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_c128925404d6f5::t_13cdcd02806ec7 1050-1051,1112-1115
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_c128925404d6f5::t_5e2f2730917887 890-905,907
+  s_c128925404d6f5::t_0d21ffc3623e95 906
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ea846cc727e193e40ae13e1bada40396afb1cbb6",
+  "prompts": {},
+  "sessions": {
+    "s_c128925404d6f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a04e249-8370-4127-a752-60228b3ff214",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

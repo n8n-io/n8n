@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_03e31bd3d32fb7::t_af5a1ec0f28ca2 159-170
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_03e31bd3d32fb7::t_0bf619d69781be 73
+  s_03e31bd3d32fb7::t_85f85282585327 18
+  s_03e31bd3d32fb7::t_ecba54087ebd96 32,35
+  s_03e31bd3d32fb7::t_a026bb42efd47a 517-523
+  s_03e31bd3d32fb7::t_721f5e402d1ffd 261-269,273
+  s_03e31bd3d32fb7::t_fd96a76b06a6ed 274
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_03e31bd3d32fb7::t_0a00ee0df331ac 74-87,93
+  s_03e31bd3d32fb7::t_985bed8b0064a5 191-215
+  s_03e31bd3d32fb7::t_5362df395871b1 11,19-21
+  s_03e31bd3d32fb7::t_8414f045aa3463 22
+  s_03e31bd3d32fb7::t_298d54ffc6a544 216-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "0a9302ae507a6303785fae59b13a0f0919e34a3a",
+  "prompts": {},
+  "sessions": {
+    "s_03e31bd3d32fb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a23cf9e9-0732-42b0-a3d7-4997316c07d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

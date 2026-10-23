@@ -1,0 +1,67 @@
+packages/cli/src/scaling/multi-main-setup.ee.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+packages/cli/src/task-runners/__tests__/sliding-window-signal.test.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1-2
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 39-47,116,156,2097-2104,2155-2159,2164-2171,2189-2270
+packages/cli/src/task-runners/task-runner-process-restart-loop-detector.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+packages/cli/src/services/__tests__/import.service.test.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 21
+packages/nodes-base/nodes/Jwt/Jwt.node.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 188-204,411-412,414,418-427
+packages/cli/src/task-runners/task-runner-process-base.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+packages/cli/src/services/workflow-statistics.service.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+packages/cli/src/concurrency/concurrency-queue.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1241,1368,1382-1391
+packages/cli/src/push/abstract.push.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 2
+packages/cli/src/services/cache/cache.service.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+packages/nodes-base/nodes/Jwt/test/jwt.workflow.json
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 358-440,509-520,541-545,663-679
+packages/@n8n/backend-common/src/index.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 14
+packages/@n8n/instance-ai/evaluations/cli/build-mcp-manifest.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 10,244-253,260-262,264-267,594-599
+packages/nodes-base/nodes/Jwt/test/Jwt.node.test.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 2-8,21-160
+packages/@n8n/backend-common/src/__tests__/typed-emitter.test.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1-72
+packages/@n8n/backend-common/src/typed-emitter.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 10-12,42-48
+packages/cli/src/scaling/pubsub/pubsub.eventbus.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+packages/cli/src/push/index.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 2,16,20
+packages/cli/src/task-runners/task-runner-lifecycle-events.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+packages/cli/src/task-runners/sliding-window-signal.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+packages/cli/src/services/redis-client.service.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+.github/workflows/docker-build-push.yml
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 140-141,156-157,172-173
+packages/cli/src/events/event.service.ts
+  s_2b4a017a2e9342::t_1a7cd3d2295e6a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f03d5074bfe459f675aa53aa3053b5cdd531ba69",
+  "prompts": {},
+  "sessions": {
+    "s_2b4a017a2e9342": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eadab-d6e2-7c81-91b1-9112830c3b81",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

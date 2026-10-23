@@ -1,0 +1,23 @@
+packages/@n8n/ai-utilities/src/__tests__/utils/follow-redirects.test.ts
+  s_ac2d39a9997295::t_d40de6d58629aa 182-187,194-229
+  s_ac2d39a9997295::t_39fc1a7bd49798 188-193
+packages/@n8n/ai-utilities/src/utils/follow-redirects.ts
+  s_ac2d39a9997295::t_69944f7bf498c3 11-22,25-27
+  s_ac2d39a9997295::t_b040ad62e8645c 69-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1c3a0b5f7d48bb649efb5313dc8235a7e1cd9351",
+  "prompts": {},
+  "sessions": {
+    "s_ac2d39a9997295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c577bfa-f279-4d79-96b1-f69bf0a1ed08",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

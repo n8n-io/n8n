@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_e8b96ca75e92a4::t_d8cc1eda9aa8de 726
+  s_e8b96ca75e92a4::t_def7d68e655e51 490-495,497-499
+  s_e8b96ca75e92a4::t_07f488b3e7779a 239-243
+  s_e8b96ca75e92a4::t_b5f6037241e76f 613-614
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_e8b96ca75e92a4::t_bab2ac7bff6af0 992-997
+  s_e8b96ca75e92a4::t_f8a73351a40e13 958-960
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_e8b96ca75e92a4::t_a90d4285d9efe0 515-520
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_e8b96ca75e92a4::t_af7074fcb72431 107,114-125,129-140
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelState.test.ts
+  s_e8b96ca75e92a4::t_2e241286aea5f3 1
+  s_e8b96ca75e92a4::t_db32824f8708fc 121-169
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  s_e8b96ca75e92a4::t_b3d173839ef411 408-419
+  s_e8b96ca75e92a4::t_7496e50901fec5 633
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.ts
+  s_e8b96ca75e92a4::t_f48cb6d82200d9 1-2,4-5,7,11,20-32,34-37,40,42-50,53-57,60-76,78-79,81-96,109-123,128-131,148-161,167,175,178,181-194,207,212-217,223-229,233-239,243,246
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelState.ts
+  s_e8b96ca75e92a4::t_0f65aff8563009 43-46,49-53,59-62,69-87
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.test.ts
+  s_e8b96ca75e92a4::t_163009385eb449 276-278
+  s_e8b96ca75e92a4::t_44e174b6c11f69 1,3,11,14-15,54,56,59-60,64-69,125-148,155-212,214,227-235,273-275,279-312
+packages/cli/src/modules/instance-ai/__tests__/message-parser.test.ts
+  s_e8b96ca75e92a4::t_fdb16c9f906dac 620-652,654-680
+  s_e8b96ca75e92a4::t_90616402a97fd1 653
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_e8b96ca75e92a4::t_7b83fdfab147fa 1885
+  s_e8b96ca75e92a4::t_51b60c9ddba83a 1804
+  s_e8b96ca75e92a4::t_b20a8125759573 1847-1849
+  s_e8b96ca75e92a4::t_8dafc352882036 1917
+  s_e8b96ca75e92a4::t_30e49d4bdbd090 1947-1963
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "23dc5076bb376da6ad80f23cf6c35541b5f7643c",
+  "prompts": {},
+  "sessions": {
+    "s_e8b96ca75e92a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdaa0091-0080-478a-91a2-a2ed36ea9d01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

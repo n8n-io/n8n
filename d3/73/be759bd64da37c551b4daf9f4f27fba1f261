@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/settings/users/users.store.ts
+  s_65ef45bd984286::t_d01567acea4afa 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d373be759bd64da37c551b4daf9f4f27fba1f261",
+  "prompts": {},
+  "sessions": {
+    "s_65ef45bd984286": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6bf14eab-a3f1-4625-a3fc-3465f0697e9a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/cli/src/active-workflow-manager.ts
+  s_cebe0f5823d4d7::t_ead7912198228c 51,86,867
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_cebe0f5823d4d7::t_ead7912198228c 19,31,52
+packages/cli/src/workflows/triggers/__tests__/non-webhook-trigger-registrar.test.ts
+  s_cebe0f5823d4d7::t_ead7912198228c 7,12,25,54,59
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_cebe0f5823d4d7::t_ead7912198228c 374
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_cebe0f5823d4d7::t_ead7912198228c 11,34,94,149
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_cebe0f5823d4d7::t_ead7912198228c 10,35,54,80-82,100,113,122,136-138,150,160-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bb2ded7095c0d3e5aba87938f985764138ddb6bd",
+  "prompts": {},
+  "sessions": {
+    "s_cebe0f5823d4d7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb7f9-01df-7a20-aa2d-c142caed6ce2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

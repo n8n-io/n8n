@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionReview.tree.test.ts
+  s_983eea3c47ac98::t_b2a24c7a64d079 26,43
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionReview.tree.ts
+  s_983eea3c47ac98::t_17adf80c0daaa1 25-28,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8eedf4a2277d4e8beafacda870a867b23e00bb6",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

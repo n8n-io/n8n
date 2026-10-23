@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_d9a3cc71870f08::t_bbcb4268624ea5 46,462,468,584,590,1425
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_d9a3cc71870f08::t_2ed4f6f4a99234 1084
+  s_d9a3cc71870f08::t_d9bcf4a944c414 588,633,705,839,889,933,979,1183,1265,1304,1351,1400
+  s_d9a3cc71870f08::t_d011c4923a7d17 24,488-491,496-518,668-671
+  s_d9a3cc71870f08::t_e4c23303288b56 519-520
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_d9a3cc71870f08::t_f4d3c546a9468b 150
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_d9a3cc71870f08::t_4984b427baed13 30,476-497,545-549,587-591,1912-1916
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_d9a3cc71870f08::t_d6ca2354ffc25e 31,657-661,664-667,669-672,1306,1323,1347,1398,1440,1533,1545
+  s_d9a3cc71870f08::t_287f747c8b8f99 662-663,668
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "301f67ea97f56a2f6a24eb77e0d2999ce0784768",
+  "prompts": {},
+  "sessions": {
+    "s_d9a3cc71870f08": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "febbf3a8-e0b5-4da6-9542-18ada652b434",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

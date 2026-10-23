@@ -1,0 +1,55 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_adb5d982725a9c::t_dc1ec5adb6124b 68-70
+  s_adb5d982725a9c::t_7737ee214c1ad4 283-296
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_adb5d982725a9c::t_d45f8d50261fb1 310-311
+  s_adb5d982725a9c::t_bb05cd533ea720 387
+  s_adb5d982725a9c::t_76b381b2ce296f 415
+  s_adb5d982725a9c::t_019368933f2869 444
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_adb5d982725a9c::t_b66429dbd4aabe 69
+  s_adb5d982725a9c::t_afb97c42a4fc16 126
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_adb5d982725a9c::t_cb6e837fea1b37 15
+  s_adb5d982725a9c::t_50763638c35cc8 89-92
+  s_adb5d982725a9c::t_333ccf505e4ea9 163
+  s_adb5d982725a9c::t_4603e8fbd86989 234-241,243
+  s_adb5d982725a9c::t_0ff6b0643240fe 267
+  s_adb5d982725a9c::t_28ef55f6f7e761 269-282
+  s_adb5d982725a9c::t_7e3d716d6dd166 374-389,392-398
+  s_adb5d982725a9c::t_9050cae6a5a0eb 402-414
+  s_adb5d982725a9c::t_5a18f710697a64 1295,1306-1309
+  s_adb5d982725a9c::t_687f9b8a81e9c2 2229
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  ai_agent 17-22
+  s_adb5d982725a9c::t_723e7d6f830a9e 28-35
+  s_adb5d982725a9c::t_ad70a08f776a8b 71
+  s_adb5d982725a9c::t_9f6314a08253b6 73
+  s_adb5d982725a9c::t_a800fa9b5e0e6c 557-559
+  s_adb5d982725a9c::t_b96720739aee9c 690
+  s_adb5d982725a9c::t_56134e8af66020 776-778,783-798,801-808
+  s_adb5d982725a9c::t_e5c1292514eff2 779-782,799-800
+  s_adb5d982725a9c::t_e8cbfb6dee6193 1046-1100,1103,1106,1109,1112-1113,1122-1124
+  s_adb5d982725a9c::t_e720c6ef3e80c9 1138-1178
+  s_adb5d982725a9c::t_bd3d9bddbf8aca 2320-2350
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_adb5d982725a9c::t_540375d219aa87 197
+  s_adb5d982725a9c::t_91b47ebb93ea4e 280-295,299-302
+  ai_agent 296-298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dc85dc684871a610079abc6b1bddbf69815a8b0e",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

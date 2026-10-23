@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Discourse/Discourse.node.ts
+  s_2e1fa95fc44f8f::t_baad1473f3f80a 13,25-26,116,210,419-422,425-428
+packages/nodes-base/nodes/Discourse/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_05f7208d0f6019 11-14
+packages/nodes-base/nodes/Discourse/test/Discourse.node.test.ts
+  s_94491444afec95::t_f12248d94c15dd 1,3,8,10,50-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "402f1ee107e8e03aa92ddc1f9e6ee5d9dae121ca",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_94491444afec95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af5b9b50d8f3c8056",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

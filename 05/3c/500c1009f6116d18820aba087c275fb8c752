@@ -1,0 +1,21 @@
+docker/images/n8n-base/Dockerfile
+  s_acb7dd0e5c50b6::t_93b9fa0f5aab7f 3
+.github/workflows/build-base-image.yml
+  s_acb7dd0e5c50b6::t_93b9fa0f5aab7f 35-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "053c500c1009f6116d18820aba087c275fb8c752",
+  "prompts": {},
+  "sessions": {
+    "s_acb7dd0e5c50b6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ea1fc0bd0ffe8WXs7znTkFdQLf",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

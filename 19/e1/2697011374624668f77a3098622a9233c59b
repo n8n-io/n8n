@@ -1,0 +1,74 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  h_7555c3ee6524cf 763,766,797
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  h_7555c3ee6524cf 4-6,41
+  s_bd2c53981ea354::t_a5767b43bb27b9 19-24
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_bd2c53981ea354::t_6b20b516aff7bc 48
+  s_bd2c53981ea354::t_43dab3c969d2d1 697-698,703
+  s_bd2c53981ea354::t_dcb6e14e6bcb9b 749
+  s_bd2c53981ea354::t_e39127f7db750c 757-758
+  s_bd2c53981ea354::t_28c46c055889dc 759
+  s_bd2c53981ea354::t_3978da3eedba7a 786,789-804
+  h_7555c3ee6524cf 787-788
+  s_bd2c53981ea354::t_16c666a35f1849 817
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  h_7555c3ee6524cf 4,41
+  s_bd2c53981ea354::t_2a8bc7fcfce79f 36,38-40
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_bd2c53981ea354::t_897e04dccc65c7 550-553
+  h_7555c3ee6524cf 974
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_bd2c53981ea354::t_4357b40ead4f82 7,232,234,239,245,247,258
+  s_27dcc65e96f9fe::t_3cec3c5316859a 17-21
+  h_7555c3ee6524cf 22
+  s_2e47a32894ad9a::t_8fc298ec3ecdca 119
+  s_bd2c53981ea354::t_ba0f9f82bbfc34 165-167,170-172
+  s_bd2c53981ea354::t_2de97a85a178fa 173,178
+  s_bd2c53981ea354::t_57cebd4391cf16 183,185,190-197,199
+  s_bd2c53981ea354::t_28b9a92cb838ba 222,224-226
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_bd2c53981ea354::t_a8fde876e2ea69 76
+  s_bd2c53981ea354::t_f18e4ccaae9b34 210-211
+  s_bd2c53981ea354::t_dab5bd92a44c0a 320,326-330,332-340
+  s_bd2c53981ea354::t_27ce0a5148a496 331,341-342,517-534,537-554
+  s_bd2c53981ea354::t_01b9f979f231ed 368,370,377,379
+  s_27dcc65e96f9fe::t_6aa1caaecf66c6 440
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "19e12697011374624668f77a3098622a9233c59b",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_27dcc65e96f9fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0810c-13ac-7de2-affe-87c09db0fab9",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_2e47a32894ad9a": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1788789732631",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_bd2c53981ea354": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dae65258-6737-4a15-af4b-bbcfa1bd9afd",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

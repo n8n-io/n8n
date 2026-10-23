@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Coda/test/Coda.node.test.ts
+  s_2e1fa95fc44f8f::t_7fe82088cf0101 1-59
+  s_2e1fa95fc44f8f::t_b8df07efcbc8e0 60-61
+packages/nodes-base/nodes/Coda/Coda.node.ts
+  s_94491444afec95::t_9e82b023819b67 16,26,334,504,529-532,595-598,660-663,724
+packages/nodes-base/nodes/Coda/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_e25847bcd47240 11-14
+packages/nodes-base/nodes/Coda/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_ba1b3997f3ed01 5,41-42,63-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9230d44d5021e26ca256c26d1841fc8cd587b106",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    },
+    "s_94491444afec95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af5b9b50d8f3c8056",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+.github/workflows/sec-sync-bundle-branches.yml
+  s_3cdc0a8a28abe8::t_b9f10d1e9a46e3 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "760389ef3c141d3f846541893de2235f50df0093",
+  "prompts": {},
+  "sessions": {
+    "s_3cdc0a8a28abe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7115f12-66dc-49e8-a339-0778f32315e1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,155 @@
+packages/@n8n/telemetry/src/events/agents.ts
+  s_ef8734a1a9d434::t_d41314e4aab29c 100-124
+  s_ef8734a1a9d434::t_0f3cdcf7672c7e 73-86
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_ef8734a1a9d434::t_2cabf1eaef5bc9 150
+  s_ef8734a1a9d434::t_fbb3da399b20ec 50
+  s_ef8734a1a9d434::t_483f7f26b3195b 324-358
+  s_ef8734a1a9d434::t_59306e7127b2b4 14
+packages/@n8n/db/src/migrations/common/1785500832626-AddSetupCompletedAtToAgents.ts
+  s_ef8734a1a9d434::t_f83f48c6065e8b 4-17
+  s_ef8734a1a9d434::t_5f32b1eca43b59 1-3
+  s_ef8734a1a9d434::t_479695a71f7721 18-19
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_ef8734a1a9d434::t_dd77cc37080161 42-48
+  s_ef8734a1a9d434::t_30648cc9a4ea2c 3
+packages/cli/src/modules/agents/utils/agent-capabilities.ts
+  s_ef8734a1a9d434::t_ce2e12473932ed 1-27,30,37-52
+  s_ef8734a1a9d434::t_50488f99cec924 28-29,31-36
+  s_ef8734a1a9d434::t_a0c331a05c3f84 53-56
+packages/cli/src/modules/agents/agent-setup-completion.service.ts
+  s_ef8734a1a9d434::t_27b6266c51adbf 2-14,16-49,52-59,61-78,81,83-85,88-92,94-123
+  s_ef8734a1a9d434::t_920845a39f1715 1
+  s_ef8734a1a9d434::t_b6fa7c17edda80 79-80,82,86,93
+  s_ef8734a1a9d434::t_fb4e845a499ab0 15
+  s_ef8734a1a9d434::t_dbd5750a59685a 50-51,60
+  s_ef8734a1a9d434::t_d3a13ae69051e3 87
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_ef8734a1a9d434::t_979a55246aa958 5
+  s_ef8734a1a9d434::t_cc2a00b92b63e5 30-33
+  s_ef8734a1a9d434::t_f0e67b1354b5ad 656,662
+  s_ef8734a1a9d434::t_1a9236863d34b8 638,643
+  s_ef8734a1a9d434::t_e772690cb49b80 10-11,14,16
+  s_ef8734a1a9d434::t_795dc9fbba9665 58-59,61-64,668
+  s_ef8734a1a9d434::t_4a08970a8bc9c0 635-637,639-642,644-655,657-661,663-667
+  s_ef8734a1a9d434::t_4110b7c2ead0b6 85,96-97
+  s_ef8734a1a9d434::t_6d74c2e725cf3a 45
+  s_ef8734a1a9d434::t_42fcb32f73e35c 669
+packages/@n8n/db/src/migrations/sqlite/1785500832626-AddSetupCompletedAtToAgents.ts
+  s_ef8734a1a9d434::t_e6cdccb56dc937 1-9
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_ef8734a1a9d434::t_d570060d302680 65
+  s_ef8734a1a9d434::t_a18775ec4d0e8e 463
+packages/cli/test/migration/1785500832626-add-setup-completed-at-to-agents.test.ts
+  s_ef8734a1a9d434::t_90196e3b5cb12b 1-201
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_ef8734a1a9d434::t_0e082dd95cc9ac 43
+  s_ef8734a1a9d434::t_94d3c0e06e731a 19
+  s_ef8734a1a9d434::t_1ebb0f52a3401c 242-250,253
+packages/cli/src/modules/agents/__tests__/agent-setup-completion.service.test.ts
+  s_ef8734a1a9d434::t_dc052b2bff6085 1-190
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_ef8734a1a9d434::t_d74704a9c8ecfd 25
+  s_ef8734a1a9d434::t_e25be4b1d029d5 91
+  s_ef8734a1a9d434::t_f8ddbec0c8cd05 139-148
+  s_ef8734a1a9d434::t_d7cc33c92ec111 186
+docs/generated/postgres-schema/README.md
+  s_ef8734a1a9d434::t_2494236a5d6f58 25,519
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_ef8734a1a9d434::t_b52a3f28d7c96e 77
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_ef8734a1a9d434::t_1ef69496921e2e 58
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_ef8734a1a9d434::t_acf692a8bf8803 56
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_ef8734a1a9d434::t_767b0a08a0e5c6 71
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_ef8734a1a9d434::t_aa5bbaed463ee0 92
+docs/generated/postgres-schema/public.agent_files.md
+  s_ef8734a1a9d434::t_a3ddede8b53e2e 72
+docs/generated/postgres-schema/public.agent_history.md
+  s_ef8734a1a9d434::t_b260d658220759 68
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_ef8734a1a9d434::t_00211a9cf259a4 61
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_ef8734a1a9d434::t_0f90cbbddd245d 57
+docs/generated/postgres-schema/public.agents.md
+  s_ef8734a1a9d434::t_d72ddb78a0a3ef 15,79
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_ef8734a1a9d434::t_38dcd6e088cbeb 84
+docs/generated/postgres-schema/public.agents_memory_entry_cursors.md
+  s_ef8734a1a9d434::t_547ec5bfd600b9 60
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_ef8734a1a9d434::t_735bb21baa8da4 60
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_ef8734a1a9d434::t_423fd30e836b42 76
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_ef8734a1a9d434::t_ccba9e91739250 60
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_ef8734a1a9d434::t_128d950beebd69 64
+docs/generated/postgres-schema/public.agents_observations.md
+  s_ef8734a1a9d434::t_c2daae969d1295 83
+docs/generated/postgres-schema/public.project.md
+  s_ef8734a1a9d434::t_da00ccb40e68df 127
+docs/generated/sqlite-schema/README.md
+  s_ef8734a1a9d434::t_ddfa1e6949f94b 25,162,506
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_ef8734a1a9d434::t_f237ab3250811e 79
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_ef8734a1a9d434::t_44d8be2c13dc30 67
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_ef8734a1a9d434::t_ae383a7e6e55e8 64
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_ef8734a1a9d434::t_c667b39d8893ef 76
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_ef8734a1a9d434::t_805c12e89ff0d9 93
+docs/generated/sqlite-schema/agent_files.md
+  s_ef8734a1a9d434::t_b079e48ca3fc8e 75
+docs/generated/sqlite-schema/agent_history.md
+  s_ef8734a1a9d434::t_88dc26e2bd9f12 75
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_ef8734a1a9d434::t_59dfce88a54d2d 66
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_ef8734a1a9d434::t_bb2feb29bf2afe 64
+docs/generated/sqlite-schema/agents.md
+  s_ef8734a1a9d434::t_c0ca3fa264afff 9,26,36-37,82
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_ef8734a1a9d434::t_12d38f39734861 87
+docs/generated/sqlite-schema/agents_memory_entry_cursors.md
+  s_ef8734a1a9d434::t_5523f44414248c 67
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_ef8734a1a9d434::t_b940eae7ac19aa 67
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_ef8734a1a9d434::t_e4f77314f029c0 79
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_ef8734a1a9d434::t_9e659c544224d5 67
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_ef8734a1a9d434::t_504f77992ea1e5 71
+docs/generated/sqlite-schema/agents_observations.md
+  s_ef8734a1a9d434::t_ca3e752af74c7f 86
+docs/generated/sqlite-schema/project.md
+  s_ef8734a1a9d434::t_6904fc3bbed746 133
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_ef8734a1a9d434::t_06d4f8955c999f 239,481
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "46f35cb1c0bfaa6b5faebc6e688c9d4d1c7d954c",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ef8734a1a9d434": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2384e80-02bf-49f2-bb42-c49c34374e77",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

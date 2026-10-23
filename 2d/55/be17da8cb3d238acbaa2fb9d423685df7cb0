@@ -1,0 +1,82 @@
+packages/@n8n/permissions/src/constants.ee.ts
+  s_61e9a8042cb6ca::t_8055da534034a2 6-10
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_61e9a8042cb6ca::t_f20d0fa2c87629 233-236
+packages/@n8n/api-types/src/dto/ai-preference/ai-preference-request.dto.ts
+  s_61e9a8042cb6ca::t_a5250b7bf0bbdc 1-2,7-21
+  s_61e9a8042cb6ca::t_e91706246d922e 3-6
+packages/cli/src/controllers/ai-preference.controller.ts
+  s_61e9a8042cb6ca::t_f20d0fa2c87629 1-56
+packages/@n8n/api-types/src/schemas/ai-preference.schema.ts
+  s_61e9a8042cb6ca::t_48e7aed1c97878 38-39
+  s_61e9a8042cb6ca::t_12a66247d20e6c 1-3,9-37,40-60
+packages/cli/test/integration/shared/types.ts
+  s_61e9a8042cb6ca::t_f20d0fa2c87629 32
+packages/frontend/editor-ui/src/features/settings/context/context.api.ts
+  s_61e9a8042cb6ca::t_f8e5061ef858a5 1,11,14,17,21,24,28,32,35-36
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_61e9a8042cb6ca::t_11ab46d37d7ca8 71-75,178-182,206-207
+packages/cli/src/server.ts
+  s_61e9a8042cb6ca::t_f20d0fa2c87629 39
+packages/frontend/editor-ui/src/features/settings/context/context.utils.ts
+  s_61e9a8042cb6ca::t_db02ed6a9d95b5 23-24,27,29-30,35-36,42,46-47
+packages/@n8n/api-types/src/dto/ai-preference/ai-preference-list-query.dto.ts
+  s_61e9a8042cb6ca::t_e91706246d922e 11-15
+  s_61e9a8042cb6ca::t_a5250b7bf0bbdc 1-8,16
+packages/frontend/editor-ui/src/features/settings/context/components/PreferencesTable.test.ts
+  s_61e9a8042cb6ca::t_7797d675d1f30d 6-7,10-11,58
+packages/frontend/editor-ui/src/features/settings/context/context.constants.ts
+  s_61e9a8042cb6ca::t_db02ed6a9d95b5 1-2,6-8,10,13
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.test.ts
+  s_61e9a8042cb6ca::t_c8359b5c9a81bd 17
+  s_61e9a8042cb6ca::t_7797d675d1f30d 18,69
+  s_61e9a8042cb6ca::t_7e1372ec7ea745 49-55,260,287
+  s_61e9a8042cb6ca::t_6b82f3a1f3a653 7,67-68,70-71,93,105,113
+  s_61e9a8042cb6ca::t_e91706246d922e 56-61
+  s_61e9a8042cb6ca::t_52e41972a1ba6f 259,286
+packages/@n8n/api-types/src/index.ts
+  s_61e9a8042cb6ca::t_cb27542368b661 125-136
+packages/cli/src/services/ai-preference.service.ts
+  s_61e9a8042cb6ca::t_98adfcb015a097 1-3,5-7,10,12-17,21-26,34-40,51-54,61
+  s_61e9a8042cb6ca::t_bf70f0a1c0a0c0 113-114,118-122
+  s_61e9a8042cb6ca::t_eb4f14cb82ae89 160-162,164
+  s_61e9a8042cb6ca::t_e91706246d922e 28-32,152
+  s_61e9a8042cb6ca::t_48e7aed1c97878 4,293,300-307
+  s_61e9a8042cb6ca::t_28424749685feb 27,33,102-112,115-117,123-151,153-159,163,165-292,294-298
+packages/frontend/editor-ui/src/features/settings/context/context.types.ts
+  s_61e9a8042cb6ca::t_f8e5061ef858a5 1-6,13,15,17-18,25,34
+packages/@n8n/api-types/src/dto/index.ts
+  s_61e9a8042cb6ca::t_cb27542368b661 126-131
+packages/frontend/editor-ui/src/features/settings/context/context.utils.test.ts
+  s_61e9a8042cb6ca::t_c8359b5c9a81bd 7
+  s_61e9a8042cb6ca::t_6a49182edeb5d9 2,34-36,67,75-77,81-83,105,108,110-116,118
+packages/@n8n/db/src/repositories/index.ts
+  s_61e9a8042cb6ca::t_c2adddfd16e6b9 13
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsPreferencesView.test.ts
+  s_61e9a8042cb6ca::t_7e1372ec7ea745 40
+packages/frontend/@n8n/stores/src/rbac.store.ts
+  s_61e9a8042cb6ca::t_c8359b5c9a81bd 18-19
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 15-24
+packages/cli/test/integration/ai-preference.api.test.ts
+  s_61e9a8042cb6ca::t_e91706246d922e 2-301
+packages/@n8n/db/src/repositories/ai-preference.repository.ts
+  s_61e9a8042cb6ca::t_ff7f8a1adaf197 2,9-15,18,67-68,70
+  s_61e9a8042cb6ca::t_7d20971dc71648 21-23,38-52,54-66,69,71-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d55be17da8cb3d238acbaa2fb9d423685df7cb0",
+  "prompts": {},
+  "sessions": {
+    "s_61e9a8042cb6ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d53bf96-ca9f-4ff2-8ba4-e5920c97ca99",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

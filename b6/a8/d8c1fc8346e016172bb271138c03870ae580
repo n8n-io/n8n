@@ -1,0 +1,78 @@
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
+  s_44aa9c6c181fe5::t_bc7c19569828fe 14-15,20-29,48-69
+  s_44aa9c6c181fe5::t_d60d8421bd19ed 294-317,319-333,335-348,350-369,371-394,396-400,402-415,417-420,422-428,485-510,512-522,524-536,538-560,562-565,567-574,622-623,627
+  s_44aa9c6c181fe5::t_763c80878bca40 35
+  s_44aa9c6c181fe5::t_9fef4984f9d4c3 599-621
+  s_44aa9c6c181fe5::t_b6c7430c0db25d 429-461
+  s_44aa9c6c181fe5::t_cedd4232062c63 318,334,349,370,395,401,416,421,511,523,537,561,566
+  s_44aa9c6c181fe5::t_9d6163b20c27d1 462-484
+  s_44aa9c6c181fe5::t_184a220c592931 575-598
+  s_44aa9c6c181fe5::t_53fda303bbb090 1
+  s_44aa9c6c181fe5::t_3cae509496c629 10
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_44aa9c6c181fe5::t_8f763129e0c76a 86-90
+  s_44aa9c6c181fe5::t_a74b2aa7260baf 15-16
+packages/@n8n/cli/src/commands/package/import.ts
+  s_44aa9c6c181fe5::t_023b876b5dd22f 39
+packages/cli/src/modules/n8n-packages/entities/credential/type-only-credential-matcher.ts
+  s_44aa9c6c181fe5::t_3e658ca3619f95 1-11,13-22,24-32,36,42-45
+  s_44aa9c6c181fe5::t_ee1cf019a42888 33,37
+  s_44aa9c6c181fe5::t_43d6cf8fdf486d 23,38,40-41
+  s_44aa9c6c181fe5::t_c9a2ef30a5f300 12,34-35,39
+packages/cli/src/modules/n8n-packages/entities/credential/name-and-type-credential-matcher.ts
+  s_44aa9c6c181fe5::t_e6efbd79105eea 12,34-35,39
+  s_44aa9c6c181fe5::t_cb767dee67d621 23,38,40
+  s_44aa9c6c181fe5::t_e8883cb9c225ea 1-9,11,13-22,24-32,44-46
+  s_44aa9c6c181fe5::t_31f7980aa65e14 33,37
+  s_44aa9c6c181fe5::t_86800024f5193e 10
+  s_44aa9c6c181fe5::t_c0d7585f59fcde 36,41
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_44aa9c6c181fe5::t_f455a3dee377c8 68-71
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_44aa9c6c181fe5::t_070418fdaeba74 57-58,62-67
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher-factory.ts
+  s_44aa9c6c181fe5::t_1ecf41f9e7e6e2 7-8,15-19,23-24
+packages/cli/src/modules/n8n-packages/entities/credential/id-based-credential-matcher.ts
+  s_44aa9c6c181fe5::t_dee6c08c25da28 31,34
+  s_44aa9c6c181fe5::t_56f3b61b9389ad 11,32-33
+  s_44aa9c6c181fe5::t_a570b534d5eeda 21
+  s_44aa9c6c181fe5::t_e1dc3b995bd52a 40-41,43
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_44aa9c6c181fe5::t_3647d3375ba8bf 80-92,96
+  s_44aa9c6c181fe5::t_adc0083703a715 79
+packages/@n8n/cli/docs/commands/package.md
+  s_44aa9c6c181fe5::t_c950a64b3f73d7 49
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_44aa9c6c181fe5::t_9a51cff44fcb14 97
+  s_44aa9c6c181fe5::t_7e702c57875be9 44
+  s_44aa9c6c181fe5::t_41781feeb7f0a9 55-60
+  s_44aa9c6c181fe5::t_736330edafc604 64
+  s_44aa9c6c181fe5::t_1168c14362a184 96,101-102,105-141
+  s_44aa9c6c181fe5::t_73d7f90a015660 5,21-24
+  s_44aa9c6c181fe5::t_004e075a959785 104
+  s_44aa9c6c181fe5::t_0b623d8d3b9388 53-54,61,63,65
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-tier-selection.test.ts
+  s_44aa9c6c181fe5::t_7c15a0770c695f 1-3,8,26,31,34,43,46,51-52,68
+  s_44aa9c6c181fe5::t_c5ac80dbbe9e5b 4-7,9-25,27-30,32-33,35-42,44-45,47-50,53-67,69-86
+packages/cli/src/modules/n8n-packages/entities/credential/credential-tier-selection.ts
+  s_44aa9c6c181fe5::t_8e935112de1b64 1,22,24-25,27,31
+  s_44aa9c6c181fe5::t_06d4fec4c5fad3 2-21,23,26,28-29,32-36
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_44aa9c6c181fe5::t_ab4235b2a3bd2f 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b6a8d8c1fc8346e016172bb271138c03870ae580",
+  "prompts": {},
+  "sessions": {
+    "s_44aa9c6c181fe5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8180d614-59ae-47fa-b7fc-39ddeb518c57",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,101 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_435b1d7d3e52c0 2780
+  s_30379ea98b17ae::t_fe9ac0636c5e0d 2740
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_30379ea98b17ae::t_ad6509fc37db72 81
+  s_30379ea98b17ae::t_e126af6e88a302 68-80,82-85
+packages/cli/test/integration/public-api/oauth-consent-scopes.test.ts
+  s_4326108884f490::t_8040583d3a9617 62-69
+  s_4326108884f490::t_1e1d3169e91d94 1-61,70-177,179-204
+  s_4326108884f490::t_cae538fd1252a1 178
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_4326108884f490::t_49d2ea9e9d3933 103-106
+  s_4326108884f490::t_444250ecaa3648 15-17,23-24
+  s_4326108884f490::t_75f1c9367223eb 34-37,44-47
+  s_4326108884f490::t_e02e380ba9e798 101-102,107-132
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_4326108884f490::t_49d2ea9e9d3933 16
+  h_435b1d7d3e52c0 153,257,302,305-320,324
+packages/@n8n/db/src/entities/types-db.ts
+  s_4326108884f490::t_5ba551204bf75a 22
+  s_4326108884f490::t_49d2ea9e9d3933 479
+  h_435b1d7d3e52c0 480
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.test.ts
+  s_4326108884f490::t_f831aec7bdb9f9 33
+  s_4326108884f490::t_a728eac8d013b9 142-168
+  s_4326108884f490::t_1571143a6fbd6d 11
+  s_4326108884f490::t_d7a241d3f0e269 58-66,70
+packages/cli/src/modules/inbound-auth-core/__tests__/public-api-oauth.strategy.test.ts
+  s_4326108884f490::t_016e4b048b138a 15-22,150-153
+  s_4326108884f490::t_e3962923d51044 1-14,24-149,154-194,196-198,201-202,205,207-212,214-215,218-221,249-251,254-262
+  s_4326108884f490::t_ef0741e3616628 206,213,253
+  s_30379ea98b17ae::t_9d9d5547b6551b 226-230
+  s_30379ea98b17ae::t_4e2a7049ad7298 195,199-200,203-204,216-217,222-225,231-248,252
+  s_4326108884f490::t_0dacf706cc196d 23
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_30379ea98b17ae::t_fe9ac0636c5e0d 257-264,287,289,294,296
+packages/cli/test/integration/public-api/oauth-bearer.test.ts
+  s_4326108884f490::t_1376988e006eb0 128-133,135-140,148-151
+  s_4326108884f490::t_8040583d3a9617 126,159
+  s_4326108884f490::t_cae538fd1252a1 142,160,162,164-166,172
+  s_4326108884f490::t_016e4b048b138a 11-12
+  s_4326108884f490::t_4d96d541a42e58 1,3-10,13-38,40-105,175-176
+  s_4326108884f490::t_137bb24458336a 2,39,106-125,127,134,141,143-147,152-158,161,163,167-171,173-174
+packages/cli/src/modules/inbound-auth-core/public-api-protected-resource.ts
+  s_4326108884f490::t_c351b09bc0e608 2-4
+  h_435b1d7d3e52c0 6-7,16-19,29-30,34,38,42-46
+  s_30379ea98b17ae::t_47ba08b536ffb2 1,20-21
+  s_4326108884f490::t_cd9054d4be55fd 5,8-15,22-28,31-33,35-37,39-41,47-48
+packages/cli/src/modules/inbound-auth-core/authentication-pipeline.ts
+  h_435b1d7d3e52c0 33-39
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication-pipeline.test.ts
+  s_4326108884f490::t_6d454c0c6302ff 177-184
+  s_4326108884f490::t_5d2dcd20c594c3 61,73-98
+  s_4326108884f490::t_ef69b78c6374c7 44
+  s_4326108884f490::t_44844afdd76104 99-100
+packages/cli/src/modules/inbound-auth-core/public-api-oauth.strategy.ts
+  h_435b1d7d3e52c0 6-8,41,44-81,84,86-89,91-96
+  s_4326108884f490::t_eb1a09df4422f9 1-5,9,16-21,26-40,42-43,97-98
+  s_30379ea98b17ae::t_9d9d5547b6551b 10-15
+  s_30379ea98b17ae::t_47ba08b536ffb2 22-25,82-83,85,90
+packages/cli/src/modules/oauth-server/dto/approve-consent-request.dto.ts
+  h_435b1d7d3e52c0 6
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  h_435b1d7d3e52c0 72-79
+  s_4326108884f490::t_49d2ea9e9d3933 17-18
+  s_4326108884f490::t_c0340b880f7fd1 19
+packages/cli/src/modules/inbound-auth-core/__tests__/public-api-protected-resource.test.ts
+  s_4326108884f490::t_9647ee5f875aca 36-38,40-41
+  s_30379ea98b17ae::t_9d9d5547b6551b 18-22,50-54,56-58,62-64
+  s_30379ea98b17ae::t_4e2a7049ad7298 4-5,16-17,23-24,35,39,42-49,55,59-61
+  s_4326108884f490::t_42c76c24becd4b 1-3,6-15,25-34,65-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "062f0815f7f402264d0f90b1ff314e4156e0f518",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_30379ea98b17ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "572272de-af7b-4e3f-bd95-8859ad0ba493",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_4326108884f490": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "096da2e0-d58a-4276-98bc-ddfa6e32bc5f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

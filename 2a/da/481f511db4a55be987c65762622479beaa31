@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_ecdf2f2961dcf9::t_d78e0a344093ba 94-95,109
+  s_ecdf2f2961dcf9::t_e61c00e230a1d0 129-132
+  s_ecdf2f2961dcf9::t_3b0649aeba4a9f 30,36,40
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_ecdf2f2961dcf9::t_ed64ca3c0fec2d 250,263,269-272
+packages/cli/src/modules/agents/__tests__/agent-update-broadcaster.test.ts
+  s_ecdf2f2961dcf9::t_15c1c2dfb845d7 40,46,53,58,64
+  s_ecdf2f2961dcf9::t_17762c0d5bef4f 42-44
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_ecdf2f2961dcf9::t_963f2b6ffd43e5 196-197,199-202,207,223-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2ada481f511db4a55be987c65762622479beaa31",
+  "prompts": {},
+  "sessions": {
+    "s_ecdf2f2961dcf9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0475ca00-eb98-4b38-b867-bbb22a8bcde4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

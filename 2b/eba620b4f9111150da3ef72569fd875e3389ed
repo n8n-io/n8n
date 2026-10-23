@@ -1,0 +1,50 @@
+packages/frontend/@n8n/frontend-module-sdk/src/commandRegistry.test.ts
+  s_fd88e3166bde43::t_7e94df2ad89fbb 1-3,5-67
+  s_fd88e3166bde43::t_74a7e9c6bf44ba 4
+packages/frontend/@n8n/frontend-module-sdk/src/locale.ts
+  s_fd88e3166bde43::t_d28e55650caa35 1-5
+packages/frontend/@n8n/frontend-module-sdk/src/pushHandlerRegistry.ts
+  s_fd88e3166bde43::t_1f24379e0c22a2 1-52
+packages/frontend/@n8n/frontend-module-sdk/src/commandRegistry.ts
+  s_fd88e3166bde43::t_f76205d5b5d953 1-51
+packages/frontend/@n8n/frontend-module-sdk/src/setup.ts
+  s_fd88e3166bde43::t_110b01b4e46cb6 1-16
+packages/frontend/@n8n/frontend-module-sdk/src/banner.ts
+  s_fd88e3166bde43::t_51ceeb68ba2584 1-12
+packages/frontend/@n8n/frontend-module-sdk/src/shortcut.ts
+  s_fd88e3166bde43::t_f6dc00ecdff35e 1-9
+packages/frontend/@n8n/frontend-module-sdk/src/command.ts
+  s_fd88e3166bde43::t_4be369785f6464 1-18
+packages/frontend/@n8n/frontend-module-sdk/src/descriptor.test.ts
+  s_fd88e3166bde43::t_c972825ccf95b3 1-46
+packages/frontend/@n8n/frontend-module-sdk/src/module.types.ts
+  s_fd88e3166bde43::t_010dbbca873f28 45-51,66-80
+  s_fd88e3166bde43::t_9d529c7e2f31b7 5-11
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_fd88e3166bde43::t_042be39db19c7a 21
+packages/frontend/@n8n/frontend-module-sdk/src/push.ts
+  s_fd88e3166bde43::t_05a8b5510200e2 1-30
+packages/frontend/@n8n/frontend-module-sdk/src/index.ts
+  s_fd88e3166bde43::t_0fa51076608497 2-8,11-12
+packages/frontend/@n8n/frontend-module-sdk/src/pushHandlerRegistry.test.ts
+  s_fd88e3166bde43::t_77b89118878ba5 1-4,6-75
+  s_fd88e3166bde43::t_74a7e9c6bf44ba 5
+pnpm-lock.yaml
+  s_fd88e3166bde43::t_f4a9fe7c56ccb8 5102-5104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2beba620b4f9111150da3ef72569fd875e3389ed",
+  "prompts": {},
+  "sessions": {
+    "s_fd88e3166bde43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f2ad785-b48e-41b7-99c4-c11bb72bed21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

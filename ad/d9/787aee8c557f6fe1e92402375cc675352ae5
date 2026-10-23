@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/tools/__tests__/input-data-tool.test.ts
+  s_bb17b049fc2e2d::t_316a3074943c0d 41-46
+packages/cli/src/modules/agents/tools/workflow-context-tool.ts
+  s_bb17b049fc2e2d::t_4dacd6a8e3e6aa 50-55,61-64
+packages/cli/src/modules/agents/tools/input-data-tool.ts
+  s_bb17b049fc2e2d::t_baff0116c40622 34-39,44-47
+packages/cli/src/modules/agents/tools/__tests__/workflow-context-tool.test.ts
+  s_bb17b049fc2e2d::t_76dd5ce167423a 52-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "add9787aee8c557f6fe1e92402375cc675352ae5",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

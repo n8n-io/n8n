@@ -1,0 +1,39 @@
+packages/@n8n/instance-ai/src/utils/eval-agents.ts
+  s_77a32fd9603843::t_c92860c6dec484 5-6,138
+packages/@n8n/instance-ai/src/agent/__tests__/apply-agent-thinking.test.ts
+  s_77a32fd9603843::t_77d706885d37c6 1-68
+packages/@n8n/instance-ai/src/utils/__tests__/eval-agents.test.ts
+  s_77a32fd9603843::t_147e58d1f9af5e 6,15,72,80-82,104-107
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_77a32fd9603843::t_30dd36e7ddf6b7 14,37,625,627,641-644,647,664
+packages/frontend/editor-ui/src/features/agents/provider-capabilities.ts
+  s_77a32fd9603843::t_75ca90df03b802 3,6
+packages/@n8n/instance-ai/src/agent/apply-agent-thinking.ts
+  s_77a32fd9603843::t_77d706885d37c6 1-50
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_77a32fd9603843::t_409868f27b0cbe 8,193
+packages/@n8n/instance-ai/src/index.ts
+  s_77a32fd9603843::t_c5ceb7d04566f9 6,94-96,290-292
+  s_77a32fd9603843::t_d63c9fc492b3af 293
+packages/frontend/editor-ui/src/features/agents/__tests__/provider-capabilities.test.ts
+  s_77a32fd9603843::t_c13b6e1157aa09 3-7,10-20,47-62,65-66
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_77a32fd9603843::t_75ca90df03b802 51,60,66,72,77-83,86-87
+  s_77a32fd9603843::t_aca093a8b38a6e 88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fdd506ebe32931e21ab2c235ccca3aa2b772e528",
+  "prompts": {},
+  "sessions": {
+    "s_77a32fd9603843": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3e4-3e06-77d3-b1b7-6e9670e39416",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

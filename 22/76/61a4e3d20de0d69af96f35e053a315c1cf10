@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  s_f22a30eb938e0c::t_b97324e13b22f4 30-31,44-46,49,52
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_f22a30eb938e0c::t_b97324e13b22f4 126,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "227661a4e3d20de0d69af96f35e053a315c1cf10",
+  "prompts": {},
+  "sessions": {
+    "s_f22a30eb938e0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "089345ba-a85e-46fe-a596-b06a86f1735f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

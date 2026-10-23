@@ -1,0 +1,21 @@
+packages/@n8n/eslint-config/src/rules/no-aws-credential-discovery-imports.ts
+  s_4c9018992022bf::t_a884932106014b 6-17
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_4c9018992022bf::t_49bd12d1f1b099 48-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "c0ec6990f4376531dcb58744fda1cf091dff7fbf",
+  "prompts": {},
+  "sessions": {
+    "s_4c9018992022bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2e73215-528d-402b-98e1-c147c0745f14",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

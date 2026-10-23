@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_8bd971f0249c00::t_c4c44efc840671 625-641,643,645-648
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_8bd971f0249c00::t_92c49a17a2ef5a 26-31,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b14362c78624f165431bb615816aa6ee2f7d93bf",
+  "prompts": {},
+  "sessions": {
+    "s_8bd971f0249c00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39d0ad99-925e-4b24-a319-649f0cc67103",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

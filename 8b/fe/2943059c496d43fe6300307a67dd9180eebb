@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Kafka/test/Kafka.node.test.ts
+  s_735f9a4c4c1dfb::t_f5284aa9c8e78a 152-161
+  s_735f9a4c4c1dfb::t_ec68afb5b74906 12-15,29
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_735f9a4c4c1dfb::t_740095443ad396 848-859
+packages/nodes-base/nodes/Kafka/Kafka.node.ts
+  s_735f9a4c4c1dfb::t_2433cfa965858f 338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "8bfe2943059c496d43fe6300307a67dd9180eebb",
+  "prompts": {},
+  "sessions": {
+    "s_735f9a4c4c1dfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b0175ca-8a59-4a53-bf5a-f19341d35d71",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

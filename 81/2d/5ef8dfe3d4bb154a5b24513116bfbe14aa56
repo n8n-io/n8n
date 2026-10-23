@@ -1,0 +1,22 @@
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_b6b8132944ba17::t_b17f15ecff5b5f 357
+  s_b6b8132944ba17::t_61d0ddeb528822 380-387,390-398
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_b6b8132944ba17::t_f82a64616ab9f2 381-400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "812d5ef8dfe3d4bb154a5b24513116bfbe14aa56",
+  "prompts": {},
+  "sessions": {
+    "s_b6b8132944ba17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4904e28-9ec0-4c99-ac1d-37c6dead1548",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

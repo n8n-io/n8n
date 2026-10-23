@@ -1,0 +1,21 @@
+packages/testing/playwright/tests/e2e/auth/authenticated.spec.ts
+  s_6f28304d279527::t_29d91f41153902 2,10-19,24-35,39-40
+  s_6f28304d279527::t_e116e256a46cad 21-23
+  s_6f28304d279527::t_596df7372c1b4f 36,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f08c5b6c7bb0a7a8ee4ba1007b515b2e5397b415",
+  "prompts": {},
+  "sessions": {
+    "s_6f28304d279527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c4cc17d7-7be6-4f00-8d0b-ab721f0a6cf2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

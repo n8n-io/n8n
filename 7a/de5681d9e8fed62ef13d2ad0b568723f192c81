@@ -1,0 +1,26 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_ab136783d4b7cd::t_773569e8299dc6 773-818
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_ab136783d4b7cd::t_4867f06c2980a0 271-276,285,300,308
+  ai_agent 551-552
+packages/@n8n/agents/src/runtime/memory/strip-orphaned-tool-messages.ts
+  s_ab136783d4b7cd::t_cb850ff22e4096 5-7,23-29,31-32,35,37-39,47-50
+packages/@n8n/agents/src/runtime/__tests__/strip-orphaned-tool-messages.test.ts
+  s_ab136783d4b7cd::t_cb850ff22e4096 247-271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ade5681d9e8fed62ef13d2ad0b568723f192c81",
+  "prompts": {},
+  "sessions": {
+    "s_ab136783d4b7cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dba9ea80-23c4-4773-97c9-b0c0d10f8293",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

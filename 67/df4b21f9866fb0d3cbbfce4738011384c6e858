@@ -1,0 +1,28 @@
+packages/@n8n/frontend-vite-config/aliases.ts
+  s_b16d9cff6a0c43::t_8c1a77f8f943a7 37-38
+  s_b16d9cff6a0c43::t_dd6e6b79795b1e 20
+  s_b16d9cff6a0c43::t_83578f080fe1cc 46
+  s_b16d9cff6a0c43::t_d86135d574e2f7 7-8
+  s_b16d9cff6a0c43::t_2c1b0d5aa988c3 23-24
+packages/@n8n/frontend-vite-config/source-packages.ts
+  s_b16d9cff6a0c43::t_9e21752d635964 47-48
+  s_b16d9cff6a0c43::t_8711e2067d808a 36-38
+  s_b16d9cff6a0c43::t_1fdb6893c90706 66
+  s_b16d9cff6a0c43::t_3c9b9a74558c39 6,8-10,12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "67df4b21f9866fb0d3cbbfce4738011384c6e858",
+  "prompts": {},
+  "sessions": {
+    "s_b16d9cff6a0c43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9338d94b-bf0c-42b9-b72e-92b2fb8127ce",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+packages/cli/src/modules/oauth-server/__tests__/oauth-grant.service.integration.test.ts
+  s_1c953e0b08c977::t_ead690722d39fe 196,294,304
+packages/cli/src/modules/ldap.ee/README.md
+  s_1c953e0b08c977::t_f999aff115224f 87-88,92
+  s_1c953e0b08c977::t_00e606ccb656cc 93
+packages/@n8n/api-types/src/dto/ldap/__tests__/ldap-configuration.dto.test.ts
+  s_1c953e0b08c977::t_4906c799f5b25b 1-2
+  s_1c953e0b08c977::t_04080400497e3f 36,39-52
+packages/@n8n/api-types/src/dto/ldap/ldap-configuration-public.dto.ts
+  s_1c953e0b08c977::t_6b0e3626ef3668 78-81
+  s_1c953e0b08c977::t_6661a7992833ce 37-39
+packages/cli/test/integration/ldap/ldap.api.test.ts
+  s_1c953e0b08c977::t_e95f8168d0bb31 721-754
+  s_1c953e0b08c977::t_44fe24b4095aab 390-421
+packages/cli/src/modules/ldap.ee/__tests__/ldap.service.test.ts
+  s_1c953e0b08c977::t_247ae6db9947d4 264,266-273
+  s_1c953e0b08c977::t_b182114884e065 399-415,417,446-454
+  s_1c953e0b08c977::t_10d85f4e9758b2 265,416
+  s_1c953e0b08c977::t_ead690722d39fe 97,1390
+  s_1c953e0b08c977::t_7421f65494c139 418-445
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1c953e0b08c977::t_ede172f8c6d9fc 6035-6036
+packages/cli/src/modules/ldap.ee/ldap.service.ee.ts
+  s_1c953e0b08c977::t_adf4a2ceafdd56 499
+  s_1c953e0b08c977::t_3492bec01bbca7 512
+  s_1c953e0b08c977::t_80fd3c505b6fb8 484-489
+  s_1c953e0b08c977::t_6705a8142c2931 117-119
+  s_1c953e0b08c977::t_1735c42a422fea 50-53
+  s_1c953e0b08c977::t_2b17f31213c8fb 468,473
+  s_1c953e0b08c977::t_e16b658e2a1c15 125-127,130-132,135-141
+  s_1c953e0b08c977::t_b8d346ae3032a0 469-471
+  s_1c953e0b08c977::t_7d178ae70e21fa 6
+  s_1c953e0b08c977::t_54d8313cbe9e86 574-596
+  s_1c953e0b08c977::t_81149bee595c31 664-672
+  s_1c953e0b08c977::t_4c8cf63f7248b0 142
+packages/cli/src/modules/ldap.ee/__tests__/ldap.controller.ee.test.ts
+  s_1c953e0b08c977::t_ead690722d39fe 36
+packages/cli/src/modules/ldap.ee/__tests__/helpers.test.ts
+  s_1c953e0b08c977::t_ead690722d39fe 192,239,276,318,359
+  s_1c953e0b08c977::t_3c29acabfb091d 117-153
+packages/@n8n/constants/src/index.ts
+  s_1c953e0b08c977::t_9d9efa93f24f34 117-121
+  s_1c953e0b08c977::t_bcbea472ec5d95 145
+packages/@n8n/api-types/src/dto/ldap/ldap-configuration-public.openapi.ts
+  s_1c953e0b08c977::t_9649e4ad57ce76 87-91
+packages/frontend/@n8n/rest-api-client/src/api/ldap.ts
+  s_1c953e0b08c977::t_ede172f8c6d9fc 48
+packages/cli/src/modules/ldap.ee/constants.ts
+  s_1c953e0b08c977::t_6beb091b18b2eb 73-75
+  s_1c953e0b08c977::t_34f2c257d2e11d 114
+packages/frontend/editor-ui/src/features/settings/sso/views/SettingsLdapView.vue
+  s_1c953e0b08c977::t_ede172f8c6d9fc 61,179,572-578
+  s_1c953e0b08c977::t_af2dfeaae8ede8 579-582
+packages/cli/src/modules/ldap.ee/helpers.ee.ts
+  s_1c953e0b08c977::t_2e852f9378372a 176,185-186,192-193
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateLdapConfiguration.generated.yml
+  s_1c953e0b08c977::t_40a36b6d590aa4 97-100
+packages/cli/src/public-api/v1/shared/spec/schemas/ldapConfigurationPublicDto.generated.yml
+  s_1c953e0b08c977::t_9fea4630552c67 86-89,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9361590a6c442ffe9ffabbf2a8ce34aead99d3fd",
+  "prompts": {},
+  "sessions": {
+    "s_1c953e0b08c977": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "271de31e-c31a-4998-89ef-c1c819906c18",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

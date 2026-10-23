@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Kafka/v2/transport/admin.ts
+  s_fd1f599c048758::t_522424bb3e9f61 7
+  s_fd1f599c048758::t_4e91a93d96d8ae 136-138
+  s_fd1f599c048758::t_0e2b2602d58acd 23-28
+  s_fd1f599c048758::t_fa4dbd7c63ab30 29-32
+  s_fd1f599c048758::t_61758dd20ae621 139-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0112076f4181e0586fdeb4c8d676475dfc2222dc",
+  "prompts": {},
+  "sessions": {
+    "s_fd1f599c048758": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e494b28e-7553-4399-9ec6-66db2950ac5e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

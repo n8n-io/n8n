@@ -1,0 +1,19 @@
+packages/cli/src/modules/__tests__/main-only-modules.test.ts
+  s_60f5633681e4e3::t_a594e29d95ee32 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ced6bb1f37e414c14c87ca29a75bc44dfa095e1",
+  "prompts": {},
+  "sessions": {
+    "s_60f5633681e4e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "233f5aab-347d-4e5c-a26e-befd59b0253f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

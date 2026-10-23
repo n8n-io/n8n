@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  s_31113b68959a1b::t_21d683cee13754 51-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c1f2fa51de0e46de282b8680aa897f894fab5d15",
+  "prompts": {},
+  "sessions": {
+    "s_31113b68959a1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87d3ead0-6e51-48ec-bd0f-66f2412b1ae9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

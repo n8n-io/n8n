@@ -1,0 +1,11 @@
+packages/cli/src/evaluation.ee/test-runner/__tests__/test-runner.service.ee.test.ts
+  ai_agent 2697-2739
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  ai_agent 612-630
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "977c20cea104b2b2f86e9558feab3593fae8cf48",
+  "prompts": {}
+}

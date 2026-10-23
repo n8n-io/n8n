@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_a1c4aafd7954bc::t_f5ca0251b08b67 473-490,492-494,514-517
+  s_a1c4aafd7954bc::t_f9f0f8b7f7158c 428-439,444-448,450-457,491,497-508
+  s_a1c4aafd7954bc::t_d8221619956c09 405-410
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_a1c4aafd7954bc::t_ff1e5db5cdd1be 1950-1960
+  s_a1c4aafd7954bc::t_03bdb62d034cdb 1910-1949,1961-1990,1994-2117
+  s_a1c4aafd7954bc::t_a4932597125789 1991-1993
+  s_a1c4aafd7954bc::t_e4253f69bc449a 1831-1832
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d354c87c65443cb18a47ccf197d886244f8ca166",
+  "prompts": {},
+  "sessions": {
+    "s_a1c4aafd7954bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b56cb72-36c3-4d3e-a4bb-c508f92690e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

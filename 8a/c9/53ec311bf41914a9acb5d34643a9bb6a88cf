@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_220038b2328800::t_7ce91de81bf850 37
+scripts/lint-parity/oxlint-parity.mjs
+  s_220038b2328800::t_7ce91de81bf850 116-125,140-142,169-171,207-208
+  s_220038b2328800::t_be22d1611506e6 168
+packages/@n8n/syslog-client/src/constants.ts
+  s_220038b2328800::t_9541243d25492e 22
+scripts/lint-parity/samples.json
+  s_220038b2328800::t_7ce91de81bf850 27
+turbo.json
+  s_220038b2328800::t_7ce91de81bf850 60,62,65-77,87-88,90-101
+  s_220038b2328800::t_59bd145a497dec 83-86,89
+  s_220038b2328800::t_be22d1611506e6 102-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ac953ec311bf41914a9acb5d34643a9bb6a88cf",
+  "prompts": {},
+  "sessions": {
+    "s_220038b2328800": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f32f268e5ffecxHS8Ci9w6d9ID",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

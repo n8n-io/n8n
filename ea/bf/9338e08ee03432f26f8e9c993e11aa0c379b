@@ -1,0 +1,46 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_c55aa458ab734f::t_a6e90c30edbaa1 2412,2420,2428
+packages/@n8n/db/src/services/auth.roles.service.ts
+  s_c55aa458ab734f::t_7110ba2a961743 149-162,194,205
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_c55aa458ab734f::t_a6e90c30edbaa1 1203,1219,1234
+packages/@n8n/config/src/configs/canvas-only.config.ts
+  s_c55aa458ab734f::t_ea52a40cf8a451 1-47
+packages/@n8n/config/src/configs/__tests__/canvas-only.config.test.ts
+  s_c55aa458ab734f::t_b78b13c40b8702 1-88
+packages/@n8n/config/src/index.ts
+  s_c55aa458ab734f::t_9ac2099590031b 96-100
+  s_c55aa458ab734f::t_c4358881bd2763 11
+  s_c55aa458ab734f::t_15cea7a4ca3b10 278-279
+packages/@n8n/config/test/config.test.ts
+  s_c55aa458ab734f::t_97299717b14a3c 81-84
+packages/cli/src/services/frontend.service.ts
+  s_c55aa458ab734f::t_413244f69ee210 436
+packages/cli/src/services/__tests__/auth.roles.service.test.ts
+  s_c55aa458ab734f::t_f2b5945e4fdfdd 3,47-49,126-127,634,648-650,654,657-659,669-671,675,681-683,690-692
+packages/cli/test/integration/auth-roles-canvas-only.test.ts
+  s_c55aa458ab734f::t_42b6b1d0d14ed0 1-128
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_c55aa458ab734f::t_f73dccf298d139 176,181-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "eabf9338e08ee03432f26f8e9c993e11aa0c379b",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c55aa458ab734f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "492f19db-bc2b-47fe-a909-dd830cf8d43b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

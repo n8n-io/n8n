@@ -1,0 +1,49 @@
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.service.ee.ts
+  s_03d816ea3ae9c9::t_65c9c203c56e96 86
+  s_03d816ea3ae9c9::t_a8ab629b164191 52
+  h_5d40c27a8fdfd1 113
+  s_03d816ea3ae9c9::t_4ea341b50323a5 20-21
+  s_03d816ea3ae9c9::t_23a17300ac0f31 112,114-122
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_03d816ea3ae9c9::t_f945d7bae8b047 45
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.controller.ee.test.ts
+  s_03d816ea3ae9c9::t_e3d92ba95a5175 112
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.service.ee.test.ts
+  s_03d816ea3ae9c9::t_9ed7e70c4da748 8-9,22,28,31
+  s_03d816ea3ae9c9::t_6d2442f6532e16 90,92-95,99-106,114,151,154,166,169
+  s_03d816ea3ae9c9::t_fc48d9aa2fe692 32
+  s_03d816ea3ae9c9::t_d0b138474711ef 87-89
+  s_03d816ea3ae9c9::t_a3d039af10e9a4 91
+  s_03d816ea3ae9c9::t_30bba0641cb363 107-108
+  s_03d816ea3ae9c9::t_1d34d98f0dd82b 115-117
+  s_03d816ea3ae9c9::t_d52e04164d8aec 148-150
+  s_03d816ea3ae9c9::t_a586cae272dfc8 152-153
+  s_03d816ea3ae9c9::t_6cf5e0917afe45 155
+  s_03d816ea3ae9c9::t_66c05d3adee457 163-165
+  s_03d816ea3ae9c9::t_0bf303f52e983c 167-168
+  s_03d816ea3ae9c9::t_6826a433400c91 170-172
+  h_5d40c27a8fdfd1 118-123,131-139,147,181-190,221-229,244-250,277-286,316-325,355-362,406-414,468-475,514-522
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.controller.ee.ts
+  s_03d816ea3ae9c9::t_522610f0221f55 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d49d1db33ed00a3ba4c0ad1182e4cf4e1f4c8813",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

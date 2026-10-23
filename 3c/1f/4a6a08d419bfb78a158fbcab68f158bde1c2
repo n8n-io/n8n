@@ -1,0 +1,49 @@
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting-scheduler.service.test.ts
+  s_eeeebf4357b002::t_99c90445147626 1
+  s_eeeebf4357b002::t_cb7ff5202b2634 187
+  s_eeeebf4357b002::t_ecfdee7d1815d7 2-27,30-34,36-176,178-182,189-190,192-271
+  s_eeeebf4357b002::t_637f7ef2b7c229 28-29,35
+  s_eeeebf4357b002::t_6c671f7b3afeec 177,183-186,188,191
+packages/cli/src/modules/instance-reporting/instance-reporting.service.ts
+  s_eeeebf4357b002::t_aa6a0b71b28047 1-2,6,15,17-20
+packages/cli/src/modules/instance-reporting/database/repositories/__tests__/central-instance-monitoring-report.repository.integration.test.ts
+  s_eeeebf4357b002::t_c2890c7032d73a 80-107
+packages/cli/src/modules/instance-reporting/README.md
+  s_eeeebf4357b002::t_39592ae77f4480 4,16-34,44-45
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_eeeebf4357b002::t_7ec62ef6c06f0a 7,31-34,41,43-44,155-162,165-166,177,200-201,249-250,282-283,363-364,370
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_eeeebf4357b002::t_79ee0ed41bc217 4,106
+packages/cli/src/modules/instance-reporting/instance-reporting-scheduler.service.ts
+  s_eeeebf4357b002::t_53c385063af0c7 1-188,190-211
+  s_eeeebf4357b002::t_1e8aefecb1f163 189
+packages/cli/src/modules/instance-reporting/instance-reporting-settings.service.ts
+  s_eeeebf4357b002::t_95e71812624922 56-60
+packages/cli/src/modules/instance-reporting/instance-reporting.module.ts
+  s_eeeebf4357b002::t_934b1ceb215818 10-11,21-23,25
+packages/cli/src/modules/instance-reporting/database/repositories/central-instance-monitoring-report.repository.ts
+  s_eeeebf4357b002::t_5e60c81c963971 2
+  s_eeeebf4357b002::t_7efde93b78ac54 34-47
+  s_eeeebf4357b002::t_c2820ba2fef1e3 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3c1f4a6a08d419bfb78a158fbcab68f158bde1c2",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_eeeebf4357b002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dab58082-7d4a-4188-ac5d-ef827c5194e3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/Kafka/KafkaTrigger.node.ts
+  s_402b7a9aa1ab74::t_93f5fb8ea2a195 1-14,17-21,24
+packages/nodes-base/nodes/Kafka/v1/KafkaTriggerV1.node.ts
+  s_402b7a9aa1ab74::t_20d7d2e6c71133 6-45
+  s_402b7a9aa1ab74::t_32e88c08a520ef 397-406,521,528,547,568
+  s_402b7a9aa1ab74::t_03fafe895b99d2 46-395,515
+  s_402b7a9aa1ab74::t_2f4e1b08f64831 3-5
+  s_402b7a9aa1ab74::t_e3f9c9b613b49c 396
+  s_402b7a9aa1ab74::t_cc51ff2a9f432b 407-409,512-514
+  s_402b7a9aa1ab74::t_273a69a7a6c937 516-520
+  s_402b7a9aa1ab74::t_074a152b83f3d3 522-527
+  s_402b7a9aa1ab74::t_a32aa5fc5bb933 529-531,544-546
+  s_402b7a9aa1ab74::t_f98ee69ef93fe3 548-550,565-567
+  s_402b7a9aa1ab74::t_d1fbc039de98a8 569
+  s_402b7a9aa1ab74::t_a63fb91263653e 1-2,410-511,532-543,551-564
+packages/nodes-base/nodes/Kafka/test/KafkaTrigger.node.test.ts
+  s_402b7a9aa1ab74::t_6ae0cb4a84f70a 15-21,26,35-37,39,41-42
+  s_402b7a9aa1ab74::t_d715d0edf2ad3e 680-692,695-700,702,718-735,738,751-763,766-771,773
+  s_402b7a9aa1ab74::t_32e0d1eae83ffd 2528-2544,2546-2552,2555-2556
+  s_402b7a9aa1ab74::t_339939a5d92b5b 2545,2553-2554
+  s_402b7a9aa1ab74::t_f5cd59521c1185 194,273,331,366,385,426,479,523,564,598,630,786,826,867,907,949,991,1035,1075,1121,1177,1255,1294,1327,1355,1390,1423,1462,1503,1532,1570,1620,1655,1683,1724,1761,1817,1863,1893,1921,1952,1983,2016,2050,2083,2118,2148,2240,2325,2353,2384,2413,2448
+  s_402b7a9aa1ab74::t_a1d44002800bae 38,40
+  s_402b7a9aa1ab74::t_87ffaf86517a04 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "367b42e73b463908dafd4712ccc3aca3b81b2cb9",
+  "prompts": {},
+  "sessions": {
+    "s_402b7a9aa1ab74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9332cc6-7da2-4c45-a194-aaa5aef40030",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

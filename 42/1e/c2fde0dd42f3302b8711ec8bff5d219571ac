@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseSetupContent.vue
+  s_752d114ebe3035::t_61db90a1ec92b8 194-198
+  s_752d114ebe3035::t_beabafb3a1c5d9 22-23
+  s_752d114ebe3035::t_758520bc13cf5c 76-89
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseSetupModal.test.ts
+  s_752d114ebe3035::t_f733a70ae29f70 126-141
+  s_752d114ebe3035::t_736200182983a8 5
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseSetupModal.vue
+  s_752d114ebe3035::t_4669f42b5dd1a0 2,7-8,15,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "421ec2fde0dd42f3302b8711ec8bff5d219571ac",
+  "prompts": {},
+  "sessions": {
+    "s_752d114ebe3035": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87618139-4004-4da3-bac4-df74248212a2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

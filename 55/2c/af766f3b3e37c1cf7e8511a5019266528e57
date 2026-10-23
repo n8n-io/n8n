@@ -1,0 +1,50 @@
+packages/cli/src/services/trigger-auth-identity-seeder-proxy.service.ts
+  h_435b1d7d3e52c0 2,5,18,20
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  h_435b1d7d3e52c0 161-167
+packages/workflow/src/interfaces.ts
+  h_435b1d7d3e52c0 1359,3319
+packages/cli/src/webhooks/webhook-helpers.ts
+  h_435b1d7d3e52c0 16-17,553-561
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  h_435b1d7d3e52c0 169
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-oauth/n8n-oauth-seeder.ts
+  h_435b1d7d3e52c0 18-19,26-37,39-40,43-52,60-61
+  s_d245c10a80e1ab::t_9b26a41e623374 4
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/n8n-identifier.test.ts
+  s_d245c10a80e1ab::t_294916460decc5 321-363
+  s_d245c10a80e1ab::t_b4e127fa284c30 7,14,20,22
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-oauth/__tests__/n8n-oauth.test.ts
+  s_d245c10a80e1ab::t_c4fcc82db1e8f0 1-75,77-90,94-126,130-153
+  s_6d62348dbd27cd::t_f4623620e43037 91-93,127-129
+  s_d245c10a80e1ab::t_a5aecabca856b9 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "552caf766f3b3e37c1cf7e8511a5019266528e57",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6d62348dbd27cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2cd1aab-5713-45d3-9695-d9dd06ee6d86",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_d245c10a80e1ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "154e3b5a-1052-458e-9708-4f2082d8aee2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

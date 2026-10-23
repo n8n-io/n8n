@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_a52facf53351c5::t_45ca2cad22144e 226-237,257-260
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_a52facf53351c5::t_45ca2cad22144e 39,44-54,88,90,154,156-158
+  s_a52facf53351c5::t_a74c6396bb50bc 266,282
+  s_a52facf53351c5::t_9d60ca04bedee6 285-287
+  s_a52facf53351c5::t_fdfd29e3c638b8 43,89,153,265,267-281,283-284
+  s_a52facf53351c5::t_56e732890ddf31 288-289
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_a52facf53351c5::t_140c3e002079de 61
+  s_a52facf53351c5::t_45ca2cad22144e 62-68
+packages/frontend/editor-ui/src/features/agents/__tests__/agentSessions.store.spec.ts
+  s_a52facf53351c5::t_45ca2cad22144e 104,106,112,115-117,119,129-141
+  s_a52facf53351c5::t_7453788f7c47f8 109
+  s_a52facf53351c5::t_de5fd6ad331419 142-143
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_a52facf53351c5::t_45ca2cad22144e 2138
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_a52facf53351c5::t_fdfd29e3c638b8 2342-2362
+  s_a52facf53351c5::t_45ca2cad22144e 187-192,194-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "db0631099c91b8e86266f94d6757d3061ebafdbf",
+  "prompts": {},
+  "sessions": {
+    "s_a52facf53351c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b491-bd1b-7860-8002-0194a946ab94",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_d8b5e951456b7b::t_9a3ec8760aad54 481-489
+  s_d8b5e951456b7b::t_d93c3766e01b75 219-230
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review.mapper.test.ts
+  s_d8b5e951456b7b::t_6b889daa44d5ca 28-42
+packages/@n8n/db/src/entities/workflow-review-activity.ee.ts
+  s_d8b5e951456b7b::t_1d1a02774ce6aa 48
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.integration.test.ts
+  s_d8b5e951456b7b::t_2742412ee5d3d6 115,117
+  s_d8b5e951456b7b::t_61030ebaf25267 254-267
+packages/cli/src/modules/workflow-reviews.ee/workflow-review.mapper.ts
+  s_d8b5e951456b7b::t_6d1877d7ae044c 30,33
+  s_d8b5e951456b7b::t_fd447f65ffb3b6 34-38
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_d8b5e951456b7b::t_6bf058dcd1cf37 562
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-auto-close.service.ts
+  s_d8b5e951456b7b::t_5e9b412c293c31 69-70
+  s_d8b5e951456b7b::t_c662ffeaca5861 124-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7e6d8acc6bcf997492e529b817c18758fc7945a1",
+  "prompts": {},
+  "sessions": {
+    "s_d8b5e951456b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d598e382-1f10-4e94-a256-40ec7275df71",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,70 @@
+packages/quality/testing/playwright/services/agent-api-helper.ts
+  s_df8243638347b9::t_1b0002997a0225 2,110-134
+  s_df8243638347b9::t_0c30d7a0b71579 135
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_df8243638347b9::t_d75f07968dff64 299,464-466,469,475,1056
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_df8243638347b9::t_b252f6e6799001 151-157,187-192
+  s_df8243638347b9::t_3edba23fa9ef1d 87
+  s_df8243638347b9::t_d3b634b821d399 150,158,181-182,198
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_df8243638347b9::t_d75f07968dff64 256,259,313,319
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_df8243638347b9::t_1949b246874984 711,713-714,727,781,783,797-798,803,816
+  s_df8243638347b9::t_b252f6e6799001 737-762,767-772,787-792,808-812
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_df8243638347b9::t_c4a2b5c74bfa35 134-140,213,218-223,310-311,315-318,321-322,324-325,356-361,369-375,379-390,393-396,398,409-432,856-865,881-894,957,973,1112-1115
+  s_df8243638347b9::t_b252f6e6799001 319-320,958-961
+  s_df8243638347b9::t_364f9037515dbb 852-853
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_df8243638347b9::t_364f9037515dbb 136
+  s_df8243638347b9::t_3edba23fa9ef1d 111,113
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_df8243638347b9::t_d3b634b821d399 401,415-423,434-435,450-452,454,456,460-461
+  s_df8243638347b9::t_3edba23fa9ef1d 478-498,500-511
+  s_df8243638347b9::t_e846351329101d 499
+packages/quality/testing/playwright/tests/e2e/agents/background-workflow-stop.spec.ts
+  s_df8243638347b9::t_1b0002997a0225 190,205-206,271
+  s_df8243638347b9::t_99ac96844131f3 1-31,38-41,49-51,56-61,69-73,76-92,98,102-103,111-112,116-123,131-140,143-144,163,204,234,275
+  s_df8243638347b9::t_3873c9275ac62f 74
+  s_df8243638347b9::t_77839674f8ac35 32-37,42-48,52-55,62-68,93-97,99-101,104-110,113-115,124-130,145-155,157-162,164-189,191-203,207-215,225-233,235-270,272-274,276-284
+  s_df8243638347b9::t_7534fd4d63ba97 75,216-224
+  s_df8243638347b9::t_ba5dc8c304ca54 141-142,156
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  s_df8243638347b9::t_1949b246874984 101-102,105,108,113-114,117-119,122,126-127,133
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_df8243638347b9::t_b252f6e6799001 361-374,400-403,406-408
+  s_df8243638347b9::t_d3b634b821d399 388,398-399,404-405,409-410
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_df8243638347b9::t_d3b634b821d399 500,502,504-508,528-532
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_df8243638347b9::t_10f50a4fac1799 393
+  s_df8243638347b9::t_3edba23fa9ef1d 241-248
+  s_df8243638347b9::t_c4a2b5c74bfa35 326
+  s_df8243638347b9::t_b252f6e6799001 396-399
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  s_df8243638347b9::t_d75f07968dff64 57-59,66
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_df8243638347b9::t_2c34538232d513 159-180,184-249,321-322,329-342,427-432,436-438,535-540,562,1324-1354
+  s_df8243638347b9::t_b252f6e6799001 181-183,323-328,433-435,446-455,459-476,478-496,498-503,505-523,1199-1206,1208-1215
+  s_df8243638347b9::t_10f50a4fac1799 444-445,456-458,477,497,504,524-525,1193-1198,1207,1216-1217
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_df8243638347b9::t_d75f07968dff64 117-128
+  s_df8243638347b9::t_364f9037515dbb 101-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0306784109adee7d1127da83eba6acc5e5d3ac69",
+  "prompts": {},
+  "sessions": {
+    "s_df8243638347b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10b2f-3eee-7921-b1a8-80453ec84034",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

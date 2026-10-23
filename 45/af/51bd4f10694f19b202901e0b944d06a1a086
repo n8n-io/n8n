@@ -1,0 +1,41 @@
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_3aaa503f47ada7::t_f30d336f3609cc 357-358,360,375
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_3aaa503f47ada7::t_0116d6f32668c7 13,153
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_3aaa503f47ada7::t_eedea0f434eb45 244-245
+  s_3aaa503f47ada7::t_0116d6f32668c7 207-208,210-211,215,235-243,246-247
+  s_3aaa503f47ada7::t_cc26bd250d7c01 248-250
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_3aaa503f47ada7::t_eedea0f434eb45 79-81
+  s_3aaa503f47ada7::t_0116d6f32668c7 82-85
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_3aaa503f47ada7::t_0116d6f32668c7 406-413,503-507,509,546-551,572-583
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_3aaa503f47ada7::t_f30d336f3609cc 1065
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_3aaa503f47ada7::t_0116d6f32668c7 15,91-100
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_3aaa503f47ada7::t_0116d6f32668c7 517-521,562-564,570-571,1191-1214
+  s_3aaa503f47ada7::t_79e62285716cb1 565-569
+  s_3aaa503f47ada7::t_0d530afcc4afee 1215
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_3aaa503f47ada7::t_58ea054b9ec73f 227,236-239,261
+  s_3aaa503f47ada7::t_0116d6f32668c7 260,262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "45af51bd4f10694f19b202901e0b944d06a1a086",
+  "prompts": {},
+  "sessions": {
+    "s_3aaa503f47ada7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b33a-46e6-7610-aa08-a734250d28b4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

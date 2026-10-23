@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_a24e68a554472e::t_799474324e25d8 923
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7287c0ad547ed19b0e97b63593758d8e736eb037",
+  "prompts": {},
+  "sessions": {
+    "s_a24e68a554472e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c815-ed67-7971-be58-e439aceae0b8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

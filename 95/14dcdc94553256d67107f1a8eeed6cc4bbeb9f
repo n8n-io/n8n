@@ -1,0 +1,28 @@
+packages/testing/playwright/oxlint.config.mts
+  s_4d4515bb8fac55::t_70c6465a2b7686 42-168
+packages/testing/playwright/eslint.config.mjs
+  s_4d4515bb8fac55::t_1b26711379a893 4-5,38
+scripts/lint-parity/verify-playwright-rule-set.mjs
+  s_4d4515bb8fac55::t_b1415e0d660e6b 51-53
+  s_4d4515bb8fac55::t_70c6465a2b7686 11-13,39-49
+  s_4d4515bb8fac55::t_19e38640a763ad 1-10,14-38,50
+packages/testing/playwright/lint-filename-debt.mjs
+  s_4d4515bb8fac55::t_5f63a58769a134 68-113
+  s_4d4515bb8fac55::t_1b26711379a893 1-67,114-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9514dcdc94553256d67107f1a8eeed6cc4bbeb9f",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

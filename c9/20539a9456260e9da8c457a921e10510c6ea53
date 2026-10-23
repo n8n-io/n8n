@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Snowflake/Snowflake.node.ts
+  s_b67b4db50cb036::t_acefdb782bf135 267,309,372,385
+packages/nodes-base/nodes/Snowflake/__tests__/GenericFunctions.test.ts
+  s_b67b4db50cb036::t_9de4967954f131 285-288
+  s_b67b4db50cb036::t_f3b1c484cb3c05 317
+  s_b67b4db50cb036::t_058adf1cbfb4d0 2-10,13-14,16,20,275-284,289-316,318-347
+packages/nodes-base/nodes/Snowflake/GenericFunctions.ts
+  s_b67b4db50cb036::t_acefdb782bf135 1,7,112-122,125,128,190
+packages/nodes-base/nodes/Snowflake/__tests__/executeQuery.test.ts
+  s_b67b4db50cb036::t_058adf1cbfb4d0 200-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c920539a9456260e9da8c457a921e10510c6ea53",
+  "prompts": {},
+  "sessions": {
+    "s_b67b4db50cb036": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2030b753-0654-4067-af08-987b01a8dd39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

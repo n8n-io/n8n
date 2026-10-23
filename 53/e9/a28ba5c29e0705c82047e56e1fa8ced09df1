@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_a41904ba5a5dee::t_ded4eb9a5a9a7d 95-108,349,362,375-395,411-415
+packages/cli/src/modules/agents/agent-knowledge-sandbox.service.ts
+  s_a41904ba5a5dee::t_ded4eb9a5a9a7d 747-749,758,771-775
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "53e9a28ba5c29e0705c82047e56e1fa8ced09df1",
+  "prompts": {},
+  "sessions": {
+    "s_a41904ba5a5dee": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ed5a5f23-a3cf-4bc9-900f-51c5c907fb2f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

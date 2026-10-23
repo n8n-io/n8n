@@ -1,0 +1,25 @@
+packages/@n8n/ai-utilities/src/suppliers/supplyModel.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 33-41
+packages/@n8n/ai-utilities/src/__tests__/suppliers/supplyModel.test.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 193-200
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 54,61,70,81,91,99,108,118,128,137,147-154,162-169,178,186-194,204,220,285,292,309,316,327,338,356,370,379,412,423-425,436
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 56-59,72-74,78-83,87,105-106,110-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4bece92c7f4c051613e21b79132a7940f6ea2ad4",
+  "prompts": {},
+  "sessions": {
+    "s_c3f63bfec03d56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ec50217-81ad-4e71-9979-cd76e8a8e85d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

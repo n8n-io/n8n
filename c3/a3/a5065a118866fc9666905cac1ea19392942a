@@ -1,0 +1,19 @@
+packages/cli/src/modules/project-files/README.md
+  s_749e9217782dea::t_0fc54b0bbb83d9 1-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c3a3a5065a118866fc9666905cac1ea19392942a",
+  "prompts": {},
+  "sessions": {
+    "s_749e9217782dea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9256f74-4f49-46ff-9964-3b3c3eb85678",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

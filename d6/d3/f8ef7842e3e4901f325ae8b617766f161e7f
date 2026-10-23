@@ -1,0 +1,33 @@
+packages/@n8n/eslint-plugin-community-nodes/package.json
+  s_2d7c6932e0c038::t_26d4b4e0ef4224 31-32,40
+packages/@n8n/nodes-langchain/package.json
+  s_2d7c6932e0c038::t_26d4b4e0ef4224 216
+packages/@n8n/scan-community-package/package.json
+  s_2d7c6932e0c038::t_26d4b4e0ef4224 19
+packages/frontend/@n8n/eslint-plugin-design-system/package.json
+  s_2d7c6932e0c038::t_26d4b4e0ef4224 28,35
+pnpm-workspace.yaml
+  s_2d7c6932e0c038::t_0adf1b323a9bd6 176-183
+packages/@n8n/typeorm/package.json
+  s_2d7c6932e0c038::t_26d4b4e0ef4224 73
+packages/@n8n/eslint-config/package.json
+  s_2d7c6932e0c038::t_26d4b4e0ef4224 44-47
+pnpm-lock.yaml
+  ai_agent 434-448,2531,2534,2537,2540-2541,2550,2556,2588-2589,2591-2592,2610,3669-3670,3727,4113,5605-5606,5624,29070-29074,34423,34434,34445,37921
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d6d3f8ef7842e3e4901f325ae8b617766f161e7f",
+  "prompts": {},
+  "sessions": {
+    "s_2d7c6932e0c038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "351b79f5-b6ce-4968-b7f0-30dc498fd9a1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

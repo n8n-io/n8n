@@ -1,0 +1,34 @@
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/prepareItemContext.ts
+  s_d6b74d0f1575e4::t_378fa9e3da9985 45
+  s_d6b74d0f1575e4::t_61e3b4596757f0 1
+  s_d6b74d0f1575e4::t_5ba228237b741b 73
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/executeBatch.ts
+  s_d6b74d0f1575e4::t_faf037e24a009d 83
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/commons.test.ts
+  s_d6b74d0f1575e4::t_cff68631268243 692-724
+  s_d6b74d0f1575e4::t_0461a738831324 224-273
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts
+  s_d6b74d0f1575e4::t_cac8a7d2a65b66 102-109,112,116
+  s_d6b74d0f1575e4::t_18d6f1e4fe2cd9 86-101,110-111,113-115,117-123
+  s_d6b74d0f1575e4::t_dd2fbc37d04866 135
+  s_d6b74d0f1575e4::t_93014fac9789ca 172-174,176-182
+  s_d6b74d0f1575e4::t_2566dd0b963b4b 561-562
+  s_d6b74d0f1575e4::t_4b23d36f5ca4c1 584-585
+  s_d6b74d0f1575e4::t_1c011804732b27 210,217,227,229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fd843ffd0c4b099eef39f85789832d80061ca8de",
+  "prompts": {},
+  "sessions": {
+    "s_d6b74d0f1575e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e35372e-e8a6-4dc4-8e75-e3a9dd5fcf27",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

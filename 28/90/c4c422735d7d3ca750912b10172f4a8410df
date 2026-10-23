@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.vue
+  h_f8b427917eda26 202,218,233,247,263,284,313-314,315-320
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2890c4c422735d7d3ca750912b10172f4a8410df",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

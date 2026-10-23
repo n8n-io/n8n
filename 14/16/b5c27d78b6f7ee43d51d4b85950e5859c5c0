@@ -1,0 +1,59 @@
+packages/cli/src/modules/inbound-auth-core/__tests__/oauth2-bearer.driver.test.ts
+  s_5b85161403cb3c::t_0139d9623b7235 2,4-14,16,18-21,23-32,41-92,99-107,109-113,120-123,128-140,142-147,149-154,156-160,163-203,205-206,208-212,214-225,234-313,318-342
+  s_5b85161403cb3c::t_a3b16445f2bd95 3,114-119
+  s_5b85161403cb3c::t_fff49a31ad7317 33-40,93-98,161-162,226-232,314-317
+  s_5b85161403cb3c::t_ed18b073e185ff 1,108,124-127,141,148,155
+  s_5b85161403cb3c::t_44e676bd615ae0 15
+  s_5b85161403cb3c::t_58ffc46e51be56 17,22,213,233
+  s_5b85161403cb3c::t_bcbdb782a18680 204,207
+packages/@n8n/inbound-auth/src/contracts.ts
+  s_5b85161403cb3c::t_b8c2f04ef3e5b3 5,104-112,114-120
+  h_435b1d7d3e52c0 113
+  s_5b85161403cb3c::t_6526d9f5280cf3 121-122
+packages/cli/src/modules/inbound-auth-core/authentication.service.ts
+  s_5b85161403cb3c::t_b8c2f04ef3e5b3 1-4,6-27,84-86,88,102-103
+  h_435b1d7d3e52c0 5,28-83,87,89-101
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_5b85161403cb3c::t_44e676bd615ae0 19,21,39,54-55
+packages/cli/test/integration/inbound-auth-core/authentication.service.integration.test.ts
+  s_5b85161403cb3c::t_fff49a31ad7317 39-46,54-59,151-153
+  s_5b85161403cb3c::t_ab356e9dcad1e9 1-5,7-38,47-53,60-107,114-150,154-175
+  s_5b85161403cb3c::t_a3b16445f2bd95 6,108-113
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication.service.test.ts
+  s_5b85161403cb3c::t_a3b16445f2bd95 220-222
+  s_5b85161403cb3c::t_fff49a31ad7317 78-83,184-194,241-242
+  s_5b85161403cb3c::t_ed18b073e185ff 142
+  s_5b85161403cb3c::t_714a5d538ed57c 1-77,84-141,143-183,195-219,223-240,243-268
+packages/cli/src/modules/inbound-auth-core/oauth2-bearer.driver.ts
+  h_435b1d7d3e52c0 4,12,14-15,18,20-23,31-32,34-35,38,41-68,71-172,176-177,179-190
+  s_5b85161403cb3c::t_b8c2f04ef3e5b3 1-3,5-11,13,16-17,19,24-30,33,36-37,39-40,69-70,173-175,178,191-192
+packages/@n8n/config/src/configs/logging.config.ts
+  h_435b1d7d3e52c0 61
+packages/cli/src/modules/inbound-auth-core/key.utils.ts
+  h_435b1d7d3e52c0 1-17
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  h_435b1d7d3e52c0 64-66
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-config.test.ts
+  s_5b85161403cb3c::t_ed18b073e185ff 5,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1416b5c27d78b6f7ee43d51d4b85950e5859c5c0",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

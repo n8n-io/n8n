@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_0b174520033346::t_ba37debf1162d5 6-7
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.test.ts
+  s_0b174520033346::t_e5fdce2111f16b 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0a7505652f02aad70f313a168e93da89c5d942c3",
+  "prompts": {},
+  "sessions": {
+    "s_0b174520033346": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5463678e-cdad-40c0-a5aa-09c10658f1b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

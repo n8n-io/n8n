@@ -1,0 +1,55 @@
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_f08ef6a3598eef::t_ea5b194b84757f 15-17,585-743
+packages/cli/src/webhooks/live-webhooks.ts
+  s_f08ef6a3598eef::t_56b7f5df4f561d 6-11,34-65,171-176
+packages/cli/src/webhooks/webhook-execution-context.ts
+  s_f08ef6a3598eef::t_b6b3fa8cb76767 27-28,35,53
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_f08ef6a3598eef::t_a9cb2697432d97 1048,1057,1069,1083,1090,1097,1133
+packages/cli/src/webhooks/webhook.service.ts
+  s_f08ef6a3598eef::t_f2d9d931ec1bbd 282,304,312,328
+packages/core/src/execution-engine/node-execution-context/__tests__/hook-context.test.ts
+  s_f08ef6a3598eef::t_72e0462acfddd2 83
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/webhook-helper-functions.test.ts
+  s_f08ef6a3598eef::t_8c5859dd60d895 131,147,182
+packages/core/src/execution-engine/node-execution-context/utils/webhook-helper-functions.ts
+  s_f08ef6a3598eef::t_1deadd3344501c 52,60
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_f08ef6a3598eef::t_0cf2090fa4dc8e 12,25-27,40,193-195,264-301
+packages/nodes-base/nodes/Webhook/description.ts
+  s_f08ef6a3598eef::t_118b7483726279 246-310
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_f08ef6a3598eef::t_3d472af46f187f 287-418
+packages/nodes-base/nodes/Webhook/test/utils.test.ts
+  s_f08ef6a3598eef::t_6d3295620c8451 4,17,885-1087
+packages/nodes-base/nodes/Webhook/utils.ts
+  s_f08ef6a3598eef::t_ffd21eb30d7068 5-10,18-19,96-136
+packages/workflow/src/expression.ts
+  s_f08ef6a3598eef::t_12322b6ce0abbd 288-310,565-570,593,640,657-661
+packages/workflow/src/index.ts
+  s_f08ef6a3598eef::t_8a9a4571cac7d6 95
+packages/workflow/src/node-parameters/request-field-expression.ts
+  s_f08ef6a3598eef::t_2bb7040b36694e 1-37
+packages/workflow/src/workflow-expression.ts
+  s_f08ef6a3598eef::t_940f34fcbb155b 219-241
+packages/workflow/test/node-parameters/request-field-expression.test.ts
+  s_f08ef6a3598eef::t_2a668c6b3018a3 1-140
+packages/workflow/test/trusted-template.test.ts
+  s_f08ef6a3598eef::t_865fed1d6de7aa 1-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "bb51a31c6789813bb60d2da6db25e26f93d9b026",
+  "prompts": {},
+  "sessions": {
+    "s_f08ef6a3598eef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_f08ef6a3598eef",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

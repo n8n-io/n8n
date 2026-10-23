@@ -1,0 +1,22 @@
+packages/cli/src/modules/n8n-packages/entities/tag/tag.exporter.ts
+  s_81f9da72a79c26::t_499fb87f9aae2a 1-7,9-22,24-25,33,35-36,38-41,51-55
+  s_81f9da72a79c26::t_f28e62bde80a0e 8
+  s_81f9da72a79c26::t_9d343d1c299235 23,26-32,34,37,42-45,50
+  ai_agent 46-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f115f854b32ef3068de7e1b8fafac6c41659efb",
+  "prompts": {},
+  "sessions": {
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

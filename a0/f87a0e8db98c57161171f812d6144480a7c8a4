@@ -1,0 +1,21 @@
+packages/@n8n/mcp-browser-extension/manifest.json
+  s_6d6420d5a3673f::t_1318e851da6f2b 5
+packages/@n8n/mcp-browser-extension/package.json
+  s_6d6420d5a3673f::t_2d81ac02a9daea 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a0f87a0e8db98c57161171f812d6144480a7c8a4",
+  "prompts": {},
+  "sessions": {
+    "s_6d6420d5a3673f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a060fba8-8802-48fb-aef4-f374b0165fd9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

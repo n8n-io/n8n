@@ -1,0 +1,23 @@
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_5ba6249956f1ee::t_afb3cbdda9dd86 141
+packages/@n8n/instance-ai/docs/configuration.md
+  s_5ba6249956f1ee::t_662bdd1d64cb63 101
+packages/@n8n/config/test/config.test.ts
+  s_5ba6249956f1ee::t_85b10dac368cdc 340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9efe99072a18ec0ae8cddb0f910d6248d34f86c6",
+  "prompts": {},
+  "sessions": {
+    "s_5ba6249956f1ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85ae5ec9-9b00-4905-a236-2f664e333f31",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

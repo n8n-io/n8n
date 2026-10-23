@@ -1,0 +1,56 @@
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_9b8f5997da90c9::t_3e01cf9daeeba1 1,357-359
+  s_9b8f5997da90c9::t_29c86ec995d188 353-356,360-409,414-446,451-463
+  s_9b8f5997da90c9::t_384af274b29bb0 410-413
+  s_9b8f5997da90c9::t_9dc25870c98f33 447-450
+packages/@n8n/api-types/src/agents/dto.ts
+  s_9b8f5997da90c9::t_fb9536745b1501 57
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_9b8f5997da90c9::t_e5fcc1d744215f 24
+  s_9b8f5997da90c9::t_247314d5ef1982 344
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_9b8f5997da90c9::t_83b2faccf15c18 28
+  s_9b8f5997da90c9::t_f544a1900e2e3d 63
+  s_9b8f5997da90c9::t_dcae8ac00f0598 90,107
+  s_9b8f5997da90c9::t_7e2e19906904ce 632-721
+packages/cli/src/modules/agents/agents-list.controller.ts
+  s_9b8f5997da90c9::t_78d16b84132c52 12-15,23
+packages/@n8n/api-types/src/agents/types.ts
+  s_9b8f5997da90c9::t_47ba06efa8029f 401-404
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_9b8f5997da90c9::t_4cc500a094a211 180-190,202,220,232
+  s_9b8f5997da90c9::t_9c0dd4c5bd0066 245-257,260-273,297-315
+  s_9b8f5997da90c9::t_77b143ef3edd96 258-259,274-275,296
+  s_9b8f5997da90c9::t_b7c0b86b234460 276-294
+  s_9b8f5997da90c9::t_de61c25fd10cfe 295
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_9b8f5997da90c9::t_e5018c16b6748e 1
+  s_9b8f5997da90c9::t_3b71295e23601d 3,134-136,138-145,148-149,151
+  s_9b8f5997da90c9::t_da2b3503319642 133,137,153
+  ai_agent 146
+  s_9b8f5997da90c9::t_692e2654608a82 147,150,152
+packages/cli/src/modules/agents/__tests__/agents-list.controller.test.ts
+  s_9b8f5997da90c9::t_9bc173bed54bb5 18-19,25,33-34,40
+packages/cli/src/modules/agents/agents.service.ts
+  s_9b8f5997da90c9::t_d539debb1bd585 27
+  s_9b8f5997da90c9::t_606b4acb232e2b 85
+  s_9b8f5997da90c9::t_0353757802d814 309-314,316-319,321-323,332-337,339-351
+  s_9b8f5997da90c9::t_591a0ba99ea511 320,353
+  s_9b8f5997da90c9::t_47ba06efa8029f 324-331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65320cebf939e4b12e429307e99ee8d78c81580d",
+  "prompts": {},
+  "sessions": {
+    "s_9b8f5997da90c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d195f9d-05dd-4d46-8df6-3bf63e79c4d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

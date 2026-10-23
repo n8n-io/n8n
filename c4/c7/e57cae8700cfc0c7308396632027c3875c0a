@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/VersionsTable.test.ts
+  s_f2915c51dc39ca::t_c8a29d42bd8fd9 2,13-18
+  s_f2915c51dc39ca::t_6f08752721a9ff 50,75,99,112,124,141,188
+  s_f2915c51dc39ca::t_eba10de820fea2 135,145-151,153-154,158-172
+  s_f2915c51dc39ca::t_2d3919dc1a4962 8-12
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/VersionsTable.vue
+  s_f2915c51dc39ca::t_48369892ab6504 5,7,15,23-37
+  s_f2915c51dc39ca::t_326163541c0066 50,59
+  s_f2915c51dc39ca::t_7b3d7617d68871 171-174,177,181
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/SetupCollectionWizard.vue
+  s_f2915c51dc39ca::t_6db1bd918758fa 334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c4c7e57cae8700cfc0c7308396632027c3875c0a",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f2915c51dc39ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd01e2e1-3aa7-490e-83f2-bbd9b41bcfc4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

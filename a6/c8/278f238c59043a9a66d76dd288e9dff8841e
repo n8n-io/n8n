@@ -1,0 +1,39 @@
+.github/actions/ci-filter/ci-filter.mjs
+  s_04b8fe92354c24::t_2325537e24f891 117-131
+  s_04b8fe92354c24::t_b981364fbd2eca 291
+  s_04b8fe92354c24::t_459440a917c62d 310
+packages/testing/code-health/src/cli.ts
+  s_04b8fe92354c24::t_b97666ba65ddfb 28-34
+.github/actions/ci-filter/action.yml
+  ai_agent 30-32
+packages/testing/code-health/src/context.ts
+  s_04b8fe92354c24::t_b278bde5a095f9 11-18
+packages/testing/code-health/src/rules/migration-timestamp.rule.ts
+  s_04b8fe92354c24::t_9b040cc2f7eb23 40
+  s_04b8fe92354c24::t_9fdc5b15156353 69-78,80-81
+.github/workflows/ci-pr-quality.yml
+  s_04b8fe92354c24::t_55fdbc7650c814 121
+  s_04b8fe92354c24::t_b3a29e98deadcd 88
+.github/actions/ci-filter/__tests__/ci-filter.test.ts
+  s_04b8fe92354c24::t_f9abb7da53d585 382-395
+  s_04b8fe92354c24::t_9d9b7e09edbb83 14
+packages/testing/code-health/src/rules/migration-timestamp.rule.test.ts
+  s_04b8fe92354c24::t_b8cbef4d6c1e6f 43-44
+  s_04b8fe92354c24::t_f6f735b6fcb178 176-181,193-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6c8278f238c59043a9a66d76dd288e9dff8841e",
+  "prompts": {},
+  "sessions": {
+    "s_04b8fe92354c24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cd8da67-a7ad-4818-ad1c-f223fa4de7d8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

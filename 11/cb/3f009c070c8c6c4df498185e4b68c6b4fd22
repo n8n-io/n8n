@@ -1,0 +1,202 @@
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  s_e0cc82d125e08a::t_0a25d80d525abc 160-165,167-181
+  s_e0cc82d125e08a::t_96a87f1a63c663 142-157,166,182-222
+  s_e0cc82d125e08a::t_b1ef028e5635f7 230-240,264-273
+  s_b34abcbd386402::t_eb05f1ed053732 2-4
+  s_b34abcbd386402::t_76a56c8af77633 85-139
+  s_e0cc82d125e08a::t_4d71a3bb60ff62 248-255
+packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts
+  s_2a235a6e9347be::t_583ae2aa6bbb4b 7-8
+  s_60c9025b151770::t_06db1c98cc7bf7 1-6,9-19
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_2a235a6e9347be::t_2f37f299fc095c 352,354-355
+  s_2a235a6e9347be::t_493341e5e43666 353
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue
+  s_70e4a16a672757::t_960c6985deff23 1-43,48-52,54-92
+  s_70e4a16a672757::t_e9f6c3ccb75050 47
+  s_70e4a16a672757::t_5e8b00967df401 53
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_60c9025b151770::t_1b89b2320e2bd7 5,49-62,75-76,82,110-127
+  s_e0cc82d125e08a::t_1b024a204ff882 132-136
+  s_e0cc82d125e08a::t_6d86ab0d22b364 23,26-27,29-33
+  s_e0cc82d125e08a::t_3437057ea0c1ad 12-21,24-25,28,34-35
+  s_e0cc82d125e08a::t_ce81ec423011e6 157-162
+  s_60c9025b151770::t_0420d1a1494cb8 128
+  s_b34abcbd386402::t_19b65b735a07e6 83-109
+  s_e0cc82d125e08a::t_94f95335d01c69 2
+  s_e0cc82d125e08a::t_0b267949f5f4fc 131,137-154,163-199
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_e0cc82d125e08a::t_ff4f596475046a 1-5,7-117,150-187
+  s_e96dffd2b5f515::t_751d6ce971af44 118-149
+  s_e96dffd2b5f515::t_52bdc4cef348fe 6
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_70e4a16a672757::t_e9f6c3ccb75050 50,89,111,140,164-168
+  s_70e4a16a672757::t_960c6985deff23 1-49,51-56,60-88,90-110,112-137,141-163,169-194,216-256
+  s_70e4a16a672757::t_5e2c31eed03274 57-59,215
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_e0cc82d125e08a::t_1436a6ff7b501b 2-75
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_60c9025b151770::t_a4789809c277c5 36
+packages/@n8n/api-types/src/push/workflow-review.ts
+  s_b34abcbd386402::t_d234b471d0b93d 1-12
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  h_760178ed151f13 257
+  s_e0cc82d125e08a::t_16bcf414f610ea 203
+  s_e0cc82d125e08a::t_0320357a172a72 197-198
+packages/@n8n/db/src/entities/workflow-review-request.ee.ts
+  s_b34abcbd386402::t_6ae1889cbf079e 9-10
+  s_b34abcbd386402::t_878432504932ba 1-4,11,15,23
+  s_b34abcbd386402::t_2745230adb7218 34,37
+packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
+  s_60c9025b151770::t_65875a2109bd21 2,13-26
+  s_60c9025b151770::t_cbab3fb0bef924 27-28
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-inbox.dto.ts
+  s_e0cc82d125e08a::t_9a79da94a4a171 26-27
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.test.ts
+  s_41e37076417c9b::t_38e208d5c222b6 87-108
+packages/frontend/editor-ui/src/features/workflow-reviews/module.descriptor.ts
+  s_e0cc82d125e08a::t_c888fdfe771b60 5-26
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_60c9025b151770::t_078acc951d9093 74
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.list.service.test.ts
+  s_e0cc82d125e08a::t_fdd7eee04e7af3 168-176
+  s_e0cc82d125e08a::t_3312b397f591b5 3-10
+  s_e0cc82d125e08a::t_1253f6c2548bb6 158-166
+  s_e0cc82d125e08a::t_bfc63862170cc5 111-149
+  s_e0cc82d125e08a::t_f5622f48f9888f 48
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.test.ts
+  s_12107b09095a6b::t_e6fe0992d3812b 60
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewStatusSync.test.ts
+  s_41e37076417c9b::t_32673780d9a43b 104
+  s_41e37076417c9b::t_36568853bf16d1 117
+  s_41e37076417c9b::t_840eb77674d106 126
+  s_41e37076417c9b::t_a4784fa8543092 140
+  s_41e37076417c9b::t_c86203d51301b3 153
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_70e4a16a672757::t_40a2d32740e901 69,73-75,77
+  s_70e4a16a672757::t_a03d32108719b6 29,35-41,44,184,198
+  s_70e4a16a672757::t_951740fe8071cd 1-28,30-32,42-43,45-67,70-72,76,78-183,185-197,199-207
+packages/@n8n/api-types/src/push/index.ts
+  s_b34abcbd386402::t_b5b05091e4fad4 11,23-24
+packages/@n8n/api-types/src/dto/index.ts
+  s_2a235a6e9347be::t_6802c7ddb45108 295,299
+  s_b34abcbd386402::t_c6854cf9e70859 297
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.env-gate.integration.test.ts
+  s_60c9025b151770::t_1916428f831677 1-4,6-18,21-29,31-42
+  s_b34abcbd386402::t_89ed1c074426fb 43-48
+  s_2a235a6e9347be::t_d664c830aa7f1c 5,19-20,30
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.ts
+  s_41e37076417c9b::t_9019097aaf5e9b 29-57
+  s_41e37076417c9b::t_122387466133cf 17-18
+packages/@n8n/api-types/src/index.ts
+  s_b34abcbd386402::t_b86a144c59ab23 17
+packages/@n8n/db/src/repositories/workflow-review-request-workflow.repository.ts
+  s_60c9025b151770::t_f7b4630bf8bf6d 2,5,14-23,30-31
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_e0cc82d125e08a::t_7cdcedb3cc6f09 9
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.test.ts
+  s_70e4a16a672757::t_fb4dc791b159aa 1-9,11-12,19-26,28-41,43-45,51-52
+  s_70e4a16a672757::t_a03d32108719b6 10,13-18,27,42,46-50
+packages/@n8n/db/src/repositories/index.ts
+  s_e0cc82d125e08a::t_7e89b241bb3088 74-77
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_70e4a16a672757::t_bdf6c7bea8e71a 4507-4524
+  h_760178ed151f13 5166,5174
+  s_6638f09b589e97::t_c689cc84f3aef3 4506
+packages/cli/test/integration/shared/types.ts
+  s_60c9025b151770::t_bc8f2e8a1ae3d0 56,71-72
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_9006126844c8d5::t_235bdd463aba3d 66
+  s_9006126844c8d5::t_53a7b1c755ec03 101
+packages/frontend/editor-ui/src/features/collaboration/projects/composables/useProjectPages.ts
+  s_e0cc82d125e08a::t_202a2a92c4b219 4
+packages/cli/test/integration/collaboration/collaboration.service.test.ts
+  h_9c8f56e3400786 9
+  s_b34abcbd386402::t_9e27c1f98126e2 383-411
+packages/@n8n/api-types/src/dto/workflow-reviews/__tests__/list-workflow-review-requests-query.dto.test.ts
+  s_b34abcbd386402::t_22f4962856a0ae 1-72
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_2a235a6e9347be::t_693e2c4baad9ba 1-11,13-14
+  s_2a235a6e9347be::t_5791dc7a463a1a 12
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
+  s_6638f09b589e97::t_5306ba5406863d 146
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-requests-query.dto.ts
+  s_b34abcbd386402::t_3134c3c05502b7 2,10
+  s_b34abcbd386402::t_c93eb08e9a272f 3-8,11
+packages/cli/src/collaboration/collaboration.service.ts
+  h_9c8f56e3400786 323-325
+  s_b34abcbd386402::t_c3409b3e132c1f 326-341
+  s_91f67565918eee::t_bff7293018fc64 19-25,322
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_e0cc82d125e08a::t_ff4f596475046a 1-144
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_60c9025b151770::t_2448a48f4744df 16
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_b34abcbd386402::t_25b9a7ee3473c1 28
+  s_782e56c14c8ff8::t_463c3982d89327 11,52,58
+  s_2a235a6e9347be::t_800b92cfc074ab 48-50
+  s_b34abcbd386402::t_f0608b803cb9e0 10,19-27
+  s_659d89565dd06e::t_9b75777233e743 69-72
+  s_278b5dc3633c05::t_14e71601275869 5-7,53-57,59-64,73
+  s_60c9025b151770::t_4dc13844903a23 9,12-18,41-47,51,75
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
+  s_70e4a16a672757::t_960c6985deff23 1-5,7-37,42,44-49,51-78
+  s_70e4a16a672757::t_e9f6c3ccb75050 39-41
+  s_70e4a16a672757::t_5e8b00967df401 50
+  s_70e4a16a672757::t_5ef1c3465c32d3 6,38,43
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.test.ts
+  s_e0cc82d125e08a::t_ff4f596475046a 1-233
+AGENTS.md
+  h_9c8f56e3400786 260
+packages/@n8n/api-types/src/workflow-review-request-summary.ts
+  s_b34abcbd386402::t_fb6e4a2b0743db 1-2,4-13,17-18
+  s_b34abcbd386402::t_e6ab7bed43977b 3,14-16,19-26
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_e0cc82d125e08a::t_c7ef7ed709bc0b 311-312
+  s_e0cc82d125e08a::t_d63317c8f77280 333-337
+  s_94fa4ed7d7b038::t_869d14d34be02d 7
+  s_b34abcbd386402::t_93898f4cbf77e1 201-203
+  s_b34abcbd386402::t_2cb3858f009244 1-6,12,30,45,59,79-110
+  h_760178ed151f13 328-331
+  s_b34abcbd386402::t_7bdead65e3c081 204-206,208-214,216-249,251-256
+  s_e0cc82d125e08a::t_d1e745a535b2e2 341-365
+  s_94fa4ed7d7b038::t_8f932cef4a463b 147-150
+  s_60c9025b151770::t_f47620be23b460 14-22,24-27,29,38-44,46-58,60-61,151-154,156-161,163-165,169-172,176-179,181-182,215,250,257-258,266,381
+  s_e0cc82d125e08a::t_012d2f0c917466 284-293
+  s_e0cc82d125e08a::t_d860d6766101d6 23
+  s_e0cc82d125e08a::t_5bf2088ee2d94e 28
+  s_2a235a6e9347be::t_800b92cfc074ab 32-35,155,162,166-168,173-175,180,207
+  s_94fa4ed7d7b038::t_de5f534f044f23 259-265
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_e0cc82d125e08a::t_c43b6fda9b18c2 18-19
+  s_e0cc82d125e08a::t_7b15c1114d64bb 128
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_2a235a6e9347be::t_d664c830aa7f1c 475
+  h_9c8f56e3400786 96,657
+  s_278b5dc3633c05::t_060c199c7b9a79 819,824,842,851,864,873,900,924,927
+  s_60c9025b151770::t_bb9cfd15536241 1-32,34,36-37,39-54,58-76,78,83-84,86-95,97-248,250-254,269-474,476-481
+  s_2a235a6e9347be::t_583ae2aa6bbb4b 249,255-268
+  s_659d89565dd06e::t_a00352e6087c20 778
+  s_b34abcbd386402::t_9f748c532bfd7f 692,699
+  s_e0cc82d125e08a::t_17a91436169666 936-979
+  s_e0cc82d125e08a::t_8a61bbf5f63ff2 800-811
+  s_a2967ec392b10a::t_1eaa0322af9e4a 758-777,779-798,812-818,820-823,825-841,843-850,852-863,865-872,874-899,901-923,925-926,928-933,980
+  s_b34abcbd386402::t_bad5b59333b9e1 482-656,658-691,693-698,700-756
+  s_a2967ec392b10a::t_c88cbb8f6925d1 33,35,38,55-57,77,79-82,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "11cb3f009c070c8c6c4df498185e4b68c6b4fd22",
+  "prompts": {},
+  "sessions": {
+    "s_e96dffd2b5f515": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d2c04bcb-39e4-4605-b026-619653c90b3e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

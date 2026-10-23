@@ -1,0 +1,13 @@
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/stopManyExecutions.generated.yml
+  ai_agent 1-69
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/stopExecution.generated.yml
+  ai_agent 1-72
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 19-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49582d9ece0b9ce805ae06daef2507d772ee016a",
+  "prompts": {}
+}

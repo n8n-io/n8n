@@ -1,0 +1,166 @@
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_91c597c7193a8c::t_b16eddd22a4bbc 6,15,146-173
+  s_91c597c7193a8c::t_412125d5c771f3 174-175
+  s_91c597c7193a8c::t_637baff6275809 5,118-120,127-143
+  s_91c597c7193a8c::t_f9bb7abc8633c0 144-145
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_91c597c7193a8c::t_c519e468ff034f 32,56-71,107
+  s_91c597c7193a8c::t_637baff6275809 33-55,126,128-138
+  s_91c597c7193a8c::t_cd4a0304144252 27
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_91c597c7193a8c::t_f67f4dd11b0fff 87
+  s_91c597c7193a8c::t_2879d51afb006d 199
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_91c597c7193a8c::t_eba6c78b41f798 99-112,114-115
+  s_91c597c7193a8c::t_cb782b6ff4fcb1 113
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_91c597c7193a8c::t_191118fc65e764 104-107,142-144
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_91c597c7193a8c::t_c8693e189740d5 266-269,433-434,438-440,445
+  s_91c597c7193a8c::t_1bbbd14c2ed3bd 318
+  s_91c597c7193a8c::t_434452e4f62b6d 271,275,284-289,441-444,515
+  s_91c597c7193a8c::t_4da88b22761dbc 387-388,390,392-397,399-410,428,435-437,446,506,513-514,516,523-526,528-529,534-536,538-539,541,550
+  s_91c597c7193a8c::t_d5db2510e0a133 319,328,341,465,485
+  s_91c597c7193a8c::t_cb489b9b171760 391
+  s_91c597c7193a8c::t_fca1211779a122 273,278,280-283
+  s_91c597c7193a8c::t_cf5b0134be5bcc 277,290
+  s_91c597c7193a8c::t_5e164bf3aabdea 447
+  s_91c597c7193a8c::t_d6077e2bbab486 517
+  s_91c597c7193a8c::t_8f4e4b158b0307 19,255,354,389,398,505,527,533,537
+  s_91c597c7193a8c::t_637baff6275809 9-14,53-56,111-125,239-246,251-253,270,273-274,276,279,331-335,411
+  s_91c597c7193a8c::t_dbf3cf83860f99 412-415
+  s_91c597c7193a8c::t_2eef06e3113f58 104-105
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_91c597c7193a8c::t_25cfe84fd86c78 91,103,117,232,301-329
+  s_0bb6949e0d58ea::t_d38190e30dac39 330
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_91c597c7193a8c::t_15fe0ba11145b9 27-28,181,201,250-252,290-296
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_91c597c7193a8c::t_0d9fcd38f87048 91-94,112-128,168,197,251,321
+  s_91c597c7193a8c::t_4b338c619ce51a 647-655
+  s_91c597c7193a8c::t_199cac861e211a 336
+  s_91c597c7193a8c::t_06372d1a809fc9 237-239
+  s_91c597c7193a8c::t_4e3602b6e8dd89 656
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_91c597c7193a8c::t_d2c5d0e81a4942 40-45,60-62,252
+  s_91c597c7193a8c::t_c021fdb43aea20 185,293,296-297
+  s_91c597c7193a8c::t_f29702b616c010 46-53,301-302
+  s_91c597c7193a8c::t_dcce54aed5f433 89
+  s_91c597c7193a8c::t_637baff6275809 17,24,32,54-59,79-84,107-109,116,120-128,186,194,198,203,220-221,260,274-290,299
+  s_91c597c7193a8c::t_16537cec7d30c0 291-298,300
+  s_91c597c7193a8c::t_a7c5995b588973 261
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_91c597c7193a8c::t_5b32af77597649 297,319-331,400,754,803-811,818,820-821,824-834,836-842,850,852-853,866
+  s_91c597c7193a8c::t_f6d6af30407148 851
+  s_91c597c7193a8c::t_a4ac32b8cad15f 867-869
+  s_91c597c7193a8c::t_637baff6275809 819,822-823,835,843-849,854-865
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_91c597c7193a8c::t_b0feee21b075c2 28-31,78,133,158-164,184,194,219,229-235,525,535
+  s_91c597c7193a8c::t_637baff6275809 17,21,79,507,514,522,526,536,616-622
+  s_91c597c7193a8c::t_cf0c56397f9790 623-624
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_91c597c7193a8c::t_305a44ea0167e8 41-44
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_91c597c7193a8c::t_fe702395f3d591 11,88-89
+  s_91c597c7193a8c::t_0131fe7736be88 90
+packages/frontend/editor-ui/src/features/agents/session-timeline.styles.ts
+  s_91c597c7193a8c::t_f4a43b9934d116 22
+  s_91c597c7193a8c::t_e665ac2ca5440c 23,25-26
+  s_91c597c7193a8c::t_ccfff5372b56bf 24
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_91c597c7193a8c::t_5707446e022657 99-101
+  s_91c597c7193a8c::t_637baff6275809 14-18,202-204
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_91c597c7193a8c::t_2098c4dcbe9d81 218
+  s_91c597c7193a8c::t_4d51222a47a5c7 214-217,219-246
+  s_91c597c7193a8c::t_637baff6275809 8,247-426,428
+  s_91c597c7193a8c::t_5f86d33f6f7504 427
+packages/@n8n/db/src/migrations/common/1787040021605-AddAgentExecutionFailureSummary.ts
+  s_91c597c7193a8c::t_5c669e4e1e601a 9
+  s_91c597c7193a8c::t_8e0b306183a8e4 1-3,14-15,18-19
+  s_91c597c7193a8c::t_f0ca7701280b76 4-8,10-13,16-17
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_91c597c7193a8c::t_f97249e2fcf5df 7,28
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_91c597c7193a8c::t_eb22c6ec372a06 287-301
+packages/cli/src/modules/agents/__tests__/execution-failure-summary.test.ts
+  s_91c597c7193a8c::t_8d60ca31f20ca6 1-23,33,58-125
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_91c597c7193a8c::t_0f41bfe3c4f2d5 199-215
+  s_91c597c7193a8c::t_64ed4b90cb3e39 197-198
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_91c597c7193a8c::t_6443aa184f4a04 11-12,61-62,96-97,139-141
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelinePill.vue
+  s_91c597c7193a8c::t_3ed7071b8551e6 32-33
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_91c597c7193a8c::t_21895a666b6116 10-11,14,119-120,149-150,360-362,395
+  s_91c597c7193a8c::t_a50b6a1c4f9bc3 397
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_91c597c7193a8c::t_fc4edbf214615c 1549-1552
+  s_91c597c7193a8c::t_637baff6275809 1454-1457,1469-1483
+packages/cli/src/modules/agents/utils/execution-failure-summary.ts
+  s_91c597c7193a8c::t_93845d724843cc 1-34,41-66,68-91
+docs/generated/sqlite-schema/README.md
+  s_91c597c7193a8c::t_d8d3ddf89c4d7e 19,431
+docs/generated/sqlite-schema/agent_execution.md
+  s_91c597c7193a8c::t_98968948307313 9,24,44-46,73
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_91c597c7193a8c::t_a00f8690585ea5 107
+docs/generated/postgres-schema/README.md
+  s_91c597c7193a8c::t_02a648b2ebb571 19,444
+docs/generated/postgres-schema/public.agent_execution.md
+  s_91c597c7193a8c::t_9d4955510b8a87 13,68
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_91c597c7193a8c::t_725e6f9a9cf4b9 106
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentThreadsApi.test.ts
+  s_91c597c7193a8c::t_637baff6275809 5-10,27-31,41-58
+  s_91c597c7193a8c::t_86ef57fc822623 59-60
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_91c597c7193a8c::t_637baff6275809 5,11,23,30,34-35,39-43,46-47,52-55,77
+  s_91c597c7193a8c::t_6abf7a32dfa7f3 81-84,101,108-112,157-164,199,207,215
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_91c597c7193a8c::t_637baff6275809 4,8-12,29-36,40-49,55,102-141
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_91c597c7193a8c::t_3df4c2b45d30fe 1-270
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsFilter.spec.ts
+  s_91c597c7193a8c::t_6494f1ad8c13d8 1-70
+packages/frontend/editor-ui/src/features/agents/__tests__/agentSessions.store.spec.ts
+  s_91c597c7193a8c::t_5f80c7a9109ebf 1-130
+packages/cli/src/modules/agents/agent-session.types.ts
+  s_91c597c7193a8c::t_f0b259c0b1fe53 1-20
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_91c597c7193a8c::t_637baff6275809 1-5,41-67
+  s_91c597c7193a8c::t_b4bb1f6bbe7b8a 68
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_91c597c7193a8c::t_800ed66ad98dfa 202
+  s_91c597c7193a8c::t_637baff6275809 2,4,6,108,110-115,117-146,149,160-201,203-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5877e2d6c4192c3eaf15239fec81eb6398fb4da2",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0bb6949e0d58ea": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "09e5169b-0e11-45c2-b43a-21cd4261cb22",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_91c597c7193a8c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7122e3e1-00de-42c5-8307-a90549fc03e2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

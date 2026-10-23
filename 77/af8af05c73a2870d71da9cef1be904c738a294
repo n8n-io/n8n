@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/router.test.ts
+  s_5eaebbe993605c::t_aa0dd3a084e8a0 46-51,53-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "77af8af05c73a2870d71da9cef1be904c738a294",
+  "prompts": {},
+  "sessions": {
+    "s_5eaebbe993605c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4353-00a9-78b3-a770-05fc06ad05f3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

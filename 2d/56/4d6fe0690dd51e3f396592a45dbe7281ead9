@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_c5954c3047b5ed::t_647faa88a8b565 174
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_c5954c3047b5ed::t_38cea8cc6e39d5 898
+  s_c5954c3047b5ed::t_647faa88a8b565 886,900
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c5954c3047b5ed::t_647faa88a8b565 7922-7923
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2d564d6fe0690dd51e3f396592a45dbe7281ead9",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

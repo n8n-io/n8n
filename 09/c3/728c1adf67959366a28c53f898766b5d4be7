@@ -1,0 +1,19 @@
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_34811779c9d586::t_7f9b41eaf65590 5,12-18,63-67,97,104,107,110-111,119,122,131-165,173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "09c3728c1adf67959366a28c53f898766b5d4be7",
+  "prompts": {},
+  "sessions": {
+    "s_34811779c9d586": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "395804aa-73ad-495d-ad85-228a556bbfab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

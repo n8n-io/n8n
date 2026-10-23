@@ -1,0 +1,19 @@
+packages/@n8n/backend-test-utils/src/test-modules.ts
+  s_7d48ada9cf20b6::t_85e89f6dd38dde 23-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8e6f4f3bfd8ace18cf30355c43e11adf4aa08e70",
+  "prompts": {},
+  "sessions": {
+    "s_7d48ada9cf20b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d125bd-0770-4362-a74d-8364298b52a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

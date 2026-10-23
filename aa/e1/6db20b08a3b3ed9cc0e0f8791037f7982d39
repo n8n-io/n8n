@@ -1,0 +1,37 @@
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_9d8abbf48969da::t_93700b36ae4ab2 754-770,774,777-860
+  s_9d8abbf48969da::t_ad20681bc2950a 17
+  s_9d8abbf48969da::t_7b68f495c01b3e 771-773,775-776
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_9d8abbf48969da::t_032192404c7815 12
+  s_9d8abbf48969da::t_52e2c798345547 626-630,632-653
+  s_9d8abbf48969da::t_d8fc00febad563 631
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_9d8abbf48969da::t_2ef9cd13129015 55
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_9d8abbf48969da::t_43c647e26d3b59 289-291
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_9d8abbf48969da::t_39dcfa64b75af0 39
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_9d8abbf48969da::t_76835920b7d436 1-51
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_9d8abbf48969da::t_2fc6f30c5457f4 162-164
+packages/cli/src/public-api/v1/shared/spec/schemas/promotePackageResultDto.generated.yml
+  s_9d8abbf48969da::t_01211efa7cbaa0 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aae16db20b08a3b3ed9cc0e0f8791037f7982d39",
+  "prompts": {},
+  "sessions": {
+    "s_9d8abbf48969da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72c5ab67-d361-44c4-b483-2dbff543ef77",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

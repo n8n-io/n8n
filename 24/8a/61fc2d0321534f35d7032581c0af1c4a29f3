@@ -1,0 +1,24 @@
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  h_ce2c4b90496ac9 3,8,42-49
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  h_ce2c4b90496ac9 7,41-43,442-445,460,463-465,472-488
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  h_ce2c4b90496ac9 1,4,20-21
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.api.ts
+  h_ce2c4b90496ac9 1,8-12
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  h_ce2c4b90496ac9 2-5,10,14,28-33,35,42,54-71,88-112,114-115,118,121,124-125,127-128,131,135-136,228,239-253,255-257,259-271,273-278,282-308,401,413,422
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.ts
+  h_ce2c4b90496ac9 2,6,10,48-50,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "248a61fc2d0321534f35d7032581c0af1c4a29f3",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/workspace/workspace-files.ts
+  s_accf4de94b162a::t_85efe405e85585 73,92
+packages/@n8n/instance-ai/src/workspace/__tests__/workspace-files.test.ts
+  s_accf4de94b162a::t_ddf4cc72fff1f3 150-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "c9846248bdb629e1fe01cf76d9b2132dfc045b0b",
+  "prompts": {},
+  "sessions": {
+    "s_accf4de94b162a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "038f07e5-00f6-400f-a426-c73c293e93b2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

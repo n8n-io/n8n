@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_2ed659fa6b1ae7::t_4abe4bcb717237 53-54,67-70,80-81
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_2ed659fa6b1ae7::t_4abe4bcb717237 21-24
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_2ed659fa6b1ae7::t_4abe4bcb717237 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f898682cdd24a5d3c3810f78fb1bdfb81f24efbd",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

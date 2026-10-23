@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/KoBoToolbox/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_9058551af2fc38 75-87
+packages/nodes-base/nodes/KoBoToolbox/test/GenericFunctions.test.ts
+  s_137f1900411214::t_450e3d118a353a 2-9,661-715
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2f1f025fd26e2e9aad53c74d46b94df219ee87c",
+  "prompts": {},
+  "sessions": {
+    "s_137f1900411214": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac16f32916b1144ef",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

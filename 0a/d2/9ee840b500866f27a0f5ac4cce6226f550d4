@@ -1,0 +1,58 @@
+packages/cli/src/abstract-server.ts
+  s_1a3440617fc868::t_319cb99d2a7c39 169,171-173,182-184,186
+  s_3ffba9c7659cea::t_0ac92573f11522 19
+  s_3ffba9c7659cea::t_be5249da797312 51-52
+  s_3ffba9c7659cea::t_0ae4ad74e701f3 170
+  s_3ffba9c7659cea::t_0a49445cea5e1c 181
+  s_3ffba9c7659cea::t_217354c7ea8809 185
+packages/cli/src/services/database-independent-routes.service.ts
+  s_3ffba9c7659cea::t_be0904e8658f54 1-16
+packages/cli/src/metrics/prometheus/__tests__/db-pool-metrics-exposition.test.ts
+  s_c47ecc41bf6bfb::t_f7b4d7108234ec 1,15,17-40,84-85,104-108,114-116,122,136,144
+  s_1a3440617fc868::t_0b61be3bfc98db 2
+  s_1a3440617fc868::t_e8df9656ec1f99 3-11,13-14,41-49,77-83,86-92,94-103,109-113,143,145-167,171-174,177-187,189-210,222-229,238
+  s_1a3440617fc868::t_6fb4f4db35d7f4 16
+  s_c47ecc41bf6bfb::t_2bee00aa5a0e45 50-76,117-121,123-135,137-141,175-176
+  s_c47ecc41bf6bfb::t_0a6fd4fe672959 168-170,188
+  s_1a3440617fc868::t_c492a6a9643bca 211-212,214-215,230-237,217-218,220-221
+  s_3ffba9c7659cea::t_884122239288cc 213,216,219
+  s_3ffba9c7659cea::t_33edc0070b043a 12,93,142
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_1a3440617fc868::t_77e8fdab042183 11
+  s_1a3440617fc868::t_319cb99d2a7c39 126
+  s_3ffba9c7659cea::t_c3561527c8466f 6-7,69,131
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_3ffba9c7659cea::t_33edc0070b043a 8-9,68,100,198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ad29ee840b500866f27a0f5ac4cce6226f550d4",
+  "prompts": {},
+  "sessions": {
+    "s_1a3440617fc868": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0194776b-41bb-4f38-9e29-1a686c78c953",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_3ffba9c7659cea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78ea5aa5-a80a-4f60-bb5f-5fb8873c461b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_c47ecc41bf6bfb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ed55-6ec2-7292-9252-42147f19aca6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

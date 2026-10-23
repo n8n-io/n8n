@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_f758d2deec94b5::t_432e17b7987f2d 2762,2765
+  s_f758d2deec94b5::t_5a0783a997579e 2763-2764
+  s_f758d2deec94b5::t_03e8d969be920e 2759-2761,2766-2767
+  s_f758d2deec94b5::t_5790b47919b669 319,2750,2768-2769,2979-2983
+  s_f758d2deec94b5::t_9f75016bb3156c 2984-2985
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_f758d2deec94b5::t_27093777b4efde 2,466-520
+  s_f758d2deec94b5::t_c9f5adc178d7e9 110
+  s_f758d2deec94b5::t_7e28a49ee7c65c 521
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_f758d2deec94b5::t_d69de156f7a98f 417
+  s_f758d2deec94b5::t_74d9017d283c3b 65,345
+  s_f758d2deec94b5::t_a04f523ab87d61 443
+  s_f758d2deec94b5::t_eb1cf390e4dfc1 407,412-416,418-426,522
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_f758d2deec94b5::t_250a78bd5b5ada 3508-3511
+  s_f758d2deec94b5::t_b65b2a5f9a1924 645-647,652,3462-3483
+  s_f758d2deec94b5::t_0408346166f7ec 3484,3486-3505,3512-3513
+  s_f758d2deec94b5::t_436538a4901fc4 3506-3507
+  s_f758d2deec94b5::t_b1ba795c7e91da 3485
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "046568f5571be1b3d4e5df8e0dff28a2422edf9b",
+  "prompts": {},
+  "sessions": {
+    "s_f758d2deec94b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d359-e687-7fe1-adbb-064aa0e4912e",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

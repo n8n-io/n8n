@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_2cab8240c3562e::t_b11ff80023afb2 424-428
+  s_2cab8240c3562e::t_06de322f179468 400-423,429-434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "047c907e61b61993ceda3cac44db3319acfc4843",
+  "prompts": {},
+  "sessions": {
+    "s_2cab8240c3562e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2237e2a-a459-4b79-9fdd-1033158227e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

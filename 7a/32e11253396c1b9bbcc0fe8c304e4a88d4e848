@@ -1,0 +1,21 @@
+packages/cli/src/services/__tests__/node-resource-explorer.service.test.ts
+  s_52f4a11ff5a9df::t_aa992273f12d6c 413-487
+packages/cli/src/services/node-resource-explorer.service.ts
+  s_52f4a11ff5a9df::t_bca3b90a245a89 15,181-185,309-323,326,328,330-340,342,344,346,355-357,360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a32e11253396c1b9bbcc0fe8c304e4a88d4e848",
+  "prompts": {},
+  "sessions": {
+    "s_52f4a11ff5a9df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aed8799f-0d01-4cf1-96f4-2a82441a3d98",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

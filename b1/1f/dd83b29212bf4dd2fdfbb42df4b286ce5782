@@ -1,0 +1,22 @@
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_f76d5384d236b1::t_b1e1a21de73240 137-139,141-155
+  s_f76d5384d236b1::t_31fc9a1ce5618b 156-157
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_f76d5384d236b1::t_e52032a6b1691e 35-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b11fdd83b29212bf4dd2fdfbb42df4b286ce5782",
+  "prompts": {},
+  "sessions": {
+    "s_f76d5384d236b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "afb7fbb2-5840-493a-a894-b30042001f22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

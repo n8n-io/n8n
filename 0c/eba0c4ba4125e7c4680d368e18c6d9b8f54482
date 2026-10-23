@@ -1,0 +1,336 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewStatusSync.ts
+  s_b34abcbd386402::t_24b4292bed3e97 1-11,13-21,23-30,36-43,45-46,48-50,52-56,58-60
+  s_e0d6b46d5a1cd6::t_c81c77616ab3e3 31-35,44,47,51
+  s_e0d6b46d5a1cd6::t_e196f351177dc7 12
+  s_b34abcbd386402::t_4ea527af620494 22
+  s_b34abcbd386402::t_cfcd132e94eb8c 57
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_b34abcbd386402::t_1c438986b38dae 529-557
+  s_b34abcbd386402::t_6e9e651eaf8905 203-204
+  s_94fa4ed7d7b038::t_ba46ed08836d87 228-229
+  s_b34abcbd386402::t_44fb5c4d699e98 83
+  s_b34abcbd386402::t_bb1f01e4eedee4 25,32-35
+  s_b34abcbd386402::t_3211510b55e36f 558-559
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_b34abcbd386402::t_c224e550ecf7e2 8,20,29-30,43
+  s_b34abcbd386402::t_973fb5ea005143 107-108,116-117
+  s_94fa4ed7d7b038::t_16e816b1f011f0 54-55
+  s_b34abcbd386402::t_af3b788f27acf8 79-80,95
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue
+  s_b34abcbd386402::t_5f6185aae32256 36,49,58-62
+  s_b34abcbd386402::t_f3d22933afbab9 7,15-17,20-24
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
+  s_b34abcbd386402::t_3b3299a3d9fcaa 12,15-17
+  s_b34abcbd386402::t_2e0ac133caf0d3 106-107,111-115,122-125,127-148,150-161
+  s_b34abcbd386402::t_e4182464ddfed0 108-110,116-121
+  s_b34abcbd386402::t_dc9878bfdf29bf 126,149
+  s_b34abcbd386402::t_2f1c323b374b71 6-7,11
+  s_6638f09b589e97::t_17e1ef4d104334 18,162-165
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewStatusSync.test.ts
+  s_b34abcbd386402::t_580233be25b07a 40
+  s_b34abcbd386402::t_a726500e2f8c4c 1-39,41-67,69-70,75-116,118-125,127-174
+  s_b34abcbd386402::t_f619928cac5756 68
+  s_b34abcbd386402::t_ada1c191fa7c9b 71-74
+  s_e0d6b46d5a1cd6::t_8ae130818dd733 117
+  s_e0d6b46d5a1cd6::t_8777d63396adcc 126
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b34abcbd386402::t_f88b437a50481a 4379
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.ts
+  s_b34abcbd386402::t_c65fc974c92a84 5
+  s_b34abcbd386402::t_0a213d7d8a6e97 1-4,6-16,24,28-29,33,38,41-47,50-51,53-57,59-61,66-72,82
+  s_b34abcbd386402::t_76965219875589 34-37,48,52
+  s_b34abcbd386402::t_deb945a61cf2ab 39-40,49,58,62-65
+  s_b34abcbd386402::t_7357f101878346 73-81
+  s_b34abcbd386402::t_0329c67ea2c29f 17-23
+  s_e0d6b46d5a1cd6::t_17c2dd1353b0d1 31
+  h_9c8f56e3400786 25-27,30,32
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_b34abcbd386402::t_6f12f1fad31f7a 38
+  s_b34abcbd386402::t_c9a197fb11ecd1 17
+  s_b34abcbd386402::t_3ae8378e367c22 98,103-104
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_94fa4ed7d7b038::t_68ec38eb0d38db 3
+  s_b34abcbd386402::t_7a44088edd698a 17-18,20-26
+  s_94fa4ed7d7b038::t_6e4f5e0e8674de 1-2,4-5,32-33
+  s_94fa4ed7d7b038::t_3011dbbd079efb 19
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_b34abcbd386402::t_f734c70d761acc 97,100-102
+  s_b34abcbd386402::t_5f76aa7d690ca8 59-60
+  s_b34abcbd386402::t_87c86684791160 83
+  s_b34abcbd386402::t_e942bf4683169c 270-273
+  s_b34abcbd386402::t_f65d763798858f 103
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.test.ts
+  s_b34abcbd386402::t_674eeeb742d79b 87-131
+  s_b34abcbd386402::t_5a3475819703ac 1-86,132-175
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_44a98ba2784a12::t_16f911908620c5 10,66
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_44a98ba2784a12::t_16f911908620c5 79
+  s_44a98ba2784a12::t_e7de892e1b7d06 19,49,87-93
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_44a98ba2784a12::t_16f911908620c5 78
+docs/generated/postgres-schema/README.md
+  s_44a98ba2784a12::t_16f911908620c5 65,97,837,1151
+  s_44a98ba2784a12::t_e7de892e1b7d06 235,845-851
+docs/generated/sqlite-schema/README.md
+  s_44a98ba2784a12::t_16f911908620c5 65,97,824,1138
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 87,1052
+  s_44a98ba2784a12::t_e7de892e1b7d06 218,832-838
+packages/@n8n/db/src/migrations/common/1784000000050-AddHostRunIdToInstanceAiCheckpoints.ts
+  ai_agent 1-31
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_44a98ba2784a12::t_16f911908620c5 73
+packages/@n8n/db/src/migrations/common/1784000000049-AddScheduledTaskDispatchedAt.ts
+  ai_agent 1-35
+docs/generated/sqlite-schema/scheduled_job.md
+  s_44a98ba2784a12::t_16f911908620c5 93
+docs/generated/sqlite-schema/scheduled_task.md
+  s_44a98ba2784a12::t_16f911908620c5 9,21,65
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_893c5ef8fdc256 217-218
+  s_44a98ba2784a12::t_daa8f45a138448 437-438
+  s_44a98ba2784a12::t_fe94af8470378e 435,435
+  s_44a98ba2784a12::t_bfa5a9f5ac9def 215,215
+  s_44a98ba2784a12::t_d446b22a984aa3 216
+  s_44a98ba2784a12::t_29c7d74109de94 436
+  s_44a98ba2784a12::t_40ef558442421f 214,214
+  s_44a98ba2784a12::t_e003fa0ab06b5c 434,434
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_44a98ba2784a12::t_16f911908620c5 92
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_44a98ba2784a12::t_16f911908620c5 73
+  s_44a98ba2784a12::t_e7de892e1b7d06 8,43,81-87
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_44a98ba2784a12::t_16f911908620c5 9,20,57
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_51812c9029fdb3 455-456
+  s_44a98ba2784a12::t_d25d8416783ebe 225-226
+  s_44a98ba2784a12::t_aa1e8f3f5a3b38 223,223
+  s_44a98ba2784a12::t_473e032380eaeb 453,453
+  s_44a98ba2784a12::t_50f198fd2246d1 224
+  s_44a98ba2784a12::t_6a70a4b32b68f9 454
+  s_44a98ba2784a12::t_591d9ac7718227 222,222
+  s_44a98ba2784a12::t_0e1b7d2554975c 452,452
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_44a98ba2784a12::t_16f911908620c5 9,49
+docs/generated/sqlite-schema/oauth_user_consents.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 9,21,51
+docs/generated/sqlite-schema/oauth_clients.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 95
+docs/generated/sqlite-schema/user.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 241
+packages/@n8n/db/src/migrations/common/1784000000047-BackfillPreScopingOAuthGrantScopes.ts
+  s_44a98ba2784a12::t_2b023adf499a11 1-100
+packages/@n8n/db/src/migrations/common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus.ts
+  ai_agent 1-39
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_770a4f5233186c::t_8ad2b3903b74bc 98
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_770a4f5233186c::t_a7cff99b8f3cd2 149
+packages/@n8n/db/src/migrations/common/1784000000046-CreateInstanceAiEventsTable.ts
+  s_44a98ba2784a12::t_ce0caa502ea993 1-36
+docs/generated/sqlite-schema/instance_ai_events.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 1-71
+docs/generated/postgres-schema/public.instance_ai_events.md
+  s_44a98ba2784a12::t_e7de892e1b7d06 1-65
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 46,50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0ceba0c4ba4125e7c4680d368e18c6d9b8f54482",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_12107b09095a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f36b6843-9b7a-45a5-8d52-4031db7468b2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_1ef72897374beb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1e495e5d-7657-49d3-9e14-471f81cd06f2",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_278cbb65f99049": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1063cccb-da60-401d-8e97-8afd031e235c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_60c9025b151770": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53a03a0f-53be-4095-a000-6d094159abd5",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_63922c16247082": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6b337778-08d5-4266-bf43-54422800dd01",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_70e4a16a672757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_744aa7ffad1673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_813e262a61f3c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b40806b-1b79-457f-8546-5d2b9b1d3ad1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9006126844c8d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b699ae-12d0-405b-9a78-fb4840686602",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b3f23ab76a494c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_b6381fbb8ddc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_d8236b8b5400e8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

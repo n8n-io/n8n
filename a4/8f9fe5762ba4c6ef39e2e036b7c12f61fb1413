@@ -1,0 +1,38 @@
+packages/@n8n/db/src/migrations/common/1785168204000-CreateAgentChatAttachmentsTable.ts
+  h_7555c3ee6524cf 18
+packages/@n8n/api-types/src/agents/agent-chat-attachments.constants.ts
+  s_8c0bb2d06aee91::t_050831bdaa508b 11-12
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_8c0bb2d06aee91::t_6eb718099d7285 3
+  s_8c0bb2d06aee91::t_685368e81a8e01 386-391
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_8c0bb2d06aee91::t_fc790379f2dcc5 3
+  s_8c0bb2d06aee91::t_f9713411252442 714-739
+packages/cli/src/modules/agents/utils/inbound-attachments.ts
+  s_8c0bb2d06aee91::t_0582e803ec145d 2
+  s_8c0bb2d06aee91::t_581cc756211ddc 26-30
+packages/cli/src/modules/agents/utils/__tests__/inbound-attachments.test.ts
+  s_8c0bb2d06aee91::t_c8068ca20f57c0 2
+  s_8c0bb2d06aee91::t_ea1c8d0b5f3abf 65-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a48f9fe5762ba4c6ef39e2e036b7c12f61fb1413",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

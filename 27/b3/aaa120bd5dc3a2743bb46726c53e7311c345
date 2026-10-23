@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentIdentityHeader.vue
+  s_fcf19ae757e77d::t_9e9ff8cc85acee 71-81
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_fcf19ae757e77d::t_9e9ff8cc85acee 4,192,198,207,214-215
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_fcf19ae757e77d::t_9e9ff8cc85acee 5,1829,1836-1842,1844-1848,1861-1881,1946,2050-2069
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_fcf19ae757e77d::t_50fd22e08585bb 105
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_fcf19ae757e77d::t_9e9ff8cc85acee 4,11,18,23,27-28,39,41-46,51-55,86-94,127-134,239-243,245-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27b3aaa120bd5dc3a2743bb46726c53e7311c345",
+  "prompts": {},
+  "sessions": {
+    "s_fcf19ae757e77d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0802b-6671-7113-acbf-995bcdec87f3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

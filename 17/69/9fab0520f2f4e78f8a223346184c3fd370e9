@@ -1,0 +1,45 @@
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_8631ec10eb1199::t_43b8a43e734d59 23-51,55-63,67-85,89,91-99,106-108,112-116,118-123,127-142,145-160,167-205,207-230,233,235,239,242,244,248
+  s_8631ec10eb1199::t_25f916402ea6dc 231-232
+  s_8631ec10eb1199::t_743ed559b949b4 234
+  s_8631ec10eb1199::t_5bd96a1127cb8d 236-237
+  s_8631ec10eb1199::t_78b57a9daa5c23 240-241
+  s_8631ec10eb1199::t_f54deeaf650290 243
+  s_8631ec10eb1199::t_6ba3dc887aae4d 245-247
+  s_8631ec10eb1199::t_27658d86a3b3e7 249-251
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_8631ec10eb1199::t_eb55e5abf38611 207-247
+  s_8631ec10eb1199::t_45fe70da13c327 15-33,35-205,248-363,365-384,389
+  s_8631ec10eb1199::t_33d720ac08d3b1 206
+  s_8631ec10eb1199::t_c004f1ec0b7278 385-388
+  s_8631ec10eb1199::t_1ee05c85aa8195 390-392
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_8631ec10eb1199::t_b97743e7fff138 183-191,196-208
+  s_8631ec10eb1199::t_a1bee7c655f5f3 145-146
+  s_8631ec10eb1199::t_cda4cbded48882 116-120
+  s_8631ec10eb1199::t_d7bed504a8c9d1 213-219,222-226,231-236,242-248
+  s_8631ec10eb1199::t_b05d56ea846eb3 256-267,274-291,296-302,306-311,315-324
+  s_8631ec10eb1199::t_a31515ae839bb3 135-136
+  s_8631ec10eb1199::t_6b9bc753184f67 166-170,175-179
+  s_8631ec10eb1199::t_30eb9d9b6f8ad5 156-161
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_8631ec10eb1199::t_1fdabe827895bb 34,44,52,61,68,75,83,90,97,103,111,118,127,135,141,148,156,190,193,204,207,219,222,228,234,237,244,262,267,271,277,284,299,305,313,316,322,328,335,343,346,349,356,362,374,378,386,391,395,415,420,425,430,435,442,450,455,460,465,470,477,496-497
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_8631ec10eb1199::t_74bf0858e9a496 19,50,64,67,77,91,94,104,119,125,133,151,154,157,167,182,188,208,212,216,222,235,241,252,260,273,279,297,302,307,323,328,337,354,357,363,366,369,374,379,388,397,406,409,418,426-427,429-430,432-433,438,443,451,460,463,468,474,483,514
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17699fab0520f2f4e78f8a223346184c3fd370e9",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

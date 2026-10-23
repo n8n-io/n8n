@@ -1,0 +1,19 @@
+packages/@n8n/agents/src/runtime/__tests__/file-parts.test.ts
+  s_7b906002d68666::t_84dc55947773bc 239-241,265-267,289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9246e1ba792d1eb832826512fe2b0354aa21eb58",
+  "prompts": {},
+  "sessions": {
+    "s_7b906002d68666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f539de05-fec9-448e-9cf8-4eb7aaa7251f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

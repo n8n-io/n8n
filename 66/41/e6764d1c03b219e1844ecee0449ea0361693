@@ -1,0 +1,29 @@
+heal-node-ids-bench.mts
+  s_f0e6264a74d006::t_780fd730527766 1-403
+packages/cli/src/workflows/workflow.service.ts
+  s_f0e6264a74d006::t_24fc8163e980e3 1682-1690
+  s_f0e6264a74d006::t_fcaae531fcc046 1128-1142,1151,1153-1154,1167-1170,1176,1179
+  s_f0e6264a74d006::t_7a6f2aca08110b 1721-1727
+  s_f0e6264a74d006::t_a1b9455068433b 1637-1642,1650-1667,1669,1671-1673
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_f0e6264a74d006::t_6f4092710ee176 1276-1287,1289-1312
+  s_f0e6264a74d006::t_c77f6e30b97c7e 1288
+  s_f0e6264a74d006::t_9b31e675dc2605 1199,1205-1207
+  s_f0e6264a74d006::t_4ef1a6be3f86f0 1208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6641e6764d1c03b219e1844ecee0449ea0361693",
+  "prompts": {},
+  "sessions": {
+    "s_f0e6264a74d006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74b342e3-35da-44fb-bc35-d5aa260834e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

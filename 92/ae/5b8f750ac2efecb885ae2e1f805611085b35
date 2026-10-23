@@ -1,0 +1,24 @@
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_636ebb9aa177c9::t_b226a1f596e9e5 244-249
+  s_636ebb9aa177c9::t_fda44128be1113 74-83
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_636ebb9aa177c9::t_ec87c191ff8b2f 216-220
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_636ebb9aa177c9::t_b52f568e38b693 327,337,349-379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "92ae5b8f750ac2efecb885ae2e1f805611085b35",
+  "prompts": {},
+  "sessions": {
+    "s_636ebb9aa177c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f25c17d0-2e10-478c-9f67-7c90de62c693",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

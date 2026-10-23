@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/HttpRequest/test/GenericFunctions.test.ts
+  s_cc4e5ddeb07af8::t_b2fe0a1e8757c4 4-8,126-132
+packages/nodes-base/nodes/Microsoft/Dynamics/GenericFunctions.ts
+  s_cc4e5ddeb07af8::t_b1928ab8b12ca9 45
+packages/nodes-base/nodes/Microsoft/Dynamics/test/GenericFunctions.test.ts
+  s_cc4e5ddeb07af8::t_1be54e8e30c098 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bba02a198ea40f4e4e3c6027369c0637d67aa845",
+  "prompts": {},
+  "sessions": {
+    "s_cc4e5ddeb07af8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73452168-442f-4bd7-a7c0-9a230f5500c4",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

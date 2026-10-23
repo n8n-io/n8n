@@ -1,0 +1,1487 @@
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_e8b96ca75e92a4::t_4ad90cd7718c58 1280-1281
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_e8b96ca75e92a4::t_c74abf8e41d447 240-242
+  s_e8b96ca75e92a4::t_520ff5a3e523de 391,490-491,493-496,718,855-860,947-950,1045,1084
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_e8b96ca75e92a4::t_a0807e20a16de9 11-14,359,402,1888,1921-1923,2022-2038
+  s_e8b96ca75e92a4::t_09f829587d7c6b 10,2039-2041
+packages/@n8n/config/test/config.test.ts
+  s_e8b96ca75e92a4::t_4ad90cd7718c58 370,510,695
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiSettings.store.ts
+  s_e8b96ca75e92a4::t_4ad90cd7718c58 111-117,145,651
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_e8b96ca75e92a4::t_4ad90cd7718c58 207
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_e8b96ca75e92a4::t_4ad90cd7718c58 80
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_e8b96ca75e92a4::t_9d435d29f537b9 116,118
+  s_e8b96ca75e92a4::t_2aba548c833508 13,304-327,563-570
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_e8b96ca75e92a4::t_533db0705a1d0e 361
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.ts
+  s_e8b96ca75e92a4::t_3dce075217bc98 186
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_e8b96ca75e92a4::t_c6e5fd01e5fda2 1028-1033
+  s_e8b96ca75e92a4::t_002d72e355001a 1025-1027
+  s_e8b96ca75e92a4::t_cf2e8815a7ff0b 1034
+  s_e8b96ca75e92a4::t_4c899cbb92881e 67-71,421-432,459-461,481-493,755-759,1024,1475-1478
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_e8b96ca75e92a4::t_533db0705a1d0e 781-813,888-889,907,910-912
+.agents/skills/conventions/SKILL.md
+  s_e8b96ca75e92a4::t_2b4ed2af1853b3 43
+.agents/skills/create-issue/SKILL.md
+  s_e8b96ca75e92a4::t_6ef9c76d041246 17-19
+.agents/skills/design-system/SKILL.md
+  s_e8b96ca75e92a4::t_c6a8ab6085ec50 32,36
+.agents/skills/public-api/SKILL.md
+  s_e8b96ca75e92a4::t_015d1a1f86b9d3 46-50,135-143,197-198
+.agents/skills/public-api/reference.md
+  s_e8b96ca75e92a4::t_3debfc22926df4 24-26,103-104,151-183
+.github/CLAUDE.md
+  s_e8b96ca75e92a4::t_4b3f43929c52b2 16
+.github/CODEOWNERS
+  s_e8b96ca75e92a4::t_5afa292b265f59 1-3,5
+.github/WORKFLOWS.md
+  s_e8b96ca75e92a4::t_606eaebb3c4d31 13,24,607,609-611,613-663,859-864,869-872,946
+.github/scripts/github-helpers.mjs
+  s_e8b96ca75e92a4::t_2c93154742a744 427-493
+.github/scripts/owners/assign-reviewers.mjs
+  s_e8b96ca75e92a4::t_82b10d465895de 5,14,25-33
+.github/scripts/owners/assign-reviewers.test.mjs
+  s_e8b96ca75e92a4::t_507d852562eb46 7,21,33,35,43,45-46,57
+.github/scripts/owners/owners.mjs
+  s_e8b96ca75e92a4::t_b4997013d3dc2b 1,5-6,8-9,22-23,26-44,47-50,53,56-96,100,103,110-172,194-208,214,217,222-258,292-308,312-316,318-320,322-345
+.github/scripts/owners/owners.test.mjs
+  s_e8b96ca75e92a4::t_e046e36a666ec3 5,9-11,17,20-24,26,36-38,42-43,45-46,50-82,87-88,90,92-93,96,100-180,186,204-205,222,238-239,241,255,264,271-317
+.github/scripts/owners/required-reviews.mjs
+  s_e8b96ca75e92a4::t_0fd020c23b089f 1-213
+.github/scripts/owners/required-reviews.test.mjs
+  s_e8b96ca75e92a4::t_6c4b7533c3ad4c 1-281
+.github/scripts/owners/review-recommendations.mjs
+  s_e8b96ca75e92a4::t_252624fbe9bc33 7-8,10-11,14-21,51-53,192-220,229,232,238-241,277-280
+.github/scripts/owners/review-recommendations.test.mjs
+  s_e8b96ca75e92a4::t_fe61c27e7d0e25 7,15,27,29,33-34,39,41,45-52,221,320-351,362,431-452
+.github/scripts/package.json
+  s_e8b96ca75e92a4::t_26e46af8c77708 9
+.github/scripts/quality/check-pr-size.mjs
+  s_e8b96ca75e92a4::t_e65883b6feabf9 52-67,105
+.github/scripts/quality/check-pr-size.test.mjs
+  s_e8b96ca75e92a4::t_2a91eff8bf301e 161-169
+.github/test-metrics/e2e-impact-map.json
+  s_e8b96ca75e92a4::t_50a81f5b88b93e 1
+.github/test-metrics/playwright.json
+  s_e8b96ca75e92a4::t_2f7cf93c871324 2,6-15,17,19-24,27,29,31-34,37,39,41-44,47,49,51-59,62,64,67,71-74,76-87,89,91-99,102,104,106-109,112,114,116-119,122,124,126-129,131-132,134,136-144,147,149,151-154,157,161-164,167,169,171-174,176-199,202,204-209,212,216-217,219,221-224,226-229,231-234,236-239,241-242,244,246-249,251-254,256-257,261-264,266-268,271-274,276-279,281-284,286-287,291-295,297,301-304,306-312,316-317,319-323,326-329,331-333,336-339,341-344,346-347,349,351-354,356-359,361-363,366-369,371-372,376-378,381-382,384,386-392,396-398,401-404,406-409,411-412,414,416-418,421-422,424,426-427,431-434,436-437,439,442,444,446-449,451-454,456-457,459,461-462,464,466-472,476-497,499,502,504,506-507,511-513,516-519,521-524,526-528,531-535,537,539-564,567,571-588,591-593,596-603,606-613,616-617,621-623,627,629,631-633,636-639,641-644,646-647,649,651-657,659-673,676-677,679-684,687,689,691-694,696-697,699,701-702,704,706-709,711-713,716-719,721-722,726-727,729,731-733,737,739,741-743,746-748,751-753,757,761-764,766-787,789,791-792,794,796-797,799,801-803,806-807,809,811-812,814,816-817,821-823,826-837,842,846-847,849,852,856-857,859,861-862,864-868,871-872,874,876-877,879,881-883,886-888,891-892,894,896-897,901-902,904,906-912,914,917,922,924,926-932,936-937,941-952,957,961-962,964,966-967,971-972,976-977,979,982,987,991-994,996-998,1001-1002,1006-1009,1012,1014,1016-1018,1021-1024,1027,1041,1043,1046,1048,1051,1053,1056,1058,1061,1063,1066,1068,1071,1073,1076,1078,1081,1083,1086,1088,1091,1093,1096,1098,1101,1103,1106,1108
+.github/workflows/backport.yml
+  s_e8b96ca75e92a4::t_bf8a17ae03ef99 15,19-21,27-30,95-97,124-126
+.github/workflows/ci-owners-assign-reviewers.yml
+  s_e8b96ca75e92a4::t_bea88806e0989a 6,63
+.github/workflows/ci-owners-required-reviews.yml
+  s_e8b96ca75e92a4::t_ab00e32337a9a3 1-165
+.github/workflows/ci-owners-review-recommendations.yml
+  s_e8b96ca75e92a4::t_0488de2d0539e2 4-6,8-9,54
+.github/workflows/ci-owners-validation.yml
+  s_e8b96ca75e92a4::t_d91a085c2e28eb 1,3-12,16-18,20-27,32,36-39
+.github/workflows/ci-pr-quality.yml
+  s_e8b96ca75e92a4::t_78abf6cec23b6c 54
+.github/workflows/ci-pull-requests.yml
+  s_e8b96ca75e92a4::t_f7fac1f1c2417b 118,416-471
+.github/workflows/docker-build-push.yml
+  s_e8b96ca75e92a4::t_ddf40ddb3ce52a 612,709-713,725
+.github/workflows/release-create-github-releases.yml
+  s_e8b96ca75e92a4::t_8ecedd78231e74 45,49-51
+.github/workflows/release-create-pr.yml
+  s_e8b96ca75e92a4::t_878f0a81d88c1a 41,138-140
+.github/workflows/release-promote-github-release.yml
+  s_e8b96ca75e92a4::t_b653ab20c0a03e 17,21-22
+.github/workflows/release-set-stable-npm-packages-to-latest.yml
+  s_e8b96ca75e92a4::t_a8dfe888edf9e5 7,11-12
+.github/workflows/release-update-pointer-tag.yml
+  s_e8b96ca75e92a4::t_4a1c9b37af7c66 25,29-30
+.github/workflows/sbom-generation-callable.yml
+  s_e8b96ca75e92a4::t_4fe8def98b7788 30,34-37,39
+.github/workflows/sec-sync-public-to-private.yml
+  s_e8b96ca75e92a4::t_1b60ec737c4552 9-10,49,62,66,77,91,95,125-158
+.github/workflows/test-e2e-reusable.yml
+  s_e8b96ca75e92a4::t_eee93c574dc1c6 175-179
+.github/workflows/test-evals-instance-ai.yml
+  s_e8b96ca75e92a4::t_649ef1d664036d 227-230,233-249,272-273,289,297-302,304,312-314,316
+.github/workflows/util-approve-and-set-automerge.yml
+  s_e8b96ca75e92a4::t_e3bf9bc6c19a28 12,16-18
+.github/workflows/util-backport-bundle.yml
+  s_e8b96ca75e92a4::t_bb28b215c4cadb 17,21-23
+.github/workflows/util-hide-outdated-cubic-comments.yml
+  s_e8b96ca75e92a4::t_03d8e1867ccc25 1-70
+.github/workflows/util-update-node-popularity.yml
+  s_e8b96ca75e92a4::t_0dfdf3d2d10445 9,13-15,83-85
+AGENTS.md
+  s_e8b96ca75e92a4::t_cf1f6308809bbf 14-16
+OWNERS
+  s_e8b96ca75e92a4::t_2bfe4fe717d42f 1-7,10-17,26,47,54-55,240-243,245
+docs/generated/postgres-schema/README.md
+  s_e8b96ca75e92a4::t_ebb67afe793dcf 11,168,360-377
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_e8b96ca75e92a4::t_db5fdba149c765 1-97
+docs/generated/postgres-schema/public.agents.md
+  s_e8b96ca75e92a4::t_3fc68d8a193d6a 10,54,102-119
+docs/generated/sqlite-schema/README.md
+  s_e8b96ca75e92a4::t_2f81c1db22d230 11,151,347-364
+docs/generated/sqlite-schema/agent_background_job.md
+  s_e8b96ca75e92a4::t_bf76a4dbc42719 1-101
+docs/generated/sqlite-schema/agents.md
+  s_e8b96ca75e92a4::t_235545ff287a1d 21,56,104-121
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_e8b96ca75e92a4::t_f4e48b1a70815f 1,18-23,46-47,49-50,54,57,59-72,160,171,222,226,233,247,265-266,275,291,295-299,363,365,368,372-388,391-395,411,415,421,424,434,437,448,466,480,493,507,510,512,521-525,544,555,566
+packages/@n8n/ai-utilities/src/__tests__/utils/refreshing-auth-fetch.test.ts
+  s_e8b96ca75e92a4::t_6ffc16641c2a25 1-220
+packages/@n8n/ai-utilities/src/index.ts
+  s_e8b96ca75e92a4::t_c0969e1e0a6c0c 18,59,67-70
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_e8b96ca75e92a4::t_6c4ecae7032c55 20,47-53,59-63,66-68,73,85-94,97-111,118-123
+packages/@n8n/ai-utilities/src/utils/refreshing-auth-fetch.ts
+  s_e8b96ca75e92a4::t_4a5d1ca6d65fe9 1-79
+packages/@n8n/api-types/src/agents/sub-agent.schema.ts
+  s_e8b96ca75e92a4::t_cbdddcf1a3e1c7 42-47
+packages/@n8n/api-types/src/dto/executions/execution-public.dto.ts
+  s_e8b96ca75e92a4::t_d1714888375797 1-58
+packages/@n8n/api-types/src/dto/executions/execution-public.openapi.ts
+  s_e8b96ca75e92a4::t_2705245b33e0e8 1-120
+packages/@n8n/api-types/src/dto/executions/get-execution-query.dto.ts
+  s_e8b96ca75e92a4::t_43eaea7a39f1c3 1-26
+packages/@n8n/api-types/src/dto/git-connections/__tests__/git-connections.dto.test.ts
+  s_e8b96ca75e92a4::t_b13cd553e93138 1-5,61-86
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_e8b96ca75e92a4::t_88e416a287e8a5 45-52,90,98,135
+packages/@n8n/api-types/src/dto/index.ts
+  s_e8b96ca75e92a4::t_c63376f80582df 111,347-350,365-371
+packages/@n8n/api-types/src/dto/instance-ai/__tests__/instance-ai-confirm-request.dto.test.ts
+  s_e8b96ca75e92a4::t_a69efc3c5b3b2a 66-73
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_e8b96ca75e92a4::t_024c7ac762d389 4,53-57,115
+packages/@n8n/api-types/src/dto/openapi-nullable.ts
+  s_e8b96ca75e92a4::t_629877c17a34a1 1-8
+packages/@n8n/api-types/src/dto/workflow-history/workflow-version-public.dto.ts
+  s_e8b96ca75e92a4::t_fd92731f1a8ca9 1-9
+packages/@n8n/api-types/src/dto/workflows/workflow-public.dto.ts
+  s_e8b96ca75e92a4::t_20f5b5a9616cff 16,31-33,41
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_e8b96ca75e92a4::t_f08ee1ff20202d 3
+packages/@n8n/api-types/src/index.ts
+  s_e8b96ca75e92a4::t_56deadda11555b 253-254,309,373-374,544-545
+packages/@n8n/api-types/src/push/instance-ai.ts
+  s_e8b96ca75e92a4::t_c546c8b3c72049 32-37
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_e8b96ca75e92a4::t_77d6dda2ca450e 474-480
+packages/@n8n/api-types/src/schemas/object-guard.schema.ts
+  s_e8b96ca75e92a4::t_ebb7dc121548f5 1-15
+packages/@n8n/api-types/src/schemas/workflow-publication-status.schema.ts
+  s_e8b96ca75e92a4::t_ab55c1326d77db 3-15,20,35-44
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_e8b96ca75e92a4::t_8d65594feae2af 1,138,152,170,177-202,215,234,251,271,295,317,341,361,381,397,416
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_e8b96ca75e92a4::t_adde62a57b6a2e 2,41,177-182
+packages/@n8n/backend-network/src/ssrf/index.ts
+  s_e8b96ca75e92a4::t_37a08b1435b6ba 5
+packages/@n8n/backend-network/src/ssrf/passthrough-egress-filter.ts
+  s_e8b96ca75e92a4::t_03957203974a8a 1-16
+packages/@n8n/benchmark/Dockerfile
+  s_e8b96ca75e92a4::t_2bd068f304c7ae 8-9,11-14
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_e8b96ca75e92a4::t_a7a81ae5b7c5ce 46,50,54-59,64-99
+packages/@n8n/cli/src/client.ts
+  s_e8b96ca75e92a4::t_c24f3461f7b335 67,71,102,293-294
+packages/@n8n/cli/src/commands/git-connections/pull.ts
+  s_e8b96ca75e92a4::t_1ab70ed90fae3f 7,18
+packages/@n8n/cli/src/commands/git-connections/push.ts
+  s_e8b96ca75e92a4::t_6253a6d04d375f 1,7,11-22,27-30,32
+packages/@n8n/config/src/configs/agents.config.ts
+  s_e8b96ca75e92a4::t_0a930b29731ae9 74-81
+packages/@n8n/config/src/configs/logging.config.ts
+  s_e8b96ca75e92a4::t_4a093e7bb21db4 55
+packages/@n8n/config/src/configs/security.config.ts
+  s_e8b96ca75e92a4::t_6a249c1c986165 64
+packages/@n8n/constants/src/nodes.ts
+  s_e8b96ca75e92a4::t_c9a3ba8712af9f 1-4
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_e8b96ca75e92a4::t_25c6efa14eb1ef 79,82
+packages/@n8n/db/src/entities/types-db.ts
+  s_e8b96ca75e92a4::t_0fe26f8a9d3b74 69
+packages/@n8n/db/src/migrations/common/1788191436461-CreateAgentBackgroundJobTable.ts
+  s_e8b96ca75e92a4::t_a66d428d84e528 1-81
+packages/@n8n/db/src/repositories/__tests__/workflow-create-content.repository.test.ts
+  s_e8b96ca75e92a4::t_c6238e5a17b1a9 1-117
+packages/@n8n/db/src/repositories/base-repository.ts
+  s_e8b96ca75e92a4::t_127e41383d0be0 45-47,51,53
+packages/@n8n/db/src/repositories/index.ts
+  s_e8b96ca75e92a4::t_139a47f1701667 68
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_e8b96ca75e92a4::t_e1db8e97a6c756 167-184
+packages/@n8n/db/src/repositories/test-case-execution.repository.ee.ts
+  s_e8b96ca75e92a4::t_cbf76e46e0ba15 49,54-55
+packages/@n8n/db/src/repositories/test-run.repository.ee.ts
+  s_e8b96ca75e92a4::t_155dedefdfb83f 9,101-105,117-119,153-162
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_e8b96ca75e92a4::t_6ade4d35dc6431 23-25,30-31,33-62,229-257
+packages/@n8n/db/src/repositories/workflow-publication-trigger-status.repository.ts
+  s_e8b96ca75e92a4::t_2fc584123f6e27 9,82-117
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_e8b96ca75e92a4::t_a3520b3c72dd57 2,181-195
+packages/@n8n/decorators/src/module/module.ts
+  s_e8b96ca75e92a4::t_18a945fb041d71 6,86-95
+packages/@n8n/decorators/src/policy-check/__tests__/policy-mint.test.ts
+  s_e8b96ca75e92a4::t_11a3d45dc96c01 3,5
+packages/@n8n/decorators/src/policy-check/__tests__/workflow-subject.test.ts
+  s_e8b96ca75e92a4::t_64a00e678e4bd8 1-69
+packages/@n8n/decorators/src/policy-check/policy-cleared.ts
+  s_e8b96ca75e92a4::t_ba6dc277e628cf 2,5-10,23,27-54
+packages/@n8n/decorators/src/policy-check/policy-mint.ts
+  s_e8b96ca75e92a4::t_d84fcd9fb81bba 4
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_e8b96ca75e92a4::t_269378f42992c6 47
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  s_e8b96ca75e92a4::t_2385b50d7cc348 66,71-72,75-82
+packages/@n8n/decorators/src/system-task/__tests__/system-task.test.ts
+  s_e8b96ca75e92a4::t_0834d3fbf381f3 17,33-34,37,58-59,63,80-81
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_e8b96ca75e92a4::t_392ae82de7bd67 7,40-54,71-72,76-82,116-117,125,154-156
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_e8b96ca75e92a4::t_2970d25df68872 35,71
+packages/@n8n/eslint-config/src/rules/no-on-leader-takeover.test.ts
+  s_e8b96ca75e92a4::t_1dd690f7b6bd89 1-27
+packages/@n8n/eslint-config/src/rules/no-on-leader-takeover.ts
+  s_e8b96ca75e92a4::t_350df0b79e2599 1-38
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.test.ts
+  s_e8b96ca75e92a4::t_c29a68b672ad2a 5-7,46-48,86-101
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.ts
+  s_e8b96ca75e92a4::t_91d765d383e941 20-23,38,41-42,47,77-78
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_e8b96ca75e92a4::t_8bc8261b3f145c 149-164
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_e8b96ca75e92a4::t_136acfad38e142 25-28,756
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_e8b96ca75e92a4::t_f5f85ea63d7370 24-27,272,1163
+packages/@n8n/expression-runtime/src/extensions/__tests__/array-extensions.test.ts
+  s_e8b96ca75e92a4::t_86e6a078825b8f 1-134
+packages/@n8n/expression-runtime/src/extensions/__tests__/function-extensions.test.ts
+  s_e8b96ca75e92a4::t_b3a8cbb35db0e7 1-23
+packages/@n8n/expression-runtime/src/extensions/__tests__/object-extensions.test.ts
+  s_e8b96ca75e92a4::t_cb4911d15cb9d0 1-44
+packages/@n8n/expression-runtime/src/extensions/array-extensions.ts
+  s_e8b96ca75e92a4::t_0cc88e45242854 17-33,95-96,190-198,226,229-230,251-252,278,282-288,304,308,310-313,315-320
+packages/@n8n/expression-runtime/src/extensions/function-extensions.ts
+  s_e8b96ca75e92a4::t_05df5fa47082d7 4-13,42
+packages/@n8n/expression-runtime/src/extensions/object-extensions.ts
+  s_e8b96ca75e92a4::t_51f4969d23a58b 4-13,79-80,83-84,86
+packages/@n8n/instance-ai/docs/configuration.md
+  s_e8b96ca75e92a4::t_81bd6f4384542b 49
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_e8b96ca75e92a4::t_420888e46a2493 311-339,634
+packages/@n8n/instance-ai/evaluations/credentials/__tests__/seeder.test.ts
+  s_e8b96ca75e92a4::t_f76181c7c1d7f2 28,75
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_e8b96ca75e92a4::t_caba1bc6d2bc5c 226
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_e8b96ca75e92a4::t_c9fc016fda8bee 682-697
+packages/@n8n/instance-ai/src/runtime/__tests__/confirmation-payload.test.ts
+  s_e8b96ca75e92a4::t_508475f3da1a1e 132-140,208
+packages/@n8n/instance-ai/src/runtime/confirmation-payload.ts
+  s_e8b96ca75e92a4::t_53fe9fd42f00b7 47-51,96
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_e8b96ca75e92a4::t_4f44510a209fa3 1-4,90
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_e8b96ca75e92a4::t_da5f09df0f1fc8 338-341,376-379,443-446
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_e8b96ca75e92a4::t_fc3a2ab8a2319b 11,343-346,392
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_e8b96ca75e92a4::t_ec9c5e2ca3fb77 946,987-994
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_e8b96ca75e92a4::t_bec015eb84d67f 1-6,25,48-86,172-175,2321-2469,2944-2999
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_e8b96ca75e92a4::t_d92db5cd4ee289 138-162,372-373,401,801
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_e8b96ca75e92a4::t_c0b5af08b408c7 7-11,23,292-293,797-880,928-947,1175-1183,1186,1251-1277,1303-1332
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/credential-utils.test.ts
+  s_e8b96ca75e92a4::t_77d932800548f1 6,99-111
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_e8b96ca75e92a4::t_749d2106a9f703 26,1430-1431,1465-1466,1489-1490,1515,1537-1538,1563,2162,2179-2181,2184,2188,2192
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/summarize-workflow.test.ts
+  s_e8b96ca75e92a4::t_7bfcb1c4fde6d2 1-77
+packages/@n8n/instance-ai/src/tools/workflows/credential-utils.ts
+  s_e8b96ca75e92a4::t_c1b5f717db4cf2 110-118,123-124
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.schema.ts
+  s_e8b96ca75e92a4::t_5184b0078e8c15 8,28
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_e8b96ca75e92a4::t_4e42761d9d4f62 31,882-890,1187-1190
+packages/@n8n/instance-ai/src/tools/workflows/summarize-workflow.ts
+  s_e8b96ca75e92a4::t_d018e545cf1def 3,34-35,38-39,53-54,57-58
+packages/@n8n/instance-ai/src/types.ts
+  s_e8b96ca75e92a4::t_b0aa9d92628b33 1444-1445
+packages/@n8n/nodes-langchain/nodes/ModelSelector/ModelSelector.node.ts
+  s_e8b96ca75e92a4::t_359ab1991ae7e3 6,44-57,218-222
+packages/@n8n/nodes-langchain/nodes/ModelSelector/test/ModelSelector.headers.test.ts
+  s_e8b96ca75e92a4::t_dc7bb0be405067 1-85
+packages/@n8n/nodes-langchain/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.ts
+  s_e8b96ca75e92a4::t_817f5b4c543e73 4,17,354
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOllama/EmbeddingsOllama.node.ts
+  s_e8b96ca75e92a4::t_376d0d0d794cab 3,11,52-60,67-68,70,73-74
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOllama/test/EmbeddingsOllama.node.test.ts
+  s_e8b96ca75e92a4::t_bb87c4439c16ad 1-126
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.ts
+  s_e8b96ca75e92a4::t_590373b972ad14 15-16,256
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/__tests__/searchModels.test.ts
+  s_e8b96ca75e92a4::t_5e5ccdbf231070 47,52-57,79-81,87-88,100-102,113-115,170-175
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/searchModels.ts
+  s_e8b96ca75e92a4::t_abb1c7e20b3ea0 12,23
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/LmChatOllama.node.ts
+  s_e8b96ca75e92a4::t_1e1c921e60402d 10,63-70,80,82,86
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/test/LmChatOllama.node.test.ts
+  s_e8b96ca75e92a4::t_1f9a23dbef358d 1-125
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.ts
+  s_e8b96ca75e92a4::t_c5bd9ca776eb20 19,774
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/__tests__/loadModels.test.ts
+  s_e8b96ca75e92a4::t_ae55f7da8c8163 2-3,37,45-58,80-82,85-86,98-100,110-112,120-122,170-238,251-254
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/loadModels.ts
+  s_e8b96ca75e92a4::t_aa33aa6e5dcd87 8,15-19,21,30
+packages/@n8n/nodes-langchain/nodes/llms/LMOllama/LmOllama.node.ts
+  s_e8b96ca75e92a4::t_ded5ebb6fa1a4c 3,15,60-67,77-78,80,86-87
+packages/@n8n/nodes-langchain/nodes/llms/LMOllama/test/LmOllama.node.test.ts
+  s_e8b96ca75e92a4::t_9f78d475d67428 1-125
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/LmOpenAi.node.ts
+  s_e8b96ca75e92a4::t_f002af9443603b 3,16-17,216-220,277
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMistralCloud/LmChatMistralCloud.node.ts
+  s_e8b96ca75e92a4::t_5537f58b9792ef 197,199
+packages/@n8n/nodes-langchain/nodes/llms/N8nNonEstimatingTracing.ts
+  s_e8b96ca75e92a4::t_87fc4d5b3b464a 10,40-43,52,117-120
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatAnthropic.test.ts
+  s_e8b96ca75e92a4::t_f364138189ab3c 429,440-444,491-496,498,574-576
+packages/@n8n/nodes-langchain/nodes/llms/test/N8nNonEstimatingTracing.test.ts
+  s_e8b96ca75e92a4::t_ac84537e7dfef2 1-89
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts
+  s_e8b96ca75e92a4::t_557f9bdbd92128 6,15,38-47,69,94,128,166,209,257,302,333-339,358,389-395,416,461,499,537,574,624,667,699,743,779,813,853,902,971,1037,1091,1145,1192,1238,1272,1321,1394,1447,1503,1552,1594,1649,1691,1727,1771,1806,1844,1874,1913,1953,1994,2117,2143
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.test.ts
+  s_e8b96ca75e92a4::t_29b9cd85564c2b 35,51,69,85-104,119-127,194-198,268,321-345
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.ts
+  s_e8b96ca75e92a4::t_4baa7e1c1ac2bb 10-13,25,33-58,85-86,182-183,186-191,214-215,218-223,235,238,242
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_e8b96ca75e92a4::t_a0e9751cb987c3 6-11,38-42,68,376,400,418,435,458,487,511,529,548,569,591,614,634,652,666,668-669,684,696,698,714,741,764,787,801-846
+packages/@n8n/nodes-langchain/nodes/mcp/shared/runtime.test.ts
+  s_e8b96ca75e92a4::t_10c887ec1bf84c 3,13,49-58,74,87,445,556,575,589
+packages/@n8n/nodes-langchain/nodes/mcp/shared/runtime.ts
+  s_e8b96ca75e92a4::t_8ba88b52d9e39a 15,18-19,49-52,90,390
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_e8b96ca75e92a4::t_f8518942621a3b 4,11,15-22,171-172,175,183,290,304,308-315,317-323,351,353-360,362-363,366-369,371-373,375-377,417-419,421,436-441,448-476,479-481,483
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  s_e8b96ca75e92a4::t_7e7c3da68abad7 14,25,1023-1036
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/ChatTrigger.node.test.ts
+  s_e8b96ca75e92a4::t_f74a9f17bf3095 4,42,47-56,432-524
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_e8b96ca75e92a4::t_eff47c8c940c77 1,129-130,216-218,652,689,709-715,726,756-762,806-812,815-818,850-856,896-902,939,976,1010,1044,1085,1115,1149-1155,1178-1184,1204-1210,1265,1291,1330,1357,1393,1419-1421
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_e8b96ca75e92a4::t_e896b2721edc5b 16,227,233-242,370,386-390,432,573
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.test.ts
+  s_e8b96ca75e92a4::t_c7626f307aa0b4 1-95
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.ts
+  s_e8b96ca75e92a4::t_324505b12c2a49 1-30
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts
+  s_e8b96ca75e92a4::t_51a1203f94eae4 25,185
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_e8b96ca75e92a4::t_102b6d3265eb12 1-2
+packages/@n8n/scheduler/src/core/index.ts
+  s_e8b96ca75e92a4::t_a982c020d5890c 19
+packages/@n8n/scheduler/src/core/recurrence/__tests__/resolve.test.ts
+  s_e8b96ca75e92a4::t_ffdc22c9d55ac0 1-2,5,162-206
+packages/@n8n/scheduler/src/core/recurrence/resolve.ts
+  s_e8b96ca75e92a4::t_dd24d9375db281 1-3,42-66
+packages/@n8n/tournament/src/ExpressionBuilder.ts
+  s_e8b96ca75e92a4::t_61cef9123c5f8d 11,126,182-190,210,263
+packages/@n8n/tournament/src/VariablePolyfill.ts
+  s_e8b96ca75e92a4::t_c694acb4abc482 16-35,44
+packages/@n8n/tournament/test/VariablePolyfill.test.ts
+  s_e8b96ca75e92a4::t_25a2bd372ff9c6 108-156
+packages/@n8n/workflow-sdk/src/ast-interpreter/errors.ts
+  s_e8b96ca75e92a4::t_6f5c8150597adc 104-118
+packages/@n8n/workflow-sdk/src/ast-interpreter/index.ts
+  s_e8b96ca75e92a4::t_7184d6ddd36aec 31
+packages/@n8n/workflow-sdk/src/ast-interpreter/interpreter.test.ts
+  s_e8b96ca75e92a4::t_79711520f2f030 11,1070-1351
+packages/@n8n/workflow-sdk/src/ast-interpreter/interpreter.ts
+  s_e8b96ca75e92a4::t_189ff2fc604b87 12,41-45,52-57,63-66,84-85,108-125,179-180,183-184,193-328,426-436,447-453,543,550-556,577,579,583-584,593,598,603,605,609-612,616-617,670-671,701-703,705-707,709-721,729-731,733-739,741-745,748-760,762-788,791-803,849-851,978,980-987
+packages/@n8n/workflow-sdk/src/ast-interpreter/validators.ts
+  s_e8b96ca75e92a4::t_e2e50d1a95dece 424
+packages/@n8n/workflow-sdk/src/codegen/parse-workflow-code.test.ts
+  s_e8b96ca75e92a4::t_204d387944260d 179-198
+packages/@n8n/workflow-sdk/src/generate-types/generate-node-defs-cli.test.ts
+  s_e8b96ca75e92a4::t_70b156f5195ec3 195-206
+packages/@n8n/workflow-sdk/src/generate-types/generate-node-defs-cli.ts
+  s_e8b96ca75e92a4::t_8a210d839438b2 22,34-36,38-47,81-82
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_e8b96ca75e92a4::t_a4296cfda18c2b 5234-5264,5322-5367
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_e8b96ca75e92a4::t_85b53861d9ab34 21,41-44,141,558-562,569,586-599,607-608,611-615,625-641,646-650,686-692,695-703,714,725,742,753,765,769-827,842-846,852,861-862,864-865,867-868,870-872,874
+packages/@n8n/workflow-sdk/src/generate-types/schema-corpus-hash.test.ts
+  s_e8b96ca75e92a4::t_61f6d9d0d54730 1-67
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/workflow-rules.test.ts
+  s_e8b96ca75e92a4::t_23d04264512430 29-36
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/workflow-rules.ts
+  s_e8b96ca75e92a4::t_28fe0538ce3e0f 64-72
+packages/cli/eslint.config.mjs
+  s_e8b96ca75e92a4::t_fbf60eabf9b2cd 58-60,219,224,387-427,432
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_e8b96ca75e92a4::t_5009ddc0e307d0 8,52-53,94,230,419-421,424-425,444,470-471,489-499,501-502,523-529,599-772,912,1365,1553,1632
+packages/cli/src/active-workflow-manager.ts
+  s_e8b96ca75e92a4::t_0e342f912c7b71 8,38-43,52,61-62,94,702,706-709,713-717,721,732,813,822-823,825-839,1029-1032
+packages/cli/src/chat/__tests__/chat-execution-manager.test.ts
+  s_e8b96ca75e92a4::t_2fb52ff4eb7efb 47,65,75-92,96-102,155-192,492-494,544-546,582-584,625-627,779-978
+packages/cli/src/chat/__tests__/chat-resume-node-types.integration.test.ts
+  s_e8b96ca75e92a4::t_a5d1e9e18cce0e 1-216
+packages/cli/src/chat/__tests__/chat-service.test.ts
+  s_e8b96ca75e92a4::t_716ec246544cd7 28-30,381,397-399,406-407
+packages/cli/src/chat/__tests__/utils.test.ts
+  s_e8b96ca75e92a4::t_2191b15eafd06d 15,515,519,526,531,542-552,562-563,566,570-571,574,578-579,588-589,598-599,609,613,623-624,627-727,729-730
+packages/cli/src/chat/chat-execution-manager.ts
+  s_e8b96ca75e92a4::t_4c14cba523bb3f 14,26,29,42-55,70-71,112-117,121-140,142,144-203,256-259,261-263
+packages/cli/src/chat/chat-service.ts
+  s_e8b96ca75e92a4::t_9e34ed38168fb8 8,169-170,252-257,268-272,274-289,291
+packages/cli/src/chat/utils.ts
+  s_e8b96ca75e92a4::t_261d813c2b7808 14-50,67
+packages/cli/src/commands/start.ts
+  s_e8b96ca75e92a4::t_06e9f1434f5e35 10,41-42,428,431-435
+packages/cli/src/controllers/__tests__/invitation.controller.test.ts
+  s_e8b96ca75e92a4::t_986898352c383f 3,5,9-10,16,19-21,47-49,52,60-61
+packages/cli/src/controllers/__tests__/role.controller.test.ts
+  s_e8b96ca75e92a4::t_c6c1b7e9235935 1,5,7,15-16,25,154-242
+packages/cli/src/controllers/__tests__/users.controller.test.ts
+  s_e8b96ca75e92a4::t_0899827bf7517c 3,5-6,9,33,37-38,40-41,44,46,48-53,55,57-58
+packages/cli/src/controllers/invitation.controller.ts
+  s_e8b96ca75e92a4::t_fd8977bd2f8919 43
+packages/cli/src/controllers/role.controller.ts
+  s_e8b96ca75e92a4::t_ab74e8fc1d8a12 32,34,43,73-83,100-120
+packages/cli/src/controllers/users.controller.ts
+  s_e8b96ca75e92a4::t_ecfa5ff38c71aa 193,205
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_e8b96ca75e92a4::t_be5d9433755067 4200-4209,4214,4231,4235-4247,4250-4254,4267
+packages/cli/src/credentials/credentials.service.ts
+  s_e8b96ca75e92a4::t_2f0c8737cfd494 91-100,1314-1316,1320-1329,1339-1343
+packages/cli/src/errors/subworkflow-policy-denial.error.ts
+  s_e8b96ca75e92a4::t_50b2a22b6665b4 5-6,25-26,31-47,57,59,61,63-64,67-68,71-72,85
+packages/cli/src/evaluation.ee/__tests__/evaluation-test-run.service.test.ts
+  s_e8b96ca75e92a4::t_26d3f8b1025489 1-138
+packages/cli/src/evaluation.ee/__tests__/test-runs.controller.ee.test.ts
+  s_e8b96ca75e92a4::t_f5b8c4d6022100 137-140
+packages/cli/src/evaluation.ee/evaluation-test-run.service.ts
+  s_e8b96ca75e92a4::t_ac07f3e0078b59 1-69
+packages/cli/src/evaluation.ee/insights/insights-context-builder.ts
+  s_e8b96ca75e92a4::t_1c872ee90679ef 188-189,247-248
+packages/cli/src/evaluation.ee/test-runs.controller.ee.ts
+  s_e8b96ca75e92a4::t_1826d31af4267e 13-14,116-119
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_e8b96ca75e92a4::t_4f160d786eb0bf 37-38,51-52,79,85,194-231,573-606
+packages/cli/src/executions/execution-recovery.service.ts
+  s_e8b96ca75e92a4::t_8ad3751ca0e262 15,28,48,93-96,135-136,139-142
+packages/cli/src/executions/execution-redaction.ts
+  s_e8b96ca75e92a4::t_dd1577c877ca86 2,42-48
+packages/cli/src/executions/pre-execution-checks/__tests__/subworkflow-policy-checker.test.ts
+  s_e8b96ca75e92a4::t_467f033639b3b5 9,122-166
+packages/cli/src/executions/pre-execution-checks/subworkflow-policy-checker.ts
+  s_e8b96ca75e92a4::t_9fc5ef8edf77b6 5,14,29-34,56,67-97,99,115,117,142,144,158-164,167
+packages/cli/src/middlewares/__tests__/jitter.test.ts
+  s_e8b96ca75e92a4::t_fc51254aa83983 1,7-11,79-91
+packages/cli/src/middlewares/jitter.ts
+  s_e8b96ca75e92a4::t_d9ba8be132d349 1,22
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweeper.test.ts
+  s_e8b96ca75e92a4::t_d9dc73e2ae53f5 1,7,11-27,30,47,62-73
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_e8b96ca75e92a4::t_f4afb17888c3a0 69,128,348
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_e8b96ca75e92a4::t_46cdb4b40399a8 76
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_e8b96ca75e92a4::t_3b9b4663ca415d 32,131,156,325
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_e8b96ca75e92a4::t_32d567ccad62fe 19,34-35,56,79,128,528-529,539,574,860-930
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_e8b96ca75e92a4::t_a1e12b4991ba7a 8,101
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_e8b96ca75e92a4::t_dfc7d715c9ee54 2,6,17-18,54-64
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_e8b96ca75e92a4::t_7a20544e2f97f1 28,38,42,84,202,503-504,614,633,665,857-870,922,969-1012
+packages/cli/src/modules/agents/agents.module.ts
+  s_e8b96ca75e92a4::t_2c76deeaa929b2 117-119,137,146-148,193,231
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e8b96ca75e92a4::t_5a52fc6e5c25ba 1-312
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_e8b96ca75e92a4::t_03a5f4f3a84834 1-271
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_e8b96ca75e92a4::t_825d9c960cba54 1-211
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_e8b96ca75e92a4::t_67f37d3f2ae6df 1-227
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_e8b96ca75e92a4::t_264d5efff7fb7f 1-207
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_e8b96ca75e92a4::t_b9dac556d0017c 1-176
+packages/cli/src/modules/agents/builder/__tests__/verify-mcp-server.tool.test.ts
+  s_e8b96ca75e92a4::t_b654a893c8c6fb 187,200,213
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_e8b96ca75e92a4::t_198a75f3cd57d5 947-948
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_e8b96ca75e92a4::t_27ed9da991449a 218-219,273-274
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_e8b96ca75e92a4::t_8d8ab823b377e6 10-13,21,102,141
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_e8b96ca75e92a4::t_8b77993291d096 1-69
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_e8b96ca75e92a4::t_9c81d7598fa05a 33-42,110,196-197,345,391-397,427-444
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_e8b96ca75e92a4::t_f93e41843a6afd 5-6,8-11,58-61,69,110-141,175-176
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_e8b96ca75e92a4::t_af44129e7a3b61 1-98
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_e8b96ca75e92a4::t_b3686cd73145f1 19-21,53,61,66-67,130,169,200,220,247,256,304
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_e8b96ca75e92a4::t_e2e3a94ee63517 28,112,115,134,148,160,234-254,256,278,290,306,319,343,400,452,519,580,769,797,823,844
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_e8b96ca75e92a4::t_5ce924033d0280 14-15,17-18,62
+packages/cli/src/modules/agents/sub-agents/format-sub-agent-tool-output.ts
+  s_e8b96ca75e92a4::t_3e0e9e902b4ae6 1-26
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_e8b96ca75e92a4::t_a7a77d37b1c5a2 52,95,118,126,128-129,140,142,174-175,184-188,464
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_e8b96ca75e92a4::t_c8fe6a5923328d 17,50,93-106
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_e8b96ca75e92a4::t_d028133f5a8fd5 45,152,487-489
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.service.integration.test.ts
+  s_e8b96ca75e92a4::t_9e2d78881ecacc 2246-2250,2363-2508
+packages/cli/src/modules/chat-hub/chat-hub.service.ts
+  s_e8b96ca75e92a4::t_d61e733d9cc216 29,73,145-159
+packages/cli/src/modules/community-packages/__tests__/community-packages.lifecycle.service.test.ts
+  s_e8b96ca75e92a4::t_a3804ce69961aa 169-194
+packages/cli/src/modules/community-packages/__tests__/community-packages.service.test.ts
+  s_e8b96ca75e92a4::t_65561a201c8707 129-147
+packages/cli/src/modules/community-packages/community-packages.service.ts
+  s_e8b96ca75e92a4::t_b9aa1581230584 3,48-50,165-168
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.service.test.ts
+  s_e8b96ca75e92a4::t_261ee8967c7dc7 1,3-6,9,11,14-46,145-341
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_e8b96ca75e92a4::t_4579107af2f6a9 1-266
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_e8b96ca75e92a4::t_2ee21fcfe72abf 15,22,37,49,253-258,266,275-277,312,348,350-361,379-381,397,403-452,616,651,659-661,663,689,697-706,710,725,729,731,733,735-736,752-767
+packages/cli/src/modules/git-connections.ee/constants.ts
+  s_e8b96ca75e92a4::t_445ac2555dc1c2 4-6
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_e8b96ca75e92a4::t_cabcb9833e4ad8 7-13,16,52,68,90,124,128-130,135-159,167,176-268,270-272,279-287,292-294,298-300,304,306,317-320,332-333,336,338-342,351-363
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_e8b96ca75e92a4::t_bf334bf7dd7635 8,44,46,66-69,83,96,199-214,218,249-264,343-360,362,365,375-379,381,383-398,400-408,419-425,433-436,438-439,442-446,449,454-455,458-459,462-466,469-473
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-mcp-status.test.ts
+  s_e8b96ca75e92a4::t_66391158fc079f 1-47
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  s_e8b96ca75e92a4::t_0f504fac4ec45a 1719-1761
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_e8b96ca75e92a4::t_7e47fe33e5a0d3 12,145,435-440
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_e8b96ca75e92a4::t_8f3c0581526825 131,837,6970,6979-6984
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_e8b96ca75e92a4::t_b11de90e419e7d 201,212,223,385,406-409,412,434-437
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_e8b96ca75e92a4::t_df905fb8d9ee04 23-27,29,32,44,261,294-295,349,359-360,363-367,370,393,395-396,408-409,430-435,439,445-456
+packages/cli/src/modules/log-streaming.ee/__tests__/log-streaming.controller.test.ts
+  s_e8b96ca75e92a4::t_74f426d1e326bb 3,5-8,11,16,27,34,40,124-171,193-228
+packages/cli/src/modules/log-streaming.ee/destinations/__tests__/destination-credentials-access.test.ts
+  s_e8b96ca75e92a4::t_8768ba33e88c0f 1-62
+packages/cli/src/modules/log-streaming.ee/destinations/destination-credentials-access.ts
+  s_e8b96ca75e92a4::t_09693dd1b63df9 1-36
+packages/cli/src/modules/log-streaming.ee/destinations/message-event-bus-destination-syslog.ee.ts
+  s_e8b96ca75e92a4::t_699eaa3983b259 6,117
+packages/cli/src/modules/log-streaming.ee/log-streaming.controller.ts
+  s_e8b96ca75e92a4::t_9d90782d513c25 13,20,30,70-74,84,88-97
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-connection.test.ts
+  s_e8b96ca75e92a4::t_2bc753b9b69fa8 1-74
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-node-loader.test.ts
+  s_e8b96ca75e92a4::t_8f7ae4ff9dbcb3 51,53,111,145-154,399
+packages/cli/src/modules/mcp-registry/mcp-registry-connection.ts
+  s_e8b96ca75e92a4::t_9b4b60293a8209 1-77
+packages/cli/src/modules/mcp-registry/mcp-registry-node-loader.ts
+  s_e8b96ca75e92a4::t_811bd67f808db5 15-16,30-33,36-45,68-69,100-102,128-138,158
+packages/cli/src/modules/mcp-registry/node-description-transform.ts
+  s_e8b96ca75e92a4::t_f62a87504d3979 10-15,23-29,62-65,271-272,296-297
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry-search.test.ts
+  s_e8b96ca75e92a4::t_bedc3e268d2aa7 60
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry.service.test.ts
+  s_e8b96ca75e92a4::t_237f982aded83b 9-11,89,328-346
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-search.ts
+  s_e8b96ca75e92a4::t_341747b5a76bc3 10,26-27,33-36,41
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.service.ts
+  s_e8b96ca75e92a4::t_6de800d0dc0a8d 6,131-136
+packages/cli/src/modules/mcp/__tests__/mcp.settings.controller.test.ts
+  s_e8b96ca75e92a4::t_823e5087a80945 321,371,397
+packages/cli/src/modules/mcp/mcp.settings.controller.ts
+  s_e8b96ca75e92a4::t_80b2c9537430e6 103-106
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_e8b96ca75e92a4::t_1eda3fd1186104 317,1621,1631-1632
+packages/cli/src/modules/mcp/tools/search-workflows.tool.ts
+  s_e8b96ca75e92a4::t_00583c41849c55 294
+packages/cli/src/modules/mcp/tools/workflow-builder/constants.ts
+  s_e8b96ca75e92a4::t_f57a8361f9a0a1 1-3
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_e8b96ca75e92a4::t_e3cddbf6d556ed 11-15,80,82
+packages/cli/src/modules/mcp/tools/workflow-builder/validate-workflow-code.tool.ts
+  s_e8b96ca75e92a4::t_3f6a4e7bcf5639 14,29,31
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_e8b96ca75e92a4::t_281ef4605a1a2e 10,18,46,107,115-125,147-163,173-176,217-229
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_e8b96ca75e92a4::t_e56e310bb7bd02 63,85,232
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_e8b96ca75e92a4::t_d7a67bb1d7c37d 25,66,111,237,297
+packages/cli/src/modules/n8n-packages/entities/folder/folder-remover.ts
+  s_e8b96ca75e92a4::t_8babb28e0880af 20-21
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_e8b96ca75e92a4::t_065c71fec7e9c7 5,22-23
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_e8b96ca75e92a4::t_930c2605a2839f 19-20,147,155
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_e8b96ca75e92a4::t_2c0ce371aadd32 54,362-367,388-394,402,416,470-482
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_e8b96ca75e92a4::t_10fd4131d00613 233-234
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_e8b96ca75e92a4::t_f18b229bc80f9d 419-538
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_e8b96ca75e92a4::t_908b6a71092039 46-85,307-310,315-324,340-346
+packages/cli/src/modules/oauth-server/oauth-session.service.ts
+  s_e8b96ca75e92a4::t_f97629f017fb61 17,36,55,62
+packages/cli/src/modules/policy-infrastructure/__tests__/policy-decision.service.test.ts
+  s_e8b96ca75e92a4::t_f7e1bda6bbc0a3 2-9,287,293-305
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_e8b96ca75e92a4::t_d92082b67c00cb 305-308,310-421,424,429-430,432-433,440-491,493-495
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_e8b96ca75e92a4::t_847dc60caa8681 321-370,387
+packages/cli/src/modules/sso-oidc/__tests__/oidc.controller.ee.test.ts
+  s_e8b96ca75e92a4::t_56e02b45b4be50 10,184-207
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_e8b96ca75e92a4::t_df3384c06eb0bb 66-71,118,746-777
+packages/cli/src/modules/sso-oidc/oidc.controller.ee.ts
+  s_e8b96ca75e92a4::t_8ca671a9926ecb 161
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_e8b96ca75e92a4::t_453b3658a9a57b 222-227,229,277
+packages/cli/src/policy/__tests__/policy-enforcement.service.test.ts
+  s_e8b96ca75e92a4::t_786b6ad315de09 209-223
+packages/cli/src/policy/policy-enforcement.service.ts
+  s_e8b96ca75e92a4::t_c69f3d6244168f 13-14,55-61
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_e8b96ca75e92a4::t_39975fc5e93dc3 1-190
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  s_e8b96ca75e92a4::t_a1903499bd7a3f 12,211,222,224,297,299,305-306
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_e8b96ca75e92a4::t_ff1b32be1ab842 6
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_e8b96ca75e92a4::t_270e7b1eec65e8 21,59,164-178,732-768
+packages/cli/src/public-api/v1/handlers/evaluations/evaluations.handler.ts
+  s_e8b96ca75e92a4::t_e753cafc824229 17-23,48-52,68,91-96,98,131,160-163
+packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts
+  s_e8b96ca75e92a4::t_00cdac4ccbc013 12
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/deleteExecution.generated.yml
+  s_e8b96ca75e92a4::t_e7bce887ec1bbc 1-160
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecution.generated.yml
+  s_e8b96ca75e92a4::t_7db9a4f52d90f4 1-31,33-219
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/pullGitConnectionProjects.generated.yml
+  s_e8b96ca75e92a4::t_882dcfda1131d5 4-5,41-43,48,194-195,199,208-211
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/pushGitConnectionProjects.generated.yml
+  s_e8b96ca75e92a4::t_bf223bd6f61f71 5,16-31,70-71,75,84-85
+packages/cli/src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts
+  s_e8b96ca75e92a4::t_9e2450a88ef21e 7,14,89-96,100,123-130,134,148-153
+packages/cli/src/public-api/v1/handlers/users/users.handler.ee.ts
+  s_e8b96ca75e92a4::t_6144383076f998 2,5,15-21,42,53,62,64,66-67,70-71,82,99,106,120
+packages/cli/src/public-api/v1/handlers/users/users.mapper.ts
+  s_e8b96ca75e92a4::t_c51cca908575c2 13-15,17-21,23-25,28,30-31
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowVersion.generated.yml
+  s_e8b96ca75e92a4::t_68eebfeb98e34b 1-183
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.versionId.yml
+  s_e8b96ca75e92a4::t_4eaa6733688ddf 8-11
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_e8b96ca75e92a4::t_fa8bc356d383f5 9-15,23
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_e8b96ca75e92a4::t_910b7950b1cb6c 6-10,107-109
+packages/cli/src/push/abstract.push.ts
+  s_e8b96ca75e92a4::t_e48745510505e6 117,119
+packages/cli/src/scaling/constants.ts
+  s_e8b96ca75e92a4::t_721f2a37f3c859 43
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_e8b96ca75e92a4::t_50e16471d4a228 139-147
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_e8b96ca75e92a4::t_0869ed047d0518 64,109
+packages/cli/src/scaling/redis-lock.service.ts
+  s_e8b96ca75e92a4::t_6da1b3b9a95d1e 11,172
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_e8b96ca75e92a4::t_0945bb87156e1c 275-291
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_e8b96ca75e92a4::t_440faca2b8fd7e 102-105
+packages/cli/src/scheduling/system-tasks/__tests__/dummy.task.ts
+  s_e8b96ca75e92a4::t_9698f6b5c68969 1-32
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-handler.test.ts
+  s_e8b96ca75e92a4::t_e018082487c6b7 1-139
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_e8b96ca75e92a4::t_687fdf1f709aba 1-649
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-timer.test.ts
+  s_e8b96ca75e92a4::t_a31e23c675da0b 1-211
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_e8b96ca75e92a4::t_c8f9a9f8a0fd4a 1,3-7
+packages/cli/src/scheduling/system-tasks/system-task-handler.ts
+  s_e8b96ca75e92a4::t_84bd952c330325 1-44
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_e8b96ca75e92a4::t_d66499c32f2b75 1-74,77-87,89,91-93,97-108,110-112,114,116-123,125-126,129-132,135-138,141-145,148-171,174-183,186-210,215-221,223-239,241-254,256-271,275-285,289-292,295-300,302-308
+packages/cli/src/scheduling/system-tasks/system-task-timer.ts
+  s_e8b96ca75e92a4::t_96daebd6442d20 1-98
+packages/cli/src/scheduling/system-tasks/system-task-type.ts
+  s_e8b96ca75e92a4::t_bd77b857010198 1-7
+packages/cli/src/server.ts
+  s_e8b96ca75e92a4::t_0c8448ac0eea9a 32,347,431-433,457,482,490-518
+packages/cli/src/services/__tests__/active-workflows.service.test.ts
+  s_e8b96ca75e92a4::t_cb3a85fe8b2cba 2,10,15,22,52,55-62,64,66-71
+packages/cli/src/services/__tests__/credentials-tester.service.test.ts
+  s_e8b96ca75e92a4::t_eea8bcafa46d5a 357-375
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_e8b96ca75e92a4::t_140ed440f6b1f2 934-944
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_e8b96ca75e92a4::t_06bee53e2fc55a 1,5,15,19,21,25-28,31,34,63-65,75,82-85,738-970
+packages/cli/src/services/active-workflows.service.ts
+  s_e8b96ca75e92a4::t_53419096f0c168 3,5,10,17,32-35,37-41,43
+packages/cli/src/services/credentials-tester.service.ts
+  s_e8b96ca75e92a4::t_2462796a07753a 260,277-285
+packages/cli/src/services/project.service.ee.ts
+  s_e8b96ca75e92a4::t_e45e41f6f38e9c 997-1000
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_e8b96ca75e92a4::t_e6b46e246486a4 3-4,10-13,45-60,288-360
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_e8b96ca75e92a4::t_d5616c47ff96f8 16-19,161-165,197-201,299-301
+packages/cli/src/services/user.service.ts
+  s_e8b96ca75e92a4::t_f4ae1183a92162 4,6-7,12-13,16,19,30,32-38,44,46,50,53-59,76-79,493-727
+packages/cli/src/task-runners/task-broker/auth/__tests__/task-broker-auth.service.test.ts
+  s_e8b96ca75e92a4::t_a544eb2ae229ec 119-138
+packages/cli/src/task-runners/task-broker/auth/task-broker-auth.service.ts
+  s_e8b96ca75e92a4::t_6048f3fb9f6463 61-62
+packages/cli/src/utils/__tests__/auth-fetch.test.ts
+  s_e8b96ca75e92a4::t_bdd7175c8cf406 35,78,89-92,95-97,126
+packages/cli/src/utils/__tests__/request-path.test.ts
+  s_e8b96ca75e92a4::t_cd9ccc671ed9b7 1-94
+packages/cli/src/utils/auth-fetch.ts
+  s_e8b96ca75e92a4::t_87b4511b282fc5 1,74-83
+packages/cli/src/utils/request-path.ts
+  s_e8b96ca75e92a4::t_9f614adc8a3044 1-69
+packages/cli/src/webhooks/__tests__/slack-interaction-webhooks.test.ts
+  s_e8b96ca75e92a4::t_caa8fcca919063 81-86,97,245-259
+packages/cli/src/webhooks/__tests__/telegram-interaction-webhooks.test.ts
+  s_e8b96ca75e92a4::t_9854892118b832 204-241
+packages/cli/src/webhooks/__tests__/webhook-request-sanitizer.test.ts
+  s_e8b96ca75e92a4::t_15dc6617ce0ad2 4-7,340-365
+packages/cli/src/webhooks/__tests__/webhook-response-headers.test.ts
+  s_e8b96ca75e92a4::t_8081d1070d893d 1-2,12-17,79-108,204-219,297-314
+packages/cli/src/webhooks/hitl-interaction-webhooks.ts
+  s_e8b96ca75e92a4::t_b290017975887c 37-39,68-71,75
+packages/cli/src/webhooks/slack-interaction-webhooks.ts
+  s_e8b96ca75e92a4::t_03f26a05b4080d 21-22
+packages/cli/src/webhooks/telegram-interaction-webhooks.ts
+  s_e8b96ca75e92a4::t_283985d97cdb00 22-23
+packages/cli/src/webhooks/webhook-request-sanitizer.ts
+  s_e8b96ca75e92a4::t_eb7080bf3b85cc 3-12,16-23,27-31
+packages/cli/src/webhooks/webhook-response-headers.ts
+  s_e8b96ca75e92a4::t_7645a47b1e88bb 22-31,44,47-52
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_e8b96ca75e92a4::t_5d21fb7d7ce9ce 2-10,12,58,95-96,119,178-183,219,410,442,479,487,491-507,509-522,532,588,624,635,653,733,744,752,763,771,782,790,801,809,820,828,839,846,857,864,875,881,893,965
+packages/cli/src/workflows/__tests__/workflow-push-notifier.service.test.ts
+  s_e8b96ca75e92a4::t_d5bad10fd96dbc 1-42
+packages/cli/src/workflows/__tests__/workflow-sharing.service.test.ts
+  s_e8b96ca75e92a4::t_d3a723b73e02d5 1-111
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_e8b96ca75e92a4::t_c38bc24081f05d 49,64,69-70,88-92,107,128,155,175,195,313-426,494,1275,1983,2105,2326,2493,2671,2771
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_e8b96ca75e92a4::t_d992f157bf0e07 8,17-18,33-34,43,61-62,72,111-118,140-146,229-235,250-256,275,290-296,319-325,346-352,471,486-492,499-506,508-527,529-530,534-541
+packages/cli/src/workflows/publication/__tests__/workflow-publication-status.service.test.ts
+  s_e8b96ca75e92a4::t_94bdebbadaea2e 214-243
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_e8b96ca75e92a4::t_ff6b3e13088553 23,47,57,67,88,112,155,194-195,208-210,214-215,220-223
+packages/cli/src/workflows/publication/workflow-publication-status.service.ts
+  s_e8b96ca75e92a4::t_83aaf288879720 1,49-68,76-83,85
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_e8b96ca75e92a4::t_1b5da549df8adf 11,78,292-294,302-310,312-317,320-326,328-329,331,334-340,342,344-348,350-376
+packages/cli/src/workflows/workflow-push-notifier.service.ts
+  s_e8b96ca75e92a4::t_d1591dba5b9954 1-20
+packages/cli/src/workflows/workflow-sharing.service.ts
+  s_e8b96ca75e92a4::t_2a86303f9cfeb5 1,3,27-28,75-115
+packages/cli/src/workflows/workflow.service.ts
+  s_e8b96ca75e92a4::t_299e20e635c6f0 2,33,77-86,122,128-134,222-228,235-245,275-291
+packages/cli/src/workflows/workflows.controller.ts
+  s_e8b96ca75e92a4::t_7fd260bd8c41a4 141-147
+packages/cli/test/integration/access-control/instance-roles.test.ts
+  s_e8b96ca75e92a4::t_23c2bbc3140125 3,232-233,240,250-265
+packages/cli/test/integration/controllers/role.controller-db.test.ts
+  s_e8b96ca75e92a4::t_68595a96f5dfc0 8,10,12,15-16,255-364
+packages/cli/test/integration/dynamic-credentials.ee/chat-trigger-test-run.api.test.ts
+  s_e8b96ca75e92a4::t_8e92156fd75ce5 315,317-325
+packages/cli/test/integration/log-streaming.controller.test.ts
+  s_e8b96ca75e92a4::t_c9f22b6c23fbd9 3,6,20,162-226
+packages/cli/test/integration/public-api/executions.test.ts
+  s_e8b96ca75e92a4::t_d593b7d26bc306 98-109,273-283,318-341
+packages/cli/test/integration/public-api/git-connections.test.ts
+  s_e8b96ca75e92a4::t_bfe809463e70e8 328,331-336,339,345
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_e8b96ca75e92a4::t_cd987dcd262b52 1065,1067-1068,1145-1244,1869,1909-1930
+packages/cli/test/integration/server-static-assets.test.ts
+  s_e8b96ca75e92a4::t_62eebf3154d225 1-4,6-11,14-74,76-82,85-107,109-111,113-114,116-121,123,125-131,133-150,154-158,162-173,175-176,178,181-197,200-208,210-212,214-216,219-230,232-235,237-238,242-248,250-251,254-257,259,261-265,268-272,274
+packages/cli/test/integration/services/active-workflows.service.test.ts
+  s_e8b96ca75e92a4::t_4a3a2019f9cf79 1-48
+packages/cli/test/integration/test-run.repository.ee.test.ts
+  s_e8b96ca75e92a4::t_2da5852170a9d2 25-43
+packages/cli/test/integration/user.repository.test.ts
+  s_e8b96ca75e92a4::t_e09be58d72b77c 86-124
+packages/cli/test/integration/users.api.test.ts
+  s_e8b96ca75e92a4::t_f6259b21d9d0e4 29,42-48,1388
+packages/cli/test/integration/workflow-publication-trigger-status.repository.test.ts
+  s_e8b96ca75e92a4::t_1de5abafa95e9e 28-36,49-56,330-399
+packages/cli/test/integration/workflows/workflow-save-policy.test.ts
+  s_e8b96ca75e92a4::t_bb1bd9287ddd2c 3,181-199
+packages/cli/test/integration/workflows/workflow-sharing.service.test.ts
+  s_e8b96ca75e92a4::t_2ad544249c85f4 120-158
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_e8b96ca75e92a4::t_e46131410a53fc 42,121,1034-1036,1057-1059,1087-1089,1115-1117,1126-1128,1145-1147,1165-1167
+packages/cli/test/integration/workflows/workflows.controller.publication-status-list.test.ts
+  s_e8b96ca75e92a4::t_4fa2b3b91a12e2 1-116
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/file-system-helper-functions.test.ts
+  s_e8b96ca75e92a4::t_ce912a7a3b3692 212-229,243
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/ssrf-integration.test.ts
+  s_e8b96ca75e92a4::t_c241b2f75b2a7f 15,236,239-242
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  s_e8b96ca75e92a4::t_729198e3117096 1,90
+packages/frontend/@n8n/chat/src/__tests__/Chat.spec.ts
+  s_e8b96ca75e92a4::t_0106d1c8f72a2e 8,31,51,69,87,303-331
+packages/frontend/@n8n/chat/src/__tests__/CredentialStatusStrip.spec.ts
+  s_e8b96ca75e92a4::t_e90c10657c4f84 1-40
+packages/frontend/@n8n/chat/src/__tests__/Input.spec.ts
+  s_e8b96ca75e92a4::t_5ff58c87d966ef 4,7-9,36,38,87,187-215
+packages/frontend/@n8n/chat/src/__tests__/utils/credentialStatus.spec.ts
+  s_e8b96ca75e92a4::t_f2ecece6090767 1-86
+packages/frontend/@n8n/chat/src/components/Chat.vue
+  s_e8b96ca75e92a4::t_581d35393147cf 5,14-15,20,25-30,114,117-122,142-144,168-170
+packages/frontend/@n8n/chat/src/components/CredentialStatusStrip.vue
+  s_e8b96ca75e92a4::t_93faba4085dcb5 2,4-5,7-9,13-15,18-21,23-24,28-30,33-42
+packages/frontend/@n8n/chat/src/components/Input.vue
+  s_e8b96ca75e92a4::t_ab33f839163d77 39,48-52,55,60-62
+packages/frontend/@n8n/chat/src/components/Layout.vue
+  s_e8b96ca75e92a4::t_72a969b8a2f05c 33-35
+packages/frontend/@n8n/chat/src/constants/defaults.ts
+  s_e8b96ca75e92a4::t_7a48227b8d41ec 29-32
+packages/frontend/@n8n/chat/src/css/_tokens.scss
+  s_e8b96ca75e92a4::t_4eb8f030258fc9 140-146
+packages/frontend/@n8n/chat/src/plugins/chat.ts
+  s_e8b96ca75e92a4::t_4b9748ca184668 11,218,358
+packages/frontend/@n8n/chat/src/types/chat.ts
+  s_e8b96ca75e92a4::t_8a88d01626f175 3,14
+packages/frontend/@n8n/chat/src/types/credentialStatus.ts
+  s_e8b96ca75e92a4::t_067392394ffb82 1-17
+packages/frontend/@n8n/chat/src/types/index.ts
+  s_e8b96ca75e92a4::t_b972ed5eafd444 2
+packages/frontend/@n8n/chat/src/utils/credentialStatus.ts
+  s_e8b96ca75e92a4::t_4d63a0402ffee4 1-59
+packages/frontend/@n8n/design-system/src/components/AskAssistantAvatar/AssistantAvatar.stories.ts
+  s_e8b96ca75e92a4::t_e3ef7ca60fda25 23-31
+packages/frontend/@n8n/design-system/src/components/AskAssistantButton/AskAssistantButton.stories.ts
+  s_e8b96ca75e92a4::t_9de4c5eb35e72d 22,26
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/AskAssistantChat.stories.ts
+  s_e8b96ca75e92a4::t_57eccff7fdb84c 31-32
+packages/frontend/@n8n/design-system/src/components/AskAssistantIcon/AssistantIcon.stories.ts
+  s_e8b96ca75e92a4::t_3d7f4aba833eba 25-33,36-46
+packages/frontend/@n8n/design-system/src/components/AskAssistantText/AssistantText.stories.ts
+  s_e8b96ca75e92a4::t_e212f1bcfc5107 25-35
+packages/frontend/@n8n/design-system/src/components/BlinkingCursor/BlinkingCursor.stories.ts
+  s_e8b96ca75e92a4::t_26f8099f3d1c01 20
+packages/frontend/@n8n/design-system/src/components/CodeDiff/CodeDiff.stories.ts
+  s_e8b96ca75e92a4::t_6f9a2634cbb883 23-24
+packages/frontend/@n8n/design-system/src/components/InlineAskAssistantButton/InlineAskAssistantButton.stories.ts
+  s_e8b96ca75e92a4::t_f5e4c1d0cc6cda 33-41
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.stories.ts
+  s_e8b96ca75e92a4::t_759e772fcf3906 4-9,12-13,15-17,19-22,24,26,28-31,34-41,43,48-52,54,56,58,61,64-66,70,72,74,77,81-92,94,96,98,100,103,107-119,121,123,125,127,130,134-135,137
+packages/frontend/@n8n/design-system/src/components/N8nActionPill/ActionPill.stories.ts
+  s_e8b96ca75e92a4::t_d21958301f1379 6,17-19,21-27,34-48,50-82,84-85,89-96,99,101
+packages/frontend/@n8n/design-system/src/components/N8nActionPill/ActionPill.test.ts
+  s_e8b96ca75e92a4::t_3d27fa7a60852e 57,59-60
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.stories.ts
+  s_e8b96ca75e92a4::t_f44a3d7f5030e3 14,16,39,43-44,57-76
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.stories.ts
+  s_e8b96ca75e92a4::t_ad88e6a20dbea4 140
+packages/frontend/@n8n/design-system/src/components/N8nAlert/Alert.stories.ts
+  s_e8b96ca75e92a4::t_29bad805ec67a6 35,38-39,49-60,68,75
+packages/frontend/@n8n/design-system/src/components/N8nAlertDialog/AlertDialog.stories.ts
+  s_e8b96ca75e92a4::t_1628a64b6e4915 31,46,78,116,146,169-206
+packages/frontend/@n8n/design-system/src/components/N8nAvatar/Avatar.stories.ts
+  s_e8b96ca75e92a4::t_33af34cd6e37bb 1,5,10-11,13-14,24-27,29-40,42,44-56
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.stories.ts
+  s_e8b96ca75e92a4::t_9bdd836f4bd1df 1,5,10-11,14-15,17-19,26,28-44,46-62,64-79
+packages/frontend/@n8n/design-system/src/components/N8nBlockUi/BlockUi.stories.ts
+  s_e8b96ca75e92a4::t_d4d6d0e012be8d 1,5,8-12,20-23,25-28,30-45,48-59
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/Breadcrumbs.stories.ts
+  s_e8b96ca75e92a4::t_26620d5a9aaff0 60-72
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.stories.ts
+  s_e8b96ca75e92a4::t_5c9d1325dc5851 70,87
+packages/frontend/@n8n/design-system/src/components/N8nCallout/Callout.stories.ts
+  s_e8b96ca75e92a4::t_bb414aba72d15e 1,6,11,14-15,28,30-31,33-47,51-67,70-89
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.stories.ts
+  s_e8b96ca75e92a4::t_12bbc112c84f8e 553
+packages/frontend/@n8n/design-system/src/components/N8nChatMessage/ChatMessage.stories.ts
+  s_e8b96ca75e92a4::t_c709655e1a980b 42-60
+packages/frontend/@n8n/design-system/src/components/N8nColorPicker/ColorPicker.stories.ts
+  s_e8b96ca75e92a4::t_67ceb666e58cf2 68-77
+packages/frontend/@n8n/design-system/src/components/N8nCopyInput/CopyInput.stories.ts
+  s_e8b96ca75e92a4::t_5f31025d104149 47-58
+packages/frontend/@n8n/design-system/src/components/N8nDialog/Dialog.stories.ts
+  s_e8b96ca75e92a4::t_e602bc2e1e10db 49,91,131,165,208-209,258-259,305
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.stories.ts
+  s_e8b96ca75e92a4::t_441b79b4e0ef5c 20,33,43,74,114,141,165,194,259,291,324,364,398,448,510,563,626,701,788,862,973,1002,1040,1057
+packages/frontend/@n8n/design-system/src/components/N8nExternalLink/ExternalLink.stories.ts
+  s_e8b96ca75e92a4::t_8b34882708c730 36-37,44-45,47,51-60
+packages/frontend/@n8n/design-system/src/components/N8nFormInput/FormInput.stories.ts
+  s_e8b96ca75e92a4::t_ec17a58c9a7a01 57-58
+packages/frontend/@n8n/design-system/src/components/N8nHeaderAction/HeaderAction.stories.ts
+  s_e8b96ca75e92a4::t_cd0b8db89df7d7 1-92
+packages/frontend/@n8n/design-system/src/components/N8nHeading/Heading.stories.ts
+  s_e8b96ca75e92a4::t_ca46fee3e2f365 1,5,10,14,18-19,27,29-41,43-58,60-74
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/HoverCard.stories.ts
+  s_e8b96ca75e92a4::t_ab05e642658337 12,36,89-90,103,222,335
+packages/frontend/@n8n/design-system/src/components/N8nIcon/Icon.stories.ts
+  s_e8b96ca75e92a4::t_58e85443bfa670 1-2,5-7,9-60,65-66,69-70,73,76,92,96,103,105-107,109-121,124-135,137-141,143-144,146-183,185-254,257-262,265-270,273-278,281-284,286-287,289-291,293-316,318-319,322-324,326-373,375-377
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_e8b96ca75e92a4::t_996efec2c320d2 166,673
+packages/frontend/@n8n/design-system/src/components/N8nIconButton/IconButton.stories.ts
+  s_e8b96ca75e92a4::t_4ce968ff2f5f71 1-107
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.stories.ts
+  s_e8b96ca75e92a4::t_850770958ac2f0 8
+packages/frontend/@n8n/design-system/src/components/N8nInfoAccordion/InfoAccordion.stories.ts
+  s_e8b96ca75e92a4::t_32da485bc6e2ca 7
+packages/frontend/@n8n/design-system/src/components/N8nInfoTip/InfoTip.stories.ts
+  s_e8b96ca75e92a4::t_337e45969fca37 26-54
+packages/frontend/@n8n/design-system/src/components/N8nInlineTextEdit/InlineTextEdit.stories.ts
+  s_e8b96ca75e92a4::t_3f10e2b60c8f79 24,27-28
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.stories.ts
+  s_e8b96ca75e92a4::t_9bba14962cd2c5 4-6,77,91-94,264-272,289-318,338,343
+packages/frontend/@n8n/design-system/src/components/N8nInputLabel/InputLabel.stories.ts
+  s_e8b96ca75e92a4::t_d47be07e079204 7,27,31,34-35
+packages/frontend/@n8n/design-system/src/components/N8nInputNumber/InputNumber.stories.ts
+  s_e8b96ca75e92a4::t_d08385e99cc582 1,3,5-8,10-17,19,21-26,28-30,32-39,41-42,44-50,52,54,56,58-59,61-81,83-127,130-135,138-156,158-177,179,181-421
+packages/frontend/@n8n/design-system/src/components/N8nInputNumber/InputNumber.test.ts
+  s_e8b96ca75e92a4::t_5b6f1943d7d720 3,5,8,493-507,521,552-701,721-760
+packages/frontend/@n8n/design-system/src/components/N8nInputNumber/InputNumber.types.ts
+  s_e8b96ca75e92a4::t_ba1b0145428478 20-25
+packages/frontend/@n8n/design-system/src/components/N8nInputNumber/InputNumber.vue
+  s_e8b96ca75e92a4::t_0f4b86da8920a6 2-10,12-13,15-29,32-34,36,39-155,158,162-236,240-242,244-391
+packages/frontend/@n8n/design-system/src/components/N8nInputNumber/component-input-number.md
+  s_e8b96ca75e92a4::t_1d4a71cd0b6c5c 7,20-21,39-46,59,65,72,80,86,99,105,116
+packages/frontend/@n8n/design-system/src/components/N8nInputNumber/index.ts
+  s_e8b96ca75e92a4::t_d5c346b6c50a49 4-5
+packages/frontend/@n8n/design-system/src/components/N8nKeyboardShortcut/KeyboardShortcut.stories.ts
+  s_e8b96ca75e92a4::t_b9ba8d4e97c766 25-26
+packages/frontend/@n8n/design-system/src/components/N8nLink/Link.stories.ts
+  s_e8b96ca75e92a4::t_6c2205b488ca94 39-40,43-65
+packages/frontend/@n8n/design-system/src/components/N8nLoading/Loading.stories.ts
+  s_e8b96ca75e92a4::t_538eafcdfc5d33 52-53,57-73
+packages/frontend/@n8n/design-system/src/components/N8nLogo/Logo.stories.ts
+  s_e8b96ca75e92a4::t_ac33a00dd31268 43-44,49-60,62-72
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.stories.ts
+  s_e8b96ca75e92a4::t_f1d0762f872c2a 51-52
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.stories.ts
+  s_e8b96ca75e92a4::t_a8b1fce586f045 68,77,154-170,199-212
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.test.ts
+  s_e8b96ca75e92a4::t_1fe29ae4a30b15 6-14,98-128
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.types.ts
+  s_e8b96ca75e92a4::t_6f4723e1e23dab 4
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_e8b96ca75e92a4::t_7a1de82d128e10 4,30,56-69,173,181-196,205,208-211
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditorToolbar.vue
+  s_e8b96ca75e92a4::t_522a15bdae8e4b 297-301,508-510,512-513,519-534
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/component-markdown-editor.md
+  s_e8b96ca75e92a4::t_4dc24783c20fea 36
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.stories.ts
+  s_e8b96ca75e92a4::t_448bfa193e0c65 1-158
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.stories.ts
+  s_e8b96ca75e92a4::t_4e20ca8e182562 6,33-34
+packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/IconContent.vue
+  s_e8b96ca75e92a4::t_d36ea237a66c25 4,6
+packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/NodeIcon.stories.ts
+  s_e8b96ca75e92a4::t_e013ca22e20275 27-28,34-56
+packages/frontend/@n8n/design-system/src/components/N8nNotice/Notice.stories.ts
+  s_e8b96ca75e92a4::t_60971b0f44d2ac 1,5,21,23-24,26-36,40-51,54-66,69-82,85-97
+packages/frontend/@n8n/design-system/src/components/N8nPagination/Pagination.stories.ts
+  s_e8b96ca75e92a4::t_d5f7a790209d82 11-17
+packages/frontend/@n8n/design-system/src/components/N8nPopover/Popover.stories.ts
+  s_e8b96ca75e92a4::t_acd06ee51c7c3e 65,95-96,108,191
+packages/frontend/@n8n/design-system/src/components/N8nRadioGroup/RadioGroup.stories.ts
+  s_e8b96ca75e92a4::t_a3493017917f62 80,113,182,230,249,274
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.stories.ts
+  s_e8b96ca75e92a4::t_aec2398b84a281 70
+packages/frontend/@n8n/design-system/src/components/N8nResizeWrapper/ResizeWrapper.stories.ts
+  s_e8b96ca75e92a4::t_adf1414773aa7d 2-3,6,19,25,30-42,44,47-50,56,59-60,65,70-71
+packages/frontend/@n8n/design-system/src/components/N8nResizeWrapper/ResizeWrapper.test.ts
+  s_e8b96ca75e92a4::t_7ff198a171a7c7 1-30
+packages/frontend/@n8n/design-system/src/components/N8nResizeWrapper/ResizeWrapper.vue
+  s_e8b96ca75e92a4::t_325555c077d974 2,87-89,194,199-203,214,216-217,235,245,253,261,296-340
+packages/frontend/@n8n/design-system/src/components/N8nSegmentControl/SegmentControl.vue
+  s_e8b96ca75e92a4::t_6ea2252c8c040f 156-159,163,167,174-175,181-182,188-189,195-196,202-203,210
+packages/frontend/@n8n/design-system/src/components/N8nSegmentControl/SegmentControlItem.vue
+  s_e8b96ca75e92a4::t_20caae2a98c881 47-49,100
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.stories.ts
+  s_e8b96ca75e92a4::t_0e94a881838062 70,93,124
+packages/frontend/@n8n/design-system/src/components/N8nSelectableList/SelectableList.stories.ts
+  s_e8b96ca75e92a4::t_641d1762fa4696 31-32
+packages/frontend/@n8n/design-system/src/components/N8nSendStopButton/N8nSendStopButton.stories.ts
+  s_e8b96ca75e92a4::t_ba586980d07709 1,5,9-10,12-13,15-17,22,25,27-28,30-41,45-54,56-60,63-65,67-75,77-79
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/SettingsLayout.stories.ts
+  s_e8b96ca75e92a4::t_d5bc615e43d122 15
+packages/frontend/@n8n/design-system/src/components/N8nSettingsPageHeader/SettingsPageHeader.stories.ts
+  s_e8b96ca75e92a4::t_00e0ff542adaf9 6
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRow/SettingsRow.stories.ts
+  s_e8b96ca75e92a4::t_925083fcb6d1a0 14,51,68-92
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowConfigure/SettingsRowConfigure.stories.ts
+  s_e8b96ca75e92a4::t_852c3a3e659ca3 6
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowGroup/SettingsRowGroup.stories.ts
+  s_e8b96ca75e92a4::t_6b179c7515354e 11
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSaveBar/SettingsSaveBar.stories.ts
+  s_e8b96ca75e92a4::t_ca39d32748c8b0 27,34,45,103
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSection/SettingsSection.stories.ts
+  s_e8b96ca75e92a4::t_2d70a91aa5bc0f 11,28
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.stories.ts
+  s_e8b96ca75e92a4::t_89d9fe7fd46ba5 1,3,5-11,13-15,17-21,23-35,37-47,49-57,60-77
+packages/frontend/@n8n/design-system/src/components/N8nStatusDot/StatusDot.stories.ts
+  s_e8b96ca75e92a4::t_7a73739610319a 46,65
+packages/frontend/@n8n/design-system/src/components/N8nStepper/Stepper.stories.ts
+  s_e8b96ca75e92a4::t_7abfa15dea6034 74,106-107,135
+packages/frontend/@n8n/design-system/src/components/N8nSticky/Sticky.stories.ts
+  s_e8b96ca75e92a4::t_feba66fd34869f 94,109
+packages/frontend/@n8n/design-system/src/components/N8nSuggestedActions/SuggestedActions.stories.ts
+  s_e8b96ca75e92a4::t_fa0dcd1bda5664 52,143,238
+packages/frontend/@n8n/design-system/src/components/N8nSwitch/Switch.stories.ts
+  s_e8b96ca75e92a4::t_f1a54178cdd797 16-18,33,36-43,49-51,64,76,102
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_e8b96ca75e92a4::t_1e04619c4897e3 41-42,116-117,122-138
+packages/frontend/@n8n/design-system/src/components/N8nTag/Tag.stories.ts
+  s_e8b96ca75e92a4::t_317c88d13331c3 1,6,11,25,27-29,31-42,45-57,59,61-65,67-75,78-82,84-95
+packages/frontend/@n8n/design-system/src/components/N8nText/Text.stories.ts
+  s_e8b96ca75e92a4::t_8a49d9c442b157 1,5,10,14-15,18,21,28-30,39-42,44-53,55-92,94-123
+packages/frontend/@n8n/design-system/src/components/N8nToggle/Toggle.stories.ts
+  s_e8b96ca75e92a4::t_e9632f8e39e6c6 44,65,88
+packages/frontend/@n8n/design-system/src/components/N8nToggleGroup/ToggleGroup.stories.ts
+  s_e8b96ca75e92a4::t_fd8b01ad7caf6f 43,51-57,69-70,73-75,78-83,91,96,100-101
+packages/frontend/@n8n/design-system/src/components/N8nUserInfo/UserInfo.stories.ts
+  s_e8b96ca75e92a4::t_29e310e243db61 27-28
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.stories.ts
+  s_e8b96ca75e92a4::t_9cffab22a7b0a8 40-41,63-80
+packages/frontend/@n8n/design-system/src/components/N8nUserStack/UserStack.stories.ts
+  s_e8b96ca75e92a4::t_e5c5de470ce0dd 22,25-26,198-212
+packages/frontend/@n8n/design-system/src/components/N8nUsersList/UsersList.stories.ts
+  s_e8b96ca75e92a4::t_0b410c5a07b605 35-36
+packages/frontend/@n8n/design-system/src/components/PreviewTag/PreviewTag.stories.ts
+  s_e8b96ca75e92a4::t_f48f4d00e3bcf0 1,5,14,16-17,19-30,32-42
+packages/frontend/@n8n/design-system/src/components/TableHeaderControlsButton/TableHeaderControlsButton.stories.ts
+  s_e8b96ca75e92a4::t_c4fd7bf8b2ace4 58-59
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_e8b96ca75e92a4::t_42870394fa876d 71
+packages/frontend/@n8n/design-system/src/styleguide/components/PrimitivesColorTable.vue
+  s_e8b96ca75e92a4::t_d4b1823229b886 211-212,226,234
+packages/frontend/@n8n/design-system/src/styleguide/css-tokens.mdx
+  s_e8b96ca75e92a4::t_6f6e2eb6d27017 3,5,20,49,75
+packages/frontend/@n8n/design-system/src/styleguide/motion.mdx
+  s_e8b96ca75e92a4::t_a35ca80a9fcaf0 4,56,84
+packages/frontend/@n8n/design-system/src/styleguide/shadow.mdx
+  s_e8b96ca75e92a4::t_442aa88900037c 71-74,76,91
+packages/frontend/@n8n/design-system/src/styleguide/spacing-size.mdx
+  s_e8b96ca75e92a4::t_920aceda8bb63e 3
+packages/frontend/@n8n/design-system/src/types/resize.ts
+  s_e8b96ca75e92a4::t_dea6230175ed47 2-5
+packages/frontend/@n8n/design-system/src/v2/components/Checkbox/Checkbox.stories.ts
+  s_e8b96ca75e92a4::t_f9dbc655884836 15-20,30-64,66-69,103-116,120-136
+packages/frontend/@n8n/design-system/src/v2/components/Select/Select.stories.ts
+  s_e8b96ca75e92a4::t_1346d905a859d8 26,53,80,143,183,238,265
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/TagsInput.stories.ts
+  s_e8b96ca75e92a4::t_5c8f48f2ed95b1 26,260,575
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e8b96ca75e92a4::t_d7f724261ba6b6 1907,3088-3089,7009-7013
+packages/frontend/@n8n/storybook/.storybook/ThemedDocsContainer.ts
+  s_e8b96ca75e92a4::t_a2f13263f16b27 1-16
+packages/frontend/@n8n/storybook/.storybook/applyN8nTheme.ts
+  s_e8b96ca75e92a4::t_0ab1cfa6abb06f 1-54
+packages/frontend/@n8n/storybook/.storybook/main.ts
+  s_e8b96ca75e92a4::t_87f8ac7c3f8dcc 33,35-40,45-47
+packages/frontend/@n8n/storybook/.storybook/preview.ts
+  s_e8b96ca75e92a4::t_c5ed4fd045102c 10,15,18-19,21-24,60-62,66-67,70-72
+packages/frontend/@n8n/storybook/.storybook/storybook.scss
+  s_e8b96ca75e92a4::t_29e5335d011be6 5-15,17-20,22-23
+packages/frontend/@n8n/storybook/package.json
+  s_e8b96ca75e92a4::t_2362415e93d92c 39,44,48
+packages/frontend/editor-ui/src/Interface.ts
+  s_e8b96ca75e92a4::t_ac30d71f1f22bf 700-703
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_e8b96ca75e92a4::t_ce12b5cf2e7fb5 3,91-101,128,136,146,155,165,169,175,184,193,197,201,209,215,221,232,240,244,250,259,263,275,281,283,289,291,301-305,526,529,533-543,547-549
+packages/frontend/editor-ui/src/app/components/MainSidebar.test.ts
+  s_e8b96ca75e92a4::t_30c16ca5e1c225 170-191
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_e8b96ca75e92a4::t_f7fa429cde63eb 190-199,227-232,319
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_e8b96ca75e92a4::t_91e881bddcd29f 18-21,38,72,76,4585-4724
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_e8b96ca75e92a4::t_ff461f0d04e115 3361-3363
+packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.test.ts
+  s_e8b96ca75e92a4::t_71ea18120ba152 2,1075-1133
+packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.ts
+  s_e8b96ca75e92a4::t_95c8a5ddd31517 785-789
+packages/frontend/editor-ui/src/app/constants/externalLinks.ts
+  s_e8b96ca75e92a4::t_49c4ced28467e1 6
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_e8b96ca75e92a4::t_2d3f2035628e7b 40
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_e8b96ca75e92a4::t_f14780f23038c3 4,287-348
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_e8b96ca75e92a4::t_305e80d61e7151 446,455,480,491
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_e8b96ca75e92a4::t_2fe8941e9bad4d 54
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_e8b96ca75e92a4::t_bf605b5f618c5c 75,81,96,101-104,106,202-203,208-209,292,294
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_e8b96ca75e92a4::t_2ae0b9adec39b8 198,205,214,219
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_e8b96ca75e92a4::t_4bb3d9a92e350b 147
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_e8b96ca75e92a4::t_589536f442f668 12,118,471,659,681
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_e8b96ca75e92a4::t_2ec284e28a685d 9,62,135-161,206-223,359-363
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_e8b96ca75e92a4::t_dbb7cb39edeff5 323
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_e8b96ca75e92a4::t_93e365957c4723 11,328
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_e8b96ca75e92a4::t_18b86b5b535984 1234-1242,1292-1295
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_e8b96ca75e92a4::t_9ac52c36e2e926 23-31,35,39,42,185-236
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.liveRunState.test.ts
+  s_e8b96ca75e92a4::t_8d8c20cd549ecc 128-145
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiMcp.store.test.ts
+  s_e8b96ca75e92a4::t_98358535fc37c3 392-452
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiSettings.store.test.ts
+  s_e8b96ca75e92a4::t_74b94ed601dfdf 500,530
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_e8b96ca75e92a4::t_6f38c6bbdb2043 4,45,139-144,170-181,201-216,290-298,304
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useMcpServerConnect.test.ts
+  s_e8b96ca75e92a4::t_0f4d66a221cf00 216-240
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useMcpServerConnect.ts
+  s_e8b96ca75e92a4::t_17ec2c6d59e42a 142-174,186
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.liveRunState.ts
+  s_e8b96ca75e92a4::t_d7423ec6172343 92
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiMcp.store.ts
+  s_e8b96ca75e92a4::t_44eb5023a434b6 198-202,285,287
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_e8b96ca75e92a4::t_d94267af4ca6db 172-175
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  s_e8b96ca75e92a4::t_a953aa3dd7395a 237
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_e8b96ca75e92a4::t_7156f093b6ee60 48-52,1391-1419
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_e8b96ca75e92a4::t_ddb274c623138d 189-197,529,789,923,1164
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_e8b96ca75e92a4::t_6f5e5245d7b645 321-357,450,481,684,1216,1573,2775
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_e8b96ca75e92a4::t_bb25a9b8198b59 88-91,164-166,635,642,671,684,866-867,891,902,911,954,961
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_e8b96ca75e92a4::t_b46f2de2d126cb 130,234
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_e8b96ca75e92a4::t_f0d66b3d1decf3 511
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/FilterConditions.test.ts
+  s_e8b96ca75e92a4::t_6f5fec6c44a01e 168,476,482
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_e8b96ca75e92a4::t_e974b4657597d8 1234,1236,1967
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterOptions.test.ts
+  s_e8b96ca75e92a4::t_b3940664ef9a6c 40-67
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterOptions.vue
+  s_e8b96ca75e92a4::t_d5cf0487dbe202 197,210,222,236,251-252,270
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_e8b96ca75e92a4::t_b17e5264af6f71 25,63,246
+packages/frontend/editor-ui/src/features/roles/project/RoleAssignmentsTab.test.ts
+  s_e8b96ca75e92a4::t_60ebeaeefce10e 73-117
+packages/frontend/editor-ui/src/features/roles/project/RoleAssignmentsTab.vue
+  s_e8b96ca75e92a4::t_42a7c782ac3052 40-46,92-99,102-128,130-163,186-189
+packages/frontend/editor-ui/src/features/shared/editors/components/InlineExpressionEditor/OutputItemSelect.vue
+  s_e8b96ca75e92a4::t_8c47594b8eacdd 26,56,89,96,105-107,114
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.test.ts
+  s_e8b96ca75e92a4::t_6d3a4bc6f49daf 47-53
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolSettingsView.vue
+  s_e8b96ca75e92a4::t_9593b709afed6c 229
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  s_e8b96ca75e92a4::t_325bbb377b806b 327
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_e8b96ca75e92a4::t_51c98f28f71b8d 10,17-18,70-82,318-343,448-451
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_e8b96ca75e92a4::t_082f31671cbb9d 612,615,635-636,662,687
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_e8b96ca75e92a4::t_4d7b730d8911d4 826-828,1722,1904,1906-1908
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_e8b96ca75e92a4::t_6dfb51328c00ab 85-92
+packages/nodes-base/credentials/JiraSoftwareCloudOAuth2Api.credentials.ts
+  s_e8b96ca75e92a4::t_d4e74a5d2a20ef 17-29
+packages/nodes-base/credentials/MicrosoftTeamsOAuth2Api.credentials.ts
+  s_e8b96ca75e92a4::t_fe97fcff03f576 12
+packages/nodes-base/credentials/test/AtlassianOAuth2Api.credentials.test.ts
+  s_e8b96ca75e92a4::t_0e1816468bdeba 14-16
+packages/nodes-base/credentials/test/ConfluenceCloudOAuth2Api.credentials.test.ts
+  s_e8b96ca75e92a4::t_f7c4d1a8632bc6 118-121
+packages/nodes-base/credentials/test/HttpTemplatedCustomAuth.credentials.test.ts
+  s_e8b96ca75e92a4::t_9682be8f0d4016 1-42
+packages/nodes-base/credentials/test/JiraSoftwareCloudOAuth2Api.credentials.test.ts
+  s_e8b96ca75e92a4::t_c6427d3e1db865 81-86
+packages/nodes-base/credentials/test/MicrosoftTeamsOAuth2Api.credentials.test.ts
+  s_e8b96ca75e92a4::t_f4de28bce71d0a 15,74,91,109
+packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/customFields.json
+  s_e8b96ca75e92a4::t_dadaf4088df015 16-18,48
+packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/task/create.json
+  s_e8b96ca75e92a4::t_00bc51b4f12884 12-14,280
+packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/task/get.json
+  s_e8b96ca75e92a4::t_ae5898ab876708 284-286,336,589
+packages/nodes-base/nodes/Code/errors/WrappedExecutionError.ts
+  s_e8b96ca75e92a4::t_cb2dc0fbfa2ebd 5-10,24,31
+packages/nodes-base/nodes/Code/test/WrappedExecutionError.test.ts
+  s_e8b96ca75e92a4::t_6de8e893ebe6ef 1-34
+packages/nodes-base/nodes/Confluence/actions/attachment/index.ts
+  s_e8b96ca75e92a4::t_469e86e121b70f 4,44-51
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_e8b96ca75e92a4::t_8cd92faa6bbb74 10-14,19-51,65,127-129,190-192,320,323-324
+packages/nodes-base/nodes/Confluence/actions/page/index.ts
+  s_e8b96ca75e92a4::t_6919480bf5ddf8 15,119-126
+packages/nodes-base/nodes/Confluence/actions/search/index.ts
+  s_e8b96ca75e92a4::t_d386e5486bdfdf 4,29-36
+packages/nodes-base/nodes/Confluence/actions/space/index.ts
+  s_e8b96ca75e92a4::t_9ce1030b6c4144 5,36-43
+packages/nodes-base/nodes/Confluence/methods/listSearch.ts
+  s_e8b96ca75e92a4::t_ff29e63b23acea 8-9,11,69-102
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_e8b96ca75e92a4::t_474c23e7384863 58-69
+packages/nodes-base/nodes/Confluence/test/methods/listSearch.test.ts
+  s_e8b96ca75e92a4::t_58de38ad25f90e 2,5-6,8-15,20,24,32,145-169,482-557
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_e8b96ca75e92a4::t_7ccee709b09bd7 2,7,20-21,65,77,80,86,232-233,240-273,278-299,309,320,322,430,441,443,507-508,517-518
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_e8b96ca75e92a4::t_bbc67cc8b054ab 8,13,86-115,123,155,196
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/send.json
+  s_e8b96ca75e92a4::t_fb5523b9686319 15-17,124-126,214
+packages/nodes-base/nodes/Elastic/ElasticSecurity/ElasticSecurity.node.ts
+  s_e8b96ca75e92a4::t_6d88a38e1fa419 12-13,216-220,230-234,291,315,338,355,377,408,425,436,448,467-470,473
+packages/nodes-base/nodes/Elastic/ElasticSecurity/GenericFunctions.ts
+  s_e8b96ca75e92a4::t_ecc6227e7a2d9e 11-12,114
+packages/nodes-base/nodes/Elastic/ElasticSecurity/tests/GenericFunctions.test.ts
+  s_e8b96ca75e92a4::t_f8f9d5db1fb825 1-10
+packages/nodes-base/nodes/Elastic/Elasticsearch/Elasticsearch.node.ts
+  s_e8b96ca75e92a4::t_717c6adbfb38b4 13,105,126,184,196,260,263,306,336-340,352-356,374-380
+packages/nodes-base/nodes/Elastic/Elasticsearch/GenericFunctions.ts
+  s_e8b96ca75e92a4::t_69ed65f8966dee 10-11,96-99,103-109
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/GenericFunctions.test.ts
+  s_e8b96ca75e92a4::t_785f05083bfefd 1,3,113-139
+packages/nodes-base/nodes/FreshworksCrm/__schema__/v1.0.0/search/query.json
+  s_e8b96ca75e92a4::t_d68b2d486c89a4 40
+packages/nodes-base/nodes/Git/GenericFunctions.ts
+  s_e8b96ca75e92a4::t_d218d671d01841 1-4,135-260,267-272,283-285,287-289,292,295-296,317-319,323,327-331,333-348,350-351,353-354,357-361,373-384
+packages/nodes-base/nodes/Git/Git.node.ts
+  s_e8b96ca75e92a4::t_ee0447a8c2afab 13,19,38,40,43,45,47,53-62,272-285,325-327,382-384,387-388,413,433,440,455,482-548,553,578-586,639-649,711,816,858,922
+packages/nodes-base/nodes/Git/__test__/GenericFunctions.test.ts
+  s_e8b96ca75e92a4::t_c3410783daa20b 1-3,7,9-10,12-13,16-33,108-146,298-410,426-591
+packages/nodes-base/nodes/Git/test/Git.node.security.test.ts
+  s_e8b96ca75e92a4::t_b594c3ab34ccb4 3-8,10-20,22,32-38,40-140,152,161-162,200-201,204,208,211,220,233,247,277,323-396,403-404,406,410,414-415,428-1021
+packages/nodes-base/nodes/Git/test/Git.node.test.ts
+  s_e8b96ca75e92a4::t_14a50950829ca8 59-61,67-77,101-103,117-118,126-127,134,290-425,600-601,1850,1878,1898,1909,1928,1945
+packages/nodes-base/nodes/Github/GithubTrigger.node.ts
+  s_e8b96ca75e92a4::t_64cc0e326b79be 17-27,493-498,513,567-592,594-595,598-647,668-669,674-680
+packages/nodes-base/nodes/Github/GithubTriggerHelpers.ts
+  s_e8b96ca75e92a4::t_11b747b120397a 13,20-22,24-29
+packages/nodes-base/nodes/Github/__tests__/GithubTriggerHelpers.test.ts
+  s_e8b96ca75e92a4::t_1bb9913b02958d 21-23,36-38,56,61,63-67
+packages/nodes-base/nodes/Github/__tests__/node/GithubTrigger.node.test.ts
+  s_e8b96ca75e92a4::t_dcc5e3c7537709 4-38,49,52-87,99,109,112-122,159-164,171-339,343-440,456-493
+packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/sendAndWait.json
+  s_e8b96ca75e92a4::t_b758175415ebfa 10-12,19
+packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/list.json
+  s_e8b96ca75e92a4::t_c878d1d5a04d6e 1-9
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_e8b96ca75e92a4::t_b795713e3c6209 58-81
+packages/nodes-base/nodes/Google/Gmail/__schema__/v2.2.0/thread/get.json
+  s_e8b96ca75e92a4::t_6a586ce4751994 65-70,93-134,169
+packages/nodes-base/nodes/Hubspot/__schema__/v2.2.0/deal/get.json
+  s_e8b96ca75e92a4::t_cd5a55b21ca0b1 1-9
+packages/nodes-base/nodes/Hubspot/__schema__/v2.2.0/ticket/get.json
+  s_e8b96ca75e92a4::t_3d6d755fd90e18 48-50,156
+packages/nodes-base/nodes/JinaAI/__schema__/v1.0.0/reader/read.json
+  s_e8b96ca75e92a4::t_2c3d4527862b73 94-96,100-114,118-120,142-147,183
+packages/nodes-base/nodes/Jira/__test__/JiraTrigger.node.test.ts
+  s_e8b96ca75e92a4::t_8ca50473f64a2a 11,30-35,38,53,205,323,376,411,455,495,538,584,615,649,680,717
+packages/nodes-base/nodes/Kafka/test/Kafka.node.test.ts
+  s_e8b96ca75e92a4::t_0e618feddf613c 2,146,248-250,302-307
+packages/nodes-base/nodes/Kafka/test/KafkaTrigger.node.test.ts
+  s_e8b96ca75e92a4::t_1d55eb52994f2a 410-412,462-467,511-513
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_e8b96ca75e92a4::t_250d8d1027f683 2,1022-1024,1313,1315,1317,1320-1322,1364-1372
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.test.ts
+  s_e8b96ca75e92a4::t_5493a77737b7fc 857-859
+packages/nodes-base/nodes/Kafka/test/v2/KafkaV2.node.test.ts
+  s_e8b96ca75e92a4::t_9aa1a0f6f01665 1,135,369-371,571-576
+packages/nodes-base/nodes/Microsoft/Entra/GenericFunctions.ts
+  s_e8b96ca75e92a4::t_af8348b360de21 9,17-22,25-151,155,162-192,195,219,223
+packages/nodes-base/nodes/Microsoft/Entra/descriptions/GroupDescription.ts
+  s_e8b96ca75e92a4::t_1a6808f6053655 13-17,55,79,119,548-553,557-561,608-612,649-653,927-931,1190-1195
+packages/nodes-base/nodes/Microsoft/Entra/descriptions/UserDescription.ts
+  s_e8b96ca75e92a4::t_ea88527b9a7780 14-19,40,80,104,145,169,223-227,263,268,917-922,926-931,936-940,987-991,1028-1032,1291-1295,1329-1333,1370-1374,2141-2146
+packages/nodes-base/nodes/Microsoft/Entra/test/GenericFunctions.test.ts
+  s_e8b96ca75e92a4::t_2a07f8143cc6d8 2-17,318-580
+packages/nodes-base/nodes/Microsoft/Entra/test/GroupDescription.test.ts
+  s_e8b96ca75e92a4::t_3ad065988ef98a 4-10,755-771
+packages/nodes-base/nodes/Microsoft/Entra/test/MicrosoftEntra.node.test.ts
+  s_e8b96ca75e92a4::t_946597c5c09ab0 17-21,118-194
+packages/nodes-base/nodes/Microsoft/Entra/test/UserDescription.test.ts
+  s_e8b96ca75e92a4::t_847cf124890cfc 2-16,1143-1468
+packages/nodes-base/nodes/Microsoft/Entra/test/mocks.ts
+  s_e8b96ca75e92a4::t_96290387710ff4 2-63
+packages/nodes-base/nodes/Microsoft/Excel/MicrosoftExcel.node.ts
+  s_e8b96ca75e92a4::t_fd07468fb74e1d 17
+packages/nodes-base/nodes/Microsoft/Outlook/MicrosoftOutlookTrigger.node.ts
+  s_e8b96ca75e92a4::t_f8fa6171d068f1 28-51
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/folderMessage/getAll.json
+  s_e8b96ca75e92a4::t_dc8c99a5822e6f 175-180,204
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/getAll.json
+  s_e8b96ca75e92a4::t_361e226d676fe8 16-18,29
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/create.minimal.workflow.json
+  s_e8b96ca75e92a4::t_9d5f6c3da3c929 1-88
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/create.test.ts
+  s_e8b96ca75e92a4::t_eddb96e3d13a0f 1-68
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/create.workflow.json
+  s_e8b96ca75e92a4::t_fa23ee4f0651c8 1-117
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_e8b96ca75e92a4::t_71c0e23d631b4d 75-87
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_e8b96ca75e92a4::t_ffe1ee8d00fe67 69-105
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/node.type.ts
+  s_e8b96ca75e92a4::t_da73aabf113c6c 7
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/create.operation.ts
+  s_e8b96ca75e92a4::t_a48d0fa8917de7 1-212
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/index.ts
+  s_e8b96ca75e92a4::t_0a9cb1f7794fee 1-47
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/sharedGuard.ts
+  s_e8b96ca75e92a4::t_40f741dbdde854 1-24
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/router.ts
+  s_e8b96ca75e92a4::t_b9737affa393dc 14,74-79
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/versionDescription.ts
+  s_e8b96ca75e92a4::t_cc4299922f63c8 7,72,78,101-104,116
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_e8b96ca75e92a4::t_15218a113ac8c3 114,118,179-181
+packages/nodes-base/nodes/NextCloud/GenericFunctions.ts
+  s_e8b96ca75e92a4::t_f76047e1fb46d8 34-42,59-60
+packages/nodes-base/nodes/NextCloud/test/GenericFunctions.test.ts
+  s_e8b96ca75e92a4::t_53a0ebed47b5a9 48-49,57-103,105-107,109-140,143-147,149-169,171-198,200-202,204,206-208,211-213,215,217-219,221-239,241-262,265-276,278-281,283-288,290-293,295-312
+packages/nodes-base/nodes/Odoo/__schema__/v2.0.0/custom/getAll.json
+  s_e8b96ca75e92a4::t_e39e8009d12a4b 6-8,11
+packages/nodes-base/nodes/Salesforce/__schema__/v1.1.0/account/create.json
+  s_e8b96ca75e92a4::t_05f11d0a270325 1-12
+packages/nodes-base/nodes/Schedule/ScheduleTrigger.node.ts
+  s_e8b96ca75e92a4::t_3852ff343948d9 120-123,137-140,153-156,170-173
+packages/nodes-base/nodes/SeaTable/__schema__/v2.0.0/row/create.json
+  s_e8b96ca75e92a4::t_33ff741dd9bef1 18-20,23
+packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/incident/getAll.json
+  s_e8b96ca75e92a4::t_4c771801a4795c 30-40,88-95,292
+packages/nodes-base/nodes/Shopify/__schema__/v1.0.0/product/getAll.json
+  s_e8b96ca75e92a4::t_643d918fc29f36 16-53,205
+packages/nodes-base/nodes/Slack/__schema__/v2.7.0/message/delete.json
+  s_e8b96ca75e92a4::t_924dc7cce5b1a1 1-15
+packages/nodes-base/nodes/Slack/__schema__/v2.7.0/message/post.json
+  s_e8b96ca75e92a4::t_94710e228ed2f2 31-33,37-39,133
+packages/nodes-base/nodes/Slack/__schema__/v2.7.0/message/sendAndWait.json
+  s_e8b96ca75e92a4::t_a34a97aee94c25 1-17
+packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/getAll.json
+  s_e8b96ca75e92a4::t_e5e0ede5a86a54 6-8,11
+packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/update.json
+  s_e8b96ca75e92a4::t_93064620dfc8d6 6-8,10-11
+packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/leave.json
+  s_e8b96ca75e92a4::t_89b5ff83542885 11
+packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendDocument.json
+  s_e8b96ca75e92a4::t_4986a1e7caaf2f 10-12,79
+packages/nodes-base/nodes/Trello/__schema__/v1.0.0/list/getCards.json
+  s_e8b96ca75e92a4::t_3cee4cdf763dbb 47-49,227
+packages/nodes-base/nodes/Wordpress/__schema__/v1.0.0/page/getAll.json
+  s_e8b96ca75e92a4::t_042a7c2ecb3bc4 238
+packages/nodes-base/nodes/Wordpress/__schema__/v1.0.0/post/getAll.json
+  s_e8b96ca75e92a4::t_68768c42984be9 177-182,281
+packages/nodes-base/test/nodes/TriggerHelpers.ts
+  s_e8b96ca75e92a4::t_de93af94decacf 1,105,208
+packages/nodes-base/utils/__tests__/atlassian.test.ts
+  s_e8b96ca75e92a4::t_1cd13af4c743e3 1,8,10,13,66,78,159-181,317-574
+packages/nodes-base/utils/atlassian.ts
+  s_e8b96ca75e92a4::t_6c870ddd2f728e 5,32-34,36-40,58-122,143-149,151-165,168-186,188-190,192-193,195-200,203,206,208-211
+packages/nodes-base/utils/url.test.ts
+  s_e8b96ca75e92a4::t_bd87e4663e3340 1-32
+packages/nodes-base/utils/url.ts
+  s_e8b96ca75e92a4::t_3853cdb3d8335d 1-19
+packages/testing/containers/dockerfiles/kent/Dockerfile
+  s_e8b96ca75e92a4::t_044c6061e0156c 9-11
+packages/testing/containers/service-stack.ts
+  s_e8b96ca75e92a4::t_3904e2682c710d 51-58
+packages/testing/containers/services/sandbox.ts
+  s_e8b96ca75e92a4::t_cdc48b8f7cfbaf 22-23,140-175,179-204
+packages/testing/containers/services/types.ts
+  s_e8b96ca75e92a4::t_48ed486d669d0a 112-124
+packages/testing/containers/stack.ts
+  s_e8b96ca75e92a4::t_fd2f9c04ac88f9 40-44,129,173,176-192,385
+packages/testing/janitor/src/config.ts
+  s_e8b96ca75e92a4::t_ce2c44193da6a1 104-107,197-198
+packages/testing/playwright/docs/ORCHESTRATION.md
+  s_e8b96ca75e92a4::t_4fcd037e9fa26d 10,15-16,24-54,168,175-184
+packages/testing/playwright/tests/e2e/instance-ai/README.md
+  s_e8b96ca75e92a4::t_6aab8e5afff3dc 7-34,40-41
+packages/testing/test-impact/src/shard-distributor.test.ts
+  s_e8b96ca75e92a4::t_44bd606f022993 167-306
+packages/testing/test-impact/src/shard-distributor.ts
+  s_e8b96ca75e92a4::t_4626261cf65e3a 6-7,28-29,130-157,201-208
+packages/workflow/src/expression-sandboxing.ts
+  s_e8b96ca75e92a4::t_dbb969a61affc4 31-33,85-116,443-460
+packages/workflow/src/extensions/array-extensions.ts
+  s_e8b96ca75e92a4::t_3ea63333d5a939 17-33,95-96,190-198,228,231-232,253-254,280,284-290,306,310,312-315,317-322
+packages/workflow/src/extensions/expression-extension.ts
+  s_e8b96ca75e92a4::t_c54b75a03b4823 577,594-596,632
+packages/workflow/src/extensions/extended-functions.ts
+  s_e8b96ca75e92a4::t_0dfabf255d8f85 10-19,49
+packages/workflow/src/extensions/object-extensions.ts
+  s_e8b96ca75e92a4::t_18a6bd5ecf8e4c 11-20,86-87,90-91,93
+packages/workflow/src/interfaces.ts
+  s_e8b96ca75e92a4::t_e765dae50a6851 1007-1008,1010,1558-1560
+packages/workflow/src/mcp-helpers.ts
+  s_e8b96ca75e92a4::t_b2fd2eeade1efe 1-4,8-42,52-93
+packages/workflow/test/ExpressionExtensions/array-extensions.test.ts
+  s_e8b96ca75e92a4::t_6202d8901038ad 5,105-132,198-230,242-290,302-323
+packages/workflow/test/ExpressionExtensions/expression-extension.test.ts
+  s_e8b96ca75e92a4::t_1095781aaecd93 8-9,234-244,313-322
+packages/workflow/test/ExpressionExtensions/object-extensions.test.ts
+  s_e8b96ca75e92a4::t_e97b4bc6977c00 3-8,34-47,145-155
+packages/workflow/test/expression-compatibility.test.ts
+  s_e8b96ca75e92a4::t_be59f2e8f4538c 1-890
+packages/workflow/test/expression.test.ts
+  s_e8b96ca75e92a4::t_266baf6fdbd646 186-194,202-240,724-765,774-839
+pnpm-lock.yaml
+  s_e8b96ca75e92a4::t_730ae48ea793e9 523-524,697-698,700-701,703-704,706-707,709-713,715-716,718-719,2607,3471,4060,5033,5100,5103,5218,5329,5357,5360,5363,5405,5417,5420,5520,5673,5743,5807,5889,5944,5956,5959,5962,5965,5968,5972-5974,5987-5989,5992,5999-6001,6007,6010,6271,6380,6383,6476,6968,9383-9385,9392-9397,9404-9406,9410-9412,9581-9586,11664-11790,11798-11800,11807-11909,13275-13276,13278,13280-13281,13283-13287,13289-13290,13295,13307-13308,13310-13311,13313-13314,13318,13334-13335,13339-13340,13342-13343,13346-13351,13358-13359,13361-13362,13364-13365,13367,13567-13570,13579-13582,14215-14216,14396-14401,14412-14415,14422-14427,14439-14442,14449-14454,14462-14468,14473-14476,14822-14824,14828-14830,14839-14846,14925-14927,14966-14971,15018-15020,15323-15325,17514-17515,17557-17560,18436-18439,20957-20963,22292-22294,22817-22818,22821,22823,22825-22826,22829-22830,23099-23102,23327-23332,23547-23550,24086-24087,28132,28138,28681-28686,28699-28709,28720-28724,28730-28734,28826-28830,30004,30007,30479-30485,30493-30499,31236-31299,31304-31305,31310-31370,32693,32696-32697,32699,32701-32704,32707,32709-32710,32712,32718,32721-32722,32731,32733-32734,32742,32744,32753,32757,32761-32763,32765,32767,32769,32771-32772,32774,32777,32785,32788-32789,33037-33047,33069-33077,33082-33085,33751,34025,34027,34030,34034,34036-34037,34039-34049,34072-34076,34089-34097,34122-34123,34156,34158-34159,34167-34168,34172,34174-34177,34179,34181-34199,34225,34230,34232,34236,34238-34241,34243-34255,34264-34268,34577-34580,34583-34584,34610-34617,34773-34782,34838-34843,34923-34924,35158-35159,37250-37252,37254-37256,37741-37756,37768-37779,37804-37821,37851-37880,37924,37926-37927,37985-37986,39190-39196,42214-42260,43633,43640,43651,43658,43669,43671,43881,43885,44513,44515-44516,44519,44523,44526-44529,44532,44534,44536-44537,44543,44989-44990,45279-45287,45416,45426,45444,45454,45472,45483,45552-45555,46149,46151-46152
+pnpm-workspace.yaml
+  s_e8b96ca75e92a4::t_900fa12e8f6fac 251,325-332
+scripts/licenses/enrich-sbom.mjs
+  s_e8b96ca75e92a4::t_7d400cde1ddc40 78-87,104-108
+scripts/licenses/enrich-sbom.test.mjs
+  s_e8b96ca75e92a4::t_c8ebdc532a4efd 207-242
+scripts/licenses/properties.test.mjs
+  s_e8b96ca75e92a4::t_98ef590bb184fd 241,258-278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "23264b35791c6eb560a3471893f26ee6addf10ad",
+  "prompts": {},
+  "sessions": {
+    "s_e8b96ca75e92a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdaa0091-0080-478a-91a2-a2ed36ea9d01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

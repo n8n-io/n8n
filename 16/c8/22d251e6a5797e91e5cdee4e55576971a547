@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentToolMockSection.vue
+  s_82508c87469e04::t_df9e30fcc3359b 46-49,52
+  s_82508c87469e04::t_5e08bfccb983a0 157-162
+  s_82508c87469e04::t_656dbef49b218b 183
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolMockSection.test.ts
+  s_82508c87469e04::t_ad433dfc851a75 252-283,293-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "16c822d251e6a5797e91e5cdee4e55576971a547",
+  "prompts": {},
+  "sessions": {
+    "s_82508c87469e04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a71432a2-03b0-4483-9061-b9d762e81bfb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_6ab4a91ea00e1e::t_e75a2df7c9b48b 11-13
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_6ab4a91ea00e1e::t_0de64101074ed3 37-38,40
+  s_6ab4a91ea00e1e::t_e077d6a6e838b8 88-109
+  s_6ab4a91ea00e1e::t_2ce39e56dc63a5 3,12,20,28,39,41-51
+  s_6ab4a91ea00e1e::t_e69cedc63c0eb8 80
+  s_6ab4a91ea00e1e::t_d30ba07c7ddf7c 52,87
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_6ab4a91ea00e1e::t_e923b70a32de9a 93
+packages/@n8n/api-types/src/dto/index.ts
+  s_6ab4a91ea00e1e::t_bcc70ab2bbf78a 198
+packages/cli/test/integration/public-api/roles.test.ts
+  s_6ab4a91ea00e1e::t_e7027511887748 132-248
+packages/@n8n/api-types/src/dto/roles/role-public.dto.ts
+  s_6ab4a91ea00e1e::t_adf375b8400a97 33-38
+packages/@n8n/permissions/src/constants.ee.ts
+  s_6ab4a91ea00e1e::t_fc0f531098a9d7 114
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getRole.generated.yml
+  s_6ab4a91ea00e1e::t_5b278ba35ea198 1-80
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_6ab4a91ea00e1e::t_3e05483efbaf11 14-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "dcfd226906c693ec3fc90b95d2f3fe3da257e4ab",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6ab4a91ea00e1e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2be6cb5b-f5c3-4f41-bd74-68d8f328bb05",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

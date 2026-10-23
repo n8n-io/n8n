@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/sessions.ts
+  s_dcea52ad05f3e5::t_ca658d29ec9326 6-28,48,50-53,55-57
+  s_dcea52ad05f3e5::t_4066f8317fea9f 5
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/sessions.test.ts
+  s_dcea52ad05f3e5::t_cabc8a1d09396a 87-114
+.boundaries-baseline.json
+  s_dcea52ad05f3e5::t_4716d134e39392 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6ebc8696adb8949b2b6513873ae5ac3c58e942c6",
+  "prompts": {},
+  "sessions": {
+    "s_dcea52ad05f3e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa86040e-4be6-4812-92fc-f4f87bbbe2ba",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

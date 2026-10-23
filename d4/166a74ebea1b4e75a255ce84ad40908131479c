@@ -1,0 +1,50 @@
+packages/nodes-base/nodes/Pushcut/test/workflow/Pushcut.workflow.test.ts
+  s_2e1fa95fc44f8f::t_911d66bbaf111a 1-23
+packages/nodes-base/nodes/Pushcut/test/PushcutTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_c4e82fafeeb853 1-37
+packages/nodes-base/nodes/Pushbullet/test/workflow/Pushbullet.workflow.test.ts
+  s_2e1fa95fc44f8f::t_51a232c0315d87 1-30
+  s_2e1fa95fc44f8f::t_1bed775d7328d2 31-33
+packages/nodes-base/nodes/Pushover/test/workflow/Pushover.workflow.test.ts
+  s_2e1fa95fc44f8f::t_114d114d88299e 1-22
+packages/nodes-base/nodes/QuickBase/test/workflow/QuickBase.workflow.test.ts
+  s_2e1fa95fc44f8f::t_14b31504718cf6 1-44
+packages/nodes-base/nodes/QuickBooks/test/workflow/QuickBooks.workflow.test.ts
+  s_2e1fa95fc44f8f::t_78e899cc317763 1-101
+  s_2e1fa95fc44f8f::t_fd7c44eb2134c0 102-104
+  s_628b34ed698406::t_657e5b1f638ab5 105-109
+packages/nodes-base/nodes/Pushbullet/test/workflow/requests.workflow.json
+  s_628b34ed698406::t_84c7236effabf6 1-155
+packages/nodes-base/nodes/Pushcut/test/workflow/requests.workflow.json
+  s_628b34ed698406::t_ef6c60cb8ceb08 1-57
+packages/nodes-base/nodes/Pushover/test/workflow/requests.workflow.json
+  s_628b34ed698406::t_333a4be6fc4fc2 1-59
+packages/nodes-base/nodes/QuickBase/test/workflow/requests.workflow.json
+  s_628b34ed698406::t_6a3970c25400a0 1-191
+packages/nodes-base/nodes/QuickBooks/test/workflow/requests.workflow.json
+  s_628b34ed698406::t_da53c44df5ed33 1-1673
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4166a74ebea1b4e75a255ce84ad40908131479c",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_628b34ed698406": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab9774a9ac55dc3a5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

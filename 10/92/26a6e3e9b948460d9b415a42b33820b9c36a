@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_782619aac31c26::t_9039f6b4c4d1ec 97-111
+packages/cli/src/modules/agents/__tests__/agent-session-lease.service.test.ts
+  s_782619aac31c26::t_cbf479044058fc 2,11-12,16,23,103-106,109-116,119-121,123-125,129-134,136,138-139,144,146,148-150,155-156,158,160-161,164,166-168,171-174,176-179,181-182,184-189
+  s_782619aac31c26::t_72c401b7321d05 22,24,107-108,117-118,122,126-128,135,137,140-143,145,147,151-154,157,159,162-163,165,169-170,175,180,183
+  s_782619aac31c26::t_543f6b0d2030e2 190
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_782619aac31c26::t_1bbf9ffddd4c30 147,1057-1142
+  s_782619aac31c26::t_417e86c52d4085 1143
+packages/cli/src/modules/agents/agent-session-lease.service.ts
+  s_782619aac31c26::t_cbf479044058fc 2,4-5,31,39-40,50-51,55,65-69,77,80-90,92-102,124-128,131-133,135-142,150,166,170-175,177
+  s_782619aac31c26::t_9039f6b4c4d1ec 30,41-43,63-64,78-79,91,129-130,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "109226a6e3e9b948460d9b415a42b33820b9c36a",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

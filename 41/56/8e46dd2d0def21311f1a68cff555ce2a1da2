@@ -1,0 +1,28 @@
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.vue
+  s_b8d6649e1ef54f::t_cb016d9e27a0e2 155-158,160,167-169
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_b8d6649e1ef54f::t_0d35abf7f8f108 301-303,308-312
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_b8d6649e1ef54f::t_6875c7beadb41c 30-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "41568e46dd2d0def21311f1a68cff555ce2a1da2",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b8d6649e1ef54f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "84d1fa77-5c6b-4192-b8fc-65edbdc28357",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

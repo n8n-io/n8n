@@ -1,0 +1,37 @@
+packages/nodes-base/nodes/Google/Drive/test/v2/workflow/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_65560eaa054350 1-25,28-66,69-104
+  s_2e1fa95fc44f8f::t_e6518f73835989 26-27
+  s_2e1fa95fc44f8f::t_13e325bc7a3d2d 67-68
+packages/nodes-base/nodes/Google/Drive/test/v1/workflow/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_72c3fa2636b269 1-80
+  s_2e1fa95fc44f8f::t_52590f4ae15a0a 81-83
+  s_b880e9225b0c40::t_5f0814f8af6421 84
+packages/nodes-base/nodes/Google/Drive/test/v1/workflow/requests.workflow.json
+  s_b880e9225b0c40::t_53a2f1ab3a1b0a 1-588
+packages/nodes-base/nodes/Google/Drive/test/v2/workflow/requests.workflow.json
+  s_b880e9225b0c40::t_218ab0f449f767 1-878
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ac0862fe3b1dbee2b451da0810be179665ed356",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_b880e9225b0c40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a35105119832006dc",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+packages/cli/src/modules/agents/repositories/skill.repository.ts
+  s_f492ca66fffc84::t_1dc9dec6152ccd 19,427-428,443-444,446,670,680-681
+packages/cli/src/modules/agents/__tests__/agent-telemetry.test.ts
+  s_f492ca66fffc84::t_61c912119be562 7,10-13,21
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_f492ca66fffc84::t_1dc9dec6152ccd 26
+packages/cli/src/modules/n8n-packages/entities/agent/agent.exporter.ts
+  s_f492ca66fffc84::t_50cfd2e9e8fe47 6,33-38
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_f492ca66fffc84::t_88d2092ed2ee5d 19,76,274
+packages/cli/src/modules/agents/skills/skill.service.ts
+  s_f492ca66fffc84::t_c08698872c226f 350,363
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_f492ca66fffc84::t_88d2092ed2ee5d 38,59,70,502,1521
+packages/@n8n/db/src/migrations/sqlite/1792051765225-AddInstanceScopeToAgents.ts
+  s_f492ca66fffc84::t_9217ab900622bb 1-69
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_f492ca66fffc84::t_1dc9dec6152ccd 12,17-22,26,29-30,33-36,68-70,74,140,144,159,183,185,192,208,235-238,246,352-358,373,375-405,414,419,427,430,432,434,437,439-444,449,456,462-464,467,469,480,486,492,494-495,497,501,527,555-556,558,560,566,579,590,613-616,656-666,815,826,861-863
+  s_f492ca66fffc84::t_7288c0e003b10e 81,85,89-93,96
+packages/cli/test/integration/agents/agent-skills-hub.test.ts
+  s_f492ca66fffc84::t_f185e6e96cd24f 133
+  s_f492ca66fffc84::t_e5f0266601834e 33
+packages/cli/src/modules/agents/__tests__/test-utils/stored-agent-config.ts
+  s_f492ca66fffc84::t_071227c09c934c 155-156,158
+packages/cli/test/migration/1792051765225-add-instance-scope-to-agents.test.ts
+  s_f492ca66fffc84::t_59c342d73ae537 140-153
+  s_f492ca66fffc84::t_9217ab900622bb 1-139,154-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2992f6ea2da3b06aa5393f50813623509df77534",
+  "prompts": {},
+  "sessions": {
+    "s_f492ca66fffc84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb73c4c0-ce17-4d70-8113-ed2daa4d066a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

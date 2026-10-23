@@ -1,0 +1,31 @@
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-artifacts.spec.ts
+  s_5eaebbe993605c::t_b2f7591c55fd7e 55-76
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_5eaebbe993605c::t_567378dfea056f 167-177
+packages/testing/playwright/pages/InstanceAiPage.ts
+  s_5eaebbe993605c::t_3b61466457b787 224-247
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_5eaebbe993605c::t_13fe3336fbd7fa 52-53,354,368,371,375
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_5eaebbe993605c::t_c3251e7de08971 83-92,369
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_5eaebbe993605c::t_3e40f9a036c528 225,245
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_5eaebbe993605c::t_999e7cdf478ad2 799-824
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3ec823bce2a94d3a7d651cb34da3a590c701921c",
+  "prompts": {},
+  "sessions": {
+    "s_5eaebbe993605c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4353-00a9-78b3-a770-05fc06ad05f3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

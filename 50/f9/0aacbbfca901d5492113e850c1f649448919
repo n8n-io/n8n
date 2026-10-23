@@ -1,0 +1,89 @@
+packages/cli/src/modules/agents/builder/skills/integrations.skill.ts
+  s_fad358ef69fdc9::t_4133ce329290e2 85-88
+  s_fad358ef69fdc9::t_60f2fe805e2971 84
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_fad358ef69fdc9::t_098c8e2361e8b4 354
+  s_fad358ef69fdc9::t_3b4531d570b807 364-365
+  s_fad358ef69fdc9::t_b24dfa25fd89ad 367
+  s_fad358ef69fdc9::t_7de9f15b5a4dcb 186
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_fad358ef69fdc9::t_b82c6749db8908 133-134
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  s_fad358ef69fdc9::t_53ba52a853a191 20
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_fad358ef69fdc9::t_db34bd9d08fe44 130-132
+  s_fad358ef69fdc9::t_4d6fe156bfcef8 177-183
+  s_fad358ef69fdc9::t_fbf5f917949779 219-221
+  s_fad358ef69fdc9::t_b7cd77d3c401e6 61-63
+  s_fad358ef69fdc9::t_f5ef1570b1fa95 64-66
+  s_fad358ef69fdc9::t_398d5f0c03d037 53-60,89-90
+  s_fad358ef69fdc9::t_410349877f4232 129
+  s_fad358ef69fdc9::t_2d07833c733900 156-158
+packages/cli/src/modules/agents/builder/skills/memory.skill.ts
+  s_fad358ef69fdc9::t_dd6564a25182fc 52
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_fad358ef69fdc9::t_5a59ba51542c96 73-78
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_fad358ef69fdc9::t_a04d70b03d3744 55
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_fad358ef69fdc9::t_cac897f78f9733 57
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_fad358ef69fdc9::t_6eeac54a3cf282 18
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_fad358ef69fdc9::t_90c105b0cf484e 113,128,140,142,156,172
+  s_fad358ef69fdc9::t_8f49887a8cd8ae 1-112,114-127,129-139,141,143-155,157-171,173-203
+  s_fad358ef69fdc9::t_4335249f70b281 204-210
+packages/cli/src/modules/agents/builder/agents-builder-model-recommendations.ts
+  s_fad358ef69fdc9::t_9cca34cbd9c232 86-87
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_fad358ef69fdc9::t_b44a56db91eeb9 64-65
+  s_fad358ef69fdc9::t_39f8653d3d430a 35-37
+  s_fad358ef69fdc9::t_5397fa1ed23678 161
+  s_fad358ef69fdc9::t_34fe7aa4530822 175-181,183
+  s_fad358ef69fdc9::t_b9b062f1d98432 213-225,232-233
+  s_fad358ef69fdc9::t_ba3bdc37038037 113-114,119
+  s_fad358ef69fdc9::t_36227052438503 243
+  s_fad358ef69fdc9::t_a4614ca803a816 51
+  s_fad358ef69fdc9::t_3ac74b2a41d7bb 296-304
+  s_fad358ef69fdc9::t_c72d5485d4bea5 98
+  s_fad358ef69fdc9::t_59c10678db2f32 82-83
+  s_fad358ef69fdc9::t_c71bb0d1cfb2fd 1-34,38-50,52-63,66-81,84-97,99-112,115-118,120-160,162-174,182,184-212,226-231,234-242,244-295,305-316
+  s_fad358ef69fdc9::t_753c517c06ffe4 317-330
+packages/cli/src/modules/agents/builder/prompts/initial-build.prompt.ts
+  s_fad358ef69fdc9::t_a7d871aa021dc5 14-17,28-29
+  s_fad358ef69fdc9::t_d32e6ea26aa2e7 30-39
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_fad358ef69fdc9::t_5e0265b900a7b4 252-260
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_fad358ef69fdc9::t_3c491af9d9a686 105-108
+packages/cli/src/modules/agents/builder/skills/resource-locators.skill.ts
+  s_fad358ef69fdc9::t_067b2a720f0d6c 50-52
+packages/cli/src/modules/agents/builder/interactive/index.ts
+  s_fad358ef69fdc9::t_3fc59613d0af09 1-5,8
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_fad358ef69fdc9::t_0912b21a4a2c7e 104-120
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_fad358ef69fdc9::t_dc038e8c84ff95 61
+  s_fad358ef69fdc9::t_f69e253282b36b 619-628
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "50f90aacbbfca901d5492113e850c1f649448919",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fad358ef69fdc9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3fe3a64f-4672-4318-8866-cacd239e702c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

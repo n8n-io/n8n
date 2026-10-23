@@ -1,0 +1,26 @@
+packages/cli/src/binary-data/__tests__/database.manager.integration.test.ts
+  s_5065593ba52be0::t_d4f0543b58e7a6 340-362
+packages/cli/src/modules/agents/agent-knowledge-file-store.ts
+  s_5065593ba52be0::t_c1748bd9aacee8 108
+packages/@n8n/db/src/repositories/binary-data.repository.ts
+  s_5065593ba52be0::t_8a6be8419fee62 24-25
+  s_5065593ba52be0::t_f9075769f17c29 28
+packages/cli/src/modules/agents/__tests__/agent-knowledge-file-store.test.ts
+  s_5065593ba52be0::t_12ace92607135c 147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "69668c450e8cc3ff64074a6dc143ccb7f4c63d9f",
+  "prompts": {},
+  "sessions": {
+    "s_5065593ba52be0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eb67b66e-2a8a-4b39-8cbc-978b9cc09f21",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/scaling/job-processor.ts
+  s_d540afcdb0b1c9::t_e4cb32ebf457bc 12,63-71,397,539,548,620-632,634
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_d540afcdb0b1c9::t_d9799379ddbf51 1346-1350,1391-1392
+  s_d540afcdb0b1c9::t_00ff510edaafb4 1412-1413
+  s_d540afcdb0b1c9::t_5eb9926118ef58 1,12,33,1311-1345,1351-1390,1393-1411,1414-1437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "916000628e1aa43e483747cf56d494fc93b961ff",
+  "prompts": {},
+  "sessions": {
+    "s_d540afcdb0b1c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08030-28dc-7d92-bcfe-fa45ac22561e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

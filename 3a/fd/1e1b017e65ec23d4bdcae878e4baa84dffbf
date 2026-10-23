@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  s_b99486d66cc3d5::t_b9b8182af4d1e5 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3afd1e1b017e65ec23d4bdcae878e4baa84dffbf",
+  "prompts": {},
+  "sessions": {
+    "s_b99486d66cc3d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b92a54a-6d63-4d90-9fa2-67d631f34af6",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

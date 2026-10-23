@@ -1,0 +1,32 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_9792ba813b9b53::t_0cd79e98fa2bb9 3646
+  s_9792ba813b9b53::t_fb3699613183b9 4551-4565
+  s_9792ba813b9b53::t_0196aa3dac061b 4806
+  s_9792ba813b9b53::t_5bb360f7f89de1 95
+  s_9792ba813b9b53::t_5817c3446d1939 201-221
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_9792ba813b9b53::t_6ece1fb45248e0 2911-2964
+  s_9792ba813b9b53::t_3d102744d24752 2455-2499
+  s_9792ba813b9b53::t_4706b8c49c15dd 1831-1840
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "0330ebd420bcd66e49f5a6ef8c75f9c50d071d74",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9792ba813b9b53": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7775fd17-2df7-467c-81ef-d9b04fa7eb2c",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    }
+  }
+}

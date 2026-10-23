@@ -1,0 +1,9 @@
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.utils.test.ts
+  s_a5246f8acb611f::t_0628c0599b464e 98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f4bef86e984a0ec3c419f98d353d9c3507793af",
+  "prompts": {}
+}

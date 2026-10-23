@@ -1,0 +1,68 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 54
+packages/frontend/editor-ui/src/app/components/ChatEmbedModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 12
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowPublishModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 49
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 185,237,250,254
+packages/frontend/editor-ui/src/features/core/auth/components/ConfirmPasswordModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 27
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 152
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 273,348,909,1115,1207,1548
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 62,85,109,138,171
+packages/frontend/editor-ui/src/app/components/FromAiParametersModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 132
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 40
+packages/frontend/editor-ui/src/app/components/ImportWorkflowUrlModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 23
+packages/frontend/editor-ui/src/features/ndv/runData/components/BinaryDataViewModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 34
+packages/frontend/editor-ui/src/app/components/VersionUpdateCTA.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 58
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/CommunityPackageInstallModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 42
+packages/frontend/editor-ui/src/app/components/ModalRoot.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 73
+packages/frontend/editor-ui/src/experiments/templateRecoV2/components/NodeRecommendationModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 63
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 54
+packages/frontend/editor-ui/src/features/settings/users/components/DeleteUserModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 65
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/completions.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 411,434
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_c746ba131f7008::t_11d4065e9726ba 329,333-353
+  s_c746ba131f7008::t_da1b905a8b63c0 105,245,250,322-323,331,581
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 133
+packages/frontend/editor-ui/src/app/components/WhatsNewModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 65
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 28
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowVersionFormModal.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 17
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_c746ba131f7008::t_da1b905a8b63c0 149,159,163,206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8ab52ffac2ee700fdaa098c48ebd964b91b2d271",
+  "prompts": {},
+  "sessions": {
+    "s_c746ba131f7008": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc000276-43ad-4d37-a88f-088abe341c47",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

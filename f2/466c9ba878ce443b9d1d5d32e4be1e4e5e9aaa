@@ -1,0 +1,22 @@
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.credentials.test.ts
+  s_7466f48cd64fa3::t_16e80bf55d1ce7 205-253
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_7466f48cd64fa3::t_16e80bf55d1ce7 153-155,160-163,448,479-484
+  s_7466f48cd64fa3::t_ab74f85e9ec1ef 485-486
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2466c9ba878ce443b9d1d5d32e4be1e4e5e9aaa",
+  "prompts": {},
+  "sessions": {
+    "s_7466f48cd64fa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95e7e2ef-1ac1-4737-b3ab-b30d86857d1b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

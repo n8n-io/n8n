@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useUnusableWorkflowCredentials.ts
+  s_6e5e6dade5599e::t_1cc06c4a553d62 1,25
+  s_6e5e6dade5599e::t_bf4d1346b6a008 15-16,56-61,65,68,73
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_6e5e6dade5599e::t_307ea506c6f29b 83
+packages/frontend/editor-ui/src/app/composables/useNodeExecution.ts
+  s_6e5e6dade5599e::t_307ea506c6f29b 105
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6e5e6dade5599e::t_a914fb1f9235fa 1178-1179
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_6e5e6dade5599e::t_307ea506c6f29b 1275
+packages/frontend/editor-ui/src/features/credentials/composables/useUnusableWorkflowCredentials.test.ts
+  s_6e5e6dade5599e::t_307ea506c6f29b 45,48,52,56-57,59,62-64,66-67,71,78,82,85,90,93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ebf4c3f5f0f72e4242c80ab9a114392362f1d160",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,69 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_bd2c53981ea354::t_8bf1b184136a01 830,838-839
+  s_bd2c53981ea354::t_5bc632bdeae3f8 801-802
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_bd2c53981ea354::t_7d655ac92130af 131-134
+  s_bd2c53981ea354::t_44387683d3b83d 148-164
+  s_bd2c53981ea354::t_6927a6c31e1e0e 247-257
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_bd2c53981ea354::t_60ae565a154f8a 106-107,109-112
+  s_bd2c53981ea354::t_65f3a89a6f66de 225-226
+  s_bd2c53981ea354::t_4ce56ae7e58464 8,12-15,33,43-45,92-97,99-103,105,108,113,143-145,147-150,174-181,185,187,190-191,200-201,212-224,227-249
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_bd2c53981ea354::t_de8df1e0f1b6e4 536-538
+  s_bd2c53981ea354::t_285ccd93d22dab 748-749
+  s_bd2c53981ea354::t_00a69349fc9f15 14
+  s_bd2c53981ea354::t_67daaa322fa660 780-791
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  s_bd2c53981ea354::t_0a44ec5fe58169 8-11,13-14,16,19,31
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_bd2c53981ea354::t_2dc425802dcaa5 382-383
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_bd2c53981ea354::t_ff57cb026f18b7 245-261,264-271
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_bd2c53981ea354::t_c5d56c7729f1d9 264,505-508
+  s_bd2c53981ea354::t_56f8a8e9d15158 78,377
+  s_bd2c53981ea354::t_37db29130629f5 382-385
+  s_bd2c53981ea354::t_e7f2e90a184a74 7,25-29,31-32,103-104,110,115-118,148-181,209-259,261-263,265,284-311,349-351,356-359,362-367,369,371-376,378-381,386-446,497,504,509-515,517-523
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_bd2c53981ea354::t_20da2bd445e588 10-11
+  s_bd2c53981ea354::t_aa2047aa748cfe 775
+  s_bd2c53981ea354::t_adb780d7da41ea 976-977
+  s_bd2c53981ea354::t_67f48f55c41b88 130-132
+  s_bd2c53981ea354::t_ac4ae254589ffd 160
+  s_bd2c53981ea354::t_9834e1f4f187c6 206-209
+  s_bd2c53981ea354::t_3cd743f20e6370 922-929
+  s_bd2c53981ea354::t_f16520eeeeeac0 717-747,751
+  s_bd2c53981ea354::t_6f5ea547fdb30e 27
+  s_bd2c53981ea354::t_ebd72a0b59713a 639-671,673-674
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_bd2c53981ea354::t_b9d5686b57bc43 1026-1027
+  s_bd2c53981ea354::t_0307cf285abac0 1002
+  s_bd2c53981ea354::t_fa86b6c7ebdc03 929-930
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_bd2c53981ea354::t_1e823ad16d2725 107-108
+  s_bd2c53981ea354::t_2c3c05fde183df 368-369,404-405,417-418,591
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_bd2c53981ea354::t_be7183fce16ba5 24-25
+  s_bd2c53981ea354::t_956fd7387f6893 140-141,148
+  s_bd2c53981ea354::t_56f8a8e9d15158 169
+  s_bd2c53981ea354::t_dcfcfe6579c94e 87,90
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_bd2c53981ea354::t_3284361a7afaf1 893-896
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "179c57655b96a625b5ba23524467053ee1b3971f",
+  "prompts": {},
+  "sessions": {
+    "s_bd2c53981ea354": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dae65258-6737-4a15-af4b-bbcfa1bd9afd",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

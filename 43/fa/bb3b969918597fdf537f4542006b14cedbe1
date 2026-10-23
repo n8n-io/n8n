@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.vue
+  s_e6e8b914243ae7::t_85c60a0d92ab9f 92-98
+  s_e6e8b914243ae7::t_c3afe5a7f7e1de 341,350
+  s_e6e8b914243ae7::t_773226ec295669 21
+  s_e6e8b914243ae7::t_de0827a157f16e 192,194-195,199,211-212,225,227-228,235,237-238,245,248
+packages/frontend/@n8n/rest-api-client/src/api/redaction-enforcement.ts
+  s_e6e8b914243ae7::t_fa5878ac8788dc 2-37
+packages/@n8n/api-types/src/dto/redaction-enforcement/redaction-enforcement.dto.ts
+  s_e6e8b914243ae7::t_3453a0e4d4927e 1-17
+packages/@n8n/api-types/src/dto/index.ts
+  s_e6e8b914243ae7::t_a33764be9ebfe1 220-224,227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "43fabb3b969918597fdf537f4542006b14cedbe1",
+  "prompts": {},
+  "sessions": {
+    "s_e6e8b914243ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dba96cc8-205c-457b-939f-c011eb5a120a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

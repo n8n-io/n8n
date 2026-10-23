@@ -1,0 +1,20 @@
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_7cc4bd7398e19c::t_a472f7348fc24f 578,587,591
+  s_7cc4bd7398e19c::t_747f185d2d9d26 553
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "059a8ac7b1fdcdb351de9d982224ea7ae0492397",
+  "prompts": {},
+  "sessions": {
+    "s_7cc4bd7398e19c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad318d59-a093-481a-90f0-d033414ba673",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_0b57509dd674ec::t_e7d81674493280 175
+  s_0b57509dd674ec::t_18e24af756c035 154-174
+packages/frontend/editor-ui/src/features/agents/__tests__/agentList.store.test.ts
+  s_0b57509dd674ec::t_b350a604413a70 1-43
+packages/frontend/editor-ui/src/features/workflows/readyToRun/composables/useEmptyStateDetection.test.ts
+  s_0b57509dd674ec::t_e7d81674493280 29-44,78-79,84-108
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_0b57509dd674ec::t_f3c23339f75cb7 890,893
+  s_0b57509dd674ec::t_36ac4534edba73 904,929
+  s_0b57509dd674ec::t_b350a604413a70 1,27-28,851-856,860-873,879-889,891-892,894-903,905-906,922-928,930
+  s_0b57509dd674ec::t_18e24af756c035 857-859,874-878
+  s_0b57509dd674ec::t_a5058e7f711dc9 907-921
+  s_0b57509dd674ec::t_55a79c89bd9325 931
+packages/frontend/editor-ui/src/features/agents/agentList.store.ts
+  s_0b57509dd674ec::t_e7d81674493280 1-17
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_0b57509dd674ec::t_843cbef00668b7 45-47,290,293-294,524-526
+  s_0b57509dd674ec::t_a5058e7f711dc9 523
+  s_0b57509dd674ec::t_7b0bc859f1b749 527-528
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_0b57509dd674ec::t_68b3ada14c0317 54,176,800
+packages/frontend/editor-ui/src/features/workflows/readyToRun/composables/useEmptyStateDetection.ts
+  s_0b57509dd674ec::t_68b3ada14c0317 2,4,16-17,35-36,45,57,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c922e73627fe29a85e2d0e23421b88163afae06",
+  "prompts": {},
+  "sessions": {
+    "s_0b57509dd674ec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a154d2-a76d-7872-9b0a-65e1663cbf09",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

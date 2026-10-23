@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_f0299b6a6dc0b6::t_1818492d8f80f6 5-8
+  s_f0299b6a6dc0b6::t_d988a9ba1cb6fc 289-293,295-296,299-300,302-303,305,309-322,324-325,327-328,330
+  s_f0299b6a6dc0b6::t_f92375ebab21a4 415-500
+  s_f0299b6a6dc0b6::t_5af9a1c16dbdf5 288,294,297-298,301,304,306-308,323,326,329,331-332
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/InstanceAiToolsConnectionModalWrapper.clearOnClose.test.ts
+  s_f0299b6a6dc0b6::t_66787c06996a04 112-114,118-130
+  s_f0299b6a6dc0b6::t_aa334afb514da1 1-111,115-117,131-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "37fdfe9f470f74932f2454950d20b68880f26e99",
+  "prompts": {},
+  "sessions": {
+    "s_f0299b6a6dc0b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b5b1a3b-b8a2-4e43-833c-22b9c1ac8a41",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

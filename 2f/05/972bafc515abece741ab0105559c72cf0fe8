@@ -1,0 +1,28 @@
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_6c8e99f341f276::t_9e3ac624a39556 785-787
+  s_6c8e99f341f276::t_0303f3b81d088d 755-757
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_6c8e99f341f276::t_347ce2e9ffd769 793-856
+  s_6c8e99f341f276::t_e1abee818a4911 706-717
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_6c8e99f341f276::t_b249318adf7b72 18-21
+  s_6c8e99f341f276::t_db3fad076adfed 120-207
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_6c8e99f341f276::t_a68222d8a95ff5 191-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2f05972bafc515abece741ab0105559c72cf0fe8",
+  "prompts": {},
+  "sessions": {
+    "s_6c8e99f341f276": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2a8ec98-cd4f-4793-8922-567af4131425",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

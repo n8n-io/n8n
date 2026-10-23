@@ -1,0 +1,26 @@
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_5b586951f97f35::t_4838e09a693680 324-364
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_5b586951f97f35::t_b0da95cf27bf12 13,61-81,427-429,542,559,569-573,580-582,654-657
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4166bab36580dd513843655f7a5d7dbd75e8b6b0",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5b586951f97f35": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ad32431c-0f56-4daf-ada3-eaaac2bebeb5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

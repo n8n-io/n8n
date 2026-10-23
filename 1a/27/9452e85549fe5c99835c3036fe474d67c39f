@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_adb5d982725a9c::t_274cc3bcd81bbc 1120
+  s_adb5d982725a9c::t_a800fa9b5e0e6c 557-559
+  s_adb5d982725a9c::t_80f4f989870112 31
+  s_adb5d982725a9c::t_e8cbfb6dee6193 1011-1065,1068,1071,1074,1077-1078,1087-1089
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_adb5d982725a9c::t_7e3d716d6dd166 370-385,388-394
+  s_adb5d982725a9c::t_687f9b8a81e9c2 2219
+  s_adb5d982725a9c::t_0ff6b0643240fe 263
+  s_adb5d982725a9c::t_50763638c35cc8 89-92
+  s_adb5d982725a9c::t_333ccf505e4ea9 160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a279452e85549fe5c99835c3036fe474d67c39f",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

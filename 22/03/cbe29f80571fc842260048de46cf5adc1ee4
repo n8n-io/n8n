@@ -1,0 +1,87 @@
+packages/@n8n/decorators/src/controller/index.ts
+  s_f865d7992a33c6::t_d4a487152ddd26 15
+packages/@n8n/decorators/src/controller/types.ts
+  s_f865d7992a33c6::t_5bf52a80130d9c 70-71
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_f865d7992a33c6::t_3379ae94d293ea 6,14
+  s_f865d7992a33c6::t_67b356cda6c84d 396-397,399-400,402-417,419-426,428-449,451-467,469-470,476-495
+  s_f865d7992a33c6::t_a2144d7312a15c 471-475
+packages/cli/src/public-api/v1/shared/middlewares/global.middleware.ts
+  s_f865d7992a33c6::t_13261027c7b75b 181
+  s_f865d7992a33c6::t_48ad6d3f606033 20-21
+packages/@n8n/decorators/src/controller/requires-user-quota.ts
+  s_f865d7992a33c6::t_385c4024244228 1-7,8-15
+packages/cli/test/integration/public-api/users.ee.test.ts
+  s_e2203a10d11968::t_0238c8197d8c9d 12
+  s_e2203a10d11968::t_5e31f5853c1301 301-303,305-307,311-313
+  s_e2203a10d11968::t_afb7d37180e070 315-326
+  s_e2203a10d11968::t_46beb9c747b363 314
+packages/@n8n/decorators/src/controller/__tests__/requires-user-quota.test.ts
+  s_f865d7992a33c6::t_c55d4de07c5687 1-4,6-45,46-61
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_f865d7992a33c6::t_142e7d1097c794 145-148
+  s_f865d7992a33c6::t_9349f32550b5d5 27-30
+  s_f865d7992a33c6::t_b3d988359f72c4 221-222,224-231
+packages/@n8n/api-types/src/dto/user/list-users-query.dto.ts
+  s_e2203a10d11968::t_b34d378dccca22 1-12
+packages/@n8n/api-types/src/dto/user/user-public.dto.ts
+  s_e2203a10d11968::t_783ac42b1b762e 10-11
+  s_e2203a10d11968::t_b557019c3c2998 1-9,12-36
+packages/@n8n/api-types/src/dto/user/__tests__/list-users-query.dto.test.ts
+  s_e2203a10d11968::t_85683bb64752e2 27
+  s_e2203a10d11968::t_1b04935fdad876 1-26,28-29
+packages/@n8n/api-types/src/dto/user/__tests__/user-public.dto.test.ts
+  s_e2203a10d11968::t_f563e4e18efabe 1-39
+packages/cli/src/public-api/v1/handlers/users/users.mapper.ts
+  s_e2203a10d11968::t_d65804b1837d42 1,5,7-12,17-18
+  s_e2203a10d11968::t_344af926f18b6d 22
+packages/@n8n/api-types/src/dto/user/get-user-query.dto.ts
+  s_e2203a10d11968::t_7a518af80cb486 1-6
+packages/@n8n/api-types/src/dto/index.ts
+  s_e2203a10d11968::t_3a6beff7fe9f50 114-116
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_e2203a10d11968::t_0b5ea20aa1db02 214
+packages/cli/src/public-api/v1/controllers/__tests__/users.public.controller.test.ts
+  s_e2203a10d11968::t_13e390c1c14004 135
+  s_e2203a10d11968::t_ce19800248826c 47-52,72-77,90-95
+  s_e2203a10d11968::t_adf927e74142df 1-46,53-71,78-89,96-134,136-138
+packages/@n8n/api-types/src/dto/user/__tests__/get-user-query.dto.test.ts
+  s_e2203a10d11968::t_64cdf5ae191375 1-21
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_e2203a10d11968::t_d6ca1ee1ba1e76 15
+packages/cli/src/public-api/v1/controllers/users.public.controller.ts
+  s_e2203a10d11968::t_7a0dce0ed39b3e 19
+  s_e2203a10d11968::t_7f17458d857cb1 8-18,20-90,92-108
+  s_e2203a10d11968::t_1e1c3dd3b0fdc0 91
+  s_e2203a10d11968::t_dbd4dd8375839f 1-7
+packages/cli/src/public-api/v1/handlers/users/spec/paths/getUser.generated.yml
+  s_e2203a10d11968::t_0119d8754e4f4b 1-87
+packages/cli/src/public-api/v1/handlers/users/spec/paths/getUsers.generated.yml
+  s_e2203a10d11968::t_823b1ebbe681b3 1-101
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_e2203a10d11968::t_9f24035dba8baa 168-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2203cbe29f80571fc842260048de46cf5adc1ee4",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_f865d7992a33c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a812bf1-111a-4e2b-b16e-a7af15a606d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/nodes-base/utils/__tests__/templated-auth.test.ts
+  s_3adc5e3b9c1c50::t_e5efa451f98305 3,144-151,171-191
+packages/nodes-base/utils/templated-auth.ts
+  s_3adc5e3b9c1c50::t_e5efa451f98305 1,22-29,74-78,81,93,128-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2317f88cb45b25ffdaa9eb2f25b0b634009168b0",
+  "prompts": {},
+  "sessions": {
+    "s_3adc5e3b9c1c50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb348-412f-7363-a731-817990745551",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

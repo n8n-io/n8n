@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_44f93aaa53cc22::t_935bd8a88fa0d6 560
+  s_44f93aaa53cc22::t_cfb53bcd08218f 335
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_44f93aaa53cc22::t_e61998be085b7f 2
+  s_44f93aaa53cc22::t_ffd4c0b0d8432f 8
+  s_44f93aaa53cc22::t_1aab8b834f7dc1 47
+packages/frontend/editor-ui/src/features/agents/components/AgentFilesPanel.vue
+  s_44f93aaa53cc22::t_936b9f3802f146 43-44
+  s_44f93aaa53cc22::t_38b09ac23ffe48 219
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_44f93aaa53cc22::t_541cea5d3e1d60 96
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_44f93aaa53cc22::t_a8e6f1669e3423 451-455,457-458
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_44f93aaa53cc22::t_c9eb24b6b36dfe 758
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_44f93aaa53cc22::t_514443ec0eb97f 65
+  s_44f93aaa53cc22::t_4653dfc1d18356 100
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFilesPanel.test.ts
+  s_44f93aaa53cc22::t_04b2737d25d673 59-60,67-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a60b6f3972951e4ce8d9532faa423f0c1f9906e0",
+  "prompts": {},
+  "sessions": {
+    "s_44f93aaa53cc22": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "26e68124-0784-4aa1-bcf3-ea0500f2271f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

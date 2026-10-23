@@ -1,0 +1,106 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_9846ff49ccec07::t_e5631e33d5dd6b 2253
+  s_9846ff49ccec07::t_164c9cf6e0cf8d 1012,1017,1038,1043
+  s_9846ff49ccec07::t_85f1da45f10c77 648,653,716,721
+  s_9846ff49ccec07::t_aea478e4697827 2130
+  s_9846ff49ccec07::t_f34648cd84177c 491,496
+  s_9846ff49ccec07::t_898d8d624d95ce 2115,2118
+  s_9846ff49ccec07::t_bf94dec185eeff 965,970
+  s_9846ff49ccec07::t_9cb294283f469d 454,459
+  s_9846ff49ccec07::t_4044c02acc9d3c 2252,2254-2266
+  s_9846ff49ccec07::t_ab4bf66ee9f816 336
+  s_9846ff49ccec07::t_641745ca45411f 782,790
+  s_9846ff49ccec07::t_8eb6d02644f30b 1989
+  s_81d6ab416977ef::t_8b7fbf0c1fd81c 2250-2251
+  s_9846ff49ccec07::t_f782d1f8521084 624,629,694,699
+  s_9846ff49ccec07::t_9f9bad4a7bca8a 811,816
+  s_9846ff49ccec07::t_0f1861c0a1ea0d 35
+  s_9846ff49ccec07::t_01705a991070eb 986,991
+  s_9846ff49ccec07::t_02216d08d8b48f 2247
+  s_81d6ab416977ef::t_f904de3e70f79f 2248-2249
+packages/@n8n/decorators/src/policy-check/policy-mint.ts
+  s_81d6ab416977ef::t_dbc43abdbd5881 1-56
+packages/@n8n/decorators/src/policy-check/__tests__/policy-mint.test.ts
+  s_81d6ab416977ef::t_c0d0aff20e7380 1-108
+  s_81d6ab416977ef::t_a10c5f7de24666 109-111
+packages/@n8n/decorators/src/policy-check/policy-brand.ts
+  s_81d6ab416977ef::t_c1894ab358145b 1-7
+packages/@n8n/decorators/src/policy-check/index.ts
+  h_435b1d7d3e52c0 16
+packages/cli/src/workflows/workflow.service.ts
+  h_435b1d7d3e52c0 547,609-611
+packages/@n8n/eslint-config/src/rules/index.ts
+  h_435b1d7d3e52c0 33,67
+packages/@n8n/decorators/src/policy-check/__tests__/assert-cleared-for.test.ts
+  s_81d6ab416977ef::t_fa20f5d77afc3f 4-5,21,27-36
+  s_9846ff49ccec07::t_9bf6bc67578f76 1-3,6-20,22-26,37-52
+packages/@n8n/decorators/package.json
+  s_81d6ab416977ef::t_9cd366b50b14ae 22-33
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.test.ts
+  s_9846ff49ccec07::t_2ee7d08a28a4e5 1-2,8-24,31-33,42-54
+  s_81d6ab416977ef::t_5dc8fd109c4efb 3-7
+  s_81d6ab416977ef::t_f18dbfdc2b3675 25-26
+  s_9846ff49ccec07::t_b1b96229a57a56 27-30
+  s_9846ff49ccec07::t_af0cffe84a7342 34-41
+  s_9846ff49ccec07::t_8feaec0e21ee29 55-57
+  h_435b1d7d3e52c0 58-84
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.ts
+  s_81d6ab416977ef::t_3390650189688a 29-31,33-41
+  s_9846ff49ccec07::t_2986f90cd78375 1,7-22,27-28,32,57,59-60
+  s_81d6ab416977ef::t_5eaa1ad3e652f3 3-5
+  h_435b1d7d3e52c0 6,23-25,56,58,61,64-65,67-68,74,77-80,84-86,90-93
+  s_9846ff49ccec07::t_e84112b8f2e8bd 2,26,42-55,94-96
+  s_9846ff49ccec07::t_6dd5958adfb27c 62-63,66,69-73,75-76,81-83,87-89
+  s_9846ff49ccec07::t_56231dc9215c87 97
+packages/@n8n/db/src/repositories/__tests__/workflow-update-content.repository.test.ts
+  s_81d6ab416977ef::t_be9fc79c6c1e60 49-63
+  s_81d6ab416977ef::t_e54277fc4fa835 2
+  s_9846ff49ccec07::t_cbaea9302b1cfc 1,3-48,64
+packages/@n8n/db/src/services/transaction.ts
+  h_435b1d7d3e52c0 1-2,43
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_81d6ab416977ef::t_30cd8547994201 15
+  h_435b1d7d3e52c0 171-177
+  s_81d6ab416977ef::t_b62da0d6040a0a 2
+  s_81d6ab416977ef::t_99e04426edb5d4 178-179
+packages/cli/eslint.config.mjs
+  s_81d6ab416977ef::t_ecb27c99ebc1d4 196
+  s_81d6ab416977ef::t_d1f2fbf4edf6f1 43,45-46,52
+  s_9846ff49ccec07::t_61bd1ac5413cb3 42,44,47-51,53-58
+  s_9846ff49ccec07::t_af1708aaf4a4ef 194-195,197-210
+packages/@n8n/decorators/src/policy-check/policy-cleared.ts
+  h_435b1d7d3e52c0 1-2,5-24,28-43,46,49-62
+  s_81d6ab416977ef::t_2687874db3e95e 3-4,25-27,44-45,47-48
+packages/cli/src/policy/policy-enforcement.service.ts
+  h_435b1d7d3e52c0 10-11
+  s_81d6ab416977ef::t_d4514e6216ce43 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "698e9f5f08696f364fbacc145ab73c66cd2de8e2",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_81d6ab416977ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d62fc5a1-43f4-45d1-b6f6-36c691710189",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_9846ff49ccec07": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "161d0a21-4613-42f8-b6ec-6ab984b10403",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

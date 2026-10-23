@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AutomationMiningCta.vue
+  s_a95b802c63e827::t_70c2b9e76aff5a 1-156
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AutomationMiningCta.test.ts
+  s_a95b802c63e827::t_5170e5e84524b1 1-33
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_a95b802c63e827::t_220d3bce736c1e 222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6dfac35c3891126172d76dade3dc14f16a29812f",
+  "prompts": {},
+  "sessions": {
+    "s_a95b802c63e827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "024b92fa-6679-4dc3-94ec-5e701541da59",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

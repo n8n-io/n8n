@@ -1,0 +1,54 @@
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_101038ccbc858a::t_f0106d323fd27d 949-951
+  s_101038ccbc858a::t_2928746ee178fd 965
+packages/@n8n/api-types/src/dto/data-table/list-data-table-content-query.dto.ts
+  s_101038ccbc858a::t_0dc0d7088668f0 37
+  s_101038ccbc858a::t_a67fc9533f034c 88,90-93
+  s_101038ccbc858a::t_bc9aebb211edc5 4,10
+packages/@n8n/api-types/src/dto/data-table/data-table-public.openapi.ts
+  s_101038ccbc858a::t_412f6d592a40bc 101-160
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_101038ccbc858a::t_2e49d5c3392599 121-220
+  s_101038ccbc858a::t_c1d58b0dd8aa59 8,12-13,16,18,22,24
+packages/cli/src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts
+  s_101038ccbc858a::t_a46e0315121fa2 1,12
+packages/@n8n/api-types/src/dto/data-table/upsert-data-table-row.dto.ts
+  s_101038ccbc858a::t_96932d1aeac78e 10-15
+packages/cli/src/public-api/v1/handlers/data-tables/__tests__/data-tables.handler.test.ts
+  s_101038ccbc858a::t_04dafdff2a897f 357-360,363
+  s_101038ccbc858a::t_8b8a84896aabbf 5
+  s_101038ccbc858a::t_69c811b6aa3437 365,372
+packages/@n8n/api-types/src/dto/index.ts
+  s_101038ccbc858a::t_6917ac79cb3406 451
+  s_101038ccbc858a::t_cdef095958a1d2 427,432-433,436-437,439
+packages/cli/src/public-api/v1/controllers/data-tables.public.controller.ts
+  s_101038ccbc858a::t_30ea48c3e032e5 5,10-11,13,16-17
+  s_101038ccbc858a::t_d8840b7c98a356 150-155,160,169
+  s_101038ccbc858a::t_cd3fb2ae04a8b4 428-533
+  s_101038ccbc858a::t_d6b83455cab4c3 120-149,156-159,161-168,170-171
+  s_101038ccbc858a::t_7de9eb6b8ce36c 41-48,51
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/createDataTableRows.generated.yml
+  s_101038ccbc858a::t_a311349fd2bdfc 1-14,16-57,61-86,88-114
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/listDataTableRows.generated.yml
+  s_101038ccbc858a::t_0f0e95f4a06cdf 1-47,50-71,73-75,77-86
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/upsertDataTableRow.generated.yml
+  s_101038ccbc858a::t_cc3987d0651874 1-14,16-118,122-185
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_101038ccbc858a::t_80e3f136bd45ca 87-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2f559a624a3c3f9622be6cd1f5b3a0e3c2357232",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

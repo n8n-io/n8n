@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListEmptyState.vue
+  ai_agent 1-90
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 1139,4452-4454,4551,4627
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  ai_agent 40
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.vue
+  ai_agent 5,37,413,415,417-419,421
+packages/testing/playwright/pages/DataTableView.ts
+  ai_agent 16
+packages/testing/playwright/pages/VariablesPage.ts
+  ai_agent 23-25
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListEmptyState.test.ts
+  ai_agent 1-33
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.test.ts
+  ai_agent 177,181
+packages/testing/playwright/pages/CredentialsPage.ts
+  ai_agent 16-18
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  ai_agent 10,53,178-185,732-740,766-782,792-796,805,808-814,816-825,832,2178-2185,2456-2464,2568-2577
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  ai_agent 7-9,602-607,609,611
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  ai_agent 21,132,134-137,140,144,147-148,156,159-162,167,169-173,183,190,192-194,579,631,633,661-664,708-746
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.test.ts
+  ai_agent 37-40,210-213,220,246,259,274
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.vue
+  ai_agent 28,222-223,225,227
+packages/frontend/editor-ui/src/features/workflows/composables/useWorkflowsEmptyState.ts
+  ai_agent 85-86
+packages/frontend/editor-ui/src/features/workflows/readyToRun/composables/useEmptyStateDetection.test.ts
+  ai_agent 151-175
+packages/frontend/editor-ui/src/features/workflows/readyToRun/composables/useEmptyStateDetection.ts
+  ai_agent 2-3,22-34,78-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d34f5c2adff8c7d907135f1cd60b602707a8b876",
+  "prompts": {}
+}

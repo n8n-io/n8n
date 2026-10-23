@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/app/layouts/WorkflowLayout.vue
+  s_21cbdf015634ac::t_9c6fd6fee5f47e 31
+  s_21cbdf015634ac::t_2784a4847c2d49 95-98
+packages/frontend/editor-ui/src/app/layouts/WorkflowLayout.test.ts
+  s_21cbdf015634ac::t_c570f509d0b043 232-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b5b44fbad5226af529496e23e34389d9b9d0645a",
+  "prompts": {},
+  "sessions": {
+    "s_21cbdf015634ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c92a9405-2d8b-4ff2-b4f7-594b7ad22980",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

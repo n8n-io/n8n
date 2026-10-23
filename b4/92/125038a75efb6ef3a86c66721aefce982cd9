@@ -1,0 +1,28 @@
+scripts/instance-seeding/AGENTS.md
+  s_f2ecf78efc7a31::t_6116a9bfc555b4 194,196,199-204
+scripts/instance-seeding/seed-anthropic-linear.mjs
+  s_f2ecf78efc7a31::t_2bc2f7e51d4352 30,35-37,171-195,199-206,239-241,243-249,253-257,261,386
+  s_f2ecf78efc7a31::t_2f365c8c22f084 31-33
+  s_f2ecf78efc7a31::t_6116a9bfc555b4 196-198,250-252,258-259
+  s_f2ecf78efc7a31::t_cddade1fb82614 107,117
+AGENTS.md
+  s_f2ecf78efc7a31::t_ac357aa4a55920 91-121
+package.json
+  s_f2ecf78efc7a31::t_3f0e7bc7a0e1d5 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b492125038a75efb6ef3a86c66721aefce982cd9",
+  "prompts": {},
+  "sessions": {
+    "s_f2ecf78efc7a31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "571634ba-8cae-4e9a-a244-c914fd959e23",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

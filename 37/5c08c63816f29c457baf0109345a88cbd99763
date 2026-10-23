@@ -1,0 +1,23 @@
+packages/workflow/src/expression.ts
+  s_2292419ce25bf8::t_1dc7286e67b237 289-292,294-297,300-304,307-308,312,570-573,644-650
+packages/workflow/src/workflow-expression.ts
+  s_2292419ce25bf8::t_458fc4d0a10cdb 234-236
+packages/workflow/test/trusted-template.test.ts
+  s_2292419ce25bf8::t_583f23db962d41 10-13,103-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "375c08c63816f29c457baf0109345a88cbd99763",
+  "prompts": {},
+  "sessions": {
+    "s_2292419ce25bf8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_2292419ce25bf8",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

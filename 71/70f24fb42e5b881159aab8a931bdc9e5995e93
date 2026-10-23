@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-22-ai-agent-v1-rename-design.md
+  s_a6dbb59bd4c778::t_56edb57772dee2 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7170f24fb42e5b881159aab8a931bdc9e5995e93",
+  "prompts": {},
+  "sessions": {
+    "s_a6dbb59bd4c778": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f896c-43c3-7600-839a-6310233a2819",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

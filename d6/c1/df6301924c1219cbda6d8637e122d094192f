@@ -1,0 +1,21 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_41e13f73f76abf::t_3535e5393a401b 3589-3614
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_41e13f73f76abf::t_012dd57fed4a6f 1868,1874-1875,1877-1880,1882,1884
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d6c1df6301924c1219cbda6d8637e122d094192f",
+  "prompts": {},
+  "sessions": {
+    "s_41e13f73f76abf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a74f6a8c-ce0b-4f3e-b18f-197bfde551c1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

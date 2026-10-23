@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/types.ts
+  s_7358d3f94a192a::t_6f51167ce15c1a 636-694,882-883
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ad66b6f6aec694633a412d7019bbbd214c400d71",
+  "prompts": {},
+  "sessions": {
+    "s_7358d3f94a192a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a505dc38ddc1c9798",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

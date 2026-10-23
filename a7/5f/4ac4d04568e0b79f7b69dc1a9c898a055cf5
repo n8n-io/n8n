@@ -1,0 +1,151 @@
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 448,473,559
+packages/cli/src/controllers/auth.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 229
+packages/cli/src/modules/sso-saml/saml.controller.ee.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 218
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 1719,1818
+packages/cli/src/scaling/scaling.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 648
+packages/cli/src/modules/chat-hub/chat-hub-execution-watcher.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 151
+packages/cli/src/execution-lifecycle/shared/shared-hook-functions.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 57,107,127
+packages/cli/src/executions/execution-persistence.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 918
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 1592,1769
+packages/cli/src/license.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 548
+packages/cli/src/services/user.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 524,540
+packages/cli/src/services/ai.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 32,77
+packages/cli/src/modules/mcp/mcp.settings.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 92
+packages/cli/src/modules/token-exchange/services/identity-resolution.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 392
+packages/cli/src/modules/chat-hub/chat-hub-tool.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 109,137
+packages/cli/src/auth/auth.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 306
+packages/cli/src/controllers/password-reset.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 96,126,183
+packages/cli/src/wait-tracker.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 153,377
+packages/cli/src/modules/data-table/data-table-rows.repository.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 155,225,313,429,491,506
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 279,541
+packages/cli/src/modules/sso-saml/saml.service.ee.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 311
+packages/cli/src/webhooks/waiting-forms.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 112
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 172
+packages/cli/src/workflows/workflows.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 127,211,323
+packages/cli/src/scaling/job-processor.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 701,712,728
+packages/cli/src/services/public-api-key.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 260
+packages/cli/src/webhooks/webhook-request-handler.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 76
+packages/cli/src/public-api/v1/shared/middlewares/global.middleware.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 175
+packages/cli/src/modules/community-packages/community-packages.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 495
+packages/cli/src/webhooks/hitl-interaction-webhooks.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 61
+packages/cli/src/workflow-execute-additional-data.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 699,736
+packages/cli/src/executions/execution.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 263,270,383,420,533
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 112
+packages/cli/src/controllers/ai.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 228
+packages/cli/src/commands/execute.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 55
+packages/cli/src/controllers/orchestration.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 21
+packages/cli/src/modules/data-table/data-table-ddl.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 30,46,66,75,90,102,115
+packages/cli/src/mfa/mfa.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 166
+packages/cli/src/license/license.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 54
+packages/cli/src/modules/chat-hub/chat-hub-workflow.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 157,242,1894
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 283
+packages/cli/src/services/frontend.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 265,487,515,517,519,521,538,540,542,544,549,551,553,555,558,561,563,578,586,600,602,615,621,659,662
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 592
+packages/cli/src/chat/chat-server.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 25
+packages/cli/src/modules/data-table/data-table-column.repository.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 100,127,147,173,195
+packages/cli/src/executions/executions.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 41,80
+packages/cli/src/chat/chat-execution-manager.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 90
+packages/cli/src/config/types.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 43,105
+packages/cli/src/commands/execute-batch.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 688
+packages/cli/src/modules/otel/otel.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 39,45
+packages/cli/src/workflow-runner.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 191,708,910
+packages/cli/src/webhooks/waiting-webhooks.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 313
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 453
+packages/cli/src/scaling/scaling.types.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 96
+packages/cli/src/workflows/workflow.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 821,910,1326,1431,1583,1675
+packages/cli/src/node-execution/execute-node.service.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 195
+packages/cli/src/commands/start.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 364,376
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 394
+packages/cli/src/commands/worker.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 102
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 1303
+packages/cli/src/workflows/workflow-history/workflow-history-helper.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 7,13
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-server.repository.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 51
+packages/cli/src/credentials/credentials.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 88
+packages/cli/src/modules/chat-hub/chat-message.repository.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 39
+packages/cli/src/evaluation.ee/test-runs.controller.ee.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 109
+packages/cli/src/controllers/e2e.controller.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 745
+packages/cli/src/modules/data-table/data-table.repository.ts
+  s_f8bcded4ea5f7a::t_f6e08b04e7ffb5 46,61,118,133,170,185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a75f4ac4d04568e0b79f7b69dc1a9c898a055cf5",
+  "prompts": {},
+  "sessions": {
+    "s_f8bcded4ea5f7a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0403bfdbffegQkKvvwvumrkEY",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

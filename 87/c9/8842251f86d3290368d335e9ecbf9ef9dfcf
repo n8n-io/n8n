@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/common/1791321358882-CreateIdempotencyKeyTable.ts
+  s_97b2e2a4f3d080::t_ad0adb502a3be8 5
+packages/cli/test/migration/1791321358882-create-idempotency-key-table.test.ts
+  s_97b2e2a4f3d080::t_818a7be6fad1ee 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87c98842251f86d3290368d335e9ecbf9ef9dfcf",
+  "prompts": {},
+  "sessions": {
+    "s_97b2e2a4f3d080": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ac7b07c7-7d74-41fb-80d6-220b6bac9b5a",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

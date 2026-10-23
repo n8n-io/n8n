@@ -1,0 +1,76 @@
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.vue
+  s_bd0497d80f5745::t_b0f77cc64f262b 832,841
+  s_bd0497d80f5745::t_9b4450f959faec 966
+  s_bd0497d80f5745::t_413b3ff2c49e6d 357-358,361-363
+  s_438e1eac1522fb::t_f475107e84b9c8 855
+  s_bd0497d80f5745::t_8293194a501495 359,364-372
+  s_bd0497d80f5745::t_5927aabe90a6eb 109
+  s_438e1eac1522fb::t_251d5760bd39f0 929
+  s_bd0497d80f5745::t_2e85f6e6377f7c 923-925
+  s_438e1eac1522fb::t_62f71b4545edeb 784
+  s_438e1eac1522fb::t_572547fe29ead2 360
+  s_bd0497d80f5745::t_3d59fa697bed24 926-928,930-933,961
+  s_bd0497d80f5745::t_f15f8c16d9499e 783
+  s_438e1eac1522fb::t_784b9944b3ee41 447
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_438e1eac1522fb::t_90da8b6484cbb2 426
+  s_bd0497d80f5745::t_9622ff61a1786c 427-443
+  s_438e1eac1522fb::t_26681d85f28a5f 360
+packages/frontend/editor-ui/src/features/ndv/panel/components/NDVEmptyState.vue
+  s_438e1eac1522fb::t_85f52cab71fb63 5-10,20-22,69-80
+packages/frontend/editor-ui/src/features/ndv/panel/components/TriggerPanel.vue
+  s_438e1eac1522fb::t_59358ff9f1b454 535-541
+  s_438e1eac1522fb::t_e43f7b1561657e 542,544-552
+  s_438e1eac1522fb::t_86cccdf4e82dd2 415
+  s_438e1eac1522fb::t_7489e75ec5391c 543
+packages/frontend/editor-ui/src/features/ndv/panel/composables/useNdvLayout.ts
+  s_bd0497d80f5745::t_504f123cfa4ab4 11-12,14-15,17,29-30,43-44,46,51-54,56,61,74,76-80,91,103,109-110,155,157-160,163-167,169-170,177,181-182
+  s_438e1eac1522fb::t_45aaf3b0817896 59
+  s_bd0497d80f5745::t_eccadc98c805d4 22,47-49,86,90,94,106,138,153
+  s_bd0497d80f5745::t_acafaf759bc6d9 23,31,105
+  s_bd0497d80f5745::t_08356a4fcb8ee2 24-25
+  s_438e1eac1522fb::t_e7236be2fdb859 33-37,81-83,95-98,101,104,108,111-112,114-117,120,122-124,127-131,133,139,141,147-152,154,178
+  s_438e1eac1522fb::t_1fe385fd5fe9f8 173
+  s_438e1eac1522fb::t_9d5117dd71f0ec 28,32
+  s_438e1eac1522fb::t_7e5929a776570b 145
+  s_bd0497d80f5745::t_fe136e086da5b7 13
+  s_438e1eac1522fb::t_6e09b5a91ad7f1 136
+  s_438e1eac1522fb::t_9dc643231081c9 132
+  s_438e1eac1522fb::t_1af6dda69f9d2d 100
+  s_438e1eac1522fb::t_93df748f019997 9
+  s_438e1eac1522fb::t_07d81196590214 60,62-67,69-72,84
+packages/frontend/editor-ui/src/features/ndv/panel/composables/useNdvLayout.test.ts
+  s_bd0497d80f5745::t_109473d2af0dac 28-29,49,57-59,62,71,73,76,82,84,86,89,95,97,99,102,114,143-144,176
+  ai_agent 168-171
+  s_bd0497d80f5745::t_c6dd1a0eb2c50c 158
+  s_438e1eac1522fb::t_2dcae7d4b1696d 166-167
+  s_bd0497d80f5745::t_9740cec3e4b10b 1,138-140,148,162,173,177,179-180,182-184,187-188,190
+  s_438e1eac1522fb::t_094a12f5f984ce 25-26,50-54,56,63-70,77-81,83,90-94,96,103-107,109-111,115,117-118,120-122,124-126,128-129,131-132,136,142,151-154,157,164-165,175,181,189,200,203-204,209
+  s_bd0497d80f5745::t_8d09809d9fc2b7 15-17,19,24,27,30,37-39,42-46,112,135,137,146-147,150,159,161,186,191,193-194,196-198,201-202,205,207
+packages/frontend/editor-ui/src/features/ndv/panel/components/InputPanel.vue
+  s_438e1eac1522fb::t_2b99ccb375768c 508,528-543
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5456edb0dbaa9ebd7f1c849f7c949e52ec07e7a7",
+  "prompts": {},
+  "sessions": {
+    "s_438e1eac1522fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b68ece05-1469-4904-924f-51067af8fe62",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    },
+    "s_bd0497d80f5745": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15088aa7-b9ac-42cf-a4eb-93ca63e78bd3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

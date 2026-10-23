@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_8178640593fb33::t_509ed307b94112 61-67
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_8178640593fb33::t_8ab69ee2a3df5b 50-51,377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "22610cdeb27544cb3a70ccce1a0f93f035052c7d",
+  "prompts": {},
+  "sessions": {
+    "s_8178640593fb33": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c4ab-5716-764f-bed5-500bd779af78",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

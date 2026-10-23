@@ -1,0 +1,29 @@
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.controller.ts
+  h_ed1b2d65e81e8e 33,318,327
+  s_2dbd2f8a062432::t_c36bc71bbcde82 34
+packages/cli/test/integration/dynamic-credentials.ee/my-connection.api.test.ts
+  s_2dbd2f8a062432::t_94dead8dfc070a 128,132,134-148
+  h_ed1b2d65e81e8e 133
+  s_2dbd2f8a062432::t_ba12e494f72186 149-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "05a4db8d51591498eb4ecca30e01fe473d497f26",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2dbd2f8a062432": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2d237085-881a-47fc-a7da-c8330ca30057",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

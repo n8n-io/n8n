@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/discover/discover-public.dto.ts
+  s_b17489db2f48e4::t_82ab381479f58a 43-46,50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bd47da221cf430c2459d618b844b4e5b447cdae6",
+  "prompts": {},
+  "sessions": {
+    "s_b17489db2f48e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "367878f5-6929-4af0-8a6d-ed2c7f572665",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

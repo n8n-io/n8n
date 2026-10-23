@@ -1,0 +1,89 @@
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_4826b2a338fcf3::t_a411ed0b1b67d2 8-13,91
+  s_4826b2a338fcf3::t_eee4c6c5d6f6c4 66-69
+  s_4826b2a338fcf3::t_2dffb567eb169f 76,78,85,90,95
+  s_4826b2a338fcf3::t_11752777ada9dd 6-7,16,25,29-34,60,65,70-75,77,79-84,86-89,92-94,96-97
+  s_4826b2a338fcf3::t_50290adf5958f2 98
+packages/cli/src/services/project.service.ee.ts
+  s_4826b2a338fcf3::t_877dd5bf0f1f36 6,873,875-883
+packages/@n8n/db/src/entities/credential-dependency-entity.ts
+  s_4826b2a338fcf3::t_a411ed0b1b67d2 15-17
+packages/cli/src/credentials/credentials.service.ts
+  s_4826b2a338fcf3::t_eee4c6c5d6f6c4 1206-1209,1212-1216,1227-1230,1865-1869,2066-2067
+  s_4826b2a338fcf3::t_11752777ada9dd 5-6,60,234,1197-1205,1210-1211,1217-1226,1231-1234,1821-1826,1843,1863-1864,1870-1878,2004-2008,2042,2068,2074-2079
+  s_4826b2a338fcf3::t_a411ed0b1b67d2 2010-2012
+packages/@n8n/api-types/src/dto/credentials/__tests__/create-credential-public.dto.test.ts
+  s_4826b2a338fcf3::t_eee4c6c5d6f6c4 7-8,37-39,43-46
+  s_4826b2a338fcf3::t_2dffb567eb169f 1-5,9-11,13-14,35-36,40-42,47-48
+  s_4826b2a338fcf3::t_a411ed0b1b67d2 6,15-34
+  s_4826b2a338fcf3::t_6fec904d018bf7 12
+packages/@n8n/db/src/entities/index.ts
+  s_4826b2a338fcf3::t_a411ed0b1b67d2 22,137
+packages/cli/test/integration/public-api/credentials-concurrency.test.ts
+  s_4826b2a338fcf3::t_b2b1b825273691 1-4,7-21,24,37,48,50-51,59-64
+  s_4826b2a338fcf3::t_0d370d19f3f3b9 22-23,25-36,38-47,56-58
+  s_4826b2a338fcf3::t_39a4209422e58f 5-6,49,52-55
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_4826b2a338fcf3::t_877dd5bf0f1f36 3,6-7,11-32
+packages/@n8n/db/src/repositories/index.ts
+  s_4826b2a338fcf3::t_eee4c6c5d6f6c4 22-26
+packages/cli/src/services/role.service.ts
+  s_4826b2a338fcf3::t_877dd5bf0f1f36 22,454,460
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_4826b2a338fcf3::t_a411ed0b1b67d2 397,429-447,449-450
+  s_4826b2a338fcf3::t_095257e50e5da5 509,516,538
+  s_4826b2a338fcf3::t_eee4c6c5d6f6c4 6-10,12,226-241,243,245-246,248,250-255,294-296,319-321,392-393,398-415,420-422,424-426,452-487,492-494,500-502,562-563,570-572,576-578,580-585,589-591
+  s_4826b2a338fcf3::t_fa3d35c5296363 25,290,315,390,394-395,416-419,423,427,451,488-491,495-499,503-506,565-569,573-575,579,586-588,592-596,604
+  s_4826b2a338fcf3::t_cccedf24d5e235 510-512,515,518-527,537,542-544,549-560
+  s_4826b2a338fcf3::t_1ebdd35d41e06c 11,14,24,507-508,513-514,517,528-536,539-541,545-548,561,564
+  s_4826b2a338fcf3::t_0d370d19f3f3b9 391
+  s_4826b2a338fcf3::t_d15512b13cb2fa 225
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_4826b2a338fcf3::t_0d370d19f3f3b9 737
+  s_4826b2a338fcf3::t_81ec5213d37699 51,63,65,85-90,108,121,149,180,697,702,727,745,749-751
+  s_4826b2a338fcf3::t_eee4c6c5d6f6c4 698-701,718-723,728-736,738-744,746-747,752-754,759-764,780-790
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_4826b2a338fcf3::t_14b2874d850132 6
+  s_4826b2a338fcf3::t_a411ed0b1b67d2 42-50
+packages/@n8n/db/src/repositories/role.repository.ts
+  s_4826b2a338fcf3::t_877dd5bf0f1f36 2,5-7,11-13,16-17
+packages/cli/src/services/role-cache.service.ts
+  s_4826b2a338fcf3::t_eee4c6c5d6f6c4 45-48,83-85
+  s_4826b2a338fcf3::t_877dd5bf0f1f36 4,51,75,80-82
+  s_4826b2a338fcf3::t_29f83166a1cc94 79
+packages/cli/src/credentials/credential-dependency.service.ts
+  s_4826b2a338fcf3::t_11752777ada9dd 42
+  s_4826b2a338fcf3::t_a411ed0b1b67d2 2-6,13
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_4826b2a338fcf3::t_2dffb567eb169f 14,107,132,3232-3234,3240-3241,3243,3250,3265-3268,3271,3278,3281,3283,3287
+  s_4826b2a338fcf3::t_eee4c6c5d6f6c4 16-21,3225,3235-3237,3244-3246,3251-3255,3260-3261,3272-3273,3275-3277,3285
+  s_4826b2a338fcf3::t_b5d4cc80416956 15
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_4826b2a338fcf3::t_eee4c6c5d6f6c4 69
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_4826b2a338fcf3::t_14b2874d850132 185,204
+packages/cli/package.json
+  s_4826b2a338fcf3::t_0d5bbe9170e963 117
+pnpm-lock.yaml
+  s_4826b2a338fcf3::t_81b4b1ff4d0038 608-610,4763-4765
+pnpm-workspace.yaml
+  s_4826b2a338fcf3::t_8b30d08908c651 286
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/createCredential.generated.yml
+  s_4826b2a338fcf3::t_05935a346d64a3 19-22,74-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5a332732fdab64156b0e53b90f56bfabe0fc06e",
+  "prompts": {},
+  "sessions": {
+    "s_4826b2a338fcf3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a90b-f9ef-7ef1-b9d6-592d8414d15e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

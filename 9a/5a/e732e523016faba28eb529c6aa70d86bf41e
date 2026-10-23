@@ -1,0 +1,182 @@
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_79abf5d6ec4a19::t_935000394e47c7 11
+  s_79abf5d6ec4a19::t_64bad1efaade59 25,31,33-34,41,46
+  s_c539d11d698110::t_8935e61e7de30c 90,102-129,175
+  s_c539d11d698110::t_a2ddcfc269b436 130-153
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_79abf5d6ec4a19::t_36d6a5b91bc1d2 8087-8088
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_79abf5d6ec4a19::t_da1ca6e99841e5 33-38,42,49-53
+  s_79abf5d6ec4a19::t_7b856fc6a1732f 118
+packages/cli/src/modules/agents/agents.module.ts
+  s_79abf5d6ec4a19::t_7f55556fa1d8d4 98-99,101-107,111-113,115
+  s_79abf5d6ec4a19::t_fa708be8358585 137
+  s_79abf5d6ec4a19::t_d5dac11bd69215 175
+  s_79abf5d6ec4a19::t_af1f2ea34ef1f7 212
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_79abf5d6ec4a19::t_a2bb843ef21cf3 66,69
+  s_c539d11d698110::t_22fc37357229d8 241,251,256,269-272,278-282,309,350,376,463,473,492
+  s_79abf5d6ec4a19::t_7bd033a455df2c 406-407
+packages/@n8n/config/test/config.test.ts
+  s_79abf5d6ec4a19::t_3d27da7d2bb1fe 692
+docs/generated/sqlite-schema/agent_channel_status.md
+  s_79abf5d6ec4a19::t_4fbb2ca9d3588e 1-80
+packages/cli/src/modules/agents/integrations/__tests__/channel-status-report.test.ts
+  s_79abf5d6ec4a19::t_25263742c94687 1-11,14,16-24,26-83,85-123
+  s_79abf5d6ec4a19::t_28a8dc4481e3bc 12-13
+  s_79abf5d6ec4a19::t_0c4660a935fd61 15,25
+  s_79abf5d6ec4a19::t_d55dc88e370231 84
+packages/@n8n/api-types/src/agents/types.ts
+  s_79abf5d6ec4a19::t_962ae81a4880b5 38-48,53-56,60-64
+  s_79abf5d6ec4a19::t_fb92cc63b75f7e 68-76
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentIntegrationStatus.test.ts
+  s_79abf5d6ec4a19::t_bdeef6f1f271de 32,34-35,38,45-46,49-92
+  s_79abf5d6ec4a19::t_911c2ab5f659b8 109,114,120-126,131,136-137
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_79abf5d6ec4a19::t_f39b03059b757f 6
+  s_c539d11d698110::t_5b825279073a37 177-181,189,195-200
+  s_79abf5d6ec4a19::t_794523f75f794a 190-191
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_79abf5d6ec4a19::t_ab4a4fa11a5a75 17
+  s_79abf5d6ec4a19::t_efd578b4eca3f0 106
+  s_79abf5d6ec4a19::t_2cb54e829e1d78 116-117
+  s_79abf5d6ec4a19::t_e2e781e9380368 134
+  s_79abf5d6ec4a19::t_dba7d5a8c8ed70 145
+  s_79abf5d6ec4a19::t_8f240c56d5334a 255
+  s_79abf5d6ec4a19::t_806a9563eaa48c 893-894,898,901,905,907,911,915,918,920-925,927,929-930,934-935,938,940-942
+  s_79abf5d6ec4a19::t_3f09103de33302 1226-1235,1238-1250,1255-1365
+  s_79abf5d6ec4a19::t_802575080dd819 1236-1237
+  s_79abf5d6ec4a19::t_853579d7225eb3 1251-1254
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_79abf5d6ec4a19::t_40b487bdb95a42 9
+  s_79abf5d6ec4a19::t_4d350437a84e2e 224-285
+packages/cli/src/modules/agents/integrations/__tests__/agent-channel-reconciler.service.test.ts
+  s_79abf5d6ec4a19::t_c747f8e8481a27 1-125,143-148,164-358
+  s_79abf5d6ec4a19::t_064a565633ab64 126-142,149-163
+packages/cli/src/modules/agents/integrations/credential-claim.ts
+  s_79abf5d6ec4a19::t_93f03874f35b92 1-33
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_79abf5d6ec4a19::t_dd11c49ca32988 23-25,29
+  s_79abf5d6ec4a19::t_2e984622dbebaa 88,91-95
+  s_79abf5d6ec4a19::t_d57dd36214d717 149-156,164-165
+  s_79abf5d6ec4a19::t_6cc4b1a845b0ff 183
+  s_79abf5d6ec4a19::t_866a74fb5be7ad 226-241
+  s_c539d11d698110::t_2c81945cecd78c 252-257,264,274-278,280-282
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_79abf5d6ec4a19::t_e9956457debc44 2
+  s_79abf5d6ec4a19::t_d159ddd8df520d 248,252-271
+docs/generated/postgres-schema/public.agent_channel_status.md
+  s_79abf5d6ec4a19::t_4fbb2ca9d3588e 1-73
+packages/@n8n/db/src/migrations/common/1786700409439-CreateAgentChannelStatusTable.ts
+  s_79abf5d6ec4a19::t_dc0a3f55791e4f 1-24,28-42
+  s_79abf5d6ec4a19::t_d35f988842a06d 25-27
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_c539d11d698110::t_00e090c3ce6c02 2
+  s_79abf5d6ec4a19::t_1181fcb8bbeca5 4
+  s_79abf5d6ec4a19::t_5884f8034736eb 15,18
+  s_79abf5d6ec4a19::t_495ab6112ec0e5 28
+  s_c539d11d698110::t_b0cdbf173565be 37,46-48
+  s_79abf5d6ec4a19::t_0cdd4e57346f51 38
+  s_79abf5d6ec4a19::t_5c91ea7508069b 86-88
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelsSection.vue
+  s_79abf5d6ec4a19::t_7d5774ac0ab377 44-45
+  s_79abf5d6ec4a19::t_a22d7e139da885 84,86-87
+  s_79abf5d6ec4a19::t_587d5e730aacdf 85
+  s_79abf5d6ec4a19::t_4caa3a96672779 92-97
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_79abf5d6ec4a19::t_182d586f67aced 16,30
+  s_79abf5d6ec4a19::t_3c894e78443a74 199-202,207-210,213
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_79abf5d6ec4a19::t_d7f862a945571e 19
+  s_79abf5d6ec4a19::t_ee8175b2e496ab 27
+  s_79abf5d6ec4a19::t_4b23c994885909 176-180,182-185,187
+packages/cli/test/integration/database/repositories/agent-channel-status.repository.test.ts
+  s_79abf5d6ec4a19::t_7039f98b24c8b4 1-131
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelListItem.vue
+  s_79abf5d6ec4a19::t_33c43e8b7816d1 8,26-32
+  s_79abf5d6ec4a19::t_1b70ca7d165c23 64-79
+  s_79abf5d6ec4a19::t_336b59298b45e0 127-146
+  s_79abf5d6ec4a19::t_3c50091420158b 245-247
+docs/generated/sqlite-schema/agents.md
+  s_79abf5d6ec4a19::t_4fbb2ca9d3588e 21,55,101-109
+packages/frontend/editor-ui/src/features/agents/composables/useAgentIntegrationStatus.ts
+  s_79abf5d6ec4a19::t_8e2333e33cd582 3,18-26,35-40
+  s_79abf5d6ec4a19::t_f8f7bc64ea82d2 4
+  s_c539d11d698110::t_5b825279073a37 11-16,145,158
+  s_79abf5d6ec4a19::t_5b9cbcd8e2a38e 63
+  s_79abf5d6ec4a19::t_090c0f0c1e9059 76-80,90,93,97,107
+  s_79abf5d6ec4a19::t_b7dea749b94598 124,128,130
+  s_79abf5d6ec4a19::t_ad08d8a5d9c249 146
+  s_79abf5d6ec4a19::t_d342fa06e9a2e1 165-166
+  s_79abf5d6ec4a19::t_5d29155d3b34a0 190,200,202-212,222,228-229
+packages/@n8n/config/src/configs/agents.config.ts
+  s_79abf5d6ec4a19::t_d51acf6515ca65 96-104
+docs/generated/sqlite-schema/README.md
+  s_79abf5d6ec4a19::t_4fbb2ca9d3588e 11,145,336-345
+docs/generated/postgres-schema/public.agents.md
+  s_79abf5d6ec4a19::t_4fbb2ca9d3588e 10,52,98-106
+packages/cli/src/modules/agents/integrations/agent-channel-reconciler.service.ts
+  s_79abf5d6ec4a19::t_e5ad1186ebbe28 1-21,25-90,92-131,134-170,172-179,181,188-211,245-255,258-271,274-312,314-345
+  s_79abf5d6ec4a19::t_d059c6258f60f1 22-24
+  s_79abf5d6ec4a19::t_ae4e7b5bc29df5 91
+  s_79abf5d6ec4a19::t_d2e67f2442243d 132-133
+  s_79abf5d6ec4a19::t_030d8ce9fa2645 171,272-273,313
+  s_79abf5d6ec4a19::t_76f7d06deee822 180,182-187
+  s_79abf5d6ec4a19::t_b9683a299e600b 212-244
+  s_79abf5d6ec4a19::t_d35f988842a06d 256-257
+packages/cli/src/modules/agents/entities/agent-channel-status.entity.ts
+  s_79abf5d6ec4a19::t_68567a49ea068d 1-71
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelListItem.test.ts
+  s_79abf5d6ec4a19::t_b0e15e1b193861 17-21,28,38-39,41,61-99
+  s_79abf5d6ec4a19::t_802575080dd819 40
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_79abf5d6ec4a19::t_625507b53a74b8 8,18
+  s_79abf5d6ec4a19::t_4756d9e09c1f36 101,103-107
+docs/generated/postgres-schema/README.md
+  s_79abf5d6ec4a19::t_4fbb2ca9d3588e 11,162,349-358
+packages/cli/src/modules/agents/integrations/channel-status-report.ts
+  s_79abf5d6ec4a19::t_fe818166cb91dd 1-67,69-79
+  s_79abf5d6ec4a19::t_d35f988842a06d 68
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_79abf5d6ec4a19::t_f4acfb500ed79f 23-27,31-34
+  s_79abf5d6ec4a19::t_1817a5c615b199 309-321
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_79abf5d6ec4a19::t_e5d9ca4eafdf5e 4
+  s_79abf5d6ec4a19::t_c2c6276c735889 28-31
+  s_79abf5d6ec4a19::t_3f1bcdb15639fd 64-67
+  s_79abf5d6ec4a19::t_25ec4c8bd972ee 131
+  s_79abf5d6ec4a19::t_2c80e10c68680a 170-192
+  s_c539d11d698110::t_e021eb6c10441f 262
+  s_79abf5d6ec4a19::t_0326a59f1ebf01 346-347
+  s_79abf5d6ec4a19::t_ce8108527a93f9 361
+  s_79abf5d6ec4a19::t_708dd86f6b42c9 377-378
+  s_79abf5d6ec4a19::t_d3e9732ff025dd 437-443
+  s_79abf5d6ec4a19::t_be1f808e8b6f41 675-685,687,690-696,698-699,701-708
+  s_79abf5d6ec4a19::t_c42a216aa8ea89 772-830
+packages/cli/src/modules/agents/repositories/agent-channel-status.repository.ts
+  s_79abf5d6ec4a19::t_5e8fc23e869337 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9a5ae732e523016faba28eb529c6aa70d86bf41e",
+  "prompts": {},
+  "sessions": {
+    "s_79abf5d6ec4a19": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ef04762-7888-4175-9534-81ae59b9237b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_c539d11d698110": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82e3e40e-df4b-496b-890e-0caddbd7c33e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

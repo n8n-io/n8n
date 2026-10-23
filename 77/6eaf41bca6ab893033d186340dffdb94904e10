@@ -1,0 +1,38 @@
+packages/cli/src/modules/redaction/redaction-context-hook.ts
+  s_1cff8190fb8fb1::t_dc9c3ed73645f3 8
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_1cff8190fb8fb1::t_aa144b982546ed 503-556
+packages/workflow/src/index.ts
+  s_1cff8190fb8fb1::t_edb041f943581e 14
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_1cff8190fb8fb1::t_34088808b38a12 941-943
+  s_1cff8190fb8fb1::t_ab82812b32f2e6 35-40
+  s_1cff8190fb8fb1::t_34f75e7efdcc57 735
+  s_1cff8190fb8fb1::t_5ab46bb2b57da3 85-86
+  s_1cff8190fb8fb1::t_7c67d4397584e2 730-734,736-746,748-749
+  s_1cff8190fb8fb1::t_1100bf3cf0d5bd 747
+packages/workflow/test/redaction-channels.test.ts
+  s_1cff8190fb8fb1::t_81b9966c61dd25 1-2
+packages/cli/src/modules/redaction/executions/execution-redaction.service.ts
+  s_1cff8190fb8fb1::t_a3f2d9b1859d55 3
+packages/workflow/src/redaction-channels.ts
+  s_1cff8190fb8fb1::t_5de036e6f070c0 1
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_1cff8190fb8fb1::t_ed4794a20190e6 1754,1764-1765,1769,1774,1784-1813,1822-1835
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "776eaf41bca6ab893033d186340dffdb94904e10",
+  "prompts": {},
+  "sessions": {
+    "s_1cff8190fb8fb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81d052a4-1b16-4039-8720-545635f1d14a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

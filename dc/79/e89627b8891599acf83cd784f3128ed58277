@@ -1,0 +1,24 @@
+packages/workflow/test/sub-workflow-output.test.ts
+  s_2b4a89f78e7997::t_94be6948f09ab5 174-190
+  s_2b4a89f78e7997::t_a09d3861d0f4d2 164
+packages/workflow/src/sub-workflow-output.ts
+  s_2b4a89f78e7997::t_a09d3861d0f4d2 76-82
+packages/testing/playwright/tests/e2e/workflows/editor/subworkflows/output.spec.ts
+  s_2b4a89f78e7997::t_94be6948f09ab5 19-21,26,28-33,115,143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dc79e89627b8891599acf83cd784f3128ed58277",
+  "prompts": {},
+  "sessions": {
+    "s_2b4a89f78e7997": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e756-7f52-77d2-be06-7dedfde4aa9f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

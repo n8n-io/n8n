@@ -1,0 +1,35 @@
+packages/cli/src/modules/n8n-packages/entities/agent/agent-publisher.ts
+  s_d3c0f6f6f7d41c::t_138ec319c7fe9d 7
+  s_71ad2034164515::t_e3edd9607364a7 84
+  s_71ad2034164515::t_a7ecc2c9bcccfa 7
+  s_71ad2034164515::t_45eac4eef46350 84
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_d3c0f6f6f7d41c::t_78b1daf7b85252 797
+  s_71ad2034164515::t_8a80dd0116dc23 2,787,811-819
+  s_71ad2034164515::t_cd42cb2793e56e 797
+  s_71ad2034164515::t_30a9bf0bf5e610 2,787,811-819
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c8b792a72ec4852f2d5437041bcc7922c698dad",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

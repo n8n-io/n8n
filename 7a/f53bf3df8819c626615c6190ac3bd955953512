@@ -1,0 +1,26 @@
+packages/cli/src/commands/start.ts
+  s_e0657dc452bb57::t_270578ba1b6d34 46
+  s_e0657dc452bb57::t_2d95c05a3cf175 273-275
+packages/cli/src/commands/__tests__/start.test.ts
+  s_e0657dc452bb57::t_2d667f31a33ca2 35
+  s_e0657dc452bb57::t_e089cad5038f36 114
+  s_e0657dc452bb57::t_496e7e057b184c 205-215
+  s_e0657dc452bb57::t_91f39842e73718 251
+  s_e0657dc452bb57::t_795d7f57aabddb 42-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7af53bf3df8819c626615c6190ac3bd955953512",
+  "prompts": {},
+  "sessions": {
+    "s_e0657dc452bb57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "758a9e65-509b-4991-b663-2feb39e57fdc",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

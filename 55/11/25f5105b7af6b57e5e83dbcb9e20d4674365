@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_fbba0b32ee6f59::t_dacc642e83bedb 266
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fbba0b32ee6f59::t_dacc642e83bedb 8119,8121
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTaskCancellation.test.ts
+  s_fbba0b32ee6f59::t_dbf602ebb9bb65 94-95,98
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_fbba0b32ee6f59::t_dbf602ebb9bb65 1564
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.vue
+  s_fbba0b32ee6f59::t_dbf602ebb9bb65 176-178,211-221,223-224,226-238,240-253,255-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "551125f5105b7af6b57e5e83dbcb9e20d4674365",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

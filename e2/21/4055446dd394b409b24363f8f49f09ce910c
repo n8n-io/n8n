@@ -1,0 +1,22 @@
+packages/@n8n/db/src/migrations/common/__tests__/backfill-instance-ai-event-log.test.ts
+  s_a8b11f747ee91e::t_fb0b33e014b7f5 323-369
+packages/@n8n/db/src/migrations/common/1784000000051-BackfillInstanceAiEventLog.ts
+  s_a8b11f747ee91e::t_b881513e014908 294-297
+  s_a8b11f747ee91e::t_944d97410501c6 263-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e2214055446dd394b409b24363f8f49f09ce910c",
+  "prompts": {},
+  "sessions": {
+    "s_a8b11f747ee91e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c6b651d-6fbc-49c2-a7a6-06d9a1233a37",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+packages/cli/test/integration/shared/db/folders.ts
+  s_b9e402b75ca46c::t_63dfc101c873ef 24
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_b9e402b75ca46c::t_96e04bc499ab63 1-35,41-95,97-110,126-147,124-125
+  ai_agent 37-40
+  s_b9e402b75ca46c::t_e41de17b52bc19 111-112,113-123
+  s_b9e402b75ca46c::t_85fdf1cf1b94cd 36
+  s_b9e402b75ca46c::t_e2f3e960952272 96
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_b9e402b75ca46c::t_369537e9ebe806 1-2,4-17,19-24,26-31,38-45,47-54,58-71,73-102,126-139,110,115,118-119,121,124-125
+  s_b9e402b75ca46c::t_c6fc5f0a087693 3
+  s_b9e402b75ca46c::t_e674ea5c248710 32,36-37
+  ai_agent 33-35
+  s_b9e402b75ca46c::t_86e5ac5795b684 55-57
+  s_b9e402b75ca46c::t_abacafdfad0dcf 72
+  s_b9e402b75ca46c::t_0444ba6d1fd603 103-104,105-109,111-114,116-117,120,122-123
+  s_b9e402b75ca46c::t_9da13ed3532c87 25
+  s_b9e402b75ca46c::t_102e04a70f3f90 46
+  s_b9e402b75ca46c::t_9bd9a2127cb688 18
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_b9e402b75ca46c::t_39e55ea9e8bad8 1-10,19-28,36-56,59-79,152
+  ai_agent 29-35
+  s_b9e402b75ca46c::t_73ea8f190a73f4 57-58
+  s_d86986c3063d91::t_ffc3be706b5f83 80,12,18,81,83-84,87-90,92,94,102-103,105-112,114-116,120,125-126,128-129,133,137-141,143,145,151
+  s_b9e402b75ca46c::t_840c1d52634dcf 11,13-17
+  s_b9e402b75ca46c::t_fb0d4e875330f7 82,85-86,91,95-101,104,113,117-119,121-124
+  s_b9e402b75ca46c::t_955d7e3f26b6ac 93,127,130-132,134-136,142,144,146-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "251256a3a3030222282a4a1209d2817a07377497",
+  "prompts": {},
+  "sessions": {
+    "s_b9e402b75ca46c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0175b21f-7e7d-491e-a496-459c2da5cb60",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "s_d86986c3063d91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86994467-f348-48c5-a932-edbf8c61c829",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

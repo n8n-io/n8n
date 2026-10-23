@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_5eaebbe993605c::t_56188721d356f8 249,343-345
+  s_5eaebbe993605c::t_e1182f3550e351 346
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_5eaebbe993605c::t_87416fe9030778 79,182-185
+  s_5eaebbe993605c::t_19df17a46c345d 186-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2b8a786b41e4d5224df6b88fe88427aee0799ceb",
+  "prompts": {},
+  "sessions": {
+    "s_5eaebbe993605c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4353-00a9-78b3-a770-05fc06ad05f3",
+        "model": "gpt-5.5"
+      },
+      "human_author": null
+    }
+  }
+}

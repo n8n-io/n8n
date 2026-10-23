@@ -1,0 +1,39 @@
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_6e0e8168b15a08::t_5a61c1aab14c90 1540,1545,1578,1583,1616,1644
+  s_6e0e8168b15a08::t_d22195f4b3879c 1537-1539
+  s_6e0e8168b15a08::t_bd4e2bffb0137b 1541-1544
+  s_6e0e8168b15a08::t_f82673ee09fea5 1546-1548
+  s_6e0e8168b15a08::t_5594af7c5d6d5b 1575-1577
+  s_6e0e8168b15a08::t_19739ca3cd8822 1579-1582
+  s_6e0e8168b15a08::t_a3b93e7d257711 1584-1586,1613-1615
+  s_6e0e8168b15a08::t_07e489ca04e728 1617-1619,1641-1643
+  s_6e0e8168b15a08::t_fff0a724146e9a 1343,1351,1353-1354,1358-1365,1394,1419,1449,1485,1525,1531-1536,1549-1565,1567-1574,1587-1612,1620-1640,1726,1789,1822,1857
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
+  s_6e0e8168b15a08::t_d3a1f0b19d9d8b 45
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
+  s_6e0e8168b15a08::t_42241766613d43 1-29,33-41
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  s_6e0e8168b15a08::t_33ac80dc84fd52 1-580
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/unpublishWorkflow.generated.yml
+  s_6e0e8168b15a08::t_8aadc5da05518b 1-28
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_6e0e8168b15a08::t_d1a4531b1a9958 29-31,62-67
+packages/cli/src/public-api/v1/shared/spec/schemas/roleMappingRulePublicDto.generated.yml
+  s_6e0e8168b15a08::t_fc97930929ab03 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f6d614ff67f08581d46e79aaf7ab118f130babbb",
+  "prompts": {},
+  "sessions": {
+    "s_6e0e8168b15a08": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00185-b743-71c2-9839-c445afe0fdb8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

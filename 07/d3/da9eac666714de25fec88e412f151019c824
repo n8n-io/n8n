@@ -1,0 +1,19 @@
+docs/adr/ADR-20260928-use-a-shared-model-catalog.md
+  s_b90bccbb87c682::t_e66f86b6f2c40f 1-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "07d3da9eac666714de25fec88e412f151019c824",
+  "prompts": {},
+  "sessions": {
+    "s_b90bccbb87c682": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c2bd-7a0b-74d1-9a06-8910ee043911",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

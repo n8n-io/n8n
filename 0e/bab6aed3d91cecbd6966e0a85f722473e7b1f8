@@ -1,0 +1,39 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8521b223be2102::t_194bb6c345a235 2199
+  s_8521b223be2102::t_0aab2c243f0556 77
+  s_8521b223be2102::t_58cc80ae88208e 5929-5931,5935-5953,5955-5969,5971-5986
+  s_8521b223be2102::t_2bf854ce817c25 5954
+  s_8521b223be2102::t_ce50d297339ba3 5970
+  s_8521b223be2102::t_26ace27e468392 560
+  s_8521b223be2102::t_ff1cecaa3ecf3a 5932-5934
+  s_8521b223be2102::t_273bd1cf0146cd 6026
+  s_8521b223be2102::t_128ddcf85d502e 5928
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8521b223be2102::t_7f08d3e29ab897 3079-3083,3112-3144,3146-3154,3156-3163
+  s_8521b223be2102::t_c8d8a49e7b9646 672,2977,2984,2990-2995,3022,3039,3056,3077,3145,3155
+  s_8521b223be2102::t_04d99465558774 680-687
+  s_8521b223be2102::t_300513fc07c0b0 2976,2978-2981,3076,3078
+  s_8521b223be2102::t_ca8f266b47abaf 2975
+  s_8521b223be2102::t_be5d2cbbf79893 3164-3166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0ebab6aed3d91cecbd6966e0a85f722473e7b1f8",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8521b223be2102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab3d933a-19c0-4279-b0cf-7b0be38aeac8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

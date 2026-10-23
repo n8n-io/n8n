@@ -1,0 +1,9 @@
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  ai_agent 3110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6399ec6cabd66f6a09732dfbe930e3b85f909a27",
+  "prompts": {}
+}

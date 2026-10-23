@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.vue
+  s_7b14ac8224311d::t_2118143f2bd350 430-431,434-435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e32903c1a2723e3a324af675274603cbbf9c5f3",
+  "prompts": {},
+  "sessions": {
+    "s_7b14ac8224311d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0e82f-36c0-70fe-93d0-af62f57139c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

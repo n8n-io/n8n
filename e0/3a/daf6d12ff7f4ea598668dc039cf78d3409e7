@@ -1,0 +1,29 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_5f0b8b63fb02ca::t_d783f65661a321 135
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_5f0b8b63fb02ca::t_d783f65661a321 702-708,759,761-763,828-831,834
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generated-spec-drift.test.ts
+  s_5f0b8b63fb02ca::t_d783f65661a321 40
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_5f0b8b63fb02ca::t_d783f65661a321 527,531,551
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_5f0b8b63fb02ca::t_cd78f980c06eec 5-6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_5f0b8b63fb02ca::t_0f2b046346f13e 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e03adaf6d12ff7f4ea598668dc039cf78d3409e7",
+  "prompts": {},
+  "sessions": {
+    "s_5f0b8b63fb02ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a540-b6f2-7653-aeb8-9213c2e9e6df",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

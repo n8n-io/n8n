@@ -1,0 +1,19 @@
+packages/nodes-base/credentials/SlackApi.credentials.ts
+  s_8c555e7a05b282::t_67e1a2fe870f3a 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "93e03769c30a49e1d4c294a31099b24a68caf541",
+  "prompts": {},
+  "sessions": {
+    "s_8c555e7a05b282": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2b98f05-ad8b-449c-9cd5-c2b0e526862d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

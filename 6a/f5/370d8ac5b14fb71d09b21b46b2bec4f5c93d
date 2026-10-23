@@ -1,0 +1,202 @@
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_94656d667b5d5c::t_f2c72028fbe2ad 42
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generated-spec-drift.test.ts
+  s_94656d667b5d5c::t_4182a534aacb3b 74
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  ai_agent 4,260,267,1375,1381,1400
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
+  ai_agent 5
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_94656d667b5d5c::t_f2c72028fbe2ad 45,90,151
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositories.generated.yml
+  ai_agent 5
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_94656d667b5d5c::t_d52809ecc942a3 30,54,79,101,168,177
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionCheckoutPublicDto.generated.yml
+  ai_agent 3,17
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_94656d667b5d5c::t_8ff7f74fdfa66d 2,10,13,15-17,28-29,31-33,42-44,58,60,71,74,81,83,85-86,100-101,103,105,109,112,114,122,125,130,132,139-140,142,144,148,153,155,162-163,171-172,174,177,181-182,186,190,209,212,217,219,233,243,249,251,256-259,263,268-269,274
+docs/generated/sqlite-schema/user.md
+  ai_agent 400,412
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-environment.dto.test.ts
+  s_94656d667b5d5c::t_cc91cab9e2b495 2-6,9-13,16,37-46,48-49,51-54,58-62,66,68-71,75-79,83-93,96,98-102,105-106,108-109,115,117,119,121-123,125,127-128,132-136,139-155
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12,54,219,221-222
+docs/generated/postgres-schema/README.md
+  ai_agent 120-121,365-367,370,372,1532,1535,1539,1543,1545-1546,1565,1577
+docs/generated/postgres-schema/public.promotion_review.md
+  ai_agent 11,26,37,39,49,57,81,83-84,88,97
+packages/cli/src/modules/promotions.ee/database/promotion-conflict.error.ts
+  ai_agent 4
+  s_94656d667b5d5c::t_876fa70a3f83f0 7
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,60,225,227-228
+docs/generated/postgres-schema/public.promotion_environment.md
+  ai_agent 1,8-9,11-13,21-33,39-41,48-51,53,55-56,60,64,67,76,83-92
+packages/@n8n/api-types/src/dto/promotions/promotion-checkout.dto.ts
+  s_94656d667b5d5c::t_f2c72028fbe2ad 3,8,13
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_94656d667b5d5c::t_b0af4aabfd1e40 77-78,83,108-109,124-125,141,175,178,233,253,255,257-260,264-265,267,269,314-316,358,475-477,499,563,565,574-575,585,602-603,624,673,679,688,708,724,729-730,748,760-761,770,786,791,794,804-805,841,852-853,877-878,902,911-912,947,975,993,999,1045,1065,1111,1122-1123,1127,1131,1139,1145,1147,1150,1155,1162-1163,1167,1173-1175,1185,1194,1203,1215,1219-1220,1229,1238,1256-1258,1263,1319-1321,1323,1356-1358,1360,1384-1386,1391,1420-1422,1429,1507,1547,1557-1559,1561,1571,1579,1589-1591,1596,1663,1676-1678,1680,1693,1702,1709-1711,1713,1740-1742,1747,1771,1864,1876,1975-1976,2013-2014,2026,2034,2047-2049,2082,2087,2100,2111-2112,2115,2150,2155,2160,2196-2197,2200,2250-2251,2254,2279-2280,2283,2312-2313,2319,2342-2343,2346,2377-2379,2391,2423,2437-2438,2441,2463-2464,2467,2491-2492,2495,2521-2522,2526,2551-2552,2556,2586-2587,2643,2686,2696,2700,2713,2716,2721-2722,2745-2746,2748,2791-2792,2805-2806,2883-2884,2895-2896,2904-2905,2912,2916
+  s_94656d667b5d5c::t_90680328b49256 375,503,969,1109,1138,1768,1850
+  ai_agent 766-768,771-775
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  ai_agent 5
+docs/generated/sqlite-schema/README.md
+  ai_agent 120-121,347-349,352,355,1518,1521,1525,1529,1531-1532,1551,1563
+packages/@n8n/api-types/src/dto/index.ts
+  s_94656d667b5d5c::t_2fa1e5b4d2bc75 762-768,770-778,781-786
+  s_94656d667b5d5c::t_f18bb386946efa 780
+packages/@n8n/api-types/src/index.ts
+  s_94656d667b5d5c::t_2fa1e5b4d2bc75 173
+packages/cli/src/modules/promotions.ee/__tests__/gitlab-discovery.integration.test.ts
+  s_94656d667b5d5c::t_e0096041297260 9,44,50,55-56,58-59,61,63,66,77-78
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-run.repository.ts
+  s_94656d667b5d5c::t_a19ecc40349a63 10
+packages/cli/src/modules/promotions.ee/promotion-environment.resolver.ts
+  s_94656d667b5d5c::t_656cc8315c1882 8-10,21,23-24,29-30,32-34,36-38,42-44,53,56-59,64,71-75,79-80,87,89,95-96
+  ai_agent 60-61
+  s_94656d667b5d5c::t_10453a19d185a7 76-78
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotable-resource.dto.test.ts
+  s_94656d667b5d5c::t_d52809ecc942a3 11
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_94656d667b5d5c::t_7b71aac63749ba 27,40,64,85-86,112,157,159,169,174,182,185-186,193,195,200,203,221,247,257,289,319,362,383,390,415,432,436,452,456,472,490,501,513,611,680,949-950,959,1122,1146,1203,1205,1214,1248,1316,1328,1345,1347,1363,1369,1381,1405,1411,1415,1420,1435,1452,1473,1564,1574,1603,1631,1652
+  ai_agent 331-334,352-355,374-377,426-429,447-450,461-464,1443-1445
+  s_94656d667b5d5c::t_6ed4a02886c1b2 981-982
+docs/generated/postgres-schema/public.user.md
+  ai_agent 394,406
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  ai_agent 5,61,68
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionEnvironment.generated.yml
+  ai_agent 1,4-5,14-15,17-22,24-26,29-62,64-69,71,73-86,89-93,97-98,100-104,107-111,114-116,118-120,122-128,130,137
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  ai_agent 5,32,43
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 270,272,274-275,277,279,281-282,285,288,290-291,293,295-296,299,302
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionEnvironmentPublicDto.generated.yml
+  ai_agent 1-2,10,13-32,41-50,60-61,64-140,149-158,168-169,172-221
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environment.resolver.integration.test.ts
+  s_94656d667b5d5c::t_84e36f2efd506d 1,15-16,18,21-23,27-31,38-41,54,60,63-64,66,74,78-80,82,85-86,88,93,98-99,110-112,119,126-128,133,137,140-141,145,148,151,153-155,159
+  ai_agent 113-116
+docs/generated/sqlite-schema/promotion_provider.md
+  ai_agent 22,47,59,61-62,66
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  ai_agent 5,11,13-14,26,37
+packages/cli/src/public-api/v1/shared/spec/schemas/promotePackageResultDto.generated.yml
+  ai_agent 3,46
+docs/generated/sqlite-schema/promotion_environment_project.md
+  ai_agent 1,9,19-20,28-29,31,33,39-40,47-48,50,52-53,57,59-60,64
+packages/@n8n/api-types/src/dto/promotions/promotion-environment.dto.ts
+  s_94656d667b5d5c::t_7dcda449611d50 11-13,16,18-19,43-53,56-62,64-82,84-92,94-124,126-131,136,140-144,149,151,154-155,158,160,162-163,167,171,176,178,180,183-184,189-199,201,205-206,209,214,217-218,220-248,250-251,255
+  s_94656d667b5d5c::t_f18bb386946efa 93,135,156,210
+docs/generated/sqlite-schema/promotion_review.md
+  ai_agent 9,22,37,45,47,57,65,89,91-92,96,105
+packages/cli/src/modules/promotions.ee/database/entities/promotion-review.entity.ts
+  s_94656d667b5d5c::t_7b97e6e83fef41 16,26,40-41,72-74
+packages/cli/src/modules/promotions.ee/__tests__/gitlab-provider.integration.test.ts
+  s_94656d667b5d5c::t_e0096041297260 41-56,58,61-62,64-65,70,75,77,88-89
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_94656d667b5d5c::t_629de9d87c4b5a 7,9,21-24,30,34,78-79,257,259,263,265,268,272,275-277,280,284,286,289,291,294-295,297,299,309,313,315,318,321,324-327,330,334,336,339,343,346-350,353,355-357,359,365,368-369,371,376,380,382,392-393,395,398,402,404,413-414,416,421,425,427,430,433-436,439,443,445,448,454,457-458,460-461,463,468,472,479,482-483,486,488,495,501,511-512,515,521,527,539-540,544,550,556,567-568,572,712,714-715,717
+  s_94656d667b5d5c::t_ac97012af42948 156,178,199,230,585,623,651,675
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionProvider.generated.yml
+  ai_agent 5
+docs/generated/sqlite-schema/promotion_run.md
+  ai_agent 9,22,31,35,44,53,61,83-93,99
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_94656d667b5d5c::t_beff487a86537b 44-46,68,70,97,107,109,111,114-128,135-137,140,144-145,148,153,155-156,158,163,167,194,205,211,246,280-281,331,333,444-445,466,504,506,518,574,581,597-598,636,651,653,657,663,673,691,703,715-716
+  s_94656d667b5d5c::t_947a47891572e6 629,641,648,666
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review.repository.integration.test.ts
+  s_94656d667b5d5c::t_edd342aeb5bc2b 9,15,19,27,37,40,53,61,70,76,100,108,117,124,130,149,157,161-164,234,240,242,247-248,253,265,272
+  s_94656d667b5d5c::t_4a1a5fcdb4d2a7 44
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositoryBranches.generated.yml
+  ai_agent 5
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  s_94656d667b5d5c::t_f2c72028fbe2ad 61
+packages/cli/src/modules/promotions.ee/database/entities/promotion-environment.entity.ts
+  s_94656d667b5d5c::t_7b97e6e83fef41 1-17,23-25,27-38,40,48-51,54,57,63-66
+  s_94656d667b5d5c::t_f18bb386946efa 61
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment-project.repository.ts
+  s_94656d667b5d5c::t_a19ecc40349a63 1,6,10,12,15-19,21,24-26,32-34,36-41,43-44,47,54-58,60-61,65-66,68
+  s_94656d667b5d5c::t_85c039dccb2968 2,23
+docs/generated/postgres-schema/public.promotion_provider.md
+  ai_agent 11,43,55,57-58,62
+packages/cli/src/modules/promotions.ee/git-hosts/git-host-target.ts
+  s_94656d667b5d5c::t_0b1274d6d09573 74,78
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_94656d667b5d5c::t_1be7c529a7566c 2,5-12,16,22-23,25-27,43,48-49,52,54-55,65,71,73-78,86-87,90-92,99-102,107-108,112-113,135-142,151-152,160,162,167,169-171,176-177,179,182-183,186,188,190,195-196,199-202,205-209,211-212,217-219,221-223,225-227,230-233,238,243,245-246,254,260,265-274,277-278,280,295,299-300,304-305,307,309,312
+  s_94656d667b5d5c::t_876fa70a3f83f0 69,79,155-157
+  s_94656d667b5d5c::t_ff925355334b5e 83
+  ai_agent 133-134,143-145
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  ai_agent 5,32,43
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_94656d667b5d5c::t_fd7c7cc6cb0e5d 12,16-17,22,24,55-62,67,71-73,87-88,93,96-97,101-103,110-111,113-114,116,121,125,128,131,136-150,152-155,159,161-162,168-171,176,180-195,844,849,856,859-861,866,927,931,937-938,990,1040,1478,1487-1488,1516,1521-1522,1530,1532-1533,1539,1563,1566-1568,1573,1575,1581,1600,1604,1620,1626,1631,1634-1637,1644-1645,1647,1649,1652,1667,1670-1671,1675,1679,1681,1716,1721-1723,1737-1738,1746,1858,1865,1870,1894,1897,1900,1910,1913,1918-1920,1924,1927,1929,1935,1940-1941,1945,1952,1957-1958,1962-1970,1974-1975,1981-1983,2003-2004,2007,2011-2013,2015-2016,2018,2028,2032-2033,2036,2038,2045,2054,2057,2061,2067,2069,2072-2074,2077,2080,2082,2084,2088,2091,2095-2118,2120,2123-2124,2127,2130,2132-2133,2136-2139,2144,2146-2147,2151-2152,2157-2158,2162,2164-2165,2167,2170,2174,2179,2183,2188,2190,2193,2199,2201,2205,2207,2209,2211,2213,2218,2220,2224,2230,2275,2287,2386,2399,2494,2565,2567,2573,2606,2621,2638,2641,2645,2660,2680,2722,2746,2749,2757,2759,2761,2769,2771-2772,2774-2777,2779,2781-2782,2784,2786,2790,2793-2795,2801,2803,2806,2808,2810,2813
+  ai_agent 172-175,177-179,2584-2585,2591-2592,2634
+  s_94656d667b5d5c::t_dfff870b95dd01 1971-1973,1976-1980,1984-1999
+  s_94656d667b5d5c::t_10453a19d185a7 2783,2785,2787
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionEnvironment.generated.yml
+  ai_agent 1,4-5,10,12-13,26-29,44-76,85
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironments.generated.yml
+  ai_agent 1,4-5,18-25,44-45,53,56-75,84-93,103-104,107-172,181-190,200-201,204-242
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/clonePromotionCheckout.generated.yml
+  ai_agent 4-5,11,13-14
+packages/cli/src/modules/promotions.ee/database/entities/promotion-run.entity.ts
+  s_94656d667b5d5c::t_7b97e6e83fef41 15,20,34-35,37,57-59
+packages/cli/src/modules/promotions.ee/database/entities/promotion-provider.entity.ts
+  s_94656d667b5d5c::t_7b97e6e83fef41 10
+docs/generated/postgres-schema/public.promotion_environment_project.md
+  ai_agent 1,8-9,17-25,31-32,39-40,42,44-45,49,51-52,56
+packages/cli/src/modules/promotions.ee/__tests__/promotion-providers.service.test.ts
+  s_94656d667b5d5c::t_c59bfb6ba1851c 5
+  s_94656d667b5d5c::t_cb668910a72219 8,16,22
+packages/cli/src/modules/promotions.ee/database/entities/promotion-environment-project.entity.ts
+  s_94656d667b5d5c::t_7b97e6e83fef41 1,13,16-19,25-26,30-33,35-36,38-40
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment.repository.ts
+  s_94656d667b5d5c::t_a19ecc40349a63 1,11,14-17,19-21,26,28,32-34,38-39,45-49,56-57,59-60,62,64,68-69,77,80,86-87,95,98,100,102
+  s_94656d667b5d5c::t_85c039dccb2968 2,30-31,40,50,52
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  ai_agent 5,11,13-14,25,36
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-provider.repository.ts
+  s_94656d667b5d5c::t_a19ecc40349a63 61-62,71
+  s_94656d667b5d5c::t_fd64d3b4078384 69
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  s_94656d667b5d5c::t_a19ecc40349a63 11,20,27
+  s_94656d667b5d5c::t_876fa70a3f83f0 30
+docs/generated/sqlite-schema/promotion_environment.md
+  ai_agent 1,9,19-20,24,32,36,42-44,51-54,56,58-59,64,67,69-70,79,86-95
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_94656d667b5d5c::t_f289904a94656c 61,115,132-134,140,151,154-156,166,170,177,180-181,185,218,224,238,248,268,272,279,335,341,356,414-415,466,470,474,479,575,585,590,671,676,681,692,697,740,779,791,813-814,831,839,844,846,855,861,865,878,886
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  s_94656d667b5d5c::t_2fa1e5b4d2bc75 5,42-45
+packages/cli/test/migration/1792417570699-replace-promotion-connections-with-environments.test.ts
+  s_94656d667b5d5c::t_5ec4de1d337cbf 2-11,13,15-24,27-29,32-33,36-44,50-55,57-113,115-136,138-140,142-161,166-207,210-238,241-255,258-295,297-300,302-315,318-323
+  s_94656d667b5d5c::t_b93ec7c0046264 45-49,137,162-165
+  s_94656d667b5d5c::t_c61ceb0461c328 301
+docs/generated/postgres-schema/public.promotion_run.md
+  ai_agent 10-11,20,23,36,45,53,75-85,91
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  ai_agent 5,11,13-14
+packages/@n8n/db/src/migrations/common/1792417570699-ReplacePromotionConnectionsWithEnvironments.ts
+  s_94656d667b5d5c::t_e03756836ca534 1-2,108,317,455-456
+  s_94656d667b5d5c::t_1d78e6a1d199e0 3-56,58-74,76-107,109-121,125-271,273-297,305-316,318-337
+  s_94656d667b5d5c::t_b2ca16a467a40a 57,338-425,427-454
+  ai_agent 75,122-124
+  s_94656d667b5d5c::t_21f967d869e6da 272,298-304,426
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  ai_agent 4-5,10,12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6af5370d8ac5b14fb71d09b21b46b2bec4f5c93d",
+  "prompts": {},
+  "sessions": {
+    "s_94656d667b5d5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9efc452-e997-4e58-ac9d-601ed3e76ac7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

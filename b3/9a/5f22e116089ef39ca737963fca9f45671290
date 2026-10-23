@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_cf3985c8e2753c::t_415dab4fd5516a 62-67,75-77,87-88,166-168,343-344
+  s_cf3985c8e2753c::t_3450c70208de27 116-124
+packages/cli/src/modules/agents/builder/skills/target-tasks.skill.ts
+  s_cf3985c8e2753c::t_4b32aa9be9b1c2 92-98,133-138
+  s_cf3985c8e2753c::t_3450c70208de27 139-141
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_cf3985c8e2753c::t_d589afc0a35ce7 71,75,93
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_cf3985c8e2753c::t_5bea2151137b0e 71,75
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_cf3985c8e2753c::t_5bea2151137b0e 96,100,132
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_cf3985c8e2753c::t_f6a13f1ce94d95 23-27,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "b39a5f22e116089ef39ca737963fca9f45671290",
+  "prompts": {},
+  "sessions": {
+    "s_cf3985c8e2753c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02002-2da6-72d3-9ee8-98e1c462e146",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

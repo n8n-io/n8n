@@ -1,0 +1,76 @@
+packages/@n8n/instance-ai/load-test/report.ts
+  s_7b60e47ccd00ff::t_b9daa0dc3a6ee3 1-14,16-76,79-313,315-355
+  s_7b60e47ccd00ff::t_673fe18db2000d 77-78,314
+  s_7b60e47ccd00ff::t_97a895b261615d 15
+packages/@n8n/instance-ai/load-test/event-log.ts
+  s_7b60e47ccd00ff::t_6735640d576863 1-222
+packages/@n8n/instance-ai/load-test/cli.ts
+  s_7b60e47ccd00ff::t_5cab86031d1d43 56,273,550
+  s_7b60e47ccd00ff::t_29b7f29a51c7b1 1-55,57-272,274-324,326-370,372-420,422-466,468-470,472-549,551-555
+  s_7b60e47ccd00ff::t_97a895b261615d 325
+  s_7b60e47ccd00ff::t_673fe18db2000d 371
+packages/@n8n/instance-ai/load-test/tsconfig.json
+  s_7b60e47ccd00ff::t_86b147bd98389e 1-23
+packages/@n8n/instance-ai/load-test/__tests__/cases.test.ts
+  s_7b60e47ccd00ff::t_2ed100d7096380 1-2,4-117
+packages/@n8n/instance-ai/load-test/__tests__/report.test.ts
+  s_7b60e47ccd00ff::t_f24a020bcb1a1e 1-7,10,12-223,301-302
+  s_7b60e47ccd00ff::t_475fae01e65a11 8-9,11,224-291,293-300
+packages/@n8n/instance-ai/load-test/__tests__/prom.test.ts
+  s_7b60e47ccd00ff::t_0ce36330fc9ae5 1-2,4-71,73-83,85-112,115-130
+packages/@n8n/instance-ai/load-test/virtual-user.ts
+  s_7b60e47ccd00ff::t_64771dc461aa5a 17-20
+  s_7b60e47ccd00ff::t_1fa9e3a976a5b7 1-16,21-111,113-320
+packages/@n8n/instance-ai/load-test/__tests__/event-log.test.ts
+  s_7b60e47ccd00ff::t_01881764a2ba31 171-174,178-179,182,184-199
+  s_7b60e47ccd00ff::t_4d1579b263153c 1-170,175-177,180-181,183,200-202
+packages/@n8n/instance-ai/load-test/args.ts
+  s_7b60e47ccd00ff::t_68dcc5d96f05fd 1-378
+packages/@n8n/instance-ai/load-test/__tests__/args.test.ts
+  s_7b60e47ccd00ff::t_c751c8c0adea6e 1-155
+packages/@n8n/instance-ai/load-test/prom.ts
+  s_7b60e47ccd00ff::t_1fdbfeb7b756f9 155-157,161-162,168-169,176,180,193
+  s_7b60e47ccd00ff::t_e742f56fe08f20 1-154,158-160,163-167,170-175,177-179,181-192,194-201
+packages/@n8n/instance-ai/package.json
+  s_7b60e47ccd00ff::t_6b57b51b746f7c 26-27
+  s_7b60e47ccd00ff::t_31468c53e60a61 6
+packages/@n8n/instance-ai/load-test/sampler.ts
+  s_7b60e47ccd00ff::t_37f5169c5dbb06 14-17
+  s_7b60e47ccd00ff::t_cea7c4ef522eee 210
+  s_7b60e47ccd00ff::t_93a2d320601981 181,384,397,427
+  s_7b60e47ccd00ff::t_f4869388eb5cc3 27
+  s_7b60e47ccd00ff::t_eefaf4446f5f0e 1-13,18-26,28-166,169-180,182-209,211-383,385-396,398-402,404-426,428-497,508,511-512,516-562
+  s_7b60e47ccd00ff::t_b0ffe15706389c 167-168
+  s_7b60e47ccd00ff::t_7f0c12e187ae99 498-507,509-510,513-515
+packages/@n8n/instance-ai/evaluations/clients/n8n-client.ts
+  s_7b60e47ccd00ff::t_58af3d76ea0985 43-57
+  s_7b60e47ccd00ff::t_8921d811dddcfa 205-252
+packages/@n8n/instance-ai/load-test/cases.ts
+  s_7b60e47ccd00ff::t_16d048c30cf3c4 167-170,172,177
+  s_7b60e47ccd00ff::t_a7b00cbc0a38ed 1-166,171,173-176,178-179
+packages/@n8n/instance-ai/load-test/README.md
+  s_7b60e47ccd00ff::t_c4869ef8d6dcb3 1-210
+packages/@n8n/instance-ai/load-test/provision.ts
+  s_7b60e47ccd00ff::t_21a173879f8b3c 229-238,240
+  s_7b60e47ccd00ff::t_041e9c53578e2a 1-17,19-226,228,239,241-242,244-274
+packages/@n8n/instance-ai/.gitignore
+  s_7b60e47ccd00ff::t_f3dc6c7c7d424c 2
+packages/@n8n/instance-ai/load-test/__tests__/provision.test.ts
+  s_7b60e47ccd00ff::t_a494f2e506df20 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9f8cffe0668d28ac68dc4f8e04a6e64117178354",
+  "prompts": {},
+  "sessions": {
+    "s_7b60e47ccd00ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ca0d84-6d2f-4757-b10a-eee5514b3f2b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  h_5d40c27a8fdfd1 151
+  s_57c3811f2e5b52::t_047879af4bd235 7,24
+  s_57c3811f2e5b52::t_66f811f7bafa58 170
+  s_57c3811f2e5b52::t_0adde740847192 146,160
+packages/@n8n/api-types/src/dto/roles/update-role-public.dto.ts
+  s_57c3811f2e5b52::t_76ff96efa412a4 1-10
+packages/cli/test/integration/public-api/roles.test.ts
+  s_57c3811f2e5b52::t_4cbf203582655a 438
+  s_57c3811f2e5b52::t_d47e6046d2a0ea 411,431-436,439,443-450,453-464,467-468,472-473,479-487,491,495-496,499-510,512-527,530-531,535,538,544,551-552,555,559,563-564,572-573,583-584,592-593,600,604-605,612,616-617,624,628-629,636-637,641-642,649,653-654,660,664-665,671,676-677,683,688-689
+  s_57c3811f2e5b52::t_b45656bdd66e5f 488-490
+  s_57c3811f2e5b52::t_a965491c0c95c4 437
+packages/cli/src/controllers/role.controller.ts
+  s_57c3811f2e5b52::t_3f6f1305056c89 133
+packages/@n8n/api-types/src/dto/roles/__tests__/update-role-public.dto.test.ts
+  s_57c3811f2e5b52::t_a30e6e37918039 3-16,18-110,113-116
+  h_5d40c27a8fdfd1 1-2,17,111-112
+packages/cli/test/integration/controllers/role.controller.test.ts
+  s_57c3811f2e5b52::t_98e9a1c9de02c3 1001,1038
+packages/cli/test/integration/services/role.service.test.ts
+  s_57c3811f2e5b52::t_98e9a1c9de02c3 1043,1086,1125,1132,1157,1186,1211,1232,1255
+packages/cli/src/services/__tests__/role.service.customRoles.test.ts
+  s_57c3811f2e5b52::t_98e9a1c9de02c3 105,118
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_57c3811f2e5b52::t_4e656a197a7743 17
+packages/cli/src/services/role.service.ts
+  s_57c3811f2e5b52::t_a845fcb9a69afd 232
+  s_57c3811f2e5b52::t_1c1a6effbbc420 6
+  s_57c3811f2e5b52::t_f49c69d1d6e770 228,233,236
+packages/@n8n/api-types/src/dto/index.ts
+  s_57c3811f2e5b52::t_80edb0bb61b410 193
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/updateRole.generated.yml
+  h_5d40c27a8fdfd1 5,28,34-37
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  h_5d40c27a8fdfd1 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4fa23930e7245f5e31399007bae99b842c736de9",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_57c3811f2e5b52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c36cba-8c8b-42fb-b560-44173f55ef20",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

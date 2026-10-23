@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Hubspot/Hubspot.node.ts
+  s_2e1fa95fc44f8f::t_ad949d482259c1 16,24
+packages/nodes-base/nodes/Hubspot/V1/HubspotV1.node.ts
+  s_2e1fa95fc44f8f::t_6be01810bad373 17-23,909
+packages/nodes-base/nodes/Hubspot/V2/HubspotV2.node.ts
+  s_2e1fa95fc44f8f::t_82f5b9ba28fd52 7,59,1128-1129
+packages/nodes-base/nodes/Hubspot/__test__/Hubspot.node.test.ts
+  s_2e1fa95fc44f8f::t_4b53c871703831 444-454
+packages/nodes-base/nodes/Hubspot/__test__/requests.workflow.json
+  s_2e1fa95fc44f8f::t_94b97a1212b605 474-534,859-873
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07b2a2fa6edf8ad3e1d51072a7f6af54501940f5",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

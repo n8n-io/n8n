@@ -1,0 +1,28 @@
+packages/@n8n/telemetry/src/validate.ts
+  s_32f98411f6da5a::t_55252066ad887f 8-17,35-44,51-63,67,95,102,109
+  s_32f98411f6da5a::t_573c7e743cd04b 5,18-26,45-50,64-66,68-83,85-94,97-101,103-108,110-115,117-129,143
+  s_32f98411f6da5a::t_00bce11f511bf3 96
+  s_32f98411f6da5a::t_4d6a7d7475643c 6-7,27-34,84,116
+pnpm-lock.yaml
+  ai_agent 3684,3687
+packages/@n8n/telemetry/src/__tests__/validate.test.ts
+  s_32f98411f6da5a::t_573c7e743cd04b 19-31,73-89,93-94
+.agents/skills/telemetry/SKILL.md
+  s_32f98411f6da5a::t_573c7e743cd04b 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4a344f55c09fa5e518af833c3d754c6f6f1a17b",
+  "prompts": {},
+  "sessions": {
+    "s_32f98411f6da5a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8585-c6bb-7271-8db2-5a6d96ec452f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

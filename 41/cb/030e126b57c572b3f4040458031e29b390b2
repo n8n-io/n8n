@@ -1,0 +1,40 @@
+packages/@n8n/db/src/repositories/project-relation.repository.ts
+  s_e697dfa04d43e1::t_458746131f8c6e 6,14-26
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable.exporter.test.ts
+  s_e697dfa04d43e1::t_e46800edae60ab 1
+  s_e697dfa04d43e1::t_ca0c9cccfdf8f7 60-65,88
+packages/@n8n/db/src/repositories/__tests__/project-relation.repository.test.ts
+  s_e697dfa04d43e1::t_ca0c9cccfdf8f7 1-25,29-56
+  ai_agent 26-28
+packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts
+  s_e697dfa04d43e1::t_ca0c9cccfdf8f7 3,6,53-57,86,127-145,177-179,182-185,187-188,206,278,298-300,306-308,483-487,501-502,529-531,540-543
+packages/@n8n/db/src/repositories/shared-credentials.repository.ts
+  s_e697dfa04d43e1::t_458746131f8c6e 9,19,27-36
+packages/cli/src/modules/source-control.ee/__tests__/source-control-export.service.test.ts
+  s_e697dfa04d43e1::t_0d2a1c35aac0a0 6,18,45,66,69-71,78-80,107,111-116,142-143,152,156-158,219,223-225,278,282-287,316-317,376,380-385,421-423,433-437,721-726,752-757,777-782,795-796,846-848,852,1109
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_e697dfa04d43e1::t_458746131f8c6e 527,531-533,537
+  s_e697dfa04d43e1::t_97af74c7f007ef 29
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_e697dfa04d43e1::t_458746131f8c6e 158-159
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_e697dfa04d43e1::t_ca0c9cccfdf8f7 3949-3952,3993,4015
+packages/@n8n/db/src/repositories/__tests__/shared-credentials.repository.test.ts
+  s_e697dfa04d43e1::t_ca0c9cccfdf8f7 6,39,48-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "41cb030e126b57c572b3f4040458031e29b390b2",
+  "prompts": {},
+  "sessions": {
+    "s_e697dfa04d43e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "af5c8c8e-6dfc-4762-807e-adfa5443110c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

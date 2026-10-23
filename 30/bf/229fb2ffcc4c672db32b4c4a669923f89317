@@ -1,0 +1,18 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  h_6ef4cecfee65a2 19-20
+packages/cli/src/modules/n8n-packages/io/__tests__/unique-filename-allocator.test.ts
+  h_6ef4cecfee65a2 50-51
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  h_6ef4cecfee65a2 21,51-52,124-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30bf229fb2ffcc4c672db32b4c4a669923f89317",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

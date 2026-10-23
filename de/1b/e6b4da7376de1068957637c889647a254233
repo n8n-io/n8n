@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.vue
+  s_3da16a07bf8f69::t_38add541daf244 9,33,111-112,115,117-135,137-162,164-192,194-198,200-202,204,206-219,221-234,236-253,295-300,305
+  s_3da16a07bf8f69::t_e885235c9fbf75 113-114
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_e4adca55e904d5::t_117c662223511a 253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de1be6b4da7376de1068957637c889647a254233",
+  "prompts": {},
+  "sessions": {
+    "s_3da16a07bf8f69": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a10b76-34bc-7311-aa23-3ce423f08689",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_e4adca55e904d5": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a10b74-ef18-7311-aa23-3ce316c84440",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

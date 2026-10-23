@@ -1,0 +1,39 @@
+packages/@n8n/node-engine-compatibility/oxlint.config.mts
+  s_4d4515bb8fac55::t_6109513ea3e5f9 1-8
+packages/core/oxlint.config.mts
+  s_4d4515bb8fac55::t_6109513ea3e5f9 1-45,53-69
+  s_4d4515bb8fac55::t_389eaffca805a9 46-52
+packages/@n8n/task-runner/eslint.config.mjs
+  s_4d4515bb8fac55::t_6109513ea3e5f9 11-13
+  s_4d4515bb8fac55::t_4f86ece65b270e 14
+packages/@n8n/task-runner/package.json
+  s_4d4515bb8fac55::t_6109513ea3e5f9 17-18,55,62-63
+packages/@n8n/node-engine-compatibility/package.json
+  s_4d4515bb8fac55::t_6109513ea3e5f9 12-13,30-31,37-38
+packages/core/package.json
+  s_4d4515bb8fac55::t_6109513ea3e5f9 21-22,34-35,52-53
+packages/core/eslint.config.mjs
+  s_4d4515bb8fac55::t_6109513ea3e5f9 13-45,56
+  s_4d4515bb8fac55::t_389eaffca805a9 46,48,51-55
+  s_4d4515bb8fac55::t_1db45a7f4a0684 12
+packages/@n8n/task-runner/oxlint.config.mts
+  s_4d4515bb8fac55::t_6109513ea3e5f9 1-24
+pnpm-lock.yaml
+  s_4d4515bb8fac55::t_4e5a318f26a211 3420-3425,3441-3446,4064-4066,4085-4090,5171-5176,5225-5230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5fe4bb8ada7847dfb529fc1dc22e2ccdfec09d5c",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

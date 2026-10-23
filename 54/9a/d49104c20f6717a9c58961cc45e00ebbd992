@@ -1,0 +1,26 @@
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_360d143f8924c9::t_3b0865c1a46e3f 105,1362-1363,1381-1382,1385,1397-1398
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_360d143f8924c9::t_70550de041183d 495,504,513,545,555-556,565,588,601
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_360d143f8924c9::t_2bce93fed8fb80 61,64,80
+  s_360d143f8924c9::t_e8220e19a28e0d 56-57,330-331,360-361,411,428-429,456,465-468,536
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_360d143f8924c9::t_70550de041183d 412,437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "549ad49104c20f6717a9c58961cc45e00ebbd992",
+  "prompts": {},
+  "sessions": {
+    "s_360d143f8924c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fbd4-e5ba-7f81-963e-4bf0970cc189",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

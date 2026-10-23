@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Salesforce/Salesforce.node.ts
+  s_e3a7a49407da17::t_fd63a8482b92a6 3147
+  h_44f8d1c0f2f8c4 3141,3150-3152
+packages/nodes-base/nodes/Salesforce/__test__/Salesforce.node.test.ts
+  s_e3a7a49407da17::t_0381055b9b2e86 4423-4480
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "2dbb33928615a169965ff185a1299b504b78205a",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e3a7a49407da17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84466fbc-12a4-4f3e-a702-f0fb3e4e711e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

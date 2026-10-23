@@ -1,0 +1,235 @@
+.boundaries-baseline.json
+  s_53b98b04954df3::t_e96297c9daf948 2
+.code-health-baseline.json
+  s_53b98b04954df3::t_afcfe853bb0226 7,13,19,24,27-29,33-35,39-41,45-47,50,53-55,59-61,65-67,71-73,79,87,93,99,105,113,119,124-146,149-151,153-160,168,171-176,179-184,187-192,195,201,207,213,219,224,227-232,235-237,240-243,246-255,258-264,267-269,274-275,277-284,287,292,294-297,300-306,309,315,320,322-325,329-331,334,337,358,361-363,369,374-381,396-398,400-406,408-414,416-419,425,433,439,445,451,457,463,469,475,481,487,493,499,505,511,517,523,529,535,541,547,553,559,564,567-677,681-686,690-695,701,707,713,719,725,731,737,743,746-748,751-753,756-762,766-767,772-773,778-779,784-785,790-791,796-797,802-803,808-809,814-815,820-821,824,828-829,834-835,839-841,844,847-849,853-855,859-861,867-869,875,881,887,893,898,902-903,908-910,913-915,918,922-923,927-930,933-935,938,941-943,946,950-951,956-957,962-963,967-973,975,978,981-997,1224,1227-1229,1233-1235,1239-1241,1245-1247,1251-1253,1257-1259,1263-1265,1269-1271,1310,1314-1315,1320-1321,1326-1327,1331-1333,1336,1338-1341,1344-1347,1350-1353,1356-1359,1362-1365,1368-1371,1374-1377,1380-1383,1386-1389,1392-1395,1398-1401,1404-1407,1410-1413
+.github/test-metrics/e2e-impact-map.json
+  s_53b98b04954df3::t_e5bbd158086ddc 1
+OWNERS
+  s_53b98b04954df3::t_44e5562896976c 220,223-224,230-233,253
+packages/@n8n/agents/src/runtime/__tests__/support/otel-test-provider.ts
+  s_53b98b04954df3::t_65d9af1cff82c5 2,27,36
+packages/@n8n/api-types/oxlint.config.mts
+  s_53b98b04954df3::t_cea330211bfd4e 1-7
+packages/@n8n/api-types/package.json
+  s_53b98b04954df3::t_fac015a2b482d0 12-13,26,35-36
+packages/@n8n/backend-services/package.json
+  s_53b98b04954df3::t_a841abc7f39ae2 42
+packages/@n8n/backend-services/src/__tests__/backend-test-utils.test.ts
+  s_53b98b04954df3::t_b9b01231010a46 1-19
+packages/@n8n/backend-test-utils/src/test-modules.ts
+  s_53b98b04954df3::t_97d112750f235f 2,6-17,20-21,23,25-26,31-32
+packages/@n8n/chat-hub/oxlint.config.mts
+  s_53b98b04954df3::t_1cb54b3bf4cba9 1-7
+packages/@n8n/chat-hub/package.json
+  s_53b98b04954df3::t_83b17c5cc44976 12-13,26,30-31
+packages/@n8n/codemirror-lang-sql/oxlint.config.mts
+  s_53b98b04954df3::t_b24d38b5b6a629 1-2,4-7,9-11
+packages/@n8n/codemirror-lang-sql/package.json
+  s_53b98b04954df3::t_9e1a3916735e0c 13-14,52,54-55
+packages/@n8n/codemirror-lang-sql/src/complete.ts
+  s_53b98b04954df3::t_dbca62620da058 38
+packages/@n8n/codemirror-lang/oxlint.config.mts
+  s_53b98b04954df3::t_e9afb61fbc2098 1-2,4-7,9-11
+packages/@n8n/codemirror-lang/package.json
+  s_53b98b04954df3::t_f7cf2b4efce637 37-38,49,52-53
+packages/@n8n/constants/oxlint.config.mts
+  s_53b98b04954df3::t_4c8181ac6cba71 1-7
+packages/@n8n/constants/package.json
+  s_53b98b04954df3::t_61a9d91b8965ce 12-13,24,26-27
+packages/@n8n/db/vite.config.ts
+  s_53b98b04954df3::t_29356fa2a91c04 2-3,7
+packages/@n8n/errors/src/index.ts
+  s_53b98b04954df3::t_32a7aa1158af6b 1-2
+packages/@n8n/extension-sdk/oxlint.config.mts
+  s_53b98b04954df3::t_c0f92547789970 1-13
+packages/@n8n/extension-sdk/package.json
+  s_53b98b04954df3::t_ada0adabf3b87e 35,50,56-57
+packages/@n8n/extension-sdk/scripts/tsconfig.json
+  s_53b98b04954df3::t_5f0a33c6d599ed 1-4
+packages/@n8n/extension-sdk/src/tsconfig.json
+  s_53b98b04954df3::t_2dec478db3f2ea 1-8
+packages/@n8n/inbound-auth/oxlint.config.mts
+  s_53b98b04954df3::t_d59eb1c9846252 1-7
+packages/@n8n/inbound-auth/package.json
+  s_53b98b04954df3::t_ae5a4442477cb1 12-13,33,37-38
+packages/@n8n/json-schema-to-zod/oxlint.config.mts
+  s_53b98b04954df3::t_7f62abeab94368 1-23
+packages/@n8n/json-schema-to-zod/package.json
+  s_53b98b04954df3::t_5d36e1ae295d68 24-25,67,73-74
+packages/@n8n/mcp-browser-extension/oxlint.config.mts
+  s_53b98b04954df3::t_62a92fa9a2f396 1-21
+packages/@n8n/mcp-browser-extension/package.json
+  s_53b98b04954df3::t_be56ff450d5be4 12-13,26,32-33
+packages/@n8n/mcp-browser/src/sensitivity/html-probe.test.ts
+  s_53b98b04954df3::t_a3456c91e6edd5 19
+packages/@n8n/node-cli/src/configs/eslint.test.ts
+  s_53b98b04954df3::t_2fbd2e9592cc12 20
+packages/@n8n/node-cli/src/configs/eslint.ts
+  s_53b98b04954df3::t_b8659b0c16f3e2 3-4,8-10,17,25-26,50-51
+packages/@n8n/permissions/oxlint.config.mts
+  s_53b98b04954df3::t_24b988a6d8d1bc 1-7
+packages/@n8n/permissions/package.json
+  s_53b98b04954df3::t_477b7d522c62de 12-13,29,33-34
+packages/@n8n/permissions/src/roles/all-roles.ts
+  s_53b98b04954df3::t_d193b26e260083 64
+packages/@n8n/telemetry/oxlint.config.mts
+  s_53b98b04954df3::t_7771785f034cbb 1-8
+packages/@n8n/telemetry/package.json
+  s_53b98b04954df3::t_5fc5aecef8cd6b 12-13,31,36-37
+packages/@n8n/tournament/oxlint.config.mts
+  s_53b98b04954df3::t_202290d411732e 1-14
+packages/@n8n/tournament/package.json
+  s_53b98b04954df3::t_6a8f34cd1d4ff9 25-26,41,43,45-46
+packages/@n8n/utils/oxlint.config.mts
+  s_53b98b04954df3::t_e19584a4c9fdde 1-2,4-6,8-9
+packages/@n8n/utils/package.json
+  s_53b98b04954df3::t_0a895e04a2f50e 37-38,47,52-53
+packages/@n8n/vitest-config/node-decorators.test.ts
+  s_53b98b04954df3::t_01eeb0fe59c240 1-23
+packages/@n8n/vitest-config/node-decorators.ts
+  s_53b98b04954df3::t_5956a116026181 1-3,8-49,61-62
+packages/@n8n/vitest-config/package.json
+  s_53b98b04954df3::t_aa44f3bd5087a8 19-21,26,54-58
+packages/@n8n/vitest-config/tsc-decorator-transform.test.ts
+  s_53b98b04954df3::t_7534b8110e97ac 1-83
+packages/@n8n/vitest-config/tsc-decorator-transform.ts
+  s_53b98b04954df3::t_6e3d99aa28623d 3-4,8-16,18-19,21-41,44,46,50-53,76,80-84,86,88,91,93,99-103,106,108,119-120,122-125,127,132,135-137,139
+packages/cli/package.json
+  s_53b98b04954df3::t_bba4c280a278dc 191
+packages/cli/src/config/types.ts
+  s_53b98b04954df3::t_1e1efea521b997 4-10,19
+packages/cli/src/modules/__tests__/test-modules.test.ts
+  s_53b98b04954df3::t_6b7a51698f5fff 1-27
+packages/cli/src/modules/instance-registry/__tests__/instance-registry-reconciliation.task.integration.test.ts
+  s_53b98b04954df3::t_fcd6de914f058f 218-219
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_53b98b04954df3::t_6dc00f3c2ca46f 4-5,145-166
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_53b98b04954df3::t_5b24e6380f7c88 3,117,126,145,199,488
+packages/cli/src/modules/otel/otel.service.ts
+  s_53b98b04954df3::t_363130740130f4 5-12,22,45,73-75,193-196,201-206
+packages/cli/src/modules/sso-saml/__tests__/saml.service.ee.test.ts
+  s_53b98b04954df3::t_2d885d3191fbbd 14,171,231,240,288-307
+packages/cli/src/modules/sso-saml/saml.service.ee.ts
+  s_53b98b04954df3::t_b34dc054ec0495 311-313
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_53b98b04954df3::t_a89dfcfeadd975 10,37
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_53b98b04954df3::t_fe4054d66ae74a 16-18,27
+packages/cli/src/services/pruning/__tests__/workflow-history-pruning.task.test.ts
+  s_53b98b04954df3::t_cf9e352aa8506b 1-23
+packages/cli/src/services/pruning/workflow-history-pruning.task.ts
+  s_53b98b04954df3::t_9b7f8d98465185 1-28
+packages/cli/test/integration/workflow-history-manager.test.ts
+  s_53b98b04954df3::t_3bf5f096b161a4 18-21,212-241
+packages/cli/vitest.config.base.ts
+  s_53b98b04954df3::t_4760ffe7660355 2,28-34
+packages/core/src/execution-engine/node-execution-context/utils/scheduling-helper-functions.ts
+  s_53b98b04954df3::t_7f3e3fd2c08386 2,18-22
+packages/core/src/execution-engine/scheduled-task-manager.ts
+  s_53b98b04954df3::t_0e6af635e232ce 6,24
+packages/extensions/insights/oxlint.config.mts
+  s_53b98b04954df3::t_42089c8d3a96bc 1-2,4-7,9
+packages/extensions/insights/package.json
+  s_53b98b04954df3::t_ca45762c0814a4 34-35,51,56-57
+packages/frontend/editor-ui/data/node-popularity.json
+  s_53b98b04954df3::t_7b80445e7faf9f 4,8,16,24,32,36,44,48,52,60,64,68,72,76,80,84,88,92,96,100,108,112,116,120,128,132,136,140,152,160,176,180,184,188,196,200,212,216,220,224,228,236,240,244,248,256,260,264,268,272,276,280,284,288,292,296,300,304,312,316,320,324,328,332,336,340,344,348,352,364,368,372,376,380,384,388,392,396,400,404,408,412,420,428,436,444,448,452,456,460,464,468,472,476,488,492,496,500,504,508,512,516,520,524,536,540,544,552,556,560,564,568,572,576,584,592,596,600,604,608,612,616,620,624,628,632,636,640,644,648,652,656,660,664,668,672,676,680,684,688,692,696,700,704,708,712,716,720,724,728,732,736,740,744,748,752,756,760,764,768,772,776,780,784,788,792,796,800,804,808,812,816,820,824,828,832,836,840,844,848,852,856,860,864,868,872,876,880,884,888,892,896,900,904,908,912,916,920,924,928,932,936,940,944,948,952,956,960,964,968,972,976,980,984,988,992,996,1000,1004,1008,1012,1016,1020,1024,1028,1032,1036,1040,1044,1048,1052,1056,1060,1064,1068,1072,1076,1080,1084,1088,1092,1096,1100,1104,1108,1112,1116,1120,1124,1128,1132,1136,1140,1144,1148,1152,1156,1160,1164,1168,1172,1176,1180,1184,1188,1192,1196,1204,1208,1212,1216,1220,1224,1228,1232,1236,1240,1244,1248,1252,1256,1264,1268,1272,1276,1280,1284,1288,1292,1296,1300,1304,1308,1312,1316,1320,1324,1328,1332,1336,1340,1344,1352,1356,1360,1364,1368,1372,1376,1380,1384,1388,1392,1396,1400,1404,1408,1412,1416,1420,1424,1428,1432,1436,1440,1444,1448,1452,1456,1460,1468,1472,1476,1480,1484,1492,1496,1504,1508,1512,1516,1520,1524,1528,1532,1536,1540,1544,1548,1552,1556,1560,1564,1568,1572,1576,1584,1588,1592,1596,1600,1604,1608,1612,1616,1620,1624,1628,1632,1636,1640,1644,1648,1652,1656,1660,1664,1668,1676,1680,1684,1688,1692,1696,1700,1704,1708,1712,1716,1720,1724,1728,1736,1740,1744,1748,1752,1756,1760,1764,1768,1772,1776,1780,1784,1788,1792,1796,1800,1804,1808,1812,1816,1820,1824,1828,1832,1836,1840,1844,1848,1852,1856,1860,1864,1868,1876,1880,1884,1888,1892,1896,1900,1904,1908,1912,1916,1920,1924,1928,1932,1936,1940,1944,1948,1952,1956,1960,1964,1968,1972,1976,1980,1984,1988,1992,1996,2000,2004,2008,2012,2016,2020,2024,2028,2032,2036,2040,2044,2048,2052,2056,2060,2064,2068,2072,2076,2080,2084,2088,2092,2096,2100,2104,2108,2112,2116,2120,2124,2128,2132,2136,2140,2144,2148,2156,2160,2164,2168,2172,2176,2180,2184,2188,2192,2196,2200,2204,2208,2212,2216,2220,2224,2228,2232,2236,2240,2244,2248,2252,2256,2260,2264,2268,2272,2276,2280,2284,2288,2292,2296,2304,2308,2312,2316,2320,2324,2328,2336,2340,2344,2348,2352,2356,2360,2364,2368,2372,2376,2380,2384,2388,2392,2396,2400,2404,2408,2412,2416,2420,2424,2428,2432,2436,2440,2444,2448,2452,2456,2460,2464,2468,2472,2476,2480,2484,2488,2492,2496,2500,2504,2508,2512,2516,2520,2524,2528,2532,2536,2540,2544,2548,2552,2556,2564,2568,2572,2576,2580,2584,2588,2592,2596,2600,2604,2608,2616,2620,2624,2628,2632,2636,2640,2644,2648,2652,2656,2660,2664,2668,2672,2676,2680,2684,2688,2692,2696,2700,2704,2708,2712,2716,2720,2724,2728,2732,2736,2740,2744,2748,2752,2756,2760,2764,2768,2772,2776,2780,2784,2788,2792,2796,2800,2804,2808,2812,2816,2820,2824,2828,2832,2836,2840,2844,2848,2852,2856,2860,2864,2868,2872,2876,2880,2888,2892,2896,2900,2904,2908,2912,2916,2920,2924,2928,2932,2936,2944,2948,2952,2960,2964,2968,2972,2976,2980,2984,2988,2992,2996,3000,3004,3012,3016,3020,3028,3032,3036,3040,3044,3048,3052,3056,3060,3064,3068,3072,3076,3080,3084,3088,3092,3096,3100,3104,3108,3112,3116,3120,3124,3128,3132,3136,3140,3144,3152,3156,3160,3164,3168,3172,3176,3180,3184,3188,3192,3196,3200,3204,3208,3212,3216,3220,3224,3228,3232,3236,3240,3244,3248,3252,3256,3260,3264,3268,3272,3276,3280,3288,3292,3296,3304,3308,3312,3316,3320,3324,3328,3332,3340,3348,3352,3356,3360,3364,3368,3372,3376,3380,3384,3388,3392,3396,3400,3404,3408,3412,3420,3424,3428,3432,3436,3440,3444,3448,3452,3456,3460,3464,3468,3476,3480,3488,3492,3496,3504,3508,3512,3516,3520,3524,3532,3536,3544,3552,3556,3560,3564,3568,3576,3580,3584,3588,3592,3608,3616,3620,3624,3628,3632,3636,3640,3644,3652,3656,3660,3664,3668,3672,3676,3680,3684,3688,3692,3696,3708,3724,3732,3740,3744,3748,3752,3756,3760,3764,3772,3776,3784,3800,3808,3812,3816,3820,3824,3828,3832,3836,3840,3844,3852,3856,3860,3864,3868,3876,3888,3892,3896,3900,3904,3912,3920,3924,3928,3932,3936,3944,3952,3956,3960,3964,3972,3976,3984,3988,3992,4000
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectExternalSecrets.test.ts
+  s_53b98b04954df3::t_2e9852a2fc56b0 72,320-332
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectExternalSecrets.vue
+  s_53b98b04954df3::t_76360de622b348 356
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_53b98b04954df3::t_f36f5bdac125bc 976-984
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-write-lock.spec.ts
+  s_53b98b04954df3::t_ab603242ec2b44 16
+packages/quality/testing/playwright/tests/e2e/agents/agent-sessions.spec.ts
+  s_53b98b04954df3::t_2bbffb92e6274c 94
+packages/quality/testing/playwright/tests/e2e/ai/ai-2505-pdf-embed.spec.ts
+  s_53b98b04954df3::t_8c8131e627a290 16
+packages/quality/testing/playwright/tests/e2e/ai/assistant-basic.spec.ts
+  s_53b98b04954df3::t_41f8d4d4883646 22,24-35
+packages/quality/testing/playwright/tests/e2e/ai/assistant-code-help.spec.ts
+  s_53b98b04954df3::t_39221d37b58a37 13
+packages/quality/testing/playwright/tests/e2e/ai/assistant-credential-help.spec.ts
+  s_53b98b04954df3::t_e16d99b98c30be 15
+packages/quality/testing/playwright/tests/e2e/ai/assistant-support-chat.spec.ts
+  s_53b98b04954df3::t_87fb7ccc07be73 21
+packages/quality/testing/playwright/tests/e2e/ai/builder-setup-wizard.spec.ts
+  s_53b98b04954df3::t_a4b7bedde1d98b 18
+packages/quality/testing/playwright/tests/e2e/ai/chat-session.spec.ts
+  s_53b98b04954df3::t_041cd6b590e6cd 6
+packages/quality/testing/playwright/tests/e2e/ai/eval-collections-compare.spec.ts
+  s_53b98b04954df3::t_3fcac0aeae3f12 53
+packages/quality/testing/playwright/tests/e2e/ai/evaluations.spec.ts
+  s_53b98b04954df3::t_bb7098cf135527 8
+packages/quality/testing/playwright/tests/e2e/ai/hitl-for-tools.spec.ts
+  s_53b98b04954df3::t_b6dee57cf270cc 68
+packages/quality/testing/playwright/tests/e2e/ai/langchain-agents.spec.ts
+  s_53b98b04954df3::t_e41836f4d2c721 79
+packages/quality/testing/playwright/tests/e2e/ai/langchain-chains.spec.ts
+  s_53b98b04954df3::t_0e08dac76d990e 42
+packages/quality/testing/playwright/tests/e2e/ai/langchain-memory.spec.ts
+  s_53b98b04954df3::t_6dd3b5f837fafb 55
+packages/quality/testing/playwright/tests/e2e/ai/langchain-tools.spec.ts
+  s_53b98b04954df3::t_ee2bdc80b79715 58
+packages/quality/testing/playwright/tests/e2e/ai/langchain-vectorstores.spec.ts
+  s_53b98b04954df3::t_369073c44a4918 7
+packages/quality/testing/playwright/tests/e2e/ai/rag-callout.spec.ts
+  s_53b98b04954df3::t_df4b74a86f58a6 6
+packages/quality/testing/playwright/tests/e2e/ai/workflow-builder.spec.ts
+  s_53b98b04954df3::t_935b72f65cc2c4 38
+packages/quality/testing/playwright/tests/e2e/mcp/mcp-copy-button-hover.spec.ts
+  s_53b98b04954df3::t_2d236a46426e00 5
+packages/quality/testing/playwright/tests/e2e/mcp/mcp-oauth.spec.ts
+  s_53b98b04954df3::t_04c968760bbd67 35
+packages/quality/testing/playwright/tests/e2e/mcp/mcp-service.spec.ts
+  s_53b98b04954df3::t_c32b21a3af03c4 52
+packages/quality/testing/playwright/tests/e2e/nodes/mcp-trigger.spec.ts
+  s_53b98b04954df3::t_f537cb9c76d834 20
+packages/quality/testing/playwright/tests/e2e/regression/AI-1401-sub-nodes-input-panel.spec.ts
+  s_53b98b04954df3::t_698e9b181a34e2 6
+packages/quality/testing/playwright/tests/e2e/regression/AI-2795-chat-panel-header-height.spec.ts
+  s_53b98b04954df3::t_038c8a21c15c9f 5
+packages/quality/testing/playwright/tests/e2e/regression/AI-716-correctly-set-up-agent-model-shows-error.spec.ts
+  s_53b98b04954df3::t_93f7a4ecde3c0b 6
+packages/quality/testing/playwright/tests/e2e/regression/AI-812-partial-execs-broken-when-using-chat-trigger.spec.ts
+  s_53b98b04954df3::t_5d11404ce35e8b 6
+packages/quality/testing/playwright/tests/evals/_smoke/anthropic.spec.ts
+  s_53b98b04954df3::t_4682e48cb4be45 10
+packages/quality/testing/playwright/tests/evals/_smoke/langsmith-fixture.spec.ts
+  s_53b98b04954df3::t_2c2159045fd923 8,17,27
+packages/quality/testing/playwright/tests/performance/memory-consumption-agents.spec.ts
+  s_53b98b04954df3::t_72d6761f9f72ac 14
+packages/quality/testing/playwright/tests/performance/memory-consumption-no-mcp-only.spec.ts
+  s_53b98b04954df3::t_ef1082820ddbb4 13
+packages/quality/testing/playwright/tests/performance/memory-consumption-no-mcp-registry.spec.ts
+  s_53b98b04954df3::t_be2bcdf78b30d5 13
+packages/workflow/oxlint.config.mts
+  s_53b98b04954df3::t_65a8b68ffb3eb0 1-45
+packages/workflow/package.json
+  s_53b98b04954df3::t_cd1148d13ead33 35-36,50,67-68
+packages/workflow/src/interfaces.ts
+  s_53b98b04954df3::t_ca7e560f0999cc 1132
+pnpm-lock.yaml
+  s_53b98b04954df3::t_c85441a8b95f1b 1616-1618,1634-1639,1865-1867,2042-2044,2054-2059,2159-2161,2168-2173,2269-2271,2278-2283,2421-2423,2427-2432,2999-3001,3011-3016,3094,3096,3106,3108-3111,3263-3265,3278-3283,3510-3512,3531-3536,4083-4085,4095-4100,4371,4373,4386,4388-4391,4414-4416,4426-4431,4571,4573,4586-4591,4606-4609,4619-4622,4870-4872,5551-5553,5566-5571,8369-8371,8420-8425,32268,32273,32277,32282,44703
+scripts/lint-parity/samples.json
+  s_53b98b04954df3::t_6e0fa2443bacc6 75-78
+turbo.json
+  s_53b98b04954df3::t_1169041544ac45 74-76,92-94,104-109,116-118,134-136,143-145,149-151,158-160,167-169,176-178,191-196,200-202,215-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6d54b167bb574579fca59a175901199f00afbc4",
+  "prompts": {},
+  "sessions": {
+    "s_53b98b04954df3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf4b6189-bab9-4508-a460-28f45bf69c58",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_8f0638df9beaf3::t_bae61c21ece656 81-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "596cdac4d631021077351fb5acb287cf492ddb24",
+  "prompts": {},
+  "sessions": {
+    "s_8f0638df9beaf3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af20-9e0e-70f1-b1e1-d44c39cb3ff5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

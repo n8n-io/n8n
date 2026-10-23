@@ -1,0 +1,31 @@
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  ai_agent 8,11,42,70,90-93,108-111
+packages/cli/src/metrics/prometheus/cached-metric-query.ts
+  ai_agent 1-2,5,12,15-22,33,35,37-43,48,51-66,69-70,73-77,82-103
+packages/cli/src/metrics/prometheus/__tests__/workflow-publication-metrics.service.test.ts
+  ai_agent 5,14-15,19-21,52
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  ai_agent 10,49,175,185,193,201,210-214
+packages/cli/src/metrics/prometheus/__tests__/cached-metric-query.test.ts
+  ai_agent 1,6,9,12-15,28,36-208,217,233,252,261-271
+packages/cli/src/metrics/prometheus/__tests__/workflow-statistics-metrics.service.test.ts
+  ai_agent 3,10,27-29,58
+packages/cli/src/metrics/prometheus/workflow-statistics-metrics.service.ts
+  ai_agent 8-12,26,36,95
+packages/cli/src/metrics/prometheus/__tests__/workflow-info-metrics.service.test.ts
+  ai_agent 3,11,16-18,36,40,155-166
+packages/cli/src/metrics/prometheus/__tests__/scheduler-metrics.service.test.ts
+  ai_agent 4,14-15,19-21,58
+packages/cli/src/metrics/prometheus/__tests__/active-workflow-metrics.service.test.ts
+  ai_agent 3,10,15-17,28-32
+packages/cli/src/metrics/prometheus/active-workflow-metrics.service.ts
+  ai_agent 8,20,29,39
+packages/cli/src/metrics/prometheus/workflow-info-metrics.service.ts
+  ai_agent 9,32,58,69-72,75-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44b5428677281e04e5c8959c3adff5c88fc797ab",
+  "prompts": {}
+}

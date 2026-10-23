@@ -1,0 +1,57 @@
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  ai_agent 1,9,19-20,22-30,37-43,49-54,61-65,67-70,72-80,99-126
+docs/generated/postgres-schema/public.agents_messages.md
+  ai_agent 9,43,56-69
+docs/generated/sqlite-schema/agents_messages.md
+  ai_agent 20,48,61-74
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/deleteRole.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getRole.generated.yml
+  ai_agent 15
+docs/generated/postgres-schema/public.agents_resources.md
+  ai_agent 8,33,57-70
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/updateRole.generated.yml
+  ai_agent 15
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/__snapshots__/CanvasNodeStickyNote.test.ts.snap
+  ai_agent 14
+pnpm-lock.yaml
+  ai_agent 990,2498-2500,5334,5424,6059,6453,6690,34250,34306,34321,34384,34457,34492-34502,37598,38051,38065,45452
+docs/generated/sqlite-schema/agents.md
+  ai_agent 21,70,255-258,260-268,281
+docs/generated/sqlite-schema/agents_observations.md
+  ai_agent 59,95
+docs/generated/sqlite-schema/agents_resources.md
+  ai_agent 19,42,66-79
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 10,68,253,255-256,258-266,279
+docs/generated/sqlite-schema/agents_threads.md
+  ai_agent 19,44,59-62,64-72,77
+docs/generated/postgres-schema/public.agents_threads.md
+  ai_agent 8,36,51,53-54,56-64,69
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowVersion.generated.yml
+  ai_agent 21
+docs/generated/sqlite-schema/agents_memory_entries.md
+  ai_agent 96
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 115,173
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  ai_agent 8,11,14-15,22,25,44-45,56,58,63,89-103
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  ai_agent 1,7-9,11-19,26-44,50-55,62-66,68,70-71,73-81,100-127
+docs/generated/sqlite-schema/README.md
+  ai_agent 32,34,191-194,197,199,631-634,636-644,657
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  ai_agent 93
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  ai_agent 9,19,25,33-38,48-49,60,62,67,93-107
+docs/generated/postgres-schema/README.md
+  ai_agent 32,34,208-211,215,218,644,646-647,649-657,670
+docs/generated/postgres-schema/public.agents_observations.md
+  ai_agent 56,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1896d51afb9830225428a110c9b14f8af5dc7b69",
+  "prompts": {}
+}

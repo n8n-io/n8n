@@ -1,0 +1,20 @@
+packages/@n8n/db/src/migrations/common/1790663602081-CreateAgentThreadGrantTable.ts
+  s_89ffeedfd03265::t_fde0510dba5392 4-18,21-22
+  s_89ffeedfd03265::t_68deffef84d683 1-3,19-20,23-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9ebb40dcd7b54f2f1c17b53cb2101824c88122c7",
+  "prompts": {},
+  "sessions": {
+    "s_89ffeedfd03265": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4e6-37cc-73b3-8f7b-279d3f0c3020",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

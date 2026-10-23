@@ -1,0 +1,128 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.test.ts
+  s_8987b8017e49de::t_02a9dc7b2c2151 57
+  s_8987b8017e49de::t_1168ca3a6a402f 24
+  s_8987b8017e49de::t_27393c1fe60159 198-231
+  s_8987b8017e49de::t_777672277d20b2 46
+  s_8987b8017e49de::t_55cdf50b85c6f9 35
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_8987b8017e49de::t_1407b264bc05e3 14-21
+  s_8987b8017e49de::t_02d392c4576f64 24-28
+  s_8987b8017e49de::t_678518fbb4ee04 330-347
+  s_8987b8017e49de::t_66d45e1fb9e3e8 377
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_8987b8017e49de::t_4780dc86006535 408-410,423,425-426,430-433,438-439
+  s_8987b8017e49de::t_6bcef30b3220b4 566
+  s_8987b8017e49de::t_bbb4c075272787 377-378
+  s_8987b8017e49de::t_f520979e12e7f7 42-46
+  s_8987b8017e49de::t_75754499349261 70
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_8987b8017e49de::t_cd1d92bca0fe97 224-225
+  s_8987b8017e49de::t_dcf72576781486 542-562
+  s_8987b8017e49de::t_d4fc9f0cfacd72 218-219,226-230
+  s_8987b8017e49de::t_0c88298454f199 255
+  s_8987b8017e49de::t_2b561e8ebeb68c 266-270
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_8987b8017e49de::t_eecd508918ead4 429
+  s_8987b8017e49de::t_d2be5e0972a4e5 16-23
+  s_8987b8017e49de::t_9d90831435bbf2 11
+  s_8987b8017e49de::t_197e64a5eb2fd3 420
+  s_8987b8017e49de::t_8f4caab861d62d 437-471
+  s_8987b8017e49de::t_a4c2071f72c62e 695-701
+  s_8987b8017e49de::t_6adac9f9f313dc 26
+  s_8987b8017e49de::t_b789434983f23c 138-141
+  s_8987b8017e49de::t_374b85eaa9c0b4 48
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_8987b8017e49de::t_0623637dd613a9 85
+  s_8987b8017e49de::t_8f33092daf977f 125-136
+  s_8987b8017e49de::t_2d3449f64d06da 524,528-559
+  s_8987b8017e49de::t_f2776badb5900e 8-14
+  s_8987b8017e49de::t_4a954a0faa30af 139-170,172-196
+packages/@n8n/api-types/src/dto/index.ts
+  s_8987b8017e49de::t_162d5125ac541d 595-596,598-599,601-602
+  s_8987b8017e49de::t_af263c5e48d1fa 615-616
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_8987b8017e49de::t_c643b857dc9ead 76-77
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promoteErrorMessage.ts
+  s_8987b8017e49de::t_26f97b9ca2e66c 2-3
+  s_8987b8017e49de::t_340fb89816ac5e 25-44,47
+packages/@n8n/cli/src/client.ts
+  s_8987b8017e49de::t_2acfc5151058a6 170
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8987b8017e49de::t_60653d42650b78 9056-9057
+  s_8987b8017e49de::t_16a7152568e304 9054-9055
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  s_8987b8017e49de::t_ecef130c7cd549 27,31
+  s_8987b8017e49de::t_b6f54ae436100f 2-3,5-6,25-26,28-30,32-43
+  s_8987b8017e49de::t_b7a4ee314a684c 10
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_8987b8017e49de::t_022fbf09aaaf56 1009,1018-1024
+  s_8987b8017e49de::t_67db2855fb4965 24
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_8987b8017e49de::t_b963acb307278f 425-446,461-475,485-486
+  s_8987b8017e49de::t_b108e752621f6b 453-460
+  s_8987b8017e49de::t_5f0e13f0105c4c 395
+  s_8987b8017e49de::t_6d023631918635 17
+  s_8987b8017e49de::t_764b911da4950a 482-484
+  s_8987b8017e49de::t_5f1cc3b91714a4 65
+  s_8987b8017e49de::t_a1cb78fae4892b 406
+  s_8987b8017e49de::t_ef3a4022ae1615 54
+  s_8987b8017e49de::t_72ae78e801f51b 476-481
+  s_8987b8017e49de::t_2e30255b3a423e 447-452
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_8987b8017e49de::t_f0fcc58fc7b9c8 92-127
+  s_8987b8017e49de::t_0d5cead9e2f03e 36-40
+packages/cli/src/errors/http-error-serializers.ts
+  s_8987b8017e49de::t_7ba03e99fada0c 49-51
+  s_8987b8017e49de::t_5e113900dd630b 117-134
+  s_8987b8017e49de::t_3bc94727216d50 3-4
+packages/cli/src/modules/promotions.ee/__tests__/branch-placement.test.ts
+  s_8987b8017e49de::t_20bb6eebcf4b78 3-9
+  s_8987b8017e49de::t_883989c229aa34 122-179
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  s_8987b8017e49de::t_515775f04869d4 30
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  ai_agent 98-99,109
+packages/cli/src/modules/promotions.ee/branch-placement.ts
+  s_8987b8017e49de::t_e36fe3fc3afe10 67-91,95-107
+  s_8987b8017e49de::t_cd1d92bca0fe97 92-94
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_8987b8017e49de::t_3c8035e456578d 39-40,46-88
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_8987b8017e49de::t_cd8a54b0b06cdf 1343,1368-1374
+  s_8987b8017e49de::t_40e035b7d69131 75-78
+  s_8987b8017e49de::t_d855a39330f6ce 1524
+  s_8987b8017e49de::t_acc24c1ef0d013 1476,1493-1498,1502
+packages/@n8n/cli/src/__tests__/promotion-connection-list-changes.test.ts
+  s_8987b8017e49de::t_af44084582c452 38
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.ts
+  s_8987b8017e49de::t_7b5bfd95df5316 23-27,35-36,39,42-43,47,50,52
+  s_8987b8017e49de::t_6af52e9366432d 86,91,93
+  s_8987b8017e49de::t_347f18b4a215c1 75-76
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_8987b8017e49de::t_207c02070ead82 12-16
+  s_8987b8017e49de::t_d26e0ffc1e2f25 77-104
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_8987b8017e49de::t_1dd3a877b8294e 32-36
+  s_8987b8017e49de::t_5535c808de4e5b 439-445,451-460,462-466,468-474,476-478,484,489-490,492,495-548,553-554,558-560,566-573,576-577,581,584-677
+  s_8987b8017e49de::t_cd1d92bca0fe97 446-450
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promoteErrorMessage.test.ts
+  s_8987b8017e49de::t_c07f2d14822ce3 23
+  s_8987b8017e49de::t_93dd0003a36c84 48-74
+  s_8987b8017e49de::t_79fd300c8a9257 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "31af2f1570e41355039c01b8cd3b7a42b73052c1",
+  "prompts": {},
+  "sessions": {
+    "s_8987b8017e49de": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ce582f0f-6915-4be7-93ac-a2ac38c09dc8",
+        "model": "grok-4.7"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

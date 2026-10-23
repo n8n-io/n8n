@@ -1,0 +1,21 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_2188929fb00b57::t_65589ea55c1cee 576-584
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_2188929fb00b57::t_ea77df9cf408d0 585,587-588,599-603
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dc155544b5cff32535c2ef4cdb41952f16c8eec3",
+  "prompts": {},
+  "sessions": {
+    "s_2188929fb00b57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ea19524-3131-4b5b-a8e3-f7f398aaece0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

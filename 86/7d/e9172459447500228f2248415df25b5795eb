@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditsSettingsDropdown.test.ts
+  s_df6c8dbf86e554::t_77b8e778d53d0d 96-111
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue
+  s_df6c8dbf86e554::t_e30937bf252801 96
+  s_df6c8dbf86e554::t_7c95519c5c497a 139,141,143,145
+  s_df6c8dbf86e554::t_400e29cbb82845 238
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.vue
+  s_df6c8dbf86e554::t_96dddafac90259 63,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "867de9172459447500228f2248415df25b5795eb",
+  "prompts": {},
+  "sessions": {
+    "s_df6c8dbf86e554": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a924af52-96cb-4502-a369-1e8b133b9915",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

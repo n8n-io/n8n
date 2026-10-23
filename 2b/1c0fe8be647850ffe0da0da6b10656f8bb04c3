@@ -1,0 +1,31 @@
+packages/@n8n/api-types/src/dto/workflow-reviews/get-workflow-review-request-detail.dto.ts
+  h_760178ed151f13 23,25
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-inbox.service.ts
+  s_40ded6d55b632c::t_c743bfb41270d2 164-169,175-178
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_40ded6d55b632c::t_f75428d71bd838 3185-3188
+  s_40ded6d55b632c::t_cdfd00849ed532 3213-3249
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.detail.service.test.ts
+  s_40ded6d55b632c::t_596f50c46119b7 440-466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b1c0fe8be647850ffe0da0da6b10656f8bb04c3",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_40ded6d55b632c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3e20ac4a-17e3-438e-9839-fcda2a0cfbf3",
+        "model": "grok-4.6"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

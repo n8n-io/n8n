@@ -1,0 +1,24 @@
+packages/@n8n/api-types/src/dto/folders/__tests__/list-folder-query.dto.test.ts
+  s_976bd06a0e2294::t_80ac9017214c75 201-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c7cdfa5a74ca5ea522d987d3183d4d1b4e2cd4bd",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_976bd06a0e2294": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "06554381-cefd-4e77-a17e-c7aa6104e063",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

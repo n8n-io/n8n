@@ -1,0 +1,16 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_a348dde7c02e89 5241,5247
+packages/frontend/editor-ui/src/features/ai/assistant/views/SettingsAIView.vue
+  h_a348dde7c02e89 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "18138a589910ee8ac75ccdd63810579da8efd4bc",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

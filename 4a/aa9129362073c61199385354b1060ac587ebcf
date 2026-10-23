@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getUsers.test.ts
+  s_14f52ab61740a5::t_b7a71a8d513d80 188-189
+  s_14f52ab61740a5::t_cdd89e769479ba 10-11,153-187,190-192
+  s_14f52ab61740a5::t_267e3608c4e43b 5,193
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_14f52ab61740a5::t_265e66b2b6bb67 35-47
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_14f52ab61740a5::t_76cc2dc3a897f5 66-76,112-116
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMessage/create.test.ts
+  s_14f52ab61740a5::t_179d51a4ad17d9 8-20
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.perItem.test.ts
+  s_14f52ab61740a5::t_400159aa8cf396 1-75,77-78
+  s_14f52ab61740a5::t_325ae55f01f068 76
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
+  s_14f52ab61740a5::t_2e82bce01dec83 10-11,52,127-128,135
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/create.operation.ts
+  s_14f52ab61740a5::t_2e82bce01dec83 5-6,41,87-88,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4aaa9129362073c61199385354b1060ac587ebcf",
+  "prompts": {},
+  "sessions": {
+    "s_14f52ab61740a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3435d574-b67e-42e7-9ac5-77452c95f9ae",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

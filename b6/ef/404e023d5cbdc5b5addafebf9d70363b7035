@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/tag/__tests__/tag-public.dto.test.ts
+  s_9a008403d71942::t_a322fa845c8482 49,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b6ef404e023d5cbdc5b5addafebf9d70363b7035",
+  "prompts": {},
+  "sessions": {
+    "s_9a008403d71942": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49cc0e38-95e7-41da-b306-5bffe1ec96d7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

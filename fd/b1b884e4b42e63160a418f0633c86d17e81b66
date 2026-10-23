@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_7a2ecedc3a9c1d::t_75975f48e256d6 48,2686-2689,2703
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fdb1b884e4b42e63160a418f0633c86d17e81b66",
+  "prompts": {},
+  "sessions": {
+    "s_7a2ecedc3a9c1d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ce16-9291-767f-9bbb-2b0256764760",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

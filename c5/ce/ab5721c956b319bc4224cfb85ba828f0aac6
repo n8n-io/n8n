@@ -1,0 +1,103 @@
+packages/cli/src/services/api-key-auth.strategy.ts
+  s_a4556b837ab6e9::t_22e1b236f8b23b 39-40,56
+  s_a4556b837ab6e9::t_fd5afc68ce66c5 12
+packages/cli/src/services/__tests__/deployment-signing-secrets.integration.test.ts
+  s_a4556b837ab6e9::t_658a0bc90ce463 123
+  s_a4556b837ab6e9::t_d474b4dbf82b5f 7,126
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.test.ts
+  s_a4556b837ab6e9::t_658a0bc90ce463 13
+  s_a4556b837ab6e9::t_f0e1252fc2f8f6 69-72
+  s_a4556b837ab6e9::t_72842cec91341e 17,40,73-76,82,89,179
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.integration.test.ts
+  s_a4556b837ab6e9::t_72842cec91341e 24,169
+packages/cli/src/modules/mcp/__tests__/mcp-server-middleware.service.test.ts
+  s_a4556b837ab6e9::t_f0e1252fc2f8f6 64-67,86,102,130-133,143,304-307,331-334,355-358,380,438-441
+  s_a4556b837ab6e9::t_0f5e7e919be456 411
+  s_a4556b837ab6e9::t_658a0bc90ce463 29
+packages/cli/src/modules/oauth-server/__tests__/oauth-session.service.test.ts
+  s_a4556b837ab6e9::t_72842cec91341e 24,30,37
+  s_a4556b837ab6e9::t_658a0bc90ce463 12
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_a4556b837ab6e9::t_22e1b236f8b23b 33
+packages/cli/src/services/__tests__/jwt.service.test.ts
+  s_a4556b837ab6e9::t_658a0bc90ce463 32,38,56,136,148,163,178
+  s_a4556b837ab6e9::t_379ad0523695f0 59-62,66-69,75-119
+packages/cli/src/controllers/users.controller.ts
+  s_a4556b837ab6e9::t_22e1b236f8b23b 154
+packages/cli/src/services/__tests__/public-api-key.service.test.ts
+  s_a4556b837ab6e9::t_22e5a7c690952e 114
+  s_a4556b837ab6e9::t_658a0bc90ce463 108,142
+packages/cli/src/modules/token-exchange/services/scoped-jwt.strategy.ts
+  s_a4556b837ab6e9::t_22e1b236f8b23b 31,39
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_a4556b837ab6e9::t_07e05166ef82fc 1712
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.integration.test.ts
+  s_a4556b837ab6e9::t_658a0bc90ce463 15
+  s_a4556b837ab6e9::t_72842cec91341e 24,102-104
+packages/cli/src/auth/auth.service.ts
+  s_a4556b837ab6e9::t_a2c0b5f12fa6b1 241,286,385,450,461,476,492
+packages/cli/src/modules/oauth-server/oauth-session.service.ts
+  s_a4556b837ab6e9::t_22e1b236f8b23b 35,55
+packages/cli/src/services/__tests__/api-key-auth.strategy.integration.test.ts
+  s_a4556b837ab6e9::t_07e05166ef82fc 108-111,120
+  s_a4556b837ab6e9::t_03dddb39788280 35
+packages/cli/src/services/token-purposes.ts
+  s_a4556b837ab6e9::t_d2e84c4ad60b98 1-55
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_a4556b837ab6e9::t_fd5afc68ce66c5 79-82
+  s_a4556b837ab6e9::t_d4863878adf725 83-92,94-95,472,477
+packages/cli/src/services/__tests__/public-api-key.service.integration.test.ts
+  s_a4556b837ab6e9::t_658a0bc90ce463 15
+packages/cli/src/modules/token-exchange/services/token-exchange.service.ts
+  s_a4556b837ab6e9::t_fd5afc68ce66c5 205
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_a4556b837ab6e9::t_658a0bc90ce463 26,95,116,126,133,256,378,388,399
+  s_a4556b837ab6e9::t_f0e1252fc2f8f6 280-282,463-466,475-478,500-503,524-527,541-544,781-784,792-795,803-806,817-820,883-886,982-985,996-999
+packages/cli/test/integration/password-reset.api.test.ts
+  s_a4556b837ab6e9::t_07e05166ef82fc 152
+packages/cli/src/services/jwt.service.ts
+  s_a4556b837ab6e9::t_b43328f4dae046 1,4,9-21,27-31,70-75,78-91,95-147
+packages/cli/src/modules/mcp/mcp-server-middleware.service.ts
+  s_a4556b837ab6e9::t_fd5afc68ce66c5 47
+packages/cli/test/integration/controllers/invitation/invitation.controller.integration.test.ts
+  s_a4556b837ab6e9::t_bafe868b3e7614 61
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_a4556b837ab6e9::t_84ffe94bc4f71b 161,214,218,261,294
+packages/cli/eslint.config.mjs
+  s_a4556b837ab6e9::t_a80acc22674e6b 34-43,191-197,214,220-245
+packages/cli/src/services/public-api-key.service.ts
+  s_a4556b837ab6e9::t_22e1b236f8b23b 342-343,349
+packages/cli/test/integration/oidc/oidc.service.ee.test.ts
+  s_a4556b837ab6e9::t_bafe868b3e7614 1394,1399-1401,1410,1415-1417
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_a4556b837ab6e9::t_22e1b236f8b23b 141,150,184,192
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_a4556b837ab6e9::t_9708bc2c3bc0e4 66,69
+  s_a4556b837ab6e9::t_72842cec91341e 591,608,660
+  s_a4556b837ab6e9::t_658a0bc90ce463 44
+packages/cli/src/services/user.service.ts
+  s_a4556b837ab6e9::t_22e1b236f8b23b 218,461-464
+packages/cli/test/integration/auth.api.test.ts
+  s_a4556b837ab6e9::t_7eebc5d3661416 339,361,374,403
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-authorization.api.test.ts
+  s_a4556b837ab6e9::t_72842cec91341e 119
+  s_a4556b837ab6e9::t_658a0bc90ce463 285,302
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_a4556b837ab6e9::t_72842cec91341e 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c5ceab5721c956b319bc4224cfb85ba828f0aac6",
+  "prompts": {},
+  "sessions": {
+    "s_a4556b837ab6e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5eb18d59-43bb-430f-8f1b-0d965479bf74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

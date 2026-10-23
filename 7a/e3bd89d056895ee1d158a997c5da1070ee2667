@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/credentials/__tests__/seeder.test.ts
+  s_e9e07ebd19cfd6::t_b85d33faf8dee0 135-154
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_e9e07ebd19cfd6::t_06b309d658401c 130-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ae3bd89d056895ee1d158a997c5da1070ee2667",
+  "prompts": {},
+  "sessions": {
+    "s_e9e07ebd19cfd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e5a1727-751a-4a0e-8cfb-0f446de0a82d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,82 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  s_c5370144142666::t_0006b863372d14 1-9,12,14,16-36,44-45,47-53
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_c5370144142666::t_15b465dfe18d60 16,42
+  s_c5370144142666::t_0b1ba38a3d71f3 152
+  s_c5370144142666::t_c89dfecf3a562d 119-128
+  s_c5370144142666::t_0006b863372d14 114,133-135,140-145,147,149-150
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/caller-ids.reference.test.ts
+  s_c5370144142666::t_0006b863372d14 1-37
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_c5370144142666::t_0006b863372d14 7,15,33,40,135-139,141,151,160,163,174,176,181,224
+  s_c5370144142666::t_25ca730e65045d 25,145-149,153,156,204-211,220,231
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_c5370144142666::t_0006b863372d14 251-254,261
+  s_c5370144142666::t_778ff5135c858e 250
+packages/cli/src/modules/n8n-packages/entities/reference.ts
+  s_c5370144142666::t_0006b863372d14 1-18
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_c5370144142666::t_0bd11f129d190d 138-141
+  s_c5370144142666::t_0006b863372d14 11-12,15,27,49,88-118,130-137,144
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/extract-workflow-requirements.test.ts
+  s_c5370144142666::t_0006b863372d14 4,36,42,59,70,78,86,92-98,102-103,105,119,127,135,146
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publisher.test.ts
+  s_c5370144142666::t_0006b863372d14 11,189,213,246,281,292-366
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_c5370144142666::t_0006b863372d14 37,47,56,68-69,72-77,183-191,201,217-220,225,229,233,235-236,239-240,244-246,311-316
+  s_c5370144142666::t_55f43581b91417 237-238
+packages/cli/src/modules/n8n-packages/entities/workflow/references/index.ts
+  s_c5370144142666::t_0006b863372d14 3-23,26
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_c5370144142666::t_25ca730e65045d 3,11,84-122,127-131,146-147,151,154,164,167
+  s_c5370144142666::t_0006b863372d14 2,123-126,132-145,148-150,152-153,155-163,165-166,168-174
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_c5370144142666::t_0006b863372d14 9,13,19-25,37,63
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_c5370144142666::t_0006b863372d14 87-105
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_c5370144142666::t_0006b863372d14 17,20,40-42,74-76,1093-1178
+  s_c5370144142666::t_0b1ba38a3d71f3 2-8
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/sub-workflow-ordering.test.ts
+  s_c5370144142666::t_25ca730e65045d 1-81
+packages/cli/src/modules/n8n-packages/entities/workflow/references/caller-ids.reference.ts
+  s_c5370144142666::t_0006b863372d14 1-25
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-dependency-resolver.test.ts
+  s_c5370144142666::t_0006b863372d14 39
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_c5370144142666::t_0006b863372d14 6,9,15-16,35
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_c5370144142666::t_0006b863372d14 17-18,28,43,48,173-196
+  s_c5370144142666::t_25ca730e65045d 1-16,19-27,29-42,44-47,49-172,197-218
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_c5370144142666::t_0006b863372d14 3,6,30-35,37,39,41-55
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/sub-workflow-node.reference.test.ts
+  s_c5370144142666::t_0006b863372d14 1,4-9,34-40,124,164-216
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publisher.ts
+  s_c5370144142666::t_0006b863372d14 12-13,21,28-39,54-90,136
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-dependency-resolver.ts
+  s_c5370144142666::t_0006b863372d14 6,16,42
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/error-workflow.reference.test.ts
+  s_c5370144142666::t_0006b863372d14 1-51
+packages/cli/src/modules/n8n-packages/entities/workflow/sub-workflow-ordering.ts
+  s_c5370144142666::t_25ca730e65045d 1-3,6-13,20,30,32,38,54-55,58
+  s_c5370144142666::t_0006b863372d14 4-5,14-19,21-29,31,33-37,39-53,56-57
+packages/cli/src/modules/n8n-packages/entities/workflow/references/error-workflow.reference.ts
+  s_c5370144142666::t_0006b863372d14 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "05ec5e8bfa36efe539f42d13db1984d8802b62b6",
+  "prompts": {},
+  "sessions": {
+    "s_c5370144142666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b6e07a-8017-4b60-ad00-b9db5880f6e3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

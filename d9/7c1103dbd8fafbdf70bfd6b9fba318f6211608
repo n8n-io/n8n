@@ -1,0 +1,41 @@
+packages/nodes-base/utils/microsoft/transport.ts
+  s_214fc907751351::t_64cd45ab41ae5a 27-28,30-32
+  s_214fc907751351::t_9a24b2657c709f 72-73
+  s_214fc907751351::t_dfd7953c1a5f63 104-123,127-138,146-150
+  s_214fc907751351::t_c2de70b4fe36b8 60-61
+  s_214fc907751351::t_7f05bb904d1413 259-260
+  s_214fc907751351::t_b63ab14c1d8d46 201-211,219
+  s_214fc907751351::t_9eecc38bf071c3 144-145
+  s_214fc907751351::t_ac05ed68f18792 287-293
+  s_214fc907751351::t_f533d90b2e3cfc 11
+  s_214fc907751351::t_b961f5107ca655 40-41,43-46,48
+  s_214fc907751351::t_aae57a8acf3e5b 252
+  s_214fc907751351::t_ae2aa80f48f381 42
+  s_214fc907751351::t_a55b02b095af85 103
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/index.ts
+  s_214fc907751351::t_109ca3e165e35b 1
+packages/nodes-base/utils/microsoft/test/transport.test.ts
+  s_214fc907751351::t_9c45e0cf2a2580 734-747,814
+  s_214fc907751351::t_4f91e332c3a03d 788,790,796,800-801,809-813
+  s_214fc907751351::t_b5156c370170a1 48-85,87-88,97,102,104-116,122
+  s_214fc907751351::t_cb397c4847daaa 23
+  s_214fc907751351::t_ace84aed7f1bec 350-408,410-425
+  s_214fc907751351::t_dcdca9b19db95c 487-498
+  s_214fc907751351::t_85f6e4beba23c9 409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d97c1103dbd8fafbdf70bfd6b9fba318f6211608",
+  "prompts": {},
+  "sessions": {
+    "s_214fc907751351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae087fef-5c43-4513-8344-925f8b861313",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

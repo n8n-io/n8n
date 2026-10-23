@@ -1,0 +1,78 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_adb5d982725a9c::t_dc1ec5adb6124b 68-70
+  s_adb5d982725a9c::t_7737ee214c1ad4 283-296
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_adb5d982725a9c::t_4329e20c62a84c 74-80,561-568
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_adb5d982725a9c::t_4329e20c62a84c 590-599,617,816
+  ai_agent 618-620,817-819
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_adb5d982725a9c::t_cb6e837fea1b37 15
+  s_adb5d982725a9c::t_50763638c35cc8 89-92
+  s_adb5d982725a9c::t_333ccf505e4ea9 163
+  s_adb5d982725a9c::t_4603e8fbd86989 235-242
+  s_adb5d982725a9c::t_0ff6b0643240fe 263
+  s_adb5d982725a9c::t_28ef55f6f7e761 265-278
+  s_adb5d982725a9c::t_7e3d716d6dd166 370-385,388-394
+  s_adb5d982725a9c::t_9050cae6a5a0eb 398-410
+  s_adb5d982725a9c::t_4329e20c62a84c 1189-1190,1308,1353-1359,1477-1487,1493-1496,1500-1501,1507-1509,1511-1513,1548,1552
+  s_adb5d982725a9c::t_5a18f710697a64 1291,1302-1305
+  s_adb5d982725a9c::t_d3e3c1c890ee99 1313-1315,1360-1363,1365
+  ai_agent 1488-1492
+  s_adb5d982725a9c::t_f6b007b6e7c6c8 1497
+  s_adb5d982725a9c::t_687f9b8a81e9c2 2225,2229
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  ai_agent 17-22
+  s_adb5d982725a9c::t_723e7d6f830a9e 28-35
+  s_adb5d982725a9c::t_ad70a08f776a8b 71
+  s_adb5d982725a9c::t_9f6314a08253b6 73
+  s_adb5d982725a9c::t_a800fa9b5e0e6c 557-559
+  s_adb5d982725a9c::t_b96720739aee9c 690
+  s_adb5d982725a9c::t_56134e8af66020 776-778,783-798,801-808
+  s_adb5d982725a9c::t_e5c1292514eff2 779-782,799-800
+  s_adb5d982725a9c::t_4329e20c62a84c 822-848,898-974,2677-2704,2709-2736
+  s_adb5d982725a9c::t_d3e3c1c890ee99 849-880,2744-2777,2779-2782,2788-2792,2801-2805
+  s_adb5d982725a9c::t_cb6e63bb457997 975-976
+  s_adb5d982725a9c::t_e8cbfb6dee6193 1046-1132,1135,1138,1141,1144-1145,1154-1156
+  s_adb5d982725a9c::t_e720c6ef3e80c9 1139-1140,1142-1143,1146-1153,1157-1210
+  s_adb5d982725a9c::t_bd3d9bddbf8aca 2320-2350,2352-2382
+  s_adb5d982725a9c::t_f516fd0d31151f 2705-2706,2737-2738
+  s_adb5d982725a9c::t_9ed0809cc1ccfb 2778
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_adb5d982725a9c::t_4329e20c62a84c 46-49,77,196,221,286
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentConfigAutosave.test.ts
+  ai_agent 30
+  s_adb5d982725a9c::t_4329e20c62a84c 31-53
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_adb5d982725a9c::t_b66429dbd4aabe 69
+  s_adb5d982725a9c::t_afb97c42a4fc16 126
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_adb5d982725a9c::t_540375d219aa87 197
+  s_adb5d982725a9c::t_91b47ebb93ea4e 280-295,299-302
+  ai_agent 296-298
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_adb5d982725a9c::t_d45f8d50261fb1 310-311
+  s_adb5d982725a9c::t_4329e20c62a84c 314-325,329-335
+  ai_agent 326-328
+  s_adb5d982725a9c::t_bb05cd533ea720 387
+  s_adb5d982725a9c::t_76b381b2ce296f 415
+  s_adb5d982725a9c::t_019368933f2869 444
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_adb5d982725a9c::t_4329e20c62a84c 8275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "650adedaf66e76c7841662c8ab0f1545a2b41b61",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

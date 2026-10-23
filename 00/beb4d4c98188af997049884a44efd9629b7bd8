@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_60010117747385::t_0089bbc83fdf02 330
+  s_60010117747385::t_92bacb6e1752c2 331
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_60010117747385::t_a39e87e0d1d575 16
+  s_60010117747385::t_de4c2b871ab92e 215-237
+  s_60010117747385::t_441808d46c5891 53
+  s_60010117747385::t_a9d836297c0c1d 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "00beb4d4c98188af997049884a44efd9629b7bd8",
+  "prompts": {},
+  "sessions": {
+    "s_60010117747385": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0592fee5-3f07-426b-b790-b78db2262042",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_ff953bd5fa5eff::t_3a4438fd82093d 450
+  s_ff953bd5fa5eff::t_f9990b5946c892 406
+  s_ff953bd5fa5eff::t_e1a231a4e9d1cf 419-422,427
+  s_ff953bd5fa5eff::t_ce01c6c05f0406 352
+packages/cli/test/integration/workflows/iam-1241-repro.test.ts
+  s_a2962336dccc83::t_e369d54a59d843 119
+  s_a2962336dccc83::t_1a6c8712ac1fdf 10
+  s_a2962336dccc83::t_ae9ae609fd2d37 12,36-54,59,73-74,76,79,82-83,86-104,108-111,116,120-125,127,129-131,134-142,144-155,157-158,160-165,170,174-178,181-186,188-190,192,194-197,200
+  s_a2962336dccc83::t_ae1102d8aeb569 1-9,11,13-35,55-58,60-72,75,77-78,80-81,84-85,105-107,112-115,117-118,126,128,132-133,143,156,159,166-169,171-173,179-180,187,191,193,198-199,201-202
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_ff953bd5fa5eff::t_f4bf56672f6f5a 973
+  s_ff953bd5fa5eff::t_972ebb69e52a7e 891
+  s_ff953bd5fa5eff::t_34c4cc8a8f6c99 1246
+  s_ff953bd5fa5eff::t_59800508dd7aa8 1260
+  s_ff953bd5fa5eff::t_1a9f75d123b22f 1288
+  s_ff953bd5fa5eff::t_0d49201252a85d 1334
+  s_ff953bd5fa5eff::t_3f26d04058cebb 1071-1170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c00c436ddfdd86f24483d0e4f9bc2c498b53b410",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a2962336dccc83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86288f9d-114b-409b-afee-a3a71f832a5b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_ff953bd5fa5eff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a86677f-f714-4b73-9d32-32cecd91c41c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

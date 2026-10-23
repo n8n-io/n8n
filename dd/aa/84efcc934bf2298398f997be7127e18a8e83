@@ -1,0 +1,31 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_b75353843041f1::t_15ca885ba57875 467,472-473,496,498-499
+  s_b75353843041f1::t_4f5f517709b3aa 405
+  s_b75353843041f1::t_a08d3fe4bafa3b 438
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_b75353843041f1::t_cb7a6233a05bc1 348-351,353,355,367,369-372,374
+  s_b75353843041f1::t_f54ba427ada7ec 120-125
+  s_b75353843041f1::t_5735e4369d43db 93-119,126-161,318,375
+  s_b75353843041f1::t_ddd1be2b760143 162-166,319-320,322,347,376,378-379
+packages/cli/src/events/maps/instance-ai.event-map.ts
+  s_b75353843041f1::t_b6a7a808506109 27
+packages/cli/src/modules/instance-ai/event-bus/durable-log-metrics.ts
+  s_b75353843041f1::t_4c2cc913a382ab 91,94-95
+  s_b75353843041f1::t_d39de75bc65801 47,50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ddaa84efcc934bf2298398f997be7127e18a8e83",
+  "prompts": {},
+  "sessions": {
+    "s_b75353843041f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd7024c5-2228-48df-be88-825fe78fa77b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

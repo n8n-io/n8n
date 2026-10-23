@@ -1,0 +1,26 @@
+packages/@n8n/utils/src/json/json-size-exceeds.ts
+  s_e5d1e3f565ab47::t_4d2484013af17e 89
+  s_e5d1e3f565ab47::t_7abf9b93a655f5 3-5
+  s_e5d1e3f565ab47::t_ce198043880193 79
+  s_e5d1e3f565ab47::t_012f26041bddad 23-26,29-36,38-41
+  s_e5d1e3f565ab47::t_f77481c9f0d9ae 51,57,60,64,71
+packages/@n8n/utils/src/json/json-size-exceeds.test.ts
+  s_e5d1e3f565ab47::t_1c079eb22d388f 55-61
+  s_e5d1e3f565ab47::t_6af9d89fecc6c9 123-124,126,130-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "074791a6f9fd141dba5cc52e41785c91da2eff88",
+  "prompts": {},
+  "sessions": {
+    "s_e5d1e3f565ab47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda7886d-c714-464f-ac3c-018fd3195773",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

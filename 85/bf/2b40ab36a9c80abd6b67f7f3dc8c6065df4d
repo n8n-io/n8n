@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/errorHandler.ts
+  s_9afe0d6d8e9afc::t_d606424d0e3fe1 84
+  s_9afe0d6d8e9afc::t_5c10715a559f31 4
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/constants.ts
+  s_9afe0d6d8e9afc::t_3c3bc170ad3795 27-31
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/errorHandler.test.ts
+  s_9afe0d6d8e9afc::t_642d85165ce0b5 60-62,65-77
+  s_9afe0d6d8e9afc::t_1351c8a1374f3c 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "85bf2b40ab36a9c80abd6b67f7f3dc8c6065df4d",
+  "prompts": {},
+  "sessions": {
+    "s_9afe0d6d8e9afc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae33d808-62f8-42b2-a194-4fa3c2cd5e31",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

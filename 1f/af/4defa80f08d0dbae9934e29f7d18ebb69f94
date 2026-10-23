@@ -1,0 +1,24 @@
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.vue
+  s_89ffeedfd03265::t_a2908c4df6ff36 38-39,55,177-178
+packages/frontend/editor-ui/src/app/composables/useApprovalCardLabels.ts
+  s_89ffeedfd03265::t_a2908c4df6ff36 14
+packages/frontend/editor-ui/src/features/agents/__tests__/ApprovalCard.test.ts
+  s_89ffeedfd03265::t_5e662766a537d6 50-52
+  s_89ffeedfd03265::t_22453a7b5102c4 27,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1faf4defa80f08d0dbae9934e29f7d18ebb69f94",
+  "prompts": {},
+  "sessions": {
+    "s_89ffeedfd03265": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4e6-37cc-73b3-8f7b-279d3f0c3020",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

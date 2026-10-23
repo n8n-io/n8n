@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.ts
+  s_cd9e2842ed6bc7::t_e44c147c0b7866 2,4
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.test.ts
+  s_cd9e2842ed6bc7::t_2cfeeb2151e7de 2,5-6
+packages/frontend/editor-ui/src/app/composables/useBasePageRedirectionHelper.test.ts
+  s_cd9e2842ed6bc7::t_507d22a53ccf46 25-272
+  s_cd9e2842ed6bc7::t_c289d905fe7486 4
+packages/frontend/editor-ui/src/app/composables/useBasePageRedirectionHelper.ts
+  s_cd9e2842ed6bc7::t_4265f7c729c329 9,13,16-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "49b4b6db6e5024c36792b02470d9c93f3d2b1081",
+  "prompts": {},
+  "sessions": {
+    "s_cd9e2842ed6bc7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "763a8903-0cc1-48a2-b0f1-0366fe8a5dd7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

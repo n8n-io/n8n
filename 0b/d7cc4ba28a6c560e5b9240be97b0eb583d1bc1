@@ -1,0 +1,19 @@
+packages/testing/playwright/tests/e2e/api/workflow-publication-service.spec.ts
+  s_7b6027c1325d04::t_c072459381254d 8-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0bd7cc4ba28a6c560e5b9240be97b0eb583d1bc1",
+  "prompts": {},
+  "sessions": {
+    "s_7b6027c1325d04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13bad66f-b03e-43fd-bdd1-9eb5226ce1e0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

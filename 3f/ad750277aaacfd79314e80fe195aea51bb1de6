@@ -1,0 +1,23 @@
+packages/nodes-base/credentials/SalesforceJwtApi.credentials.ts
+  fb23f2f325c45512 5,59,77,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "3fad750277aaacfd79314e80fe195aea51bb1de6",
+  "prompts": {
+    "fb23f2f325c45512": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81ab62d8-c6bb-43b3-85f7-97f48f59b50a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 1,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}

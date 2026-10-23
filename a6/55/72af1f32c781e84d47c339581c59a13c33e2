@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardHydration.ts
+  s_c46f71b1296adf::t_3ceaea2a1a7a01 107,111-113
+  s_c46f71b1296adf::t_79e39fa4b149ca 98-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a65572af1f32c781e84d47c339581c59a13c33e2",
+  "prompts": {},
+  "sessions": {
+    "s_c46f71b1296adf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93ce490b-f2a8-430e-acee-587c52f383a1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

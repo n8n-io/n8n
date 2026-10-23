@@ -1,0 +1,87 @@
+packages/@n8n/permissions/src/constants.ee.ts
+  s_d95c05c8f96573::t_e3f5f7e1093eb7 92
+packages/@n8n/api-types/src/dto/index.ts
+  s_d95c05c8f96573::t_647cabb302a42d 243-246
+packages/cli/src/public-api/v1/handlers/security-policy/spec/schemas/security-policy.yml
+  s_d95c05c8f96573::t_4c0cf6669dfff2 1-44
+packages/cli/src/public-api/v1/handlers/security-policy/spec/schemas/security-policy.update.yml
+  s_d95c05c8f96573::t_dc77f0afb0ae75 1-23
+packages/@n8n/api-types/src/dto/security-settings/security-policy.dto.ts
+  s_d95c05c8f96573::t_ceabf71619f647 1-31
+packages/cli/src/services/__tests__/security-settings.service.test.ts
+  s_d95c05c8f96573::t_b8b21911722422 277-436
+  s_d95c05c8f96573::t_23dcb37e8a558b 13-14,24-25,32-33,36-42
+  s_1ede4595a2da7e::t_b66e840cf5aaf1 43
+packages/cli/src/public-api/v1/openapi.yml
+  s_d95c05c8f96573::t_7b545d92502cf3 23-24
+  s_d95c05c8f96573::t_1812d64c34584f 57-58
+packages/cli/src/controllers/security-settings.controller.ts
+  s_d95c05c8f96573::t_5ad0fbfbf13906 26-27,56-62
+  s_31cf4a9bad55bf::t_23e329c12a45d5 63,73
+packages/cli/src/services/security-settings.service.ts
+  s_d95c05c8f96573::t_1f1c624e614587 13
+  s_d95c05c8f96573::t_b9f8cec0348a69 1,15,17,20-49,60-61,64-99,101-104,110-111,116-117,119,121-123,126-128,130-138,141,143-144,208
+  s_31cf4a9bad55bf::t_fae77a2c1c535b 124,129,139-140
+  s_d95c05c8f96573::t_ab93f7ff34f0e4 16
+  s_d95c05c8f96573::t_b5b3abadde056b 125,142,145-146,207
+  s_1ede4595a2da7e::t_7d6456b9885176 100,105-109,112-115,118,120,147-156,209-217
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_d95c05c8f96573::t_5facda0c45362e 23-31,41,50,55,59,62-63,67,70-71,86-89,94,99-100,103-109,113,116-117,119,122,124,127,130-131,133,144,165,175
+packages/cli/src/public-api/types.ts
+  s_d95c05c8f96573::t_03cc463e9c2e59 382-390
+  s_d95c05c8f96573::t_1e9b064a3f54c1 10
+packages/cli/src/public-api/v1/handlers/security-policy/spec/paths/security-policy.yml
+  s_31cf4a9bad55bf::t_8ddf0a583a1340 34-35
+  s_d95c05c8f96573::t_a218cee7f6c7ee 1-9,12-33,36-57
+  s_31cf4a9bad55bf::t_428b6b08cddadb 10-11
+packages/cli/src/controllers/__tests__/security-settings.controller.test.ts
+  s_31cf4a9bad55bf::t_95b9e429eeccec 168
+  s_d95c05c8f96573::t_38ecff45c738dc 2,7,29-35,37-38,42-44,47-76,79-88,90,92,95-110,112-116,119-122,124-128,130-135,137-141,144-145,147-151,153-163,165-167,169-178
+  s_d95c05c8f96573::t_f086536bb1b47b 28,36
+  s_31cf4a9bad55bf::t_4f37986eff6c72 118,136
+packages/cli/src/public-api/v1/handlers/security-policy/security-policy.handler.ts
+  s_31cf4a9bad55bf::t_36536f6d49bd9a 44-48
+  s_31cf4a9bad55bf::t_1623b8b3a0300c 5,7-8,17,30,54
+  s_d95c05c8f96573::t_b4a6196daf2562 1-4,9-15,18-29,31-43,49-53,55-59
+  s_31cf4a9bad55bf::t_5d189d2de9f65b 6
+  s_1ede4595a2da7e::t_aa23518b7f4658 16
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_d95c05c8f96573::t_c954103410cb7c 17
+packages/cli/test/integration/public-api/security-policy.test.ts
+  s_d95c05c8f96573::t_f785646fa8c044 1-38,40-49,51-67,69-76,78-136,138-142,144-226
+  s_d95c05c8f96573::t_cea80908f06ab9 39
+  s_d95c05c8f96573::t_df06c6561c4954 137,143
+  s_31cf4a9bad55bf::t_212de84fe7afc0 50,68,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2994312dad7f90b529d690d0d39f161dd713d994",
+  "prompts": {},
+  "sessions": {
+    "s_1ede4595a2da7e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f00d7c7b-6af1-4ead-a671-a38f3c02ecc8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    },
+    "s_31cf4a9bad55bf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "37092009-8b08-49eb-87e4-6a064f86ed25",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    },
+    "s_d95c05c8f96573": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "97ff1d2f-9e20-46c6-8717-1ddeda953740",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

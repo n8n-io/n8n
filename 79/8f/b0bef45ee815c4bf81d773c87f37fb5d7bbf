@@ -1,0 +1,23 @@
+.github/workflows/test-credential-scopes-reusable.yml
+  s_a37fc6c52c4513::t_b804b22c113916 28
+packages/nodes-base/scripts/credential-scopes.mjs
+  s_a37fc6c52c4513::t_34c0845b245191 51-62,143,149
+packages/nodes-base/scripts/credential-scopes.test.mjs
+  s_a37fc6c52c4513::t_81b64c05b5f4fb 212-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "798fb0bef45ee815c4bf81d773c87f37fb5d7bbf",
+  "prompts": {},
+  "sessions": {
+    "s_a37fc6c52c4513": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c39771d8-4c5d-4b56-ab4c-a2c8cb8676cd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_b370a35485f958::t_5f0ca21c74eacf 16
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupApply.ts
+  s_b370a35485f958::t_26dd0c8ddf311b 4
+  s_b370a35485f958::t_d3a531f22edeae 60,72
+packages/cli/src/modules/agents/agent-knowledge-commands.ts
+  s_b370a35485f958::t_699b230c57ee12 1
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_b370a35485f958::t_86d124b8da2538 30-31
+  s_b370a35485f958::t_ef895c1699e71e 9,22,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "06eadb6f13ddc79285b3ede247f5c7bbe1378bd5",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

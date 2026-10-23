@@ -1,0 +1,28 @@
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_a13e6e5689855c 15
+packages/cli/src/modules/git-connections.ee/__tests__/import-manifest-bridge.test.ts
+  s_5ddf40544fde37::t_a13e6e5689855c 29-39,63-66,108,116-121,145-149,176-178,206-208
+packages/cli/src/modules/git-connections.ee/import-manifest-bridge.ts
+  s_5ddf40544fde37::t_a13e6e5689855c 48,89-91,94,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "72bd4e21a0e3397698b2c989476c7c6a87d0f88d",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "grok-4.6"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

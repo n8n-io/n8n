@@ -1,0 +1,26 @@
+packages/@n8n/db/src/migrations/common/1789499956927-CreateAgentMessageQueue.ts
+  s_d27d09d94cc9ff::t_642836c678711e 7,27-28
+  s_d27d09d94cc9ff::t_bfb0c9da411213 5
+packages/cli/test/migration/1789499956927-create-agent-message-queue.test.ts
+  s_d27d09d94cc9ff::t_642836c678711e 32,61-71
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_d27d09d94cc9ff::t_aa4ea8b6c9dfde 14,24
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_d27d09d94cc9ff::t_0129e2391bc0dd 9,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f649a9869205f87ea6448fb2f2e86216d544413e",
+  "prompts": {},
+  "sessions": {
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

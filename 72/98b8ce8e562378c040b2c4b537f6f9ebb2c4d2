@@ -1,0 +1,63 @@
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_a0c92b179996b0::t_9a79f3567a8f78 43
+  s_a0c92b179996b0::t_bca87ec425f688 280-281,284
+  s_a0c92b179996b0::t_6056acd823d06c 542
+  s_a0c92b179996b0::t_bde0efd3e4641e 533
+  s_a0c92b179996b0::t_d4bad8b4d6df29 291
+  s_a0c92b179996b0::t_1fdab9c73226a1 262-271
+  s_a0c92b179996b0::t_07e29e3e089d27 550-574
+  s_a0c92b179996b0::t_cc5c3aaead7323 122-123
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_a0c92b179996b0::t_ca605d6a2466ca 73
+  s_a0c92b179996b0::t_2a314b9c76020d 1665-1702,1704-1705
+  s_a0c92b179996b0::t_ce4e46ac9865b6 2218
+  s_a0c92b179996b0::t_7a4d09936c1ed3 1703
+  s_a0c92b179996b0::t_510cef407438e4 479-499
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_a0c92b179996b0::t_44e787af560472 14-17
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_a0c92b179996b0::t_39418213256a1d 749
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_a0c92b179996b0::t_2c0aaae801e2b3 234-240,242-245
+  s_a0c92b179996b0::t_2c4efbd96daae4 220-221
+  s_a0c92b179996b0::t_8c4197c299d482 46-47
+  s_a0c92b179996b0::t_748d2de1a8ab7f 241,246-247
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_a0c92b179996b0::t_0359491aecc8af 50-51
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_a0c92b179996b0::t_65bdf6d32ef91f 46,48
+  s_a0c92b179996b0::t_7013cc3ec594c2 1076,1085,1092,1095-1096,1105-1114,1117-1121,1123-1125,1127
+  s_a0c92b179996b0::t_fb6ccbdf5e000f 85-86
+  s_a0c92b179996b0::t_84715510e516a0 1094,1097-1103,1115,1122,1126,1128-1130
+  s_a0c92b179996b0::t_6256aa488867db 17,21
+  s_a0c92b179996b0::t_b4835d395cf11a 1070-1075,1077-1084,1086-1091,1093,1104,1116,1131
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_a0c92b179996b0::t_49eb670c45ce4a 313-314
+  s_a0c92b179996b0::t_4b5f3780f9896a 324
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_a0c92b179996b0::t_038d1f1e72c831 99-100
+  s_a0c92b179996b0::t_f00c7708da6349 633
+  s_a0c92b179996b0::t_d1189751899277 53
+  s_a0c92b179996b0::t_aca9bfededd4b5 127
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_a0c92b179996b0::t_71fbdc3d1e4a34 1532,1655
+packages/cli/src/modules/n8n-packages/entities/tag/tag.exporter.ts
+  s_a0c92b179996b0::t_4e1fc0010bd5ae 67-73
+  s_a0c92b179996b0::t_d3884533789a19 28-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7298b8ce8e562378c040b2c4b537f6f9ebb2c4d2",
+  "prompts": {},
+  "sessions": {
+    "s_a0c92b179996b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b56759c2-2e98-4e80-abcb-5f332f8ff366",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

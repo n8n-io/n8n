@@ -1,0 +1,25 @@
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_1d360ad69afd30::t_bd5b6368734271 618,620-621,623-625,631,633-637,639-641,646-647,651-653,657,704
+  s_1d360ad69afd30::t_3385e153b4cc4c 619,622,626-630,632,638,642,644-645,648-650,654,700-703,708-709
+  s_1d360ad69afd30::t_397a8b5a13ce8b 643
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_1d360ad69afd30::t_3385e153b4cc4c 302-308
+packages/cli/src/scaling/scaling.service.ts
+  s_1d360ad69afd30::t_3385e153b4cc4c 488-501
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "339db917885e62201786c4fee5d6cf25e852492f",
+  "prompts": {},
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

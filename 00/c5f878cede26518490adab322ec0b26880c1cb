@@ -1,0 +1,52 @@
+packages/@n8n/db/src/utils/chunk-ids.ts
+  s_1e53f02419fb26::t_49525c135bd127 6
+packages/@n8n/db/src/repositories/restricted-node-type-match.ts
+  s_1e53f02419fb26::t_35d3f8b4ff7d0e 1-72
+packages/@n8n/utils/src/promise/single-flight.test.ts
+  s_1e53f02419fb26::t_72cece40994b91 1-41
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_1e53f02419fb26::t_7a763cf2851238 993-997,1017-1023
+packages/@n8n/db/src/utils/__tests__/bound-list.test.ts
+  s_1e53f02419fb26::t_c7ca243a996550 1-15
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_1e53f02419fb26::t_4ec36ea8308af3 23-24,1569
+packages/@n8n/db/src/utils/bound-list.ts
+  s_1e53f02419fb26::t_fc313aac9a730a 1-17
+packages/cli/src/modules/type-availability-policies/restricted-node-types.provider.ts
+  s_1e53f02419fb26::t_58c3d7d97c751d 9,11,37,40-46,69
+  s_1e53f02419fb26::t_dfae72595ffc5a 28-32
+packages/@n8n/db/src/repositories/index.ts
+  s_1e53f02419fb26::t_4ec36ea8308af3 135
+packages/@n8n/db/src/repositories/__tests__/restricted-node-type-match.test.ts
+  s_1e53f02419fb26::t_8d7953b10da603 1-60,70,72-86
+  s_1e53f02419fb26::t_1773a766153787 61-69,71
+packages/@n8n/utils/src/promise/single-flight.ts
+  s_1e53f02419fb26::t_9ca84a9fe5b8ed 1-15
+packages/@n8n/db/src/index.ts
+  s_1e53f02419fb26::t_d12cbefbceaf4d 14
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository.ts
+  s_1e53f02419fb26::t_18c1a93d5b829f 22-26
+  s_1e53f02419fb26::t_7a763cf2851238 153-154,158-159
+packages/cli/test/integration/policy/workflow-list.restricted-node.test.ts
+  s_1e53f02419fb26::t_0cba588ff6b80a 18,37,44,72-75,80-83,86,110,153,189-220
+  s_1e53f02419fb26::t_b0e69630eebefe 107
+  s_1e53f02419fb26::t_8fd6be492d6916 260
+packages/cli/src/modules/type-availability-policies/__tests__/restricted-node-types.provider.test.ts
+  s_1e53f02419fb26::t_1fb71b15049dd4 5-7,32,37,43,45-48,67-70,78-82,84-90,93-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "00c5f878cede26518490adab322ec0b26880c1cb",
+  "prompts": {},
+  "sessions": {
+    "s_1e53f02419fb26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92fb29b2-b8e9-4928-bace-41455cdae846",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

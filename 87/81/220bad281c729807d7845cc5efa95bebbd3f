@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useUnusableWorkflowCredentials.ts
+  s_6e5e6dade5599e::t_dad44d87818806 4,26-27,31,36-55,60-61
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_6e5e6dade5599e::t_71d84a0e0b43af 378-385
+  s_6e5e6dade5599e::t_eff9872bc3e994 858
+  s_6e5e6dade5599e::t_b6768752ab9932 85
+  s_6e5e6dade5599e::t_09d8f1755bc43d 590-605
+packages/frontend/editor-ui/src/app/composables/useNodeExecution.test.ts
+  s_6e5e6dade5599e::t_b2963c39dc43f5 17-18,81-82,162-163,168,170,172,233-234,484-553
+  s_6e5e6dade5599e::t_e60e0de640e310 164-167
+  s_6e5e6dade5599e::t_cd047f86b4f90e 554
+packages/frontend/editor-ui/src/features/credentials/composables/useUnusableWorkflowCredentials.test.ts
+  s_6e5e6dade5599e::t_101afd81bb75ee 6-8,35-44,47,54-57,111-132
+  s_6e5e6dade5599e::t_780fa37241affd 133
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_6e5e6dade5599e::t_63073a2a4c7fad 1181-1185
+  s_6e5e6dade5599e::t_a6413dde3f7713 1213,1215,1231,1233,1241,1243
+  s_6e5e6dade5599e::t_d0400afe9268dc 92-115
+  s_6e5e6dade5599e::t_24b647b30ae185 47
+  s_6e5e6dade5599e::t_6b04f06bd2c9f3 1179-1180,1186-1212,1214,1216-1230,1232,1234-1240,1242,1244-1247
+  s_6e5e6dade5599e::t_f3d000f94f65ce 234
+  s_6e5e6dade5599e::t_f14e5b6bbbba54 207,231-233
+packages/frontend/editor-ui/src/app/composables/useNodeExecution.ts
+  s_6e5e6dade5599e::t_56ed3603c3a789 107
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_6e5e6dade5599e::t_c9be5287d4da1b 1277
+  s_6e5e6dade5599e::t_614f94fb6daa34 1280-1293,2226
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.test.ts
+  s_6e5e6dade5599e::t_d41221976fa758 155-183
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_6e5e6dade5599e::t_ef68b8bb8878b6 28,1155-1185
+  s_6e5e6dade5599e::t_15aa58f69031c5 1096-1104,1141-1154
+  s_6e5e6dade5599e::t_eb1ef95aee277d 1203-1204
+  s_6e5e6dade5599e::t_b1319fd3dda2d1 20,1066-1095,1105-1140,1186-1202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8781220bad281c729807d7845cc5efa95bebbd3f",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

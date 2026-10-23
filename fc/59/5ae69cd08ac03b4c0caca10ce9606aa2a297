@@ -1,0 +1,47 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_5898c5107615d4::t_9d8157aae88116 615,630,637,657
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_5898c5107615d4::t_0c3e6bd3ec1b07 121-125,140
+  s_5898c5107615d4::t_5fe194a302ac32 361,381,413,664,683,702,718,743,774,803,829,849,873,900-902,929-931,962,987,1020-1022,1047
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_5898c5107615d4::t_36ec8783ed6167 259-265
+  s_5898c5107615d4::t_5f7709fa4ff842 228
+  s_82cc7f488939e6::t_60aa0004f54f1a 36
+  s_5898c5107615d4::t_3ecf299db047b8 229
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_5898c5107615d4::t_3053033699cf6a 56-60
+  s_5898c5107615d4::t_1c2e70bca333a9 126
+  s_82cc7f488939e6::t_60aa0004f54f1a 130
+  s_5898c5107615d4::t_9cd8445db97fba 302,306
+  s_5898c5107615d4::t_7b8b0335091a61 237-241
+  s_5898c5107615d4::t_1babbca5adb138 234-236,242-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fc595ae69cd08ac03b4c0caca10ce9606aa2a297",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5898c5107615d4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6c30c6ec-02d5-49b8-b347-1837f44b9a81",
+        "model": "grok-4.6"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_82cc7f488939e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ab3e40e-f1dd-42f2-a54e-5162220dd826",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

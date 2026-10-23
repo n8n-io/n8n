@@ -1,0 +1,9 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.ts
+  ai_agent 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ac6cfbe8a41f1c8144b954bc0baff2d88b7aad6b",
+  "prompts": {}
+}

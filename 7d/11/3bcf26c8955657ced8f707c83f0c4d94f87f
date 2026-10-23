@@ -1,0 +1,23 @@
+packages/testing/playwright/services/api-helper.ts
+  s_c5530269a9eb04::t_cac831d04b69ae 23,73,94
+packages/testing/playwright/services/metrics-api-helper.ts
+  s_c5530269a9eb04::t_330efd5b7c1966 1-14
+packages/testing/playwright/tests/e2e/api/webhook-isolate-skip.spec.ts
+  s_c5530269a9eb04::t_cbdec86a3b974e 15-17,19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7d113bcf26c8955657ced8f707c83f0c4d94f87f",
+  "prompts": {},
+  "sessions": {
+    "s_c5530269a9eb04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_c5530269a9eb04",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

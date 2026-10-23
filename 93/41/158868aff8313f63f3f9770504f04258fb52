@@ -1,0 +1,19 @@
+.agents/skills/create-pr/SKILL.md
+  s_da937fa3fb2b1f::t_34a9e2183fb39b 103-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9341158868aff8313f63f3f9770504f04258fb52",
+  "prompts": {},
+  "sessions": {
+    "s_da937fa3fb2b1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10ef9af7-d8fb-40f0-a7d3-340b8f0afa19",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

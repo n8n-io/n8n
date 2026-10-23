@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.ts
+  s_365b472d5d8c59::t_63c02037d6d172 634-652
+  s_365b472d5d8c59::t_1e020c65082d55 148-153
+  s_365b472d5d8c59::t_282d1296592fce 14
+  s_365b472d5d8c59::t_5449b40cf3d9d0 625-633
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1b81782cf18233532f7339581349518759ef6655",
+  "prompts": {},
+  "sessions": {
+    "s_365b472d5d8c59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb19c6f7-a030-4ca5-b2ee-0cd60963272c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

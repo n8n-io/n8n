@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/onboarding/cloud-form.yaml
+  s_2ed659fa6b1ae7::t_10d5eb17b101e6 10-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ad37b41897d3a29a77dcb2967e7ca037ad028d35",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

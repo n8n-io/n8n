@@ -1,0 +1,101 @@
+packages/frontend/editor-ui/src/app/components/DependencyPill.test.ts
+  s_3d28bd03882b18::t_0f3b0f0c7c587d 8-9,161-180,254-270
+  s_3d28bd03882b18::t_b5621181148b4d 271
+packages/cli/src/modules/agents/agent-credential-index.listener.ts
+  s_3d28bd03882b18::t_0534152265c1f5 1-43
+packages/cli/src/modules/agents/entities/agent-credential-dependency.entity.ts
+  s_3d28bd03882b18::t_2f505b7fbb8dc8 1-47
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_3d28bd03882b18::t_f5677da7e028c0 19,91,164,275,330,366
+packages/cli/src/modules/agents/utils/__tests__/extract-agent-credential-ids.test.ts
+  s_3d28bd03882b18::t_0876be6f2ee27b 1-105
+packages/frontend/editor-ui/src/app/components/DependencyPill.vue
+  s_3d28bd03882b18::t_61b6331a380a5f 14,67-70,94,109,181-185
+  s_3d28bd03882b18::t_226d9be35040a9 186-189
+packages/@n8n/db/src/migrations/common/1785514360684-CreateAgentCredentialDependencyTable.ts
+  s_3d28bd03882b18::t_014a52c5f778cb 1-33
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_3d28bd03882b18::t_12d5a052ad780a 255,277,300
+packages/cli/src/modules/agents/agents.module.ts
+  s_3d28bd03882b18::t_ebb286954bbd68 30
+  s_3d28bd03882b18::t_0534152265c1f5 31-32,144-146,180
+packages/@n8n/api-types/src/schemas/dependency-counts.schema.ts
+  s_3d28bd03882b18::t_88ae38558d90c5 2
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_3d28bd03882b18::t_67deff68854034 239,481
+packages/cli/src/modules/agents/__tests__/agent-credential-index.service.test.ts
+  s_3d28bd03882b18::t_38126fce045ae9 37,39
+  s_3d28bd03882b18::t_21e013c8db9a0e 2,12,14-15,19,23,27-28,30,32,35-36,38,40,43-49,52-64
+  s_3d28bd03882b18::t_81fbb214a461ef 1,3-11,13,16-18,20-22,24-26,29,31,33-34,41-42,50-51,65-67
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_3d28bd03882b18::t_1ed45c6b595c4b 93-94,103
+  s_3d28bd03882b18::t_50e48704a292bf 4-5,31,41,47
+packages/cli/src/modules/agents/__tests__/agent-credential-dependency.repository.test.ts
+  s_3d28bd03882b18::t_69fec3b4dc25cb 2
+  s_3d28bd03882b18::t_21e013c8db9a0e 3,9-10,16-57,59,63,67,72-75,82-94,96,98-99,101-122,124-128,130-144,147,149,155-156,158,161,163,165-185
+  s_3d28bd03882b18::t_8a238ac81fe1c6 58,76-79
+  s_3d28bd03882b18::t_37cf70b75680f7 1,4-8,11-15,60-62,64-66,68-71,80-81,95,97,100,145-146,148,150-154,157,159-160,162,164,186-187
+  s_3d28bd03882b18::t_0d67f02d18abb7 123,129
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_3d28bd03882b18::t_f5677da7e028c0 17,43,243
+packages/cli/src/modules/agents/agent-credential-index.service.ts
+  s_3d28bd03882b18::t_2f505b7fbb8dc8 2-11,14-16,18-19,21-28,30-35,37-40,46-55
+  s_3d28bd03882b18::t_be39fc9ad36b34 1,12-13,17,20,29,36,41-45
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_3d28bd03882b18::t_47fef46879790b 7,53,196
+  s_3d28bd03882b18::t_62e4d029626ebd 421-429
+  s_3d28bd03882b18::t_d232273f7b5bd2 102,185-189,191-195,197-199,201,203,208,210,218,248-252,254,262
+  s_3d28bd03882b18::t_c5318fe5ccbd2e 93-97,101,143,190
+  s_3d28bd03882b18::t_1d0439133a7937 98-100,132,136,141-142,144-149,168,173
+  s_3d28bd03882b18::t_77d073bddd9f78 20-21,27,35,51-52,69
+  s_3d28bd03882b18::t_36b4d74b898e8c 276,282,294-307
+  s_3d28bd03882b18::t_8a580b66889a86 308
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_3d28bd03882b18::t_50e48704a292bf 9,111,150,167
+  s_3d28bd03882b18::t_8b6d24cf6a6134 259,317
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_3d28bd03882b18::t_f5677da7e028c0 10-11,34,96,126
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_3d28bd03882b18::t_2f505b7fbb8dc8 166,168-188
+  s_3d28bd03882b18::t_be39fc9ad36b34 162-165,167
+packages/@n8n/api-types/src/schemas/dependency.schema.ts
+  s_3d28bd03882b18::t_88ae38558d90c5 2,16
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3d28bd03882b18::t_61b6331a380a5f 4744
+packages/cli/src/events/maps/relay.event-map.ts
+  s_3d28bd03882b18::t_0534152265c1f5 1049-1052
+packages/cli/test/integration/workflows/workflow-dependency.controller.test.ts
+  s_3d28bd03882b18::t_b7dcd9230360d4 7,13-15,22-24,39-41,59-99,160-176,381-427
+  s_3d28bd03882b18::t_b0ea2cedd18888 6,10-12,26-30
+  s_3d28bd03882b18::t_debb62ea568136 25
+  s_3d28bd03882b18::t_1de2cc4900ff78 428
+packages/cli/src/modules/agents/utils/extract-agent-credential-ids.ts
+  s_3d28bd03882b18::t_53178525374888 1-2,4-9,11-42
+  s_3d28bd03882b18::t_42b09920b4b5f0 3,10
+packages/cli/src/modules/agents/repositories/agent-credential-dependency.repository.ts
+  s_3d28bd03882b18::t_2f505b7fbb8dc8 2,4,9-23,40,61,92-108,111
+  s_3d28bd03882b18::t_be39fc9ad36b34 1,3,5-8,24-33,41-53,55-60,62-65,80,82-83,87-91,109-110,112-119,121-122
+  s_3d28bd03882b18::t_ac5b95f30748d9 34-39,66-79,81,84-86
+  s_3d28bd03882b18::t_8cdc26da0b9094 54,120
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_3d28bd03882b18::t_1ed45c6b595c4b 197,220
+  s_3d28bd03882b18::t_50e48704a292bf 8,49,71,82
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_3d28bd03882b18::t_a4ff112b210410 231,463
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "008fc6026fdacbe23ae8f661525613b1aab25fcc",
+  "prompts": {},
+  "sessions": {
+    "s_3d28bd03882b18": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb89e-acec-7202-b52b-60e2978f8887",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

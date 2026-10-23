@@ -1,0 +1,21 @@
+packages/cli/test/migration/1789736885838-add-agent-thread-ownership.test.ts
+  s_a52facf53351c5::t_e7dac44484db00 77-83,101-104,106-109,117,207,249
+  s_a52facf53351c5::t_c7ff77d8a679de 85-100
+  s_a52facf53351c5::t_a592804d015e52 9,63-66,71,73,84,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a755d132b59e77e9ae7e66d87d594ad24eef16e2",
+  "prompts": {},
+  "sessions": {
+    "s_a52facf53351c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b491-bd1b-7860-8002-0194a946ab94",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

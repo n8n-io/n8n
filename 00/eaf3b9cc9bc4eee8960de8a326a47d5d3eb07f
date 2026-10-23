@@ -1,0 +1,55 @@
+packages/cli/src/modules/agent-evals/agent-evals.module.ts
+  s_b44949bdc256c1::t_bdf1417453c758 7-12,17-18
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  s_b44949bdc256c1::t_536de3fb5a3fc0 1-167
+packages/@n8n/db/src/repositories/__tests__/agent-eval-run.repository.test.ts
+  s_b44949bdc256c1::t_bdf1417453c758 155-181
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_b44949bdc256c1::t_bdf1417453c758 14,24,105,132,161,178-185,533-545,549-551,556
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_b44949bdc256c1::t_bdf1417453c758 20,84,100
+packages/cli/src/modules/agent-evals/agent-eval-record-mappers.ts
+  s_b44949bdc256c1::t_c863c2bd3ee4de 1-4,7-22,44-53,55-93
+  s_b44949bdc256c1::t_a8862a7995e4b4 5-6,23-43,54
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_b44949bdc256c1::t_bdf1417453c758 32-33,90,104-107,189-199
+packages/cli/src/modules/agent-evals/agent-eval.service.ts
+  ai_agent 184-188
+  s_b44949bdc256c1::t_95664dd6890145 1-183,189-252
+packages/cli/src/modules/agent-evals/agent-evals-flag-gate.ts
+  s_b44949bdc256c1::t_134adbbd165339 12-15,18-21,25,28-29
+  s_b44949bdc256c1::t_59ecb66bd256d8 1-11,16-17,22-24,26-27,30-39
+packages/@n8n/db/src/repositories/__tests__/agent-eval-dataset.repository.test.ts
+  s_b44949bdc256c1::t_bdf1417453c758 90-166
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  s_b44949bdc256c1::t_3c1c74d1f5ab8c 1-175,179-392
+  ai_agent 176-178
+packages/@n8n/db/src/repositories/agent-eval-dataset.repository.ee.ts
+  s_b44949bdc256c1::t_bdf1417453c758 18-28,56-95
+  s_b44949bdc256c1::t_7ed03df8256ed0 96
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  s_b44949bdc256c1::t_bdf1417453c758 24,58-62,149,212
+packages/cli/src/modules/agent-evals/__tests__/agent-evals.controller.test.ts
+  ai_agent 62-66,98-106,153,179-187
+  s_b44949bdc256c1::t_8edd9d4798a7eb 1-61,67-97,107-152,154-178,188-216
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-case-generation.service.test.ts
+  s_b44949bdc256c1::t_bdf1417453c758 17,77,87,97,109,115
+packages/@n8n/db/src/repositories/agent-eval-run.repository.ee.ts
+  s_b44949bdc256c1::t_bdf1417453c758 84-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "00eaf3b9cc9bc4eee8960de8a326a47d5d3eb07f",
+  "prompts": {},
+  "sessions": {
+    "s_b44949bdc256c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad69f842-54e5-4f99-8d2a-6c5fc09592ad",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/config/src/index.ts
+  s_f92fc24510291c::t_f1efeba09174b5 78
+packages/@n8n/config/src/configs/package-import.config.ts
+  s_f92fc24510291c::t_f1efeba09174b5 7-21
+packages/cli/src/modules/n8n-packages/io/__tests__/utils/raw-tar-builder.ts
+  s_f92fc24510291c::t_f1efeba09174b5 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7fb10b865c9a6fd8ec1e6553da252d417a41b7e6",
+  "prompts": {},
+  "sessions": {
+    "s_f92fc24510291c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b385e69-5a11-4569-bd9f-745a14d5d4a0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

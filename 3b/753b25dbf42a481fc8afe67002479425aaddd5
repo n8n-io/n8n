@@ -1,0 +1,20 @@
+packages/testing/containers/tests/engine.test.ts
+  s_6292f7a6ebb209::t_09df5136499ca3 3,73-80
+  s_6292f7a6ebb209::t_50e271f644ff71 81-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3b753b25dbf42a481fc8afe67002479425aaddd5",
+  "prompts": {},
+  "sessions": {
+    "s_6292f7a6ebb209": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79d76b24-efed-47cf-aba8-09fbf6fffd6a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

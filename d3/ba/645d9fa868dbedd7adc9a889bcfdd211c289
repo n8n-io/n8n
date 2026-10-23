@@ -1,0 +1,21 @@
+packages/@n8n/inbound-auth/src/__tests__/trusted-source.test.ts
+  s_5b85161403cb3c::t_a40b9b43f05b23 15,17-19,21,23-30,32-34,36,38-43,46,51-52,54,59,61,72,74-75,77-87,93,104-109,113-117,134,136-142,160,166,186,190,192,195,199,205-215,224
+packages/@n8n/inbound-auth/src/trusted-source.ts
+  s_5b85161403cb3c::t_9b8610804b9ca9 27-31,39-41,44-47,51-58,60,66,71,108-114,116-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d3ba645d9fa868dbedd7adc9a889bcfdd211c289",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "unknown"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

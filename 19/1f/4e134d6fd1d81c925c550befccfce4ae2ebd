@@ -1,0 +1,93 @@
+packages/cli/src/modules/instance-reporting/database/entities/central-instance-monitoring-report.ts
+  s_9b010f0574a09c::t_04f37a968e6a9d 10-17,27-32,40,42-43,52-60
+  s_9b010f0574a09c::t_4a1eaa32b60515 41
+  s_9b010f0574a09c::t_4748ef59acc3f5 9
+  s_9b010f0574a09c::t_b31910a7e350b7 61
+packages/cli/src/modules/instance-reporting/instance-reporting.service.ts
+  s_9b010f0574a09c::t_5258018ad7887b 79-82,98-111
+  s_9b010f0574a09c::t_f162aad92abba5 26,38-46
+  s_9b010f0574a09c::t_aa4e8f5ded7240 27-37
+  s_9b010f0574a09c::t_085f446f57dcd6 143-153,162-175
+  s_9b010f0574a09c::t_c09cbb1f1390b8 176,178-185,187-213,219-222,233-234,237-244,249-251
+  s_9b010f0574a09c::t_b5aa74ff0ef1c5 177
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_9b010f0574a09c::t_5da01d0153d652 94-96,102
+  s_9b010f0574a09c::t_49e2cb39e5b262 74,77
+  s_9b010f0574a09c::t_0c4fb545daaf63 277-281
+  s_9b010f0574a09c::t_454b88c382d0be 294,308
+  s_9b010f0574a09c::t_b43cb7aff30e68 445-448,450
+  s_9b010f0574a09c::t_379dc7520e9d32 348-352,434-444,449,451-475,477-523,525
+  s_9b010f0574a09c::t_fa952f7fd52a8f 476
+  s_9b010f0574a09c::t_f4b30a4dc03194 51-59
+  s_9b010f0574a09c::t_b0675eb9c39ad8 251
+  s_9b010f0574a09c::t_29e6eae2f3e524 353-433
+packages/@n8n/db/src/migrations/common/1788445119184-CreateCentralInstanceMonitoringReportTable.ts
+  s_9b010f0574a09c::t_97d7265d017820 21
+  s_9b010f0574a09c::t_196e16da26548c 19,22,24,30-35
+  s_9b010f0574a09c::t_3fbc1b14fbdb5f 20
+  s_9b010f0574a09c::t_2748321940e64e 23
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting-scheduler.service.test.ts
+  s_9b010f0574a09c::t_98683dfc58fbf0 236-238,240,242-244,252-265
+  s_9b010f0574a09c::t_0bd0b5df245ff5 41-43
+  s_9b010f0574a09c::t_ab745592dc98ed 45
+  s_9b010f0574a09c::t_74a76fe871fabc 155,170
+  s_9b010f0574a09c::t_ed43f78b1ce3be 266-267
+packages/cli/src/modules/instance-reporting/database/repositories/central-instance-monitoring-report.repository.ts
+  s_9b010f0574a09c::t_1bf5af11f8cce0 24-27,31,37-38,44-48,50,53,65
+  s_9b010f0574a09c::t_7f72c2aa5b04ce 66,85,95-98,101,103-108
+  s_9b010f0574a09c::t_6904ec4f5309d9 69-71,73-76,80-82,86
+  s_9b010f0574a09c::t_b58b39cf4318d5 68,72,83-84,89
+  s_9b010f0574a09c::t_7f96f4e6172236 77
+  s_9b010f0574a09c::t_3ca4f06a1d474d 2
+  s_9b010f0574a09c::t_92a1d3a4151209 78-79,87-88,90
+  s_9b010f0574a09c::t_43eb1bbf0a82ba 67
+packages/cli/src/modules/instance-reporting/README.md
+  s_9b010f0574a09c::t_e36468d5f1ac3a 30
+  s_9b010f0574a09c::t_6ac8c1eb2eb5b7 16-24
+  s_9b010f0574a09c::t_6c5602a98305f2 31-52
+  s_9b010f0574a09c::t_89e99cada428e7 25-29
+packages/cli/src/modules/instance-reporting/database/repositories/__tests__/central-instance-monitoring-report.repository.integration.test.ts
+  s_9b010f0574a09c::t_bb44076918f0dd 97,112-118
+  s_9b010f0574a09c::t_32bab28998bf9d 130,133,139-153,159-160,164-165
+  s_9b010f0574a09c::t_abf676be85eabd 99,105,120,129,162,172,188-189
+  s_9b010f0574a09c::t_16e823d6792107 134-137,158,161
+  s_9b010f0574a09c::t_6df755b4c02087 138
+  s_9b010f0574a09c::t_2ce4414047260c 78-94
+  s_9b010f0574a09c::t_067a3ce8dfdd55 154-157,163
+  s_9b010f0574a09c::t_48dc92ce2ab222 119
+  s_9b010f0574a09c::t_5f6a255f26245e 131-132
+packages/cli/src/modules/instance-reporting/instance-reporting-scheduler.service.ts
+  s_9b010f0574a09c::t_a4366d0edf243f 32-36
+  s_9b010f0574a09c::t_36df9bab660702 123-126,132-136,140-144
+  s_9b010f0574a09c::t_4107aa37add56b 157-159,165,171
+  s_9b010f0574a09c::t_39ed079c84d505 12
+docs/generated/postgres-schema/README.md
+  s_9b010f0574a09c::t_5b92a46ae2ec01 45,752,754
+docs/generated/postgres-schema/public.central_instance_monitoring_report.md
+  s_9b010f0574a09c::t_b768a00331dc3e 7,12,14,26,47,49
+docs/generated/sqlite-schema/README.md
+  s_9b010f0574a09c::t_39acff8c96d6b2 45,739,741
+docs/generated/sqlite-schema/central_instance_monitoring_report.md
+  s_9b010f0574a09c::t_eb9435dc53fcb4 9,23,25,53,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "191f4e134d6fd1d81c925c550befccfce4ae2ebd",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9b010f0574a09c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e27783b-7e86-4bbd-b6bd-6a9088c3ce15",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

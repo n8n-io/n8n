@@ -1,0 +1,25 @@
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_45e2f6fac3868c::t_8e6f770b7546e4 41,175,634
+  ai_agent 164,172-174,176-187,199-210,633,635
+  s_45e2f6fac3868c::t_a0d7329c3100ba 188-198
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_45e2f6fac3868c::t_0acd51cfb0eeff 38-43,45,62,568,571-582,585-587,594,596,598,605,607,611
+  ai_agent 538-567,569-570,583-584
+  s_45e2f6fac3868c::t_1e78a7ed5a6d7f 588-593,595,597,599-604
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "89e54b474a11574a07ef1ef490a2cf0bf40ce2b0",
+  "prompts": {},
+  "sessions": {
+    "s_45e2f6fac3868c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f39f7fb-75e7-4ba4-8950-d44a46855e76",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

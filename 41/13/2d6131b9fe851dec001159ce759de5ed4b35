@@ -1,0 +1,62 @@
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/dynamic-credential.service.test.ts
+  s_b7be0a7e4f2d1d::t_9500ed965a4cfe 583
+  s_b7be0a7e4f2d1d::t_bb0366996c596a 432-452
+  s_b7be0a7e4f2d1d::t_e5cd7df139bff0 556
+packages/cli/test/integration/dynamic-credentials.ee/dynamic-credentials.auth.api.test.ts
+  s_b7be0a7e4f2d1d::t_a5a19bda189a28 274-307
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.controller.ts
+  s_b7be0a7e4f2d1d::t_f7296594e9ff32 22-24
+  s_b7be0a7e4f2d1d::t_184ef7273da489 9
+  s_b7be0a7e4f2d1d::t_f572dd00d7977d 81-84,103,107-110
+  s_b7be0a7e4f2d1d::t_1f5d0b53c663a9 104-106
+  s_b7be0a7e4f2d1d::t_bbee936f56dd58 139-142,184-187
+  s_b7be0a7e4f2d1d::t_bb4c61c9e3e377 21
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver-workflow.service.ts
+  s_b7be0a7e4f2d1d::t_3ea4138507dd2d 14
+  s_b7be0a7e4f2d1d::t_021f572dcd1386 291-302
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-resolver-workflow.service.test.ts
+  s_b7be0a7e4f2d1d::t_b7c3a5938c48fa 388-457
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/dynamic-credentials.controller.test.ts
+  s_b7be0a7e4f2d1d::t_b57fdea0d5ee1b 949-998,1001-1020,1023-1035,1038-1041
+  s_b7be0a7e4f2d1d::t_9dc30ee919d85d 999-1000
+  s_b7be0a7e4f2d1d::t_7e29837dced2c0 1021-1022
+  s_b7be0a7e4f2d1d::t_614928146372b0 1036-1037
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential.service.ts
+  s_b7be0a7e4f2d1d::t_083ce0e21be26d 34-37
+  s_b7be0a7e4f2d1d::t_0297d4fa338edd 337-357
+  s_b7be0a7e4f2d1d::t_6bf534baee2595 110-113
+  s_b7be0a7e4f2d1d::t_acb61942a1cbc4 336
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/dynamic-credential-storage.service.test.ts
+  s_b7be0a7e4f2d1d::t_6db1538ba03cc5 197-219
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential-storage.service.ts
+  s_b7be0a7e4f2d1d::t_3d307a43e20281 22-25
+  s_b7be0a7e4f2d1d::t_c437310ff90319 78-81
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/identity-compatibility.test.ts
+  s_b7be0a7e4f2d1d::t_e23959b73dcef2 12
+  s_b7be0a7e4f2d1d::t_103bbd4c8bb4e8 1-11,13-46,48-63,66-67
+  s_b7be0a7e4f2d1d::t_8d6190cbd32fc6 47
+  s_b7be0a7e4f2d1d::t_c34182d4e8299a 64-65
+packages/cli/src/modules/dynamic-credentials.ee/identity-compatibility.ts
+  s_b7be0a7e4f2d1d::t_a55ee652335d2e 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "41132d6131b9fe851dec001159ce759de5ed4b35",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b7be0a7e4f2d1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a713f551-1f93-4145-b759-f931927e4e20",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

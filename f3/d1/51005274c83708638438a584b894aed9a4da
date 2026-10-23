@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/ndv/shared/composables/useGenerateSampleData.ts
+  s_90002f1fe023d1::t_74b9e66e0074c9 82
+  s_90002f1fe023d1::t_75707505d585a9 34
+  s_90002f1fe023d1::t_2e0ad90c651654 106
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_90002f1fe023d1::t_85a2f45d770b67 2549-2563
+  s_90002f1fe023d1::t_c8b836a5ef00bf 51
+  s_90002f1fe023d1::t_13628375f8e5f3 656-660
+  s_90002f1fe023d1::t_02dd15d386e3dc 93
+  s_90002f1fe023d1::t_2944d3983c1ed1 1600-1615
+  s_90002f1fe023d1::t_98cbc39302ce35 1649,1651-1655,1657-1663,1668-1669
+  s_90002f1fe023d1::t_40ae00261e6cdc 1656,1664-1667
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_90002f1fe023d1::t_47b60bc26df7f2 1984
+  s_90002f1fe023d1::t_302dd1379549ee 1986-1992
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_90002f1fe023d1::t_8a2095f692851b 220
+  s_90002f1fe023d1::t_b0b77d807e8ee3 212-215
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.test.ts
+  s_90002f1fe023d1::t_d541883aaa80df 132
+  s_90002f1fe023d1::t_b640aa65e444e6 121-122
+packages/frontend/editor-ui/src/features/ndv/shared/components/GenerateSampleDataPopover.vue
+  s_90002f1fe023d1::t_3aa396482ca878 1-26,35-65,71,90,93-94,107-130
+  s_90002f1fe023d1::t_fc7c9f10c5e531 27-34
+  s_90002f1fe023d1::t_4188b695df7e45 103-106
+  s_90002f1fe023d1::t_9478658bebbef2 66-67
+  s_90002f1fe023d1::t_f754e36e374320 68-70,72-89,91-92,95-102
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_90002f1fe023d1::t_831b4da001688d 477
+  s_90002f1fe023d1::t_3aaf10b623defb 484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3d151005274c83708638438a584b894aed9a4da",
+  "prompts": {},
+  "sessions": {
+    "s_90002f1fe023d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9dd1c3f-0c3e-4ea6-9f03-3f9ec6951428",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_5c9efb67971f6b::t_053f7548d75e68 1-7
+packages/@n8n/config/test/config.test.ts
+  s_5c9efb67971f6b::t_68b4ace654d12f 469
+packages/cli/src/posthog/index.ts
+  s_5c9efb67971f6b::t_3e2e0bad3786f2 171-173
+  s_5c9efb67971f6b::t_32dcc7d8733775 1
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useAgentEvalsFlag.ts
+  s_5c9efb67971f6b::t_e8367d8a5ae285 1-29
+packages/cli/src/services/frontend.service.ts
+  s_5c9efb67971f6b::t_8e99909cd4fe5b 423
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_5c9efb67971f6b::t_a6feefd5bbfd1c 222
+  s_5c9efb67971f6b::t_c61d8283c493f5 261-284
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useAgentEvalsFlag.test.ts
+  s_5c9efb67971f6b::t_0f07ef202617ec 1-41
+packages/@n8n/api-types/src/index.ts
+  s_5c9efb67971f6b::t_3450e017633f3f 553-554
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_5c9efb67971f6b::t_ccd9ec0bef7c9b 275-281
+packages/@n8n/config/src/configs/evaluation.config.ts
+  s_5c9efb67971f6b::t_c00e670c83c46e 25-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0c86719e4ea7f194497e8dfcb441583df0ac5886",
+  "prompts": {},
+  "sessions": {
+    "s_5c9efb67971f6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78cc0a8e-8df9-4ae9-b9c5-327bdfc8bc59",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

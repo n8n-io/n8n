@@ -1,0 +1,37 @@
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_06c07cbf87207e::t_45e9f1e41abed3 415,420,428-430,443-445,454
+  s_06c07cbf87207e::t_e64486738c18ee 9
+  s_06c07cbf87207e::t_5b6984443c8704 7,14,27-28,35-36
+  s_06c07cbf87207e::t_8a318b453c2cac 408-414,416-419,421-427,431-442,446-453,455-459
+packages/cli/src/workflow-execute-additional-data.ts
+  s_06c07cbf87207e::t_f1515ecbecd131 460
+  s_06c07cbf87207e::t_19d1061c879dff 489-499
+  s_06c07cbf87207e::t_0c93167b098660 326-330,337
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_06c07cbf87207e::t_1f540cb44780da 296-297
+  s_06c07cbf87207e::t_a37e629c6fe3e6 127
+  s_06c07cbf87207e::t_6d59ea4fa829da 269-295,298-330
+  s_06c07cbf87207e::t_7eacb57baf1020 331-332
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_06c07cbf87207e::t_af1c3ce83dbf15 69-73
+  s_06c07cbf87207e::t_e170c5b9741709 2,8,21-26
+  s_06c07cbf87207e::t_c462b6a4d83db5 27,52-53,56-68,74-92
+  s_06c07cbf87207e::t_34134e9a393c43 28-29
+  s_06c07cbf87207e::t_19efe536a28896 93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9698e1053f029301441a0639af5e704d3ff12c99",
+  "prompts": {},
+  "sessions": {
+    "s_06c07cbf87207e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2facc50-6501-4355-aa6b-eaab613dda69",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

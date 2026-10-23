@@ -1,0 +1,58 @@
+packages/nodes-base/nodes/Kafka/v2/transport/consumer.ts
+  s_79c0473179aa3d::t_0a4e12d311510c 1,3,6-19,24-26,74-86,88,93-94,96,99-101
+  s_79c0473179aa3d::t_7338e2e361426e 2,5
+  s_79c0473179aa3d::t_900279227264e2 4
+  s_79c0473179aa3d::t_06cc9965dae3a3 20-23,27-40,63-66,69-73,91-92,95,97
+  s_79c0473179aa3d::t_3af19ea60000a4 48-49,54-62,41,44
+  s_79c0473179aa3d::t_1a979f1697aa25 50-53
+  h_63d8ce7f01339b 67-68
+  s_79c0473179aa3d::t_ec19b67978d81e 87,98
+  s_79c0473179aa3d::t_2ad536e21ce1cf 89
+packages/nodes-base/nodes/Kafka/v2/consumer/MessageParser.ts
+  s_79c0473179aa3d::t_003aba85e37b9a 1-10,12-40,44-80,102-105,107-108,113,115-136
+  s_79c0473179aa3d::t_96cd7b1cc1fdf6 41-43,106
+  s_79c0473179aa3d::t_dabc191679cc4c 109-112,114
+packages/nodes-base/nodes/Kafka/v2/consumer/index.ts
+  s_79c0473179aa3d::t_090409eeaa0555 1-4,8-11,13
+  s_79c0473179aa3d::t_ac65e619e7d1c4 5,14-16
+  s_79c0473179aa3d::t_6097c7bf2ffe0b 6
+  s_79c0473179aa3d::t_77573f90c558c3 12
+packages/nodes-base/nodes/Kafka/test/v2/consumer/MessageParser.test.ts
+  s_79c0473179aa3d::t_ac65e619e7d1c4 1-161,166-171,177-179,200-208
+packages/nodes-base/nodes/Kafka/v2/consumer/DataEmitter.ts
+  s_79c0473179aa3d::t_b1a5ddb9b7d7ed 6
+  s_79c0473179aa3d::t_04a3f41ff87f38 8-11,39-42,58-60,85-88,146-148
+  s_79c0473179aa3d::t_77573f90c558c3 16,20,64
+  s_79c0473179aa3d::t_254956d0e8db5a 17
+  s_79c0473179aa3d::t_52f134fd875a54 51-56
+  s_79c0473179aa3d::t_1ab6d156b5f745 61,80-83,89-97,99-106,114-115,118,121,123,126,130-131,133-135,138-141,145,150-167,170-173,175-184,187-199,206-218,220-226
+  s_79c0473179aa3d::t_695c25160a8e22 107
+  s_79c0473179aa3d::t_d85dcbd7f2ddc0 109-113
+  s_79c0473179aa3d::t_181eba38fffbf0 149
+  s_79c0473179aa3d::t_eded042d7d477a 168-169
+  s_79c0473179aa3d::t_3cfa6aee41e280 174
+  s_79c0473179aa3d::t_256c4b383d6689 185-186
+  s_79c0473179aa3d::t_30d14c8145ff96 200-205
+  s_79c0473179aa3d::t_fae023ef260fbb 219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "77f31eab45119bf949224e0302f1b0fbbb8a8d89",
+  "prompts": {},
+  "humans": {
+    "h_63d8ce7f01339b": {
+      "author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

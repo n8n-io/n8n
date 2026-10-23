@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_89a14dac0fc53d::t_a468d9eaab15dd 1589
+  s_89a14dac0fc53d::t_50f77b6b86b013 1339
+  s_89a14dac0fc53d::t_18cb67210be15a 316,1372
+packages/cli/src/credentials/credentials.controller.ts
+  s_89a14dac0fc53d::t_db5c93d50dbbae 217-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dfbbd19ac7b97da7731fe0a05d33c5db65a5ddf9",
+  "prompts": {},
+  "sessions": {
+    "s_89a14dac0fc53d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "37768e09-388b-42d2-81bd-708e3c484cb4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

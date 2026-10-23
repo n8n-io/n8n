@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Google/Sheet/test/GoogleSheetsTrigger.utils.test.ts
+  s_88ca00a986dc30::t_0f0516d9597da6 66
+packages/nodes-base/nodes/Google/Sheet/test/GoogleSheetsTrigger.test.ts
+  s_88ca00a986dc30::t_6d1d6b3de5b088 8-15
+  s_88ca00a986dc30::t_96647a1fad47dd 282-362,366
+  s_88ca00a986dc30::t_9bfc26d34c8fe5 363-365
+packages/nodes-base/nodes/Google/test/GenericFunctions.scopes.test.ts
+  s_88ca00a986dc30::t_83d71e5da31d1f 1-12
+packages/nodes-base/nodes/Google/Sheet/test/v2/transport/index.test.ts
+  s_88ca00a986dc30::t_d39bd1fbd81f92 61-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "69d3ccd7123c502fa7092e6a3f24343da73d5dc4",
+  "prompts": {},
+  "sessions": {
+    "s_88ca00a986dc30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86e4073c-e3f7-4347-b37a-6b31f92de827",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

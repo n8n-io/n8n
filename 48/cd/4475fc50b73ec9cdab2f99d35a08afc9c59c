@@ -1,0 +1,76 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useViewStacks.ts
+  s_179be3987d0265::t_4413acfe202e0c 211-217
+  s_179be3987d0265::t_30039d3634ac25 51
+  s_179be3987d0265::t_f0b23e1c1359ad 565,569-570
+  s_179be3987d0265::t_b34d92a48dce5a 664
+  s_179be3987d0265::t_4f5f0b3fbff600 38
+  s_179be3987d0265::t_60e1992a081e1e 564,566-568
+  s_179be3987d0265::t_40c4ea49d6a563 60
+  s_179be3987d0265::t_e256110319a8f7 560-561,592-597
+  s_179be3987d0265::t_cb1a30e405c83a 39
+  s_179be3987d0265::t_ccd697c24644a5 598-599
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.test.ts
+  s_179be3987d0265::t_758969e7970e42 160-163
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Renderers/ItemsRenderer.vue
+  s_179be3987d0265::t_77b5343451cbed 189-193
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_179be3987d0265::t_4028b03ccad769 86-118
+  s_179be3987d0265::t_2d9e492e583394 416,418-420,425,430-431,459
+  s_179be3987d0265::t_cb3f49bc3976a7 162-197,897
+  s_179be3987d0265::t_ebcebde7e4fe29 874-896
+  s_131eb9fde77372::t_e1ea5d2981470e 898
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_179be3987d0265::t_8de24b5aed4fdf 2151
+  s_179be3987d0265::t_374b5e484b4099 2097
+  s_179be3987d0265::t_755de30bcced36 2084
+  s_179be3987d0265::t_d28803619d2aa5 2182
+packages/frontend/editor-ui/src/Interface.ts
+  s_179be3987d0265::t_22b5423067537b 543-544
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.vue
+  s_179be3987d0265::t_acb1db017ee015 22-23
+  s_179be3987d0265::t_13bba4b2bb467b 120-123
+  s_179be3987d0265::t_66feddfad9239c 82-84
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/SubcategoryItem.vue
+  s_179be3987d0265::t_acc5c9906709e6 9-11,23-25,32-33,35-38
+  s_179be3987d0265::t_6192b4ed6689c2 34
+  s_179be3987d0265::t_ec45385354a11e 15-18,30
+  s_179be3987d0265::t_225387e003f1d1 8,27-29,31,39,52
+packages/frontend/editor-ui/src/app/constants/nodeCreator.ts
+  s_3a323ce6ef5756::t_33ae7004f2a03e 42-43
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_3a323ce6ef5756::t_2c940af81183fe 23,82-83,85-87
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.ts
+  s_131eb9fde77372::t_586dc9b42547cf 37,540-546,549,552-579,582-586,589-590,592-593,595-596,598,600-602,606-608,627
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "48cd4475fc50b73ec9cdab2f99d35a08afc9c59c",
+  "prompts": {},
+  "sessions": {
+    "s_131eb9fde77372": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82d310ee-4623-43c1-b5a3-eb5de4669545",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_179be3987d0265": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63eb9ccc-fdfe-4c63-b3b6-ff732c0f0e1a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_3a323ce6ef5756": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b280cc7-2aa7-411b-b755-f5d92f9ab557",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

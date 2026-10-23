@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_8ef4ab61d8be89::t_a8a20a41ca68fd 168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3b6f287ed24795caafbf8615bde8014ee1f53d92",
+  "prompts": {},
+  "sessions": {
+    "s_8ef4ab61d8be89": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5a228394-f9e8-497c-8f6d-582208260266",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_42197d1edb54df::t_b139ab88f964fd 51-52
+  h_57f0ed8cf91102 378
+  s_42197d1edb54df::t_e9e7a6801008ac 61-100
+  s_42197d1edb54df::t_cff9c1c8bbd330 376-377,379-380
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_42197d1edb54df::t_2fda1b3ee50a0e 136,138-139,141
+  s_42197d1edb54df::t_11b8fcf3c76eb8 137,140
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_42197d1edb54df::t_87c1b32f211d01 1191
+  s_42197d1edb54df::t_3f291dcfa467d8 1310
+  h_57f0ed8cf91102 1218
+  ai_agent 1015-1018
+  s_42197d1edb54df::t_092611845fd2d6 1102,1105
+  s_42197d1edb54df::t_b48a0b11c33b21 1013-1014,1022,1026,1030,1032,1036,1052,1059
+  s_42197d1edb54df::t_71aff30c15b68f 1201-1202,1205,1210,1214,1224
+  s_42197d1edb54df::t_54a05a9ab053d1 1325
+  s_42197d1edb54df::t_a3059b4821d17a 1128
+  s_42197d1edb54df::t_eb0076e06b84ff 1280
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.publish.yml
+  s_42197d1edb54df::t_32a9cc4aba8bac 1-40
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.unpublish.yml
+  s_42197d1edb54df::t_742e4c81de7865 1-21
+packages/cli/src/public-api/v1/openapi.yml
+  s_42197d1edb54df::t_2909fa185bce29 114-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66383396e66d2085e3fb3f47bafb47e5f8bfc151",
+  "prompts": {},
+  "humans": {
+    "h_57f0ed8cf91102": {
+      "author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_42197d1edb54df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fb44b01-b920-4958-aa0d-56126ed5e4d6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

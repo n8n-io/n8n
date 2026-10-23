@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_708bf7758dbb62::t_a8ad0df90e5e91 2459-2475,2477-2491,2494-2504
+  s_708bf7758dbb62::t_1cdec44a711955 2774
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.test.ts
+  s_708bf7758dbb62::t_c12370e192cf59 184,201,215
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.vue
+  s_708bf7758dbb62::t_93df731341c02b 445
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_708bf7758dbb62::t_b27ab7f17579f3 4735
+  s_708bf7758dbb62::t_37511fdcbba275 1186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5513db894c97195331866472908c7af8c8283bfe",
+  "prompts": {},
+  "sessions": {
+    "s_708bf7758dbb62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7daba9b-ebfc-405c-be05-73253e2fdd5a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

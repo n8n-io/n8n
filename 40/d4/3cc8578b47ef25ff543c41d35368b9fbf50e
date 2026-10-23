@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_ef8734a1a9d434::t_e840628f643f45 15
+  s_ef8734a1a9d434::t_b95b277d2b0ab9 308-310
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_ef8734a1a9d434::t_429a3e9c6fd475 216,304,363,472,502,546
+  s_ef8734a1a9d434::t_60f461e561be1a 266-274,276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "40d43cc8578b47ef25ff543c41d35368b9fbf50e",
+  "prompts": {},
+  "sessions": {
+    "s_ef8734a1a9d434": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2384e80-02bf-49f2-bb42-c49c34374e77",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

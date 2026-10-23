@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentEvalRunProgress.test.ts
+  s_98cf123401c046::t_c85e89f8a20fc4 1-11,17-172,174-176,178-209,212-333
+  s_98cf123401c046::t_2c45ccb7d70b65 12-16
+  s_98cf123401c046::t_ad9e3844631fc7 210-211
+  s_98cf123401c046::t_75ea5586f145c3 173,177
+packages/frontend/editor-ui/src/features/agents/composables/useAgentEvalRunProgress.ts
+  s_98cf123401c046::t_2c45ccb7d70b65 32,90-93
+  s_98cf123401c046::t_aee392eb224335 82-89,94
+  s_98cf123401c046::t_4e2f63e8426ca2 1-31,33-81,95-213
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_98cf123401c046::t_f5534a4b533077 34-44
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_98cf123401c046::t_74169c0bd7947e 7774-7775
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1050893ef7d799a99fef4af03de728c17b3513f9",
+  "prompts": {},
+  "sessions": {
+    "s_98cf123401c046": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bd44f34-8e05-442d-aa1b-26697eaed220",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/cli/src/__tests__/response-helper.test.ts
+  h_b49cecddc99496 59-81
+packages/cli/src/middlewares/list-query/__tests__/list-query.test.ts
+  h_b49cecddc99496 26
+packages/cli/src/response-helper.ts
+  h_b49cecddc99496 98-99
+packages/quality/testing/playwright/tests/e2e/api/webhook-isolation.spec.ts
+  h_b49cecddc99496 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d5f02fdd2820ebae3f4d3fa3746e9aae2d15fe2a",
+  "prompts": {},
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

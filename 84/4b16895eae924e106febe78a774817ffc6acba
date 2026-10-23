@@ -1,0 +1,97 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentNavigation.test.ts
+  s_8e21a83a5682cf::t_4c6da7384e756b 1-6,11-20,22,24-25,28,34-42,48-53,85
+  s_8e21a83a5682cf::t_e19ed5544d01be 77,79-81,84,7,9-10,21,23,26,29-30,32-33,43-47,54-66,69-71,74-75,78
+  s_8e21a83a5682cf::t_7476cf06af9fd4 8,27,31
+packages/frontend/editor-ui/src/features/agents/__tests__/agentReturnContext.store.test.ts
+  s_8e21a83a5682cf::t_3118c965cffaf2 1-15,18-22
+  s_8e21a83a5682cf::t_a271de66c3fd67 16-17
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentView.test.ts
+  s_8e21a83a5682cf::t_1b1b01f0f00dca 1-8,15-37,39-40,43-51,59,61-68,86-92,57-58,75,77,82-83
+  s_8e21a83a5682cf::t_5bc5a2b8d8848e 10-11,13-14
+  s_edec1786596258::t_ba9b1f7e1c4781 69-71,42,53,60,72-74,76,78-81,84-85
+  s_8e21a83a5682cf::t_f5525370ab2aec 9,12,38,41,52,54-56
+packages/frontend/editor-ui/src/features/agents/views/AgentView.vue
+  s_8e21a83a5682cf::t_855918d4a4a233 6-8,13-14,31,38-47
+  s_edec1786596258::t_9a4c21a8ef0a5b 4
+  s_8e21a83a5682cf::t_f349b450547602 5,12,16-19,21,24-26,52
+  h_7555c3ee6524cf 20,27
+  s_edec1786596258::t_930834831eb75a 32-37
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_8e21a83a5682cf::t_0129c8b5cc3b13 1508
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.test.ts
+  s_edec1786596258::t_42dbe0cba5d961 6,8,13
+  s_edec1786596258::t_6b2e728abc132d 255-280
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_8e21a83a5682cf::t_d55014abe8a109 3-7
+  s_8e21a83a5682cf::t_7ea120ade6107f 125-137
+  s_8e21a83a5682cf::t_71afa973ba6bac 158
+packages/frontend/editor-ui/src/features/agents/composables/useAgentNavigation.ts
+  s_8e21a83a5682cf::t_d7d750b299f97c 1,3-17,19-21,33-35,37-40,42-46
+  s_8e21a83a5682cf::t_8cad551580a445 2,18,29
+  s_8e21a83a5682cf::t_597e635c5ca3f6 22-25,28,32,36,41
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_8e21a83a5682cf::t_1175058175ee94 796
+packages/frontend/editor-ui/src/features/agents/components/BackToWorkflowBanner.vue
+  s_8e21a83a5682cf::t_5314b2bbb04f10 1-2,4-12,22-27,30,45-46,39
+  s_8e21a83a5682cf::t_0a76de5f26f73a 3,13-18,20-21,28-29,31-33,35-38,40-44
+  s_8e21a83a5682cf::t_04661f5fb54cd5 19
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_8e21a83a5682cf::t_b96d8ae3bf34e1 107
+  s_8e21a83a5682cf::t_359e7468b34509 203-229,232,264-265,270-277
+  s_edec1786596258::t_c6cd47d567dd5a 278-290,51,63,237,243-244,249-250,253,259-260,262-263,291-323
+  s_8e21a83a5682cf::t_72b4e2bb8fad13 11,15,35,48-49
+  s_edec1786596258::t_f01d8037b8cb39 24
+  s_edec1786596258::t_41d2c3a61b7a22 50,60-62
+  s_8e21a83a5682cf::t_dbc6756c227c5e 108
+  s_edec1786596258::t_15223594c3544e 109
+  s_edec1786596258::t_a562336ee3ffee 230-231
+  s_8e21a83a5682cf::t_a99935b96f0118 235-236,238-242,245-248,251-252,254-258,261
+packages/frontend/editor-ui/src/features/agents/agentReturnContext.store.ts
+  s_8e21a83a5682cf::t_7dca8ba83486d4 1-5,10-12,14,17-31
+  s_8e21a83a5682cf::t_0bb52e868b9c42 16
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_8e21a83a5682cf::t_11a328ce11050e 23-29
+  s_8e21a83a5682cf::t_be80170576f2c8 50-55
+  s_8e21a83a5682cf::t_1d066d4644f65c 80-84
+  s_edec1786596258::t_9dba7ece331951 226-227,208-211,228-234,236-237,241
+  s_8e21a83a5682cf::t_66e9462ab0cf2e 269-273,275-282,286-301,313-314,336,317,327
+  ai_agent 308-312
+  s_8e21a83a5682cf::t_810311b8febef8 342,235,239,285,319,343-346,351
+  s_8e21a83a5682cf::t_d4437e46677924 30
+  s_edec1786596258::t_6b4e5dcfb7b937 31-34
+  s_8e21a83a5682cf::t_9ab9220ea638bc 85
+  s_edec1786596258::t_49e494617dd47f 86-89
+  s_8e21a83a5682cf::t_eb20d496e52c8f 136
+  s_8e21a83a5682cf::t_a2673b4bacb10c 238,318,320-326,328-335
+  s_edec1786596258::t_a3914f9b8300e3 251,355
+  s_edec1786596258::t_459e2c6d7e6be0 283-284,302-307,315-316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "844b16895eae924e106febe78a774817ffc6acba",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8e21a83a5682cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f38fc08e-17d6-4281-83fb-50de5181b652",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_edec1786596258": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a019cf0-00e7-4c7f-9c74-45988cd641cc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

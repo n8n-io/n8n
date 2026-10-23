@@ -1,0 +1,61 @@
+packages/nodes-base/nodes/Hunter/Hunter.node.ts
+  s_2e1fa95fc44f8f::t_17231f3474057b 8
+  s_2e1fa95fc44f8f::t_cd17e1aa71e108 308,334-340,366-372,379-385
+packages/nodes-base/nodes/Hunter/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_136f1be1d75064 1-14,19-21
+  s_2e1fa95fc44f8f::t_d197406f6dd3de 15-18
+packages/nodes-base/nodes/Intercom/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_7b971b9d38c8cd 1-18
+packages/nodes-base/nodes/Iterable/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_8c10ae1f0d3ac4 1-26
+packages/nodes-base/nodes/InvoiceNinja/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_c9f3217c4e05a6 1-23
+packages/nodes-base/nodes/Hunter/GenericFunctions.ts
+  s_45b813bd7216f6::t_280ada1a8627de 9-10,12,17,24,28,49
+packages/nodes-base/nodes/Intercom/GenericFunctions.ts
+  s_0c8ab979236670::t_baa70a449b5690 9-10,12,16,23,26,45
+packages/nodes-base/nodes/InvoiceNinja/GenericFunctions.ts
+  s_0c8ab979236670::t_b105171f0c8432 10-11,13,26,43-49,60
+packages/nodes-base/nodes/InvoiceNinja/InvoiceNinjaTrigger.node.ts
+  s_45b813bd7216f6::t_eb0f37d5171348 8,138,164,176,198,201
+packages/nodes-base/nodes/Iterable/GenericFunctions.ts
+  s_45b813bd7216f6::t_dabfa7e5ba3906 8-9,11,16,24-33,50
+packages/nodes-base/nodes/Intercom/Intercom.node.ts
+  s_2e1fa95fc44f8f::t_f76469ac6b6147 11,86,205-210,229-233,235-241,258,265-271,283-287,290-296,412-418,433,439-445,461,468-474,484-488,547-553,575,581-587,607,614-620,646,655,669,676-682
+packages/nodes-base/nodes/InvoiceNinja/InvoiceNinja.node.ts
+  s_2e1fa95fc44f8f::t_e2b666510c3cd8 10,161-166,185,205,235-240,259,279,307,328-333,437,451,480,486-492,501,623,632-639,645,658,698,704-710,719,766,780,797,803-809,815-819,828-834,867,881,910,916-922,931,994,1004,1017,1023-1029,1038,1044,1083,1124,1143,1149-1150,1266-1273,1279,1292,1345
+packages/nodes-base/nodes/Iterable/Iterable.node.ts
+  s_2e1fa95fc44f8f::t_1e31dc9b69147c 12,76,140-142,179-184,210,213,238,242,288-293,327-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "00129085f24d9cc4c96afad162d224b568fb6543",
+  "prompts": {},
+  "sessions": {
+    "s_0c8ab979236670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5725a58c20a2e923",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_45b813bd7216f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a1d4e65dd705c3afe",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

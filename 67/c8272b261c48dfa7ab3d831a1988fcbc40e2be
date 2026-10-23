@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.test.ts
+  s_ff5f64df21e3e0::t_963fa1ad2e8953 1310
+packages/@n8n/db/src/migrations/common/1784000000009-SplitRedactionScopeInCustomRoles.ts
+  s_a0f002f59105e2::t_cd893b2c272b1e 1-85
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_a0f002f59105e2::t_5bfcf0c6abebaf 665-688,691-715
+  s_a0f002f59105e2::t_9cd65e24c410b3 2,341,364,492-495,497-503,505-517,519-521,523-529,531-543,545-547,549-555,557-563,565-567,569-575,577-583,585-587,589-595,597-603,605-635,637-643,645-647,649-655,657-663
+packages/@n8n/db/src/services/auth.roles.service.ts
+  s_a0f002f59105e2::t_7a53ab787c79a1 89-90,93,95-105
+packages/cli/src/workflows/workflow.service.ts
+  s_a0f002f59105e2::t_14550d2b3985dd 34-40,42
+  s_a0f002f59105e2::t_16598d200c000b 76-100
+  s_a0f002f59105e2::t_e368d20c7f4414 437,442-445,447
+packages/cli/test/migration/1784000000009-split-redaction-scope-in-custom-roles.test.ts
+  s_a0f002f59105e2::t_e49a958644177c 1-11,13-365
+  s_a0f002f59105e2::t_4300d0b491cd5f 12
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_a0f002f59105e2::t_2957fefe0e530c 377
+  s_a0f002f59105e2::t_d5495f7bd3b69f 177
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_a0f002f59105e2::t_d997db76f47f55 170
+  s_a0f002f59105e2::t_e1ab70c6b40ea3 363
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "67c8272b261c48dfa7ab3d831a1988fcbc40e2be",
+  "prompts": {},
+  "sessions": {
+    "s_a0f002f59105e2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8ec96e8d-b6a8-49a1-a80a-24f269d9f04b",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": null
+    },
+    "s_ff5f64df21e3e0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c3b9fbef-886c-40d9-a205-0e22a7d98cc2",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 74-75
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 133-134
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 110-112
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 92
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 79-80
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 35,66,100-102,122
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 77
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 28,110
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 226-227
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 18-19
+packages/cli/src/modules/n8n-packages/entities/variable/variable-missing-mode.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 4
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_442b113d88c721::t_c5073dad8c5eb4 27,51,69,78-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "50cbf8bc75d5d144bbe1ce824c55c5cc217aa86a",
+  "prompts": {},
+  "sessions": {
+    "s_442b113d88c721": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "607b7981-53e5-4851-ba95-f417c3acadff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

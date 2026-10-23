@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/utils.test.ts
+  s_14f52ab61740a5::t_d972616fbbed7d 219-230
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/create.perItem.test.ts
+  s_14f52ab61740a5::t_aff4be5c3eb16c 6-9,12-13,25,46-49,53,55,69-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "81a14147a0739345f96033e6870e612564009aa9",
+  "prompts": {},
+  "sessions": {
+    "s_14f52ab61740a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3435d574-b67e-42e7-9ac5-77452c95f9ae",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

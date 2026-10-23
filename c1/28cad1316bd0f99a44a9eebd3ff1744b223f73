@@ -1,0 +1,21 @@
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_f0e6264a74d006::t_1f8b682ce79744 142,147-150
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_f0e6264a74d006::t_7da3682de0f767 885-888,892-895,903-905
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c128cad1316bd0f99a44a9eebd3ff1744b223f73",
+  "prompts": {},
+  "sessions": {
+    "s_f0e6264a74d006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74b342e3-35da-44fb-bc35-d5aa260834e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

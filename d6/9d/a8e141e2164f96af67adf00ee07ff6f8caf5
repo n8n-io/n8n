@@ -1,0 +1,48 @@
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_ce38e707b3774d::t_37fc767b155fa8 22,74,104,212-220
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/import-request.ts
+  s_ce38e707b3774d::t_37fc767b155fa8 1-6,10-18,20-23,25-33
+  s_ce38e707b3774d::t_6cacbac5c3794d 24
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_ce38e707b3774d::t_37fc767b155fa8 90-110
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_ce38e707b3774d::t_37fc767b155fa8 10,44-45
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ce38e707b3774d::t_37fc767b155fa8 47-59,164-166,216,234-238,426,428,451,478-482
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_ce38e707b3774d::t_37fc767b155fa8 19,48,79,109,308-309,312-343,445
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_ce38e707b3774d::t_37fc767b155fa8 14-15,146-163,574-576,593-595,601-605
+packages/@n8n/cli/docs/commands/package.md
+  s_ce38e707b3774d::t_37fc767b155fa8 95
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_ce38e707b3774d::t_37fc767b155fa8 16,106
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_ce38e707b3774d::t_6cacbac5c3794d 16,36-47
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_ce38e707b3774d::t_37fc767b155fa8 208
+packages/@n8n/cli/src/client.ts
+  s_ce38e707b3774d::t_37fc767b155fa8 22
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_ce38e707b3774d::t_6cacbac5c3794d 39,65-73,219-304
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_ce38e707b3774d::t_9ff308caaf979c 19,30,72-86,96-98,126
+packages/@n8n/cli/src/commands/package/import.ts
+  s_ce38e707b3774d::t_37fc767b155fa8 53-54,56-58,156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d69da8e141e2164f96af67adf00ee07ff6f8caf5",
+  "prompts": {},
+  "sessions": {
+    "s_ce38e707b3774d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f3d3be-4e23-4ead-99eb-53993886261e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

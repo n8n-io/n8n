@@ -1,0 +1,23 @@
+packages/@n8n/cli/src/commands/promotion-connection/list-changes.ts
+  s_f9f2d6426545c7::t_69bdf73cc970a0 24-26,28-37
+packages/@n8n/cli/src/__tests__/promotion-connection-list-changes.test.ts
+  s_f9f2d6426545c7::t_153f87399625c7 1-102
+packages/@n8n/cli/src/base-command.ts
+  s_f9f2d6426545c7::t_be45ea68af3535 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec7bf84ee8134405c81096a21a1479dcd062ad4e",
+  "prompts": {},
+  "sessions": {
+    "s_f9f2d6426545c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9d0f275-986d-40d9-9c37-c25ee5a4ed2b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

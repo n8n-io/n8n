@@ -1,0 +1,28 @@
+packages/cli/src/modules/n8n-packages/io/__tests__/utils/raw-tar-builder.ts
+  s_f92fc24510291c::t_f1efeba09174b5 1-33,36,38-39,41-53
+  s_610aa13351e3e8::t_350f0da2955478 34-35,37,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "28ea72ece4f30c191ec7743d0834d8eee4492d5d",
+  "prompts": {},
+  "sessions": {
+    "s_610aa13351e3e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a0dc4722-3d61-4b06-b2b8-f488c39142da",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "s_f92fc24510291c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b385e69-5a11-4569-bd9f-745a14d5d4a0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,83 @@
+packages/nodes-base/nodes/Webpage/test/Webpage.node.test.ts
+  s_5db5c2f06b4ea1::t_91ed38cd18c5fe 28
+  s_5db5c2f06b4ea1::t_14a23822a56e5b 88
+  s_5db5c2f06b4ea1::t_c669a422a16248 1-27,29-87,89-136
+packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.ts
+  s_5db5c2f06b4ea1::t_cda82fabc7ffda 30,889-891,896,923-925
+packages/frontend/editor-ui/src/app/constants/nodeTypes.ts
+  s_5db5c2f06b4ea1::t_cda82fabc7ffda 3,159,188
+  s_5db5c2f06b4ea1::t_06682b8eef0bda 167
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-test-trigger-resource.resolver.api.test.ts
+  s_5db5c2f06b4ea1::t_63ab695e6eb57e 12,72-93,537-564,566-567,569-582
+  s_5db5c2f06b4ea1::t_40b24a593aa91a 565,568
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  s_5db5c2f06b4ea1::t_7c1fbadaa5dc6b 103,1028-1048,1055
+  s_5db5c2f06b4ea1::t_4187adcb6c7238 1049-1054,1056
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/__tests__/utils.test.ts
+  s_5db5c2f06b4ea1::t_14a23822a56e5b 202-207
+  s_5db5c2f06b4ea1::t_f0fe7bb6c9018b 2-3,7,13,15,19-28,168-201,208-232
+packages/workflow/src/constants.ts
+  s_5db5c2f06b4ea1::t_9d35086eeaa317 49
+packages/nodes-base/nodes/Webpage/Webpage.node.ts
+  s_5db5c2f06b4ea1::t_d716429984b54d 1-40,42-54,56-64,66-67,69-91,93-112,115-138
+  s_5db5c2f06b4ea1::t_5615dad45239a2 65,92,113-114
+  s_5db5c2f06b4ea1::t_14a23822a56e5b 68
+  s_5db5c2f06b4ea1::t_06682b8eef0bda 55
+  s_5db5c2f06b4ea1::t_db227d1790fd4d 41
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
+  s_5db5c2f06b4ea1::t_4d48f0799282df 5,18-19,26,154,158,179
+  s_5db5c2f06b4ea1::t_413a206d985ede 35-36
+packages/nodes-base/nodes/Webpage/Webpage.node.json
+  s_5db5c2f06b4ea1::t_efd2097c4c0126 1-13
+packages/nodes-base/package.json
+  s_5db5c2f06b4ea1::t_efd2097c4c0126 868
+packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.test.ts
+  s_5db5c2f06b4ea1::t_14a23822a56e5b 738-740
+  s_5db5c2f06b4ea1::t_bc5fc8cdcce46e 722
+  s_5db5c2f06b4ea1::t_fe39c0366eebd2 17,709-721,723-737,741-747,749
+  s_5db5c2f06b4ea1::t_e415ac7ac8f4e0 748
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_5db5c2f06b4ea1::t_2cfc02616377f5 4-9,30-35,169-171,173-181,183-185,188-195
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-test-trigger-resource.resolver.ts
+  s_5db5c2f06b4ea1::t_4d48f0799282df 4,19-20,27,138,142,154
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_5db5c2f06b4ea1::t_06682b8eef0bda 17-22,191
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_5db5c2f06b4ea1::t_6ed28d58c40614 254-259
+  s_5db5c2f06b4ea1::t_b3c000673be588 277-280
+  s_5db5c2f06b4ea1::t_d4b8fbe6d40045 72-73
+packages/frontend/editor-ui/src/app/composables/useWorkflowNormalization.test.ts
+  s_5db5c2f06b4ea1::t_fe39c0366eebd2 14,155-181
+  s_5db5c2f06b4ea1::t_0e6803ebf2bfa6 182-183
+packages/nodes-base/nodes/Webpage/placeholder.ts
+  s_5db5c2f06b4ea1::t_8552955e23f370 1-44
+packages/frontend/editor-ui/src/app/composables/useWorkflowNormalization.ts
+  s_5db5c2f06b4ea1::t_cda82fabc7ffda 2
+  s_5db5c2f06b4ea1::t_14a23822a56e5b 63-68
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5db5c2f06b4ea1::t_a83839695f26d0 2739-2740
+packages/cli/src/load-nodes-and-credentials.ts
+  s_5db5c2f06b4ea1::t_32ff423d21a737 43-48
+  s_5db5c2f06b4ea1::t_753a082f27c6ab 108-112
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-trigger-resource.resolver.api.test.ts
+  s_5db5c2f06b4ea1::t_a643db8cdfdf59 12,69-90,729-769,771-773,775-796
+  s_5db5c2f06b4ea1::t_40b24a593aa91a 770,774
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_5db5c2f06b4ea1::t_4ad9c0f5a6f078 349-370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "532ad8a3ec5d14836f4a7adf6d59b8d30be45757",
+  "prompts": {},
+  "sessions": {
+    "s_5db5c2f06b4ea1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d572c3e7-d213-4d7e-b48c-199fda4de48e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

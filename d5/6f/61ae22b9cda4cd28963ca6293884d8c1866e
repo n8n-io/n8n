@@ -1,0 +1,30 @@
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_a2eff015e19f99::t_9e0273c2736a0b 312
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_a2eff015e19f99::t_9e0273c2736a0b 556-566
+packages/cli/src/workflows/triggers/poll-backoff-policy.ts
+  h_32d8cd6a0d6aad 40
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_a2eff015e19f99::t_e4ffb2d94e11a1 711-712
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d56f61ae22b9cda4cd28963ca6293884d8c1866e",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a2eff015e19f99": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b759764-a4b7-480d-b044-74ac51d6d5a3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

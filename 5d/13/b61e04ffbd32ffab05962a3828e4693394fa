@@ -1,0 +1,63 @@
+packages/@n8n/cli/src/commands/git-connections/instance/get.ts
+  s_51e97a3598d15d::t_df4d4404545f56 1-13
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_51e97a3598d15d::t_b86df4c3c2f3aa 7
+packages/cli/src/public-api/v1/shared/spec/schemas/instanceGitSettingsPublicDto.generated.yml
+  ai_agent 1-46
+packages/cli/src/public-api/v1/controllers/__tests__/instance-git-settings.public.controller.test.ts
+  s_51e97a3598d15d::t_c9a2bb4d1f6809 1-57
+packages/@n8n/cli/src/index.ts
+  s_51e97a3598d15d::t_33a0aa6a460384 31-32
+  s_51e97a3598d15d::t_78fadd79b5961d 106-107
+packages/cli/src/modules/git-connections.ee/constants.ts
+  s_51e97a3598d15d::t_03fcc658349fcc 4-6
+packages/cli/src/modules/git-connections.ee/instance-git-connection.service.ts
+  s_51e97a3598d15d::t_12e1909a955243 1-9,11-56,59-61,68-78,153-164,169-206,214-215,217-235
+  s_cb485bb7079c13::t_cb862b7e7a36b4 57
+  ai_agent 165-168
+packages/@n8n/api-types/src/dto/index.ts
+  s_51e97a3598d15d::t_659bc507263383 116-119
+packages/cli/src/public-api/v1/handlers/instance-git-settings/spec/paths/getInstanceGitSettings.generated.yml
+  ai_agent 1-20
+packages/@n8n/cli/src/client.ts
+  s_51e97a3598d15d::t_f23404e234347f 273-279
+packages/@n8n/cli/src/commands/git-connections/instance/set.ts
+  s_51e97a3598d15d::t_e55772236f7297 1-9,14-23
+  ai_agent 10-13
+packages/cli/src/public-api/v1/handlers/instance-git-settings/spec/paths/updateInstanceGitSettings.generated.yml
+  ai_agent 1-53
+packages/cli/src/modules/git-connections.ee/__tests__/instance-git-connection.service.test.ts
+  s_51e97a3598d15d::t_5b12157d09eaa9 1-23,26-33,37-66,68-87,89-102,109-232,239-241
+  s_51e97a3598d15d::t_7961a6e19ffd4a 103-108
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 35-39
+packages/@n8n/api-types/src/dto/git-connections/instance-git-settings.dto.ts
+  s_51e97a3598d15d::t_7a3a8ee28597e9 1-2,11-40
+  s_51e97a3598d15d::t_948d7c24440113 4
+packages/cli/src/public-api/v1/controllers/instance-git-settings.public.controller.ts
+  s_51e97a3598d15d::t_edab84d509d124 1-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d13b61e04ffbd32ffab05962a3828e4693394fa",
+  "prompts": {},
+  "sessions": {
+    "s_51e97a3598d15d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b64c2e73-9bc3-48b2-97fe-09862c0ec3e8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_cb485bb7079c13": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91156476-ac48-448c-8bed-29ff6c905297",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

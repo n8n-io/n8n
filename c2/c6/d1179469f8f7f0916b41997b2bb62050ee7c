@@ -1,0 +1,26 @@
+packages/cli/test/integration/commands/worker.cmd.test.ts
+  s_0bf5526932135a::t_054830c0afcb79 25,49-52
+packages/cli/src/commands/__tests__/webhook.test.ts
+  s_0bf5526932135a::t_115c9fbea34b1d 83-84,87,95
+packages/cli/src/commands/base-command.ts
+  s_0bf5526932135a::t_246933d7d50a44 300-301
+packages/cli/src/commands/__tests__/base-command.test.ts
+  s_0bf5526932135a::t_2bc4af2dfd7e0a 54-56,58,60-63
+  s_0bf5526932135a::t_6f077d43bf1ecf 3,5,57,59,64,66,79-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c2c6d1179469f8f7f0916b41997b2bb62050ee7c",
+  "prompts": {},
+  "sessions": {
+    "s_0bf5526932135a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28bf3b8c-45a6-402c-bf40-3dc469674a44",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+packages/cli/src/services/redis-credential-refresher.service.ts
+  s_7ef0d404cdd9d1::t_9c4cef83734b02 1-3,7-87,89-99,101-104,117-157
+  s_7ef0d404cdd9d1::t_8ef10b41114616 100,105-116
+  s_7ef0d404cdd9d1::t_752b1d03eeb740 5
+  s_7ef0d404cdd9d1::t_9ecb7282301fd9 88
+  s_7ef0d404cdd9d1::t_986730004ac94d 4,6
+packages/cli/scripts/poc-redis-iam-auth.ts
+  s_7ef0d404cdd9d1::t_7f781c3df39a6f 17
+  s_7ef0d404cdd9d1::t_20c7e65c730a05 1-16,18-100,107,109-138
+  s_7ef0d404cdd9d1::t_727f48ae18a6b4 101-106,108
+  s_7ef0d404cdd9d1::t_461428366f9f38 139-141
+packages/cli/src/services/redis-credential-provider.ts
+  s_7ef0d404cdd9d1::t_2ff674ff35e661 1-46
+packages/cli/src/services/redis-client.service.ts
+  s_7ef0d404cdd9d1::t_2f01be86c9c939 93
+  s_7ef0d404cdd9d1::t_fc8f7f27bbd990 8
+  s_7ef0d404cdd9d1::t_27827591b897d3 205-207
+  s_7ef0d404cdd9d1::t_cf9633fb777ffe 46
+  s_7ef0d404cdd9d1::t_98b040cd8ee902 31
+  s_7ef0d404cdd9d1::t_9aa2066daa841c 50-60
+packages/cli/package.json
+  s_7ef0d404cdd9d1::t_cbdcb1fa35370c 224
+packages/cli/src/services/__tests__/redis-client.service.test.ts
+  s_7ef0d404cdd9d1::t_3ace4b5634a7be 49-50
+  s_7ef0d404cdd9d1::t_889af295bee192 8
+  s_7ef0d404cdd9d1::t_917d8702181f58 58,82,96,110,125,139,151,165,189,229,281,318
+packages/@n8n/config/src/configs/scaling-mode.config.ts
+  s_7ef0d404cdd9d1::t_74f8979ca171af 51-62
+packages/@n8n/config/test/config.test.ts
+  s_7ef0d404cdd9d1::t_17ac47c06bc280 382-383
+packages/cli/eslint.config.mjs
+  s_7ef0d404cdd9d1::t_e1ed541e11219c 29
+pnpm-lock.yaml
+  s_7ef0d404cdd9d1::t_669e9487df1871 4395-4397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ad4585459a5ff9ad029b328fac4f24a7c0f148ad",
+  "prompts": {},
+  "sessions": {
+    "s_7ef0d404cdd9d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd84cf0b-7767-4fb3-afe4-0a79a42ea164",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

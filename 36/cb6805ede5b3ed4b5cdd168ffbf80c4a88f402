@@ -1,0 +1,29 @@
+packages/@n8n/node-cli/src/template/templates.test.ts
+  s_2e1fa95fc44f8f::t_7daa6f75b489c1 1-25
+packages/@n8n/node-cli/src/template/templates/declarative/custom/template/nodes/Example/resources/user/index.ts
+  s_2e1fa95fc44f8f::t_5f6e1f04f080f2 39
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/resources/issue/index.ts
+  s_2e1fa95fc44f8f::t_7cc7fba9cb19a2 29,41,53
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/resources/issueComment/index.ts
+  s_2e1fa95fc44f8f::t_a5e96a74f51990 27
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom/template/nodes/ExampleChatModel/model.ts
+  s_2e1fa95fc44f8f::t_d31db8fa8ed9d3 1-2,28,34,71,110-114
+packages/@n8n/node-cli/src/template/templates/shared/default/.agents/nodes-declarative.md
+  s_2e1fa95fc44f8f::t_408b7c3052c7de 53,99-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36cb6805ede5b3ed4b5cdd168ffbf80c4a88f402",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

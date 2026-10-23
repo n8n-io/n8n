@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Elastic/ElasticSecurity/ElasticSecurity.node.ts
+  s_dab2d060d91655::t_3258da9fa429bd 25,217
+packages/nodes-base/nodes/Elastic/ElasticSecurity/GenericFunctions.ts
+  s_dab2d060d91655::t_27a94332a878a3 15-18
+packages/nodes-base/nodes/Elastic/ElasticSecurity/tests/GenericFunctions.test.ts
+  s_dab2d060d91655::t_ec7fc3dfee7864 3-5,8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6e603dc80ff3dea8ea7b65af8d17409cbf7b1ea8",
+  "prompts": {},
+  "sessions": {
+    "s_dab2d060d91655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc11c882-03fa-485b-8041-84541505b71e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/oxlint.config.mts
+  s_85f0dfb71252ba::t_1850f56b18e4fd 319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e7788b1e35d1382a1a50fe792c7fe2d894f829c9",
+  "prompts": {},
+  "sessions": {
+    "s_85f0dfb71252ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68eb8a8a-a2af-4d46-a86f-d8f01c0cdeda",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

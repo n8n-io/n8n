@@ -1,0 +1,22 @@
+packages/@n8n/scheduler/src/core/provisioning/provision.ts
+  s_b6434564d41829::t_1d4ae1db90ee8a 2-6,8-13,29-32,39-40,78-85,99-126
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_b6434564d41829::t_c31dcd882ee309 159
+  s_b6434564d41829::t_52e8644a805577 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b80396556c5341bd3602fe270752a6d6a37a3755",
+  "prompts": {},
+  "sessions": {
+    "s_b6434564d41829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c4838877-b69c-47bd-b042-82031667664f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

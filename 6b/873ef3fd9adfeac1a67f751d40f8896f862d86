@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Dhl/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_7adb71d7df4f16 1-57
+packages/nodes-base/nodes/DeepL/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_39170dd7f43915 1-58
+packages/nodes-base/nodes/Demio/test/workflow/Demio.workflow.test.ts
+  s_2e1fa95fc44f8f::t_2ce0339d4b7308 1-26
+packages/nodes-base/nodes/Dhl/test/workflow/Dhl.workflow.test.ts
+  s_2e1fa95fc44f8f::t_7c804b6185a322 1-17
+packages/nodes-base/nodes/Demio/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_84b983ca031f5a 1-193
+packages/nodes-base/nodes/DeepL/test/workflow/DeepL.workflow.test.ts
+  s_2e1fa95fc44f8f::t_261228ee4e6a1e 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b873ef3fd9adfeac1a67f751d40f8896f862d86",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

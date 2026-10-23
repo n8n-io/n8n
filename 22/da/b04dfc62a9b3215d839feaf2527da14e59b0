@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/rlc.description.ts
+  s_43b1eab762dc90::t_f423c7521dc641 124-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "22dab04dfc62a9b3215d839feaf2527da14e59b0",
+  "prompts": {},
+  "sessions": {
+    "s_43b1eab762dc90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55b922ce-81dd-4dc2-9723-935e9c0abb74",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

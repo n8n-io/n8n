@@ -1,0 +1,34 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/error-handling.ts
+  s_d12a4963d5575f::t_826940ea1a03c5 26-62
+pnpm-lock.yaml
+  ai_agent 788-790,3096,26486,26493
+package.json
+  s_d12a4963d5575f::t_34f94fe9b5827d 224-225
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_d12a4963d5575f::t_fa24c844510bc5 31-38
+  s_d12a4963d5575f::t_eefdf07c0a4890 210,214-215,223-229
+  s_d12a4963d5575f::t_c07e2689313a94 18,23
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/error-handling.test.ts
+  ai_agent 33,53
+  s_d12a4963d5575f::t_0ee081c2a5ff30 1-32,34-52,54-67
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/LmChatGoogleVertex.test.ts
+  s_d12a4963d5575f::t_792856f0a7db80 204-262
+patches/@langchain__google-common@2.1.24.patch
+  s_d12a4963d5575f::t_34f94fe9b5827d 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f133f383efac6008eaa5ad511825d45931f2af4a",
+  "prompts": {},
+  "sessions": {
+    "s_d12a4963d5575f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ae10543-5fa6-4f42-afbc-1421277b0d70",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

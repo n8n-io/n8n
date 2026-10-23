@@ -1,0 +1,30 @@
+packages/@n8n/eslint-config/src/plugin.ts
+  s_df4fa7eaff7da3::t_c1058c2a57aa8e 34-37
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_df4fa7eaff7da3::t_bd7b01803c3709 65
+  s_df4fa7eaff7da3::t_c83a4d33254093 32
+packages/@n8n/eslint-config/src/plugin.test.ts
+  s_df4fa7eaff7da3::t_b5e2de278c2442 12-19
+packages/@n8n/eslint-config/src/rules/no-todo-test-with-body.ts
+  s_df4fa7eaff7da3::t_60c275d145f504 1-2,12-36,38-41,44-62,67,69-76,78-86
+  s_df4fa7eaff7da3::t_caf489033f1c56 3-11,37,42-43,63-66,68,77
+packages/@n8n/eslint-config/src/rules/no-todo-test-with-body.test.ts
+  s_df4fa7eaff7da3::t_447dbe2b462fc0 44-45,49,54
+  s_df4fa7eaff7da3::t_b7b13213a3211f 1-43,46-48,50-53,55-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "99899bedc272d560ba89d1a3d3123f6ecb26a73d",
+  "prompts": {},
+  "sessions": {
+    "s_df4fa7eaff7da3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6288f42d-ea93-4870-ba44-4741464ec95b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

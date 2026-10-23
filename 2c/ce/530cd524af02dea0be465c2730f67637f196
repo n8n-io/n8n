@@ -1,0 +1,52 @@
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_92ac37e9fa4799::t_8eb73cefe5877b 280-285
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_92ac37e9fa4799::t_8eb73cefe5877b 1699-1706
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadsView.test.ts
+  s_92ac37e9fa4799::t_4c20ebd768e0cb 1,3,6-21,24,28-29,32,36,41-67,69-74,76-77,79-87,89-96
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_92ac37e9fa4799::t_8eb73cefe5877b 810,812
+packages/cli/src/modules/instance-ai/repositories/instance-ai-thread.repository.ts
+  s_92ac37e9fa4799::t_8eb73cefe5877b 2,49-53,60-69
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_92ac37e9fa4799::t_4c20ebd768e0cb 31,1127-1144
+  s_92ac37e9fa4799::t_fbf993fbf56d75 1145
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiThreadHistory.ts
+  s_92ac37e9fa4799::t_3bd56be690197a 1-45
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_92ac37e9fa4799::t_9d515e4cbd15b5 8-9
+  s_92ac37e9fa4799::t_d76f0538ffcd1c 22,37-46,56-57,71,75,181-188,191-210,214,216-220,223-230,233-239,241-245,247-253,255-262,295,325,332-334,337-343,345,442-444
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.test.ts
+  s_92ac37e9fa4799::t_a04d1e58c84129 11-15,59,105-109,111-127,129-143,145,147,149-169
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.memory.api.ts
+  s_92ac37e9fa4799::t_d76f0538ffcd1c 18
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadsView.vue
+  s_92ac37e9fa4799::t_403b6cb171769e 2,21,32
+  s_92ac37e9fa4799::t_fb44e6fd4455cf 6,9,15-16,18,20,28,30,33-34,41-49,53-58,61-62,66-70,76-137,139-144,146-154,156,158-159,161,164-166,169-171,176,182,187-189,192,196,199-201,205,208,211,214,217-218,221-224,226-228,232,238-239,242,244,247-250,253-254,257-258,263-274,285
+  s_92ac37e9fa4799::t_5575a00b5bed76 286
+  s_4f2115a0410d20::t_8f994072ae0aad 277,282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2cce530cd524af02dea0be465c2730f67637f196",
+  "prompts": {},
+  "sessions": {
+    "s_4f2115a0410d20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28eec2a3-4e19-4cf4-b02a-8013e69e5da1",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_92ac37e9fa4799": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3934b38-973f-4457-a510-b1d3420b16b4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

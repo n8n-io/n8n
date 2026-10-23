@@ -1,0 +1,27 @@
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_9c30e64d236bdf::t_3d12eae939dc99 237,239
+packages/@n8n/engine/src/execution/resume-request.service.ts
+  s_9c30e64d236bdf::t_7e9cf6400f46b0 7,40,71,98,102-104
+packages/@n8n/engine/src/server/api.types.ts
+  s_9c30e64d236bdf::t_29a1b6a06e8713 84
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_9c30e64d236bdf::t_d187fb1afd1a2c 78,164
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_9c30e64d236bdf::t_ab47408c1fa4e0 77,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0f69dc08d387da088259e486b8ca32fd06e64558",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

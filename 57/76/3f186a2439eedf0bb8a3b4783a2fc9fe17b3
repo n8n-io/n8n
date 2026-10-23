@@ -1,0 +1,23 @@
+.claude/skills/node-add-oauth/SKILL.md
+  4d04d9c03355f03e 22,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "57763f186a2439eedf0bb8a3b4783a2fc9fe17b3",
+  "prompts": {
+    "4d04d9c03355f03e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77d19175-8246-4c18-84a1-e02282bdd875",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}

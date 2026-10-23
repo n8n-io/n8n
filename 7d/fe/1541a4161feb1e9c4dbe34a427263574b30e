@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_7b09b175312274::t_d74df657ef23ff 321,323-324,326-328,330-332
+  h_760178ed151f13 322,325,329,416
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7dfe1541a4161feb1e9c4dbe34a427263574b30e",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7b09b175312274": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e8e52209-0e49-47bc-9835-2ee73f0edfbb",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

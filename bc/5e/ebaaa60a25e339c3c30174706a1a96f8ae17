@@ -1,0 +1,77 @@
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/security-contract-change-validation.workflow.ts
+  s_805dfaf49a4974::t_6ef2bc9df304dc 2,17-19,30-55,57-74,76-106,108-126,128-129,266-282,284-294,296-326,330-368
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-developer-onboarding-checklist.workflow.ts
+  s_805dfaf49a4974::t_59d0f854834bb5 2,99-102,104,106-124,130-134,150,154,170,175,178,213,216,223-224
+  s_805dfaf49a4974::t_668876d81eb923 135-149,151-153,155-169,171-174,176-177,179-212,214-215,217
+  s_805dfaf49a4974::t_9284bf1cd25129 218
+packages/@n8n/instance-ai/knowledge-base/use-cases/other.md
+  s_805dfaf49a4974::t_f0bcd0a377cc30 5
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-pull-request-review-reminders.workflow.ts
+  s_805dfaf49a4974::t_5f615e39c6d3c3 165
+  s_805dfaf49a4974::t_668876d81eb923 169-183,185-187,189-203,205-208,210-211,213-229,231-249,251
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/product-design-bookings-into-a-spreadsheet.workflow.ts
+  s_805dfaf49a4974::t_6ef2bc9df304dc 2,8-10,24-44,46-53,55-75,77-85,87-88,158-173,175-185,187-217,221-254
+packages/@n8n/instance-ai/knowledge-base/use-cases/security.md
+  s_805dfaf49a4974::t_f0bcd0a377cc30 5
+  s_805dfaf49a4974::t_a65698a6c4dd92 28
+packages/@n8n/instance-ai/knowledge-base/use-cases/engineering.md
+  s_805dfaf49a4974::t_f0bcd0a377cc30 5
+  s_805dfaf49a4974::t_e6d409003d64a3 64
+packages/@n8n/instance-ai/knowledge-base/use-cases/product-design.md
+  s_805dfaf49a4974::t_f0bcd0a377cc30 5
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_805dfaf49a4974::t_9648da4893935f 52-54,79,81-86
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/product-design-web-page-change-tracker.workflow.ts
+  s_805dfaf49a4974::t_5f615e39c6d3c3 121
+  s_805dfaf49a4974::t_668876d81eb923 126-140,142-144,146-160,162-165,167-168,170-186,188-206,208
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-standup-summary.workflow.ts
+  s_805dfaf49a4974::t_5f615e39c6d3c3 136
+  s_805dfaf49a4974::t_668876d81eb923 140-154,156-158,160-174,176-179,181-182,184-200,202-220,222
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/other-sales-report-in-a-spreadsheet.workflow.ts
+  s_805dfaf49a4974::t_6ef2bc9df304dc 2,9-11,44-60,62-67,69-90,94-120
+packages/@n8n/instance-ai/knowledge-base/use-cases/rank.sh
+  s_805dfaf49a4974::t_f0bcd0a377cc30 8-12,27,62
+  s_805dfaf49a4974::t_a0cc9b50865480 6-7
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/security-timed-follow-ups.workflow.ts
+  s_805dfaf49a4974::t_668876d81eb923 195-209,211-215,219-231,233-236,238-241,243-261,263-280,282-283,285
+  s_805dfaf49a4974::t_b7a15a1ae1a1a1 3,189-194,210,216,232,237,281,284,404,407
+  s_805dfaf49a4974::t_6ef2bc9df304dc 2,18-20,31-53,55-74,76-96,98-118,120-121,287-319,321-351,355-398
+  s_805dfaf49a4974::t_e611978ab0c6d4 286
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-third-party-api-change-alerts.workflow.ts
+  s_805dfaf49a4974::t_5f615e39c6d3c3 99
+  s_805dfaf49a4974::t_668876d81eb923 103-117,119-121,123-137,139-142,144-145,147-163,165-183,185
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/product-design-alert-log-and-notification.workflow.ts
+  s_805dfaf49a4974::t_668876d81eb923 120-134,136-138,140-154,156-159,161-162,164-180,182-200,202
+  s_805dfaf49a4974::t_5f615e39c6d3c3 116
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/other-crm-deals-from-the-data-warehouse.workflow.ts
+  s_805dfaf49a4974::t_5f615e39c6d3c3 8
+  s_805dfaf49a4974::t_668876d81eb923 109-123,125-127,129-143,145-148,150-151,153-169,171-189,191
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/sales-and-marketing-website-uptime-check.workflow.ts
+  s_805dfaf49a4974::t_668876d81eb923 141-155,157-159,161-175,177-180,182-183,185-201,203-221,223
+  s_805dfaf49a4974::t_5f615e39c6d3c3 137
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/sales-and-marketing-inbox-leads-into-the-crm.workflow.ts
+  s_805dfaf49a4974::t_98713c50315aa5 15-16,65,67,69,83,90-92,100-102,109,115
+  s_805dfaf49a4974::t_1fe2b312dd6077 2,12-14,17,30,36,64
+  s_805dfaf49a4974::t_668876d81eb923 18-29,32-35,37,39-54,56-62,66
+packages/@n8n/instance-ai/knowledge-base/use-cases/sales-and-marketing.md
+  s_805dfaf49a4974::t_f0bcd0a377cc30 5
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-dependency-vulnerability-digest.workflow.ts
+  s_805dfaf49a4974::t_5f615e39c6d3c3 163
+  s_805dfaf49a4974::t_668876d81eb923 167-181,183-185,187-201,203-206,208-209,211-227,229-247,249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bc5eebaaa60a25e339c3c30174706a1a96f8ae17",
+  "prompts": {},
+  "sessions": {
+    "s_805dfaf49a4974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bca039b-dcd6-4f04-960e-82d23622ba13",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

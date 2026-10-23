@@ -1,0 +1,42 @@
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_101038ccbc858a::t_abe477904a36da 11,71-72,74-93
+packages/cli/src/public-api/v1/controllers/data-tables.public.controller.ts
+  s_101038ccbc858a::t_7d66ca8c658c7d 73-78,100
+  s_101038ccbc858a::t_9228539661b9c0 278-368
+  s_101038ccbc858a::t_759e9742a3179b 2-3,6,10,43,46
+  s_101038ccbc858a::t_fe793f1f23f4a0 369-370
+packages/@n8n/api-types/src/dto/index.ts
+  s_101038ccbc858a::t_464a9b418929f9 424,427,430
+packages/@n8n/api-types/src/__tests__/zod-class.test.ts
+  s_101038ccbc858a::t_50b9f3b419d375 68-87
+packages/@n8n/api-types/src/zod-class.ts
+  s_101038ccbc858a::t_e71571a315b7e8 1-3,41-46,52,56-58
+  s_101038ccbc858a::t_90ea7074722f42 59
+packages/@n8n/api-types/src/dto/data-table/data-table-public.openapi.ts
+  s_101038ccbc858a::t_57f66212165893 39-42,50-59
+packages/@n8n/api-types/src/index.ts
+  s_101038ccbc858a::t_5bcdafec4003e1 155
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_101038ccbc858a::t_d739924d91cbd8 2316,2322-2324
+  s_101038ccbc858a::t_0a2d13485878c9 2412-2450,2467-2475
+  s_101038ccbc858a::t_91ab125ecc072d 2188-2212,2225-2233
+  s_101038ccbc858a::t_f548464363cfd5 2307-2315,2317-2321,2325-2343
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  s_101038ccbc858a::t_1412c7941b4f1a 63-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ea82e34987f370cf07af6530bfe6dd84ae411458",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

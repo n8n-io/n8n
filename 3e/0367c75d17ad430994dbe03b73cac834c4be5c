@@ -1,0 +1,33 @@
+packages/cli/src/scheduling/system-tasks/system-task-handler.ts
+  s_5614fe25678684::t_fde428dc457ab8 10-11
+  s_cc52d4d80ec002::t_dc85b32061b6d3 51-52
+packages/@n8n/scheduler/README.md
+  s_5614fe25678684::t_fde428dc457ab8 410-413
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_5614fe25678684::t_fde428dc457ab8 81
+  s_cc52d4d80ec002::t_5729ed49848f0b 78-80,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e0367c75d17ad430994dbe03b73cac834c4be5c",
+  "prompts": {},
+  "sessions": {
+    "s_5614fe25678684": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fd0a-cb45-7481-96f9-d72826656d72",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_cc52d4d80ec002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14df1071-d247-4331-af4e-4ce488ddaae0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

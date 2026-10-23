@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsAzureOpenAi.test.ts
+  s_db547d1f734bf2::t_bd7896daa2450a 24-48
+packages/@n8n/utils/src/search/sublime-search.test.ts
+  s_db547d1f734bf2::t_1c5772f2fd11d5 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2bd7bde630f033ff4327b0090587fd3bc7e0e95",
+  "prompts": {},
+  "sessions": {
+    "s_db547d1f734bf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd28e799-2a21-45a0-b4f6-a0697e5725e2",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

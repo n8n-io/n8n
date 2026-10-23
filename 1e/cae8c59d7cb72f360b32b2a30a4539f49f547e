@@ -1,0 +1,58 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_66be2eb681ad3c::t_e1559eaea58a28 192-196,201-226,233-235,239-240,242-246,228
+  ai_agent 241
+  s_66be2eb681ad3c::t_417098eda099b4 227,229-232
+  s_66be2eb681ad3c::t_264473306c54de 236-238
+  s_46457fdbb606db::t_34e87810f786e2 197-200
+packages/@n8n/cli/src/commands/package/import.ts
+  ai_agent 98-99,101-105,107-109,145-146
+  s_66be2eb681ad3c::t_2328eb86702348 100
+  s_46457fdbb606db::t_33452e47d13bee 106
+packages/@n8n/cli/docs/commands/package.md
+  s_81f9da72a79c26::t_868ff9cf14ffca 20
+  s_81f9da72a79c26::t_825726dffdd788 30
+  ai_agent 71,79
+  s_66be2eb681ad3c::t_2328eb86702348 80
+  s_46457fdbb606db::t_adeb4a1940abf7 72
+  s_46457fdbb606db::t_c375104d0db902 81
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_66be2eb681ad3c::t_73aace70922557 239-248,251-268
+  s_66be2eb681ad3c::t_c061b5814e25f3 290
+  s_66be2eb681ad3c::t_dc360211046e4b 514-553
+  s_66be2eb681ad3c::t_a42e272181b935 578-580
+  ai_agent 14-15
+  s_66be2eb681ad3c::t_6eb23e1e1d4054 249-250
+  s_46457fdbb606db::t_cda9184ae61f0b 269-274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ecae8c59d7cb72f360b32b2a30a4539f49f547e",
+  "prompts": {},
+  "sessions": {
+    "s_46457fdbb606db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3c28356-f7a4-4aa1-baa1-0a7a42ab1b95",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

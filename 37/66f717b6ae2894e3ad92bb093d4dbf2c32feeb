@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/harness/daytona-sandbox-provider.ts
+  s_e2504e875a073c::t_b58e0221d18311 6,20-22,33,36,127-130,198-205,219,226-235,361,369,437
+  s_e2504e875a073c::t_c90ff05afa7cac 422-424,426,428
+packages/@n8n/agents/src/__tests__/daytona-harness-sandbox-provider.test.ts
+  s_e2504e875a073c::t_b58e0221d18311 9-10,12-16,96-97,168,170,238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3766f717b6ae2894e3ad92bb093d4dbf2c32feeb",
+  "prompts": {},
+  "sessions": {
+    "s_e2504e875a073c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff50f-358b-7522-8664-26ba4394dffe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

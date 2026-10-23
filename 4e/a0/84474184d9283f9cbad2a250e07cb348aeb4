@@ -1,0 +1,9 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  ai_agent 409-410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4ea084474184d9283f9cbad2a250e07cb348aeb4",
+  "prompts": {}
+}

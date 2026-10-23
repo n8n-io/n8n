@@ -1,0 +1,59 @@
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/tags.yml
+  s_2518c7e469bbd2::t_90a29afab4e4f3 30-32
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_2518c7e469bbd2::t_fba62af1de3c76 124-126,138-141,146-149,161-163
+  s_2518c7e469bbd2::t_13d23806a950a0 10
+  s_2518c7e469bbd2::t_2c16b57a76d349 79-85,101-102
+  s_2518c7e469bbd2::t_79ea1176841c08 86-100
+  s_2518c7e469bbd2::t_087fbe7942aa32 78
+packages/@n8n/decorators/src/controller/api-response.ts
+  s_2518c7e469bbd2::t_8cbda63bbf7bf8 11-12
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_2518c7e469bbd2::t_9723f8e754ab2b 9-16,26-46,54,63,75-90
+  s_2518c7e469bbd2::t_6b5716b95d0d2c 91-93
+  s_2518c7e469bbd2::t_bf2793fc48f0d0 94,137-139,143
+.agents/skills/public-api/SKILL.md
+  s_2518c7e469bbd2::t_57fd66cc057f11 55,57-72
+  s_2518c7e469bbd2::t_d0bc8d1b2f9629 121-126
+packages/@n8n/decorators/src/controller/index.ts
+  s_2518c7e469bbd2::t_cfac71b93e40c8 15,18,21
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_2518c7e469bbd2::t_152659fc933412 1-5
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_2518c7e469bbd2::t_67ef57fb360a84 51-53,56-58
+  s_2518c7e469bbd2::t_490ba085616528 1-13,18-50,54-55,59-161
+  s_2518c7e469bbd2::t_532221b4af595d 14-17
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_2518c7e469bbd2::t_aa70d313f1ff1e 111-119,124-144,147-155
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_2518c7e469bbd2::t_6cf36a5fdde2ae 119-120
+  s_2518c7e469bbd2::t_f50114ccdaae73 86-97
+  s_2518c7e469bbd2::t_25dbec58c34d27 51
+  s_2518c7e469bbd2::t_b87c681c1b8c9d 1-17,25-50,52-57,59-85,98-115,118,121-138
+  s_2518c7e469bbd2::t_1c2780ea62846b 18-24
+  s_2518c7e469bbd2::t_816527dcfcf36e 116-117
+  s_2518c7e469bbd2::t_1089927b1836bc 58
+packages/cli/src/public-api/index.ts
+  s_2518c7e469bbd2::t_79522ee9d0e4c8 23
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_2518c7e469bbd2::t_298c582c4c48a7 62-65,69,72-75,77
+  s_2518c7e469bbd2::t_f50593534e3f06 11
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTags.generated.yml
+  s_2518c7e469bbd2::t_ff6622e4d30ec2 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3fde2fc3937ba3184ec04ea4b9c821738fca51dc",
+  "prompts": {},
+  "sessions": {
+    "s_2518c7e469bbd2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "30e73753-7124-4cb8-b799-467a0f9d476d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

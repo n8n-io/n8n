@@ -1,0 +1,31 @@
+packages/cli/src/telemetry/telemetry-pulse.task.ts
+  s_e00d3111fa33b6::t_8901ff4915c978 1-29
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_e00d3111fa33b6::t_17c6549cbab413 9,14-18,22,34,39-42
+packages/cli/src/telemetry/__tests__/telemetry-pulse.task.test.ts
+  s_e00d3111fa33b6::t_01f9253c7c8ce2 1-28
+packages/cli/src/telemetry/index.ts
+  s_e00d3111fa33b6::t_5c28b57819abf3 219-220,226-227,229-230,238-239,241-248,271-284
+  s_e00d3111fa33b6::t_5ee665e14c2ba5 228
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_e00d3111fa33b6::t_06007fc198478f 5-6,14-15,33-34,61,1202-1214,1216-1243,1245-1248,1254-1265,1268-1291,1293,1298-1300
+  s_e00d3111fa33b6::t_618963193403e5 1215,1266-1267,1292,1294-1297,1301-1303,1306-1309,1311-1315,1321-1323
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_e00d3111fa33b6::t_6109d55303f952 33-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "57b56795658f361397149a918b255fd9b72b73a3",
+  "prompts": {},
+  "sessions": {
+    "s_e00d3111fa33b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d367195c-69ef-4777-9c5d-7ddb90723684",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

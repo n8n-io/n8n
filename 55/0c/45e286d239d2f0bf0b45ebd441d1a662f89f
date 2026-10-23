@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_61c084afce2bbf::t_a1b3a9610e5289 4,152
+packages/frontend/editor-ui/src/features/ai/instanceAi/modals.ts
+  s_61c084afce2bbf::t_a1b3a9610e5289 1-24
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_61c084afce2bbf::t_a1b3a9610e5289 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  s_61c084afce2bbf::t_a1b3a9610e5289 11
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_61c084afce2bbf::t_a1b3a9610e5289 60-63
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_61c084afce2bbf::t_a1b3a9610e5289 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "550c45e286d239d2f0bf0b45ebd441d1a662f89f",
+  "prompts": {},
+  "sessions": {
+    "s_61c084afce2bbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "046a1647-ab2e-475f-9acc-1298a6d4400a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

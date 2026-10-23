@@ -1,0 +1,29 @@
+packages/cli/src/node-execution/execute-node.service.ts
+  s_be6d12de03f718::t_30aa41bf4ef9b3 2
+  s_be6d12de03f718::t_03b5a6ec98b56b 188-205
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  s_be6d12de03f718::t_9ec2b8c3d0fd1f 3
+  s_be6d12de03f718::t_0c3845ab6da98f 77-79
+  s_be6d12de03f718::t_7337398d59a96f 183-185
+  s_be6d12de03f718::t_bc58b65bb1c7ff 96,103,128,142,170,192
+packages/@n8n/db/src/repositories/__tests__/workflow-create-with-owner.repository.test.ts
+  s_be6d12de03f718::t_0e07b821200150 1-67
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_be6d12de03f718::t_132f9174d48d72 181-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "18b9118140b53e3b699381f9bd98763a34b9f38a",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

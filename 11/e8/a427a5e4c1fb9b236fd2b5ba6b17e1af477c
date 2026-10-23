@@ -1,0 +1,24 @@
+packages/nodes-base/credentials/test/Aws.signing.test.ts
+  s_de807c7b884146::t_19af50f472fe11 1-40,42-55,57-61
+  s_de807c7b884146::t_7031fc2c9e9970 41,56
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_de807c7b884146::t_7773acb85ae7d7 1,4-5,7-8
+  s_de807c7b884146::t_2e551d5509c450 418-420
+  s_de807c7b884146::t_4d979d5aed93bd 478-484,494-495
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "11e8a427a5e4c1fb9b236fd2b5ba6b17e1af477c",
+  "prompts": {},
+  "sessions": {
+    "s_de807c7b884146": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "289bcd83-7b99-424b-939a-8908368bbadf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

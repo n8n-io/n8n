@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOnlyExternalLinks.test.ts
+  s_83cb2052564bbc::t_0db778eb93007c 2-6,13-17,21,24,26-28,34,38-40,49,51-52,55-56,61-66,68-71,74-79,81-84,86-89,105
+  s_83cb2052564bbc::t_ab49cd35b1bd42 90,92-104
+  s_83cb2052564bbc::t_60a34272aa5816 18,20,23,35,42,54,67,80
+  s_83cb2052564bbc::t_483eade9ce7aa0 1,7-12,22,37
+  s_83cb2052564bbc::t_c5c637a264a6cd 19,25,29-33,36,41,43-48,50,53,57-60,73,85,91
+  s_83cb2052564bbc::t_44cd55e1f406d6 72
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.vue
+  s_83cb2052564bbc::t_fb79f68e90feb0 110-111
+  s_83cb2052564bbc::t_22aa0025955a57 46
+packages/frontend/editor-ui/src/app/composables/useCanvasOnlyExternalLinks.ts
+  s_83cb2052564bbc::t_0705699bcba5d4 1,3-10,12-14,17,19-43,56
+  s_83cb2052564bbc::t_b1f62b8eeebb2b 2,11,15-16,18,44-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bf815ad66d2768efeeb693c812bf57063981036c",
+  "prompts": {},
+  "sessions": {
+    "s_83cb2052564bbc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b073199b-9d91-4a02-bb84-810c10f25870",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

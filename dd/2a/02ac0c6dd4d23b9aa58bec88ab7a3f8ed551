@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.test.ts
+  s_553c0198dcdc37::t_bd2efc36acb3ba 42-51
+  s_553c0198dcdc37::t_eaeb3ec6abf5cc 127
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.api.ts
+  s_553c0198dcdc37::t_fe569e4f5c8b58 18,20-34
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_553c0198dcdc37::t_9ceae15ab148c6 199-236
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_553c0198dcdc37::t_d2c4e2fd241e47 8371
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_553c0198dcdc37::t_6460073aef832c 427-430
+  s_553c0198dcdc37::t_771874e50cc57f 233
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_553c0198dcdc37::t_d848e61b675a68 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd2a02ac0c6dd4d23b9aa58bec88ab7a3f8ed551",
+  "prompts": {},
+  "sessions": {
+    "s_553c0198dcdc37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "21d3279f-ba9e-43e4-9e71-abfd492b0c6b",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

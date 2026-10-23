@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/CircleCi/CircleCi.node.ts
+  s_2e1fa95fc44f8f::t_0bda11d0db2e2a 8,13-15,23-24,64,73,88,119
+packages/nodes-base/nodes/CircleCi/__tests__/CircleCi.node.test.ts
+  s_2e1fa95fc44f8f::t_b7c6a54cde991b 1-52
+packages/nodes-base/nodes/CircleCi/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_7da040fd3c6f6e 26
+packages/nodes-base/nodes/ClickUp/ClickUp.node.ts
+  s_2e1fa95fc44f8f::t_d356408b24af7f 12-17,43-44,446,1249-1250,1263-1264
+packages/nodes-base/nodes/ClickUp/__tests__/ClickUp.node.test.ts
+  s_2e1fa95fc44f8f::t_dc3b7d58585e1b 1-55
+packages/nodes-base/nodes/ClickUp/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_15410efe117142 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4aeae779c8a9a5ec257660debbcc934c5df03f27",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

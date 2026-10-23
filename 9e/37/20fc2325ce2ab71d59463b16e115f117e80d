@@ -1,0 +1,14 @@
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  h_5d40c27a8fdfd1 51-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9e3720fc2325ce2ab71d59463b16e115f117e80d",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

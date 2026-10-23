@@ -1,0 +1,64 @@
+packages/frontend/@n8n/design-system/src/components/N8nTimeAgo/TimeAgo.test.ts
+  s_9255fcc9290949::t_136fe10a22a7e8 1-57
+packages/frontend/@n8n/design-system/package.json
+  s_9255fcc9290949::t_8b3e87013fafbb 65,114,126
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_9255fcc9290949::t_460a17625e876d 92-93,151-152
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 31,226
+packages/frontend/@n8n/design-system/src/components/N8nTimeAgo/index.ts
+  s_9255fcc9290949::t_136fe10a22a7e8 1-4
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/SelectedItemsInfo.test.ts
+  s_9255fcc9290949::t_e8608d9ef6073f 1-61
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/SelectedItemsInfo.vue
+  s_9255fcc9290949::t_e8608d9ef6073f 1-82
+packages/frontend/@n8n/design-system/src/components/N8nTimeAgo/TimeAgo.vue
+  s_9255fcc9290949::t_136fe10a22a7e8 1-37
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/component-selected-items-info.md
+  s_9255fcc9290949::t_e8608d9ef6073f 1-45
+packages/frontend/@n8n/design-system/src/components/N8nTimeAgo/TimeAgo.stories.ts
+  s_9255fcc9290949::t_136fe10a22a7e8 1-45
+  s_9255fcc9290949::t_26a5ffbc1c5b5f 46
+packages/frontend/editor-ui/src/app/App.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 22,116
+packages/frontend/editor-ui/src/app/components/TimeAgo.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 2,10,18
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsList.test.ts
+  s_9255fcc9290949::t_79dfe208ed59eb 35-36
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 13,286,299
+packages/frontend/@n8n/design-system/src/components/N8nTimeAgo/component-time-ago.md
+  s_9255fcc9290949::t_136fe10a22a7e8 1-35
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/index.ts
+  s_9255fcc9290949::t_e8608d9ef6073f 1-4
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/SelectedItemsInfo.stories.ts
+  s_9255fcc9290949::t_e8608d9ef6073f 1-72
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_9255fcc9290949::t_460a17625e876d 20,57-59
+packages/frontend/editor-ui/src/app/utils/timeAgoLocale.ts
+  s_9255fcc9290949::t_79dfe208ed59eb 1-27
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsList.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 24,481
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/AgentsTable.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 13,233,246
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/__snapshots__/SelectedItemsInfo.test.ts.snap
+  s_9255fcc9290949::t_02c3a3562ddf66 1-8
+pnpm-lock.yaml
+  s_9255fcc9290949::t_e33f05c21f0561 5367-5369,5403-5405,5446-5448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3158ad66941e5c7df3aa165575ce483387eec900",
+  "prompts": {},
+  "sessions": {
+    "s_9255fcc9290949": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8f25eb8-5987-478d-9755-27ba3bd7da2a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

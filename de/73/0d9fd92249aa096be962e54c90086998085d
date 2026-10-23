@@ -1,0 +1,32 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_c549f720ef6943::t_843ae1d599a45f 1155,1176-1178,1182,1186,1188
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_c549f720ef6943::t_a89bd90cd70fcf 92
+  h_9b272a633435fb 88
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_c549f720ef6943::t_42e3e339e71629 565,573
+  s_c549f720ef6943::t_badd8290c36032 542,558,561
+  s_c549f720ef6943::t_1b1a0ec617ddd7 582
+  s_c549f720ef6943::t_9316ac5e97035f 529,531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de730d9fd92249aa096be962e54c90086998085d",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c549f720ef6943": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c6ec3e1-95ce-4855-9097-d7ce0c3cd910",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

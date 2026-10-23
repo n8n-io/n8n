@@ -1,0 +1,57 @@
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvInlineControls.test.ts
+  s_2aa332997f69a5::t_1a995e8d192e4b 54,112
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_2aa332997f69a5::t_1a995e8d192e4b 9,36,248
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_2aa332997f69a5::t_a073318f0826fe 33,40,90-97,342-345,548,562,595,601
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentExpressionEditors.test.ts
+  s_2aa332997f69a5::t_77617ff756b245 1-120
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_2aa332997f69a5::t_394b5e13a84ba0 60-66,68,187,203,213
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillViewer.test.ts
+  s_2aa332997f69a5::t_507d1f7601078d 12-20,56-86
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTelegramAccessSettingsForm.test.ts
+  s_2aa332997f69a5::t_6e0d4ba76f59c8 1-97
+packages/frontend/editor-ui/src/features/agents/components/AgentExpressionAwareMarkdownEditor.vue
+  s_2aa332997f69a5::t_dcdb44cb97a882 1-102
+packages/frontend/editor-ui/src/features/agents/components/AgentExpressionInput.vue
+  s_2aa332997f69a5::t_a330891435f3f9 1-122
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillViewer.vue
+  s_2aa332997f69a5::t_eef3addf6ea586 30,572,577-578
+packages/frontend/editor-ui/src/features/agents/utils/telegramAccessSettings.ts
+  s_2aa332997f69a5::t_822a1b7b55308e 1-5,28-37,43,49-51
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_2aa332997f69a5::t_388cba75718492 28,32,114,1185-1187
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvInlineControls.vue
+  s_2aa332997f69a5::t_483496c3241e3f 14,19,74,77
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/completions.test.ts
+  s_2aa332997f69a5::t_d012102ac1ff04 109-114
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/dollar.completions.ts
+  s_2aa332997f69a5::t_3f899877897191 129
+packages/frontend/editor-ui/src/features/agents/components/AgentTelegramAccessSettingsForm.vue
+  s_54fda74862cd61::t_f5d505b3064ff7 2,5-9,11,14,39,51-54,56-70,76,79-83,86,91-93,97-98,107,168,173,186-200,202-203,205,213,216,259,284-285,288-290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "eedd99ea68705be3c3f040f5ff29118ee2e69742",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_54fda74862cd61": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb8e0-255a-75d1-af39-c9b5924ff95c",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

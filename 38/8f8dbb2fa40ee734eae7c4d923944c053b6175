@@ -1,0 +1,18 @@
+packages/frontend/editor-ui/src/experiments/trialIntroModal/components/TrialIntroModal.test.ts
+  h_425f570cc35a09 4
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.test.ts
+  h_425f570cc35a09 40
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.ts
+  h_425f570cc35a09 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "388f8dbb2fa40ee734eae7c4d923944c053b6175",
+  "prompts": {},
+  "humans": {
+    "h_425f570cc35a09": {
+      "author": "alex <alex@n8n.io>"
+    }
+  }
+}

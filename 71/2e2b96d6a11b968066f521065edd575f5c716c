@@ -1,0 +1,39 @@
+packages/@n8n/decorators/src/controller/index.ts
+  s_f865d7992a33c6::t_d4a487152ddd26 15
+packages/@n8n/decorators/src/controller/types.ts
+  s_f865d7992a33c6::t_5bf52a80130d9c 70-71
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_f865d7992a33c6::t_3379ae94d293ea 4,12,22
+  s_f865d7992a33c6::t_67b356cda6c84d 395-469,475-494
+  s_f865d7992a33c6::t_a2144d7312a15c 470-474
+packages/cli/src/public-api/v1/shared/middlewares/global.middleware.ts
+  s_f865d7992a33c6::t_13261027c7b75b 178,180
+  s_f865d7992a33c6::t_48ad6d3f606033 18-20
+packages/@n8n/decorators/src/controller/requires-user-quota.ts
+  s_f865d7992a33c6::t_385c4024244228 1-18
+packages/cli/test/integration/public-api/users.ee.test.ts
+  s_f865d7992a33c6::t_277b744e86a744 25
+  s_f865d7992a33c6::t_e6e9f34474f8a3 295-298
+packages/@n8n/decorators/src/controller/__tests__/requires-user-quota.test.ts
+  s_f865d7992a33c6::t_c55d4de07c5687 1-71
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_f865d7992a33c6::t_142e7d1097c794 143-146
+  s_f865d7992a33c6::t_9349f32550b5d5 25-28
+  s_f865d7992a33c6::t_b3d988359f72c4 219-229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "712e2b96d6a11b968066f521065edd575f5c716c",
+  "prompts": {},
+  "sessions": {
+    "s_f865d7992a33c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a812bf1-111a-4e2b-b16e-a7af15a606d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

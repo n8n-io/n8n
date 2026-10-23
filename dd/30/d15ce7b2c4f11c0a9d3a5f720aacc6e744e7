@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/tests/e2e/agents/agent-preview-layout.spec.ts
+  s_816c61271c09a0::t_05f78e9d8b6c4d 37-39,43-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd30d15ce7b2c4f11c0a9d3a5f720aacc6e744e7",
+  "prompts": {},
+  "sessions": {
+    "s_816c61271c09a0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f1ed-c544-7622-a6d4-267fcdd621e4",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

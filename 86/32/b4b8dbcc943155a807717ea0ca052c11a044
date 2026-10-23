@@ -1,0 +1,34 @@
+packages/@n8n/instance-ai/evaluations/utils/conversation-text.ts
+  s_d7dc19b022f345::t_a38e26701231ff 106-114
+packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts
+  ai_agent 473-478
+  s_d7dc19b022f345::t_0c34dad982519c 463,465,483
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_d7dc19b022f345::t_a38e26701231ff 481-486,741,754-756,763-767,769
+packages/@n8n/instance-ai/evaluations/__tests__/session-boundary.test.ts
+  ai_agent 23-27
+  s_d7dc19b022f345::t_bc1c62b621c5a3 81-87
+  s_d7dc19b022f345::t_8e7cd1d0d48a7b 1-22,28-80,88-97
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_d7dc19b022f345::t_0c34dad982519c 382-385
+packages/@n8n/instance-ai/evaluations/README.md
+  s_d7dc19b022f345::t_93108d93586475 286-319
+packages/@n8n/instance-ai/evaluations/harness/schema.ts
+  s_d7dc19b022f345::t_0c34dad982519c 97-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8632b4b8dbcc943155a807717ea0ca052c11a044",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

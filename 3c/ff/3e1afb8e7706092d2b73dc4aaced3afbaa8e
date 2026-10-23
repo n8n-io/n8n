@@ -1,0 +1,31 @@
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_3da846f34dd679::t_bd2d04e590063f 104-107
+  s_3da846f34dd679::t_ceb19fb8bf5669 103
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_3da846f34dd679::t_7a732978fa57dc 250-251,256
+  s_ea8b7997bcf83a::t_015689ecdad624 252-255,257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3cff3e1afb8e7706092d2b73dc4aaced3afbaa8e",
+  "prompts": {},
+  "sessions": {
+    "s_3da846f34dd679": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "673075b2-3087-4bb0-a623-f6ed026405b7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_ea8b7997bcf83a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e683f6b1-11a8-464b-9a26-e4f792a3e4b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

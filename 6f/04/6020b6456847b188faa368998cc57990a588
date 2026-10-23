@@ -1,0 +1,39 @@
+packages/cli/src/external-hooks.ts
+  s_ae3b058676b7cc::t_8c4fef32adaa5f 94,97-100
+  h_32d8cd6a0d6aad 30
+  s_ae3b058676b7cc::t_7a19005a066175 29,31-49
+packages/cli/src/workflows/workflow.service.ts
+  s_ae3b058676b7cc::t_e9db140f63f5df 1179-1182
+  s_ae3b058676b7cc::t_e60d9c345f4129 827-830
+  s_ae3b058676b7cc::t_b5b57941e89076 1071-1074
+  s_ae3b058676b7cc::t_30430fe75b35cc 1034-1037
+  s_ae3b058676b7cc::t_51568b4915779b 40
+  s_ae3b058676b7cc::t_3935d4f0e17dfe 1141-1144
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_ae3b058676b7cc::t_c726ae66cfcf7c 6
+  s_ae3b058676b7cc::t_2425c7a676798e 1284,1304,1317
+  s_ae3b058676b7cc::t_c7572eff5d6528 27
+  s_ae3b058676b7cc::t_0a166cb8a48dfc 1381-1411
+  s_ae3b058676b7cc::t_aa155306d1a2b1 1126-1132,1141,1144,1150-1156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f046020b6456847b188faa368998cc57990a588",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ae3b058676b7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9e82bcb-b056-4edf-8abe-3d495d4f1845",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

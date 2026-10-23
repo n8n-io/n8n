@@ -1,0 +1,31 @@
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_f4f3f37a98d31a::t_dc6e2531561fad 299
+  s_f4f3f37a98d31a::t_c2508daeb64c2f 118
+packages/@n8n/instance-ai/knowledge-base/reference/workflow-builder-guardrails.md
+  s_f4f3f37a98d31a::t_4fc7cf03d45d16 8-9
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_f4f3f37a98d31a::t_3bd548eb45f401 99
+  s_f4f3f37a98d31a::t_5f33d6e9abd6e8 6-8,66-69,97-98,149-152,159,180-181,193-208,211-212,241-247,256-257,259-262,276-279,284-288,313-319,324-333,370-373,390-393,395,401-402,407-408,428,493-495,585-587,633,645-652,660-661
+  s_f4f3f37a98d31a::t_3bcd0b2ae72346 146-148
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_f4f3f37a98d31a::t_940adcba86794b 272
+  s_f4f3f37a98d31a::t_2fdcffc40a45c8 310,313,318-319
+  s_f4f3f37a98d31a::t_74be06081f7cf6 27,32
+  s_f4f3f37a98d31a::t_8a8c0f3ad60201 303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4e39ec811b8444e1b673be0a40cbd7d6fba61b90",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

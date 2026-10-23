@@ -1,0 +1,42 @@
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_c5954c3047b5ed::t_4d39735c4835d3 143,146-161,174-181,203-204,210-242,244,247-248,250-273
+  s_c5954c3047b5ed::t_9bc5606436fe17 205-209,249
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_c5954c3047b5ed::t_70b32f491bef9f 36-39,40-41,125,128-159,161-166,171-172,181,183-184,186-190,207-208,210-221,223-259,261-272,274-289,291-308,310-323,325-339,341-353,370,373-374,379-385,387,389,392-395,397-414,417,419-423,425-434,436-439,441-443,445,447,449-458,460-475
+  s_c5954c3047b5ed::t_9bc5606436fe17 191-192,197-206
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_c5954c3047b5ed::t_56226ca3b4a728 165
+  s_c5954c3047b5ed::t_3ae7a063cf9b9f 164
+  s_c5954c3047b5ed::t_4348f83b03b6fc 166
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_c5954c3047b5ed::t_6cf80970f5d51e 1,164,181-185,187,194,200,205-221,224-229,238-267,305-306,308-324,326-336,338-339,341-347,349,351-356
+  s_c5954c3047b5ed::t_9bc5606436fe17 222-223
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_c5954c3047b5ed::t_55f97b2b38be4e 20,106-123,711-712,719-744,747,751,756-774,776-779,791-792,794-798,800,802-806,808,810-825,834-861,864-868,875-879,881-886,891-892,899-901,904-905,907-915,917-927,929-944,946-955,957-968,970-974,976,983-989,991-995,997,999-1012,1014,1016-1025,1031-1032
+  s_c5954c3047b5ed::t_5eb0aa2ed79f96 373,381-382,402,404,421,423-427,493,497-504,505-558
+  s_c5954c3047b5ed::t_9bc5606436fe17 14-18,375-379,494-496,713-718,788-790,826-833,869-874,887-890,977-982,1026-1030
+  s_c5954c3047b5ed::t_d580b2135a9fb3 337,384,441-462,464-492
+  s_c5954c3047b5ed::t_32a9078c56e2bc 65,1075,1110-1124,1141-1147,1149-1154
+  s_c5954c3047b5ed::t_37df853be0dfd8 559
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_c5954c3047b5ed::t_56226ca3b4a728 48-54,84,94,106-117,325-332,345-346,360
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_c5954c3047b5ed::t_9bc5606436fe17 135-141
+  s_c5954c3047b5ed::t_56226ca3b4a728 120,124,127,142-162,173-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3584d15ddd2debcd2cd2e71d28ccabb047c3ee88",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

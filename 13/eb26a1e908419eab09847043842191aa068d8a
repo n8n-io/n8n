@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  s_c74fd34f1f7179::t_2363f5311a4993 893-896
+  s_c74fd34f1f7179::t_73f2ae96e1070b 1508-1583
+  s_c74fd34f1f7179::t_967c53b3c8e2c0 1361-1362
+  s_c74fd34f1f7179::t_0d7f8dcdd6b9e7 771,787,1294,1311,1330
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_c74fd34f1f7179::t_b356e3dfffd222 178-180
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_c74fd34f1f7179::t_673839ec69d3d3 84-89
+  s_c74fd34f1f7179::t_b60e7db16315f3 4-5
+  s_c74fd34f1f7179::t_4183baef1e13b7 663-675,677-686,688-690
+  s_c74fd34f1f7179::t_4dafa24e20d1a9 49,53-61
+  s_c74fd34f1f7179::t_378c1f8960be65 687
+  s_c74fd34f1f7179::t_868a12355802c1 624-627
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "13eb26a1e908419eab09847043842191aa068d8a",
+  "prompts": {},
+  "sessions": {
+    "s_c74fd34f1f7179": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "663a6aab-5b52-4d7c-97f5-9002d500c9fb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/cli/src/server.ts
+  s_bdac3edcc47bc4::t_abbc102181014e 191-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "08aeaf2651bd4e7e63474d19dd5f55e1ba855a17",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bdac3edcc47bc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdbdf324-6f4a-4ace-b985-f654ed7a023b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

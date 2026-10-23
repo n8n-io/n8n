@@ -1,0 +1,49 @@
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-schema-conflict-policy.test.ts
+  ai_agent 1-61
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  ai_agent 44
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  ai_agent 48
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-schema-conflict-policy.ts
+  ai_agent 1-44
+packages/@n8n/cli/src/client.ts
+  ai_agent 23
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  ai_agent 250
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  ai_agent 1-5,39-40,48-51,69
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  ai_agent 18,85-88
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-compat.ts
+  ai_agent 7-8
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  ai_agent 172-186
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  ai_agent 181
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  ai_agent 83
+packages/@n8n/cli/docs/commands/package.md
+  ai_agent 61
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  ai_agent 33
+packages/@n8n/cli/src/__tests__/client.test.ts
+  ai_agent 163,170
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  ai_agent 60-66,81-83,121
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  ai_agent 65,262-283,333-361
+packages/@n8n/cli/src/commands/package/import.ts
+  ai_agent 65-70,101
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  ai_agent 42,71,85,99
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  ai_agent 18,41,66,90,159-176
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  ai_agent 12,19-23,85,167,170-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c843f793ad1a5fb7fd3f158dd30a7b42401a200f",
+  "prompts": {}
+}

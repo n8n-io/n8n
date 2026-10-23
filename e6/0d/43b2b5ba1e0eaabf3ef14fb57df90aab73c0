@@ -1,0 +1,98 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_f7a3151c5ae895::t_1857b42312db5b 22-25,27-28
+  s_8fb9e1a396200f::t_7b8b44204d297b 7,26
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  s_f7a3151c5ae895::t_c19d6c74f0c14d 210-276
+packages/cli/src/workflows/__tests__/workflow-mutation-hooks-proxy.service.test.ts
+  s_8fb9e1a396200f::t_7b8b44204d297b 1-33
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_8fb9e1a396200f::t_7b8b44204d297b 46,64,685
+  s_f7a3151c5ae895::t_5ead1ae4f6ab34 653-662,683-684
+  s_8fb9e1a396200f::t_375c124489c3e2 686
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_f7a3151c5ae895::t_0adf11c83e3408 70
+packages/cli/test/integration/database/repositories/workflow-history.repository.test.ts
+  s_f7a3151c5ae895::t_ad2b2ccf196952 350-433
+  s_f7a3151c5ae895::t_ed4670375cda5b 2,8-13
+  s_f7a3151c5ae895::t_b108ebe55c0a8e 36-37,42
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_f7a3151c5ae895::t_b6f4ba0c1c9be9 185-223
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.integration.test.ts
+  s_f7a3151c5ae895::t_e3c89f1e9d7c9f 1-201
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_8fb9e1a396200f::t_3684beb74f1914 102
+packages/@n8n/db/src/repositories/workflow-history.repository.ts
+  s_f7a3151c5ae895::t_4e00caa861019c 78,80-89,97-98
+  s_f7a3151c5ae895::t_61f8c6e46f4fbb 8-9
+  s_f7a3151c5ae895::t_e413681bf7aa4d 79
+packages/cli/src/workflows/workflow-mutation-hooks-proxy.service.ts
+  s_8fb9e1a396200f::t_7b8b44204d297b 1-3,14-21,24-47
+  s_8fb9e1a396200f::t_b7ab66b72e86b9 4-13,22-23
+packages/cli/src/workflows/workflow.service.ts
+  s_8fb9e1a396200f::t_b4d31f4e0292f5 1185-1187,1189
+  s_8fb9e1a396200f::t_364ec0b624e389 1188
+  s_8fb9e1a396200f::t_7b8b44204d297b 34,101,1263
+  s_f7a3151c5ae895::t_d3baa6e4c99efa 1264
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_8fb9e1a396200f::t_4f8ea33b48b434 247-271
+packages/cli/test/integration/workflows/workflow.service.ee.test.ts
+  s_8fb9e1a396200f::t_3684beb74f1914 42
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-auto-close.service.ts
+  s_f7a3151c5ae895::t_459ca435e51710 1-5,7-11,13-19,21-36,42-46,48-94,98-100
+  s_8fb9e1a396200f::t_7b8b44204d297b 6,20
+  s_8fb9e1a396200f::t_c8c9b2180b74ea 95-96
+  s_8fb9e1a396200f::t_364ec0b624e389 97
+  s_8fb9e1a396200f::t_5078c55d3d0c6c 39-41,47
+  s_f7a3151c5ae895::t_6c19c2099e019f 12
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_8fb9e1a396200f::t_364ec0b624e389 366
+  s_8fb9e1a396200f::t_c2aeb9a0797e2b 367
+  s_8fb9e1a396200f::t_b6b4aaaac68d93 276,279-280,282-284,288-297,300-306
+  s_8fb9e1a396200f::t_5fe5763894508b 277-278,281,285-287,298-299
+  s_8fb9e1a396200f::t_a5c4ac7b4d596c 364-365
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.service.test.ts
+  s_8fb9e1a396200f::t_dbf0ca26bf9f83 116-123,126-134
+  s_f7a3151c5ae895::t_53a41a3e44d57c 1-115,135-150
+  s_08fb1215f829ff::t_5b93e982660d85 124-125
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_f7a3151c5ae895::t_2a20d69c0a0ec4 3-5,9
+  s_f7a3151c5ae895::t_058b748db15b3d 171-216
+  s_8fb9e1a396200f::t_7b8b44204d297b 15,23,41
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_f7a3151c5ae895::t_292c472ef756d9 2082-2088,2090-2100,2104
+  s_8fb9e1a396200f::t_7b8b44204d297b 46,114,384,1125,1628,1687,1708,1746,1800,1804,1816,1932,1985,2022,2055,2089,2101-2103,2152
+  s_f7a3151c5ae895::t_27d36657870990 1794-1799,1801-1803,1805-1815,1817-1818
+  s_8fb9e1a396200f::t_a89727025cb595 1821-1833
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e60d43b2b5ba1e0eaabf3ef14fb57df90aab73c0",
+  "prompts": {},
+  "sessions": {
+    "s_08fb1215f829ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56175fbd-6e73-4959-b9e7-2a1c603770c9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_8fb9e1a396200f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1729843-01ad-4d09-bf1d-e3b232c6c3bc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_f7a3151c5ae895": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eadafe08-0aa7-4a00-a3b5-367bab3f6627",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

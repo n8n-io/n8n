@@ -1,0 +1,20 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_be3f8258e2d85a::t_fc674528e0a4a2 309-315,328,368
+  s_be3f8258e2d85a::t_ca7d8d84390e64 308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9953ee696ea23d73f61eb306123a7877800d499f",
+  "prompts": {},
+  "sessions": {
+    "s_be3f8258e2d85a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b10d-1c63-7e21-ad1a-e9b00d28cea2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}

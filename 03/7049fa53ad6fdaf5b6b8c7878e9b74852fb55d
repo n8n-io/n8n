@@ -1,0 +1,41 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_41e13f73f76abf::t_cce26624813407 1993-2028
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_41e13f73f76abf::t_e7fd92fc9cd069 58
+  s_41e13f73f76abf::t_eeb2be9429ef8b 157
+  s_41e13f73f76abf::t_294a5b39a2a8bb 853-858,872-873
+  s_41e13f73f76abf::t_5d9ad4af57a85e 1854-1856,1858-1859,1863-1865,1875-1876
+  s_41e13f73f76abf::t_e4f6a5653750bd 874-875
+  s_41e13f73f76abf::t_0a17491645b1ee 1877
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_41e13f73f76abf::t_c70175f125e35b 130
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_41e13f73f76abf::t_2a7945b6efdfe4 3543-3588
+  s_41e13f73f76abf::t_762a72fe0996b9 798-914,916-922
+  s_41e13f73f76abf::t_47e9991bc969d1 132
+  s_41e13f73f76abf::t_33c9cca010bb62 80
+  s_41e13f73f76abf::t_0cb71000b1c769 915
+  s_41e13f73f76abf::t_63a65111a9e5e5 45
+  s_41e13f73f76abf::t_38779453f10a65 2946-2981
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.integration.test.ts
+  s_41e13f73f76abf::t_f6e33559dd48b7 225-373
+  s_41e13f73f76abf::t_d771661a8dbbd6 3,13-17,23-24,26,29,31-32,35,43-50
+  s_41e13f73f76abf::t_476262211834ea 88
+  s_41e13f73f76abf::t_5526cf6692accf 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "037049fa53ad6fdaf5b6b8c7878e9b74852fb55d",
+  "prompts": {},
+  "sessions": {
+    "s_41e13f73f76abf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a74f6a8c-ce0b-4f3e-b18f-197bfde551c1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

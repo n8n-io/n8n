@@ -1,0 +1,19 @@
+packages/cli/src/modules/type-availability-policies/__tests__/restricted-node-types.provider.test.ts
+  s_1e53f02419fb26::t_1fb71b15049dd4 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "472afa49999e68ae5901db123d1f398d63c9b7b4",
+  "prompts": {},
+  "sessions": {
+    "s_1e53f02419fb26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92fb29b2-b8e9-4928-bace-41455cdae846",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

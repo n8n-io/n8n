@@ -1,0 +1,14 @@
+packages/cli/src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts
+  h_c63dce324dfc7b 208-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "30c279935da34398a8dc96fa1f7dce14c287b6a4",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

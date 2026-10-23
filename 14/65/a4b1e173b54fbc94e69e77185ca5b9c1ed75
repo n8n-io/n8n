@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/activity-entries/WorkflowReviewActivityCommentV1.vue
+  s_ffb7ac8df0495d::t_445f93cc046fc5 8-9,17-19
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_ffb7ac8df0495d::t_4544fa08c3b1c0 124,137
+packages/frontend/editor-ui/src/features/workflow-reviews/components/activity-entries/WorkflowReviewActivityFallback.vue
+  s_ffb7ac8df0495d::t_57590bc4e89d46 5-8
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.vue
+  s_ffb7ac8df0495d::t_e27bb8258b909d 59
+  s_ffb7ac8df0495d::t_0e47dc916cddaa 7-8
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_ffb7ac8df0495d::t_2e1e949fdd8048 25,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1465a4b1e173b54fbc94e69e77185ca5b9c1ed75",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

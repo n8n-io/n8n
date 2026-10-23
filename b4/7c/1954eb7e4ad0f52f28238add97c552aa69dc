@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_692e82f896cb1a::t_de7aece6c42f2c 13
+  s_692e82f896cb1a::t_2f50ed2c9b8f25 1217-1281
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_692e82f896cb1a::t_98ab763c6db0ab 2-3,5-6,13-26,30-46,48-73
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_ba6c98f28b528d::t_3bbdf76dcd1279 16
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_692e82f896cb1a::t_e0af9fe9254b79 278-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b47c1954eb7e4ad0f52f28238add97c552aa69dc",
+  "prompts": {},
+  "sessions": {
+    "s_692e82f896cb1a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d7c64fe7-4f19-4a78-b476-d991c18b3ca4",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ba6c98f28b528d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "95f0d77b-3a8b-4118-9967-977630c01760",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

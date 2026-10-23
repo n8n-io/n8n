@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/__tests__/defaults.ts
+  s_5c9efb67971f6b::t_485388207dbb54 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b18168d17012beb4acb55333b1f41a37e35c994e",
+  "prompts": {},
+  "sessions": {
+    "s_5c9efb67971f6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78cc0a8e-8df9-4ae9-b9c5-327bdfc8bc59",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

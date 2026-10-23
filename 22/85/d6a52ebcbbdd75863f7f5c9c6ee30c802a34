@@ -1,0 +1,34 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6e5e6dade5599e::t_7bddb2c9b41027 1178-1181
+packages/frontend/editor-ui/src/features/credentials/composables/useUnusableWorkflowCredentials.ts
+  s_6e5e6dade5599e::t_54465656687358 1-81
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue
+  s_6e5e6dade5599e::t_d4768cf73c8942 96-99
+  s_6e5e6dade5599e::t_0f5f60d58e2431 35-36
+packages/frontend/editor-ui/src/features/credentials/composables/useUnusableWorkflowCredentials.test.ts
+  s_6e5e6dade5599e::t_780fa37241affd 1-95
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_6e5e6dade5599e::t_ce262d452b7d6f 1275-1278,1280-1285,2231
+  s_6e5e6dade5599e::t_8b99caece08505 151
+packages/frontend/editor-ui/src/app/composables/useNodeExecution.ts
+  s_6e5e6dade5599e::t_f0045c6da31538 29,105-107,213-217
+  s_6e5e6dade5599e::t_d8c8f3e88527c8 218-219
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_6e5e6dade5599e::t_056ac8765339fd 50,82-85,406-420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2285d6a52ebcbbdd75863f7f5c9c6ee30c802a34",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

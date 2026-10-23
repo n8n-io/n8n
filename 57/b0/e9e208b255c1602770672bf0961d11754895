@@ -1,0 +1,20 @@
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_cc52d4d80ec002::t_22eee78618c31c 24,79,288,291-293,306,370,376,385-389
+  s_cc52d4d80ec002::t_3f3cf24cbec600 5,7-8,13,20-23,25-26,55-57,76-78,80-81,91-92,263,303-305,307,368-369,371-375,377-384,390-395,405-407,409-410
+  s_5614fe25678684::t_fde428dc457ab8 262
+packages/@n8n/scheduler/src/core/executor/__tests__/lease-heartbeat.test.ts
+  s_5614fe25678684::t_3bb254b3bead39 195-201
+  s_cc52d4d80ec002::t_dd94d1b3d8dc4c 1-39,53-192,218-288
+  s_5614fe25678684::t_242c9ff85e5577 40-52,193-194,202-217
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_5614fe25678684::t_242c9ff85e5577 929-933,939-954
+  s_5614fe25678684::t_3bb254b3bead39 934-938
+  s_cc52d4d80ec002::t_22eee78618c31c 782-786,792-794,852-908
+  s_cc52d4d80ec002::t_3f3cf24cbec600 3,53-54,235,769-781,787-791,795-851,911-928,955-978,1027-1044
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "57b0e9e208b255c1602770672bf0961d11754895",
+  "prompts": {}
+}

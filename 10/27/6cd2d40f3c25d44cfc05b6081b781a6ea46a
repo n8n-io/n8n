@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_048d14ee762df4::t_6aba98f17c048e 37
+  s_048d14ee762df4::t_d4d866119bbb77 3
+  s_048d14ee762df4::t_d9ff00d51eecb7 84
+  s_048d14ee762df4::t_509f5afe4802e9 124-139
+  s_048d14ee762df4::t_066eef2bcbb6ba 101-104
+  s_048d14ee762df4::t_375b0694ae23c0 18-19
+packages/@n8n/api-types/src/agents/dto.ts
+  s_048d14ee762df4::t_3c2b1db81fd79d 145-146
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_048d14ee762df4::t_84e41d5d75cf69 638-679
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_048d14ee762df4::t_49ff15704f81d9 210-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "10276cd2d40f3c25d44cfc05b6081b781a6ea46a",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_048d14ee762df4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e007b303-478f-4d15-a0ba-3c70bf53a7d1",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

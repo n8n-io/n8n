@@ -1,0 +1,42 @@
+packages/nodes-base/nodes/Databricks/actions/interfaces.ts
+  s_dc404d871713f5::t_8b42488180bffd 118-136
+  s_dc404d871713f5::t_a3f53baa74fd87 1-2
+packages/nodes-base/nodes/Databricks/actions/job/getJob.operation.ts
+  s_dc404d871713f5::t_7deda618f81871 1,3,6-14,18,20-21,28-42
+  s_dc404d871713f5::t_7f5d253b78d361 2,4,15-17,19,22
+  s_dc404d871713f5::t_f81be38bbbc935 5
+  s_dc404d871713f5::t_5c30d3ad77b285 23-27
+packages/nodes-base/nodes/Databricks/resources/job/parameters.ts
+  s_dc404d871713f5::t_f53dca9b9e99b3 6,65,67
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_dc404d871713f5::t_aa4eb2ca37e9e3 65-85
+packages/nodes-base/nodes/Databricks/test/getJob.test.ts
+  s_dc404d871713f5::t_048e6d5831ebc9 1-165
+packages/nodes-base/nodes/Databricks/actions/job/getRunOutput.operation.ts
+  s_dc404d871713f5::t_7f5d253b78d361 2,6,24-33,37
+packages/nodes-base/nodes/Databricks/actions/job/Job.resource.ts
+  s_dc404d871713f5::t_7deda618f81871 1
+packages/nodes-base/nodes/Databricks/resources/job/operations.ts
+  s_dc404d871713f5::t_f53dca9b9e99b3 15-19
+  s_dc404d871713f5::t_77c54743e1d2ee 14
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_dc404d871713f5::t_f2c323e8e19e28 635-668
+packages/nodes-base/nodes/Databricks/test/job-get-job.workflow.json
+  s_dc404d871713f5::t_f2c323e8e19e28 1-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c3cb543d2113a6eed178ceb46140ab52d411b9b4",
+  "prompts": {},
+  "sessions": {
+    "s_dc404d871713f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62acd8de-0244-4aaa-abdb-48aa00f23e91",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

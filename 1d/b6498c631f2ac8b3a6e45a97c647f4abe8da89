@@ -1,0 +1,50 @@
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_66be2eb681ad3c::t_3b1874e8dcafbd 10
+  s_66be2eb681ad3c::t_f393860ebb74dd 21
+  s_66be2eb681ad3c::t_94128720ec6c5d 44-45
+  s_66be2eb681ad3c::t_22d7bf3e6afce0 140,162
+  s_66be2eb681ad3c::t_849e139f7a45ef 181
+  s_66be2eb681ad3c::t_a940b138931309 228-235,247
+  s_66be2eb681ad3c::t_6d3df4d88d206c 25-29
+  s_66be2eb681ad3c::t_6f8968ae55aff8 92-95
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_66be2eb681ad3c::t_f0049da7746f0e 42,54-55,57-59
+  s_66be2eb681ad3c::t_ec7f0d66fb8f52 6
+  s_66be2eb681ad3c::t_b442ab9139e225 43-53,56
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_66be2eb681ad3c::t_01c19f97e81dee 15,32
+  s_66be2eb681ad3c::t_de9f65854a31cf 112,114-117,125
+  s_66be2eb681ad3c::t_238cc1d74427c8 147,156
+  s_66be2eb681ad3c::t_b214aaa2aea1b6 21-25
+  s_66be2eb681ad3c::t_bc985dad626542 113
+  s_66be2eb681ad3c::t_ac239145da23c5 130
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_66be2eb681ad3c::t_769458698dec38 1,3-107,109-174,178-187,189-211,213,215-236,238-319,321-356,422-469,471-495,528,530-577,597-617,621-622,644-659,358-359,361-362,367,369,372-373,391-392,397,420-421,508-510,514,520,522,526-527,625-626,636,642-643,176-177,579-580,584,591-592,595-596
+  s_66be2eb681ad3c::t_306b511fcdd56d 2
+  s_66be2eb681ad3c::t_51f9f643b92600 108
+  ai_agent 470,529
+  s_66be2eb681ad3c::t_1979ecb317bf4a 618-620,363-366,368,379,390,418,501,507,511-513,515,517-519,521,623-624,627-635,637-641
+  s_66be2eb681ad3c::t_5e5a1d5a8d407c 214,237
+  s_66be2eb681ad3c::t_a1891e40a758c4 357,360,370-371,374,378,383-388,393-396,398-416,419,188
+  s_66be2eb681ad3c::t_da9be704ce7aae 375-377,380-382,389,417,496-500,502-506,516,523-525
+  s_66be2eb681ad3c::t_2354129c7c5b1e 212
+  s_66be2eb681ad3c::t_cbdf1818c8aa88 320
+  s_66be2eb681ad3c::t_8de35289f4816e 175
+  s_66be2eb681ad3c::t_2485294bc7f7a4 578,581-583,585-590,593-594
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1db6498c631f2ac8b3a6e45a97c647f4abe8da89",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

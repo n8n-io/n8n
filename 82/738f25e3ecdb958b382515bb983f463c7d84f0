@@ -1,0 +1,42 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/requireFoundryEndpoint.ts
+  s_7bef3589dedc22::t_453bbf8d011c19 3-4,11-12,18
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/requireFoundryEndpoint.test.ts
+  s_7bef3589dedc22::t_4289d8ba078df9 22,26-27
+  ai_agent 23-25
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.ssrf.test.ts
+  s_7bef3589dedc22::t_d6537faad6d5c1 75-91
+  s_7bef3589dedc22::t_2d048c842a282e 92-103
+packages/@n8n/backend-network/src/http/undici/transport.ts
+  s_7bef3589dedc22::t_cb52a400d7542b 235-238,241-242,263,297
+  s_7bef3589dedc22::t_1d3238c85c72b6 239-240,243-244
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/oauth2.ts
+  s_7bef3589dedc22::t_453bbf8d011c19 5,37,39
+  s_7bef3589dedc22::t_bb7d5e84765daf 6,40-45
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/api-key.ts
+  s_7bef3589dedc22::t_453bbf8d011c19 3,59
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/api-key.handler.test.ts
+  s_7bef3589dedc22::t_4289d8ba078df9 55-72
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/oauth2.handler.test.ts
+  s_7bef3589dedc22::t_efadc4978fbe24 9-20,27,44-48,100-140
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/normalizeEndpoint.ts
+  s_7bef3589dedc22::t_453bbf8d011c19 1-8
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.authorization.test.ts
+  s_7bef3589dedc22::t_d6537faad6d5c1 65-81
+  s_7bef3589dedc22::t_2d048c842a282e 82-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "82738f25e3ecdb958b382515bb983f463c7d84f0",
+  "prompts": {},
+  "sessions": {
+    "s_7bef3589dedc22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aca3bc7e-edf8-49b0-8cc1-20fb47609fad",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

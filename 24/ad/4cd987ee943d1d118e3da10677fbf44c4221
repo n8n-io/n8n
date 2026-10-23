@@ -1,0 +1,85 @@
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_ffa0492de4d6b4::t_33973e93c68e11 38-42
+packages/cli/src/modules/agents/utils/inbound-attachments.ts
+  s_ffa0492de4d6b4::t_e48c57730cd381 83-86,89-96
+  s_ffa0492de4d6b4::t_33973e93c68e11 1,3,73-82,87-88,97-98
+  s_ffa0492de4d6b4::t_1676e642ab31bf 99
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_ffa0492de4d6b4::t_e48c57730cd381 45-49,52-54
+  s_ffa0492de4d6b4::t_33973e93c68e11 15-16,40,42-44,50-51,55
+  s_ffa0492de4d6b4::t_c9d211bca6f53e 41
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_ffa0492de4d6b4::t_e48c57730cd381 21-25,42-49,51,57-58,114-115,245
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_ffa0492de4d6b4::t_aa8f0608f988dd 125,132,134,140,150,181-183,225-226,245-246,251,255
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_ffa0492de4d6b4::t_e48c57730cd381 222-226
+  s_ffa0492de4d6b4::t_f49d539f12e0ea 221,227,250,262-265,267,281-282
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_ffa0492de4d6b4::t_e48c57730cd381 89
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_ffa0492de4d6b4::t_21b6a4e00338e0 1159,1588,1660,1710-1714,1718,1720-1721,1723,1725,1727-1747,1749-1756,1759-1761,1768-1769
+  s_ffa0492de4d6b4::t_e48c57730cd381 199,1246-1247,1255,1326,1348,1380,1391,1423-1424,1467,1632,1642-1648
+  s_ffa0492de4d6b4::t_b5ffbddbf2a8e8 57-60,1186-1188,1257-1259,1715-1717,1719,1722,1724,1726,1757-1758
+  s_ffa0492de4d6b4::t_069b4a71b83dd4 1169,1189-1199,1204-1205,1216,1256,1260-1263,1414-1415,1429,1606,1748
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_ffa0492de4d6b4::t_33973e93c68e11 8,19-20,25,30-34,38-41,56
+packages/@n8n/db/src/migrations/common/1790590278292-AddAgentExecutionMessages.ts
+  s_ffa0492de4d6b4::t_6345fe2276aaa0 10,50,81,105-112,160
+  s_ffa0492de4d6b4::t_21b6a4e00338e0 51-52,54-75,77-80,86,90-104
+  s_ffa0492de4d6b4::t_c9d211bca6f53e 45-48,83,89,153-154,159,161
+  s_ffa0492de4d6b4::t_e48c57730cd381 49,53,76,84-85,87-88,155-158
+  s_ffa0492de4d6b4::t_c76521429203ea 82
+packages/cli/test/migration/1790590278292-add-agent-execution-messages.test.ts
+  s_ffa0492de4d6b4::t_f4f006f3e8d9c2 147-152,210-215,222-226,230-231,266,297-299,305-306
+  s_ffa0492de4d6b4::t_b5ffbddbf2a8e8 216-221,227-229,292-296,307-309
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_ffa0492de4d6b4::t_6345fe2276aaa0 100
+  s_ffa0492de4d6b4::t_f49d539f12e0ea 27,32,37,68-77,85-86,88-89,93-94,101-108
+  s_ffa0492de4d6b4::t_e48c57730cd381 62-65,78-84,95-99
+  s_ffa0492de4d6b4::t_7b703a0a5d079e 109
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_ffa0492de4d6b4::t_f98cd7f720aa5a 158,175,177-178
+  s_ffa0492de4d6b4::t_32e80d22503bd9 1-2,16,107-109
+  s_ffa0492de4d6b4::t_e2135c18f172e5 5,22,30,34,56,88,98-106,110-128,145,174,198-199,201-202,242-243,247,255,309,319-320,322-337
+  s_ffa0492de4d6b4::t_1df7f699026ef1 171-173
+  s_ffa0492de4d6b4::t_e48c57730cd381 24-28,338-339
+packages/testing/playwright/tests/infrastructure/agents/message-queue.spec.ts
+  s_ffa0492de4d6b4::t_3eb2b8de5df3fb 163-168,186,237-241,243-247,270-271,284-294
+docs/generated/postgres-schema/README.md
+  s_ffa0492de4d6b4::t_ca7bacc75bdebe 27,206,608
+docs/generated/postgres-schema/public.agent_execution.md
+  s_ffa0492de4d6b4::t_2e517f01373779 99
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_ffa0492de4d6b4::t_3c54634de4ea2b 137
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_ffa0492de4d6b4::t_9b6fce5877c73a 10-11,22,26,37,48,55,85-98
+docs/generated/postgres-schema/public.agents_messages.md
+  s_ffa0492de4d6b4::t_296fff25d4d5ac 10,50,75-84
+docs/generated/sqlite-schema/README.md
+  s_ffa0492de4d6b4::t_02e467ac2dd834 27,190,594
+docs/generated/sqlite-schema/agent_execution.md
+  s_ffa0492de4d6b4::t_bf9e36aeb2d5bc 104
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_ffa0492de4d6b4::t_ffe3030a6cd3d5 137
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_ffa0492de4d6b4::t_dcef86bde34b3f 9-11,23,35,43,53,60,90-103
+docs/generated/sqlite-schema/agents_messages.md
+  s_ffa0492de4d6b4::t_8ff7e145d1f98f 21,55,80-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "24ad4cd987ee943d1d118e3da10677fbf44c4221",
+  "prompts": {},
+  "sessions": {
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/oauth2.ts
+  s_e0a4b6e5f00c16::t_c851261ada5546 5,11-16,37-38
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_e0a4b6e5f00c16::t_d7eed5edf2c6ff 36-37
+packages/cli/src/modules/chat-hub/chat-hub.models.service.ts
+  s_e0a4b6e5f00c16::t_b28bf8a27d62fe 122,126
+  s_e0a4b6e5f00c16::t_a7489804766e38 301-316,319-332
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/types.ts
+  s_e0a4b6e5f00c16::t_4881bc3ed2937d 37-38,41,45,48-49,53,56-57
+packages/cli/src/modules/agents/json-config/credential-field-mapping.ts
+  s_e0a4b6e5f00c16::t_7631f89d4e9e8e 41-42,46
+packages/@n8n/nodes-langchain/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.ts
+  s_e0a4b6e5f00c16::t_4607140b6a55d6 30,34
+  s_e0a4b6e5f00c16::t_9383914212fce1 69
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_e0a4b6e5f00c16::t_77709789cc9fed 135-141,148
+  s_e0a4b6e5f00c16::t_aff3cec6ba6e66 432-445
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/v1-endpoint.ts
+  s_e0a4b6e5f00c16::t_f1adce5b93a944 1-8,16-50
+  s_e0a4b6e5f00c16::t_82f14b5b47d796 9-15
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_e0a4b6e5f00c16::t_7cae727735ea0f 1,6-7,23,79-120,127-129,148,151-155,157-159,165-169
+packages/cli/src/modules/chat-hub/chat-hub-workflow.service.ts
+  s_e0a4b6e5f00c16::t_6de46a2c2dc82f 813
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/api-key.handler.test.ts
+  s_e0a4b6e5f00c16::t_ca469082715ab9 47-48
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_e0a4b6e5f00c16::t_f118ade1d17294 184,186-187,195-204
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node.ts
+  s_e0a4b6e5f00c16::t_af8422f30074bc 74-90
+  s_e0a4b6e5f00c16::t_ce445ac65e3746 31-44
+  s_e0a4b6e5f00c16::t_818ed9959428e7 166-170,173-176
+  s_e0a4b6e5f00c16::t_02750d3bd64d76 1,11-20
+  s_e0a4b6e5f00c16::t_73e1ea7141b8d2 189-193,195-197,199
+  s_e0a4b6e5f00c16::t_86001a2d164cf1 21
+  s_e0a4b6e5f00c16::t_1c1f0a55bb7042 177
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential.ts
+  s_e0a4b6e5f00c16::t_927ed95451f2e8 8
+  s_e0a4b6e5f00c16::t_56f4ba7c778a93 34
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/properties.ts
+  s_e0a4b6e5f00c16::t_78f4cf964fdb90 42-43,45-62
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/api-key.ts
+  s_e0a4b6e5f00c16::t_a4c2b9d16f2e1a 3,32-33
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/oauth2.handler.test.ts
+  s_e0a4b6e5f00c16::t_25129fa4844042 76-77,80
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsAzureOpenAi.test.ts
+  s_e0a4b6e5f00c16::t_6ead13c17556ab 1,21,81,87,89-93,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1eac64a68e24c4f30c5fec2ebe2893f4f1afa206",
+  "prompts": {},
+  "sessions": {
+    "s_e0a4b6e5f00c16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67937716-f0ef-4711-83a6-859d370c569a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+.agents/skills/community-pr-readiness-check/reference/checks.md
+  s_0dbe1bf117bbe1::t_38e27ac7141a5b 59
+  s_0dbe1bf117bbe1::t_2872b371f1c878 157-180
+  s_0dbe1bf117bbe1::t_55003b7a197333 24
+  s_0dbe1bf117bbe1::t_f960b450c3a1a9 10-11,17-18
+  s_0dbe1bf117bbe1::t_50884dc5ecc7c3 41-52,55
+  s_0dbe1bf117bbe1::t_ac9777fbb28908 125
+.agents/skills/community-pr-readiness-check/SKILL.md
+  s_0dbe1bf117bbe1::t_1dfd1131cb1311 94,98,100
+  s_0dbe1bf117bbe1::t_aea2187527277f 102,109,111-112
+  s_0dbe1bf117bbe1::t_a162f9370b88d7 291-293
+  s_0dbe1bf117bbe1::t_3900b575196cfd 279
+  s_0dbe1bf117bbe1::t_4c9170f3315db7 42
+  s_0dbe1bf117bbe1::t_016b4a9b3826de 26
+  s_0dbe1bf117bbe1::t_a4577c2efa0458 164,170-172,177
+  s_0dbe1bf117bbe1::t_df074926139994 263-264,271
+.agents/skills/community-pr-readiness-check/reference/teams.md
+  s_0dbe1bf117bbe1::t_69cca3c9d069e1 57
+CONTRIBUTING.md
+  s_0dbe1bf117bbe1::t_71a58a22744224 445-468,472,474-476,480,489,492-493,496-497,499-512,520-521,523,525,527,529,531-537
+  s_0dbe1bf117bbe1::t_979cce20d199f1 484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e5a4fcd9ac34bb4fed03e7b45789e6dbb804d690",
+  "prompts": {},
+  "sessions": {
+    "s_0dbe1bf117bbe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ad44123-26ae-472f-818f-9524250e4b90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

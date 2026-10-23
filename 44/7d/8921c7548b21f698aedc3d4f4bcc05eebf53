@@ -1,0 +1,27 @@
+packages/@n8n/telemetry/src/events/agents.ts
+  s_4ec8a7e4b0ed20::t_b85f0ff1350bf2 477-493
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_4ec8a7e4b0ed20::t_d7560510bde6e1 1346-1367
+  s_4ec8a7e4b0ed20::t_edd3773af25abb 43
+  s_4ec8a7e4b0ed20::t_43816d113152d5 139,141
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_4ec8a7e4b0ed20::t_6fd6096732dd3f 69
+  s_4ec8a7e4b0ed20::t_5f82153ab339dc 471-534,538-550,554-563
+  ai_agent 535-537,551-553
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "447d8921c7548b21f698aedc3d4f4bcc05eebf53",
+  "prompts": {},
+  "sessions": {
+    "s_4ec8a7e4b0ed20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15303b95-f548-46d5-8199-862aa2f7c4d9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

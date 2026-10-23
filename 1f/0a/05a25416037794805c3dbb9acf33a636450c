@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/DataTable/test/common/selectMany.test.ts
+  s_5bd8b4553251ef::t_c29e0030a6a2db 47,153-238
+packages/nodes-base/nodes/DataTable/test/row/get.operation.test.ts
+  s_5bd8b4553251ef::t_34810d06385850 32
+packages/nodes-base/nodes/DataTable/common/selectMany.ts
+  s_5bd8b4553251ef::t_b0e00ef29ddec9 202,204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f0a05a25416037794805c3dbb9acf33a636450c",
+  "prompts": {},
+  "sessions": {
+    "s_5bd8b4553251ef": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e756-7f53-77b1-9e61-21d3c3ade765",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/utils/__tests__/node-tool-validation.test.ts
+  s_04e1c2df41f1f7::t_763ae774bc8bbd 48-50,63-66
+  s_04e1c2df41f1f7::t_19281d49199102 67
+packages/cli/src/modules/agents/utils/node-tool-validation.ts
+  s_04e1c2df41f1f7::t_250cc5a26a7db6 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "494caf8bb5526ef31f2acf9b490a5de67c381080",
+  "prompts": {},
+  "sessions": {
+    "s_04e1c2df41f1f7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1dcee2aa-cd91-45af-bf2e-5fa279da36a3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
