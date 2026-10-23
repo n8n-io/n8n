@@ -13,8 +13,9 @@ export function getProxyFetch(): typeof globalThis.fetch | undefined {
 
 	// eslint-disable-next-line n8n-local-rules/no-uncentralized-http, @typescript-eslint/no-require-imports -- standalone SDK cannot depend on @n8n/backend-network (see doc comment above). To drop this: make `fetch` a required arg of every caller and delete the fallback
 	const { EnvHttpProxyAgent } = require('undici') as typeof Undici;
-	// Picks the proxy per target scheme and honors NO_PROXY.
-	const dispatcher = new EnvHttpProxyAgent();
+	// Picks the proxy per target scheme and honors NO_PROXY. Plain HTTP goes to an HTTP proxy
+	// without CONNECT, because some proxies allow CONNECT only to port 443.
+	const dispatcher = new EnvHttpProxyAgent({ proxyTunnel: false });
 	return async (url, init) =>
 		await globalThis.fetch(url, {
 			...init,
