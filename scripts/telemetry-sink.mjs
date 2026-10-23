@@ -113,7 +113,14 @@ export function formatLine(record) {
 }
 
 /** Starts the listener. Resolves to the server once it accepts connections. */
-export async function startSink({ port, out, grep, raw = false, log = console.log }) {
+export async function startSink({
+	port,
+	out,
+	grep,
+	raw = false,
+	posthog = false,
+	log = console.log,
+}) {
 	const file = createWriteStream(out, { flags: 'a' });
 	const filter = grep ? new RegExp(grep, 'i') : undefined;
 	let received = 0;
@@ -146,6 +153,11 @@ export async function startSink({ port, out, grep, raw = false, log = console.lo
 			}
 
 			for (const record of records) {
+				// The backend sends each event to RudderStack and to PostHog, so PostHog shows copies.
+				if (record.source === 'posthog' && !posthog) {
+					continue;
+				}
+
 				if (filter && !filter.test(record.event ?? '')) {
 					continue;
 				}
@@ -180,6 +192,8 @@ Options:
   --out <file>     File for the events (default: telemetry.ndjson in the repo root)
   --grep <regex>   Show and write only the events whose name matches (case-insensitive)
   --raw            Also show requests that carry no event, such as PostHog flag requests
+  --posthog        Also show PostHog events. Hidden by default, because the backend
+                   sends each event to PostHog as a copy of the RudderStack event
   -h, --help       Show this help
 
 Start the backend with \`pnpm dev:be:telemetry\` to send its telemetry to the default port.
@@ -197,6 +211,7 @@ function parseOptions(args) {
 			out: { type: 'string', default: path.join(ROOT, 'telemetry.ndjson') },
 			grep: { type: 'string' },
 			raw: { type: 'boolean', default: false },
+			posthog: { type: 'boolean', default: false },
 			help: { type: 'boolean', short: 'h', default: false },
 		},
 	}).values;
@@ -217,7 +232,13 @@ async function main() {
 	}
 
 	const port = Number(values.port);
-	const server = await startSink({ port, out: values.out, grep: values.grep, raw: values.raw });
+	const server = await startSink({
+		port,
+		out: values.out,
+		grep: values.grep,
+		raw: values.raw,
+		posthog: values.posthog,
+	});
 
 	console.log(`Telemetry listener on http://${HOST}:${port}`);
 	console.log(`Writing events to ${values.out}`);

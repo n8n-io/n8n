@@ -124,7 +124,46 @@ describe('formatLine', () => {
 	});
 });
 
+/** Starts a sink on a free port, sends one request, and returns the lines it showed. */
+async function sendToSink(options, path, body) {
+	const directory = mkdtempSync(join(tmpdir(), 'telemetry-sink-'));
+	const lines = [];
+	const server = await startSink({
+		port: 0,
+		out: join(directory, 'telemetry.ndjson'),
+		log: (line) => lines.push(line),
+		...options,
+	});
+	try {
+		const { port } = server.address();
+		await fetch(`http://127.0.0.1:${port}${path}`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+		});
+		return lines;
+	} finally {
+		await server.stop();
+		rmSync(directory, { recursive: true, force: true });
+	}
+}
+
 describe('startSink', () => {
+	const posthogBatch = [{ event: 'Agent run used knowledge', distinct_id: 'u1', properties: {} }];
+
+	it('hides PostHog events by default', async () => {
+		const lines = await sendToSink({}, '/batch/', posthogBatch);
+
+		assert.deepEqual(lines, []);
+	});
+
+	it('shows PostHog events with the posthog option', async () => {
+		const lines = await sendToSink({ posthog: true }, '/batch/', posthogBatch);
+
+		assert.equal(lines.length, 1);
+		assert.match(lines[0], /posthog\s+Agent run used knowledge/);
+	});
+
 	it('answers a backend batch and writes one line for each event', async () => {
 		const directory = mkdtempSync(join(tmpdir(), 'telemetry-sink-'));
 		const out = join(directory, 'telemetry.ndjson');
