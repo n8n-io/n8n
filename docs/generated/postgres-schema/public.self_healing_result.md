@@ -6,6 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | backgroundUserId | uuid |  | false |  | [public.user](public.user.md) | User who enabled the investigation |
 | completedAt | timestamp(3) with time zone |  | false |  |  |  |
+| configurationId | integer |  | false |  | [public.self_healing_configuration](public.self_healing_configuration.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | dismissedAt | timestamp(3) with time zone |  | true |  |  |  |
 | dismissedById | uuid |  | true |  | [public.user](public.user.md) | Reviewer who dismissed the result |
@@ -30,9 +31,11 @@
 | FK_8366669b58b0f63a07cf2bbffcc | FOREIGN KEY | FOREIGN KEY ("backgroundUserId") REFERENCES "user"(id) ON DELETE CASCADE |
 | FK_98095dea3ff814d4ee37a1380e6 | FOREIGN KEY | FOREIGN KEY ("dismissedById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_9a3fe8a8f872917949d8de1bb4a | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| FK_self_healing_result_configuration | FOREIGN KEY | FOREIGN KEY ("configurationId") REFERENCES self_healing_configuration(id) ON DELETE CASCADE |
 | PK_0a772d117fddff1eaf6a759e1b6 | PRIMARY KEY | PRIMARY KEY (id) |
 | self_healing_result_backgroundUserId_not_null | n | NOT NULL "backgroundUserId" |
 | self_healing_result_completedAt_not_null | n | NOT NULL "completedAt" |
+| self_healing_result_configurationId_not_null | n | NOT NULL "configurationId" |
 | self_healing_result_createdAt_not_null | n | NOT NULL "createdAt" |
 | self_healing_result_executionId_not_null | n | NOT NULL "executionId" |
 | self_healing_result_id_not_null | n | NOT NULL id |
@@ -52,6 +55,7 @@
 | IDX_8366669b58b0f63a07cf2bbffc | CREATE INDEX "IDX_8366669b58b0f63a07cf2bbffc" ON public.self_healing_result USING btree ("backgroundUserId") |
 | IDX_98095dea3ff814d4ee37a1380e | CREATE INDEX "IDX_98095dea3ff814d4ee37a1380e" ON public.self_healing_result USING btree ("dismissedById") |
 | IDX_9a3fe8a8f872917949d8de1bb4 | CREATE INDEX "IDX_9a3fe8a8f872917949d8de1bb4" ON public.self_healing_result USING btree ("workflowId") |
+| IDX_self_healing_result_configurationId | CREATE INDEX "IDX_self_healing_result_configurationId" ON public.self_healing_result USING btree ("configurationId") |
 | IDX_self_healing_result_suggestionId | CREATE UNIQUE INDEX "IDX_self_healing_result_suggestionId" ON public.self_healing_result USING btree ("suggestionId") WHERE ("suggestionId" IS NOT NULL) |
 | PK_0a772d117fddff1eaf6a759e1b6 | CREATE UNIQUE INDEX "PK_0a772d117fddff1eaf6a759e1b6" ON public.self_healing_result USING btree (id) |
 
@@ -61,6 +65,7 @@
 erDiagram
 
 "public.self_healing_result" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.self_healing_result" }o--|| "public.self_healing_configuration" : "FOREIGN KEY (#quot;configurationId#quot;) REFERENCES self_healing_configuration(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--o| "public.user" : "FOREIGN KEY (#quot;dismissedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.self_healing_investigation" }o--o| "public.self_healing_result" : "FOREIGN KEY (#quot;resultId#quot;) REFERENCES self_healing_result(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -70,6 +75,7 @@ erDiagram
 "public.self_healing_result" {
   uuid backgroundUserId FK
   timestamp_3__with_time_zone completedAt
+  integer configurationId FK
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone dismissedAt
   uuid dismissedById FK
@@ -90,6 +96,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -101,14 +108,24 @@ erDiagram
   json settings
   timestamp_3__with_time_zone updatedAt
 }
+"public.self_healing_configuration" {
+  timestamp_3__with_time_zone createdAt
+  boolean enabled
+  uuid enabledById FK
+  integer id
+  varchar_36_ projectId FK
+  varchar_16_ scope
+  timestamp_3__with_time_zone updatedAt
+}
 "public.self_healing_investigation" {
   uuid backgroundUserId FK
-  json baseline
+  integer configurationId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   uuid runId
   uuid threadId

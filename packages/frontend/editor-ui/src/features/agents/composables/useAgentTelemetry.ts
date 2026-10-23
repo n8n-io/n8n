@@ -16,6 +16,11 @@ export type AgentCreateSource =
 	| 'empty_state_template'
 	| 'command_bar';
 export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
+export type N8nChatHint = 'channel_chip' | 'new_chat_sidebar';
+export type KnowledgeUploadClientFailureReason = Extract<
+	InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD>,
+	{ stage: 'client' }
+>['reason'];
 export type AgentSessionFilterName = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER
 >['filter_names'][number];
@@ -151,6 +156,23 @@ export function useAgentTelemetry() {
 		status: AgentTelemetryStatus;
 	}) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_ADDED_TRIGGER_TO_AGENT, {
+			agent_id: params.agentId,
+			trigger_type: params.triggerType,
+			triggers: params.triggers,
+			config_version: params.configVersion,
+			status: params.status,
+			...common(),
+		});
+	}
+
+	function trackRemovedTrigger(params: {
+		agentId: string;
+		triggerType: string;
+		triggers: string[];
+		configVersion: string;
+		status: AgentTelemetryStatus;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_REMOVED_TRIGGER_FROM_AGENT, {
 			agent_id: params.agentId,
 			trigger_type: params.triggerType,
 			triggers: params.triggers,
@@ -302,10 +324,35 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackDismissedAgentPublishedModal(params: { agentId: string; dontShowAgain: boolean }) {
+	function trackDismissedAgentPublishedModal(params: {
+		agentId: string;
+		dontShowAgain: boolean;
+		action: 'got_it' | 'talk_to_agent' | 'closed';
+		n8nChatLive: boolean;
+	}) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_DISMISSED_AGENT_PUBLISHED_MODAL, {
 			agent_id: params.agentId,
 			dont_show_again: params.dontShowAgain,
+			action: params.action,
+			n8n_chat_live: params.n8nChatLive,
+			...common(),
+		});
+	}
+
+	function trackViewedN8nChatHint(params: { hint: N8nChatHint; agentId?: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_VIEWED_N8N_CHAT_HINT, {
+			hint: params.hint,
+			...(params.agentId ? { agent_id: params.agentId } : {}),
+			variant: currentN8nChatVariant(),
+			...common(),
+		});
+	}
+
+	function trackDismissedN8nChatHint(params: { hint: N8nChatHint; agentId?: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_DISMISSED_N8N_CHAT_HINT, {
+			hint: params.hint,
+			...(params.agentId ? { agent_id: params.agentId } : {}),
+			variant: currentN8nChatVariant(),
 			...common(),
 		});
 	}
@@ -347,6 +394,39 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackOpenedKnowledgeTab(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_KNOWLEDGE_TAB, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackStartedAddingKnowledge(
+		params: { agentId: string } & ({ kind: 'file'; fileCount: number } | { kind: 'vector_store' }),
+	) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE, {
+			agent_id: params.agentId,
+			kind: params.kind,
+			...(params.kind === 'file' ? { file_count: params.fileCount } : {}),
+			...common(),
+		});
+	}
+
+	/** Server rejections are sent by the backend, so the editor reports only its own checks. */
+	function trackFailedKnowledgeUpload(params: {
+		agentId: string;
+		reason: KnowledgeUploadClientFailureReason;
+		fileCount: number;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD, {
+			stage: 'client',
+			agent_id: params.agentId,
+			file_count: params.fileCount,
+			reason: params.reason,
+			...common(),
+		});
+	}
+
 	return {
 		trackClickedAgentsTab,
 		trackClickedKnowledgeUpload,
@@ -358,6 +438,7 @@ export function useAgentTelemetry() {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
 		trackAddedTrigger,
+		trackRemovedTrigger,
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
@@ -366,6 +447,8 @@ export function useAgentTelemetry() {
 		trackImportedSkill,
 		trackDuplicatedAgent,
 		trackDismissedAgentPublishedModal,
+		trackViewedN8nChatHint,
+		trackDismissedN8nChatHint,
 		trackStartedChannelSetup,
 		trackClosedChannelSetup,
 		trackFailedToConnectChannel,
@@ -375,5 +458,8 @@ export function useAgentTelemetry() {
 		trackSelectedN8nChatAgent,
 		trackSentMessageToN8nChatAgent,
 		trackClickedSidebarItem,
+		trackOpenedKnowledgeTab,
+		trackStartedAddingKnowledge,
+		trackFailedKnowledgeUpload,
 	};
 }

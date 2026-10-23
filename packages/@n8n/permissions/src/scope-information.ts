@@ -237,4 +237,8 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Read promotion reviews',
 		description: 'Allows listing promotion reviews and reading their state from the Git host.',
 	},
+	'gitConnection:approveReviews': {
+		displayName: 'Approve promotion reviews',
+		description: 'Allows approving and merging promotion reviews on the Git host.',
+	},
 };

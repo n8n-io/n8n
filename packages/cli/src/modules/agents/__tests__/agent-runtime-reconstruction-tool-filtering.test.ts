@@ -33,6 +33,7 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { ProjectAgent } from '../entities/agent.entity';
@@ -175,6 +176,7 @@ function makeService(overrides: {
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
 		credentialsService,
+		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
 	);
 
