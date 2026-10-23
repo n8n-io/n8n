@@ -58,7 +58,15 @@ export type RunnerStatus = { available: true } | { available: false; reason?: st
 export abstract class TaskRequester {
 	requestAcceptRejects: Map<
 		string,
-		{ accept: RequestAccept; reject: RequestReject; requestedAt: number }
+		{
+			accept: RequestAccept;
+			reject: RequestReject;
+			requestedAt: number;
+			workflowId?: string;
+			executionId?: string;
+			nodeId: string;
+			taskType: string;
+		}
 	> = new Map();
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
@@ -141,6 +149,10 @@ export abstract class TaskRequester {
 				accept: resolve,
 				reject,
 				requestedAt: Date.now(),
+				workflowId: workflow.id,
+				executionId: additionalData.executionId,
+				nodeId: node.id,
+				taskType,
 			});
 		});
 
@@ -307,16 +319,22 @@ export abstract class TaskRequester {
 		if (!acceptReject) return;
 
 		const elapsedSeconds = Math.round((Date.now() - acceptReject.requestedAt) / 1000);
+		const { workflowId, executionId, nodeId, taskType } = acceptReject;
 
 		const error = new TaskRequestTimeoutError({
 			elapsedSeconds,
 			isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
+			requestId,
+			workflowId,
+			executionId,
+			nodeId,
+			taskType,
 		});
 
-		this.errorReporter.error('Task request timed out', {
+		// Report the error object so defaultReport logs e.extra (workflow/execution IDs).
+		this.errorReporter.error(error, {
+			executionId,
 			extra: {
-				requestId,
-				elapsedSeconds,
 				timeout: this.taskRunnersConfig.taskRequestTimeout,
 				deploymentType: this.globalConfig.deployment.type,
 			},
