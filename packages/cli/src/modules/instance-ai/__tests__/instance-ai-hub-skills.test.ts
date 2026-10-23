@@ -62,8 +62,11 @@ function hubEntries(source: ReturnType<typeof createRuntimeSkillSource>) {
 	return source.registry.skills.filter(({ id }) => id !== builtIn.id);
 }
 
-function load(provider = providerFor([content()]), builtIns = createRuntimeSkillSource([builtIn])) {
-	return loadHubRunSkills(builtIns, provider, context);
+async function load(
+	provider = providerFor([content()]),
+	builtIns = createRuntimeSkillSource([builtIn]),
+) {
+	return await loadHubRunSkills(builtIns, provider, context);
 }
 
 describe('Assistant Hub runtime skills', () => {
