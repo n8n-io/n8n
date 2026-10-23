@@ -646,6 +646,12 @@ export abstract class AgentChatIntegration {
 	 */
 	settleActionMessage?(params: SettleActionMessageParams): Promise<void>;
 
+	/** Filter inbound messages before attachments, session resets, or agent work. */
+	shouldHandleInboundMessage?(params: {
+		message: Message<unknown>;
+		integration: AgentIntegrationConfig;
+	}): boolean;
+
 	/**
 	 * Whether a new mention should subscribe the thread for follow-ups.
 	 * Default (no implementation): true. Discord returns false when a channel
