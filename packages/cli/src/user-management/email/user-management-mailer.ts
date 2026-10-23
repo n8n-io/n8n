@@ -339,6 +339,19 @@ export class UserManagementMailer {
 	}): Promise<SendEmailResult> {
 		const recipients = await this.userRepository.getEmailsByIds([recipient.id]);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const text = {
+			crashes: {
+				reason: 'its executions repeatedly crashed',
+				nextStep:
+					'Please review its recent executions and resolve any issues before reactivating it.',
+			},
+			'memory-pressure': {
+				reason:
+					'n8n repeatedly stopped its executions to keep the instance from running out of memory',
+				nextStep:
+					"Each time, this workflow's execution held the most data on the instance. Memory can also run high because of other work. Reactivate the workflow when ready.",
+			},
+		}[reason];
 
 		return await this.sendNotificationEmails({
 			mailerTemplate: 'workflow-deactivated',
@@ -347,10 +360,7 @@ export class UserManagementMailer {
 			getTemplateData: () => ({
 				workflowName: workflow.name,
 				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
-				reason:
-					reason === 'crashes'
-						? 'repeated crashes'
-						: 'repeated stops to keep the instance from running out of memory',
+				...text,
 			}),
 			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
 			messageType: 'Workflow auto-deactivated',

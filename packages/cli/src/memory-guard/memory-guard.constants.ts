@@ -56,7 +56,7 @@ export const REMEASURE_INTERVAL_MS = 500;
 /** A stop frees memory if memory drops by at least this share of the stopped execution's estimate. */
 export const FREED_SHARE = 0.5;
 
-/** Counted stops of one workflow, after which the guard deactivates it. */
+/** Number of counted stops after which the guard deactivates a workflow. */
 export const STOPS_TO_DEACTIVATE = 3;
 
 export const MEMORY_DOCS_URL =

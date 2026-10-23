@@ -80,7 +80,10 @@ export class MemoryGuardService {
 
 	private pendingStop: Promise<void> | undefined;
 
-	/** Cleared when a production run of the workflow succeeds during the stop. */
+	/**
+	 * Workflow of the pending stop. A successful production run of the workflow clears it, so
+	 * that the stop does not count.
+	 */
 	private pendingStopWorkflowId: string | undefined;
 
 	/**
@@ -462,8 +465,9 @@ export class MemoryGuardService {
 	}
 
 	/**
-	 * Count a stop that freed memory, of production runs only, because a manual run uses the
-	 * draft. The deactivation is not awaited, so that slow trigger teardown does not delay the next stop.
+	 * Count only stops of production runs, because a manual run uses the draft, not the published
+	 * version. Do not wait for the deactivation, so that slow trigger teardown does not delay the
+	 * next stop.
 	 */
 	private countStop({ workflow, mode }: StopTarget) {
 		if (!isProductionMode(mode) || !isWorkflowIdValid(workflow.id)) return;

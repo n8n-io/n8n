@@ -519,7 +519,7 @@
 	"banners.trial.tooltip": "Manual runs from the editor don't count. Only production executions use your quota.",
 	"banners.trialOver.message": "Your trial is over. Upgrade now to keep automating.",
 	"banners.v1.message": "n8n has been updated to version 1, introducing some breaking changes. Please consult the <a target=\"_blank\" href=\"https://docs.n8n.io/1-0-migration-checklist\">migration guide</a> for more information.",
-	"banners.workflowAutoDeactivated.message": "This workflow was automatically deactivated because its executions failed repeatedly. Please review and reactivate it when ready.",
+	"banners.workflowAutoDeactivated.message": "This workflow was automatically deactivated because its executions repeatedly crashed or were stopped to free memory. Please review and reactivate it when ready.",
 	"binaryDataDisplay.backToList": "Back to list",
 	"binaryDataDisplay.backToOverviewPage": "Back to overview page",
 	"binaryDataDisplay.errorLoading": "Error loading binary data",
