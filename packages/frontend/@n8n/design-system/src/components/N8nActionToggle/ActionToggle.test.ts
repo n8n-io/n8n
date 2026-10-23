@@ -38,7 +38,7 @@ describe('N8nActionToggle', () => {
 
 		expect(getByRole('button').querySelector('svg')).toHaveAttribute('data-icon', 'ellipsis-12');
 	});
-	it('renders the icon at the button size by default', function () {
+	it('renders the icon at the default size', function () {
 		const { getByRole } = render(ActionToggle, {
 			props: {
 				actions: [{ label: 'Duplicate', value: 'duplicate' }],
@@ -56,6 +56,29 @@ describe('N8nActionToggle', () => {
 		});
 
 		expect(getByRole('button').querySelector('svg')).toHaveAttribute('width', '14px');
+	});
+	it('renders the button at the default size', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+			},
+		});
+
+		const button = getByRole('button');
+		expect(button.className).toMatch(/small/);
+		expect(button.className).not.toMatch(/xsmall/);
+	});
+	it('renders the button at the given size and keeps the icon size', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+				size: 'xsmall',
+			},
+		});
+
+		const button = getByRole('button');
+		expect(button.className).toMatch(/xsmall/);
+		expect(button.querySelector('svg')).toHaveAttribute('width', '12px');
 	});
 	it('should have bottom-end as default placement', async function () {
 		const { container, getByRole } = render(ActionToggle, {

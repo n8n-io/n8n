@@ -16,6 +16,7 @@ const props = withDefaults(defineProps<ActionToggleProps<T>>(), {
 	placement: 'bottom-end',
 	theme: 'default',
 	iconOrientation: 'horizontal',
+	size: 'small',
 	iconSize: 'small',
 	loading: false,
 	loadingRowCount: 3,
@@ -103,7 +104,7 @@ defineExpose({
 						variant="ghost"
 						:class="$style[theme]"
 						:icon="iconOrientation === 'horizontal' ? 'ellipsis-12' : 'ellipsis-vertical-12'"
-						size="small"
+						:size="size"
 						:icon-size="iconSize"
 						:disabled="disabled"
 						role="button"

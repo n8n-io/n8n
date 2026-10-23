@@ -199,7 +199,7 @@ const onViewSelected = (selected: string) => {
 				variant="ghost"
 				v-if="canBeOpenedInFocusPanel"
 				size="xsmall"
-				icon-size="large"
+				icon-size="small"
 				icon="panel-right"
 				:class="$style.focusButton"
 				:title="i18n.baseText('parameterInput.focusParameter')"
@@ -212,8 +212,8 @@ const onViewSelected = (selected: string) => {
 					v-if="shouldShowOptions"
 					placement="bottom-end"
 					size="xsmall"
+					icon-size="small"
 					theme="dark"
-					icon-size="large"
 					:actions="actions"
 					:icon-orientation="iconOrientation"
 					@action="(action: string) => $emit('update:modelValue', action)"
@@ -272,6 +272,7 @@ const onViewSelected = (selected: string) => {
 
 .expressionSwitch {
 	--n8n-segment-control--height: 24px;
+	margin-left: var(--spacing--4xs);
 	margin-right: var(--spacing--4xs);
 }
 

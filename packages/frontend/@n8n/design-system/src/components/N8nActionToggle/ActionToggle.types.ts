@@ -1,3 +1,4 @@
+import type { ButtonSize } from '../../types/button';
 import type { IconSize } from '../../types/icon';
 
 /**
@@ -22,6 +23,9 @@ export interface ActionToggleProps<T extends string = string> {
 	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
 	theme?: 'default' | 'dark';
 	iconOrientation?: 'horizontal' | 'vertical';
+	/** Size of the default trigger button. */
+	size?: ButtonSize;
+	/** Size of the ellipsis icon in the default trigger. It does not change with `size`. */
 	iconSize?: IconSize;
 	loading?: boolean;
 	loadingRowCount?: number;
