@@ -717,6 +717,31 @@ describe('earlier writes ledger', () => {
 			'https://api.anthropic.com/v1/messages',
 			{ messages: [{ role: 'user', content: 'FIRST-PROMPT' }] },
 		],
+		[
+			'OpenAI embeddings',
+			'https://api.openai.com/v1/embeddings',
+			{ model: 'text-embedding-3-small', input: 'FIRST-PROMPT' },
+		],
+		[
+			'OpenAI moderations',
+			'https://api.openai.com/v1/moderations',
+			{ model: 'omni-moderation-latest', input: 'FIRST-PROMPT' },
+		],
+		[
+			'OpenAI audio transcriptions',
+			'https://api.openai.com/v1/audio/transcriptions',
+			{ model: 'whisper-1', prompt: 'FIRST-PROMPT' },
+		],
+		[
+			'OpenAI audio translations',
+			'https://api.openai.com/v1/audio/translations',
+			{ model: 'whisper-1', prompt: 'FIRST-PROMPT' },
+		],
+		[
+			'OpenAI audio speech',
+			'https://api.openai.com/v1/audio/speech',
+			{ model: 'tts-1', input: 'FIRST-PROMPT', voice: 'alloy' },
+		],
 	])('does not show an earlier %s inference call as a write', async (_name, url, firstBody) => {
 		llmSubmits({ type: 'json', body: { id: 'gen-1' } });
 		llmSubmits({ type: 'json', body: { id: 'gen-2' } });
