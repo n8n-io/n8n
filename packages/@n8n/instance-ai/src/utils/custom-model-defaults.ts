@@ -15,6 +15,7 @@ export type CustomModelReasoningEffort = z.infer<typeof customModelReasoningEffo
 export type CustomModelExperimentDefaults = {
 	reasoningEffort?: CustomModelReasoningEffort;
 	supportsStructuredOutputs?: boolean;
+	includeUsage?: boolean;
 };
 
 const customModelDefaultEntrySchema = z
@@ -22,6 +23,7 @@ const customModelDefaultEntrySchema = z
 		match: z.string().min(1),
 		reasoningEffort: customModelReasoningEffortSchema.optional(),
 		supportsStructuredOutputs: z.boolean().optional(),
+		includeUsage: z.boolean().optional(),
 	})
 	.strict();
 
@@ -46,6 +48,7 @@ const CUSTOM_MODEL_DEFAULTS = [
 	{
 		match: 'deepseek',
 		supportsStructuredOutputs: true,
+		includeUsage: true,
 	},
 ] satisfies CustomModelDefaultEntry[];
 
@@ -83,10 +86,12 @@ export function resolveCustomModelExperimentDefaults(
 	const reasoningEffort = overrides.reasoningEffort ?? matched?.reasoningEffort;
 	const supportsStructuredOutputs =
 		overrides.supportsStructuredOutputs ?? matched?.supportsStructuredOutputs;
+	const includeUsage = overrides.includeUsage ?? matched?.includeUsage;
 
 	return {
 		...(reasoningEffort !== undefined ? { reasoningEffort } : {}),
 		...(supportsStructuredOutputs !== undefined ? { supportsStructuredOutputs } : {}),
+		...(includeUsage !== undefined ? { includeUsage } : {}),
 	};
 }
 

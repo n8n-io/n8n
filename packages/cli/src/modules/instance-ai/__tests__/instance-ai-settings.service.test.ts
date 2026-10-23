@@ -1417,6 +1417,16 @@ describe('InstanceAiSettingsService', () => {
 				'moonshotai/Kimi-K3',
 				{ id: 'custom/moonshotai/Kimi-K3', supportsStructuredOutputs: true },
 			],
+			[
+				'a self-hosted URL and a DeepSeek model',
+				'https://api.together.example/v1',
+				'deepseek-ai/DeepSeek-V4.1-Flash',
+				{
+					id: 'custom/deepseek-ai/DeepSeek-V4.1-Flash',
+					supportsStructuredOutputs: true,
+					includeUsage: true,
+				},
+			],
 		])('builds an OpenAI credential with %s', async (_, url, modelName, expected) => {
 			const credential = mock<CredentialsEntity>({
 				id: 'cred-1',
