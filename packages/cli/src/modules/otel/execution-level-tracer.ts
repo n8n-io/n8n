@@ -256,7 +256,16 @@ export class ExecutionLevelTracer {
 			if (!nodeStart) return;
 
 			const { span: activeNodeSpan } = nodeStart;
+<<<<<<< HEAD
 			activeNodeSpan.setAttributes(buildNodeEndAttributes(params));
+=======
+			activeNodeSpan.setAttributes({
+				[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
+				[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
+				...this.buildCustomAttributes('node', params.customAttributes),
+				...params.genAiAttributes,
+			});
+>>>>>>> 7e3c9411 (feat(core): Add OTel GenAI attributes to AI Agent and chat model spans (#41874))
 
 			if (params.error) {
 				activeNodeSpan.setStatus({ code: SpanStatusCode.ERROR });
