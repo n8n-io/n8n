@@ -47,6 +47,36 @@ const egressHelpers = <T extends { helpers: unknown }>(): Partial<T> =>
 		helpers: { getSecureEgressFilter: vi.fn(() => createTestEgressFilter()) },
 	}) as Partial<T>;
 
+async function createToolWithDownstreamError(typeVersion: number) {
+	vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+	vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+		isError: true,
+		toolResult: 'Weather unknown at location',
+		content: [{ text: 'Weather unknown at location' }],
+	});
+	vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+		tools: [
+			{
+				name: 'Weather Tool',
+				description: 'Gets the current weather',
+				inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+			},
+		],
+	});
+
+	const supplyDataFunctions = mock<ISupplyDataFunctions>({
+		...egressHelpers<ISupplyDataFunctions>(),
+		getNode: vi.fn(() => mock<INode>({ typeVersion, name: 'MCP Client' })),
+		logger: { debug: vi.fn(), error: vi.fn() },
+		addInputData: vi.fn(() => ({ index: 0 })),
+		getNodeParameter: vi.fn((key: string) => ({ authentication: 'none' })[key] as never),
+	});
+	const supplyDataResult = await new McpClientTool().supplyData.call(supplyDataFunctions, 0);
+	const [tool] = (supplyDataResult.response as StructuredToolkit).getTools();
+
+	return { supplyDataFunctions, supplyDataResult, tool };
+}
+
 describe('McpClientTool', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -556,47 +586,27 @@ describe('McpClientTool', () => {
 		});
 
 		it('should handle tool errors', async () => {
-			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
-				isError: true,
-				toolResult: 'Weather unknown at location',
-				content: [{ text: 'Weather unknown at location' }],
-			});
-			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
-				tools: [
-					{
-						name: 'Weather Tool',
-						description: 'Gets the current weather',
-						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
-					},
-				],
-			});
-
-			const supplyDataFunctions = mock<ISupplyDataFunctions>({
-				...egressHelpers<ISupplyDataFunctions>(),
-				getNode: vi.fn(() =>
-					mock<INode>({
-						typeVersion: 1,
-						name: 'MCP Client',
-					}),
-				),
-				logger: { debug: vi.fn(), error: vi.fn() },
-				addInputData: vi.fn(() => ({ index: 0 })),
-				getNodeParameter: vi.fn((key: string) => {
-					const parameters: Record<string, unknown> = {
-						authentication: 'none',
-					};
-					return parameters[key] as never;
-				}),
-			});
-			const supplyDataResult = await new McpClientTool().supplyData.call(supplyDataFunctions, 0);
+			const { supplyDataFunctions, supplyDataResult, tool } =
+				await createToolWithDownstreamError(1);
 
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
 			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
-			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
-			const toolResult = await tools[0].invoke({ location: 'Berlin' });
+			const toolResult = await tool.invoke({ location: 'Berlin' });
 			expect(toolResult).toEqual('Weather unknown at location');
+			expect(supplyDataFunctions.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiTool,
+				0,
+				expect.objectContaining({ message: 'Weather unknown at location' }),
+			);
+		});
+
+		it('throws a downstream MCP error for version 1.3 and later', async () => {
+			const { supplyDataFunctions, tool } = await createToolWithDownstreamError(1.3);
+
+			await expect(tool.invoke({ location: 'Berlin' })).rejects.toThrow(
+				'Weather unknown at location',
+			);
 			expect(supplyDataFunctions.addOutputData).toHaveBeenCalledWith(
 				NodeConnectionTypes.AiTool,
 				0,
