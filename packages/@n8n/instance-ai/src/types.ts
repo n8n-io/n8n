@@ -1439,11 +1439,12 @@ export interface InstanceAiBuilderDelegate {
 	 * `options.adoptOnCollision` says the caller has proven it may adopt that
 	 * agent — set it only for an id this thread's own lifecycle metadata attests
 	 * to, so the editor winning the insert (and configuring the row) makes this
-	 * call adopt rather than fail.
+	 * call adopt rather than fail. `options.session` names the thread and run
+	 * for the creation telemetry.
 	 */
 	createAgent(
 		name: string,
-		options?: { id?: string; adoptOnCollision?: boolean },
+		options?: { id?: string; adoptOnCollision?: boolean; session?: BuilderToolsSession },
 	): Promise<{
 		agentId: string;
 		projectId: string;
