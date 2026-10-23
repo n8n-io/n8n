@@ -55,8 +55,7 @@ export function createAskUserTool() {
 				'Questions are single-select, multi-select, or free-text. ' +
 				'Before the first build, ask only about choices that change what you build, and do not ask for setup values ' +
 				'(recipients, accounts, resources, channels, credentials, timezone); leave them for setup. ' +
-				'When the request does not yet say what to build (no trigger, no steps, no named workflow or Agent), ' +
-				'ask about the outcome: the result the user wants and whether people chat with it. ' +
+				'Before the first build, ask about the outcome: the result the user wants and whether people chat with it. ' +
 				'Do not call it a workflow or an Agent yet, and do not ask about triggers, schedules, data sources, or nodes. ' +
 				'The UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +
 				'catch-all options ("Something else", "Other", "None of the above") in the options array, and NEVER ' +
