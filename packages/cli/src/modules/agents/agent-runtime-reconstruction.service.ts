@@ -705,8 +705,8 @@ export class AgentRuntimeReconstructionService {
 			buildMcpClient,
 			resolveManagedEmbeddingProviderOptions: async () =>
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
-			onVectorStoreSearch: (runId) =>
-				this.knowledgeUsageTracker.recordToolCall(runId, 'vector_store_search'),
+			onVectorStoreSearch: (runId, result) =>
+				this.knowledgeUsageTracker.recordToolCall(runId, 'vector_store_search', result),
 			modelFetch: instrumentation?.modelFetch ?? aiProxyFetch,
 			fallbackWebSearch: instrumentation?.webSearch,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
@@ -1012,7 +1012,8 @@ export class AgentRuntimeReconstructionService {
 					projectId,
 					agentId,
 					knowledgeMirrorService: this.agentKnowledgeMirrorService,
-					recordToolCall: (runId, call) => this.knowledgeUsageTracker.recordToolCall(runId, call),
+					recordToolCall: (runId, call, result) =>
+						this.knowledgeUsageTracker.recordToolCall(runId, call, result),
 				}),
 			);
 		}

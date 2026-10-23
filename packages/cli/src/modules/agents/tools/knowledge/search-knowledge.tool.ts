@@ -2,7 +2,10 @@ import { Tool } from '@n8n/agents/tool';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
-import type { KnowledgeToolCall } from '../../agent-knowledge-usage-tracker';
+import type {
+	KnowledgeToolCall,
+	KnowledgeToolCallResult,
+} from '../../agent-knowledge-usage-tracker';
 import {
 	globKnowledgeFilesInputSchema,
 	MAX_READ_RANGES,
@@ -46,6 +49,18 @@ async function runKnowledgeTool<T>(
 	} catch (error) {
 		return formatKnowledgeToolError(error);
 	}
+}
+
+function toKnowledgeToolCallResult(
+	output: unknown,
+	toModelOutput: (output: unknown) => unknown,
+): KnowledgeToolCallResult {
+	if (isKnowledgeToolErrorOutput(output)) {
+		return { failed: true };
+	}
+
+	const json: string | undefined = JSON.stringify(toModelOutput(output));
+	return { failed: false, contentChars: json?.length ?? 0 };
 }
 
 function truncateForModel(text: string, maxChars: number): { text: string; truncated: boolean } {
@@ -243,8 +258,12 @@ export function createKnowledgeRetrievalTools({
 	projectId: string;
 	agentId: string;
 	knowledgeMirrorService: AgentKnowledgeMirrorService;
-	/** Called once for each call, before it runs, so a failed call counts too. */
-	recordToolCall: (runId: string | undefined, call: KnowledgeToolCall) => void;
+	/** Called once for each call, also a failed one, with the size of the output that the model gets. */
+	recordToolCall: (
+		runId: string | undefined,
+		call: KnowledgeToolCall,
+		result: KnowledgeToolCallResult,
+	) => void;
 }) {
 	const globTool = new Tool('find_file')
 		.description(
@@ -252,10 +271,12 @@ export function createKnowledgeRetrievalTools({
 		)
 		.input(globKnowledgeFilesInputSchema)
 		.handler(async (input, ctx) => {
-			recordToolCall(ctx.runId, 'file_find');
-			return await runKnowledgeTool(
+			const output = await runKnowledgeTool(
 				async () => await knowledgeMirrorService.globKnowledgeFiles(projectId, agentId, input),
 			);
+			const result = toKnowledgeToolCallResult(output, toGlobKnowledgeModelOutput);
+			recordToolCall(ctx.runId, 'file_find', result);
+			return output;
 		})
 		.toModelOutput(toGlobKnowledgeModelOutput);
 
@@ -265,10 +286,12 @@ export function createKnowledgeRetrievalTools({
 		)
 		.input(searchKnowledgeInputSchema)
 		.handler(async (input, ctx) => {
-			recordToolCall(ctx.runId, 'file_search');
-			return await runKnowledgeTool(
+			const output = await runKnowledgeTool(
 				async () => await knowledgeMirrorService.searchKnowledge(projectId, agentId, input),
 			);
+			const result = toKnowledgeToolCallResult(output, toSearchKnowledgeModelOutput);
+			recordToolCall(ctx.runId, 'file_search', result);
+			return output;
 		})
 		.toModelOutput(toSearchKnowledgeModelOutput);
 
@@ -278,10 +301,12 @@ export function createKnowledgeRetrievalTools({
 		)
 		.input(readKnowledgeInputSchema)
 		.handler(async (input, ctx) => {
-			recordToolCall(ctx.runId, 'file_read');
-			return await runKnowledgeTool(
+			const output = await runKnowledgeTool(
 				async () => await knowledgeMirrorService.readKnowledge(projectId, agentId, input),
 			);
+			const result = toKnowledgeToolCallResult(output, toReadKnowledgeModelOutput);
+			recordToolCall(ctx.runId, 'file_read', result);
+			return output;
 		})
 		.toModelOutput(toReadKnowledgeModelOutput);
 

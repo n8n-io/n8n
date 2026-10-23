@@ -1780,8 +1780,7 @@ describe('buildFromJson()', () => {
 			expect(agent.snapshot.tools.some((t) => t.name === 'search_product_docs')).toBe(true);
 		});
 
-		it('reports each vector store search with the run id, then runs the search', async () => {
-			const searchHandler = vi.fn().mockResolvedValue({ results: [] });
+		async function buildSearchTool(searchHandler: ReturnType<typeof vi.fn>) {
 			const fakeTool = {
 				name: 'search_product_docs',
 				description: vectorStoreConfig.useWhen,
@@ -1802,14 +1801,36 @@ describe('buildFromJson()', () => {
 				},
 			);
 			const searchTool = agent.declaredTools.find((t) => t.name === 'search_product_docs');
+			return { searchTool, onVectorStoreSearch };
+		}
+
+		it('reports each vector store search with the run id and the size of its result', async () => {
+			const result = { results: [{ id: 'doc-1', content: 'Refunds take 5 days.' }] };
+			const searchHandler = vi.fn().mockResolvedValue(result);
+			const { searchTool, onVectorStoreSearch } = await buildSearchTool(searchHandler);
 			const input = { query: 'refund policy' };
 			const ctx = { runId: 'run-1' };
 
-			await expect(searchTool?.handler?.(input, ctx)).resolves.toEqual({ results: [] });
+			await expect(searchTool?.handler?.(input, ctx)).resolves.toEqual(result);
 
-			expect(onVectorStoreSearch).toHaveBeenCalledTimes(1);
-			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
 			expect(searchHandler).toHaveBeenCalledWith(input, ctx);
+			expect(onVectorStoreSearch).toHaveBeenCalledTimes(1);
+			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1', {
+				failed: false,
+				contentChars: JSON.stringify(result).length,
+			});
+		});
+
+		it('reports a failed vector store search as failed, then throws its error', async () => {
+			const error = new Error('vector store unavailable');
+			const searchHandler = vi.fn().mockRejectedValue(error);
+			const { searchTool, onVectorStoreSearch } = await buildSearchTool(searchHandler);
+
+			await expect(
+				searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' }),
+			).rejects.toBe(error);
+
+			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1', { failed: true });
 		});
 
 		it.each([

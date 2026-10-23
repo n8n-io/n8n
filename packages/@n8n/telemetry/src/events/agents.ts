@@ -318,6 +318,24 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			file_search_count: z.number().describe('Calls that searched text inside knowledge files'),
 			file_read_count: z.number().describe('Calls that read part of a knowledge file'),
 			vector_store_search_count: z.number().describe('Searches in any vector store of the agent'),
+			file_content_chars: z
+				.number()
+				.describe(
+					'Characters that successful knowledge file tool calls sent to the model in the run. Failed calls add nothing. A result over 50,000 tokens counts in full, but the model gets a shorter version.',
+				),
+			vector_store_content_chars: z
+				.number()
+				.describe(
+					'Characters that successful vector store searches sent to the model in the run. Counted like file_content_chars.',
+				),
+			file_failed_count: z
+				.number()
+				.describe('Knowledge file tool calls that failed. Each one also counts in its call count'),
+			vector_store_failed_count: z
+				.number()
+				.describe(
+					'Vector store searches that failed. Each one also counts in vector_store_search_count',
+				),
 		}),
 	},
 	AGENT_EXECUTION_COUNT: {
