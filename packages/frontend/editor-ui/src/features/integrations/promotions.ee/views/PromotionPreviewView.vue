@@ -17,10 +17,8 @@ import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, toRef, watch } from 'vue';
-import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-import TimeAgo from '@/app/components/TimeAgo.vue';
 import { VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -65,18 +63,8 @@ const documentTitle = useDocumentTitle();
 const projectId = toRef(props, 'projectId');
 const direction = toRef(props, 'direction');
 
-const {
-	state,
-	preview,
-	check,
-	graph,
-	environment,
-	repositoryName,
-	refreshing,
-	refreshFailed,
-	lastRefreshedAt,
-	refresh,
-} = usePromotionPreview(projectId, direction);
+const { state, preview, check, graph, environment, refreshing, refreshFailed, refresh } =
+	usePromotionPreview(projectId, direction);
 // The page shows and enforces only the blockers of the workflows it lists.
 const scopedCheck = computed(() =>
 	check.value && graph.value ? scopeCheck(check.value, graph.value) : null,
@@ -302,49 +290,28 @@ const treeResizer = useResizablePanel({
 					:class="$style.tabs"
 					data-test-id="promotion-preview-tabs"
 				/>
-				<div :class="$style.meta">
-					<div :class="$style.details">
-						<N8nText v-if="preview && repositoryName" step="xs" color="text-light">
-							{{ repositoryName }}
-						</N8nText>
-						<N8nText v-if="preview" step="xs" color="text-light">
-							{{
-								i18n.baseText(`promotions.preview.branch.${direction}`, {
-									interpolate: { branch: preview.source.branchName },
-								})
-							}}
-						</N8nText>
-						<N8nText v-if="lastRefreshedAt" step="xs" color="text-light">
-							<I18nT keypath="promotions.preview.lastRefreshed" scope="global">
-								<template #time>
-									<TimeAgo :date="lastRefreshedAt.toISOString()" live />
-								</template>
-							</I18nT>
-						</N8nText>
-					</div>
-					<div :class="$style.actions">
-						<N8nButton
-							variant="outline"
-							size="small"
-							icon="refresh-cw"
-							:loading="refreshing"
-							:disabled="operation.isBusy.value"
-							data-test-id="promotion-preview-refresh"
-							@click="refresh"
-						>
-							{{ i18n.baseText('promotions.preview.refresh') }}
-						</N8nButton>
-						<N8nButton
-							:variant="request.confirmDestructiveChanges ? 'destructive' : 'brand'"
-							size="small"
-							:disabled="!canSubmit"
-							:loading="operation.isRunning.value"
-							data-test-id="promotion-preview-submit"
-							@click="operation.submit(request)"
-						>
-							{{ submitLabel }}
-						</N8nButton>
-					</div>
+				<div :class="$style.actions">
+					<N8nButton
+						variant="outline"
+						size="small"
+						icon="refresh-cw"
+						:loading="refreshing"
+						:disabled="operation.isBusy.value"
+						data-test-id="promotion-preview-refresh"
+						@click="refresh"
+					>
+						{{ i18n.baseText('promotions.preview.refresh') }}
+					</N8nButton>
+					<N8nButton
+						:variant="request.confirmDestructiveChanges ? 'destructive' : 'brand'"
+						size="small"
+						:disabled="!canSubmit"
+						:loading="operation.isRunning.value"
+						data-test-id="promotion-preview-submit"
+						@click="operation.submit(request)"
+					>
+						{{ submitLabel }}
+					</N8nButton>
 				</div>
 			</div>
 		</header>
@@ -542,31 +509,12 @@ const treeResizer = useResizablePanel({
 	min-width: 0;
 }
 
-.meta {
+.actions {
 	flex-shrink: 0;
 	align-self: center;
 	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--spacing--sm);
-}
-
-.details {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	column-gap: var(--spacing--2xs);
-}
-
-.actions {
-	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-}
-
-.details > * + *::before {
-	content: '·' / '';
-	margin-right: var(--spacing--2xs);
 }
 
 .state {
