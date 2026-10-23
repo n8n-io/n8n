@@ -33,7 +33,7 @@ import type { User } from '@n8n/db';
 import { InstanceAiService } from '../instance-ai.service';
 
 describe('InstanceAiService — agent model transport', () => {
-	it('passes the configured model transport to the orchestrator agent', async () => {
+	it('passes the labeled model transport to the orchestrator agent', async () => {
 		const modelFetch = vi.fn();
 		createInstanceAgent.mockResolvedValue({ agent: {}, mcpConnectionFailures: [] });
 		const service = Object.assign(Object.create(InstanceAiService.prototype) as object, {
@@ -45,7 +45,7 @@ describe('InstanceAiService — agent model transport', () => {
 			subscribeToAgentErrors: vi.fn(),
 			instanceAiConfig: { thinkingEnabled: true },
 			_mcpClientManager: {},
-			modelService: { getModelFetch: vi.fn(() => modelFetch) },
+			modelService: { getLabeledModelFetch: vi.fn(() => modelFetch) },
 		}) as unknown as {
 			createAgentFromEnvironment: (...args: unknown[]) => Promise<unknown>;
 		};
@@ -59,5 +59,9 @@ describe('InstanceAiService — agent model transport', () => {
 		);
 
 		expect(createInstanceAgent).toHaveBeenCalledWith(expect.objectContaining({ modelFetch }));
+		expect(
+			(service as unknown as { modelService: { getLabeledModelFetch: unknown } }).modelService
+				.getLabeledModelFetch,
+		).toHaveBeenCalledWith({ runId: 'run-1', threadId: 'thread-1' });
 	});
 });

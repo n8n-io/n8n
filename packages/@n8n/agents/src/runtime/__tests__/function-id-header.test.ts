@@ -5,7 +5,8 @@ import {
 	createObservationLogObserveFn,
 	createObservationLogReflectFn,
 } from '../memory/observation-log-defaults';
-import { generateTitleFromMessage } from '../memory/title-generation';
+import { InMemoryMemory } from '../memory/memory-store';
+import { generateThreadTitle, generateTitleFromMessage } from '../memory/title-generation';
 import { AgentEventBus } from '../state/event-bus';
 
 vi.mock('@ai-sdk/anthropic', () => ({
@@ -98,6 +99,31 @@ describe('x-n8n-function-id header', () => {
 			{ 'x-n8n-function-id': 'feature.agent.memory-reflector' },
 			{ 'x-n8n-function-id': 'feature.thread_title' },
 		]);
+	});
+
+	it('names thread titles after the owning runtime with a .title suffix', async () => {
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		mockGenerateText.mockResolvedValueOnce({ text: '{"title":"Slack alerts"}' });
+
+		await generateThreadTitle({
+			memory,
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			titleConfig: {},
+			agentModel: MODEL,
+			functionId: 'feature.agent',
+			turnDelta: [
+				{
+					id: 'm1',
+					role: 'user',
+					content: [{ type: 'text', text: 'Build a workflow that posts new Jira issues to Slack' }],
+					createdAt: new Date(),
+				} as never,
+			],
+		});
+
+		expect(sentHeaders()).toEqual([{ 'x-n8n-function-id': 'feature.agent.title' }]);
 	});
 
 	it('sends no header from memory tasks without a functionId', async () => {

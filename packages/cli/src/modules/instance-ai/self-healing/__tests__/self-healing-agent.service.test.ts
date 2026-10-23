@@ -168,7 +168,7 @@ describe('SelfHealingAgentService', () => {
 		executions.validateReference.mockResolvedValue(undefined);
 		settings.getPermissions.mockReturnValue({ ...DEFAULT_INSTANCE_AI_PERMISSIONS });
 		models.resolveAgentModelConfig.mockResolvedValue('test/model');
-		models.getModelFetch.mockReturnValue(modelFetch);
+		models.getLabeledModelFetch.mockReturnValue(modelFetch);
 		adapter.createContext.mockReturnValue(mock<InstanceAiContext>());
 		aiUsage.isParameterValueSharingAllowed.mockResolvedValue(true);
 		credits.claimRunUsage.mockResolvedValue(0.25);
