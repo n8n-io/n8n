@@ -59,7 +59,12 @@ describe('AgentMemoryEntriesService', () => {
 
 			const page = await service.list('agent-1', 'project-1', 'viewer-1', { limit: '1' });
 
-			expect(memoryEntryRepository.listActiveByAgent).toHaveBeenCalledWith('agent-1', 2, undefined);
+			expect(memoryEntryRepository.listActiveByAgent).toHaveBeenCalledWith(
+				'agent-1',
+				2,
+				undefined,
+				{},
+			);
 			expect(page.total).toBe(14);
 			expect(page.nextCursor).toBe('2026-10-02T10:00:00.000Z|e2');
 			expect(page.items).toEqual([
@@ -124,10 +129,36 @@ describe('AgentMemoryEntriesService', () => {
 				cursor: '2026-10-02T10:00:00.000Z|e2',
 			});
 
-			expect(memoryEntryRepository.listActiveByAgent).toHaveBeenCalledWith('agent-1', 26, {
-				createdAt: new Date('2026-10-02T10:00:00.000Z'),
-				id: 'e2',
+			expect(memoryEntryRepository.listActiveByAgent).toHaveBeenCalledWith(
+				'agent-1',
+				26,
+				{ createdAt: new Date('2026-10-02T10:00:00.000Z'), id: 'e2' },
+				{},
+			);
+		});
+
+		it('passes the source filter to the list and the count', async () => {
+			const { service, memoryEntryRepository, memory } = makeService();
+			memoryEntryRepository.listActiveByAgent.mockResolvedValue([]);
+			memoryEntryRepository.countActiveByAgent.mockResolvedValue(0);
+			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
+
+			await service.list('agent-1', 'project-1', 'viewer-1', {
+				source: 'slack',
+				sourceFacet: 'channel',
+				sourceFacetId: 'C1',
 			});
+
+			const filter = {
+				sourceMessage: { integrationType: 'slack', field: 'channelId', value: 'C1' },
+			};
+			expect(memoryEntryRepository.listActiveByAgent).toHaveBeenCalledWith(
+				'agent-1',
+				26,
+				undefined,
+				filter,
+			);
+			expect(memoryEntryRepository.countActiveByAgent).toHaveBeenCalledWith('agent-1', filter);
 		});
 	});
 
