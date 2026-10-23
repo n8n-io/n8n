@@ -1,23 +1,16 @@
 <script lang="ts" setup>
 import {
+	N8nContextMenu,
 	N8nDropdownMenu,
 	N8nHoverCard,
 	N8nIcon,
 	N8nIconButton,
 	N8nLoading,
 } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import type { ContextMenuNode, DropdownMenuItemProps } from '@n8n/design-system';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
-import {
-	ContextMenuContent,
-	ContextMenuItem,
-	ContextMenuPortal,
-	ContextMenuRoot,
-	ContextMenuTrigger,
-	TabsList,
-	TabsTrigger,
-} from 'reka-ui';
+import { TabsList, TabsTrigger } from 'reka-ui';
 import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
@@ -285,6 +278,33 @@ async function handleCopyLink(tab: ArtifactTab) {
 	await clipboard.copy(url);
 	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 }
+
+type PreviewTabMenuAction = 'open-in-editor' | 'copy-link';
+
+const previewTabMenuItems = computed(
+	(): Array<ContextMenuNode<PreviewTabMenuAction>> => [
+		{
+			type: 'item',
+			id: 'open-in-editor',
+			label: i18n.baseText('instanceAi.previewTabBar.openInEditor'),
+			icon: { type: 'icon', value: 'external-link' },
+		},
+		{
+			type: 'item',
+			id: 'copy-link',
+			label: i18n.baseText('instanceAi.previewTabBar.copyLink'),
+			icon: { type: 'icon', value: 'link' },
+		},
+	],
+);
+
+function onPreviewTabMenuSelect(tab: ArtifactTab, action: PreviewTabMenuAction) {
+	if (action === 'open-in-editor') {
+		handleOpenInEditor(tab);
+		return;
+	}
+	void handleCopyLink(tab);
+}
 </script>
 
 <template>
@@ -305,8 +325,13 @@ async function handleCopyLink(tab: ArtifactTab) {
 			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
 			:class="$style.tabList"
 		>
-			<ContextMenuRoot v-for="tab in tabs" :key="tab.id">
-				<ContextMenuTrigger as-child>
+			<N8nContextMenu
+				v-for="tab in tabs"
+				:key="tab.id"
+				:items="previewTabMenuItems"
+				@select="onPreviewTabMenuSelect(tab, $event)"
+			>
+				<template #trigger>
 					<!-- The close button cannot sit inside the trigger button, so both share a wrapper. -->
 					<div
 						:class="[
@@ -358,20 +383,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 							/>
 						</span>
 					</div>
-				</ContextMenuTrigger>
-				<ContextMenuPortal>
-					<ContextMenuContent :class="$style.contextMenu">
-						<ContextMenuItem :class="$style.contextMenuItem" @select="handleOpenInEditor(tab)">
-							<N8nIcon icon="external-link" size="small" />
-							<span>{{ i18n.baseText('instanceAi.previewTabBar.openInEditor') }}</span>
-						</ContextMenuItem>
-						<ContextMenuItem :class="$style.contextMenuItem" @select="handleCopyLink(tab)">
-							<N8nIcon icon="link" size="small" />
-							<span>{{ i18n.baseText('instanceAi.previewTabBar.copyLink') }}</span>
-						</ContextMenuItem>
-					</ContextMenuContent>
-				</ContextMenuPortal>
-			</ContextMenuRoot>
+				</template>
+			</N8nContextMenu>
 			<N8nDropdownMenu
 				v-if="projectId"
 				:model-value="isPickerOpen"
@@ -734,37 +747,5 @@ async function handleCopyLink(tab: ArtifactTab) {
 
 .picker {
 	width: 200px;
-}
-
-.contextMenu {
-	min-width: 180px;
-	background-color: var(--color--foreground--tint-2);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--3xs);
-	box-shadow:
-		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
-		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-	z-index: 9999;
-}
-
-.contextMenuItem {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	height: var(--spacing--xl);
-	padding: 0 var(--spacing--2xs);
-	border-radius: var(--radius);
-	cursor: pointer;
-	user-select: none;
-	font-size: var(--font-size--2xs);
-	line-height: 1;
-	color: var(--color--text);
-	outline: none;
-
-	&[data-highlighted] {
-		background-color: var(--color--foreground--tint-1);
-	}
 }
 </style>
