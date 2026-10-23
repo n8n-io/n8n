@@ -1145,39 +1145,52 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		const vm = this.vm;
+		const handles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
 
-		const getValueFn = vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
-			const pathArr = vm.dump(pathHandle) as string[];
-			try {
-				const result = getValueAtPath(heldData(holder), pathArr);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
+		try {
+			handles.push(
+				vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					try {
+						const result = getValueAtPath(heldData(holder), pathArr);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
 
-		const getArrayFn = vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
-			const pathArr = vm.dump(pathHandle) as string[];
-			const index = vm.dump(indexHandle) as number;
-			try {
-				const result = getArrayElement(heldData(holder), pathArr, index);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
+			handles.push(
+				vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					const index = vm.dump(indexHandle) as number;
+					try {
+						const result = getArrayElement(heldData(holder), pathArr, index);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
 
-		const callHostFn = vm.newFunction('__callHostImpl', (msgHandle) => {
-			const rawMsg = vm.dump(msgHandle);
-			try {
-				const result = dispatchHostCall(rawMsg, heldData(holder));
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
+			handles.push(
+				vm.newFunction('__callHostImpl', (msgHandle) => {
+					const rawMsg = vm.dump(msgHandle);
+					try {
+						const result = dispatchHostCall(rawMsg, heldData(holder));
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+		} catch (error) {
+			// The caller gets no handles to dispose, so free the ones already made.
+			for (const handle of handles) handle.dispose();
+			throw error;
+		}
 
-		return [getValueFn, getArrayFn, callHostFn];
+		return handles;
 	}
 
 	/**
