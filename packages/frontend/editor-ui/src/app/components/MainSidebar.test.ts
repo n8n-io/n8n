@@ -293,6 +293,25 @@ describe('MainSidebar', () => {
 			expect(routerPushMock).toHaveBeenCalledWith({ name: 'PersonalSettings' });
 		});
 
+		it('should open the settings menu from the keyboard and give focus back on close', async () => {
+			const { getByTestId, findByTestId, queryByTestId } = renderComponent();
+			const trigger = getByTestId('main-sidebar-settings');
+
+			expect(trigger).toHaveAttribute('role', 'button');
+			expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+
+			trigger.focus();
+			await userEvent.keyboard('{Enter}');
+
+			expect(await findByTestId('main-sidebar-settings-list')).toBeInTheDocument();
+			expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+			await userEvent.keyboard('{Escape}');
+
+			expect(queryByTestId('main-sidebar-settings-list')).not.toBeInTheDocument();
+			expect(trigger).toHaveFocus();
+		});
+
 		it('should keep sign out in a footer below the settings list', async () => {
 			const { getByText, findByTestId, getByTestId } = renderComponent();
 

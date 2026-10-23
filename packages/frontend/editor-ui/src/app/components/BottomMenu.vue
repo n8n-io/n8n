@@ -209,12 +209,17 @@ function onLogout() {
 					content-test-id="main-sidebar-settings-list"
 				>
 					<template #trigger>
+						<!-- The menu item renders an anchor without href, which cannot take focus. The
+						     role and tabindex land on its wrapper, next to the aria attributes Reka sets,
+						     so the keyboard can open the menu and gets its focus back on close. -->
 						<N8nMenuItem
 							:data-test-id="`main-sidebar-${item.id}`"
 							:class="$style.menuTrigger"
 							:item="item"
 							:compact="isCollapsed"
 							:active="isSettingsOpen"
+							role="button"
+							tabindex="0"
 							@click="() => handleSelect(item.id)"
 						/>
 					</template>
@@ -268,6 +273,8 @@ function onLogout() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+
 .bottomMenu {
 	display: flex;
 	flex-direction: column;
@@ -303,6 +310,13 @@ function onLogout() {
 /* The dropdown lays its trigger out inline, which shrinks the row to its label. */
 .bottomMenuItems .menuTrigger {
 	display: block;
+	border-radius: var(--radius);
+
+	/* Same ring as the menu item draws for itself, on the wrapper that holds focus here. */
+	&:focus-visible {
+		@include focus.focus-ring;
+		outline-offset: -1px;
+	}
 }
 
 /*
