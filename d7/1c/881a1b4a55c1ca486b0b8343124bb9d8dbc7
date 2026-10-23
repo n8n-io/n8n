@@ -1,0 +1,63 @@
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_cc68fdb58b7281::t_2df445356f55cc 160,175
+  s_cc68fdb58b7281::t_732066f354f108 153-159
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_cc68fdb58b7281::t_732066f354f108 465-469,485-490,495-497,501-503
+  s_cc68fdb58b7281::t_b0493716687fbd 476-484,491-494,498-500,504-509
+  s_cc68fdb58b7281::t_2df445356f55cc 136,617,827,1041,1064
+packages/cli/src/credentials/credentials.controller.ts
+  s_cc68fdb58b7281::t_2df445356f55cc 126-128
+  s_cc68fdb58b7281::t_732066f354f108 119-125
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_cc68fdb58b7281::t_b0493716687fbd 280
+  s_cc68fdb58b7281::t_3416f5d5355975 115,537
+  s_cc68fdb58b7281::t_2df445356f55cc 812
+  s_cc68fdb58b7281::t_b373c28d2bfe0b 813
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-setup.service.test.ts
+  s_cc68fdb58b7281::t_2df445356f55cc 64,115,167,189,248,454,477,594
+  s_cc68fdb58b7281::t_732066f354f108 575-578
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_cc68fdb58b7281::t_b0493716687fbd 140-143,147,156-163
+  s_cc68fdb58b7281::t_732066f354f108 144-146,148-155
+packages/cli/src/modules/agents/integrations/__tests__/agent-credential-lookup.service.test.ts
+  s_cc68fdb58b7281::t_2df445356f55cc 21,93,98,133
+  s_cc68fdb58b7281::t_732066f354f108 37-41,54-58
+  s_cc68fdb58b7281::t_b0493716687fbd 61-73,118-122
+  s_cc68fdb58b7281::t_89dfe188ac58ec 59-60
+packages/cli/src/modules/agents/__tests__/agents-credential-provider.test.ts
+  s_cc68fdb58b7281::t_b0493716687fbd 57,147,153,243
+  s_cc68fdb58b7281::t_732066f354f108 130-146,148-152
+packages/cli/src/modules/agents/integrations/agent-credential-lookup.service.ts
+  s_cc68fdb58b7281::t_732066f354f108 36-39
+  s_cc68fdb58b7281::t_2df445356f55cc 5,50-55,67
+packages/frontend/editor-ui/src/features/credentials/composables/useNodeCredentialOptions.test.ts
+  s_cc68fdb58b7281::t_b0493716687fbd 98
+  s_cc68fdb58b7281::t_732066f354f108 140-183
+  s_cc68fdb58b7281::t_ee77fa657047ff 184
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_cc68fdb58b7281::t_2df445356f55cc 1132-1136
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-credential-check.service.test.ts
+  s_cc68fdb58b7281::t_7543ad7cb26cc3 39,199
+packages/frontend/editor-ui/src/features/credentials/composables/useNodeCredentialOptions.ts
+  s_cc68fdb58b7281::t_2df445356f55cc 35,108
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_cc68fdb58b7281::t_732066f354f108 274-285,287-291,293-320
+  s_cc68fdb58b7281::t_ee77fa657047ff 286,321
+  s_cc68fdb58b7281::t_3416f5d5355975 292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d71c881a1b4a55c1ca486b0b8343124bb9d8dbc7",
+  "prompts": {},
+  "sessions": {
+    "s_cc68fdb58b7281": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16404-f1e4-70d2-98b7-697672668117",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

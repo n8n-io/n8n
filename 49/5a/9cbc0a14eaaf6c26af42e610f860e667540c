@@ -1,0 +1,30 @@
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.test.ts
+  s_4fa6fba46b04d1::t_4ad0fa669d6c9c 226-234
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4fa6fba46b04d1::t_21ceb7c16b4458 44-45
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/review/PromotionReviewChanges.vue
+  s_4fa6fba46b04d1::t_9465950e36808a 239-241,248,273-274
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.vue
+  s_4fa6fba46b04d1::t_d83852c4727357 91-92,357
+  s_4fa6fba46b04d1::t_21ceb7c16b4458 37,93-99,228-233,235-236,240-256,315-316,318-319,324-331,337-338
+  s_4fa6fba46b04d1::t_4ad0fa669d6c9c 237-239
+  s_4fa6fba46b04d1::t_433f373e978988 137-145,147-148,150-153,156-157,205-227,302-305,354-356,358-368,371,373,375
+  s_4fa6fba46b04d1::t_9465950e36808a 135,192,198,234,332-336
+  s_4fa6fba46b04d1::t_5cb4a40d8715b2 257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "495a9cbc0a14eaaf6c26af42e610f860e667540c",
+  "prompts": {},
+  "sessions": {
+    "s_4fa6fba46b04d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3c498e9-c222-400c-9d15-39bad59e09a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
