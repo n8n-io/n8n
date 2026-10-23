@@ -283,11 +283,6 @@ packages/nodes-base/nodes/Form/                         @n8n-io/nodes required
 packages/nodes-base/nodes/Wait/                         @n8n-io/nodes required
 packages/nodes-base/utils/sendAndWait/                  @n8n-io/nodes required
 packages/nodes-base/nodes/Git/                          @n8n-io/nodes required
-<<<<<<< HEAD
-packages/@n8n/decorators/                               @n8n-io/catalysts
-=======
-packages/node-dev/                                      @n8n-io/nodes
->>>>>>> 8cb0242b079b8867c055143522b46747c6dfe8a5
 packages/@n8n/imap/                                     @n8n-io/nodes
 packages/@n8n/mcp-browser/                              @n8n-io/nodes required
 packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes required

@@ -207,15 +207,7 @@ const expression = computed(() => {
 		: resolvedParameter.value;
 });
 
-<<<<<<< HEAD
-const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
-=======
-const shouldCaptureForPosthog = computed(
-	() => resolvedParameter.value?.node.type === AI_TRANSFORM_NODE_TYPE,
-);
-
 const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value || isDeprecated.value);
->>>>>>> 8cb0242b079b8867c055143522b46747c6dfe8a5
 
 const resolvedAdditionalExpressionData = computed(() => {
 	return {

@@ -515,11 +515,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveManualExecutions,
 		saveDataProgressExecution,
 		isCommunityPlan,
-<<<<<<< HEAD
-=======
 		isEnterprisePlan,
-		isAskAiEnabled,
->>>>>>> 8cb0242b079b8867c055143522b46747c6dfe8a5
 		isAiBuilderEnabled,
 		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,
