@@ -8,9 +8,10 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 
+import { PromotionGitError } from '../promotions-git.error';
 import { PromotionsGitService } from '../promotions-git.service';
 
-const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
+const { mockGit, simpleGitMock, GitError, GitPluginError } = vi.hoisted(() => {
 	const instance = {
 		env: vi.fn(),
 		add: vi.fn(),
@@ -27,8 +28,9 @@ const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
 		branch: vi.fn(),
 	};
 	instance.env.mockReturnValue(instance);
-	// Match simple-git's timeout error shape.
-	class GitPluginError extends Error {
+	// Match simple-git's error classes. Every error from Git extends GitError.
+	class GitError extends Error {}
+	class GitPluginError extends GitError {
 		constructor(
 			readonly task: unknown,
 			readonly plugin: string,
@@ -37,12 +39,13 @@ const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
 			super(message);
 		}
 	}
-	return { mockGit: instance, simpleGitMock: vi.fn(() => instance), GitPluginError };
+	return { mockGit: instance, simpleGitMock: vi.fn(() => instance), GitError, GitPluginError };
 });
 
 vi.mock('simple-git', () => ({
 	simpleGit: simpleGitMock,
 	CheckRepoActions: { IS_REPO_ROOT: 'root' },
+	GitError,
 	GitPluginError,
 }));
 
@@ -721,6 +724,23 @@ describe('PromotionsGitService (git operations)', () => {
 			);
 			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
 			expect(result).toEqual({ commitSha: 'def456' });
+		});
+
+		it('reports a failure from Git as a Git error', async () => {
+			mockGit.fetch.mockRejectedValueOnce(new GitError());
+
+			const error = await call().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(PromotionGitError);
+		});
+
+		it('does not report a local file failure as a Git error', async () => {
+			mockGit.fetch.mockRejectedValueOnce(new Error('EACCES: permission denied'));
+
+			const error = await call().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).not.toBeInstanceOf(PromotionGitError);
 		});
 
 		it('redacts a fetch failure instead of surfacing raw git output', async () => {

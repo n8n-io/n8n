@@ -357,6 +357,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'promotion-promoted': (event) => this.promotionPromoted(event),
 			'promotion-applied': (event) => this.promotionApplied(event),
 			'promotion-merge-request-opened': (event) => this.promotionMergeRequestOpened(event),
+			'promotion-review-approved': (event) => this.promotionReviewApproved(event),
 			'custom-role-created': (event) => this.customRoleCreated(event),
 			'custom-role-updated': (event) => this.customRoleUpdated(event),
 			'custom-role-deleted': (event) => this.customRoleDeleted(event),
@@ -2763,11 +2764,35 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		environmentId,
 		reviewType,
+		hasConflicts,
 	}: RelayEventMap['promotion-merge-request-opened']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_OPENED_PROMOTION_MERGE_REQUEST, {
 			user_id: user.id,
 			environment_id: environmentId,
 			review_type: reviewType,
+			has_conflicts: hasConflicts,
+		});
+	}
+
+	private promotionReviewApproved({
+		user,
+		reviewId,
+		environmentId,
+		reviewType,
+		reviewAgeMs,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-review-approved']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPROVED_PROMOTION_REVIEW, {
+			user_id: user.id,
+			promotion_review_id: reviewId,
+			environment_id: environmentId,
+			review_type: reviewType,
+			review_age_ms: reviewAgeMs,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
 		});
 	}
 

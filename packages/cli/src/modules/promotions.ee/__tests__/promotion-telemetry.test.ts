@@ -41,6 +41,27 @@ describe('observePromotion', () => {
 		});
 	});
 
+	it('returns the result when the report throws', async () => {
+		const report = vi.fn(() => {
+			throw new Error('listener failed');
+		});
+
+		await expect(observePromotion(async () => 'done', report)).resolves.toBe('done');
+	});
+
+	it('rethrows the original error when the report throws', async () => {
+		const error = new BadRequestError('bad');
+		const report = vi.fn(() => {
+			throw new Error('listener failed');
+		});
+
+		await expect(
+			observePromotion(async () => {
+				throw error;
+			}, report),
+		).rejects.toBe(error);
+	});
+
 	it('reports the failure kind and rethrows the original error', async () => {
 		const report = vi.fn();
 		const error = new BadRequestError('bad');

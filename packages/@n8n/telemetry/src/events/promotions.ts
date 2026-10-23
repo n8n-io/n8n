@@ -124,6 +124,27 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			user_id: z.string(),
 			environment_id: z.string(),
 			review_type: z.enum(['gitlab']),
+			has_conflicts: z
+				.boolean()
+				.describe('As the Git host reports it when the merge request opens'),
+		}),
+	},
+	USER_APPROVED_PROMOTION_REVIEW: {
+		name: 'User approved promotion review',
+		description:
+			'A user approved a promotion review in n8n, which approves and merges the merge request on the Git host. Fires once per attempt on an existing review, on success and on failure. It does not fire when the feature is off or the review does not exist.',
+		properties: z.object({
+			user_id: z.string(),
+			promotion_review_id: z.string(),
+			environment_id: z
+				.string()
+				.nullable()
+				.describe('Null when the environment was deleted after the review opened'),
+			review_type: z.enum(['gitlab']),
+			review_age_ms: z.number().describe('Time from the review opening to this approval'),
+			outcome: z.enum(['merged', 'failed']),
+			failure_kind: failureKind,
+			duration_ms: z.number(),
 		}),
 	},
 });

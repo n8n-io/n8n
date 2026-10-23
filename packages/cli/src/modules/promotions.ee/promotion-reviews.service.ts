@@ -80,7 +80,12 @@ export class PromotionReviewsService {
 			this.logger.warn('Could not open the GitLab merge request', { error: mergeRequest.error });
 			return { warnings: [mergeRequestWarning(mergeRequest.error)] };
 		}
-		const { iid, project_id: projectId, web_url: webUrl } = mergeRequest.result;
+		const {
+			iid,
+			project_id: projectId,
+			web_url: webUrl,
+			has_conflicts: hasConflicts,
+		} = mergeRequest.result;
 
 		const reviewId = uuidv7();
 		const type = promotionReviewTypeSchema.parse('gitlab');
@@ -117,6 +122,7 @@ export class PromotionReviewsService {
 			user: actor,
 			environmentId: input.environmentId,
 			reviewType: type,
+			hasConflicts,
 		});
 
 		return { review: { reviewId, ['number']: iid, webUrl }, warnings: [] };

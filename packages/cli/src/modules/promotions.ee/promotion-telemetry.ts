@@ -21,23 +21,33 @@ export type ObservedOperation<T> =
 	| { ok: true; result: T; durationMs: number }
 	| { ok: false; failureKind: PromotionFailureKind; durationMs: number };
 
-/** Runs an operation, reports how it ended, and returns or rethrows its original outcome. */
+/**
+ * Runs an operation, reports how it ended, and returns or rethrows its original outcome.
+ * A failing report never changes that outcome.
+ */
 export async function observePromotion<T>(
 	run: () => Promise<T>,
 	report: (observed: ObservedOperation<T>) => void,
 ): Promise<T> {
 	const startedAt = Date.now();
+	const safeReport = (observed: ObservedOperation<T>) => {
+		try {
+			report(observed);
+		} catch {
+			// Telemetry must not change the result of a promotion.
+		}
+	};
 	let result: T;
 	try {
 		result = await run();
 	} catch (error) {
-		report({
+		safeReport({
 			ok: false,
 			failureKind: classifyPromotionFailure(error),
 			durationMs: Date.now() - startedAt,
 		});
 		throw error;
 	}
-	report({ ok: true, result, durationMs: Date.now() - startedAt });
+	safeReport({ ok: true, result, durationMs: Date.now() - startedAt });
 	return result;
 }

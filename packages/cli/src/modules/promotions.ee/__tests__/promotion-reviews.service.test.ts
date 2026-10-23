@@ -60,6 +60,7 @@ describe('PromotionReviewsService', () => {
 		iid: 3,
 		project_id: 7,
 		web_url: 'https://gitlab.example.com/platform/api/-/merge_requests/3',
+		has_conflicts: false,
 	});
 
 	beforeEach(() => {
@@ -92,6 +93,7 @@ describe('PromotionReviewsService', () => {
 			user: actor,
 			environmentId: 'env-1',
 			reviewType: 'gitlab',
+			hasConflicts: false,
 		});
 		const reviewId = result.review?.reviewId;
 		expect(mergeRequests.createMergeRequest).toHaveBeenCalledWith(host.access, {

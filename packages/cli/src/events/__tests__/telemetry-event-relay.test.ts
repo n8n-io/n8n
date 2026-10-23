@@ -5443,15 +5443,52 @@ describe('TelemetryEventRelay', () => {
 				user,
 				environmentId: 'env-1',
 				reviewType: 'gitlab',
+				hasConflicts: false,
 			});
 
-			const payload = { user_id: 'user123', environment_id: 'env-1', review_type: 'gitlab' };
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				review_type: 'gitlab',
+				has_conflicts: false,
+			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PROMOTIONS.USER_OPENED_PROMOTION_MERGE_REQUEST,
 				payload,
 			);
 			expect(
 				TELEMETRY_EVENT.PROMOTIONS.USER_OPENED_PROMOTION_MERGE_REQUEST.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track an approved review, including one whose environment was deleted', () => {
+			eventService.emit('promotion-review-approved', {
+				user,
+				reviewId: 'review-1',
+				environmentId: null,
+				reviewType: 'gitlab',
+				reviewAgeMs: 3600000,
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: 80,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				promotion_review_id: 'review-1',
+				environment_id: null,
+				review_type: 'gitlab',
+				review_age_ms: 3600000,
+				outcome: 'failed',
+				failure_kind: 'user',
+				duration_ms: 80,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPROVED_PROMOTION_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPROVED_PROMOTION_REVIEW.getValidationError(payload),
 			).toBeNull();
 		});
 	});

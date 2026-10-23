@@ -1369,6 +1369,21 @@ export type RelayEventMap = {
 		user: UserLike;
 		environmentId: string;
 		reviewType: PromotionReviewType;
+		/** As GitLab reports it when the merge request opens. */
+		hasConflicts: boolean;
+	};
+
+	'promotion-review-approved': {
+		user: UserLike;
+		reviewId: string;
+		/** Null when the environment was deleted after the review opened. */
+		environmentId: string | null;
+		reviewType: PromotionReviewType;
+		/** Time from the review opening to this approval. */
+		reviewAgeMs: number;
+		outcome: 'merged' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
 	};
 
 	// #endregion

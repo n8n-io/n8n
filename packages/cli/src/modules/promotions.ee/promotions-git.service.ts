@@ -8,6 +8,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import {
 	CheckRepoActions,
+	GitError,
 	GitPluginError,
 	simpleGit,
 	type SimpleGit,
@@ -848,7 +849,10 @@ export class PromotionsGitService {
 		}
 
 		this.logger.warn('Git operation failed', ctx);
-		return new PromotionGitError('Could not complete the Git operation');
+		// Only an error from Git itself counts as a remote failure. A local file error does not.
+		return error instanceof GitError
+			? new PromotionGitError('Could not complete the Git operation')
+			: new BadRequestError('Could not complete the Git operation');
 	}
 }
 
