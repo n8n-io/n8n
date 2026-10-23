@@ -734,7 +734,7 @@ describe('step execution (integration)', () => {
 					throw new Error(`sub-workflow failed: ${request.resume.error.message}`);
 				}
 				return {
-					spawn: {
+					child: {
 						executionId: childId,
 						workflowId: 'wf-child',
 						graph: childGraph,
