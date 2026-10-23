@@ -2,8 +2,7 @@ export { Executor, type ExecutorHooks } from './executor';
 export { noopExecutorTracing } from './tracing';
 export type { ExecutorTracing, FireResult } from './tracing';
 export { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions, type HoldOptions } from './options';
-export type { ClaimedTaskRef, ClaimDueTasksBatch, ExecutorTaskStore, LeaseRenewal } from './store';
-export { BatchedLeaseRenewer } from './batched-lease-renewer';
+export type { ClaimedTaskRef, ClaimDueTasksBatch, ExecutorTaskStore } from './store';
 export {
 	TaskHandlerRegistry,
 	createDispatchReporter,

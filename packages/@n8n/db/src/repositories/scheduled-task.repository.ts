@@ -45,13 +45,6 @@ export interface ClaimDueTasksOptions {
 	takeExpiredHeld?: boolean;
 }
 
-/** One claim in a batched lease renewal. */
-export interface LeaseRenewal {
-	id: string;
-	claimedEpoch: number;
-	expiresInMs: number;
-}
-
 /**
  * Identifies the row and the `leaseEpoch` the caller claimed with (the fencing
  * token) that a guarded update may act on.
@@ -584,44 +577,6 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			leaseExpiresAt: () => dbNowPlusMsLiteral(this.isPostgres, expiresInMs),
 		});
 		return rowsAffected > 0;
-	}
-
-	/**
-	 * Extend the leases of many running claims of one host in one statement.
-	 * Each claim is fenced on its own epoch.
-	 *
-	 * @returns the ids whose lease was extended. A claim missing from it is gone.
-	 */
-	async renewLeases(host: string, renewals: LeaseRenewal[]): Promise<Set<string>> {
-		if (renewals.length === 0) return new Set();
-		if (!this.isPostgres) {
-			const renewed = new Set<string>();
-			for (const renewal of renewals) {
-				const ok = await this.renewLease(
-					{ host, id: renewal.id, claimedEpoch: renewal.claimedEpoch },
-					renewal.expiresInMs,
-				);
-				if (ok) renewed.add(renewal.id);
-			}
-			return renewed;
-		}
-		const [rows]: [Array<{ id: string | number }>, number] = await this.query(
-			`UPDATE ${this.tableName} t
-			    SET "leaseExpiresAt" = now() + (v.ms || ' milliseconds')::interval
-			   FROM unnest($2::bigint[], $3::int[], $4::int[]) AS v(id, epoch, ms)
-			  WHERE t."id" = v.id
-			    AND t."leaseEpoch" = v.epoch
-			    AND t."status" = '${ScheduledTaskStatus.Running}'
-			    AND t."claimedBy" = $1
-			 RETURNING t."id"`,
-			[
-				host,
-				renewals.map((r) => r.id),
-				renewals.map((r) => r.claimedEpoch),
-				renewals.map((r) => r.expiresInMs),
-			],
-		);
-		return new Set(rows.map((row) => String(row.id)));
 	}
 
 	/**

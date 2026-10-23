@@ -394,17 +394,6 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					reason,
 				});
 			},
-			onBatchRenewalError: (error) => {
-				emit('warn', 'Scheduler could not renew held leases in one write; retrying', {
-					error: described(error),
-				});
-			},
-			onBatchRenewal: (size, durationMs) => {
-				emit('debug', 'Scheduler renewed held leases in one write', {
-					size,
-					durationMs: Math.round(durationMs),
-				});
-			},
 		},
 		createExecutorTracing(tracer),
 	);

@@ -275,9 +275,6 @@ describe('held tasks across two mains over one database', () => {
 		expect(await taskRepo.markHeld(staleClaim)).toBe(0);
 		expect(await taskRepo.releaseHeld(staleClaim, 0, null)).toBe(0);
 		expect(await taskRepo.releaseClaim(staleClaim)).toBe(0);
-		expect([
-			...(await taskRepo.renewLeases('main-a', [{ ...staleClaim, expiresInMs: 60_000 }])),
-		]).toEqual([]);
 
 		const [after] = await taskRepo.find();
 		expect(after.claimedBy).toBe('main-b');
@@ -477,22 +474,5 @@ describe('held task repository writes', () => {
 			status: 'pending',
 			mode: 'hold',
 		});
-	});
-
-	it('renews only the leases of claims that still match their epoch', async () => {
-		const first = await provisionOne('a');
-		const second = await provisionOne('b');
-		const claimed = await claim();
-		const byJob = new Map(claimed.map((task) => [task.jobId, task]));
-		const current = byJob.get(first)!;
-		const stale = byJob.get(second)!;
-		await taskRepo.update({ id: stale.id }, { leaseEpoch: stale.leaseEpoch + 1 });
-
-		const renewed = await taskRepo.renewLeases('main-a', [
-			{ id: current.id, claimedEpoch: current.leaseEpoch, expiresInMs: 30_000 },
-			{ id: stale.id, claimedEpoch: stale.leaseEpoch, expiresInMs: 30_000 },
-		]);
-
-		expect([...renewed]).toEqual([current.id]);
 	});
 });
