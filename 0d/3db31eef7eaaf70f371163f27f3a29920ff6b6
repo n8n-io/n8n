@@ -1,0 +1,28 @@
+packages/cli/test/migration/1792673382235-backfill-workflow-engine-type.test.ts
+  s_4b9e4db8bc7d8e::t_de87bd75d0474e 130-131,135-138
+  s_4b9e4db8bc7d8e::t_0e8ec3efbd35da 150,193
+  s_4b9e4db8bc7d8e::t_6aeca9af77d814 157-163
+  s_4b9e4db8bc7d8e::t_ac37861035fc3e 1-7,9-31,38-42,44-63,69-70,78-129,132-134,139-149,151-156,164-192,194-195
+  s_4b9e4db8bc7d8e::t_717bd4242e0b04 8
+  s_4b9e4db8bc7d8e::t_5350f598cd7e4d 64-68,71-77
+  s_4b9e4db8bc7d8e::t_53432de7ff4f1f 32-37,43
+packages/@n8n/db/src/migrations/common/1792673382235-BackfillWorkflowEngineType.ts
+  s_4b9e4db8bc7d8e::t_e5d992b977c889 1-2,25,96,101,110-111
+  s_4b9e4db8bc7d8e::t_21d5b20a2c206d 3-24,26-95,97-100,102-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d3db31eef7eaaf70f371163f27f3a29920ff6b6",
+  "prompts": {},
+  "sessions": {
+    "s_4b9e4db8bc7d8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34688430-dbf7-4bef-8e88-88b34eeb37a0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

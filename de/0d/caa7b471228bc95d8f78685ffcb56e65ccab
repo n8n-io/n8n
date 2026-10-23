@@ -1,0 +1,53 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_ba2ae60894487d::t_fa3548c0d3dd6a 242-243
+  s_ba2ae60894487d::t_f62ff3ba5346c5 472-483
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  s_ba2ae60894487d::t_173564ed0cf172 17
+  s_ba2ae60894487d::t_ea1df98c89d50a 48,54-55
+packages/cli/src/modules/source-control.ee/source-control.controller.ee.ts
+  s_ba2ae60894487d::t_2f9aaa11d1191e 50
+  s_ba2ae60894487d::t_48c36a664cbe70 105
+  s_ba2ae60894487d::t_00a47427425677 153-157,162,167-174
+packages/cli/test/integration/environments/source-control.api.test.ts
+  s_ba2ae60894487d::t_949e967f9726c6 120-163
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-inbox.service.test.ts
+  s_ba2ae60894487d::t_2e5afaafab4295 1-45
+packages/@n8n/telemetry/src/events/source-control.ts
+  s_ba2ae60894487d::t_8b11d96e1f5f80 1-22
+packages/cli/src/modules/source-control.ee/types/source-control-preferences.ts
+  s_ba2ae60894487d::t_b5f03a3c95ffdf 52-55
+  s_ba2ae60894487d::t_b5328709063038 74-75
+packages/cli/src/modules/source-control.ee/source-control-preferences.service.ee.ts
+  s_ba2ae60894487d::t_6c447e85f43369 348-353,355
+  s_ba2ae60894487d::t_3c202ac5b96fd9 366-370
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_ba2ae60894487d::t_3c30e4132976b7 13
+  s_ba2ae60894487d::t_8ace3281b99b73 30
+packages/cli/src/events/maps/relay.event-map.ts
+  s_ba2ae60894487d::t_a4fd5a41110748 760-764
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_ba2ae60894487d::t_57324fd8c27c99 403-417
+packages/cli/src/modules/source-control.ee/__tests__/source-control.controller.ee.test.ts
+  s_ba2ae60894487d::t_33bb4870f5e5a4 45-46
+  s_ba2ae60894487d::t_8a6278b8b748ca 237-247,249-291
+  s_ba2ae60894487d::t_0071fa7bbc48bf 248
+packages/cli/src/modules/source-control.ee/__tests__/source-control-preferences.service.ee.test.ts
+  s_ba2ae60894487d::t_52655e2ea8cfb9 472-534
+  s_ba2ae60894487d::t_2289f959976124 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "de0dcaa7b471228bc95d8f78685ffcb56e65ccab",
+  "prompts": {},
+  "sessions": {
+    "s_ba2ae60894487d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a467cb-e333-46a5-b84f-448b11db34b5",
+        "model": "unknown"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
