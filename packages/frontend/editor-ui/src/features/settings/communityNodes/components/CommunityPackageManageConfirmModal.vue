@@ -8,7 +8,7 @@ import { useCommunityNodesStore } from '../communityNodes.store';
 import { findVettedCommunityNodeAttributes, isNodesApiVersionError } from '../communityNodes.utils';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -119,7 +119,18 @@ const onModalClose = () => {
 	return !loading.value;
 };
 
+// Cancel unmounts this instance while the request still runs.
+// A late close uses the shared modal key and would dismiss a dialog the user opened again.
+let isUnmounted = false;
+
+onBeforeUnmount(() => {
+	isUnmounted = true;
+});
+
 async function closeDialog() {
+	if (isUnmounted) {
+		return;
+	}
 	const shouldClose = onModalClose();
 	if (shouldClose === false) {
 		return;
