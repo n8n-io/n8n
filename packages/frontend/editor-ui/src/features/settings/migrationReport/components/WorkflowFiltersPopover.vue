@@ -14,7 +14,6 @@ import { computed, ref } from 'vue';
 import {
 	countActiveFilters,
 	DEFAULT_WORKFLOW_FILTERS,
-	PERSONAL_PROJECTS,
 	UNASSIGNED_OWNER,
 	type AgeFilter,
 	type ExecutionsFilter,
@@ -26,7 +25,7 @@ import {
 defineProps<{
 	/** The owners of the listed workflows. */
 	owners: Array<{ id: string; label: string }>;
-	/** The team projects of the listed workflows. */
+	/** The projects of the listed workflows. */
 	projects: Array<{ id: string; label: string }>;
 	currentUserId?: string;
 	/** The number of workflows that each quick filter shows. */
@@ -305,14 +304,11 @@ const publishedOptions = computed<Array<{ value: PublishedFilter; label: string 
 					>
 						<N8nOption value="any" :label="anyLabel" />
 						<N8nOption
-							:value="PERSONAL_PROJECTS"
-							:label="i18n.baseText('settings.migrationReport.detail.filters.project.personal')"
-						/>
-						<N8nOption
 							v-for="project in projects"
 							:key="project.id"
 							:value="project.id"
 							:label="project.label"
+							data-test-id="migration-rule-filter-project-item"
 						/>
 					</N8nSelect>
 				</div>
