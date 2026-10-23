@@ -10,8 +10,8 @@ Source: https://linear.app/n8n/issue/CET-292
 
 ## Context
 
-In engine v1 the Execute Sub-workflow node asks the control plane to run the child. The
-control plane loads the workflow, checks the caller policy and the credentials, and runs it.
+In engine v1 the Execute Sub-workflow node asks the engine to run the child directly in-line.
+The engine loads the workflow, checks the caller policy and the credentials, and runs it.
 A parent that waits for the child parks on a sentinel date, and the child's completion
 resumes it.
 
@@ -26,27 +26,17 @@ the credential checks read control-plane state.
 
 ## Decision
 
-1. **A sub-workflow call is a wait.** The engine suspends the step before it starts the
-   child and resumes it when the child ends, as it suspends and resumes a waiting step
-   (ADR-20260902-steps-declare-waits). The step does not declare a wait. It asks for a
-   child, and the engine suspends it on that child. A fire-and-forget call does not suspend,
-   but the child still records its parent.
-2. **The resume runs the node's execute method again.** When the child ends, the engine
-   dispatches the step to the executor once more. The node runs from the start, and its
-   `executeWorkflow` call returns the child's result instead of asking for a child. The code
-   after that call is what shapes the node's output: paired items, the sub-execution
-   metadata, `continueOnFail`, and the error output per node version. On engine v2 that
-   code cannot run in the dispatch that made the call, because a step returns before the
-   child runs. Running the node again keeps its behaviour without a copy of it in the shim.
-   It is safe for the Execute Sub-workflow node because its work before the call has no
-   side effect, and it holds for that node only. The second run re-evaluates expressions,
-   so the shim answers the call from the recorded child whatever the node asks for this
-   time: an expression that resolves differently cannot start another child, it can only
-   mislabel the one that ran. This supersedes, for a child resume, the
-   wait ADR's rule that the engine never runs the node's execute method again; the rule
-   stands for deadline and request resumes, and that ADR stays as written. A later change
-   to the node interface can split the node into a call phase and a resume phase, as the
-   Wait node has for a request, and then the second run goes.
+1. **A sub-workflow call uses a similar mechanism to wait-resume.** We record the
+   child execution in the shim and return a `child` declaration, similar to `wait`.
+   The engine is responsible for suspending the parent, running the child, and resuming 
+   the parent when the child is complete.
+2. **We re-invoke the execute method when the parent is resumed.** On the second
+   invocation, the shim answers the `executeWorkflow` call with the output of the child
+   execution. Then all of the existing post-processing is automatically applied. We would
+   prefer a two-phase approach similarto wait/resume but that change touches the node
+   interface, so we will defer it for future work. This decision supersedes the decision
+   in ADR-20260902-steps-declare-waits which states that we do not re-invoke execute.
+   That decision still holds for waiting, but not sub-workflows.
 3. **The control plane resolves the child, and the engine starts it.** When a node asks
    for a sub-workflow, the shim calls the control plane. The control plane looks up the
    workflow, applies the caller policy and the credential checks, and returns the graph.
@@ -58,11 +48,14 @@ the credential checks read control-plane state.
 5. **The child returns all its terminal branches, concatenated.** The branches are ordered
    as engine v1 orders execution, by canvas position from top to bottom, and then by run.
    Engine v1 returns the output of the last node that ran. This is a breaking change for a
-   child with several end branches.
+   child with several end branches. We may revisit this decision when we look at backwards
+   compatible execution order in https://linear.app/n8n/issue/CET-460.
 6. **Cancellation cascades.** Cancelling a parent cancels its children, awaited or not. A
-   timeout that ends the parent does the same, once engine v2 has timeouts.
-7. **Dropped features.** The "run once for each item" mode and the inline, local file and
-   URL sources are refused. A v2 parent calls v2 children only.
+   timeout that ends the parent does the same, once engine v2 has timeouts. We may later
+   introduce a sub-workflow execution mode that detaches the child fully from the parent.
+7. **Dropped or postponed features.** The "run once for each item" mode and the inline,
+   local file and URL sources are refused. v1-v2 cross-engine sub-workflow executions are
+   not supported. 
 
 ## Alternatives Considered
 
@@ -76,7 +69,10 @@ the credential checks read control-plane state.
   rule intact. Rejected because the shim would carry a copy of the node's output shaping,
   for every node version, and keep it in step with the node.
 - **Keep the v1 result rule.** Which branch wins depends on execution order. Concatenation
-  is deterministic.
+  is deterministic. We may revisit this if we find that the breaking change blocks adoption.
+- **Implement a 2-phase suspend/resume.** This would let us avoid re-invoking the `execute`
+  method. We may do this as a follow-up, but it involves adding a new method to the node
+  interface so we prefer to defer it to later.
 
 ## Consequences
 
@@ -91,6 +87,7 @@ the credential checks read control-plane state.
 - Reconciliation repairs a waiting step whose child never started, and an ended child whose
   parent still waits.
 - Engine v2 has no timeout yet, so a child outlives a parent that v1 would have timed out.
+  When we implement timeouts, they will cascade.
 
 ## Links
 
