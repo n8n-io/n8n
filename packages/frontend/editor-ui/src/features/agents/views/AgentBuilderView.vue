@@ -655,6 +655,7 @@ const showAgentIntro = computed(
 );
 
 const isVersionHistoryOpen = ref(false);
+const versionHistoryTab = ref('versions');
 
 watch(
 	isPreviewDockOpen,
@@ -1316,8 +1317,10 @@ function onUnpublished(updated: AgentResource) {
 	void versionHistoryPanel.value?.refresh();
 }
 
-function onToggleVersionHistory() {
-	isVersionHistoryOpen.value = !isVersionHistoryOpen.value;
+function onOpenVersionHistory(tab: 'versions' | 'timeline' = 'versions') {
+	if (!agent.value || isUnsaved.value) return;
+	versionHistoryTab.value = tab;
+	isVersionHistoryOpen.value = true;
 }
 
 function onCloseVersionHistory() {
@@ -2542,10 +2545,9 @@ const headerActions = computed(() => {
 
 	actions.push({
 		id: 'version-history',
-		label: locale.baseText('agents.versionHistory.title'),
+		label: locale.baseText('menuActions.versionHistory'),
 		icon: 'history',
-		disabled: !agent.value?.hasVersionHistory,
-		checked: isVersionHistoryOpen.value,
+		disabled: !agent.value || isUnsaved.value,
 		divided: true,
 	});
 
@@ -2646,7 +2648,7 @@ async function onHeaderAction(action: string) {
 		return;
 	}
 	if (action === 'version-history') {
-		onToggleVersionHistory();
+		onOpenVersionHistory();
 		return;
 	}
 	if (action === 'export-json') {
@@ -3254,6 +3256,7 @@ useKeybindings({
 			:header-actions="headerActions"
 			:save-status="saveStatus"
 			:before-revert-to-published="beforeRevertToPublished"
+			:is-unsaved="isUnsaved"
 			:artifact-mode="isArtifactMode"
 			:editing-locked="isEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
@@ -3262,6 +3265,7 @@ useKeybindings({
 			:is-preview-open="isPreviewDockOpen"
 			:tasks="areSetupTasksVisible ? setupTasks : undefined"
 			@header-action="onHeaderAction"
+			@open-publish-timeline="onOpenVersionHistory('timeline')"
 			@open-preview="onOpenPreview"
 			@close-preview="closePreviewDock"
 			@publish-ready="isPublishReady = $event"
@@ -3466,6 +3470,7 @@ useKeybindings({
 				<AgentVersionHistoryPanel
 					v-if="!isStandalonePreview && isVersionHistoryOpen"
 					ref="versionHistoryPanel"
+					v-model:active-tab="versionHistoryTab"
 					:project-id="projectId"
 					:agent-id="agentId"
 					:current-version-id="agent?.versionId"

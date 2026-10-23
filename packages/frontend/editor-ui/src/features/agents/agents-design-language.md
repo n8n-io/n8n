@@ -17,6 +17,13 @@ Show the project icon before the project name in Agent builder and session
 timeline breadcrumbs. Use the same icon as the owning project. Show the user
 icon for a personal project.
 
+## History entry points
+
+Put `Version history` in the Agent actions menu. Put `View timeline` in the
+Publish dropdown. Each action opens its tab, including when the panel is already
+open. Keep history available for saved Agents during edits and with read-only access.
+Hide these entry points in embedded Agent artifacts.
+
 ## Narrow builder panels
 
 Keep a chip and its adjacent add action inside the available row width. Truncate

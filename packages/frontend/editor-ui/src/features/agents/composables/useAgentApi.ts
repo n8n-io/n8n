@@ -33,6 +33,7 @@ import type {
 	AgentCatalogModel,
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
+	AgentPublishHistoryItemDto,
 	ChatIntegrationDescriptor,
 	SkillDetail,
 	SkillListItem,
@@ -642,6 +643,19 @@ export const listAgentVersions = async (
 		params,
 	);
 };
+
+export const listAgentPublishHistory = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	params: { take: number; skip: number },
+): Promise<AgentPublishHistoryItemDto[]> =>
+	await makeRestApiRequest<AgentPublishHistoryItemDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/publish-history`,
+		params,
+	);
 
 export const getAgentBudgetSpend = async (
 	context: IRestApiContext,

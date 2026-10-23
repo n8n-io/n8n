@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, toRef, watch } from 'vue';
+import { computed, onMounted, toRef, useTemplateRef, watch } from 'vue';
 import type { UserAction } from '@n8n/design-system';
-import { N8nHeading, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nTabs, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { useAgentVersionHistory } from '../../composables/useAgentVersionHistory';
@@ -9,6 +9,7 @@ import { useAgentPermissions } from '../../composables/useAgentPermissions';
 import { useAgentPublish } from '../../composables/useAgentPublish';
 import { useAgentCollaborationStore } from '../../stores/agentCollaboration.store';
 import type { AgentResource } from '../../types';
+import AgentPublishTimeline from './AgentPublishTimeline.vue';
 import AgentVersionList from './AgentVersionList.vue';
 import type { AgentVersionAction } from './AgentVersionListItem.vue';
 
@@ -34,6 +35,12 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const activeTab = defineModel<string>('activeTab', { default: 'versions' });
+const tabs = computed(() => [
+	{ value: 'versions', label: i18n.baseText('workflowHistory.tab.history') },
+	{ value: 'timeline', label: i18n.baseText('workflowHistory.tab.publishTimeline') },
+]);
+const timeline = useTemplateRef<InstanceType<typeof AgentPublishTimeline>>('timeline');
 const {
 	items,
 	isLoading,
@@ -144,16 +151,17 @@ function onClose() {
 // events from elsewhere in the editor (e.g. the header's publish button) —
 // otherwise the green-dot indicator would lag the agent's actual state.
 defineExpose({
-	refresh: () => refresh(props.projectId, props.agentId),
+	refresh: async () => {
+		await refresh(props.projectId, props.agentId);
+		await timeline.value?.refresh();
+	},
 });
 </script>
 
 <template>
 	<aside :class="$style.panel" data-test-id="agent-version-history-panel">
 		<header :class="$style.header">
-			<N8nHeading size="small" :bold="true">
-				{{ i18n.baseText('agents.versionHistory.title') }}
-			</N8nHeading>
+			<N8nTabs v-model="activeTab" :options="tabs" size="small" data-test-id="agent-history-tabs" />
 			<N8nTooltip :content="i18n.baseText('agents.versionHistory.close')">
 				<N8nIconButton
 					icon="x"
@@ -168,6 +176,7 @@ defineExpose({
 		</header>
 
 		<AgentVersionList
+			v-if="activeTab === 'versions'"
 			:items="items"
 			:actions="actions"
 			:active-actions="activeActions"
@@ -178,6 +187,13 @@ defineExpose({
 			@action="onAction"
 			@load-more="onLoadMore"
 			@retry="refresh(projectId, agentId)"
+		/>
+		<AgentPublishTimeline
+			v-else
+			:key="`${projectId}/${agentId}`"
+			ref="timeline"
+			:project-id="projectId"
+			:agent-id="agentId"
 		/>
 	</aside>
 </template>

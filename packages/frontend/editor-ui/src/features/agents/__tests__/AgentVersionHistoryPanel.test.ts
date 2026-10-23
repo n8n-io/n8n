@@ -53,6 +53,17 @@ vi.mock('../composables/useAgentPublish', () => ({
 }));
 
 const STUBS = {
+	Tabs: {
+		name: 'N8nTabs',
+		template: '<div />',
+		props: ['modelValue', 'options'],
+		emits: ['update:modelValue'],
+	},
+	AgentPublishTimeline: {
+		name: 'AgentPublishTimeline',
+		template: '<div />',
+		props: ['projectId', 'agentId'],
+	},
 	N8nHeading: { template: '<div><slot /></div>' },
 	N8nIconButton: {
 		template: '<button @click="$emit(\'click\')" />',
@@ -270,4 +281,31 @@ it('refreshes history when a new draft version is saved', async () => {
 	versionHistoryMock.refresh.mockClear();
 	await wrapper.setProps({ currentVersionId: 'v2' });
 	expect(versionHistoryMock.refresh).toHaveBeenCalledWith('project-1', 'agent-1');
+});
+
+it('switches between Versions and Publish Timeline', async () => {
+	const wrapper = mountPanel();
+	await flushPromises();
+	const tabs = wrapper.getComponent({ name: 'N8nTabs' });
+	expect(tabs.props('options')).toEqual([
+		{ value: 'versions', label: 'workflowHistory.tab.history' },
+		{ value: 'timeline', label: 'workflowHistory.tab.publishTimeline' },
+	]);
+	tabs.vm.$emit('update:modelValue', 'timeline');
+	await flushPromises();
+	expect(wrapper.findComponent({ name: 'AgentVersionList' }).exists()).toBe(false);
+	expect(wrapper.findComponent({ name: 'AgentPublishTimeline' }).props()).toMatchObject({
+		projectId: 'project-1',
+		agentId: 'agent-1',
+	});
+});
+
+it('selects the requested tab and keeps tab changes in sync with its parent', async () => {
+	const wrapper = mountPanel({ activeTab: 'timeline' });
+	await flushPromises();
+	expect(wrapper.findComponent({ name: 'AgentPublishTimeline' }).exists()).toBe(true);
+	await wrapper.setProps({ activeTab: 'versions' });
+	expect(wrapper.findComponent({ name: 'AgentVersionList' }).exists()).toBe(true);
+	wrapper.getComponent({ name: 'N8nTabs' }).vm.$emit('update:modelValue', 'timeline');
+	expect(wrapper.emitted('update:activeTab')).toEqual([['timeline']]);
 });
