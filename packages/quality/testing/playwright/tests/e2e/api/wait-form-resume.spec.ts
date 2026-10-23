@@ -8,7 +8,7 @@ test.describe(
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		test.describe('signature validation', () => {
-			test('should reject unsigned and tampered requests, accept valid signature', async ({
+			test('should reject unsigned and tampered requests, accept valid signature @engine:v2', async ({
 				api,
 			}) => {
 				const { webhookPath, workflowId } =
@@ -23,6 +23,7 @@ test.describe(
 				// Wait for workflow to reach waiting state
 				const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting');
 				expect(execution).toBeDefined();
+				await api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 
 				const unsignedResponse = await api.webhooks.trigger(`/form-waiting/${execution.id}`);
 				expect(unsignedResponse.status()).toBe(401);
