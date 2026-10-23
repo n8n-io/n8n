@@ -135,7 +135,7 @@ export class InstanceAiAgentContextAdapterService {
 
 		if (input.type === 'capabilities') {
 			return {
-				channels: this.agentIntegrationService.listChatIntegrations(),
+				channels: await this.agentIntegrationService.listBuilderChatIntegrations(user),
 				agentCapabilities: [...AGENT_CAPABILITIES],
 				limitations: [...AGENT_LIMITATIONS],
 			};
@@ -143,7 +143,7 @@ export class InstanceAiAgentContextAdapterService {
 
 		if (input.type === 'integrations') {
 			if (!input.queries) {
-				return { channels: this.agentIntegrationService.listChatIntegrations() };
+				return { channels: await this.agentIntegrationService.listBuilderChatIntegrations(user) };
 			}
 			const mcpResults = (await this.mcpRegistryService.search(input.queries)).filter(
 				(result) => !result.isTemplated,

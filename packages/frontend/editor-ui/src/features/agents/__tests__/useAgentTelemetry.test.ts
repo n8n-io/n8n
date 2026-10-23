@@ -104,6 +104,24 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
+	it('trackRemovedTrigger fires with the removed trigger_type and the remaining triggers', () => {
+		useAgentTelemetry().trackRemovedTrigger({
+			agentId: 'ag-1',
+			triggerType: 'n8n_chat',
+			triggers: ['slack'],
+			configVersion: 'v5',
+			status: 'production',
+		});
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_REMOVED_TRIGGER_FROM_AGENT, {
+			agent_id: 'ag-1',
+			trigger_type: 'n8n_chat',
+			triggers: ['slack'],
+			config_version: 'v5',
+			status: 'production',
+			push_ref: 'session-xyz',
+		});
+	});
+
 	it('trackOpenedToolFromList fires with agent_id and tool_type', () => {
 		useAgentTelemetry().trackOpenedToolFromList({ agentId: 'ag-1', toolType: 'node' });
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_TOOL, {

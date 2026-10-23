@@ -131,6 +131,10 @@ export function useAgentVersionHistory() {
 				title: locale.baseText('agents.versionHistory.publish.toast.title'),
 				type: 'success',
 			});
+<<<<<<< HEAD
+=======
+			showAgentPublishedConfirmation(updated);
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 			await refresh(projectId, agentId);
 			return updated;
 		} catch (error) {

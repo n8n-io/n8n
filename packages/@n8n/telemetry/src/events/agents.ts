@@ -110,6 +110,7 @@ const agentConfigPart = z.enum([
 	'credential',
 	'memory',
 	'name',
+	'description',
 	'config',
 	'tools',
 	'providerTools',
@@ -185,6 +186,10 @@ const n8nChatVariant = z
 	.nullable()
 	.describe('The 125_agents_n8n_chat PostHog variant; null when the user has no flag value');
 
+const n8nChatHint = z
+	.enum(['channel_chip', 'new_chat_sidebar'])
+	.describe('Which n8n Chat hint popover the event is about');
+
 const agentPublish = {
 	...agentActorIdentity,
 	...agentCapabilityProfile,
@@ -230,7 +235,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			mcp_server_count: z.number().describe('MCP servers with a URL set'),
 			vector_store_count: z.number(),
 			task_count: z.number(),
-			trigger_count: z.number().describe('Configured chat integrations; draft channels excluded'),
+			trigger_count: z
+				.number()
+				.describe(
+					'Configured chat integrations; draft channels and n8n Chat excluded, because new agents get n8n Chat by default',
+				),
 			status: agentStatus,
 		}),
 	},
@@ -390,6 +399,29 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			event_version: z.literal('1'),
 		}),
 	},
+<<<<<<< HEAD
+=======
+	USER_DISMISSED_AGENT_PUBLISHED_MODAL: {
+		name: 'User dismissed agent published modal',
+		description:
+			'The user closed the "Agent published" confirmation modal shown after a successful agent publish. `dont_show_again` reports the state of the "Don\'t show again" checkbox at dismissal; when checked, the modal is not shown on later publishes.',
+		properties: z.object({
+			agent_id: z.string(),
+			dont_show_again: z.boolean(),
+			action: z
+				.enum(['got_it', 'talk_to_agent', 'closed'])
+				.optional()
+				.describe(
+					'How the modal closed: the Got it button, the Talk to agent button (opens the agent in n8n Chat), or the close icon or Escape',
+				),
+			n8n_chat_live: z
+				.boolean()
+				.optional()
+				.describe('Whether the published version carries the n8n Chat channel'),
+			push_ref: pushRef.optional(),
+		}),
+	},
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 	INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW: {
 		name: 'Instance AI opened from agent preview',
 		description:
@@ -445,6 +477,16 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			...builderSessionIdentity,
 			trigger_type: z.string().describe('Chat integration type that was configured and persisted'),
+		}),
+	},
+	BUILDER_REMOVED_TRIGGER: {
+		name: 'Builder removed trigger from agent',
+		description:
+			'The Instance AI builder saved a config through agent_builder_write_config or agent_builder_patch_config that removed a configured chat channel. One event fires for each removed channel type, after the save commits. Mirrors the frontend "User removed trigger from agent" event.',
+		properties: z.object({
+			...builderSessionIdentity,
+			trigger_type: z.string().describe('Chat integration type that was removed'),
+			triggers: z.array(z.string()).describe('Configured trigger types after the change'),
 		}),
 	},
 	BUILDER_ASKED_QUESTIONS: {
@@ -543,6 +585,19 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			config_version: z.string(),
 			status: agentStatus,
 			session_id: sessionId,
+		}),
+	},
+	USER_REMOVED_TRIGGER_FROM_AGENT: {
+		name: 'User removed trigger from agent',
+		description:
+			'The user removed a chat trigger from the agent builder, from the channel menu or the channel settings. Counterpart of "User added trigger to agent". No event fires when the channel stays configured after the removal.',
+		properties: z.object({
+			agent_id: z.string(),
+			trigger_type: z.string(),
+			triggers: z.array(z.string()).describe('Configured trigger types after the change'),
+			config_version: z.string(),
+			status: agentStatus,
+			push_ref: pushRef,
 		}),
 	},
 	USER_ADDED_AGENT_NODE: {
@@ -747,5 +802,27 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				session_id: sessionId,
 			}),
 		]),
+	},
+	USER_VIEWED_N8N_CHAT_HINT: {
+		name: 'User viewed n8n chat hint',
+		description:
+			'A one-time n8n Chat hint popover opened. `new_chat_sidebar` points at the sidebar "New chat" item on the user\'s first visit, on any page. `channel_chip` shows on the n8n Chat channel chip in the agent builder while the agent is available in n8n Chat, which new agents are by default; it waits until `new_chat_sidebar` is dismissed. Each hint shows until the user dismisses it once.',
+		properties: z.object({
+			hint: n8nChatHint,
+			agent_id: z.string().optional().describe('The agent on screen; absent for new_chat_sidebar'),
+			variant: n8nChatVariant,
+			push_ref: pushRef,
+		}),
+	},
+	USER_DISMISSED_N8N_CHAT_HINT: {
+		name: 'User dismissed n8n chat hint',
+		description:
+			'The user closed a one-time n8n Chat hint popover with its Got it button, the only way to close it. Pairs with "User viewed n8n chat hint" on `hint`. A dismissed hint does not show again.',
+		properties: z.object({
+			hint: n8nChatHint,
+			agent_id: z.string().optional().describe('The agent on screen; absent for new_chat_sidebar'),
+			variant: n8nChatVariant,
+			push_ref: pushRef,
+		}),
 	},
 });
