@@ -338,6 +338,9 @@ Use `N8nApprovalCard` for Preview tool approvals, including background child
 approvals. It owns the shared layout, keyboard controls, and standard choices
 for the Assistant and Agent Preview. Pass the app catalog labels through
 `useApprovalCardLabels`.
+Use the description slot to show the Agent name and the requested tool name.
+Show a node icon only when configured tool metadata identifies its node type.
+Use the localized Agent label when no name is available.
 Pass the sanitized display arguments from the backend to the shared card.
 For node tools, include the resolved node parameters and any model input.
 The card formats and shows these values inline for both surfaces. Leave space
@@ -351,6 +354,11 @@ each response. Use the existing child task order for background approvals.
 Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
+
+In the session timeline, show pending background tool approvals below their
+job row. Use the shared approval card and disable automatic focus so rows do
+not take focus as the user scrolls. Keep each card disabled while its response
+is pending. Remove its choices when the approval is resolved.
 
 ## Preview composer queue
 

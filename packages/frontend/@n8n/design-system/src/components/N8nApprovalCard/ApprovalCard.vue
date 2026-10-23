@@ -1,8 +1,10 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, ref, useId, useTemplateRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nCodeBlock from '../N8nCodeBlock';
 import N8nIcon, { type IconName } from '../N8nIcon';
+import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 import N8nText from '../N8nText';
 
 export interface ApprovalOption {
@@ -42,8 +44,6 @@ export interface ApprovalCardLabels {
 interface ApprovalCardProps {
 	/** Heading that describes the action. */
 	title: string;
-	/** Heading size used by the host surface. */
-	titleSize?: 'medium' | 'large';
 	/** Action details shown in a scrollable text region. */
 	description?: string;
 	/** Tool arguments shown below the description. */
@@ -62,11 +62,16 @@ interface ApprovalCardProps {
 	decision?: 'allowed' | 'denied';
 	/** Prevent mouse and keyboard decisions while the card is inactive. */
 	disabled?: boolean;
+	/** Focus the choices when the card mounts. Disable this in scrolling lists. */
+	autoFocus?: boolean;
+	/** Show number shortcuts and enable their key events. */
+	useKeyShortcuts?: boolean;
 }
 
 defineOptions({ name: 'N8nApprovalCard' });
 const props = withDefaults(defineProps<ApprovalCardProps>(), {
-	titleSize: 'large',
+	autoFocus: true,
+	useKeyShortcuts: true,
 });
 const emit = defineEmits<{ select: [key: string] }>();
 const { t } = useI18n();
@@ -116,7 +121,7 @@ const options = computed<readonly ApprovalOption[]>(() => {
 
 // Multiple approvals can be shown at once.
 const id = useId();
-const containerRef = useTemplateRef<HTMLElement>('container');
+const containerRef = useTemplateRef<HTMLElement>('list');
 const highlightedIndex = ref(0);
 
 watch(
@@ -126,9 +131,13 @@ watch(
 	},
 );
 
-onMounted(() => {
-	if (!props.disabled) containerRef.value?.focus();
-});
+watch(
+	containerRef,
+	(listbox) => {
+		if (props.autoFocus && !props.disabled) listbox?.focus({ preventScroll: true });
+	},
+	{ flush: 'post' },
+);
 
 function selectOption(key: string) {
 	if (props.disabled) return;
@@ -136,8 +145,34 @@ function selectOption(key: string) {
 	emit('select', key);
 }
 
+function focusListbox(event: MouseEvent) {
+	if (props.disabled || !(event.target instanceof Element)) return;
+	if (event.target.closest('a, button, input, select, textarea, [tabindex], [role="button"]'))
+		return;
+	containerRef.value?.focus({ preventScroll: true });
+}
+
 function onKeydown(event: KeyboardEvent) {
 	if (props.disabled || options.value.length === 0) return;
+	const enableKeyNumbers =
+		props.useKeyShortcuts &&
+		/^[0-9]$/.test(event.key) &&
+		!event.altKey &&
+		!event.ctrlKey &&
+		!event.metaKey;
+
+	// Allows for using 0-9 as keyboard shorcuts
+	if (enableKeyNumbers) {
+		const index = event.key === '0' ? 9 : Number(event.key) - 1;
+		const option = options.value[index];
+		if (option) {
+			event.preventDefault();
+			highlightedIndex.value = index;
+			selectOption(option.key);
+		}
+		return;
+	}
+
 	if (event.key === 'ArrowDown') {
 		event.preventDefault();
 		highlightedIndex.value = Math.min(options.value.length - 1, highlightedIndex.value + 1);
@@ -157,30 +192,27 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-	<div :class="[$style.card, disabled && $style.disabled]">
+	<article :class="[$style.card, disabled && $style.disabled]" @click="focusListbox">
+		<div :class="$style.header">
+			<span :class="$style.iconContainer">
+				<span :class="$style.statusDot" aria-hidden="true" />
+			</span>
+			<N8nText :id="`${id}-title`" step="sm" bold :class="$style.title">{{ title }}</N8nText>
+			<slot name="header-label" />
+		</div>
 		<div :class="$style.body">
-			<N8nText :id="`${id}-title`" :size="titleSize" bold>{{ title }}</N8nText>
 			<slot name="description">
-				<div
-					v-if="description"
-					:class="$style.description"
-					role="region"
-					:aria-label="descriptionLabel ?? title"
-					tabindex="0"
-				>
+				<N8nText v-if="description" step="sm">
 					{{ description }}
-				</div>
+				</N8nText>
 			</slot>
-			<div
+			<N8nCodeBlock
 				v-if="formattedArgs"
-				:class="$style.description"
-				role="region"
+				:code="formattedArgs"
+				language="json"
 				:aria-label="labels.args ?? title"
-				tabindex="0"
 				data-test-id="approval-card-args"
-			>
-				{{ formattedArgs }}
-			</div>
+			/>
 		</div>
 		<div :class="$style.footer">
 			<div v-if="decision" :class="$style.resolved">
@@ -193,9 +225,9 @@ function onKeydown(event: KeyboardEvent) {
 					{{ labels[decision] }}
 				</N8nText>
 			</div>
-			<div
+			<ul
 				v-else
-				ref="container"
+				ref="list"
 				:class="$style.list"
 				role="listbox"
 				:tabindex="disabled ? -1 : 0"
@@ -206,51 +238,84 @@ function onKeydown(event: KeyboardEvent) {
 				"
 				@keydown="onKeydown"
 			>
-				<button
+				<li
 					v-for="(option, idx) in options"
 					:id="`${id}-${option.key}`"
 					:key="option.key"
-					type="button"
-					role="option"
-					:disabled="disabled"
-					:aria-selected="highlightedIndex === idx"
+					role="button"
+					:aria-disabled="disabled"
+					:aria-pressed="highlightedIndex === idx"
 					:class="[
 						$style.row,
 						highlightedIndex === idx && $style.highlighted,
 						option.destructive && $style.rowDestructive,
 					]"
 					:data-test-id="option.testId ?? `approval-card-${option.key}`"
-					tabindex="-1"
 					@click="selectOption(option.key)"
 					@mouseenter="highlightedIndex = idx"
 				>
 					<N8nIcon :class="$style.leadingIcon" :icon="option.icon" size="large" />
 					<span :class="$style.label">
-						<span :class="$style.labelStrong">{{ option.label }}</span>
-						<span v-if="option.suffix" :class="$style.labelMuted">{{ option.suffix }}</span>
+						<N8nText step="sm" bold :class="$style.labelStrong">{{ option.label }}</N8nText>
+						<N8nText v-if="option.suffix" step="sm" color="text-light">{{ option.suffix }}</N8nText>
 					</span>
-					<span v-if="option.withArrow !== false" :class="$style.trailingIndicator">
-						<N8nIcon
-							:class="$style.trailingIcon"
-							icon="arrow-right"
-							size="large"
-							:stroke-width="2.5"
-						/>
-					</span>
-				</button>
-			</div>
+					<N8nIcon
+						v-if="highlightedIndex === idx"
+						:class="$style.trailingIcon"
+						icon="arrow-right"
+					/>
+					<N8nKeyboardShortcut
+						v-else-if="useKeyShortcuts && idx < 10"
+						:class="$style.trailingIcon"
+						:keys="[String((idx + 1) % 10)]"
+						aria-hidden="true"
+					/>
+				</li>
+			</ul>
 		</div>
-	</div>
+	</article>
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/motion';
+
 .card {
 	width: 100%;
 	min-width: 0;
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius--md);
 	background-color: var(--background--surface);
-	box-shadow: var(--shadow--sm), var(--shadow--outline);
-	font-size: var(--font-size--2xs);
+	border: 1px solid var(--border-color);
+	background-clip: padding-box;
+	box-shadow: var(--shadow--xs);
+}
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--spacing--sm);
+	gap: var(--spacing--3xs);
+	border-bottom: var(--border);
+	border-color: var(--border-color--subtle);
+}
+.title {
+	margin-inline-end: auto;
+}
+.iconContainer {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--height--2xs);
+	height: var(--height--2xs);
+	flex-shrink: 0;
+	border-radius: var(--radius);
+}
+
+.statusDot {
+	width: var(--height--5xs);
+	height: var(--height--5xs);
+	border-radius: 50%;
+	background-color: var(--color--purple-700);
+	@include motion.pulse;
 }
 
 .disabled {
@@ -267,51 +332,44 @@ function onKeydown(event: KeyboardEvent) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
-}
-
-.description {
-	max-height: var(--height--5xl);
-	overflow-y: auto;
-	padding: var(--spacing--2xs) 0;
-	border-radius: var(--radius);
-	font-family: var(--font-family--monospace);
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	white-space: pre-wrap;
-	word-break: normal;
-	overflow-wrap: anywhere;
+	padding: var(--spacing--sm);
 }
 
 .list {
 	display: flex;
 	flex-direction: column;
+	margin: 0;
+	padding: 0;
 	outline: none;
+	list-style: none;
 }
 
 .footer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--sm) var(--spacing--sm);
+	gap: 1px;
+	padding: 0 var(--spacing--sm);
+	padding-block-end: var(--spacing--xs);
 }
 
 .row {
+	flex: 1;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	min-height: var(--height--lg);
-	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--3xs) var(--spacing--xs);
+	gap: var(--spacing--xs);
+	width: auto;
+	height: var(--height--lg);
+	padding: var(--spacing--2xs);
+	margin-inline: calc(var(--spacing--3xs) * -1);
 	border: none;
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius);
 	background: none;
 	cursor: pointer;
 	text-align: left;
 	font-size: var(--font-size--sm);
 	color: var(--text-color);
 
-	&:disabled {
+	&[aria-disabled='true'] {
 		cursor: default;
 		pointer-events: none;
 	}
@@ -320,12 +378,13 @@ function onKeydown(event: KeyboardEvent) {
 // Highlight: applied when the row is the current selection (keyboard or
 // mouse). Unifies the visual for hover and arrow-key states so the user
 // always sees one — and only one — active row.
-.highlighted {
-	background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 
-	.trailingIndicator {
-		visibility: visible;
-	}
+.trailingIcon {
+	margin-inline-start: auto;
+}
+
+.highlighted {
+	background-color: var(--background--hover);
 }
 
 // Destructive variant only changes the highlight colour, so the cost of
@@ -337,16 +396,10 @@ function onKeydown(event: KeyboardEvent) {
 	.leadingIcon {
 		color: light-dark(var(--color--red-800), var(--color--red-250));
 	}
-
-	.trailingIndicator {
-		color: var(--color--neutral-white);
-		opacity: 1;
-	}
 }
 
 .leadingIcon {
 	flex-shrink: 0;
-	color: var(--icon-color--strong);
 }
 
 .label {
@@ -356,36 +409,5 @@ function onKeydown(event: KeyboardEvent) {
 	min-width: 0;
 	align-items: baseline;
 	gap: var(--spacing--3xs);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-}
-
-.labelStrong {
-	font-weight: var(--font-weight--medium);
-	overflow-wrap: anywhere;
-}
-
-.labelMuted {
-	color: var(--text-color--subtle);
-	font-weight: var(--font-weight--regular);
-}
-
-.trailingIndicator {
-	margin-left: auto;
-	visibility: hidden;
-	width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: var(--radius--full);
-	background-color: var(--color--primary);
-	color: var(--color--neutral-white);
-	flex-shrink: 0;
-}
-
-.trailingIcon {
-	width: var(--spacing--sm);
-	height: var(--spacing--sm);
 }
 </style>

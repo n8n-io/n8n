@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import {
-	N8nAiActivityStepButton,
-	N8nButton,
-	N8nIcon,
-	N8nSpinner,
-	N8nText,
-} from '@n8n/design-system';
-import { RouterLink } from 'vue-router';
-import { AGENT_BUILDER_VIEW, CONTINUE_SESSION_ID_PARAM, OPEN_PREVIEW_PARAM } from '../../constants';
+import { N8nAiActivityStepButton, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
+import type { AgentChatResumeDto, AgentJsonConfig } from '@n8n/api-types';
+import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappers';
+import type { ApprovalResume } from '@/features/ai/shared/agentsChat/types';
+import ApprovalCard from '../interactive/ApprovalCard.vue';
 import { useI18n } from '@n8n/i18n';
 import { formatTimelineTime } from '../../utils/timeline-time';
 import type { TimelineItem } from '../../session-timeline.types';
@@ -16,10 +12,14 @@ import { backgroundTaskPresentation } from '../../utils/background-task-timeline
 
 const props = defineProps<{
 	item: TimelineItem;
+	respondToApproval?: (payload: AgentChatResumeDto) => Promise<void>;
+	approvalPending?: boolean;
 	selected: boolean;
 	searchQuery?: string;
 	projectId?: string;
 	agentId?: string;
+	agentName?: string;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
 	threadId?: string;
 }>();
 
@@ -37,6 +37,22 @@ const label = computed(() => {
 	});
 });
 const time = computed(() => formatTimelineTime(props.item.timestamp));
+const approvalInput = computed(() => {
+	if (task.value?.status !== 'suspended' || !task.value.approval || !props.respondToApproval) {
+		return undefined;
+	}
+	return parseApprovalInput(task.value.approval.suspendPayload);
+});
+
+function submitApproval(resumeData: ApprovalResume) {
+	const approval = task.value?.approval;
+	if (!approval || !approvalInput.value || props.approvalPending) return;
+	void props.respondToApproval?.({
+		runId: approval.runId,
+		toolCallId: approval.toolCallId,
+		resumeData,
+	});
+}
 </script>
 
 <template>
@@ -49,61 +65,61 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 			task.status === 'cancelled' && $style.cancelled,
 		]"
 	>
-		<TransitionGroup
-			tag="div"
-			:class="$style.stateTransition"
-			:enter-active-class="$style.stateEnterActive"
-			:leave-active-class="$style.stateLeaveActive"
-			:enter-from-class="$style.stateEnterFrom"
-			:leave-to-class="$style.stateLeaveTo"
+		<div
+			v-if="approvalInput && task.approval"
+			:class="$style.approvalTimelineItem"
+			@click.stop
+			@keydown.stop
 		>
-			<div :key="`${task.id}:${task.status}`" :class="$style.stateContent">
-				<N8nAiActivityStepButton
-					:class="$style.activityButton"
-					size="small"
-					:loading="task.status === 'running'"
-					:interactive="false"
-					full-width
-					:tabindex="-1"
-				>
-					<template #prefix>
-						<span role="img" :aria-label="statusLabel" :class="$style.icon">
-							<N8nSpinner v-if="task.status === 'running'" type="grid" size="medium" />
-							<N8nIcon
-								v-else-if="presentation.icon"
-								:icon="presentation.icon"
-								size="medium"
-								:class="task.status === 'cancelled' && $style.cancelledIcon"
-							/>
-						</span>
-					</template>
-					{{ label }}
-				</N8nAiActivityStepButton>
-			</div>
-		</TransitionGroup>
-		<div :class="$style.actions">
-			<RouterLink
-				v-if="task.status === 'suspended' && task.approval && projectId && agentId && threadId"
-				:class="$style.approvalLink"
-				v-slot="{ href, navigate }"
-				:to="{
-					name: AGENT_BUILDER_VIEW,
-					params: { projectId, agentId },
-					query: { [CONTINUE_SESSION_ID_PARAM]: threadId, [OPEN_PREVIEW_PARAM]: 'true' },
-				}"
-				custom
+			<div :class="$style.approvalRail" aria-hidden="true"></div>
+			<ApprovalCard
+				:key="`${task.approval.runId}:${task.approval.toolCallId}`"
+				:input="approvalInput"
+				:agent-name="agentName"
+				:personalisation="personalisation"
+				:disabled="approvalPending"
+				:auto-focus="false"
+				:use-key-shortcuts="false"
+				@submit="submitApproval"
+			/>
+			<div :class="$style.approvalRail" aria-hidden="true"></div>
+		</div>
+		<div v-else :class="$style.header">
+			<TransitionGroup
+				tag="div"
+				:class="$style.stateTransition"
+				:enter-active-class="$style.stateEnterActive"
+				:leave-active-class="$style.stateLeaveActive"
+				:enter-from-class="$style.stateEnterFrom"
+				:leave-to-class="$style.stateLeaveTo"
 			>
-				<N8nButton
-					:href="href"
-					size="small"
-					variant="outline"
-					data-test-id="review-background-task-approval"
-					@click.stop="navigate"
-				>
-					{{ i18n.baseText('agentSessions.timeline.reviewApproval') }}
-				</N8nButton>
-			</RouterLink>
-			<N8nText v-else step="xs" color="text-light" bold :class="$style.time">{{ time }}</N8nText>
+				<div :key="`${task.id}:${task.status}`" :class="$style.stateContent">
+					<N8nAiActivityStepButton
+						:class="$style.activityButton"
+						size="small"
+						:loading="task.status === 'running'"
+						:interactive="false"
+						full-width
+						:tabindex="-1"
+					>
+						<template #prefix>
+							<span role="img" :aria-label="statusLabel" :class="$style.icon">
+								<N8nSpinner v-if="task.status === 'running'" type="grid" size="medium" />
+								<N8nIcon
+									v-else-if="presentation.icon"
+									:icon="presentation.icon"
+									size="medium"
+									:class="task.status === 'cancelled' && $style.cancelledIcon"
+								/>
+							</span>
+						</template>
+						{{ label }}
+					</N8nAiActivityStepButton>
+				</div>
+			</TransitionGroup>
+			<div :class="$style.actions">
+				<N8nText step="xs" color="text-light" bold :class="$style.time">{{ time }}</N8nText>
+			</div>
 		</div>
 	</div>
 </template>
@@ -119,12 +135,18 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 
 .row {
 	display: flex;
+	flex-direction: column;
+	width: 100%;
+	--ai-activity-step--color: var(--text-color--subtle);
+}
+
+.header {
+	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	margin-inline: var(--spacing--2xs);
 	padding-inline-end: var(--spacing--2xs);
-	--ai-activity-step--color: var(--text-color--subtle);
 }
 
 .stateTransition {
@@ -195,7 +217,15 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 	font-variant-numeric: tabular-nums;
 }
 
-.approvalLink {
-	margin-inline-end: calc(var(--spacing--sm) * -1);
+.approvalTimelineItem {
+	width: 100%;
+	min-width: 0;
+}
+
+.approvalRail {
+	width: 1px;
+	height: var(--spacing--sm);
+	margin-inline-start: calc(var(--spacing--lg) + var(--spacing--5xs));
+	background-color: var(--border-color);
 }
 </style>
