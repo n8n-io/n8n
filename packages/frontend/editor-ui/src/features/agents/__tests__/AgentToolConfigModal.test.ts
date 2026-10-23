@@ -6,7 +6,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
-import { defineComponent, onMounted, nextTick } from 'vue';
+import { defineComponent, onMounted, nextTick, shallowRef, type MaybeRefOrGetter } from 'vue';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
@@ -192,7 +192,7 @@ function renderModal({
 	customTool?: CustomToolEntry;
 	projectId?: string;
 	agentId?: string;
-	validationIssues?: AgentConfigValidationIssue[];
+	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentToolConfigModal, {
 		global: {
@@ -747,6 +747,28 @@ describe('AgentToolConfigModal', () => {
 			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'false');
 			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
 			expect(saveBtn.disabled).toBe(false);
+		});
+
+		it('shows the inline callout once the builder validates again while the modal is open', async () => {
+			mockRestrictedNodeTypes();
+			// Opened while an autosave was pending, so the builder had no result yet.
+			const issues = shallowRef<AgentConfigValidationIssue[]>([]);
+			const { queryByTestId } = renderModal({ valid: true, validationIssues: issues });
+			await nextTick();
+			expect(queryByTestId('inline-restricted-tool-callout')).toBeNull();
+
+			issues.value = [
+				{
+					code: 'restricted_node_type',
+					reason: 'restricted_by_inline_tool',
+					path: 'tools.0.node.nodeType',
+					capability: { kind: 'tool', id: 'ask_billing_agent', index: 0, toolType: 'node' },
+					restriction: { nodeType: 'n8n-nodes-base.mySql', scope: 'instance' },
+				},
+			];
+			await nextTick();
+
+			expect(queryByTestId('inline-restricted-tool-callout')).not.toBeNull();
 		});
 
 		it('shows no inline callout when nothing is restricted', async () => {

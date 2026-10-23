@@ -214,9 +214,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					projectId: projectId.value,
 					agentId: agentId.value,
 					supportsToolApproval,
-					validationIssues: validationIssues?.value.filter(
-						(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
-					),
+					validationIssues: () =>
+						validationIssues?.value.filter(
+							(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
+						) ?? [],
 					existingToolNames: tools
 						.map((toolRef, i) =>
 							i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name,

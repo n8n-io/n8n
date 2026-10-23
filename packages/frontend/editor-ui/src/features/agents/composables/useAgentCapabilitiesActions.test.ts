@@ -7,6 +7,7 @@ import {
 	useAgentCapabilitiesActions,
 	type AgentCapabilitiesTelemetry,
 } from './useAgentCapabilitiesActions';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
@@ -49,6 +50,7 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 function makeActions(
 	overrides: Partial<AgentJsonConfig> = {},
 	telemetry?: AgentCapabilitiesTelemetry,
+	validationIssues = ref<AgentConfigValidationIssue[]>([]),
 ) {
 	const scheduleConfigUpdate = vi.fn();
 	const scheduleSkillSave = vi.fn();
@@ -64,6 +66,7 @@ function makeActions(
 		scheduleConfigUpdate,
 		scheduleSkillSave,
 		telemetry,
+		validationIssues,
 	});
 	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId, localConfig };
 }
@@ -117,6 +120,38 @@ describe('useAgentCapabilitiesActions', () => {
 		modalData.data.onConfirm({ tools });
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools });
+	});
+
+	it("gives the tool modal a live read of that tool's validation issues", () => {
+		const issue = (index: number): AgentConfigValidationIssue => ({
+			code: 'restricted_node_type',
+			reason: 'restricted_by_inline_tool',
+			path: `tools.${index}.node.nodeType`,
+			capability: { kind: 'tool', index, toolType: 'node' },
+			restriction: { nodeType: 'n8n-nodes-base.mySql' },
+		});
+		const validationIssues = ref<AgentConfigValidationIssue[]>([]);
+		const { actions } = makeActions(
+			{
+				tools: [
+					{ type: 'node', name: 'first' } as AgentJsonToolConfig,
+					{ type: 'node', name: 'second' } as AgentJsonToolConfig,
+				],
+			},
+			undefined,
+			validationIssues,
+		);
+		actions.onOpenToolFromList(1);
+
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: { validationIssues: () => AgentConfigValidationIssue[] };
+		};
+		expect(modalData.data.validationIssues()).toEqual([]);
+
+		// The builder validates again after the modal opened.
+		validationIssues.value = [issue(0), issue(1)];
+
+		expect(modalData.data.validationIssues()).toEqual([issue(1)]);
 	});
 
 	it('offers no skill activation toggle', () => {
