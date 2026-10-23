@@ -84,7 +84,8 @@ export interface SpawnDeclaration {
  * What running a step produced: its output slots, or a declaration that it is
  * not done. Exclusive — a step that waits has no outputs yet, and the outputs
  * a deadline would emit ride inside the declaration. A spawn is a wait too:
- * the step suspends until the child ends.
+ * the step suspends until the child ends. Detached children ride on outputs
+ * instead: the step completes, and they run on their own.
  *
  * The `?: never` members give every branch the same keys, so `result.wait`
  * reads on the union and narrows it — without them a caller could only test
@@ -94,17 +95,21 @@ export type StepExecutionResult =
 	| {
 			/** Output slots; persisted by the engine without inspecting slot contents. */
 			outputs: StepSlots;
+			/** Children the step started without waiting for them. They end with the parent. */
+			detached?: SpawnDeclaration[];
 			wait?: never;
 			spawn?: never;
 	  }
 	| {
 			wait: WaitDeclaration;
 			outputs?: never;
+			detached?: never;
 			spawn?: never;
 	  }
 	| {
 			spawn: SpawnDeclaration;
 			outputs?: never;
+			detached?: never;
 			wait?: never;
 	  };
 

@@ -768,6 +768,74 @@ describe('step execution (integration)', () => {
 		expect(child.status).toBe('failed');
 	});
 
+	it('starts a detached child from a completed step and does not wait for it', async () => {
+		const parentGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'fire', name: 'Fire', type: 'v1-node' },
+				{ id: 'after', name: 'After', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'fire', outputIndex: 0, inputIndex: 0 },
+				{ from: 'fire', to: 'after', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const childGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'child-trigger', name: 'When Executed by Another Workflow', type: 'trigger' },
+				{ id: 'x', name: 'X', type: 'v1-node' },
+			],
+			edges: [{ from: 'child-trigger', to: 'x', outputIndex: 0, inputIndex: 0 }],
+		};
+		const childId = generateId();
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				if (request.node.id === 'fire') {
+					return {
+						outputs: [[{ json: { startedChild: childId } }]],
+						detached: [
+							{
+								executionId: childId,
+								workflowId: 'wf-child',
+								graph: childGraph,
+								workflow: { id: 'wf-child' },
+								triggerOutputs: [[{ json: { in: 1 } }]],
+							},
+						],
+					};
+				}
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { executionId, execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-parent-detached',
+			graph: parentGraph,
+			finishCount: 2,
+		});
+
+		expect(execution.status).toBe('completed');
+		const fire = steps.find(({ nodeId }) => nodeId === 'fire');
+		expect(fire?.status).toBe('completed');
+		expect(fire?.waitDeclaration).toBeNull();
+		expect(fire?.resumeCause).toBeNull();
+		expect(fire?.outputs).toEqual([[{ json: { startedChild: childId } }]]);
+
+		const child = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: childId } });
+		expect(child.status).toBe('completed');
+		expect(child.parentExecutionId).toBe(executionId);
+		expect(child.parentStepId).toBe(fire?.id);
+		expect(child.parentAwaited).toBe(false);
+
+		// `fire` ran once: nothing resumed it.
+		expect(requests.filter(({ node }) => node.id === 'fire')).toHaveLength(1);
+	});
+
 	it('is idempotent across duplicate step:ready deliveries', async () => {
 		const { executionStore, stepStore } = createStores(dataSource);
 		const execute = vi.fn().mockResolvedValue({ outputs: [[{ json: { n: 1 } }]] });
