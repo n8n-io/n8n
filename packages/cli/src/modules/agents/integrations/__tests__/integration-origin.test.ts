@@ -1,12 +1,16 @@
+import type { AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import type { Message, Thread } from 'chat';
 import { mock } from 'vitest-mock-extended';
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentChatIntegration } from '../agent-chat-integration';
-import { buildIntegrationOrigin } from '../integration-origin';
-import { buildDiscordOriginDraft } from '../platforms/discord/discord-origin';
-import { buildLinearOriginDraft } from '../platforms/linear/linear-origin';
-import { buildSlackOriginDraft } from '../platforms/slack/slack-origin';
+import { buildIntegrationOrigin, recordIntegrationOriginNames } from '../integration-origin';
+import {
+	buildDiscordOriginDraft,
+	fetchDiscordOriginNames,
+} from '../platforms/discord/discord-origin';
+import { buildLinearOriginDraft, fetchLinearOriginNames } from '../platforms/linear/linear-origin';
+import { buildSlackOriginDraft, fetchSlackOriginNames } from '../platforms/slack/slack-origin';
 import { buildTeamsOriginDraft } from '../platforms/teams/teams-origin';
 import { buildTelegramOriginDraft } from '../platforms/telegram/telegram-origin';
 import { buildWhatsAppOriginDraft } from '../platforms/whatsapp/whatsapp-origin';
@@ -17,7 +21,8 @@ const logger = mock<Logger>();
 function integrationFor(platform: string): AgentChatIntegration {
 	const builders = {
 		slack: buildSlackOriginDraft,
-		discord: buildDiscordOriginDraft,
+		discord: (_input: unknown, decoded: Record<string, unknown>) =>
+			buildDiscordOriginDraft(decoded),
 		linear: buildLinearOriginDraft,
 		telegram: (_input: unknown, decoded: Record<string, unknown>) =>
 			buildTelegramOriginDraft(decoded),
@@ -47,7 +52,7 @@ function makeThread(
 const makeMessage = (raw: unknown = {}) => ({ raw }) as unknown as Message<unknown>;
 
 describe('buildIntegrationOrigin', () => {
-	it('records Slack workspace, conversation kind, channel and name', async () => {
+	it('records Slack workspace, conversation kind and channel without a name lookup', async () => {
 		const thread = makeThread({ channel: 'C1', threadTs: '1.2' }, { channelName: 'general' });
 
 		await expect(
@@ -61,8 +66,8 @@ describe('buildIntegrationOrigin', () => {
 			workspaceId: 'T1',
 			conversationKind: 'channel',
 			channelId: 'C1',
-			channelName: 'general',
 		});
+		expect(thread.channel.fetchMetadata).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -97,36 +102,6 @@ describe('buildIntegrationOrigin', () => {
 		expect(origin).toMatchObject({ type: 'slack', conversationKind: kind });
 	});
 
-	it('does not look up a name for a Slack direct message', async () => {
-		const thread = makeThread({ channel: 'D1', threadTs: '' }, { isDM: true });
-
-		const origin = await buildIntegrationOrigin(
-			integrationFor('slack'),
-			{ thread, message: makeMessage({ n8nWorkspaceId: 'T1', channel_type: 'im' }) },
-			logger,
-		);
-
-		expect(origin).toMatchObject({ type: 'slack', conversationKind: 'dm', channelName: undefined });
-		expect(thread.channel.fetchMetadata).not.toHaveBeenCalled();
-	});
-
-	it('keeps IDs when the channel name lookup fails', async () => {
-		const thread = makeThread({ channel: 'C1', threadTs: '' }, { channelName: new Error('boom') });
-
-		await expect(
-			buildIntegrationOrigin(
-				integrationFor('slack'),
-				{ thread, message: makeMessage({ n8nWorkspaceId: 'T1', channel_type: 'channel' }) },
-				logger,
-			),
-		).resolves.toEqual({
-			type: 'slack',
-			workspaceId: 'T1',
-			conversationKind: 'channel',
-			channelId: 'C1',
-		});
-	});
-
 	it.each([
 		{},
 		{ team_id: 'T_AUTHOR', team: 'T_AUTHOR', channel_type: 'channel' },
@@ -155,7 +130,7 @@ describe('buildIntegrationOrigin', () => {
 				{ thread: server, message: makeMessage() },
 				logger,
 			),
-		).resolves.toEqual({ type: 'discord', serverId: 'G1', channelId: 'C1', channelName: 'dev' });
+		).resolves.toEqual({ type: 'discord', serverId: 'G1', channelId: 'C1' });
 		await expect(
 			buildIntegrationOrigin(
 				integrationFor('discord'),
@@ -187,58 +162,24 @@ describe('buildIntegrationOrigin', () => {
 		).resolves.toEqual({ type: 'linear', issueId: 'issue-uuid' });
 	});
 
-	describe('Linear team', () => {
+	it('records the Linear team ID without a name lookup', async () => {
+		const team = vi.fn();
+		const thread = makeThread({ issueId: 'issue-uuid' }, { client: { team } });
 		const subject = { type: 'issue', id: 'ENG-1', teamId: 'team-1' };
-		const origin = async (client: unknown, teamSubject: object = subject) =>
-			await buildIntegrationOrigin(
+
+		await expect(
+			buildIntegrationOrigin(
 				integrationFor('linear'),
-				{
-					thread: makeThread({ issueId: 'issue-uuid' }, { client }),
-					message: makeMessage(),
-					subject: teamSubject as never,
-				},
+				{ thread, message: makeMessage(), subject: subject as never },
 				logger,
-			);
-
-		it('records the team ID and the team name snapshot', async () => {
-			const team = vi.fn().mockResolvedValue({ name: 'Core' });
-
-			await expect(origin({ team })).resolves.toEqual({
-				type: 'linear',
-				issueId: 'issue-uuid',
-				identifier: 'ENG-1',
-				teamId: 'team-1',
-				teamName: 'Core',
-			});
-			expect(team).toHaveBeenCalledWith('team-1');
+			),
+		).resolves.toEqual({
+			type: 'linear',
+			issueId: 'issue-uuid',
+			identifier: 'ENG-1',
+			teamId: 'team-1',
 		});
-
-		it.each([
-			{ name: 'the lookup fails', client: { team: vi.fn().mockRejectedValue(new Error('boom')) } },
-			{
-				name: 'the lookup never settles',
-				client: { team: vi.fn().mockReturnValue(new Promise(() => {})) },
-			},
-			{ name: 'the adapter has no client', client: undefined },
-		])('keeps the team ID when $name', async ({ client }) => {
-			await expect(origin(client)).resolves.toEqual({
-				type: 'linear',
-				issueId: 'issue-uuid',
-				identifier: 'ENG-1',
-				teamId: 'team-1',
-			});
-		});
-
-		it('does not look up a name without a team ID', async () => {
-			const team = vi.fn();
-
-			await expect(origin({ team }, { type: 'issue', id: 'ENG-1' })).resolves.toEqual({
-				type: 'linear',
-				issueId: 'issue-uuid',
-				identifier: 'ENG-1',
-			});
-			expect(team).not.toHaveBeenCalled();
-		});
+		expect(team).not.toHaveBeenCalled();
 	});
 
 	it('omits empty optional Linear fields and keeps the issue ID', async () => {
@@ -339,5 +280,152 @@ describe('buildIntegrationOrigin', () => {
 				logger,
 			),
 		).resolves.toBeUndefined();
+	});
+});
+
+describe('recordIntegrationOriginNames', () => {
+	const slack = {
+		type: 'slack',
+		workspaceId: 'T1',
+		conversationKind: 'channel',
+		channelId: 'C1',
+	} as const;
+	const linear = { type: 'linear', issueId: 'issue-uuid', teamId: 'team-1' } as const;
+	const namesFor = {
+		slack: fetchSlackOriginNames,
+		discord: fetchDiscordOriginNames,
+		linear: fetchLinearOriginNames,
+	};
+
+	async function record(
+		platform: keyof typeof namesFor,
+		thread: Thread<unknown, unknown>,
+		origin: AgentMessageIntegrationOrigin,
+		save = vi.fn().mockResolvedValue(undefined),
+	) {
+		const integration = { fetchOriginNames: namesFor[platform] } as unknown as AgentChatIntegration;
+		await recordIntegrationOriginNames(
+			integration,
+			{ thread, message: makeMessage() },
+			origin,
+			save,
+			logger,
+		);
+		return save;
+	}
+
+	beforeEach(() => {
+		logger.debug.mockClear();
+	});
+
+	it('saves the Slack channel name on the origin', async () => {
+		const thread = makeThread({}, { channelName: 'general' });
+
+		const save = await record('slack', thread, slack);
+
+		expect(save).toHaveBeenCalledWith({ ...slack, channelName: 'general' });
+	});
+
+	it('saves the Discord channel name on the origin', async () => {
+		const thread = makeThread({}, { channelName: 'dev' });
+		const discord = { type: 'discord', serverId: 'G1', channelId: 'C1' } as const;
+
+		const save = await record('discord', thread, discord);
+
+		expect(save).toHaveBeenCalledWith({ ...discord, channelName: 'dev' });
+	});
+
+	it('saves the Linear team name on the origin', async () => {
+		const team = vi.fn().mockResolvedValue({ name: 'Core' });
+		const thread = makeThread({}, { client: { team } });
+
+		const save = await record('linear', thread, linear);
+
+		expect(team).toHaveBeenCalledWith('team-1');
+		expect(save).toHaveBeenCalledWith({ ...linear, teamName: 'Core' });
+	});
+
+	it.each([
+		{
+			name: 'a Slack direct message',
+			platform: 'slack' as const,
+			thread: makeThread({}, { isDM: true }),
+			origin: { ...slack, conversationKind: 'dm' } as const,
+		},
+		{
+			name: 'a Discord direct message',
+			platform: 'discord' as const,
+			thread: makeThread({}, { isDM: true }),
+			origin: { type: 'discord', channelId: 'C2' } as const,
+		},
+		{
+			name: 'a Linear origin without a team',
+			platform: 'linear' as const,
+			thread: makeThread({}, { client: { team: vi.fn() } }),
+			origin: { type: 'linear', issueId: 'issue-uuid' } as const,
+		},
+	])('does not look up a name for $name', async ({ platform, thread, origin }) => {
+		const save = await record(platform, thread, origin);
+
+		expect(thread.channel.fetchMetadata).not.toHaveBeenCalled();
+		expect(save).not.toHaveBeenCalled();
+	});
+
+	it('logs a failed lookup and saves nothing', async () => {
+		const thread = makeThread({}, { channelName: new Error('boom') });
+
+		const save = await record('slack', thread, slack);
+
+		expect(save).not.toHaveBeenCalled();
+		expect(logger.debug).toHaveBeenCalledWith(
+			'[AgentChatBridge] Failed to record integration origin names',
+			{ type: 'slack', error: 'boom' },
+		);
+	});
+
+	it('logs a lookup that does not settle within the timeout', async () => {
+		vi.useFakeTimers();
+		try {
+			const team = vi.fn().mockReturnValue(new Promise(() => {}));
+			const save = vi.fn();
+			const pending = record('linear', makeThread({}, { client: { team } }), linear, save);
+
+			await vi.advanceTimersByTimeAsync(500);
+			await pending;
+
+			expect(save).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith(
+				'[AgentChatBridge] Failed to record integration origin names',
+				{ type: 'linear', error: 'Timed out' },
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('logs a failed save and does not throw', async () => {
+		const thread = makeThread({}, { channelName: 'general' });
+		const save = vi.fn().mockRejectedValue(new Error('db down'));
+
+		await expect(record('slack', thread, slack, save)).resolves.toBe(save);
+
+		expect(logger.debug).toHaveBeenCalledWith(
+			'[AgentChatBridge] Failed to record integration origin names',
+			{ type: 'slack', error: 'db down' },
+		);
+	});
+
+	it('does nothing for a channel without name lookups', async () => {
+		const save = vi.fn();
+
+		await recordIntegrationOriginNames(
+			{} as AgentChatIntegration,
+			{ thread: makeThread({}), message: makeMessage() },
+			slack,
+			save,
+			logger,
+		);
+
+		expect(save).not.toHaveBeenCalled();
 	});
 });

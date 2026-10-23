@@ -2,6 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import {
 	getModelPromptCachingCapability,
 	getProviderPrefix,
+	isAzureFoundryAnthropicModel,
 	isGoogleVertexAnthropicModel,
 } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
@@ -68,7 +69,8 @@ export function isAnthropicMessagesProvider(modelId: string): boolean {
 	return (
 		provider === 'anthropic' ||
 		provider === 'google-vertex-anthropic' ||
-		isGoogleVertexAnthropicModel(modelId)
+		isGoogleVertexAnthropicModel(modelId) ||
+		isAzureFoundryAnthropicModel(modelId)
 	);
 }
 

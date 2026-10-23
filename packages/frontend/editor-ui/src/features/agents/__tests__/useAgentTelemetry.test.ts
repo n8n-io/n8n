@@ -235,6 +235,52 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
+	it('trackOpenedKnowledgeTab fires with agent_id and push_ref', () => {
+		useAgentTelemetry().trackOpenedKnowledgeTab({ agentId: 'ag-1' });
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_KNOWLEDGE_TAB, {
+			agent_id: 'ag-1',
+			push_ref: 'session-xyz',
+		});
+	});
+
+	it('trackStartedAddingKnowledge sends the file count for files', () => {
+		useAgentTelemetry().trackStartedAddingKnowledge({
+			agentId: 'ag-1',
+			kind: 'file',
+			fileCount: 3,
+		});
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE,
+			{ agent_id: 'ag-1', kind: 'file', file_count: 3, push_ref: 'session-xyz' },
+		);
+	});
+
+	it('trackStartedAddingKnowledge sends no file count for a vector store', () => {
+		useAgentTelemetry().trackStartedAddingKnowledge({ agentId: 'ag-1', kind: 'vector_store' });
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE,
+			{ agent_id: 'ag-1', kind: 'vector_store', push_ref: 'session-xyz' },
+		);
+	});
+
+	it('trackFailedKnowledgeUpload reports a client stage failure with its reason', () => {
+		useAgentTelemetry().trackFailedKnowledgeUpload({
+			agentId: 'ag-1',
+			reason: 'too_many_files',
+			fileCount: 12,
+		});
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD,
+			{
+				stage: 'client',
+				agent_id: 'ag-1',
+				file_count: 12,
+				reason: 'too_many_files',
+				push_ref: 'session-xyz',
+			},
+		);
+	});
+
 	it('trackOpenedAddSkillModal fires with agent_id', () => {
 		useAgentTelemetry().trackOpenedAddSkillModal({ agentId: 'ag-1' });
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_ADD_SKILL_MODAL, {
