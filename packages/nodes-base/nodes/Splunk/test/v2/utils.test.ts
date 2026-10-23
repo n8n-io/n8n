@@ -234,7 +234,7 @@ describe('Splunk, setCount', () => {
 		const qs: IDataObject = {};
 		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(true);
 
-		setReturnAllOrLimit.call(executeFunctionsMock, qs);
+		setReturnAllOrLimit.call(executeFunctionsMock, qs, 0);
 
 		expect(qs.count).toBe(0);
 	});
@@ -245,9 +245,24 @@ describe('Splunk, setCount', () => {
 		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(false);
 		executeFunctionsMock.getNodeParameter.calledWith('limit', 0).mockReturnValue(10);
 
-		setReturnAllOrLimit.call(executeFunctionsMock, qs);
+		setReturnAllOrLimit.call(executeFunctionsMock, qs, 0);
 
 		expect(qs.count).toBe(10);
+	});
+
+	test('resolves returnAll/limit against the given item index, not always index 0', () => {
+		// Regression for https://github.com/n8n-io/n8n/issues/38528: with multiple input items,
+		// every item after the first has its own Return All/Limit values, which were previously
+		// ignored because the helper always read index 0.
+		const executeFunctionsMock = mock<IExecuteFunctions>();
+		const qs: IDataObject = {};
+		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(true);
+		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 1).mockReturnValue(false);
+		executeFunctionsMock.getNodeParameter.calledWith('limit', 1).mockReturnValue(25);
+
+		setReturnAllOrLimit.call(executeFunctionsMock, qs, 1);
+
+		expect(qs.count).toBe(25);
 	});
 });
 
