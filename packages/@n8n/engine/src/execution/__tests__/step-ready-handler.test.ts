@@ -950,7 +950,7 @@ describe('StepReadyHandler waits', () => {
 		);
 	});
 
-	it('fails the step when the executor declares a child wait instead of a spawn', async () => {
+	it('fails the step when the executor declares a child wait instead of a child declaration', async () => {
 		// Only the engine suspends a step on a child, before it starts one. A
 		// declaration from outside would wait for a child that nothing starts.
 		const stepStore = makeStepStore();
@@ -1124,7 +1124,7 @@ describe('StepReadyHandler child executions', () => {
 		],
 		edges: [{ from: 'trigger', to: 'x', outputIndex: 0, inputIndex: 0 }],
 	};
-	const spawn = {
+	const child = {
 		executionId: 'exec-child',
 		workflowId: 'wf-child',
 		graph: childGraph,
@@ -1159,7 +1159,7 @@ describe('StepReadyHandler child executions', () => {
 			executionStore,
 			stepStore,
 			queue,
-			{ v1StepExecutor: makeExecutor({ spawn }) },
+			{ v1StepExecutor: makeExecutor({ child }) },
 			undefined,
 			undefined,
 			undefined,
@@ -1174,7 +1174,7 @@ describe('StepReadyHandler child executions', () => {
 			workflowId: 'wf-child',
 			graph: childGraph,
 			workflow: { id: 'wf-child' },
-			triggerOutputs: spawn.triggerOutputs,
+			triggerOutputs: child.triggerOutputs,
 			mode: 'production',
 			callerContext: { hostMode: 'trigger' },
 			parent: { executionId: 'exec-1', stepId: 'step-a', awaited: true },
@@ -1236,7 +1236,7 @@ describe('StepReadyHandler child executions', () => {
 			makeExecutionStore(),
 			stepStore,
 			makeQueue(),
-			{ v1StepExecutor: makeExecutor({ spawn }) },
+			{ v1StepExecutor: makeExecutor({ child }) },
 			undefined,
 			undefined,
 			undefined,
@@ -1259,7 +1259,7 @@ describe('StepReadyHandler child executions', () => {
 			makeExecutionStore(),
 			stepStore,
 			queue,
-			{ v1StepExecutor: makeExecutor({ spawn }) },
+			{ v1StepExecutor: makeExecutor({ child }) },
 			publisher,
 			undefined,
 			undefined,
