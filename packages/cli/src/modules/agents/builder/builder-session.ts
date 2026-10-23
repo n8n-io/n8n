@@ -1,6 +1,12 @@
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import type { BuilderTelemetrySession } from './builder-telemetry-session';
 
+// Instance AI reaches the session helpers through this contract file.
+export {
+	builderTelemetrySessionProperties,
+	runInBuilderTelemetrySession,
+} from './builder-telemetry-session';
+
 export interface BuilderCredentialService {
 	list(options?: { type?: string; projectId?: string }): Promise<
 		Array<{ id: string; name: string; type: string }>

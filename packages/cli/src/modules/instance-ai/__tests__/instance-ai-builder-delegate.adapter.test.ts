@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentContextService } from '@/modules/agents/agent-context.service';
 import type { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import type { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
-import { builderTelemetrySessionProperties } from '@/modules/agents/builder/builder-telemetry-session';
+import { builderTelemetrySessionProperties } from '@/modules/agents/builder/builder-session';
 import type { Telemetry } from '@/telemetry';
 
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';

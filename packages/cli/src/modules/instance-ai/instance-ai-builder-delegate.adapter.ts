@@ -10,7 +10,7 @@ import {
 import { AgentContextService } from '@/modules/agents/agent-context.service';
 import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
-import { runInBuilderTelemetrySession } from '@/modules/agents/builder/builder-telemetry-session';
+import { runInBuilderTelemetrySession } from '@/modules/agents/builder/builder-session';
 import { Telemetry } from '@/telemetry';
 
 @Service()
