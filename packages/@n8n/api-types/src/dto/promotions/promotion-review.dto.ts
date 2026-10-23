@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+import {
+	promotionResourceDependencySchema,
+	promotionResourceSchema,
+} from './promotion-preview.dto';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 
@@ -91,58 +95,37 @@ export class ListPromotionReviewsQueryDto extends Z.class({
 	limit: z.coerce.number().int().positive().max(100).optional(),
 }) {}
 
-export const promotionReviewChangeKindSchema = z.enum(['added', 'modified', 'deleted']);
-export type PromotionReviewChangeKind = z.infer<typeof promotionReviewChangeKindSchema>;
+const commitShaSchema = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/);
 
-/** A workflow the Promotion Review changed against the Review Baseline. */
-export const promotionReviewWorkflowChangeSchema = z.object({
-	workflowId: z.string(),
-	name: z.string(),
-	projectName: z.string().nullable(),
-	change: promotionReviewChangeKindSchema,
-	/** Repository path of the workflow file at the head commit, or at the baseline for a deletion. */
-	path: z.string(),
-});
-export type PromotionReviewWorkflowChange = z.infer<typeof promotionReviewWorkflowChangeSchema>;
+export const promotionReviewWarningSchema = z.enum([
+	'baselineManifestUnreadable',
+	'headManifestUnreadable',
+]);
+export type PromotionReviewWarning = z.infer<typeof promotionReviewWarningSchema>;
 
-/** The detail view: the row, the newest run, the merge request, and the changed workflows. */
-export const promotionReviewDetailSchema = promotionReviewSummarySchema.extend({
-	/** The branch of the newest run. */
-	branchName: z.string(),
-	/** The commit of the newest run. */
-	commitSha: z.string(),
-	mergeRequest: z
-		.object({
-			description: z.string().nullable(),
-			sourceBranch: z.string(),
-			targetBranch: z.string(),
-			authorName: z.string().nullable(),
-			approvalsLeft: z.number().int().nullable(),
-			mergeStatus: z.string().nullable(),
-		})
-		.nullable(),
-	/**
-	 * The commit the review diffs against. Open: the merge base of the promotion
-	 * branch head and the base branch. Merged or closed: the base the host reports.
-	 * NULL when neither can be read.
-	 */
-	baselineCommitSha: z.string().nullable(),
-	workflows: z.array(promotionReviewWorkflowChangeSchema),
-	/** Why parts of the detail are missing, for the UI to show. */
-	warnings: z.array(z.string()),
+/**
+ * What a Promotion Review changes on its target branch, in the shape of the promotion preview.
+ * The baseline of an open review is the merge base of its head and the target branch.
+ * The baseline of a merged or closed review is the base that the host reports.
+ */
+export const promotionReviewChangesSchema = z.object({
+	baselineCommitSha: commitShaSchema,
+	headCommitSha: commitShaSchema,
+	resources: z.array(promotionResourceSchema),
+	dependencies: z.array(promotionResourceDependencySchema),
+	/** Why the changes cannot be listed. The resources are then empty. */
+	warnings: z.array(promotionReviewWarningSchema),
 });
-export class PromotionReviewDetailDto extends Z.class(promotionReviewDetailSchema.shape) {}
+export type PromotionReviewChanges = z.infer<typeof promotionReviewChangesSchema>;
 
-/** The two sides of a workflow diff. A side is NULL when the workflow does not exist on that commit. */
-export const promotionReviewWorkflowDiffSchema = z.object({
-	workflowId: z.string(),
-	baselineCommitSha: z.string().nullable(),
-	headCommitSha: z.string(),
-	base: z.record(z.unknown()).nullable(),
-	head: z.record(z.unknown()).nullable(),
-});
-export class PromotionReviewWorkflowDiffDto extends Z.class(
-	promotionReviewWorkflowDiffSchema.shape,
+/** Repeats the commits of the summary, so the details match it after the review moves. */
+export class PromotionReviewDetailsRequestDto extends Z.class(
+	{
+		baselineCommitSha: commitShaSchema,
+		headCommitSha: commitShaSchema,
+		keys: z.array(z.string().min(1)).min(1).max(50),
+	},
+	{ strict: true },
 ) {}
 
 /** The merge request head the reviewer saw. The approval fails when the host has a newer head. */

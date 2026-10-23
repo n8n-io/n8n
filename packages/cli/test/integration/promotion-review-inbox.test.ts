@@ -334,6 +334,7 @@ describe('Promotion reviews in the Inbox', () => {
 					id: opened,
 					state: 'open',
 					reviewState: 'open',
+					reviewType: 'gitlab',
 					title: 'Promotion 1',
 					webUrl: `${baseUrl}/platform/workflows/-/merge_requests/1`,
 					branchName: 'n8n-promotion/1',

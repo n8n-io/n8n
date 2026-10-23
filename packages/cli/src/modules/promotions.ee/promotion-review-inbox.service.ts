@@ -349,6 +349,7 @@ const toItem = (
 		id: review.id,
 		state: review.state === 'merged' || review.state === 'closed' ? 'closed' : 'open',
 		reviewState: review.state,
+		reviewType: review.type,
 		title: mergeRequest?.title ?? null,
 		webUrl: mergeRequest?.web_url ?? null,
 		branchName: details?.branchName ?? null,

@@ -56,7 +56,11 @@ const canRun = computed(() =>
 
 const actions = computed(() => [
 	{ label: i18n.baseText('generic.edit'), value: 'edit' as const },
-	{ label: i18n.baseText('settings.promotions.environment.remove'), value: 'remove' as const },
+	{
+		label: i18n.baseText('settings.promotions.environment.remove'),
+		value: 'remove' as const,
+		destructive: true,
+	},
 ]);
 
 function onAction(action: 'edit' | 'remove') {
@@ -69,6 +73,7 @@ function onAction(action: 'edit' | 'remove') {
 	<div>
 		<N8nSettingsRow
 			:title="i18n.baseText(`settings.promotions.environments.${environment.direction}.title`)"
+			:show-divider="false"
 		>
 			<template #action>
 				<N8nActionToggle
@@ -87,7 +92,7 @@ function onAction(action: 'edit' | 'remove') {
 				</N8nActionToggle>
 			</template>
 		</N8nSettingsRow>
-		<N8nSettingsRow>
+		<N8nSettingsRow :show-divider="false">
 			<template #info>
 				<N8nText bold color="text-dark">{{ environment.name }}</N8nText>
 				<N8nText :class="$style.remote" size="small" color="text-light">
