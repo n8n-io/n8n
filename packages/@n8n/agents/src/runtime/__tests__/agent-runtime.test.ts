@@ -36,6 +36,7 @@ import { Workspace, getToolResultRunDirectory } from '../../workspace';
 import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
 import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
+import { StreamSink } from '../loop/stream-sink';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
@@ -1614,6 +1615,46 @@ describe('AgentRuntime — empty stop turn retry', () => {
 
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(10);
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
+	});
+
+	it('starts an empty-turn retry while usage reporting is pending', async () => {
+		const reporting = createDeferredPromise();
+		const release = createDeferredPromise();
+		const reportUsage = StreamSink.prototype.reportUsage;
+		const reportSpy = vi
+			.spyOn(StreamSink.prototype, 'reportUsage')
+			.mockImplementationOnce(async function (this: StreamSink, usage) {
+				const reported = reportUsage.call(this, usage);
+				reporting.resolve();
+				await reported;
+				await release.promise;
+			});
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('stop'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
+				response: Promise.resolve({ messages: [] }),
+				toolCalls: Promise.resolve([]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
+		const counter = makeExecutionCounter();
+		const { runtime } = createRuntime();
+		const { stream } = await runtime.stream('hi', { executionCounter: counter });
+		const reading = collectChunks(stream);
+		try {
+			await reporting.promise;
+			await vi.waitFor(() => expect(streamText).toHaveBeenCalledTimes(2));
+			expect(counter.incrementTokenCount).toHaveBeenCalledWith(10);
+		} finally {
+			release.resolve();
+			await reading;
+			reportSpy.mockRestore();
+		}
+		const chunks = await reading;
+		expect(chunks.find((chunk) => chunk.type === 'finish')).toMatchObject({
+			usage: { promptTokens: 20, completionTokens: 5, totalTokens: 25 },
+		});
 	});
 
 	it('accepts the empty turn once the retry budget is exhausted', async () => {

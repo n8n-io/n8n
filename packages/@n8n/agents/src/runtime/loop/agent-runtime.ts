@@ -1122,13 +1122,15 @@ export class AgentRuntime {
 			if (guardrails && guardCtx) await guardrails.after(guardCtx, turn.usage);
 			return turn;
 		};
+		const retryModel = async () => {
+			this.assertNotAborted(ctx.abortScope);
+			return await callModel();
+		};
 
 		let turn = await callModel();
 		// Retry empty stop turns. Charge each attempt before checking for cancellation.
 		for (let retry = 0; turn && retry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn); retry++) {
-			await this.recordTurnUsage(ctx, sink, state, turn);
-			this.assertNotAborted(ctx.abortScope);
-			turn = await callModel();
+			[, turn] = await Promise.all([this.recordTurnUsage(ctx, sink, state, turn), retryModel()]);
 		}
 		if (!turn) return undefined;
 		await this.recordTurnUsage(ctx, sink, state, turn);
