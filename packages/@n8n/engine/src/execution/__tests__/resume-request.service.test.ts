@@ -8,7 +8,8 @@ import { ResumeRequestService, type ResumeHold } from '../resume-request.service
 import { StepNotFoundError, type StepRecord, type StepStore } from '../step-store';
 
 const secret = 'a'.repeat(32);
-const executionId = 'exec-1';
+const executionId = '0199a1b2-0000-7000-8000-000000000001';
+const otherExecutionId = '0199a1b2-0000-7000-8000-000000000002';
 const token = mintResumeToken(secret, executionId);
 const hold = { attempts: 3, delayMs: 1 };
 
@@ -83,7 +84,9 @@ describe('ResumeRequestService.locate', () => {
 	it('rejects a token for another execution before it reads a step', async () => {
 		const { service, loadWaitingSteps } = setup({ waiting: [[accepting('s1')]] });
 
-		await expect(service.locate('exec-2', token)).rejects.toEqual(rejection('invalid_token'));
+		await expect(service.locate(otherExecutionId, token)).rejects.toEqual(
+			rejection('invalid_token'),
+		);
 		expect(loadWaitingSteps).not.toHaveBeenCalled();
 	});
 
@@ -184,7 +187,9 @@ describe('ResumeRequestService.resolve', () => {
 	});
 
 	it('checks the token against the execution of the step', async () => {
-		const { service, stepStore } = setup({ step: { ...accepting('s1'), executionId: 'exec-2' } });
+		const { service, stepStore } = setup({
+			step: { ...accepting('s1'), executionId: otherExecutionId },
+		});
 
 		await expect(service.resolve('s1', token, outputs)).rejects.toEqual(rejection('invalid_token'));
 		expect(stepStore.resumeStep).not.toHaveBeenCalled();

@@ -1,3 +1,4 @@
+import { UUID_V7_PATTERN } from '@n8n/constants';
 import { z } from 'zod';
 
 import {
@@ -28,7 +29,7 @@ export const RESUME_TOKEN: UnexpiringTokenSpec = Object.freeze({
  */
 const resumeClaimsSchema = z.object({
 	k: z.literal('execution-bound'),
-	eid: z.string().min(1),
+	eid: z.string().regex(UUID_V7_PATTERN),
 	iat: z.number().int(),
 });
 
