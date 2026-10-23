@@ -1,6 +1,12 @@
 import { getBrowserId } from '@n8n/constants';
 import { assert } from '@n8n/utils/assert';
-import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
+import type {
+	AxiosRequestConfig,
+	AxiosResponse,
+	Method,
+	RawAxiosRequestHeaders,
+	ResponseType,
+} from 'axios';
 import axios from 'axios';
 import { jsonParse } from 'n8n-workflow';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
@@ -97,20 +103,61 @@ const legacyParamSerializer = (params: Record<string, any>) =>
 		})
 		.join('&');
 
-export async function request(config: {
+type RequestConfig = {
 	method: Method;
 	baseURL: string;
 	endpoint: string;
 	headers?: RawAxiosRequestHeaders;
 	data?: GenericValue | GenericValue[];
 	withCredentials?: boolean;
-}) {
-	const { method, baseURL, endpoint, headers, data } = config;
+	responseType?: ResponseType;
+};
+
+/** The JSON body the server sends with an error response. */
+type ErrorResponseData = {
+	message?: string;
+	code?: number;
+	name?: string;
+	stack?: string;
+	meta?: Record<string, unknown>;
+	hint?: string;
+	mfaRequired?: boolean;
+	httpStatusCode?: number;
+};
+
+/** An error body arrives as a Blob when the request asked for one. Read it as the JSON it is. */
+async function readErrorResponseData(
+	data: ErrorResponseData | Blob | undefined,
+): Promise<ErrorResponseData | undefined> {
+	if (!(data instanceof Blob)) return data;
+	try {
+		return jsonParse<ErrorResponseData>(await data.text());
+	} catch {
+		return undefined;
+	}
+}
+
+export async function request(config: RequestConfig) {
+	// Untyped body, as before: every caller narrows the data itself.
+	const response: AxiosResponse = await requestResponse(config);
+	return response.data;
+}
+
+/**
+ * The whole response, for a caller that needs the headers or a non-JSON body.
+ * Shares the error handling of `request`: the session-expired handler on a
+ * 401, and `MfaRequiredError` when the 401 asks for MFA.
+ */
+export async function requestResponse<T = unknown>(
+	config: RequestConfig,
+): Promise<AxiosResponse<T>> {
+	const { method, baseURL, endpoint, headers, data, responseType } = config;
 	const options: AxiosRequestConfig = {
 		method,
 		url: endpoint,
 		baseURL,
 		headers: headers ?? {},
+		responseType,
 	};
 	if (baseURL.startsWith('/')) {
 		options.headers!['browser-id'] = getBrowserId();
@@ -130,8 +177,7 @@ export async function request(config: {
 	}
 
 	try {
-		const response = await axios.request(options);
-		return response.data;
+		return await axios.request<T>(options);
 	} catch (error) {
 		if (error.message === 'Network Error') {
 			throw new ResponseError("Can't connect to n8n.", {
@@ -139,7 +185,7 @@ export async function request(config: {
 			});
 		}
 
-		const errorResponseData = error.response?.data;
+		const errorResponseData = await readErrorResponseData(error.response?.data);
 		if (errorResponseData?.mfaRequired === true) {
 			throw new MfaRequiredError();
 		}
@@ -152,6 +198,8 @@ export async function request(config: {
 		if (errorResponseData?.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
 				errorResponseData.httpStatusCode = error.response.status;
+				// The node error payload is thrown as is, so callers keep its fields. Predates the typing.
+				// eslint-disable-next-line @typescript-eslint/only-throw-error
 				throw errorResponseData;
 			}
 

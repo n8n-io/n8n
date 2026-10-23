@@ -16,6 +16,10 @@ export type AgentCreateSource =
 	| 'empty_state_template'
 	| 'command_bar';
 export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
+export type KnowledgeUploadClientFailureReason = Extract<
+	InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD>,
+	{ stage: 'client' }
+>['reason'];
 export type AgentSessionFilterName = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER
 >['filter_names'][number];
@@ -31,7 +35,7 @@ export function useAgentTelemetry() {
 	const rootStore = useRootStore();
 	const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 
-	const common = () => ({ session_id: rootStore.pushRef });
+	const common = () => ({ push_ref: rootStore.pushRef });
 
 	// Reports `null` when the user has no flag value for this experiment.
 	function currentN8nChatVariant(): string | null {
@@ -347,6 +351,39 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackOpenedKnowledgeTab(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_KNOWLEDGE_TAB, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackStartedAddingKnowledge(
+		params: { agentId: string } & ({ kind: 'file'; fileCount: number } | { kind: 'vector_store' }),
+	) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE, {
+			agent_id: params.agentId,
+			kind: params.kind,
+			...(params.kind === 'file' ? { file_count: params.fileCount } : {}),
+			...common(),
+		});
+	}
+
+	/** Server rejections are sent by the backend, so the editor reports only its own checks. */
+	function trackFailedKnowledgeUpload(params: {
+		agentId: string;
+		reason: KnowledgeUploadClientFailureReason;
+		fileCount: number;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD, {
+			stage: 'client',
+			agent_id: params.agentId,
+			file_count: params.fileCount,
+			reason: params.reason,
+			...common(),
+		});
+	}
+
 	return {
 		trackClickedAgentsTab,
 		trackClickedKnowledgeUpload,
@@ -375,5 +412,8 @@ export function useAgentTelemetry() {
 		trackSelectedN8nChatAgent,
 		trackSentMessageToN8nChatAgent,
 		trackClickedSidebarItem,
+		trackOpenedKnowledgeTab,
+		trackStartedAddingKnowledge,
+		trackFailedKnowledgeUpload,
 	};
 }

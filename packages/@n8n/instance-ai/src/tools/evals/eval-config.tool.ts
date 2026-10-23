@@ -222,6 +222,7 @@ async function handleCreate(
 
 	const resumeData = ctx.resumeData;
 	if (resumeData === undefined || resumeData === null) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Set up evaluation "${input.name}"`,
@@ -248,6 +249,7 @@ async function handleUpdate(
 
 	const resumeData = ctx.resumeData;
 	if (resumeData === undefined || resumeData === null) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Update evaluation "${input.name}"`,
@@ -274,6 +276,7 @@ async function handleDelete(
 
 	const resumeData = ctx.resumeData;
 	if (resumeData === undefined || resumeData === null) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete evaluation "${input.configId}"`,

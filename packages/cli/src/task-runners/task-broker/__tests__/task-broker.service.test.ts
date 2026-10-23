@@ -999,6 +999,55 @@ describe('TaskBroker', () => {
 			});
 		});
 
+		it('should send an RPC error to the runner when the RPC response cannot be sent', async () => {
+			const runnerId = 'runner1';
+			const taskId = 'task1';
+			const runnerMessageCallback = vi.fn();
+
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), runnerMessageCallback);
+			runnerMessageCallback.mockRejectedValueOnce(new RangeError('Invalid string length'));
+			taskBroker.setTasks({
+				[taskId]: { id: taskId, runnerId, requesterId: 'requester1', taskType: 'test' },
+			});
+
+			await taskBroker.handleRequesterRpcResponse(taskId, 'call1', 'success', 'large data');
+
+			expect(runnerMessageCallback).toHaveBeenLastCalledWith({
+				type: 'broker:rpcresponse',
+				taskId,
+				callId: 'call1',
+				status: 'error',
+				data: 'Failed to send RPC response to task runner: Invalid string length',
+			});
+		});
+
+		it('should fail the task when neither the RPC response nor the RPC error can be sent', async () => {
+			const runnerId = 'runner1';
+			const taskId = 'task1';
+			const requesterId = 'requester1';
+			const requesterMessageCallback = vi.fn();
+
+			const runnerMessageCallback = vi.fn();
+
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), runnerMessageCallback);
+			runnerMessageCallback.mockRejectedValue(new Error('Socket closed'));
+			taskBroker.registerRequester(requesterId, requesterMessageCallback);
+			taskBroker.setTasks({
+				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
+			});
+
+			await taskBroker.handleRequesterRpcResponse(taskId, 'call1', 'success', 'large data');
+
+			expect(requesterMessageCallback).toHaveBeenCalledWith({
+				type: 'broker:taskerror',
+				taskId,
+				error: expect.objectContaining({
+					message: 'Failed to send RPC response to task runner: Socket closed',
+				}),
+			});
+			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
+		});
+
 		it('should discard `requester:rpcresponse` for an already-cleaned-up task', async () => {
 			await expect(
 				taskBroker.handleRequesterRpcResponse('nonexistent', 'call1', 'success', {}),

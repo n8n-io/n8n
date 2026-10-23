@@ -6,6 +6,7 @@ import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
 	promotionBindingPreflightResultSchema,
+	promotionBindingProjectSchema,
 	promotionBindingWarningSchema,
 } from './promotion-binding-preflight.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
@@ -184,3 +185,19 @@ export const ApplyPackageResultDto = {
 };
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
+
+/** The Apply check reads the package at the commit of the Apply preview. */
+export class ApplyCheckQueryDto extends Z.class(
+	{ commitSha: expectedSourceSchema.shape.commitSha },
+	{ strict: true },
+) {}
+
+const applyCheckResultSchema = applyPackageIdentitySchema.extend({
+	preflight: promotionBindingPreflightResultSchema,
+	/** Workflows of this project that the branch holds in another project. A selective Apply cannot move them. */
+	movedWorkflows: z.array(
+		z.object({ id: z.string(), name: z.string(), project: promotionBindingProjectSchema }),
+	),
+});
+
+export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;

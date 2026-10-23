@@ -75,12 +75,8 @@ export const AZURE_OPENAI_INFERENCE_AUDIENCE = 'https://cognitiveservices.azure.
  */
 export const AZURE_OPENAI_INFERENCE_SCOPE = `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`;
 
-/**
- * Audience for the Foundry deployments-list call. Each tenant's Entra ID app
- * registration grants access per audience, so this is requested only for the
- * call that needs it, not for every token the node mints.
- */
-export const AZURE_AI_FOUNDRY_AUDIENCE = 'https://ai.azure.com';
+// Shared with the Agents deployments listing.
+export { AZURE_AI_FOUNDRY_AUDIENCE } from '@n8n/ai-utilities/model-discovery';
 
 /**
  * Authentication types supported by Azure OpenAI node

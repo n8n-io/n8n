@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
+import { saveAs } from 'file-saver';
 import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -22,12 +23,15 @@ import {
 import type { DropdownMenuItemProps, TableOptions } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
+import { exportAgentSkill } from '@/features/agents/utils/agentSkillExport';
 import type {
 	AgentSkillConfirmFailure,
 	AgentSkillModalData,
@@ -35,7 +39,7 @@ import type {
 } from '@/features/agents/components/AgentSkillModal.vue';
 
 import SkillsTable from '../components/SkillsTable.vue';
-import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
+import { SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
@@ -55,27 +59,32 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
+const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
-	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
+	itemsPerPage: SKILLS_DEFAULT_PAGE_SIZE,
 	sortBy: [],
 });
 const search = ref('');
 const scopeFilter = ref<ScopeFilter>(ALL_SCOPES);
 const loadFailed = ref(false);
 
-// Paging, search and the scope filter run on the server: the count and the page both
-// describe the matching skills, and the page is the only slice the browser holds.
-const isFiltered = computed(() => search.value.trim() !== '' || scopeFilter.value !== ALL_SCOPES);
-// A failed load also reports zero rows, so the empty state must not stand in for it. A
-// filter that matches nothing shows an empty table, not "No skills yet".
-const showEmptyState = computed(
-	() => !skillsStore.loading && !loadFailed.value && !isFiltered.value && skillsStore.count === 0,
-);
+// The empty states describe the rows on screen, so they follow the query that loaded
+// them, not the live search input.
+const loadedFiltered = ref(false);
+const hasLoaded = ref(false);
+// Each search reloads the list. Only the first load shows the loading rows, so a search
+// keeps the previous rows until the new ones arrive.
+const showLoading = computed(() => skillsStore.loading && !hasLoaded.value);
+// A failed load also reports zero rows, so neither empty state must stand in for it.
+const emptyState = computed<'none' | 'noSkills' | 'noResults'>(() => {
+	if (!hasLoaded.value || loadFailed.value || skillsStore.count > 0) return 'none';
+	return loadedFiltered.value ? 'noResults' : 'noSkills';
+});
 
 const scopeFilterItems = computed<Array<DropdownMenuItemProps<ScopeFilter>>>(() =>
 	(
@@ -92,6 +101,8 @@ const scopeFilterItems = computed<Array<DropdownMenuItemProps<ScopeFilter>>>(() 
 	})),
 );
 
+// Paging, search and the scope filter run on the server: the count and the page both
+// describe the matching skills, and the page is the only slice the browser holds.
 function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 	const term = search.value.trim();
 	return {
@@ -113,6 +124,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
 			icon: 'globe',
+			target: { projectId: null, agentId: null },
 		});
 	}
 	const personalProject = projectsStore.personalProject;
@@ -121,6 +133,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
+			target: { projectId: personalProject.id, agentId: null },
 		});
 	}
 	for (const project of projectsStore.myProjects) {
@@ -129,6 +142,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
+			target: { projectId: project.id, agentId: null },
 		});
 	}
 	return options;
@@ -142,20 +156,32 @@ function parseScope(value: string): { scope: 'project' | 'instance'; projectId?:
 	return { scope: 'instance' };
 }
 
+// Only the newest load updates the page state, so a slow earlier search cannot win.
+const { next: nextLoad } = useLatestFetch();
+
 async function load() {
-	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	const isLatest = nextLoad();
+	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	const query = listQuery(page, itemsPerPage);
+	const filtered = query.search !== undefined || query.scope !== undefined;
 	try {
-		await skillsStore.fetchSkills(listQuery(page, itemsPerPage));
-		loadFailed.value = false;
+		await skillsStore.fetchSkills(query);
+		if (!isLatest()) return;
 		// Deleting the last rows of a page can leave the page past the end.
 		const lastPage = Math.max(0, Math.ceil(skillsStore.count / itemsPerPage) - 1);
 		if (page > lastPage) {
 			tableOptions.value = { ...tableOptions.value, page: lastPage };
 			await skillsStore.fetchSkills(listQuery(lastPage, itemsPerPage));
+			if (!isLatest()) return;
 		}
+		loadFailed.value = false;
+		loadedFiltered.value = filtered;
 	} catch (error) {
+		if (!isLatest()) return;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.skills.error.load'));
+	} finally {
+		if (isLatest()) hasLoaded.value = true;
 	}
 }
 
@@ -257,21 +283,13 @@ function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string
 }
 
 /**
- * Why the scope of a saved skill cannot change, if it cannot. The backend refuses a move
- * while an agent uses the skill, and a move needs the delete permission where the skill is,
- * because it takes the skill out of that scope.
+ * Why the scope of a saved skill cannot change, if it cannot. A move needs the delete
+ * permission where the skill is, because it takes the skill out of that scope. A skill in
+ * use can still move: the modal warns about a scope that drops an agent.
  */
 function scopeLock(
-	detail: Pick<SkillListItem, 'usedByAgents' | 'canDelete'>,
+	detail: Pick<SkillListItem, 'canDelete'>,
 ): Pick<AgentSkillModalData, 'scopeLockedReason'> {
-	if (detail.usedByAgents > 0) {
-		return {
-			scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.inUse', {
-				interpolate: { count: detail.usedByAgents },
-				adjustToNumber: detail.usedByAgents,
-			}),
-		};
-	}
 	if (!detail.canDelete) {
 		return { scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.noDelete') };
 	}
@@ -297,16 +315,21 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
+			...(assistantSkillsEnabled.value && detail.scope !== 'agent'
+				? { availableToAssistant: detail.availableToAssistant }
+				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
 			...scopeLock(detail),
+			usedBy: detail.usedBy,
 			existingSkillNames: [],
-			onConfirm: async ({ skill, scope }) =>
+			onConfirm: async ({ skill, scope, availableToAssistant }) =>
 				await onSave(
 					detail.id,
 					skill,
 					detail.skillHash,
 					scope !== currentValue ? scope : undefined,
+					availableToAssistant,
 				),
 		});
 	} catch (error) {
@@ -321,6 +344,7 @@ async function onSave(
 	skill: AgentSkill,
 	baseSkillHash: string,
 	newScope?: string,
+	availableToAssistant?: boolean,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let created: boolean;
 	try {
@@ -332,19 +356,36 @@ async function onSave(
 			references: skill.references ?? [],
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
+			...(availableToAssistant !== undefined ? { availableToAssistant } : {}),
 		}));
 	} catch (error) {
 		return saveFailed(error);
 	}
-	// A move is a change even when the content stays the same. Only "Nothing to save"
-	// gets a message: a real change shows in the table.
-	if (created || newScope !== undefined) {
+	// Scope and availability changes do not create a content version.
+	if (created || newScope !== undefined || availableToAssistant !== undefined) {
 		await load();
 		confirmIfHidden(id, 'saved');
 	} else {
 		showMessage({ title: i18n.baseText('settings.context.skills.save.noChanges'), type: 'info' });
 	}
 	return undefined;
+}
+
+/** The list row has no content, so the download reads the latest version first. */
+async function onDownload(item: Pick<SkillListItem, 'id'>) {
+	try {
+		const detail = await skillsStore.fetchSkill(item.id);
+		const { blob, fileName, format } = await exportAgentSkill(detail.skill);
+		saveAs(blob, fileName);
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DOWNLOADED_SKILL, {
+			skill_id: detail.id,
+			scope: detail.scope,
+			...(detail.projectId ? { project_id: detail.projectId } : {}),
+			format,
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.error.download'));
+	}
 }
 
 async function onDelete(skill: SkillListItem) {
@@ -457,14 +498,25 @@ onMounted(async () => {
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
-			:loading="skillsStore.loading"
-			:show-empty="showEmptyState"
+			:loading="showLoading"
+			:show-empty="emptyState !== 'none'"
+			:show-assistant-availability="assistantSkillsEnabled"
 			@open="openEditModal"
+			@download="onDownload"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>
 			<template #empty>
-				<div :class="$style.empty" data-test-id="skills-empty-state">
+				<div
+					v-if="emptyState === 'noResults'"
+					:class="$style.empty"
+					data-test-id="skills-no-results"
+				>
+					<N8nText color="text-light">
+						{{ i18n.baseText('settings.context.skills.search.noResults') }}
+					</N8nText>
+				</div>
+				<div v-else :class="$style.empty" data-test-id="skills-empty-state">
 					<N8nHeading tag="h2" size="medium" bold>
 						{{ i18n.baseText('settings.context.skills.empty.title') }}
 					</N8nHeading>
