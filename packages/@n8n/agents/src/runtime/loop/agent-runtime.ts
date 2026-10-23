@@ -68,6 +68,7 @@ import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
 import { startStreamSession } from '../streaming/stream-session';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
@@ -716,12 +717,14 @@ export class AgentRuntime {
 		options?: ExecutionOptions,
 	): {
 		telemetry?: TelemetryOptions;
+		headers?: Record<string, string>;
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 		onStepStart?: ExecutionOptions['onStepStart'];
 		onStepEnd?: ExecutionOptions['onStepEnd'];
 	} {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
+			...buildFunctionIdHeaders(this.config.functionId),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
 			...(options?.onStepEnd ? { onStepEnd: options.onStepEnd } : {}),
 			repairToolCall: async (options) => {
@@ -776,6 +779,7 @@ export class AgentRuntime {
 			telemetry: this.telemetry.resolve(options),
 			agentModel: this.config.model,
 			modelFetch: this.config.modelFetch,
+			functionId: this.config.functionId,
 			turnDelta: list.turnDelta(),
 			executionCounter: options.executionCounter,
 			onSideCallUsage: options.onSideCallUsage,

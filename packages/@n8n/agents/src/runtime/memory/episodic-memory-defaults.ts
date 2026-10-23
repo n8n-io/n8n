@@ -12,6 +12,7 @@ import { getModelIdString } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { createModel } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 
 export const DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL = 'openai/text-embedding-3-small';
 export const DEFAULT_EPISODIC_MEMORY_TOP_K = 5;
@@ -74,6 +75,7 @@ export function createEpisodicMemoryReflectFn(
 			instructions: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 			prompt: buildEpisodicMemoryReflectorPrompt(input),
 			output: Output.object({ schema: EpisodicMemoryReflectionSchema }),
+			...buildFunctionIdHeaders(input.functionId, 'memory-reflect'),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, response.usage);
 		return {

@@ -101,6 +101,7 @@ export interface RunObservationLogObserverOpts {
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
 	modelFetch?: typeof globalThis.fetch;
+	functionId?: string;
 	/**
 	 * Receives the observer model call's usage the moment it resolves, before
 	 * any parsing or persistence. Forwarding it here (rather than only on the
@@ -321,6 +322,7 @@ async function prepareObserverInput(
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
 		modelFetch: opts.modelFetch,
+		functionId: opts.functionId,
 	};
 }
 

@@ -1,6 +1,7 @@
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	UNLIMITED_CREDITS,
+	buildProxyHeaders,
 	isMoonshotaiKimiK3ModelId,
 	type InstanceAiCredits,
 	type ProxyContext,
@@ -52,6 +53,25 @@ export class InstanceAiModelService {
 	/** Transport for Instance AI model calls on the direct path (long AI timeouts, env proxy). */
 	getModelFetch(): CustomFetch {
 		return (this.modelFetch ??= createAiProxyFetch(this.outboundHttp));
+	}
+
+	/**
+	 * The same transport for the Assistant's agent calls. Each request carries the feature,
+	 * version, run and thread headers that the AI service proxy path sends. Utility helper
+	 * calls use `getModelFetch()` and are named by `x-n8n-function-id` only.
+	 */
+	getLabeledModelFetch(proxyContext: ProxyContext): CustomFetch {
+		const baseFetch = this.getModelFetch();
+		const labels = buildProxyHeaders({
+			feature: 'instance-ai',
+			n8nVersion: N8N_VERSION,
+			...proxyContext,
+		});
+		return async (input, init) => {
+			const headers = new Headers(init?.headers);
+			for (const [name, value] of Object.entries(labels)) headers.set(name, value);
+			return await baseFetch(input, { ...init, headers });
+		};
 	}
 
 	/** Whether the AI service proxy is enabled for credit counting. */

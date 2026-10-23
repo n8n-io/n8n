@@ -135,9 +135,11 @@ export async function createSelfHealingAgent(
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.thinkingEnabled !== false) applyAgentThinking(agent, modelId);
 
+	const functionId = 'instance-ai.self-healing';
+	agent.functionId(functionId);
 	const telemetry = tracing?.getTelemetry?.({
 		agentRole: 'self-healing',
-		functionId: 'instance-ai.self-healing',
+		functionId,
 		executionMode: 'background',
 		metadata: modelIdTraceMetadata(modelId),
 	});

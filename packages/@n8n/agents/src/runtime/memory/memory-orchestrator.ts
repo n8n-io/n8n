@@ -699,6 +699,7 @@ export class MemoryOrchestrator {
 					executionCounter,
 					telemetry,
 					modelFetch: this.config.modelFetch,
+					functionId: this.config.functionId,
 					// Usage is forwarded inside the observer right after the model
 					// call (before persistence), so a billed observer turn is
 					// priced even when post-processing throws.
@@ -769,6 +770,7 @@ export class MemoryOrchestrator {
 					executionCounter,
 					telemetry,
 					modelFetch: this.config.modelFetch,
+					functionId: this.config.functionId,
 					// Usage is forwarded inside the reflector right after the model
 					// call (before persistence), so a billed reflector turn is
 					// priced even when post-processing throws.
@@ -820,6 +822,7 @@ export class MemoryOrchestrator {
 					executionCounter,
 					telemetry,
 					modelFetch: this.config.modelFetch,
+					functionId: this.config.functionId,
 					agentName: this.config.name,
 					// Each embed/reflect usage is forwarded inside the processor
 					// the moment its model call resolves, before persistence, so a

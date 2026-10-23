@@ -14,6 +14,7 @@ const mockAgentInstances: Array<{
 	thinking: Mock;
 	mcpConnectionFailures: Mock;
 	modelFetch: Mock;
+	functionId: Mock;
 }> = [];
 
 const mockMemoryBuilder = {
@@ -40,6 +41,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.thinking = vi.fn().mockReturnThis();
 		this.mcpConnectionFailures = vi.fn().mockReturnThis();
 		this.modelFetch = vi.fn().mockReturnThis();
+		this.functionId = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Memory: vi.fn().mockImplementation(function Memory() {
@@ -453,6 +455,7 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('instance-ai.orchestrator');
 		expect(mockAgentInstances[1]?.modelFetch).not.toHaveBeenCalled();
 	});
 

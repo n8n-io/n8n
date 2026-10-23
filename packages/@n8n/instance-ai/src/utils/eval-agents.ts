@@ -256,7 +256,7 @@ export function createEvalAgent(
 		options.judge ? (judgeModelOverride() ?? options.model ?? JUDGE_MODEL) : options.model,
 		options.fallbackModelConfig,
 	);
-	const agent = new Agent(name).model(model);
+	const agent = new Agent(name).model(model).functionId(name);
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.telemetry) agent.telemetry(options.telemetry);
 

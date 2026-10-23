@@ -5374,7 +5374,7 @@ export class InstanceAiService {
 			checkpointStore: this.checkpointStore,
 			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: this.modelService.getLabeledModelFetch({ runId, threadId }),
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both
@@ -7472,7 +7472,7 @@ export class InstanceAiService {
 					llmTitle = await titleTracing.withActiveSpan(titleTracing.rootRun, async () => {
 						const title = await generateTitleForRun(modelId, userText, {
 							...(titleTelemetry ? { telemetry: titleTelemetry } : {}),
-							modelFetch: this.modelService.getModelFetch(),
+							modelFetch: this.modelService.getLabeledModelFetch({ threadId }),
 						});
 						if (title) {
 							await titleTracing.finishRun(titleTracing.rootRun, {
@@ -7492,7 +7492,7 @@ export class InstanceAiService {
 				}
 			} else {
 				llmTitle = await generateTitleForRun(modelId, userText, {
-					modelFetch: this.modelService.getModelFetch(),
+					modelFetch: this.modelService.getLabeledModelFetch({ threadId }),
 				});
 			}
 			if (!llmTitle) return;

@@ -42,6 +42,7 @@ export async function generateTitleForRun(
 		const model = createModel(modelId, options?.modelFetch);
 		const telemetry = await resolveBuiltTelemetry(options?.telemetry);
 		return await generateTitleFromMessage(model, userMessage, {
+			functionId: 'instance-ai.thread_title',
 			...(telemetry ? { telemetry } : {}),
 		});
 	} catch {

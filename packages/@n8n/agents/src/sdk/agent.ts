@@ -175,6 +175,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private modelFetchValue?: FetchFn;
 
+	private functionIdValue?: string;
+
 	private instructionProviderOpts?: ProviderOptions;
 
 	private instructionsText?: string;
@@ -287,6 +289,16 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	modelFetch(fetch: FetchFn): this {
 		this.modelFetchValue = fetch;
+		return this;
+	}
+
+	/**
+	 * Name the caller of this agent's model calls, sent as the `x-n8n-function-id`
+	 * header (for example `instance-ai.orchestrator`). Sub-agents send
+	 * `<id>.subagent`. When unset, no header is sent.
+	 */
+	functionId(id: string): this {
+		this.functionIdValue = id;
 		return this;
 	}
 
@@ -1155,6 +1167,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			name: this.name,
 			model: modelConfig,
 			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+			...(this.functionIdValue !== undefined ? { functionId: this.functionIdValue } : {}),
 			instructions,
 			...(this.skillSource ? { skillSource: this.skillSource } : {}),
 			tools: allTools.length > 0 ? allTools : undefined,
@@ -1315,6 +1328,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				// Inherit the parent's transport so children can't bypass a
 				// guarded/instrumented fetch via the ambient default.
 				...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+				...(this.functionIdValue !== undefined
+					? { functionId: `${this.functionIdValue}.subagent` }
+					: {}),
 				instructions:
 					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
 				tools: tools.length > 0 ? tools : undefined,
