@@ -170,6 +170,36 @@ describe('LeaseHeartbeat', () => {
 		heartbeat.stop();
 	});
 
+	it('reports an expired lease the fence margin before the lease runs out', async () => {
+		const fenceMarginMs = 2_000;
+		const renew = vi.fn().mockRejectedValue(new Error('db down'));
+		const onRenewal = vi.fn();
+		const heartbeat = new LeaseHeartbeat(renew, { ...options(), fenceMarginMs }, { onRenewal });
+
+		await vi.advanceTimersByTimeAsync(LEASE_MS - fenceMarginMs - 1);
+		expect(onRenewal).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(onRenewal).toHaveBeenCalledExactlyOnceWith('expired');
+
+		heartbeat.stop();
+	});
+
+	it('keeps the fence margin when a renewal re-arms the expiry', async () => {
+		const fenceMarginMs = 2_000;
+		const renew = vi.fn().mockResolvedValueOnce(true).mockRejectedValue(new Error('db down'));
+		const onRenewal = vi.fn();
+		const heartbeat = new LeaseHeartbeat(renew, { ...options(), fenceMarginMs }, { onRenewal });
+
+		await vi.advanceTimersByTimeAsync(INTERVAL_MS + LEASE_MS - fenceMarginMs - 1);
+		expect(onRenewal).not.toHaveBeenCalledWith('expired');
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(onRenewal).toHaveBeenCalledWith('expired');
+
+		heartbeat.stop();
+	});
+
 	it('keeps renewing after a missed lease, so the claim survives a short outage', async () => {
 		const renew = vi
 			.fn()

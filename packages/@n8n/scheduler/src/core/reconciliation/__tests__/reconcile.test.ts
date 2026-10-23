@@ -38,7 +38,7 @@ const quarantinedJob = (over: Partial<QuarantinedJob> = {}): QuarantinedJob => (
 });
 
 describe('reconcile', () => {
-	const store = mock<ReconciliationJobStore>();
+	const store = mock<Required<ReconciliationJobStore>>();
 	const now = async () => await Promise.resolve(NOW);
 
 	let registry: ScheduledJobOwnerRegistry;
@@ -231,6 +231,81 @@ describe('reconcile', () => {
 		});
 	});
 
+	describe('held tasks', () => {
+		it('re-arms the held tasks of the owners the resolver finds alive', async () => {
+			registry.register('workflow', {
+				findExisting: async () => await Promise.resolve(new Set(['wf-alive'])),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-alive', 'wf-gone']);
+			store.rearmHeldTasks.mockResolvedValue(2);
+			const onHeldTasksRearmed = vi.fn();
+
+			await run({ onHeldTasksRearmed });
+
+			expect(store.rearmHeldTasks).toHaveBeenCalledExactlyOnceWith('workflow', ['wf-alive']);
+			expect(onHeldTasksRearmed).toHaveBeenCalledWith({ ownerType: 'workflow', tasks: 2 });
+		});
+
+		it('includes an owner found alive on the second answer', async () => {
+			const findExisting = vi
+				.fn<(ownerIds: string[]) => Promise<Set<string>>>()
+				.mockResolvedValueOnce(new Set(['wf-alive']))
+				.mockResolvedValueOnce(new Set(['wf-back']));
+			registry.register('workflow', { findExisting });
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-alive', 'wf-back']);
+			store.quarantineByOwnerIds.mockResolvedValue(1);
+			store.rearmHeldTasks.mockResolvedValue(0);
+
+			await run();
+
+			expect(store.rearmHeldTasks).toHaveBeenCalledWith('workflow', ['wf-alive', 'wf-back']);
+		});
+
+		it('does not report a re-arm that changed no task', async () => {
+			registry.register('workflow', {
+				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-1']);
+			store.rearmHeldTasks.mockResolvedValue(0);
+			const onHeldTasksRearmed = vi.fn();
+
+			await run({ onHeldTasksRearmed });
+
+			expect(onHeldTasksRearmed).not.toHaveBeenCalled();
+		});
+
+		it('does not re-arm when no owner is alive', async () => {
+			registry.register('workflow', {
+				findExisting: async () => await Promise.resolve(new Set()),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-gone']);
+
+			await run();
+
+			expect(store.rearmHeldTasks).not.toHaveBeenCalled();
+		});
+
+		it('skips the re-arm when the store cannot re-arm held tasks', async () => {
+			const bare = mock<ReconciliationJobStore>();
+			Object.assign(bare, { rearmHeldTasks: undefined });
+			bare.findOwnerTypes.mockResolvedValue(['workflow']);
+			bare.findOwnerIds.mockResolvedValueOnce(['wf-1']).mockResolvedValue([]);
+			bare.findQuarantinedByOwnerIds.mockResolvedValue([]);
+			registry.register('workflow', {
+				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+			});
+
+			const summary = await reconcile(bare, registry, now, options);
+
+			expect(summary).toMatchObject({ ownersChecked: 1, drained: true });
+			expect(store.rearmHeldTasks).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('revival', () => {
 		it('revives a quarantined job whose owner is alive again, restarting its clock', async () => {
 			registry.register('workflow', {
@@ -306,6 +381,24 @@ describe('reconcile', () => {
 				jobId: 42,
 				error: expect.any(Error) as Error,
 			});
+			expect(summary.revived).toBe(1);
+		});
+
+		it('revives a hold job with no clock and reports no clock failure', async () => {
+			registry.register('workflow', {
+				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			onePageOfOwners(['wf-1']);
+			store.findQuarantinedByOwnerIds.mockResolvedValue([
+				quarantinedJob({ id: 42, kind: 'hold', intervalSeconds: null }),
+			]);
+			const onReviveClockFailed = vi.fn();
+
+			const summary = await run({ onReviveClockFailed });
+
+			expect(store.liftQuarantine).toHaveBeenCalledWith(42, null);
+			expect(onReviveClockFailed).not.toHaveBeenCalled();
 			expect(summary.revived).toBe(1);
 		});
 

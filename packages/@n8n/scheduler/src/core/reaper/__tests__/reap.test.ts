@@ -32,7 +32,7 @@ const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow 
 });
 
 const setup = () => {
-	const store = mock<ReaperTaskStore>();
+	const store = mock<Required<ReaperTaskStore>>();
 	const onRowError = vi.fn();
 	const onDeadLetter = vi.fn();
 	const onCompletedAfterDispatch = vi.fn();
@@ -386,5 +386,73 @@ describe('reap', () => {
 
 		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 		expect(onRetireError).toHaveBeenCalledWith(new Error('statement timeout'));
+	});
+
+	it('reclaims an expired held task that reported ready with no attempt counted', async () => {
+		const { store, run } = setup();
+		const task = expiredTask({
+			mode: 'hold',
+			heldSince: new Date('2026-01-01T00:00:00.000Z'),
+			attempts: 2,
+			maxAttempts: 3,
+			leaseEpoch: 6,
+		});
+		store.findExpiredLeases.mockResolvedValue([task]);
+		store.reclaimExpiredHeld.mockResolvedValue(1);
+
+		const result = await run();
+
+		expect(store.reclaimExpiredHeld).toHaveBeenCalledWith({ id: task.id, claimedEpoch: 6 });
+		expect(store.reclaimExpired).not.toHaveBeenCalled();
+		expect(store.deadLetterExpired).not.toHaveBeenCalled();
+		expect(store.completeExpired).not.toHaveBeenCalled();
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
+	});
+
+	it('counts an attempt for an expired held task that never reported ready', async () => {
+		const { store, run } = setup();
+		const task = expiredTask({ mode: 'hold', heldSince: null, attempts: 2, maxAttempts: 3 });
+		store.findExpiredLeases.mockResolvedValue([task]);
+
+		const result = await run();
+
+		expect(store.reclaimExpiredHeld).not.toHaveBeenCalled();
+		expect(store.deadLetterExpired).toHaveBeenCalledWith(
+			{ id: task.id, claimedEpoch: task.leaseEpoch },
+			expect.any(String),
+		);
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 1, missed: 0 });
+	});
+
+	it('takes the attempt path for a ready held task when the store cannot reclaim held tasks', async () => {
+		const { store, run } = setup();
+		Object.assign(store, { reclaimExpiredHeld: undefined });
+		const task = expiredTask({
+			mode: 'hold',
+			heldSince: new Date('2026-01-01T00:00:00.000Z'),
+			attempts: 0,
+			maxAttempts: 3,
+		});
+		store.findExpiredLeases.mockResolvedValue([task]);
+
+		const result = await run();
+
+		expect(store.reclaimExpired).toHaveBeenCalledWith(
+			{ id: task.id, claimedEpoch: task.leaseEpoch },
+			backoff(1),
+			expect.any(String),
+		);
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
+	});
+
+	it('takes the attempt path for a once task that carries a held stamp', async () => {
+		const { store, run } = setup();
+		const task = expiredTask({ mode: 'once', heldSince: new Date('2026-01-01T00:00:00.000Z') });
+		store.findExpiredLeases.mockResolvedValue([task]);
+
+		await run();
+
+		expect(store.reclaimExpiredHeld).not.toHaveBeenCalled();
+		expect(store.reclaimExpired).toHaveBeenCalledTimes(1);
 	});
 });
