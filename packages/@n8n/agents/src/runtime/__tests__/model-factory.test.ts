@@ -305,9 +305,9 @@ vi.mock('@ai-sdk/google-vertex/anthropic', () => ({
 		}),
 }));
 
-const { mockProxyAgent } = vi.hoisted(() => ({ mockProxyAgent: vi.fn() }));
+const { mockEnvHttpProxyAgent } = vi.hoisted(() => ({ mockEnvHttpProxyAgent: vi.fn() }));
 vi.mock('undici', () => ({
-	ProxyAgent: mockProxyAgent,
+	EnvHttpProxyAgent: mockEnvHttpProxyAgent,
 }));
 
 /** What the mocked OpenAI stubs report back about the endpoint they reached. */
@@ -335,7 +335,9 @@ describe('createModel', () => {
 		process.env = { ...originalEnv };
 		delete process.env.HTTPS_PROXY;
 		delete process.env.HTTP_PROXY;
-		mockProxyAgent.mockClear();
+		delete process.env.https_proxy;
+		delete process.env.http_proxy;
+		mockEnvHttpProxyAgent.mockClear();
 	});
 
 	afterAll(() => {
@@ -536,20 +538,21 @@ describe('createModel', () => {
 	it('should not pass fetch when no proxy env vars are set', () => {
 		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeUndefined();
+		expect(mockEnvHttpProxyAgent).not.toHaveBeenCalled();
 	});
 
 	it('should pass proxy-aware fetch when HTTPS_PROXY is set', () => {
 		process.env.HTTPS_PROXY = 'http://proxy:8080';
 		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeInstanceOf(Function);
-		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:8080');
+		expect(mockEnvHttpProxyAgent).toHaveBeenCalledOnce();
 	});
 
 	it('should pass proxy-aware fetch when HTTP_PROXY is set', () => {
 		process.env.HTTP_PROXY = 'http://proxy:9090';
 		const model = createModel('openai/gpt-4o') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeInstanceOf(Function);
-		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:9090');
+		expect(mockEnvHttpProxyAgent).toHaveBeenCalledOnce();
 	});
 
 	it('should forward custom headers to the provider factory', () => {
@@ -564,11 +567,11 @@ describe('createModel', () => {
 		});
 	});
 
-	it('should prefer HTTPS_PROXY over HTTP_PROXY', () => {
-		process.env.HTTPS_PROXY = 'http://https-proxy:8080';
-		process.env.HTTP_PROXY = 'http://http-proxy:9090';
-		createModel('anthropic/claude-sonnet-4-5');
-		expect(mockProxyAgent).toHaveBeenCalledWith('http://https-proxy:8080');
+	it('should pass proxy-aware fetch when only lowercase https_proxy is set', () => {
+		process.env.https_proxy = 'http://proxy:8080';
+		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		expect(model.fetch).toBeInstanceOf(Function);
+		expect(mockEnvHttpProxyAgent).toHaveBeenCalledOnce();
 	});
 
 	describe('standard providers', () => {

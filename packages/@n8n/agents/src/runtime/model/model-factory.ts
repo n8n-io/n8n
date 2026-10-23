@@ -59,12 +59,13 @@ function isLanguageModel(config: unknown): config is LanguageModel {
 const globalFetch: FetchFn = async (input, init) => await globalThis.fetch(input, init);
 
 function getProxyFetch(): FetchFn | undefined {
-	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
-	if (!proxyUrl) return undefined;
+	const { HTTPS_PROXY, https_proxy, HTTP_PROXY, http_proxy } = process.env;
+	if (!HTTPS_PROXY && !https_proxy && !HTTP_PROXY && !http_proxy) return undefined;
 
 	// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- standalone SDK cannot depend on @n8n/backend-network; the backend always injects its guarded transport, so this env-proxy path runs only outside the backend (see doc comment above). To drop this: make `fetch` a required arg of createModel/createEmbeddingModel and delete the fallback, so standalone callers always supply their own transport
-	const { ProxyAgent } = require('undici') as typeof Undici;
-	const dispatcher = new ProxyAgent(proxyUrl);
+	const { EnvHttpProxyAgent } = require('undici') as typeof Undici;
+	// Picks the proxy per target scheme and honors NO_PROXY.
+	const dispatcher = new EnvHttpProxyAgent();
 	return async (url, init) =>
 		await globalThis.fetch(url, {
 			...init,

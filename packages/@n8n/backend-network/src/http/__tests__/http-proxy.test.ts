@@ -1,8 +1,9 @@
 import dns from 'dns';
 import http from 'http';
 import https from 'https';
-import type { AddressInfo, LookupFunction } from 'net';
+import net, { type AddressInfo, type LookupFunction } from 'net';
 import nock from 'nock';
+import { EnvHttpProxyAgent, getGlobalDispatcher } from 'undici';
 import { promisify } from 'util';
 
 import { EnvProxyHttpAgent } from '../env-proxy-http-agent';
@@ -294,6 +295,85 @@ describe('HTTP Proxy Tests', () => {
 			expect(http.globalAgent).toBeInstanceOf(http.Agent);
 			expect(http.globalAgent).not.toBeInstanceOf(EnvProxyHttpAgent);
 			expect(https.globalAgent).not.toBeInstanceOf(EnvProxyHttpsAgent);
+		});
+
+		test('uninstall restores the original global dispatcher after a repeated install', () => {
+			const original = getGlobalDispatcher();
+			process.env.HTTP_PROXY = proxyServer.url;
+			installGlobalProxyAgent();
+			installGlobalProxyAgent();
+
+			expect(getGlobalDispatcher()).toBeInstanceOf(EnvHttpProxyAgent);
+
+			uninstallGlobalProxyAgent();
+
+			expect(getGlobalDispatcher()).toBe(original);
+		});
+	});
+
+	describe('global fetch', () => {
+		let targetServer: http.Server;
+		let targetUrl: string;
+		// undici tunnels even plain HTTP through CONNECT, so this proxy relays the tunnel.
+		let tunnelProxy: http.Server;
+		let tunnelProxyUrl: string;
+		const tunnels: string[] = [];
+
+		beforeAll(async () => {
+			targetServer = http.createServer((_req, res) => res.end('ok'));
+			tunnelProxy = http.createServer();
+			tunnelProxy.on('connect', (req, clientSocket) => {
+				tunnels.push(req.url ?? '');
+				const [host, port] = (req.url ?? '').split(':');
+				const upstream = net.connect(Number(port), host, () => {
+					clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+					upstream.pipe(clientSocket).pipe(upstream);
+				});
+				upstream.on('error', () => clientSocket.destroy());
+				clientSocket.on('error', () => upstream.destroy());
+			});
+			const listen = async (server: http.Server) => {
+				await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+				return (server.address() as AddressInfo).port;
+			};
+			const targetPort = await listen(targetServer);
+			targetUrl = `http://127.0.0.1:${targetPort}/test`;
+			tunnelProxyUrl = `http://127.0.0.1:${await listen(tunnelProxy)}`;
+		});
+
+		afterEach(() => {
+			tunnels.length = 0;
+		});
+
+		afterAll(async () => {
+			tunnelProxy.closeAllConnections();
+			targetServer.closeAllConnections();
+			await promisify(tunnelProxy.close.bind(tunnelProxy))();
+			await promisify(targetServer.close.bind(targetServer))();
+		});
+
+		const fetchTarget = async () => await (await fetch(targetUrl)).text();
+
+		test('routes through HTTP_PROXY after install and goes direct after uninstall', async () => {
+			process.env.HTTP_PROXY = tunnelProxyUrl;
+			installGlobalProxyAgent();
+
+			expect(await fetchTarget()).toBe('ok');
+			expect(tunnels).toEqual([new URL(targetUrl).host]);
+
+			uninstallGlobalProxyAgent();
+
+			expect(await fetchTarget()).toBe('ok');
+			expect(tunnels).toHaveLength(1);
+		});
+
+		test('goes direct for a NO_PROXY host', async () => {
+			process.env.HTTP_PROXY = tunnelProxyUrl;
+			process.env.NO_PROXY = '127.0.0.1';
+			installGlobalProxyAgent();
+
+			expect(await fetchTarget()).toBe('ok');
+			expect(tunnels).toHaveLength(0);
 		});
 	});
 
