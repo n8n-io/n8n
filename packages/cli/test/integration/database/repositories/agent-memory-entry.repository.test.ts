@@ -202,6 +202,7 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 		let support: string;
 		let linear: string;
 		let preview: string;
+		let chat: string;
 		let legacy: string;
 		let crossed: string;
 
@@ -226,6 +227,10 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 				integration: { type: 'linear', issueId: 'I1', teamId: 'T1', teamName: 'Platform' },
 			});
 			preview = await insertSourcedEntry({ scope: 'draft-chat:user-1', content: 'preview fact' });
+			chat = await insertSourcedEntry({
+				scope: 'n8n-chat-production:user-1',
+				content: 'chat fact',
+			});
 			// Stored before messages kept their author and origin.
 			legacy = await insertSourcedEntry({ scope: 'integration:slack:U3', content: 'legacy fact' });
 			// The message decides over the scope id.
@@ -280,7 +285,16 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 				}),
 				() => [],
 			],
-			['a chat user', () => ({ resourceId: 'draft-chat:user-1' }), () => [preview]],
+			[
+				'a chat user in Preview and n8n Chat',
+				() => ({ resourceIds: ['draft-chat:user-1', 'n8n-chat-production:user-1'] }),
+				() => [preview, chat],
+			],
+			[
+				'all chat users',
+				() => ({ resourceIdPrefixes: ['draft-chat:', 'n8n-chat-production:'] }),
+				() => [preview, chat],
+			],
 		])('filters by %s', async (_name, filter, expected) => {
 			const listed = await entryRepository.listActiveByAgent(agentId, 10, undefined, filter());
 
@@ -295,7 +309,7 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 
 			const rows = await entryRepository.findSourceFacetRows(agentId);
 
-			expect(rows).toHaveLength(5);
+			expect(rows).toHaveLength(6);
 			expect(rows).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({

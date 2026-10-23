@@ -1,5 +1,6 @@
 import type {
 	AgentMemoryEntrySourceKind,
+	AgentMemoryFilterSource,
 	ListAgentMemoryEntriesQueryDto,
 	AgentMemorySourceFacet,
 	AgentMemorySourceFacetGroupDto,
@@ -26,12 +27,19 @@ import {
 	type MemorySourceMessage,
 } from './memory-entry-source';
 
-type ChatSourceKind = 'preview' | 'n8n-chat' | 'build';
+type ChatFilterSource = 'users' | 'build';
 
-const CHAT_RESOURCE_IDS: Record<ChatSourceKind, (userId: string) => string> = {
-	preview: draftChatMemoryResourceId,
-	'n8n-chat': productionChatMemoryResourceId,
-	build: systemChatMemoryResourceId,
+/** Scope ids of each chat filter source. `users` covers both chat surfaces a person uses. */
+const CHAT_RESOURCE_IDS: Record<ChatFilterSource, Array<(userId: string) => string>> = {
+	users: [draftChatMemoryResourceId, productionChatMemoryResourceId],
+	build: [systemChatMemoryResourceId],
+};
+
+/** The filter group of a chat surface: Preview and n8n Chat are both `users`. */
+const CHAT_FILTER_SOURCE: Partial<Record<AgentMemoryEntrySourceKind, ChatFilterSource>> = {
+	preview: 'users',
+	'n8n-chat': 'users',
+	build: 'build',
 };
 
 /** Facets besides `user` that each integration supports. */
@@ -47,8 +55,8 @@ const FACET_MESSAGE_FIELDS: Record<AgentMemorySourceFacet, MemorySourceMessageFi
 	team: 'teamId',
 };
 
-function isChatSourceKind(kind: string): kind is ChatSourceKind {
-	return kind in CHAT_RESOURCE_IDS;
+function isChatFilterSource(source: string): source is ChatFilterSource {
+	return source in CHAT_RESOURCE_IDS;
 }
 
 /**
@@ -82,19 +90,19 @@ export function toMemoryEntrySourceFilter({
 	if (!sourceFacet !== !sourceFacetId) {
 		throw new BadRequestError('Set both sourceFacet and sourceFacetId, or neither');
 	}
-	if (isChatSourceKind(source)) return chatSourceFilter(source, sourceFacet, sourceFacetId);
+	if (isChatFilterSource(source)) return chatSourceFilter(source, sourceFacet, sourceFacetId);
 	return integrationSourceFilter(source, sourceFacet, sourceFacetId);
 }
 
 function chatSourceFilter(
-	kind: ChatSourceKind,
+	source: ChatFilterSource,
 	facet: AgentMemorySourceFacet | undefined,
 	facetId: string | undefined,
 ): MemoryEntrySourceFilter {
-	const toResourceId = CHAT_RESOURCE_IDS[kind];
-	if (!facet || !facetId) return { resourceIdPrefix: toResourceId('') };
-	if (facet !== 'user') throw new BadRequestError(`Source "${kind}" cannot filter by ${facet}`);
-	return { resourceId: toResourceId(facetId) };
+	const toResourceIds = CHAT_RESOURCE_IDS[source];
+	if (!facet || !facetId) return { resourceIdPrefixes: toResourceIds.map((toId) => toId('')) };
+	if (facet !== 'user') throw new BadRequestError(`Source "${source}" cannot filter by ${facet}`);
+	return { resourceIds: toResourceIds.map((toId) => toId(facetId)) };
 }
 
 function integrationSourceFilter(
@@ -173,8 +181,8 @@ export function buildMemorySourceFacetGroups(
 	userNames: ReadonlyMap<string, string>,
 	viewerId: string,
 ): AgentMemorySourceFacetGroupDto[] {
-	const groups = new Map<AgentMemoryEntrySourceKind, FacetGroupBuilder>();
-	const groupFor = (kind: AgentMemoryEntrySourceKind) => {
+	const groups = new Map<AgentMemoryFilterSource, FacetGroupBuilder>();
+	const groupFor = (kind: AgentMemoryFilterSource) => {
 		const group = groups.get(kind) ?? { users: new FacetItems(), places: new FacetItems() };
 		groups.set(kind, group);
 		return group;
@@ -186,8 +194,9 @@ export function buildMemorySourceFacetGroups(
 			continue;
 		}
 		const owner = chatSourceOwner(row.resourceId);
-		if (!owner) continue;
-		groupFor(owner.kind).users.add(
+		const filterSource = owner && CHAT_FILTER_SOURCE[owner.kind];
+		if (!owner || !filterSource) continue;
+		groupFor(filterSource).users.add(
 			owner.userId,
 			userNames.get(owner.userId),
 			owner.userId === viewerId,
@@ -220,7 +229,7 @@ function addIntegrationRow(
 }
 
 function toFacetGroup(
-	kind: AgentMemoryEntrySourceKind,
+	kind: AgentMemoryFilterSource,
 	group: FacetGroupBuilder,
 ): AgentMemorySourceFacetGroupDto {
 	const result: AgentMemorySourceFacetGroupDto = { kind, users: group.users.list() };

@@ -260,6 +260,23 @@ export const AGENT_MEMORY_ENTRY_SOURCE_KINDS = [
 
 export type AgentMemoryEntrySourceKind = (typeof AGENT_MEMORY_ENTRY_SOURCE_KINDS)[number];
 
+/**
+ * Sources the memory list can filter by. `users` covers the n8n users who chatted
+ * with the agent, in Preview or in n8n Chat.
+ */
+export const AGENT_MEMORY_FILTER_SOURCES = [
+	'slack',
+	'linear',
+	'discord',
+	'telegram',
+	'whatsapp',
+	'teams',
+	'users',
+	'build',
+] as const;
+
+export type AgentMemoryFilterSource = (typeof AGENT_MEMORY_FILTER_SOURCES)[number];
+
 /** The kind of source inside an integration that the memory list can filter by. */
 export const AGENT_MEMORY_SOURCE_FACETS = ['user', 'channel', 'team'] as const;
 
@@ -303,7 +320,7 @@ export interface AgentMemorySourceFacetItemDto {
 
 /** The sources of one integration or chat surface that have active memories. */
 export interface AgentMemorySourceFacetGroupDto {
-	kind: AgentMemoryEntrySourceKind;
+	kind: AgentMemoryFilterSource;
 	users: AgentMemorySourceFacetItemDto[];
 	/** Slack and Discord only. */
 	channels?: AgentMemorySourceFacetItemDto[];

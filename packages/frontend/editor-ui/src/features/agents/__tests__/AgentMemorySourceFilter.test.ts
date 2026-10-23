@@ -26,7 +26,7 @@ const groups: AgentMemorySourceFacetGroupDto[] = [
 		users: [{ id: 'U1', name: 'Sin' }],
 		channels: [{ id: 'C1', name: 'finance-ops' }],
 	},
-	{ kind: 'preview', users: [{ id: 'viewer-1', name: 'Robin', isViewer: true }] },
+	{ kind: 'users', users: [{ id: 'viewer-1', name: 'Robin', isViewer: true }] },
 ];
 
 function mountFilter(modelValue = {}) {
@@ -52,7 +52,7 @@ describe('AgentMemorySourceFilter', () => {
 		expect(items.map(({ label }) => label)).toEqual([
 			'agents.builder.memory.entries.filter.all',
 			'Slack',
-			'agents.builder.memory.entries.source.preview',
+			'agents.builder.memory.entries.filter.users',
 		]);
 		expect(items[1].children?.map(({ label }) => label)).toEqual([
 			'agents.builder.memory.entries.filter.allFrom Slack',
@@ -61,7 +61,11 @@ describe('AgentMemorySourceFilter', () => {
 			'agents.builder.memory.entries.filter.users',
 			'Sin',
 		]);
-		expect(items[2].children?.at(-1)?.label).toBe('agents.builder.memory.entries.source.you');
+		// One section, so no header: all users, then each user.
+		expect(items[2].children?.map(({ label }) => label)).toEqual([
+			'agents.builder.memory.entries.filter.allUsers',
+			'agents.builder.memory.entries.source.you',
+		]);
 	});
 
 	it('selects a channel, a whole integration, or all sources', async () => {

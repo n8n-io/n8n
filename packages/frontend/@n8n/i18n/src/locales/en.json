@@ -9057,6 +9057,7 @@
 	"agents.builder.memory.entries.filter.trigger": "Source: {source}",
 	"agents.builder.memory.entries.filter.all": "All sources",
 	"agents.builder.memory.entries.filter.allFrom": "All from {source}",
+	"agents.builder.memory.entries.filter.allUsers": "All users",
 	"agents.builder.memory.entries.filter.channels": "Channels",
 	"agents.builder.memory.entries.filter.teams": "Teams",
 	"agents.builder.memory.entries.filter.users": "Users",
