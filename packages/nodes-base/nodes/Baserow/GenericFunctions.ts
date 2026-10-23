@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,7 +7,7 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, UserError } from 'n8n-workflow';
 
 import type { BaserowCredentials, LoadedResource } from './types';
 
@@ -74,10 +75,22 @@ function isFullyFormattedMultiStepValue(value: string): boolean {
  */
 export function formatBaserowFilterValue(
 	operator: string,
-	value: string,
+	value?: unknown,
 	timezone = 'UTC',
 ): string {
-	const trimmed = value.trim();
+	let normalizedValue: string;
+	if (value === undefined || value === null) {
+		normalizedValue = '';
+	} else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+		normalizedValue = String(value);
+	} else if (DateTime.isDateTime(value) && value.isValid) {
+		normalizedValue = value.toISO() ?? '';
+	} else {
+		throw new UserError(
+			'Baserow filter values must be strings, numbers, booleans, or valid DateTime values',
+		);
+	}
+	const trimmed = normalizedValue.trim();
 
 	if (!trimmed) {
 		if (DEPRECATED_TIMEZONE_ONLY_OPERATORS.has(operator)) {
