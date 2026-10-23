@@ -114,59 +114,6 @@ describe('N8nPopover', () => {
 		expect(wrapper.props('maxHeight')).toBeUndefined();
 	});
 
-	describe('footer slot', () => {
-		it('renders the footer outside the scroll area and caps the whole card', () => {
-			const wrapper = render(N8nPopover, {
-				props: { maxHeight: '200px' },
-				global: {
-					stubs: {
-						...defaultStubs,
-						// The default stub drops the style prop; this one forwards it so the cap is visible.
-						PopoverContent: {
-							template:
-								'<mock-popover-content v-bind="$attrs" :style="style"><slot /></mock-popover-content>',
-							props: ['open', 'side', 'sideOffset', 'class', 'style'],
-						},
-					},
-				},
-				slots: {
-					trigger: '<button />',
-					content: '<content />',
-					footer: '<footer-content />',
-				},
-			});
-
-			const footer = wrapper.getByTestId('popover-footer');
-			const card = wrapper.container.querySelector('mock-popover-content')!;
-			const viewport = wrapper.container.querySelector('[data-reka-scroll-area-viewport]')!;
-
-			expect(footer).toContainHTML('<footer-content></footer-content>');
-			expect(viewport).not.toContainElement(footer);
-			// The footer follows the scroll area, and the cap moves from the viewport to the card.
-			expect(viewport.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
-				Node.DOCUMENT_POSITION_FOLLOWING,
-			);
-			expect(viewport).not.toHaveStyle({ maxHeight: '200px' });
-			expect(card).toHaveStyle({ maxHeight: '200px' });
-		});
-
-		it('renders no footer container without the slot', () => {
-			const wrapper = render(N8nPopover, {
-				props: { maxHeight: '200px' },
-				global: { stubs: defaultStubs },
-				slots: {
-					trigger: '<button />',
-					content: '<content />',
-				},
-			});
-
-			expect(wrapper.queryByTestId('popover-footer')).not.toBeInTheDocument();
-			expect(wrapper.container.querySelector('[data-reka-scroll-area-viewport]')).toHaveStyle({
-				maxHeight: '200px',
-			});
-		});
-	});
-
 	describe('auto-focus behavior', () => {
 		it('should focus an element in the content slot by default', async () => {
 			const wrapper = render(N8nPopover, {

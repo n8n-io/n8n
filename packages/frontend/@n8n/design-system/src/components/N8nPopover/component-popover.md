@@ -23,7 +23,6 @@ Displays floating content anchored to a trigger element. Popovers are used for d
 - `enableScrolling?: boolean` - Whether to enable built-in scroll area. Default: `true`
 - `enableSlideIn?: boolean` - Whether to enable slide-in animation. Default: `true`
 - `scrollType?: 'auto' | 'always' | 'scroll' | 'hover'` - Scrollbar visibility behavior. Default: `'hover'`
-- `scrollEdgeFade?: boolean` - Fade the top and bottom edges of the content while more of it can be scrolled into view. Default: `false`
 - `suppressAutoFocus?: boolean` - Whether to suppress auto-focus when opened. Default: `false`
 - `zIndex?: number` - z-index of popover content. Default: `999`
 - `reference?: Element` - Custom reference element for positioning.
@@ -38,7 +37,6 @@ Displays floating content anchored to a trigger element. Popovers are used for d
 
 - `trigger` - The trigger element that activates the popover (required).
 - `content` - The popover content. Receives `{ close: () => void }` scope for programmatic closing.
-- `footer` - Content pinned below the scroll area, so it stays in view while `content` scrolls (e.g. a sign-out action). With `maxHeight`, the cap applies to content and footer together. Receives the same `{ close }` scope.
 
 ### Template usage example
 

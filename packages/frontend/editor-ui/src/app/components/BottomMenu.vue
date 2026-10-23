@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import {
+	N8nBadge,
+	N8nDropdownMenu,
+	N8nDropdownMenuItem,
 	N8nMenuItem,
+	N8nNewBadge,
 	N8nPopover,
+	N8nPreviewBadge,
+	N8nScrollArea,
 	N8nText,
 	isCustomMenuItem,
+	type DropdownMenuItemProps,
 	type IMenuItem,
 	type IMenuElement,
 } from '@n8n/design-system';
@@ -16,7 +24,7 @@ import type { SettingsSectionGroup } from '@/app/composables/useSettingsItems';
 
 import { useI18n } from '@n8n/i18n';
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		items: IMenuItem[];
 		isCollapsed: boolean;
@@ -31,10 +39,55 @@ const emit = defineEmits<{
 	logout: [];
 }>();
 
+const router = useRouter();
 const versionsStore = useVersionsStore();
 const usersStore = useUsersStore();
 
 const i18n = useI18n();
+
+const isHelpOpen = ref(false);
+const isSettingsOpen = ref(false);
+
+/** A settings row keeps its menu item in `data`, so the trailing slot can show its tags. */
+type SettingsMenuEntry = DropdownMenuItemProps<string, IMenuItem>;
+
+function toSettingsEntry(item: IMenuItem): SettingsMenuEntry {
+	return {
+		id: item.id,
+		testId: item.id,
+		label: item.label,
+		icon: typeof item.icon === 'string' ? { type: 'icon', value: item.icon } : item.icon,
+		disabled: item.disabled,
+		data: item,
+	};
+}
+
+const settingsEntries = computed<SettingsMenuEntry[]>(() => {
+	if (props.settingsSections) {
+		return props.settingsSections.flatMap((section) => [
+			...(section.title
+				? [{ id: `section-${section.id}`, label: section.title, header: true }]
+				: []),
+			...section.items.map(toSettingsEntry),
+		]);
+	}
+
+	const settingsItem = props.items.find((item) => item.id === 'settings');
+	return (settingsItem?.children ?? [])
+		.filter((child): child is IMenuItem => !isCustomMenuItem(child))
+		.map(toSettingsEntry);
+});
+
+// A menu row is not a link, so the row's route is followed here.
+function handleSettingsSelect(key: string) {
+	const item = settingsEntries.value.find((entry) => entry.id === key)?.data;
+	if (item?.route?.to) {
+		void router.push(item.route.to);
+	} else if (item?.link) {
+		window.open(item.link.href, item.link.target ?? '_self');
+	}
+	handleSelect(key);
+}
 
 const whatsNewItems = computed<{ available: boolean; children: IMenuElement[] }>(() => ({
 	available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
@@ -103,9 +156,9 @@ function onLogout() {
 				<N8nPopover
 					v-if="item.children && item.id === 'help'"
 					key="help"
+					v-model:open="isHelpOpen"
 					side="right"
 					align="end"
-					:side-offset="12"
 				>
 					<template #content>
 						<div :class="$style.popover">
@@ -137,84 +190,69 @@ function onLogout() {
 							:data-test-id="`main-sidebar-${item.id}`"
 							:item="item"
 							:compact="isCollapsed"
+							:active="isHelpOpen"
 							@click="() => handleSelect(item.id)"
 						/>
 					</template>
 				</N8nPopover>
-				<!-- Settings popover. max-height: ~15 rows of 32px, so the menu does not fill a
-				     tall screen; the rest scrolls behind the edge fade and the sign-out footer stays
-				     pinned. On a short screen the available height still wins. -->
-				<N8nPopover
+				<!-- Settings menu. The height cap keeps it from filling a tall screen; the links
+				     scroll in their own area, with faded edges while there is more, and Sign out
+				     stays below it. On a short screen the available height wins. -->
+				<N8nDropdownMenu
 					v-else-if="item.children && item.id === 'settings'"
 					key="settings"
-					side="right"
-					align="end"
-					:side-offset="12"
-					max-height="min(480px, var(--reka-popover-content-available-height))"
-					scroll-edge-fade
+					v-model="isSettingsOpen"
+					:items="settingsEntries"
+					placement="right-end"
+					max-height="min(530px, var(--reka-dropdown-menu-content-available-height))"
+					:extra-popper-class="$style.settingsMenu"
+					content-test-id="main-sidebar-settings-list"
 				>
-					<template #content>
-						<div :class="$style.popover" data-test-id="main-sidebar-settings-list">
-							<template v-if="settingsSections">
-								<div
-									v-for="section in settingsSections"
-									:key="section.id"
-									:data-test-id="`main-sidebar-settings-section-${section.id}`"
-								>
-									<N8nText
-										v-if="section.title"
-										tag="div"
-										bold
-										size="small"
-										color="text-light"
-										:class="$style.popoverTitle"
-									>
-										{{ section.title }}
-									</N8nText>
-									<N8nMenuItem
-										v-for="child in section.items"
-										:key="child.id"
-										:item="child"
-										@click="() => handleSelect(child.id)"
-									/>
-								</div>
-							</template>
-							<template v-else>
-								<template v-for="child in item.children" :key="child.id">
-									<component
-										:is="child.component"
-										v-if="isCustomMenuItem(child)"
-										v-bind="child.props"
-									/>
-									<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
-								</template>
-							</template>
-						</div>
-					</template>
-					<!-- Pinned below the list so it stays reachable when the list scrolls. -->
-					<template #footer>
-						<div :class="$style.popoverFooter">
-							<span :class="$style.divider" />
-							<N8nMenuItem
-								:data-test-id="'main-sidebar-log-out'"
-								:item="{
-									id: 'sign-out',
-									label: i18n.baseText('auth.signout'),
-									icon: 'log-out',
-								}"
-								@click="onLogout"
-							/>
-						</div>
-					</template>
 					<template #trigger>
 						<N8nMenuItem
 							:data-test-id="`main-sidebar-${item.id}`"
+							:class="$style.menuTrigger"
 							:item="item"
 							:compact="isCollapsed"
+							:active="isSettingsOpen"
 							@click="() => handleSelect(item.id)"
 						/>
 					</template>
-				</N8nPopover>
+					<template #content>
+						<N8nScrollArea edge-fade="y" :class="$style.settingsList">
+							<div :class="$style.settingsItems" data-menu-items>
+								<N8nDropdownMenuItem
+									v-for="entry in settingsEntries"
+									:key="entry.id"
+									v-bind="entry"
+									@select="handleSettingsSelect"
+								>
+									<template #item-trailing="{ item: row, ui }">
+										<N8nPreviewBadge v-if="row.data?.preview" :class="ui.class" />
+										<N8nNewBadge v-if="row.data?.new" :class="ui.class" />
+										<N8nBadge
+											v-if="row.data?.creditsTag"
+											size="xxsmall"
+											variant="success"
+											:class="ui.class"
+										>
+											{{ row.data.creditsTag }}
+										</N8nBadge>
+									</template>
+								</N8nDropdownMenuItem>
+							</div>
+						</N8nScrollArea>
+						<div :class="$style.settingsFooter" data-test-id="main-sidebar-settings-footer">
+							<N8nDropdownMenuItem
+								id="sign-out"
+								test-id="main-sidebar-log-out"
+								:label="i18n.baseText('auth.signout')"
+								:icon="{ type: 'icon', value: 'log-out' }"
+								@select="onLogout"
+							/>
+						</div>
+					</template>
+				</N8nDropdownMenu>
 				<!-- Items without children -->
 				<N8nMenuItem
 					v-else
@@ -255,15 +293,6 @@ function onLogout() {
 	min-width: 260px;
 }
 
-/* Same inset as the list above it, whose bottom padding already spaces the divider. */
-.popoverFooter {
-	padding: 0 var(--spacing--4xs) var(--spacing--4xs);
-
-	.divider {
-		padding-top: var(--spacing--5xs);
-	}
-}
-
 .popoverTitle {
 	display: block;
 	margin-bottom: var(--spacing--3xs);
@@ -271,12 +300,37 @@ function onLogout() {
 	margin-top: var(--spacing--xs);
 }
 
-.divider {
+/* The dropdown lays its trigger out inline, which shrinks the row to its label. */
+.bottomMenuItems .menuTrigger {
 	display: block;
-	width: 100%;
-	padding-top: var(--spacing--3xs);
-	border-bottom: var(--border);
-	margin-bottom: var(--spacing--3xs);
-	background-color: var(--color--border);
+}
+
+/*
+ * Doubled to outrank the menu's own scrolling. Grid rows are definite once sized, so the
+ * scroll area fills the row above the footer and scrolls inside it.
+ */
+.settingsMenu.settingsMenu {
+	display: grid;
+	grid-template-rows: minmax(0, 1fr) auto;
+	min-width: 260px;
+	overflow: hidden;
+}
+
+.settingsList {
+	min-height: 0;
+}
+
+/* Same inset and rhythm as the menu's own item list. */
+.settingsItems {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	padding: var(--spacing--4xs);
+}
+
+/* The border runs edge to edge because the footer sits outside the list inset. */
+.settingsFooter {
+	padding: var(--spacing--4xs);
+	border-top: var(--border);
 }
 </style>

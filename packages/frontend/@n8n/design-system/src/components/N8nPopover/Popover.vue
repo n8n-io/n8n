@@ -10,7 +10,7 @@ import {
 	type PointerDownOutsideEvent,
 	type FocusOutsideEvent,
 } from 'reka-ui';
-import { computed, useSlots, watch } from 'vue';
+import { watch } from 'vue';
 
 defineOptions({ name: 'N8nPopover' });
 
@@ -48,11 +48,6 @@ interface Props
 	 * Scrollbar visibility behavior
 	 */
 	scrollType?: 'auto' | 'always' | 'scroll' | 'hover';
-	/**
-	 * Fade the top and bottom edges of the scrollable content while more of it can be
-	 * scrolled into view. See `N8nScrollArea`'s `edgeFade`.
-	 */
-	scrollEdgeFade?: boolean;
 	/**
 	 * Popover width
 	 */
@@ -99,7 +94,6 @@ const props = withDefaults(defineProps<Props>(), {
 	forceMount: false,
 	enableSlideIn: true,
 	scrollType: 'hover',
-	scrollEdgeFade: false,
 	sideOffset: 4,
 	align: 'start',
 	sideFlip: undefined,
@@ -112,12 +106,6 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<Emits>();
-
-const slots = useSlots();
-
-// With a footer the max height caps the whole card, and a grid keeps the scroll area's
-// row definite so the viewport can scroll inside it while the footer stays in view.
-const hasScrollingFooter = computed(() => props.enableScrolling && Boolean(slots.footer));
 
 function handleOpenAutoFocus(e: Event) {
 	if (props.suppressAutoFocus) {
@@ -172,12 +160,8 @@ watch(
 				:align="align"
 				:side-offset="sideOffset"
 				:collision-padding="collisionPadding"
-				:class="[
-					$style.popoverContent,
-					contentClass,
-					{ [$style.enableSlideIn]: enableSlideIn, [$style.withFooter]: hasScrollingFooter },
-				]"
-				:style="{ width, zIndex, maxHeight: hasScrollingFooter ? maxHeight : undefined }"
+				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
+				:style="{ width, zIndex }"
 				:reference="reference"
 				:force-mount="forceMount"
 				:position-strategy="positionStrategy"
@@ -188,10 +172,8 @@ watch(
 			>
 				<N8nScrollArea
 					v-if="enableScrolling"
-					:class="$style.scrollArea"
-					:max-height="hasScrollingFooter ? undefined : maxHeight"
+					:max-height="maxHeight"
 					:type="scrollType"
-					:edge-fade="scrollEdgeFade"
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"
 				>
@@ -200,9 +182,6 @@ watch(
 				<template v-else>
 					<slot name="content" :close="() => emit('update:open', false)" />
 				</template>
-				<div v-if="slots.footer" data-test-id="popover-footer">
-					<slot name="footer" :close="() => emit('update:open', false)" />
-				</div>
 				<PopoverArrow v-if="showArrow" :class="$style.popoverArrow" />
 			</PopoverContent>
 		</PopoverPortal>
@@ -232,30 +211,9 @@ watch(
 		}
 	}
 
-	/* Grid rows are definite once sized, so the scroll area's percentage heights resolve. */
-	&.withFooter {
-		display: grid;
-		grid-template-rows: minmax(0, 1fr) auto;
-	}
-
-	/* Stays below `.withFooter` so the closed state wins at equal specificity. */
 	&[data-state='closed'] {
 		display: none;
 	}
-}
-
-/*
- * The scroll area is what clips the content and its edge fades, so it must share the
- * card's corners; a square clip paints the fade over the rounded outline. A footer sits
- * below the scroll area, so only the top corners are rounded in that layout.
- */
-.scrollArea {
-	border-radius: inherit;
-}
-
-.withFooter > .scrollArea {
-	border-bottom-left-radius: 0;
-	border-bottom-right-radius: 0;
 }
 
 .popoverContent[data-state='open'][data-side='top'] {

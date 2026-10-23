@@ -1,5 +1,6 @@
 import { reactive } from 'vue';
 import { within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -16,10 +17,12 @@ import type { Version } from '@n8n/rest-api-client/api/versions';
 import { ABOUT_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 
 const openTopUpMock = vi.hoisted(() => vi.fn());
+const routerPushMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn(() => ({ meta: {} })),
+		push: routerPushMock,
 	}),
 	useRoute: () => reactive({ params: {} }),
 	RouterLink: vi.fn(),
@@ -53,6 +56,7 @@ const mockVersion: Version = {
 describe('MainSidebar', () => {
 	beforeEach(() => {
 		openTopUpMock.mockReset();
+		routerPushMock.mockReset();
 		renderComponent = createComponentRenderer(MainSidebar, {
 			pinia: createTestingPinia(),
 		});
@@ -248,11 +252,11 @@ describe('MainSidebar', () => {
 
 			const { getByText, findByText } = renderComponent();
 
-			getByText('Settings').click();
-			const creditsItem = await findByText('Gateway credits');
-			creditsItem.click();
+			await userEvent.click(getByText('Settings'));
+			await userEvent.click(await findByText('Gateway credits'));
 
 			expect(openTopUpMock).toHaveBeenCalledWith({ source: 'settings_page' });
+			expect(routerPushMock).not.toHaveBeenCalled();
 		});
 
 		it('should list the settings links under their section headings', async () => {
@@ -265,28 +269,40 @@ describe('MainSidebar', () => {
 				},
 			};
 
-			const { getByText, findByTestId, queryByTestId } = renderComponent();
+			const { getByText, findByTestId } = renderComponent();
 
-			getByText('Settings').click();
-			const personalSection = await findByTestId('main-sidebar-settings-section-personal');
-			const billingSection = await findByTestId('main-sidebar-settings-section-billing');
+			await userEvent.click(getByText('Settings'));
+			const list = await findByTestId('main-sidebar-settings-list');
 
-			// Routed links render through the mocked RouterLink, so only the credits link has text.
-			expect(within(personalSection).getByText('Personal')).toBeInTheDocument();
-			expect(within(billingSection).getByText('Billing')).toBeInTheDocument();
-			expect(within(billingSection).getByText('Gateway credits')).toBeInTheDocument();
-			expect(queryByTestId('main-sidebar-settings-section-general')).not.toBeInTheDocument();
+			const personalHeading = within(list).getByText('Personal');
+			const billingHeading = within(list).getByText('Billing');
+			expect(within(list).getByText('Gateway credits')).toBeInTheDocument();
+			expect(within(list).queryByText('General')).not.toBeInTheDocument();
+			// Headings keep the section order.
+			expect(
+				personalHeading.compareDocumentPosition(billingHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 		});
 
-		it('should pin sign out below the scrolling settings list', async () => {
+		it('should follow the route of a selected settings link', async () => {
+			const { getByText, findByTestId } = renderComponent();
+
+			await userEvent.click(getByText('Settings'));
+			await userEvent.click(await findByTestId('settings-personal'));
+
+			expect(routerPushMock).toHaveBeenCalledWith({ name: 'PersonalSettings' });
+		});
+
+		it('should keep sign out in a footer below the settings list', async () => {
 			const { getByText, findByTestId, getByTestId } = renderComponent();
 
-			getByText('Settings').click();
+			await userEvent.click(getByText('Settings'));
 			const signOut = await findByTestId('main-sidebar-log-out');
 
-			expect(getByTestId('popover-footer')).toContainElement(signOut);
-			expect(getByTestId('main-sidebar-settings-list')).not.toContainElement(signOut);
-			expect(getByTestId('scroll-area-fade-bottom')).toBeInTheDocument();
+			expect(getByTestId('main-sidebar-settings-footer')).toContainElement(signOut);
+			expect(
+				getByTestId('main-sidebar-settings-list').querySelector('[data-menu-items]'),
+			).not.toContainElement(signOut);
 		});
 	});
 });
