@@ -13,6 +13,7 @@ import type { LocalMcpServer } from '../../types';
 import {
 	buildTaskMessage,
 	runCloudBrowserAgent,
+	type CloudBrowserUserActionHost,
 	type RunCloudBrowserAgentOptions,
 } from '../cloud-browser-agent';
 
@@ -100,6 +101,7 @@ function makeOptions(): RunCloudBrowserAgentOptions {
 		agentId: 'agent-1',
 		brief: { goal: 'Find the price of the Pro plan', startUrl: 'https://example.com/pricing' },
 		mcpServer: mock<LocalMcpServer>(),
+		userActionHost: mock<CloudBrowserUserActionHost>(),
 		modelId: 'anthropic/claude-sonnet-4-5',
 		threadId: 'thread-1',
 		runId: 'run-1',
@@ -203,8 +205,46 @@ describe('runCloudBrowserAgent', () => {
 		expect(agents[0].tools.map((tool) => tool.name)).toEqual([
 			'browser_navigate',
 			'browser_click',
+			'browser_request_user_action',
 			'report_result',
 		]);
+	});
+
+	describe('browser_request_user_action', () => {
+		/** Runs the agent, then calls the tool as the model would. */
+		async function requestUserAction(
+			result: Awaited<ReturnType<CloudBrowserUserActionHost['requestUserAction']>>,
+		) {
+			vi.mocked(executeResumableStream).mockResolvedValue(streamResult());
+			const options = makeOptions();
+			vi.mocked(options.userActionHost.requestUserAction).mockResolvedValue(result);
+			await runCloudBrowserAgent(options);
+			const tool = agents[0].tools.find((t) => t.name === 'browser_request_user_action');
+			const output = await tool?.handler?.({ reason: 'Sign in to Acme.' }, {} as never);
+			expect(options.userActionHost.requestUserAction).toHaveBeenCalledTimes(1);
+			return output;
+		}
+
+		it("returns the user's note and what to do next when the user returns control", async () => {
+			expect(await requestUserAction({ returned: true, note: 'Signed in' })).toEqual({
+				controlReturned: true,
+				userNote: 'Signed in',
+				next: 'Call browser_snapshot to see the page, then continue.',
+			});
+		});
+
+		it('leaves out the note when the user gives none', async () => {
+			expect(await requestUserAction({ returned: true })).toEqual({
+				controlReturned: true,
+				next: 'Call browser_snapshot to see the page, then continue.',
+			});
+		});
+
+		it('returns the error when control does not come back', async () => {
+			expect(
+				await requestUserAction({ returned: false, error: 'The browser task has ended.' }),
+			).toEqual({ controlReturned: false, error: 'The browser task has ended.' });
+		});
 	});
 
 	it.each([

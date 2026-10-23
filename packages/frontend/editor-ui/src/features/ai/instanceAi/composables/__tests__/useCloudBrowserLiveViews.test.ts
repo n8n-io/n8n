@@ -200,11 +200,87 @@ describe('useCloudBrowserLiveViews', () => {
 	});
 });
 
+describe('useCloudBrowserLiveViews disconnect messages', () => {
+	// Scopes of the tests above stay alive and listen too, so use a task id only this block uses.
+	const taskId = 'task-messages';
+	let frames: HTMLIFrameElement[] = [];
+
+	function addFrame(frameTaskId: string, src = 'https://live.example.com/1'): HTMLIFrameElement {
+		const frame = document.createElement('iframe');
+		frame.src = src;
+		frame.setAttribute('data-cloud-browser-task-id', frameTaskId);
+		document.body.appendChild(frame);
+		frames.push(frame);
+		return frame;
+	}
+
+	function postMessage(
+		frame: HTMLIFrameElement | undefined,
+		{ data = 'browserbase-disconnected', origin = 'https://live.example.com' } = {},
+	) {
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				data,
+				origin,
+				source: frame?.contentWindow ?? null,
+			}),
+		);
+	}
+
+	beforeEach(() => {
+		vi.mocked(fetchCloudBrowserLiveView).mockReset();
+		vi.mocked(fetchCloudBrowserLiveView).mockResolvedValue(live);
+	});
+
+	afterEach(() => {
+		for (const frame of frames) frame.remove();
+		frames = [];
+	});
+
+	it('fetches the live view again when its own frame disconnects', async () => {
+		const { views, scope } = setup([makeTask({ taskId })]);
+		await flushPromises();
+		const frame = addFrame(taskId);
+
+		postMessage(frame);
+		expect(views.get(taskId)).toEqual({ status: 'loading' });
+		await flushPromises();
+
+		expect(views.get(taskId)).toEqual(live);
+		expect(fetchCloudBrowserLiveView).toHaveBeenCalledTimes(2);
+		scope.stop();
+	});
+
+	it.each([
+		['from another origin', { origin: 'https://other.example.com' }, taskId, true],
+		['with other data', { data: 'something-else' }, taskId, true],
+		['from a frame of an unknown task', {}, 'task-2', true],
+		['from an unknown source', {}, taskId, false],
+	])('ignores a message %s', async (_, message, frameTaskId, fromFrame) => {
+		const { views, scope } = setup([makeTask({ taskId })]);
+		await flushPromises();
+		const frame = addFrame(frameTaskId);
+
+		postMessage(fromFrame ? frame : undefined, message);
+		await flushPromises();
+
+		expect(views.get(taskId)).toEqual(live);
+		expect(fetchCloudBrowserLiveView).toHaveBeenCalledTimes(1);
+		scope.stop();
+	});
+});
+
 describe('embeddedLiveViewUrl', () => {
 	it("hides Browserbase's own navigation bar", () => {
 		expect(embeddedLiveViewUrl('https://live.example.com/view?t=abc')).toBe(
 			'https://live.example.com/view?t=abc&navbar=false',
 		);
+	});
+
+	it("keeps Browserbase's own navigation bar when asked", () => {
+		expect(
+			embeddedLiveViewUrl('https://live.example.com/view?t=abc&navbar=false', { navbar: true }),
+		).toBe('https://live.example.com/view?t=abc');
 	});
 
 	it('leaves a link it cannot read as it is', () => {

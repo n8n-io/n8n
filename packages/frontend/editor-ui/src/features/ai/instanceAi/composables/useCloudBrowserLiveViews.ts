@@ -1,5 +1,6 @@
 import type { InstanceAiCloudBrowserLiveViewResponse } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useEventListener } from '@vueuse/core';
 import { onScopeDispose, reactive, watch, type ComputedRef, type InjectionKey } from 'vue';
 
 import { CLOUD_BROWSER_LIVE_VIEW_RETRY_INTERVAL } from '@/app/constants/durations';
@@ -18,11 +19,33 @@ export type CloudBrowserLiveViews = ReadonlyMap<string, CloudBrowserLiveView>;
 export const CloudBrowserLiveViewsKey: InjectionKey<CloudBrowserLiveViews> =
 	Symbol('CloudBrowserLiveViews');
 
-/** The live view for embedding: without Browserbase's own navigation bar. */
-export function embeddedLiveViewUrl(href: string): string {
+/** Set on every live view iframe, with the task id, so a message from the frame leads to its task. */
+const FRAME_TASK_ATTRIBUTE = 'data-cloud-browser-task-id';
+
+/** What Browserbase's live view posts to its parent when its session ends or its connection drops. */
+const DISCONNECTED_MESSAGE = 'browserbase-disconnected';
+
+/** The task whose live view iframe sent the message, if it came from one of them. */
+function taskIdOfMessage(event: MessageEvent): string | undefined {
+	for (const frame of document.querySelectorAll<HTMLIFrameElement>(
+		`iframe[${FRAME_TASK_ATTRIBUTE}]`,
+	)) {
+		if (frame.contentWindow !== event.source) continue;
+		if (new URL(frame.src).origin !== event.origin) return undefined;
+		return frame.getAttribute(FRAME_TASK_ATTRIBUTE) ?? undefined;
+	}
+	return undefined;
+}
+
+/**
+ * The live view for embedding. Without `navbar`, Browserbase's own bar (address and
+ * navigation buttons) is hidden.
+ */
+export function embeddedLiveViewUrl(href: string, { navbar = false } = {}): string {
 	try {
 		const url = new URL(href);
-		url.searchParams.set('navbar', 'false');
+		if (navbar) url.searchParams.delete('navbar');
+		else url.searchParams.set('navbar', 'false');
 		return url.toString();
 	} catch {
 		return href;
@@ -93,6 +116,16 @@ export function useCloudBrowserLiveViews(
 		},
 		{ immediate: true },
 	);
+
+	// A live view that disconnects shows Chrome's own disconnect message. Remove its frames at once and
+	// ask the server what happened: the browser closed, a new session is opening, or the task ended.
+	useEventListener(window, 'message', (event: MessageEvent) => {
+		if (event.data !== DISCONNECTED_MESSAGE) return;
+		const taskId = taskIdOfMessage(event);
+		if (!taskId || !fetchedKeys.has(taskId)) return;
+		views.set(taskId, { status: 'loading' });
+		void refresh(taskId);
+	});
 
 	onScopeDispose(() => {
 		for (const taskId of [...retryTimers.keys()]) clearRetry(taskId);

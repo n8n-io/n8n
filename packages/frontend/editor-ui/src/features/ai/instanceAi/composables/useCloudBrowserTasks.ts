@@ -7,6 +7,9 @@ import { useThread, type ThreadRuntime } from '../instanceAi.store';
 /** Opens a new browser session, which has a new live view link. */
 const START_SESSION_TOOL = 'browser_start_session';
 
+/** The agent's request for the user. It runs until the user returns control. */
+const REQUEST_USER_ACTION_TOOL = 'browser_request_user_action';
+
 export interface CloudBrowserTask {
 	agentId: string;
 	taskId: string;
@@ -18,6 +21,8 @@ export interface CloudBrowserTask {
 	state: 'running' | 'done' | 'failed';
 	/** Changes each time the agent opens a browser session, so the live view link is fetched again. */
 	sessionKey: string;
+	/** Set while the agent waits for the user to do a step in the browser. */
+	userAction?: { reason: string };
 }
 
 function sessionKeyOf(node: InstanceAiAgentNode): string {
@@ -25,6 +30,14 @@ function sessionKeyOf(node: InstanceAiAgentNode): string {
 		(toolCall) => toolCall.toolName === START_SESSION_TOOL && !toolCall.isLoading,
 	);
 	return started.at(-1)?.toolCallId ?? '';
+}
+
+function userActionOf(node: InstanceAiAgentNode): CloudBrowserTask['userAction'] {
+	const request = node.toolCalls.find(
+		(toolCall) => toolCall.toolName === REQUEST_USER_ACTION_TOOL && toolCall.isLoading,
+	);
+	const reason = request?.args.reason;
+	return typeof reason === 'string' ? { reason } : undefined;
 }
 
 function taskStateOf(node: InstanceAiAgentNode): CloudBrowserTask['state'] | undefined {
@@ -61,6 +74,7 @@ export function useCloudBrowserTasks(runtime?: ThreadRuntime): ComputedRef<Cloud
 				title: node.title ?? node.subtitle ?? node.goal ?? '',
 				state,
 				sessionKey: sessionKeyOf(node),
+				userAction: state === 'running' ? userActionOf(node) : undefined,
 			});
 		}
 		return tasks;
