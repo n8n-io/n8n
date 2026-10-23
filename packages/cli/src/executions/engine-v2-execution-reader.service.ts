@@ -262,7 +262,7 @@ export class EngineV2ExecutionReader {
  * without — redaction walks it unguarded — so a document without it reads as no
  * execution at all rather than as a 500.
  */
-function asWorkflowSnapshot(document: unknown): WorkflowSnapshot | undefined {
+export function asWorkflowSnapshot(document: unknown): WorkflowSnapshot | undefined {
 	if (typeof document !== 'object' || document === null) return undefined;
 	if (!Array.isArray((document as { nodes?: unknown }).nodes)) return undefined;
 

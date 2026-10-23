@@ -6,6 +6,7 @@ import type { INode, IRunData } from 'n8n-workflow';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, Workflow } from 'n8n-workflow';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
+import { asWorkflowSnapshot } from '@/executions/engine-v2-execution-reader.service';
 import { toV1Status } from '@/executions/engine-v2-mapping';
 import { isExecutionIdV2 } from '@/executions/execution-id';
 import { applyCors } from '@/utils/cors.util';
@@ -102,9 +103,7 @@ export class WaitingForms extends WaitingWebhooks {
 	}
 
 	private findWorkflowNode(snapshot: ExecutionSnapshot, nodeId: string): INode | undefined {
-		// The document is opaque to the data plane; whoever started the run shaped it.
-		const nodes = (snapshot.workflow as { nodes?: INode[] }).nodes;
-		return nodes?.find((node) => node.id === nodeId);
+		return asWorkflowSnapshot(snapshot.workflow)?.nodes.find((node) => node.id === nodeId);
 	}
 
 	findCompletionPage(workflow: Workflow, runData: IRunData, lastNodeExecuted: string) {
