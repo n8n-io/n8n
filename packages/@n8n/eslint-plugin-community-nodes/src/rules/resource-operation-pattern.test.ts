@@ -250,15 +250,15 @@ describe.each([
 	['recommendedWithoutN8nCloudSupport', configs.recommendedWithoutN8nCloudSupport],
 ] as const)('%s config', (_name, config) => {
 	const linter = new Linter();
-	const lint = (code: string) =>
+	const lint = (code: string, filename = 'TestNode.node.ts') =>
 		linter.verify(
 			code,
 			{
-				files: ['**/*.node.ts'],
+				files: ['**/*.ts'],
 				plugins: config.plugins,
 				rules: { [resourceOperationRuleId]: config.rules[resourceOperationRuleId] },
 			},
-			{ filename: 'TestNode.node.ts' },
+			{ filename },
 		);
 
 	// CE-3284: The resource finding must fail lint even when it is the only finding.
@@ -274,5 +274,51 @@ describe.each([
 
 	it('accepts operations organized by resource', () => {
 		expect(lint(nodeWithSixOperations(true))).toEqual([]);
+	});
+
+	// CE-3602: Check getAll action text in node classes and separate description files.
+	describe.each(['TestNode.node.ts', 'ContactDescription.ts'])('%s getAll actions', (filename) => {
+		const lintAction = (action: string, parameterName = 'operation', value = 'getAll') => {
+			const parameter = `{
+				displayName: 'Operation',
+				name: '${parameterName}',
+				type: 'options',
+				options: [{ name: 'Get Many', value: '${value}', action: '${action}' }],
+				default: '${value}',
+			}`;
+			const code = filename.endsWith('.node.ts')
+				? `class TestNode extends Node {
+					description = { properties: [${parameter}] };
+				}`
+				: `export const contactOperations = [${parameter}];`;
+
+			return lint(code, filename);
+		};
+
+		it.each(['List contacts', 'Get contacts'])('reports the getAll action "%s"', (action) => {
+			expect(lintAction(action)).toEqual([
+				expect.objectContaining({
+					ruleId: resourceOperationRuleId,
+					severity: 2,
+					message: `Start the action of the "getAll" operation with "Get many", not "${action}". For example, use "Get many contacts".`,
+				}),
+			]);
+		});
+
+		it('accepts a getAll action that starts with "Get many"', () => {
+			expect(lintAction('Get many contacts')).toEqual([]);
+		});
+
+		it('leaves "Get all" actions to the base rule', () => {
+			expect(lintAction('Get all contacts')).toEqual([]);
+		});
+
+		it('ignores getAll options outside an operation parameter', () => {
+			expect(lintAction('List contacts', 'resource')).toEqual([]);
+		});
+
+		it('ignores other operation values', () => {
+			expect(lintAction('Get contacts', 'operation', 'get')).toEqual([]);
+		});
 	});
 });
