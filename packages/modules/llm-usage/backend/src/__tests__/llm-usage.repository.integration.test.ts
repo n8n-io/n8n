@@ -161,9 +161,9 @@ describe('LlmUsageRepository', () => {
 
 	it('pages and sorts calls', async () => {
 		await repository.insertIgnoringDuplicates([
-			row({ callId: 'cheap', estimatedCostUsd: 0.1, finishedAt: day(1) }),
-			row({ callId: 'mid', estimatedCostUsd: 0.5, finishedAt: day(2) }),
-			row({ callId: 'dear', estimatedCostUsd: 2, finishedAt: day(3) }),
+			row({ callId: 'cheap', estimatedCostUsd: 0.1, finishedAt: day(1), model: 'model-c' }),
+			row({ callId: 'mid', estimatedCostUsd: 0.5, finishedAt: day(2), model: 'model-a' }),
+			row({ callId: 'dear', estimatedCostUsd: 2, finishedAt: day(3), model: 'model-b' }),
 		]);
 		const page = async (skip: number, sortOrder: 'asc' | 'desc') =>
 			await repository.listCalls({
@@ -187,11 +187,7 @@ describe('LlmUsageRepository', () => {
 			sortBy: 'model',
 			sortOrder: 'asc',
 		});
-		expect(byModel.items.map((call) => call.model)).toEqual([
-			'gpt-4o-mini',
-			'gpt-4o-mini',
-			'gpt-4o-mini',
-		]);
+		expect(byModel.items.map((call) => call.model)).toEqual(['model-a', 'model-b', 'model-c']);
 	});
 
 	it('names the agent and the n8n Assistant session of a call, and groups by agent', async () => {

@@ -32,7 +32,10 @@ function isLlmRequest(body: unknown): body is Record<string, unknown> {
 	if (Array.isArray(body.contents)) return true;
 	return (
 		typeof body.model === 'string' &&
-		(Array.isArray(body.messages) || body.input !== undefined || typeof body.prompt === 'string')
+		(Array.isArray(body.messages) ||
+			body.input !== undefined ||
+			// A completion prompt is a string, a list of strings, or a list of token IDs.
+			(body.prompt !== undefined && body.prompt !== null))
 	);
 }
 
@@ -53,7 +56,10 @@ export function inspectRequest(input: {
 	const report = (usage: ParsedUsage | undefined) => {
 		if (!usage) return;
 		const model = usage.model ?? requestedModel ?? 'unknown';
-		const provider = credentialProvider ?? usage.provider;
+		// Many providers answer in the OpenAI format, so only for that format does the credential
+		// name the provider better. An Anthropic or Gemini format names its own provider.
+		const provider =
+			usage.provider === 'openai' ? (credentialProvider ?? usage.provider) : usage.provider;
 		reportLlmUsage(
 			{ ...usage, provider, model, startedAt, finishedAt: new Date(), subType: 'http' },
 			input.context,

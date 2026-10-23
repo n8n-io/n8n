@@ -1,3 +1,8 @@
+import {
+	getLlmCallContext,
+	setLlmUsageSink,
+	type LlmCallContext,
+} from '@n8n/ai-utilities/llm-usage';
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
@@ -149,6 +154,31 @@ describe('SelfHealingInvestigationService', () => {
 				usage: run.usage,
 			}),
 		);
+	});
+
+	it('runs the investigation in an LLM usage scope with its thread, user and workflow', async () => {
+		setLlmUsageSink({ write: () => {} });
+		let context: LlmCallContext | undefined;
+		runtime.startSelfHealingRun.mockImplementation(async () => {
+			context = getLlmCallContext();
+			execution = Promise.resolve(run);
+			return await execution;
+		});
+
+		try {
+			await startAndFinish();
+		} finally {
+			setLlmUsageSink(undefined);
+		}
+
+		expect(context).toEqual({
+			callerType: 'instance-ai',
+			threadId: investigation.threadId,
+			userId: user.id,
+			workflowId: input.workflowId,
+			projectId: input.projectId,
+			executionId: input.executionId,
+		});
 	});
 
 	it('normalizes final report text before storage', async () => {

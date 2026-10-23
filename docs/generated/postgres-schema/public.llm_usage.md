@@ -34,6 +34,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_llm_usage_callerType | CHECK | CHECK ((("callerType")::text = ANY ((ARRAY['node'::character varying, 'agent'::character varying, 'instance-ai'::character varying, 'workflow-builder'::character varying, 'unknown'::character varying])::text[]))) |
+| CHK_llm_usage_subType | CHECK | CHECK ((("subType")::text = ANY ((ARRAY['llm'::character varying, 'http'::character varying])::text[]))) |
 | PK_cac2f69a2cb061fb47291fcd3f2 | PRIMARY KEY | PRIMARY KEY ("callId") |
 | llm_usage_cacheReadTokens_not_null | n | NOT NULL "cacheReadTokens" |
 | llm_usage_cacheWriteTokens_not_null | n | NOT NULL "cacheWriteTokens" |

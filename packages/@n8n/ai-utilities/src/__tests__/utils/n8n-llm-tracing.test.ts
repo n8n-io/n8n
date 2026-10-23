@@ -1232,10 +1232,16 @@ describe('anthropicTokensUsageParser', () => {
 
 		it("takes the provider from the node's credential", async () => {
 			// The DeepSeek node is built on ChatOpenAI, which reports `openai`.
-			executionFunctions.getNode.mockReturnValue({
+			const node: INode = {
+				id: 'node-1',
 				name: 'DeepSeek Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatDeepSeek',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
 				credentials: { deepSeekApi: { id: '1', name: 'x' } },
-			} as INode);
+			};
+			executionFunctions.getNode.mockReturnValue(node);
 			const tracer = new N8nLlmTracing(executionFunctions);
 			const message = new AIMessage({
 				content: 'OK',

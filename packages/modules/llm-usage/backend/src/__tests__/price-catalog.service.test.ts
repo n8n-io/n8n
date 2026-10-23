@@ -117,6 +117,9 @@ describe('PriceCatalogService', () => {
 
 			await vi.advanceTimersByTimeAsync(60 * 60_000);
 			expect(request).toHaveBeenCalledTimes(2);
+
+			await vi.advanceTimersByTimeAsync(24 * 60 * 60_000);
+			expect(request).toHaveBeenCalledTimes(3);
 		} finally {
 			service.stop();
 			vi.useRealTimers();
@@ -162,7 +165,16 @@ describe('PriceCatalogService', () => {
 		expect(service.lookup('openai', 'gpt-4o-mini', 10)?.input).toBe(0.1);
 	});
 
+	it('keeps the last catalog when the body has no model list', async () => {
+		request.mockResolvedValueOnce(ok({ version: 'v2' }));
+
+		await service.refresh();
+
+		expect(service.lookup('openai', 'gpt-4o-mini', 10)?.input).toBe(0.1);
+	});
+
 	it('keeps the last catalog when the server answers with an error status', async () => {
+		logger.warn.mockClear();
 		request.mockResolvedValueOnce({ statusCode: 503, headers: {}, body: 'down' });
 
 		await service.refresh();

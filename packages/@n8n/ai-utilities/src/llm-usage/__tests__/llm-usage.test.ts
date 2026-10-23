@@ -135,6 +135,14 @@ describe('llm-usage', () => {
 		expect(providerFromCredential(undefined)).toBeUndefined();
 	});
 
+	it('counts a malformed token count as 0 and rounds a fraction', () => {
+		useCollectingSink();
+
+		reportLlmUsage(usage({ inputTokens: Number.NaN, outputTokens: 2.6, cacheReadTokens: -1 }));
+
+		expect(records[0]).toMatchObject({ inputTokens: 0, outputTokens: 3, cacheReadTokens: 0 });
+	});
+
 	it('does not throw when the sink throws', () => {
 		setLlmUsageSink({
 			write: () => {

@@ -221,7 +221,7 @@ describe('SettingsLlmUsageView', () => {
 		fetchSummaryMock.mockResolvedValue({ ...summary, totals: { ...totals, calls: 0 } });
 		render();
 
-		expect(await screen.findByText('No LLM calls yet')).toBeInTheDocument();
+		expect(await screen.findByText('No LLM calls in the last 30 days')).toBeInTheDocument();
 		expect(screen.getByText(/based on public list prices/)).toBeInTheDocument();
 	});
 });

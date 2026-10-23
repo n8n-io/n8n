@@ -24,6 +24,10 @@ export type LlmUsageCall = Omit<LlmUsage, keyof BaseEntity> & {
 	userEmail: string | null;
 };
 
+/** A UUID, so that Postgres can cast a thread ID to the uuid type without an error. */
+const UUID_PATTERN =
+	'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
+
 /** Three parameters for each call keep a statement far below SQLite's parameter limit. */
 const SET_PRICES_CHUNK = 200;
 /** A row has 24 columns, so 500 rows stay below the parameter limits of SQLite and Postgres. */
@@ -320,7 +324,7 @@ export class LlmUsageRepository extends Repository<LlmUsage> {
 	 */
 	private withThreads(query: SelectQueryBuilder<LlmUsage>) {
 		const assistantThreadId = this.isPostgres
-			? "CASE WHEN usage.threadId ~ '^[0-9a-fA-F-]{36}$' THEN CAST(usage.threadId AS UUID) END"
+			? `CASE WHEN usage.threadId ~ '${UUID_PATTERN}' THEN CAST(usage.threadId AS UUID) END`
 			: 'usage.threadId';
 		return query
 			.leftJoin(

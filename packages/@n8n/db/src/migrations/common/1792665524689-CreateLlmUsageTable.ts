@@ -26,6 +26,7 @@ export class CreateLlmUsageTable1792665524689 implements ReversibleMigration {
 					.comment('What made the call: a workflow node, an agent, Instance AI or the builder'),
 				column('subType')
 					.varchar(32)
+					.withEnumCheck(['llm', 'http'])
 					.comment('How the call was captured: llm (an AI library) or http (a node HTTP request)'),
 				column('workflowId').varchar(36),
 				column('executionId').varchar(36),

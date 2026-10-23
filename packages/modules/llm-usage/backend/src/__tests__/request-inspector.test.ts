@@ -23,6 +23,7 @@ describe('inspectRequest', () => {
 		['OpenAI chat', { model: 'gpt-x', messages: [] }],
 		['OpenAI Responses', { model: 'gpt-x', input: 'hi' }],
 		['completion', { model: 'gpt-x', prompt: 'hi' }],
+		['completion with a prompt list', { model: 'gpt-x', prompt: ['hi', 'there'] }],
 		['Anthropic', { model: 'claude-x', messages: [], max_tokens: 10 }],
 		['Gemini', { contents: [{ parts: [{ text: 'hi' }] }] }],
 		['a JSON string body', JSON.stringify({ model: 'gpt-x', messages: [] })],
@@ -122,6 +123,21 @@ describe('inspectRequest provider', () => {
 		respond('httpHeaderAuth', 'googlePalmApi');
 
 		expect(records.map((record) => record.provider)).toEqual(['moonshot', 'google']);
+	});
+
+	it('keeps the provider of an Anthropic response, whatever the credential', () => {
+		inspectRequest({
+			context: { callerType: 'node' },
+			credentialTypes: ['azureEntraCognitiveServicesOAuth2Api'],
+			requestBody: { model: 'claude-x', messages: [] },
+		})?.onResponse({
+			id: 'msg_1',
+			type: 'message',
+			model: 'claude-x',
+			usage: { input_tokens: 1, output_tokens: 1 },
+		});
+
+		expect(records.map((record) => record.provider)).toEqual(['anthropic']);
 	});
 
 	it('keeps the provider of the response format for a generic credential', () => {

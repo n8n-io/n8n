@@ -357,6 +357,18 @@ describe('WorkflowBuilderService', () => {
 
 				expect(await chatWithProbe()).toMatchObject({ projectId: 'personal-1' });
 			});
+
+			it('runs the chat without a project when the project lookup fails', async () => {
+				const sharedWorkflows = mock<SharedWorkflowRepository>();
+				sharedWorkflows.getWorkflowOwningProject.mockRejectedValue(new Error('db down'));
+				Container.set(SharedWorkflowRepository, sharedWorkflows);
+
+				expect(await chatWithProbe('wf-1')).toEqual({
+					callerType: 'workflow-builder',
+					userId: 'test-user-id',
+					workflowId: 'wf-1',
+				});
+			});
 		});
 	});
 

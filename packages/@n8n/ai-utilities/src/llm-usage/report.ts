@@ -80,6 +80,13 @@ function callId(provider: string, providerResponseId: string | undefined, usage:
 	return createHash('sha256').update(parts.join(':')).digest('hex');
 }
 
+/**
+ * A token count as the storage accepts it: a non-negative integer. A library can report a
+ * malformed count, and one such record would fail its whole batch, so it counts as 0.
+ */
+const tokenCount = (value: unknown) =>
+	typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+
 /** Sends one LLM call to the sink. `context` overrides the scope context. Never throws. */
 export function reportLlmUsage(usage: LlmUsage, context?: LlmCallContext): void {
 	try {
@@ -91,11 +98,20 @@ export function reportLlmUsage(usage: LlmUsage, context?: LlmCallContext): void 
 			usage.providerResponseId && !LIBRARY_GENERATED_ID.test(usage.providerResponseId)
 				? usage.providerResponseId
 				: undefined;
-		sink.write({
+		const counted: LlmUsage = {
 			...usage,
+			inputTokens: tokenCount(usage.inputTokens),
+			outputTokens: tokenCount(usage.outputTokens),
+			cacheReadTokens:
+				usage.cacheReadTokens === undefined ? undefined : tokenCount(usage.cacheReadTokens),
+			cacheWriteTokens:
+				usage.cacheWriteTokens === undefined ? undefined : tokenCount(usage.cacheWriteTokens),
+		};
+		sink.write({
+			...counted,
 			provider,
 			providerResponseId,
-			id: callId(provider, providerResponseId, usage),
+			id: callId(provider, providerResponseId, counted),
 			context: context ?? callContextStorage.getStore() ?? { callerType: 'unknown' },
 		});
 	} catch {

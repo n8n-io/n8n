@@ -88,9 +88,12 @@ const headers: Array<TableHeader<LlmUsageCallItem>> = [
 	),
 ];
 
-const sortBy = computed(() => [
-	{ id: store.callsQuery.sortBy, desc: store.callsQuery.sortOrder === 'desc' },
-]);
+// The store owns the sort. The table asks for changes through `update:options`, and the model
+// binding keeps its header on the store's sort, also after a cleared sort that changes nothing.
+const sortBy = computed({
+	get: () => [{ id: store.callsQuery.sortBy, desc: store.callsQuery.sortOrder === 'desc' }],
+	set: () => {},
+});
 const page = computed(() => store.callsQuery.skip / store.callsQuery.take);
 
 async function onOptionsChange(options: TableOptions) {
@@ -124,7 +127,7 @@ async function onOptionsChange(options: TableOptions) {
 		:headers="headers"
 		:items="store.calls.items"
 		:items-length="store.calls.count"
-		:sort-by="sortBy"
+		v-model:sort-by="sortBy"
 		:page="page"
 		:items-per-page="store.callsQuery.take"
 		:page-sizes="CALLS_PAGE_SIZES"

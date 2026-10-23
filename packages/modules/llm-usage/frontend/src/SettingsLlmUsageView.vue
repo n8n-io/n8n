@@ -22,20 +22,15 @@ const i18n = useI18n();
 const store = useLlmUsageStore();
 const { showError } = useToast();
 
-async function load() {
+async function load(days?: number) {
 	try {
-		await store.fetchAll();
+		await store.fetchAll(days);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.llmUsage.loadError'));
 	}
 }
 
-async function onDaysChange(days: number) {
-	store.days = days;
-	await load();
-}
-
-onMounted(load);
+onMounted(async () => await load());
 </script>
 
 <template>
@@ -52,7 +47,7 @@ onMounted(load);
 					:model-value="store.days"
 					:aria-label="i18n.baseText('settings.llmUsage.range.label')"
 					data-test-id="llm-usage-range"
-					@update:model-value="onDaysChange"
+					@update:model-value="load"
 				>
 					<N8nOption
 						v-for="days in LLM_USAGE_RANGE_DAYS"
@@ -65,7 +60,11 @@ onMounted(load);
 
 			<N8nEmptyState
 				v-if="store.summary?.totals.calls === 0"
-				:heading="i18n.baseText('settings.llmUsage.empty.heading')"
+				:heading="
+					i18n.baseText('settings.llmUsage.empty.heading', {
+						interpolate: { days: store.days },
+					})
+				"
 				:description="i18n.baseText('settings.llmUsage.empty.description')"
 			/>
 			<template v-else-if="store.summary">

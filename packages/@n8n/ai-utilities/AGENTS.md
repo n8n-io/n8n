@@ -11,6 +11,8 @@ model configuration, and model output.
 - `http-proxy-agent`
 - `json-schema`
 - `llm-output`
+- `llm-usage`
+- `llm-usage/langchain`
 - `model-discovery`
 - `node-catalog`
 - `text-editor`

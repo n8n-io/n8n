@@ -114,8 +114,8 @@ export class LlmUsageCollector implements LlmUsageSink {
 	}
 
 	/**
-	 * Writes what is buffered and switches to writing each record at once. The timer keeps
-	 * running, so a failed write is still retried while executions finish.
+	 * Writes what is buffered and switches to writing each record at once. After a failed write,
+	 * records wait for the next retry: the timer keeps running while executions finish.
 	 */
 	async shutdown() {
 		this.draining = true;

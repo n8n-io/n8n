@@ -1,4 +1,5 @@
 import type {
+	LlmUsageCallItem,
 	LlmUsageCallsQueryDto,
 	LlmUsageCallsResponse,
 	LlmUsageSummaryResponse,
@@ -8,7 +9,11 @@ import type {
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 
-import { LlmUsageRepository, type LlmUsageTimeRange } from './llm-usage.repository';
+import {
+	LlmUsageRepository,
+	type LlmUsageCall,
+	type LlmUsageTimeRange,
+} from './llm-usage.repository';
 
 /** The number of entries in each top-spender list. */
 const TOP_GROUP_SIZE = 5;
@@ -25,6 +30,35 @@ const sumTotals = (days: LlmUsageTotals[]): LlmUsageTotals =>
 		}),
 		{ calls: 0, unpricedCalls: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, costUsd: 0 },
 	);
+
+/** The fields that the API returns for a call. A new column stays internal until it is added here. */
+const toCallItem = (call: LlmUsageCall): LlmUsageCallItem => ({
+	callId: call.callId,
+	startedAt: call.startedAt?.toISOString() ?? null,
+	finishedAt: call.finishedAt.toISOString(),
+	durationMs: call.durationMs,
+	callerType: call.callerType,
+	subType: call.subType,
+	workflowId: call.workflowId,
+	workflowName: call.workflowName,
+	executionId: call.executionId,
+	executionMode: call.executionMode,
+	nodeName: call.nodeName,
+	agentId: call.agentId,
+	agentName: call.agentName,
+	threadId: call.threadId,
+	threadTitle: call.threadTitle,
+	projectId: call.projectId,
+	projectName: call.projectName,
+	userId: call.userId,
+	userEmail: call.userEmail,
+	provider: call.provider,
+	model: call.model,
+	inputTokens: call.inputTokens,
+	outputTokens: call.outputTokens,
+	estimatedCostUsd: call.estimatedCostUsd,
+	priced: call.priced,
+});
 
 /** The last `days` times 24 hours, up to now. */
 const lastDays = (days: number): LlmUsageTimeRange => {
@@ -63,13 +97,6 @@ export class LlmUsageService {
 	/** One page of the calls of the last `days` days. */
 	async getCalls({ days, ...page }: LlmUsageCallsQueryDto): Promise<LlmUsageCallsResponse> {
 		const { count, items } = await this.repository.listCalls({ ...lastDays(days), ...page });
-		return {
-			count,
-			items: items.map((call) => ({
-				...call,
-				startedAt: call.startedAt?.toISOString() ?? null,
-				finishedAt: call.finishedAt.toISOString(),
-			})),
-		};
+		return { count, items: items.map(toCallItem) };
 	}
 }

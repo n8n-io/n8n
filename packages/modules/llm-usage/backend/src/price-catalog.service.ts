@@ -120,6 +120,11 @@ export class PriceCatalogService {
 				return;
 			}
 			const catalog = response.body;
+			// A body without a model list is not a catalog: loading it would drop every price.
+			if (typeof catalog !== 'object' || catalog === null || !Array.isArray(catalog.models)) {
+				this.logger.warn('The LLM price catalog has no model list, keeping the last one');
+				return;
+			}
 			const etag = response.headers.etag;
 			this.etag = typeof etag === 'string' ? etag : undefined;
 			this.loadedAt = Date.now();

@@ -220,12 +220,19 @@ export class WorkflowBuilderService {
 		const context: LlmCallContext = { callerType: 'workflow-builder', userId: user.id, workflowId };
 		// Without the llm-usage module nothing reads the context, so the project lookups are skipped.
 		if (!getLlmUsageSink()) return context;
-		const owningProject = workflowId
-			? await Container.get(SharedWorkflowRepository).getWorkflowOwningProject(workflowId)
-			: undefined;
-		const project =
-			owningProject ?? (await Container.get(ProjectRepository).getPersonalProjectForUser(user.id));
-		return { ...context, projectId: project?.id };
+		// Usage capture is optional: a failed lookup only leaves the project out.
+		try {
+			const owningProject = workflowId
+				? await Container.get(SharedWorkflowRepository).getWorkflowOwningProject(workflowId)
+				: undefined;
+			const project =
+				owningProject ??
+				(await Container.get(ProjectRepository).getPersonalProjectForUser(user.id));
+			return { ...context, projectId: project?.id };
+		} catch (error) {
+			this.logger.warn('Could not find the project of a builder chat for LLM usage', { error });
+			return context;
+		}
 	}
 
 	async getSessions(workflowId: string | undefined, user: IUser, isCodeBuilder?: boolean) {

@@ -42,18 +42,34 @@ export const useLlmUsageStore = defineStore('llmUsage', () => {
 		}
 	}
 
-	/** Loads the summary and the first page of calls for the selected range. */
-	async function fetchAll() {
+	/**
+	 * Loads the summary and the first page of calls for `rangeDays`. The range changes only when
+	 * its summary loads, so the page never shows two ranges. A calls page that fails empties the
+	 * table and does not hide the summary.
+	 */
+	async function fetchAll(rangeDays = days.value) {
 		const request = ++summaryRequest;
-		try {
-			const [summaryResponse] = await Promise.all([
-				fetchLlmUsageSummary(rootStore.restApiContext, days.value),
-				fetchCalls({ skip: 0 }),
-			]);
-			if (request === summaryRequest) summary.value = summaryResponse;
-		} catch (error) {
-			if (request === summaryRequest) throw error;
+		const pageRequest = ++callsRequest;
+		const page = { ...callsQuery.value, skip: 0 };
+		callsLoading.value = true;
+		const [summaryResult, callsResult] = await Promise.allSettled([
+			fetchLlmUsageSummary(rootStore.restApiContext, rangeDays),
+			fetchLlmUsageCalls(rootStore.restApiContext, { days: rangeDays, ...page }),
+		]);
+		const latestPage = pageRequest === callsRequest;
+		if (latestPage) callsLoading.value = false;
+		if (request !== summaryRequest) return;
+		if (summaryResult.status === 'rejected') throw summaryResult.reason;
+
+		days.value = rangeDays;
+		summary.value = summaryResult.value;
+		if (!latestPage) return;
+		callsQuery.value = page;
+		if (callsResult.status === 'rejected') {
+			calls.value = { count: 0, items: [] };
+			throw callsResult.reason;
 		}
+		calls.value = callsResult.value;
 	}
 
 	return { days, summary, calls, callsQuery, callsLoading, fetchAll, fetchCalls };
