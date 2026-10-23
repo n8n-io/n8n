@@ -172,7 +172,9 @@ useAgentExecutionUpdates(
 		threadId: computed(() => props.effectiveSessionId),
 	},
 	() => loadSessionMetadata(),
-	onExecutionUpdated,
+	(update) => {
+		if (update.threadId === props.effectiveSessionId) onExecutionUpdated(update);
+	},
 );
 
 const lastMessageLabel = computed(() => {

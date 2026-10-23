@@ -518,6 +518,38 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		}
 	});
 
+	it.each([undefined, 'thread-2'])(
+		'ignores usage for an unselected session when the current session is %s',
+		async (effectiveSessionId) => {
+			getThreadDetail.mockImplementation(async (_projectId, _agentId, threadId) => ({
+				thread: { ...thread, id: threadId },
+				executions: [],
+			}));
+			const wrapper = mountMenu({ effectiveSessionId, hasSession: !!effectiveSessionId });
+			await flushPromises();
+			const update = {
+				type: 'agentExecutionUpdated',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+					executionId: 'live-1',
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+				},
+			} satisfies PushMessage;
+			for (const listener of pushListeners) listener(update);
+			await flushPromises();
+
+			await wrapper.setProps({ effectiveSessionId: 'thread-1', hasSession: true });
+			await flushPromises();
+			expect(wrapper.text()).toContain('125t ($0.1250)');
+
+			for (const listener of pushListeners) listener(update);
+			await flushPromises();
+			expect(wrapper.text()).toContain('140t ($0.1500)');
+		},
+	);
+
 	it('replaces turn snapshots and reconciles them with the saved result', async () => {
 		const wrapper = mountMenu();
 		await flushPromises();
