@@ -12,7 +12,6 @@ import {
 	isOperationParameter,
 } from '../utils/index.js';
 
-// n8n-nodes-base/node-param-operation-option-action-wrong-for-get-many reports and fixes these.
 const BASE_RULE_GET_ALL_PREFIX = 'Get all ';
 
 export const ResourceOperationPatternRule = createRule({
