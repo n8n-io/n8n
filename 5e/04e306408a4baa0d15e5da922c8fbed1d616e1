@@ -1,0 +1,25 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2247ae8ef74d15::t_a8e90e94679e73 10028-10029
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_2247ae8ef74d15::t_6d6df318b3bcba 209-215,223
+  s_2247ae8ef74d15::t_a8e90e94679e73 47,226-231
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_2247ae8ef74d15::t_094326f07af29c 170-172,175-178,194-210
+  s_2247ae8ef74d15::t_1156787aeb4dba 163-169,173-174,179-193,211,547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e04e306408a4baa0d15e5da922c8fbed1d616e1",
+  "prompts": {},
+  "sessions": {
+    "s_2247ae8ef74d15": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a168a4-7de9-7fd2-af57-2486a83f3dd7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
