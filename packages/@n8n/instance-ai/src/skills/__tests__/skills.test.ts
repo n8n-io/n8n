@@ -121,6 +121,17 @@ describe('Instance AI skills', () => {
 		expect(postBuildFlow).toMatch(/load the\s+`credential-recipe-research` skill/);
 	});
 
+	// Routing needs intent-recognition once per request; carrying its body for the
+	// rest of the thread costs every later call ~7K tokens.
+	it('expires intent-recognition when the next user turn starts', async () => {
+		for (const version of ['default@1', 'progressive@1']) {
+			const { profile } = resolvePromptProfile({ version });
+			const { source } = await loadInstanceAiPromptSkills(profile);
+			const entry = source.registry.skills.find((skill) => skill.id === 'intent-recognition');
+			expect(entry?.policy?.lifetime).toBe('turn');
+		}
+	});
+
 	it('lists only top-level skills in the catalog', () => {
 		const source = loadInstanceAiSkills();
 		const topLevel = source.registry.skills.filter((skill) => !skill.parents).map(({ id }) => id);
