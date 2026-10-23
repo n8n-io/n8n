@@ -1,0 +1,44 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_45741ff70f27eb::t_da6353d7d3ce39 125
+packages/@n8n/telemetry/src/events/promotions.ts
+  s_45741ff70f27eb::t_bea7439d9d50f3 127-147
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_45741ff70f27eb::t_bea7439d9d50f3 360,2767,2773-2795
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_45741ff70f27eb::t_bea7439d9d50f3 83-88,125
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  s_45741ff70f27eb::t_bea7439d9d50f3 10,40,75,126-148
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_45741ff70f27eb::t_e3ddfce1ba5de9 11,14,31-33,42,48,729-743
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_45741ff70f27eb::t_bea7439d9d50f3 11,852-855
+packages/cli/src/modules/promotions.ee/__tests__/promotion-telemetry.test.ts
+  s_45741ff70f27eb::t_e3ddfce1ba5de9 44-64
+packages/cli/src/events/maps/relay.event-map.ts
+  s_45741ff70f27eb::t_bea7439d9d50f3 1372-1386
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_45741ff70f27eb::t_e3ddfce1ba5de9 5446,5449-5454,5463-5491
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_45741ff70f27eb::t_e3ddfce1ba5de9 1,470-478,508-515
+  s_45741ff70f27eb::t_3a3c9bacc0fc5f 6,208-213,216
+packages/cli/src/modules/promotions.ee/promotion-telemetry.ts
+  s_45741ff70f27eb::t_bea7439d9d50f3 24-27,33-39,44,51
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_45741ff70f27eb::t_e3ddfce1ba5de9 63,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8853d8033a447f5194e5db107082753c81f25ee",
+  "prompts": {},
+  "sessions": {
+    "s_45741ff70f27eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7b03-c4ec-4087-b014-6e5f8a392673",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
