@@ -16,6 +16,15 @@ describe('promotion run details', () => {
 	it('rejects a git payload with another schema version', () => {
 		expect(() => parsePromotionRunDetails('git', { ...gitDetails, schemaVersion: 2 })).toThrow();
 	});
+
+	it('accepts the contents that the run pushed', () => {
+		const details = { ...gitDetails, contents: { projectIds: ['p1', 'p2'] } };
+
+		expect(parsePromotionRunDetails('git', details)).toEqual(details);
+		expect(() =>
+			parsePromotionRunDetails('git', { ...gitDetails, contents: { projectIds: [''] } }),
+		).toThrow();
+	});
 });
 
 describe('promotion review host reference', () => {

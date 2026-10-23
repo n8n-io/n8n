@@ -17,6 +17,7 @@ import {
 	LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
 	LOCAL_STORAGE_PANEL_HEIGHT,
 	LOCAL_STORAGE_PANEL_WIDTH,
+	MIN_IO_PANEL_WIDTH,
 } from '@/features/execution/logs/logs.constants';
 
 const INITIAL_POPUP_HEIGHT = 400;
@@ -72,7 +73,8 @@ export function useLogsPanelLayout(
 		width: {
 			localStorageKey: LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
 			defaultSize: function getDefaultWidth(size) {
-				return Math.min(240, size * 0.2);
+				// Reserve space for both I/O panes in compact hosts.
+				return Math.min(400, size * 0.3, size - 2 * MIN_IO_PANEL_WIDTH);
 			},
 			minSize: 80,
 			maxSize: 500,

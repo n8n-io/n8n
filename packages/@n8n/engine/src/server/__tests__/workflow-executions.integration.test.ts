@@ -830,7 +830,7 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 				nodeId: 'b',
 				iteration: 0,
 				status: 'waiting',
-				waitDeclaration: { acceptsResumeRequest: true },
+				waitDeclaration: { resumeBinding: 'execution' },
 			}),
 		);
 
