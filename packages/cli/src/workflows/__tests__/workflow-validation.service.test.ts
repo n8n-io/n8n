@@ -1788,6 +1788,14 @@ describe('WorkflowValidationService', () => {
 					'Cannot publish workflow: trigger "Webhook" has a node ID longer than 64 characters. Remove and re-add the affected nodes to give them new IDs.',
 			});
 		});
+
+		it('counts trigger node id length in characters, not UTF-16 code units', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', '😀'.repeat(NODE_ID_MAX_LENGTH)),
+			]);
+
+			expect(result).toEqual({ isValid: true });
+		});
 	});
 	describe('validateRequiredInputsConnected', () => {
 		const nodeTypes = mock<NodeTypes>();

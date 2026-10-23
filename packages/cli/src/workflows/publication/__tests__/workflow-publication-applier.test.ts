@@ -1534,6 +1534,24 @@ describe('WorkflowPublicationApplier', () => {
 			expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();
 		});
 
+		test('counts node id length in characters, not UTF-16 code units', async () => {
+			const astralId = '😀'.repeat(NODE_ID_MAX_LENGTH);
+			const longTrigger = triggerNode(longId, { name: 'Long' });
+			const astralTrigger = triggerNode(astralId, { name: 'Astral' });
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				versionWith([longTrigger, astralTrigger]),
+			);
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([longTrigger, astralTrigger]);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				error: { affectedNodes: [{ id: longId, name: 'Long' }] },
+				triggerStatuses: [{ nodeId: astralId, nodeName: 'Astral', status: 'failed' }],
+			});
+		});
+
 		test('names every trigger whose id is too long', async () => {
 			const triggers = [
 				triggerNode(longId, { name: 'First' }),
