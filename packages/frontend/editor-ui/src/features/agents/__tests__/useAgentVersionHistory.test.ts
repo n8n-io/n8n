@@ -151,6 +151,35 @@ describe('useAgentVersionHistory', () => {
 		});
 	});
 
+	it('clears a previous Agent history when loading another Agent fails', async () => {
+		mocks.listAgentVersions
+			.mockResolvedValueOnce([makeVersion('v1')])
+			.mockRejectedValueOnce(new Error('Failed'));
+		const history = useAgentVersionHistory();
+		await history.refresh('project', 'first');
+		await history.refresh('project', 'second');
+		expect(history.items.value).toEqual([]);
+		expect(history.hasLoadError.value).toBe(true);
+	});
+
+	it('deduplicates shifted pages while advancing by the fetched row count', async () => {
+		mocks.listAgentVersions
+			.mockResolvedValueOnce(Array.from({ length: 20 }, (_, i) => makeVersion(`v${i}`)))
+			.mockResolvedValueOnce(Array.from({ length: 20 }, (_, i) => makeVersion(`v${i + 19}`)))
+			.mockResolvedValueOnce([]);
+		const history = useAgentVersionHistory();
+		await history.refresh('project', 'agent');
+		await history.fetchMore('project', 'agent');
+		expect(history.items.value).toHaveLength(39);
+		await history.fetchMore('project', 'agent');
+		expect(mocks.listAgentVersions).toHaveBeenLastCalledWith(
+			expect.anything(),
+			'project',
+			'agent',
+			{ take: 20, skip: 40 },
+		);
+	});
+
 	describe('fetchMore', () => {
 		it('appends the next page using items.length as skip', async () => {
 			const firstPage = Array.from({ length: 20 }, (_, i) => makeVersion(`v${20 - i}`));

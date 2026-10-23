@@ -12,6 +12,7 @@ const versionHistoryMock = {
 	isLoading: ref(false),
 	isInitialLoad: ref(false),
 	hasMore: ref(false),
+	hasLoadError: ref(false),
 	refresh: vi.fn().mockResolvedValue(undefined),
 	fetchMore: vi.fn(),
 	revertToVersion: vi.fn(),
@@ -250,4 +251,23 @@ describe('AgentVersionHistoryPanel — unpublish action', () => {
 
 		expect(versionHistoryMock.refresh).toHaveBeenCalledWith('project-1', 'agent-1');
 	});
+});
+
+it('does not run a history action while editing is locked', async () => {
+	const wrapper = mountPanel({ editingLocked: true });
+	await flushPromises();
+	versionHistoryMock.revertToVersion.mockClear();
+	wrapper
+		.findComponent({ name: 'AgentVersionList' })
+		.vm.$emit('action', { action: 'revert', versionId: 'v1' });
+	await flushPromises();
+	expect(versionHistoryMock.revertToVersion).not.toHaveBeenCalled();
+});
+
+it('refreshes history when a new draft version is saved', async () => {
+	const wrapper = mountPanel({ currentVersionId: 'v1' });
+	await flushPromises();
+	versionHistoryMock.refresh.mockClear();
+	await wrapper.setProps({ currentVersionId: 'v2' });
+	expect(versionHistoryMock.refresh).toHaveBeenCalledWith('project-1', 'agent-1');
 });

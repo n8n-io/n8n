@@ -2544,7 +2544,7 @@ const headerActions = computed(() => {
 		id: 'version-history',
 		label: locale.baseText('agents.versionHistory.title'),
 		icon: 'history',
-		disabled: !agent.value?.hasPublishHistory,
+		disabled: !agent.value?.hasVersionHistory,
 		checked: isVersionHistoryOpen.value,
 		divided: true,
 	});
@@ -2741,6 +2741,7 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 		isCompiled: false,
 		isRunnable: false,
 		hasPublishHistory: false,
+		hasVersionHistory: false,
 		createdAt: now,
 		updatedAt: now,
 		versionId: null,
@@ -3467,6 +3468,7 @@ useKeybindings({
 					ref="versionHistoryPanel"
 					:project-id="projectId"
 					:agent-id="agentId"
+					:current-version-id="agent?.versionId"
 					:has-unpublished-changes="
 						Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
 					"

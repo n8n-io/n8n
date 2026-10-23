@@ -31,6 +31,9 @@ export function useAgentVersionHistory() {
 	const isInitialLoad = ref(true);
 	const hasMore = ref(true);
 	const acting = ref(false);
+	const hasLoadError = ref(false);
+	let agentKey = '';
+	let fetchedCount = 0;
 
 	// Guards against out-of-order responses. Each load captures the current
 	// token; when its request settles it only writes to shared state if the
@@ -40,6 +43,13 @@ export function useAgentVersionHistory() {
 	let requestToken = 0;
 
 	async function refresh(projectId: string, agentId: string): Promise<void> {
+		if (agentKey !== `${projectId}/${agentId}`) {
+			agentKey = `${projectId}/${agentId}`;
+			items.value = [];
+			isInitialLoad.value = true;
+			fetchedCount = 0;
+		}
+		hasLoadError.value = false;
 		const token = ++requestToken;
 		isLoading.value = true;
 		try {
@@ -49,9 +59,11 @@ export function useAgentVersionHistory() {
 			});
 			if (token !== requestToken) return;
 			items.value = data;
+			fetchedCount = data.length;
 			hasMore.value = data.length === PAGE_SIZE;
 		} catch (error) {
 			if (token !== requestToken) return;
+			hasLoadError.value = true;
 			showError(error, locale.baseText('agents.versionHistory.error.load'));
 		} finally {
 			if (token === requestToken) {
@@ -68,13 +80,18 @@ export function useAgentVersionHistory() {
 		try {
 			const data = await listAgentVersions(rootStore.restApiContext, projectId, agentId, {
 				take: PAGE_SIZE,
-				skip: items.value.length,
+				skip: fetchedCount,
 			});
 			if (token !== requestToken) return;
-			items.value = [...items.value, ...data];
+			items.value = [
+				...new Map([...items.value, ...data].map((item) => [item.versionId, item])).values(),
+			];
+			fetchedCount += data.length;
+			hasLoadError.value = false;
 			hasMore.value = data.length === PAGE_SIZE;
 		} catch (error) {
 			if (token !== requestToken) return;
+			hasLoadError.value = true;
 			showError(error, locale.baseText('agents.versionHistory.error.load'));
 		} finally {
 			if (token === requestToken) {
@@ -151,6 +168,7 @@ export function useAgentVersionHistory() {
 		isLoading,
 		isInitialLoad,
 		hasMore,
+		hasLoadError,
 		acting,
 		pageSize: PAGE_SIZE,
 		refresh,
