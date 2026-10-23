@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const migration = 'AddSkillMcpAvailability1792599090126';
+const migration = 'AddSkillMcpAvailability1792738651435';
 
 describe('Skill MCP availability migration', () => {
 	let context: TestMigrationContext;
