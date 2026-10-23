@@ -59,15 +59,12 @@ const setup = (options: Partial<ExecutorOptions> = {}) => {
 		onTaskTimeout: vi.fn(),
 		onHoldReady: vi.fn(),
 		onHoldReleased: vi.fn(),
-		onBatchRenewal: vi.fn(),
 	} satisfies ExecutorHooks;
 	store.beginDispatch.mockResolvedValue(1);
 	store.markHeld.mockResolvedValue(1);
 	store.releaseHeld.mockResolvedValue(1);
 	store.releaseClaim.mockResolvedValue(1);
-	store.renewLeases.mockImplementation(
-		async (_host, renewals) => new Set(renewals.map((renewal) => renewal.id)),
-	);
+	store.renewLease.mockResolvedValue(true);
 	store.rescheduleTask.mockResolvedValue(1);
 	store.failTaskTerminal.mockResolvedValue(1);
 	const executor = new Executor(
@@ -123,7 +120,7 @@ describe('Executor hold mode', () => {
 	});
 
 	describe('construction', () => {
-		it.each<keyof ExecutorTaskStore>(['markHeld', 'releaseHeld', 'renewLeases'])(
+		it.each<keyof ExecutorTaskStore>(['markHeld', 'releaseHeld'])(
 			'throws HoldStoreMissingError when the store lacks %s',
 			(method) => {
 				const store = mock<ExecutorTaskStore>();
@@ -143,7 +140,7 @@ describe('Executor hold mode', () => {
 
 		it('accepts a store without hold operations when hold is not set', () => {
 			const store = mock<ExecutorTaskStore>();
-			Object.assign(store, { markHeld: undefined, releaseHeld: undefined, renewLeases: undefined });
+			Object.assign(store, { markHeld: undefined, releaseHeld: undefined });
 
 			expect(
 				() =>
@@ -468,15 +465,13 @@ describe('Executor hold mode', () => {
 
 			const firing = executor.fire(HOST, task);
 			await vi.advanceTimersByTimeAsync(2 * RENEWAL_INTERVAL_MS);
-			expect(store.renewLeases).toHaveBeenCalledTimes(2);
-			expect(store.renewLeases).toHaveBeenCalledWith(HOST, [
-				{ id: task.id, claimedEpoch: task.leaseEpoch, expiresInMs: LEASE_SECONDS * 1_000 },
-			]);
+			expect(store.renewLease).toHaveBeenCalledTimes(2);
+			expect(store.renewLease).toHaveBeenCalledWith(claimOf(task), LEASE_SECONDS * 1_000);
 
 			finish();
 			await firing;
 			await vi.advanceTimersByTimeAsync(3 * RENEWAL_INTERVAL_MS);
-			expect(store.renewLeases).toHaveBeenCalledTimes(2);
+			expect(store.renewLease).toHaveBeenCalledTimes(2);
 		});
 
 		it.each([
@@ -492,7 +487,7 @@ describe('Executor hold mode', () => {
 				});
 				const { handler, signal } = holding();
 				registry.resolve.mockReturnValue(handler);
-				store.renewLeases.mockRejectedValue(new Error('db down'));
+				store.renewLease.mockRejectedValue(new Error('db down'));
 				const task = heldTask();
 
 				const firing = executor.fire(HOST, task);
@@ -509,52 +504,40 @@ describe('Executor hold mode', () => {
 			},
 		);
 
-		it('renews every holder of a host with one write per beat', async () => {
+		it('aborts with a LeaseLostError when a renewal finds the claim gone', async () => {
 			const { store, registry, hooks, executor } = setup();
-			const first = holding();
-			const second = holding();
-			registry.resolve.mockReturnValueOnce(first.handler).mockReturnValueOnce(second.handler);
-			store.renewLeases.mockResolvedValue(new Set(['1', '2']));
+			const { handler, signal } = holding();
+			registry.resolve.mockReturnValue(handler);
+			store.renewLease.mockResolvedValue(false);
+			const task = heldTask();
 
-			void executor.fire(HOST, heldTask({ id: '1', leaseEpoch: 4 }));
-			void executor.fire(HOST, heldTask({ id: '2', leaseEpoch: 7 }));
-			await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
+			const firing = executor.fire(HOST, task);
+			await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS - 1);
+			expect(signal().aborted).toBe(false);
 
-			expect(store.renewLeases).toHaveBeenCalledTimes(1);
-			expect(store.renewLeases).toHaveBeenCalledWith(HOST, [
-				{ id: '1', claimedEpoch: 4, expiresInMs: LEASE_SECONDS * 1_000 },
-				{ id: '2', claimedEpoch: 7, expiresInMs: LEASE_SECONDS * 1_000 },
-			]);
-			expect(store.renewLease).not.toHaveBeenCalled();
-			expect(hooks.onBatchRenewal).toHaveBeenCalledWith(2, expect.any(Number));
-
-			await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
-			expect(store.renewLeases).toHaveBeenCalledTimes(2);
-			expect(first.signal().aborted).toBe(false);
-			expect(second.signal().aborted).toBe(false);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(signal().reason).toBeInstanceOf(LeaseLostError);
+			expect(hooks.onLeaseRenewal).toHaveBeenCalledWith(task, 'lost');
+			await expect(firing).resolves.toEqual({ outcome: 'released' });
 		});
 
-		it('aborts only the holder whose id the batch did not renew', async () => {
-			const { store, registry, hooks, executor } = setup();
+		it('renews each holder with its own claim', async () => {
+			const { store, registry, executor } = setup();
 			const first = holding();
 			const second = holding();
 			registry.resolve.mockReturnValueOnce(first.handler).mockReturnValueOnce(second.handler);
-			store.renewLeases.mockResolvedValue(new Set(['1']));
-			const lostTask = heldTask({ id: '2' });
+			const firstTask = heldTask({ id: '1', leaseEpoch: 4 });
+			const secondTask = heldTask({ id: '2', leaseEpoch: 7 });
 
-			void executor.fire(HOST, heldTask({ id: '1' }));
-			const lostFiring = executor.fire(HOST, lostTask);
+			void executor.fire(HOST, firstTask);
+			void executor.fire(HOST, secondTask);
 			await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
 
+			expect(store.renewLease).toHaveBeenCalledTimes(2);
+			expect(store.renewLease).toHaveBeenCalledWith(claimOf(firstTask), LEASE_SECONDS * 1_000);
+			expect(store.renewLease).toHaveBeenCalledWith(claimOf(secondTask), LEASE_SECONDS * 1_000);
 			expect(first.signal().aborted).toBe(false);
-			expect(second.signal().reason).toBeInstanceOf(LeaseLostError);
-			expect(hooks.onLeaseRenewal).toHaveBeenCalledWith(lostTask, 'lost');
-			await expect(lostFiring).resolves.toEqual({ outcome: 'released' });
-
-			await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
-			expect(store.renewLeases).toHaveBeenLastCalledWith(HOST, [
-				expect.objectContaining({ id: '1' }),
-			]);
+			expect(second.signal().aborted).toBe(false);
 		});
 	});
 

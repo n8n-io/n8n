@@ -243,9 +243,6 @@ describe('held tasks across two mains over one database', () => {
 		expect(await taskRepo.markHeld(staleClaim)).toBe(0);
 		expect(await taskRepo.releaseHeld(staleClaim, 0, null)).toBe(0);
 		expect(await taskRepo.releaseClaim(staleClaim)).toBe(0);
-		expect([
-			...(await taskRepo.renewLeases('main-a', [{ ...staleClaim, expiresInMs: 60_000 }])),
-		]).toEqual([]);
 
 		const [after] = await taskRepo.find();
 		expect(after.claimedBy).toBe('main-b');
@@ -332,37 +329,6 @@ describe('held task repository writes', () => {
 		expect(await taskRepo.countBy({ jobId })).toBe(0);
 	});
 
-	it('re-arms a failed held task of a live owner and seeds a missing one', async () => {
-		const failedJob = await provisionOne('a');
-		const prunedJob = await provisionOne('b');
-		const otherJob = await provisionOne('c');
-		await taskRepo.update(
-			{ jobId: failedJob },
-			{ status: 'failed', attempts: 4, finishedAt: new Date() },
-		);
-		await taskRepo.update(
-			{ jobId: otherJob },
-			{ status: 'failed', attempts: 4, finishedAt: new Date() },
-		);
-		await taskRepo.delete({ jobId: prunedJob });
-
-		expect(await jobRepo.rearmHeldTasks('held-test', ['a', 'b'])).toBe(1);
-
-		expect(await taskRepo.findOneByOrFail({ jobId: failedJob })).toMatchObject({
-			status: 'pending',
-			attempts: 0,
-			finishedAt: null,
-			heldSince: null,
-		});
-		expect(await taskRepo.findOneByOrFail({ jobId: prunedJob })).toMatchObject({
-			status: 'pending',
-			mode: 'hold',
-		});
-		expect(await taskRepo.findOneByOrFail({ jobId: otherJob })).toMatchObject({
-			status: 'failed',
-		});
-	});
-
 	it('claims an expired held task directly and leaves held tasks that are live or never ready', async () => {
 		const expiredReady = await provisionOne('a');
 		const liveReady = await provisionOne('b');
@@ -445,22 +411,5 @@ describe('held task repository writes', () => {
 			status: 'pending',
 			mode: 'hold',
 		});
-	});
-
-	it('renews only the leases of claims that still match their epoch', async () => {
-		const first = await provisionOne('a');
-		const second = await provisionOne('b');
-		const claimed = await claim();
-		const byJob = new Map(claimed.map((task) => [task.jobId, task]));
-		const current = byJob.get(first)!;
-		const stale = byJob.get(second)!;
-		await taskRepo.update({ id: stale.id }, { leaseEpoch: stale.leaseEpoch + 1 });
-
-		const renewed = await taskRepo.renewLeases('main-a', [
-			{ id: current.id, claimedEpoch: current.leaseEpoch, expiresInMs: 30_000 },
-			{ id: stale.id, claimedEpoch: stale.leaseEpoch, expiresInMs: 30_000 },
-		]);
-
-		expect([...renewed]).toEqual([current.id]);
 	});
 });

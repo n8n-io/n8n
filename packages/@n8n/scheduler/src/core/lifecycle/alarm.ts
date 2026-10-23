@@ -30,10 +30,6 @@ export class Alarm {
 		this.timer.unref();
 	}
 
-	isSet(): boolean {
-		return this.timer !== undefined;
-	}
-
 	cancel(): void {
 		if (this.timer !== undefined) {
 			clearTimeout(this.timer);

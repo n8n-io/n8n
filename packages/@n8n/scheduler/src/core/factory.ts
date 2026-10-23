@@ -394,17 +394,6 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					reason,
 				});
 			},
-			onBatchRenewalError: (error) => {
-				emit('warn', 'Scheduler could not renew held leases in one write; retrying', {
-					error: described(error),
-				});
-			},
-			onBatchRenewal: (size, durationMs) => {
-				emit('debug', 'Scheduler renewed held leases in one write', {
-					size,
-					durationMs: Math.round(durationMs),
-				});
-			},
 		},
 		createExecutorTracing(tracer),
 	);
@@ -642,9 +631,6 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 							emit('warn', 'Re-enabled scheduled jobs whose owner turned out to still exist', {
 								...context,
 							});
-						},
-						onHeldTasksRearmed: (context) => {
-							emit('info', 'Re-armed failed held tasks whose owner still exists', { ...context });
 						},
 						onReviveClockFailed: ({ jobId, error }) => {
 							emit('warn', 'Could not recompute the clock of a revived scheduled job', {
