@@ -14,7 +14,7 @@ describe.each([
 				message: '',
 				attachments: [],
 				placeholder: 'Message',
-				messagingState: 'sending',
+				messagingState: 'receiving',
 				acceptedMimeTypes: '',
 				canUploadFiles: true,
 				isSpeechSupported: true,
