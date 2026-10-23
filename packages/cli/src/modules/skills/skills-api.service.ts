@@ -1,5 +1,4 @@
 import type {
-	AgentSkill,
 	CreateSkillDto,
 	ListSkillsQueryDto,
 	SkillDetail,
@@ -79,21 +78,6 @@ export class SkillsApiService {
 			},
 		);
 		return { count, data: await this.toListItems(user, skills) };
-	}
-
-	async listContents(
-		user: User,
-		query: ListSkillsQueryDto,
-	): Promise<{ count: number; data: Array<SkillListItem & { skill: AgentSkill }> }> {
-		const { count, data } = await this.list(user, query);
-		const rows = await this.skillRepository.findLatestSaved(data.map((item) => item.id));
-		return {
-			count,
-			data: data.flatMap((item) => {
-				const row = rows.get(item.id);
-				return row ? [{ ...item, skill: toAgentSkill(row) }] : [];
-			}),
-		};
 	}
 
 	async get(user: User, skillId: string): Promise<SkillDetail> {
