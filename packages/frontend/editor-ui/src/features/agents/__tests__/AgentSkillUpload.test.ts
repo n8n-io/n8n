@@ -49,6 +49,23 @@ describe('AgentSkillUpload', () => {
 		]);
 	});
 
+	it('reads the Agent Skills spelling of allowed-tools as a delimited list', async () => {
+		const wrapper = mountUpload();
+		const file = makeFile(
+			'---\nname: Release notes\ndescription: Use for releases\nallowed-tools: Bash(git diff:*), Read, Grep\n---\nSteps.',
+			'SKILL.md',
+		);
+
+		await fireEvent.change(wrapper.get('[data-testid="agent-skill-skill-md-file-input"]').element, {
+			target: { files: [file] },
+		});
+		await flushPromises();
+
+		expect(wrapper.emitted('uploaded')?.at(-1)).toEqual([
+			expect.objectContaining({ allowedTools: ['Bash(git diff:*)', 'Read', 'Grep'] }),
+		]);
+	});
+
 	it('imports markdown references from a folder', async () => {
 		const wrapper = mountUpload();
 		const files = [
