@@ -4,7 +4,14 @@ import { GlobalConfig } from '@n8n/config';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { HoldTaskHandler, RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
+import type {
+	HoldTaskHandler,
+	RunInTransaction,
+	Scheduler,
+	ScheduledJobOwnerRegistry,
+	ScheduledJobOwnerResolver,
+	TaskHandler,
+} from '@n8n/scheduler';
 import {
 	createScheduler,
 	pollLookaheadSeconds,
@@ -34,6 +41,10 @@ import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 export class DurableScheduler implements Scheduler {
 	private readonly scheduler: Scheduler | undefined; // undefined means the scheduler is disabled
 
+	private readonly owners: ScheduledJobOwnerRegistry;
+
+	private readonly heldTasksEnabled: boolean;
+
 	constructor(
 		private readonly logger: Logger,
 		dataSource: DataSource,
@@ -54,6 +65,8 @@ export class DurableScheduler implements Scheduler {
 		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
 		const tracer = createSchedulerTracer(tracing);
+		this.heldTasksEnabled = enabled && config.enabledForHeldTasks;
+		this.owners = createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner);
 		this.scheduler = enabled
 			? createScheduler({
 					hostId: instanceSettings.hostId,
@@ -87,7 +100,7 @@ export class DurableScheduler implements Scheduler {
 					reconciliation: config.ownerReconciliationEnabled
 						? {
 								jobStore: jobs,
-								owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner),
+								owners: this.owners,
 								options: {
 									settleSeconds: config.ownerSettleSeconds,
 									quarantineGraceSeconds: config.ownerQuarantineGraceSeconds,
@@ -143,9 +156,19 @@ export class DurableScheduler implements Scheduler {
 		this.scheduler.registerTaskHandler(taskType, handler);
 	}
 
+	/** Whether this instance runs held tasks. */
+	holdsTasks(): boolean {
+		return this.heldTasksEnabled;
+	}
+
 	/** Register the handler that keeps held tasks of `taskType`. Needs held tasks enabled. */
 	registerHoldTaskHandler(taskType: string, handler: HoldTaskHandler): void {
 		this.scheduler?.registerTaskHandler(taskType, handler);
+	}
+
+	/** Claim an owner type, so owner reconciliation asks `resolver` which of its owners exist. */
+	registerJobOwner(ownerType: string, resolver: ScheduledJobOwnerResolver): void {
+		this.owners.register(ownerType, resolver);
 	}
 
 	start(): void {
