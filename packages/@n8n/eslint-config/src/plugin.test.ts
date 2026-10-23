@@ -20,4 +20,13 @@ describe('frontendConfig', () => {
 			)?.rules?.['n8n-local-rules/no-reka-ui-pagination'],
 		).toBe('error');
 	});
+
+	it('enables the scrollbar import bans as errors', () => {
+		const rules = frontendConfig.find(
+			(config) => config.rules?.['n8n-local-rules/no-element-plus-scrollbar'] !== undefined,
+		)?.rules;
+
+		expect(rules?.['n8n-local-rules/no-element-plus-scrollbar']).toBe('error');
+		expect(rules?.['n8n-local-rules/no-reka-ui-scroll-area']).toBe('error');
+	});
 });

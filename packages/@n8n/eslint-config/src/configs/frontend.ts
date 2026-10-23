@@ -24,7 +24,9 @@ export const frontendConfig = tseslint.config(
 
 			'@typescript-eslint/no-use-before-define': 'warn',
 			'@typescript-eslint/no-explicit-any': 'error',
+			'n8n-local-rules/no-element-plus-scrollbar': 'error',
 			'n8n-local-rules/no-reka-ui-pagination': 'error',
+			'n8n-local-rules/no-reka-ui-scroll-area': 'error',
 		},
 	},
 	{
