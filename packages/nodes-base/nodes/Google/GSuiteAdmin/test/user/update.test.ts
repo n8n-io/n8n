@@ -11,7 +11,6 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 					givenName: 'test',
 					familyName: 'new',
 				},
-				primaryEmail: 'one@example.com',
 				phones: [
 					{
 						type: 'assistant',
@@ -21,11 +20,57 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 				],
 				emails: [
 					{
-						address: 'newone@example.com',
 						type: 'home',
+						address: 'newone@example.com',
 					},
 				],
+				primaryEmail: 'one@example.com',
 				orgUnitPath: '/',
+				recoveryEmail: 'recovery@example.com',
+				organizations: [
+					{
+						name: 'Acme',
+						title: 'Engineer',
+						type: 'work',
+						fullTimeEquivalent: 100000,
+						primary: true,
+					},
+				],
+				relations: [
+					{
+						type: 'manager',
+						value: 'boss@example.com',
+					},
+				],
+				languages: [
+					{
+						languageCode: 'en-US',
+						preference: 'preferred',
+					},
+					{
+						customLanguage: 'Klingon',
+					},
+				],
+				posixAccounts: [
+					{
+						username: 'jdoe',
+						uid: '1001',
+						gid: '1001',
+						homeDirectory: '/home/jdoe',
+						shell: '/bin/bash',
+						gecos: 'John Doe',
+						systemId: 'sys1',
+						accountId: 'acc1',
+						operatingSystemType: 'linux',
+						primary: true,
+					},
+				],
+				sshPublicKeys: [
+					{
+						key: 'ssh-rsa AAAA',
+						expirationTimeUsec: 1893456000000000,
+					},
+				],
 			})
 			.reply(200, {
 				kind: 'admin#directory#user',
