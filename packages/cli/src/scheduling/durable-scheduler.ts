@@ -24,6 +24,8 @@ import { reportSystemTaskOverlaps } from './system-tasks/system-task-overlap-rep
 import { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
+const HELD_TASK_SHUTDOWN_GRACE_MS = 10_000;
+
 /**
  * The database-backed {@link Scheduler} and its process lifecycle (the run side).
  *
@@ -76,7 +78,7 @@ export class DurableScheduler implements Scheduler {
 						),
 						batchSize: config.claimBatchSize,
 						hold: config.enabledForHeldTasks
-							? { shutdownGraceMs: config.heldTaskShutdownGraceSeconds * 1000 }
+							? { shutdownGraceMs: HELD_TASK_SHUTDOWN_GRACE_MS }
 							: undefined,
 					},
 					reaper: { batchSize: config.reaperBatchSize },
