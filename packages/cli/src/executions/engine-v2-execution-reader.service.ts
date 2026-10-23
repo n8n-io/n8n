@@ -120,6 +120,7 @@ export class EngineV2ExecutionReader {
 		);
 		if (!snapshot) return undefined;
 
+		// No links: this read seeds the editor with run data, which shows none.
 		return await this.fromSnapshot(snapshot);
 	}
 
@@ -207,11 +208,14 @@ export class EngineV2ExecutionReader {
 		// The `workflow:read` check.
 		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
 
-		return await this.fromSnapshot(snapshot);
+		return await this.fromSnapshot(snapshot, await this.findLinks(snapshot, sharedWorkflowIds));
 	}
 
 	/** `undefined` when the stored workflow document cannot be read as one. */
-	private async fromSnapshot(snapshot: ExecutionSnapshot): Promise<IExecutionResponse | undefined> {
+	private async fromSnapshot(
+		snapshot: ExecutionSnapshot,
+		links?: ExecutionLinks,
+	): Promise<IExecutionResponse | undefined> {
 		const workflow = asWorkflowSnapshot(snapshot.workflow);
 		if (!workflow) return undefined;
 
@@ -222,11 +226,7 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(
-				snapshot.graph,
-				snapshot.steps ?? [],
-				await this.findLinks(snapshot, sharedWorkflowIds),
-			),
+			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? [], links),
 		);
 	}
 
