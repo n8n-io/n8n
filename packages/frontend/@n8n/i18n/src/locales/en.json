@@ -4885,6 +4885,8 @@
 	"settings.migrationReport.detail.filters.executions.over1000": "> 1,000",
 	"settings.migrationReport.detail.filters.status": "Status",
 	"settings.migrationReport.detail.filters.owner": "Owner",
+	"settings.migrationReport.detail.filters.project": "Project",
+	"settings.migrationReport.detail.filters.project.personal": "Personal",
 	"settings.migrationReport.detail.filters.clearAll": "Clear all",
 	"settings.migrationReport.detail.filters.done": "Done",
 	"settings.migrationReport.detail.migrate.button": "Migrate",
