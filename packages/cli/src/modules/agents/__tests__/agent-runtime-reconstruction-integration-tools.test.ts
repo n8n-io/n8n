@@ -39,7 +39,6 @@ import type { AgentChatAttachmentService } from '../agent-chat-attachment.servic
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentConfigService } from '../agent-config.service';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
-import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -216,7 +215,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let telemetry: Mocked<Telemetry>;
 	let runtimeCacheService: AgentRuntimeCacheService;
 	let agentConfigService: AgentConfigService;
-	let agentCustomToolsService: AgentCustomToolsService;
 	let agentExecutionOrchestratorService: AgentExecutionOrchestratorService;
 	let agentIntegrationPersistenceService: AgentIntegrationPersistenceService;
 	let agentPublishService: AgentPublishService;
@@ -304,12 +302,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			skillRefs,
 			mock<ChatIntegrationRegistry>(),
 		);
-		agentCustomToolsService = new AgentCustomToolsService(
-			logger,
-			agentRepository,
-			saveCompletion,
-			skillRefs,
-		);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
 			n8nCheckpointStorage,
@@ -360,9 +352,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			logger,
 			agentRepository,
 			agentHistoryRepository,
-			agentTaskSnapshotRepository,
-			agentTaskRepository,
-			agentCustomToolsService,
 			runtimeCacheService,
 			agentValidationService,
 			credentialsService,
