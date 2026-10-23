@@ -1358,6 +1358,7 @@ export class InstanceAiService {
 			},
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
+				openai: { store: false },
 			},
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
@@ -1397,6 +1398,7 @@ export class InstanceAiService {
 			// reprocesses the whole conversation uncached on every resume (~100K tokens).
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
+				openai: { store: false },
 			},
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
