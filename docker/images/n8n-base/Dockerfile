@@ -18,7 +18,6 @@ RUN apk add --no-cache busybox-binsh && \
     # libs Node uses (the openssl CLI binary isn't needed at runtime).
     apk add --no-cache \
         openssh \
-        graphicsmagick \
         tini \
         tzdata \
         ca-certificates \

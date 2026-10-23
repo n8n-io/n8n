@@ -7503,9 +7503,6 @@ importers:
       get-system-fonts:
         specifier: 2.0.2
         version: 2.0.2
-      gm:
-        specifier: 1.25.1
-        version: 1.25.1(supports-color@8.1.1)
       html-to-text:
         specifier: 9.0.5
         version: 9.0.5
@@ -7690,9 +7687,6 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
-      '@types/gm':
-        specifier: ^1.25.0
-        version: 1.25.0
       '@types/html-to-text':
         specifier: ^9.0.1
         version: 9.0.4
@@ -14512,9 +14506,6 @@ packages:
   '@types/glob@8.0.0':
     resolution: {integrity: sha512-l6NQsDDyQUVeoTynNpC9uRvCUint/gSUXQA2euwmTuWGvPY5LSDUu6tkCtJB2SvGQlJQzLaKqcGZP4//7EDveA==}
 
-  '@types/gm@1.25.0':
-    resolution: {integrity: sha512-y0nI4vp+0Vtsve+daADIHeSckm11TnWAdC4CBq2BEXTg+CfJiolnsnzsXeIEuIpBCksjN26LUZlvQKJDpthw5g==}
-
   '@types/har-format@1.2.16':
     resolution: {integrity: sha512-fluxdy7ryD3MV6h8pTfTYpy/xQzCFC7m89nOH9y94cNqJ1mDIDPut7MnRHI3F6qRmh/cT2fUjG1MLdCNb4hE9A==}
 
@@ -15882,12 +15873,6 @@ packages:
   array-includes@3.1.9:
     resolution: {integrity: sha512-FmeCCAenzH0KH381SPT5FZmiA/TmpndpcaShhfgEN9eCVjnFBqq3l1xrI42y8+PPLI6hypzou4GXw00WHmPBLQ==}
     engines: {node: '>= 0.4'}
-
-  array-parallel@0.1.3:
-    resolution: {integrity: sha512-TDPTwSWW5E4oiFiKmz6RGJ/a80Y91GuLgUYuLd49+XBS75tYo8PNgaT2K/OxuQYqkoI852MDGBorg9OcUSTQ8w==}
-
-  array-series@0.1.5:
-    resolution: {integrity: sha512-L0XlBwfx9QetHOsbLDrE/vh2t018w9462HM3iaFfxRiK83aJjAt/Ja3NMkOW7FICwWTlQBa3ZbL5FKhuQWkDrg==}
 
   array-union@2.1.0:
     resolution: {integrity: sha512-HGyxoOTYUyCM6stUe6EJgnd4EoewAI7zMdfqO+kGjnlZmBDz/cR5pf8r/cR4Wq60sL/p0IkcjUEEPwS3GFrIyw==}
@@ -18402,11 +18387,6 @@ packages:
 
   globjoin@0.1.4:
     resolution: {integrity: sha512-xYfnw62CKG8nLkZBfWbhWwDw02CHty86jfPcc2cr3ZfeuK9ysoVPPEUxf21bAD/rWAgk52SuBrLJlefNy8mvFg==}
-
-  gm@1.25.1:
-    resolution: {integrity: sha512-jgcs2vKir9hFogGhXIfs0ODhJTfIrbECCehg38tqFgHm8zqXx7kAJyCYAFK4jTjx71AxrkFtkJBawbAxYUPX9A==}
-    engines: {node: '>=14'}
-    deprecated: The gm module has been sunset. Please migrate to an alternative. https://github.com/aheckmann/gm?tab=readme-ov-file#2025-02-24-this-project-is-not-maintained
 
   gonzales-pe@4.3.0:
     resolution: {integrity: sha512-otgSPpUmdWJ43VXyiNgEYE4luzHCL2pz4wQ0OnDluC6Eg4Ko3Vexy/SrSynglw/eR+OhkzmqFCZa/OFa/RgAOQ==}
@@ -32052,10 +32032,6 @@ snapshots:
       '@types/minimatch': 5.1.2
       '@types/node': 20.19.41
 
-  '@types/gm@1.25.0':
-    dependencies:
-      '@types/node': 20.19.41
-
   '@types/har-format@1.2.16': {}
 
   '@types/html-to-text@9.0.4': {}
@@ -33594,10 +33570,6 @@ snapshots:
       get-intrinsic: 1.3.0
       is-string: 1.1.1
       math-intrinsics: 1.1.0
-
-  array-parallel@0.1.3: {}
-
-  array-series@0.1.5: {}
 
   array-union@2.1.0: {}
 
@@ -36655,15 +36627,6 @@ snapshots:
       slash: 3.0.0
 
   globjoin@0.1.4: {}
-
-  gm@1.25.1(supports-color@8.1.1):
-    dependencies:
-      array-parallel: 0.1.3
-      array-series: 0.1.5
-      cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@8.1.1)
-    transitivePeerDependencies:
-      - supports-color
 
   gonzales-pe@4.3.0:
     dependencies:

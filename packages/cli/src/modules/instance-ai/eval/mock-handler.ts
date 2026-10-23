@@ -941,7 +941,7 @@ const BASE64_BODY_RE = /^[A-Za-z0-9+/=\s]+$/;
  * CONTENT but cannot author valid binary: a PDF part's body (plaintext per the
  * quirk guidance, or a garbage base64 stub) becomes a real PDF carrying that
  * text; image parts get the standard decodable fixture. Downstream parsers
- * (Extract PDF Text via pdfjs, Edit Image via GraphicsMagick) then run on
+ * (Extract PDF Text via pdfjs and Edit Image) then run on
  * structurally valid bytes instead of crashing.
  */
 export function substituteBinaryMimeParts(rfc822: string): string {
