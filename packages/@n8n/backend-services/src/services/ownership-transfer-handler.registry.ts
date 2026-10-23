@@ -14,6 +14,14 @@ export interface ProjectOwnershipTransferHandler<TTransaction> {
 
 	/** Remove all rows owned by the project before the project is deleted. */
 	deleteAll(projectId: string): Promise<void>;
+
+	/**
+	 * Remove the private rows of a user before the user is deleted, in every
+	 * project. It runs also when the user's projects are transferred, because
+	 * private rows do not move to the transferee. Optional: most resources
+	 * belong to a project, not to a user.
+	 */
+	deleteAllForUser?(userId: string): Promise<void>;
 }
 
 @Service()

@@ -13,6 +13,7 @@ import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import set from 'lodash/set';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -138,7 +139,11 @@ function makeService() {
 			eventService,
 			agentUpdateBroadcaster,
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
-			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
+			new AgentModificationTelemetryService(
+				telemetry,
+				mock<InstanceSettings>(),
+				mock<EventService>(),
+			),
 		),
 		skillRefs,
 		chatIntegrationRegistry,
@@ -645,9 +650,10 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).not.toHaveProperty('description');
 		});
 
-		it('persists modelDeploymentName, retains it when omitted, and drops it on clearOmittedOptionalFields', async () => {
+		it('drops a legacy modelDeploymentName from a stored config and from the payload', async () => {
 			const { service, agentRepository } = makeService();
-			const agent = makeAgent();
+			const legacySchema = { ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' };
+			const agent = makeAgent({ schema: legacySchema as AgentJsonConfig });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(
@@ -657,40 +663,8 @@ describe('AgentConfigService', () => {
 				user,
 				fencedOn(agent),
 			);
-			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
-			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
 
-			// Omitting the field keeps the stored value (merge semantics).
-			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
-			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
-			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
-
-			// An explicit empty value is a clear (the builder sends "" when the
-			// user blanks the deployment-name field).
-			await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, modelDeploymentName: '' },
-				user,
-				fencedOn(agent),
-			);
-			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
-			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
-
-			await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' },
-				user,
-				fencedOn(agent),
-			);
-
-			// Full-replace callers remove it when omitted.
-			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, {
-				clearOmittedOptionalFields: true,
-				...fencedOn(agent),
-			});
-			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
 		});
 
