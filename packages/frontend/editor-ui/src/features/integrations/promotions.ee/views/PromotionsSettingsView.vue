@@ -26,9 +26,9 @@ import { useRouter } from 'vue-router';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
+import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
@@ -50,13 +50,17 @@ const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 const { next: nextLoad } = useLatestFetch();
 const { connectErrors, canClone, connect } = usePromotionCheckout();
-const sourceControlStore = useSourceControlStore();
+const {
+	busy: protectionBusy,
+	isProtected,
+	load: loadProtection,
+	set: setProtected,
+} = useInstanceProtection();
 
 const environments = ref<Partial<Record<PromotionDirection, PromotionEnvironment>>>({});
 const isInitialLoading = ref(true);
 const loadError = ref(false);
 const busy = reactive(new Map<string, 'retry' | 'remove'>());
-const protectionBusy = ref(true);
 const addButtons: Partial<Record<PromotionDirection, Element | ComponentPublicInstance | null>> =
 	{};
 
@@ -80,38 +84,10 @@ async function load() {
 	}
 }
 
-async function loadProtection() {
-	try {
-		await sourceControlStore.getPreferences();
-		protectionBusy.value = false;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.promotions.protected.toast.error.load'), {
-			message: i18n.baseText('settings.promotions.protected.toast.error.description'),
-		});
-	}
-}
-
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.promotions.title'));
 	await Promise.all([load(), loadProtection()]);
 });
-
-async function setProtected(branchReadOnly: boolean) {
-	protectionBusy.value = true;
-	try {
-		await sourceControlStore.updatePreferences({ branchReadOnly });
-		toast.showMessage({
-			title: i18n.baseText('settings.sourceControl.saved.title'),
-			type: 'success',
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.promotions.protected.toast.error.save'), {
-			message: i18n.baseText('settings.promotions.protected.toast.error.description'),
-		});
-	} finally {
-		protectionBusy.value = false;
-	}
-}
 
 async function retry(environment: PromotionEnvironment) {
 	busy.set(environment.id, 'retry');
@@ -251,7 +227,7 @@ async function remove(environment: PromotionEnvironment) {
 				>
 					<template #action>
 						<N8nSwitch
-							:model-value="sourceControlStore.preferences.branchReadOnly"
+							:model-value="isProtected"
 							:disabled="protectionBusy"
 							:aria-label="i18n.baseText('settings.sourceControl.protected.bold')"
 							data-test-id="promotion-protected-instance-switch"
