@@ -333,7 +333,7 @@ describe('MigrateAgentSkillsToHub migration', () => {
 		const agentId = await insertAgent([ref('skill_a')], {
 			skill_a: body('alpha', 'Inline draft.'),
 		});
-		// What the startup copy wrote while the hub was behind the environment variable.
+		// Hub rows that a user already created for this agent.
 		await insertRow('skill', { id: 'skill_a', agentId, source: 'agent' });
 		const hubVersionId = randomUUID();
 		await insertRow('skill_version', {
@@ -350,7 +350,7 @@ describe('MigrateAgentSkillsToHub migration', () => {
 			}),
 		});
 		await insertRow('agent_skill_dependency', { agentId, skillId: 'skill_a' });
-		// Published by an older main after that copy, so it pins nothing yet.
+		// Published from the inline columns, so it pins nothing yet.
 		const published = await insertVersion(
 			agentId,
 			[ref('skill_a')],
@@ -370,112 +370,21 @@ describe('MigrateAgentSkillsToHub migration', () => {
 		expect(await count('skill_version')).toBe(1);
 	});
 
-	it('adds a version to the agent skill that has the ref id, not a second skill', async () => {
-		const agentId = await insertAgent([ref('skill_a')], { skill_a: body('alpha', 'Hub draft.') });
-		// What the startup copy wrote, before an older main published changed text.
-		await insertRow('skill', { id: 'skill_a', agentId, source: 'agent' });
-		await insertRow('skill_version', {
-			id: randomUUID(),
-			skillId: 'skill_a',
-			version: 1,
-			name: 'alpha',
-			description: 'Use for alpha',
-			instructions: 'Hub draft.',
-			contentHash: skillContentHash({
-				...body('alpha', 'Hub draft.'),
-				frontmatter: null,
-				files: [],
-			}),
+	it('copies nothing on an instance where the startup copy ran', async () => {
+		// A user removed every skill from this draft after the startup copy.
+		const agentId = await insertAgent([ref('skill_a')], { skill_a: body('alpha') });
+		await insertVersion(agentId, [ref('skill_a')], { skill_a: body('alpha') }, 1);
+		await insertRow('settings', {
+			key: 'agents.skillsHubCopy',
+			value: JSON.stringify({ through: null, retryAgentIds: [] }),
+			loadOnStartup: false,
 		});
-		await insertRow('agent_skill_dependency', { agentId, skillId: 'skill_a' });
-		const published = await insertVersion(
-			agentId,
-			[ref('skill_a')],
-			{ skill_a: body('alpha', 'Changed.') },
-			1,
-		);
 
 		await migrate();
 
-		expect(await pinsOf(published)).toEqual([
-			expect.objectContaining({ skillId: 'skill_a', version: 2, instructions: 'Changed.' }),
-		]);
-		expect(await count('skill')).toBe(1);
-	});
-
-	describe('on an instance where the startup copy ran', () => {
-		async function saveStartupCopyProgress(value: string) {
-			await insertRow('settings', { key: 'agents.skillsHubCopy', value, loadOnStartup: false });
-		}
-
-		it('copies only the drafts after its last agent and the drafts it must try again', async () => {
-			// A user removed every skill from this draft after the startup copy.
-			const checked = await insertAgent([ref('skill_a')], { skill_a: body('alpha') }, 1);
-			const failed = await insertAgent([ref('skill_b')], { skill_b: body('beta') }, 2);
-			const last = await insertAgent([ref('skill_c')], { skill_c: body('gamma') }, 3);
-			const newer = await insertAgent([ref('skill_d')], { skill_d: body('delta') }, 4);
-			const published = await insertVersion(
-				checked,
-				[ref('skill_a')],
-				{ skill_a: body('alpha') },
-				1,
-			);
-			await saveStartupCopyProgress(
-				JSON.stringify({
-					through: { createdAt: '2026-01-01T00:03:00.000Z', id: last },
-					retryAgentIds: [failed],
-				}),
-			);
-
-			await migrate();
-
-			expect(await draftOf(checked)).toEqual([]);
-			expect(await draftOf(last)).toEqual([]);
-			expect(await draftOf(failed)).toEqual([
-				{ skillId: 'skill_b', version: 1, name: 'beta', instructions: 'Do beta.' },
-			]);
-			expect(await draftOf(newer)).toEqual([
-				{ skillId: 'skill_d', version: 1, name: 'delta', instructions: 'Do delta.' },
-			]);
-			// A published version is copied while it pins nothing, as the startup copy did.
-			expect(await pinsOf(published)).toEqual([
-				expect.objectContaining({ skillId: 'skill_a', version: 1 }),
-			]);
-		});
-
-		it('copies every draft when the startup copy found no agents', async () => {
-			const agentId = await insertAgent([ref('skill_a')], { skill_a: body('alpha') });
-			await saveStartupCopyProgress(JSON.stringify({ through: null, retryAgentIds: [] }));
-
-			await migrate();
-
-			expect(await draftOf(agentId)).toHaveLength(1);
-		});
-
-		it('copies no draft when its progress is unreadable', async () => {
-			const agentId = await insertAgent([ref('skill_a')], { skill_a: body('alpha') });
-			await saveStartupCopyProgress('{"through":');
-
-			await migrate();
-
-			expect(await draftOf(agentId)).toEqual([]);
-		});
-
-		it('compares creation times when its last agent was deleted', async () => {
-			const before = await insertAgent([ref('skill_a')], { skill_a: body('alpha') }, 1);
-			const after = await insertAgent([ref('skill_b')], { skill_b: body('beta') }, 3);
-			await saveStartupCopyProgress(
-				JSON.stringify({
-					through: { createdAt: '2026-01-01T00:02:00.000Z', id: randomUUID() },
-					retryAgentIds: [],
-				}),
-			);
-
-			await migrate();
-
-			expect(await draftOf(before)).toEqual([]);
-			expect(await draftOf(after)).toHaveLength(1);
-		});
+		expect(await count('skill')).toBe(0);
+		expect(await count('agent_skill_dependency')).toBe(0);
+		expect(await count('agent_version_skill_dependency')).toBe(0);
 	});
 
 	// Only Postgres enforces `varchar` lengths, so only there can one agent's write fail.

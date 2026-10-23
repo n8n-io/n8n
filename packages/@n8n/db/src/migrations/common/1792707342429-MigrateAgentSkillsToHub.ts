@@ -7,15 +7,9 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
-type AgentRow = { id: string; createdAt: Date | string; schema: unknown; skills: unknown };
+type AgentRow = { id: string; schema: unknown; skills: unknown };
 type HistoryRow = { schema: unknown; skills: unknown };
-type VersionRow = {
-	id: string;
-	skillId: string;
-	version: number;
-	contentHash: string;
-	agentId: string | null;
-};
+type VersionRow = { id: string; skillId: string; version: number; contentHash: string };
 
 type SkillFileContent = { path: string; content: string };
 type SkillContent = {
@@ -38,8 +32,6 @@ type AgentState = {
 	skillByRef: Map<string, string>;
 	refBySkill: Map<string, string>;
 	latest: Map<string, { hash: string; version: number }>;
-	/** The skills that belong to this agent only (`skill.agentId`). */
-	owned: Set<string>;
 };
 
 type Counts = {
@@ -51,9 +43,6 @@ type Counts = {
 	failed: number;
 };
 
-/** An agent in (`createdAt`, `id`) order, `createdAt` as an ISO string. */
-type AgentKey = { createdAt: string; id: string };
-
 /** `skill.id` is varchar(36). A longer inline ref id gets a new id. */
 const SKILL_ID_MAX_LENGTH = 36;
 
@@ -62,25 +51,24 @@ const BATCH_SIZE = 100;
 /** How many failed agents the Sentry event lists. It counts all of them. */
 const REPORTED_FAILURES = 100;
 
-/** Settings key of the progress that the startup copy saved on instances where it ran. */
+/** Settings key that the startup copy wrote on the instances where it ran. */
 const STARTUP_COPY_PROGRESS_KEY = 'agents.skillsHubCopy';
 
 /**
  * Copies the inline skills of agents (`agents.skills`, `agent_history.skills`) into the
  * skills hub, so every instance reads agent skills from the hub. Each inline skill becomes
  * an agent skill of its agent. It applies the rules of the startup copy that ran while the
- * hub was behind `N8N_AGENTS_SKILLS_HUB_ENABLED`, so an agent that copy already handled is
- * left as it is:
- * - Where the startup copy ran, it saved its progress in the settings row
- *   `agents.skillsHubCopy`. The migration copies only the drafts that copy did not check
- *   or that failed. A draft is copied once: a skill that a user detached and deleted after
- *   the startup copy stays deleted, although the legacy columns still hold it.
+ * hub was behind `N8N_AGENTS_SKILLS_HUB_ENABLED`:
  * - A published version is copied only while it pins nothing. Its bodies become versions
  *   and it pins them.
  * - A draft is copied only while the agent has no hub rows at all. Its refs become
  *   dependency rows, and its current text becomes the newest version of each skill.
  * - Content that a skill of the agent already holds is reused, found by content hash.
  * - Refs that were switched off, and bodies that no ref uses, are not copied.
+ *
+ * An instance where the startup copy ran (its settings row `agents.skillsHubCopy` exists)
+ * already reads its skills from the hub, so the migration copies nothing there. A copy
+ * would bring back skills that users deleted, because the legacy columns still hold them.
  *
  * The legacy columns stay as they are. A later migration removes them.
  */
@@ -89,22 +77,20 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		const { escape, runInBatches, logger, migrationName } = context;
 		const counts: Counts = { agents: 0, skills: 0, versions: 0, pins: 0, skipped: 0, failed: 0 };
 		const failures: Array<{ agentId: string; error: string }> = [];
-		const columns = ['id', 'createdAt', 'schema', 'skills']
-			.map((name) => escape.columnName(name))
-			.join(', ');
-		const mayCopyDraft = await this.readDraftScope(context);
+		if (await this.startupCopyRan(context)) {
+			logger.info(
+				`[${migrationName}] The startup copy already moved agent skills into the skills hub. Skipping.`,
+			);
+			return;
+		}
+		const columns = ['id', 'schema', 'skills'].map((name) => escape.columnName(name)).join(', ');
 
 		// This migration writes no agent rows, so offset paging stays stable.
 		await runInBatches<AgentRow>(
 			`SELECT ${columns} FROM ${escape.tableName('agents')} ORDER BY ${escape.columnName('createdAt')}, ${escape.columnName('id')}`,
 			async (agents) => {
 				for (const agent of agents) {
-					const error = await this.copyAgentInSavepoint(
-						context,
-						agent,
-						mayCopyDraft(agent),
-						counts,
-					);
+					const error = await this.copyAgentInSavepoint(context, agent, counts);
 					if (error !== undefined) failures.push({ agentId: agent.id, error });
 				}
 			},
@@ -133,32 +119,14 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		}
 	}
 
-	/**
-	 * Which drafts to copy, from the progress of the startup copy. `through` is the last
-	 * agent that copy checked: its draft and the drafts before it, in (`createdAt`, `id`)
-	 * order, are not copied again, except `retryAgentIds`, the drafts whose copy failed.
-	 * Without that row, every draft follows the copy rules. With an unreadable row, no draft
-	 * is copied: reopening every draft could bring back skills that users deleted.
-	 */
-	private async readDraftScope(
-		context: MigrationContext,
-	): Promise<(agent: Pick<AgentRow, 'createdAt' | 'id'>) => boolean> {
-		const { escape, runQuery, logger, migrationName } = context;
-		const [row] = await runQuery<Array<{ value: string }>>(
-			`SELECT ${escape.columnName('value')} AS ${escape.columnName('value')} FROM ${escape.tableName('settings')} WHERE ${escape.columnName('key')} = :key`,
+	/** Whether the startup copy ran here: it wrote its settings row after each run. */
+	private async startupCopyRan(context: MigrationContext): Promise<boolean> {
+		const { escape, runQuery } = context;
+		const rows = await runQuery<unknown[]>(
+			`SELECT 1 FROM ${escape.tableName('settings')} WHERE ${escape.columnName('key')} = :key`,
 			{ key: STARTUP_COPY_PROGRESS_KEY },
 		);
-		if (!row) return () => true;
-
-		const progress = parseStartupCopyProgress(context, row.value);
-		if (!progress) {
-			logger.error(
-				`[${migrationName}] Unreadable startup copy progress in ${STARTUP_COPY_PROGRESS_KEY}: no agent draft is copied`,
-			);
-			return () => false;
-		}
-		const { through, retryAgentIds } = progress;
-		return (agent) => through === null || isAfter(agent, through) || retryAgentIds.has(agent.id);
+		return rows.length > 0;
 	}
 
 	/**
@@ -169,15 +137,13 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 	private async copyAgentInSavepoint(
 		context: MigrationContext,
 		agent: AgentRow,
-		draftAllowed: boolean,
 		counts: Counts,
 	): Promise<string | undefined> {
 		const { queryRunner, logger, migrationName } = context;
 		const draft = this.readInline(context, `agent ${agent.id}`, agent.schema, agent.skills);
 		// Published versions are loaded one at a time: an agent can have many large ones.
 		const versionIds = await this.findUnpinnedVersionIds(context, agent.id);
-		const copyDraft =
-			draftAllowed && draft.length > 0 && !(await this.hasHubState(context, agent.id));
+		const copyDraft = draft.length > 0 && !(await this.hasHubState(context, agent.id));
 		if (versionIds.length === 0 && !copyDraft) {
 			counts.skipped++;
 			return undefined;
@@ -358,8 +324,7 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		const rows = await runQuery<VersionRow[]>(
 			`SELECT version.${escape.columnName('id')} AS ${escape.columnName('id')}, version.${skillId} AS ${skillId},
 				version.${escape.columnName('version')} AS ${escape.columnName('version')},
-				version.${escape.columnName('contentHash')} AS ${escape.columnName('contentHash')},
-				skill.${escape.columnName('agentId')} AS ${escape.columnName('agentId')}
+				version.${escape.columnName('contentHash')} AS ${escape.columnName('contentHash')}
 			FROM ${escape.tableName('skill_version')} version
 			INNER JOIN ${escape.tableName('skill')} skill ON skill.${escape.columnName('id')} = version.${skillId}
 			WHERE skill.${escape.columnName('agentId')} = :agentId
@@ -372,7 +337,6 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 		);
 		const state = emptyState();
 		for (const row of rows) {
-			if (row.agentId === agentId) state.owned.add(row.skillId);
 			const version = Number(row.version);
 			addByHash(state, row.contentHash, { id: row.id, skillId: row.skillId });
 			const current = state.latest.get(row.skillId);
@@ -385,9 +349,8 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 
 	/**
 	 * The hub version that holds this inline body. A ref seen before uses its own skill: a
-	 * version with the same content, else a new version. A new ref uses the agent skill
-	 * with its id, as the startup copy created it, then a skill with the same content that
-	 * no other ref claimed, else it creates an agent skill. With
+	 * version with the same content, else a new version. A new ref reuses a skill with the
+	 * same content that no other ref claimed, else creates an agent skill. With
 	 * `mustBeLatest`, a match that is not the newest version of its skill gets the body
 	 * again as the newest one.
 	 */
@@ -402,11 +365,8 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 	): Promise<HubVersion> {
 		const hash = contentHash(content);
 		const matches = state.byHash.get(hash) ?? [];
-		const ownSkillOfRef =
-			state.owned.has(refId) && !state.refBySkill.has(refId) ? refId : undefined;
 		const existing =
 			state.skillByRef.get(refId) ??
-			ownSkillOfRef ??
 			matches.find((version) => !state.refBySkill.has(version.skillId))?.skillId;
 		if (existing) {
 			claim(state, refId, existing);
@@ -551,51 +511,6 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 	}
 }
 
-/** The `through` agent id and the retry list of the startup copy, or null when unreadable. */
-function parseStartupCopyProgress(
-	context: MigrationContext,
-	raw: string,
-): { through: AgentKey | null; retryAgentIds: Set<string> } | null {
-	let progress: unknown;
-	try {
-		progress = context.parseJson<unknown>(raw);
-	} catch {
-		return null;
-	}
-	if (!isRecord(progress)) return null;
-	const { through, retryAgentIds } = progress;
-	if (!Array.isArray(retryAgentIds) || !retryAgentIds.every((id) => typeof id === 'string')) {
-		return null;
-	}
-	const retry = new Set<string>(retryAgentIds);
-	if (through === null) return { through: null, retryAgentIds: retry };
-	if (!isRecord(through) || typeof through.id !== 'string') return null;
-	const createdAt = toIsoTimestamp(through.createdAt);
-	if (!createdAt) return null;
-	return { through: { createdAt, id: through.id }, retryAgentIds: retry };
-}
-
-/**
- * A timestamp as an ISO string. Postgres returns a `Date`. SQLite returns UTC text such as
- * `2026-01-01 00:00:00.000`, which `Date` would read as local time without the `Z`.
- */
-function toIsoTimestamp(value: unknown): string | null {
-	let date: Date;
-	if (value instanceof Date) date = value;
-	else if (typeof value === 'string') {
-		date = new Date(/[TZ]/.test(value) ? value : `${value.replace(' ', 'T')}Z`);
-	} else return null;
-	return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-/** Whether the agent comes after `through` in (`createdAt`, `id`) order, as the startup copy paged. */
-function isAfter(agent: Pick<AgentRow, 'createdAt' | 'id'>, through: AgentKey): boolean {
-	const createdAt = toIsoTimestamp(agent.createdAt);
-	if (!createdAt) return false;
-	if (createdAt !== through.createdAt) return createdAt > through.createdAt;
-	return agent.id > through.id;
-}
-
 /**
  * The hub content of an inline body, or null for a body the runtime could not load either.
  * Skills ignore `allowedTools`. A repeated file path keeps its first copy.
@@ -633,7 +548,6 @@ function emptyState(): AgentState {
 		skillByRef: new Map(),
 		refBySkill: new Map(),
 		latest: new Map(),
-		owned: new Set(),
 	};
 }
 
