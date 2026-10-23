@@ -11,7 +11,7 @@ const props = withDefaults(
 		isRunnable: boolean;
 		isPreviewOpen?: boolean;
 		iconOnly?: boolean;
-		variant?: 'outline' | 'ghost';
+		variant?: 'solid' | 'outline' | 'ghost';
 		validationIssues?: AgentConfigValidationIssue[];
 		testId?: string;
 	}>(),
