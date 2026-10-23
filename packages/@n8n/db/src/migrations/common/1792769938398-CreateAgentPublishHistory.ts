@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateAgentPublishHistory1792743375715 implements ReversibleMigration {
+export class CreateAgentPublishHistory1792769938398 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const { escape, runQuery } = ctx;
 		// Raw ALTER preserves incoming SQLite foreign keys.
