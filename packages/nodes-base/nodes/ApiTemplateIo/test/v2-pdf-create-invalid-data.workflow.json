@@ -1,0 +1,52 @@
+{
+	"name": "APITemplate.io V2 PDF create with malformed data JSON",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "pdfv2",
+				"operation": "create",
+				"pdfTemplateId": "tpl-pdf",
+				"dataSource": "json",
+				"v2PdfData": "{invoice_number: INV38379"
+			},
+			"id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"onError": "continueRegularOutput",
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {
+					"error": "The Data field must contain valid JSON"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
