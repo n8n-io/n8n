@@ -10,8 +10,8 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const metadataMigration = 'AddAgentVersionMetadata1792743375714';
-const publicationMigration = 'CreateAgentPublishHistory1792743375715';
+const metadataMigration = 'AddAgentVersionMetadata1792769938200';
+const publicationMigration = 'CreateAgentPublishHistory1792769938398';
 
 describe('Agent version storage', () => {
 	let context: TestMigrationContext;

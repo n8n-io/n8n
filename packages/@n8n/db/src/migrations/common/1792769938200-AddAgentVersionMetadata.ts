@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddAgentVersionMetadata1792743375714 implements ReversibleMigration {
+export class AddAgentVersionMetadata1792769938200 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
 		// Raw ALTER preserves incoming SQLite foreign keys and their rows.
 		for (const name of ['name', 'description']) {
