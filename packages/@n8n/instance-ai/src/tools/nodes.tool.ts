@@ -22,6 +22,7 @@ import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { RESOURCE_EXPLORATION_UNAVAILABLE } from '../constants/resource-exploration';
 import type { InstanceAiContext, NodeDescription } from '../types';
 import { restrictToolActions } from './restrict-tool-actions';
 import { needsModelSelection } from './nodes/model-selection';
@@ -471,7 +472,7 @@ async function handleExploreResources(
 	if (!context.nodeService.exploreResources) {
 		return {
 			results: [],
-			error: 'Resource exploration is not available.',
+			error: RESOURCE_EXPLORATION_UNAVAILABLE,
 		};
 	}
 
