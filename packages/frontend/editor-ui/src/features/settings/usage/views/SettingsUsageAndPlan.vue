@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { UsageTelemetry } from '../usage.store';
 import { useUsageStore } from '../usage.store';
@@ -211,10 +211,9 @@ const onManagePlan = () => {
 	sendUsageTelemetry('manage_plan');
 };
 
-watch(activationKeyModal, (open) => {
-	if (open) return;
-	onActivationModalClose();
-});
+function onActivationDialogOpenUpdate(open: boolean) {
+	if (!open) onActivationModalClose();
+}
 
 const openCommunityRegisterModal = () => {
 	uiStore.openModalWithData({
@@ -326,9 +325,10 @@ const openCommunityRegisterModal = () => {
 			</div>
 
 			<N8nDialog
-				v-model:open="activationKeyModal"
+				:open="activationKeyModal"
 				size="medium"
 				:header="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
+				@update:open="onActivationDialogOpenUpdate"
 			>
 				<N8nDialogBody>
 					<N8nInput
