@@ -612,7 +612,7 @@ export function buildThreadArtifactsBlock(
 		...(previewLines.length > 0 ? [PREVIEW_TABS_HEADER, ...previewLines] : []),
 		...(handoffLines.length > 0
 			? [
-					'The user opened this conversation from the editor, where they are looking at:',
+					'The user opened this conversation from the editor. The request is not always about what the editor shows:',
 					...handoffLines,
 				]
 			: []),
