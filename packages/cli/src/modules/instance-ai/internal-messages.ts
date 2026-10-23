@@ -606,7 +606,7 @@ export function buildThreadArtifactsBlock(
 	// The hand-off rides the user's own request, so the agent acts on that request;
 	// it must not treat the list itself as a prompt to go and look at everything.
 	const inspectGuidance =
-		'Use these ids when you act on the user’s request. Do not inspect, run, or describe their contents beyond what that request needs.';
+		'Use these ids only when the request is about these items. Do not inspect, run, change, or describe them beyond what it needs.';
 
 	const prose = [
 		...(previewLines.length > 0 ? [PREVIEW_TABS_HEADER, ...previewLines] : []),
