@@ -23,11 +23,14 @@ export interface AzureOpenAiListModelsOptions {
 	headers: Record<string, string>;
 	apiVersion?: string;
 	fetch?: typeof globalThis.fetch;
-	/**
-	 * Drop deployments that only answer on the Anthropic Messages API (Claude),
-	 * for callers that send every request to the OpenAI-compatible endpoint.
-	 */
-	openAiCompatibleOnly?: boolean;
+}
+
+/**
+ * A deployment and the API it answers on: `anthropic` for Claude deployments
+ * (Anthropic Messages API), `openai` for every other chat deployment.
+ */
+export interface AzureDeploymentModel extends ProviderModel {
+	modelFamily: 'openai' | 'anthropic';
 }
 
 /**
@@ -85,7 +88,7 @@ export function shouldIncludeAzureModel(
  */
 export async function listAzureOpenAiModels(
 	options: AzureOpenAiListModelsOptions,
-): Promise<ProviderModel[]> {
+): Promise<AzureDeploymentModel[]> {
 	const fetchFn = options.fetch ?? globalThis.fetch;
 	const apiVersion = options.apiVersion ?? 'v1';
 	const base = options.baseURL.replace(/\/+$/, '');
@@ -114,16 +117,17 @@ export async function listAzureOpenAiModels(
 	return (data.value ?? [])
 		.filter(
 			(deployment): deployment is AzureDeployment & { name: string } =>
-				typeof deployment.name === 'string' &&
-				shouldIncludeAzureModel(deployment.capabilities) &&
-				!(options.openAiCompatibleOnly && isAnthropicDeployment(deployment)),
+				typeof deployment.name === 'string' && shouldIncludeAzureModel(deployment.capabilities),
 		)
-		.map((deployment) => ({
-			id: deployment.name,
-			name:
-				typeof deployment.modelName === 'string'
-					? `${deployment.name} (${deployment.modelName})`
-					: deployment.name,
-		}))
+		.map(
+			(deployment): AzureDeploymentModel => ({
+				id: deployment.name,
+				name:
+					typeof deployment.modelName === 'string'
+						? `${deployment.name} (${deployment.modelName})`
+						: deployment.name,
+				modelFamily: isAnthropicDeployment(deployment) ? 'anthropic' : 'openai',
+			}),
+		)
 		.sort(byName);
 }

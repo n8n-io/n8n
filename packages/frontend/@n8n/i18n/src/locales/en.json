@@ -8971,6 +8971,7 @@
 	"agents.builder.advanced.reasoning.label": "Reasoning",
 	"agents.builder.advanced.reasoning.hint": "Let the model reason before responding.",
 	"agents.builder.advanced.reasoning.unsupportedHint": "This model does not support reasoning",
+	"agents.builder.advanced.reasoning.foundryClaudeHint": "Reasoning isn't available for Claude deployments on Microsoft Foundry yet",
 	"agents.builder.advanced.reasoning.noModelHint": "No model selected",
 	"agents.builder.advanced.reasoningEffort.label": "Reasoning effort",
 	"agents.builder.advanced.promptCaching.hint": "Cache repeated parts of the prompt to reduce latency and cost.",

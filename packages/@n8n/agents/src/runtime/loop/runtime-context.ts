@@ -1,5 +1,9 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { isOpenRouterAnthropicModel, splitModelId } from '@n8n/ai-utilities/agent-config';
+import {
+	isAzureFoundryAnthropicModel,
+	isOpenRouterAnthropicModel,
+	splitModelId,
+} from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
@@ -114,11 +118,21 @@ export class RuntimeContextBuilder {
 		return {
 			model,
 			aiProviderTools,
-			reasoning: this.config.reasoning,
+			reasoning: this.resolveReasoning(),
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
 			maxOutputTokens: execOptions?.maxOutputTokens ?? resolveDefaultMaxOutputTokens(this.modelId),
 		};
+	}
+
+	/**
+	 * A Foundry deployment name does not say which Claude model it serves, and the
+	 * Anthropic SDK picks the thinking shape from the model id. A wrong shape fails
+	 * the request, so Foundry Claude runs without reasoning.
+	 */
+	private resolveReasoning(): AgentRuntimeConfig['reasoning'] {
+		if (isAzureFoundryAnthropicModel(this.modelId)) return undefined;
+		return this.config.reasoning;
 	}
 
 	private buildOutputSpec(
