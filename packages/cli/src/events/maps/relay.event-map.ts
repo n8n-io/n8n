@@ -758,6 +758,11 @@ export type RelayEventMap = {
 		connectionType: 'ssh' | 'https';
 	};
 
+	'source-control-environments-version-switched': {
+		userId: string;
+		version: 'v1' | 'v2';
+	};
+
 	'source-control-user-started-pull-ui': {
 		userId?: string;
 		workflowUpdates: number;
