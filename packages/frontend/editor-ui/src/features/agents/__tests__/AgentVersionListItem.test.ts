@@ -14,6 +14,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nIconButton: { template: '<button />' },
 	N8nTooltip: { template: '<span :title="content"><slot /></span>', props: ['content'] },
 	N8nActionToggle: {
 		name: 'N8nActionToggle',

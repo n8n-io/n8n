@@ -4,21 +4,16 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { listAgentVersions, publishAgent, revertAgentToVersion } from './useAgentApi';
+import { listAgentVersions, updateAgentVersion, revertAgentToVersion } from './useAgentApi';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
 import { useAgentTelemetry } from './useAgentTelemetry';
-import { showAgentPublishedConfirmation } from './useAgentPublish';
+import { useAgentPublish } from './useAgentPublish';
+import { useAgentVersionMetadataModal } from './useAgentVersionMetadataModal';
 import type { AgentResource } from '../types';
 
 const PAGE_SIZE = 20;
 
-/**
- * Owns the version-history list state (items, pagination cursor, loading flags)
- * and the two row actions — revert-to-version (with confirmation modal) and
- * publish-this-version. Both actions refresh the list on success; the caller
- * is responsible for refetching the agent so the editor reflects any draft
- * changes from a revert.
- */
+/** Owns saved-version pagination and actions. The caller applies Agent changes to the editor. */
 export function useAgentVersionHistory() {
 	const rootStore = useRootStore();
 	const locale = useI18n();
@@ -26,13 +21,15 @@ export function useAgentVersionHistory() {
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
 	const { trackRevertedChangesOnAgent } = useAgentTelemetry();
 
+	const { publish } = useAgentPublish();
+	const { openVersionMetadata } = useAgentVersionMetadataModal();
 	const items = ref<AgentVersionListItemDto[]>([]);
 	const isLoading = ref(false);
 	const isInitialLoad = ref(true);
 	const hasMore = ref(true);
 	const acting = ref(false);
 	const hasLoadError = ref(false);
-	let agentKey = '';
+	const agentKey = ref('');
 	let fetchedCount = 0;
 
 	// Guards against out-of-order responses. Each load captures the current
@@ -43,26 +40,31 @@ export function useAgentVersionHistory() {
 	let requestToken = 0;
 
 	async function refresh(projectId: string, agentId: string): Promise<void> {
-		if (agentKey !== `${projectId}/${agentId}`) {
-			agentKey = `${projectId}/${agentId}`;
+		if (agentKey.value !== `${projectId}/${agentId}`) {
+			agentKey.value = `${projectId}/${agentId}`;
 			items.value = [];
 			isInitialLoad.value = true;
 			fetchedCount = 0;
 		}
+
 		hasLoadError.value = false;
 		const token = ++requestToken;
 		isLoading.value = true;
+
 		try {
 			const data = await listAgentVersions(rootStore.restApiContext, projectId, agentId, {
 				take: PAGE_SIZE,
 				skip: 0,
 			});
+
 			if (token !== requestToken) return;
+
 			items.value = data;
 			fetchedCount = data.length;
 			hasMore.value = data.length === PAGE_SIZE;
 		} catch (error) {
 			if (token !== requestToken) return;
+
 			hasLoadError.value = true;
 			showError(error, locale.baseText('agents.versionHistory.error.load'));
 		} finally {
@@ -77,12 +79,15 @@ export function useAgentVersionHistory() {
 		if (isLoading.value || !hasMore.value) return;
 		const token = ++requestToken;
 		isLoading.value = true;
+
 		try {
 			const data = await listAgentVersions(rootStore.restApiContext, projectId, agentId, {
 				take: PAGE_SIZE,
 				skip: fetchedCount,
 			});
+
 			if (token !== requestToken) return;
+
 			items.value = [
 				...new Map([...items.value, ...data].map((item) => [item.versionId, item])).values(),
 			];
@@ -91,6 +96,7 @@ export function useAgentVersionHistory() {
 			hasMore.value = data.length === PAGE_SIZE;
 		} catch (error) {
 			if (token !== requestToken) return;
+
 			hasLoadError.value = true;
 			showError(error, locale.baseText('agents.versionHistory.error.load'));
 		} finally {
@@ -123,12 +129,16 @@ export function useAgentVersionHistory() {
 				agentId,
 				versionId,
 			);
+
 			trackRevertedChangesOnAgent({ agentId });
 			showMessage({
 				title: locale.baseText('agents.versionHistory.revert.toast.title'),
 				type: 'success',
 			});
-			await refresh(projectId, agentId);
+
+			if (!agentKey.value || agentKey.value === `${projectId}/${agentId}`)
+				await refresh(projectId, agentId);
+
 			return updated;
 		} catch (error) {
 			showError(error, locale.baseText('agents.versionHistory.revert.error'));
@@ -147,17 +157,56 @@ export function useAgentVersionHistory() {
 
 		acting.value = true;
 		try {
-			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId, versionId);
-			showMessage({
-				title: locale.baseText('agents.versionHistory.publish.toast.title'),
-				type: 'success',
-			});
-			showAgentPublishedConfirmation(agentId);
-			await refresh(projectId, agentId);
+			const updated = await publish(
+				projectId,
+				agentId,
+				versionId,
+				() => !agentKey.value || agentKey.value === `${projectId}/${agentId}`,
+			);
+
+			if (updated && (!agentKey.value || agentKey.value === `${projectId}/${agentId}`))
+				await refresh(projectId, agentId);
+
 			return updated;
-		} catch (error) {
-			showError(error, locale.baseText('agents.versionHistory.publish.error'));
-			return null;
+		} finally {
+			acting.value = false;
+		}
+	}
+
+	async function editVersion(projectId: string, agentId: string, versionId: string): Promise<void> {
+		if (acting.value) return;
+
+		const version = items.value.find((item) => item.versionId === versionId);
+		if (!version) return;
+
+		acting.value = true;
+		try {
+			await openVersionMetadata({
+				mode: 'edit',
+				isCurrent: () => !agentKey.value || agentKey.value === `${projectId}/${agentId}`,
+				name: version.name,
+				description: version.description,
+				onSubmit: async (metadata) => {
+					try {
+						await updateAgentVersion(
+							rootStore.restApiContext,
+							projectId,
+							agentId,
+							versionId,
+							metadata,
+						);
+
+						if (!agentKey.value || agentKey.value === `${projectId}/${agentId}`)
+							await refresh(projectId, agentId);
+
+						return true;
+					} catch (error) {
+						showError(error, locale.baseText('agents.versionHistory.metadata.error'));
+
+						return false;
+					}
+				},
+			});
 		} finally {
 			acting.value = false;
 		}
@@ -175,5 +224,6 @@ export function useAgentVersionHistory() {
 		fetchMore,
 		revertToVersion,
 		publishVersion,
+		editVersion,
 	};
 }

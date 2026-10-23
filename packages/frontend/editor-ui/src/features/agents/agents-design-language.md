@@ -186,6 +186,8 @@ The workspace must then own all of its edge spacing.
 Keep the shell's bottom body padding when a footer is present. Leave
 `--spacing--md` between the last form control and the footer divider, including
 after scrolling to the end. Do not add this space again in individual forms.
+Stretch footer action buttons on narrow screens. Keep checkbox controls at their
+normal size.
 
 When a nested credential or parameter editor dialog is open, release the parent
 focus trap and block parent dismissal. The nested dialog owns Escape until it
@@ -415,3 +417,20 @@ failures. Send the original message and its attachments through the normal send
 action. Keep the failed turn visible. Move the button below the text when needed.
 Disable resend while a draft, queued message, active turn, or blocked send exists.
 Keep the message unchanged if an attachment cannot load.
+
+## Versions and publication
+
+Use separate Versions and Publish Timeline tabs. Versions show saved drafts,
+including versions that have never been published. Show the current draft and
+the published version with separate status markers. The timeline keeps each
+publication and unpublication event, including repeated publication of a version.
+Show unknown durations for incomplete legacy records.
+
+Use the small Agent modal shell for version details and publication. Reuse the
+workflow version name and description fields. Both fields are optional. Keep
+Cancel before Save or Publish. Keep entered values when the request fails.
+
+Flush pending editor changes before opening the publish dialog. Keep the selected
+saved version fixed while the dialog is open. Later edits remain in the draft.
+Editing version details does not create another saved version. Restoring a version
+creates a new draft without copying the version name or description.
