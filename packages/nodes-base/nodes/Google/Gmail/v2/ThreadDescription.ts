@@ -38,6 +38,10 @@ export const threadOperations: INodeProperties[] = [
 				name: 'Remove Label',
 				value: 'removeLabels',
 				action: 'Remove label from thread',
+				builderHint: {
+					propertyHint:
+						"To archive a thread, remove the INBOX label: `operation: 'removeLabels'` with `labelIds: ['INBOX']`. Gmail has no archive operation and no ARCHIVE label.",
+				},
 			},
 			{
 				name: 'Reply',
