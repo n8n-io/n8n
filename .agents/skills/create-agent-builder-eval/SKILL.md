@@ -222,8 +222,7 @@ Follow "A red is signal" in the general skill. For Agent cases, add this:
      "Not reproduced in the eval. Based on trace analysis."
 4. **Check the builder's own guidance for the gap.** Read the files that steer
    Agent Builder:
-   `packages/cli/src/modules/agents/builder/agents-builder-prompts.ts`,
-   `packages/cli/src/modules/agents/builder/prompts/`, and
+   `packages/cli/src/modules/agents/builder/prompts/` and
    `packages/cli/src/modules/agents/builder/skills/`. Also read the Instance AI
    orchestrator prompt in `packages/@n8n/instance-ai/src/agent/system-prompt.ts`.
    If none of them covers the failing situation, add that to the ticket as a
