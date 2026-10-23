@@ -172,10 +172,18 @@ async function searchSlackUsers(
 		/^[UW][A-Z0-9]{8,}$/.test(userId) &&
 		usersApi.info
 	) {
-		const options = await withSlackToken(adapter, { user: userId });
-		abortSignal?.throwIfAborted();
-		const response = await usersApi.info(options);
-		return userLookupResult(response.user, input);
+		try {
+			const options = await withSlackToken(adapter, { user: userId });
+			abortSignal?.throwIfAborted();
+			const response = await usersApi.info(options);
+			return userLookupResult(response.user, input);
+		} catch (error) {
+			abortSignal?.throwIfAborted();
+			const code = isRecord(error) && isRecord(error.data) ? error.data.error : undefined;
+			if (code !== 'user_not_found') throw error;
+			if (input.query?.startsWith('<@')) return userLookupResult(undefined, input);
+			// A plain uppercase name can also match the user ID format.
+		}
 	}
 
 	const parsedEmail = z.string().email().safeParse(input.query);
@@ -189,17 +197,30 @@ async function searchSlackUsers(
 		} catch (error) {
 			abortSignal?.throwIfAborted();
 			const code = isRecord(error) && isRecord(error.data) ? error.data.error : undefined;
+			if (code === 'missing_scope') {
+				return integrationError(
+					INTEGRATION_ERROR_CODES.PERMISSION_NOT_GRANTED,
+					'The Slack connection needs the users:read.email permission to search by email. Add this permission and reinstall the Slack app, or search with a name or Slack mention.',
+				);
+			}
 			if (code === 'users_not_found' && !input.includeDeleted) {
 				return { ok: true, users: [], resultCount: 0 };
 			}
 			// The directory can contain deactivated users that email lookup excludes.
-			if (code !== 'missing_scope' && code !== 'users_not_found') throw error;
+			if (code !== 'users_not_found') throw error;
 		}
 	}
 	if (!usersApi.list) return unsupportedQuery(PLATFORM, 'search_users');
 
-	let position = readSlackSearchCursor('users', input.cursor);
 	const searchTerm = normalizeSearchTerm(input.query ?? email ?? '');
+	const searchKey = JSON.stringify({
+		query: searchTerm,
+		email: email ? normalizeSearchTerm(email) : undefined,
+		includeBots: input.includeBots,
+		includeDeleted: input.includeDeleted,
+	});
+	let cursor = input.cursor;
+	let position = readSlackSearchCursor('users', searchKey, cursor);
 	for (let page = 0; page < MAX_SEARCH_PAGES; page++) {
 		const options = await withSlackToken(adapter, {
 			limit: SLACK_SEARCH_PAGE_SIZE,
@@ -217,6 +238,7 @@ async function searchSlackUsers(
 		}
 		const { results: users, nextCursor } = selectSlackSearchPage({
 			kind: 'users',
+			searchKey,
 			matches: [...matches.values()],
 			limit: input.limit,
 			position,
@@ -225,7 +247,8 @@ async function searchSlackUsers(
 		if (users.length > 0 || !nextCursor) {
 			return { ok: true, users, resultCount: users.length, ...(nextCursor ? { nextCursor } : {}) };
 		}
-		position = readSlackSearchCursor('users', nextCursor);
+		cursor = nextCursor;
+		position = readSlackSearchCursor('users', searchKey, cursor);
 	}
 	return {
 		...integrationError(
@@ -233,8 +256,8 @@ async function searchSlackUsers(
 			'The Slack user search is incomplete. Use nextQuery to continue the search. Do not report that the user does not exist. If you cannot continue, explain that the search is incomplete and ask for a Slack mention or an exact email address.',
 		),
 		searchComplete: false,
-		nextCursor: position.cursor,
-		nextQuery: { query: 'search_users', input: { ...input, cursor: position.cursor } },
+		nextCursor: cursor,
+		nextQuery: { query: 'search_users', input: { ...input, cursor } },
 	};
 }
 
@@ -253,8 +276,10 @@ async function searchSlackChannels(
 	const conversationsApi = adapter?.client?.conversations;
 	if (!adapter || !conversationsApi?.list) return unsupportedQuery(PLATFORM, 'search_channels');
 
-	let position = readSlackSearchCursor('channels', input.cursor);
 	const searchTerm = normalizeChannelSearchTerm(input.query);
+	const searchKey = JSON.stringify({ query: searchTerm, includeArchived: input.includeArchived });
+	let cursor = input.cursor;
+	let position = readSlackSearchCursor('channels', searchKey, cursor);
 	for (let page = 0; page < MAX_SEARCH_PAGES; page++) {
 		const options = await withSlackToken(adapter, {
 			exclude_archived: !input.includeArchived,
@@ -274,6 +299,7 @@ async function searchSlackChannels(
 		}
 		const { results: channels, nextCursor } = selectSlackSearchPage({
 			kind: 'channels',
+			searchKey,
 			matches: [...matches.values()],
 			limit: input.limit,
 			position,
@@ -287,7 +313,8 @@ async function searchSlackChannels(
 				...(nextCursor ? { nextCursor } : {}),
 			};
 		}
-		position = readSlackSearchCursor('channels', nextCursor);
+		cursor = nextCursor;
+		position = readSlackSearchCursor('channels', searchKey, cursor);
 	}
 	return {
 		...integrationError(
@@ -295,8 +322,8 @@ async function searchSlackChannels(
 			'The Slack channel search is incomplete. Use nextQuery to continue the search. Do not report that the channel does not exist. If you cannot continue, explain that the search is incomplete and ask for a channel ID.',
 		),
 		searchComplete: false,
-		nextCursor: position.cursor,
-		nextQuery: { query: 'search_channels', input: { ...input, cursor: position.cursor } },
+		nextCursor: cursor,
+		nextQuery: { query: 'search_channels', input: { ...input, cursor } },
 	};
 }
 

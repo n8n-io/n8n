@@ -45,9 +45,14 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 		} catch (error) {
 			params.abortSignal?.throwIfAborted();
 			if (deadline.signal.aborted) {
+				const timeoutSeconds = ChatIntegrationContextQueryExecutor.QUERY_TIMEOUT_MS / 1000;
+				const lookupHint =
+					params.query === 'get_user' || params.query === 'search_users'
+						? ' For a user lookup, use a known ID or an exact email address, or ask the user for a mention.'
+						: '';
 				return integrationError(
 					INTEGRATION_ERROR_CODES.CONTEXT_QUERY_TIMEOUT,
-					`The ${params.descriptor.integration.type} ${params.query} query took longer than 30 seconds. The query did not finish. For a user lookup, use a known ID or an exact email address, or ask the user for a mention.`,
+					`The ${params.descriptor.integration.type} ${params.query} query took longer than ${timeoutSeconds} seconds. The query did not finish.${lookupHint}`,
 				);
 			}
 			return caughtIntegrationError(error, {

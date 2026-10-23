@@ -72,11 +72,6 @@ describe('SlackIntegration', () => {
 			botToken: 'xoxb-token',
 			signingSecret: 'signing-secret',
 			nativeStreaming: false,
-			webClientOptions: {
-				timeout: 10_000,
-				retryConfig: { retries: 2, minTimeout: 500, maxTimeout: 1000 },
-				rejectRateLimitedCalls: true,
-			},
 			agentView: false,
 		});
 	});
@@ -94,11 +89,6 @@ describe('SlackIntegration', () => {
 			botToken: 'xoxb-token',
 			signingSecret: 'signing-secret',
 			nativeStreaming: false,
-			webClientOptions: {
-				timeout: 10_000,
-				retryConfig: { retries: 2, minTimeout: 500, maxTimeout: 1000 },
-				rejectRateLimitedCalls: true,
-			},
 			agentView: true,
 		});
 	});

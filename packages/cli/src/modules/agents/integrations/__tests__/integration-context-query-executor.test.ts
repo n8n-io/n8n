@@ -788,7 +788,17 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		});
 
 		expect(usersList).toHaveBeenCalledWith({ limit: 200, cursor: 'cursor-page-2' });
-		expect(result).toMatchObject({ ok: true, nextCursor: 'cursor-page-3' });
+		expect(result).toMatchObject({ ok: true, nextCursor: expect.any(String) });
+		const { nextCursor } = result as { nextCursor: string };
+		usersList.mockResolvedValueOnce({ members: [], response_metadata: {} });
+		await expect(
+			executor.execute({
+				descriptor,
+				query: 'search_users',
+				input: { query: 'page', cursor: nextCursor, limit: 1 },
+			}),
+		).resolves.toMatchObject({ ok: true, users: [], resultCount: 0 });
+		expect(usersList).toHaveBeenLastCalledWith({ limit: 200, cursor: 'cursor-page-3' });
 	});
 
 	it('paginates Slack channel search with a large directory page', async () => {
@@ -831,7 +841,22 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			types: 'public_channel,private_channel',
 			cursor: 'channel-cursor-page-2',
 		});
-		expect(result).toMatchObject({ ok: true, nextCursor: 'channel-cursor-page-3' });
+		expect(result).toMatchObject({ ok: true, nextCursor: expect.any(String) });
+		const { nextCursor } = result as { nextCursor: string };
+		conversationsList.mockResolvedValueOnce({ channels: [], response_metadata: {} });
+		await expect(
+			executor.execute({
+				descriptor,
+				query: 'search_channels',
+				input: { query: 'page', cursor: nextCursor, limit: 1 },
+			}),
+		).resolves.toMatchObject({ ok: true, channels: [], resultCount: 0 });
+		expect(conversationsList).toHaveBeenLastCalledWith({
+			exclude_archived: true,
+			limit: 200,
+			types: 'public_channel,private_channel',
+			cursor: 'channel-cursor-page-3',
+		});
 	});
 });
 
@@ -944,6 +969,35 @@ describe('ChatIntegrationContextQueryExecutor — deadlines', () => {
 		};
 		return { executor, params, list, service };
 	}
+
+	it.each([
+		['get_user', true],
+		['search_users', true],
+		['get_channel_info', false],
+		['search_channels', false],
+		['get_current_subject', false],
+	] as const)(
+		'returns a timeout message for %s with the appropriate lookup guidance',
+		async (query, hasLookupHint) => {
+			vi.useFakeTimers();
+			const { executor, params, service } = setup();
+			service.getChatInstanceForTools.mockImplementationOnce(
+				async () => await new Promise(() => {}),
+			);
+			const pending = executor.execute({ ...params, query });
+			await vi.advanceTimersByTimeAsync(ChatIntegrationContextQueryExecutor.QUERY_TIMEOUT_MS);
+			const lookupHint = hasLookupHint
+				? ' For a user lookup, use a known ID or an exact email address, or ask the user for a mention.'
+				: '';
+			await expect(pending).resolves.toEqual({
+				ok: false,
+				error: {
+					code: 'CONTEXT_QUERY_TIMEOUT',
+					message: `The slack ${query} query took longer than ${ChatIntegrationContextQueryExecutor.QUERY_TIMEOUT_MS / 1000} seconds. The query did not finish.${lookupHint}`,
+				},
+			});
+		},
+	);
 
 	it('bounds all search pages by one deadline and permits a subsequent query', async () => {
 		vi.useFakeTimers();

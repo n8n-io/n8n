@@ -33,7 +33,7 @@ describe('Slack directory search', () => {
 		list.mockResolvedValue({ members: [person], response_metadata: { next_cursor: 'page-2' } });
 		await expect(run({ query: 'Example Person' })).resolves.toMatchObject({
 			users: [{ userId: person.id }],
-			nextCursor: 'page-2',
+			nextCursor: expect.any(String),
 			resultCount: 1,
 		});
 		expect(list).toHaveBeenCalledExactlyOnceWith({ limit: 200 });
@@ -55,7 +55,7 @@ describe('Slack directory search', () => {
 			ok: true,
 			users: [{ userId: person.id }],
 			resultCount: 1,
-			nextCursor: 'page-3',
+			nextCursor: expect.any(String),
 		});
 		expect(list.mock.calls.map(([options]) => options)).toEqual([
 			{ limit: 200 },
@@ -95,7 +95,7 @@ describe('Slack directory search', () => {
 					message: z.string(),
 				}),
 				searchComplete: z.literal(false),
-				nextCursor: z.literal('page-6'),
+				nextCursor: z.string(),
 				nextQuery: z.object({
 					query: z.literal('search_users'),
 					input: z.record(z.unknown()),
@@ -108,7 +108,7 @@ describe('Slack directory search', () => {
 			query: 'Example Person',
 			limit: 1,
 			includeDeleted: true,
-			cursor: 'page-6',
+			cursor: result.nextCursor,
 		});
 		list.mockResolvedValueOnce({ members: [person], response_metadata: {} });
 
@@ -129,7 +129,7 @@ describe('Slack directory search', () => {
 		await expect(run({ query: 'Example Person' })).resolves.toMatchObject({
 			ok: true,
 			users: [{ userId: person.id }],
-			nextCursor: 'page-6',
+			nextCursor: expect.any(String),
 		});
 		expect(list).toHaveBeenCalledTimes(5);
 	});
@@ -170,6 +170,38 @@ describe('Slack directory search', () => {
 		expect(list).not.toHaveBeenCalled();
 	});
 
+	it('searches an uppercase name when the direct user lookup does not find an ID', async () => {
+		const { run, info, list } = setup();
+		info.mockRejectedValue(
+			Object.assign(new Error('Not found'), { data: { error: 'user_not_found' } }),
+		);
+		list.mockResolvedValue({ members: [{ ...person, real_name: 'Example Washington' }] });
+		await expect(run({ query: 'WASHINGTON' })).resolves.toMatchObject({
+			users: [{ userId: person.id }],
+		});
+		expect(info).toHaveBeenCalledExactlyOnceWith({ user: 'WASHINGTON' });
+		expect(list).toHaveBeenCalledExactlyOnceWith({ limit: 200 });
+	});
+
+	it('returns an empty result for an unknown explicit user mention without scanning', async () => {
+		const { run, info, list } = setup();
+		info.mockRejectedValue(
+			Object.assign(new Error('Not found'), { data: { error: 'user_not_found' } }),
+		);
+		await expect(run({ query: '<@U12345678>' })).resolves.toMatchObject({
+			users: [],
+			resultCount: 0,
+		});
+		expect(list).not.toHaveBeenCalled();
+	});
+
+	it('does not scan after a direct user lookup fails for another reason', async () => {
+		const { run, info, list } = setup();
+		info.mockRejectedValue(new Error('Request failed'));
+		await expect(run({ query: 'WASHINGTON' })).rejects.toThrow('Request failed');
+		expect(list).not.toHaveBeenCalled();
+	});
+
 	it.each([{ email: 'person@example.com' }, { query: 'person@example.com' }])(
 		'returns an exact email result without listing users: %j',
 		async (input) => {
@@ -200,13 +232,37 @@ describe('Slack directory search', () => {
 		expect(list).not.toHaveBeenCalled();
 	});
 
-	it('uses a directory page when the token cannot use email lookup', async () => {
+	it.each([false, true])(
+		'reports missing email permission without scanning users (includeDeleted: %s)',
+		async (includeDeleted) => {
+			const { run, lookupByEmail, list } = setup();
+			lookupByEmail.mockRejectedValue(
+				Object.assign(new Error('Missing scope'), { data: { error: 'missing_scope' } }),
+			);
+			await expect(run({ email: 'person@example.com', includeDeleted })).resolves.toEqual({
+				ok: false,
+				error: {
+					code: 'PERMISSION_NOT_GRANTED',
+					message: expect.stringContaining('users:read.email'),
+				},
+			});
+			expect(list).not.toHaveBeenCalled();
+		},
+	);
+
+	it('searches the directory for a deactivated email user when requested', async () => {
 		const { run, lookupByEmail, list } = setup();
 		lookupByEmail.mockRejectedValue(
-			Object.assign(new Error('Missing scope'), { data: { error: 'missing_scope' } }),
+			Object.assign(new Error('Not found'), { data: { error: 'users_not_found' } }),
 		);
-		list.mockResolvedValue({ members: [{ ...person, profile: { email: 'person@example.com' } }] });
-		await expect(run({ email: 'person@example.com' })).resolves.toMatchObject({ resultCount: 1 });
+		list.mockResolvedValue({
+			members: [{ ...person, deleted: true, profile: { email: 'person@example.com' } }],
+		});
+		await expect(run({ email: 'person@example.com', includeDeleted: true })).resolves.toMatchObject(
+			{
+				users: [{ userId: person.id }],
+			},
+		);
 		expect(list).toHaveBeenCalledExactlyOnceWith({ limit: 200 });
 	});
 
@@ -236,6 +292,28 @@ describe('Slack directory search', () => {
 			'cursor is invalid',
 		);
 		expect(list).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ query: 'Another' },
+		{ query: 'Example', includeBots: true },
+		{ query: 'Example', includeDeleted: true },
+		{ query: 'Example', email: 'person@example.com' },
+	])('rejects changed user search criteria: %j', async (input) => {
+		const { run, list } = setup();
+		list.mockResolvedValue({ members: [person], response_metadata: { next_cursor: 'page-2' } });
+		const first = userPageSchema.parse(await run({ query: 'Example' }));
+		await expect(run({ ...input, cursor: first.nextCursor })).rejects.toThrow('cursor is invalid');
+		expect(list).toHaveBeenCalledTimes(1);
+	});
+
+	it('accepts normalized criteria and a new result limit for a user continuation', async () => {
+		const { run, list } = setup();
+		list.mockResolvedValue({ members: [person, { ...person, id: 'U2' }] });
+		const first = userPageSchema.parse(await run({ query: 'Example', limit: 1 }));
+		await expect(
+			run({ query: ' @EXAMPLE ', limit: 2, cursor: first.nextCursor }),
+		).resolves.toMatchObject({ users: [{ userId: 'U2' }], resultCount: 1 });
 	});
 
 	it('does not start a Slack request after cancellation during token resolution', async () => {
@@ -280,7 +358,7 @@ describe('Slack directory search', () => {
 			ok: true,
 			channels: [{ channelId: 'C2' }],
 			resultCount: 1,
-			nextCursor: 'page-3',
+			nextCursor: expect.any(String),
 		});
 		expect(conversationsList.mock.calls.map(([options]) => options)).toEqual([
 			{ exclude_archived: true, limit: 200, types: 'public_channel,private_channel' },
@@ -324,7 +402,7 @@ describe('Slack directory search', () => {
 				ok: z.literal(false),
 				error: z.object({ code: z.literal('CONTEXT_SEARCH_INCOMPLETE'), message: z.string() }),
 				searchComplete: z.literal(false),
-				nextCursor: z.literal('page-6'),
+				nextCursor: z.string(),
 				nextQuery: z.object({
 					query: z.literal('search_channels'),
 					input: z.record(z.unknown()),
@@ -337,7 +415,7 @@ describe('Slack directory search', () => {
 			query: 'team',
 			limit: 1,
 			includeArchived: true,
-			cursor: 'page-6',
+			cursor: result.nextCursor,
 		});
 		conversationsList.mockResolvedValueOnce({
 			channels: [{ id: 'C1', name: 'team', is_archived: true }],
@@ -366,7 +444,7 @@ describe('Slack directory search', () => {
 		await expect(channels({ query: 'team' })).resolves.toMatchObject({
 			ok: true,
 			channels: [{ channelId: 'C1' }],
-			nextCursor: 'page-6',
+			nextCursor: expect.any(String),
 		});
 		expect(conversationsList).toHaveBeenCalledTimes(5);
 	});
@@ -400,4 +478,24 @@ describe('Slack directory search', () => {
 		).resolves.toMatchObject({ channels: [{ channelId: 'C2' }], resultCount: 1 });
 		expect(conversationsList).toHaveBeenCalledTimes(2);
 	});
+
+	it.each([{ query: 'other' }, { query: 'team', includeArchived: true }])(
+		'rejects changed channel search criteria: %j',
+		async (input) => {
+			const { channels, conversationsList } = setup();
+			conversationsList.mockResolvedValue({
+				channels: [
+					{ id: 'C1', name: 'team-one' },
+					{ id: 'C2', name: 'team-two' },
+				],
+			});
+			const first = z
+				.object({ nextCursor: z.string() })
+				.parse(await channels({ query: 'team', limit: 1 }));
+			await expect(channels({ ...input, cursor: first.nextCursor })).rejects.toThrow(
+				'cursor is invalid',
+			);
+			expect(conversationsList).toHaveBeenCalledTimes(1);
+		},
+	);
 });

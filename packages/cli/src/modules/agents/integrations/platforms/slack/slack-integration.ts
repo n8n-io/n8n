@@ -246,11 +246,6 @@ export class SlackIntegration extends AgentChatIntegration {
 			signingSecret,
 			// Post-and-edit delivers short updates without a native stream buffer.
 			nativeStreaming: false,
-			webClientOptions: {
-				timeout: 10_000,
-				retryConfig: { retries: 2, minTimeout: 500, maxTimeout: 1000 },
-				rejectRateLimitedCalls: true,
-			},
 			agentView: this.usesAgentMessagingExperience(ctx.integration),
 		});
 	}
