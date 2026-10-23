@@ -50,22 +50,26 @@ export function getShownResources(node: TSESTree.ObjectExpression): string[] {
 
 const ARTICLES = new Set(['a', 'an', 'the']);
 
+/** A note in brackets, like "(Account View)", is not part of the name. */
+const BRACKETED_TEXT = /\([^)]*\)/g;
+
+/** Spaces, underscores and hyphens, and the start of each capitalized part of a camelCase value. */
+const WORD_BOUNDARY = /[\s_-]+|(?<=[\p{Ll}\d])(?=\p{Lu})/u;
+
+/** Punctuation and symbols. Letters of all languages and digits stay. */
+const NON_WORD_CHARACTER = /[^\p{L}\d]/gu;
+
+const PLURAL_SUFFIX = /s$/;
+
 /**
- * Lowercase words without plural "s" or articles. Text in brackets is left out.
- * "directoryContext", "directory_context" and "Directory Contexts" all give
- * ["directory", "context"].
+ * Lowercase words without plural "s" or articles. "directoryContext",
+ * "directory_context" and "Directory Contexts" all give ["directory", "context"].
  */
 function normalizedWords(text: string): string[] {
 	return text
-		.replace(/\([^)]*\)/g, ' ')
-		.replace(/([\p{Ll}\d])(\p{Lu})/gu, '$1 $2')
-		.split(/[\s_-]+/)
-		.map((word) =>
-			word
-				.replace(/^[^\p{L}\d]+|[^\p{L}\d]+$/gu, '')
-				.toLowerCase()
-				.replace(/s$/, ''),
-		)
+		.replace(BRACKETED_TEXT, ' ')
+		.split(WORD_BOUNDARY)
+		.map((word) => word.replace(NON_WORD_CHARACTER, '').toLowerCase().replace(PLURAL_SUFFIX, ''))
 		.filter((word) => word !== '' && !ARTICLES.has(word));
 }
 

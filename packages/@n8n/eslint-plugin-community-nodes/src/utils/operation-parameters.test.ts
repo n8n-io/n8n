@@ -9,6 +9,8 @@ describe('repeatsResource', () => {
 		expect(repeatsResource('Get Contacts', 'contact')).toBe(true);
 		expect(repeatsResource('Get a Company (Account View)', 'company')).toBe(true);
 		expect(repeatsResource('Search', 'search')).toBe(true);
+		expect(repeatsResource('Get HTTP Endpoint', 'httpEndpoint')).toBe(true);
+		expect(repeatsResource('Delete Sub-Account', 'sub_account')).toBe(true);
 	});
 
 	it('allows operations that name another object', () => {
