@@ -97,6 +97,7 @@ describe('SandboxSettingsService', () => {
 			service.resolveDaytonaSandboxConfig('project', {
 				image: 'test-image',
 				snapshot: ' test-snapshot ',
+				fallbackSnapshot: 'fallback-snapshot',
 			}),
 		).resolves.toEqual({
 			daytonaApiUrl: undefined,
@@ -106,6 +107,22 @@ describe('SandboxSettingsService', () => {
 		});
 		expect(aiService.getClient).not.toHaveBeenCalled();
 	});
+
+	it.each([false, true])(
+		'uses the fallback snapshot only when the Daytona proxy is enabled (%s)',
+		async (proxyEnabled) => {
+			aiService.isProxyEnabled.mockReturnValue(proxyEnabled);
+			instanceCredentialBroker.resolveForUse.mockResolvedValue(null);
+
+			const config = await service.resolveDaytonaSandboxConfig('project', {
+				image: 'test-image',
+				snapshot: ' ',
+				fallbackSnapshot: ' fallback-snapshot ',
+			});
+			expect(config.snapshot).toBe(proxyEnabled ? 'fallback-snapshot' : undefined);
+			expect(config.image).toBe(proxyEnabled ? undefined : 'test-image');
+		},
+	);
 
 	it('resolves the proxy connection and mints refreshable tokens with project scope', async () => {
 		aiService.isProxyEnabled.mockReturnValue(true);
@@ -117,6 +134,7 @@ describe('SandboxSettingsService', () => {
 		const config = await service.resolveDaytonaSandboxConfig('project', {
 			image: 'direct-image',
 			snapshot: 'test-snapshot',
+			fallbackSnapshot: 'fallback-snapshot',
 		});
 
 		expect(config).toEqual({

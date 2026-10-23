@@ -17,10 +17,10 @@ export async function resolveAppSandboxConfig(
 
 	settings.registerCredentialUses();
 	if (provider === 'daytona') {
-		const defaultSnapshot = N8N_VERSION ? `n8n/instance-ai:${N8N_VERSION}` : undefined;
 		const connection = await settings.resolveDaytonaSandboxConfig(projectId, {
 			image: config.sandboxImage || undefined,
-			snapshot: config.sandboxSnapshot?.trim() || defaultSnapshot,
+			snapshot: config.sandboxSnapshot,
+			fallbackSnapshot: N8N_VERSION ? `n8n/instance-ai:${N8N_VERSION}` : undefined,
 		});
 		if (!connection.daytonaApiKey && !connection.getAuthToken)
 			return { enabled: false, provider: 'daytona' };

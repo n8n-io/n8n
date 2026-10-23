@@ -125,7 +125,7 @@ export class SandboxSettingsService {
 
 	async resolveDaytonaSandboxConfig(
 		projectId: string,
-		options: Pick<DaytonaSandboxConfig, 'image' | 'snapshot'>,
+		options: Pick<DaytonaSandboxConfig, 'image' | 'snapshot'> & { fallbackSnapshot?: string },
 	): Promise<
 		Pick<
 			DaytonaSandboxConfig,
@@ -143,7 +143,8 @@ export class SandboxSettingsService {
 			};
 		}
 
-		if (!snapshot) {
+		const proxySnapshot = snapshot || options.fallbackSnapshot?.trim() || undefined;
+		if (!proxySnapshot) {
 			throw new OperationalError(
 				'The Daytona proxy requires a sandbox snapshot. For Agent sandboxes, set N8N_AGENTS_AI_SANDBOX_SNAPSHOT. For app builds, set N8N_INSTANCE_AI_SANDBOX_SNAPSHOT.',
 			);
@@ -151,7 +152,7 @@ export class SandboxSettingsService {
 		const client = await this.aiService.getClient();
 		return {
 			daytonaApiUrl: client.getSandboxProxyBaseUrl(),
-			snapshot,
+			snapshot: proxySnapshot,
 			getAuthToken: async () => {
 				const token = await callAiServiceWithRetry(
 					'Sandbox proxy token mint',
