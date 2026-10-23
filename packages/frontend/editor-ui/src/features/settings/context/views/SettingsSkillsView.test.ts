@@ -185,21 +185,92 @@ describe('SettingsSkillsView', () => {
 		expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
 	});
 
-	it('searches on the server and shows an empty table, not the empty state, for no matches', async () => {
-		vi.useFakeTimers({ shouldAdvanceTime: true });
-		const { getByTestId, queryByTestId } = renderView();
-		await new Promise(process.nextTick);
-
-		await userEvent.type(getByTestId('skills-search'), 'brand');
-		await vi.runAllTimersAsync();
-
-		expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
-			skip: 0,
-			take: 10,
-			search: 'brand',
+	describe('search', () => {
+		beforeEach(() => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
 		});
-		expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
-		vi.useRealTimers();
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('searches on the server and says when nothing matches', async () => {
+			const { getByTestId, findByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.type(getByTestId('skills-search'), 'brand');
+			await vi.runAllTimersAsync();
+
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 10,
+				search: 'brand',
+			});
+			expect(await findByTestId('skills-no-results')).toHaveTextContent(
+				'No skills match your search or filter',
+			);
+			expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+		});
+
+		it('keeps the no-results state, not "No skills yet", while a cleared search reloads', async () => {
+			const { getByTestId, findByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.type(getByTestId('skills-search'), 'brand');
+			await vi.runAllTimersAsync();
+			await findByTestId('skills-no-results');
+
+			const pending = Promise.withResolvers<{ count: number; data: SkillListItem[] }>();
+			skillsStore.fetchSkills.mockReturnValueOnce(pending.promise);
+			await userEvent.clear(getByTestId('skills-search'));
+			await vi.runAllTimersAsync();
+
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({ skip: 0, take: 10 });
+			expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+			expect(getByTestId('skills-no-results')).toBeInTheDocument();
+
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			pending.resolve({ count: 1, data: skillsStore.skills });
+			await waitFor(() => expect(queryByTestId('skills-no-results')).not.toBeInTheDocument());
+			expect(queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+			expect(getByTestId('skill-name')).toHaveTextContent('research-search');
+		});
+
+		it('keeps the previous rows instead of the loading rows while a search reloads', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			const { getByTestId, container } = renderView();
+			await new Promise(process.nextTick);
+
+			skillsStore.fetchSkills.mockImplementationOnce(async () => {
+				skillsStore.loading = true;
+				return await new Promise(() => {});
+			});
+			await userEvent.type(getByTestId('skills-search'), 'res');
+			await vi.runAllTimersAsync();
+
+			expect(getByTestId('skill-name')).toHaveTextContent('research-search');
+			expect(container.querySelector('.table--loading')).not.toBeInTheDocument();
+		});
+
+		it('ignores a slower earlier search that ends after a newer one', async () => {
+			const { getByTestId, findByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			const stale = Promise.withResolvers<never>();
+			skillsStore.fetchSkills.mockReturnValueOnce(stale.promise);
+			await userEvent.type(getByTestId('skills-search'), 'brand');
+			await vi.runAllTimersAsync();
+			await userEvent.clear(getByTestId('skills-search'));
+			await vi.runAllTimersAsync();
+			expect(await findByTestId('skills-empty-state')).toBeInTheDocument();
+
+			stale.reject(new Error('offline'));
+			await new Promise(process.nextTick);
+
+			expect(showErrorMock).not.toHaveBeenCalled();
+			expect(getByTestId('skills-empty-state')).toBeInTheDocument();
+		});
 	});
 
 	it('filters by scope on the server', async () => {

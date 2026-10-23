@@ -82,6 +82,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'gitConnection:manageProjects',
 	'gitConnection:pull',
 	'gitConnection:readReviews',
+	'gitConnection:approveReviews',
 	'tag:create',
 	'tag:read',
 	'tag:update',

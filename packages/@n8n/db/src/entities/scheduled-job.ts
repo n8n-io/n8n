@@ -1,4 +1,9 @@
-import { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import {
+	SCHEDULED_JOB_NAME_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_ID_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH,
+	ScheduledJobMisfirePolicy,
+} from '@n8n/constants';
 import type { ScheduledJobKind, RecurringCronUnit } from '@n8n/constants';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
@@ -43,7 +48,7 @@ export class ScheduledJob extends WithTimestamps {
 	 * Human-readable job name, unique across all jobs, and the key provisioning
 	 * matches existing rows on.
 	 */
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_NAME_MAX_LENGTH })
 	name: string;
 
 	/**
@@ -53,7 +58,7 @@ export class ScheduledJob extends WithTimestamps {
 	 * A plain string, not an enum: the scheduler only ever compares it, so a new
 	 * kind of owner needs no schema change.
 	 */
-	@Column({ type: 'varchar', length: 32 })
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH })
 	ownerType: string;
 
 	/**
@@ -62,7 +67,7 @@ export class ScheduledJob extends WithTimestamps {
 	 * Deleting the owner does not delete this row. The owning module must
 	 * deprovision explicitly, with the reconciliation sweep as the backstop.
 	 */
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_OWNER_ID_MAX_LENGTH })
 	ownerId: string;
 
 	/**
