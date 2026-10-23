@@ -46,6 +46,50 @@ skills or overrides remain real directories in this plugin path.
 Run `pnpm sync:skill-links` after adding or removing shared skills. Run
 `pnpm check:skill-links` before submitting changes.
 
+## Autonomous dev flow
+
+The `n8n:dev-flow` skill orchestrates a full ticket lifecycle (read → plan →
+review → implement → multi-angle review → PR → watch CI) as a bounded,
+mostly-autonomous loop. It delegates to a purpose-built agent set:
+
+| Agent | Role |
+|-------|------|
+| `n8n:autodev-planner` | Produce a reviewable implementation plan |
+| `n8n:autodev-plan-reviewer` | Plan review: correctness & completeness (lead lens) |
+| `n8n:autodev-implementer` | Execute the plan, get build/tests green |
+| `n8n:autodev-architecture-reviewer` | Review diff: boundaries, coupling, data flow |
+| `n8n:autodev-security-reviewer` | Review diff: injection, authz, secrets, SSRF |
+| `n8n:autodev-conventions-reviewer` | Review diff: n8n patterns, code quality |
+| `n8n:autodev-test-reviewer` | Review diff: high-value missing tests, test quality |
+| `n8n:autodev-vue-reviewer` | Review diff: Vue 3 + Pinia, design-system/i18n conventions (frontend diffs only) |
+
+The four review lenses run in parallel; the Vue lens is added as a fifth **only
+when the diff touches frontend code** (`.vue`, `packages/frontend/**`, or
+`@n8n/design-system`). Reviewers tag findings `[BLOCKER]`/`[MAJOR]`/`[MINOR]`; loops converge until no
+`[BLOCKER]`/`[MAJOR]` remain (capped at 3 rounds, then escalate). The skill
+opens the PR automatically once the review loop is clean, watches CI and review
+comments, and never merges. Security fixes get neutral branch/commit/test
+naming per AGENTS.md.
+
+## Change stories
+
+The `n8n:change-story` skill turns a branch or PR diff into an evidence-backed,
+product-perspective interactive HTML page (why, what changed for the user, how
+it works now, screenshots/test evidence, risk flags, PR deep links), saved
+under `~/.claude/change-stories/` and opened in the browser. With `--review`
+it also embeds a "Review findings" section (verdict plus severity-tagged
+findings) by fanning out the same autodev reviewer agents listed above.
+Invoke: `/n8n:change-story 12345 --review` (or a branch name, or nothing for
+the current branch).
+
+## Isolated browser testing
+
+The `/n8n:browse` command boots an isolated dev instance from the current
+checkout (own free ports via `N8N_PORT`/`N8N_EDITOR_PORT`, own sqlite DB via
+`N8N_USER_FOLDER`, throwaway owner account) and drives a browser MCP against
+it to verify changes — without touching long-running dev servers on the
+default ports. Multiple instances can run side by side, one per worktree.
+
 ## Design Decisions
 
 ### Why a plugin instead of standalone skills?
