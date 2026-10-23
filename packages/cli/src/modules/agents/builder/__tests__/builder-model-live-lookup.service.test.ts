@@ -65,6 +65,42 @@ describe('BuilderModelLiveLookupService', () => {
 		getBaseMock.mockResolvedValue(additionalData);
 	});
 
+	describe('list for Microsoft Foundry', () => {
+		it('lists the deployments with the model each one serves', async () => {
+			const { service, credentialsService, credentialsHelper, azureFoundryDeploymentsService } =
+				makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'azureOpenAiApi'),
+			);
+			credentialsHelper.getDecrypted.mockResolvedValue({ endpointType: 'foundry' });
+			azureFoundryDeploymentsService.list.mockResolvedValue({
+				status: 'success',
+				deployments: [{ id: 'my-chat', name: 'my-chat (gpt-4.1)', modelName: 'gpt-4.1' }],
+			});
+
+			await expect(
+				service.list(user, projectId, 'cred-1', 'azureOpenAiApi', 'azure-openai'),
+			).resolves.toEqual([{ name: 'my-chat (gpt-4.1)', value: 'my-chat', servedModel: 'gpt-4.1' }]);
+		});
+
+		it('explains why a credential cannot list deployments', async () => {
+			const { service, credentialsService, credentialsHelper, azureFoundryDeploymentsService } =
+				makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'azureOpenAiApi'),
+			);
+			credentialsHelper.getDecrypted.mockResolvedValue({ endpointType: 'classic' });
+			azureFoundryDeploymentsService.list.mockResolvedValue({
+				status: 'unavailable',
+				reason: 'endpoint_type_unsupported',
+			});
+
+			await expect(
+				service.list(user, projectId, 'cred-1', 'azureOpenAiApi', 'azure-openai'),
+			).rejects.toThrow('Agents need a Microsoft Foundry credential');
+		});
+	});
+
 	describe('lookupAzureFoundryDeployments', () => {
 		it('lists the deployments for an Entra ID credential', async () => {
 			const { service, credentialsService, credentialsHelper, azureFoundryDeploymentsService } =

@@ -52,7 +52,7 @@ export function getConfigRulesSection(): string {
 - Sub-agent configuration lives at top level under \`subAgents\`. Load
   \`agent-builder-sub-agents\` before adding refs or changing
   \`subAgents.maxChildren\`.
-- For OpenAI, Anthropic, and Claude models on OpenRouter or Google Vertex, always include
+- For OpenAI, Anthropic, and Claude models on OpenRouter, Google Vertex or Microsoft Foundry, always include
   \`config.promptCaching: { "enabled": true }\` — this is mandatory and must
   never be disabled, even if the user asks. Omit \`config.promptCaching\`
   entirely for other models. For Anthropic and routed Claude models, you may set

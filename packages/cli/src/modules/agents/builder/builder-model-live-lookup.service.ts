@@ -6,6 +6,7 @@ import {
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -33,6 +34,19 @@ export type LiveModelLookupResult =
 			/** Set when the user can fix the cause, so the picker can say how. */
 			reason?: AgentModelsUnavailableReason;
 	  };
+
+/**
+ * Why a Foundry credential has no deployment list, written for the Agent
+ * Builder, which tells the user how to fix it.
+ */
+const FOUNDRY_UNAVAILABLE_MESSAGES: Record<AgentModelsUnavailableReason, string> = {
+	endpoint_type_unsupported:
+		'This Azure OpenAI credential uses the Classic endpoint type. Agents need a Microsoft Foundry credential. Ask the user to select or create one.',
+	project_missing:
+		'This Microsoft Foundry credential has no project, so n8n cannot list its deployments. Ask the user to add the Foundry project to the credential.',
+	project_not_found:
+		'Microsoft Foundry does not know the project on this credential. Ask the user to check the project name in the credential.',
+};
 
 interface ModelLookupOptions {
 	useEvalModelCatalog?: boolean;
@@ -80,8 +94,9 @@ export class BuilderModelLiveLookupService {
 			provider,
 			options,
 		);
-		if (result.status === 'unavailable') throw result.error;
-		return result.models;
+		if (result.status === 'success') return result.models;
+		if (result.reason) throw new UserError(FOUNDRY_UNAVAILABLE_MESSAGES[result.reason]);
+		throw result.error;
 	}
 
 	async lookup(
@@ -109,6 +124,7 @@ export class BuilderModelLiveLookupService {
 			userId: user.id,
 		});
 
+		if (provider === 'azure-openai') return await this.listFoundryDeployments(credentialData);
 		return await this.discoverModels(provider, credentialData);
 	}
 
@@ -133,6 +149,12 @@ export class BuilderModelLiveLookupService {
 			userId: user.id,
 		});
 
+		return await this.listFoundryDeployments(credentialData);
+	}
+
+	private async listFoundryDeployments(
+		credentialData: Record<string, unknown>,
+	): Promise<LiveModelLookupResult> {
 		const result = await this.azureFoundryDeploymentsService.list(credentialData);
 		if (result.status === 'unavailable') {
 			const { error, reason } = result;
@@ -140,9 +162,10 @@ export class BuilderModelLiveLookupService {
 		}
 		return {
 			status: 'success',
-			models: result.deployments.map((deployment) => ({
-				name: deployment.name,
-				value: deployment.id,
+			models: result.deployments.map(({ id, name, modelName }) => ({
+				name,
+				value: id,
+				...(modelName ? { servedModel: modelName } : {}),
 			})),
 			policy: 'endpoint-only',
 		};
@@ -173,7 +196,7 @@ export class BuilderModelLiveLookupService {
 	): LiveModelLookupResult {
 		const configuredDefault = LLM_PROVIDER_DEFAULTS[credentialType];
 		const model =
-			configuredDefault?.provider === provider
+			configuredDefault?.provider === provider && configuredDefault.defaultModel
 				? configuredDefault.defaultModel
 				: `eval-${provider}-model`;
 
