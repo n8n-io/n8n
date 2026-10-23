@@ -2,6 +2,7 @@ import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES, type AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import type { CacheService } from '@n8n/backend-services';
+import type { AgentsConfig } from '@n8n/config';
 import type { WhatsAppAdapter } from '@chat-adapter/whatsapp';
 import { createHmac } from 'crypto';
 import type { InstanceSettings } from 'n8n-core';
@@ -147,7 +148,11 @@ export function createOptionPagesStore(logger: BackendLogger): WhatsAppOptionPag
 		entries.set(key, value);
 	});
 	cache.get.mockImplementation(async (key: string) => entries.get(key));
-	return new WhatsAppOptionPagesStore(cache, logger);
+	return new WhatsAppOptionPagesStore(
+		cache,
+		logger,
+		mock<AgentsConfig>({ checkpointTtlSeconds: 3600 }),
+	);
 }
 
 export function createWhatsAppIntegration(

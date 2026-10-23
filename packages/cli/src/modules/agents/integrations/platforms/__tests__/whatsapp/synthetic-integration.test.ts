@@ -1,4 +1,6 @@
 import type { Logger as BackendLogger } from '@n8n/backend-common';
+import type { CacheService } from '@n8n/backend-services';
+import type { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Thread } from 'chat';
@@ -29,6 +31,7 @@ import {
 	whatsAppReplayFixtures,
 	whatsAppWebhook,
 } from '../../../__tests__/helpers/whatsapp/synthetic-fixtures';
+import { WhatsAppOptionPagesStore } from '../../whatsapp/whatsapp-option-pages.store';
 import type { WhatsAppWebhookVerificationStore } from '../../whatsapp/whatsapp-webhook-verification.store';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
@@ -773,7 +776,11 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		it('keeps 9 options and adds a More row when there are more than 10', async () => {
 			const integration = createWhatsAppIntegration();
 
-			const normalized = await integration.normalizeComponents(buttons(14), testNormalizeContext);
+			const normalized = await integration.normalizeComponents(buttons(14), {
+				runId: 'run-1',
+				toolCallId: 'tool-1',
+				wrapResumeValue: (rawValue) => JSON.stringify({ value: rawValue }),
+			});
 
 			const options = normalized.find((c) => c.type === 'select')?.options ?? [];
 			expect(options).toHaveLength(10);
@@ -1037,6 +1044,81 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 						resumeData: { value: 'opt-20' },
 					}),
 				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('shows the first 10 options without a More row when the option store fails to save', async () => {
+			const cache = mock<CacheService>();
+			cache.set.mockRejectedValue(new Error('redis down'));
+			const logger = mock<BackendLogger>();
+			const store = new WhatsAppOptionPagesStore(
+				cache,
+				logger,
+				mock<AgentsConfig>({ checkpointTtlSeconds: 3600 }),
+			);
+			const integration = createWhatsAppIntegration(undefined, undefined, logger, store);
+
+			const normalized = await integration.normalizeComponents(buttons(14), {
+				runId: 'run-1',
+				toolCallId: 'tool-1',
+				wrapResumeValue: (rawValue) => JSON.stringify({ value: rawValue }),
+			});
+
+			const options = normalized.find((c) => c.type === 'select')?.options ?? [];
+			expect(options.map((o) => o.label)).toEqual(
+				Array.from({ length: 10 }, (_, i) => `Option ${i + 1}`),
+			);
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		it('drops an oversized option from its page and keeps every other option reachable', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const longValue = 'x'.repeat(250);
+			// The first option is oversized, so its row id is too long for WhatsApp.
+			const components: SuspendComponent[] = [
+				{ type: 'button', label: 'Option 1', value: longValue },
+				...Array.from({ length: 13 }, (_, i) => ({
+					type: 'button' as const,
+					label: `Option ${i + 2}`,
+					value: `opt-${i + 2}`,
+				})),
+			];
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: [
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-page-4',
+						toolCallId: 'tool-page-4',
+						toolName: 'select',
+						suspendPayload: {
+							type: 'form',
+							toolName: 'pick_option',
+							displayName: 'Choose one',
+							components,
+						},
+					},
+					{ type: 'finish', finishReason: 'stop' },
+				],
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+				const firstPage = listRows(ctx.lastPost()?.body);
+				// The oversized option leaves a gap on page 1. No option moves to another page.
+				expect(firstPage.map((r) => r.title)).toEqual([
+					...Array.from({ length: 8 }, (_, i) => `Option ${i + 2}`),
+					'More…',
+				]);
+
+				await tapListRow(ctx, fixtures, firstPage[8]);
+				expect(listRows(ctx.lastPost()?.body).map((r) => r.title)).toEqual([
+					'Option 10',
+					'Option 11',
+					'Option 12',
+					'Option 13',
+					'Option 14',
+				]);
 			} finally {
 				await ctx.shutdown();
 			}

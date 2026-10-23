@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { CacheService } from '@n8n/backend-services';
+import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
@@ -14,9 +15,6 @@ export const WHATSAPP_PAGE_SIZE = WHATSAPP_MAX_LIST_ROWS - 1;
 export const WHATSAPP_MAX_PAGED_OPTIONS = 50;
 
 const PAGE_VALUE_PREFIX = 'n8n:page:';
-
-/** A tapped list option stays valid about as long as the suspended run is. */
-const PAGES_TTL_MS = Time.hours.toMilliseconds;
 
 const cacheKey = (key: string) => `agents:whatsapp:option-pages:${key}`;
 
@@ -85,13 +83,29 @@ export class WhatsAppOptionPagesStore {
 	constructor(
 		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
-	/** Returns the key that a "More…" row carries. */
-	async save(pages: StoredOptionPages): Promise<string> {
+	/**
+	 * Returns the key that a "More…" row carries, or `undefined` when the write
+	 * failed. The options stay valid as long as the suspended run does, so this
+	 * uses the checkpoint TTL.
+	 */
+	async save(pages: StoredOptionPages): Promise<string | undefined> {
 		const key = randomBytes(8).toString('hex');
-		await this.cacheService.set(cacheKey(key), pages, PAGES_TTL_MS);
-		return key;
+		try {
+			await this.cacheService.set(
+				cacheKey(key),
+				pages,
+				this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds,
+			);
+			return key;
+		} catch (error) {
+			this.logger.warn('[WhatsAppOptionPagesStore] Failed to save the option pages', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 
 	/** Returns `undefined` when the options expired or the lookup failed. */

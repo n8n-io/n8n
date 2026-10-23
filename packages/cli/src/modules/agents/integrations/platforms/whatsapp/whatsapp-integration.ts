@@ -467,6 +467,13 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		}
 
 		const key = await this.optionPages.save({ options, label: select.label });
+		if (!key) {
+			// Without the stored list, a "More…" row cannot open the next page.
+			// Show the first 10 options and no "More…" row.
+			return components.map((c) =>
+				c === select ? { ...c, options: options.slice(0, WHATSAPP_MAX_LIST_ROWS) } : c,
+			);
+		}
 		const page = getOptionPage(options, 0);
 		const rows = [...page.options, this.buildMoreOption(options, key, page.nextPage)];
 		return components.map((c) => (c === select ? { ...c, options: rows } : c));
