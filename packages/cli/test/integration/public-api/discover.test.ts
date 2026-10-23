@@ -32,15 +32,10 @@ describe('GET /discover', () => {
 	});
 
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({ agent: authOwnerAgent, method: 'get', url: '/discover', apiKey: null }));
+		await testWithAPIKey(authOwnerAgent, 'get', '/discover', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: '/discover',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', '/discover', 'abcXYZ'));
 
 	test('should return discover data via session cookie, without an API key', async () => {
 		const response = await testServer.publicApiAgentWithCookie(owner).get('/discover');

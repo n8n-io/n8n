@@ -77,20 +77,10 @@ const createUnscopedAgent = async () => {
 
 describe('GET /data-tables', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: '/data-tables',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', '/data-tables', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: '/data-tables',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', '/data-tables', 'abcXYZ'));
 
 	test('should reject listing without dataTable:list', async () => {
 		const unscopedAgent = await createUnscopedAgent();
@@ -410,20 +400,10 @@ describe('GET /data-tables', () => {
 
 describe('POST /data-tables', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'post',
-			url: '/data-tables',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'post', '/data-tables', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'post',
-			url: '/data-tables',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'post', '/data-tables', 'abcXYZ'));
 
 	test('should reject creating without dataTable:create', async () => {
 		const unscopedAgent = await createUnscopedAgent();
@@ -570,20 +550,10 @@ describe('POST /data-tables', () => {
 
 describe('GET /data-tables/:dataTableId', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: '/data-tables/123',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', '/data-tables/123', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: '/data-tables/123',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', '/data-tables/123', 'abcXYZ'));
 
 	test('should return 404 for non-existing data table', async () => {
 		const nonExistentId = 'abcd1234efgh5678';
@@ -685,20 +655,10 @@ describe('GET /data-tables/:dataTableId', () => {
 
 describe('PATCH /data-tables/:dataTableId', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'patch',
-			url: '/data-tables/123',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'patch', '/data-tables/123', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'patch',
-			url: '/data-tables/123',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'patch', '/data-tables/123', 'abcXYZ'));
 
 	test('should return 404 for non-existing data table', async () => {
 		const nonExistentId = 'abcd1234efgh5678';
@@ -814,20 +774,10 @@ describe('PATCH /data-tables/:dataTableId', () => {
 
 describe('DELETE /data-tables/:dataTableId', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'delete',
-			url: '/data-tables/123',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'delete', '/data-tables/123', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'delete',
-			url: '/data-tables/123',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'delete', '/data-tables/123', 'abcXYZ'));
 
 	test('should return 404 for non-existing data table', async () => {
 		const nonExistentId = 'abcd1234efgh5678';
@@ -894,20 +844,10 @@ describe('DELETE /data-tables/:dataTableId', () => {
 
 describe('GET /data-tables/:dataTableId/rows', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: '/data-tables/123/rows',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', '/data-tables/123/rows', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: '/data-tables/123/rows',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', '/data-tables/123/rows', 'abcXYZ'));
 
 	test('should reject reading rows without dataTableRow:read', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
@@ -1184,20 +1124,10 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 
 describe('POST /data-tables/:dataTableId/rows', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'post',
-			url: '/data-tables/123/rows',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'post', '/data-tables/123/rows', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'post',
-			url: '/data-tables/123/rows',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'post', '/data-tables/123/rows', 'abcXYZ'));
 
 	test('should reject inserting rows without dataTableRow:create', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
@@ -1316,20 +1246,10 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 
 describe('PATCH /data-tables/:dataTableId/rows/update', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'patch',
-			url: '/data-tables/123/rows/update',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'patch', '/data-tables/123/rows/update', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'patch',
-			url: '/data-tables/123/rows/update',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'patch', '/data-tables/123/rows/update', 'abcXYZ'));
 
 	test('should reject updating rows without dataTableRow:update', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
@@ -1489,20 +1409,10 @@ describe('PATCH /data-tables/:dataTableId/rows/update', () => {
 
 describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'post',
-			url: '/data-tables/123/rows/upsert',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'post', '/data-tables/123/rows/upsert', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'post',
-			url: '/data-tables/123/rows/upsert',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'post', '/data-tables/123/rows/upsert', 'abcXYZ'));
 
 	test('should reject upsert without dataTableRow:upsert', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
@@ -1658,20 +1568,10 @@ describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 
 describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'delete',
-			url: '/data-tables/123/rows/delete',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'delete', '/data-tables/123/rows/delete', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'delete',
-			url: '/data-tables/123/rows/delete',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'delete', '/data-tables/123/rows/delete', 'abcXYZ'));
 
 	test('should reject deleting rows without dataTableRow:delete', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
@@ -1891,20 +1791,10 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 
 describe('DELETE /data-tables/:dataTableId/rows/clear', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'delete',
-			url: '/data-tables/123/rows/clear',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'delete', '/data-tables/123/rows/clear', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'delete',
-			url: '/data-tables/123/rows/clear',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'delete', '/data-tables/123/rows/clear', 'abcXYZ'));
 
 	test('should reject clearing rows without dataTableRow:delete', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
@@ -2526,20 +2416,10 @@ describe('GET /data-tables with projectId filter', () => {
 
 describe('GET /data-tables/:dataTableId/columns', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: '/data-tables/123/columns',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', '/data-tables/123/columns', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: '/data-tables/123/columns',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', '/data-tables/123/columns', 'abcXYZ'));
 
 	test('should reject listing without dataTableColumn:read', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
@@ -2638,20 +2518,10 @@ describe('GET /data-tables/:dataTableId/columns', () => {
 
 describe('POST /data-tables/:dataTableId/columns', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'post',
-			url: '/data-tables/123/columns',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'post', '/data-tables/123/columns', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'post',
-			url: '/data-tables/123/columns',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'post', '/data-tables/123/columns', 'abcXYZ'));
 
 	test('should reject adding a column without dataTableColumn:create', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
@@ -2763,20 +2633,10 @@ describe('POST /data-tables/:dataTableId/columns', () => {
 
 describe('DELETE /data-tables/:dataTableId/columns/:columnId', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'delete',
-			url: '/data-tables/123/columns/456',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'delete', '/data-tables/123/columns/456', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'delete',
-			url: '/data-tables/123/columns/456',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'delete', '/data-tables/123/columns/456', 'abcXYZ'));
 
 	test('should reject deleting without dataTableColumn:delete', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
@@ -2874,20 +2734,10 @@ describe('DELETE /data-tables/:dataTableId/columns/:columnId', () => {
 
 describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'patch',
-			url: '/data-tables/123/columns/456',
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'patch', '/data-tables/123/columns/456', null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'patch',
-			url: '/data-tables/123/columns/456',
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'patch', '/data-tables/123/columns/456', 'abcXYZ'));
 
 	test('should reject updating without dataTableColumn:update', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {

@@ -71,20 +71,15 @@ const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 describe('POST /projects/:projectId/folders', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'post',
-			url: `/projects/${String('any-id')}/folders`,
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'post', `/projects/${String('any-id')}/folders`, null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'post',
-			url: `/projects/${String('any-id')}/folders`,
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(
+			authOwnerAgent,
+			'post',
+			`/projects/${String('any-id')}/folders`,
+			'abcXYZ',
+		));
 
 	test('should return 403 when feature is not licensed', async () => {
 		const response = await authOwnerAgent
@@ -255,20 +250,10 @@ describe('POST /projects/:projectId/folders', () => {
 
 describe('GET /projects/:projectId/folders', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: `/projects/${String('any-id')}/folders`,
-			apiKey: null,
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', `/projects/${String('any-id')}/folders`, null));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: `/projects/${String('any-id')}/folders`,
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(authOwnerAgent, 'get', `/projects/${String('any-id')}/folders`, 'abcXYZ'));
 
 	test('should return 403 when feature is not licensed', async () => {
 		const response = await authOwnerAgent.get(`/projects/${ownerPersonalProject.id}/folders`);
@@ -521,20 +506,20 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 	};
 
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'delete',
-			url: `/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			apiKey: null,
-		}));
+		await testWithAPIKey(
+			authOwnerAgent,
+			'delete',
+			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
+			null,
+		));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'delete',
-			url: `/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(
+			authOwnerAgent,
+			'delete',
+			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
+			'abcXYZ',
+		));
 
 	test('should return 403 when feature is not licensed', async () => {
 		const folder = await createFolder(ownerPersonalProject, { name: 'Folder' });
@@ -756,20 +741,20 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 
 describe('GET /projects/:projectId/folders/:folderId', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: `/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			apiKey: null,
-		}));
+		await testWithAPIKey(
+			authOwnerAgent,
+			'get',
+			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
+			null,
+		));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'get',
-			url: `/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(
+			authOwnerAgent,
+			'get',
+			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
+			'abcXYZ',
+		));
 
 	test('should return 403 when feature is not licensed', async () => {
 		const folder = await createFolder(ownerPersonalProject, { name: 'Folder' });
@@ -914,20 +899,20 @@ describe('GET /projects/:projectId/folders/:folderId', () => {
 
 describe('PATCH /projects/:projectId/folders/:folderId', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'patch',
-			url: `/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			apiKey: null,
-		}));
+		await testWithAPIKey(
+			authOwnerAgent,
+			'patch',
+			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
+			null,
+		));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey({
-			agent: authOwnerAgent,
-			method: 'patch',
-			url: `/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			apiKey: 'abcXYZ',
-		}));
+		await testWithAPIKey(
+			authOwnerAgent,
+			'patch',
+			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
+			'abcXYZ',
+		));
 
 	test('should return 403 when feature is not licensed', async () => {
 		const folder = await createFolder(ownerPersonalProject, { name: 'Folder' });
