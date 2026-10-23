@@ -257,6 +257,7 @@ it('renders promotion review rows with the branch as fallback title and the GitL
 		id: 'promotion',
 		state: 'closed',
 		reviewState: 'merged',
+		reviewType: 'gitlab',
 		title: 'Promote the thing',
 		webUrl: null,
 		branchName: 'n8n-promotion/1',
