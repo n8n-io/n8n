@@ -11,8 +11,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 
-import { ElSwitch } from 'element-plus';
-import { N8nActionToggle, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nCard, N8nHeading, N8nSwitch, N8nText } from '@n8n/design-system';
 
 const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -172,8 +171,9 @@ async function onAction(action: string) {
 					</N8nText>
 				</div>
 
-				<ElSwitch
+				<N8nSwitch
 					class="mr-s"
+					size="large"
 					:disabled="readonly || isSaving"
 					:model-value="nodeParameters.enabled"
 					:title="
@@ -181,12 +181,9 @@ async function onAction(action: string) {
 							? i18n.baseText('workflowActivator.deactivateWorkflow')
 							: i18n.baseText('workflowActivator.activateWorkflow')
 					"
-					active-color="#13ce66"
-					inactive-color="#8899AA"
 					data-test-id="workflow-activate-switch"
 					@update:model-value="onEnabledSwitched($event)"
-				>
-				</ElSwitch>
+				/>
 
 				<N8nActionToggle :actions="actions" theme="dark" @action="onAction" />
 			</div>
