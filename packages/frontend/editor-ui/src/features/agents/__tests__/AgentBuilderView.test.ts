@@ -21,6 +21,7 @@ import type {
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus, type AgentCredentialHelpRequest } from '../agents.eventBus';
+import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
 import { AGENT_TEMPLATES, AGENT_TEMPLATE_SUGGESTIONS_VERSION } from '../agentTemplates';
 import {
 	AGENT_CONFIG_WRITE_KEY,
@@ -3022,11 +3023,13 @@ describe('AgentBuilderView — preview routing', () => {
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
 			isBuilt: boolean;
+			setupTasks: SetupTask[];
 			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
 			flushAutosave: () => Promise<void>;
 		};
 
 		expect(vm.isBuilt).toBe(false);
+		expect(vm.setupTasks.find((task) => task.id === 'test-agent')?.visible).toBe(false);
 
 		vm.onConfigFieldUpdate({ instructions: 'Updated instructions' });
 		await vm.flushAutosave();
@@ -3040,6 +3043,7 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 		expect(getAgentMock).toHaveBeenLastCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
 		expect(vm.isBuilt).toBe(true);
+		expect(vm.setupTasks.find((task) => task.id === 'test-agent')?.visible).toBe(true);
 	});
 
 	it('refreshes full config after channel connection changes the agent', async () => {
@@ -3112,6 +3116,38 @@ describe('AgentBuilderView — configuration validation', () => {
 		await wrapper.setProps({ artifactEditingLocked: true });
 		expect(header.props('tasks')).toBeUndefined();
 	});
+
+	it.each([false, true])(
+		'shows the test setup task only when the header can open preview (isRunnable: %s)',
+		async (isRunnable) => {
+			getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable }));
+			intendedConfig = {
+				name: 'Agent One',
+				...defaultLlmConfig,
+				instructions: 'Help the user',
+				tools: [{ type: 'custom', id: 'custom_tool' }],
+			};
+
+			const wrapper = await renderView();
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+			const vm = wrapper.vm as unknown as { setupTasks: SetupTask[] };
+			const testTask = vm.setupTasks.find((task) => task.id === 'test-agent');
+
+			expect(header.props('agent').isRunnable).toBe(isRunnable);
+			expect(preview.props('isOpen')).toBe(false);
+
+			header.vm.$emit('setup-task-action', testTask);
+			await flushPromises();
+
+			expect(preview.props('isOpen')).toBe(isRunnable);
+			expect(testTask).toEqual(expect.objectContaining({ state: 'todo', visible: isRunnable }));
+			const visibleTasks: SetupTask[] = header.props('tasks') ?? [];
+			expect(visibleTasks.some((task) => task.id === 'test-agent' && task.visible)).toBe(
+				isRunnable,
+			);
+		},
+	);
 
 	it('hides setup tasks while the embedded assistant builds the agent', async () => {
 		const wrapper = await renderView();

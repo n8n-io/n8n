@@ -856,6 +856,7 @@ const setupChecklistContext = computed(() => {
 	return {
 		config: {
 			loaded: initialized.value && localConfig.value !== null,
+			isRunnable: agent.value?.isRunnable === true,
 			model: localConfig.value?.model ?? '',
 			instructions: localConfig.value?.instructions ?? '',
 			toolCount:
