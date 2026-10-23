@@ -321,6 +321,7 @@ describe('AgentExecutionRepository', () => {
 			agentId,
 			projectId,
 			threadId,
+			createdByThreadId: threadId,
 			binaryDataId: `attachment:${uuid()}`,
 			fileName: 'attachment.txt',
 			mimeType: 'text/plain',
