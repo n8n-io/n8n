@@ -1,0 +1,35 @@
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_6ca13b5d94a1b6::t_038cfc2f42cd68 18-19,65-80
+packages/@n8n/cli/src/commands/promotion-provider/list-branches.ts
+  s_6ca13b5d94a1b6::t_790cbc0765ccbf 1-42
+packages/@n8n/cli/src/__tests__/promotion-provider-discovery.test.ts
+  s_6ca13b5d94a1b6::t_1c57762e906524 1-81,97,99-129,134-144
+  s_6ca13b5d94a1b6::t_e67882921a82d0 82-96,98,130-133
+packages/@n8n/cli/package.json
+  s_6ca13b5d94a1b6::t_038cfc2f42cd68 67
+packages/@n8n/cli/src/commands/promotion-provider/list-repositories.ts
+  s_6ca13b5d94a1b6::t_723518ad42aba2 1-35
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_6ca13b5d94a1b6::t_06e1a9164ad5ea 310-362
+packages/@n8n/cli/src/client.ts
+  s_6ca13b5d94a1b6::t_5b43c747900698 184-198
+  s_6ca13b5d94a1b6::t_ec09f38a4734d3 391-412
+packages/@n8n/cli/src/index.ts
+  s_6ca13b5d94a1b6::t_364cdf2c096c0e 59-60,113-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "500e0bab8657feb1767d67f200a49f742be7334f",
+  "prompts": {},
+  "sessions": {
+    "s_6ca13b5d94a1b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e3623c8-f2ba-4830-90e7-6c8d4c3d4541",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

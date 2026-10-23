@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_5785bc20fb92a9::t_bacd1f95815068 12-16,18,20,51,53-55,58,63-65,67-70,72,75-77,79-87,89-92,94-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "91e05948cc9b3dfd94cc7bc07fe1d2edd7beb13d",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

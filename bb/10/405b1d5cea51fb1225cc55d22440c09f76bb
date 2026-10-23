@@ -1,0 +1,20 @@
+packages/cli/test/integration/agents/agent-version-history.test.ts
+  s_5785bc20fb92a9::t_52a66281246404 147,15,50,79,148-160,170-175,180-187,191-196,199,204-205,207-213,219-224,229-231,233-238
+  s_5785bc20fb92a9::t_07f95f18301f73 11-14,161-169,176-179,188-190,197-198,200-203,206,214-218,225-228,232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bb10405b1d5cea51fb1225cc55d22440c09f76bb",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
