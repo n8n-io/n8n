@@ -11,6 +11,7 @@ import {
 	updateViewportToContainNodes,
 	DEFAULT_NODE_SIZE,
 	snapPositionToGrid,
+	snapToGrid,
 	calculateNodeSize,
 	GRID_SIZE,
 	NODE_X_SPACING,
@@ -258,7 +259,13 @@ describe('snapPositionToGrid', () => {
 	it('should snap position to grid', () => {
 		const position: XYPosition = [105, 115];
 		const snappedPosition = snapPositionToGrid(position);
-		expect(snappedPosition).toEqual([112, 128]);
+		expect(snappedPosition).toEqual([112, 112]);
+	});
+
+	it('should snap a negative midpoint to the nearest grid line like snapToGrid', () => {
+		const position: XYPosition = [-24, -24];
+		const snappedPosition = snapPositionToGrid(position);
+		expect(snappedPosition).toEqual([-16, -16]);
 	});
 
 	it('should not change position if already on grid', () => {
@@ -274,6 +281,12 @@ describe('snapPositionToGrid', () => {
 	});
 });
 
+describe('snapToGrid', () => {
+	it('should return 0 and not -0 for a small negative value', () => {
+		expect(snapToGrid(-8)).toBe(0);
+	});
+});
+
 describe('getNewNodePosition', () => {
 	it('should return the new position when there are no conflicts', () => {
 		const nodes: INodeUi[] = [];
@@ -286,7 +299,7 @@ describe('getNewNodePosition', () => {
 		const nodes: INodeUi[] = [];
 		const newPosition: XYPosition = [105, 115];
 		const result = getNewNodePosition(nodes, newPosition);
-		expect(result).toEqual([112, 128]);
+		expect(result).toEqual([112, 112]);
 	});
 
 	it('should move the position to avoid conflicts', () => {
