@@ -6,7 +6,7 @@ import {
 	type AgentTelemetryStatus,
 } from './agentTelemetry.utils';
 import { syncAgentIntegrationStatusCache } from './useAgentIntegrationStatus';
-import { useAgentTelemetry } from './useAgentTelemetry';
+import { useAgentTelemetry, type KnowledgeUploadClientFailureReason } from './useAgentTelemetry';
 import type { AgentResource, AgentJsonConfig } from '../types';
 
 /**
@@ -152,11 +152,38 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		agentTelemetry.trackOpenedAddSkillModal({ agentId: deps.agentId.value });
 	}
 
+	function trackOpenedKnowledgeTab() {
+		agentTelemetry.trackOpenedKnowledgeTab({ agentId: deps.agentId.value });
+	}
+
+	function trackStartedFileUpload(fileCount: number) {
+		agentTelemetry.trackStartedAddingKnowledge({
+			agentId: deps.agentId.value,
+			kind: 'file',
+			fileCount,
+		});
+	}
+
+	function trackStartedVectorStoreSetup() {
+		agentTelemetry.trackStartedAddingKnowledge({
+			agentId: deps.agentId.value,
+			kind: 'vector_store',
+		});
+	}
+
+	function trackRejectedFileUpload(reason: KnowledgeUploadClientFailureReason, fileCount: number) {
+		agentTelemetry.trackFailedKnowledgeUpload({ agentId: deps.agentId.value, reason, fileCount });
+	}
+
 	return {
 		trackTriggerAdded,
 		fetchInitialTriggersBaseline,
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackOpenedKnowledgeTab,
+		trackStartedFileUpload,
+		trackStartedVectorStoreSetup,
+		trackRejectedFileUpload,
 	};
 }

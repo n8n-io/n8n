@@ -5,7 +5,7 @@ import { within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import { billingPreview } from '../../__tests__/preview.fixtures';
-import { emptyBlockerIndex } from '../../promotionOperation';
+import { indexBlockers } from '../../promotionOperation';
 import { buildSelectionGraph, resolveInclusion } from '../../promotionPreview.selection';
 import { buildPreviewTree } from '../../promotionPreview.tree';
 import PromotionResourceTree from './PromotionResourceTree.vue';
@@ -28,7 +28,7 @@ function render(selectedKeys: string[]) {
 			disabled: new Set(),
 			locked: false,
 			direction: 'promote',
-			blockers: emptyBlockerIndex,
+			blockers: indexBlockers([]),
 		},
 	});
 }

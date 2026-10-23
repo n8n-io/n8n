@@ -322,11 +322,30 @@ function handleInteractOutside(event: Event) {
 	if (isCredentialModalOpen.value) event.preventDefault();
 }
 
+const isLoadingCredentials = ref(false);
+
+/**
+ * Block until the project's credentials are in the store, so rows do not show as
+ * unconnected. A slice already fetched for this project refreshes in the background.
+ */
+async function loadCredentials() {
+	isLoadingCredentials.value = !credentialsStore.hasUsableCredentialsForScope({
+		projectId: props.data.projectId,
+	});
+	try {
+		await preloadCredentials();
+	} catch (error) {
+		console.error('Failed to fetch credentials', error);
+	} finally {
+		isLoadingCredentials.value = false;
+	}
+}
+
 onMounted(() => {
 	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
 	if (!isWorkflow.value) {
 		void loadRegistryCatalog();
-		void preloadCredentials();
+		void loadCredentials();
 	}
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
@@ -479,6 +498,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			type: 'verified',
 			packageName: communityPackageNameFor(nodeType),
 			nodeType: stripToolSuffix(nodeType.name),
+			selectedNodeType: nodeType.name,
 			telemetry: { source: 'agent builder tools', hasQuickConnect: false },
 		});
 		if (!result.success) return;
@@ -492,7 +512,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
-		if (warnIfRestricted(installed.name)) return;
+		if (result.restricted) return;
 		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;
@@ -1242,6 +1262,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 					: undefined
 			"
 			:create-action-loading="isCreatingWorkflow"
+			:loading="isLoadingCredentials"
 			:empty-message="isWorkflow ? i18n.baseText('agents.tools.workflow.empty.title') : undefined"
 			:no-results-message="
 				isWorkflow ? i18n.baseText('agents.tools.workflow.empty.noResults') : undefined

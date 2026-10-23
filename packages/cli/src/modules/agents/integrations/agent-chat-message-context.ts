@@ -115,6 +115,7 @@ function toIntegrationMessageSubject(
 	const author = toIntegrationSubjectPerson(subject.author);
 	const labels = subject.labels?.filter((label) => typeof label === 'string');
 	const projectId = isRecord(subject.raw) ? subject.raw.projectId : undefined;
+	const teamId = isRecord(subject.raw) ? subject.raw.teamId : undefined;
 
 	return {
 		type: subject.type,
@@ -124,6 +125,7 @@ function toIntegrationMessageSubject(
 		...(typeof subject.url === 'string' ? { url: subject.url } : {}),
 		...(typeof subject.status === 'string' ? { status: subject.status } : {}),
 		...(typeof projectId === 'string' ? { projectId } : {}),
+		...(typeof teamId === 'string' ? { teamId } : {}),
 		...(labels && labels.length > 0 ? { labels } : {}),
 		...(assignee ? { assignee } : {}),
 		...(author ? { author } : {}),
