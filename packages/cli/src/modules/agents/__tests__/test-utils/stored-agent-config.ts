@@ -70,14 +70,21 @@ export function createAgentSkillRefsService(
 		);
 	};
 
-	// A published version's refs carry no `versionId`: its pins live in their own table.
-	service.refsForVersion.mockImplementation(async (version) => storedSkillRefs(version));
+	// As the real seam: a published version's refs come from its pins, in pin order, and
+	// carry no `versionId`. A version fixture without pins reads its `storedAgentConfig`.
+	const readVersionRefs = (version: Pick<AgentHistory, 'versionId'>): AgentJsonSkillConfig[] => {
+		const pins = versionPins.get(version.versionId);
+		return pins
+			? Object.keys(pins).map((id) => ({ type: 'skill' as const, id }))
+			: storedSkillRefs(version);
+	};
+	service.refsForVersion.mockImplementation(async (version) => readVersionRefs(version));
 	service.readDraft.mockImplementation(async (agent) => {
 		const skillRefs = readDraftRefs(agent);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
 	service.readVersion.mockImplementation(async (version) => {
-		const skillRefs = storedSkillRefs(version);
+		const skillRefs = readVersionRefs(version);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
 	service.skillsForRefs.mockImplementation(async (refs) => pickBodies(refs));
@@ -110,7 +117,9 @@ export function createAgentSkillRefsService(
 			pins: new Map(skillRefs.map((ref) => [ref.id, ref.versionId ?? `${ref.id}-latest`])),
 		};
 	});
-	service.pinVersion.mockResolvedValue(undefined);
+	service.pinVersion.mockImplementation(async (agentVersionId, snapshot) => {
+		versionPins.set(agentVersionId, Object.fromEntries(snapshot.pins));
+	});
 	service.findOutdatedSkillIds.mockResolvedValue([]);
 	return service;
 }
