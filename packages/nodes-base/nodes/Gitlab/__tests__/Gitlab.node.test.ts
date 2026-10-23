@@ -263,6 +263,114 @@ describe('Gitlab Node - Cross-cutting / Auth', () => {
 			expect(result[0]).toHaveLength(2);
 		});
 	});
+
+	describe('Issue Edit - State Translation', () => {
+		it('should translate state: "closed" to state_event: "close" and delete state', async () => {
+			const mock = createMockExecuteFunction({
+				resource: 'issue',
+				operation: 'edit',
+				issueNumber: '1',
+				editFields: {
+					title: 'Updated title',
+					state: 'closed',
+				},
+			});
+			(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({
+				iid: 1,
+				title: 'Updated title',
+				state: 'closed',
+			});
+
+			await gitlab.execute.call(mock);
+
+			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
+				'PUT',
+				'/projects/test-owner%2Ftest-repo/issues/1',
+				{
+					title: 'Updated title',
+					state_event: 'close',
+				},
+				{},
+			);
+		});
+
+		it('should translate state: "open" to state_event: "reopen" and delete state', async () => {
+			const mock = createMockExecuteFunction({
+				resource: 'issue',
+				operation: 'edit',
+				issueNumber: '2',
+				editFields: {
+					state: 'open',
+				},
+			});
+			(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({
+				iid: 2,
+				state: 'opened',
+			});
+
+			await gitlab.execute.call(mock);
+
+			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
+				'PUT',
+				'/projects/test-owner%2Ftest-repo/issues/2',
+				{
+					state_event: 'reopen',
+				},
+				{},
+			);
+		});
+
+		it('should leave state untouched and not set state_event when state is unrecognized', async () => {
+			const mock = createMockExecuteFunction({
+				resource: 'issue',
+				operation: 'edit',
+				issueNumber: '3',
+				editFields: {
+					state: 'custom_state',
+				},
+			});
+			(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({
+				iid: 3,
+			});
+
+			await gitlab.execute.call(mock);
+
+			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
+				'PUT',
+				'/projects/test-owner%2Ftest-repo/issues/3',
+				{
+					state: 'custom_state',
+				},
+				{},
+			);
+		});
+
+		it('should not set state_event when state is undefined', async () => {
+			const mock = createMockExecuteFunction({
+				resource: 'issue',
+				operation: 'edit',
+				issueNumber: '4',
+				editFields: {
+					title: 'Just a title change',
+				},
+			});
+			(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({
+				iid: 4,
+				title: 'Just a title change',
+			});
+
+			await gitlab.execute.call(mock);
+
+			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
+				'PUT',
+				'/projects/test-owner%2Ftest-repo/issues/4',
+				{
+					title: 'Just a title change',
+				},
+				{},
+			);
+		});
+	});
 });
 
 /**
