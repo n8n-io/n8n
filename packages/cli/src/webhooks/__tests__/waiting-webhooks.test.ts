@@ -2030,10 +2030,11 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	const dataPlane = mock<EngineDataPlaneProxyService>();
 	const executionReader = mock<EngineV2ExecutionReader>();
 	const webhookService = mock<WebhookService>();
+	const executionPersistence = mock<ExecutionPersistence>();
 	const waitingWebhooks = new WaitingWebhooks(
 		mock(),
 		mock(),
-		mock<ExecutionPersistence>(),
+		executionPersistence,
 		webhookService,
 		mock<InstanceSettings>(),
 		mock<EventService>(),
@@ -2111,6 +2112,12 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
+	});
+
+	it('announces no extra methods to a preflight, without the v1 lookup', async () => {
+		await expect(waitingWebhooks.getWebhookMethods(EXECUTION_ID)).resolves.toEqual([]);
+
+		expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 	});
 
 	it.each([

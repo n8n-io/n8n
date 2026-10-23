@@ -87,6 +87,9 @@ export class WaitingWebhooks implements IWebhookManager {
 	) {}
 
 	async getWebhookMethods(executionId: string) {
+		// A v2 execution has no control-plane row to read the waiting node from.
+		if (isExecutionIdV2(executionId)) return [];
+
 		const execution = await this.getExecution(executionId);
 		if (!execution) return [];
 
