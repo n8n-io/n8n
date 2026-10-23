@@ -288,7 +288,7 @@ function onSelectTriggerNode(name: string) {
 	}
 }
 
-.menu :global(.el-dropdown) {
+.menu {
 	height: 100%;
 }
 

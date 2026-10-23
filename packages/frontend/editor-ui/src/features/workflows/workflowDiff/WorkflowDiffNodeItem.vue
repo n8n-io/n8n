@@ -5,8 +5,6 @@ import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import type { VersionNode } from '@n8n/rest-api-client/api/versions';
 import type { NodeDiffStatus } from 'n8n-workflow';
 
-import { ElDropdownItem } from 'element-plus';
-
 defineProps<{
 	nodeType?: SimplifiedNodeType | VersionNode | null;
 	nodeName?: string;
@@ -21,43 +19,46 @@ const emit = defineEmits<{
 </script>
 
 <template>
-	<ElDropdownItem
+	<button
+		type="button"
 		:class="{
-			'workflow-diff-node-item': true,
-			'workflow-diff-node-item--compact': isCompact,
-			'workflow-diff-node-item--active': isActive,
+			[$style.item]: true,
+			[$style.compact]: isCompact,
+			[$style.active]: isActive,
 		}"
-		@click.prevent="emit('select')"
+		@click="emit('select')"
 	>
 		<DiffBadge v-if="badgeType !== undefined" :type="badgeType" />
 		<NodeIcon :node-type="nodeType" :size="16" class="ml-2xs mr-4xs" />
 		<span :class="$style.nodeName">{{ nodeName }}</span>
-	</ElDropdownItem>
+	</button>
 </template>
 
 <style module lang="scss">
-:global(.el-dropdown-menu__item.workflow-diff-node-item) {
+.item {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	width: 100%;
+	border: 0;
+	background: transparent;
 	border-radius: var(--radius--3xs);
 	padding: var(--spacing--xs) var(--spacing--2xs);
 	margin-right: var(--spacing--xs);
 	line-height: unset;
 	min-width: 0;
+	text-align: left;
+	cursor: pointer;
 	transition: background-color 0.2s ease;
 
-	&:hover {
+	&:hover,
+	&.active {
 		background-color: var(--color--background--light-3);
 	}
 }
 
-:global(.el-dropdown-menu__item.workflow-diff-node-item.workflow-diff-node-item--compact) {
+.compact {
 	padding: var(--spacing--5xs) 0;
-}
-
-:global(.el-dropdown-menu__item.workflow-diff-node-item.workflow-diff-node-item--active) {
-	background-color: var(--color--background--light-3);
 }
 
 .nodeName {
@@ -65,5 +66,6 @@ const emit = defineEmits<{
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
+	overflow: hidden;
 }
 </style>
