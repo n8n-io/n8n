@@ -1,18 +1,17 @@
 import type { UpdateCredentialPublicDto } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
-import { validate, type Schema } from 'jsonschema';
+import { validate } from 'jsonschema';
 import {
 	type DisplayCondition,
 	type INodeProperties,
 	type INodePropertyOptions,
+	isExpression,
 } from 'n8n-workflow';
 
 import type { CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@n8n/errors';
 
 import type { IDependency, IJsonSchema } from '../../../types';
-
-const EXPRESSION_SCHEMA: Schema = { type: 'string', pattern: '^=' };
 
 function isNodePropertyOptions(options: unknown): options is INodePropertyOptions[] {
 	return (
@@ -74,9 +73,10 @@ export function validateCredentialData(
 		delete schema.allOf;
 	}
 
-	for (const [name, fieldSchema] of Object.entries(schema.properties)) {
-		if (fieldSchema.type === 'number' || fieldSchema.type === 'boolean' || fieldSchema.enum) {
-			schema.properties[name] = { anyOf: [fieldSchema, EXPRESSION_SCHEMA] };
+	// An expression resolves at runtime, so validate it only as a string.
+	for (const [name, value] of Object.entries(data)) {
+		if (isExpression(value) && name in schema.properties) {
+			schema.properties[name] = { type: 'string' };
 		}
 	}
 
@@ -84,10 +84,7 @@ export function validateCredentialData(
 
 	if (!valid) {
 		throw new BadRequestError(
-			errors
-				.filter((error) => error.name !== 'anyOf' && error.name !== 'pattern')
-				.map((error) => `request.body.data ${error.message}`)
-				.join(','),
+			errors.map((error) => `request.body.data ${error.message}`).join(','),
 		);
 	}
 }
