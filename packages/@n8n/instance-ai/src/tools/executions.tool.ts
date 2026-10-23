@@ -18,6 +18,10 @@ import { z } from 'zod';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { restrictToolActions } from './restrict-tool-actions';
+import {
+	TRIGGER_INPUT_DATA_DESCRIPTION,
+	TRIGGER_NODE_NAME_DESCRIPTION,
+} from './shared/trigger-input-descriptions';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
@@ -70,29 +74,8 @@ const runAction = z.object({
 	action: z.literal('run').describe('Execute a workflow and wait for completion'),
 	approvalSummary: approvalSummarySchema,
 	workflowId: z.string().describe('Workflow ID'),
-	inputData: z
-		.record(z.unknown())
-		.optional()
-		.describe(
-			'Input data passed to the workflow trigger. Works for ANY trigger type — ' +
-				'the system injects inputData as the trigger node output, bypassing the need for a real event. ' +
-				'For webhook triggers, a flat inputData is treated as the request body (placed under `body`; ' +
-				'`query`, `headers` and `params` stay empty). To exercise $json.query.*, $json.headers.* or ' +
-				'$json.params.*, pass the request envelope { body: {...}, query: {...}, headers: {...}, params: {...} } instead. ' +
-				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
-				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
-		),
-	triggerNodeName: z
-		.string()
-		.optional()
-		.describe(
-			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
-				'more than one trigger: without it a single trigger is auto-detected and the other ' +
-				"triggers' branches never run. To run each branch, call run once per trigger. " +
-				"Trigger names come from workflow_builder_build_workflow's `triggerNodes` or " +
-				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
-				'workflow to reach a branch — use this instead.',
-		),
+	inputData: z.record(z.unknown()).optional().describe(TRIGGER_INPUT_DATA_DESCRIPTION),
+	triggerNodeName: z.string().optional().describe(TRIGGER_NODE_NAME_DESCRIPTION),
 	timeout: z
 		.number()
 		.int()
