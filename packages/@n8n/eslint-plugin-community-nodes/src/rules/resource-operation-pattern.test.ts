@@ -31,6 +31,15 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 			),
 		},
 		{
+			name: 'AI-only node with an object-form output',
+			filename: '/tmp/TestNode.node.ts',
+			code: nodeWithProperties(
+				"{ name: 'model', type: 'options' }",
+				'[]',
+				"[{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' }]",
+			),
+		},
+		{
 			name: 'operation in a spread property list cannot be ruled out',
 			filename: '/tmp/TestNode.node.ts',
 			code: nodeWithProperties("{ name: 'resource', type: 'options' }, ...otherProperties"),

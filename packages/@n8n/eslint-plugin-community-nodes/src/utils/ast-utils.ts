@@ -55,20 +55,29 @@ export function isTriggerNode(
 	return hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node);
 }
 
+/** Matches a non-main connection type, written as `NodeConnectionTypes.X` or the string literal. */
+function isNonMainConnectionType(node: TSESTree.Node | null | undefined): boolean {
+	const isEnumMember =
+		node?.type === AST_NODE_TYPES.MemberExpression &&
+		node.object.type === AST_NODE_TYPES.Identifier &&
+		node.object.name === 'NodeConnectionTypes' &&
+		node.property.type === AST_NODE_TYPES.Identifier &&
+		node.property.name !== 'Main';
+	const isStringLiteral = node?.type === AST_NODE_TYPES.Literal && node.value !== 'main';
+	return isEnumMember || isStringLiteral;
+}
+
 export function isAiOnlyNode(descriptionValue: TSESTree.ObjectExpression): boolean {
 	const outputs = findArrayLiteralProperty(descriptionValue, 'outputs');
 	const inputs = findArrayLiteralProperty(descriptionValue, 'inputs');
 	if (!outputs || inputs?.elements.length !== 0) return false;
 
 	return outputs.elements.some((element) => {
-		const isAiOutputEnum =
-			element?.type === AST_NODE_TYPES.MemberExpression &&
-			element.object.type === AST_NODE_TYPES.Identifier &&
-			element.object.name === 'NodeConnectionTypes' &&
-			element.property.type === AST_NODE_TYPES.Identifier &&
-			element.property.name !== 'Main';
-		const isAiOutputLiteral = element?.type === AST_NODE_TYPES.Literal && element.value !== 'main';
-		return isAiOutputEnum || isAiOutputLiteral;
+		if (element?.type === AST_NODE_TYPES.ObjectExpression) {
+			const typeProperty = findObjectProperty(element, 'type');
+			return isNonMainConnectionType(typeProperty?.value);
+		}
+		return isNonMainConnectionType(element);
 	});
 }
 

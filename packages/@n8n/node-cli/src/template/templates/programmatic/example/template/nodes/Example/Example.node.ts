@@ -56,6 +56,15 @@ export class Example implements INodeType {
 		// (This could be a different value for each item in case it contains an expression)
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
+				// The "operation" parameter lets a node expose more than one action.
+				// Branch on it here as you add more options.
+				const operation = this.getNodeParameter('operation', itemIndex) as string;
+				if (operation !== 'append') {
+					throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`, {
+						itemIndex,
+					});
+				}
+
 				myString = this.getNodeParameter('myString', itemIndex, '') as string;
 				item = items[itemIndex];
 
