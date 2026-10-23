@@ -219,7 +219,7 @@ describe('skills tool', () => {
 
 				expect(suspend).toHaveBeenCalledWith(
 					expect.objectContaining({
-						message: `Save a new version of the skill. ${change} 3 agents use it.`,
+						message: `Update the skill. ${change} 3 agents use it.`,
 					}),
 				);
 				expect(service.update).toHaveBeenCalledWith('skill_a', {
@@ -430,6 +430,24 @@ describe('skills tool', () => {
 				expect.objectContaining({
 					message:
 						'Save a new version of the skill. Move it, so it is available for every project on this instance. 3 agents use it.',
+				}),
+			);
+		});
+
+		it('does not promise a new version when the update only moves the skill', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			await executeTool(
+				tool,
+				{ action: 'update', skillId: 'skill_a', baseSkillHash: 'hash-2', scope: 'instance' },
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Update the skill. Move it, so it is available for every project on this instance. 3 agents use it.',
 				}),
 			);
 		});

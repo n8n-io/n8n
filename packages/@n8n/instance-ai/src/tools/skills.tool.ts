@@ -216,6 +216,12 @@ function scopeRefusal(scope: 'project' | 'instance' | undefined, projectId: stri
 	return reason ? { success: false, refused: true, reason } : undefined;
 }
 
+function changesContent(input: Extract<FullInput, { action: 'update' }>): boolean {
+	return [input.name, input.description, input.instructions, input.references].some(
+		(field) => field !== undefined,
+	);
+}
+
 function availabilityMessage(availableToAssistant: boolean | undefined): string {
 	if (availableToAssistant === undefined) return '';
 	return availableToAssistant
@@ -294,7 +300,7 @@ async function handleUpdate(
 					: '';
 			return {
 				requestId: nanoid(),
-				message: `Save a new version of the skill.${move}${availabilityMessage(input.availableToAssistant)} ${usedByMessage(current)}`,
+				message: `${changesContent(input) ? 'Save a new version of the skill.' : 'Update the skill.'}${move}${availabilityMessage(input.availableToAssistant)} ${usedByMessage(current)}`,
 				resourceName: current.name,
 				severity: 'warning',
 			};
