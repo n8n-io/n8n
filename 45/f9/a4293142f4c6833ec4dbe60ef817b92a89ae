@@ -1,0 +1,24 @@
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_6d8ee1c6489b24::t_247c2acd1db6c3 376-377
+packages/cli/test/integration/database/repositories/shared-workflow.tags.test.ts
+  s_6d8ee1c6489b24::t_d50e237b1d87e2 35-38
+  s_6d8ee1c6489b24::t_6c867762e81f57 11-17,19-28,39-82,97-100,119-120,124-137,140-255
+  s_6d8ee1c6489b24::t_48729f41b90cbf 1,102-118,121-123
+  s_6d8ee1c6489b24::t_dcf9a0e416b5f9 2-8,10,18,29,31-34,83-92,94-96,101,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45f9a4293142f4c6833ec4dbe60ef817b92a89ae",
+  "prompts": {},
+  "sessions": {
+    "s_6d8ee1c6489b24": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14495-329f-7551-b2b1-59cad8fbe1dd",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
