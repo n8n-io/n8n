@@ -41,7 +41,7 @@ const emit = defineEmits<{
 	'langsmith-export': [];
 	'copy-link': [];
 	'delete-session': [];
-	edit: [];
+	close: [];
 }>();
 
 const i18n = useI18n();
@@ -167,15 +167,6 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 					<N8nText step="xs" bold>{{ metadata.durationLabel }}</N8nText>
 				</li>
 			</ul>
-
-			<N8nButton
-				variant="outline"
-				icon="pencil"
-				size="medium"
-				data-testid="agent-session-timeline-edit"
-				@click="emit('edit')"
-				>{{ i18n.baseText('agentNode.ndv.referenced.editInBuilder') }}</N8nButton
-			>
 			<N8nTooltip placement="bottom" :content="i18n.baseText('agentSessions.actions')">
 				<N8nDropdownMenu
 					:items="menuItems"
@@ -194,6 +185,17 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 						/>
 					</template>
 				</N8nDropdownMenu>
+			</N8nTooltip>
+			<N8nTooltip :content="i18n.baseText('generic.close')">
+				<N8nIconButton
+					variant="ghost"
+					icon="x"
+					size="medium"
+					:aria-label="i18n.baseText('generic.close')"
+					data-testid="agent-session-timeline-close"
+					data-test-id="agent-session-timeline-close"
+					@click="emit('close')"
+				/>
 			</N8nTooltip>
 		</div>
 	</div>
