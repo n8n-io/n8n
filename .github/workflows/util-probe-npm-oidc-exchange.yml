@@ -43,7 +43,7 @@ jobs:
         if: matrix.safe_chain == false
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: '26.5.1'
+          node-version: '26.12.1'
 
       - name: Resolve pnpm version
         id: pnpm-version
