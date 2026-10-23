@@ -81,14 +81,14 @@ export function usePromotionOperation(
 					},
 				)
 			: await message.confirm(
-					i18n.baseText('promotions.modal.incoming.confirmSelected.message'),
-					i18n.baseText('promotions.modal.incoming.confirmSelected.title'),
+					i18n.baseText('promotions.operation.incoming.confirmSelected.message'),
+					i18n.baseText('promotions.operation.incoming.confirmSelected.title'),
 					{
 						type: 'warning',
 						confirmButtonText: i18n.baseText(
-							'promotions.modal.incoming.confirmSelected.confirmButtonText',
+							'promotions.operation.incoming.confirmSelected.confirmButtonText',
 						),
-						cancelButtonText: i18n.baseText('promotions.modal.close'),
+						cancelButtonText: i18n.baseText('promotions.operation.close'),
 					},
 				);
 		return answer === MODAL_CONFIRM;

@@ -14,6 +14,7 @@ import { mockedStore } from '@/__tests__/utils';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
@@ -49,8 +50,10 @@ const {
 		workflowPreviewsAboveAssistantVariant: { value: null as 'control' | 'variant' | null },
 		// EOF Experiment cleanup
 		splitBelowInputVariant: { value: false },
+		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 		inspirationFromTaxonomyVariant: { value: undefined as string | undefined },
 		inspirationFromTaxonomyTreatmentEnabled: { value: false },
+		// EOF Experiment cleanup
 		personalizedPromptVariant: { value: undefined as string | undefined },
 		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
 		personalizedPromptTreatmentEnabled: { value: false },
@@ -258,13 +261,20 @@ vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 	resolvePersonalizedPromptSuggestions: experimentMocks.resolvePersonalizedPromptSuggestions,
 }));
 
+// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 vi.mock('@/experiments/instanceAiInspirationFromTaxonomy', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	useInstanceAiInspirationFromTaxonomyExperiment: () => ({
 		currentVariant: experimentMocks.inspirationFromTaxonomyVariant,
 		isTreatmentVariant: experimentMocks.inspirationFromTaxonomyTreatmentEnabled,
+		isRowsVariant: computed(
+			() =>
+				experimentMocks.inspirationFromTaxonomyVariant.value === 'variant' ||
+				experimentMocks.inspirationFromTaxonomyVariant.value === 'variant-bis',
+		),
 	}),
 }));
+// EOF Experiment cleanup
 
 vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS: workflowPreviewSuggestions,
@@ -501,6 +511,18 @@ const InstanceAiInputStub = defineComponent({
 				),
 				h(
 					'span',
+					{ 'data-test-id': 'instance-ai-input-suggestions-component-name' },
+					props.suggestionsComponent &&
+						typeof props.suggestionsComponent === 'object' &&
+						('name' in props.suggestionsComponent || '__name' in props.suggestionsComponent)
+						? String(
+								(props.suggestionsComponent as { name?: string; __name?: string }).name ??
+									(props.suggestionsComponent as { __name?: string }).__name,
+							)
+						: 'unset',
+				),
+				h(
+					'span',
 					{ 'data-test-id': 'instance-ai-input-suggestion-catalog-version' },
 					props.suggestionCatalogVersion ?? 'unset',
 				),
@@ -664,8 +686,10 @@ describe('InstanceAiEmptyView', () => {
 		experimentMocks.workflowPreviewsAboveAssistantVariant.value = null;
 		// EOF Experiment cleanup
 		experimentMocks.splitBelowInputVariant.value = false;
+		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 		experimentMocks.inspirationFromTaxonomyVariant.value = undefined;
 		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = false;
+		// EOF Experiment cleanup
 		experimentMocks.personalizedPromptVariant.value = undefined;
 		experimentMocks.personalizedPromptFormat.value = null;
 		experimentMocks.personalizedPromptTreatmentEnabled.value = false;
@@ -976,7 +1000,8 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 	});
 
-	it('shows taxonomy list suggestions and exposes the treatment for a mapped role', () => {
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	it('shows taxonomy row suggestions and exposes the variant for a sales respondent', () => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
 		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
 		appSettingsStoreMock.isCloudDeployment = true;
@@ -987,17 +1012,51 @@ describe('InstanceAiEmptyView', () => {
 
 		const { getByTestId } = renderView();
 
-		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('6');
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
-			'v5-taxonomy',
+			'v6-taxonomy',
 		);
-		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
-			'"format":"list"',
+		expect(getByTestId('instance-ai-input-suggestions-component-name')).toHaveTextContent(
+			'TaxonomyPromptSuggestions',
 		);
-		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI inspiration from taxonomy exposed', {
-			variant: 'variant',
-			'$feature/112_aia_inspiration_from_taxonomy': 'variant',
-		});
+		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
+			'"suggestion_format":"rows"',
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
+			{
+				variant: 'variant',
+				'$feature/129_aia_inspiration_from_taxonomy_v2': 'variant',
+			},
+		);
+		expect(usePostHog().setTaxonomyInspirationEligible).toHaveBeenCalledWith(true);
+	});
+
+	it('shows the alternate suggestion catalog for variant-bis', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant-bis';
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Marketing' },
+		};
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('6');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v6-taxonomy-bis',
+		);
+		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
+			'"suggestion_catalog_version":"v6-taxonomy-bis"',
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
+			{
+				variant: 'variant-bis',
+				'$feature/129_aia_inspiration_from_taxonomy_v2': 'variant-bis',
+			},
+		);
+		expect(usePostHog().setTaxonomyInspirationEligible).toHaveBeenCalledWith(true);
 	});
 
 	it('treats an unmapped taxonomy role as control and does not expose the treatment', () => {
@@ -1015,9 +1074,31 @@ describe('InstanceAiEmptyView', () => {
 			'v3-workflow-preview',
 		);
 		expect(telemetryTrack).not.toHaveBeenCalledWith(
-			'Instance AI inspiration from taxonomy exposed',
+			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
 			expect.anything(),
 		);
+		expect(usePostHog().setTaxonomyInspirationEligible).not.toHaveBeenCalled();
+	});
+
+	it('excludes an IT respondent from the taxonomy suggestions and from exposure', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'IT' },
+		};
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
+			expect.anything(),
+		);
+		expect(usePostHog().setTaxonomyInspirationEligible).not.toHaveBeenCalled();
 	});
 
 	it('waits for taxonomy metadata before falling back to the control catalog', async () => {
@@ -1056,7 +1137,7 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
-			'v5-taxonomy',
+			'v6-taxonomy',
 		);
 		expect(experimentMocks.resolvePersonalizedPromptSuggestions).not.toHaveBeenCalled();
 	});
@@ -1080,6 +1161,7 @@ describe('InstanceAiEmptyView', () => {
 		);
 		expect(experimentMocks.resolvePersonalizedPromptSuggestions).toHaveBeenCalled();
 	});
+	// EOF Experiment cleanup
 
 	it('passes workflow preview suggestions, component, and catalog version', () => {
 		const { getByTestId, getByText } = renderView();
@@ -1357,7 +1439,8 @@ describe('InstanceAiEmptyView', () => {
 	});
 	// EOF Experiment cleanup
 
-	it('tracks inspiration from taxonomy exposure for a control user with a mapped role', () => {
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	it('keeps the default empty state for a sales-and-marketing control user and still records exposure', () => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
 		appSettingsStoreMock.isCloudDeployment = true;
 		cloudPlanStoreMock.state.initialized = true;
@@ -1365,12 +1448,19 @@ describe('InstanceAiEmptyView', () => {
 			information: { what_team_are_you_on: 'Sales' },
 		};
 
-		renderView();
+		const { getByTestId } = renderView();
 
-		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI inspiration from taxonomy exposed', {
-			variant: 'control',
-			'$feature/112_aia_inspiration_from_taxonomy': 'control',
-		});
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
+			{
+				variant: 'control',
+				'$feature/129_aia_inspiration_from_taxonomy_v2': 'control',
+			},
+		);
+		expect(usePostHog().setTaxonomyInspirationEligible).toHaveBeenCalledWith(true);
 	});
 
 	it('does not track inspiration from taxonomy exposure for a control user without a mapped role', () => {
@@ -1384,9 +1474,10 @@ describe('InstanceAiEmptyView', () => {
 		renderView();
 
 		expect(telemetryTrack).not.toHaveBeenCalledWith(
-			'Instance AI inspiration from taxonomy exposed',
+			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
 			expect.anything(),
 		);
+		expect(usePostHog().setTaxonomyInspirationEligible).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -1402,30 +1493,43 @@ describe('InstanceAiEmptyView', () => {
 				experimentMocks.proactiveAgentEnabled.value = true;
 			},
 		},
-		// Experiment cleanup (124_workflow_previews_above_assistant)
-		{
-			name: 'the workflow previews layout',
-			setup: () => {
-				experimentMocks.workflowPreviewsAboveAssistantEnabled.value = true;
-			},
+	])(
+		'does not track inspiration from taxonomy exposure when $name replaces the empty state',
+		({ setup }) => {
+			experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+			appSettingsStoreMock.isCloudDeployment = true;
+			cloudPlanStoreMock.state.initialized = true;
+			cloudPlanStoreMock.currentUserCloudInfo = {
+				information: { what_team_are_you_on: 'Sales' },
+			};
+			setup();
+
+			renderView();
+
+			expect(telemetryTrack).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
+				expect.anything(),
+			);
 		},
-		// EOF Experiment cleanup
-	])('does not track inspiration from taxonomy exposure when $name is active', ({ setup }) => {
+	);
+
+	it('does not record taxonomy exposure when workflow previews replace the suggestion list', () => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = true;
 		appSettingsStoreMock.isCloudDeployment = true;
 		cloudPlanStoreMock.state.initialized = true;
 		cloudPlanStoreMock.currentUserCloudInfo = {
 			information: { what_team_are_you_on: 'Sales' },
 		};
-		setup();
 
 		renderView();
 
 		expect(telemetryTrack).not.toHaveBeenCalledWith(
-			'Instance AI inspiration from taxonomy exposed',
+			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
 			expect.anything(),
 		);
 	});
+	// EOF Experiment cleanup
 
 	it('does not track personalized prompt suggestions exposure when workflow builder is unavailable', () => {
 		experimentMocks.personalizedPromptVariant.value = 'control';

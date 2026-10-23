@@ -39,8 +39,15 @@ const props = withDefaults(
 	defineProps<{
 		open?: boolean;
 		items: ToolConnectionItem[];
-		/** Tabs to render, in order. Declared categories show even while empty. */
+		/** Tabs to render, in order. Declared categories show even while empty, unless `hideEmptyCategories`. */
 		categories: ToolCategoryKey[];
+		/**
+		 * Hide every tab except "All" while it has no items, and hide the tab strip
+		 * when only "All" is left. For pickers whose categories never fill in late.
+		 */
+		hideEmptyCategories?: boolean;
+		/** The rows have no leading icon, so the create row drops its icon slot to match. */
+		iconlessRows?: boolean;
 		title?: string;
 		searchPlaceholder?: string;
 		detailItem?: ToolConnectionItem | null;
@@ -79,6 +86,8 @@ const props = withDefaults(
 		showConnectActions: false,
 		groupSearchResults: false,
 		persistentScrollbar: false,
+		hideEmptyCategories: false,
+		iconlessRows: false,
 	},
 );
 
@@ -263,13 +272,18 @@ const HIDE_WHEN_EMPTY: ToolCategoryKey[] = ['community'];
  * while typing and the counts alone show where the matches are.
  */
 const visibleCategories = computed(() =>
-	props.categories.filter(
-		(category) => !HIDE_WHEN_EMPTY.includes(category) || itemsForCategory(category).length > 0,
-	),
+	props.categories.filter((category) => {
+		const hideWhenEmpty = props.hideEmptyCategories
+			? category !== 'all'
+			: HIDE_WHEN_EMPTY.includes(category);
+		return !hideWhenEmpty || itemsForCategory(category).length > 0;
+	}),
 );
 
-const tabsVisible = computed(
-	() => props.categories.length > 1 && visibleCategories.value.length > 0,
+const tabsVisible = computed(() =>
+	props.hideEmptyCategories
+		? visibleCategories.value.length > 1
+		: props.categories.length > 1 && visibleCategories.value.length > 0,
 );
 
 async function selectCategory(category: ToolCategoryKey) {
@@ -334,12 +348,17 @@ const tabOptions = computed<Array<TabOptions<ToolCategoryKey>>>(() =>
 
 // The active tab can still disappear — a consumer changing its declared set, or
 // a hide-when-empty category losing its last item. Fall back to a tab that
-// exists rather than leaving no tab selected.
-watch(visibleCategories, (categories) => {
-	if (categories.length > 0 && !categories.includes(activeCategory.value)) {
-		activeCategory.value = categories[0];
-	}
-});
+// exists rather than leaving no tab selected. Runs at once too, because the
+// first declared category can be hidden from the start.
+watch(
+	visibleCategories,
+	(categories) => {
+		if (categories.length > 0 && !categories.includes(activeCategory.value)) {
+			activeCategory.value = categories[0];
+		}
+	},
+	{ immediate: true },
+);
 
 const isListEmpty = computed(() =>
 	isGroupedSearch.value ? groupedSearchRows.value.length === 0 : toolRows.value.length === 0,
@@ -455,7 +474,7 @@ function handleOpenChange(value: boolean) {
 					<button
 						v-if="showCreateAction && createAction"
 						type="button"
-						:class="$style.createRow"
+						:class="[$style.createRow, iconlessRows && $style.createRowIconless]"
 						:disabled="createActionLoading"
 						:aria-busy="createActionLoading"
 						:data-test-id="createAction.testId ?? 'tools-connection-create'"
@@ -514,7 +533,6 @@ function handleOpenChange(value: boolean) {
 									:connected-label="props.connectedLabel?.(row.item)"
 									@open-detail="openDetail($event)"
 									@connect="emit('connect', $event)"
-									@disconnect="emit('disconnect', $event)"
 									@select-credential="
 										(item, authType, credentialId) =>
 											emit('select-credential', item, authType, credentialId)
@@ -625,6 +643,15 @@ function handleOpenChange(value: boolean) {
 	align-items: center;
 	justify-content: center;
 	color: var(--color--primary);
+}
+
+.createRowIconless {
+	// Iconless rows start their text at this inset, so the plus lines up with it.
+	padding-inline-start: var(--spacing--xs);
+
+	.createIcon {
+		width: auto;
+	}
 }
 
 .createText {

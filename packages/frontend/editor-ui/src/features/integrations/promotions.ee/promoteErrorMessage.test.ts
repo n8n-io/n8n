@@ -32,7 +32,7 @@ describe('getPromoteErrorMessage', () => {
 		});
 
 		expect(getPromoteErrorMessage(error, changes, i18n)).toBe(
-			i18n.baseText('promotions.modal.promoteError.workflowsMovedCrossProject', {
+			i18n.baseText('promotions.operation.promoteError.workflowsMovedCrossProject', {
 				interpolate: { workflows: 'Slack trigger flow' },
 			}),
 		);

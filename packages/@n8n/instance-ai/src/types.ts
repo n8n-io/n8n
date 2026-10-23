@@ -756,8 +756,15 @@ export type ExecuteNodeResult =
 			output: string;
 			truncated?: { totalItems: number; shownItems: number; message: string };
 			outputSuppressed?: string;
+			/** Set when n8n redacted the run's data for the user. `output` is then empty. */
+			redaction?: ExecutionRedaction;
 	  }
-	| { status: 'error'; error: { message: string; description?: string; nodeErrorType?: string } };
+	| {
+			status: 'error';
+			error: { message: string; description?: string; nodeErrorType?: string };
+			/** Set when n8n redacted the run's data for the user. Only the error type remains. */
+			redaction?: ExecutionRedaction;
+	  };
 
 /** Executes a single node standalone through the regular execution engine.
  *  The request mirrors a workflow-sdk node (`{ type, version, config }`). */

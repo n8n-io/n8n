@@ -15,6 +15,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, toRef, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -31,6 +32,7 @@ import { usePromotionOperation } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
 import { usePromotionSelection } from '../composables/usePromotionSelection';
+import { getPromotionResourceDetails } from '../promotions.api';
 import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
 	indexBlockers,
@@ -57,6 +59,7 @@ const route = useRoute();
 const router = useRouter();
 const projectsStore = useProjectsStore();
 const rbacStore = useRBACStore();
+const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 
 const projectId = toRef(props, 'projectId');
@@ -95,8 +98,11 @@ const selection = usePromotionSelection(graph, {
 });
 const activeWorkflowKey = ref<ResourceKey>();
 const details = usePromotionResourceDetails(
-	projectId,
-	direction,
+	async (keys) =>
+		await getPromotionResourceDetails(rootStore.restApiContext, props.projectId, props.direction, {
+			commitSha: preview.value?.commitSha ?? null,
+			keys,
+		}),
 	preview,
 	graph,
 	activeWorkflowKey,
@@ -450,7 +456,6 @@ const treeResizer = useResizablePanel({
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
 						:blockers="blockers"
-						:branch-name="preview?.source.branchName"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"
@@ -461,7 +466,6 @@ const treeResizer = useResizablePanel({
 				v-if="showBlockersTab && scopedCheck"
 				v-show="activeTab === 'blockers'"
 				:class="$style.blockers"
-				:project-id="projectId"
 				:check="scopedCheck"
 				:locations="locations"
 				:busy="operation.isBusy.value"
