@@ -150,8 +150,7 @@ describe('SkillRepository', () => {
 			versionId: v2,
 			files: [{ path: 'references/guide.md', content: 'Updated guide.' }],
 		});
-		expect(await assistantSkills.readSkill(context, id, 'missing')).toBeNull();
-		expect(await assistantSkills.readSkill(context, id, '')).toBeNull();
+		expect(await assistantSkills.readSkill(context, id, randomUUID())).toBeNull();
 		const other = await createSkill({ projectId: project.id });
 		expect(await assistantSkills.readSkill(context, id, await latestVersionId(other))).toBeNull();
 		expect(

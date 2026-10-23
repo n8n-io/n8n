@@ -1,3 +1,5 @@
+import { toJsonValue } from '@n8n/utils/json/to-json-value';
+
 import { createRuntimeSkillSource, filterRuntimeSkillSource } from '../../skills/registry';
 import { createSkillLoadTool } from '../../skills/tools';
 import type { RuntimeSkillSource } from '../../skills/types';
@@ -131,7 +133,7 @@ describe('active skills', () => {
 						toolCallId: 'builder-load',
 						input: { skillId: 'builder' },
 						state: 'resolved',
-						output,
+						output: toJsonValue(output),
 					},
 				],
 			},
