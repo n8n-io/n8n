@@ -1,93 +1,108 @@
-packages/cli/src/scaling/pubsub/pubsub.event-map.ts
-  s_71ad2034164515::t_58d3f38d988c1d 358-362
-packages/cli/src/modules/agents/utils/agent-channel-setup.ts
-  s_71ad2034164515::t_a5bfb33bbfe7c2 162-166
-packages/cli/src/modules/agents/integrations/chat-integration.service.ts
-  s_71ad2034164515::t_58d3f38d988c1d 15-16,47,86,103,168-172,188,272-275,282,285-286,288,290-322,358,375-403,419,422-423,429,432-434,475-477,480,482,487,510-515,538,1203,1210,1217,1220,1223,1225,1227,1240,1251
-  s_71ad2034164515::t_55916b0efb98c7 424-427,1003-1013,1015-1019,1023,1027-1035,1061,1095-1097,1102,1106,1114,1162-1191
-  s_71ad2034164515::t_fadc955dbbba58 13,420-421,428,430-431,435,453-457,459,473-474,478-479,481,483-486,488,501,503,802,1002,1192-1202,1204-1209,1211-1216,1218-1219,1221-1222,1224,1226,1228-1239,1241,1248-1250,1288,1595,1613
-packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
-  s_71ad2034164515::t_55916b0efb98c7 190
-  s_71ad2034164515::t_408ec5c179e1cc 5,20,24-25,133-136,183-189,191-207
-packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
-  s_71ad2034164515::t_5dcc813b5f689e 400-403,405-407,579-585,594
-packages/cli/test/integration/commands/export/credentials.test.ts
-  s_71ad2034164515::t_63870b2c2de7a1 60-62
-  s_71ad2034164515::t_3748b9e1ef9e74 7,15-19,40-59,63-65
-packages/cli/src/modules/agents/agent-integration-management.service.ts
-  s_71ad2034164515::t_63870b2c2de7a1 249,256
-  s_71ad2034164515::t_d1e49e023a4a88 211,218,220-224,227,238-239,241,245-248,250-255
-  s_71ad2034164515::t_2ec1021fe2dcb9 257-273
-packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
-  s_71ad2034164515::t_e476152d3598a0 10,12,18,71-72,88,91-96,98-102,104-106,114,116,150,152-153,155,157,165-171,202,253,257-259,261-272,274-278,285,287-301,303-304,309-314,496-506,546,548,551,553,568,571,577,580,586,590,607,610,631,642,646
-  s_71ad2034164515::t_f5f0670817a339 273,283-284,286
-  s_71ad2034164515::t_55916b0efb98c7 279-282
-  s_71ad2034164515::t_c349ae2adc712a 5,73-74,89,97,103,115,154,203-252,254-256,260,302,305-308,547,552,634
-packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
-  s_71ad2034164515::t_55916b0efb98c7 326-330,2367-2368
-  s_71ad2034164515::t_e476152d3598a0 165,306,315,320,322,331-332,389,413,416-423,430-431,1872,2352,2364,2393,2429,2434,2464
-  s_71ad2034164515::t_63870b2c2de7a1 312-314
-  s_71ad2034164515::t_f5f0670817a339 426-428,2301
-  s_71ad2034164515::t_cc775409027cdc 1838-1869
-  s_71ad2034164515::t_9b5eceaa9ca001 2369
-  s_71ad2034164515::t_42bc871245705e 5,19-21,54,162-164,305,307-311,316-319,321,323-325,333-388,390-412,414-415,424-425,429,1806-1809,1818,1820-1824,1834-1837,1870-1871,1873,2015,2031-2038,2046,2066-2073,2080,2102,2245,2295-2300,2302-2303,2315-2351,2353-2363,2365-2366,2370-2392,2394-2428,2430-2433,2435-2463,2465
-packages/@n8n/cli/docs/commands/package.md
-  s_71ad2034164515::t_3bb3a87a5dd594 145-147
-  s_71ad2034164515::t_26594af5b68110 148-149
-packages/cli/src/credentials/__tests__/credentials.service.test.ts
-  s_71ad2034164515::t_63870b2c2de7a1 4699-4703
-  s_71ad2034164515::t_5445f4b294e749 34,36-42,576,4043-4056,4692-4698,4704-4716
-packages/cli/src/modules/agents/utils/__tests__/agent-channel-setup.test.ts
-  s_71ad2034164515::t_9f65253fc16521 40,71-75
-  s_71ad2034164515::t_a5bfb33bbfe7c2 46,59-62,76-77
-  s_71ad2034164515::t_d22fef10106b10 78
-packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
-  s_71ad2034164515::t_63870b2c2de7a1 163-164,166,169,222-246,322-323,325,510,513,517,521,525,528-530,532-533,536-537,544,551,565
-  s_71ad2034164515::t_887a3fbd2956f9 146,162,165,167-168,197,213,321,324,495-509,511-512,514-516,518-520,522-524,526-527,531,534-535,538-543,545-550,552-564,566-592
 packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_71ad2034164515::t_da39ea55523336 403
   s_71ad2034164515::t_55916b0efb98c7 379-381
+  s_71ad2034164515::t_58d3f38d988c1d 5,11,13,18,155-156,166-173,200-218,222-224,243-245,343-364,378,382-394,398,402
+  s_71ad2034164515::t_3503a9ff66cdb8 365-371,377,395,401
   s_71ad2034164515::t_afac6281261f48 372-376,396-397,399-400
-  s_71ad2034164515::t_58d3f38d988c1d 5,11,13,18,155-156,166-173,200-218,222-224,243-245,343-364,378,382-394,398
-  s_71ad2034164515::t_3503a9ff66cdb8 365-371,377,395,401-403
-packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
-  s_71ad2034164515::t_e476152d3598a0 12,181
-  s_71ad2034164515::t_5ec562f4139d26 5,182
-packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
-  s_71ad2034164515::t_55916b0efb98c7 1075-1077
-packages/cli/src/commands/export/credentials.ts
-  s_71ad2034164515::t_f33e2edfa1f445 13,129-132
-packages/cli/src/commands/import/credentials.ts
-  s_71ad2034164515::t_1caf74b0229c1e 31,299-301
-packages/cli/src/credentials/credentials.service.ts
-  s_71ad2034164515::t_0d83e51799bb4b 68,821,823-835,859,1642,1652,2075,2247,2357
-packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
-  s_71ad2034164515::t_5b569c25dc7c5a 1663,1669,1719-1734
-packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
-  s_71ad2034164515::t_e694a302597200 173-174
-packages/cli/src/modules/agents/integrations/agent-channel-setup-evidence.ts
-  s_71ad2034164515::t_240b65fe64423f 1-25
-packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
-  s_71ad2034164515::t_ac064083cb5b40 436-446
-packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
-  s_71ad2034164515::t_7155d6970824cf 121,126-129,139
-packages/cli/src/modules/agents/integrations/platforms/slack/slack-managed-setup.service.ts
-  s_71ad2034164515::t_e3c85755f76147 447
-packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
-  s_71ad2034164515::t_9b42f16b955373 2255-2272
 packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
   s_71ad2034164515::t_e919e03e2253af 55-57,73-75
+packages/cli/test/integration/commands/credentials.cmd.test.ts
+  s_71ad2034164515::t_ac3faec3762868 124
+  s_71ad2034164515::t_c79e999bfc186f 25,97-123
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_71ad2034164515::t_7958bb9451a014 4716
+  s_71ad2034164515::t_5445f4b294e749 34,36-42,576,4043-4056,4692-4698,4704-4715
+  s_71ad2034164515::t_63870b2c2de7a1 4699-4703
+packages/cli/test/integration/commands/export/credentials.test.ts
+  s_71ad2034164515::t_3748b9e1ef9e74 7,15-19,40-59,63-65
+  s_71ad2034164515::t_63870b2c2de7a1 60-62
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_71ad2034164515::t_2ec1021fe2dcb9 257-272
+  s_71ad2034164515::t_d1e49e023a4a88 211,218,220-224,227,238-239,241,245-248,250-255
+  s_d3c0f6f6f7d41c::t_7c2075c20ac3fc 273
+  s_71ad2034164515::t_63870b2c2de7a1 249,256
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_71ad2034164515::t_fadc955dbbba58 13,420-421,428,430-431,435,453-457,459,473-474,478-479,481,483-488,501,503,802,1002,1192-1202,1204-1209,1211-1216,1218-1219,1221-1222,1224-1226,1228-1241,1248-1250,1288,1595,1613
+  s_71ad2034164515::t_58d3f38d988c1d 15-16,47,86,103,168-172,188,272-275,282,285-286,288,290-322,358,375-403,419,422-423,429,432-434,475-477,480,482,510-515,538,1203,1210,1217,1220,1223,1227,1251
+  s_71ad2034164515::t_55916b0efb98c7 424-427,1003-1013,1015-1019,1023,1027-1035,1061,1095-1097,1102,1106,1114,1162-1191
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_71ad2034164515::t_7eda3d7097a375 2271-2272
+  s_71ad2034164515::t_9b42f16b955373 2255-2270
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_71ad2034164515::t_55916b0efb98c7 279-282
+  s_71ad2034164515::t_e476152d3598a0 10,12,18,71-72,88,91-96,98-102,104-106,114,116,150,152-153,155,157,165-171,202,253,257-259,261-272,274-278,285,287-301,303-304,309-314,496-506,546,548,551,553,568,571,577,580,586,590,607,610,631,642,646
+  s_71ad2034164515::t_f5f0670817a339 273,283-284,286
+  s_71ad2034164515::t_c349ae2adc712a 5,73-74,89,97,103,115,154,203-252,254-256,260,302,305-308,547,552,634
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_71ad2034164515::t_80f210cef7e5cd 121,126-129
+  s_71ad2034164515::t_7155d6970824cf 139
+packages/nodes-base/credentials/TelegramApi.credentials.ts
+  s_71ad2034164515::t_cf1d2f073007d6 21
+  s_71ad2034164515::t_1c060d12e85fbb 22-26
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_71ad2034164515::t_58d3f38d988c1d 359-362
+  s_71ad2034164515::t_b46912411135d4 358
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  s_71ad2034164515::t_98284ca975d8d7 173-174
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_df34b3ebe7ffa8 579-585,594
+  s_71ad2034164515::t_5dcc813b5f689e 400-403,405-407
+packages/cli/src/modules/agents/utils/agent-channel-setup.ts
+  s_71ad2034164515::t_a5bfb33bbfe7c2 162-166
+packages/cli/src/credentials/credentials.service.ts
+  s_71ad2034164515::t_0d83e51799bb4b 68,821,823-835,859,1642,1652,2075,2247,2357
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_71ad2034164515::t_408ec5c179e1cc 5,20,24-25,133-136,183-189,191-205
+  s_71ad2034164515::t_55916b0efb98c7 190
+  s_71ad2034164515::t_c21cce725ac32e 206-207
 packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
   s_71ad2034164515::t_1fbce12be8cb15 1809-1813
 packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
-  s_71ad2034164515::t_5db27b3a33abea 91,110,179,198
-packages/cli/test/integration/commands/credentials.cmd.test.ts
-  s_71ad2034164515::t_c79e999bfc186f 25,97-124
+  s_71ad2034164515::t_5e906391f61c51 91,110,179,198
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_71ad2034164515::t_55916b0efb98c7 1076-1077
+  s_71ad2034164515::t_4229d314d57c26 1075
+packages/@n8n/cli/docs/commands/package.md
+  s_71ad2034164515::t_55b7db34a1aad2 145-149
+packages/cli/src/commands/import/credentials.ts
+  s_71ad2034164515::t_1caf74b0229c1e 31,299-301
+packages/cli/src/commands/export/credentials.ts
+  s_71ad2034164515::t_f33e2edfa1f445 13,129-131
+  s_71ad2034164515::t_fbb120648dbb5f 132
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-managed-setup.service.ts
+  s_71ad2034164515::t_e3c85755f76147 447
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_71ad2034164515::t_47e6a6b35823e4 436-438
+  s_71ad2034164515::t_ac064083cb5b40 439-446
+packages/cli/src/modules/agents/integrations/agent-channel-setup-evidence.ts
+  s_71ad2034164515::t_240b65fe64423f 1-25
+packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
+  s_71ad2034164515::t_887a3fbd2956f9 146,162,165,167-169,197,213,321,324,495-509,511-512,514-516,518-520,522-524,526-527,531,534-535,538-543,545-550,552-564,566-590
+  s_71ad2034164515::t_63870b2c2de7a1 163-164,166,222-244,322-323,325,510,513,517,521,525,528-530,532-533,536,544,551,565
+  s_d3c0f6f6f7d41c::t_bed31ca91557c3 245-246,537,591-592
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_71ad2034164515::t_e476152d3598a0 12,181
+  s_71ad2034164515::t_5ec562f4139d26 5,182
+packages/cli/src/modules/agents/utils/__tests__/agent-channel-setup.test.ts
+  s_71ad2034164515::t_04a9d682b19078 78
+  s_71ad2034164515::t_a5bfb33bbfe7c2 59-62,76-77
+  s_71ad2034164515::t_9f65253fc16521 71-75
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_71ad2034164515::t_63870b2c2de7a1 312-314
+  s_71ad2034164515::t_cc775409027cdc 1838-1869
+  s_71ad2034164515::t_e476152d3598a0 165,306,315,320,322,331-332,389,413,416-423,430,1872,2352,2364,2393,2429,2434,2464
+  s_71ad2034164515::t_9b5eceaa9ca001 2369
+  s_71ad2034164515::t_55916b0efb98c7 326-330,2367-2368
+  s_71ad2034164515::t_f5f0670817a339 426-428,2301
+  s_71ad2034164515::t_42bc871245705e 5,19-21,54,162-164,305,307-311,316-319,321,323-325,333-388,390-412,415,424-425,429,1806-1809,1818,1820-1824,1834-1837,1870-1871,2015,2031-2038,2046,2066-2073,2080,2102,2245,2295-2300,2302-2303,2315-2351,2353-2363,2365-2366,2370-2392,2394-2428,2430-2433,2435-2463
+  s_d3c0f6f6f7d41c::t_c09068199813df 414,431,1873,2465
 packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
-  s_71ad2034164515::t_ad65af5e60082d 4,7-11,148,153-159,167,420-428,431-432,440,482,486-487,491-492
+  s_71ad2034164515::t_ad65af5e60082d 4,7-11,148,153-159,167,420-428,431-432,440,482,486-487,491
+  s_71ad2034164515::t_3961097124a41b 492
 packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
   s_71ad2034164515::t_cdc34f741fdb03 96-98
-packages/nodes-base/credentials/TelegramApi.credentials.ts
-  s_71ad2034164515::t_1c060d12e85fbb 21-26
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_71ad2034164515::t_5b569c25dc7c5a 1663,1669,1719-1734
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -99,6 +114,14 @@ packages/nodes-base/credentials/TelegramApi.credentials.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
         "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"

@@ -11,7 +11,7 @@ packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
-        "model": "gpt-6.1-sol"
+        "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }

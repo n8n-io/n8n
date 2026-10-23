@@ -1,0 +1,46 @@
+packages/nodes-base/utils/sql-query-parameters.ts
+  s_bef64c16cb8405::t_8af0feef405a56 13-21
+  s_bef64c16cb8405::t_9a4e1d4bd7343c 80-82
+  s_bef64c16cb8405::t_19c1563d045f47 83-85
+  s_bef64c16cb8405::t_5456a220899f71 86-88
+  s_bef64c16cb8405::t_35e83c07a36d4b 89-90
+packages/nodes-base/nodes/Microsoft/Sql/MicrosoftSql.node.ts
+  s_bef64c16cb8405::t_1354fe8e9e6761 351
+packages/nodes-base/nodes/Microsoft/Sql/GenericFunctions.ts
+  s_bef64c16cb8405::t_e2fa449addb0b9 2
+  s_bef64c16cb8405::t_d9fa6dd6197a6e 326,339,350-351,353
+  s_bef64c16cb8405::t_91e6732336c463 6-7
+  s_bef64c16cb8405::t_e76cdabff0e294 347
+  s_bef64c16cb8405::t_7af2c2bc32b7d1 289
+  s_bef64c16cb8405::t_9f17e0d02a0f06 340-346,349,352
+  s_bef64c16cb8405::t_ed3032cadc14b3 348
+  s_bef64c16cb8405::t_626d6d7d3f5b9d 354
+packages/nodes-base/nodes/Microsoft/Sql/test/utils.test.ts
+  s_bef64c16cb8405::t_0bd1ba7f1c3bfb 268
+packages/nodes-base/nodes/MySql/v2/helpers/utils.ts
+  s_bef64c16cb8405::t_af0c3f67dbdd7e 11-12
+packages/nodes-base/utils/sql-query-parameters.test.ts
+  s_bef64c16cb8405::t_48bb547fc4c33c 116-121
+  s_bef64c16cb8405::t_e7cb3113291a86 55,64
+  s_bef64c16cb8405::t_1942c7968fd029 115,122-128
+packages/nodes-base/nodes/Microsoft/Sql/test/MicrosoftSql.node.test.ts
+  s_bef64c16cb8405::t_d03081e185b1c3 287
+  s_bef64c16cb8405::t_b7deb868e8ff30 307-341
+  s_bef64c16cb8405::t_2ba64233d61064 274-286,288-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "572f291952952a23e82db0a90bcce79fefd5ef24",
+  "prompts": {},
+  "sessions": {
+    "s_bef64c16cb8405": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cb8dc37-f44c-4585-a8f1-ed3cd9dbf43c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Npm/test/Npm.paths.test.ts
+  s_2e1fa95fc44f8f::t_58bfc667a05618 51-52
+packages/nodes-base/nodes/WhatsApp/tests/WhatsApp.node.test.ts
+  s_2e1fa95fc44f8f::t_58bfc667a05618 58-59,74-75,96,101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e06b4ebcfff13f05c826b1a0ac7beacc8f52305",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

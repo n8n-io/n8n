@@ -1,0 +1,23 @@
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.test.ts
+  s_58620fba057bad::t_8c7008965559f2 33,35,37-40,99-101
+packages/cli/src/modules/instance-ai/AGENTS.md
+  s_58620fba057bad::t_451fd19c8cdd8a 10
+packages/cli/src/modules/agents/AGENTS.md
+  s_58620fba057bad::t_451fd19c8cdd8a 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a678034c2757f914ed8726b343e9ed8f1a99f28",
+  "prompts": {},
+  "sessions": {
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}

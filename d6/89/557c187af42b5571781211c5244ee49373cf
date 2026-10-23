@@ -1,0 +1,75 @@
+packages/nodes-base/nodes/HttpRequest/V3/Description.ts
+  s_9fa44fd7f5f4f9::t_5d2d22ee9fdaa8 59,64,69,74,79,88
+  s_9fa44fd7f5f4f9::t_8b213f202e097a 18-27,30-38,41-42
+  s_9fa44fd7f5f4f9::t_b130e9bfe3c06c 1-6,10-17
+packages/workflow/test/node-annotations.test.ts
+  s_9fa44fd7f5f4f9::t_6050a9f45ae6ec 141
+  s_9fa44fd7f5f4f9::t_8b213f202e097a 136
+  s_9fa44fd7f5f4f9::t_443a145f205df4 61-62,70
+  s_9fa44fd7f5f4f9::t_8d24e6f5243e53 7
+  s_9fa44fd7f5f4f9::t_4b09a593b4fe08 135
+  s_9fa44fd7f5f4f9::t_5e90a9a6f845e9 1-6,8-60,63-69,71-134,137-140,142-154
+packages/quality/policy/code-health/src/index.ts
+  s_9fa44fd7f5f4f9::t_6fd3d9bfbad756 37
+packages/workflow/src/interfaces.ts
+  s_9fa44fd7f5f4f9::t_85ed0c77ecae76 2354-2360
+  s_9fa44fd7f5f4f9::t_430d7f02ea56ed 3204
+packages/workflow/src/index.ts
+  s_9fa44fd7f5f4f9::t_0c2cbfce3802c2 40
+packages/nodes-base/nodes/Postgres/v2/actions/database/Database.resource.ts
+  s_9fa44fd7f5f4f9::t_81e4132d0aa45c 38
+  s_9fa44fd7f5f4f9::t_60d8eb133728c9 1
+  s_9fa44fd7f5f4f9::t_980b0ca11d1f01 47
+  s_9fa44fd7f5f4f9::t_cae162d46e8141 61
+  s_9fa44fd7f5f4f9::t_f3b4d7512085bf 54
+  s_9fa44fd7f5f4f9::t_f19cb60f1c41ea 25
+packages/nodes-base/nodes/Google/Sheet/test/v2/annotations.test.ts
+  s_9fa44fd7f5f4f9::t_8b213f202e097a 26-28
+  s_9fa44fd7f5f4f9::t_a862247437aada 1-25,29-30
+packages/nodes-base/nodes/Google/Sheet/v2/actions/spreadsheet/SpreadSheet.resource.ts
+  s_9fa44fd7f5f4f9::t_ed72848020edb3 25,32
+packages/nodes-base/nodes/Postgres/test/v2/descriptions.test.ts
+  s_9fa44fd7f5f4f9::t_399cb41681b19a 2
+  s_9fa44fd7f5f4f9::t_388e7d99924ec4 37-38,41-46,48,53-54,56-58,62-63
+  s_9fa44fd7f5f4f9::t_8b213f202e097a 59-61
+  s_9fa44fd7f5f4f9::t_4290feeaee6e83 39-40
+  s_9fa44fd7f5f4f9::t_aac2bd32f655d3 47,49-52,55
+packages/nodes-base/nodes/Google/Sheet/v2/actions/sheet/Sheet.resource.ts
+  s_9fa44fd7f5f4f9::t_86e8fa83517197 32,39,46,53,60,67,74,81
+  s_9fa44fd7f5f4f9::t_1e3c30822297ab 1
+packages/workflow/docs/adr/ADR-20261020-annotate-node-operations-with-their-effect-and-idempotency.md
+  s_9fa44fd7f5f4f9::t_e4ceae485d10d0 1-17,20,23-25,27,32,35,54-57,66-70,83-90
+  s_9fa44fd7f5f4f9::t_5b66e0bba7ed99 29-31
+  s_9fa44fd7f5f4f9::t_5c709652fab3e8 18-19,21-22,26,28,33-34,36-53,58-65,71-82
+packages/nodes-base/nodes/Postgres/v2/actions/database/deleteTable.operation.ts
+  s_9fa44fd7f5f4f9::t_1a89033791bded 31,38,44
+packages/workflow/src/node-annotations.ts
+  s_9fa44fd7f5f4f9::t_d75422192f6823 14-18
+  s_9fa44fd7f5f4f9::t_8b213f202e097a 27-29
+  s_9fa44fd7f5f4f9::t_17f6b8a6c21725 1-13,19-26,30-82
+packages/nodes-base/nodes/HttpRequest/test/node/HttpRequestV3.test.ts
+  s_9fa44fd7f5f4f9::t_e16734a1c1a331 2
+  s_9fa44fd7f5f4f9::t_8b213f202e097a 151-155
+  s_9fa44fd7f5f4f9::t_70eb03227122b8 145-150,156-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d689557c187af42b5571781211c5244ee49373cf",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9fa44fd7f5f4f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4f2caf8-81a4-4cde-81be-cbe4f2b17bd8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

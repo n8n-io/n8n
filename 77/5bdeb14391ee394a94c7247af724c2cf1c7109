@@ -1,0 +1,44 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7f7a4dee511a6b::t_f23353c3098097 9971-9972
+  s_7f7a4dee511a6b::t_ef195d6f5d0c43 9965
+  s_7f7a4dee511a6b::t_defadb383eeac9 9933-9934,9939,9973-9974,9977-9980
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.vue
+  s_7f7a4dee511a6b::t_36deedddee13b1 3,198-201,206-209
+  s_7f7a4dee511a6b::t_b0a7fe413c14fa 249
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_7f7a4dee511a6b::t_36deedddee13b1 288-297,347-364
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_7f7a4dee511a6b::t_ef195d6f5d0c43 146
+  s_7f7a4dee511a6b::t_1855acc3b58597 566-570,572,581
+  s_7f7a4dee511a6b::t_36deedddee13b1 284-293,295,378-380,382-389,391,448-450,452-459,461,599,604-606,610
+  s_7f7a4dee511a6b::t_65712a1ef1887a 238-241
+  s_7f7a4dee511a6b::t_780910569b7a2f 206-215,471,479-482
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOperation.ts
+  s_7f7a4dee511a6b::t_f23353c3098097 71-93,145
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_7f7a4dee511a6b::t_115ec39167b39f 312,327-329
+  s_7f7a4dee511a6b::t_0003cb248d0ff9 304-309
+  s_7f7a4dee511a6b::t_958fcd71909b0c 343,352
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_7f7a4dee511a6b::t_253b6f5057a79b 68,74,79,156
+  s_7f7a4dee511a6b::t_4dad2c7560630b 65-67,69-73,75-78,80-81,152,155,160,378-380
+  s_7f7a4dee511a6b::t_bd4f4e5a39a0aa 381
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_7f7a4dee511a6b::t_6f38b7e9d2e857 214-215,230-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "775bdeb14391ee394a94c7247af724c2cf1c7109",
+  "prompts": {},
+  "sessions": {
+    "s_7f7a4dee511a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed162b42-c275-4534-848a-37f52720dc22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/integrations/platforms/linear-integration.ts
+  s_852389bc7751db::t_be70f2480ba657 113-115
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_852389bc7751db::t_be70f2480ba657 224-226
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_852389bc7751db::t_be70f2480ba657 162-164
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_852389bc7751db::t_be70f2480ba657 204-206
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-integration.ts
+  s_852389bc7751db::t_be70f2480ba657 338-340
+packages/cli/src/modules/agents/integrations/platforms/whatsapp/whatsapp-integration.ts
+  s_852389bc7751db::t_be70f2480ba657 279-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5b4c55e698a4df0b1589e6593392164e4757fb0",
+  "prompts": {},
+  "sessions": {
+    "s_852389bc7751db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39fb8af-51ee-491e-ab8c-cc0c219fdfa6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

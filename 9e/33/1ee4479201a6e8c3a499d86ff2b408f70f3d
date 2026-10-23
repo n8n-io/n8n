@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/utils/agent-change-request.ts
+  s_abd3fc1bf6c600::t_46b1ccbdc3fb13 10-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e331ee4479201a6e8c3a499d86ff2b408f70f3d",
+  "prompts": {},
+  "sessions": {
+    "s_abd3fc1bf6c600": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159d3-cf3d-7b71-b4b0-2342b28c13dc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

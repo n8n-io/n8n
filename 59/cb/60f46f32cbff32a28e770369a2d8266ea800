@@ -1,5 +1,5 @@
 packages/cli/src/modules/n8n-packages/__tests__/export-git-blob-parity.integration.test.ts
-  s_71ad2034164515::t_721d6ee2e16742 143
+  s_71ad2034164515::t_ac36b73487359e 143
 ---
 {
   "schema_version": "authorship/3.0.0",

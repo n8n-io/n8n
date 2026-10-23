@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-skills.service.test.ts
+  s_3867156de1fad7::t_8a27650706f925 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "057dba6561255ba39a81f3cce980bfe5b697d308",
+  "prompts": {},
+  "sessions": {
+    "s_3867156de1fad7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12fb1-caf3-7693-9d01-bca408146de3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

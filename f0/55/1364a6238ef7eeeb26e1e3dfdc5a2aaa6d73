@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelApprovalSetting.vue
+  s_fc89baa43a0d3c::t_9d4dc04d5d1c5f 11,16,96-100,104,108
+packages/frontend/editor-ui/src/features/agents/components/AgentFormSettingRow.vue
+  s_fc89baa43a0d3c::t_9bdd57ca257653 1-47
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_fc89baa43a0d3c::t_5686befd506535 420,437
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackEditView.vue
+  s_fc89baa43a0d3c::t_9d4dc04d5d1c5f 4,9,81-82,86-93
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fc89baa43a0d3c::t_9346320409a7eb 9792
+  s_fc89baa43a0d3c::t_1678fb968d3934 9793
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_fc89baa43a0d3c::t_9d4dc04d5d1c5f 170-172
+  s_fc89baa43a0d3c::t_9bdd57ca257653 112-114,118-126
+  s_fc89baa43a0d3c::t_be042121492494 127,144-151
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigApprovalSetting.vue
+  s_fc89baa43a0d3c::t_9bdd57ca257653 2,4,19-23,25,28,32
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_fc89baa43a0d3c::t_2d8c43d4790602 212,351-354
+  s_fc89baa43a0d3c::t_cc46624431d505 365-369
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackManagedSettings.vue
+  s_fc89baa43a0d3c::t_9d4dc04d5d1c5f 90-92,94,98
+  s_fc89baa43a0d3c::t_d9ce746bc1263b 8,89,101,127
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_fc89baa43a0d3c::t_9bdd57ca257653 24,458-462,464,466,470
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0551364a6238ef7eeeb26e1e3dfdc5a2aaa6d73",
+  "prompts": {},
+  "sessions": {
+    "s_fc89baa43a0d3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15f07-c638-74e0-aed0-251af56be3fb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

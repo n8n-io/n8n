@@ -1,0 +1,53 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_80739495ce232a::t_808958f6907c07 301-302
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_80739495ce232a::t_808958f6907c07 164-179
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_80739495ce232a::t_ecc5d1e02468ea 1724-1742
+packages/cli/src/modules/mcp-discovery/__tests__/agent-activity.test.ts
+  s_80739495ce232a::t_ecc5d1e02468ea 69-83,85-88
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_80739495ce232a::t_ffb79ef9d42ab5 220-237
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_80739495ce232a::t_808958f6907c07 46,708-712,724
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_80739495ce232a::t_808958f6907c07 2100,3425
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.test.ts
+  s_80739495ce232a::t_a1142928e8b0c1 1-43
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_80739495ce232a::t_593481dfa42976 144-148
+  s_80739495ce232a::t_1d5b9603669a31 44
+  s_80739495ce232a::t_8b14b461d69c74 141-143,149-166,677-678,1078-1083,1108-1115,1120-1125,1150,1708,1720,1728-1729,1738,1758,1767-1768
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_80739495ce232a::t_808958f6907c07 111,254
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_80739495ce232a::t_7d83405087011f 32,54,266
+packages/@n8n/telemetry/src/events/agents.ts
+  s_80739495ce232a::t_7d83405087011f 113
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_80739495ce232a::t_808958f6907c07 119-131,173
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_80739495ce232a::t_a1142928e8b0c1 527-543
+  s_80739495ce232a::t_ffb79ef9d42ab5 253-255,318
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_80739495ce232a::t_83ce2b5737d28b 894,944-952,955-988,1008,1016
+  s_80739495ce232a::t_32183d83b71ec1 989-1007,1009-1015,1017-1023
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.test.ts
+  s_80739495ce232a::t_ffb79ef9d42ab5 58,64,69-77,86-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "813922891c88b8a77aae3acaf086ef2f0fc42dbc",
+  "prompts": {},
+  "sessions": {
+    "s_80739495ce232a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4464703-9729-4281-a561-fb6ac80e25ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

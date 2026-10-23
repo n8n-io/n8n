@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  h_7555c3ee6524cf 1980,1982,1985,1987,1993,2004,2006,2009,2011,2013,2021,2027,2030,2069
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "25c744ef773df319fc14da1849d6f399806b2463",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

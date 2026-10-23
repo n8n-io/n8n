@@ -1,0 +1,52 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_94656d667b5d5c::t_f18bb386946efa 142,227,281,344,581,688,786,804,833
+packages/@n8n/api-types/src/dto/index.ts
+  s_94656d667b5d5c::t_f18bb386946efa 769,780
+packages/cli/src/idempotency/__tests__/idempotency-request.test.ts
+  s_94656d667b5d5c::t_f18bb386946efa 41
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_94656d667b5d5c::t_f18bb386946efa 165,305,405,678,1111,1134,1243
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_94656d667b5d5c::t_f18bb386946efa 3,121,252
+packages/cli/src/modules/promotions.ee/database/entities/promotion-environment.entity.ts
+  s_94656d667b5d5c::t_f18bb386946efa 20,60
+packages/@n8n/api-types/src/dto/promotions/promotion-environment.dto.ts
+  s_94656d667b5d5c::t_f18bb386946efa 28,34,36,93,135,156,210
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_94656d667b5d5c::t_f18bb386946efa 40-41,152,203,226,306,318,324,349,446,455,466,488,496,498,511,518,521,544,613
+packages/cli/src/modules/promotions.ee/git-hosts/README.md
+  s_94656d667b5d5c::t_f18bb386946efa 3-4,21,27-28,56,62-63
+packages/cli/src/modules/promotions.ee/git-hosts/git-host-target.ts
+  s_94656d667b5d5c::t_f18bb386946efa 3,6,23-24,62-63,74-75,92
+  s_94656d667b5d5c::t_1387470237c1b8 28-30
+packages/@n8n/api-types/src/dto/promotions/promotion-common.dto.ts
+  s_94656d667b5d5c::t_f18bb386946efa 7-8
+packages/cli/src/modules/promotions.ee/promotions-git.utils.ts
+  s_94656d667b5d5c::t_f18bb386946efa 1,108
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_94656d667b5d5c::t_f18bb386946efa 156,207,251,341,490,529,600,635,676,707
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_94656d667b5d5c::t_f18bb386946efa 65
+packages/@n8n/api-types/src/dto/promotions/promotion-provider.dto.ts
+  s_94656d667b5d5c::t_054a8340bce54c 247-248
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.integration.test.ts
+  s_94656d667b5d5c::t_f18bb386946efa 117
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_94656d667b5d5c::t_f18bb386946efa 2,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c62eeb06ba5760d96f879b043fde63aaae49c46d",
+  "prompts": {},
+  "sessions": {
+    "s_94656d667b5d5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9efc452-e997-4e58-ac9d-601ed3e76ac7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

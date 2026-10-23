@@ -1,14 +1,15 @@
-packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
-  s_71ad2034164515::t_73a4e375a7c777 539-542
-  s_71ad2034164515::t_13c97519d4471a 517,529
-packages/cli/src/modules/n8n-packages/entities/agent/agent-body-issues.ts
-  s_71ad2034164515::t_13c97519d4471a 1-2,8-16
-packages/cli/src/modules/agents/agent-config-preparation.service.ts
-  s_71ad2034164515::t_13c97519d4471a 27-31,82-86
 packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
   s_71ad2034164515::t_13c97519d4471a 5,71,83-96
 packages/cli/src/modules/agents/utils/agent-definition.ts
   s_71ad2034164515::t_13c97519d4471a 31-47
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_41273b1e787eb3 517
+  s_71ad2034164515::t_73a4e375a7c777 529
+  s_71ad2034164515::t_1eab4b5177e874 539-542
+packages/cli/src/modules/n8n-packages/entities/agent/agent-body-issues.ts
+  s_71ad2034164515::t_13c97519d4471a 1-2,8-16
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_71ad2034164515::t_13c97519d4471a 27-31,82-86
 ---
 {
   "schema_version": "authorship/3.0.0",

@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_c09f5db8d082f5::t_85497e5c4477b8 338-342
+  s_c09f5db8d082f5::t_09875ed051e03b 1788-1803
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_c09f5db8d082f5::t_8f2f8ad4abc571 644-649
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2bc21fdfbdd9c4e98314fcf97c23dcbf17a45bf3",
+  "prompts": {},
+  "sessions": {
+    "s_c09f5db8d082f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7b1fe62-b575-418c-83a5-200ea7270164",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

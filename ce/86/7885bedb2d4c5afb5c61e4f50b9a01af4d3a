@@ -1,14 +1,13 @@
-packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
-  s_71ad2034164515::t_f08bf8bad090f1 314-315
-  s_71ad2034164515::t_f20926c36ac811 185-191
 packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
-  s_71ad2034164515::t_a5318d05478cdc 32,110-114,119,133,167-234
+  s_71ad2034164515::t_80e4fbe100fe09 32,110-114,119,133,167-234
 packages/cli/src/modules/agents/agent-config-preparation.service.ts
-  s_71ad2034164515::t_489b7e4fd2bfc4 106-107,115-120
+  s_71ad2034164515::t_310112f89880b9 106-107,115-120
 packages/cli/src/modules/agents/repositories/agent.repository.ts
-  s_71ad2034164515::t_768a2221c3a247 481
+  s_71ad2034164515::t_5e83a2b58d8733 481
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_624647041ee4be 185-191,314-315
 packages/cli/test/integration/database/repositories/agent.repository.test.ts
-  s_71ad2034164515::t_0d3912e9b455e3 532-542
+  s_71ad2034164515::t_67e0de94b77a29 532-542
 ---
 {
   "schema_version": "authorship/3.0.0",
