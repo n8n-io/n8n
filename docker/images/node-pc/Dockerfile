@@ -90,7 +90,7 @@ ENV npm_config_nodedir=/usr/local
 # npx, corepack) are swapped for the pointer-compressed build's files.
 # Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the tag and digest together when updating.
-FROM n8nio/base:26.12.1@sha256:435e5310b29cfa5880b5512703f7d10bafcf0f5dd700c7adac6ee8cfbe77306a AS runtime
+FROM n8nio/base:26.12.1@sha256:4f98092ca321cc3395c056791013c2ad0469305d1734c031fc5bcb50afe5513a AS runtime
 
 RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/bin/corepack /usr/local/bin/node
 COPY --from=builder /node-install/usr/local /usr/local
