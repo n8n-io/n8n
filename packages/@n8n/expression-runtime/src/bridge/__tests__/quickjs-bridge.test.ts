@@ -184,6 +184,30 @@ describe('QuickJsBridge workflow data', () => {
 		expect(dataRef.deref()).toBeUndefined();
 	});
 
+	it('should free the data of a call whose callbacks fail to build', async () => {
+		setFlagsFromString('--expose_gc');
+		const gc = runInNewContext('gc') as unknown as () => void;
+
+		const bridge = await newBridge();
+		const vm = bridge['vm']!;
+		// Not vi.spyOn: a spy records its arguments, and those hold the data.
+		const newFunction = vm.newFunction.bind(vm);
+		let calls = 0;
+		vm.newFunction = ((...args: Parameters<typeof newFunction>) => {
+			if (++calls === 2) throw new Error('newFunction failed');
+			return newFunction(...args);
+		}) as typeof vm.newFunction;
+		let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
+		const dataRef = new WeakRef(data);
+		expect(() => bridge.execute('return 1', data!)).toThrow('newFunction failed');
+		data = undefined;
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		gc();
+
+		expect(dataRef.deref()).toBeUndefined();
+	});
+
 	it('should return an error from a callback that runs after its call finished', async () => {
 		const bridge = await newBridge();
 		expect(() =>
