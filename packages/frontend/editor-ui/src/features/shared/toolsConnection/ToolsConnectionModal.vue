@@ -14,7 +14,6 @@ import { useDebounceFn } from '@vueuse/core';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
-
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
 import ToolSettingsView from './ToolSettingsView.vue';
@@ -50,6 +49,8 @@ const props = withDefaults(
 		showSuggestionFooter?: boolean;
 		createAction?: PickerCreateAction;
 		createActionLoading?: boolean;
+		/** Replace the body with a loading screen, e.g. until the consumer has credentials to match rows against. */
+		loading?: boolean;
 		emptyMessage?: string;
 		noResultsMessage?: string;
 		/** Render only the modal body when an owning feature supplies the dialog shell. */
@@ -72,6 +73,7 @@ const props = withDefaults(
 		showSuggestionFooter: false,
 		createAction: undefined,
 		createActionLoading: false,
+		loading: false,
 		emptyMessage: undefined,
 		noResultsMessage: undefined,
 		embedded: false,
@@ -164,6 +166,14 @@ onMounted(() => {
 		focusSearchInput();
 	}
 });
+
+watch(
+	() => props.loading,
+	(isLoading) => {
+		// The search input is not rendered while loading.
+		if (!isLoading && props.open) focusSearchInput();
+	},
+);
 
 const normalizedSearchQuery = computed(() => debouncedSearchQuery.value.trim());
 const hasActiveSearch = computed(() => normalizedSearchQuery.value.length > 0);
@@ -372,7 +382,17 @@ function handleOpenChange(value: boolean) {
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
-		<div :class="$style.body">
+		<div
+			v-if="loading"
+			:class="[$style.body, $style.loading]"
+			role="status"
+			:aria-label="i18n.baseText('generic.loading')"
+			data-test-id="tools-connection-loading"
+		>
+			<N8nIcon icon="loader-circle" size="xlarge" spin />
+			<N8nText color="text-light">{{ i18n.baseText('generic.loading') }}</N8nText>
+		</div>
+		<div v-else :class="$style.body">
 			<ToolSettingsView
 				v-if="detailItem && detailMode === 'settings'"
 				:key="detailItem.id"
@@ -527,6 +547,12 @@ function handleOpenChange(value: boolean) {
 	height: 70vh;
 	max-height: calc(var(--height--5xl) * 6);
 	min-height: 0;
+}
+
+.loading {
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--xs);
 }
 
 .embedded {
