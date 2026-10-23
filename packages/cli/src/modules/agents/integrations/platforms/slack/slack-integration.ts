@@ -2,6 +2,7 @@ import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type {
 	AgentIntegrationConfig,
 	AgentIntegrationDisconnectWarning,
+	AgentMessageIntegrationOrigin,
 	RichCardComponentType,
 } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
@@ -37,12 +38,13 @@ import {
 	createSlackResumeExecutionContext,
 	getSlackPlatformAgentContext,
 	getSlackReplyExpectation,
+	isSlackDirectMessage,
 	prepareSlackInboundText,
 	type SlackThreadContext,
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
-import { buildSlackOriginDraft } from './slack-origin';
+import { buildSlackOriginDraft, fetchSlackOriginNames } from './slack-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /**
@@ -166,6 +168,22 @@ export class SlackIntegration extends AgentChatIntegration {
 		return prepareSlackInboundText(text, context);
 	}
 
+	shouldHandleInboundMessage({
+		message,
+		integration,
+	}: {
+		message: BridgeMessageContextParams['message'];
+		integration: AgentIntegrationConfig;
+	}): boolean {
+		// The SDK can route DMs through the mention handler. Check the message itself.
+		return (
+			integration.type !== 'slack' ||
+			integration.settings?.onlyRespondWhenMentioned !== true ||
+			message.isMention === true ||
+			isSlackDirectMessage(message.raw)
+		);
+	}
+
 	getReplyExpectation(params: {
 		message: BridgeMessageContextParams['message'];
 		isNewMention: boolean;
@@ -199,8 +217,12 @@ export class SlackIntegration extends AgentChatIntegration {
 		});
 	}
 
-	async buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
-		return await buildSlackOriginDraft(input, decoded);
+	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
+		return buildSlackOriginDraft(input, decoded);
+	}
+
+	async fetchOriginNames(input: OriginInput, origin: AgentMessageIntegrationOrigin) {
+		return await fetchSlackOriginNames(input, origin);
 	}
 
 	resolveEpisodicScope({

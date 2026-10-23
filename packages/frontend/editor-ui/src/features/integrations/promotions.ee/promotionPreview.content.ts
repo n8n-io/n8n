@@ -5,10 +5,19 @@ import type {
 	PromotionResourceDetail,
 	SerializedDataTableColumn,
 } from '@n8n/api-types';
+import type { InjectionKey } from 'vue';
 
 /** Turns the package files of a resource into what its change card shows. */
 
 export type DetailSide = 'before' | 'after';
+
+/**
+ * What a side without a file says. The preview pages compare a branch with this instance.
+ * A page that compares other sides, such as two commits of a review, provides its own text.
+ */
+export const PromotionAbsentSideLabelsKey: InjectionKey<Record<DetailSide, string>> = Symbol(
+	'PromotionAbsentSideLabels',
+);
 
 /**
  * The content of one side. `absent` means that side has no file, so the resource is added or
