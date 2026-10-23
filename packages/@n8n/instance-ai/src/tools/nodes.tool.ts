@@ -43,13 +43,7 @@ const NODE_TYPES_ARRAY_DESCRIPTION =
 	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
 
 const listAction = z.object({
-	action: z
-		.literal('list')
-		.describe(
-			'List available node types. When picking a service node for a task (web search, scraping, ' +
-				'document parsing), also consider services covered by n8n Connect (they run on Gateway ' +
-				'credits, no API key needed) — pass `gatewayCreditsOnly=true` to see the covered set.',
-		),
+	action: z.literal('list').describe('List available node types.'),
 	query: z
 		.string()
 		.optional()
@@ -66,8 +60,7 @@ const searchAction = z.object({
 	action: z
 		.literal('search')
 		.describe(
-			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases. ' +
-				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)`.',
+			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases.',
 		),
 	query: z
 		.string()
@@ -118,9 +111,8 @@ const suggestedAction = z.object({
 		.literal('suggested')
 		.describe(
 			'Get curated node recommendations by category. Call first when the workflow fits a known category. ' +
-				'The curated list is a starting point, not the full set: also add any n8n Connect covered services ' +
-				'relevant to the category (they run on Gateway credits, no API key needed). Check coverage with ' +
-				'`workflow_builder_nodes(action="list", gatewayCreditsOnly=true)` or `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.',
+				'The list is not complete: also add relevant services that run on Gateway credits (no API key needed). ' +
+				'Find them with `action="list", gatewayCreditsOnly=true`.',
 		),
 	categories: z
 		.array(z.string())
