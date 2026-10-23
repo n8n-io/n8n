@@ -99,13 +99,41 @@ export function isSafeInteger(val: number) {
 	return !isNaN(val) && val > Number.MIN_SAFE_INTEGER && val < Number.MAX_SAFE_INTEGER;
 }
 
-export function parseFilterProperties(filterProperties: GristFilterProperties) {
+export function parseFilterProperties(
+	this: IExecuteFunctions,
+	filterProperties: GristFilterProperties,
+) {
 	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
-		const values = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
-		acc[cur.field].push(values);
+		acc[cur.field].push(coerceFilterValue.call(this, cur.values, cur.type));
 		return acc;
 	}, {});
+}
+
+/**
+ * Grist's filter API matches by exact JSON type, so a numeric-looking value has to be sent as the
+ * same type the target column actually stores. Since the node has no way to know that column's
+ * type, 'autoDetect' (the default, kept for filters saved before this field existed) guesses from
+ * the value's shape - which is wrong for a text column whose values happen to look numeric, hence
+ * the explicit 'string'/'number' overrides.
+ */
+function coerceFilterValue(
+	this: IExecuteFunctions,
+	value: string,
+	type: 'autoDetect' | 'string' | 'number' = 'autoDetect',
+) {
+	if (type === 'string') return value;
+	if (type === 'number') {
+		const numericValue = Number(value);
+		if (!Number.isFinite(numericValue)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Filter value "${value}" is not a valid number. Change the value, or set Type to String or Auto-Detect instead.`,
+			);
+		}
+		return numericValue;
+	}
+	return isSafeInteger(Number(value)) ? Number(value) : value;
 }
 
 export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {
