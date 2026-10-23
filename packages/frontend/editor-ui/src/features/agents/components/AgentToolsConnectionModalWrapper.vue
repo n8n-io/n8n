@@ -479,6 +479,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			type: 'verified',
 			packageName: communityPackageNameFor(nodeType),
 			nodeType: stripToolSuffix(nodeType.name),
+			selectedNodeType: nodeType.name,
 			telemetry: { source: 'agent builder tools', hasQuickConnect: false },
 		});
 		if (!result.success) return;
@@ -492,7 +493,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
-		if (warnIfRestricted(installed.name)) return;
+		if (result.restricted) return;
 		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;

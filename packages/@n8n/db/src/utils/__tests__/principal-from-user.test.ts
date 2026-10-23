@@ -12,12 +12,12 @@ function makeUser(fields: Partial<User>) {
 }
 
 describe('principalFromUser', () => {
-	it('maps id, role, email and names, and sets type to human', () => {
+	it('maps id, role, email and names, and sets type to person', () => {
 		const user = makeUser({ email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' });
 
 		expect(principalFromUser(user)).toEqual({
 			id: 'user-1',
-			type: 'human',
+			type: 'person',
 			role,
 			email: 'ada@example.com',
 			firstName: 'Ada',
