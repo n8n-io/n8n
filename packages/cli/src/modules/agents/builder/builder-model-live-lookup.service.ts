@@ -169,9 +169,11 @@ export class BuilderModelLiveLookupService {
 		const apiKey = typeof mapped.apiKey === 'string' ? mapped.apiKey : '';
 		const baseURL =
 			typeof mapped.baseURL === 'string' && mapped.baseURL ? mapped.baseURL : undefined;
-		const policy =
-			policyOverride ??
-			(provider === 'openai' && isOpenAiCustomEndpoint(baseURL) ? 'endpoint-only' : 'curated');
+		// Ollama serves its own models, so the user's server is authoritative the
+		// same way a custom OpenAI endpoint is: models.dev is never read.
+		const isEndpointOnlyProvider =
+			(provider === 'openai' && isOpenAiCustomEndpoint(baseURL)) || provider === 'ollama';
+		const policy = policyOverride ?? (isEndpointOnlyProvider ? 'endpoint-only' : 'curated');
 		const headers = this.getOpenAiHeaders(provider, credentialData);
 
 		try {

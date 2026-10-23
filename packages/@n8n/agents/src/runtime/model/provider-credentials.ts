@@ -61,6 +61,12 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	vercel: apiKeyCreds,
 	openrouter: apiKeyCreds,
 	nvidia: apiKeyCreds,
+	/**
+	 * The API key is optional: a default Ollama install accepts unauthenticated
+	 * local requests, and proxies like Open WebUI take a bearer token. This mirrors
+	 * the `ollamaApi` credential, whose only required field is `baseUrl`.
+	 */
+	ollama: apiKeyCreds,
 
 	'azure-openai': z
 		.object({
