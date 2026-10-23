@@ -7,6 +7,9 @@ import { Telemetry } from '@/telemetry';
 
 export type KnowledgeToolCall = 'file_find' | 'file_search' | 'file_read' | 'vector_store_search';
 
+/** A failed call sends no knowledge content, so it has no characters to count. */
+export type KnowledgeToolCallResult = { failed: false; contentChars: number } | { failed: true };
+
 /** Counts of one run, named like the "Agent run used knowledge" properties. */
 export interface KnowledgeRunUsage {
 	file_find_count: number;
@@ -15,6 +18,8 @@ export interface KnowledgeRunUsage {
 	vector_store_search_count: number;
 	file_content_chars: number;
 	vector_store_content_chars: number;
+	file_failed_count: number;
+	vector_store_failed_count: number;
 }
 
 const usageKeyByCall: Record<KnowledgeToolCall, keyof KnowledgeRunUsage> = {
@@ -29,6 +34,13 @@ const contentKeyByCall: Record<KnowledgeToolCall, keyof KnowledgeRunUsage> = {
 	file_search: 'file_content_chars',
 	file_read: 'file_content_chars',
 	vector_store_search: 'vector_store_content_chars',
+};
+
+const failedKeyByCall: Record<KnowledgeToolCall, keyof KnowledgeRunUsage> = {
+	file_find: 'file_failed_count',
+	file_search: 'file_failed_count',
+	file_read: 'file_failed_count',
+	vector_store_search: 'vector_store_failed_count',
 };
 
 /**
@@ -66,7 +78,11 @@ export class AgentKnowledgeUsageTracker {
 		});
 	}
 
-	recordToolCall(runId: string | undefined, call: KnowledgeToolCall, contentChars: number): void {
+	recordToolCall(
+		runId: string | undefined,
+		call: KnowledgeToolCall,
+		result: KnowledgeToolCallResult,
+	): void {
 		if (!runId) {
 			return;
 		}
@@ -76,7 +92,12 @@ export class AgentKnowledgeUsageTracker {
 
 		const run = this.runs.get(runId) ?? { usage: emptyUsage(), lastCallAt: now };
 		run.usage[usageKeyByCall[call]]++;
-		run.usage[contentKeyByCall[call]] += contentChars;
+		if (result.failed) {
+			run.usage[failedKeyByCall[call]]++;
+		} else {
+			run.usage[contentKeyByCall[call]] += result.contentChars;
+		}
+
 		run.lastCallAt = now;
 
 		this.runs.set(runId, run);
@@ -106,5 +127,7 @@ function emptyUsage(): KnowledgeRunUsage {
 		vector_store_search_count: 0,
 		file_content_chars: 0,
 		vector_store_content_chars: 0,
+		file_failed_count: 0,
+		vector_store_failed_count: 0,
 	};
 }

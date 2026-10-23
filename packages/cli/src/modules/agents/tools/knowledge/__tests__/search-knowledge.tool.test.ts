@@ -2,7 +2,10 @@ import type { BuiltTool } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentKnowledgeMirrorService } from '../../../agent-knowledge-mirror.service';
-import type { KnowledgeToolCall } from '../../../agent-knowledge-usage-tracker';
+import type {
+	KnowledgeToolCall,
+	KnowledgeToolCallResult,
+} from '../../../agent-knowledge-usage-tracker';
 import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
 
 const projectId = 'project-1';
@@ -14,7 +17,7 @@ function buildTool(
 	recordToolCall: (
 		runId: string | undefined,
 		call: KnowledgeToolCall,
-		contentChars: number,
+		result: KnowledgeToolCallResult,
 	) => void = vi.fn(),
 ): BuiltTool {
 	const tool = createKnowledgeRetrievalTools({
@@ -140,7 +143,10 @@ describe('createKnowledgeRetrievalTools', () => {
 			const output = await getToolHandler(tool)(input, { runId: 'run-1' });
 
 			expect(recordToolCall).toHaveBeenCalledTimes(1);
-			expect(recordToolCall).toHaveBeenCalledWith('run-1', call, modelOutputLength(tool, output));
+			expect(recordToolCall).toHaveBeenCalledWith('run-1', call, {
+				failed: false,
+				contentChars: modelOutputLength(tool, output),
+			});
 		},
 	);
 
@@ -167,19 +173,20 @@ describe('createKnowledgeRetrievalTools', () => {
 
 		const contentChars = modelOutputLength(tool, output);
 		expect(contentChars).toBeLessThan(longText.length);
-		expect(recordToolCall).toHaveBeenCalledWith('run-1', 'file_read', contentChars);
+		expect(recordToolCall).toHaveBeenCalledWith('run-1', 'file_read', {
+			failed: false,
+			contentChars,
+		});
 	});
 
-	it('records a call that fails, with the size of the error that the model gets', async () => {
+	it('records a call that fails as failed, with no content characters', async () => {
 		const recordToolCall = vi.fn();
 		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
 		knowledgeMirrorService.searchKnowledge.mockRejectedValue(new Error('search failed'));
 		const tool = buildTool(knowledgeMirrorService, 'search_text', recordToolCall);
 
-		const output = await getToolHandler(tool)({ pattern: 'refund' }, { runId: 'run-1' });
+		await getToolHandler(tool)({ pattern: 'refund' }, { runId: 'run-1' });
 
-		const errorChars = JSON.stringify({ error: 'search failed', errorType: 'Error' }).length;
-		expect(recordToolCall).toHaveBeenCalledWith('run-1', 'file_search', errorChars);
-		expect(modelOutputLength(tool, output)).toBe(errorChars);
+		expect(recordToolCall).toHaveBeenCalledWith('run-1', 'file_search', { failed: true });
 	});
 });

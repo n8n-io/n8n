@@ -13,11 +13,11 @@ describe('AgentKnowledgeUsageTracker', () => {
 	it('counts each kind of knowledge call of a run', () => {
 		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
 
-		tracker.recordToolCall('run-1', 'file_find', 0);
-		tracker.recordToolCall('run-1', 'file_search', 0);
-		tracker.recordToolCall('run-1', 'file_search', 0);
-		tracker.recordToolCall('run-1', 'file_read', 0);
-		tracker.recordToolCall('run-1', 'vector_store_search', 0);
+		tracker.recordToolCall('run-1', 'file_find', { failed: false, contentChars: 0 });
+		tracker.recordToolCall('run-1', 'file_search', { failed: false, contentChars: 0 });
+		tracker.recordToolCall('run-1', 'file_search', { failed: false, contentChars: 0 });
+		tracker.recordToolCall('run-1', 'file_read', { failed: false, contentChars: 0 });
+		tracker.recordToolCall('run-1', 'vector_store_search', { failed: false, contentChars: 0 });
 
 		expect(tracker.takeRunUsage('run-1')).toEqual({
 			file_find_count: 1,
@@ -26,17 +26,19 @@ describe('AgentKnowledgeUsageTracker', () => {
 			vector_store_search_count: 1,
 			file_content_chars: 0,
 			vector_store_content_chars: 0,
+			file_failed_count: 0,
+			vector_store_failed_count: 0,
 		});
 	});
 
 	it('sums the content characters of a run by kind', () => {
 		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
 
-		tracker.recordToolCall('run-1', 'file_find', 100);
-		tracker.recordToolCall('run-1', 'file_search', 250);
-		tracker.recordToolCall('run-1', 'file_read', 4000);
-		tracker.recordToolCall('run-1', 'vector_store_search', 1200);
-		tracker.recordToolCall('run-1', 'vector_store_search', 800);
+		tracker.recordToolCall('run-1', 'file_find', { failed: false, contentChars: 100 });
+		tracker.recordToolCall('run-1', 'file_search', { failed: false, contentChars: 250 });
+		tracker.recordToolCall('run-1', 'file_read', { failed: false, contentChars: 4000 });
+		tracker.recordToolCall('run-1', 'vector_store_search', { failed: false, contentChars: 1200 });
+		tracker.recordToolCall('run-1', 'vector_store_search', { failed: false, contentChars: 800 });
 
 		expect(tracker.takeRunUsage('run-1')).toMatchObject({
 			file_content_chars: 4350,
@@ -44,11 +46,28 @@ describe('AgentKnowledgeUsageTracker', () => {
 		});
 	});
 
+	it('counts a failed call and adds no content characters', () => {
+		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+
+		tracker.recordToolCall('run-1', 'file_read', { failed: true });
+		tracker.recordToolCall('run-1', 'file_read', { failed: false, contentChars: 500 });
+		tracker.recordToolCall('run-1', 'vector_store_search', { failed: true });
+
+		expect(tracker.takeRunUsage('run-1')).toMatchObject({
+			file_read_count: 2,
+			vector_store_search_count: 1,
+			file_content_chars: 500,
+			vector_store_content_chars: 0,
+			file_failed_count: 1,
+			vector_store_failed_count: 1,
+		});
+	});
+
 	it('keeps concurrent runs apart', () => {
 		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
 
-		tracker.recordToolCall('run-1', 'file_search', 300);
-		tracker.recordToolCall('run-2', 'vector_store_search', 900);
+		tracker.recordToolCall('run-1', 'file_search', { failed: false, contentChars: 300 });
+		tracker.recordToolCall('run-2', 'vector_store_search', { failed: false, contentChars: 900 });
 
 		expect(tracker.takeRunUsage('run-1')).toMatchObject({
 			file_search_count: 1,
@@ -66,7 +85,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 
 	it('forgets a run after its usage is taken', () => {
 		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
-		tracker.recordToolCall('run-1', 'file_read', 0);
+		tracker.recordToolCall('run-1', 'file_read', { failed: false, contentChars: 0 });
 
 		tracker.takeRunUsage('run-1');
 
@@ -82,7 +101,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 	it('ignores a call without a run id', () => {
 		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
 
-		tracker.recordToolCall(undefined, 'file_search', 0);
+		tracker.recordToolCall(undefined, 'file_search', { failed: false, contentChars: 0 });
 
 		expect(tracker.takeRunUsage('undefined')).toBeUndefined();
 	});
@@ -90,10 +109,10 @@ describe('AgentKnowledgeUsageTracker', () => {
 	it('keeps a run that makes no knowledge calls for several hours', () => {
 		vi.useFakeTimers();
 		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
-		tracker.recordToolCall('long-run', 'file_search', 0);
+		tracker.recordToolCall('long-run', 'file_search', { failed: false, contentChars: 0 });
 
 		vi.advanceTimersByTime(6 * 60 * 60 * 1000);
-		tracker.recordToolCall('new-run', 'file_search', 0);
+		tracker.recordToolCall('new-run', 'file_search', { failed: false, contentChars: 0 });
 
 		expect(tracker.takeRunUsage('long-run')).toMatchObject({ file_search_count: 1 });
 	});
@@ -101,10 +120,10 @@ describe('AgentKnowledgeUsageTracker', () => {
 	it('drops a run without calls for more than a day', () => {
 		vi.useFakeTimers();
 		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
-		tracker.recordToolCall('stale-run', 'file_search', 0);
+		tracker.recordToolCall('stale-run', 'file_search', { failed: false, contentChars: 0 });
 
 		vi.advanceTimersByTime(24 * 60 * 60 * 1000 + 1);
-		tracker.recordToolCall('new-run', 'file_search', 0);
+		tracker.recordToolCall('new-run', 'file_search', { failed: false, contentChars: 0 });
 
 		expect(tracker.takeRunUsage('stale-run')).toBeUndefined();
 		expect(tracker.takeRunUsage('new-run')).toMatchObject({ file_search_count: 1 });
@@ -114,8 +133,8 @@ describe('AgentKnowledgeUsageTracker', () => {
 		it('sends the counts of a run that used knowledge, then forgets the run', () => {
 			const telemetry = mock<Telemetry>();
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
-			tracker.recordToolCall('run-1', 'file_search', 300);
-			tracker.recordToolCall('run-1', 'vector_store_search', 900);
+			tracker.recordToolCall('run-1', 'file_search', { failed: false, contentChars: 300 });
+			tracker.recordToolCall('run-1', 'vector_store_search', { failed: false, contentChars: 900 });
 
 			tracker.sendRunUsage('run-1', {
 				agentId: 'agent-1',
@@ -137,6 +156,8 @@ describe('AgentKnowledgeUsageTracker', () => {
 					vector_store_search_count: 1,
 					file_content_chars: 300,
 					vector_store_content_chars: 900,
+					file_failed_count: 0,
+					vector_store_failed_count: 0,
 				},
 			);
 			expect(tracker.takeRunUsage('run-1')).toBeUndefined();
@@ -145,7 +166,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 		it('leaves out user_id for a run without a user', () => {
 			const telemetry = mock<Telemetry>();
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
-			tracker.recordToolCall('run-1', 'file_read', 0);
+			tracker.recordToolCall('run-1', 'file_read', { failed: false, contentChars: 0 });
 
 			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'test' });
 

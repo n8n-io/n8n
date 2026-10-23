@@ -297,12 +297,20 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			file_content_chars: z
 				.number()
 				.describe(
-					'Characters that the knowledge file tools sent to the model in the run: the sum of the JSON length of each result or error. Measured before the agent runtime shortens a very large tool result (over 50,000 tokens), so such a result counts more than the model gets',
+					'Characters that successful knowledge file tool calls sent to the model in the run. Failed calls add nothing. A result over 50,000 tokens counts in full, but the model gets a shorter version.',
 				),
 			vector_store_content_chars: z
 				.number()
 				.describe(
-					'Characters that vector store searches sent to the model in the run, measured like file_content_chars',
+					'Characters that successful vector store searches sent to the model in the run. Counted like file_content_chars.',
+				),
+			file_failed_count: z
+				.number()
+				.describe('Knowledge file tool calls that failed. Each one also counts in its call count'),
+			vector_store_failed_count: z
+				.number()
+				.describe(
+					'Vector store searches that failed. Each one also counts in vector_store_search_count',
 				),
 		}),
 	},

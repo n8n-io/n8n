@@ -1815,10 +1815,13 @@ describe('buildFromJson()', () => {
 
 			expect(searchHandler).toHaveBeenCalledWith(input, ctx);
 			expect(onVectorStoreSearch).toHaveBeenCalledTimes(1);
-			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1', JSON.stringify(result).length);
+			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1', {
+				failed: false,
+				contentChars: JSON.stringify(result).length,
+			});
 		});
 
-		it('reports a failed vector store search with no content, then throws its error', async () => {
+		it('reports a failed vector store search as failed, then throws its error', async () => {
 			const error = new Error('vector store unavailable');
 			const searchHandler = vi.fn().mockRejectedValue(error);
 			const { searchTool, onVectorStoreSearch } = await buildSearchTool(searchHandler);
@@ -1827,7 +1830,7 @@ describe('buildFromJson()', () => {
 				searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' }),
 			).rejects.toBe(error);
 
-			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1', 0);
+			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1', { failed: true });
 		});
 
 		it.each([
