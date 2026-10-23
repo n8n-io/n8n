@@ -166,7 +166,7 @@ const agentCapabilityProfile = {
 	tool_types: z.array(z.string()).describe('Tool types, never user-authored tool names'),
 };
 
-/** Present when the builder write ran inside an n8n Assistant thread. */
+/** Present when the builder write or publish ran inside an n8n Assistant thread. */
 const builderWriteSession = {
 	thread_id: z
 		.string()
@@ -175,7 +175,7 @@ const builderWriteSession = {
 	run_id: z
 		.string()
 		.optional()
-		.describe('Instance AI run that made the write. Absent on rows before CONTEXT-335'),
+		.describe('Instance AI run that made the change. Absent on rows before CONTEXT-335'),
 };
 
 /**
@@ -432,6 +432,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'The Instance AI builder published an agent version through its agent_builder_publish_agent tool. One of three same-shaped publish events ("User published agent", "MCP published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing.',
 		properties: z.object({
 			...agentPublish,
+			...builderWriteSession,
 			event_version: z.literal('1'),
 		}),
 	},
@@ -459,6 +460,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'The Instance AI builder unpublished an agent through its agent_builder_unpublish_agent tool. One of three same-shaped unpublish events ("User unpublished agent", "MCP unpublished agent") — union them for total agent unpublishing, or read one for that surface alone. Emitted from `AgentPublishService.unpublishAgent`.',
 		properties: z.object({
 			...agentActorIdentity,
+			...builderWriteSession,
 			event_version: z.literal('1'),
 		}),
 	},

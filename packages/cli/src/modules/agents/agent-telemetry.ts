@@ -16,30 +16,33 @@ import {
 } from './utils/agent-capabilities';
 
 export function buildAgentTurnMetrics(record: MessageRecord) {
-	const loadedSkillIds = record.timeline.flatMap(loadedSkillId);
+	const skillLoads = record.timeline.flatMap(skillLoad);
 	return {
 		latency_ms: record.duration,
 		cost: record.totalCost ?? 0,
 		token_count: record.usage?.totalTokens ?? 0,
 		tool_call_count: record.timeline.filter((event) => event.type === 'tool-call').length,
-		skill_load_count: loadedSkillIds.length,
-		loaded_skill_ids: uniqueSorted(loadedSkillIds),
+		skill_load_count: skillLoads.length,
+		loaded_skill_ids: uniqueSorted(skillLoads.flatMap(({ skillId }) => skillId ?? [])),
 	};
 }
 
 /**
  * The skill a `load_skill` call activated. A call that failed, or that read a
- * linked file instead of the main instructions, loaded no skill.
+ * linked file instead of the main instructions, loaded no skill. The result of
+ * a linked file read is the only one that carries `filePath`.
  */
-function loadedSkillId(event: TimelineEvent): string[] {
-	if (event.type !== 'tool-call' || event.name !== SKILL_LOAD_TOOL_NAME || !event.success)
+function skillLoad(event: TimelineEvent): Array<{ skillId?: string }> {
+	if (event.type !== 'tool-call' || event.name !== SKILL_LOAD_TOOL_NAME || !event.success) {
 		return [];
+	}
 	const { input, output } = event;
 	if (!isRecord(output) || output.success === false || output.ok === false) return [];
-	if (isRecord(input) && input.filePath !== undefined) return [];
-	if (typeof output.skillId === 'string') return [output.skillId];
-	// A source without activation returns the skill text, which carries no id.
-	return isRecord(input) && typeof input.skillId === 'string' ? [input.skillId] : [];
+	if (output.filePath !== undefined) return [];
+	if (typeof output.skillId === 'string') return [{ skillId: output.skillId }];
+	// A source without activation returns the skill text, which carries no id. A load
+	// by name still counts, without an id.
+	return [isRecord(input) && typeof input.skillId === 'string' ? { skillId: input.skillId } : {}];
 }
 
 export function buildAgentCapabilityTelemetryProperties(

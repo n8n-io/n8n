@@ -162,6 +162,23 @@ describe('agent telemetry', () => {
 			).toEqual(expect.objectContaining({ skill_load_count: 1, loaded_skill_ids: ['skill_a'] }));
 		});
 
+		it('counts a load of the main skill file, and a load by name without an id', () => {
+			expect(
+				metricsFor([
+					toolCall(
+						'load_skill',
+						{ skillId: 'skill_a', filePath: 'SKILL.md' },
+						{ success: true, skillId: 'skill_a' },
+					),
+					toolCall(
+						'load_skill',
+						{ name: 'Billing' },
+						{ type: 'content', value: [{ type: 'text', text: 'Skill text' }] },
+					),
+				]),
+			).toEqual(expect.objectContaining({ skill_load_count: 2, loaded_skill_ids: ['skill_a'] }));
+		});
+
 		it('does not count failed loads or linked file reads', () => {
 			expect(
 				metricsFor([

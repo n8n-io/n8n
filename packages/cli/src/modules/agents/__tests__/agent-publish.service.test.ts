@@ -1,5 +1,5 @@
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
-import { EventService } from '@n8n/backend-services';
+import type { EventService } from '@n8n/backend-services';
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -14,6 +14,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
 import type { Telemetry } from '@/telemetry';
 
+import { runInBuilderTelemetrySession } from '../builder/builder-telemetry-session';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
@@ -596,6 +597,26 @@ describe('AgentPublishService', () => {
 				trigger: 'explicit',
 				version_id: versionId,
 			}),
+		);
+	});
+
+	it('reports the Assistant thread and run on a builder publish inside a session', async () => {
+		const { service, agentRepository, telemetry } = makeService();
+		const agent = makeAgent({ integrations: [{ type: 'slack', credentialId: 'slack-cred' }] });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await runInBuilderTelemetrySession(
+			{ threadId: 'thread-1', runId: 'run-1' },
+			async () =>
+				await service.publishAgent(agentId, projectId, user, {
+					by: 'builder',
+					trigger: 'explicit',
+				}),
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT,
+			expect.objectContaining({ thread_id: 'thread-1', run_id: 'run-1' }),
 		);
 	});
 
