@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -23,6 +24,7 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 	WorkflowHistoryRepository,
+	WorkflowDependencyRepository,
 } from '@n8n/db';
 import {
 	FolderRepository,
@@ -42,6 +44,7 @@ import type { INodeType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { readFile } from 'node:fs/promises';
 import type { Mock, Mocked } from 'vitest';
+import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -51,6 +54,7 @@ import { SourceControlContextFactory } from '@/modules/source-control.ee/source-
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -60,6 +64,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 import { createVariable } from '@test-integration/db/variables';
+import { retryUntil } from '@test-integration/retry-until';
 
 import {
 	createCredentials,
@@ -176,17 +181,18 @@ describe('SourceControlImportService', () => {
 				mock<NodesConfig>({ blockDeprecated: true }),
 				nodeTypes,
 			),
+			Container.get(WorkflowIndexService),
 		);
 	};
 
 	afterEach(async () => {
 		await testDb.truncate([
 			'WorkflowPublishHistory',
-			'WorkflowHistory',
 			'SharedWorkflow',
 			'WorkflowTagMapping',
 			'SharedCredentials',
 			'WorkflowEntity',
+			'WorkflowHistory',
 			'CredentialsEntity',
 			'TagEntity',
 			'Variables',
@@ -1918,6 +1924,98 @@ describe('SourceControlImportService', () => {
 					throw new Error(`Trying to access invalid file in test: ${pathStr}`);
 				}
 				return mockFileData.get(pathStr)!;
+			});
+		});
+
+		describe('credential dependency indexing', () => {
+			afterEach(() => {
+				Container.get(EventService).removeAllListeners();
+			});
+
+			it('removes the old credential after a pull and publication', async () => {
+				// KNO-188: Publication must not leave the pre-pull draft dependencies in place.
+				const importingUser = await getGlobalOwner();
+				const indexService = Container.get(WorkflowIndexService);
+				const dependencyRepository = Container.get(WorkflowDependencyRepository);
+				const oldCredentialId = nanoid();
+				const newCredentialId = nanoid();
+				const original = makeWorkflowImport({
+					versionId: uuid(),
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: {
+								httpBasicAuth: { id: oldCredentialId, name: 'Old credential' },
+							},
+						},
+					],
+				});
+				const workflow = await createWorkflowWithHistory(original, importingUser);
+				await setActiveVersion(workflow.id, workflow.versionId);
+				// The workflow fixture indexes only node types. Rebuild it with credentials.
+				await dependencyRepository.removeDependenciesForWorkflow(workflow.id);
+				await indexService.updateIndexForDraft(workflow);
+				await indexService.updateIndexForPublished(workflow, workflow.versionId, workflow.nodes);
+				expect(
+					await dependencyRepository.findBy({
+						workflowId: workflow.id,
+						dependencyType: 'credentialId',
+						dependencyKey: oldCredentialId,
+					}),
+				).toHaveLength(2);
+
+				const imported = makeWorkflowImport({
+					id: workflow.id,
+					versionId: uuid(),
+					nodes: workflow.nodes.map((node) => ({
+						...node,
+						credentials: {
+							httpBasicAuth: { id: newCredentialId, name: 'New credential' },
+						},
+					})),
+				});
+				const file = putWorkflowFile(workflow.id, imported);
+				indexService.init();
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+				expect(result).toEqual([{ id: workflow.id, name: file, publishingError: undefined }]);
+				const pulled = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(pulled.nodes).toEqual(imported.nodes);
+				expect(pulled.versionCounter).toBeGreaterThan(workflow.versionCounter);
+
+				await setActiveVersion(workflow.id, pulled.versionId);
+				pulled.activeVersionId = pulled.versionId;
+				await indexService.updateIndexForPublished(pulled, pulled.versionId, pulled.nodes);
+				const publishedCredentials = await dependencyRepository.findBy({
+					workflowId: workflow.id,
+					dependencyType: 'credentialId',
+					publishedVersionId: pulled.versionId,
+				});
+				expect(publishedCredentials).toEqual([
+					expect.objectContaining({ dependencyKey: newCredentialId }),
+				]);
+
+				await retryUntil(async () => {
+					const credentials = await dependencyRepository.findBy({
+						workflowId: workflow.id,
+						dependencyType: 'credentialId',
+					});
+					expect(credentials.filter((dep) => dep.dependencyKey === oldCredentialId)).toEqual([]);
+					expect(credentials.filter((dep) => dep.publishedVersionId === null)).toEqual([
+						expect.objectContaining({
+							dependencyKey: newCredentialId,
+							workflowVersionId: pulled.versionCounter,
+						}),
+					]);
+				});
 			});
 		});
 

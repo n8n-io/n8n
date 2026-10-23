@@ -1,18 +1,12 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import {
-	DataSource,
-	EntityManager,
-	IsNull,
-	LessThan,
-	LessThanOrEqual,
-	Repository,
-	Not,
-} from '@n8n/typeorm';
+import { DataSource, EntityManager, IsNull, LessThan, LessThanOrEqual, Not } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type { User } from '../entities';
 import { WorkflowDependency, WorkflowEntity, WORKFLOW_DEPENDENCY_INDEX_VERSION } from '../entities';
+import { TransactionRunner } from '../services/transaction';
 
 /**
  * Which workflows an aggregate over the index may span. The roles come from the caller
@@ -58,13 +52,14 @@ export class WorkflowDependencies {
 }
 
 @Service()
-export class WorkflowDependencyRepository extends Repository<WorkflowDependency> {
+export class WorkflowDependencyRepository extends BaseRepository<WorkflowDependency> {
 	constructor(
 		dataSource: DataSource,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(WorkflowDependency, dataSource.manager);
+		super(WorkflowDependency, dataSource.manager, transactionRunner);
 	}
 
 	/**
@@ -199,7 +194,9 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		workflowId: string,
 		dependencies: WorkflowDependencies,
 	): Promise<boolean> {
-		return await this.manager.transaction(async (tx) => {
+		return await this.runInTransaction({}, async (tx) => {
+			// Use the same lock as unpublish cleanup before reading or changing index rows.
+			await this.lockWorkflow(workflowId, tx);
 			return await this.executeUpdate(workflowId, dependencies, tx);
 		});
 	}
@@ -248,13 +245,11 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		}
 
 		// Nothing was deleted - either no existing data, or existing data is newer/same version
-		// Check if any dependencies exist for this workflow. We lock for update to avoid a race
-		// when two processes try to insert dependencies for the same workflow at the same time.
-		const hasData = await this.acquireLockAndCheckForExistingData(
+		// The workflow lock keeps this check and insert coordinated with other index writes.
+		const hasData = await tx.existsBy(WorkflowDependency, {
 			workflowId,
-			dependencies.publishedVersionId,
-			tx,
-		);
+			publishedVersionId: dependencies.publishedVersionId ?? IsNull(),
+		});
 
 		if (!hasData) {
 			// There's no existing data, so we can safely insert the new dependencies.
@@ -295,34 +290,22 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
-	private async acquireLockAndCheckForExistingData(
-		workflowId: string,
-		publishedVersionId: string | null,
-		tx: EntityManager,
-	): Promise<boolean> {
-		// Build where conditions with publishedVersionId filter
-		const whereConditions: Record<string, unknown> = {
-			workflowId,
-			publishedVersionId: publishedVersionId ?? IsNull(),
-		};
+	async removePublishedDependenciesForWorkflow(workflowId: string, publishedVersionId: string) {
+		await this.runInTransaction({}, async (tx) => {
+			const workflow = await this.lockWorkflow(workflowId, tx);
+			// A delayed event must not remove dependencies after the workflow is republished.
+			if (!workflow || workflow.activeVersionId !== null) return;
 
-		if (this.databaseConfig.type === 'sqlite') {
-			// We skip the explicit locking here. SQLite locks the entire database for writes,
-			// so the prepareTransactionForSqlite step ensures no concurrent writes happen.
-			return await tx.existsBy(WorkflowDependency, whereConditions);
-		}
-		// For Postgres we lock on the workflow row, and only then check the dependency table.
-		// This prevents a race between two concurrent updates.
-		const placeholder = this.databaseConfig.type === 'postgresdb' ? '$1' : '?';
-		const tableName = this.getTableName('workflow_entity');
-		await tx.query(`SELECT id FROM ${tableName} WHERE id = ${placeholder} FOR UPDATE`, [
-			workflowId,
-		]);
-		return await tx.existsBy(WorkflowDependency, whereConditions);
+			await tx.delete(WorkflowDependency, { workflowId, publishedVersionId });
+		});
 	}
 
-	private getTableName(name: string): string {
-		const { tablePrefix } = this.databaseConfig;
-		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);
+	private async lockWorkflow(workflowId: string, tx: EntityManager) {
+		// SQLite transactions already hold the database write lock.
+		return await tx.findOne(WorkflowEntity, {
+			select: { id: true, activeVersionId: true },
+			where: { id: workflowId },
+			...(this.databaseConfig.type === 'sqlite' ? {} : { lock: { mode: 'pessimistic_write' } }),
+		});
 	}
 }

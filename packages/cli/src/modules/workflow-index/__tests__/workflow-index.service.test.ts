@@ -738,13 +738,45 @@ describe('WorkflowIndexService', () => {
 		it('should register event listeners for workflow events', () => {
 			service.init();
 
-			expect(mockEventService.on).toHaveBeenCalledTimes(5);
+			expect(mockEventService.on).toHaveBeenCalledTimes(6);
 			expect(mockEventService.on).toHaveBeenCalledWith('server-started', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-created', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-saved', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-deleted', expect.any(Function));
+			expect(mockEventService.on).toHaveBeenCalledWith(
+				'workflow-deactivated',
+				expect.any(Function),
+			);
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-activated', expect.any(Function));
 		});
+
+		it.each(['some-version-id', 'new-version-id'])(
+			'keeps published dependencies when republishing from %s',
+			(activeVersionId) => {
+				const events = new EventService();
+				const indexService = new WorkflowIndexService(
+					mockWorkflowDependencyRepository,
+					mockWorkflowRepository,
+					events,
+					mockLogger,
+					mockErrorReporter,
+					mockTracing,
+					createWorkflowsConfig(),
+				);
+				indexService.init();
+				events.emit('workflow-deactivated', {
+					user: mock(),
+					workflowId: 'workflow-123',
+					workflow: Object.assign(createWorkflowEntity([]), { activeVersionId }),
+					deactivatedVersionId: 'some-version-id',
+					publicApi: false,
+				});
+
+				expect(
+					mockWorkflowDependencyRepository.removePublishedDependenciesForWorkflow,
+				).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('buildIndex()', () => {

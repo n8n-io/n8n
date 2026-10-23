@@ -56,6 +56,18 @@ export class WorkflowIndexService {
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
 			await this.removeDependenciesForWorkflow(workflowId);
 		});
+		this.eventService.on(
+			'workflow-deactivated',
+			async ({ workflowId, workflow, deactivatedVersionId }) => {
+				// Republishing also emits this event. Keep the published index in that case.
+				if (workflow.activeVersionId === null && deactivatedVersionId !== null) {
+					await this.dependencyRepository.removePublishedDependenciesForWorkflow(
+						workflowId,
+						deactivatedVersionId,
+					);
+				}
+			},
+		);
 		this.eventService.on('workflow-activated', async ({ workflow }) => {
 			if (workflow.activeVersionId === null) {
 				this.logger.warn(
