@@ -72,6 +72,7 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	ASSISTANT_SKILLS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
@@ -7607,6 +7608,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -7638,10 +7640,24 @@ describe('resolveExperimentGates', () => {
 			expect(second.nodeUsageEnabled).toBe(false);
 			expect(getFeatureFlagForInstance.mock.calls).toEqual([
 				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[ASSISTANT_SKILLS_FLAG],
 				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[ASSISTANT_SKILLS_FLAG],
 			]);
 		},
 	);
+
+	it.each([true, false])('reads Assistant skills %s from its instance flag', async (enabled) => {
+		stubContainer({});
+		getFeatureFlagForInstance.mockImplementation(
+			async (flag: string) => flag === ASSISTANT_SKILLS_FLAG && enabled,
+		);
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			assistantSkillsEnabled: enabled,
+			instanceContextEnabled: false,
+		});
+	});
 
 	it('keeps instance activity off when its evaluation fails', async () => {
 		stubContainer(allEnabled, true);
@@ -7702,6 +7718,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 	});
 
@@ -7761,6 +7778,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 	});
 
@@ -7780,6 +7798,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			assistantSkillsEnabled: false,
 		});
 	});
 });
@@ -8944,4 +8963,27 @@ describe('createContext — skill service wiring', () => {
 
 		expect(context.skillService).toBe(expected ? skillService : undefined);
 	});
+
+	it.each([true, false])(
+		'passes Assistant skills %s to the skills adapter',
+		(assistantSkillsEnabled) => {
+			const createService = vi.fn().mockReturnValue(mock<InstanceAiSkillService>());
+			vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+				if (token === ModuleRegistry) {
+					return {
+						isActive: vi.fn().mockReturnValue(true),
+						settings: new Map([['agents', { enabled: true, skillsHubEnabled: true }]]),
+					};
+				}
+				if (token === InstanceAiSkillsAdapterService) return { createService };
+				if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+			});
+			const service = createAdapterWithGatewayMock(vi.fn());
+
+			service.createContext(mockUser, { threadId: 'thread-1', assistantSkillsEnabled });
+
+			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled);
+		},
+	);
 });

@@ -22,6 +22,7 @@ import {
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
+	ASSISTANT_SKILLS_FLAG,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -410,6 +411,7 @@ export interface InstanceAiFeatureFlags {
 	credentialDescriptionsEnabled: boolean;
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
+	assistantSkillsEnabled: boolean;
 }
 
 @Service()
@@ -558,6 +560,7 @@ export class InstanceAiAdapterService {
 			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
 			 *  `save_user_preference` tool. */
 			aiPreferencesEnabled?: boolean;
+			assistantSkillsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -584,6 +587,7 @@ export class InstanceAiAdapterService {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 			modelId,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
@@ -662,7 +666,7 @@ export class InstanceAiAdapterService {
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
-			skillService: this.getSkillService(user),
+			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -719,12 +723,18 @@ export class InstanceAiAdapterService {
 			: provider;
 	}
 
-	private getSkillService(user: User): InstanceAiSkillService | undefined {
+	private getSkillService(
+		user: User,
+		assistantSkillsEnabled: boolean,
+	): InstanceAiSkillService | undefined {
 		try {
 			const moduleRegistry = Container.get(ModuleRegistry);
 			if (!moduleRegistry.isActive('agents')) return undefined;
 			if (moduleRegistry.settings.get('agents')?.skillsHubEnabled !== true) return undefined;
-			return Container.get(InstanceAiSkillsAdapterService).createService(user);
+			return Container.get(InstanceAiSkillsAdapterService).createService(
+				user,
+				assistantSkillsEnabled,
+			);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
 				error: error instanceof Error ? error.message : String(error),
@@ -773,14 +783,18 @@ export class InstanceAiAdapterService {
 	async resolveExperimentGates(user: User): Promise<InstanceAiFeatureFlags> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		let instanceContextEnabled = false;
+		let assistantSkillsEnabled = false;
 		try {
 			const postHog = Container.get(PostHogClient);
-			const [userFlags, instanceFlag] = await Promise.allSettled([
+			const [userFlags, instanceFlag, assistantSkillsFlag] = await Promise.allSettled([
 				postHog.getFeatureFlags(user),
 				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+				postHog.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG),
 			]);
 			if (userFlags.status === 'fulfilled') flags = userFlags.value;
 			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
+			assistantSkillsEnabled =
+				assistantSkillsFlag.status === 'fulfilled' && assistantSkillsFlag.value === true;
 		} catch {
 			// Leave unreadable flags unassigned.
 		}
@@ -808,6 +822,7 @@ export class InstanceAiAdapterService {
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			instanceContextEnabled,
+			assistantSkillsEnabled,
 		};
 	}
 

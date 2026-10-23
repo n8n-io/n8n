@@ -1155,6 +1155,7 @@ export interface InstanceAiPreferenceService {
 }
 
 export interface InstanceAiSkillService {
+	assistantSkillsEnabled: boolean;
 	list(options: {
 		query?: string;
 		scope?: SkillScope;
@@ -1168,6 +1169,7 @@ export interface InstanceAiSkillService {
 		scope: 'project' | 'instance';
 		projectId?: string;
 		skill: Omit<AgentSkill, 'allowedTools'>;
+		availableToAssistant?: boolean;
 	}): Promise<SkillDetail>;
 	update(skillId: string, input: SaveSkillDto): Promise<SkillSaveResponse>;
 	delete(skillId: string): Promise<void>;

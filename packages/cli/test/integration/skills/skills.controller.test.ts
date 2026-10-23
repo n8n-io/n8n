@@ -177,6 +177,34 @@ describe('SkillsController', () => {
 		expect(moved.availableToAssistant).toBe(true);
 	});
 
+	it('creates a skill that the Assistant can use', async () => {
+		const {
+			body: { data: created },
+		} = await editor
+			.post('/skills')
+			.send({ scope: 'project', projectId: project.id, skill: body, availableToAssistant: true })
+			.expect(200);
+		expect(created.availableToAssistant).toBe(true);
+		expect(created.latestVersion).toBe(1);
+	});
+
+	it('creates nothing when the Assistant cannot use the new skill', async () => {
+		const agent = await newAgent('Assistant create test', project.id);
+		await owner
+			.post('/skills')
+			.send({ scope: 'agent', agentId: agent.id, skill: body, availableToAssistant: true })
+			.expect(400);
+		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
+		await owner
+			.post('/skills')
+			.send({ scope: 'instance', skill: body, availableToAssistant: true })
+			.expect(400);
+		const {
+			body: { data: list },
+		} = await owner.get('/skills').expect(200);
+		expect(list.count).toBe(0);
+	});
+
 	it('hides the skills API when the skills hub is off', async () => {
 		setSkillsHubFlag(false);
 
