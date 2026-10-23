@@ -1,0 +1,24 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_6ca13b5d94a1b6::t_4691edbbe2e5ee 199-200
+  s_6ca13b5d94a1b6::t_9f91b10eb224e6 11,23,70-106,117,119-121,127-129,131-132,169-198,201-207,221
+packages/@n8n/cli/README.md
+  s_6ca13b5d94a1b6::t_cc05f50c34271c 63
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_6ca13b5d94a1b6::t_cc05f50c34271c 220-232,274-275,299-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ceab11edb4a35f56a9fef2bc8cdac41e1d838ab",
+  "prompts": {},
+  "sessions": {
+    "s_6ca13b5d94a1b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e3623c8-f2ba-4830-90e7-6c8d4c3d4541",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
