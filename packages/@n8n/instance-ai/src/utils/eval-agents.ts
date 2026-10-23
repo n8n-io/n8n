@@ -72,13 +72,16 @@ function isResolvingBuilderModel(modelId: string): boolean {
 /**
  * The dedicated eval model's own endpoint: `N8N_INSTANCE_AI_EVAL_MODEL_URL` (with
  * `N8N_INSTANCE_AI_EVAL_MODEL_API_KEY`) applies to `N8N_INSTANCE_AI_EVAL_MODEL` only,
- * as the builder pair applies to the builder model. Judges and fixed helper ids keep
- * their provider's own API.
+ * as the builder pair applies to the builder model. A judge or fixed helper id uses it
+ * only when it equals that model id.
  */
 function getDedicatedEvalEndpoint(modelId: string): { url: string; apiKey?: string } | undefined {
 	const url = process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL?.trim();
 	const evalModel = process.env.N8N_INSTANCE_AI_EVAL_MODEL?.trim();
-	if (!url || modelId !== evalModel || isResolvingBuilderModel(modelId)) return undefined;
+	// Compare with the builder model directly: with no builder model set,
+	// `isResolvingBuilderModel` treats every model as the builder.
+	const builderModel = process.env.N8N_INSTANCE_AI_MODEL?.trim();
+	if (!url || modelId !== evalModel || modelId === builderModel) return undefined;
 	return { url, apiKey: process.env.N8N_INSTANCE_AI_EVAL_MODEL_API_KEY?.trim() || undefined };
 }
 
@@ -144,13 +147,14 @@ export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 	const { provider, model: providerModelId } = splitModelId(modelId);
 	// Builder endpoint (URL/headers) only applies when resolving that builder model.
 	// A dedicated Anthropic eval model must hit Anthropic, not the custom/Foundry base.
-	const attachBuilderEndpoint = isResolvingBuilderModel(modelId);
+	const evalEndpoint = getDedicatedEvalEndpoint(modelId);
+	const attachBuilderEndpoint = !evalEndpoint && isResolvingBuilderModel(modelId);
 	return {
 		modelId,
 		provider,
 		providerModelId,
 		apiKey: getApiKey(modelId),
-		url: attachBuilderEndpoint ? getModelUrl() : getDedicatedEvalEndpoint(modelId)?.url,
+		url: evalEndpoint?.url ?? (attachBuilderEndpoint ? getModelUrl() : undefined),
 		headers: attachBuilderEndpoint ? getModelHeaders() : undefined,
 	};
 }

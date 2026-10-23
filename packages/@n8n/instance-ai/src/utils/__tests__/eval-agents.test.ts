@@ -252,6 +252,17 @@ describe('eval agent model config', () => {
 		expect(resolveEvalModelConfig().apiKey).toBe('router-key');
 	});
 
+	it('uses the eval model URL and key when no builder model is set', () => {
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'custom/deepseek/deepseek-v4.1-flash';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://router.example.com/v1';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_API_KEY = 'router-key';
+
+		expect(resolveEvalModelConfig()).toMatchObject({
+			apiKey: 'router-key',
+			url: 'https://router.example.com/v1',
+		});
+	});
+
 	it('keeps judges and fixed helper ids off the eval model URL', () => {
 		process.env.N8N_INSTANCE_AI_MODEL = 'anthropic/claude-sonnet-4-6';
 		process.env.ANTHROPIC_API_KEY = 'anthropic-key';
