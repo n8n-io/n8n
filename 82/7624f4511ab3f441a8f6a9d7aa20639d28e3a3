@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionListItem.vue
+  s_5785bc20fb92a9::t_8d8c077d448365 5,9-10,25-28,30,39,41,61-64,66-69,73-79,83-91,94,120,123-131,138-150,180,190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "827624f4511ab3f441a8f6a9d7aa20639d28e3a3",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
