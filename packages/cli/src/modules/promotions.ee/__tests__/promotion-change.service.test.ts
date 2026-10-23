@@ -1,7 +1,11 @@
+import type { User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
+import { mock } from 'vitest-mock-extended';
+
 import { FORMAT_VERSION } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { scopeManifestToProject } from '../promotion-change.service';
+import { PromotionChangeService, scopeManifestToProject } from '../promotion-change.service';
 
 const ids = (entries: Array<{ id: string }> | undefined) => entries?.map(({ id }) => id).sort();
 
@@ -71,4 +75,34 @@ describe('scopeManifestToProject', () => {
 		expect(ids(scoped.variables)).toEqual(['varG', 'varT']);
 		expect(scoped.requirements?.variables).toBeUndefined();
 	});
+});
+
+describe('PromotionChangeService preview permission', () => {
+	const service = new PromotionChangeService(
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+	);
+	// The read scope passes the route decorator, but not the check for each direction.
+	const reader = { role: { slug: 'custom', scopes: [{ slug: 'promotions:read' }] } } as User;
+
+	it.each(['promote', 'apply'] as const)(
+		'names the promotions:%s scope when the user lacks it',
+		async (direction) => {
+			const details = service.getDetails(reader, 'project1', direction, {
+				commitSha: null,
+				keys: [],
+			});
+
+			await expect(details).rejects.toThrow(ForbiddenError);
+			await expect(details).rejects.toThrow(`requires the promotions:${direction} scope`);
+		},
+	);
 });
