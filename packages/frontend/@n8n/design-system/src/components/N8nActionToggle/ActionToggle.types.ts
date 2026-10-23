@@ -22,7 +22,6 @@ export interface ActionToggleProps<T extends string = string> {
 	actions?: Array<ActionToggleItem<T>>;
 	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
 	theme?: 'default' | 'dark';
-	iconOrientation?: 'horizontal' | 'vertical';
 	/** Size of the default trigger button. */
 	size?: ButtonSize;
 	/** Size of the ellipsis icon in the default trigger. It does not change with `size`. */

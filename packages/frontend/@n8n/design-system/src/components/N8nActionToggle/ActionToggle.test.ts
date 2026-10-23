@@ -29,7 +29,7 @@ describe('N8nActionToggle', () => {
 		expect(getByText('Duplicate')).toBeInTheDocument();
 		expect(getByText('Delete')).toBeInTheDocument();
 	});
-	it('defaults icon to horizontal orientation and is ellipsis', function () {
+	it('renders the horizontal ellipsis icon', function () {
 		const { getByRole } = render(ActionToggle, {
 			props: {
 				actions: [{ label: 'Duplicate', value: 'duplicate' }],

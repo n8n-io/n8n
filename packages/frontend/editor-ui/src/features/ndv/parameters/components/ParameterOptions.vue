@@ -30,7 +30,6 @@ interface Props {
 	showExpressionSelector?: boolean;
 	showFocusPanel?: boolean;
 	customActions?: Array<{ label: string; value: string; disabled?: boolean }>;
-	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
 	loadingMessage?: string;
 	isContentOverridden?: boolean;
@@ -43,7 +42,6 @@ const props = withDefaults(defineProps<Props>(), {
 	showExpressionSelector: true,
 	showFocusPanel: true,
 	customActions: () => [],
-	iconOrientation: 'horizontal',
 	loading: false,
 	loadingMessage: () => useI18n().baseText('genericHelpers.loading'),
 	isContentOverridden: false,
@@ -215,7 +213,6 @@ const onViewSelected = (selected: string) => {
 					icon-size="small"
 					theme="dark"
 					:actions="actions"
-					:icon-orientation="iconOrientation"
 					@action="(action: string) => $emit('update:modelValue', action)"
 					@visible-change="onMenuToggle"
 				/>
