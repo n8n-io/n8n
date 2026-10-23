@@ -1,12 +1,4 @@
-import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
-import {
-	DateTimeColumn,
-	JsonColumn,
-	Project,
-	User,
-	WorkflowEntity,
-	WithTimestampsAndStringId,
-} from '@n8n/db';
+import { DateTimeColumn, Project, User, WorkflowEntity, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { SelfHealingResult } from './self-healing-result.entity';
@@ -58,12 +50,9 @@ export class SelfHealingInvestigation extends WithTimestampsAndStringId {
 	@Column({ type: 'uuid' })
 	runId: string;
 
-	/**
-	 * Holds no workflow content. Completion reads the content from the workflow after the
-	 * version checks pass.
-	 */
-	@JsonColumn()
-	expectedBaseline: WorkflowSuggestionBaseline['expectedBaseline'];
+	/** The run keeps the captured baseline in memory. The cooldown needs only this version. */
+	@Column({ type: 'varchar', length: 36 })
+	publishedVersionId: string;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	resultId: string | null;

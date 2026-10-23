@@ -167,6 +167,7 @@ describe('SelfHealingInvestigationService', () => {
 		expect(results.complete).toHaveBeenCalledWith(
 			expect.objectContaining({
 				investigationId: investigation.id,
+				baseline,
 				output: run.output,
 				usage: run.usage,
 			}),

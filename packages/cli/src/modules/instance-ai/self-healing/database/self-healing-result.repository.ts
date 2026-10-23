@@ -113,9 +113,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 			.innerJoin('result.workflow', 'workflow')
 			.where({ workflowId, projectId, outcome: 'could_not_fix' })
 			.andWhere('result.completedAt > :completedAfter', { completedAfter })
-			.andWhere(
-				"investigation.expectedBaseline ->> 'publishedVersionId' = workflow.activeVersionId",
-			)
+			.andWhere('investigation.publishedVersionId = workflow.activeVersionId')
 			.getExists();
 	}
 

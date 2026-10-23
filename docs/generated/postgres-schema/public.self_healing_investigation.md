@@ -8,10 +8,10 @@
 | configurationId | integer |  | false |  | [public.self_healing_configuration](public.self_healing_configuration.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | executionId | varchar(36) |  | false |  |  | Original execution reference retained after pruning; supports both execution engines |
-| expectedBaseline | json |  | false |  |  | Version checks captured at admission. Holds no workflow content |
 | finishedAt | timestamp(3) with time zone |  | true |  |  | When the investigation released its workflow claim |
 | id | varchar(36) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Workflow owner project at admission |
+| publishedVersionId | varchar(36) |  | false |  |  | Published workflow version checked at admission |
 | resultId | varchar(36) |  | true |  | [public.self_healing_result](public.self_healing_result.md) | Result saved by atomic investigation completion |
 | runId | uuid |  | false |  |  | Assistant run ID; technical status stays in run events |
 | threadId | uuid |  | false |  |  | Private Assistant thread ID; retained after deletion |
@@ -32,9 +32,9 @@
 | self_healing_investigation_configurationId_not_null | n | NOT NULL "configurationId" |
 | self_healing_investigation_createdAt_not_null | n | NOT NULL "createdAt" |
 | self_healing_investigation_executionId_not_null | n | NOT NULL "executionId" |
-| self_healing_investigation_expectedBaseline_not_null | n | NOT NULL "expectedBaseline" |
 | self_healing_investigation_id_not_null | n | NOT NULL id |
 | self_healing_investigation_projectId_not_null | n | NOT NULL "projectId" |
+| self_healing_investigation_publishedVersionId_not_null | n | NOT NULL "publishedVersionId" |
 | self_healing_investigation_runId_not_null | n | NOT NULL "runId" |
 | self_healing_investigation_threadId_not_null | n | NOT NULL "threadId" |
 | self_healing_investigation_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -68,10 +68,10 @@ erDiagram
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
-  json expectedBaseline
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   uuid runId
   uuid threadId

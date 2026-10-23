@@ -118,7 +118,7 @@ describe('ReplaceSelfHealingInvestigationBaseline migration', () => {
 
 	afterAll(async () => await Container.get(DbConnection).close());
 
-	it('clears investigations, keeps results, and makes the version readable in SQL', async () => {
+	it('clears investigations, keeps results, and stores the published version', async () => {
 		const combined = {
 			baseline: JSON.stringify({
 				workflowId: 'heal-workflow',
@@ -135,17 +135,10 @@ describe('ReplaceSelfHealingInvestigationBaseline migration', () => {
 		expect(await selectIds('self_healing_investigation')).toEqual([]);
 		expect(await selectIds('self_healing_result')).toEqual([{ id: 'result' }]);
 
-		await insertInvestigation(
-			'replaced',
-			{ expectedBaseline: JSON.stringify(expectedBaseline) },
-			'result',
-		);
+		await insertInvestigation('replaced', { publishedVersionId: versionId }, 'result');
 		await withContext(async ({ escape: { tableName: t, columnName: c }, runQuery }) => {
 			expect(
-				await runQuery(
-					`SELECT ${c('expectedBaseline')} ->> 'publishedVersionId' AS ${c('publishedVersionId')}
-					 FROM ${t('self_healing_investigation')}`,
-				),
+				await runQuery(`SELECT ${c('publishedVersionId')} FROM ${t('self_healing_investigation')}`),
 			).toEqual([{ publishedVersionId: versionId }]);
 		});
 

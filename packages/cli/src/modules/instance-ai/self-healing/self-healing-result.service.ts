@@ -8,6 +8,7 @@ import {
 	type SelfHealingResultActionResponse,
 	type WorkflowSuggestionActionResult,
 	type WorkflowSuggestionAppliedVersion,
+	type WorkflowSuggestionBaseline,
 	type WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
 import { RoleService } from '@n8n/backend-services';
@@ -20,7 +21,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { SelfHealingOutput } from '@n8n/instance-ai';
-import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import isEqual from 'lodash/isEqual';
 
@@ -103,24 +104,39 @@ export class SelfHealingResultService {
 		return await this.results.countForInbox(access);
 	}
 
+	/**
+	 * Uses the baseline that the run captured. The investigation stores only the published version.
+	 */
 	async complete({
 		investigationId,
+		baseline,
 		signal,
 		...input
-	}: SelfHealingResultInput & { investigationId: string; signal?: AbortSignal }) {
+	}: SelfHealingResultInput & {
+		investigationId: string;
+		baseline: WorkflowSuggestionBaseline;
+		signal?: AbortSignal;
+	}) {
 		signal?.throwIfAborted();
 		const investigation = await this.investigations.findInvestigation(investigationId);
 		if (!investigation) return null;
 		if (investigation.resultId) {
 			return await this.results.getResult(investigation.resultId, investigation);
 		}
+		if (
+			baseline.workflowId !== investigation.workflowId ||
+			baseline.projectId !== investigation.projectId ||
+			baseline.backgroundUserId !== investigation.backgroundUserId ||
+			baseline.expectedBaseline.publishedVersionId !== investigation.publishedVersionId
+		) {
+			throw new UnexpectedError('The baseline does not belong to the investigation.');
+		}
 
 		const {
-			baseline,
 			content,
 			completedAt,
 			suggestion: prepared,
-		} = await this.prepareResult(investigation, input);
+		} = await this.prepareResult(investigation, baseline, input);
 		signal?.throwIfAborted();
 
 		return await this.txRunner.run({}, async (ctx) => {
@@ -183,6 +199,7 @@ export class SelfHealingResultService {
 
 	private async prepareResult(
 		investigation: SelfHealingInvestigation,
+		baseline: WorkflowSuggestionBaseline,
 		input: SelfHealingResultInput,
 	) {
 		if (investigation.finishedAt) {
@@ -198,7 +215,6 @@ export class SelfHealingResultService {
 			usage: input.usage,
 		});
 
-		const baseline = await this.suggestions.loadCurrentBaseline(investigation);
 		const needsYouWithoutChanges =
 			output.outcome === 'needs_you' &&
 			candidate !== undefined &&
@@ -224,7 +240,7 @@ export class SelfHealingResultService {
 			investigation.executionId,
 		);
 
-		return { baseline, content, completedAt: new Date(input.completedAt), suggestion };
+		return { content, completedAt: new Date(input.completedAt), suggestion };
 	}
 
 	async getDetail(

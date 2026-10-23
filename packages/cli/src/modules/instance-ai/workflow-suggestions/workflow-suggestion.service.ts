@@ -48,8 +48,6 @@ export type PreparedWorkflowSuggestion = {
 	resultKind: WorkflowSuggestion['resultKind'];
 };
 
-type BaselineVersionChecks = Omit<WorkflowSuggestionBaseline, 'original'>;
-
 type WorkflowSuggestionTarget = {
 	workflow: WorkflowEntity | null;
 	projectId: string | undefined;
@@ -159,33 +157,6 @@ export class WorkflowSuggestionService {
 	}
 
 	async requireCurrentBaseline(baseline: WorkflowSuggestionBaseline, ctx: OperationContext = {}) {
-		const { user } = await this.requireCurrentWorkflow(baseline, ctx);
-		if (
-			(await calculateWorkflowChecksum(baseline.original)) !== baseline.expectedBaseline.checksum
-		) {
-			throw new ConflictError('The workflow no longer matches the published baseline.');
-		}
-
-		return user;
-	}
-
-	/** Rebuilds a captured baseline from the workflow. The workflow must still match it. */
-	async loadCurrentBaseline(
-		baseline: BaselineVersionChecks,
-		ctx: OperationContext = {},
-	): Promise<WorkflowSuggestionBaseline> {
-		const { workflowId, projectId, backgroundUserId, expectedBaseline } = baseline;
-		const { workflow } = await this.requireCurrentWorkflow(baseline, ctx);
-		return {
-			workflowId,
-			projectId,
-			backgroundUserId,
-			expectedBaseline: structuredClone(expectedBaseline),
-			original: structuredClone(pick(workflow, WORKFLOW_CHECKSUM_FIELDS)),
-		};
-	}
-
-	private async requireCurrentWorkflow(baseline: BaselineVersionChecks, ctx: OperationContext) {
 		const { user, workflow } = await this.getEditorContext(
 			baseline.backgroundUserId,
 			baseline.workflowId,
@@ -203,13 +174,14 @@ export class WorkflowSuggestionService {
 		};
 
 		if (
+			(await calculateWorkflowChecksum(baseline.original)) !== baseline.expectedBaseline.checksum ||
 			!(await this.matchesBaseline(baseline, target)) ||
 			!(await this.isPublished(workflow, ctx))
 		) {
 			throw new ConflictError('The workflow no longer matches the published baseline.');
 		}
 
-		return { user, workflow };
+		return user;
 	}
 
 	private async readWorkflowTarget(

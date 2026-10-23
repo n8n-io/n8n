@@ -136,7 +136,7 @@ it('reverts and reapplies the investigation schemas', async () => {
 	configurationId = (await createConfiguration(baseline.projectId, baseline.backgroundUserId)).id;
 	const investigation = await createInvestigation();
 	expect(await investigations.findInvestigation(investigation.id)).toMatchObject({
-		expectedBaseline: baseline.expectedBaseline,
+		publishedVersionId: baseline.expectedBaseline.publishedVersionId,
 		resultId: null,
 		finishedAt: null,
 	});

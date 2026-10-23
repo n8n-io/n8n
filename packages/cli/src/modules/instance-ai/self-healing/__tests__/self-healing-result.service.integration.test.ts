@@ -52,10 +52,7 @@ import {
 	SELF_HEALING_CANNOT_FIX_COOLDOWN_MS,
 	SelfHealingInvestigationService,
 } from '../self-healing-investigation.service';
-import {
-	SelfHealingResultService,
-	type SelfHealingResultInput,
-} from '../self-healing-result.service';
+import { SelfHealingResultService } from '../self-healing-result.service';
 import { SelfHealingConfigurationService } from '../self-healing-configuration.service';
 import { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
@@ -215,7 +212,8 @@ async function prepareInvestigation(
 			ctx,
 		);
 	});
-	const completion: SelfHealingResultInput = {
+	const completion: Omit<Parameters<SelfHealingResultService['complete']>[0], 'investigationId'> = {
+		baseline,
 		output: {
 			outcome,
 			summary: input.summary,
@@ -783,6 +781,16 @@ it('rejects a changed baseline when saving a completed report', async () => {
 	).rejects.toThrow('baseline');
 	expect(await results.count()).toBe(0);
 	expect((await investigations.findOneByOrFail({ id: investigation.id })).finishedAt).toBeNull();
+});
+
+it('rejects a baseline from another investigation', async () => {
+	const { investigation, completion } = await prepareInvestigation('could_not_fix', false);
+	const baseline = structuredClone(completion.baseline);
+	baseline.expectedBaseline.publishedVersionId = randomUUID();
+	await expect(
+		service.complete({ investigationId: investigation.id, ...completion, baseline }),
+	).rejects.toThrow('does not belong');
+	expect(await results.count()).toBe(0);
 });
 
 it('rejects completion after interrupted-run cleanup', async () => {

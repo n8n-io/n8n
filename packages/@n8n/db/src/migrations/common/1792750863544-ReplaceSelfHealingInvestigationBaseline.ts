@@ -3,9 +3,8 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const table = 'self_healing_investigation';
 
 /**
- * Keeps only the version checks. Completion reads the workflow content from the workflow.
- * The column holds no pin data, so PostgreSQL can read its fields. An escaped NUL in a json
- * document blocks field reads, and pin data can contain one.
+ * Stores only the published version. The run keeps the captured baseline in memory, and the
+ * cooldown needs only this version.
  */
 export class ReplaceSelfHealingInvestigationBaseline1792750863544 implements ReversibleMigration {
 	async up({
@@ -21,9 +20,9 @@ export class ReplaceSelfHealingInvestigationBaseline1792750863544 implements Rev
 		await addColumns(
 			table,
 			[
-				column('expectedBaseline').json.notNull.comment(
-					'Version checks captured at admission. Holds no workflow content',
-				),
+				column('publishedVersionId')
+					.varchar(36)
+					.notNull.comment('Published workflow version checked at admission'),
 			],
 			{ recreatesOnSqlite: true },
 		);
@@ -37,7 +36,7 @@ export class ReplaceSelfHealingInvestigationBaseline1792750863544 implements Rev
 		// The previous schema requires the workflow snapshot. Clear investigations as in up().
 		await runQuery(`DELETE FROM ${escape.tableName(table)}`);
 
-		await dropColumns(table, ['expectedBaseline'], { recreatesOnSqlite: true });
+		await dropColumns(table, ['publishedVersionId'], { recreatesOnSqlite: true });
 		await addColumns(
 			table,
 			[

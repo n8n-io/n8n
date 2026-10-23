@@ -150,17 +150,6 @@ it('checks a current baseline without creating a suggestion', async () => {
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
-it('rebuilds a detached baseline from the workflow', async () => {
-	const { original, ...versionChecks } = baseline;
-	const loaded = await service.loadCurrentBaseline(versionChecks);
-	expect(loaded).toEqual(baseline);
-	loaded.original.settings!.executionTimeout = 60;
-	expect(workflow.settings?.executionTimeout).toBe(30);
-
-	workflow.name = 'Changed';
-	await expect(service.loadCurrentBaseline(versionChecks)).rejects.toThrow('baseline');
-});
-
 it.each([
 	'content',
 	'saved version',

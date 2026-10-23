@@ -99,7 +99,7 @@ async function createInvestigation(
 		executionId: randomUUID(),
 		threadId: randomUUID(),
 		runId: randomUUID(),
-		expectedBaseline: {},
+		publishedVersionId: randomUUID(),
 		finishedAt,
 	});
 }
@@ -373,7 +373,7 @@ it('reports the investigation time in UTC when the server uses another timezone'
 			executionId: '1',
 			threadId: randomUUID(),
 			runId: randomUUID(),
-			expectedBaseline: {},
+			publishedVersionId: randomUUID(),
 			createdAt,
 		});
 
