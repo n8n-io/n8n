@@ -162,6 +162,8 @@ export const useStubAgentSessionStore = defineStore('stubAgentSession', () => {
 				],
 				error: status === 'error' ? 'The project service did not respond.' : null,
 				failureSummary: null,
+				finishReason: null,
+				guardrailCode: null,
 				hitlStatus: null,
 				source: 'chat',
 			};

@@ -427,14 +427,6 @@ useKeybindings({
 			<div v-if="showLoading" :class="$style.loading">
 				{{ i18n.baseText('generic.loadingEllipsis') }}
 			</div>
-			<AgentBudgetNoticeCard
-				v-if="budgetStop"
-				:code="budgetStop.code"
-				:can-increase="props.increaseBudget !== undefined"
-				:pending="budgetIncreasePending"
-				@increase="onIncreaseBudget"
-			/>
-
 			<SessionTimelineTable
 				v-if="!showLoading"
 				ref="timelineTable"
@@ -447,8 +439,18 @@ useKeybindings({
 				:selected-index="highlightedIndex"
 				:visible-kinds="selectedFilters"
 				:search-query="searchQuery"
+				:notice-index="budgetStop?.index"
 				@select="onTimelineItemSelect"
-			/>
+			>
+				<template v-if="budgetStop" #notice>
+					<AgentBudgetNoticeCard
+						:code="budgetStop.code"
+						:can-increase="props.increaseBudget !== undefined"
+						:pending="budgetIncreasePending"
+						@increase="onIncreaseBudget"
+					/>
+				</template>
+			</SessionTimelineTable>
 		</div>
 	</div>
 </template>

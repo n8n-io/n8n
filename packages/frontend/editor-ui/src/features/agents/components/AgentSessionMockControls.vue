@@ -27,7 +27,7 @@ const i18n = useI18n();
 			<N8nButton
 				v-for="kind in store.executionKinds"
 				:key="kind"
-				variant="subtle"
+				variant="ghost"
 				:aria-pressed="store.enabledKinds.includes(kind)"
 				@click="store.toggleKind(kind)"
 			>
