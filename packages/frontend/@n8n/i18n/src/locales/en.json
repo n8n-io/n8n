@@ -1622,6 +1622,7 @@
 	"agentSessions.origin.linear": "Linear",
 	"agentSessions.origin.discord": "Discord",
 	"agentSessions.origin.whatsapp": "WhatsApp",
+	"agentSessions.origin.teams": "Microsoft Teams",
 	"agentSessions.origin.n8nChat": "n8n Chat",
 	"agentSessions.goToParentRun": "Go to parent run",
 	"agentSessions.viewTrace": "View session trace",
