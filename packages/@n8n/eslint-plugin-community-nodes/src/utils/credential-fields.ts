@@ -21,8 +21,8 @@ const NON_SENSITIVE_PATTERNS = ['url', 'pub', 'id'];
 /**
  * Whether a name looks like it holds a secret. A name is sensitive when it
  * contains a sensitive pattern (or a caller-supplied `extra` one) and none of
- * the `exclusions`. Exclusions win, so under the default set `tokenUrl` and
- * `secretId` are not sensitive even though they contain `token`/`secret`.
+ * the `exclusions` within a word. Exclusions win. Under the default set,
+ * `tokenUrl` and `secretId` are not sensitive even though they contain `token`/`secret`.
  *
  * - Credential-field masking uses the default exclusions (a field named
  *   `tokenUrl` is a URL, not a secret to mask).
@@ -35,12 +35,13 @@ export function isSensitiveName(
 	options: { extra?: string[]; exclusions?: string[] } = {},
 ): boolean {
 	const { extra = [], exclusions = NON_SENSITIVE_PATTERNS } = options;
-	const normalizedName = split(name).join('').toLowerCase();
+	const words = split(name).map((word) => word.toLowerCase());
 
-	if (exclusions.some((pattern) => normalizedName.includes(pattern))) {
+	if (exclusions.some((pattern) => words.some((word) => word.includes(pattern)))) {
 		return false;
 	}
 
+	const normalizedName = words.join('');
 	return [...SENSITIVE_PATTERNS, ...extra].some((pattern) => normalizedName.includes(pattern));
 }
 
