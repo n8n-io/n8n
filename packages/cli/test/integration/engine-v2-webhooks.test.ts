@@ -268,16 +268,16 @@ describe.each([
 		expect(response.statusCode).toBe(200);
 		expect(startExecution).not.toHaveBeenCalled();
 
-		const executions = await getAllExecutions();
-		expect(executions.filter((e) => e.workflowId === workflow.id)).toEqual([
+		const executions = (await getAllExecutions()).filter((e) => e.workflowId === workflow.id);
+
+		// Let the v1 run finish first, so a failed assertion does not leave it running into the next test.
+		const activeExecutions = Container.get(ActiveExecutions);
+		for (const { id } of executions) {
+			if (activeExecutions.has(id)) await activeExecutions.getPostExecutePromise(id);
+		}
+
+		expect(executions).toEqual([
 			expect.objectContaining({ id: expect.stringMatching(/^\d+$/), mode: 'manual' }),
 		]);
-
-		// Let the v1 run finish before the next test truncates its row.
-		const activeExecutions = Container.get(ActiveExecutions);
-		const [{ id: executionId }] = executions;
-		if (activeExecutions.has(executionId)) {
-			await activeExecutions.getPostExecutePromise(executionId);
-		}
 	});
 });

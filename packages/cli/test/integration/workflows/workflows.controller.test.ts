@@ -5285,11 +5285,47 @@ describe('POST /workflows/:workflowId/run', () => {
 		});
 
 		test('should run a dirty node again on the data plane in a partial execution', async () => {
-			const dbWorkflow = await createV2Workflow();
-			const setNode = dbWorkflow.nodes.find((node) => node.name === SET_NAME);
+			const LAST_NAME = 'Edit Fields 2';
+			// The dirty node sits before the destination: the destination always runs again.
+			const dbWorkflow = await createWorkflow(
+				{
+					nodes: [
+						{
+							id: uuid(),
+							name: TRIGGER_NAME,
+							type: 'n8n-nodes-base.manualTrigger',
+							parameters: {},
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: uuid(),
+							name: SET_NAME,
+							type: 'n8n-nodes-base.set',
+							parameters: {},
+							typeVersion: 3.4,
+							position: [200, 0],
+						},
+						{
+							id: uuid(),
+							name: LAST_NAME,
+							type: 'n8n-nodes-base.set',
+							parameters: {},
+							typeVersion: 3.4,
+							position: [400, 0],
+						},
+					],
+					connections: {
+						[TRIGGER_NAME]: { main: [[{ node: SET_NAME, type: 'main', index: 0 }]] },
+						[SET_NAME]: { main: [[{ node: LAST_NAME, type: 'main', index: 0 }]] },
+					},
+					settings: { engineType: 'v2' },
+				},
+				owner,
+			);
 
 			const response = await authOwnerAgent.post(`/workflows/${dbWorkflow.id}/run`).send({
-				destinationNode: { nodeName: SET_NAME, mode: 'inclusive' },
+				destinationNode: { nodeName: LAST_NAME, mode: 'inclusive' },
 				runData: {
 					[TRIGGER_NAME]: taskData({ from: 'earlier' }),
 					[SET_NAME]: taskData({ stale: true }),
@@ -5302,8 +5338,9 @@ describe('POST /workflows/:workflowId/run', () => {
 			expect(startExecution).toHaveBeenCalledTimes(1);
 			const request = startExecution.mock.calls[0][0];
 			expect(request.triggerOutputs).toEqual([[{ json: { from: 'earlier' } }]]);
-			// The dirty node runs again, so its stale run data is not seeded.
-			expect(request.seededSteps).not.toHaveProperty(setNode?.id ?? '');
+			// The dirty node runs again, so its stale run data is not seeded. Without
+			// `dirtyNodeNames` it would be seeded, and only the destination would run.
+			expect(request.seededSteps).toEqual({});
 
 			const executions = await getAllExecutions();
 			expect(executions.filter((e) => e.workflowId === dbWorkflow.id)).toHaveLength(0);
