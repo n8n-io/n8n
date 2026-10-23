@@ -648,7 +648,7 @@ describe('step execution (integration)', () => {
 				await Promise.resolve();
 				if (request.node.id === 'call' && !request.resume) {
 					return {
-						spawn: {
+						child: {
 							executionId: childId,
 							workflowId: 'wf-child',
 							graph: childGraph,

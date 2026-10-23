@@ -72,7 +72,7 @@ export interface StepExecutionRequest {
  * A child execution the step asks for. The executor minted the id and had the
  * workflow resolved; the engine starts the child and suspends the step on it.
  */
-export interface SpawnDeclaration {
+export interface ChildDeclaration {
 	executionId: string;
 	workflowId: string;
 	graph: WorkflowGraph;
@@ -83,8 +83,8 @@ export interface SpawnDeclaration {
 /**
  * What running a step produced: its output slots, or a declaration that it is
  * not done. Exclusive — a step that waits has no outputs yet, and the outputs
- * a deadline would emit ride inside the declaration. A spawn is a wait too:
- * the step suspends until the child ends.
+ * a deadline would emit ride inside the declaration. A child declaration is a
+ * wait too: the step suspends until the child ends.
  *
  * The `?: never` members give every branch the same keys, so `result.wait`
  * reads on the union and narrows it — without them a caller could only test
@@ -95,15 +95,15 @@ export type StepExecutionResult =
 			/** Output slots; persisted by the engine without inspecting slot contents. */
 			outputs: StepSlots;
 			wait?: never;
-			spawn?: never;
+			child?: never;
 	  }
 	| {
 			wait: WaitDeclaration;
 			outputs?: never;
-			spawn?: never;
+			child?: never;
 	  }
 	| {
-			spawn: SpawnDeclaration;
+			child: ChildDeclaration;
 			outputs?: never;
 			wait?: never;
 	  };
