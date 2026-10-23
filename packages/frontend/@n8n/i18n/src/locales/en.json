@@ -10039,7 +10039,7 @@
 	"promotions.preview.marker.conflict": "This resource has a conflict, and {count} workflow depends on it. Open the blockers to see the next step. | This resource has a conflict, and {count} workflows depend on it. Open the blockers to see the next step.",
 	"promotions.preview.marker.warning": "Warning",
 	"promotions.preview.card.viewBlockers": "View blockers",
-	"promotions.preview.blockers.intro": "Blockers are dependencies, like credentials and variables, the changes depend on and are missing in Production. Resolve the blockers to apply the related changes.",
+	"promotions.preview.blockers.intro": "Blockers stop you from applying some changes to this instance. They include missing credentials or variables, access restrictions, and conflicts. Resolve the blockers to apply the related changes.",
 	"promotions.preview.blockers.section.blockers": "{count} blocker | {count} blockers",
 	"promotions.preview.blockers.section.warnings": "{count} warning | {count} warnings",
 	"promotions.preview.blockers.column.name": "Name",
