@@ -99,8 +99,6 @@ jobs:
       previous-version: ${{ inputs.previous_version }}
       version: ${{ inputs.version }}
       experimental: ${{ inputs.release_type == 'rc' && !inputs.prerelease }}
-      early-access: ${{ inputs.prerelease }}
-      available-on-cloud: true
     secrets: inherit
 
   send-version-release-notification:
