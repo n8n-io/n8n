@@ -125,10 +125,20 @@ async function buildImportPackage(
 
 describe('POST /n8n-packages/import', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/n8n-packages/import', null));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'post',
+			url: '/n8n-packages/import',
+			apiKey: null,
+		}));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/n8n-packages/import', 'abcXYZ'));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'post',
+			url: '/n8n-packages/import',
+			apiKey: 'abcXYZ',
+		}));
 
 	test('rejects unsupported Content-Type', async () => {
 		const response = await authOwnerAgent

@@ -96,10 +96,20 @@ function createTraceparent() {
 
 describe('GET /executions/:id', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/executions/1', null));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'get',
+			url: '/executions/1',
+			apiKey: null,
+		}));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/executions/1', 'abcXYZ'));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'get',
+			url: '/executions/1',
+			apiKey: 'abcXYZ',
+		}));
 
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
@@ -327,10 +337,20 @@ describe('GET /executions/:id', () => {
 
 describe('DELETE /executions/:id', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'delete', '/executions/1', null));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'delete',
+			url: '/executions/1',
+			apiKey: null,
+		}));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'delete', '/executions/1', 'abcXYZ'));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'delete',
+			url: '/executions/1',
+			apiKey: 'abcXYZ',
+		}));
 
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
@@ -437,10 +457,20 @@ describe('POST /executions/:id/retry', () => {
 	};
 
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/executions/1/retry', null));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'post',
+			url: '/executions/1/retry',
+			apiKey: null,
+		}));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/executions/1/retry', 'abcXYZ'));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'post',
+			url: '/executions/1/retry',
+			apiKey: 'abcXYZ',
+		}));
 
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
@@ -626,10 +656,20 @@ describe('POST /executions/:id/retry', () => {
 
 describe('GET /executions', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/executions', null));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'get',
+			url: '/executions',
+			apiKey: null,
+		}));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/executions', 'abcXYZ'));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'get',
+			url: '/executions',
+			apiKey: 'abcXYZ',
+		}));
 
 	test('should paginate two executions', async () => {
 		const workflow = await createWorkflow({}, owner);
@@ -1253,10 +1293,20 @@ describe('GET /executions', () => {
 
 describe('GET /executions/:id/tags', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/executions/1/tags', null));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'get',
+			url: '/executions/1/tags',
+			apiKey: null,
+		}));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/executions/1/tags', 'abcXYZ'));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'get',
+			url: '/executions/1/tags',
+			apiKey: 'abcXYZ',
+		}));
 
 	test('should return 404 for non-existent execution', async () => {
 		const response = await authOwnerAgent.get('/executions/999/tags');
@@ -1314,10 +1364,20 @@ describe('GET /executions/:id/tags', () => {
 
 describe('PUT /executions/:id/tags', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'put', '/executions/1/tags', null));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'put',
+			url: '/executions/1/tags',
+			apiKey: null,
+		}));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'put', '/executions/1/tags', 'abcXYZ'));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'put',
+			url: '/executions/1/tags',
+			apiKey: 'abcXYZ',
+		}));
 
 	test('should return 404 for non-existent execution', async () => {
 		const response = await authOwnerAgent.put('/executions/999/tags').send([]);
@@ -1440,10 +1500,20 @@ describe('PUT /executions/:id/tags', () => {
 
 describe('POST /executions/:id/stop', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/executions/1/stop', null));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'post',
+			url: '/executions/1/stop',
+			apiKey: null,
+		}));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/executions/1/stop', 'abcXYZ'));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'post',
+			url: '/executions/1/stop',
+			apiKey: 'abcXYZ',
+		}));
 
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
@@ -1616,10 +1686,20 @@ describe('POST /executions/:id/stop', () => {
 
 describe('POST /executions/stop', () => {
 	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/executions/stop', null));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'post',
+			url: '/executions/stop',
+			apiKey: null,
+		}));
 
 	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/executions/stop', 'abcXYZ'));
+		await testWithAPIKey({
+			agent: authOwnerAgent,
+			method: 'post',
+			url: '/executions/stop',
+			apiKey: 'abcXYZ',
+		}));
 
 	test('should return 400 when status is not provided', async () => {
 		const response = await authUser1Agent.post('/executions/stop').send({});
