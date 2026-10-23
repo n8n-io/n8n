@@ -57,14 +57,12 @@ export class WaitingForms extends WaitingWebhooks {
 	}): IWebhookResponseCallbackData | undefined {
 		if (suffix !== WAITING_FORMS_EXECUTION_STATUS) return undefined;
 
-		let status: string = toV1Status(snapshot.status);
+		const status = toV1Status(snapshot.status);
 		const node = target && this.findWorkflowNode(snapshot, target.nodeId);
-		if (node && status === 'waiting' && this.isFormResumeNode(node)) {
-			status = 'form-waiting';
-		}
+		const waitsForForm = node && status === 'waiting' && this.isFormResumeNode(node);
 
 		applyCors(req, res);
-		res.send(status);
+		res.send(waitsForForm ? 'form-waiting' : status);
 		return { noWebhookResponse: true };
 	}
 
