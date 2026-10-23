@@ -39,7 +39,7 @@ describe('N8nNavigationDropdown', () => {
 			},
 		});
 		expect(getByTestId('test-trigger')).toBeVisible();
-		expect(queryByTestId('navigation-menu-item')).not.toBeVisible();
+		expect(queryByTestId('navigation-menu-item')).not.toBeInTheDocument();
 
 		await userEvent.click(getByTestId('test-trigger'));
 		await waitFor(() => expect(queryByTestId('navigation-menu-item')).toBeVisible());
@@ -63,18 +63,20 @@ describe('N8nNavigationDropdown', () => {
 		});
 
 		expect(getByTestId('test-trigger')).toBeVisible();
-		expect(queryByTestId('navigation-submenu')).not.toBeVisible();
+		expect(queryByTestId('navigation-submenu')).not.toBeInTheDocument();
 
 		await userEvent.click(getByTestId('test-trigger'));
 
 		await waitFor(() => expect(getByTestId('navigation-submenu')).toBeVisible());
 
+		await userEvent.hover(getByTestId('navigation-submenu'));
+		await waitFor(() => expect(getByTestId('navigation-submenu-item')).toBeVisible());
 		await userEvent.click(getByTestId('navigation-submenu-item'));
 
 		expect(router.currentRoute.value.name).toBe('projects');
 	});
 
-	it('should render icons in submenu when provided', () => {
+	it('should render icons in submenu when provided', async () => {
 		const { getByTestId } = render(NavigationDropdown, {
 			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: {
@@ -91,7 +93,11 @@ describe('N8nNavigationDropdown', () => {
 			},
 		});
 
-		expect(getByTestId('navigation-submenu-item').querySelector('.submenu__icon')).toBeTruthy();
+		await userEvent.click(getByTestId('test-trigger'));
+		await userEvent.hover(getByTestId('navigation-submenu'));
+		await waitFor(() =>
+			expect(getByTestId('navigation-submenu-item').querySelector('.submenu__icon')).toBeTruthy(),
+		);
 	});
 
 	it('should propagate events', async () => {
@@ -111,6 +117,9 @@ describe('N8nNavigationDropdown', () => {
 			},
 		});
 
+		await userEvent.click(getByTestId('test-trigger'));
+		await userEvent.hover(getByTestId('navigation-submenu'));
+		await waitFor(() => expect(getByTestId('navigation-submenu-item')).toBeVisible());
 		await userEvent.click(getByTestId('navigation-submenu-item'));
 
 		expect(emitted('itemClick')).toStrictEqual([
@@ -120,7 +129,7 @@ describe('N8nNavigationDropdown', () => {
 	});
 
 	it('should open first level on click', async () => {
-		const { getByTestId, getByText } = render(NavigationDropdown, {
+		const { getByTestId, getByText, queryByText } = render(NavigationDropdown, {
 			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: {
 				menu: [
@@ -131,7 +140,7 @@ describe('N8nNavigationDropdown', () => {
 				],
 			},
 		});
-		expect(getByText('first')).not.toBeVisible();
+		expect(queryByText('first')).not.toBeInTheDocument();
 		await userEvent.click(getByTestId('test-trigger'));
 		expect(getByText('first')).toBeVisible();
 	});
@@ -158,7 +167,7 @@ describe('N8nNavigationDropdown', () => {
 	});
 
 	it('should toggle nested level on mouseenter / mouseleave', async () => {
-		const { getByTestId, getByText } = render(NavigationDropdown, {
+		const { getByTestId, getByText, queryByText } = render(NavigationDropdown, {
 			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: {
 				menu: [
@@ -170,11 +179,11 @@ describe('N8nNavigationDropdown', () => {
 				],
 			},
 		});
-		expect(getByText('first')).not.toBeVisible();
+		expect(queryByText('first')).not.toBeInTheDocument();
 		await userEvent.click(getByTestId('test-trigger'));
 		expect(getByText('first')).toBeVisible();
 
-		expect(getByText('nested')).not.toBeVisible();
+		expect(queryByText('nested')).not.toBeInTheDocument();
 		await userEvent.hover(getByTestId('navigation-submenu'));
 		await waitFor(() => expect(getByText('nested')).toBeVisible());
 
@@ -182,6 +191,6 @@ describe('N8nNavigationDropdown', () => {
 			{ target: getByTestId('navigation-submenu') },
 			{ target: getByTestId('test-trigger') },
 		]);
-		await waitFor(() => expect(getByText('nested')).not.toBeVisible());
+		await waitFor(() => expect(queryByText('nested')).not.toBeInTheDocument());
 	});
 });
