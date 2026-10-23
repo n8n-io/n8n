@@ -222,30 +222,26 @@ export class WorkflowFinderService {
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) return [];
 
-		const where = await this.findAllWhere(user, scopes);
+		// Resolve access first and read each workflow once. A workflow can be reachable
+		// through several shares, and reading it through every share row would repeat its
+		// nodes JSON per share.
+		const accessibleIds = await this.findWorkflowIdsWithScopeForUser(workflowIds, user, scopes);
 
-		// A workflow may appear via several share paths (project membership +
-		// direct share); dedupe so callers see one entity per id.
-		const seen = new Set<string>();
 		const workflows: WorkflowEntity[] = [];
-
-		for (const chunk of chunkIds(workflowIds)) {
-			const sharedWorkflows = await this.sharedWorkflowRepository.find({
-				where: { ...where, workflowId: In(chunk) },
-				relations: {
-					workflow: {
+		for (const chunk of chunkIds([...accessibleIds])) {
+			workflows.push(
+				...(await this.workflowRepository.find({
+					where: { id: In(chunk) },
+					relations: {
 						parentFolder: options.includeParentFolder,
-						tags: options.includeTags,
 						activeVersion: options.includeActiveVersion,
 					},
-				},
-			});
+				})),
+			);
+		}
 
-			for (const { workflow } of sharedWorkflows) {
-				if (seen.has(workflow.id)) continue;
-				seen.add(workflow.id);
-				workflows.push(workflow);
-			}
+		if (options.includeTags) {
+			await this.workflowRepository.loadCollections(workflows, { tags: true });
 		}
 
 		return workflows;
@@ -487,12 +483,10 @@ export class WorkflowFinderService {
 			meta: true,
 			versionId: true,
 			triggerCount: true,
-			// ListQuery select keys: `ownedBy` = share rows + project relation (nested);
-			// `shared` = share rows only without project relation.
-			...(includeProjects ? { ownedBy: true } : { shared: true }),
+			// Shares and tags are loaded after the list query instead of selected through it:
+			// joining them would repeat each workflow's nodes JSON once per share and tag.
 			...(includeActiveVersion && { activeVersion: true }),
 			...(includePinnedData && { pinData: true }),
-			...(includeTags && { tags: true }),
 			...(includeParentFolder && { parentFolder: true }),
 		};
 
@@ -513,6 +507,21 @@ export class WorkflowFinderService {
 			},
 		);
 
-		return { workflows: workflows as WorkflowEntity[], count };
+		const listed = workflows as WorkflowEntity[];
+		await this.workflowRepository.loadCollections(listed, {
+			shared: includeProjects ? { project: true } : true,
+			tags: includeTags,
+		});
+
+		if (projectId) {
+			// The project filter joins `shared` on that project, and the list query used to read
+			// shares through the same join, so a filtered list has always returned only the
+			// filtered project's share. Keep that.
+			for (const workflow of listed) {
+				workflow.shared = workflow.shared.filter((share) => share.projectId === projectId);
+			}
+		}
+
+		return { workflows: listed, count };
 	}
 }

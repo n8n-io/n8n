@@ -864,18 +864,13 @@ export class EnterpriseWorkflowService {
 
 		const checksTransfer = this.policyEnforcementService.hasChecksFor('workflowTransfer');
 		const workflows = await this.workflowRepository.find({
-			select: [
-				'id',
-				'name',
-				'activeVersionId',
-				'shared',
-				...(checksTransfer ? ['nodes' as const] : []),
-			],
-			relations: ['shared', 'shared.project'],
+			select: ['id', 'name', 'activeVersionId', ...(checksTransfer ? ['nodes' as const] : [])],
 			where: {
 				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
 			},
 		});
+		// Loaded separately: joining shares would repeat each workflow's nodes once per share.
+		await this.workflowRepository.loadCollections(workflows, { shared: { project: true } });
 
 		const activeWorkflows = workflows.filter((x) => this.isActiveWorkflow(x));
 
