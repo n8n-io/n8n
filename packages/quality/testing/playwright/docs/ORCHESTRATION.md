@@ -152,10 +152,10 @@ CURRENTS_API_KEY=<key> node packages/quality/testing/playwright/scripts/fetch-cu
 
 This fetches the last 7 days of test durations from Currents, aggregates by spec, and writes to `.github/test-metrics/playwright.json`. The PR-CI project is `nHHLA5` (n8n-ci); the legacy `LRxcNt` project still backs the nightly e2e workflows.
 
-**When to refresh:**
-- Weekly (recommended)
-- After significant test changes
-- When adding new specs (optional - they get 60s default)
+The `Util: Update E2E Metrics` workflow refreshes this file every Monday and
+opens an automated pull request when it changes. You can also run the workflow
+manually after a significant test change. New specs use the 60-second default
+until Currents has data for them.
 
 Stale metrics do not cause an obvious failure. The packer still reports balanced
 shards, because it balances against the durations in the file. The real spread is
