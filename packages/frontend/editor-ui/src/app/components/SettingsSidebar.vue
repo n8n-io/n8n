@@ -33,8 +33,8 @@ onMounted(() => {
 			</div>
 			<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 		</div>
-		<!-- The back link stays put; only the links scroll, with fades showing there is more. -->
-		<N8nScrollArea edge-fade :class="$style.scrollArea" data-test-id="settings-sidebar-scroll">
+		<!-- The back link stays put; only the links scroll, with faded edges showing there is more. -->
+		<N8nScrollArea edge-fade="y" :class="$style.scrollArea" data-test-id="settings-sidebar-scroll">
 			<div :class="$style.items">
 				<div
 					v-for="section in settingsSections"
@@ -73,8 +73,6 @@ onMounted(() => {
 @use '@/app/css/variables' as *;
 
 .container {
-	--scroll-area--fade-color: var(--color--background--light-3);
-
 	min-width: $sidebar-expanded-width;
 	height: 100%;
 	background-color: var(--color--background--light-3);

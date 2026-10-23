@@ -59,7 +59,7 @@ describe('SettingsSidebar', () => {
 		const scrollArea = getByTestId('settings-sidebar-scroll');
 		expect(scrollArea).not.toContainElement(getByTestId('settings-back'));
 		expect(scrollArea).toContainElement(getByTestId('settings-section-personal'));
-		expect(scrollArea).toContainElement(getByTestId('scroll-area-fade-top'));
-		expect(scrollArea).toContainElement(getByTestId('scroll-area-fade-bottom'));
+		// Both edges fade so the list hints that more of it scrolls into view.
+		expect(scrollArea.querySelector('[data-reka-scroll-area-viewport]')).toHaveClass('fadeY');
 	});
 });

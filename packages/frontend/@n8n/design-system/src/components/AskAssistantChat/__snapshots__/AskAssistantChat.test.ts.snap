@@ -322,7 +322,6 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
              /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
           </style>
           
-          <!--v-if-->
           <!---->
           <!--v-if-->
           <!--v-if-->
@@ -589,7 +588,6 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
              /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
           </style>
           
-          <!--v-if-->
           <!---->
           <!--v-if-->
           <!--v-if-->
@@ -730,7 +728,6 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
              /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
           </style>
           
-          <!--v-if-->
           <!---->
           <!--v-if-->
           <!--v-if-->
@@ -871,7 +868,6 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
              /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
           </style>
           
-          <!--v-if-->
           <!---->
           <!--v-if-->
           <!--v-if-->
@@ -1012,7 +1008,6 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
              /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
           </style>
           
-          <!--v-if-->
           <!---->
           <!--v-if-->
           <!--v-if-->

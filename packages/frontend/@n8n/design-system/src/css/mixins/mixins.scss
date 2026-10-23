@@ -1,5 +1,7 @@
+@use 'sass:list';
 @use 'sass:map';
 @use 'sass:meta';
+@use 'sass:string';
 @use 'function';
 @use '../common/var';
 @use 'config';
@@ -62,7 +64,158 @@ $E: null;
 	}
 }
 
-@mixin scroll-mask($edge, $size: var(--spacing--sm)) {
+/// Fades content out at an edge of a scroll container, as a hint that more of it scrolls into view.
+/// @param $edge - `top`, `bottom`, `left`, `right`, or both edges of an axis with `y` or `x`.
+/// @param $size - Depth of the fade.
+/// @param $dynamic - Follow the scroll position: an edge only fades while content lies beyond it,
+///   and nothing fades while the content fits. Needs scroll-driven animations; a browser without
+///   them keeps the static mask at `$static-size`, which stays small so it never covers a row.
+/// @param $static-size - Depth of the static fallback when `$dynamic` is set.
+@mixin scroll-mask(
+	$edge,
+	$size: var(--spacing--sm),
+	$dynamic: false,
+	$static-size: var(--spacing--sm)
+) {
+	@if $dynamic {
+		@supports not (animation-timeline: scroll()) {
+			@include scroll-mask-static($edge, $static-size);
+		}
+
+		@supports (animation-timeline: scroll()) {
+			@include scroll-mask-dynamic($edge, $size);
+		}
+	} @else {
+		@include scroll-mask-static($edge, $size);
+	}
+}
+
+/// One mask layer per faded edge, each a gradient image one `$size` longer than the box so it
+/// can hide its fade outside the box. Scroll-driven animations slide the start layer into view
+/// over the first `$size` of scroll (`mask-position`) and grow the end layer past the box over
+/// the last `$size` (`mask-size`). The two animate different properties, so they never clash.
+/// Without a scroll range the animations are idle and the base values hide both fades.
+///
+/// Standard mask properties, not registered custom properties: lightningcss drops the unit from
+/// a zero `@property` initial value, which voids a `<length>` registration.
+@mixin scroll-mask-dynamic($edge, $size) {
+	@if not list.index((top, bottom, left, right, y, x), $edge) {
+		@error "Unsupported scroll mask edge: #{$edge}";
+	}
+
+	$has-start: $edge == top or $edge == left or $edge == y or $edge == x;
+	$has-end: $edge == bottom or $edge == right or $edge == y or $edge == x;
+
+	$axis: block;
+	$direction: to bottom;
+	$grown: string.unquote('100% calc(100% + var(--scroll-mask--size))');
+	$shifted: string.unquote('0 calc(-1 * var(--scroll-mask--size))');
+
+	@if $edge == left or $edge == right or $edge == x {
+		$axis: inline;
+		$direction: to right;
+		$grown: string.unquote('calc(100% + var(--scroll-mask--size)) 100%');
+		$shifted: string.unquote('calc(-1 * var(--scroll-mask--size)) 0');
+	}
+
+	$boxed: string.unquote('100% 100%');
+	$origin: string.unquote('0 0');
+
+	$layers: ();
+	$animations: ();
+	$ranges: ();
+	// Base values hide the fades; the keyframe lists show them.
+	$sizes: ();
+	$positions: ();
+	$shown-sizes: ();
+	$shown-positions: ();
+
+	@if $has-start {
+		$layers: list.append(
+			$layers,
+			linear-gradient(#{$direction}, transparent 0, black var(--scroll-mask--size), black 100%),
+			comma
+		);
+		$animations: list.append(
+			$animations,
+			string.unquote('scroll-mask-start-#{$edge} linear both'),
+			comma
+		);
+		$ranges: list.append($ranges, string.unquote('0 var(--scroll-mask--size)'), comma);
+		$sizes: list.append($sizes, $grown, comma);
+		$positions: list.append($positions, $shifted, comma);
+		$shown-sizes: list.append($shown-sizes, $grown, comma);
+		$shown-positions: list.append($shown-positions, $origin, comma);
+	}
+
+	@if $has-end {
+		$layers: list.append(
+			$layers,
+			linear-gradient(
+				#{$direction},
+				black 0,
+				black calc(100% - var(--scroll-mask--size)),
+				transparent 100%
+			),
+			comma
+		);
+		$animations: list.append(
+			$animations,
+			string.unquote('scroll-mask-end-#{$edge} linear both'),
+			comma
+		);
+		$ranges: list.append(
+			$ranges,
+			string.unquote('calc(100% - var(--scroll-mask--size)) 100%'),
+			comma
+		);
+		$sizes: list.append($sizes, $grown, comma);
+		$positions: list.append($positions, $origin, comma);
+		$shown-sizes: list.append($shown-sizes, $boxed, comma);
+		$shown-positions: list.append($shown-positions, $origin, comma);
+	}
+
+	--scroll-mask--size: #{$size};
+
+	mask-image: $layers;
+	mask-size: $sizes;
+	mask-position: $positions;
+	mask-repeat: no-repeat;
+
+	@if $has-start and $has-end {
+		mask-composite: intersect;
+	}
+
+	animation: $animations;
+	animation-timeline: scroll(self #{$axis});
+	animation-range: $ranges;
+
+	@if $has-start {
+		@keyframes scroll-mask-start-#{$edge} {
+			from {
+				mask-position: $positions;
+			}
+
+			to {
+				mask-position: $shown-positions;
+			}
+		}
+	}
+
+	@if $has-end {
+		@keyframes scroll-mask-end-#{$edge} {
+			from {
+				mask-size: $shown-sizes;
+			}
+
+			to {
+				mask-size: $sizes;
+			}
+		}
+	}
+}
+
+@mixin scroll-mask-static($edge, $size) {
 	@if $edge == top {
 		mask-image: linear-gradient(to bottom, transparent 0, black $size, black 100%);
 	} @else if $edge == bottom {

@@ -1,5 +1,4 @@
 import { render } from '@testing-library/vue';
-import { nextTick } from 'vue';
 
 import N8nScrollArea from './N8nScrollArea.vue';
 
@@ -148,58 +147,39 @@ describe('N8nScrollArea', () => {
 	});
 
 	describe('edgeFade', () => {
-		function renderWithOverflow(edgeFade = true) {
+		const fadeClasses = ['fadeTop', 'fadeBottom', 'fadeLeft', 'fadeRight', 'fadeY', 'fadeX'];
+
+		function getViewport(container: Element) {
+			return container.querySelector<HTMLElement>('[data-reka-scroll-area-viewport]')!;
+		}
+
+		it('masks no edge by default', () => {
+			const wrapper = render(N8nScrollArea, { slots: { default: '<div>Test content</div>' } });
+
+			const viewport = getViewport(wrapper.container);
+			for (const fadeClass of fadeClasses) {
+				expect(viewport).not.toHaveClass(fadeClass);
+			}
+		});
+
+		it.each([
+			['top', 'fadeTop'],
+			['bottom', 'fadeBottom'],
+			['left', 'fadeLeft'],
+			['right', 'fadeRight'],
+			['y', 'fadeY'],
+			['x', 'fadeX'],
+		] as const)('masks the %s edge on the viewport', (edgeFade, fadeClass) => {
 			const wrapper = render(N8nScrollArea, {
 				props: { edgeFade },
 				slots: { default: '<div>Test content</div>' },
 			});
-			// jsdom has no layout, so give the viewport a scrollable size by hand.
-			const viewport = wrapper.container.querySelector<HTMLElement>(
-				'[data-reka-scroll-area-viewport]',
-			)!;
-			Object.defineProperty(viewport, 'clientHeight', { value: 100, configurable: true });
-			Object.defineProperty(viewport, 'scrollHeight', { value: 500, configurable: true });
-			return { wrapper, viewport };
-		}
 
-		async function scrollTo(viewport: HTMLElement, top: number) {
-			viewport.scrollTop = top;
-			viewport.dispatchEvent(new Event('scroll'));
-			await nextTick();
-		}
-
-		it('renders no fades by default', () => {
-			const wrapper = render(N8nScrollArea, { slots: { default: '<div>Test content</div>' } });
-
-			expect(wrapper.queryByTestId('scroll-area-fade-top')).not.toBeInTheDocument();
-			expect(wrapper.queryByTestId('scroll-area-fade-bottom')).not.toBeInTheDocument();
-		});
-
-		it('shows only the bottom fade while the viewport is at the start', async () => {
-			const { wrapper, viewport } = renderWithOverflow();
-
-			await scrollTo(viewport, 0);
-
-			expect(wrapper.getByTestId('scroll-area-fade-top')).not.toHaveClass('fadeVisible');
-			expect(wrapper.getByTestId('scroll-area-fade-bottom')).toHaveClass('fadeVisible');
-		});
-
-		it('shows both fades while the viewport is in the middle', async () => {
-			const { wrapper, viewport } = renderWithOverflow();
-
-			await scrollTo(viewport, 200);
-
-			expect(wrapper.getByTestId('scroll-area-fade-top')).toHaveClass('fadeVisible');
-			expect(wrapper.getByTestId('scroll-area-fade-bottom')).toHaveClass('fadeVisible');
-		});
-
-		it('shows only the top fade once the viewport reaches the end', async () => {
-			const { wrapper, viewport } = renderWithOverflow();
-
-			await scrollTo(viewport, 400);
-
-			expect(wrapper.getByTestId('scroll-area-fade-top')).toHaveClass('fadeVisible');
-			expect(wrapper.getByTestId('scroll-area-fade-bottom')).not.toHaveClass('fadeVisible');
+			const viewport = getViewport(wrapper.container);
+			expect(viewport).toHaveClass(fadeClass);
+			for (const otherClass of fadeClasses.filter((name) => name !== fadeClass)) {
+				expect(viewport).not.toHaveClass(otherClass);
+			}
 		});
 	});
 });

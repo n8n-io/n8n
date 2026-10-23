@@ -29,7 +29,6 @@ exports[`N8nScrollArea > should pass scrollHideDelay prop to ScrollAreaRoot 1`] 
        /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
     </style>
     
-    <!--v-if-->
     <!---->
     <!--v-if-->
     <!--v-if-->
@@ -67,7 +66,6 @@ exports[`N8nScrollArea > should render correctly with default props 1`] = `
        /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */ [data-reka-scroll-area-viewport] { scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; } [data-reka-scroll-area-viewport]::-webkit-scrollbar { display:none; } 
     </style>
     
-    <!--v-if-->
     <!---->
     <!--v-if-->
     <!--v-if-->

@@ -30,7 +30,8 @@ export default {
 			control: 'boolean',
 		},
 		edgeFade: {
-			control: 'boolean',
+			control: 'select',
+			options: [undefined, 'top', 'bottom', 'left', 'right', 'y', 'x'],
 		},
 	},
 
@@ -104,7 +105,7 @@ WithMaxHeight.args = {
 export const WithEdgeFade = Template.bind({});
 WithEdgeFade.args = {
 	type: 'hover',
-	edgeFade: true,
+	edgeFade: 'y',
 	enableVerticalScroll: true,
 	enableHorizontalScroll: false,
 };
@@ -112,7 +113,7 @@ WithEdgeFade.parameters = {
 	docs: {
 		description: {
 			story:
-				'Fades the top and bottom edges while more content can be scrolled into view. Set `--scroll-area--fade-color` to match a non-surface background.',
+				'Fades the content out at the given edge or axis of the viewport while more of it lies beyond that edge. The fade follows the scroll position and is gone once the edge is reached. Set `--scroll-area--fade-size` to change its depth.',
 		},
 	},
 };
