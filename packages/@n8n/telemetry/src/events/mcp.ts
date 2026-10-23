@@ -8,7 +8,7 @@ import { defineTelemetryEvents } from '../define';
  * dialog's client slug is. Null when the name matches no known brand.
  */
 const clientBrand = z
-	.enum(['claude', 'cursor', 'vscode', 'openai'])
+	.enum(['claude', 'cursor', 'vscode', 'openai', 'mistral'])
 	.nullable()
 	.describe('Client brand, mirroring MCP_CLIENT_BRAND_MATCHERS in @n8n/api-types');
 
@@ -22,6 +22,41 @@ const nudgeSurface = z
 	);
 
 export const MCP_TELEMETRY = defineTelemetryEvents({
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	DISCOVERY_EXPOSED: {
+		name: 'User entered MCP discovery experiment',
+		description:
+			'A user passed the durable personal eligibility check and received a live PostHog variant. Includes control and treatment, independently of clicks.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			eligible_at: z
+				.number()
+				.optional()
+				.describe('The user first login plus 30 minutes. Eligibility can be saved later.'),
+			concurrent_experiments: z.record(z.string(), z.string()),
+		}),
+	},
+	DISCOVERY_ENTRY_VIEWED: {
+		name: 'User viewed MCP discovery entry point',
+		description:
+			'A treatment entry point became visible on screen. Recorded once per placement per editor session.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			surface: z.enum(['canvas', 'sidebar', 'footer', 'create_menu']),
+			cta_stage: z.enum(['build', 'connect', 'prompt', 'build_in_claude']),
+		}),
+	},
+	DISCOVERY_ENTRY_CLICKED: {
+		name: 'User clicked MCP discovery entry point',
+		description:
+			'A user clicked an experiment entry point to open MCP settings or a new Claude browser tab.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			surface: z.enum(['canvas', 'sidebar', 'footer', 'create_menu']),
+			cta_stage: z.enum(['build', 'connect', 'prompt', 'build_in_claude']),
+		}),
+	},
+	// EOF Experiment cleanup
 	MCP_NUDGE_VIEWED: {
 		name: 'User viewed MCP nudge',
 		description:
@@ -115,7 +150,7 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 	AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED: {
 		name: 'User toggled auto-expose new workflows to MCP',
 		description:
-			'An admin turned the "Auto-expose new workflows" MCP setting on or off. Reports the resulting state so enabling and disabling are distinguishable.',
+			'An admin turned the "MCP access for new workflows" setting on or off. Reports the resulting state so enabling and disabling are distinguishable.',
 		properties: z.object({
 			enabled: z.boolean().describe('Resulting state of the setting, not the prior one'),
 			source: z

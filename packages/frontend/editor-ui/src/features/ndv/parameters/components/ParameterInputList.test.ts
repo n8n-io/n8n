@@ -833,6 +833,51 @@ describe('ParameterInputList', () => {
 			expect(await findByTestId('parameter-item')).toBeInTheDocument();
 		});
 
+		it('should resolve relative loadOptionsDependsOn against the fixedCollection entry', async () => {
+			const parameters: INodeProperties[] = [
+				{
+					displayName: 'Attributes',
+					name: 'attributes',
+					type: 'resourceMapper',
+					default: { mappingMode: 'defineBelow', value: null },
+					typeOptions: {
+						loadOptionsDependsOn: ['&recordType'],
+						resourceMapper: { resourceMapperMethod: 'getAttributeFields', mode: 'add' },
+					},
+				},
+			];
+			const nodeParameters = {
+				options: { entries: { entry: [{ recordType: 'first' }, { recordType: 'second' }] } },
+			};
+			ndvStore.activeNode = { ...TEST_NODE_NO_ISSUES, parameters: nodeParameters };
+			const actualUseWorkflowHelpers = workflowHelpers.useWorkflowHelpers;
+			const workflowHelpersSpy = vi
+				.spyOn(workflowHelpers, 'useWorkflowHelpers')
+				.mockImplementation(() => ({
+					...actualUseWorkflowHelpers(),
+					resolveParameter: vi.fn(async (value) => value),
+				}));
+
+			const { findByTestId } = renderComponent({
+				props: {
+					parameters,
+					nodeValues: { parameters: nodeParameters },
+					path: 'parameters.options.entries.entry[1]',
+				},
+				global: {
+					stubs: {
+						ResourceMapper: {
+							props: ['dependentParametersValues'],
+							template: '<div data-test-id="rm-stub">{{ dependentParametersValues }}</div>',
+						},
+					},
+				},
+			});
+
+			await waitFor(async () => expect(await findByTestId('rm-stub')).toHaveTextContent('second'));
+			workflowHelpersSpy.mockRestore();
+		});
+
 		it('should render filter parameter', async () => {
 			const filterParameters: INodeProperties[] = [
 				{

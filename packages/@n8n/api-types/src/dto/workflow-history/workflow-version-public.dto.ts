@@ -7,3 +7,15 @@ export const workflowVersionPublicSchema = activeWorkflowVersionPublicSchema.omi
 });
 
 export class WorkflowVersionPublicDto extends Z.class(workflowVersionPublicSchema.shape) {}
+
+export const deprecatedWorkflowVersionPublicSchema = workflowVersionPublicSchema.partial({
+	nodeGroups: true,
+	name: true,
+	description: true,
+	createdAt: true,
+	updatedAt: true,
+});
+
+export class DeprecatedWorkflowVersionPublicDto extends Z.class(
+	deprecatedWorkflowVersionPublicSchema.shape,
+) {}

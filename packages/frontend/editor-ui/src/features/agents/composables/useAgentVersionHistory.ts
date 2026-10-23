@@ -6,6 +6,8 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { listAgentVersions, publishAgent, revertAgentToVersion } from './useAgentApi';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
+import { useAgentTelemetry } from './useAgentTelemetry';
+import { showAgentPublishedConfirmation } from './useAgentPublish';
 import type { AgentResource } from '../types';
 
 const PAGE_SIZE = 20;
@@ -22,6 +24,7 @@ export function useAgentVersionHistory() {
 	const locale = useI18n();
 	const { showMessage, showError } = useToast();
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
+	const { trackRevertedChangesOnAgent } = useAgentTelemetry();
 
 	const items = ref<AgentVersionListItemDto[]>([]);
 	const isLoading = ref(false);
@@ -103,6 +106,7 @@ export function useAgentVersionHistory() {
 				agentId,
 				versionId,
 			);
+			trackRevertedChangesOnAgent({ agentId });
 			showMessage({
 				title: locale.baseText('agents.versionHistory.revert.toast.title'),
 				type: 'success',
@@ -131,6 +135,7 @@ export function useAgentVersionHistory() {
 				title: locale.baseText('agents.versionHistory.publish.toast.title'),
 				type: 'success',
 			});
+			showAgentPublishedConfirmation(agentId);
 			await refresh(projectId, agentId);
 			return updated;
 		} catch (error) {

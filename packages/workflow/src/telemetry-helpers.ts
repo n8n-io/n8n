@@ -86,11 +86,13 @@ function resolveParameterValue(value: unknown): string | undefined {
 }
 
 function extractNodeTokenUsage(
-	nodeRunData: ITaskData[],
+	// Sub-node run data can be sparse, so `for...of` can yield `undefined`
+	nodeRunData: Array<ITaskData | undefined>,
 ): { input: number; output: number } | undefined {
 	let input = 0;
 	let output = 0;
 	for (const task of nodeRunData) {
+		if (!task) continue;
 		const lmOutputs = task.data?.[NodeConnectionTypes.AiLanguageModel];
 		if (lmOutputs) {
 			// LM sub-nodes (connected to Agent/Chain) — token data from N8nLlmTracing

@@ -1,7 +1,9 @@
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	INode,
-	IWebhookResponseData,
+	IRun,
+	IRunData,
 	IWorkflowBase,
 	WebhookResponseMode,
 	WorkflowExecuteMode,
@@ -9,16 +11,19 @@ import type {
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	classifyTriggerIdentity,
+	createRunExecutionData,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	UserError,
 	WAIT_NODE_TYPE,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
-import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
+import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 
 /**
  * Trigger types the v2 path cannot serve. Each carries machinery the engine
@@ -34,6 +39,18 @@ const UNSUPPORTED_TRIGGERS = new Set<string>([
 	WAIT_NODE_TYPE,
 ]);
 
+/**
+ * Response modes the v2 path serves. Each mode is added here as its support
+ * lands, so a mode that is not ready yet fails with a reason rather than
+ * answering wrongly.
+ */
+const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
+	'onReceived',
+	'lastNode',
+	'responseNode',
+	'streaming',
+]);
+
 /** What the request says about a run, before the webhook node has produced anything. */
 export type EngineV2WebhookRequest = {
 	workflowStartNode: INode;
@@ -43,7 +60,7 @@ export type EngineV2WebhookRequest = {
 };
 
 /**
- * The webhook surface's seam to engine 2.0.
+ * The webhook surface's seam to engine v2.
  *
  * The webhook node itself still runs control-plane-side, so only the start call
  * changes for a v2 workflow. This decides whether a run takes that path, and
@@ -53,10 +70,10 @@ export type EngineV2WebhookRequest = {
 export class EngineV2Webhooks {
 	constructor(
 		private readonly dispatcher: EngineV2Dispatcher,
-		private readonly payloadGuard: EngineV2PayloadGuard,
+		private readonly proxy: EngineDataPlaneProxyService,
 	) {}
 
-	/** Whether this webhook run starts on the engine 2.0 data plane. */
+	/** Whether this webhook run starts on the engine v2 data plane. */
 	handles(workflowData: IWorkflowBase, executionMode: WorkflowExecuteMode): boolean {
 		return this.dispatcher.handlesWorkflow(workflowData, executionMode);
 	}
@@ -64,7 +81,7 @@ export class EngineV2Webhooks {
 	/**
 	 * Rejects a run the v2 path cannot serve, from the configuration alone.
 	 *
-	 * A workflow that opted into engine 2.0 never falls back to v1, so each case
+	 * A workflow that opted into engine v2 never falls back to v1, so each case
 	 * fails with the reason instead. These checks live here rather than in
 	 * {@link EngineV2Dispatcher} because they need webhook context the dispatcher
 	 * never sees.
@@ -77,13 +94,22 @@ export class EngineV2Webhooks {
 	 * Ordered so the user hears the most fundamental reason first.
 	 */
 	assertSupported({ workflowStartNode, responseMode, executionId }: EngineV2WebhookRequest): void {
+		// Checked first: `EngineV2WebhookResponseRegistry.waitForResponse` assumes the module
+		// registered its channel, and throws an internal error otherwise. Only a check
+		// that precedes that call can turn "module off" into a 400 instead of a 500.
+		if (!this.proxy.isAvailable()) {
+			throw new UserError(
+				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+			);
+		}
+
 		// A v2 run keeps no control-plane execution row, so there is nothing to resume.
 		if (executionId !== undefined) {
-			throw new UserError('Engine 2.0 cannot resume a waiting execution yet.');
+			throw new UserError('Engine v2 cannot resume a waiting execution yet.');
 		}
 
 		if (UNSUPPORTED_TRIGGERS.has(workflowStartNode.type)) {
-			throw new UserError(`Engine 2.0 cannot run the "${workflowStartNode.name}" trigger yet.`);
+			throw new UserError(`Engine v2 cannot run the "${workflowStartNode.name}" trigger yet.`);
 		}
 
 		// `EngineV2Dispatcher` refuses this too, for every v2 entry path. It is
@@ -95,28 +121,75 @@ export class EngineV2Webhooks {
 				.providesExternalIdentity
 		) {
 			throw new UserError(
-				`Engine 2.0 cannot run the "${workflowStartNode.name}" trigger yet, because it takes credentials from the request.`,
+				`Engine v2 cannot run the "${workflowStartNode.name}" trigger yet, because it takes credentials from the request.`,
 			);
 		}
 
-		// TODO(CAT-4313): support `lastNode`. TODO(CAT-4079): support `responseNode`.
-		if (responseMode !== 'onReceived') {
+		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 			throw new UserError(
-				`Engine 2.0 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
+				`Engine v2 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
+			);
+		}
+
+		// With the raw body, a streaming Webhook node outputs a file after it sent
+		// the stream headers. `assertPayloadSupported` then cannot answer with a
+		// 400, so refuse the configuration here.
+		if (responseMode === 'streaming' && this.keepsRawBody(workflowStartNode)) {
+			throw new UserError(
+				`Engine v2 cannot stream a response for the "${workflowStartNode.name}" trigger with the Raw Body option yet.`,
 			);
 		}
 	}
 
-	/**
-	 * Rejects a payload the engine cannot carry.
-	 *
-	 * Only the webhook node's own output says whether the request brought a file,
-	 * so this runs after the node, unlike {@link assertSupported}.
-	 */
-	assertPayloadSupported(webhookResultData: IWebhookResponseData): void {
-		this.payloadGuard.assertNoFiles(
-			webhookResultData.workflowData ?? [],
-			'Engine 2.0 cannot receive files from a webhook yet.',
-		);
+	private keepsRawBody(node: INode): boolean {
+		const options: unknown = node.parameters.options;
+		if (!isRecord(options)) return false;
+		// An expression can turn the option on, so only a missing or `false` value is safe.
+		return options.rawBody !== undefined && options.rawBody !== false;
+	}
+
+	/** Converts the data plane's answer to the shape the v1 response path reads. */
+	async toRun(
+		outcome: Exclude<
+			WebhookRunOutcome,
+			{ status: 'response' | 'timeout' | 'undeliverable' | 'cancelled' }
+		>,
+		executionMode: WorkflowExecuteMode,
+	): Promise<IRun> {
+		const runData: IRunData = {};
+		let lastNodeExecuted = outcome.status === 'failed' ? outcome.nodeName : undefined;
+
+		if (outcome.status === 'completed' && outcome.lastNode) {
+			const { fromStepInputs } = await import('@n8n/node-engine-compatibility');
+			lastNodeExecuted = outcome.lastNode.nodeName;
+			runData[lastNodeExecuted] = [
+				{
+					startTime: Date.now(),
+					executionIndex: 0,
+					source: [],
+					executionTime: 0,
+					executionStatus: 'success',
+					data: { main: fromStepInputs(outcome.lastNode.outputs) },
+				},
+			];
+		}
+
+		return {
+			mode: executionMode,
+			startedAt: new Date(),
+			status: outcome.status === 'failed' ? 'error' : 'success',
+			// The data plane holds the run. This object never reaches a store.
+			storedAt: 'db',
+			data: createRunExecutionData({
+				resultData: {
+					runData,
+					lastNodeExecuted,
+					error:
+						outcome.status === 'failed'
+							? new WorkflowOperationError(outcome.error?.message ?? 'The workflow failed')
+							: undefined,
+				},
+			}),
+		};
 	}
 }

@@ -117,6 +117,7 @@ erDiagram
   varchar status
   TEXT toolCalls
   datetime_3_ updatedAt
+  JSON verdict
 }
 ```
 

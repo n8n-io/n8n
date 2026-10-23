@@ -22,10 +22,34 @@ export const ALL_SCOPES = buildResourceScopes();
 export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
+	'app:create': { displayName: 'Create app', description: 'Create apps in a project.' },
+	'app:read': { displayName: 'View app', description: 'View app details and versions.' },
+	'app:update': { displayName: 'Edit app', description: 'Edit apps in a project.' },
+	'app:delete': { displayName: 'Delete app', description: 'Delete apps and their versions.' },
+	'app:list': {
+		displayName: 'List apps',
+		description: 'List apps in a project.',
+	},
 	'aiPreference:read': {
 		displayName: 'Read AI Preferences',
 		description:
 			'Allows reading the AI preferences saved for the instance, the user, and their projects.',
+	},
+	'skill:read': {
+		displayName: 'Read Skills',
+		description: 'Allows reading instance skills.',
+	},
+	'skill:update': {
+		displayName: 'Update Skills',
+		description: 'Allows editing and saving instance skills.',
+	},
+	'projectSkill:read': {
+		displayName: 'Read Project Skills',
+		description: 'Allows reading the skills of a project.',
+	},
+	'projectSkill:update': {
+		displayName: 'Update Project Skills',
+		description: 'Allows editing and saving the skills of a project.',
 	},
 	'agent:create': {
 		displayName: 'Create Agent',
@@ -34,6 +58,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'agent:read': {
 		displayName: 'Read Agent',
 		description: 'Allows reading agent configuration and history.',
+	},
+	'agent:export': {
+		displayName: 'Export Agent',
+		description: 'Allows including agents in a portable package export.',
 	},
 	'agent:update': {
 		displayName: 'Update Agent',
@@ -134,6 +162,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description:
 			"Allows creating, deleting, and changing the type of end-user credentials, which resolve to each user's own connection.",
 	},
+	'credential:use': {
+		displayName: 'Use Credential',
+		description:
+			'Allows using any credential on the instance in a workflow, without being a member of its project. Without it, a role that can read credentials sees them but cannot select, test, or run them.',
+	},
 	'credential:manageInstance': {
 		displayName: 'Manage provider connections',
 		description:
@@ -179,6 +212,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'List Git Connections',
 		description: 'Allows listing Git connections.',
 	},
+	'gitConnection:discover': {
+		displayName: 'Discover Git repositories',
+		description: 'Allows listing remote repositories and branches with saved provider credentials.',
+	},
 	'gitConnection:clone': {
 		displayName: 'Clone Git Connection',
 		description: 'Allows cloning and removing the local working copy of a Git connection.',
@@ -195,5 +232,13 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Pull Git Connection',
 		description:
 			'Allows importing all projects from a Git connection working copy into the instance.',
+	},
+	'gitConnection:readReviews': {
+		displayName: 'Read promotion reviews',
+		description: 'Allows listing promotion reviews and reading their state from the Git host.',
+	},
+	'gitConnection:approveReviews': {
+		displayName: 'Approve promotion reviews',
+		description: 'Allows approving and merging promotion reviews on the Git host.',
 	},
 };

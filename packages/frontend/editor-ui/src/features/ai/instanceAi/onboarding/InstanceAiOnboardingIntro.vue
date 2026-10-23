@@ -3,7 +3,6 @@ import {
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
-	N8nPreviewTag,
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
@@ -36,11 +35,10 @@ const i18n = useI18n();
 		:data-test-id="incomplete ? 'assistant-setup-incomplete' : 'assistant-setup-intro'"
 	>
 		<div :class="[$style.content, incomplete && $style.wide]">
-			<N8nIcon icon="sparkles" :size="32" :class="$style.heroIcon" />
+			<N8nIcon icon="n8n-assistant" :size="32" :class="$style.heroIcon" />
 			<N8nHeading tag="h1" size="2xlarge" bold :class="$style.title">
 				{{ i18n.baseText('instanceAi.onboarding.title') }}
 			</N8nHeading>
-			<N8nPreviewTag v-if="!incomplete" :class="$style.preview" size="medium" />
 
 			<N8nText v-if="incomplete" tag="p" color="text-base" size="large" :class="$style.lede">
 				{{ i18n.baseText('instanceAi.onboarding.incomplete.lede') }}
@@ -48,15 +46,15 @@ const i18n = useI18n();
 
 			<div v-if="!incomplete" :class="$style.benefits">
 				<div :class="$style.benefit">
-					<N8nIcon icon="workflow" size="small" />
+					<N8nIcon icon="workflow" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.build') }}</N8nText>
 				</div>
 				<div :class="$style.benefit">
-					<N8nIcon icon="flask-conical" size="small" />
+					<N8nIcon icon="flask-conical" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.debug') }}</N8nText>
 				</div>
 				<div :class="$style.benefit">
-					<N8nIcon icon="circle-help" size="small" />
+					<N8nIcon icon="circle-help" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.help') }}</N8nText>
 				</div>
 			</div>
@@ -168,10 +166,6 @@ const i18n = useI18n();
 
 .title {
 	margin: var(--spacing--sm) 0 0;
-}
-
-.preview {
-	margin-top: var(--spacing--xs);
 }
 
 .lede {

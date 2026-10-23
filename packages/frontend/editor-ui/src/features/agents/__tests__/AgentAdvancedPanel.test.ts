@@ -44,6 +44,18 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+// The web-search section pulls in the gateway composable; keep it disabled here
+// so no managed option renders and the real gateway store stays out of the mount.
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: false },
+		balance: { value: undefined },
+		fetchConfig: vi.fn().mockResolvedValue(undefined),
+		fetchWallet: vi.fn().mockResolvedValue(undefined),
+		canServeCredentialType: () => false,
+	}),
+}));
+
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		allCredentials: [
@@ -475,8 +487,12 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
-	it('shows the Anthropic ttl dropdown, defaulting to 1h, with no on/off toggle', async () => {
-		const config = makeConfig();
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'openrouter/anthropic/claude-sonnet-4.5',
+		'google-vertex/claude-sonnet-4-5',
+	])('shows a default 1h cache duration for %s', async (model) => {
+		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
@@ -498,8 +514,12 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
 	});
 
-	it('hides the prompt-caching row entirely for providers that do not support it', () => {
-		const config = makeConfig({ model: 'google/gemini-pro' });
+	it.each([
+		'google/gemini-pro',
+		'openrouter/google/gemini-2.5-pro',
+		'google-vertex/gemini-2.5-pro',
+	])('hides the cache duration for %s', (model) => {
+		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
@@ -508,8 +528,12 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
 	});
 
-	it('emits { enabled: true, anthropic: { ttl } } when the ttl dropdown changes', () => {
-		const config = makeConfig();
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'openrouter/anthropic/claude-sonnet-4.5',
+		'google-vertex/claude-sonnet-4-5',
+	])('saves the selected cache duration for %s', (model) => {
+		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
@@ -552,7 +576,7 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 		const input = wrapper.find('[data-testid="agent-max-iterations-input"]');
-		expect(Number(input.element.getAttribute('value'))).toBe(30);
+		expect(Number(input.element.getAttribute('value'))).toBe(100);
 	});
 
 	it('initialises max-iterations input from config', () => {

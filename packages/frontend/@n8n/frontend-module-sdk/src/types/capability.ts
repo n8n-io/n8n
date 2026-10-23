@@ -20,3 +20,13 @@ export interface ModalOpeners {
 	openModal(name: string): void;
 	openModalWithData(payload: { name: string; data: Record<string, unknown> }): void;
 }
+
+export interface McpExposeAllOffer {
+	/** Whether the experiment is on for this user. Reads reactive state, so call it in a `computed`. */
+	isEnabled(): boolean;
+	/**
+	 * Opens the expose-all modal when there is something to expose. Resolves `true`
+	 * when the modal opened. `onExposed` runs after the user exposes everything.
+	 */
+	offer(onExposed: () => Promise<void> | void): Promise<boolean>;
+}

@@ -16,6 +16,11 @@ import type {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { InstanceAiActivityEntry, InstanceAiActivityExpansion } from '@n8n/instance-ai';
+import type {
+	InstanceContextAbsenceReason,
+	InstanceContextInjection,
+	InstanceContextLegs,
+} from '@n8n/api-types';
 import { hasGlobalScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject } from 'n8n-workflow';
@@ -198,11 +203,41 @@ type RunSummary = {
 
 type Inventory = { total: number; workflows: Array<{ id: string; name: string; active: boolean }> };
 
-export type InstanceContextBlock = {
-	block: string;
-	/** What the caller should store on the thread, so the next turn sends only what is new. */
-	cursor: InstanceContextCursor;
+/** Keep the absence reason so the trace can distinguish a failed read. */
+export type InstanceContextResult =
+	| {
+			state: 'injected';
+			block: string;
+			cursor: InstanceContextCursor;
+			legs: InstanceContextLegs;
+			/** An addition to a block this thread already saw, rather than a full window. */
+			isUpdate: boolean;
+	  }
+	| { state: 'absent'; reason: InstanceContextAbsenceReason };
+
+/** Share one injection summary with the trace and telemetry. */
+export function toContextInjection(result: InstanceContextResult): InstanceContextInjection {
+	if (result.state === 'absent') return { state: 'absent', reason: result.reason };
+
+	return {
+		state: 'injected',
+		isUpdate: result.isUpdate,
+		legs: result.legs,
+		chars: result.block.length,
+	};
+}
+
+/** Show injected blocks and failed reads. Require a decision for each absence reason. */
+const TRACED_ABSENCE_REASONS: Record<InstanceContextAbsenceReason, boolean> = {
+	failed: true,
+	empty: false,
+	disabled: false,
+	'machine-follow-up': false,
 };
+
+export function shouldTraceContextInjection(injection: InstanceContextInjection): boolean {
+	return injection.state === 'injected' || TRACED_ABSENCE_REASONS[injection.reason];
+}
 
 /**
  * Renders what is going on in this instance as a context block for the agent: what exists, what
@@ -255,9 +290,9 @@ export class InstanceContextService {
 		/** Instance gate result shared with the activity tool for this turn. */
 		enabled: boolean;
 		now?: Date;
-	}): Promise<InstanceContextBlock | null> {
-		if (!input.enabled) return null;
-		if (input.isMachineFollowUp) return null;
+	}): Promise<InstanceContextResult> {
+		if (!input.enabled) return { state: 'absent', reason: 'disabled' };
+		if (input.isMachineFollowUp) return { state: 'absent', reason: 'machine-follow-up' };
 
 		try {
 			const now = input.now ?? new Date();
@@ -265,7 +300,7 @@ export class InstanceContextService {
 			const resolved = await this.resolveScope(input.user, input.scope);
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
-			if (resolved === null) return null;
+			if (resolved === null) return { state: 'absent', reason: 'empty' };
 
 			const projectIds = resolved.projectIds;
 			// Withheld and archived workflows are excluded inside each query, not after it. The
@@ -293,9 +328,13 @@ export class InstanceContextService {
 			// An instance can hold plenty of work and have had nothing happen to it lately — a fresh
 			// clone, or a quiet fortnight. That is exactly the case that most needs "here is what
 			// exists", so the block stands on any one leg and only genuine emptiness suppresses it.
-			if (entries.rows.length === 0 && runs.length === 0 && !inventory?.total) return null;
+			if (entries.rows.length === 0 && runs.length === 0 && !inventory?.total) {
+				return { state: 'absent', reason: 'empty' };
+			}
 
 			return {
+				state: 'injected',
+				isUpdate,
 				block: renderBlock({
 					surface: resolved.surface,
 					entries: entries.rows.map((row) => toFeedEntry(row, input.user.id, now)),
@@ -313,16 +352,18 @@ export class InstanceContextService {
 					activitySeenFloor: entries.seenFloor,
 					runsThrough: now.toISOString(),
 				},
+				// Count rendered rows. Query totals can include rows removed by the limits.
+				legs: {
+					inventory: inventory?.workflows.length ?? 0,
+					events: entries.rows.length,
+					runs: runs.length,
+				},
 			};
 		} catch (error) {
 			this.logger.warn('Failed to build the instance-context block', { error });
-
-			// A chat turn has no error channel, and the block is an enhancement, so a failed read
-			// must not fail the turn. A tool call does have one, and an MCP caller is told to read
-			// an empty answer as "nothing exists here yet" — so returning null on failure would
-			// send it off to rebuild work that is already there.
+			// MCP must report a failed read, not an empty instance.
 			if (input.scope.surface === 'mcp') throw error;
-			return null;
+			return { state: 'absent', reason: 'failed' };
 		}
 	}
 
@@ -444,12 +485,6 @@ export class InstanceContextService {
 		if (!row) return null;
 
 		if (resolved.surface === 'mcp') {
-			// Both fields are checked, not just `category`. `ActivityEvent` documents that the two
-			// come apart as soon as an entry is about one kind of thing but points at another, and
-			// at that point a `category: 'workflow'` row could still name a credential.
-			const touchesCredential = row.category === 'credential' || row.resourceType === 'credential';
-			if (touchesCredential && !isCredentialVisible(row, resolved)) return null;
-
 			// The history below is about this same resource, so one check covers both.
 			const [visible] = await this.withoutWithheldWorkflows([row], resolved);
 			if (!visible) return null;
@@ -664,8 +699,9 @@ export class InstanceContextService {
 				surface: 'mcp',
 				projectIds: [projectId],
 				credentialProjectIds,
-				allowedCategories:
-					credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+				allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+					? ['workflow', 'credential']
+					: ['workflow'],
 				runsVisible: scope.executionGranted,
 			};
 		}
@@ -687,8 +723,9 @@ export class InstanceContextService {
 				surface: 'mcp',
 				projectIds: 'all-projects',
 				credentialProjectIds,
-				allowedCategories:
-					credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+				allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+					? ['workflow', 'credential']
+					: ['workflow'],
 				runsVisible: scope.executionGranted,
 			};
 		}
@@ -711,8 +748,9 @@ export class InstanceContextService {
 			surface: 'mcp',
 			projectIds,
 			credentialProjectIds,
-			allowedCategories:
-				credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+			allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+				? ['workflow', 'credential']
+				: ['workflow'],
 			runsVisible: scope.executionGranted,
 		};
 	}
@@ -814,6 +852,10 @@ export class InstanceContextService {
 	}
 }
 
+function hasCredentialProjectScope(projectIds: ActivityProjectScope): boolean {
+	return projectIds === 'all-projects' || projectIds.length > 0;
+}
+
 /**
  * The category a read should filter on. `undefined` means no filter; `null` means refuse the read
  * outright, because the caller asked for exactly the category they may not see.
@@ -829,9 +871,7 @@ function resolveCategory(
 	if (category !== undefined && !scope.allowedCategories.includes(category)) return null;
 	if (scope.surface !== 'mcp') return category;
 
-	const seesSomeCredentials =
-		scope.credentialProjectIds === 'all-projects' || scope.credentialProjectIds.length > 0;
-	if (seesSomeCredentials) return category;
+	if (hasCredentialProjectScope(scope.credentialProjectIds)) return category;
 
 	if (category === 'credential') return null;
 	// No category asked for, and only one of the two is visible anywhere — so name it rather than
@@ -859,7 +899,7 @@ const toolNames = {
 	conversation: {
 		expand: '`activity(action="expand", id=N)`',
 		list: '`activity(action="list")`',
-		workflows: '`workflows(action="list")`',
+		workflows: '`workflow_builder_workflows(action="list")`',
 	},
 	mcp: {
 		expand: '`expand_instance_activity(id=N)`',
@@ -875,9 +915,8 @@ const initialPreamble = (tools: SurfaceToolNames) => [
 	'and act on it rather than asking them to choose from a list they can already see.',
 	'Do not narrate this back to them — unless they asked what has been happening, let it change',
 	'what you do rather than what you say.',
-	`Call ${tools.expand} on a bracketed id to see that entry in full along with`,
-	`everything else that happened to the same resource, or ${tools.list} to look`,
-	'further back than this window. An entry may name a resource that no longer exists.',
+	`Call ${tools.expand} to read an entry and its resource history.`,
+	`Use ${tools.list} to look further back. An entry may name a resource that no longer exists.`,
 ];
 
 /**
@@ -888,7 +927,7 @@ const updatePreamble = (tools: SurfaceToolNames) => [
 	'What has happened since the list earlier in this conversation. Those earlier entries still',
 	'stand — these are additions, not a replacement. Read them the same way: context on what the',
 	'user has been doing, not a task list or something to comment on unprompted.',
-	`${tools.expand} and ${tools.list} work on these ids too.`,
+	`Use ${tools.expand} for details or ${tools.list} for older entries.`,
 ];
 
 /** Named so the agent can act on one without a lookup: the id is what every tool takes. */
@@ -936,7 +975,7 @@ function renderRuns(runs: RunSummary[], isUpdate: boolean, now: Date): string[] 
 				? `ran ${run.total}×, all succeeded`
 				: `ran ${run.total}×, ${run.failed} failed`;
 		// The failure itself, not the newest run, which on a schedule that has since recovered is a
-		// success. `executions` fetches the live record from this id.
+		// success. `workflow_builder_executions` fetches the live record from this id.
 		const failure = run.lastFailedExecutionId
 			? `last failure execution:${run.lastFailedExecutionId}`
 			: '';
@@ -1017,7 +1056,7 @@ function toActivityEntry(row: ActivityEvent, currentUserId: string): InstanceAiA
  * exist, they carry their own permission checks, and duplicating them would drift from them.
  *
  * Named in the caller's own vocabulary,
- * because the two surfaces do not share tool names. An MCP client handed `workflows(action="get")`
+ * because the two surfaces do not share tool names. An MCP client handed `workflow_builder_workflows(action="get")`
  * would be told to call a tool its server does not expose.
  */
 function liveRecordHint(
@@ -1030,9 +1069,9 @@ function liveRecordHint(
 	> = {
 		conversation: {
 			workflow: row.resourceId
-				? `workflows(action="get", workflowId="${row.resourceId}")`
+				? `workflow_builder_workflows(action="get", workflowId="${row.resourceId}")`
 				: undefined,
-			credential: 'credentials(action="list")',
+			credential: 'workflow_builder_credentials(action="list")',
 		},
 		mcp: {
 			workflow: row.resourceId ? `get_workflow_details(workflowId="${row.resourceId}")` : undefined,
@@ -1045,7 +1084,7 @@ function liveRecordHint(
 
 function toFeedEntry(row: ActivityEvent, currentUserId: string, now: Date): string {
 	return [
-		`[${row.id}]`,
+		`[id:${row.id}]`,
 		formatAge(row.createdAt, now),
 		row.category,
 		row.action,

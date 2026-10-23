@@ -1,43 +1,30 @@
-import type { CredentialProvider, McpClient, McpServerConfig } from '@n8n/agents';
-import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import type {
+	CredentialProvider,
+	McpClient,
+	McpServerConfig,
+	McpConnectionFailedEvent,
+} from '@n8n/agents';
+import { AI_GATEWAY_MANAGED_TAG, type AgentJsonMcpServerConfig } from '@n8n/api-types';
+import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { isRecord } from '@n8n/utils/is-record';
-import {
-	getMcpAuthHeaders,
-	isMcpOAuth2Authentication,
-	OperationalError,
-	shouldRefreshMcpOAuth2Token,
+import { getMcpAuthHeaders, isMcpRegistryAuthentication, OperationalError } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	McpAiGatewayCredentialType,
+	McpRegistryConnection,
 } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
 
 import {
+	findAiGatewayCredentialType,
 	prepareMcpRegistryConnection,
 	toAgentMcpTransport,
 } from '@/modules/mcp-registry/mcp-registry-connection';
-import type { OauthService } from '@/oauth/oauth.service';
 import {
-	type AuthFetchDomainPolicy,
-	createAuthFetch,
-	getBearerTokenRevision,
-	resolveAllowedDomains,
-} from '@/utils/auth-fetch';
-
-/**
- * Convert the JSON-config `approval` shape into the SDK's `requireApproval`
- * field. The two representations carry the same semantics:
- *
- * - `undefined`            -> `undefined`   (no per-server approval)
- * - `{ mode: 'global' }`   -> `true`        (every tool requires approval)
- * - `{ mode: 'selected' }` -> `string[]`    (only listed tools require approval)
- */
-export function mapApprovalToSdk(
-	approval: AgentJsonMcpServerConfig['approval'],
-): McpServerConfig['requireApproval'] {
-	if (!approval) return undefined;
-	if (approval.mode === 'global') return true;
-	return approval.tools;
-}
+	createMcpAuthFetch,
+	resolveMcpAuthDomainPolicy,
+} from '@/modules/mcp-registry/mcp-auth-fetch';
+import type { OauthService } from '@/oauth/oauth.service';
 
 type DerivedAuth = {
 	headers: Record<string, string>;
@@ -83,35 +70,28 @@ async function deriveAuthHeaders(
 	}
 }
 
-function isNativeOAuth2Credential(authentication: string): boolean {
-	return (
-		isMcpOAuth2Authentication(authentication) &&
-		authentication !== 'mcpOAuth2Api' &&
-		!authentication.endsWith('McpOAuth2Api')
-	);
+/** Mints the Gateway credits credential of an MCP registry server. It has no stored id. */
+export interface AiGatewayMcpCredentialResolver {
+	resolveAiGatewayMcpCredential(
+		credentialType: McpAiGatewayCredentialType,
+	): Promise<ICredentialDataDecryptedObject>;
 }
 
-function resolveMcpDomainPolicy(
-	server: AgentJsonMcpServerConfig,
-	credentialData: ICredentialDataDecryptedObject,
-	mcpHostname: string | undefined,
-): AuthFetchDomainPolicy | undefined {
-	if (!isNativeOAuth2Credential(server.authentication) || !mcpHostname) {
-		return resolveAllowedDomains(credentialData);
+/** Mint the credential of the connection's Gateway credits option. */
+async function mintAiGatewayCredential(
+	connection: McpRegistryConnection,
+	credentialProvider: Partial<AiGatewayMcpCredentialResolver>,
+) {
+	const credentialType = findAiGatewayCredentialType(connection);
+	if (!credentialType || !credentialProvider.resolveAiGatewayMcpCredential) {
+		throw new OperationalError('MCP registry server does not offer Gateway credits');
 	}
-
-	switch (credentialData.allowedHttpRequestDomains) {
-		case 'domains':
-			return resolveAllowedDomains(credentialData);
-		case 'all':
-			return undefined;
-		default:
-			return { mode: 'domains', domains: mcpHostname };
-	}
+	const credentialData = await credentialProvider.resolveAiGatewayMcpCredential(credentialType);
+	return { credentialType, credentialData };
 }
 
 export interface BuildMcpClientDeps {
-	credentialProvider: CredentialProvider;
+	credentialProvider: CredentialProvider & Partial<AiGatewayMcpCredentialResolver>;
 	resolveRegistryConnection?: (nodeTypeName: string) => Promise<McpRegistryConnection | undefined>;
 	/**
 	 * Used to refresh OAuth2 tokens before expiry or after a 401 response without an
@@ -127,8 +107,13 @@ export interface BuildMcpClientDeps {
 	 * remaining servers' tools. Used for logging/telemetry — the user-facing
 	 * warning is emitted from the agent runtime as a `warning` stream chunk.
 	 */
-	onConnectionFailed?: (event: { server: string; error: string }) => void;
+	onConnectionFailed?: (event: McpConnectionFailedEvent) => void;
 	onToolCallSettled?: McpServerConfig['onToolCallSettled'];
+	/**
+	 * The runtime cannot suspend and resume (inline agents have no checkpoint
+	 * storage), so tool permissions must never require approval.
+	 */
+	nonInterrupting?: boolean;
 }
 
 /** Stand-in for a URL that could not be built. `.invalid` never resolves (RFC 2606), and `authFetch` rejects before any request is sent. */
@@ -153,21 +138,22 @@ export async function buildMcpClientForServer(
 		proxyFetch,
 		onConnectionFailed,
 		onToolCallSettled,
+		nonInterrupting,
 	} = deps;
+	const { toolPermissions } = server;
 	const { McpClient } = await import('@n8n/agents');
 
 	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
-	const { credentialData, credentialType } = derivedAuth;
+	let { credentialData, credentialType } = derivedAuth;
 	let { headers: initialHeaders, credentialError } = derivedAuth;
 	let runtimeUrl = server.url;
 	let runtimeTransport = server.transport;
-	const nativeMcpHostname =
-		isNativeOAuth2Credential(server.authentication) && URL.canParse(server.url)
-			? new URL(server.url).hostname
-			: undefined;
+	const mcpHostname = URL.canParse(server.url) ? new URL(server.url).hostname : undefined;
 	let allowedDomains = credentialData
-		? resolveMcpDomainPolicy(server, credentialData, nativeMcpHostname)
+		? resolveMcpAuthDomainPolicy(server.authentication, credentialData, mcpHostname)
 		: undefined;
+
+	let refreshHeaders: (() => Promise<Record<string, string> | null>) | undefined;
 
 	const registryNodeName = server.metadata?.nodeTypeName;
 	if (!registryNodeName && credentialType?.endsWith('McpOAuth2Api')) {
@@ -177,11 +163,24 @@ export async function buildMcpClientForServer(
 	} else if (registryNodeName) {
 		try {
 			const connection = await deps.resolveRegistryConnection?.(registryNodeName);
+			// Gateway credits entries carry the same marker as Gateway credits models. Mint only for it:
+			// an entry whose own credential is missing must fail, not switch to Gateway credits.
+			if (connection && server.credential === AI_GATEWAY_MANAGED_TAG) {
+				const minted = await mintAiGatewayCredential(connection, credentialProvider);
+				credentialType = minted.credentialType;
+				credentialData = minted.credentialData;
+				// The token expires while a cached runtime still uses this client, so mint again on a 401.
+				refreshHeaders = async () => {
+					const fresh = await mintAiGatewayCredential(connection, credentialProvider);
+					const prepared = prepareMcpRegistryConnection({ connection, ...fresh });
+					return prepared.ok ? prepared.value.headers : null;
+				};
+			}
 			if (
 				!connection ||
 				!credentialData ||
 				!credentialType ||
-				!isMcpOAuth2Authentication(credentialType)
+				!isMcpRegistryAuthentication(credentialType)
 			) {
 				throw new OperationalError('MCP registry connection could not be resolved');
 			}
@@ -199,39 +198,6 @@ export async function buildMcpClientForServer(
 			credentialError = ensureError(error);
 		}
 	}
-
-	const oauthTokenData = isRecord(credentialData?.oauthTokenData)
-		? { ...credentialData.oauthTokenData }
-		: undefined;
-	const grantType = credentialData?.grantType;
-	const refreshAuthHeaders =
-		isMcpOAuth2Authentication(server.authentication) && server.credential
-			? async (currentHeaders: Record<string, string>) => {
-					const credentialId = server.credential;
-					if (!credentialId) return null;
-					const result = await oauthService.refreshOAuth2CredentialById(
-						credentialId,
-						projectId,
-						getBearerTokenRevision(currentHeaders, oauthTokenData?.n8n_expires_at),
-					);
-					if (!result) return null;
-
-					if (oauthTokenData) {
-						if (result.expiresAt === undefined) {
-							delete oauthTokenData.n8n_expires_at;
-						} else {
-							oauthTokenData.n8n_expires_at = String(result.expiresAt);
-						}
-						if (result.expiresInSeconds === undefined) {
-							delete oauthTokenData.expires_in;
-						} else {
-							oauthTokenData.expires_in = result.expiresInSeconds;
-						}
-					}
-
-					return result.headers;
-				}
-			: undefined;
 
 	// An unresolved credential fails at connect time so the real reason travels
 	// the SDK's connection-failure channel (surfaced as a `warning` chunk);
@@ -257,14 +223,16 @@ export async function buildMcpClientForServer(
 			}
 		: {
 				url: runtimeUrl,
-				fetch: createAuthFetch({
+				fetch: createMcpAuthFetch({
+					authentication: server.authentication,
 					baseFetch: proxyFetch,
+					credentialData: credentialData ?? {},
+					credentialId: server.credential,
 					initialHeaders,
-					onUnauthorized: refreshAuthHeaders,
-					...(refreshAuthHeaders
-						? { shouldRefresh: () => shouldRefreshMcpOAuth2Token(oauthTokenData, grantType) }
-						: {}),
+					oauthService,
+					projectId,
 					allowedDomains,
+					refreshHeaders,
 				}),
 			};
 
@@ -273,16 +241,17 @@ export async function buildMcpClientForServer(
 		url,
 		transport: runtimeTransport,
 		fetch: authFetch,
-		toolFilter: server.toolFilter,
-		requireApproval: mapApprovalToSdk(server.approval),
+		...(toolPermissions !== undefined && {
+			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
+		}),
+		...(nonInterrupting && { configureToolsNonInterrupting: true }),
 		...(onToolCallSettled !== undefined && { onToolCallSettled }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,
 		}),
 		...(onConnectionFailed
 			? {
-					onConnectionFailed: (event: { server: string; error: string }) =>
-						onConnectionFailed(event),
+					onConnectionFailed: (event: McpConnectionFailedEvent) => onConnectionFailed(event),
 				}
 			: {}),
 	};
@@ -302,6 +271,14 @@ export async function listMcpServerTools(
 	try {
 		client = await buildMcpClientForServer(server, deps);
 		const tools = await client.listTools();
+		const failures = client.getConnectionFailures();
+		if (failures.length > 0) {
+			throw new OperationalError(
+				failures
+					.map((failure) => `MCP server "${failure.server}" connection failed: ${failure.error}`)
+					.join('; '),
+			);
+		}
 		return tools.map((tool) => ({ name: tool.name, description: tool.description ?? '' }));
 	} finally {
 		await client?.close().catch(() => {});

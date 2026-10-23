@@ -35,6 +35,7 @@ function makeDeps(overrides: Partial<Parameters<typeof buildVerifyMcpServerTool>
 function makeMcpClient(overrides: Partial<McpClient> = {}): McpClient {
 	return {
 		listTools: vi.fn().mockResolvedValue([]),
+		getConnectionFailures: vi.fn().mockReturnValue([]),
 		close: vi.fn().mockResolvedValue(undefined),
 		...overrides,
 	} as unknown as McpClient;
@@ -94,8 +95,39 @@ describe('buildVerifyMcpServerTool', () => {
 		expect(result).toEqual({
 			ok: true,
 			tools: [
-				{ name: 'echo', description: 'Echo the input' },
-				{ name: 'add', description: 'Add two numbers' },
+				{ name: 'echo', description: 'Echo the input', category: 'write' },
+				{ name: 'add', description: 'Add two numbers', category: 'write' },
+			],
+		});
+	});
+
+	it('classifies tools from their MCP annotations', async () => {
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([
+				{
+					name: 'ambiguous_lookup',
+					description: 'Inspect data',
+					mcpAnnotations: { readOnlyHint: true },
+				},
+				{
+					name: 'search_records',
+					description: 'Mutate data',
+					mcpAnnotations: { destructiveHint: true },
+				},
+			]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const result = await buildVerifyMcpServerTool(makeDeps()).handler!(
+			{ name: 'my-server', url: 'https://example.test/mcp' },
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			tools: [
+				{ name: 'ambiguous_lookup', description: 'Inspect data', category: 'read' },
+				{ name: 'search_records', description: 'Mutate data', category: 'write' },
 			],
 		});
 	});
@@ -120,7 +152,7 @@ describe('buildVerifyMcpServerTool', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			tools: [{ name: 'list_issues', description: 'List issues' }],
+			tools: [{ name: 'list_issues', description: 'List issues', category: 'read' }],
 		});
 	});
 
@@ -138,8 +170,61 @@ describe('buildVerifyMcpServerTool', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			tools: [{ name: 'silent-tool', description: '' }],
+			tools: [{ name: 'silent-tool', description: '', category: 'write' }],
 		});
+	});
+
+	it('returns { ok: false, error } when the connection fails with no tools', async () => {
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([]),
+			getConnectionFailures: vi
+				.fn()
+				.mockReturnValue([{ server: 'my-server', error: 'fetch failed' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(makeDeps());
+		const result = await tool.handler!(
+			{ name: 'my-server', url: 'https://example.test/mcp' },
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: false,
+			error: 'MCP server "my-server" connection failed: fetch failed',
+		});
+	});
+
+	it('does not apply the credential when the connection fails with no tools', async () => {
+		const applyCredentialToMcpServer = vi.fn();
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([]),
+			getConnectionFailures: vi
+				.fn()
+				.mockReturnValue([{ server: 'my-server', error: 'fetch failed' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(
+			makeDeps({
+				agentId: 'agent-1',
+				applyCredentialToMcpServer,
+			}),
+		);
+		const result = await tool.handler!(
+			{
+				name: 'my-server',
+				url: 'https://example.test/mcp',
+				credential: 'cred-42',
+			},
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: false,
+			error: 'MCP server "my-server" connection failed: fetch failed',
+		});
+		expect(applyCredentialToMcpServer).not.toHaveBeenCalled();
 	});
 
 	it('returns { ok: false, error } when listTools throws', async () => {
@@ -155,6 +240,25 @@ describe('buildVerifyMcpServerTool', () => {
 		);
 
 		expect(result).toEqual({ ok: false, error: 'connection timeout' });
+	});
+
+	it('returns the recorded connection failure instead of a false success', async () => {
+		const mcpClient = makeMcpClient({
+			getConnectionFailures: vi
+				.fn()
+				.mockReturnValue([{ server: 'my-server', error: 'authentication failed' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const result = await buildVerifyMcpServerTool(makeDeps()).handler!(
+			{ name: 'my-server', url: 'https://example.test/mcp' },
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: false,
+			error: 'MCP server "my-server" connection failed: authentication failed',
+		});
 	});
 
 	it('returns { ok: false, error } with stringified non-Error rejections', async () => {
@@ -311,8 +415,16 @@ describe('buildVerifyMcpServerTool', () => {
 		expect(closeMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('auto-applies the credential when verification succeeds and the callback reports applied', async () => {
-		const applyCredentialToMcpServer = vi.fn().mockResolvedValue({ applied: true });
+	it('auto-applies the credential and returns the saved config and hash when the callback reports applied', async () => {
+		const savedConfig = {
+			name: 'Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Help.',
+			mcpServers: [{ name: 'notion', url: 'https://example.test/mcp', credential: 'cred-42' }],
+		};
+		const applyCredentialToMcpServer = vi
+			.fn()
+			.mockResolvedValue({ applied: true, config: savedConfig, configHash: 'config-hash' });
 		const mcpClient = makeMcpClient({
 			listTools: vi.fn().mockResolvedValue([{ name: 'echo', description: 'Echo the input' }]),
 		});
@@ -336,10 +448,12 @@ describe('buildVerifyMcpServerTool', () => {
 		expect(applyCredentialToMcpServer).toHaveBeenCalledWith('notion', 'cred-42');
 		expect(result).toEqual({
 			ok: true,
-			tools: [{ name: 'echo', description: 'Echo the input' }],
+			tools: [{ name: 'echo', description: 'Echo the input', category: 'write' }],
 			credentialApplied: true,
 			configMutated: true,
 			agentId: 'agent-1',
+			config: savedConfig,
+			configHash: 'config-hash',
 		});
 	});
 
@@ -367,7 +481,7 @@ describe('buildVerifyMcpServerTool', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			tools: [{ name: 'echo', description: 'Echo the input' }],
+			tools: [{ name: 'echo', description: 'Echo the input', category: 'write' }],
 		});
 	});
 
@@ -395,7 +509,7 @@ describe('buildVerifyMcpServerTool', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			tools: [{ name: 'echo', description: 'Echo the input' }],
+			tools: [{ name: 'echo', description: 'Echo the input', category: 'write' }],
 			credentialApplied: false,
 		});
 	});

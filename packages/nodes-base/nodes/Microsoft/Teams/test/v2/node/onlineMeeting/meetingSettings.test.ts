@@ -1,4 +1,4 @@
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 import {
 	applyMeetingSettings,
@@ -75,5 +75,21 @@ describe('Microsoft Teams V2 — onlineMeeting meeting settings', () => {
 			'recordAutomatically',
 			'passcodeRequired',
 		]);
+	});
+
+	it('offers Specific People among the allowed presenters', () => {
+		const options = versionDescription.properties.find(
+			(property) =>
+				property.name === 'options' &&
+				property.displayOptions?.show?.resource?.includes('onlineMeeting') &&
+				property.displayOptions?.show?.operation?.includes('create'),
+		);
+		const allowedPresenters = (options?.options ?? []).find(
+			(option) => option.name === 'allowedPresenters',
+		) as INodeProperties | undefined;
+
+		expect(allowedPresenters?.options).toContainEqual(
+			expect.objectContaining({ name: 'Specific People', value: 'roleIsPresenter' }),
+		);
 	});
 });

@@ -77,7 +77,7 @@ const legend = computed(() =>
 			<div :class="$style.titleGroup">
 				<N8nText tag="h2" size="xlarge" bold>{{ collectionName }}</N8nText>
 				<RunningIndicator v-if="isRunning" :completed="completedCount" :total="versions.length" />
-				<N8nBadge v-else :theme="statusBadge.theme" size="small">{{ statusBadge.label }}</N8nBadge>
+				<N8nBadge v-else :variant="statusBadge.theme">{{ statusBadge.label }}</N8nBadge>
 			</div>
 			<N8nButton
 				v-if="canRerun"

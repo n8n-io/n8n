@@ -9,9 +9,9 @@
  * - `start-step` / `finish-step` mark LLM iteration boundaries.
  *
  * The frontend groups deltas by these ids and uses `start-step` / `finish-step`
- * to decide when a new ChatMessage cursor should open. There is no
- * server-minted `messageId` — the FE generates its own UUID per ChatMessage
- * for v-for keys only.
+ * to decide when a new ChatMessage cursor should open. The frontend assigns
+ * display IDs to assistant messages. `execution-started` and `message-steered`
+ * carry canonical input IDs for reconciliation with history.
  *
  * `runId` is included on `ToolSuspendedPayload` and echoed back by the
  * frontend on resume. The SDK stores `runId` on each `PendingToolCall` and
@@ -25,7 +25,7 @@
  *
  */
 
-import type { AgentPersistedMessageContentPart } from './agents';
+import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from './agents';
 
 export interface ToolSuspendedPayload {
 	toolCallId: string;
@@ -73,6 +73,20 @@ export type ForwardedChildChunkWire =
 	  };
 
 export type AgentSseEvent =
+	| {
+			type: 'message-steered';
+			queueId: string;
+			executionId: string;
+			message: AgentPersistedMessageDto;
+	  }
+	| { type: 'message-queued'; queueId: string; sessionId: string }
+	| {
+			type: 'execution-started';
+			executionId: string;
+			sessionId: string;
+			message?: string;
+			inputMessageIds?: string[];
+	  }
 	| { type: 'start-step' }
 	| { type: 'finish-step' }
 	| { type: 'text-start'; id: string }
@@ -140,6 +154,24 @@ export type AgentSseEvent =
 			server?: string;
 	  }
 	| {
+			/**
+			 * The run ended. `finishReason` mirrors the runtime finish chunk. A
+			 * `guardrail` stop carries the code of the hook that ended the run.
+			 */
+			type: 'finish';
+			finishReason: string;
+			guardrail?: { code: string };
+	  }
+	| {
+			/**
+			 * Preview chat only. Monthly spend crossed the alert line.
+			 * The run continues. Also emitted when a delegate subagent hits an alert or cap.
+			 */
+			type: 'budget-notice';
+			code: AgentBudgetNoticeCode;
+			agentId?: string;
+	  }
+	| {
 			type: 'error';
 			message: string;
 			/**
@@ -150,3 +182,15 @@ export type AgentSseEvent =
 			missing?: string[];
 	  }
 	| { type: 'done'; sessionId?: string; executionId?: string };
+
+export type AgentBudgetNoticeCode = 'budget.alert' | 'budget.session' | 'budget.monthly';
+
+/** A budget alert or stop. `agentId` is the budget owner; absent for the run's own agent. */
+export interface AgentBudgetNotice {
+	code: AgentBudgetNoticeCode;
+	agentId?: string; // Only populated for delegated sub-agents.
+}
+
+export function isAgentBudgetNoticeCode(code: string): code is AgentBudgetNoticeCode {
+	return code === 'budget.alert' || code === 'budget.session' || code === 'budget.monthly';
+}

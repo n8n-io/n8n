@@ -26,8 +26,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,

@@ -1,4 +1,4 @@
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import { BaseRepository, TransactionRunner, chunkIds, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
@@ -31,29 +31,42 @@ export class TypeAvailabilityPolicyAttachmentRepository extends BaseRepository<T
 		scopeId: string,
 		ctx: OperationContext,
 	): Promise<PolicyAttachment[]> {
+		const byScope = await this.listAttachmentsForScopes([scopeId], ctx);
+
+		return byScope.get(scopeId) ?? [];
+	}
+
+	async listAttachmentsForScopes(
+		scopeIds: string[],
+		ctx: OperationContext,
+	): Promise<Map<string, PolicyAttachment[]>> {
 		const manager = this.managerFor(ctx);
 
-		const attachments = await manager.findBy(TypeAvailabilityPolicyAttachment, { scopeId });
-		if (attachments.length === 0) return [];
+		const attachments: TypeAvailabilityPolicyAttachment[] = [];
+		for (const ids of chunkIds(scopeIds)) {
+			attachments.push(
+				...(await manager.findBy(TypeAvailabilityPolicyAttachment, { scopeId: In(ids) })),
+			);
+		}
 
-		const policies = await manager.findBy(TypeAvailabilityPolicy, {
-			id: In(attachments.map((a) => a.policyId)),
-		});
-		const rulesByPolicyId = new Map(policies.map((p) => [p.id, p.rules]));
+		const rulesByPolicyId = new Map<string, TypeAvailabilityPolicy['rules']>();
+		for (const ids of chunkIds([...new Set(attachments.map((a) => a.policyId))])) {
+			for (const policy of await manager.findBy(TypeAvailabilityPolicy, { id: In(ids) })) {
+				rulesByPolicyId.set(policy.id, policy.rules);
+			}
+		}
 
-		return attachments.flatMap((attachment) => {
-			const rules = rulesByPolicyId.get(attachment.policyId);
-			if (!rules) return [];
+		const byScope = new Map<string, PolicyAttachment[]>();
+		for (const { scopeId, policyId, priority, isFloor } of attachments) {
+			const rules = rulesByPolicyId.get(policyId);
+			if (!rules) continue;
 
-			return [
-				{
-					policyId: attachment.policyId,
-					rules,
-					priority: attachment.priority,
-					isFloor: attachment.isFloor,
-				},
-			];
-		});
+			const list = byScope.get(scopeId) ?? [];
+			list.push({ policyId, rules, priority, isFloor });
+			byScope.set(scopeId, list);
+		}
+
+		return byScope;
 	}
 
 	/**

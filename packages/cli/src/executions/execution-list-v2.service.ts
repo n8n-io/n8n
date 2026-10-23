@@ -120,7 +120,7 @@ export class ExecutionListV2Service {
 	 *
 	 * The data plane search has no equivalent for a metadata, annotation, vote, or
 	 * workflow-version filter, so a query using one is answered from the control
-	 * plane alone. That silently drops every engine 2.0 execution from the result.
+	 * plane alone. That silently drops every engine v2 execution from the result.
 	 */
 	async resolveV2Scope(query: ExecutionSummaries.RangeQuery): Promise<V2Scope | null> {
 		if (

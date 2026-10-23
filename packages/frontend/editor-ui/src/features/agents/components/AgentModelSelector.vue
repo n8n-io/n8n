@@ -6,6 +6,7 @@ import {
 	type AiModelSelectorMenuItem,
 	type AiModelSelectorMenuItemData,
 } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -14,9 +15,16 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type CredentialTypeAvailability } from '@n8n/api-types';
+import {
+	ContactAdminModal,
+	SCOPE_LABEL_KEY,
+	type ContactAudience,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
+import ModelSelectorRestrictedMarker from './model-selector/ModelSelectorRestrictedMarker.vue';
 import { buildMenuItemId, parseMenuItemId } from './model-selector/menuItemId';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import {
@@ -38,6 +46,7 @@ const FREE_OPENAI_CREDITS_MODEL = 'gpt-5-mini';
 
 type MenuItemData = AiModelSelectorMenuItemData & {
 	provider?: AgentModelProvider;
+	restriction?: CredentialTypeAvailability;
 };
 
 type MenuItem = AiModelSelectorMenuItem<MenuItemData>;
@@ -83,16 +92,19 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const aiGateway = useAiGateway();
 const { ensureLoaded, getDefaultModelForPicker, getVerificationStatus } = useModelCatalog();
 const pendingDefaultCredential = ref<{
 	provider: AgentModelProvider;
 	credentialId: string;
 } | null>(null);
+const contactAdmin = ref<{ subject: string; audience: ContactAudience } | null>(null);
 const forceModelOptionsDisabled = ref(false);
 const isResolvingDefaultModel = computed(
 	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
@@ -189,11 +201,11 @@ function getCredentialTypeDisplayName(credentialType: string): string {
 function getCredentialsForProvider(provider: AgentModelProvider) {
 	const credentialsById = new Map<
 		string,
-		ReturnType<typeof credentialsStore.getCredentialsByType>[number]
+		ReturnType<typeof credentialsStore.getUsableCredentialByType>[number]
 	>();
 
 	for (const credentialType of getProviderCredentialTypes(provider)) {
-		for (const credential of credentialsStore.getCredentialsByType(credentialType)) {
+		for (const credential of credentialsStore.getUsableCredentialByType(credentialType)) {
 			if (!credentialsById.has(credential.id)) {
 				credentialsById.set(credential.id, credential);
 			}
@@ -213,13 +225,53 @@ const freeOpenAiCreditsDescription = computed(() =>
 	}),
 );
 
+function getProviderRestriction(provider: AgentModelProvider): CredentialTypeAvailability | null {
+	const availabilities = getProviderCredentialTypes(provider).map((credentialType) =>
+		typeAvailabilityPoliciesStore.getCredentialTypeAvailability(credentialType),
+	);
+
+	return availabilities.every((availability) => !availability.available) ? availabilities[0] : null;
+}
+
+const restrictedLabel = computed(() =>
+	selectedModel && getProviderRestriction(selectedModel.provider)
+		? i18n.baseText('agents.modelSelector.restricted')
+		: undefined,
+);
+
+function restrictedCredentialsName(item: MenuItem): string {
+	return i18n.baseText('agents.modelSelector.restrictedCredentials', {
+		interpolate: { provider: item.label },
+	});
+}
+
+function requestContactAdmin(subject: string, audience: ContactAudience) {
+	dropdownRef.value?.close();
+	contactAdmin.value = { subject, audience };
+}
+
 function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const definition = AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
+	const credentialTypes = getProviderCredentialTypes(provider);
+	const restriction = getProviderRestriction(provider);
+	if (restriction) {
+		return {
+			id: provider,
+			label: definition.displayName,
+			disabled: true,
+			data: {
+				provider,
+				credentialType: credentialTypes[0],
+				restrictedLabel: i18n.baseText(SCOPE_LABEL_KEY[restriction.scope ?? 'instance']),
+				restriction,
+			},
+		};
+	}
+
 	const credentialOptions = getCredentialsForProvider(provider);
 	const selectedProviderCredentialId = credentials?.[provider] ?? null;
 	const models = modelsByProvider[provider]?.models ?? [];
 	const modelsUnavailable = modelsByProvider[provider]?.unavailable === true;
-	const credentialTypes = getProviderCredentialTypes(provider);
 	const isAiGatewayManagedSelected = selectedProviderCredentialId === AI_GATEWAY_MANAGED_TAG;
 	const hasProviderCredential =
 		isAiGatewayManagedSelected ||
@@ -451,10 +503,14 @@ const menu = computed(() => {
 
 	if (selectedProvider) {
 		const item = providerToMenuItem(selectedProvider);
-		menuItems.push({
-			...item,
-			data: { ...item.data, connectedLabel: i18n.baseText('agents.modelSelector.connected') },
-		});
+		menuItems.push(
+			item.data?.restrictedLabel
+				? item
+				: {
+						...item,
+						data: { ...item.data, connectedLabel: i18n.baseText('agents.modelSelector.connected') },
+					},
+		);
 	}
 
 	if (aiGatewayProviders.length) {
@@ -584,7 +640,21 @@ function openNewCredential(provider: AgentModelProvider, credentialType: string)
 			undefined,
 			{
 				hideAskAssistant: true,
-				onCredentialCreated: function selectCreatedCredential(credential) {
+				onCredentialCreated: async function selectCreatedCredential(credential) {
+					// The picker reads the scoped usable list, which only a fetch writes.
+					// Refetch so the new credential is in the list before it is selected,
+					// else the picker treats the selection as invalid and falls back.
+					const scopeProjectId = createCredentialProjectId.value;
+					try {
+						await (scopeProjectId
+							? credentialsStore.fetchUsableCredentials({
+									projectId: scopeProjectId,
+									forAgent: true,
+								})
+							: credentialsStore.refreshUsableCredentials());
+					} catch (error) {
+						toast.showError(error, i18n.baseText('agents.builder.credentials.refreshError'));
+					}
 					selectCredentialAndResolveDefaultModel(provider, credential.id);
 				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
@@ -653,29 +723,56 @@ defineExpose({
 </script>
 
 <template>
-	<N8nAiModelSelectorDropdown
-		ref="dropdownRef"
-		:items="filteredMenu"
-		:is-loading="isLoading || isResolvingDefaultModel"
-		:selected-label="selectedLabel"
-		:selected-credential-name="selectedCredentialName"
-		:credentials-missing="isCredentialsMissing"
-		:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
-		:disabled="disabled"
-		data-test-id="agent-model-selector"
-		credential-data-test-id="agent-model-selector-credential"
-		@search="handleSearch"
-		@select="onSelect"
-	>
-		<template #trigger-leading="{ ui }">
-			<ModelSelectorTriggerIcon
-				:credential-type-name="triggerCredentialTypeName"
-				:class="ui.class"
-			/>
-		</template>
+	<div :class="$style.root">
+		<N8nAiModelSelectorDropdown
+			ref="dropdownRef"
+			:items="filteredMenu"
+			:is-loading="isLoading || isResolvingDefaultModel"
+			:selected-label="selectedLabel"
+			:selected-credential-name="selectedCredentialName"
+			:credentials-missing="isCredentialsMissing"
+			:restricted-label="restrictedLabel"
+			:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
+			:disabled="disabled"
+			data-test-id="agent-model-selector"
+			credential-data-test-id="agent-model-selector-credential"
+			@search="handleSearch"
+			@select="onSelect"
+		>
+			<template #trigger-leading="{ ui }">
+				<ModelSelectorTriggerIcon
+					:credential-type-name="triggerCredentialTypeName"
+					:class="ui.class"
+				/>
+			</template>
 
-		<template #item-leading="{ item, ui }">
-			<ModelSelectorItemLeadingIcon :item="item" :class="ui.class" />
-		</template>
-	</N8nAiModelSelectorDropdown>
+			<template #item-leading="{ item, ui }">
+				<ModelSelectorItemLeadingIcon :item="item" :class="ui.class" />
+			</template>
+
+			<template #item-restricted="{ item }">
+				<ModelSelectorRestrictedMarker
+					:name="restrictedCredentialsName(item)"
+					:restriction="item.data?.restriction"
+					@contact-admin="
+						(audience) => requestContactAdmin(restrictedCredentialsName(item), audience)
+					"
+				/>
+			</template>
+		</N8nAiModelSelectorDropdown>
+		<ContactAdminModal
+			kind="credential"
+			:node-type-name="contactAdmin?.subject ?? ''"
+			:audience="contactAdmin?.audience ?? 'instance'"
+			:open="contactAdmin !== null"
+			@update:open="(isOpen) => !isOpen && (contactAdmin = null)"
+		/>
+	</div>
 </template>
+
+<style lang="scss" module>
+// The dialog is a sibling of the dropdown; the wrapper must not change the host layout.
+.root {
+	display: contents;
+}
+</style>

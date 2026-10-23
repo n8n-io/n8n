@@ -89,7 +89,8 @@ ifEmpty.doc = {
 		{ name: 'value', type: 'any' },
 		{ name: 'defaultValue', type: 'any' },
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/convenience',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/root#dollarifempty',
 };
 
 export const extendedFunctions = {

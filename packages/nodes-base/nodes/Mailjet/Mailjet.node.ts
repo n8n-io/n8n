@@ -300,7 +300,7 @@ export class Mailjet implements INodeType {
 					}
 				}
 				if (resource === 'sms') {
-					//https://dev.mailjet.com/sms/reference/send-message#v4_post_sms-send
+					//https://dev.mailjet.com/docs/email-api/developer-tools/nodejs#sms-api-1
 					if (operation === 'send') {
 						const from = this.getNodeParameter('from', i) as string;
 						const to = this.getNodeParameter('to', i) as boolean;

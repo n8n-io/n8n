@@ -15,6 +15,7 @@ import { useContextStore } from '../context.store';
 import type { Preference } from '../context.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { Scope } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 
 const trackMock = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -27,11 +28,12 @@ vi.mock('@n8n/design-system', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
 	const N8nDialog = {
 		name: 'N8nDialog',
-		props: ['open', 'size', 'header'],
+		props: ['open', 'size', 'header', 'description'],
 		emits: ['update:open'],
 		template: `
 			<div v-if="open" role="dialog" data-test-id="preference-modal">
 				<h2>{{ header }}</h2>
+				<p v-if="description" data-test-id="preference-modal-description">{{ description }}</p>
 				<slot />
 			</div>
 		`,
@@ -146,6 +148,7 @@ describe('PreferenceModal', () => {
 				projectId: 'p-read',
 				project: { id: 'p-read', name: 'Read Only Project', type: 'team', icon: null },
 				source: 'ui',
+				createdBy: null,
 				scopes: ['aiPreference:read', 'aiPreference:update'],
 				createdAt: '2026-09-08T00:00:00.000Z',
 				updatedAt: '2026-09-08T00:00:00.000Z',
@@ -165,6 +168,7 @@ describe('PreferenceModal', () => {
 				projectId: 'p-write',
 				project: { id: 'p-write', name: 'Writable Project', type: 'team', icon: null },
 				source: 'ui',
+				createdBy: null,
 				scopes: ['aiPreference:read', 'aiPreference:update'],
 				createdAt: '2026-09-08T00:00:00.000Z',
 				updatedAt: '2026-09-08T00:00:00.000Z',
@@ -187,6 +191,7 @@ describe('PreferenceModal', () => {
 				projectId: null,
 				project: null,
 				source: 'ui',
+				createdBy: null,
 				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 				createdAt: '2026-09-08T00:00:00.000Z',
 				updatedAt: '2026-09-08T00:00:00.000Z',
@@ -265,6 +270,115 @@ describe('PreferenceModal', () => {
 		});
 	});
 
+	describe('opening', () => {
+		it('reports a new-preference open, so an abandoned create is visible', () => {
+			renderModal({ props: { open: true, preference: null }, pinia });
+
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_OPENED_PREFERENCE_MODAL, {
+				mode: 'new',
+			});
+		});
+
+		it('names the scope of the row on an edit open', () => {
+			const preference: Preference = {
+				id: 'p1',
+				content: 'Use sub-workflows.',
+				userId: null,
+				user: null,
+				projectId: 'p-write',
+				project: { id: 'p-write', name: 'Writable Project', type: 'team', icon: null },
+				source: 'ui',
+				createdBy: null,
+				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			renderModal({ props: { open: true, preference }, pinia });
+
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_OPENED_PREFERENCE_MODAL, {
+				mode: 'edit',
+				scope_type: 'project',
+			});
+		});
+
+		it('reports nothing while the dialog stays closed', () => {
+			renderModal({ props: { open: false, preference: null }, pinia });
+
+			expect(trackMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('starting from an example', () => {
+		const example = {
+			id: 'answers' as const,
+			content: 'Summarize your changes in 3 bullet points.',
+		};
+
+		it('fills the text with the example and saves nothing yet', () => {
+			const { getByTestId } = renderModal({
+				props: { open: true, preference: null, example },
+				pinia,
+			});
+
+			expect(getByTestId('preference-modal-text-input').querySelector('textarea')).toHaveValue(
+				example.content,
+			);
+			expect(contextStore.createPreference).not.toHaveBeenCalled();
+		});
+
+		it('asks the user to change the example', () => {
+			const { getByTestId } = renderModal({
+				props: { open: true, preference: null, example },
+				pinia,
+			});
+
+			expect(getByTestId('preference-modal-description')).toHaveTextContent(
+				'Change the example so it fits how you work.',
+			);
+		});
+
+		it('shows no subtitle without an example', () => {
+			const { queryByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
+
+			expect(queryByTestId('preference-modal-description')).not.toBeInTheDocument();
+		});
+
+		it('reports the example on the open', () => {
+			renderModal({ props: { open: true, preference: null, example }, pinia });
+
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_OPENED_PREFERENCE_MODAL, {
+				mode: 'new',
+				example_id: 'answers',
+			});
+		});
+
+		it('saves the changed example with the default scope and reports the example', async () => {
+			const { getByTestId } = renderModal({
+				props: { open: true, preference: null, example },
+				pinia,
+			});
+
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				' Skip greetings.',
+			);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			const content = `${example.content} Skip greetings.`;
+			expect(contextStore.createPreference).toHaveBeenCalledWith({
+				content,
+				scope: 'user',
+				projectId: null,
+			});
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_CREATED_PREFERENCE, {
+				scope_type: 'user',
+				text_length: content.length,
+				example_id: 'answers',
+			});
+		});
+	});
+
 	describe('submitting', () => {
 		it('creates a user-scoped preference by default', async () => {
 			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
@@ -280,6 +394,30 @@ describe('PreferenceModal', () => {
 				scope: 'user',
 				projectId: null,
 			});
+		});
+
+		it('reports a refused save with the reason the service gave', async () => {
+			contextStore.createPreference.mockRejectedValue(
+				new ResponseError('dup', { httpStatusCode: 409 }),
+			);
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
+
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				'Keep replies short.',
+			);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+				surface: 'ui',
+				reason: 'duplicate',
+				scope_type: 'user',
+				text_length: 'Keep replies short.'.length,
+			});
+			expect(trackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_CREATED_PREFERENCE,
+				expect.anything(),
+			);
 		});
 
 		it('reports a created preference without its text', async () => {
@@ -305,6 +443,7 @@ describe('PreferenceModal', () => {
 			projectId: null,
 			project: null,
 			source: 'ui',
+			createdBy: null,
 			scopes: [],
 			createdAt: '2026-09-08T00:00:00.000Z',
 			updatedAt: '2026-09-08T00:00:00.000Z',
@@ -363,6 +502,7 @@ describe('PreferenceModal', () => {
 				projectId: 'p-write',
 				project: { id: 'p-write', name: 'Writable Project', type: 'team', icon: null },
 				source: 'ui',
+				createdBy: null,
 				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 				createdAt: '2026-09-08T00:00:00.000Z',
 				updatedAt: '2026-09-08T00:00:00.000Z',
@@ -382,6 +522,62 @@ describe('PreferenceModal', () => {
 			});
 		});
 
+		it('names the caller as the owner when editing their own user-scoped row', async () => {
+			// The server refuses a user-scope edit without an owner, so the id always travels.
+			const preference: Preference = {
+				id: 'p1',
+				content: 'Mine.',
+				userId: 'user-1',
+				user: { id: 'user-1', email: 'me@n8n.io', firstName: 'Me', lastName: null },
+				projectId: null,
+				project: null,
+				source: 'ui',
+				createdBy: null,
+				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			const { getByTestId } = renderModal({ props: { open: true, preference }, pinia });
+
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
+				content: 'Mine.',
+				scope: 'user',
+				projectId: null,
+				userId: 'user-1',
+			});
+		});
+
+		it('names the caller as the owner when moving a project row back to themselves', async () => {
+			const preference: Preference = {
+				id: 'p1',
+				content: 'Use sub-workflows.',
+				userId: null,
+				user: null,
+				projectId: 'p-write',
+				project: { id: 'p-write', name: 'Writable Project', type: 'team', icon: null },
+				source: 'ui',
+				createdBy: null,
+				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			const { getByTestId } = renderModal({ props: { open: true, preference }, pinia });
+
+			await userEvent.click(findOption('Just you · All projects')!);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
+				content: 'Use sub-workflows.',
+				scope: 'user',
+				projectId: null,
+				userId: 'user-1',
+			});
+		});
+
 		it("sends the owner back when editing another user's preference", async () => {
 			usersStore.currentUser = currentUser(['aiPreference:create', 'aiPreference:update']);
 			const preference: Preference = {
@@ -392,6 +588,7 @@ describe('PreferenceModal', () => {
 				projectId: null,
 				project: null,
 				source: 'ui',
+				createdBy: null,
 				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 				createdAt: '2026-09-08T00:00:00.000Z',
 				updatedAt: '2026-09-08T00:00:00.000Z',
@@ -439,6 +636,7 @@ describe('PreferenceModal', () => {
 				projectId: 'p-write',
 				project: { id: 'p-write', name: 'Writable Project', type: 'team', icon: null },
 				source: 'ui',
+				createdBy: null,
 				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 				createdAt: '2026-09-08T00:00:00.000Z',
 				updatedAt: '2026-09-08T00:00:00.000Z',
@@ -456,6 +654,7 @@ describe('PreferenceModal', () => {
 				text_length: 'Use sub-workflows.'.length,
 				scope_changed: false,
 				project_id: 'p-write',
+				surface: 'ui',
 			});
 		});
 	});

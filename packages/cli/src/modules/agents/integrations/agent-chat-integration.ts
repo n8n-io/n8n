@@ -1,15 +1,21 @@
 import {
 	AgentIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
+	type AgentMessageAuthor,
+	type AgentMessageIntegrationOrigin,
 	type RichCardComponentType,
 } from '@n8n/api-types';
+import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Thread, Author, Message } from 'chat';
-import type { Logger } from 'n8n-workflow';
+import type { Attachment, Thread, Author, Message } from 'chat';
+import { UserError, type Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
-import type { SuspendComponent } from './component-mapper';
+import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
+import type { IntegrationErrorCode } from './integration-error-codes';
+import { normalizePlatformId } from './integration-helpers';
+import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
@@ -17,14 +23,21 @@ import {
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
+	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
-	IntegrationMessageContext,
+	IntegrationContextQueryParams,
 	IntegrationPlatformMessageContext,
-	IntegrationToolConnectionDescriptor,
 	ReplyExpectation,
 } from './integration-tools';
+import type { DecodedThread, OriginDraft, OriginInput } from './integration-origin-support';
+
+/**
+ * The platform refused an attachment download for a reason the user can fix.
+ * The message reaches the agent, so it can tell the user what to do.
+ */
+export class InboundAttachmentAccessError extends UserError {}
 
 /**
  * Channel identity, without the decrypted credential. Enough for checks that
@@ -34,6 +47,17 @@ export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
 	credentialId: string;
+}
+
+/** Trusted source context of one incoming chat turn. */
+export interface EpisodicScopeContext {
+	agentId: string;
+	credentialId: string;
+	integrationType: string;
+	/** The platform conversation of the incoming message. */
+	threadId: string;
+	author: AgentMessageAuthor;
+	origin?: AgentMessageIntegrationOrigin;
 }
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
@@ -57,6 +81,23 @@ export interface AgentIntegrationRemovalContext {
 /** Response shape returned by `handleUnauthenticatedWebhook`. */
 export interface UnauthenticatedWebhookResponse {
 	status: number;
+	body: unknown;
+	/**
+	 * Send `body` as plain text instead of JSON-encoding it. Meta's WhatsApp
+	 * webhook handshake expects the raw `hub.challenge` value back verbatim —
+	 * JSON-encoding a string wraps it in quotes, which Meta then treats as a
+	 * mismatch. Slack's `url_verification` challenge, by contrast, is echoed
+	 * back as JSON, so this defaults to JSON to keep that behavior unchanged.
+	 */
+	raw?: boolean;
+}
+
+/** Context handed to `handleUnauthenticatedWebhook` for a request with no live connection yet. */
+export interface UnauthenticatedWebhookContext {
+	agentId: string;
+	method: string;
+	query: Readonly<Record<string, string | string[] | undefined>>;
+	headers: Readonly<Record<string, string | string[] | undefined>>;
 	body: unknown;
 }
 
@@ -82,37 +123,75 @@ export interface PlatformAgentContext {
 
 export interface BridgeStatusHandle {
 	clearBeforeResponse(): Promise<void>;
+	/** Keep the status active while the reply is streamed or edited. */
+	keepDuringResponse?: boolean;
+	/** Restore the status when tools continue after a progress message. */
+	resumeAfterResponse?(): Promise<void>;
 }
 
 /**
- * Wrap a status handle so the underlying clear runs at most once, with every
- * caller awaiting the same in-flight clear. The bridge clears both from the
- * stream consumer (right before the first response) and from its cleanup
- * path, so this wrapper keeps platform handles free of dedupe concerns.
+ * Clear each active status once. Share the pending clear with cleanup callers.
+ * A resumed status needs its own clear before the next response or cleanup.
  */
 export function onceStatusHandle(
 	handle: BridgeStatusHandle | undefined,
 ): BridgeStatusHandle | undefined {
 	if (!handle) return undefined;
 	let clearing: Promise<void> | undefined;
+	const resume = handle.resumeAfterResponse?.bind(handle);
 	return {
+		keepDuringResponse: handle.keepDuringResponse,
 		clearBeforeResponse: async () => {
 			clearing ??= handle.clearBeforeResponse();
 			await clearing;
 		},
+		...(resume
+			? {
+					resumeAfterResponse: async () => {
+						await clearing;
+						clearing = undefined;
+						await resume();
+					},
+				}
+			: {}),
 	};
+}
+
+/** Narrower than `Thread.post`, which also takes an `AsyncIterable` to stream. */
+type EphemeralPostable = Parameters<Thread<unknown, unknown>['postEphemeral']>[1];
+
+/**
+ * Posts to `user` alone where the platform supports it, and to the thread where
+ * it does not, so the payload is never dropped. `fallbackToDM: false` because
+ * the SDK's own fallback would make this an unsolicited DM on Discord and
+ * Telegram.
+ */
+export async function postToUserOrThread(
+	thread: Thread<unknown, unknown>,
+	user: string | Author,
+	payload: EphemeralPostable,
+): Promise<void> {
+	try {
+		const sent = await thread.postEphemeral(user, payload, { fallbackToDM: false });
+		if (sent) return;
+	} catch {
+		// A rejected ephemeral post — rate limit, the user having left, a
+		// conversation that refuses targeting — must not cost the message.
+	}
+	await thread.post(payload);
 }
 
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
+	slackThreadContext?: SlackThreadContext;
 	/** Allow-listed metadata from the current platform message. */
 	platformMessage?: IntegrationPlatformMessageContext;
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
 	/**
-	 * Platform-fetched conversation context (e.g. prior Slack thread messages)
-	 * that the bridge prepends to the agent input message. Undefined when the
-	 * platform did not surface any context for this message.
+	 * Platform context that the bridge prepends to the agent input message,
+	 * such as prior Slack thread messages or a Teams note that the reply is
+	 * optional. Undefined when the platform has none for this message.
 	 */
 	historyContext?: string;
 }
@@ -123,6 +202,8 @@ export type BridgeResumeExecutionContext = Pick<
 >;
 
 export interface BridgeMessageContextParams {
+	/** Capture durable input without showing processing status while it waits. */
+	startStatus?: boolean;
 	chat: ChatInstance;
 	thread: Thread<unknown, unknown>;
 	message: Message<unknown>;
@@ -137,6 +218,8 @@ export interface BridgeMessageContextParams {
 	 * thread context that the agent has never seen.
 	 */
 	isNewMention: boolean;
+	/** True when the message arrived in a thread the agent already joined. */
+	inSubscribedThread?: boolean;
 	/**
 	 * The turn's reply policy ('required' when the platform has none).
 	 * Platforms use 'optional' to skip reply-signalling side effects
@@ -195,7 +278,7 @@ export abstract class AgentChatIntegration {
 	abstract readonly displayIcon: string;
 
 	/**
-	 * Builder-facing guidance returned by `list_integration_types`.
+	 * Builder-facing guidance returned by `agent-context` integrations.
 	 * This helps the builder choose between connecting the agent to a chat
 	 * integration and adding a regular node/workflow tool for the same product.
 	 */
@@ -248,10 +331,39 @@ export abstract class AgentChatIntegration {
 	readonly deleteActionMessageBeforeResume: boolean = true;
 
 	/**
+	 * Minutes of inactivity after which this platform starts a fresh session by
+	 * default, when the channel's own `sessionIdleTimeoutMinutes` setting is
+	 * unset. Every platform lets the user configure that setting explicitly;
+	 * this only supplies the value used before they ever touch it. `null`
+	 * (default) means no idle-based rotation until the user opts in.
+	 *
+	 * WhatsApp overrides this because it has no native "/new" slash command
+	 * equivalent that reliably reaches the bridge, so a sensible default reset
+	 * threshold matters more there than on platforms with an explicit reset
+	 * command.
+	 */
+	readonly defaultSessionIdleTimeoutMinutes: number | null = null;
+
+	/**
+	 * True to deliver a suspension card only to the user whose turn raised it,
+	 * so the rest of a channel never sees it. Delivery-scoped only: nothing
+	 * verifies who clicks. The card still goes to the whole conversation where
+	 * the platform has no ephemeral delivery, rather than being dropped.
+	 */
+	readonly targetSuspensionCardAtActingUser: boolean = false;
+
+	/**
 	 * True if the bridge should buffer streaming output and post it as a single
 	 * message instead of streaming text deltas via post-and-edit.
 	 */
 	readonly disableStreaming: boolean = false;
+
+	/**
+	 * True when the platform renders only one streamed run per inbound turn, so
+	 * text following a card is posted buffered rather than streamed into the
+	 * message that preceded the card.
+	 */
+	readonly singleStreamedRunPerTurn: boolean = false;
 
 	/**
 	 * True when this integration is an internal channel (e.g. the in-app n8n
@@ -259,6 +371,12 @@ export abstract class AgentChatIntegration {
 	 * add-trigger UI.
 	 */
 	readonly internal: boolean = false;
+
+	/**
+	 * True when an agent can hold only one connection of this type, because
+	 * inbound webhooks carry nothing that tells two connections apart.
+	 */
+	readonly singleConnectionPerAgent: boolean = false;
 
 	/**
 	 * True when this integration needs a platform Chat SDK instance (adapter +
@@ -290,6 +408,29 @@ export abstract class AgentChatIntegration {
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
 
+	/**
+	 * Builds the typed origin fields of an inbound message from the decoded adapter
+	 * thread ID and the message. Every channel must decide what it records. Return
+	 * `undefined` when the channel has no platform context to store. The result is
+	 * validated against `AgentMessageIntegrationOriginSchema`, so a new channel also
+	 * needs a variant there.
+	 */
+	abstract buildOriginDraft(
+		input: OriginInput,
+		decoded: DecodedThread,
+	): Promise<OriginDraft | undefined> | OriginDraft | undefined;
+
+	/**
+	 * Decides who owns the episodic memories of an incoming chat turn. Every
+	 * channel must decide. Build identifiers from trusted source context and
+	 * namespace them by agent, platform, and workspace or account. Return `null`
+	 * when the channel has no policy or the required identity is missing: the turn
+	 * then runs without episodic memory. There is no shared fallback.
+	 */
+	abstract resolveEpisodicScope(
+		context: EpisodicScopeContext,
+	): Promise<ResolvedEpisodicScope | null> | ResolvedEpisodicScope | null;
+
 	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;
 
@@ -298,17 +439,23 @@ export abstract class AgentChatIntegration {
 	 * (i.e. before credentials are configured). The canonical case is Slack's
 	 * `url_verification` challenge — sent when the user creates a Slack app
 	 * from the manifest, before they have pasted bot token / signing secret
-	 * into n8n. Without this hook, the standard handler returns 404 and the
-	 * user has to manually re-verify URLs after configuring the credential.
+	 * into n8n. WhatsApp's Meta app verification handshake (GET with
+	 * `hub.mode`/`hub.verify_token`/`hub.challenge`) is the other: its verify
+	 * token is derivable from the agent ID alone, so it needs no credential
+	 * either. Without this hook, the standard handler returns 404 and the user
+	 * has to connect (and, for WhatsApp, publish) the agent before Meta's
+	 * "Verify and save" can succeed.
 	 *
-	 * Implementations inspect the parsed JSON body; return a response to send
-	 * back, or undefined to fall through to the standard 404.
+	 * Implementations inspect the request; return a response to send back, or
+	 * undefined to fall through to the standard 404.
 	 *
 	 * Security note: this hook bypasses signature verification, so it must
 	 * only echo non-sensitive data (e.g. a challenge token sent by the caller
 	 * in the request itself).
 	 */
-	handleUnauthenticatedWebhook?(body: unknown): UnauthenticatedWebhookResponse | undefined;
+	handleUnauthenticatedWebhook?(
+		context: UnauthenticatedWebhookContext,
+	): UnauthenticatedWebhookResponse | undefined;
 
 	/**
 	 * Resolve platform-specific routing before selecting a connected adapter.
@@ -377,6 +524,24 @@ export abstract class AgentChatIntegration {
 	): Promise<void>;
 
 	/**
+	 * Converts a channel ID the model passes to `send_channel_message` into a
+	 * Chat SDK channel ID. By default a bare ID gets the `<platform>:` prefix.
+	 */
+	normalizeChannelId(channelId: string, _adapter: unknown): string {
+		return normalizePlatformId(this.type, channelId);
+	}
+
+	/**
+	 * Explains a failed send in words the agent can act on, for errors where the
+	 * platform message alone gives the model nothing to do next. Return
+	 * undefined to keep the default error.
+	 */
+	describeActionError?(
+		action: IntegrationAction,
+		error: unknown,
+	): { code: IntegrationErrorCode; message: string } | undefined;
+
+	/**
 	 * Optional hook run on EVERY main once the connection is live, regardless
 	 * of `skipExternalHooks`. Unlike `onAfterConnect`, this is for local runtime
 	 * state each main owns independently — e.g. Discord's leader-gated Gateway
@@ -397,9 +562,15 @@ export abstract class AgentChatIntegration {
 	/**
 	 * Optional per-platform component normalization (applied before toCard).
 	 * Convert unsupported types into close-enough equivalents — e.g. Telegram
-	 * turns select options into individual buttons.
+	 * turns select options into individual buttons. A platform that folds
+	 * several buttons into one native control (the opposite direction, e.g.
+	 * WhatsApp's list) should use `context.wrapResumeValue` — see
+	 * {@link NormalizeComponentsContext}.
 	 */
-	normalizeComponents?(components: SuspendComponent[]): SuspendComponent[];
+	normalizeComponents?(
+		components: SuspendComponent[],
+		context: NormalizeComponentsContext,
+	): SuspendComponent[];
 
 	/**
 	 * Optional per-platform thread ID formatting.
@@ -447,6 +618,15 @@ export abstract class AgentChatIntegration {
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
 
 	/**
+	 * Files the webhook leaves out but the platform API has. They join the
+	 * message's own attachments.
+	 */
+	fetchInboundAttachments?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+	}): Promise<Attachment[]>;
+
+	/**
 	 * Optional per-message reply policy (see `ReplyExpectation`).
 	 * Default (no implementation): 'required'.
 	 */
@@ -478,6 +658,18 @@ export abstract class AgentChatIntegration {
 	}): boolean;
 
 	/**
+	 * Whether a message that does not mention the bot should run the agent,
+	 * in a subscribed thread or not. Only platforms that deliver every message
+	 * implement this (Teams with read-all permissions). Without it the bridge
+	 * runs every subscribed follow-up and never listens for other messages.
+	 */
+	shouldHandleUnmentionedMessage?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+		integration: AgentIntegrationConfig;
+	}): boolean;
+
+	/**
 	 * Optional per-message execution policy for platform-specific bridge behavior,
 	 * such as status indicators or forcing buffered output for a specific thread.
 	 */
@@ -491,7 +683,16 @@ export abstract class AgentChatIntegration {
 		thread: Thread<unknown, unknown>;
 		logger: Logger;
 		agentId: string;
+		slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
+		/** The channel as stored, for platforms whose status depends on a setting. */
+		integration?: AgentIntegrationConfig;
 	}): Promise<BridgeResumeExecutionContext>;
+
+	/**
+	 * Whether the bridge downloads and stores the files in an inbound message.
+	 * Without it, every platform downloads them.
+	 */
+	shouldDownloadAttachments?(integration: AgentIntegrationConfig): boolean;
 
 	/**
 	 * Execute a context query that this platform owns (e.g. Linear `get_issue`,
@@ -514,22 +715,17 @@ export abstract class AgentChatIntegration {
 }
 
 /** Per-platform context-query execution params. */
-export interface PlatformContextQueryParams {
+export interface PlatformContextQueryParams
+	extends Omit<IntegrationContextQueryParams, 'persistence'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
-	descriptor: IntegrationToolConnectionDescriptor;
-	query: IntegrationContextQuery;
-	input: Record<string, unknown>;
 }
 
 /** Per-platform action-execution params. */
-export interface PlatformActionParams {
+export interface PlatformActionParams
+	extends Omit<IntegrationActionParams, 'awaitResponse' | 'runId' | 'toolCallId'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	currentMessageContext?: IntegrationMessageContext;
 }
 
 /**

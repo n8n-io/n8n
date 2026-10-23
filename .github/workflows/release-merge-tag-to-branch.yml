@@ -12,6 +12,11 @@ on:
         description: 'The branch to merge the release tag into (e.g. master or release-candidate/2.10.x)'
         required: true
         type: string
+      fast-forward-only:
+        description: 'Fail instead of creating a merge commit when the target branch has advanced.'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   merge-tag-to-branch:
@@ -30,7 +35,7 @@ jobs:
           private-key: ${{ secrets.RELEASE_TAG_MERGE_PRIVATE_KEY }}
           skip-token-revoke: false
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.target-branch }}
           fetch-depth: 500
@@ -47,10 +52,16 @@ jobs:
         run: git fetch origin "refs/tags/n8n@${VERSION}:refs/tags/n8n@${VERSION}"
 
       - name: Merge release tag to branch
+        env:
+          FAST_FORWARD_ONLY: ${{ inputs.fast-forward-only }}
         run: |
           git config user.name "n8n-release-tag-merge[bot]"
           git config user.email "256767729+n8n-release-tag-merge[bot]@users.noreply.github.com"
-          git merge --ff "n8n@${VERSION}"
+          MERGE_MODE="--ff"
+          if [ "$FAST_FORWARD_ONLY" = "true" ]; then
+            MERGE_MODE="--ff-only"
+          fi
+          git merge "$MERGE_MODE" "n8n@${VERSION}"
 
       - name: Push to ${{ inputs.target-branch }}
         run: git push origin "HEAD:${TARGET_BRANCH}"
@@ -61,7 +72,7 @@ jobs:
     if: ${{ always() && needs.merge-tag-to-branch.result == 'failure' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: master
           sparse-checkout: .github/scripts/slack

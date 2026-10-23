@@ -1,7 +1,7 @@
 import type { BuiltTool, CredentialListItem, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, getLegacyBuilderToolNames } from '@n8n/api-types';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -12,16 +12,13 @@ import {
 } from '../../llm-provider-defaults';
 import { findVerifiedModelId, normalizeProviderModelId } from '../../utils/provider-model-id';
 import { BUILDER_TOOLS } from '../builder-tool-names';
+import type { ModelChoice } from '../model-lookup.types';
 
 /** User-facing name written for an n8n credits (AI Gateway managed) model credential. */
 const N8N_CONNECT_CREDENTIAL_NAME = 'Gateway credits';
 
 export interface ModelLookup {
-	list(
-		credentialId: string,
-		credentialType: string,
-		provider: string,
-	): Promise<Array<{ name: string; value: string }>>;
+	list(credentialId: string, credentialType: string, provider: string): Promise<ModelChoice[]>;
 }
 
 /** Provisions free OpenAI credits on demand for a zero-credential builder session. */
@@ -112,11 +109,6 @@ function toLlmResolution(
 	};
 }
 
-interface CallableModel {
-	name: string;
-	value: string;
-}
-
 /**
  * How many models an `unknown_model` result carries. A provider catalog runs to
  * hundreds of ids (OpenRouter alone), and the whole list would land in the
@@ -126,7 +118,7 @@ interface CallableModel {
  */
 const MAX_AVAILABLE_MODELS = 25;
 
-function unknownModel(provider: string, requestedModel: string, availableModels: CallableModel[]) {
+function unknownModel(provider: string, requestedModel: string, availableModels: ModelChoice[]) {
 	const shown = availableModels.slice(0, MAX_AVAILABLE_MODELS);
 	return {
 		ok: false as const,
@@ -162,7 +154,7 @@ async function listCallableModels(
 	credential: CredentialListItem,
 	provider: string,
 	modelLookup: ModelLookup,
-): Promise<{ ok: true; models: CallableModel[] } | { ok: false; error: unknown }> {
+): Promise<{ ok: true; models: ModelChoice[] } | { ok: false; error: unknown }> {
 	try {
 		const models = await modelLookup.list(credential.id, credential.type, provider);
 		return {
@@ -313,13 +305,14 @@ async function servedGatewayProviders(deps: ResolveLlmToolDeps): Promise<string[
 
 export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.RESOLVE_LLM)
+		.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.RESOLVE_LLM))
 		.description(
 			'Resolve the agent main LLM without showing a picker. ' +
 				'A fresh agent may already have a model and credential persisted by the system at creation ' +
 				'(a sensible default was auto-selected). Before calling this tool on a fresh agent, call ' +
-				'read_config first: if model and credential are already set, keep them, mention the choice ' +
-				'in your summary as changeable, and do not call resolve_llm. Only when model is empty call ' +
-				'resolve_llm once, silently, before the first config write to detect existing credentials — ' +
+				'agent-context with type "config" first: if model and credential are already set, keep them, mention the choice ' +
+				'in your summary as changeable, and do not call agent_builder_resolve_llm. Only when model is empty call ' +
+				'agent_builder_resolve_llm once, silently, before the first config write to detect existing credentials — ' +
 				'with provider/model when the user named them, otherwise without arguments. ' +
 				'Also call it whenever the user names or changes a provider or model. ' +
 				'If provider is given, resolves only that provider; if model is omitted, uses the ' +
@@ -328,11 +321,11 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'(carrying availableModels) can come back even when you passed no model: retry with a ' +
 				'value from availableModels, never the id that just failed. availableModels is capped: when ' +
 				'availableModelsTruncated is true, it is a sample of totalAvailableModels — ask the user with ' +
-				'ask_questions instead of treating it as the full list. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
+				'agent_builder_ask_questions instead of treating it as the full list. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +
 				'when credentials are missing, unsupported, or ambiguous — during an initial build, do not ' +
 				'ask; keep building with model "" and include the model choice in the trailing ' +
-				'finish_setup call, then call resolve_llm again with the answer. For a model ' +
+				'agent_builder_finish_setup call, then call agent_builder_resolve_llm again with the answer. For a model ' +
 				'change on an existing agent, ask immediately and keep the current model and credential until the new one resolves. ' +
 				'When no matching credential exists and the user is eligible for free OpenAI credits, the tool ' +
 				'claims them automatically and resolves to an OpenAI model the new key can reach (normally ' +
@@ -367,7 +360,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					.string()
 					.optional()
 					.describe(
-						'Credential id picked by the user from an earlier ambiguous resolve_llm result.',
+						'Credential id picked by the user from an earlier ambiguous agent_builder_resolve_llm result.',
 					),
 				useGatewayCredits: z
 					.boolean()

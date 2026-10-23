@@ -1,9 +1,10 @@
 /**
- * Consolidated workflows tool — list, get, get-as-code, delete/archive,
+ * Consolidated workflow_builder_workflows tool — list, get, get-as-code, delete/archive,
  * unarchive, setup, publish, unpublish, list-versions, restore-version,
  * update-version.
  */
 import {
+	getLegacyBuilderToolNames,
 	instanceAiApprovalDetailsSchema,
 	buildCredentialDestinationGrantKey,
 	credentialDestinationSchema,
@@ -11,12 +12,15 @@ import {
 } from '@n8n/api-types';
 import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import { isOutsideThreadProjectError } from '../errors/outside-thread-project.error';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { FolderResolutionFailure, InstanceAiContext, SetupItemsEmitter } from '../types';
 import {
@@ -32,7 +36,8 @@ import {
 	describeSavedPublishState,
 	type SavedWorkflowState,
 } from './workflows/saved-workflow-state';
-import { isSetupPanelEnabled } from './workflows/setup-items';
+import { filterSatisfiedSetupCredentialTypes } from './workflows/setup-credential-selections';
+import { isSetupPanelEnabled, requestsCredentialReplacement } from './workflows/setup-items';
 import {
 	describeSetupItem,
 	rememberWorkflowSetupState,
@@ -70,12 +75,14 @@ import {
 	refreshWorkflowSourceFileBindingFromWorkflow,
 } from './workflows/workflow-file-bindings';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { generateWorkflowSource } from './workflows/workflow-source-generator';
 import {
 	INLINE_SOURCE_LIMIT_CHARS,
 	indexSourceNodes,
 	materializeWorkflowSource,
 	type MaterializedSourceStatus,
 } from './workflows/workflow-source-materializer';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -215,7 +222,7 @@ const getAsCodeAction = z.object({
 	action: z
 		.literal('get-as-code')
 		.describe(
-			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save with build-workflow. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
+			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save with workflow_builder_build_workflow. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
@@ -273,7 +280,7 @@ const setupAction = z.object({
 				'credential whose secret is invalid or rotated (e.g. pasted a new token in chat, which you ' +
 				'cannot store). Never pass as a default. The card opens with nothing preselected so the user ' +
 				'lands on credential creation; existing credentials of the type stay listed in case they ' +
-				'change their mind. Pass the same list you passed to build-workflow.',
+				'change their mind. Pass the same list you passed to workflow_builder_build_workflow.',
 		),
 	reopenSkipped: z
 		.array(z.string())
@@ -438,6 +445,8 @@ export interface WorkflowsToolOptions {
 	descriptionPrefix?: string;
 	descriptionSuffix?: string;
 	surface?: 'full' | 'orchestrator';
+	/** Override source-edit instructions for a caller with its own candidate lifecycle. */
+	sourceGuidance?: string;
 }
 
 type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
@@ -482,6 +491,7 @@ function normalizeOptions(options: WorkflowsToolOptionsInput = {}): WorkflowsToo
 
 function getSupportedWorkflowActionSchemas(
 	context: InstanceAiContext,
+	options: WorkflowsToolOptions,
 ): Partial<Record<WorkflowAction, WorkflowActionSchema>> {
 	const hasNamedVersions = !!context.workflowService.updateVersion;
 	const hasVersions = !!context.workflowService.listVersions;
@@ -494,7 +504,11 @@ function getSupportedWorkflowActionSchemas(
 		list: pickListAction(context, hasNodeUsage),
 		...(hasNodeUsage ? { 'node-usage': nodeUsageAction } : {}),
 		get: getAction,
-		'get-as-code': getAsCodeAction,
+		'get-as-code': options.sourceGuidance
+			? getAsCodeAction.extend({
+					action: z.literal('get-as-code').describe(options.sourceGuidance),
+				})
+			: getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
@@ -522,7 +536,7 @@ function getWorkflowActions(
 }
 
 function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOptions) {
-	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options);
 	const actionSchemas: WorkflowActionSchema[] = [];
 	for (const action of getWorkflowActions(supportedSchemas, options)) {
 		const schema = supportedSchemas[action];
@@ -550,6 +564,18 @@ function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOpti
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
+
+/** A successful setup or restore changes the workflow, so report it to the host. */
+async function reportWorkflowChange<T>(
+	context: InstanceAiContext,
+	workflowId: string,
+	result: T,
+): Promise<T> {
+	if (isRecord(result) && result.success === true) {
+		await context.onArtifactChanged?.({ type: 'workflow', id: workflowId });
+	}
+	return result;
+}
 
 async function resolveWorkflowName(
 	context: InstanceAiContext,
@@ -737,7 +763,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			error: message,
 			availableWorkflows: available,
 			hint:
-				'No workflow exists with that id. Pick one from `availableWorkflows` or call `workflows(action="list")` for the current set. ' +
+				'No workflow exists with that id. Pick one from `availableWorkflows` or call `workflow_builder_workflows(action="list")` for the current set. ' +
 				'Do not retry with a guessed id — if the user did not provide one, you are building a new workflow.',
 		};
 	}
@@ -773,13 +799,13 @@ async function getPinnedNodesReport(
 
 const SOURCE_FILE_NOTES: Record<MaterializedSourceStatus, string> = {
 	written:
-		'Source written to filePath and bound to this workflow. Locate nodes with the `nodes` index (line numbers) and read only those lines — for a large file use a ranged shell read such as `sed -n START,ENDp filePath` via workspace_execute_command, since workspace_read_file returns the whole file. Apply edits with workspace_str_replace_file, then call build-workflow with this filePath. Do not rewrite the whole file.',
+		'Source written to filePath and bound to this workflow. Locate nodes with the `nodes` index (line numbers) and read only those lines — for a large file use a ranged shell read such as `sed -n START,ENDp filePath` via workspace_execute_command, since workspace_read_file returns the whole file. Apply edits with workspace_str_replace_file, then call workflow_builder_build_workflow with this filePath. Do not rewrite the whole file.',
 	refreshed:
-		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then build-workflow.',
+		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then workflow_builder_build_workflow.',
 	current:
-		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and call build-workflow with this filePath.',
+		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and call workflow_builder_build_workflow with this filePath.',
 	conflict:
-		'The file has edits that were never built, so it was left untouched. Build it with build-workflow to save them, or delete the file and call get-as-code again to start from the saved workflow.',
+		'The file has edits that were never built, so it was left untouched. Build it with workflow_builder_build_workflow to save them, or delete the file and call get-as-code again to start from the saved workflow.',
 };
 
 /**
@@ -807,21 +833,6 @@ async function handleGetAsCode(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-as-code' }>,
 ) {
-	const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
-	const toCode = (json: WorkflowJSON): string => {
-		// Emit node ids: this code is edited and built back into the same saved workflow,
-		// and carrying the ids through is what keeps node identity stable. Positions stay
-		// out: build-workflow restores the saved layout by id, so a position in the file
-		// is only an invitation to edit layout.
-		const body = generateWorkflowCode({
-			workflow: json,
-			includeNodeIds: true,
-			includePositions: false,
-		});
-		// The file must build as-is, so it carries the import line codegen omits.
-		const importLine = buildImports(body);
-		return importLine ? `${importLine}\n\n${body}` : body;
-	};
 	try {
 		// Historical reads are not bound to a file and must not advance the
 		// optimistic-concurrency lock; they stay inline.
@@ -830,7 +841,7 @@ async function handleGetAsCode(
 				input.workflowId,
 				input.versionId,
 			);
-			const code = toCode(json);
+			const code = await generateWorkflowSource(json);
 			return {
 				workflowId: input.workflowId,
 				name: json.name,
@@ -841,9 +852,27 @@ async function handleGetAsCode(
 		}
 
 		const { json, saved } = await readConsistentWorkflowSnapshot(context, input.workflowId);
-		const code = toCode(json);
+		const code = await generateWorkflowSource(json);
 		const nodeCount = json.nodes?.length ?? 0;
 		const base = { workflowId: input.workflowId, name: json.name, nodeCount };
+
+		// A workflow this conversation cannot save stays inline and unbound, so the model
+		// learns before it edits a file that a build would reject.
+		let readOnlyReason: string | undefined;
+		try {
+			await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
+		} catch (error) {
+			if (!isOutsideThreadProjectError(error)) throw error;
+			readOnlyReason = getErrorMessage(error);
+		}
+		if (readOnlyReason) {
+			return {
+				...base,
+				nodes: await indexSourceNodes(json, code),
+				code,
+				note: `Read-only: the source was not written to a file. ${readOnlyReason}`,
+			};
+		}
 
 		// Without a workspace there is no file to write; the code stays inline and the
 		// conversation's view of the workflow still moves to the current version.
@@ -907,6 +936,7 @@ async function handleDelete(
 
 	// First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -945,6 +975,7 @@ async function handleUnarchive(
 	const needsApproval = context.permissions?.deleteWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -1175,11 +1206,11 @@ async function handleSetupTestTrigger(
 			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, preTestApply.applied),
 		},
 	);
-	// Re-derived from scratch, so it has to be partitioned again: this is the second path that
-	// builds the panel, and without it a trigger test mid-session puts back the cards state 1
-	// left out.
+	// Re-derived from scratch, so it has to be scoped and partitioned again: this is the second
+	// path that builds the panel, and without it a trigger test mid-session puts back the cards
+	// state 1 left out. The destination check below still sees every node.
 	const { pending: refreshedPending } = partitionSkippedSetupRequests(
-		refreshedRequests,
+		await filterToSetupScope(context, input, refreshedRequests),
 		input.workflowId,
 		getSkippedSetupSubjects(context),
 	);
@@ -1278,6 +1309,13 @@ async function handleSetupApply(
 			resumeData.nodeParameters,
 		);
 
+		// Nothing was saved, so there is nothing to re-analyze. A failed result shows
+		// the reason to the user and the agent; a "partial" success would hide it
+		// (e.g. a credential the workflow's project cannot use).
+		if (applyResult.saveError) {
+			return { success: false, error: applyResult.saveError };
+		}
+
 		const failedNodes = applyResult.failed.length > 0 ? applyResult.failed : undefined;
 
 		// Fetch updated workflow to include in response so the frontend can refresh the canvas
@@ -1298,12 +1336,17 @@ async function handleSetupApply(
 		// Filter by needsAction to distinguish "render this card" from
 		// "this still requires user intervention". Settled requests are kept so
 		// a just-applied credential whose test failed stays reportable below —
-		// a bound credential is settled for routing even when its test fails.
-		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
-			includeSettled: true,
-			...preferNewCredentialOptions(input, resumeData.credentials),
-			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, applyResult.applied),
-		});
+		// a bound credential is settled for routing even when its test fails. Scoped like the
+		// card: a node it left out is neither still pending nor skipped by the user.
+		const remainingRequests = await filterToSetupScope(
+			context,
+			input,
+			await analyzeWorkflow(context, input.workflowId, undefined, {
+				includeSettled: true,
+				...preferNewCredentialOptions(input, resumeData.credentials),
+				appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, applyResult.applied),
+			}),
+		);
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,
 			resumeData.nodeParameters,
@@ -1424,6 +1467,23 @@ async function resolveSetupScopeNodeNames(
 }
 
 /**
+ * Narrow requests to the build-bound setup scope. Every path that builds or reports the setup
+ * card goes through here, so a node the card left out cannot come back through a trigger test,
+ * the apply report, or a skip the user never made.
+ */
+async function filterToSetupScope(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'setup' }>,
+	requests: SetupRequest[],
+): Promise<SetupRequest[]> {
+	if (input.includeAllNodes) return requests;
+	const scopeNodeNames = await resolveSetupScopeNodeNames(context, input.workflowId);
+	return scopeNodeNames
+		? requests.filter((request) => scopeNodeNames.includes(request.node.name))
+		: requests;
+}
+
+/**
  * Coverage disclosure for the workflow's latest verification, or undefined when
  * it was fully verified or no claim exists. Absent evidence never blocks: a
  * workflow built before this record, or outside the assistant, is unknown
@@ -1501,7 +1561,7 @@ const SETUP_PANEL_ANNOUNCED_GUIDANCE =
 	'The setup panel now lists what this workflow still needs (`open`); nothing is ' +
 	'waiting on you and no card is open. Finish your turn now: tell the user in one or two sentences ' +
 	'what to configure in the panel — name the services and any values — then stop. Do not call setup ' +
-	'again for this workflow, do not call `credentials(action="setup")`, and do not tell the user to ' +
+	'again for this workflow, do not call `workflow_builder_credentials(action="setup")`, and do not tell the user to ' +
 	'open the editor or canvas. Items under `configured` have stored bindings. Report any ' +
 	'validationWarnings; a binding does not prove that a connection or workflow test passed.';
 
@@ -1583,11 +1643,17 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null || destinationDecision !== undefined) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		// The setup panel lists bound slots too (rendered as done), so its snapshot
 		// needs the settled requests the card logic below must not see.
 		const setupPanelEnabled = isSetupPanelEnabled(context);
+		const preferNewCredentialTypes = await filterSatisfiedSetupCredentialTypes(
+			context,
+			input.workflowId,
+			input.preferNewCredentials,
+		);
 		const analyzedRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
-			...preferNewCredentialOptions(input),
+			...(preferNewCredentialTypes?.length ? { preferNewCredentialTypes } : {}),
 			...(setupPanelEnabled ? { includeSettled: true } : {}),
 		});
 		const allSetupRequests = setupPanelEnabled
@@ -1663,12 +1729,7 @@ async function handleSetup(
 
 		// Setup after a build covers only the nodes that build changed —
 		// pre-existing, unrelated nodes must not surface in the setup card.
-		const scopeNodeNames = input.includeAllNodes
-			? undefined
-			: await resolveSetupScopeNodeNames(context, input.workflowId);
-		const scopedRequests = scopeNodeNames
-			? allSetupRequests.filter((request) => scopeNodeNames.includes(request.node.name))
-			: allSetupRequests;
+		const scopedRequests = await filterToSetupScope(context, input, allSetupRequests);
 
 		// Two reasons a card stays out, applied in order: this build never touched the node, or
 		// the user declined it. Partitioning the scoped list keeps them apart in the report —
@@ -1735,8 +1796,11 @@ async function handleSetup(
 
 		// Setup panel v2: announce the final checklist and return. The user
 		// completes it in the panel; the turn ends with the agent's summary.
-		// Replacement needs an explicit selection. A saved binding already appears done in the panel.
-		if (isSetupPanelEnabled(context) && !input.preferNewCredentials?.length) {
+		// Only a bound account needs the explicit replacement card.
+		if (
+			isSetupPanelEnabled(context) &&
+			!requestsCredentialReplacement(analyzedRequests, preferNewCredentialTypes)
+		) {
 			return await announceWorkflowSetup(context, input.workflowId, analyzedRequests);
 		}
 
@@ -1745,11 +1809,9 @@ async function handleSetup(
 			// the user declined, and pre-existing nodes this build never touched. Both can hold at
 			// once, so neither branch may swallow the other. Named "out of scope" rather than
 			// "skipped" because in this file a skip is specifically a user decision.
-			const outOfScopeNodeNames = scopeNodeNames
-				? allSetupRequests
-						.map((request) => request.node.name)
-						.filter((name) => !scopeNodeNames.includes(name))
-				: [];
+			const outOfScopeNodeNames = allSetupRequests
+				.filter((request) => !scopedRequests.includes(request))
+				.map((request) => request.node.name);
 			const outOfScopeReason =
 				outOfScopeNodeNames.length > 0
 					? `Pre-existing node(s) ${outOfScopeNodeNames
@@ -1808,10 +1870,11 @@ async function handleSetup(
 		}
 		// Re-analyze rather than remembering what was suspended: the closure state doesn't
 		// survive a resume in another process, and a skip that silently fails to persist is
-		// the whole bug. Everything still needing setup is what the user just dismissed.
-		const dismissed = (await analyzeWorkflow(context, input.workflowId)).filter(
-			(request) => request.needsAction,
-		);
+		// the whole bug. Everything in scope still needing setup is what the user just
+		// dismissed; a node the card left out was never offered, so it is not a skip.
+		const dismissed = (
+			await filterToSetupScope(context, input, await analyzeWorkflow(context, input.workflowId))
+		).filter((request) => request.needsAction);
 		await rememberSkippedSetup(context, dismissed, input.workflowId);
 		return {
 			success: true,
@@ -1880,6 +1943,11 @@ async function handlePublish(
 	}
 
 	const supportingWorkflowIds = await resolveSupportingWorkflowIds(context, input.workflowId);
+	// Checked up front, even when approval is skipped, so nothing goes live before a
+	// workflow outside the thread's project would fail the publish.
+	for (const id of [input.workflowId, ...supportingWorkflowIds]) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id });
+	}
 	const verification = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
 	const unverifiedDisclosure = verification?.message;
 
@@ -2065,6 +2133,7 @@ async function handleUnpublish(
 	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -2120,6 +2189,7 @@ async function handleRestoreVersion(
 	const needsApproval = context.permissions?.restoreWorkflowVersion !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const version = await context.workflowService.getVersion!(
 			input.workflowId,
@@ -2193,6 +2263,7 @@ async function handleUpdateVersion(
 	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const fields: string[] = [];
 		if (input.name !== undefined) fields.push(`name to ${formatFieldValue(input.name)}`);
@@ -2247,7 +2318,7 @@ function formatWorkflowActionList(actions: readonly WorkflowAction[]): string {
 }
 
 function getToolDescription(context: InstanceAiContext, options: WorkflowsToolOptions): string {
-	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options);
 	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, options));
 	const description = `${options.descriptionPrefix ?? 'Manage workflows'} — ${actionList}.`;
 	const suffix =
@@ -2274,13 +2345,15 @@ export function createWorkflowsTool(
 
 	const inputSchema = buildInputSchema(context, options);
 
-	return new Tool('workflows')
+	return new Tool(DOMAIN_TOOL_IDS.WORKFLOWS)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.WORKFLOWS))
 		.description(getToolDescription(context, options))
 		.input(inputSchema)
 		.suspend(suspendSchema)
 		.resume(workflowsResumeSchema)
 		.handler(async (input, ctx) => {
 			const workflowInput = input as Input;
+
 			switch (workflowInput.action) {
 				case 'list':
 					return await handleList(context, workflowInput);
@@ -2288,14 +2361,25 @@ export function createWorkflowsTool(
 					return await handleNodeUsage(context, workflowInput);
 				case 'get':
 					return await handleGet(context, workflowInput);
-				case 'get-as-code':
-					return await handleGetAsCode(context, workflowInput);
+				case 'get-as-code': {
+					const result = await handleGetAsCode(context, workflowInput);
+
+					if (!options.sourceGuidance) return result;
+
+					const conflictNote =
+						'status' in result && result.status === 'conflict'
+							? 'The source file contains unbuilt edits and was left untouched. '
+							: '';
+					return { ...result, note: conflictNote + options.sourceGuidance };
+				}
 				case 'delete':
 					return await handleDelete(context, workflowInput, ctx);
 				case 'unarchive':
 					return await handleUnarchive(context, workflowInput, ctx);
-				case 'setup':
-					return await handleSetup(context, workflowInput, ctx, setupState);
+				case 'setup': {
+					const result = await handleSetup(context, workflowInput, ctx, setupState);
+					return await reportWorkflowChange(context, workflowInput.workflowId, result);
+				}
 				case 'validate':
 					return await handleValidate(context, workflowInput);
 				case 'publish':
@@ -2304,8 +2388,10 @@ export function createWorkflowsTool(
 					return await handleUnpublish(context, workflowInput, ctx);
 				case 'list-versions':
 					return await handleListVersions(context, workflowInput);
-				case 'restore-version':
-					return await handleRestoreVersion(context, workflowInput, ctx);
+				case 'restore-version': {
+					const result = await handleRestoreVersion(context, workflowInput, ctx);
+					return await reportWorkflowChange(context, workflowInput.workflowId, result);
+				}
 				case 'update-version':
 					return await handleUpdateVersion(context, workflowInput, ctx);
 				default:

@@ -5,10 +5,12 @@ import type { MockInstance } from 'vitest';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { SYSTEM_RESOLVER_ID, type FrontendSettings } from '@n8n/api-types';
+import { i18n, i18nInstance } from '@n8n/i18n';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
-import { EnterpriseEditionFeature } from '@/app/constants';
+import { EnterpriseEditionFeature, EXECUTE_WORKFLOW_NODE_TYPE } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import WorkflowSettingsVue from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -19,6 +21,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
+import type { Scope } from '@n8n/permissions';
 import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
@@ -169,6 +172,7 @@ describe('WorkflowSettingsVue', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
+		vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 		sourceControlStore = mockedStore(useSourceControlStore);
 		projectsStore = mockedStore(useProjectsStore);
 
@@ -216,6 +220,28 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-settings-dialog')).toBeVisible();
 	});
 
+	it.each([
+		['workflow-settings-execution-order', 'workflowSettings.executionLogic.placeholder'],
+		['workflow-settings-error-workflow', 'workflowSettings.errorWorkflow.placeholder'],
+		['workflow-settings-timezone', 'workflowSettings.timezone.placeholder'],
+	])('should localize the placeholder of %s', async (testId, key) => {
+		const originalLocale = i18nInstance.global.locale.value;
+		i18nInstance.global.setLocaleMessage('test-locale', { [key]: 'Translated placeholder' });
+		i18nInstance.global.locale.value = 'test-locale';
+		i18n.clearCache();
+
+		try {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId(testId).outerHTML).toContain('Translated placeholder');
+		} finally {
+			i18nInstance.global.locale.value = originalLocale;
+			i18n.clearCache();
+		}
+	});
+
 	it('should not render workflow caller policy when sharing is not enabled', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
 		const { getByTestId } = createComponent({ pinia });
@@ -236,9 +262,35 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
 	});
 
+	it('spaces selected-workflow IDs like the other settings (LIGO-866)', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		workflowDocumentStore.setSettings({ callerPolicy: 'workflowsFromAList' });
+		const { getByTestId } = createComponent({ pinia });
+
+		await flushPromises();
+
+		const settings = getByTestId('workflow-settings-dialog');
+		const timezoneRow = getByTestId('workflow-settings-timezone').closest('.el-row');
+		const callerPolicyRow = getByTestId('workflow-caller-policy-select').closest('.el-row');
+		const callerIdsRow = getByTestId('workflow-caller-policy-workflow-ids').closest('.el-row');
+
+		// LIGO-866: The dialog's vertical gap only applies to direct children.
+		expect(timezoneRow?.parentElement).toBe(settings);
+		expect(
+			callerIdsRow?.parentElement === settings,
+			'workflow IDs must receive the dialog gap',
+		).toBe(true);
+		expect(
+			callerPolicyRow?.parentElement === settings,
+			'caller policy must receive the dialog gap',
+		).toBe(true);
+	});
+
 	it('should lock caller policy to none when executeWorkflow is excluded', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		vi.spyOn(settingsStore, 'isExecuteWorkflowNodeExcluded', 'get').mockReturnValue(true);
+		vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockImplementation(
+			(type) => type === EXECUTE_WORKFLOW_NODE_TYPE,
+		);
 		workflowDocumentStore.setSettings({
 			callerPolicy: 'workflowsFromAList',
 			callerIds: 'abc',
@@ -252,55 +304,6 @@ describe('WorkflowSettingsVue', () => {
 			within(getByTestId('workflow-caller-policy-select')).getByRole('combobox'),
 		).toBeDisabled();
 		expect(queryByTestId('workflow-caller-policy-workflow-ids')).not.toBeInTheDocument();
-	});
-
-	it('should warn that the `any` caller policy is deprecated', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'any' });
-
-		const { getByTestId } = createComponent({ pinia });
-		await flushPromises();
-
-		expect(getByTestId('workflow-caller-policy-any-deprecation')).toBeVisible();
-	});
-
-	it('should not warn about deprecation for a supported caller policy', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'none' });
-
-		const { queryByTestId } = createComponent({ pinia });
-		await flushPromises();
-
-		expect(queryByTestId('workflow-caller-policy-any-deprecation')).not.toBeInTheDocument();
-	});
-
-	// An instance that lost the Sharing feature can still carry `any`, and has to be able
-	// to leave it before v3 removes the option.
-	it('should render the caller policy without sharing when the stored policy is `any`', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
-		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'any' });
-
-		const { getByTestId } = createComponent({ pinia });
-		await flushPromises();
-
-		expect(getByTestId('workflow-caller-policy')).toBeVisible();
-		expect(getByTestId('workflow-caller-policy-any-deprecation')).toBeVisible();
-	});
-
-	it('should keep the caller policy visible after switching away from `any` without sharing', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
-		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'any' });
-
-		const { getByTestId, queryByTestId } = createComponent({ pinia });
-		await flushPromises();
-
-		const dropdownItems = await getDropdownItems(getByTestId('workflow-caller-policy-select'));
-		await userEvent.click(dropdownItems[0]);
-		await flushPromises();
-
-		// The row stays so the change can be saved; only the warning goes away.
-		expect(getByTestId('workflow-caller-policy')).toBeVisible();
-		expect(queryByTestId('workflow-caller-policy-any-deprecation')).not.toBeInTheDocument();
 	});
 
 	describe('Custom span attributes', () => {
@@ -687,6 +690,151 @@ describe('WorkflowSettingsVue', () => {
 		)?.querySelector('input');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
+	});
+
+	describe('Engine type', () => {
+		const deactivateEngineV2Module = () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name: string) => name !== 'engine-v2',
+			);
+		};
+
+		it('should render the engine type row as the first row, directly above Execution Logic', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const row = getByTestId('workflow-settings-engine-type');
+			expect(row.parentElement).toBe(getByTestId('workflow-settings-dialog'));
+			expect(row.previousElementSibling).toBeNull();
+			expect(
+				row.nextElementSibling?.querySelector('[data-test-id="workflow-settings-execution-order"]'),
+			).not.toBeNull();
+		});
+
+		it('should not render the engine type row when the engine-v2 module is inactive', async () => {
+			deactivateEngineV2Module();
+
+			const { queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(queryByTestId('workflow-settings-engine-type')).not.toBeInTheDocument();
+		});
+
+		it('should offer v1 and v2 (Beta) as engine type options', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+
+			expect(dropdownItems).toHaveLength(2);
+			expect(dropdownItems[0]).toHaveTextContent('v1');
+			expect(dropdownItems[1]).toHaveTextContent('v2 (Beta)');
+		});
+
+		it.each([
+			['v2', 'v2 (Beta)'],
+			['v1', 'v1'],
+			[undefined, 'v1'],
+		] as const)('should select the option for engineType %s', async (engineType, label) => {
+			workflowDocumentStore.setSettings(engineType ? { engineType } : {});
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+			const selectedItem = Array.from(dropdownItems).find((item) =>
+				item.classList.contains('selected'),
+			);
+			expect(selectedItem).toHaveTextContent(label);
+		});
+
+		it.each([
+			[undefined, 'v2'],
+			['v1', 'v2'],
+			['v2', 'v1'],
+		] as const)(
+			'should save engineType %s as %s after the option is selected',
+			async (engineType, expected) => {
+				workflowDocumentStore.setSettings(engineType ? { engineType } : {});
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				const dropdownItems = await getDropdownItems(
+					getByTestId('workflow-settings-engine-type-select'),
+				);
+				await userEvent.click(dropdownItems[expected === 'v2' ? 1 : 0]);
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({ engineType: expected }),
+					}),
+				);
+			},
+		);
+
+		it('should not add engineType to the saved settings when the select is untouched', async () => {
+			const { getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledTimes(1);
+			const [, data] = workflowsStore.updateWorkflow.mock.calls[0];
+			expect(data.settings).not.toHaveProperty('engineType');
+		});
+
+		it('should keep a stored engineType v2 on save when the engine-v2 module is inactive', async () => {
+			deactivateEngineV2Module();
+			workflowDocumentStore.setSettings({ engineType: 'v2' });
+
+			const { getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ engineType: 'v2' }),
+				}),
+			);
+		});
+
+		it('should disable the select if env is read-only', async () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				within(getByTestId('workflow-settings-engine-type-select')).getByRole('combobox'),
+			).toBeDisabled();
+		});
+
+		it('should disable the select if user has no permission to update workflow', async () => {
+			const readOnlyWorkflow = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:read'],
+			});
+			workflowsListStore.workflowsById = { '1': readOnlyWorkflow };
+			workflowsListStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				within(getByTestId('workflow-settings-engine-type-select')).getByRole('combobox'),
+			).toBeDisabled();
+		});
 	});
 
 	describe('Execution Order & Binary Mode', () => {
@@ -1669,6 +1817,110 @@ describe('WorkflowSettingsVue', () => {
 			});
 		});
 
+		describe('redact caller executions', () => {
+			const setUp = (params: {
+				redactionPolicy: 'none' | 'all';
+				redactCallerExecutions?: boolean;
+				scopes?: Scope[];
+				licensed?: boolean;
+			}) => {
+				const scopes = params.scopes ?? ['workflow:enableRedaction', 'workflow:disableRedaction'];
+				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] =
+					params.licensed ?? true;
+				projectsStore.personalProject = mock<Project>({ scopes });
+				const workflow = createTestWorkflow({
+					id: '1',
+					name: 'Test Workflow',
+					active: true,
+					scopes: ['workflow:update', ...scopes],
+				});
+				workflowsListStore.workflowsById = { '1': workflow };
+				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
+				workflowDocumentStore.setSettings({
+					redactionPolicy: params.redactionPolicy,
+					...(params.redactCallerExecutions !== undefined && {
+						redactCallerExecutions: params.redactCallerExecutions,
+					}),
+				});
+			};
+
+			it('is hidden when the workflow redacts no channel', async () => {
+				setUp({ redactionPolicy: 'none' });
+
+				const { queryByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(
+					queryByTestId('workflow-settings-redact-caller-executions-row'),
+				).not.toBeInTheDocument();
+			});
+
+			it('is on by default when the workflow redacts a channel', async () => {
+				setUp({ redactionPolicy: 'all' });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const toggle = getByTestId('workflow-settings-redact-caller-executions');
+				expect(toggle).toHaveAttribute('aria-checked', 'true');
+				expect(toggle).toBeEnabled();
+			});
+
+			it('saves redactCallerExecutions as false when the user turns it off', async () => {
+				setUp({ redactionPolicy: 'all' });
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				await userEvent.click(getByTestId('workflow-settings-redact-caller-executions'));
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({
+							redactionPolicy: 'all',
+							redactCallerExecutions: false,
+						}),
+					}),
+				);
+			});
+
+			it('is disabled when it is on and the user lacks the disableRedaction scope', async () => {
+				setUp({ redactionPolicy: 'all', scopes: ['workflow:enableRedaction'] });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(getByTestId('workflow-settings-redact-caller-executions')).toBeDisabled();
+			});
+
+			it('is disabled when it is off and the user lacks the enableRedaction scope', async () => {
+				setUp({
+					redactionPolicy: 'all',
+					redactCallerExecutions: false,
+					scopes: ['workflow:disableRedaction'],
+				});
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const toggle = getByTestId('workflow-settings-redact-caller-executions');
+				expect(toggle).toHaveAttribute('aria-checked', 'false');
+				expect(toggle).toBeDisabled();
+			});
+
+			it('is disabled without the data redaction license', async () => {
+				setUp({ redactionPolicy: 'all', licensed: false });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(getByTestId('workflow-settings-redact-caller-executions')).toBeDisabled();
+			});
+		});
+
 		describe('instance floor', () => {
 			const setUpFloor = (params: {
 				floor: 'off' | 'production' | 'all';
@@ -1864,12 +2116,10 @@ describe('WorkflowSettingsVue', () => {
 				// implies production (IAM-697), so the genuine, intended save is "all".
 				const manualSelect = getByTestId('workflow-settings-redact-manual-select');
 				await userEvent.click(within(manualSelect).getByRole('combobox'));
-				await waitFor(async () => {
-					const options = within(document.body as HTMLElement).getAllByRole('option');
-					const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
-					expect(redactOption).toBeTruthy();
-					await userEvent.click(redactOption!);
+				const redactOption = await within(document.body as HTMLElement).findByRole('option', {
+					name: 'Redact',
 				});
+				await userEvent.click(redactOption);
 				await flushPromises();
 
 				toast.showError.mockClear();

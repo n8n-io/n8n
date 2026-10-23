@@ -8,7 +8,8 @@ import type { IUpdateInformation } from '@/Interface';
 import CopyInput from '@/app/components/CopyInput.vue';
 import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { computed, reactive, useId } from 'vue';
+import { computed, useId } from 'vue';
+import CredentialOptionsInput from './CredentialOptionsInput.vue';
 
 import { N8nInput, N8nInputLabel, N8nNotice, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -19,17 +20,17 @@ type Props = {
 	showValidationWarnings?: boolean;
 	compact?: boolean;
 	credentialType?: string;
+	credentialId?: string;
+	n8nProjectId?: string;
+	isInstanceCredential?: boolean;
 };
 
 const props = defineProps<Props>();
 const i18n = useI18n();
 const inputId = useId();
-const touched = reactive(new Set<string>());
 function hasRequiredError(parameter: INodeProperties) {
 	return (
-		parameter.required &&
-		(touched.has(parameter.name) || props.showValidationWarnings) &&
-		!props.credentialData[parameter.name]
+		parameter.required && props.showValidationWarnings && !props.credentialData[parameter.name]
 	);
 }
 
@@ -69,6 +70,13 @@ function valueChanged(parameterData: IUpdateInformation) {
 		>
 			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
 			<N8nNotice v-if="parameter.type === 'notice'" :content="parameter.displayName" />
+			<CredentialOptionsInput
+				v-else-if="parameter.type === 'options' && parameter.typeOptions?.loadOptionsMethod"
+				v-bind="props"
+				:parameter="parameter"
+				:model-value="String(credentialDataValues[parameter.name] ?? '')"
+				@update:model-value="valueChanged({ name: parameter.name, value: $event })"
+			/>
 			<CopyInput
 				v-else-if="parameter.type === 'string' && parameter.typeOptions?.copyButton"
 				:label="parameter.displayName"
@@ -112,7 +120,6 @@ function valueChanged(parameterData: IUpdateInformation) {
 					:required="parameter.required"
 					:autocomplete="parameter.typeOptions?.password ? 'new-password' : 'off'"
 					size="small"
-					@blur="touched.add(parameter.name)"
 					@update:model-value="valueChanged({ name: parameter.name, value: $event })"
 				/>
 				<N8nText

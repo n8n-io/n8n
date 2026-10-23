@@ -57,10 +57,12 @@ function useSessionSelection(routeBacked: Readonly<Ref<boolean>>) {
 	const router = useRouter();
 	const activeChatSessionId = ref<string | null>(null);
 	const ephemeralSessionId = ref<string | null>(null);
+	const locallyMintedSessionId = ref<string | null>(null);
 	const { continueSessionId, pendingRouteSessionId } = useSessionRoute(
 		routeBacked,
 		activeChatSessionId,
 		ephemeralSessionId,
+		locallyMintedSessionId,
 	);
 	const effectiveSessionId = computed<string | undefined>(
 		() =>
@@ -72,10 +74,16 @@ function useSessionSelection(routeBacked: Readonly<Ref<boolean>>) {
 		() =>
 			ephemeralSessionId.value !== null && ephemeralSessionId.value === effectiveSessionId.value,
 	);
+	const currentSessionIsLocallyMinted = computed(
+		() =>
+			locallyMintedSessionId.value !== null &&
+			locallyMintedSessionId.value === effectiveSessionId.value,
+	);
 
 	function selectSession(id: string, ephemeral = id === ephemeralSessionId.value) {
 		activeChatSessionId.value = id;
 		ephemeralSessionId.value = ephemeral ? id : null;
+		locallyMintedSessionId.value = ephemeral ? id : null;
 		if (!routeBacked.value) return;
 		pendingRouteSessionId.value = id;
 		const query: LocationQueryRaw = { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id };
@@ -102,15 +110,21 @@ function useSessionSelection(routeBacked: Readonly<Ref<boolean>>) {
 		selectSession(crypto.randomUUID(), true);
 	}
 
+	function markSessionCreated(sessionId: string) {
+		if (ephemeralSessionId.value === sessionId) ephemeralSessionId.value = null;
+	}
+
 	return {
 		activeChatSessionId,
 		continueSessionId,
 		effectiveSessionId,
 		currentSessionIsEphemeral,
+		currentSessionIsLocallyMinted,
 		setSessionInUrl,
 		clearContinueSessionParam,
 		onSessionPick,
 		onNewChat,
+		markSessionCreated,
 	};
 }
 
@@ -118,6 +132,7 @@ function useSessionRoute(
 	routeBacked: Readonly<Ref<boolean>>,
 	activeChatSessionId: Ref<string | null>,
 	ephemeralSessionId: Ref<string | null>,
+	locallyMintedSessionId: Ref<string | null>,
 ) {
 	const route = useRoute();
 	const pendingRouteSessionId = ref<string | null>(null);
@@ -137,8 +152,9 @@ function useSessionRoute(
 				pendingRouteSessionId.value = null;
 				return;
 			}
-			if (routeSessionId && routeSessionId !== ephemeralSessionId.value) {
+			if (routeSessionId && routeSessionId !== locallyMintedSessionId.value) {
 				ephemeralSessionId.value = null;
+				locallyMintedSessionId.value = null;
 			}
 			if (pendingRouteSessionId.value !== null) {
 				// Setting the pending id does not trigger this watcher. Any later
@@ -155,9 +171,11 @@ function useSessionRoute(
 		if (sessionId === null) {
 			pendingRouteSessionId.value = null;
 			ephemeralSessionId.value = null;
+			locallyMintedSessionId.value = null;
 		} else {
-			if (ephemeralSessionId.value !== null && sessionId !== ephemeralSessionId.value) {
+			if (locallyMintedSessionId.value !== null && sessionId !== locallyMintedSessionId.value) {
 				ephemeralSessionId.value = null;
+				locallyMintedSessionId.value = null;
 			}
 			if (routeBacked.value && sessionId !== continueSessionId.value) {
 				pendingRouteSessionId.value = sessionId;

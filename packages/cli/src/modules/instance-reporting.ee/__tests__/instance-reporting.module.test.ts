@@ -8,8 +8,10 @@ import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { License } from '@/license';
+
 import { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
-import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
+import { InstanceReportingTask } from '../instance-reporting.task';
 import { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { InstanceReportingConfig } from '../instance-reporting.config';
 import { InstanceReportingModule } from '../instance-reporting.module';
@@ -24,12 +26,19 @@ const LAST_DELIVERY = new Date('2026-03-25T07:42:13.000Z');
 
 function setUpContainer({
 	baseUrl = 'https://example.com',
+	licenseCert = 'base64-license-cert',
+	authToken = '',
 	disabledModules = [] as ModuleName[],
 	lastDelivery = LAST_DELIVERY as Date | null,
 } = {}) {
 	const config = new InstanceReportingConfig();
 	config.instanceReportingBaseUrl = baseUrl;
+	config.instanceReportingAuthToken = authToken;
 	Container.set(InstanceReportingConfig, config);
+
+	const license = mock<License>();
+	license.loadCertStr.mockResolvedValue(licenseCert);
+	Container.set(License, license);
 
 	Container.set(ModulesConfig, mock<ModulesConfig>({ disabledModules }));
 	Container.set(Logger, mockLogger());
@@ -42,10 +51,7 @@ function setUpContainer({
 	reportRepository.findLastDeliveryTime.mockResolvedValue(lastDelivery);
 	Container.set(InstanceMonitoringReportRepository, reportRepository);
 
-	const scheduler = mock<InstanceReportingScheduler>();
-	Container.set(InstanceReportingScheduler, scheduler);
-
-	return { settingsService, reportRepository, scheduler };
+	return { settingsService, reportRepository };
 }
 
 describe('InstanceReportingModule', () => {
@@ -67,29 +73,59 @@ describe('InstanceReportingModule', () => {
 			expect(settingsService.getReportTime).not.toHaveBeenCalled();
 			expect(reportRepository.findLastDeliveryTime).not.toHaveBeenCalled();
 		});
+
+		// The certificate is the credential, so without one nothing would ever be
+		// accepted and no report time is claimed.
+		it('reports as disabled without a license certificate', async () => {
+			const { settingsService } = setUpContainer({ licenseCert: '' });
+
+			const settings = await new InstanceReportingModule().settings();
+
+			expect(settings).toEqual({ enabled: false });
+			expect(settingsService.getReportTime).not.toHaveBeenCalled();
+		});
+
+		// A token is a credential on its own, so the certificate is not needed.
+		it('reports as enabled with an auth token but no license certificate', async () => {
+			setUpContainer({ licenseCert: '', authToken: 'secret-token' });
+
+			const settings = await new InstanceReportingModule().settings();
+
+			expect(settings).toEqual({ enabled: true, reportTime: REPORT_TIME });
+		});
+	});
+
+	describe('systemTasks()', () => {
+		it('returns the reporting task', async () => {
+			setUpContainer();
+
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([InstanceReportingTask]);
+		});
+
+		it('returns no task when no receiver is configured', async () => {
+			setUpContainer({ baseUrl: '' });
+
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([]);
+		});
+
+		it('returns no task when the instance has no license certificate', async () => {
+			setUpContainer({ licenseCert: '' });
+
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([]);
+		});
+
+		it('returns the task with an auth token but no license certificate', async () => {
+			setUpContainer({ licenseCert: '', authToken: 'secret-token' });
+
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([InstanceReportingTask]);
+		});
 	});
 
 	describe('init()', () => {
-		it('starts the scheduler', async () => {
-			const { scheduler } = setUpContainer();
-
-			await new InstanceReportingModule().init();
-
-			expect(scheduler.init).toHaveBeenCalled();
-		});
-
 		it('fails when the insights module is disabled', async () => {
 			setUpContainer({ disabledModules: ['insights'] });
 
 			await expect(new InstanceReportingModule().init()).rejects.toThrow(UserError);
-		});
-
-		it('leaves the scheduler alone when no receiver is configured', async () => {
-			const { scheduler } = setUpContainer({ baseUrl: '' });
-
-			await new InstanceReportingModule().init();
-
-			expect(scheduler.init).not.toHaveBeenCalled();
 		});
 
 		// The route belongs to the loaded module, not to the receiver, so a client

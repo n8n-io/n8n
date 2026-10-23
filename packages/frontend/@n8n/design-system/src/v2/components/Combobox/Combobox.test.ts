@@ -22,6 +22,7 @@ vi.mock('@n8n/design-system/composables/useI18n', () => ({
 	useI18n: () => ({
 		t: (key: string, options?: Record<string, string>) => {
 			const translations = new Map([
+				['combobox.loading', 'Searching'],
 				['combobox.clearSelection', 'Clear selection'],
 				['combobox.showPopup', 'Show popup'],
 				['combobox.placeholder', 'Select an option'],
@@ -543,6 +544,18 @@ describe('v2/components/Combobox', () => {
 			expect(groupElements[1]).not.toHaveAttribute('hidden');
 		});
 
+		it('should emit update:searchTerm as the user types', async () => {
+			const wrapper = render(Combobox, {
+				props: { items: options('Apple', 'Banana'), defaultOpen: true },
+			});
+
+			await userEvent.type(getComboboxInput(wrapper), 'ap');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:searchTerm')?.at(-1)).toEqual(['ap']);
+			});
+		});
+
 		it('should not filter items when ignoreFilter is true', async () => {
 			const items: ComboboxItem[] = [
 				{ value: 'apple', label: 'Apple' },
@@ -607,6 +620,45 @@ describe('v2/components/Combobox', () => {
 			} else {
 				expect(clearButton).not.toBeInTheDocument();
 			}
+		});
+
+		it('should replace the clear button and popup button with a spinner while loading', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1'),
+					modelValue: 'Option 1',
+					clearable: true,
+					loading: true,
+				},
+			});
+
+			expect(wrapper.getByRole('status', { name: 'Searching' })).toBeVisible();
+			expect(wrapper.getByTestId('combobox')).toHaveAttribute('aria-busy', 'true');
+			expect(wrapper.queryByRole('button', { name: 'Clear selection' })).not.toBeInTheDocument();
+			expect(wrapper.queryByRole('button', { name: 'Show popup' })).not.toBeInTheDocument();
+		});
+
+		it('should show the spinner inside the tags field while a multiple combobox is loading', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1', 'Option 2'),
+					modelValue: ['Option 1'],
+					multiple: true,
+					clearable: true,
+					loading: true,
+				},
+			});
+
+			const status = wrapper.getByRole('status', { name: 'Searching' });
+			const tag = wrapper.getByTestId('tags-input-tag');
+			const tags = tag.parentElement;
+
+			expect(status).toBeVisible();
+			expect(tags?.parentElement).toContainElement(status);
+			expect(tags).not.toContainElement(status);
+			expect(wrapper.getByTestId('combobox')).toHaveAttribute('aria-busy', 'true');
+			expect(wrapper.queryByRole('button', { name: 'Clear selection' })).not.toBeInTheDocument();
+			expect(wrapper.queryByRole('button', { name: 'Show popup' })).not.toBeInTheDocument();
 		});
 
 		it('should emit undefined when clear button is clicked', async () => {
@@ -948,6 +1000,26 @@ describe('v2/components/Combobox', () => {
 	});
 
 	describe('events', () => {
+		it.each([
+			['single', false],
+			['multiple', true],
+		])('should focus the input when focusOnInput is called in %s mode', async (_mode, multiple) => {
+			const comboboxRef = ref<{ focusOnInput: () => void } | null>(null);
+			const items = options('Option 1', 'Option 2');
+			const wrapper = render({
+				components: { Combobox },
+				setup() {
+					return { items, comboboxRef, multiple };
+				},
+				template: '<Combobox ref="comboboxRef" :items="items" :multiple="multiple" />',
+			});
+
+			await nextTick();
+			comboboxRef.value?.focusOnInput();
+
+			expect(getComboboxInput(wrapper)).toHaveFocus();
+		});
+
 		it('should open on focus, close after selection, and emit update:open', async () => {
 			const wrapper = render(Combobox, {
 				props: {

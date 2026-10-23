@@ -13,7 +13,6 @@ export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
-export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const WORKFLOW_HISTORY_VERSION_UNPUBLISH = 'workflowHistoryVersionUnpublish';
 export const WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY = 'workflowHistoryNameVersion';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';

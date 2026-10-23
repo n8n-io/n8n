@@ -1,16 +1,29 @@
 <script setup lang="ts">
-import { computed, onMounted, provide, ref, watch } from 'vue';
+import {
+	computed,
+	effectScope,
+	onBeforeUnmount,
+	onMounted,
+	provide,
+	ref,
+	shallowRef,
+	watch,
+} from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES } from '@n8n/api-types';
+import {
+	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
+	type McpRegistryServerResponse,
+} from '@n8n/api-types';
 import {
 	NodeConnectionTypes,
 	isCommunityPackageName,
 	resolveSupportedCredentialActivation,
 } from 'n8n-workflow';
-import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
 
 import { getWorkflow } from '@/app/api/workflows';
@@ -32,17 +45,29 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
+	listenForCredentialChanges,
+	useCredentialsStore,
+} from '@/features/credentials/credentials.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import {
 	filterAndSearchNodes,
+	getNodeItemRestriction,
 	isAiGatewayEligibleNode,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
+import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import {
 	hasToolConnection,
+	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	TOOL_CONNECTION_CREDITS_LABEL_KEY,
+	type McpServerConnectionItem,
+	type McpServerTool,
 	type NodeConnectionItem,
 	type ToolCategoryKey,
 	type ToolConnectionItem,
@@ -50,7 +75,6 @@ import {
 	type WorkflowConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 
-import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	getExistingToolNames,
 	nodeTypeToNewToolRef,
@@ -64,15 +88,29 @@ import {
 } from '../composables/useAgentToolCatalog';
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import {
+	defaultAgentMcpToolPermissions,
 	isMcpRelatedNodeType,
+	isMcpRegistryNodeType,
 	mcpServerToNode,
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
-import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
+import {
+	isAiGatewayMcpEntry,
+	toMcpEntryAuth,
+	toMcpRegistryCredentialRefs,
+} from '../utils/mcpRegistryCredentialRefs';
+import { useAgentMcpDiscovery } from '../composables/useAgentMcpDiscovery';
+import {
+	DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS,
+	type AgentRegistryMcpDraft,
+} from '../composables/useAgentRegistryMcpConfig';
 import type { ToolPickerMode } from './AgentCapabilitiesSection.types';
-import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
-import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
+import AgentToolConfigContent, { type AgentToolConfigData } from './AgentToolConfigContent.vue';
+import AgentToolConfigCredentialPicker from './AgentToolConfigCredentialPicker.vue';
+import AgentToolConfigTitleIcon from './AgentToolConfigTitleIcon.vue';
+import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
 const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'app-action', 'workflows'];
 /** Prefix for the synthetic ids of gateway-backed rows in the n8n Connect section. */
@@ -93,7 +131,7 @@ const props = defineProps<{
 		mode: ToolPickerMode;
 		tools: AgentJsonToolRef[];
 		mcpServers?: AgentJsonMcpServerConfig[];
-		projectId?: string;
+		projectId: string;
 		agentId?: string;
 		supportsToolApproval?: boolean;
 		onConfirm: (payload: {
@@ -117,18 +155,19 @@ provide(
 );
 const router = useRouter();
 const toast = useToast();
+const credentialsStore = useCredentialsStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
-const {
-	availableToolTypes,
-	availableWorkflows,
-	incompatibleWorkflows,
-	loadWorkflows,
-	resolveToolNodeType,
-} = useAgentToolCatalog();
+const { createCredentialAdapter, fetchCatalog, preloadCredentials } = useAgentMcpDiscovery(
+	() => props.data.projectId,
+);
+const { availableToolTypes, availableWorkflows, loadWorkflows, resolveToolNodeType } =
+	useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
+const { warnIfRestricted } = useRestrictedNodeWarning();
 const usersStore = useUsersStore();
 
 const searchQuery = ref('');
@@ -201,30 +240,94 @@ watch(
 
 const workingTools = computed(() => workingToolEntries.value.map(({ ref }) => ref));
 const workingMcpServers = computed(() => workingMcpServerEntries.value.map(({ server }) => server));
+const configData = shallowRef<AgentToolConfigData | null>(null);
+const configContent = ref<InstanceType<typeof AgentToolConfigContent> | null>(null);
+const configTitle = ref('');
+const configSession = ref(0);
+const mcpCatalog = ref<McpRegistryServerResponse[]>([]);
+const credentialPicker = ref<InstanceType<typeof AgentToolConfigCredentialPicker> | null>(null);
+const configIsRestricted = ref(false);
 
-const isConfigModalOpen = computed(
-	() => uiStore.modalsById[AGENT_TOOL_CONFIG_MODAL_KEY]?.open === true,
+const isCredentialModalOpen = computed(
+	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open === true,
 );
 
-/**
- * The two dialogs are sequential rather than stacked: connecting a tool hands
- * over to the config modal, and this one steps aside. It stays open in the
- * store rather than closing, so cancelling the config brings the list back with
- * its search and scroll position intact.
- */
 const isOpen = computed({
-	get: () => uiStore.modalsById[props.modalName]?.open === true && !isConfigModalOpen.value,
+	get: () => uiStore.modalsById[props.modalName]?.open === true,
 	set: (value: boolean) => {
-		if (!value) uiStore.closeModal(props.modalName);
+		if (!value) closeModal();
 	},
 });
 
-function openConfigModal(data: Record<string, unknown>) {
-	uiStore.openModalWithData({ name: AGENT_TOOL_CONFIG_MODAL_KEY, data });
+const currentStep = computed(() => (configData.value ? 'configure' : 'select'));
+const pickerTitle = computed(() =>
+	isWorkflow.value ? i18n.baseText('workflows.add') : i18n.baseText('agents.builder.tools.add'),
+);
+const modalTitle = computed(() => (configData.value ? configTitle.value : pickerTitle.value));
+const configIsCustom = computed(
+	() =>
+		configData.value?.kind !== 'mcpServer' &&
+		configData.value?.kind !== 'registryMcpServer' &&
+		configData.value?.toolRef.type === 'custom',
+);
+const saveDisabled = computed(
+	() =>
+		isCredentialModalOpen.value ||
+		configIsRestricted.value ||
+		(configData.value?.kind === 'registryMcpServer' && (configContent.value?.saveDisabled ?? true)),
+);
+
+function initialConfigTitle(data: AgentToolConfigData): string {
+	if (data.kind === 'mcpServer' || data.kind === 'registryMcpServer') return data.mcpServer.name;
+	if (data.toolRef.type === 'custom') {
+		return data.customTool?.descriptor.name ?? data.toolRef.id;
+	}
+	return data.toolRef.name ?? '';
+}
+
+function openConfigModal(data: AgentToolConfigData) {
+	// Only some forms report a restriction, so clear the previous tool's state.
+	configIsRestricted.value = false;
+	configData.value = data;
+	configTitle.value = initialConfigTitle(data);
+	configSession.value += 1;
+}
+
+function closeModal() {
+	uiStore.closeModal(props.modalName);
+	configData.value = null;
+	configIsRestricted.value = false;
+}
+
+function backToPicker() {
+	configData.value = null;
+	configIsRestricted.value = false;
+	configTitle.value = '';
+}
+
+function updateConfigTitle(value: string) {
+	configTitle.value = value;
+	configContent.value?.changeTitle(value);
+}
+
+function saveConfig() {
+	if (configContent.value?.confirm()) closeModal();
+}
+
+async function removeConfig() {
+	if (await configContent.value?.remove()) closeModal();
+}
+
+function handleInteractOutside(event: Event) {
+	if (isCredentialModalOpen.value) event.preventDefault();
 }
 
 onMounted(() => {
 	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
+	if (!isWorkflow.value) {
+		void loadRegistryCatalog();
+		void preloadCredentials();
+	}
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Config gates which tools are eligible for the n8n Connect section; the
@@ -237,19 +340,22 @@ onMounted(() => {
 	}
 });
 
-function hasRequiredCredentials(nodeType: INodeTypeDescription): boolean {
-	return (nodeType.credentials ?? []).some((credential) => credential.required !== false);
-}
+const credentialListeners = effectScope(true);
+credentialListeners.run(() => {
+	listenForCredentialChanges({
+		store: credentialsStore,
+		onCredentialDeleted: handleCredentialDeleted,
+	});
+});
+onBeforeUnmount(() => credentialListeners.stop());
 
-function isConfigurableParameter(parameter: INodeProperties): boolean {
-	return parameter.type !== 'notice' && parameter.type !== 'hidden';
-}
-
-function needsSetup(nodeType: INodeTypeDescription): boolean {
-	return (
-		hasRequiredCredentials(nodeType) || (nodeType.properties ?? []).some(isConfigurableParameter)
-	);
-}
+watch(
+	() => props.data.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
 
 function makeUniqueName(
 	baseName: string,
@@ -289,13 +395,11 @@ function commit() {
 }
 
 function addToolRef(savedRef: AgentJsonToolRef) {
+	// The policy can finish loading while the config form is open.
+	if (savedRef.type === 'node' && warnIfRestricted(savedRef.node.nodeType)) return;
+
 	workingToolEntries.value = [...workingToolEntries.value, { localId: uuidv4(), ref: savedRef }];
 	commit();
-	uiStore.closeModal(props.modalName);
-	toast.showMessage({
-		title: i18n.baseText('agents.tools.added'),
-		type: 'success',
-	});
 }
 
 function addMcpServer(savedServer: AgentJsonMcpServerConfig) {
@@ -304,11 +408,6 @@ function addMcpServer(savedServer: AgentJsonMcpServerConfig) {
 		{ localId: uuidv4(), server: savedServer },
 	];
 	commit();
-	uiStore.closeModal(props.modalName);
-	toast.showMessage({
-		title: i18n.baseText('agents.tools.mcp.added'),
-		type: 'success',
-	});
 }
 
 function openConfigForNewRef(newRef: AgentJsonToolRef) {
@@ -343,7 +442,7 @@ function openConfigForNewMcpServer(
 }
 
 function handleAddMcpServer(nodeType: INodeTypeDescription) {
-	const newServer = nodeTypeToNewMcpServer(nodeType);
+	const newServer = nodeTypeToNewMcpServer(nodeType, props.data.supportsToolApproval !== false);
 	newServer.name = makeUniqueName(
 		newServer.name,
 		getExistingMcpServerNames(workingMcpServers.value),
@@ -380,6 +479,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			type: 'verified',
 			packageName: communityPackageNameFor(nodeType),
 			nodeType: stripToolSuffix(nodeType.name),
+			selectedNodeType: nodeType.name,
 			telemetry: { source: 'agent builder tools', hasQuickConnect: false },
 		});
 		if (!result.success) return;
@@ -393,6 +493,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
+		if (result.restricted) return;
 		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;
@@ -400,10 +501,13 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 }
 
 async function handleAddTool(nodeType: INodeTypeDescription) {
-	if (isMcpRelatedNodeType(nodeType.name)) {
+	if (getNodeItemRestriction(nodeType.name)) return;
+
+	if (isMcpRelatedNodeType(nodeType.name) && !isMcpRegistryNodeType(nodeType.name)) {
 		handleAddMcpServer(nodeType);
 		return;
 	}
+	if (isMcpRegistryNodeType(nodeType.name)) return;
 
 	if (isCommunityPreviewTool(nodeType)) {
 		await installAndAddCommunityPreview(nodeType);
@@ -416,14 +520,8 @@ async function handleAddTool(nodeType: INodeTypeDescription) {
 function addNodeTool(nodeType: INodeTypeDescription) {
 	toolTelemetry.trackAddStarted('node');
 	const newRef = nodeTypeToNewToolRef(nodeType);
-
-	if (needsSetup(nodeType)) {
-		openConfigForNewRef(newRef);
-		return;
-	}
-
 	if (newRef.type === 'node') {
-		addToolRef({
+		openConfigForNewRef({
 			...newRef,
 			name: makeUniqueName(
 				newRef.name ?? nodeType.displayName,
@@ -431,7 +529,7 @@ function addNodeTool(nodeType: INodeTypeDescription) {
 			),
 		});
 	} else {
-		addToolRef({
+		openConfigForNewRef({
 			...newRef,
 		});
 	}
@@ -443,6 +541,8 @@ function addNodeTool(nodeType: INodeTypeDescription) {
  * the n8n Connect managed credential is pre-selected, so no credential setup.
  */
 function addManagedNodeTool(nodeType: INodeTypeDescription) {
+	if (getNodeItemRestriction(nodeType.name)) return;
+
 	toolTelemetry.trackAddStarted('node');
 	const newRef = nodeTypeToNewToolRef(nodeType);
 
@@ -551,7 +651,6 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 			);
 			toolTelemetry.trackEdited(updatedRef);
 			commit();
-			uiStore.closeModal(props.modalName);
 		},
 		onRemove: () => {
 			workingToolEntries.value = workingToolEntries.value.filter(
@@ -563,6 +662,11 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 }
 
 function openConfigForMcpEntry(entry: WorkingMcpServerEntry) {
+	if (entry.server.metadata?.nodeTypeName) {
+		openConfigForRegistryEntry(entry);
+		return;
+	}
+
 	const nodeType = resolveMcpNodeType(entry.server);
 	if (!nodeType) return;
 
@@ -579,11 +683,32 @@ function openConfigForMcpEntry(entry: WorkingMcpServerEntry) {
 				e.localId === entry.localId ? { ...e, server: updatedServer } : e,
 			);
 			commit();
-			uiStore.closeModal(props.modalName);
 		},
 		onRemove: () => {
 			workingMcpServerEntries.value = workingMcpServerEntries.value.filter(
 				(e) => e.localId !== entry.localId,
+			);
+			commit();
+		},
+	});
+}
+
+function openConfigForRegistryEntry(entry: WorkingMcpServerEntry) {
+	openConfigModal({
+		kind: 'registryMcpServer',
+		mcpServer: entry.server,
+		projectId: props.data.projectId,
+		supportsToolApproval: props.data.supportsToolApproval,
+		existingToolNames: getExistingMcpServerNames(workingMcpServers.value, entry.server),
+		onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+			workingMcpServerEntries.value = workingMcpServerEntries.value.map((candidate) =>
+				candidate.localId === entry.localId ? { ...candidate, server: updatedServer } : candidate,
+			);
+			commit();
+		},
+		onRemove: () => {
+			workingMcpServerEntries.value = workingMcpServerEntries.value.filter(
+				(candidate) => candidate.localId !== entry.localId,
 			);
 			commit();
 		},
@@ -604,21 +729,6 @@ function credentialSubtitle(node: INode): string | undefined {
 
 function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 	const { localId, ref } = entry;
-	if (ref.type === 'workflow') {
-		const workflowRef = ref as WorkflowToolRef;
-		const item: WorkflowConnectionItem = {
-			id: `tool:${localId}`,
-			kind: 'workflow',
-			category: 'workflows',
-			workflowId: workflowRef.workflowId ?? workflowRef.workflow,
-			title: workflowRef.name ?? workflowRef.workflow,
-			description: workflowRef.description,
-			status: 'connected',
-			credentials: [],
-		};
-		return item;
-	}
-
 	if (ref.type !== 'node') return null;
 
 	const node = toolRefToNode(ref);
@@ -638,11 +748,57 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 	return item;
 }
 
 function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | null {
+	const registryNodeTypeName = entry.server.metadata?.nodeTypeName;
+	if (registryNodeTypeName) {
+		const registryServer = mcpCatalog.value.find(
+			(server) => server.nodeTypeName === registryNodeTypeName,
+		);
+
+		const status = entry.server.credential ? 'connected' : 'disconnected';
+		const item: McpServerConnectionItem = {
+			id: `mcp:${entry.localId}`,
+			kind: 'mcp-server',
+			category: 'mcp',
+			title: entry.server.name,
+			description: registryServer?.tagline ?? entry.server.description,
+			longDescription: registryServer?.description ?? entry.server.description,
+			status,
+			...(status === 'disconnected'
+				? {
+						connectionFailureReason: 'authentication' as const,
+					}
+				: {}),
+			iconSource: registryServer
+				? iconForMcpRegistryServer(registryServer.icons, uiStore.appliedTheme)
+				: { type: 'icon', name: 'mcp' },
+			credentials: registryServer
+				? toMcpRegistryCredentialRefs(registryServer, entry.server)
+				: [
+						{
+							authType: entry.server.authentication,
+							credentialId: entry.server.credential,
+							required: true,
+						},
+					],
+			availableTools: registryServer?.tools.map(toMcpServerTool) ?? [],
+			isOfficial: registryServer?.isOfficial,
+			freeCredits: isAiGatewayMcpEntry(entry.server),
+			settings: entry.server.toolPermissions,
+			publisher:
+				registryServer && (registryServer.isOfficial || registryServer.websiteUrl)
+					? { name: registryServer.title, url: registryServer.websiteUrl }
+					: undefined,
+			version: registryServer?.version,
+		};
+		return item;
+	}
+
 	const nodeType = resolveMcpNodeType(entry.server);
 	if (!nodeType) return null;
 	const node = mcpServerToNode(entry.server, nodeType);
@@ -657,8 +813,160 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 	return item;
+}
+
+function toMcpServerTool(tool: {
+	name: string;
+	description?: string;
+	category?: 'read' | 'write';
+}): McpServerTool {
+	return {
+		id: tool.name,
+		name: tool.name,
+		...(tool.description ? { description: tool.description } : {}),
+		...(tool.category ? { category: tool.category } : {}),
+	};
+}
+
+function availableRegistryItem(server: McpRegistryServerResponse): McpServerConnectionItem {
+	const credentials = toMcpRegistryCredentialRefs(server);
+	return {
+		id: `registry:${server.slug}`,
+		kind: 'mcp-server',
+		category: 'mcp',
+		title: server.title,
+		description: server.tagline,
+		longDescription: server.description,
+		status: 'none',
+		iconSource: iconForMcpRegistryServer(server.icons, uiStore.appliedTheme),
+		credentials,
+		availableTools: server.tools.map(toMcpServerTool),
+		isOfficial: server.isOfficial,
+		freeCredits: credentials.some(({ aiGateway }) => aiGateway),
+		publisher:
+			server.isOfficial || server.websiteUrl
+				? { name: server.title, url: server.websiteUrl }
+				: undefined,
+		version: server.version,
+	};
+}
+
+function registryServerForItem(
+	item: McpServerConnectionItem,
+): McpRegistryServerResponse | undefined {
+	if (item.id.startsWith('registry:')) {
+		const slug = item.id.slice('registry:'.length);
+		return mcpCatalog.value.find((server) => server.slug === slug);
+	}
+	const nodeTypeName = mcpEntryForItem(item)?.server.metadata?.nodeTypeName;
+	return mcpCatalog.value.find((server) => server.nodeTypeName === nodeTypeName);
+}
+
+function mcpEntryForItem(item: McpServerConnectionItem): WorkingMcpServerEntry | undefined {
+	if (!item.id.startsWith('mcp:')) return undefined;
+	const localId = item.id.slice('mcp:'.length);
+	return workingMcpServerEntries.value.find((entry) => entry.localId === localId);
+}
+
+function isRegistryItem(item: ToolConnectionItem): item is McpServerConnectionItem {
+	if (item.kind !== 'mcp-server') return false;
+	if (item.id.startsWith('registry:')) return true;
+	return mcpEntryForItem(item)?.server.metadata?.nodeTypeName !== undefined;
+}
+
+function connectRegistryItem(
+	item: McpServerConnectionItem,
+	credentialId: string,
+	authType: string,
+) {
+	const registryServer = registryServerForItem(item);
+	if (!registryServer) return;
+	const auth = toMcpEntryAuth(authType, credentialId);
+
+	const existingEntry = mcpEntryForItem(item);
+	if (existingEntry) {
+		openConfigForRegistryEntry({
+			...existingEntry,
+			server: { ...existingEntry.server, ...auth },
+		});
+		return;
+	}
+
+	const draft: AgentRegistryMcpDraft = {
+		name: makeUniqueName(
+			registryServer.title,
+			getExistingMcpServerNames(workingMcpServers.value),
+			(name, counter) => `${name}-${counter}`,
+		),
+		description: registryServer.description,
+		...auth,
+		metadata: { nodeTypeName: registryServer.nodeTypeName },
+		toolPermissions: defaultAgentMcpToolPermissions(props.data.supportsToolApproval !== false),
+		connectionTimeoutMs: DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS,
+	};
+	openConfigModal({
+		kind: 'registryMcpServer',
+		mcpServer: draft,
+		projectId: props.data.projectId,
+		isNew: true,
+		supportsToolApproval: props.data.supportsToolApproval,
+		existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
+		onConfirm: addMcpServer,
+	});
+}
+
+async function loadRegistryCatalog() {
+	try {
+		mcpCatalog.value = await fetchCatalog();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.unknownError'));
+	}
+}
+
+const credentialAdapter = createCredentialAdapter(
+	registryServerForItem,
+	({ authType, credentialId, item }) => {
+		void connectRegistryItem(item, credentialId, authType);
+	},
+);
+provide(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, credentialAdapter);
+
+function handleCredentialDeleted(credentialId: string) {
+	if (configData.value?.kind === 'registryMcpServer') return;
+	const removedEntries = workingMcpServerEntries.value.filter(
+		({ server }) => server.metadata?.nodeTypeName && server.credential === credentialId,
+	);
+	if (removedEntries.length === 0) return;
+	workingMcpServerEntries.value = workingMcpServerEntries.value.filter(
+		({ server }) => !server.metadata?.nodeTypeName || server.credential !== credentialId,
+	);
+	commit();
+}
+
+function handleSelectRegistryCredential(
+	item: ToolConnectionItem,
+	authType: string,
+	credentialId: string,
+) {
+	if (!isRegistryItem(item)) return;
+	connectRegistryItem(item, credentialId, authType);
+}
+
+function handleConnectRegistryItem(item: ToolConnectionItem) {
+	if (!isRegistryItem(item)) {
+		handleRowActivate(item);
+		return;
+	}
+	const credential = item.credentials?.[0];
+	if (!credential) return;
+	credentialAdapter.openNewCredential(
+		credential.authType,
+		item,
+		item.credentials?.map(({ authType }) => authType),
+	);
 }
 
 function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
@@ -678,6 +986,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		communityPreview,
 		installing: installingToolName.value === nodeType.name,
 		installDisabled: communityPreview && !usersStore.isAdminOrOwner,
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 }
 
@@ -703,42 +1012,9 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
-		// An unpublished workflow stays selectable; the warning tells the user the
-		// published agent cannot call it until they publish it.
-		warning:
-			workflow.activeVersionId === null
-				? i18n.baseText('agents.tools.workflow.notPublished')
-				: undefined,
 		status: 'none',
 		credentials: [],
 	};
-}
-
-function disabledWorkflowItem(
-	workflow: IWorkflowDb,
-	reason: WorkflowToolIncompatibilityReason,
-): WorkflowConnectionItem {
-	return {
-		id: `workflow-disabled:${workflow.id}`,
-		kind: 'workflow',
-		category: 'workflows',
-		workflowId: workflow.id,
-		title: workflow.name,
-		description: workflow.description ?? undefined,
-		status: 'none',
-		credentials: [],
-		disabled: true,
-		disabledReason: disabledWorkflowReasonText(reason),
-	};
-}
-
-function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): string {
-	if (reason.reason === 'incompatible_nodes') {
-		return i18n.baseText('agents.tools.workflow.disabled.incompatibleNodes');
-	}
-	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger', {
-		interpolate: { trigger: workflowToolTriggerLabel() },
-	});
 }
 
 /**
@@ -790,41 +1066,67 @@ const categories = computed<ToolCategoryKey[]>(() => {
 
 const items = computed<ToolConnectionItem[]>(() => {
 	if (isWorkflow.value) {
-		return [
-			...availableWorkflows.value.map(availableWorkflowItem),
-			...incompatibleWorkflows.value.map(({ workflow, reason }) =>
-				disabledWorkflowItem(workflow, reason),
-			),
-		];
+		return availableWorkflows.value.map(availableWorkflowItem);
 	}
 
 	const out: ToolConnectionItem[] = [];
+	const mcpClientNodeType = availableToolTypes.value.find(
+		(nodeType) => nodeType.name === AI_MCP_TOOL_NODE_TYPE,
+	);
 
 	for (const item of n8nConnectItems.value) {
 		out.push(item);
 	}
+	const configuredRegistryNodeTypes = new Set(
+		workingMcpServerEntries.value.flatMap(({ server }) =>
+			server.metadata?.nodeTypeName ? [server.metadata.nodeTypeName] : [],
+		),
+	);
 	for (const entry of workingMcpServerEntries.value) {
 		const item = connectedMcpItem(entry);
 		if (item) out.push(item);
+	}
+	if (mcpClientNodeType) {
+		out.push(availableNodeItem(mcpClientNodeType));
+	}
+	for (const server of mcpCatalog.value) {
+		if (!configuredRegistryNodeTypes.has(server.nodeTypeName)) {
+			out.push(availableRegistryItem(server));
+		}
 	}
 	for (const entry of workingToolEntries.value) {
 		const item = connectedToolItem(entry);
 		if (item) out.push(item);
 	}
 	for (const nodeType of availableToolTypes.value) {
+		if (nodeType.name === AI_MCP_TOOL_NODE_TYPE || isMcpRegistryNodeType(nodeType.name)) continue;
 		out.push(availableNodeItem(nodeType));
 	}
 	for (const nodeType of communitySearchToolTypes.value) {
+		if (isMcpRegistryNodeType(nodeType.name)) continue;
 		out.push(availableNodeItem(nodeType));
 	}
 	return out;
 });
 
+function addActionLabel(item: ToolConnectionItem): string {
+	if (item.kind === 'mcp-server') return i18n.baseText('tools.connection.action.connect');
+	return i18n.baseText('tools.connection.action.setup');
+}
+
+function openRegistryCredentialPicker() {
+	credentialPicker.value?.open();
+}
+
+function handleOpenDetail(item: ToolConnectionItem) {
+	handleRowActivate(item);
+}
+
 function handleRowActivate(item: ToolConnectionItem) {
-	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
-	// the row's own tooltip already explains why, so activating does nothing.
 	if (item.disabled) return;
 	if (item.status === 'connecting') return;
+	const isRestricted = item.kind === 'node' && Boolean(item.restriction);
+	if (isRestricted && !hasToolConnection(item.status)) return;
 	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {
 			const localId = item.id.slice('mcp:'.length);
@@ -842,7 +1144,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 			// n8n Connect managed tool must keep its managed-credential
 			// preselection, so route it through the same managed add path.
 			const { ref } = entry;
-			if (ref.type === 'node') {
+			if (ref.type === 'node' && !isRestricted) {
 				const nodeType =
 					[...availableToolTypes.value, ...communitySearchToolTypes.value].find(
 						(nt) => nt.name === ref.node.nodeType,
@@ -889,28 +1191,112 @@ function handleRowActivate(item: ToolConnectionItem) {
 </script>
 
 <template>
-	<ToolsConnectionModal
-		v-model:open="isOpen"
-		:items="items"
-		:categories="categories"
-		:title="isWorkflow ? i18n.baseText('generic.workflows') : undefined"
-		:searchPlaceholder="
-			isWorkflow ? i18n.baseText('agents.tools.workflow.search.placeholder') : undefined
-		"
-		size="2xlarge"
-		:detail-item="null"
-		:allowWorkflowCreation="isWorkflow && canCreateWorkflow"
-		:workflowCreationLoading="isCreatingWorkflow"
-		@update:search-query="searchQuery = $event"
-		@connect="handleRowActivate"
-		@open-detail="handleRowActivate"
-		@create-workflow="handleCreateWorkflow"
+	<AgentModalMultiStep
+		:open="isOpen"
+		:step="currentStep"
+		:title="modalTitle"
+		:title-error="configContent?.titleError"
+		:editable-title="Boolean(configData) && !configIsCustom && !configIsRestricted"
+		stable-height
+		:show-back="Boolean(configData)"
+		:show-footer="Boolean(configData)"
+		:busy="isCredentialModalOpen || isCreatingWorkflow"
+		:trap-focus="!isCredentialModalOpen"
+		:disable-outside-pointer-events="!isCredentialModalOpen"
+		data-testid="agent-tools-connection-modal"
+		@interact-outside="handleInteractOutside"
+		@update:open="isOpen = $event"
+		@update:title="updateConfigTitle"
+		@back="backToPicker"
 	>
-		<template #suggestion-footer>
-			<McpRegistrySuggestionFooter
-				:prompt="i18n.baseText('agents.tools.suggestion.prompt')"
-				:action="i18n.baseText('agents.tools.suggestion.action')"
+		<template v-if="configData" #titlePrefix>
+			<AgentToolConfigTitleIcon :data="configData" />
+		</template>
+		<template v-if="configContent?.headerItem?.credentials?.length" #headerActions>
+			<AgentToolConfigCredentialPicker
+				ref="credentialPicker"
+				:item="configContent.headerItem"
+				:adapter="configContent.credentialAdapter"
+				:show-connected-icon="Boolean(configData?.onRemove)"
+				@select-credential="
+					(authType, credentialId) => configContent?.selectCredential(authType, credentialId)
+				"
 			/>
 		</template>
-	</ToolsConnectionModal>
+
+		<ToolsConnectionModal
+			v-show="!configData"
+			:open="isOpen"
+			:items="items"
+			:categories="categories"
+			:title="pickerTitle"
+			:search-placeholder="
+				isWorkflow ? i18n.baseText('agents.tools.workflow.search.placeholder') : undefined
+			"
+			:create-action="
+				isWorkflow && canCreateWorkflow
+					? {
+							category: 'workflows',
+							label: i18n.baseText('generic.create.workflow'),
+							testId: 'tools-connection-create-workflow',
+						}
+					: undefined
+			"
+			:create-action-loading="isCreatingWorkflow"
+			:empty-message="isWorkflow ? i18n.baseText('agents.tools.workflow.empty.title') : undefined"
+			:no-results-message="
+				isWorkflow ? i18n.baseText('agents.tools.workflow.empty.noResults') : undefined
+			"
+			:connect-label="addActionLabel"
+			:group-search-results="!isWorkflow"
+			embedded
+			show-connect-actions
+			persistent-scrollbar
+			@update:open="isOpen = $event"
+			@update:search-query="searchQuery = $event"
+			@connect="handleConnectRegistryItem"
+			@open-detail="handleOpenDetail"
+			@select-credential="handleSelectRegistryCredential"
+			@create="handleCreateWorkflow"
+		>
+			<template #suggestion-footer>
+				<McpRegistrySuggestionFooter
+					:prompt="i18n.baseText('agents.tools.suggestion.prompt')"
+					:action="i18n.baseText('agents.tools.suggestion.action')"
+				/>
+			</template>
+		</ToolsConnectionModal>
+
+		<AgentToolConfigContent
+			v-if="configData"
+			:key="configSession"
+			ref="configContent"
+			:data="configData"
+			@credential-deleted="closeModal"
+			@update:title="configTitle = $event"
+			@update:restricted="configIsRestricted = $event"
+			@request-credential-picker="openRegistryCredentialPicker"
+		/>
+
+		<template v-if="configData?.onRemove" #footerLeft>
+			<N8nButton variant="ghost" data-testid="agent-tool-config-remove" @click="removeConfig">
+				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ i18n.baseText('agents.builder.tools.remove') }}
+			</N8nButton>
+		</template>
+		<template v-if="configData" #footerActions>
+			<N8nButton
+				variant="solid"
+				:disabled="saveDisabled"
+				data-testid="agent-tool-config-save"
+				@click="saveConfig"
+			>
+				{{
+					configData?.kind === 'registryMcpServer' && configData.isNew
+						? i18n.baseText('agents.builder.tools.add')
+						: i18n.baseText('generic.save')
+				}}
+			</N8nButton>
+		</template>
+	</AgentModalMultiStep>
 </template>

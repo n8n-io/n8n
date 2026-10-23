@@ -101,7 +101,7 @@ export class TaskBroker {
 	 */
 	private isDraining = false;
 
-	/** Epoch ms by which every task timeout must fire once shutdown has begun. */
+	/** Epoch ms by which every task and task-request timeout must fire once shutdown has begun. */
 	private shutdownDeadline?: number;
 
 	private runnerAcceptRejects: Map<
@@ -126,6 +126,9 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
+	/** Epoch ms when each request timeout fires, keyed by its handle so a due time always matches the live timer. */
+	private requestTimesOutAt = new WeakMap<NodeJS.Timeout, number>();
+
 	/** Request IDs that have already logged a task-type mismatch warning */
 	private mismatchWarned = new Set<string>();
 
@@ -147,9 +150,18 @@ export class TaskBroker {
 	}
 
 	private createRequestTimeout(requestId: string): NodeJS.Timeout {
-		return setTimeout(() => {
-			this.handleRequestTimeout(requestId);
-		}, this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds);
+		const now = Date.now();
+		const requestTimeoutMs =
+			this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds;
+		const timesOutAt = Math.min(now + requestTimeoutMs, this.shutdownDeadline ?? Infinity);
+		const timeout = setTimeout(
+			() => {
+				this.handleRequestTimeout(requestId);
+			},
+			Math.max(timesOutAt - now, 0),
+		);
+		this.requestTimesOutAt.set(timeout, timesOutAt);
+		return timeout;
 	}
 
 	/**
@@ -997,9 +1009,10 @@ export class TaskBroker {
 	}
 
 	/**
-	 * Caps every task timeout, current and future, to fire no later than `deadline`,
-	 * without extending timers already due sooner. A task that fails inside the
-	 * shutdown window lets its execution error normally and the worker drain complete.
+	 * Caps every task and pending task-request timeout, current and future, to fire no
+	 * later than `deadline`, without extending timers already due sooner. A task or
+	 * request that fails inside the shutdown window lets its error propagate normally
+	 * and the worker drain complete.
 	 */
 	capTaskTimeoutsForShutdown(deadline: number) {
 		this.shutdownDeadline = deadline;
@@ -1021,10 +1034,23 @@ export class TaskBroker {
 			cappedTaskIds.push(taskId);
 		}
 
+		this.capRequestTimeoutsForShutdown(deadline);
+
 		if (cappedTaskIds.length > 0) {
 			this.logger.info(
 				`Capped ${cappedTaskIds.length} in-flight task timeout(s) to fit the shutdown window (task IDs: ${cappedTaskIds.join(', ')})`,
 			);
+		}
+	}
+
+	private capRequestTimeoutsForShutdown(deadline: number) {
+		for (const request of this.pendingTaskRequests) {
+			if (!request.timeout) continue;
+			const timesOutAt = this.requestTimesOutAt.get(request.timeout);
+			if (timesOutAt !== undefined && timesOutAt <= deadline) continue;
+
+			clearTimeout(request.timeout);
+			request.timeout = this.createRequestTimeout(request.requestId);
 		}
 	}
 

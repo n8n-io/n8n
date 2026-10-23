@@ -4,9 +4,6 @@ tags:
 summary: Transfer a workflow to another project
 description: Transfer a workflow to another project.
 x-required-scope: workflow:move
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

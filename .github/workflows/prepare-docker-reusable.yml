@@ -9,6 +9,16 @@ name: 'Prepare n8n Docker (reusable)'
 
 on:
   workflow_call:
+    secrets:
+      QA_METRICS_WEBHOOK_URL:
+        description: 'QA metrics webhook URL.'
+        required: false
+      QA_METRICS_WEBHOOK_USER:
+        description: 'QA metrics webhook username.'
+        required: false
+      QA_METRICS_WEBHOOK_PASSWORD:
+        description: 'QA metrics webhook password.'
+        required: false
     inputs:
       build-variant:
         description: 'standard, coverage, or pc'

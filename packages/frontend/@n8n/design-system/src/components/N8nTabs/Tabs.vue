@@ -1,13 +1,15 @@
 <script lang="ts" setup generic="Value extends string | number">
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { usePreferredReducedMotion } from '@vueuse/core';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
+import { useI18n } from '../../composables/useI18n';
 import type { TabOptions } from '../../types';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import type { TabsProps } from './Tabs.types';
-import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
-import PreviewTag from '../PreviewTag/PreviewTag.vue';
+import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	modelValue: undefined,
@@ -17,18 +19,24 @@ const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	justified: false,
 });
 
+const { t } = useI18n();
+const reducedMotion = usePreferredReducedMotion();
 const scrollPosition = ref(0);
 const canScrollRight = ref(false);
-const tabs = ref<Element | undefined>(undefined);
+const hasOverflow = ref(false);
+const root = ref<HTMLDivElement>();
+const tabs = ref<HTMLDivElement>();
 let resizeObserver: ResizeObserver | null = null;
 
-const updateScrollState = () => {
+function updateScrollState() {
 	const container = tabs.value;
 	if (!container) return;
 
 	scrollPosition.value = container.scrollLeft;
-	canScrollRight.value = container.scrollWidth - container.clientWidth > container.scrollLeft;
-};
+	canScrollRight.value = container.scrollWidth - container.clientWidth - container.scrollLeft > 1;
+	/** Compare against the full row to keep reserved controls stable at both ends. */
+	hasOverflow.value = !props.justified && container.scrollWidth > (root.value?.clientWidth ?? 0);
+}
 
 onMounted(() => {
 	const container = tabs.value;
@@ -37,6 +45,7 @@ onMounted(() => {
 	container.addEventListener('scroll', updateScrollState);
 	resizeObserver = new ResizeObserver(updateScrollState);
 	resizeObserver.observe(container);
+	if (root.value) resizeObserver.observe(root.value);
 	updateScrollState();
 });
 
@@ -50,38 +59,53 @@ onUnmounted(() => {
  * arrive or change label after mount grow scrollWidth without touching it, so
  * the arrows would otherwise stay hidden until the next mount.
  */
-watch(
-	() => props.options,
-	async () => {
-		await nextTick();
-		updateScrollState();
-	},
-	{ deep: true },
-);
+watch(() => [props.options, props.justified, props.size, props.variant], updateScrollState, {
+	deep: true,
+	flush: 'post',
+});
 
 const emit = defineEmits<{
 	tooltipClick: [tab: Value, e: MouseEvent];
 	'update:modelValue': [tab: Value];
 }>();
 
-const handleTooltipClick = (tab: Value, event: MouseEvent) => emit('tooltipClick', tab, event);
-const handleTabClick = (option: TabOptions<Value>) => {
+function handleTooltipClick(tab: Value, event: MouseEvent) {
+	emit('tooltipClick', tab, event);
+}
+
+function handleTabClick(option: TabOptions<Value>) {
 	if (option.disabled) return;
 	emit('update:modelValue', option.value);
-};
+}
 
-const scroll = (left: number) => {
+function scroll(direction: 'left' | 'right') {
 	const container = tabs.value;
-	if (container) {
-		container.scrollBy({ left, top: 0, behavior: 'smooth' });
+	if (!container) return;
+
+	const viewport = container.getBoundingClientRect();
+	const items = Array.from(container.children);
+	if (direction === 'left') items.reverse();
+
+	for (const item of items) {
+		const bounds = item.getBoundingClientRect();
+		const distance =
+			direction === 'right' ? bounds.right - viewport.right : bounds.left - viewport.left;
+		if (direction === 'right' ? distance > 1 : distance < -1) {
+			/** Keep the middle of an oversized tab reachable in both directions. */
+			const step = Math.max(-container.clientWidth, Math.min(distance, container.clientWidth));
+			container.scrollTo({
+				left: container.scrollLeft + step,
+				behavior: reducedMotion.value === 'reduce' ? 'instant' : 'smooth',
+			});
+			return;
+		}
 	}
-};
-const scrollLeft = () => scroll(-50);
-const scrollRight = () => scroll(50);
+}
 </script>
 
 <template>
 	<div
+		ref="root"
 		:class="[
 			'n8n-tabs',
 			$style.container,
@@ -90,12 +114,16 @@ const scrollRight = () => scroll(50);
 			justified ? $style.justified : '',
 		]"
 	>
-		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
-			<N8nIcon :class="$style.positionIcon" icon="chevron-left" size="small" />
-		</div>
-		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
-			<N8nIcon :class="$style.positionIcon" icon="chevron-right" size="small" />
-		</div>
+		<button
+			v-if="hasOverflow"
+			type="button"
+			:class="$style.button"
+			:aria-label="t('tabs.scrollLeft')"
+			:disabled="scrollPosition <= 1"
+			@click="scroll('left')"
+		>
+			<N8nIcon icon="chevron-left" size="small" />
+		</button>
 		<div ref="tabs" role="tablist" :class="$style.tabs">
 			<div
 				v-for="option in options"
@@ -125,8 +153,8 @@ const scrollRight = () => scroll(50);
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
-							<PreviewTag v-if="option.preview" />
-							<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
+							<PreviewBadge v-if="option.preview" :class="$style.badge" />
+							<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 						</div>
 					</a>
 					<RouterLink
@@ -139,8 +167,8 @@ const scrollRight = () => scroll(50);
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-						<PreviewTag v-if="option.preview" />
-						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
+						<PreviewBadge v-if="option.preview" :class="$style.badge" />
+						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</RouterLink>
 					<div
 						v-else
@@ -175,45 +203,60 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
-						<PreviewTag v-if="option.preview" />
-						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
+						<PreviewBadge v-if="option.preview" :class="$style.badge" />
+						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</div>
 				</N8nTooltip>
 			</div>
 		</div>
+		<button
+			v-if="hasOverflow"
+			type="button"
+			:class="$style.button"
+			:aria-label="t('tabs.scrollRight')"
+			:disabled="!canScrollRight"
+			@click="scroll('right')"
+		>
+			<N8nIcon icon="chevron-right" size="small" />
+		</button>
 	</div>
 </template>
 
 <style lang="scss" module>
 .container {
 	position: relative;
-	height: 24px;
-	min-height: 24px;
+	display: flex;
+	align-items: stretch;
+	min-height: var(--height--xs);
 	width: 100%;
 
 	&.modern {
-		height: 26px;
-		min-height: 26px;
+		/** Modern tabs retain the existing minimum with the two-pixel active border. */
+		min-height: calc(var(--height--xs) + var(--spacing--5xs));
 	}
 }
 
 .tabs {
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 	font-weight: var(--font-weight--medium);
 	display: flex;
 	align-items: center;
-	width: 100%;
-	position: absolute;
-	overflow-x: scroll;
+	flex: 1;
+	min-width: 0;
+	position: relative;
+	overflow-x: auto;
 
-	/* Hide scrollbar for Chrome, Safari and Opera */
+	> div {
+		flex-shrink: 0;
+	}
+
+	/** Hide the scrollbar without removing native scrolling. */
 	&::-webkit-scrollbar {
 		display: none;
 	}
 
-	/* Hide scrollbar for IE, Edge and Firefox */
-	-ms-overflow-style: none; /* IE and Edge */
-	scrollbar-width: none; /* Firefox */
+	-ms-overflow-style: none;
+	scrollbar-width: none;
 
 	.small.modern & {
 		gap: var(--spacing--xs);
@@ -231,12 +274,12 @@ const scrollRight = () => scroll(50);
 
 	cursor: pointer;
 	white-space: nowrap;
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 	&:hover {
 		color: var(--color--primary);
 	}
 
-	/* Inset outline so the ring isn't clipped by the scroll container and adds no layout shift. */
+	/** Keep the focus ring inside the scroll container. */
 	&:focus-visible {
 		outline: var(--border-width) solid var(--focus--border-color);
 		outline-offset: calc(-1 * var(--border-width));
@@ -250,7 +293,7 @@ const scrollRight = () => scroll(50);
 	.modern & {
 		padding-bottom: calc(var(--spacing--xs) + var(--tabs--tab--border-width--active));
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	.small & {
@@ -262,12 +305,16 @@ const scrollRight = () => scroll(50);
 	}
 
 	/**
-	 * A tag is taller than the label's line box, so it would sit flush against the
+	 * A badge is taller than the label's line box, so it would sit flush against the
 	 * tab's top edge and collide with the inset focus ring.
 	 */
-	.tabs:has(:global(.n8n-tag)) & {
+	.container:has(.badge) & {
 		padding-top: var(--spacing--4xs);
 	}
+}
+
+.badge {
+	flex-shrink: 0;
 }
 
 .activeTab {
@@ -280,9 +327,7 @@ const scrollRight = () => scroll(50);
 	}
 }
 
-// Equal slots rather than natural widths: a tab's own label can then grow or
-// shrink — a count going from (0) to (99+) — without nudging its neighbours.
-// Slots always add up to the container, so the scroll arrows never engage.
+/** Equal slots keep label changes from moving adjacent tabs. */
 .justified {
 	.tabs > div {
 		flex: 1 1 0;
@@ -294,9 +339,7 @@ const scrollRight = () => scroll(50);
 		min-width: 0;
 	}
 
-	// `overflow: hidden` ellipsises a long label but would also clip the
-	// notification dot, which overhangs the box. Reserve its width as padding
-	// and pull it back inside so both survive.
+	/** Reserve space for the notification dot inside the truncated label. */
 	.notificationContainer {
 		display: block;
 		overflow: hidden;
@@ -315,7 +358,7 @@ const scrollRight = () => scroll(50);
 
 .link {
 	cursor: pointer;
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 
 	&:hover {
 		color: var(--color--primary);
@@ -355,23 +398,33 @@ const scrollRight = () => scroll(50);
 }
 
 .disabledTab {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--disabled);
 	cursor: not-allowed;
 
 	&:hover {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--disabled);
 	}
 }
 
 .button {
-	position: absolute;
-	background-color: var(--tabs--arrow-buttons--color, var(--color--foreground--tint-2));
-	z-index: 1;
-	height: 24px;
-	width: 10px;
-	display: flex;
-	align-items: center;
-	font-weight: var(--font-weight--bold);
+	composes: tab;
+	flex: 0 0 var(--spacing--xl);
+	justify-content: center;
+	padding-inline: 0;
+	border: 0;
+	background: var(--tabs--arrow-buttons--color, transparent);
+	font-family: inherit;
+	line-height: inherit;
+
+	/** Match the label line box so the chevron stays centered with the title. */
+	&::before {
+		content: '\200b';
+	}
+
+	&:disabled {
+		color: var(--text-color--disabled);
+		cursor: default;
+	}
 }
 
 .notificationContainer {
@@ -394,21 +447,5 @@ const scrollRight = () => scroll(50);
 		background-color: var(--color--primary);
 		border-radius: 50%;
 	}
-}
-
-.back {
-	composes: tab;
-	composes: button;
-	left: 0;
-}
-
-.next {
-	composes: tab;
-	composes: button;
-	right: 0;
-}
-
-.positionIcon {
-	flex-shrink: 0;
 }
 </style>

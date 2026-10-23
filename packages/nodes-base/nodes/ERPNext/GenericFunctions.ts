@@ -82,7 +82,7 @@ export async function erpNextApiRequestAllItems(
 	do {
 		responseData = await erpNextApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		query.limit_start += query.limit_page_length - 1;
+		query.limit_start += query.limit_page_length;
 	} while (responseData.data && responseData.data.length > 0);
 
 	return returnData;

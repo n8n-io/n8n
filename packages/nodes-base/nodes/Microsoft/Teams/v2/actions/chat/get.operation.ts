@@ -2,7 +2,6 @@ import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { throwIfChatUnsupported } from './sharedGuard';
 import { chatRLC } from '../../descriptions';
 import { buildTeamsPath, microsoftApiRequest, rewriteNotFound, SP_HIDE } from '../../transport';
 
@@ -22,9 +21,6 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/chat-get?view=graph-rest-1.0
-
-	// App-only Graph cannot read chats; fail before any request.
-	throwIfChatUnsupported.call(this);
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	// Kept outside the try for clarity: it is a validation step, not a request.

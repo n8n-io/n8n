@@ -3,10 +3,10 @@ import { ElTag } from 'element-plus';
 
 import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
-import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
-import PreviewTag from '../PreviewTag/PreviewTag.vue';
+import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+import N8nNewBadge from '../NewBadge/NewBadge.vue';
 
 export interface Props {
 	active?: boolean;
@@ -48,13 +48,19 @@ const { t } = useI18n();
 		<div :class="$style.body">
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
-				<PreviewTag v-if="tag?.preview" size="small" :class="$style.previewTag" :text="tag.text" />
-				<N8nActionPill
-					v-else-if="tag?.pill"
-					size="small"
+				<PreviewBadge
+					v-if="tag?.preview"
+					size="xxsmall"
+					:class="$style.previewBadge"
 					:text="tag.text"
-					:type="tag.type === 'info' || tag.type === 'danger' ? tag.type : 'default'"
 				/>
+				<N8nBadge
+					v-else-if="tag?.pill"
+					size="xxsmall"
+					:variant="tag.type === 'info' || tag.type === 'danger' ? tag.type : 'success'"
+				>
+					{{ tag.text }}
+				</N8nBadge>
 				<ElTag
 					v-else-if="tag"
 					:class="$style.tag"
@@ -65,7 +71,7 @@ const { t } = useI18n();
 				>
 					{{ tag.text }}
 				</ElTag>
-				<N8nBadge v-if="isNew" theme="success">{{ t('nodeCreatorNode.new') }}</N8nBadge>
+				<N8nNewBadge v-if="isNew" :text="t('nodeCreatorNode.new')" />
 				<N8nIcon
 					v-if="isTrigger"
 					icon="bolt-filled"
@@ -126,7 +132,7 @@ const { t } = useI18n();
 	padding-right: var(--spacing--2xs);
 	color: var(--color--text--tint-1);
 }
-.previewTag {
+.previewBadge {
 	margin-left: var(--spacing--2xs);
 }
 :root .tag {

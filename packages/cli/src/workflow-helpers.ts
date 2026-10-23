@@ -3,6 +3,11 @@ import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
+	collectSubWorkflowOutput,
+	escalateSubWorkflowRedaction,
+	getLastExecutedNodeData,
+	Workflow,
+	UnexpectedError,
 	dropInvalidWorkflowGroups,
 	formatWorkflowStructureIssuePath,
 	GROUP_DESCRIPTION_MAX_LENGTH,
@@ -13,6 +18,7 @@ import {
 	resolveVariables,
 	safeParseWorkflowStructure,
 	summarizeDynamicCredentialsUsage,
+	summarizeSubWorkflowRedaction,
 	validateWorkflowGroups,
 	type IDataObject,
 	type INodeCredentialsDetails,
@@ -23,17 +29,21 @@ import {
 	type IWorkflowSettings,
 	type RelatedExecution,
 	type GetNodeTypeForGrouping,
+	type NodeGroupRuleOptions,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import { NodeTypes } from '@/node-types';
 
 import { OwnershipService } from './services/ownership.service';
 
 export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
+export { getLastExecutedNodeData, getLastExecutedNodeRuns } from 'n8n-workflow';
 
 /**
  * Validates that pinned data does not exceed size limits.
@@ -63,56 +73,6 @@ export function validatePinDataSize(workflow: IWorkflowBase): void {
 			`Workflow with pinned data exceeds the maximum allowed size of ${limitMB} MB`,
 		);
 	}
-}
-
-/**
- * All runs of the last executed node, ordered by `executionIndex` (raw, no pinData substitution).
- */
-export function getLastExecutedNodeRuns(inputData: IRun): ITaskData[] {
-	const { runData, lastNodeExecuted } = inputData.data.resultData;
-	if (lastNodeExecuted === undefined) {
-		return [];
-	}
-	const runs = runData[lastNodeExecuted];
-	return runs?.toSorted((a, b) => (a.executionIndex ?? 0) - (b.executionIndex ?? 0)) ?? [];
-}
-
-/**
- * Final-run output of the last executed node, with pinData substituted in manual mode.
- */
-export function getLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData, lastNodeExecuted } = inputData.data.resultData;
-	const pinData = inputData.data.resultData.pinData ?? {};
-
-	if (lastNodeExecuted === undefined) {
-		return undefined;
-	}
-
-	if (runData[lastNodeExecuted] === undefined) {
-		return undefined;
-	}
-
-	const lastNodeRunData = runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
-
-	let lastNodePinData = pinData[lastNodeExecuted];
-
-	if (lastNodePinData && inputData.mode === 'manual') {
-		if (!Array.isArray(lastNodePinData)) lastNodePinData = [lastNodePinData];
-
-		const itemsPerRun = lastNodePinData.map((item, index) => {
-			return { json: item, pairedItem: { item: index } };
-		});
-
-		return {
-			startTime: 0,
-			executionIndex: 0,
-			executionTime: 0,
-			data: { main: [itemsPerRun] },
-			source: lastNodeRunData.source,
-		};
-	}
-
-	return lastNodeRunData;
 }
 
 /**
@@ -166,13 +126,16 @@ export function validateWorkflowNodeGroups(
 		connections?: IWorkflowBase['connections'];
 	},
 	getNodeType: GetNodeTypeForGrouping | null,
+	rules: NodeGroupRuleOptions = {},
 ) {
 	const result = validateWorkflowGroups({
 		nodes: workflow.nodes,
 		connectionsBySourceNode: workflow.connections,
 		nodeGroups: workflow.nodeGroups,
 		getNodeType,
+		...rules,
 	});
+
 	if (!result.valid) {
 		throw new BadRequestError(result.violations[0].message);
 	}
@@ -292,6 +255,11 @@ export function removeDefaultValues(
 	// Remove credentialResolverId if it was cleared (empty string from UI clear action)
 	if (!cleanedSettings.credentialResolverId) {
 		delete cleanedSettings.credentialResolverId;
+	}
+
+	// Remove redactCallerExecutions if it is on, because an unset value is on
+	if (cleanedSettings.redactCallerExecutions === true) {
+		delete cleanedSettings.redactCallerExecutions;
 	}
 
 	return cleanedSettings;
@@ -468,6 +436,12 @@ export function shouldRestartParentExecution(
 	return parentExecution.shouldResume;
 }
 
+/** The ids in either list, once each; `undefined` when both are empty. */
+function unionIds(first: string[] | undefined, second: string[] | undefined) {
+	const ids = new Set([...(first ?? []), ...(second ?? [])]);
+	return ids.size > 0 ? [...ids].sort() : undefined;
+}
+
 /**
  * Updates a parent execution's nodeExecutionStack with the final results from a completed child execution.
  * This ensures that when the parent resumes, the Execute Workflow node (running in disabled mode)
@@ -489,6 +463,7 @@ export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 	childExecution?: RelatedExecution,
+	childWorkflowData?: IWorkflowBase,
 ): Promise<boolean> {
 	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
@@ -499,7 +474,9 @@ export async function updateParentExecutionWithChildResults(
 		unflattenData: true,
 	});
 
-	if (parent?.status !== 'waiting') {
+	// A parent parked at a node boundary is not waiting on this child; its stack
+	// head is the next node, whose input must not be replaced by the child's output.
+	if (parent?.status !== 'waiting' || parent.data.waitReason === 'suspended') {
 		return false;
 	}
 
@@ -526,15 +503,27 @@ export async function updateParentExecutionWithChildResults(
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
 	// (never calling `executeWorkflow` again), so the child's private-credential usage must
 	// ride on the stack entry to reach the freshly stamped task (see `WorkflowExecute`).
-	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(subworkflowResults.data);
+	const childCredentialIds = childWorkflowData
+		? Container.get(CredentialsPermissionChecker).getCredentialIdsForNodes(childWorkflowData.nodes)
+		: [];
+	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(
+		subworkflowResults.data,
+		childCredentialIds,
+	);
 	if (Object.keys(dynamicCredentialsUsage).length > 0) {
 		// Union with a sibling child's earlier report ("run once for each item" spawns several
 		// children per wait) — flags only ever accumulate, like every other flag writer.
+		const earlierUsage = nodeExecutionStack[0].metadata?.dynamicCredentialsUsage;
+		const usedCredentialIds = unionIds(
+			earlierUsage?.usedCredentialIds,
+			dynamicCredentialsUsage.usedCredentialIds,
+		);
 		nodeExecutionStack[0].metadata = {
 			...nodeExecutionStack[0].metadata,
 			dynamicCredentialsUsage: {
-				...nodeExecutionStack[0].metadata?.dynamicCredentialsUsage,
+				...earlierUsage,
 				...dynamicCredentialsUsage,
+				...(usedCredentialIds && { usedCredentialIds }),
 			},
 		};
 
@@ -552,6 +541,11 @@ export async function updateParentExecutionWithChildResults(
 			if (dynamicCredentialsUsage.attemptedDynamicCredentials) {
 				waitingTask.attemptedDynamicCredentials = true;
 			}
+			const waitingTaskCredentialIds = unionIds(
+				waitingTask.usedCredentialIds,
+				dynamicCredentialsUsage.usedCredentialIds,
+			);
+			if (waitingTaskCredentialIds) waitingTask.usedCredentialIds = waitingTaskCredentialIds;
 		}
 		const { runtimeData } = parentWithSubWorkflowResults.data.executionData ?? {};
 		if (
@@ -562,6 +556,17 @@ export async function updateParentExecutionWithChildResults(
 			runtimeData.executedByUserId = dynamicCredentialsUsage.dynamicCredentialsResolvedUserId;
 		}
 	}
+
+	// The parent keeps a copy of the child's output (or error), so it redacts at least what the
+	// child redacts. The resume restores this context as is, so escalate it before it is saved.
+	// Without the child's saved workflow, the opt-out cannot be read, so the child's own
+	// channels pass up.
+	escalateSubWorkflowRedaction(
+		parentWithSubWorkflowResults.data.executionData?.runtimeData,
+		summarizeSubWorkflowRedaction(subworkflowResults.data, {
+			includeOwn: childWorkflowData?.settings?.redactCallerExecutions !== false,
+		}),
+	);
 
 	if (subworkflowError) {
 		// Record the error on the waiting parent's Execute Workflow node so the node
@@ -576,7 +581,22 @@ export async function updateParentExecutionWithChildResults(
 		// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
 		// so that the Execute Workflow node returns the correct data when parent execution is resumed
 		// and the Execute Workflow node is executed again in disabled mode.
-		nodeExecutionStack[0].data = lastExecutedNodeData.data;
+		const policy = subworkflowResults.data.subWorkflowOutput;
+		if (policy) {
+			if (!childWorkflowData) {
+				throw new UnexpectedError('The saved child workflow is required to collect its output.');
+			}
+			const workflow = new Workflow({
+				...childWorkflowData,
+				nodeTypes: Container.get(NodeTypes),
+			});
+			nodeExecutionStack[0].data = {
+				main: await collectSubWorkflowOutput(subworkflowResults, workflow, policy),
+			};
+		} else {
+			// Executions saved without a policy keep the legacy resume behavior.
+			nodeExecutionStack[0].data = lastExecutedNodeData.data;
+		}
 	}
 
 	await executionPersistence.updateExistingExecution(

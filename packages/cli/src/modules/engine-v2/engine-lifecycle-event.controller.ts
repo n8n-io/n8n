@@ -2,11 +2,11 @@ import { Service } from '@n8n/di';
 import { lifecycleEventBatchSchema } from '@n8n/engine';
 import type { Request, Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import { EngineLifecycleEventPushRelay } from './engine-lifecycle-event-push-relay';
 
-/** Handles `LifecycleEvent` batches from the engine 2.0 data plane. */
+/** Handles `LifecycleEvent` batches from the engine v2 data plane. */
 @Service()
 export class EngineLifecycleEventController {
 	constructor(private readonly pushRelay: EngineLifecycleEventPushRelay) {}

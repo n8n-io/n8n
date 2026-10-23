@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
@@ -5,7 +6,6 @@ import { buildHitlCallbackReference, isSlackInteractionRequest } from 'n8n-core'
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from '@/webhooks/webhook.types';
@@ -193,6 +193,25 @@ describe('SlackInteractionWebhooks', () => {
 		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toBeNull();
 	});
 
+	it('responds 409 when the execution was parked at a node boundary', async () => {
+		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const req = createRequest(reference);
+		const { res, status } = createResponse();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				data: { waitReason: 'suspended', resultData: { error: undefined } },
+			}),
+		);
+
+		const result = await slackInteractionWebhooks.executeWebhook(req, res);
+
+		expect(status).toHaveBeenCalledWith(409);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toBeNull();
+	});
+
 	it('responds 409 when the execution has already finished', async () => {
 		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
@@ -318,5 +337,11 @@ describe('SlackInteractionWebhooks', () => {
 			executionId: 'exec-1',
 			suffix: 'node-1',
 		});
+	});
+
+	it('advertises POST as the only method without reading an execution', async () => {
+		await expect(slackInteractionWebhooks.getWebhookMethods()).resolves.toEqual(['POST']);
+
+		expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 	});
 });

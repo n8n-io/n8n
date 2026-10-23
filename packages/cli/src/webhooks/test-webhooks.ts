@@ -23,7 +23,7 @@ import {
 	TEST_WEBHOOK_TIMEOUT,
 	TEST_WEBHOOK_TIMEOUT_BUFFER,
 } from '@/constants';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
@@ -221,9 +221,7 @@ export class TestWebhooks implements IWebhookManager {
 						command: 'clear-test-webhooks',
 						payload: { webhookKey: key, workflowEntity, pushRef },
 					});
-					// Response (if any) was already sent via WebhookHelpers.executeWebhook's
-					// callback; resolve to settle promise to be safe and avoid hanging.
-					resolve({ noWebhookResponse: true });
+					// Only the response callback passed to executeWebhook settles the promise.
 					return;
 				}
 

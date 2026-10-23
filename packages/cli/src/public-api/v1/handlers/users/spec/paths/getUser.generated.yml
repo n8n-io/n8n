@@ -4,9 +4,6 @@ tags:
 summary: Get user by ID/Email
 description: Retrieve a user from your instance. Only available for the instance owner.
 x-required-scope: user:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

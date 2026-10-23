@@ -13,7 +13,7 @@ import {
 	type IOAuth2Options,
 	type IRequestOptions,
 } from 'n8n-workflow';
-import { Stream, type Readable } from 'stream';
+import { Readable, Stream } from 'stream';
 import type { SecureContextOptions } from 'tls';
 
 import type { HttpSslAuthCredentials } from './interfaces';
@@ -281,6 +281,7 @@ export const prepareRequestBody = async (
 		}, Promise.resolve({}));
 	} else if (bodyType === 'multipart-form-data' && version >= 4.2) {
 		const formData = new FormData();
+		const streams: Readable[] = [];
 
 		for (const parameter of parameters) {
 			if (parameter.parameterType === 'formBinaryData') {
@@ -288,12 +289,15 @@ export const prepareRequestBody = async (
 				const key = Object.keys(entry)[0];
 				const data = entry[key] as { value: Buffer | Readable; options: FormData.AppendOptions };
 				formData.append(key, data.value, data.options);
+				if (data.value instanceof Readable) streams.push(data.value);
 				continue;
 			}
 
 			formData.append(parameter.name, parameter.value);
 		}
 
+		// `FormData.destroy()` drops the appended streams without destroying them.
+		formData.once('close', () => streams.forEach((stream) => stream.destroy()));
 		return formData;
 	} else {
 		return await reduceAsync(parameters, defaultReducer);

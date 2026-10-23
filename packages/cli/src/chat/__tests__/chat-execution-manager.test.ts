@@ -54,7 +54,12 @@ describe('ChatExecutionManager', () => {
 
 	describe('runWorkflow', () => {
 		it('should call WorkflowRunner.run with correct parameters', async () => {
-			const execution = { id: '1', workflowData: {}, data: {} } as IExecutionResponse;
+			const execution = {
+				id: '1',
+				workflowData: {},
+				data: {},
+				storedAt: 'fs',
+			} as IExecutionResponse;
 			const message = {
 				sessionId: '123',
 				action: 'sendMessage',
@@ -70,6 +75,7 @@ describe('ChatExecutionManager', () => {
 			expect(workflowRunner.run).toHaveBeenCalledWith(runData, true, true, {
 				executionId: '1',
 				expectedStatus: 'waiting',
+				storedAt: 'fs',
 			});
 		});
 

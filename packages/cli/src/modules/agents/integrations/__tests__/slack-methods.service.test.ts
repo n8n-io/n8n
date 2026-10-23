@@ -5,11 +5,11 @@ import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { CacheService } from '@/services/cache/cache.service';
-import type { UrlService } from '@/services/url.service';
+import type { CacheService } from '@n8n/backend-services';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { AgentIntegrationManagementService } from '../../agent-integration-management.service';
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SlackMethodsService } from '../platforms/slack/slack-methods.service';
 
@@ -42,7 +42,7 @@ describe('SlackMethodsService', () => {
 		projectId: 'project-1',
 		name: 'Support Agent',
 		activeVersionId: 'version-1',
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 
 	const session = {
 		projectId: 'project-1',
@@ -78,6 +78,7 @@ describe('SlackMethodsService', () => {
 				data: {
 					accessToken: 'xoxb-token',
 					signatureSecret: 'signing-secret',
+					agentId: 'agent-1',
 				},
 				projectId: 'project-1',
 			},

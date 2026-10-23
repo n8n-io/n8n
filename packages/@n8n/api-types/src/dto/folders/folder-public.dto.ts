@@ -3,12 +3,14 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
+	deleteFolderQueryFieldDocs,
 	folderContentCountFieldDocs,
 	folderFieldDocs,
 	folderListFieldDocs,
 	folderListQueryFieldDocs,
 	folderProjectFieldDocs,
 	folderProjectIconOpenApi,
+	folderProjectIdParamDocs,
 	updateFolderFieldDocs,
 } from './folder-public.openapi';
 import {
@@ -18,16 +20,21 @@ import {
 	takeValidator,
 	VALID_SORT_OPTIONS,
 } from './list-folder-query.dto';
-import { folderIdSchema, folderNameSchema } from '../../schemas/folder.schema';
+import {
+	FOLDER_NAME_MAX_LENGTH,
+	folderIdSchema,
+	folderNameSchema,
+} from '../../schemas/folder.schema';
 import { nullableObjectGuardSchema } from '../../schemas/object-guard.schema';
 import { projectTypeSchema, type ProjectIcon } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
 
-/** The project a folder lives in, reduced to the columns the list query loads. */
+/** `personal` is accepted next to a real id, so this cannot reuse `projectIdParamSchema`. */
+export const folderProjectIdParamSchema = z.string().openapi(folderProjectIdParamDocs);
+
 const folderProjectPublicSchema = z.object({
 	id: z.string().openapi(folderProjectFieldDocs.id),
 	name: z.string().openapi(folderProjectFieldDocs.name),
-	// Legacy rows may hold a type the current enum no longer lists, and a response mismatch is a 500.
 	type: z
 		.string()
 		.openapi({ ...folderProjectFieldDocs.type, enum: [...projectTypeSchema.options] }),
@@ -45,10 +52,6 @@ const folderTagPublicSchema = z.object({
 	name: z.string(),
 });
 
-/**
- * Every field is optional because the `select` query parameter decides which columns the route
- * loads: an unselected field is absent from the response, not null.
- */
 export const folderPublicSchema = z.object({
 	id: z.string().openapi(folderFieldDocs.id),
 	name: z.string().optional().openapi(folderFieldDocs.name),
@@ -78,7 +81,6 @@ export class ListFoldersQueryPublicDto extends Z.class(
 		select: selectValidator.openapi(folderListQueryFieldDocs.select),
 		sortBy: z
 			.enum(VALID_SORT_OPTIONS, {
-				// Keep the wording the legacy validator produced, so the 400 body does not change.
 				message: `must be equal to one of the allowed values: ${VALID_SORT_OPTIONS.join(', ')}`,
 			})
 			.optional()
@@ -97,7 +99,6 @@ const folderCorePublicShape = {
 	updatedAt: z.string().datetime().openapi(folderFieldDocs.updatedAt),
 };
 
-/** The folder as PATCH publishes it. Allowlist of the fields `folder.yml` documented. */
 export class UpdatedFolderPublicDto extends Z.class(folderCorePublicShape, { strict: true }) {}
 
 export class FolderDetailsPublicDto extends Z.class({
@@ -106,14 +107,12 @@ export class FolderDetailsPublicDto extends Z.class({
 	totalWorkflows: z.number().int().openapi(folderContentCountFieldDocs.totalWorkflows),
 }) {}
 
-/**
- * `name` and `parentFolderId` keep the rules the legacy handler applied after
- * express-openapi-validator, so a body the old route rejected is still rejected. `tagIds` stays
- * out: the hand-written schema set `additionalProperties: false`, so the route never took it.
- */
 const updateFolderPublicSchema = z
 	.object({
-		name: folderNameSchema.optional().openapi(updateFolderFieldDocs.name),
+		name: folderNameSchema.optional().openapi({
+			...updateFolderFieldDocs.name,
+			maxLength: FOLDER_NAME_MAX_LENGTH,
+		}),
 		parentFolderId: folderIdSchema.optional().openapi(updateFolderFieldDocs.parentFolderId),
 	})
 	.strict()
@@ -143,3 +142,27 @@ export class UpdateFolderPublicDto implements UpdateFolderPublic {
 		return updateFolderPublicSchema.parse(data);
 	}
 }
+
+export class DeleteFolderQueryPublicDto extends Z.class(
+	{
+		transferToFolderId: folderIdSchema
+			.min(1, 'must not be empty')
+			.optional()
+			.openapi(deleteFolderQueryFieldDocs.transferToFolderId),
+	},
+	{ strict: true },
+) {}
+
+export class CreateFolderPublicDto extends Z.class(
+	{
+		name: folderNameSchema.openapi({
+			...folderFieldDocs.name,
+			maxLength: FOLDER_NAME_MAX_LENGTH,
+		}),
+		parentFolderId: folderIdSchema.optional().openapi(folderFieldDocs.parentFolderId),
+	},
+	{ strict: true },
+) {}
+
+// Own class so create does not share UpdatedFolderPublicDto's OpenAPI component.
+export class CreatedFolderPublicDto extends Z.class(folderCorePublicShape, { strict: true }) {}

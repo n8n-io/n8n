@@ -57,6 +57,31 @@ function makeTrustedKeyEntity(
 	return entity;
 }
 
+function makeSource(overrides: Partial<TrustedKeySourceEntity> = {}): TrustedKeySourceEntity {
+	return Object.assign(new TrustedKeySourceEntity(), {
+		id: 'static',
+		type: 'static' as const,
+		config: JSON.stringify([]),
+		status: 'pending' as const,
+		lastError: null,
+		lastRefreshedAt: null,
+		...overrides,
+	});
+}
+
+/** A source whose refresh fails, and another source that is due. */
+function seedFailingAndDueSources(mocks: ReturnType<typeof createMocks>) {
+	const failing = makeSource({
+		id: 'jwks-1',
+		type: 'jwks',
+		config: JSON.stringify({ type: 'jwks', url: 'https://idp.example.com/jwks' }),
+	});
+	const due = makeSource({ id: 'static' });
+	mocks.sourceRepo.find.mockResolvedValue([failing, due]);
+	mocks.sourceRepo.refreshSource.mockRejectedValueOnce(new Error('jwks down'));
+	return { failing, due };
+}
+
 function createMocks() {
 	const config = mock<TokenExchangeConfig>({
 		trustedKeys: '',
@@ -73,6 +98,7 @@ function createMocks() {
 		},
 	);
 
+	dbLockService.withLockContext.mockImplementation(async (_lockId, fn) => await fn({}));
 	sourceRepo.find.mockResolvedValue([]);
 
 	const service = new TrustedKeyService(
@@ -151,6 +177,44 @@ describe('TrustedKeyService', () => {
 	});
 
 	describe('onLeaderTakeover', () => {
+		it('should refresh the remaining sources and resolve when one source fails', async () => {
+			const mocks = createMocks();
+			seedFailingAndDueSources(mocks);
+
+			await mocks.service.onLeaderTakeover();
+
+			expect(mocks.dbLockService.withLockContext).toHaveBeenCalledTimes(2);
+			expect(mocks.sourceRepo.refreshSource).toHaveBeenCalledWith(
+				'static',
+				expect.any(Function),
+				{},
+			);
+			expect(mockLogger.error).toHaveBeenCalledTimes(1);
+		});
+
+		it.each(['lock', 'write'] as const)(
+			'should refresh the remaining sources after a %s failure',
+			async (failureType) => {
+				const { service, sourceRepo, dbLockService } = createMocks();
+				const sources = [makeSource({ id: 'first' }), makeSource({ id: 'second' })];
+				const error = new Error(`${failureType} failed`);
+				sourceRepo.find.mockResolvedValue(sources);
+				if (failureType === 'lock') {
+					dbLockService.withLockContext.mockRejectedValueOnce(error);
+				} else {
+					sourceRepo.refreshSource.mockRejectedValueOnce(error);
+				}
+
+				await expect(service.onLeaderTakeover()).resolves.toBeUndefined();
+
+				expect(sourceRepo.refreshSource).toHaveBeenCalledWith('second', expect.any(Function), {});
+				expect(mockLogger.error).toHaveBeenCalledWith('Failed to refresh trusted key source', {
+					sourceId: 'first',
+					error,
+				});
+			},
+		);
+
 		it('should refresh keys from sources when a follower is elected leader', async () => {
 			const { service, sourceRepo, dbLockService } = createMocks();
 
@@ -166,7 +230,7 @@ describe('TrustedKeyService', () => {
 
 			await service.onLeaderTakeover();
 
-			expect(dbLockService.withLock).toHaveBeenCalled();
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
 		});
 	});
 
@@ -188,7 +252,7 @@ describe('TrustedKeyService', () => {
 			await service.refreshDueSources(new AbortController().signal);
 
 			// Source was recently refreshed — should not trigger a refresh
-			expect(dbLockService.withLock).not.toHaveBeenCalled();
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
 		it('should refresh sources whose lastRefreshedAt exceeds the interval', async () => {
@@ -207,7 +271,7 @@ describe('TrustedKeyService', () => {
 
 			await service.refreshDueSources(new AbortController().signal);
 
-			expect(dbLockService.withLock).toHaveBeenCalled();
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
 		});
 
 		it('should refresh sources that have never been refreshed', async () => {
@@ -226,7 +290,57 @@ describe('TrustedKeyService', () => {
 
 			await service.refreshDueSources(new AbortController().signal);
 
-			expect(dbLockService.withLock).toHaveBeenCalled();
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
+		});
+
+		it('should reject with the source error and stop at the failed source', async () => {
+			const mocks = createMocks();
+			seedFailingAndDueSources(mocks);
+
+			await expect(mocks.service.refreshDueSources(new AbortController().signal)).rejects.toThrow(
+				'jwks down',
+			);
+
+			expect(mocks.dbLockService.withLockContext).toHaveBeenCalledTimes(1);
+		});
+
+		it('should try the least recently updated source first', async () => {
+			const mocks = createMocks();
+
+			await mocks.service.refreshDueSources(new AbortController().signal);
+
+			expect(mocks.sourceRepo.find).toHaveBeenCalledWith({ order: { updatedAt: 'ASC' } });
+		});
+
+		it('should record a refresh failure after rollback and propagate the error', async () => {
+			const mocks = createMocks();
+			const { failing } = seedFailingAndDueSources(mocks);
+
+			await expect(mocks.service.refreshDueSources(new AbortController().signal)).rejects.toThrow(
+				'jwks down',
+			);
+
+			expect(mocks.sourceRepo.update).toHaveBeenCalledWith(failing.id, {
+				status: 'error',
+				lastError: 'jwks down',
+			});
+		});
+
+		it('should record a lock failure and propagate the error', async () => {
+			const mocks = createMocks();
+			const { failing } = seedFailingAndDueSources(mocks);
+			const error = new Error('lock failed');
+			mocks.dbLockService.withLockContext.mockRejectedValueOnce(error);
+
+			await expect(mocks.service.refreshDueSources(new AbortController().signal)).rejects.toBe(
+				error,
+			);
+
+			expect(mocks.sourceRepo.refreshSource).not.toHaveBeenCalled();
+			expect(mocks.sourceRepo.update).toHaveBeenCalledWith(failing.id, {
+				status: 'error',
+				lastError: 'lock failed',
+			});
 		});
 
 		it('should reject when the sources cannot be loaded', async () => {
@@ -253,11 +367,11 @@ describe('TrustedKeyService', () => {
 					lastRefreshedAt: null,
 				});
 			sourceRepo.find.mockResolvedValue([staleSource('first'), staleSource('second')]);
-			dbLockService.withLock.mockImplementation(async () => controller.abort());
+			dbLockService.withLockContext.mockImplementation(async () => controller.abort());
 
 			await service.refreshDueSources(controller.signal);
 
-			expect(dbLockService.withLock).toHaveBeenCalledTimes(1);
+			expect(dbLockService.withLockContext).toHaveBeenCalledTimes(1);
 		});
 	});
 });

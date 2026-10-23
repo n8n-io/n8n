@@ -1,21 +1,40 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Context, Exception, Span } from '@opentelemetry/api';
-import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
+import type { Attributes, Context, Exception, Span, TimeInput } from '@opentelemetry/api';
+import {
+	context,
+	defaultTextMapGetter,
+	defaultTextMapSetter,
+	ROOT_CONTEXT,
+	SpanStatusCode,
+	trace,
+} from '@opentelemetry/api';
+import { isTimeInputHrTime, W3CTraceContextPropagator } from '@opentelemetry/core';
 import type { ExecutionStatus } from 'n8n-workflow';
 
+import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
+
+import {
+	buildExecutionIdentity,
+	type ExecutionIdentity,
+	toExecutionIdentity,
+	withExecutionIdentity,
+} from './execution-identity';
 import {
 	type StartWorkflowParams,
 	type EndWorkflowParams,
+	type EndCrashedWorkflowParams,
 	type StartNodeParams,
 	type EndNodeParams,
 	isEndNodeError,
 } from './execution-level-tracer.types';
 import { OtelSettingsService } from './otel-settings.service';
 import { ATTR } from './otel.constants';
+import { OtelService } from './otel.service';
 import type { TracingContext } from './tracing-context';
 
 const TRACER_NAME = 'n8n-workflow';
+const propagator = new W3CTraceContextPropagator();
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
@@ -24,57 +43,68 @@ function isError(status: ExecutionStatus): boolean {
 }
 
 type TrackedSpan = { span: Span };
+type TrackedWorkflowSpan = TrackedSpan & {
+	context: Context;
+	projectCustomAttributes: Record<string, string>;
+};
 
 @Service()
 export class ExecutionLevelTracer {
-	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
+	private readonly activeWorkflowSpans = new Map<string, TrackedWorkflowSpan>();
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
-	private tracer = trace.getTracer(TRACER_NAME);
-
-	/**
-	 * Called by OtelService after a SDK restart so this instance picks up the
-	 * new NodeTracerProvider. Without this, the cached NodeTracer stays bound
-	 * to the old (shutdown) provider and all spans are silently dropped.
-	 */
-	refreshTracer(): void {
-		this.tracer = trace.getTracer(TRACER_NAME);
-	}
 
 	constructor(
+		private readonly otelService: OtelService,
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly logger: Logger,
 	) {}
 
+	private get tracer() {
+		return this.otelService.getTracer(TRACER_NAME);
+	}
+
 	startWorkflow(params: StartWorkflowParams) {
 		try {
-			const parentCtx = this.parseTraceParentHeaders(params.tracingContext);
-			const links = this.buildContinuationLinks(params.linkTo);
-
-			const span = this.tracer.startSpan(
-				'workflow.execute',
-				{
-					attributes: {
-						[ATTR.WORKFLOW_ID]: params.workflow.id,
-						[ATTR.WORKFLOW_NAME]: params.workflow.name,
-						[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
-						[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
-						[ATTR.EXECUTION_ID]: params.executionId,
-						...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
-						...buildCustomAttributes(
-							ATTR.WORKFLOW_CUSTOM_PREFIX,
-							params.workflow?.customAttributes,
-						),
-						...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
-					},
-					links,
-				},
-				parentCtx,
+			const identity = resolveWorkflowIdentity(params);
+			const parentCtx = withExecutionIdentity(
+				this.parseTraceParentHeaders(params.tracingContext),
+				identity,
 			);
+			const links = this.buildContinuationLinks(params.linkTo);
+			const projectCustomAttributes = buildCustomAttributes(
+				ATTR.PROJECT_CUSTOM_PREFIX,
+				params.project?.customAttributes,
+			);
+
+			const attributes = {
+				[ATTR.WORKFLOW_NAME]: params.workflow.name,
+				[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
+				[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
+				...buildCustomAttributes(ATTR.WORKFLOW_CUSTOM_PREFIX, params.workflow?.customAttributes),
+				...(params.project && { [ATTR.PROJECT_ID]: params.project.id }),
+				...projectCustomAttributes,
+				...identity,
+			};
+
+			const span = this.tracer.startSpan('workflow.execute', { attributes, links }, parentCtx);
+			const workflowContext = trace.setSpan(parentCtx, span);
 
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
+				context: workflowContext,
+				projectCustomAttributes,
 			});
-			return toTracingParentContext(span);
+
+			if (params.emitStartSpan) {
+				this.emitStartMarker(
+					'workflow.execute.started',
+					attributes,
+					workflowContext,
+					params.executionId,
+				);
+			}
+
+			return toTracingParentContext(span, identity);
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
 				executionId: params.executionId,
@@ -120,30 +150,84 @@ export class ExecutionLevelTracer {
 		}
 	}
 
+	endCrashedWorkflow(params: EndCrashedWorkflowParams): void {
+		try {
+			const tracked = this.activeWorkflowSpans.get(params.executionId);
+			const span = tracked?.span ?? this.reconstructWorkflowSpan(params);
+			span.setAttributes({
+				[ATTR.EXECUTION_MODE]: params.mode,
+				[ATTR.EXECUTION_STATUS]: 'crashed',
+				[ATTR.EXECUTION_ERROR_TYPE]: WorkflowCrashedError.name,
+				[ATTR.EXECUTION_CRASH_DETECTOR]: params.detector,
+				[ATTR.EXECUTION_RECONSTRUCTED]: tracked === undefined,
+				[ATTR.EXECUTION_IS_RETRY]: params.mode === 'retry',
+				...(params.retryOf ? { [ATTR.EXECUTION_RETRY_OF]: params.retryOf } : {}),
+			});
+			span.setStatus({ code: SpanStatusCode.ERROR });
+			span.recordException(new WorkflowCrashedError());
+			this.endDanglingNodeSpans(params.executionId, 'workflow_crashed');
+			span.end(params.stoppedAt);
+		} catch (error) {
+			this.logger.warn('Failed to end crashed workflow span', {
+				executionId: params.executionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		} finally {
+			this.activeWorkflowSpans.delete(params.executionId);
+		}
+	}
+
+	private reconstructWorkflowSpan(params: EndCrashedWorkflowParams) {
+		const identity = resolveCrashedWorkflowIdentity(params);
+		return this.tracer.startSpan(
+			'workflow.execute',
+			{
+				startTime: params.startedAt,
+				attributes: {
+					...(params.workflowName && { [ATTR.WORKFLOW_NAME]: params.workflowName }),
+					...(params.workflowVersionId && {
+						[ATTR.WORKFLOW_VERSION_ID]: params.workflowVersionId,
+					}),
+					...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
+					...buildCustomAttributes(ATTR.WORKFLOW_CUSTOM_PREFIX, params.workflow?.customAttributes),
+					...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
+					...identity,
+				},
+			},
+			withExecutionIdentity(this.parseTraceParentHeaders(params.tracingContext), identity),
+		);
+	}
+
 	startNode(params: StartNodeParams): void {
 		try {
-			//	We should always have the node running in a workflow so parentCtx should never be null
-			const parentCtx = this.findWorkflowSpanContext(params.executionId);
+			//	We should always have the node running in a workflow so the tracked span should never be missing
+			const tracked = this.activeWorkflowSpans.get(params.executionId);
 
-			if (!parentCtx) {
+			if (!tracked) {
 				this.logger.warn(
 					'Trying to start a node without a pre-existing parent workflow trace - ignoring',
 				);
 				return;
 			}
 
-			const span = this.tracer.startSpan(
-				'node.execute',
-				{
-					attributes: {
-						[ATTR.NODE_ID]: params.node.id,
-						[ATTR.NODE_NAME]: params.node.name,
-						[ATTR.NODE_TYPE]: params.node.type,
-						[ATTR.NODE_TYPE_VERSION]: params.node.typeVersion,
-					},
-				},
-				parentCtx,
-			);
+			const attributes = {
+				[ATTR.NODE_ID]: params.node.id,
+				[ATTR.NODE_NAME]: params.node.name,
+				[ATTR.NODE_TYPE]: params.node.type,
+				[ATTR.NODE_TYPE_VERSION]: params.node.typeVersion,
+				...tracked.projectCustomAttributes,
+			};
+
+			const span = this.tracer.startSpan('node.execute', { attributes }, tracked.context);
+
+			if (params.emitStartSpan) {
+				this.emitStartMarker(
+					'node.execute.started',
+					attributes,
+					trace.setSpan(tracked.context, span),
+					params.executionId,
+				);
+			}
 
 			let executionNodes = this.activeNodeSpansByExecutionId.get(params.executionId);
 
@@ -220,7 +304,7 @@ export class ExecutionLevelTracer {
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			propagation.inject(trace.setSpan(context.active(), span), headers);
+			propagator.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
@@ -230,15 +314,32 @@ export class ExecutionLevelTracer {
 		}
 	}
 
-	private parseTraceParentHeaders(tracingContext?: TracingContext) {
-		return tracingContext
-			? propagation.extract(context.active(), tracingContext)
-			: context.active();
+	private emitStartMarker(
+		name: string,
+		attributes: Attributes,
+		parentCtx: Context,
+		executionId: string,
+	): void {
+		try {
+			const startTime = getStartTime(trace.getSpan(parentCtx));
+			this.tracer.startSpan(name, { startTime, attributes }, parentCtx).end(startTime);
+		} catch (error) {
+			this.logger.warn('Failed to emit start marker span', {
+				executionId,
+				spanName: name,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private parseTraceParentHeaders(tracingContext?: TracingContext): Context {
+		if (!tracingContext) return ROOT_CONTEXT;
+		return propagator.extract(ROOT_CONTEXT, tracingContext, defaultTextMapGetter);
 	}
 
 	private buildContinuationLinks(linkTo?: TracingContext) {
 		if (!linkTo) return undefined;
-		const extracted = propagation.extract(context.active(), linkTo);
+		const extracted = propagator.extract(ROOT_CONTEXT, linkTo, defaultTextMapGetter);
 		const spanContext = trace.getSpanContext(extracted);
 		if (!spanContext) return undefined;
 		return [
@@ -249,11 +350,6 @@ export class ExecutionLevelTracer {
 		];
 	}
 
-	private findWorkflowSpanContext(executionId: string) {
-		const tracked = this.activeWorkflowSpans.get(executionId);
-		return tracked ? trace.setSpan(context.active(), tracked.span) : undefined;
-	}
-
 	private findMostSpecificSpan(executionId: string, nodeName?: string): Span | undefined {
 		return (
 			(nodeName
@@ -262,12 +358,12 @@ export class ExecutionLevelTracer {
 		);
 	}
 
-	private endDanglingNodeSpans(executionId: string): void {
+	private endDanglingNodeSpans(executionId: string, reason = 'workflow_cancelled'): void {
 		const executionNodes = this.activeNodeSpansByExecutionId.get(executionId);
 		if (!executionNodes) return;
 
 		for (const tracked of executionNodes.values()) {
-			terminateSpan(tracked.span, 'workflow_cancelled');
+			terminateSpan(tracked.span, reason);
 		}
 
 		this.activeNodeSpansByExecutionId.delete(executionId);
@@ -286,6 +382,29 @@ function buildCustomAttributes(
 	return result;
 }
 
+function resolveWorkflowIdentity(params: StartWorkflowParams): ExecutionIdentity {
+	const saved = params.savedIdentity;
+	return buildExecutionIdentity({
+		executionId: params.executionId,
+		workflowId: params.workflow.id,
+		workflowName: params.workflow.name,
+		projectId: params.project ? params.project.id : saved?.[ATTR.PROJECT_ID],
+		projectName: params.project ? params.project.name : saved?.[ATTR.PROJECT_NAME],
+	});
+}
+
+function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): ExecutionIdentity {
+	return (
+		toExecutionIdentity(params.tracingContext?.identity) ??
+		buildExecutionIdentity({
+			executionId: params.executionId,
+			workflowId: params.workflowId,
+			workflowName: params.workflowName,
+			projectId: params.project?.id,
+		})
+	);
+}
+
 function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number> {
 	const attrs: Record<string, string | number> = {
 		[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
@@ -295,10 +414,16 @@ function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | 
 	return attrs;
 }
 
-function toTracingParentContext(span: Span): TracingContext {
+function toTracingParentContext(span: Span, identity: ExecutionIdentity): TracingContext {
 	const carrier: Record<string, string> = {};
-	propagation.inject(trace.setSpan(context.active(), span), carrier);
-	return { traceparent: carrier.traceparent, tracestate: carrier.tracestate };
+	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
+	return { traceparent: carrier.traceparent, tracestate: carrier.tracestate, identity };
+}
+
+// Only a recorded SDK span has a start time. The API span type does not expose it.
+function getStartTime(span: Span | undefined): TimeInput {
+	const startTime = span && 'startTime' in span ? span.startTime : undefined;
+	return isTimeInputHrTime(startTime) ? startTime : new Date();
 }
 
 function terminateSpan(span: Span, reason: string): void {

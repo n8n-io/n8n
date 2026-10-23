@@ -73,6 +73,7 @@ import type {
 	ModelConfig,
 	Provider,
 	PromptCachingConfig,
+	NativeToolDeferralConfig,
 	ReasoningLevel,
 	RunOptions,
 	StreamResult,
@@ -148,6 +149,7 @@ export interface AgentSnapshot {
 	reasoning: ReasoningLevel | null;
 	/** The prompt caching config if set via `.promptCaching()`, otherwise null. */
 	promptCaching: PromptCachingConfig | null;
+	nativeToolDeferral: NativeToolDeferralConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
 }
@@ -182,6 +184,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private deferredTools: BuiltTool[] = [];
 
 	private deferredToolSearchTopK: number | undefined;
+
+	private nativeToolDeferralConfig?: NativeToolDeferralConfig;
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -316,6 +320,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options?: { name?: string; description?: string; filterableKeys?: Record<string, string> },
 	): this {
 		return this.tool(store.asTool(options));
+	}
+
+	/** Use provider tool search when the model and endpoint support it. */
+	nativeToolDeferral(config: NativeToolDeferralConfig): this {
+		this.nativeToolDeferralConfig = { eagerToolNames: [...config.eagerToolNames] };
+		return this;
 	}
 
 	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
@@ -521,8 +531,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/**
 	 * Enable prompt caching with defaults tuned for agent workloads. Anthropic
-	 * models get a `1h` instruction-level cache breakpoint; OpenAI models get
-	 * `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
+	 * models, including Claude on OpenRouter and Vertex, get a `1h` instruction breakpoint.
+	 * OpenAI gets `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
 	 * Pass `{ anthropic: false }` / `{ openai: false }` to disable per provider,
 	 * or override individual fields (e.g. `{ anthropic: { ttl: '5m' } }`).
 	 *
@@ -735,6 +745,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			thinking: this.thinkingConfig ?? null,
 			reasoning: this.reasoningLevel ?? null,
 			promptCaching: this.promptCachingConfig ?? null,
+			nativeToolDeferral: this.nativeToolDeferralConfig
+				? { eagerToolNames: [...this.nativeToolDeferralConfig.eagerToolNames] }
+				: null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
 	}
@@ -830,6 +843,20 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		const active = this.createRuntime(config, options.runId);
 		try {
 			const result = await active.runtime.resume('stream', data, options);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
+	}
+
+	async resumePaused(
+		options: Omit<ResumeOptions, 'toolCallId'> & ExecutionOptions,
+	): Promise<StreamResult> {
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config, options.runId);
+		try {
+			const result = await active.runtime.resumePaused(options);
 			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
 		} catch (error) {
 			await this.cleanupRuntime(active);
@@ -1085,7 +1112,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let instructions = this.instructionsText;
 		if (this.skillSource) {
-			await this.skillSource.prepare?.();
 			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
 		}
 		if (this.workspaceInstance) {
@@ -1149,6 +1175,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			thinking: this.thinkingConfig,
 			reasoning: this.reasoningLevel,
 			promptCaching: this.promptCachingConfig,
+			nativeToolDeferral: this.nativeToolDeferralConfig,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
@@ -1296,6 +1323,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
 				promptCaching: this.promptCachingConfig,
+				nativeToolDeferral: this.nativeToolDeferralConfig,
 				runState: options.runState,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(this.reasoningLevel !== undefined ? { reasoning: this.reasoningLevel } : {}),

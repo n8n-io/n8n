@@ -4,9 +4,6 @@ tags:
 summary: Update a workflow
 description: 'Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`. Because that re-publication puts a new version live, it additionally requires the `workflow:activate` API key scope and the `workflow:publish` project permission. A caller without either can still save: the new version is stored as a draft and the response is a `403` naming the missing permission, leaving the published version live. Saving an unpublished workflow, or saving with `publishIfActive=false`, only needs `workflow:update`.'
 x-required-scope: workflow:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -40,7 +37,13 @@ requestBody:
             example: Workflow 1
           active:
             type: boolean
+            description: Deprecated. Check whether `activeVersionId` is not null instead.
             readOnly: true
+            deprecated: true
+          activeVersionId:
+            type: string
+            readOnly: true
+            nullable: true
           createdAt:
             type: string
             format: date-time
@@ -115,12 +118,10 @@ requestBody:
                     - 80
                 parameters:
                   type: object
-                  additionalProperties:
-                    nullable: true
+                  additionalProperties: {}
                 credentials:
                   type: object
-                  additionalProperties:
-                    nullable: true
+                  additionalProperties: {}
                   example:
                     jiraSoftwareCloudApi:
                       name: jiraApi
@@ -141,6 +142,8 @@ requestBody:
                           - value
                         additionalProperties: false
                   additionalProperties: false
+                extendsCredential:
+                  type: string
                 createdAt:
                   type: string
                   format: date-time
@@ -246,6 +249,10 @@ requestBody:
                   - `manual-only`: Redact manually triggered executions only.
                   - `all`: Redact all executions, manual and production.
                 example: non-manual
+              redactCallerExecutions:
+                type: boolean
+                description: Controls whether a workflow that calls this workflow as a sub-workflow has its executions redacted on the same channels as this workflow. The calling execution keeps a copy of the output of this workflow. Defaults to true. Turn it off only when the output of this workflow is not sensitive. Redaction that this workflow received from its own sub-workflows always passes to the caller.
+                example: true
               availableInMCP:
                 type: boolean
                 description: Controls whether this workflow is reachable over the Model Context Protocol (MCP). Defaults to false. The workflow must be active and must hold at least one active Webhook node.
@@ -301,17 +308,15 @@ requestBody:
               - type: string
                 format: jsonString
               - type: object
-                additionalProperties:
-                  nullable: true
-              - nullable: true
+                additionalProperties: {}
+              - {}
             description: Data the workflow keeps between executions
             example:
               lastId: 1
           pinData:
             type: object
             nullable: true
-            additionalProperties:
-              nullable: true
+            additionalProperties: {}
             description: Pinned sample data for nodes, keyed by node name
           parentFolderId:
             type: string
@@ -592,6 +597,8 @@ responses:
               nullable: true
             active:
               type: boolean
+              description: Deprecated. Check whether `activeVersionId` is not null instead.
+              deprecated: true
             activeVersionId:
               type: string
               nullable: true
@@ -829,6 +836,10 @@ responses:
                     - `non-manual`: Redact production (non-manually triggered) executions only.
                     - `manual-only`: Redact manually triggered executions only.
                     - `all`: Redact all executions, manual and production.
+                redactCallerExecutions:
+                  type: boolean
+                  example: true
+                  description: Controls whether a workflow that calls this workflow as a sub-workflow has its executions redacted on the same channels as this workflow. The calling execution keeps a copy of the output of this workflow. Defaults to true. Turn it off only when the output of this workflow is not sensitive. Redaction that this workflow received from its own sub-workflows always passes to the caller.
                 availableInMCP:
                   type: boolean
                   example: false

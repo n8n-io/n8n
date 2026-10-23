@@ -6,6 +6,7 @@ import {
 	N8nIcon,
 	N8nTableBase,
 	N8nEmptyState,
+	N8nBadge,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -13,9 +14,11 @@ import { ElSkeletonItem } from 'element-plus';
 import { ALLOWED_AGENT_FILE_EXTENSIONS, type AgentFileDto } from '@n8n/api-types';
 
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 
 const props = withDefaults(
 	defineProps<{
+		agentId: string;
 		files: AgentFileDto[];
 		disabled?: boolean;
 		loading?: boolean;
@@ -38,6 +41,7 @@ const emit = defineEmits<{
 type FileAction = 'delete';
 
 const i18n = useI18n();
+const agentTelemetry = useAgentTelemetry();
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 const isMutating = computed(() => props.uploading || props.deletingFileId !== null);
 const isUploadDisabled = computed(() => props.disabled || props.loading || isMutating.value);
@@ -118,6 +122,7 @@ function onAction(actionId: FileAction, file: AgentFileDto) {
 
 function openFilePicker() {
 	if (isUploadDisabled.value) return;
+	agentTelemetry.trackClickedKnowledgeUpload({ agentId: props.agentId });
 	fileInput.value?.click();
 }
 
@@ -162,10 +167,9 @@ function onFilesSelected(event: Event) {
 							</span>
 						</td>
 						<td :class="$style.originCell" data-testid="agent-file-origin">
-							<span :class="$style.originPill" data-testid="agent-file-origin-pill">
-								<N8nIcon icon="user" size="large" />
-								<span>{{ i18n.baseText('agents.builder.files.origin.user' as BaseTextKey) }}</span>
-							</span>
+							<N8nBadge leading-icon="user" data-testid="agent-file-origin-pill">
+								{{ i18n.baseText('agents.builder.files.origin.user') }}
+							</N8nBadge>
 						</td>
 						<td :class="$style.dateCell" data-testid="agent-file-created-at">
 							{{ formatDate(file.createdAt) }}

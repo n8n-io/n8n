@@ -2,11 +2,22 @@ import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
 import type { AgentExecutionCounter } from './agent';
+import type { GuardrailNotice } from './guardrail';
+import type { McpToolAnnotations } from './mcp';
 import type { AgentMessage } from './message';
+import type { ApprovalResumePayload } from '../../sdk/tool';
 import type { RuntimeSkillLoader } from '../../skills/types';
 import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
+
+export interface ToolApprovalContext {
+	readonly approvedKeys: ReadonlySet<string>;
+	/** Prepare display arguments before checkpointing. Keep execution arguments unchanged. */
+	getDisplayArgs?(toolName: string, input: unknown): unknown;
+	/** Record a human decision. Persist a session grant before this resolves. */
+	onDecision(grantKey: string, decision: ApprovalResumePayload): Promise<void>;
+}
 
 export interface ToolSuspendOptions {
 	/** Schema for data accepted when resuming this specific suspension. */
@@ -41,6 +52,8 @@ export interface ToolExecutionContext {
 	abortSignal?: AbortSignal;
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: AgentExecutionCounter;
+	/** Allowances loaded by the host for this thread and run. */
+	approvalContext?: ToolApprovalContext;
 	/** Internal runtime hook used to retain cleanup ownership if abort wins the suspend race. */
 	onSuspend?: (payload: unknown, options?: ToolSuspendOptions) => void | Promise<void>;
 	/**
@@ -52,6 +65,8 @@ export interface ToolExecutionContext {
 	continuation?: JSONValue;
 	/** Resume schema restored from persistence for a resumed tool call. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface ToolContext {
@@ -72,6 +87,8 @@ export interface ToolContext {
 	abortSignal?: ToolExecutionContext['abortSignal'];
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
+	approvalContext?: ToolExecutionContext['approvalContext'];
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
@@ -102,12 +119,14 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	abortSignal?: ToolExecutionContext['abortSignal'];
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
+	approvalContext?: ToolExecutionContext['approvalContext'];
 	/** The payload this tool passed to `suspend()` when it suspended, restored from the checkpoint. Only set when the tool is being resumed. */
 	suspendPayload?: S;
 	/** Private continuation this tool passed to `suspend()`, restored from the checkpoint. */
 	continuation?: JSONValue;
 	/** Resume schema persisted for this suspension. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface ToolCancellationContext extends ToolContext {
@@ -123,6 +142,12 @@ export interface ToolCancellationContext extends ToolContext {
 
 export interface BuiltTool {
 	readonly name: string;
+	/**
+	 * Former names of this tool. Persisted checkpoints and message history can
+	 * still reference them, so the runtime resolves them to this tool. They are
+	 * never exposed to the model.
+	 */
+	readonly legacyNames?: readonly string[];
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's
@@ -152,6 +177,16 @@ export interface BuiltTool {
 	readonly toModelOutput?: (output: unknown) => unknown;
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	readonly outputTrust?: 'untrusted';
+	/**
+	 * Ends the run after this call's batch settles, without another model call,
+	 * when it returns true for the output. For tools whose result is the last
+	 * thing the turn should do, so the model cannot repeat them.
+	 *
+	 * After a resume, the calls that settled before the suspension are checked
+	 * against the output stored in history. Keep the output small and do not
+	 * combine this with `toModelOutput`, so both checks see the same value.
+	 */
+	readonly endsTurn?: (output: unknown) => boolean;
 	readonly handler?: (
 		input: unknown,
 		ctx: ToolContext | InterruptibleToolContext,
@@ -168,6 +203,8 @@ export interface BuiltTool {
 	readonly mcpServerName?: string;
 	/** Original, unprefixed tool name reported by the MCP server. */
 	readonly mcpToolName?: string;
+	/** Behavior hints reported by the MCP server for this tool. */
+	readonly mcpAnnotations?: McpToolAnnotations;
 	/**
 	 * Provider-specific options forwarded to the AI SDK's `tool()` call.
 	 * Keyed by provider name (e.g. `anthropic`, `openai`).

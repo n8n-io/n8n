@@ -2,7 +2,7 @@ import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-
 import type { Project, Variables } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import {
 	createProjectVariable,
 	createVariable,

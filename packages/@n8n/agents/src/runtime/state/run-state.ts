@@ -109,13 +109,13 @@ export class RunStateManager {
 	}
 
 	/** Delete a finished run from storage. Called when a resumed run completes without re-suspending. */
-	async complete(runId: string): Promise<void> {
-		await this.store.delete(runId);
+	async complete(runId: string, state?: SerializableAgentState): Promise<void> {
+		await this.store.delete(runId, state);
 	}
 
 	/** Delete a cancelled run and surface failures so its parent can remain retryable. */
-	async cancel(runId: string): Promise<void> {
-		await this.store.delete(runId);
+	async cancel(runId: string, state?: SerializableAgentState): Promise<void> {
+		await this.store.delete(runId, state);
 	}
 }
 

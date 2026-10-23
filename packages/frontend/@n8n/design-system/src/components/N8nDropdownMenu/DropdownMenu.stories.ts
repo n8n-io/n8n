@@ -203,15 +203,14 @@ export const WithBadgesAndShortcuts: Story = {
 					/>
 					<N8nBadge
 						v-if="item.id === 'share'"
-						theme="success"
-						bold
+						variant="success"
 						:class="ui.class"
 					>
 						New
 					</N8nBadge>
 					<N8nBadge
 						v-if="item.id === 'pro'"
-						theme="primary"
+						variant="primary"
 						:class="ui.class"
 					>
 						PRO

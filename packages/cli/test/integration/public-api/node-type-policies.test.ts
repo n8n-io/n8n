@@ -1,9 +1,10 @@
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
@@ -11,7 +12,7 @@ import * as utils from '@test-integration/utils';
 const testServer = utils.setupTestServer({
 	endpointGroups: ['publicApi'],
 	modules: ['type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;
@@ -56,6 +57,13 @@ afterEach(async () => {
 	]);
 });
 
+// Fixture rules name `a.b`; without it loaded, every write would also warn `notLoaded`.
+beforeEach(() => {
+	vi.spyOn(Container.get(LoadNodesAndCredentials), 'knownNodes', 'get').mockReturnValue({
+		'a.b': { className: '', sourcePath: '' },
+	});
+});
+
 /**
  * Least privilege first: the API-key scope check and the RBAC check are independent, so a key
  * that lacks the scope and a key whose user lacks the RBAC grant are both rejected with 403.
@@ -77,6 +85,7 @@ describe('node type policies public API authorization', () => {
 		['GET', '/node-type-policies/policies/does-not-exist'],
 		['PUT', '/node-type-policies/policies/does-not-exist'],
 		['DELETE', '/node-type-policies/policies/does-not-exist'],
+		['GET', '/node-type-policies/scopes/does-not-exist/attachments'],
 		['PUT', '/node-type-policies/scopes/does-not-exist/attachments'],
 	])('%s %s rejects an owner key without the scope with 403', async (method, path) => {
 		const agent = testServer.publicApiAgentFor(unscopedOwner);
@@ -85,7 +94,9 @@ describe('node type policies public API authorization', () => {
 			: method === 'POST'
 				? agent.post(path).send({})
 				: method === 'PUT'
-					? agent.put(path).send({})
+					? agent
+							.put(path)
+							.send(path.endsWith('/attachments') ? { attachments: [], version: 0 } : {})
 					: agent.delete(path));
 
 		expect(response.statusCode).toBe(403);
@@ -106,6 +117,7 @@ describe('node type policies public API authorization', () => {
 		['GET', '/node-type-policies/policies/does-not-exist'],
 		['PUT', '/node-type-policies/policies/does-not-exist'],
 		['DELETE', '/node-type-policies/policies/does-not-exist'],
+		['GET', '/node-type-policies/scopes/does-not-exist/attachments'],
 		['PUT', '/node-type-policies/scopes/does-not-exist/attachments'],
 	])(
 		'%s %s rejects a project admin with 403 (instance routes are global-only)',
@@ -116,7 +128,9 @@ describe('node type policies public API authorization', () => {
 				: method === 'POST'
 					? agent.post(path).send({})
 					: method === 'PUT'
-						? agent.put(path).send({})
+						? agent
+								.put(path)
+								.send(path.endsWith('/attachments') ? { attachments: [], version: 0 } : {})
 						: agent.delete(path));
 
 			expect(response.statusCode).toBe(403);
@@ -156,13 +170,16 @@ describe('node type policies public API authorization', () => {
 
 describe('node type policies public API license gating', () => {
 	afterEach(() => {
-		testServer.license.enable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
-	test('rejects an owner with 403 when the license feature is disabled', async () => {
-		testServer.license.disable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+	test.each([
+		'/node-type-policies/instance',
+		'/node-type-policies/scopes/does-not-exist/attachments',
+	])('GET %s rejects an owner with 403 when the license feature is disabled', async (path) => {
+		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 
-		const instance = await testServer.publicApiAgentFor(owner).get('/node-type-policies/instance');
+		const instance = await testServer.publicApiAgentFor(owner).get(path);
 		expect(instance.statusCode).toBe(403);
 
 		const projectPolicy = await testServer
@@ -274,6 +291,22 @@ describe('node type policies public API instance scope', () => {
 	});
 });
 
+describe('node type policies public API extends rules', () => {
+	test('PUT rejects an extends rule with 400 and writes nothing', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+
+		const response = await agent.put('/node-type-policies/instance').send({
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } }],
+			defaultAction: 'allow',
+			version: 0,
+		});
+
+		expect(response.statusCode).toBe(400);
+		const current = await agent.get('/node-type-policies/instance');
+		expect(current.body.version).toBe(0);
+	});
+});
+
 describe('node type policies public API project scope', () => {
 	test('GET on an unconfigured project reports allow-all at version 0', async () => {
 		const response = await testServer.publicApiAgentFor(projectAdmin).get(projectRoute(project.id));
@@ -352,7 +385,10 @@ describe('node type policies public API project scope', () => {
 		const instancePut = await ownerAgent.put('/node-type-policies/instance').send(ALLOW_ALL);
 		const shared = await ownerAgent
 			.put(`/node-type-policies/scopes/${instancePut.body.scopeId}/attachments`)
-			.send({ attachments: [{ policyId: documentId, priority: 0, isFloor: false }] });
+			.send({
+				attachments: [{ policyId: documentId, priority: 0, isFloor: false }],
+				version: instancePut.body.version,
+			});
 		expect(shared.statusCode).toBe(200);
 
 		const current = await adminAgent.get(projectRoute(project.id));
@@ -393,7 +429,9 @@ describe('node type policies public API policy documents', () => {
 			.send({ rules: [DENY_RULE, { ...DENY_RULE, id: 'r2', action: 'allow' }] });
 
 		expect(response.statusCode).toBe(201);
-		expect(response.body.warnings).toEqual([{ ruleId: 'r2', shadowedByRuleId: 'r1' }]);
+		expect(response.body.warnings).toEqual([
+			{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' },
+		]);
 	});
 
 	test('POST rejects duplicate rule ids with 400', async () => {
@@ -529,9 +567,10 @@ describe('node type policies public API policy documents', () => {
 		const policyId = created.body.policy.id as string;
 
 		const instancePut = await agent.put('/node-type-policies/instance').send(ALLOW_ALL);
-		await agent
-			.put(`/node-type-policies/scopes/${instancePut.body.scopeId}/attachments`)
-			.send({ attachments: [{ policyId, priority: 5, isFloor: false }] });
+		await agent.put(`/node-type-policies/scopes/${instancePut.body.scopeId}/attachments`).send({
+			attachments: [{ policyId, priority: 5, isFloor: false }],
+			version: instancePut.body.version,
+		});
 
 		const response = await agent.delete(`/node-type-policies/policies/${policyId}`);
 
@@ -540,6 +579,125 @@ describe('node type policies public API policy documents', () => {
 });
 
 describe('node type policies public API attachments', () => {
+	test.each(['instance', 'project'])(
+		'GET and PUT return every attachment in evaluation order for %s scope',
+		async (scope) => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const effectivePath =
+				scope === 'instance' ? '/node-type-policies/instance' : projectRoute(project.id);
+			const configured = await agent.put(effectivePath).send(ALLOW_ALL);
+			expect(configured.statusCode).toBe(200);
+			const path = `/node-type-policies/scopes/${configured.body.scopeId}/attachments`;
+			const slots = [
+				{ priority: 10, isFloor: false },
+				{ priority: 20, isFloor: true },
+				{ priority: -5, isFloor: false },
+				{ priority: 0, isFloor: true },
+			];
+			const attachments = [];
+			for (const [index, slot] of slots.entries()) {
+				const rules = [{ ...DENY_RULE, id: `r${index}` }];
+				const created = await agent.post('/node-type-policies/policies').send({ rules });
+				expect(created.statusCode).toBe(201);
+				attachments.push({ policyId: created.body.policy.id as string, rules, ...slot });
+			}
+			const replaced = await agent.put(path).send({
+				attachments: attachments.map(({ rules: _rules, ...attachment }) => attachment),
+				version: configured.body.version,
+			});
+			expect(replaced.statusCode).toBe(200);
+			expect(replaced.body).toEqual({
+				attachments: [attachments[3], attachments[1], attachments[2], attachments[0]],
+				version: configured.body.version + 1,
+			});
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+			const read = await agent.get(path);
+
+			expect(read.statusCode).toBe(200);
+			expect(read.body).toEqual(replaced.body);
+			expect(emitSpy.mock.calls.filter(([event]) => event.startsWith('node-type-policy-'))).toEqual(
+				[],
+			);
+			const effective = await agent.get(effectivePath);
+			expect(Object.keys(effective.body).sort()).toEqual([...EFFECTIVE_KEYS].sort());
+			const updated = await agent.put(path).send({ attachments: [], version: read.body.version });
+			expect(updated.statusCode).toBe(200);
+			expect(updated.body).toEqual({ attachments: [], version: read.body.version + 1 });
+			const empty = await agent.get(path);
+			expect(empty.statusCode).toBe(200);
+			expect(empty.body).toEqual(updated.body);
+		},
+	);
+
+	test('GET returns 404 for an unknown scope and a credential type scope', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		expect(
+			(await agent.get('/node-type-policies/scopes/does-not-exist/attachments')).statusCode,
+		).toBe(404);
+		const other = await agent.put('/credential-type-policies/instance').send(ALLOW_ALL);
+		expect(other.statusCode).toBe(200);
+		expect(
+			(await agent.get(`/node-type-policies/scopes/${other.body.scopeId}/attachments`)).statusCode,
+		).toBe(404);
+	});
+
+	test('PUT with a stale version returns 409 and preserves the attachments and version', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		const instance = await agent.put('/node-type-policies/instance').send(ALLOW_ALL);
+		expect(instance.statusCode).toBe(200);
+		const created = await agent.post('/node-type-policies/policies').send({ rules: [DENY_RULE] });
+		expect(created.statusCode).toBe(201);
+		const policyId = created.body.policy.id as string;
+
+		const path = `/node-type-policies/scopes/${instance.body.scopeId}/attachments`;
+		const attached = await agent.put(path).send({
+			attachments: [{ policyId, priority: 0, isFloor: false }],
+			version: instance.body.version,
+		});
+		expect(attached.statusCode).toBe(200);
+		const read = await agent.get(path);
+		expect(read.statusCode).toBe(200);
+		expect(read.body).toEqual({
+			attachments: [{ policyId, rules: [DENY_RULE], priority: 0, isFloor: false }],
+			version: instance.body.version + 1,
+		});
+		const replaced = await agent.put(path).send({
+			attachments: read.body.attachments.map(({ policyId }: { policyId: string }) => ({
+				policyId,
+				priority: 5,
+				isFloor: false,
+			})),
+			version: read.body.version,
+		});
+		expect(replaced.statusCode).toBe(200);
+		expect(replaced.body).toEqual({
+			attachments: [{ policyId, rules: [DENY_RULE], priority: 5, isFloor: false }],
+			version: read.body.version + 1,
+		});
+
+		const stale = await agent.put(path).send({ attachments: [], version: read.body.version });
+
+		expect(stale.statusCode).toBe(409);
+		const persisted = await agent.get(path);
+		expect(persisted.statusCode).toBe(200);
+		expect(persisted.body).toEqual(replaced.body);
+		const updated = await agent
+			.put(path)
+			.send({ attachments: [], version: persisted.body.version });
+		expect(updated.statusCode).toBe(200);
+		expect(updated.body).toEqual({ attachments: [], version: persisted.body.version + 1 });
+	});
+
+	test.each([undefined, -1, 0.5])('PUT rejects invalid version %s with 400', async (version) => {
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.put('/node-type-policies/scopes/does-not-exist/attachments')
+			.send({ attachments: [], version });
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('PUT replaces the attachments, bumps the version, and fires an audit event', async () => {
 		const eventService = Container.get(EventService);
 		const emitSpy = vi.spyOn(eventService, 'emit');
@@ -551,9 +709,10 @@ describe('node type policies public API attachments', () => {
 		const policyId = created.body.policy.id as string;
 
 		emitSpy.mockClear();
-		const response = await agent
-			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
-			.send({ attachments: [{ policyId, priority: 1, isFloor: false }] });
+		const response = await agent.put(`/node-type-policies/scopes/${scopeId}/attachments`).send({
+			attachments: [{ policyId, priority: 1, isFloor: false }],
+			version: instancePut.body.version,
+		});
 
 		expect(response.statusCode).toBe(200);
 		expect(Object.keys(response.body).sort()).toEqual(['attachments', 'version']);
@@ -579,6 +738,7 @@ describe('node type policies public API attachments', () => {
 					{ policyId: 'p1', priority: 0, isFloor: false },
 					{ policyId: 'p1', priority: 1, isFloor: false },
 				],
+				version: instancePut.body.version,
 			});
 		expect(duplicatePolicy.statusCode).toBe(400);
 
@@ -589,6 +749,7 @@ describe('node type policies public API attachments', () => {
 					{ policyId: 'p1', priority: 0, isFloor: false },
 					{ policyId: 'p2', priority: 0, isFloor: false },
 				],
+				version: instancePut.body.version,
 			});
 		expect(duplicateSlot.statusCode).toBe(400);
 	});
@@ -597,7 +758,7 @@ describe('node type policies public API attachments', () => {
 		const response = await testServer
 			.publicApiAgentFor(owner)
 			.put('/node-type-policies/scopes/does-not-exist/attachments')
-			.send({ attachments: [] });
+			.send({ attachments: [], version: 0 });
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -617,7 +778,10 @@ describe('node type policies public API attachments', () => {
 
 		const response = await ownerAgent
 			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
-			.send({ attachments: [{ policyId: created.body.policy.id, priority: 0, isFloor: false }] });
+			.send({
+				attachments: [{ policyId: created.body.policy.id, priority: 0, isFloor: false }],
+				version: configured.body.version,
+			});
 
 		expect(response.statusCode).toBe(400);
 	});

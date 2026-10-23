@@ -8,8 +8,9 @@ export type {
 	TelemetryEventInput,
 	TelemetryEventRegistry,
 } from './define';
-export { POLICY_KINDS } from './events/node-type-policies';
-export type { PolicyKind } from './events/node-type-policies';
+export { ASSISTANT_MENTION_QUERY_TEXT_MAX_LENGTH } from './events/instance-ai';
+export { POLICY_KINDS } from './events/type-availability-policies';
+export type { PolicyKind } from './events/type-availability-policies';
 export { redactTelemetryProperties, redactTelemetryText } from './redaction';
 export type { TelemetryTextOptions } from './redaction';
 export { collectDuplicateNames, validateEntrySchemas } from './registry-checks';

@@ -1,6 +1,5 @@
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -8,10 +7,8 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TtlMap } from '@/utils/ttl-map';
 
 import {
@@ -19,14 +16,18 @@ import {
 	type AgentSandboxPrincipalHash,
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
+import { AgentChangePublisher } from './agent-change-publisher.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
-import type { UserToolAccessSnapshot } from './agent-runtime-reconstruction.service';
-import type { Agent } from './entities/agent.entity';
+import type {
+	ReconstructedAgentRuntime,
+	UserToolAccessSnapshot,
+} from './agent-runtime-reconstruction.service';
 import { AgentRepository } from './repositories/agent.repository';
-import type { ToolRegistry } from './tool-registry';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 
 export interface GetRuntimeParams {
 	agentId: string;
@@ -44,6 +45,7 @@ export interface GetRuntimeParams {
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	/** Disable background-job tools and wake hints for task-triggered runtimes. */
 	allowBackgroundTasks?: boolean;
+	attributionUserId?: string;
 	/**
 	 * Build for the in-app preview chat, which gets an extra instruction saying
 	 * the agent cannot change its own setup. It makes the runtime unusable for
@@ -59,12 +61,8 @@ export interface GetRuntimeParams {
  */
 const TOOL_ACCESS_RECHECK_INTERVAL_MS = Time.minutes.toMilliseconds;
 
-export interface AgentRuntime {
-	agent: RuntimeAgent;
+export interface AgentRuntime extends ReconstructedAgentRuntime {
 	agentId: string;
-	toolRegistry: ToolRegistry;
-	/** MCP server name -> registry attribution appended to replies that used its tools. */
-	mcpServerAttributions: Map<string, string>;
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 	/**
@@ -120,11 +118,11 @@ export class AgentRuntimeCacheService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly publisher: Publisher,
-		private readonly globalConfig: GlobalConfig,
+		private readonly changePublisher: AgentChangePublisher,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -136,6 +134,7 @@ export class AgentRuntimeCacheService {
 		if (params.previewChat) parts.push('preview');
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
+		if (params.attributionUserId) parts.push(`attribution:${params.attributionUserId}`);
 		// Per-user runtimes have node/workflow tools filtered by that user's
 		// access — keying by user id keeps them from colliding with each other
 		// or with the unscoped (no-user) runtime.
@@ -161,11 +160,10 @@ export class AgentRuntimeCacheService {
 	 */
 	clearRuntimes(agentId: string, options: { skipBroadcast?: boolean } = {}): void {
 		for (const key of this.runtimes.keys()) {
-			if (this.isRuntimeCacheKeyForAgent(key, agentId)) {
-				const entry = this.runtimes.get(key);
-				this.runtimes.delete(key);
-				if (entry) this.closeAgentResources(entry.agent, agentId);
-			}
+			if (!this.isRuntimeCacheKeyForAgent(key, agentId)) continue;
+			const entry = this.runtimes.get(key);
+			this.runtimes.delete(key);
+			if (entry) this.closeAgentResources(entry.agent, agentId);
 		}
 
 		for (const key of this.runtimeInitializations.keys()) {
@@ -175,21 +173,7 @@ export class AgentRuntimeCacheService {
 		}
 
 		if (options.skipBroadcast) return;
-		if (!this.globalConfig.multiMainSetup.enabled) return;
-
-		void this.publisher
-			.publishCommand({
-				command: 'agent-config-changed',
-				payload: { agentId },
-			})
-			.catch((error) => {
-				this.logger.warn(
-					`[AgentRuntimeCacheService] Failed to publish agent-config-changed for ${agentId}`,
-					{
-						error: error instanceof Error ? error.message : String(error),
-					},
-				);
-			});
+		void this.changePublisher.publish({ command: 'agent-config-changed', payload: { agentId } });
 	}
 
 	/**
@@ -259,49 +243,14 @@ export class AgentRuntimeCacheService {
 
 		const cached = this.runtimes.get(cacheKey);
 		if (cached) {
-			const accessStillCurrent = await this.toolAccessStillCurrent(cached, params);
-			const current = this.runtimes.get(cacheKey);
-			// The awaited re-check may race with cache invalidation or replacement.
-			if (current !== cached) {
-				if (current) return this.acquireRuntimeLease(current);
-			} else if (accessStillCurrent) {
-				this.runtimes.touch(cacheKey);
-				return this.acquireRuntimeLease(cached);
-			} else {
-				// Revoked grants: retire this runtime and rebuild below so the tool
-				// list is re-filtered against the user's current access.
-				this.runtimes.delete(cacheKey);
-				this.closeAgentResources(cached.agent, params.agentId);
-			}
+			const runtime = await this.acquireCachedRuntime(cacheKey, cached, params);
+			if (runtime) return runtime;
 		}
 
 		const initialization = this.runtimeInitializations.get(cacheKey);
 		if (initialization) return this.acquireRuntimeLease(await initialization.promise);
 
-		const token = Symbol(cacheKey);
-		const runtimeInitialization: RuntimeInitialization = {
-			token,
-			promise: (async () => {
-				const runtime = await this.reconstructRuntime(params);
-				if (this.runtimeInitializations.get(cacheKey)?.token !== token) {
-					this.closeAgentResources(runtime.agent, params.agentId);
-					throw new Error(`Agent ${params.agentId} runtime initialization was invalidated`);
-				}
-
-				this.runtimes.set(cacheKey, runtime);
-				const cachedRuntime = this.runtimes.get(cacheKey);
-				if (!cachedRuntime) throw new Error(`Agent ${params.agentId} failed to reconstruct`);
-				return cachedRuntime;
-			})(),
-		};
-		runtimeInitialization.promise = runtimeInitialization.promise.finally(() => {
-			if (this.runtimeInitializations.get(cacheKey)?.token === token) {
-				this.runtimeInitializations.delete(cacheKey);
-			}
-		});
-		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
-
-		return this.acquireRuntimeLease(await runtimeInitialization.promise);
+		return this.acquireRuntimeLease(await this.initializeRuntime(cacheKey, params).promise);
 	}
 
 	/**
@@ -363,14 +312,22 @@ export class AgentRuntimeCacheService {
 			sandboxPrincipalHash,
 			allowBackgroundTasks,
 			previewChat,
+			attributionUserId,
 		} = params;
 
-		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+		const agentEntity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			`Agent ${agentId} not found`,
+		);
 
-		const agentData: Agent = usePublishedVersion
-			? getPublishedAgentSnapshot(agentEntity)
-			: agentEntity;
+		const runSource = await resolveAgentRunSource(
+			agentEntity,
+			usePublishedVersion === true,
+			this.agentSkillRefs,
+			{},
+		);
 
 		// `user` here is whatever `computeRuntimeCacheKey` above already keyed
 		// this build on — undefined for published/integration runs, set for
@@ -385,7 +342,7 @@ export class AgentRuntimeCacheService {
 			agentId,
 		);
 		const reconstruction = this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
-			agentData,
+			runSource,
 			credentialProvider,
 			usePublishedVersion ? 'production' : 'test',
 			integrationType,
@@ -393,13 +350,14 @@ export class AgentRuntimeCacheService {
 			undefined,
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
-			{ previewChat, allowBackgroundTasks },
+			{ previewChat, allowBackgroundTasks, attributionUserId },
 		);
 		const {
 			agent: agentInstance,
 			toolRegistry,
 			mcpServerAttributions,
 			userToolAccessSnapshot,
+			budget,
 		} = await reconstruction;
 
 		return {
@@ -407,10 +365,60 @@ export class AgentRuntimeCacheService {
 			agentId,
 			toolRegistry,
 			mcpServerAttributions,
+			...(budget !== undefined ? { budget } : {}),
 			projectId,
-			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
+			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
 			toolAccessCheckedAt: Date.now(),
 		};
+	}
+
+	private async acquireCachedRuntime(
+		cacheKey: string,
+		cached: AgentRuntime,
+		params: GetRuntimeParams,
+	): Promise<AgentRuntime | undefined> {
+		const accessStillCurrent = await this.toolAccessStillCurrent(cached, params);
+		const current = this.runtimes.get(cacheKey);
+		// The access check can race with cache invalidation or replacement.
+		if (current !== cached) {
+			if (current) return this.acquireRuntimeLease(current);
+			return undefined;
+		}
+		if (accessStillCurrent) {
+			this.runtimes.touch(cacheKey);
+			return this.acquireRuntimeLease(cached);
+		}
+		// Rebuild the tool list after a grant is revoked.
+		this.runtimes.delete(cacheKey);
+		this.closeAgentResources(cached.agent, params.agentId);
+		return undefined;
+	}
+
+	private initializeRuntime(cacheKey: string, params: GetRuntimeParams): RuntimeInitialization {
+		const token = Symbol(cacheKey);
+		const runtimeInitialization: RuntimeInitialization = {
+			token,
+			promise: (async () => {
+				const runtime = await this.reconstructRuntime(params);
+				if (this.runtimeInitializations.get(cacheKey)?.token !== token) {
+					this.closeAgentResources(runtime.agent, params.agentId);
+					throw new Error(`Agent ${params.agentId} runtime initialization was invalidated`);
+				}
+
+				this.runtimes.set(cacheKey, runtime);
+				const cachedRuntime = this.runtimes.get(cacheKey);
+				if (!cachedRuntime) throw new Error(`Agent ${params.agentId} failed to reconstruct`);
+				return cachedRuntime;
+			})(),
+		};
+		runtimeInitialization.promise = runtimeInitialization.promise.finally(() => {
+			if (this.runtimeInitializations.get(cacheKey)?.token === token) {
+				this.runtimeInitializations.delete(cacheKey);
+			}
+		});
+		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
+
+		return runtimeInitialization;
 	}
 }

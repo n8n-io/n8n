@@ -1,6 +1,6 @@
 import type { WorkflowReviewBlockedDetails, WorkflowReviewBlockedReason } from '@n8n/api-types';
 
-import { ConflictError } from './conflict.error';
+import { ConflictError } from '@n8n/errors';
 
 const messages: Record<WorkflowReviewBlockedReason, string> = {
 	review_pending:

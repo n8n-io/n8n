@@ -10,7 +10,7 @@ import type {
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { PaymentRequiredError } from '@/errors/response-errors/payment-required.error';
+import { PaymentRequiredError } from '@n8n/errors';
 
 import { EvaluationTestRunService } from '../evaluation-test-run.service';
 

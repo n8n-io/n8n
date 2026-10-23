@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import { CredentialAccessRepository, CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
 import { ExecuteContext, StructuredToolkit, SupplyDataContext } from 'n8n-core';
 import type {
@@ -26,6 +27,8 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { findPolicyViolations, type NonEmptyViolations } from '@/policy/policy-violation.error';
 import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -54,7 +57,7 @@ export interface InlineNodeExecutionRequest {
 	/** Credential type name → credential instance display name (resolved at execution). */
 	credentials?: Record<string, string>;
 	/**
-	 * Pre-resolved credential ids (e.g. from ToolFromNode which has { id, name } from list_credentials).
+	 * Pre-resolved credential ids (e.g. from ToolFromNode which has { id, name } from agent_builder_list_credentials).
 	 */
 	credentialDetails?: Record<string, INodeCredentialsDetails>;
 	inputData: INodeExecutionData[];
@@ -69,6 +72,23 @@ export interface NodeExecutionResult {
 	status: 'success' | 'error';
 	data: INodeExecutionData[];
 	error?: string;
+	/** Set when a policy refused the run. */
+	violations?: NonEmptyViolations;
+}
+
+type SupplyDataToolOutcome<T> =
+	| { ok: true; value: T }
+	| { ok: false; error: string; violations?: NonEmptyViolations };
+
+/** The `{ status: 'error' }` result for a caught error, keeping a refusal's violations. */
+function errorResult(error: unknown): NodeExecutionResult {
+	const violations = findPolicyViolations(error);
+	return {
+		status: 'error',
+		data: [],
+		error: getErrorMessage(error),
+		...(violations && { violations }),
+	};
 }
 
 /**
@@ -88,7 +108,7 @@ export const AGENT_TOOL_NODE_DENYLIST = new Set<string>([
 /**
  * The node-types resolver may hand us the `*Tool` variant of a node
  * (e.g. `executeCommand` -> `executeCommandTool`, see `resolveToolNodeType`
- * in `node-tool-factory.ts`). Strip that suffix before checking the denylist
+ * in `resolve-tool-node-type.ts`). Strip that suffix before checking the denylist
  * so both the base and tool-wrapped forms are caught.
  */
 function stripAgentToolSuffix(nodeType: string): string {
@@ -152,8 +172,9 @@ export class EphemeralNodeExecutor {
 	constructor(
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly logger: Logger,
+		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly credentialAccessRepository: CredentialAccessRepository,
 	) {}
 
 	/**
@@ -168,7 +189,7 @@ export class EphemeralNodeExecutor {
 			return null;
 		}
 
-		const accessible = await this.credentialsRepository.findAllCredentialsForProject(projectId);
+		const accessible = await this.credentialsRepository.findCredentialsUsableInProject(projectId);
 
 		const resolved: Record<string, INodeCredentialsDetails> = {};
 
@@ -219,24 +240,29 @@ export class EphemeralNodeExecutor {
 				);
 			}
 
-			const sharedCredential = await this.sharedCredentialsRepository.findOne({
-				where: { credentialsId: d.id, projectId },
-				relations: { credentials: true },
-			});
+			const [credential] = await this.credentialsRepository.findCredentialsUsableInProject(
+				projectId,
+				[d.id],
+			);
 
-			if (!sharedCredential) {
-				throw new UserError(`Credential "${d.name}" is not accessible or does not exist.`, {
-					extra: { credType, credentialId: d.id },
-				});
+			if (!credential) {
+				const [currentCredential] = await this.credentialAccessRepository.findCredentialNames([
+					d.id,
+				]);
+				const name = currentCredential ? ` "${currentCredential.name}"` : '';
+				throw new UserError(
+					`Credential${name} with ID "${d.id}" is not accessible or does not exist.`,
+					{ extra: { credType, credentialId: d.id } },
+				);
 			}
 
-			if (sharedCredential.credentials.type !== credType) {
+			if (credential.type !== credType) {
 				throw new UserError(
-					`Credential "${sharedCredential.credentials.name}" has type "${sharedCredential.credentials.type}" but the node expects credential slot "${credType}".`,
+					`Credential "${credential.name}" has type "${credential.type}" but the node expects credential slot "${credType}".`,
 					{
 						extra: {
 							credType,
-							actualType: sharedCredential.credentials.type,
+							actualType: credential.type,
 							credentialId: d.id,
 						},
 					},
@@ -244,8 +270,8 @@ export class EphemeralNodeExecutor {
 			}
 
 			verified[credType] = {
-				id: sharedCredential.credentials.id,
-				name: sharedCredential.credentials.name,
+				id: credential.id,
+				name: credential.name,
 			};
 		}
 
@@ -280,6 +306,17 @@ export class EphemeralNodeExecutor {
 				extra: { nodeType, operation },
 			});
 		}
+	}
+
+	/**
+	 * Every node run goes through `executeNodeDirectly` or `withSupplyDataTool`, so both call
+	 * this. Not a `WorkflowRunner` run, so `workflowExecuteBefore` never polices it.
+	 */
+	private async enforceRunPolicy(node: INode, projectId: string) {
+		await this.policyEnforcementService.enforceWorkflowStart(
+			{ workflow: { id: null, name: node.name, nodes: [node], artifactKind: 'agent' }, projectId },
+			{ kind: 'system', reason: 'execution' },
+		);
 	}
 
 	/**
@@ -336,25 +373,26 @@ export class EphemeralNodeExecutor {
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
 	): Promise<NodeExecutionResult> {
-		const parts = await this.buildEphemeralContextParts(tool, inputItems);
-
-		const context = new ExecuteContext(
-			parts.workflow,
-			parts.node,
-			parts.additionalData,
-			parts.mode,
-			parts.runExecutionData,
-			0,
-			inputItems,
-			parts.inputData,
-			parts.executeData,
-			[],
-		);
-
-		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
-
 		let output: NodeOutput | undefined;
 		try {
+			const parts = await this.buildEphemeralContextParts(tool, inputItems);
+			await this.enforceRunPolicy(parts.node, tool.projectId);
+
+			const context = new ExecuteContext(
+				parts.workflow,
+				parts.node,
+				parts.additionalData,
+				parts.mode,
+				parts.runExecutionData,
+				0,
+				inputItems,
+				parts.inputData,
+				parts.executeData,
+				[],
+			);
+
+			const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+
 			const executionResult = await withExpressionIsolate(
 				parts.workflow,
 				async (): Promise<NodeExecutionResult> => {
@@ -377,10 +415,46 @@ export class EphemeralNodeExecutor {
 			);
 			return executionResult;
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: message });
-			return { status: 'error', data: [], error: message };
+			const result = errorResult(error);
+			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: result.error });
+			return result;
 		}
+	}
+
+	/** Resolve input expressions in the same context as a standalone node tool. */
+	async evaluateExpressions(
+		tool: EphemeralWorkflowToolLike,
+		expressions: Record<string, string>,
+		inputItems: INodeExecutionData[],
+	): Promise<Record<string, unknown>> {
+		const parts = await this.buildEphemeralContextParts(tool, inputItems);
+		const context = new ExecuteContext(
+			parts.workflow,
+			parts.node,
+			parts.additionalData,
+			parts.mode,
+			parts.runExecutionData,
+			0,
+			inputItems,
+			parts.inputData,
+			parts.executeData,
+			[],
+		);
+
+		return await withExpressionIsolate(parts.workflow, async () => {
+			const resolved: Record<string, unknown> = {};
+			for (const [name, expression] of Object.entries(expressions)) {
+				try {
+					// evaluateExpression adds the leading '=' itself.
+					resolved[name] = context.evaluateExpression(expression.slice(1));
+				} catch (error) {
+					throw new UserError(`Cannot resolve input "${name}": ${getErrorMessage(error)}`, {
+						cause: error,
+					});
+				}
+			}
+			return resolved;
+		});
 	}
 
 	async executeInline(request: InlineNodeExecutionRequest): Promise<NodeExecutionResult> {
@@ -397,7 +471,7 @@ export class EphemeralNodeExecutor {
 				request.nodeParameters,
 			);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message = getErrorMessage(error);
 			this.logger.debug('Node execution validation failed', {
 				nodeType: request.nodeType,
 				error: message,
@@ -463,31 +537,33 @@ export class EphemeralNodeExecutor {
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
 		onTool: (response: LangChainToolType | StructuredToolkit) => Promise<T> | T,
-	): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
-		const parts = await this.buildEphemeralContextParts(tool, inputItems);
+	): Promise<SupplyDataToolOutcome<T>> {
 		const closeFunctions: CloseFunction[] = [];
 
-		const context = new SupplyDataContext(
-			parts.workflow,
-			parts.node,
-			parts.additionalData,
-			parts.mode,
-			parts.runExecutionData,
-			0,
-			inputItems,
-			parts.inputData,
-			NodeConnectionTypes.AiTool,
-			parts.executeData,
-			closeFunctions,
-		);
-
-		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
-		const supplyData = nodeType.supplyData;
-		if (typeof supplyData !== 'function') {
-			return { ok: false, error: 'Node does not implement supplyData' };
-		}
-
 		try {
+			const parts = await this.buildEphemeralContextParts(tool, inputItems);
+			await this.enforceRunPolicy(parts.node, tool.projectId);
+
+			const context = new SupplyDataContext(
+				parts.workflow,
+				parts.node,
+				parts.additionalData,
+				parts.mode,
+				parts.runExecutionData,
+				0,
+				inputItems,
+				parts.inputData,
+				NodeConnectionTypes.AiTool,
+				parts.executeData,
+				closeFunctions,
+			);
+
+			const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+			const supplyData = nodeType.supplyData;
+			if (typeof supplyData !== 'function') {
+				return { ok: false, error: 'Node does not implement supplyData' };
+			}
+
 			return await withExpressionIsolate(parts.workflow, async () => {
 				const supplyDataResult = await supplyData.call(context, 0);
 				const response = supplyDataResult.response as
@@ -507,8 +583,8 @@ export class EphemeralNodeExecutor {
 				};
 			});
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			return { ok: false, error: message };
+			const violations = findPolicyViolations(error);
+			return { ok: false, error: getErrorMessage(error), ...(violations && { violations }) };
 		} finally {
 			for (const closeFunction of closeFunctions) {
 				try {
@@ -558,7 +634,12 @@ export class EphemeralNodeExecutor {
 				nodeType: tool.nodeType,
 				error: result.error,
 			});
-			return { status: 'error', data: [], error: result.error };
+			return {
+				status: 'error',
+				data: [],
+				error: result.error,
+				...(result.violations && { violations: result.violations }),
+			};
 		}
 
 		return {
@@ -586,7 +667,7 @@ export class EphemeralNodeExecutor {
 			} catch (error) {
 				this.logger.warn('supplyData tool introspection failed', {
 					nodeType: tool.nodeType,
-					error: error instanceof Error ? error.message : String(error),
+					error: getErrorMessage(error),
 				});
 				return null;
 			}

@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import type { WorkflowHistory } from '@n8n/db';
 import { WorkflowRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
@@ -12,7 +13,6 @@ import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { BaseCommand } from '../base-command';
 
 import '../../zod-alias-support';
-import { EventService } from '@/events/event.service';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Export all workflows').optional(),

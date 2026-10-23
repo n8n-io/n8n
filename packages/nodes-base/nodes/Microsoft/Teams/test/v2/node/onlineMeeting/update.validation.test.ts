@@ -174,9 +174,11 @@ describe('Microsoft Teams V2 — onlineMeeting:update', () => {
 			'allowTeamworkReactions',
 			'allowedPresenters',
 			'isEntryExitAnnounced',
+			'attendees',
 			'endDateTime',
 			'lobbyBypassScope',
 			'recordAutomatically',
+			'removeAllAttendees',
 			'startDateTime',
 			'subject',
 		]);

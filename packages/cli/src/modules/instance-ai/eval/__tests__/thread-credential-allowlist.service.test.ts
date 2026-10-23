@@ -55,3 +55,44 @@ describe('EvalThreadCredentialAllowlistService', () => {
 		expect(service.get('thread-1')).toBeUndefined();
 	});
 });
+
+describe('EvalThreadCredentialAllowlistService test targets', () => {
+	let service: EvalThreadCredentialAllowlistService;
+	const target = {
+		credentialType: 'slackApi',
+		baseUrl: 'http://stand-in.test:4100',
+		urlField: 'url',
+	};
+
+	beforeEach(() => {
+		service = new EvalThreadCredentialAllowlistService();
+	});
+
+	it('returns the target for its credential type only', () => {
+		service.setTestTarget('thread-1', target);
+
+		expect(service.getTestTarget('thread-1', 'slackApi')).toEqual(target);
+		expect(service.getTestTarget('thread-1', 'openAiApi')).toBeUndefined();
+		expect(service.getTestTarget('thread-2', 'slackApi')).toBeUndefined();
+	});
+
+	it('keeps a target for each credential type', () => {
+		const openAi = {
+			credentialType: 'openAiApi',
+			baseUrl: 'http://stand-in.test:4200',
+			urlField: 'url',
+		};
+		service.setTestTarget('thread-1', target);
+		service.setTestTarget('thread-1', openAi);
+
+		expect(service.getTestTarget('thread-1', 'slackApi')).toEqual(target);
+		expect(service.getTestTarget('thread-1', 'openAiApi')).toEqual(openAi);
+	});
+
+	it('forgets the target when the thread is cleared', () => {
+		service.setTestTarget('thread-1', target);
+		service.clearThread('thread-1');
+
+		expect(service.getTestTarget('thread-1', 'slackApi')).toBeUndefined();
+	});
+});

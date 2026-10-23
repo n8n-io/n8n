@@ -1,4 +1,5 @@
 import { useRouter } from 'vue-router';
+import { captureException } from '@sentry/vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	instanceAiAgentAttachmentSchema,
@@ -437,6 +438,39 @@ export async function provisionWorkflowThread(
 	return threadId;
 }
 
+/** The n8n Cloud signup survey answers the onboarding thread reads, keyed like the cloud stores them. */
+export interface InstanceAiOnboardingSurvey {
+	what_team_are_you_on?: string;
+}
+
+/** The survey and where it came from, so telemetry can tell a `?team=` test run from a signup. */
+export type InstanceAiOnboardingLaunch = {
+	survey: InstanceAiOnboardingSurvey;
+	surveySource: 'cloud' | 'url';
+};
+
+/**
+ * Provision the agent-first onboarding thread for the `/assistant?source=onboarding` router
+ * guard. The backend seeds the greeting and the first question card, so nothing is stashed for
+ * the destination view to send. Returns the thread id, or null if persistence failed.
+ */
+export async function provisionOnboardingThread(
+	projectId: string,
+	launch: InstanceAiOnboardingLaunch | undefined,
+): Promise<string | null> {
+	const threadId = uuidv4();
+	try {
+		await useInstanceAiStore().syncThread(threadId, projectId, {
+			source: 'onboarding',
+			origin: 'external',
+			sourceContext: launch,
+		});
+	} catch {
+		return null;
+	}
+	return threadId;
+}
+
 /**
  * Mint a thread bound to a subject: the id, the target metadata (a pending
  * marker or a bound target), and — for the agent variant — the stashed
@@ -539,6 +573,29 @@ export function useInstanceAiHandoff() {
 		);
 	}
 
+	/**
+	 * Navigate to a thread this hand-off just created. If the navigation fails or
+	 * is aborted, delete the thread so it doesn't linger unreached in the sidebar,
+	 * and report the cause.
+	 */
+	async function navigateToNewThread(threadId: string): Promise<boolean> {
+		let error: unknown;
+		try {
+			const failure = await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+			if (!failure) return true;
+			error = failure;
+		} catch (thrown) {
+			error = thrown;
+		}
+		console.error('[instance-ai] Hand-off navigation failed', error);
+		captureException(error, { tags: { source: 'instance-ai-handoff' } });
+		clearPendingThreadHandoff(threadId);
+		// Silent: the open-failed toast below already tells the user.
+		await instanceAiStore.deleteThread(threadId, { silent: true });
+		showOpenFailed();
+		return false;
+	}
+
 	async function openThreadWithContext(
 		projectId: string,
 		context: InstanceAiHandoffContext,
@@ -630,6 +687,9 @@ export function useInstanceAiHandoff() {
 			}
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			prepare?.(threadId);
+			if (!(await navigateToNewThread(threadId))) return;
+			// Send only after the navigation lands, so a run never starts in a thread
+			// the user can't see.
 			void thread.sendMessage(message, {
 				authorship,
 				attachments,
@@ -637,7 +697,6 @@ export function useInstanceAiHandoff() {
 				handoffContext: options?.context,
 				responseStartedAtEpochMs,
 			});
-			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 		} finally {
 			handoffInFlight = false;
 		}
@@ -666,17 +725,33 @@ export function useInstanceAiHandoff() {
 				return false;
 			}
 			prepare?.(threadId);
+			return await navigateToNewThread(threadId);
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
+	async function openThreadWithDraft(
+		projectId: string,
+		draft: PendingComposerDraft,
+		launch: InstanceAiThreadLaunch,
+	): Promise<boolean> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return false;
+		}
+		if (handoffInFlight) return false;
+		handoffInFlight = true;
+		try {
+			const threadId = uuidv4();
 			try {
-				const failure = await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
-				if (failure) throw new Error('Navigation failed');
+				await instanceAiStore.syncThread(threadId, projectId, launch);
 			} catch {
-				// Same as the agent path: a thread nobody reached must not linger.
-				clearPendingThreadHandoff(threadId);
-				await instanceAiStore.deleteThread(threadId);
 				showOpenFailed();
 				return false;
 			}
-			return true;
+			stashPendingComposerDraft(threadId, draft);
+			return await navigateToNewThread(threadId);
 		} finally {
 			handoffInFlight = false;
 		}
@@ -727,6 +802,7 @@ export function useInstanceAiHandoff() {
 	return {
 		startThread,
 		openWorkflowThread,
+		openThreadWithDraft,
 		openThreadWithContext,
 		openThreadForDraft,
 	};

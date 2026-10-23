@@ -8,7 +8,7 @@ import { TypeAvailabilityPolicyInstanceController } from '../type-availability-p
  * Every route on this controller must be owner-only (`@GlobalScope`), never
  * `@ProjectScope` and never left ungated — node type availability policy is an
  * instance-wide setting, per IAM-1327's `nodeTypePolicy:manage` scope. Every route
- * must also require the node type policies license feature (IAM-1141's licensing
+ * must also require the type availability policies license feature (IAM-1141's licensing
  * decision — see IAM-1332 for the pending flag/SKU rename).
  */
 describe('TypeAvailabilityPolicyInstanceController route access scopes', () => {
@@ -33,9 +33,9 @@ describe('TypeAvailabilityPolicyInstanceController route access scopes', () => {
 		},
 	);
 
-	it('is gated by the node type policies license feature', () => {
+	it('is gated by the type availability policies license feature', () => {
 		for (const { route } of routeCases) {
-			expect(route.licenseFeature).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+			expect(route.licenseFeature).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 		}
 	});
 });

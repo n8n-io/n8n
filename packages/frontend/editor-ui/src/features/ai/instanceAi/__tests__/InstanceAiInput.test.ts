@@ -6,6 +6,7 @@ import { defineComponent, h, ref, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
 import type { ContextChip } from '../instanceAi.contextChip';
 import {
@@ -31,6 +32,7 @@ type InputTestProps = {
 	suggestionCatalogVersion?: string;
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
+	placeholder?: string;
 	contextChip?: ContextChip | null;
 };
 
@@ -241,6 +243,7 @@ const DirectSubmitHarness = defineComponent({
 								suggestionId: 'score-my-leads',
 								suggestionKind: 'quick_example',
 								position: 1,
+								suggestionCatalogVersion: 'agent-templates-v1',
 								prefillType: 'suggestion_catalog',
 							}),
 					},
@@ -312,16 +315,21 @@ describe('InstanceAiInput', () => {
 		);
 	});
 
-	it('uses the new agent placeholder for a pending agent artifact', () => {
+	it('prefers a caller-provided placeholder text over the placeholder key', () => {
 		const { getByRole } = renderComponent({
 			props: {
-				contextChip: {
-					type: 'agent-artifact',
-					agentId: 'agent-1',
-					projectId: 'project-1',
-					isNewAgent: true,
-					label: 'New Agent',
-				},
+				placeholder: 'Ask Support Agent…',
+				placeholderKey: 'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Ask Support Agent…');
+	});
+
+	it('uses the new agent placeholder when the caller passes its key', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				placeholderKey: 'instanceAi.input.newAgentPlaceholder',
 			},
 		});
 
@@ -338,7 +346,6 @@ describe('InstanceAiInput', () => {
 					type: 'agent-artifact',
 					agentId: 'agent-1',
 					projectId: 'project-1',
-					isNewAgent: false,
 					label: 'Support Agent',
 				},
 			},
@@ -414,6 +421,52 @@ describe('InstanceAiInput', () => {
 		await fireEvent.keyDown(getByRole('textbox'), { key: 'Enter' });
 
 		expect(emitted().submit).toBeUndefined();
+	});
+
+	it('does not submit when credits are exhausted', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: false,
+				isOutOfCredits: true,
+				suggestions,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		expect(textbox).toBeDisabled();
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		expect(emitted().submit).toBeUndefined();
+	});
+
+	it('submits on Enter while credits remain', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: false,
+				isOutOfCredits: false,
+				suggestions,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Keep going');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		expect(emittedArgument(emitted().submit?.[0], 0)).toBe('Keep going');
+	});
+
+	it('keeps stop available while a run is streaming and credits are exhausted', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: true,
+				isOutOfCredits: true,
+				suggestions,
+			},
+		});
+
+		await userEvent.click(getByRole('button', { name: 'Stop' }));
+
+		expect(emitted().stop).toHaveLength(1);
 	});
 
 	it('does not change the placeholder when hovering the quick examples trigger', async () => {
@@ -523,6 +576,9 @@ describe('InstanceAiInput', () => {
 				promptModified: false,
 			},
 			expect.any(Number),
+			expect.any(Function),
+			EMPTY_ASSISTANT_MENTION_COUNTS,
+			[],
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -767,6 +823,22 @@ describe('InstanceAiInput', () => {
 	// composer was already empty and `resetDraftComposer` does not change it --
 	// the watcher never fires. Anything the user types next must not inherit the
 	// pre-fill that was just sent.
+	it('attributes a direct suggestion submit to the payload catalog, not the home-screen catalog', async () => {
+		telemetryTrack.mockClear();
+		const { getByTestId } = renderDirectSubmitHarness();
+
+		await userEvent.click(getByTestId('harness-direct-submit'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'Instance AI prompt suggestion submitted',
+			expect.objectContaining({
+				suggestion_catalog_version: 'agent-templates-v1',
+				suggestion_id: 'score-my-leads',
+				position: 1,
+			}),
+		);
+	});
+
 	it('does not attribute a later typed message to a directly submitted suggestion', async () => {
 		const { emitted, getByRole, getByTestId } = renderDirectSubmitHarness();
 
@@ -819,6 +891,9 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -1015,6 +1090,9 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 	});
@@ -1057,6 +1135,9 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 	});
@@ -1113,11 +1194,12 @@ describe('InstanceAiInput', () => {
 		const chip = getByTestId('instance-ai-handoff-context-chip');
 
 		expect(chip).toHaveTextContent('SEO Auditor session');
-		expect(chip.querySelector('.n8n-tag')?.className).toContain('lg');
 		expect(chip.querySelector('[data-icon="robot"]')).toBeInTheDocument();
 		expect(chip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
 
-		await userEvent.click(getByTestId('instance-ai-handoff-context-chip-dismiss'));
+		const dismiss = getByTestId('instance-ai-handoff-context-chip-dismiss');
+		expect(dismiss).toHaveAccessibleName('Close');
+		await userEvent.click(dismiss);
 
 		expect(emitted()['dismiss-context-chip']).toEqual([[]]);
 	});

@@ -1,24 +1,32 @@
 import type { TelemetryEventRegistry } from './define';
 import { AGENTS_TELEMETRY } from './events/agents';
+import { AUTH_TELEMETRY } from './events/auth';
 import { CONTEXT_TELEMETRY } from './events/context';
 import { CREDENTIALS_TELEMETRY } from './events/credentials';
+import { EXPRESSIONS_TELEMETRY } from './events/expressions';
 import { INSTANCE_TELEMETRY } from './events/instance';
 import { INSTANCE_AI_TELEMETRY } from './events/instance-ai';
 import { MCP_TELEMETRY } from './events/mcp';
-import { NODE_TYPE_POLICIES_TELEMETRY } from './events/node-type-policies';
+import { MIGRATION_REPORT_TELEMETRY } from './events/migration-report';
 import { PLATFORM_TELEMETRY } from './events/platform';
+import { POLICIES_TELEMETRY } from './events/policies';
+import { TYPE_AVAILABILITY_POLICIES_TELEMETRY } from './events/type-availability-policies';
 import { WORKFLOW_TELEMETRY } from './events/workflow';
 import { WORKFLOW_REVIEWS_TELEMETRY } from './events/workflow-reviews';
 
 export const TELEMETRY_EVENT = {
 	PLATFORM: PLATFORM_TELEMETRY,
+	POLICIES: POLICIES_TELEMETRY,
 	AGENTS: AGENTS_TELEMETRY,
+	AUTH: AUTH_TELEMETRY,
 	CREDENTIALS: CREDENTIALS_TELEMETRY,
 	CONTEXT: CONTEXT_TELEMETRY,
+	EXPRESSIONS: EXPRESSIONS_TELEMETRY,
 	INSTANCE: INSTANCE_TELEMETRY,
 	INSTANCE_AI: INSTANCE_AI_TELEMETRY,
 	MCP: MCP_TELEMETRY,
-	NODE_TYPE_POLICIES: NODE_TYPE_POLICIES_TELEMETRY,
+	MIGRATION_REPORT: MIGRATION_REPORT_TELEMETRY,
+	TYPE_AVAILABILITY_POLICIES: TYPE_AVAILABILITY_POLICIES_TELEMETRY,
 	WORKFLOW: WORKFLOW_TELEMETRY,
 	WORKFLOW_REVIEWS: WORKFLOW_REVIEWS_TELEMETRY,
 } satisfies TelemetryEventRegistry;

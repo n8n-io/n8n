@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowLayout from './WorkflowLayout.vue';
-import { computed, ref, shallowRef } from 'vue';
+import { computed, nextTick, ref, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+import { useLogsStore } from '@/app/stores/logs.store';
+import { LOCAL_STORAGE_LOGS_PANEL_OPEN } from '@/app/constants';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as object;
@@ -102,6 +104,7 @@ const renderComponent = createComponentRenderer(WorkflowLayout, {
 
 describe('WorkflowLayout', () => {
 	beforeEach(() => {
+		localStorage.clear();
 		createTestingPinia();
 		vi.clearAllMocks();
 	});
@@ -186,6 +189,19 @@ describe('WorkflowLayout', () => {
 		expect(getByTestId('app-header')).toBeInTheDocument();
 		expect(getByTestId('app-sidebar')).toBeInTheDocument();
 		expect(getByText('Workflow Content')).toBeInTheDocument();
+	});
+
+	it('should restore the logs panel open state from localStorage and persist changes', async () => {
+		localStorage.setItem(LOCAL_STORAGE_LOGS_PANEL_OPEN, 'true');
+		createTestingPinia({ stubActions: false });
+
+		renderComponent();
+		const logsStore = useLogsStore();
+		expect(logsStore.isOpen).toBe(true);
+
+		logsStore.toggleOpen(false);
+		await nextTick();
+		expect(localStorage.getItem(LOCAL_STORAGE_LOGS_PANEL_OPEN)).toBe('false');
 	});
 
 	it('should call pushConnect on mount', () => {

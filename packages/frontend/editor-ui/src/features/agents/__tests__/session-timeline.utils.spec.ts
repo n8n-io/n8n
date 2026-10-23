@@ -14,6 +14,8 @@ import {
 	isErroredToolCallTimelineItem,
 	matchesTimelineFilters,
 	timelineItemErrorMessage,
+	executionErrorLabel,
+	executionErrorMessage,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -242,6 +244,8 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		failureSummary: null,
 		hitlStatus: null,
 		source: null,
+		finishReason: null,
+		guardrailCode: null,
 		...overrides,
 	};
 }
@@ -265,6 +269,90 @@ function toolCallEvent(overrides: Record<string, unknown> = {}): AgentExecutionT
 		...overrides,
 	};
 }
+
+describe('session timeline reasoning', () => {
+	it('keeps reasoning with the next response across tool calls', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'Check the source.', timestamp: 10, endTime: 20 },
+				toolCallEvent(),
+				{ type: 'reasoning', content: 'Use the result.', timestamp: 200, endTime: 220 },
+				{ type: 'text', content: 'The answer.', timestamp: 230, endTime: 250 },
+			]),
+		]);
+		expect(items.map(({ kind }) => kind)).toEqual(['tool', 'agent']);
+		expect(items[1]).toMatchObject({
+			content: 'The answer.',
+			timestamp: 230,
+			endTimestamp: 250,
+			thinkingSegments: [
+				{ content: 'Check the source.', startTime: 10, endTime: 20 },
+				{ content: 'Use the result.', startTime: 200, endTime: 220 },
+			],
+		});
+	});
+
+	it('keeps separate reasoning for each response and skips empty traces', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'First thought.', timestamp: 10 },
+				{ type: 'text', content: 'First response.', timestamp: 20 },
+				{ type: 'reasoning', content: '  ', timestamp: 25 },
+				{ type: 'reasoning', content: 'Second thought.', timestamp: 30 },
+				{ type: 'text', content: 'Second response.', timestamp: 40 },
+				{ type: 'text', content: 'No reasoning.', timestamp: 50 },
+			]),
+		]);
+		expect(items[0].thinkingSegments?.map(({ content }) => content)).toEqual(['First thought.']);
+		expect(items[1].thinkingSegments?.map(({ content }) => content)).toEqual(['Second thought.']);
+		expect(items[2].thinkingSegments).toBeUndefined();
+	});
+
+	it('keeps partial reasoning when a run fails before producing text', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'reasoning', content: 'Partial thought.', timestamp: 10 }], {
+				status: 'error',
+				error: 'Run failed',
+			}),
+		]);
+		expect(items[0]).toMatchObject({
+			kind: 'agent',
+			content: '',
+			timestamp: 10,
+			thinkingSegments: [{ content: 'Partial thought.', startTime: 10 }],
+		});
+		expect(items[1].kind).toBe('execution-error');
+	});
+
+	it('keeps reasoning-only messages in order before tool calls', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'Check the source.', timestamp: 10, endTime: 20 },
+				toolCallEvent(),
+			]),
+		]);
+		expect(items.map(({ kind, timestamp }) => ({ kind, timestamp }))).toEqual([
+			{ kind: 'agent', timestamp: 10 },
+			{ kind: 'tool', timestamp: 100 },
+		]);
+	});
+
+	it('keeps reasoning within its execution and steering segment', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'Before steering.', timestamp: 10 },
+				{ type: 'input', messageId: 'steer', timestamp: 20 },
+				{ type: 'reasoning', content: 'After steering.', timestamp: 30 },
+			]),
+			withTimeline([{ type: 'text', content: 'Next execution.', timestamp: 40 }], { id: 'e-2' }),
+		]);
+		expect(items.map(({ thinkingSegments }) => thinkingSegments?.[0].content)).toEqual([
+			'Before steering.',
+			'After steering.',
+			undefined,
+		]);
+	});
+});
 
 function suspensionEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
 	return {
@@ -369,6 +457,24 @@ describe('flattenExecutionsToTimelineItems', () => {
 				executionStatus: status,
 				content: error,
 				timestamp: Date.parse('2026-04-24T10:00:05Z'),
+			},
+		]);
+	});
+
+	it('adds a stop item at the guardrail event', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'guardrail', code: 'budget.session', timestamp: 500 }], {
+				finishReason: 'guardrail',
+				guardrailCode: 'budget.session',
+			}),
+		]);
+
+		expect(items).toEqual([
+			{
+				kind: 'execution-error',
+				executionId: 'e-1',
+				guardrailCode: 'budget.session',
+				timestamp: 500,
 			},
 		]);
 	});
@@ -658,6 +764,60 @@ describe('flattenExecutionsToTimelineItems', () => {
 			withTimeline([{ type: 'text', content: 'hi there', timestamp: 1234 }]),
 		]);
 		expect(items[0]).toMatchObject({ kind: 'agent', content: 'hi there', timestamp: 1234 });
+	});
+
+	it.each([
+		{
+			label: 'text and attachments',
+			text: [{ type: 'text', text: 'Use this image' }],
+			content: 'Use this image',
+		},
+		{ label: 'attachments only', text: [], content: '' },
+	])('maps steered $label between agent output', ({ text, content }) => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{ type: 'text', content: 'Before steering', timestamp: 100 },
+					{
+						type: 'input',
+						timestamp: 200,
+						messageId: 'steered-user-message',
+					},
+					{ type: 'text', content: 'After steering', timestamp: 300 },
+				],
+				{
+					userMessage: `Original request\n${content}`,
+					inputMessages: [
+						{
+							id: 'original-input',
+							role: 'user',
+							content: [{ type: 'text', text: 'Original request' }],
+						},
+						{
+							id: 'steered-user-message',
+							role: 'user',
+							content: [
+								...text,
+								{
+									type: 'file',
+									fileId: attachment.id,
+									fileName: attachment.fileName,
+									mimeType: attachment.mimeType,
+									sizeBytes: attachment.sizeBytes,
+								},
+							],
+						},
+					],
+				},
+			),
+		]);
+
+		expect(items).toMatchObject([
+			{ kind: 'user', content: 'Original request', executionId: 'e-1' },
+			{ kind: 'agent', content: 'Before steering', timestamp: 100 },
+			{ kind: 'user', content, executionId: 'e-1', timestamp: 200, attachments: [attachment] },
+			{ kind: 'agent', content: 'After steering', timestamp: 300 },
+		]);
 	});
 
 	it('maps a workflow tool-call timeline event to kind:workflow with metadata', () => {
@@ -1067,5 +1227,22 @@ describe('background task signals', () => {
 			expect(matchesSearch(event, query, labelForKey)).toBe(true);
 		}
 		expect(kindColorToken(event.kind)).toBeDefined();
+	});
+});
+
+describe('guardrail stop copy', () => {
+	const i18n = { baseText: (key: string) => key } as Parameters<typeof executionErrorLabel>[1];
+
+	it.each([
+		['budget.session', 'agentSessions.timeline.guardrailStop.session'],
+		['budget.monthly', 'agentSessions.timeline.guardrailStop.monthly'],
+		['budget.credits', 'agentSessions.timeline.guardrailStop.credits'],
+		['budget.freeCredits', 'agentSessions.timeline.guardrailStop.freeCredits'],
+		['budget.misconfigured', 'agentSessions.timeline.guardrailStop.fallback'],
+	])('labels a %s stop', (guardrailCode, messageKey) => {
+		const stop = item({ kind: 'execution-error', guardrailCode });
+
+		expect(executionErrorLabel(stop, i18n)).toBe('agentSessions.timeline.guardrailStop.label');
+		expect(executionErrorMessage(stop, i18n)).toBe(messageKey);
 	});
 });

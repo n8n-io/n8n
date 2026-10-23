@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { modalRegistry } from '@n8n/frontend-module-sdk';
 
-import { registerEagerModals } from '@/app/modals.manifest';
+import { registerEagerModals, registerExperimentModals } from '@/app/modals.manifest';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -9,6 +9,9 @@ import {
 	MFA_SETUP_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
 } from '@/features/core/auth/auth.constants';
+import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
+import { MCP_JSON_NUDGE_MODAL_KEY } from '@/experiments/mcpJsonNudge/constants';
+import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 
 /** Phase 1 — see `app/modals.manifest.ts` for why these cannot wait for login. */
 const AUTH_MODAL_KEYS = [
@@ -68,6 +71,46 @@ describe('registerEagerModals', () => {
 		uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
 
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining(PROMPT_MFA_CODE_MODAL_KEY));
+		warn.mockRestore();
+	});
+});
+
+describe('registerExperimentModals', () => {
+	const EXPERIMENT_MODAL_KEYS = [
+		SURFACE_MCP_ONBOARDING_MODAL_KEY,
+		EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY,
+		MCP_JSON_NUDGE_MODAL_KEY,
+	];
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		modalRegistry.clear();
+	});
+
+	it.each(EXPERIMENT_MODAL_KEYS)('registers %s', (modalKey) => {
+		expect(modalRegistry.has(modalKey)).toBe(false);
+
+		registerExperimentModals();
+
+		expect(modalRegistry.has(modalKey)).toBe(true);
+	});
+
+	it('gives every experiment modal a lazy component, so registering one loads nothing', () => {
+		registerExperimentModals();
+
+		for (const modalKey of EXPERIMENT_MODAL_KEYS) {
+			expect(typeof modalRegistry.get(modalKey)?.component).toBe('function');
+		}
+	});
+
+	// It runs on every login, so the second call must reuse the same definitions.
+	it('stays silent when it is called again', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		registerExperimentModals();
+		registerExperimentModals();
+
+		expect(warn).not.toHaveBeenCalled();
 		warn.mockRestore();
 	});
 });

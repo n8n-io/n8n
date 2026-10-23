@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
@@ -14,6 +14,7 @@ const events: LifecycleEvent[] = [
 		executionId: 'exec-1',
 		workflowId: 'wf-1',
 		mode: 'manual',
+		hostMode: 'manual',
 		at: '2026-08-24T10:00:00.000Z',
 	},
 	{

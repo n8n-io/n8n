@@ -1,10 +1,16 @@
 import {
+	CreateUsersPublicDto,
+	DeleteUserQueryPublicDto,
 	GetUserQueryDto,
+	InvitedUsersPublicDto,
 	ListUsersQueryDto,
+	RoleChangeRequestDto,
 	UserListPublicDto,
 	UserPublicDto,
 	userIdentifierParamSchema,
+	userUuidParamSchema,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	ApiDescription,
@@ -13,8 +19,13 @@ import {
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
+	Delete,
 	Get,
+	Licensed,
 	Param,
+	Patch,
+	Post,
 	PublicApiController,
 	Query,
 	RequiresUserQuota,
@@ -22,8 +33,7 @@ import {
 import type { Response } from 'express';
 import pick from 'lodash/pick';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { NotFoundError } from '@n8n/errors';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -119,5 +129,52 @@ export class UsersPublicController {
 		});
 
 		return toPublicApiUser(user, { includeRole });
+	}
+
+	@Post('/')
+	@ApiKeyScope('user:create')
+	@ApiSummary('Create multiple users')
+	@ApiDescription('Create one or more users.')
+	@ApiTags(tags)
+	@ApiResponse(201, InvitedUsersPublicDto)
+	async createUser(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: CreateUsersPublicDto,
+	): Promise<InvitedUsersPublicDto> {
+		return await this.userService.inviteUser(req.user, body);
+	}
+
+	@Delete('/:userId')
+	@ApiKeyScope('user:delete')
+	@ApiSummary('Delete user')
+	@ApiDescription('Delete a user from your instance.')
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async deleteUser(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('userId', userUuidParamSchema) userId: string,
+		@Query query: DeleteUserQueryPublicDto,
+	): Promise<void> {
+		await this.userService.deleteUser(req.user, userId, query.transferId);
+	}
+
+	@Patch('/:userId/role')
+	@Licensed('feat:advancedPermissions')
+	@ApiKeyScope('user:changeRole')
+	@ApiSummary("Change a user's global role")
+	@ApiDescription("Change a user's global role")
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async changeRole(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('userId', userUuidParamSchema) userId: string,
+		@Body body: RoleChangeRequestDto,
+	): Promise<void> {
+		await this.userService.changeGlobalRole(req.user, userId, body);
 	}
 }

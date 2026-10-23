@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
 	trackOpportunityViewed: vi.fn(),
 }));
 
-vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
+vi.mock('@n8n/frontend-module-mcp', async (importOriginal) => ({
+	...(await importOriginal()),
 	useMCPStore: () => ({
 		get mcpAccessEnabled() {
 			return mocks.mcpAccessEnabled;

@@ -18,7 +18,7 @@ import { Supabase } from '../Supabase.node';
 describe('Test Supabase Node', () => {
 	const node = new Supabase();
 	const input = [{ json: {} }];
-	const mockRequestWithAuthentication = vi.fn().mockResolvedValue([]);
+	const mockHttpRequestWithAuthentication = vi.fn().mockResolvedValue([]);
 	const mockGetCredentials = vi.fn().mockResolvedValue({
 		host: 'https://api.supabase.io',
 		serviceRole: 'service_role',
@@ -53,7 +53,7 @@ describe('Test Supabase Node', () => {
 			continueOnFail: () => continueOnFail,
 			getInputData: () => input,
 			helpers: {
-				requestWithAuthentication: mockRequestWithAuthentication,
+				httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
 				constructExecutionMetaData: (
 					_inputData: INodeExecutionData[],
 					_options: { itemData: IPairedItemData | IPairedItemData[] },
@@ -72,7 +72,7 @@ describe('Test Supabase Node', () => {
 		const context = mockDeep<ILoadOptionsFunctions>({
 			getCredentials,
 			helpers: {
-				requestWithAuthentication: mockRequestWithAuthentication,
+				httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
 			},
 		});
 		context.getNodeParameter.mockImplementation((name: string) =>
@@ -349,6 +349,7 @@ describe('Test Supabase Node', () => {
 				expect.objectContaining({ order: 'id' }),
 				undefined,
 				{},
+				0,
 			);
 
 			supabaseApiRequest.mockRestore();
@@ -397,6 +398,7 @@ describe('Test Supabase Node', () => {
 			},
 			undefined,
 			{},
+			0,
 		);
 
 		supabaseApiRequest.mockRestore();
@@ -414,14 +416,14 @@ describe('Test Supabase Node', () => {
 
 		await node.execute.call(fakeExecuteFunction);
 
-		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
 			'supabaseApi',
 			expect.objectContaining({
 				method: 'GET',
 				headers: expect.objectContaining({
 					Prefer: 'return=representation',
 				}),
-				uri: 'https://api.supabase.io/rest/v1/my_table',
+				url: 'https://api.supabase.io/rest/v1/my_table',
 			}),
 		);
 	});
@@ -438,7 +440,7 @@ describe('Test Supabase Node', () => {
 
 		await node.execute.call(fakeExecuteFunction);
 
-		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
 			'supabaseApi',
 			expect.objectContaining({
 				method: 'GET',
@@ -446,7 +448,7 @@ describe('Test Supabase Node', () => {
 					'Accept-Profile': 'custom_schema',
 					Prefer: 'return=representation',
 				}),
-				uri: 'https://api.supabase.io/rest/v1/my_table',
+				url: 'https://api.supabase.io/rest/v1/my_table',
 			}),
 		);
 	});
@@ -467,7 +469,7 @@ describe('Test Supabase Node', () => {
 
 		await node.execute.call(fakeExecuteFunction);
 
-		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
 			'supabaseApi',
 			expect.objectContaining({
 				method: 'POST',
@@ -475,7 +477,7 @@ describe('Test Supabase Node', () => {
 					'Content-Profile': 'custom_schema',
 					Prefer: 'return=representation',
 				}),
-				uri: 'https://api.supabase.io/rest/v1/my_table',
+				url: 'https://api.supabase.io/rest/v1/my_table',
 			}),
 		);
 	});
@@ -494,7 +496,7 @@ describe('Test Supabase Node', () => {
 			},
 		});
 
-		fakeExecuteFunction.helpers.requestWithAuthentication = vi.fn().mockRejectedValue({
+		fakeExecuteFunction.helpers.httpRequestWithAuthentication = vi.fn().mockRejectedValue({
 			description: 'Something when wrong',
 			message: 'error',
 		});
@@ -538,6 +540,7 @@ describe('Test Supabase Node', () => {
 					expect.anything(),
 					undefined,
 					expect.anything(),
+					0,
 				);
 				supabaseApiRequest.mockRestore();
 			},
@@ -716,7 +719,7 @@ describe('Test Supabase Node', () => {
 		describe('getTables', () => {
 			it('should return the tables and skip RPCs', async () => {
 				const mockLoadOptionsFunctions = createMockLoadOptionsFunction();
-				mockRequestWithAuthentication.mockResolvedValue({
+				mockHttpRequestWithAuthentication.mockResolvedValue({
 					paths: {
 						'/': {
 							get: {},
@@ -741,7 +744,7 @@ describe('Test Supabase Node', () => {
 			it('should return table columns with their types', async () => {
 				const mockLoadOptionsFunctions = createMockLoadOptionsFunction();
 				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
-				mockRequestWithAuthentication.mockResolvedValue({
+				mockHttpRequestWithAuthentication.mockResolvedValue({
 					definitions: {
 						users: {
 							properties: {
@@ -766,7 +769,7 @@ describe('Test Supabase Node', () => {
 			it('should return empty array when table definition has no properties', async () => {
 				const mockLoadOptionsFunctions = createMockLoadOptionsFunction();
 				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
-				mockRequestWithAuthentication.mockResolvedValue({
+				mockHttpRequestWithAuthentication.mockResolvedValue({
 					definitions: {
 						users: {},
 					},
@@ -785,7 +788,7 @@ describe('Test Supabase Node', () => {
 					return context;
 				};
 
-				mockRequestWithAuthentication.mockResolvedValue({
+				mockHttpRequestWithAuthentication.mockResolvedValue({
 					definitions: {
 						users: {
 							properties: {
@@ -811,7 +814,7 @@ describe('Test Supabase Node', () => {
 						{ name: 'email - (string)', value: 'email' },
 					]);
 				}
-				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+				expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 
 				await Promise.all(
 					Array.from(
@@ -823,7 +826,7 @@ describe('Test Supabase Node', () => {
 					),
 				);
 
-				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
+				expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 			});
 
 			it('should not share a request between callers whose credentials differ', async () => {
@@ -835,14 +838,14 @@ describe('Test Supabase Node', () => {
 					context.getCurrentNodeParameter.mockReturnValue('users');
 					return context;
 				};
-				mockRequestWithAuthentication.mockResolvedValue({ definitions: { users: {} } });
+				mockHttpRequestWithAuthentication.mockResolvedValue({ definitions: { users: {} } });
 
 				await Promise.all([
 					node.methods.loadOptions.getTableColumns.call(createColumnsContext('role-a')),
 					node.methods.loadOptions.getTableColumns.call(createColumnsContext('role-b')),
 				]);
 
-				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
+				expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 			});
 
 			it('should issue a fresh request after a shared request fails', async () => {
@@ -851,7 +854,7 @@ describe('Test Supabase Node', () => {
 					context.getCurrentNodeParameter.mockReturnValue('users');
 					return context;
 				};
-				mockRequestWithAuthentication.mockRejectedValueOnce(new Error('schema unavailable'));
+				mockHttpRequestWithAuthentication.mockRejectedValueOnce(new Error('schema unavailable'));
 
 				await expect(
 					Promise.all([
@@ -859,12 +862,12 @@ describe('Test Supabase Node', () => {
 						node.methods.loadOptions.getTableColumns.call(createColumnsContext()),
 					]),
 				).rejects.toThrow();
-				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+				expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 
-				mockRequestWithAuthentication.mockResolvedValue({ definitions: { users: {} } });
+				mockHttpRequestWithAuthentication.mockResolvedValue({ definitions: { users: {} } });
 				await node.methods.loadOptions.getTableColumns.call(createColumnsContext());
 
-				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
+				expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 			});
 		});
 	});

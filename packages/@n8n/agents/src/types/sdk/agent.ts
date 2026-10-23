@@ -7,7 +7,8 @@ import type {
 } from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
-import type { AgentMessage, ContentMetadata } from './message';
+import type { AgentDbMessage, AgentMessage, ContentMetadata } from './message';
+import type { ToolApprovalContext } from './tool';
 import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
 import type {
 	AgentEvent,
@@ -19,17 +20,20 @@ import type {
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
-
+import type { GuardrailsOptions, GuardrailStop } from './guardrail';
 export type SmoothStreamOptions = NonNullable<Parameters<typeof smoothStream>[0]>;
 
 export const FINISH_REASONS = [
 	'stop',
 	'max-iterations',
+	'guardrail',
 	'length',
 	'content-filter',
 	'tool-calls',
 	'error',
 	'other',
+	'paused',
+	'cancelled',
 ] as const;
 
 export type FinishReason = (typeof FINISH_REASONS)[number];
@@ -53,7 +57,22 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	outputTokenDetails?: {
 		reasoning?: number;
 	};
+	/**
+	 * The same usage split by the prompt size of each model call. Some providers
+	 * charge more for a call with a long prompt, so a sum over many calls is not
+	 * enough to price it. Present only when every summed call is in the split.
+	 */
+	byPromptSize?: PromptSizeUsage[];
 	additionalMetadata?: T;
+};
+
+/** Token counts of the model calls whose prompt size falls in one bucket. */
+export type PromptSizeUsage = {
+	/** Lower bound of the bucket: every call had a prompt of more than this many tokens. */
+	promptTokensOver: number;
+	/** Largest prompt among the calls, in tokens, cache reads and writes included. */
+	maxPromptTokens: number;
+	usage: Omit<TokenUsage, 'byPromptSize' | 'cost' | 'additionalMetadata'>;
 };
 
 /**
@@ -90,6 +109,8 @@ export interface AgentResult {
 
 export type StreamChunk = ContentMetadata &
 	(
+		| { type: 'input-boundary'; acknowledge: () => void }
+		| { type: 'input'; message: AgentDbMessage }
 		| { type: 'start-step' }
 		| { type: 'finish-step' }
 		| { type: 'text-start'; id: string }
@@ -159,6 +180,7 @@ export type StreamChunk = ContentMetadata &
 				usage?: TokenUsage;
 				model?: string;
 				structuredOutput?: unknown;
+				guardrail?: GuardrailStop;
 		  }
 		| { type: 'error'; error: unknown }
 		| {
@@ -184,7 +206,45 @@ export interface AgentExecutionCounter {
 	incrementTokenCount(tokenCount: number): void;
 }
 
+/**
+ * Kind of background model call whose cost is added to the session total
+ * outside the main agent loop. Title generation, observation-log
+ * observer/reflector, and episodic-memory model calls all bill here.
+ */
+export type SideCallTask = 'title' | 'observer' | 'reflector' | 'episodic';
+
+/**
+ * Reported after a side-call model turn completes, so the host can add the
+ * estimated USD cost to the execution and thread totals. The `reportId` is
+ * minted once per call so hosts can dedupe idempotently.
+ */
+export interface SideCallUsageReport {
+	task: SideCallTask;
+	/** Stable model id string (e.g. 'anthropic/claude-sonnet-4-5'). */
+	model: string;
+	usage: TokenUsage;
+	/** Estimated cost in USD, computed from models.dev pricing. */
+	cost: number;
+	/** Stable per-LLM-call id, generated once at the call site for idempotent billing. */
+	reportId: string;
+}
+
+export interface AgentInputBoundary {
+	/** Current turn messages, ready for durable storage. */
+	messages: AgentDbMessage[];
+	lastCreatedAt: number;
+	completing: boolean;
+	/** False when the run cannot accept more input: max iterations reached, or a terminal stop such as a guardrail refusal. */
+	canContinue: boolean;
+}
+
 export interface ExecutionOptions {
+	/** Expose local and provider tools to the model. Defaults to true. */
+	toolsEnabled?: boolean;
+	/** Request a cooperative pause before the next model step. */
+	shouldPause?: () => Promise<boolean>;
+	/** Commit additional input between model calls. Stream consumers must acknowledge input-boundary chunks. */
+	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<AgentDbMessage[]>;
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
@@ -224,10 +284,18 @@ export interface ExecutionOptions {
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
 	executionCounter?: AgentExecutionCounter;
+	/**
+	 * Reported after a side-call model turn (title generation, observation-log
+	 * observer/reflector, episodic-memory model calls) completes, so the host
+	 * can add the estimated USD cost to the execution and thread totals. The
+	 * runtime computes the cost via the model catalog; the host only adds it.
+	 * Best-effort: a host failure here must not break the run.
+	 */
+	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
+	/** Thread allowances supplied for this execution. Not stored in checkpoints. */
+	approvalContext?: ToolApprovalContext;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
-	/** @deprecated Use `onStepEnd` instead. */
-	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/**
 	 * Durable-log RFC (resilience phase), opt-in: persist a `running`-status
 	 * checkpoint at every step boundary (after a tool batch settles, before the
@@ -235,10 +303,16 @@ export interface ExecutionOptions {
 	 * persistence-backed CheckpointStore; recover via `crashResume()`.
 	 */
 	stepCheckpoints?: boolean;
+	guardrails?: GuardrailsOptions;
 }
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+}
+
+export interface NativeToolDeferralConfig {
+	/** Local tools that stay available without provider tool search. */
+	eagerToolNames: readonly string[];
 }
 
 export interface AnthropicPromptCachingConfig {
@@ -272,7 +346,7 @@ export interface OpenAIPromptCachingConfig {
 export interface PromptCachingConfig {
 	/** Master switch. Defaults to `true` when this config is set. */
 	enabled?: boolean;
-	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	/** Claude cache settings, including OpenRouter and Vertex. Set `false` to disable. */
 	anthropic?: false | AnthropicPromptCachingConfig;
 	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
 	openai?: false | OpenAIPromptCachingConfig;
@@ -295,6 +369,7 @@ export interface GenerateResult {
 	/** The model ID used for this generation (e.g. 'anthropic/claude-haiku-4-5'). */
 	model?: string;
 	finishReason?: FinishReason;
+	guardrail?: GuardrailStop;
 	providerMetadata?: Record<string, unknown>;
 	/** Tool calls made during the run (with merged results when available). */
 	toolCalls?: ToolResultEntry[];
@@ -381,6 +456,11 @@ export interface BuiltAgent {
 		method: 'stream',
 		data: unknown,
 		options: ResumeOptions & ExecutionOptions,
+	): Promise<StreamResult>;
+
+	/** Resume a user pause without repeating completed tools. */
+	resumePaused(
+		options: Omit<ResumeOptions, 'toolCallId'> & ExecutionOptions,
 	): Promise<StreamResult>;
 
 	/** Approve a tool that uses requireApproval or needsApprovalFn */

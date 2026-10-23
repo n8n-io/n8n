@@ -1,6 +1,29 @@
-import { AgentIntegrationSchema } from '../agent-integration.schema';
+import {
+	AgentIntegrationConfigSchema,
+	AgentIntegrationSchema,
+	resolveWhatsAppSettings,
+} from '../agent-integration.schema';
+import { AgentJsonConfigSchema } from '../agent-json-config.schema';
 
 describe('AgentIntegrationSchema', () => {
+	it('accepts n8n Chat without a credential in agent configuration', () => {
+		expect(AgentIntegrationConfigSchema.parse({ type: 'n8n_chat' })).toEqual({
+			type: 'n8n_chat',
+			credentialId: '',
+		});
+		expect(AgentIntegrationSchema.safeParse({ type: 'n8n_chat' }).success).toBe(false);
+	});
+
+	it('rejects duplicate n8n Chat channel entries', () => {
+		expect(
+			AgentJsonConfigSchema.safeParse({
+				name: 'Agent',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Help',
+				integrations: [{ type: 'n8n_chat' }, { type: 'n8n_chat' }],
+			}).success,
+		).toBe(false);
+	});
 	it('accepts a telegram integration with credential id', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'telegram',
@@ -8,6 +31,31 @@ describe('AgentIntegrationSchema', () => {
 			settings: { accessMode: 'private', allowedUsers: ['123'] },
 		});
 		expect(result.success).toBe(true);
+	});
+
+	it.each(['discord', 'linear', 'teams'])(
+		'accepts a %s integration with or without a session idle timeout',
+		(type) => {
+			expect(AgentIntegrationSchema.safeParse({ type, credentialId: 'cred-123' }).success).toBe(
+				true,
+			);
+			expect(
+				AgentIntegrationSchema.safeParse({
+					type,
+					credentialId: 'cred-123',
+					settings: { sessionIdleTimeoutMinutes: 30 },
+				}).success,
+			).toBe(true);
+		},
+	);
+
+	it('rejects Teams settings it does not define', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'teams',
+			credentialId: 'cred-123',
+			settings: { accessMode: 'public' },
+		});
+		expect(result.success).toBe(false);
 	});
 
 	it('accepts an existing Slack integration without messaging settings', () => {
@@ -78,5 +126,167 @@ describe('AgentIntegrationSchema', () => {
 			cronExpression: '0 9 * * *',
 		});
 		expect(result.success).toBe(false);
+	});
+
+	describe('action approval', () => {
+		it.each(['slack', 'telegram', 'discord', 'linear'])(
+			'accepts selected actions on a %s integration',
+			(type) => {
+				const result = AgentIntegrationSchema.safeParse({
+					type,
+					credentialId: 'cred-123',
+					approval: { mode: 'selected', tools: ['send_channel_message'] },
+				});
+				expect(result.success).toBe(true);
+			},
+		);
+
+		it('leaves approval undefined when it is absent', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+			});
+			expect(result.success && result.data.approval).toBeUndefined();
+		});
+
+		it('accepts the global mode without a list', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				approval: { mode: 'global' },
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it('rejects selected approval with nothing selected', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				approval: { mode: 'selected', tools: [] },
+			});
+			expect(result.success).toBe(false);
+		});
+
+		it('rejects an unknown approval mode', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				approval: { mode: 'always' },
+			});
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe('Teams availability settings', () => {
+		const parse = (settings: Record<string, unknown>) =>
+			AgentIntegrationSchema.safeParse({ type: 'teams', credentialId: 'cred-123', settings });
+
+		it.each([
+			['nothing beyond the shared shape', {}],
+			['team channels', { teamChannels: true }],
+			['group chats', { groupChats: true }],
+			['a read permission with its scope', { teamChannels: true, readAllChannelMessages: true }],
+			[
+				'both reads with both scopes',
+				{
+					teamChannels: true,
+					groupChats: true,
+					readAllChannelMessages: true,
+					readAllGroupMessages: true,
+				},
+			],
+		])('accepts %s', (_label, settings) => {
+			expect(parse(settings).success).toBe(true);
+		});
+
+		it.each([
+			['reading channels without team channels', { readAllChannelMessages: true }],
+			['reading group chats without group chats', { readAllGroupMessages: true }],
+			[
+				'reading channels while team channels are off',
+				{ teamChannels: false, readAllChannelMessages: true },
+			],
+		])('rejects %s', (_label, settings) => {
+			expect(parse(settings).success).toBe(false);
+		});
+
+		it('still rejects an unknown setting', () => {
+			expect(parse({ somethingElse: true }).success).toBe(false);
+		});
+	});
+
+	describe('WhatsApp settings', () => {
+		const parse = (settings: Record<string, unknown>) =>
+			AgentIntegrationSchema.safeParse({ type: 'whatsapp', credentialId: 'cred-123', settings });
+
+		it('accepts a WhatsApp integration without settings', () => {
+			expect(
+				AgentIntegrationSchema.safeParse({ type: 'whatsapp', credentialId: 'cred-123' }).success,
+			).toBe(true);
+		});
+
+		it('accepts the typing indicator, media download and retention settings', () => {
+			const result = parse({
+				sessionIdleTimeoutMinutes: 30,
+				typingIndicator: false,
+				downloadMedia: false,
+				mediaRetentionDays: 7,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual({
+				sessionIdleTimeoutMinutes: 30,
+				typingIndicator: false,
+				downloadMedia: false,
+				mediaRetentionDays: 7,
+			});
+		});
+
+		it.each([1, 365])('accepts a retention of %i days', (mediaRetentionDays) => {
+			expect(parse({ mediaRetentionDays }).success).toBe(true);
+		});
+
+		it.each([0, 366, 1.5, -1])('rejects a retention of %s days', (mediaRetentionDays) => {
+			expect(parse({ mediaRetentionDays }).success).toBe(false);
+		});
+
+		it.each([
+			['typingIndicator', 'yes'],
+			['downloadMedia', 1],
+		])('rejects a non-boolean %s', (key, value) => {
+			expect(parse({ [key]: value }).success).toBe(false);
+		});
+
+		it('rejects an unknown setting', () => {
+			expect(parse({ accessMode: 'public' }).success).toBe(false);
+		});
+	});
+
+	describe('resolveWhatsAppSettings', () => {
+		it('applies the defaults when no settings are saved', () => {
+			const defaults = { typingIndicator: true, downloadMedia: true, mediaRetentionDays: 30 };
+
+			expect(resolveWhatsAppSettings()).toEqual(defaults);
+			expect(resolveWhatsAppSettings({})).toEqual(defaults);
+			expect(resolveWhatsAppSettings({ sessionIdleTimeoutMinutes: 10 })).toEqual(defaults);
+		});
+
+		it('keeps the saved values', () => {
+			expect(
+				resolveWhatsAppSettings({
+					typingIndicator: false,
+					downloadMedia: false,
+					mediaRetentionDays: 90,
+				}),
+			).toEqual({ typingIndicator: false, downloadMedia: false, mediaRetentionDays: 90 });
+		});
+
+		it('fills only the settings that are unset', () => {
+			expect(resolveWhatsAppSettings({ downloadMedia: false })).toEqual({
+				typingIndicator: true,
+				downloadMedia: false,
+				mediaRetentionDays: 30,
+			});
+		});
 	});
 });

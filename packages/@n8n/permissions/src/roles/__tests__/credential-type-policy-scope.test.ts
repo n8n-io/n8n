@@ -1,4 +1,10 @@
 import { API_KEY_RESOURCES } from '@/constants.ee';
+import {
+	MEMBER_API_KEY_SCOPES,
+	OWNER_API_KEY_SCOPES,
+	getApiKeyScopesForRole,
+	getOwnerOnlyApiKeyScopes,
+} from '@/public-api-permissions.ee';
 import { GLOBAL_ADMIN_SCOPES, GLOBAL_OWNER_SCOPES } from '@/roles/scopes/global-scopes.ee';
 import {
 	PERSONAL_PROJECT_OWNER_SCOPES,
@@ -6,7 +12,7 @@ import {
 	PROJECT_VIEWER_SCOPES,
 	REGULAR_PROJECT_ADMIN_SCOPES,
 } from '@/roles/scopes/project-scopes.ee';
-import type { AuthPrincipal } from '@/types.ee';
+import { isApiKeyScope, type AuthPrincipal } from '@/types.ee';
 import { hasGlobalScope } from '@/utilities/has-global-scope.ee';
 
 const principal = (slug: string, scopes: string[]): AuthPrincipal =>
@@ -52,7 +58,26 @@ describe('credentialTypePolicy:manage default grants', () => {
 });
 
 describe('credentialTypePolicy:manage as an API key scope', () => {
-	it('is not declared in API_KEY_RESOURCES yet, since no Public API endpoint consumes it', () => {
-		expect(API_KEY_RESOURCES).not.toHaveProperty('credentialTypePolicy');
+	it('is declared in API_KEY_RESOURCES, consumed by the credential-type-policies public API', () => {
+		expect(API_KEY_RESOURCES.credentialTypePolicy).toEqual(['manage']);
+		expect(isApiKeyScope('credentialTypePolicy:manage')).toBe(true);
+	});
+
+	it('is granted to an owner key by default', () => {
+		expect(OWNER_API_KEY_SCOPES).toContain('credentialTypePolicy:manage');
+		expect(getApiKeyScopesForRole(principal('global:owner', [...GLOBAL_OWNER_SCOPES]))).toContain(
+			'credentialTypePolicy:manage',
+		);
+	});
+
+	it('is mintable by a member so a project admin can reach the project routes', () => {
+		expect(MEMBER_API_KEY_SCOPES).toContain('credentialTypePolicy:manage');
+		expect(getApiKeyScopesForRole(principal('global:member', []))).toContain(
+			'credentialTypePolicy:manage',
+		);
+	});
+
+	it('is therefore not stripped from keys on demotion to member', () => {
+		expect(getOwnerOnlyApiKeyScopes()).not.toContain('credentialTypePolicy:manage');
 	});
 });

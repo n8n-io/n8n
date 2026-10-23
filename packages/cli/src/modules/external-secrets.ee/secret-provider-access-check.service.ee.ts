@@ -7,10 +7,9 @@ import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { combineScopes, getAuthPrincipalScopes, hasGlobalScope } from '@n8n/permissions';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 @Service()
 export class SecretsProviderAccessCheckService {

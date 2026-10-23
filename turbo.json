@@ -55,18 +55,7 @@
 		"format": {},
 		"format:check": {},
 		"lint": {
-			"dependsOn": ["^build", "@n8n/eslint-config#build"]
-		},
-		// oxlint spike packages (DEVP-584). They run oxlint instead of ESLint, so
-		// they need the oxlint layer built, not the ESLint one.
-		"@n8n/errors#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/di#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/crdt#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+			"dependsOn": ["^build", "@n8n/eslint-config#build", "@n8n/oxlint-config#build"]
 		},
 		// The n8n-nodes-base lint script also validates load-options methods
 		// against dist/methods/*.json, which only its own build emits.
@@ -83,7 +72,8 @@
 		"test": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:changed": {
 			"dependsOn": ["^build", "build"],
@@ -94,7 +84,8 @@
 		"test:unit": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:unit:changed": {
 			"dependsOn": ["^build", "build"],
@@ -105,7 +96,8 @@
 		"test:integration": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:integration:changed": {
 			"dependsOn": ["^build", "build"],

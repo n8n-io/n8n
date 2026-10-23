@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { OutboundHttp } from '@n8n/backend-network';

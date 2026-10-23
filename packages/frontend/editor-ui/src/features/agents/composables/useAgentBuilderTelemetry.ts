@@ -20,14 +20,12 @@ export interface AgentBuilderTelemetryDeps {
 	agent: Ref<AgentResource | null>;
 	/** Local (unsaved) config — the fingerprint source for emitted events. */
 	localConfig: Ref<AgentJsonConfig | null>;
-	connectedTriggers: Ref<string[]>;
 }
 
 interface EditSnapshot {
 	agentId: string;
 	status: AgentTelemetryStatus;
 	config: AgentJsonConfig | null;
-	connectedTriggers: string[];
 }
 
 /**
@@ -46,9 +44,15 @@ function integrationStatusEntriesFromConfig(
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
+		// Settings and approval ride along so a config seed does not blank what the
+		// status endpoint reported. The edit modal saves from that cache.
 		entries.push({
 			type: integration.type,
 			credentialId: integration.credentialId,
+			...('settings' in integration ? { settings: integration.settings } : {}),
+			...('approval' in integration && integration.approval
+				? { approval: integration.approval }
+				: {}),
 			status: isPublished ? 'starting' : 'configured',
 		});
 	}
@@ -64,16 +68,12 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			agentId: deps.agentId.value,
 			status: deriveAgentStatus(deps.agent.value),
 			config: deps.localConfig.value,
-			connectedTriggers: deps.connectedTriggers.value,
 		};
 	}
 
 	/**
-	 * Compute the agent's `config_version` fingerprint asynchronously, then hand
-	 * it to `emit`. Centralizes the async-IIFE + try/catch boilerplate that
-	 * every fingerprint-bearing event would otherwise duplicate. `crypto.subtle`
-	 * can throw in insecure contexts, so failures are swallowed — individual
-	 * track calls are already wrapped inside `useAgentTelemetry`.
+	 * Compute the fingerprint before each event. Ignore failures so telemetry
+	 * does not interrupt editing. Track calls also handle errors in `useAgentTelemetry`.
 	 */
 	function withFingerprint(
 		config: AgentJsonConfig | null,

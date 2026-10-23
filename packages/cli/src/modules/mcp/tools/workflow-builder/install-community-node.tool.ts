@@ -200,11 +200,8 @@ export const createInstallCommunityNodeTool = (
 
 			let installedPackage: Awaited<ReturnType<CommunityPackagesLifecycleService['install']>>;
 			try {
-				// No version: install() pins the latest vetted version and its
-				// checksum from a single catalog lookup, so the pair can never
-				// straddle a catalog refresh.
 				installedPackage = await communityPackagesLifecycleService.install(
-					{ name: packageName, verify: true },
+					{ name: packageName },
 					user,
 					'mcp',
 				);

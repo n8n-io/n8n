@@ -1,12 +1,21 @@
-import { describe, it, expect, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
 import { createRouter, createMemoryHistory, type Router } from 'vue-router';
 import SessionDetailPanel from '../components/SessionDetailPanel.vue';
+import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
+import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import type { TimelineItem } from '../session-timeline.types';
 
-vi.mock('../components/WorkflowExecutionLogViewer.vue', () => ({
-	default: { template: '<div data-test-id="wf-log-viewer"></div>' },
+const fetchExecution = vi.fn();
+vi.mock('@/features/execution/executions/executions.store', () => ({
+	useExecutionsStore: () => ({ fetchExecution }),
 }));
+
+beforeEach(() => {
+	fetchExecution.mockReset();
+	fetchExecution.mockResolvedValue({ id: 'exec-1', data: {} });
+});
+
 vi.mock('../components/ToolIoView.vue', () => ({
 	default: {
 		name: 'ToolIoView',
@@ -54,9 +63,14 @@ describe('SessionDetailPanel — user attachments', () => {
 		attachments: [{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 }],
 	};
 
-	it('renders the attachments block for a user item with files', () => {
+	it('renders user text before the attachments block for a user item with files', () => {
 		const w = mountIt(userItem, { projectId: 'p1', agentId: 'a1' });
-		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(true);
+		const message = w.get('[data-test-id="markdown"]');
+		const attachments = w.get('[data-test-id="user-attachments"]');
+		expect(
+			message.element.compareDocumentPosition(attachments.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 
 	it('skips the attachments block without the project/agent scope for download URLs', () => {
@@ -67,6 +81,44 @@ describe('SessionDetailPanel — user attachments', () => {
 	it('skips the attachments block for user items without files', () => {
 		const w = mountIt({ ...userItem, attachments: undefined }, { projectId: 'p1', agentId: 'a1' });
 		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(false);
+	});
+});
+
+describe('SessionDetailPanel — reasoning', () => {
+	it.each(['The answer.', '{"answer":42}', ''])(
+		'shows collapsed reasoning below response content %j',
+		async (content) => {
+			const thinkingSegments = [
+				{ id: 'r-1', content: 'Check the facts. Then answer.', startTime: 1000, endTime: 4000 },
+			];
+			const w = mountIt({
+				kind: 'agent',
+				executionId: 'e1',
+				timestamp: 5000,
+				content,
+				thinkingSegments,
+			});
+			const thinking = w.findComponent(AiThinkingBlock);
+			expect(thinking.props()).toMatchObject({
+				segments: thinkingSegments,
+				active: false,
+				durationSec: 3,
+			});
+			const header = thinking.find('[data-test-id="thinking-block-header"]');
+			expect(header.attributes('aria-expanded')).toBe('false');
+			await header.trigger('click');
+			expect(header.attributes('aria-expanded')).toBe('true');
+			const reasoning = thinking.findComponent(AiReasoningBlock);
+			expect(reasoning.props('entry')).toEqual(thinkingSegments[0]);
+			await reasoning.find('button').trigger('click');
+			expect(reasoning.text()).toContain('Then answer.');
+			w.unmount();
+		},
+	);
+
+	it('shows no reasoning section for a message without traces', () => {
+		const w = mountIt({ kind: 'agent', executionId: 'e1', timestamp: 0, content: 'The answer.' });
+		expect(w.findComponent(AiThinkingBlock).exists()).toBe(false);
 	});
 });
 
@@ -124,19 +176,86 @@ describe('SessionDetailPanel — integration action cards', () => {
 });
 
 describe('SessionDetailPanel — workflow branches', () => {
-	it('renders the WorkflowExecutionLogViewer when workflowExecutionId is set', () => {
-		const w = mountIt({
-			kind: 'workflow',
-			executionId: 'e1',
-			timestamp: 0,
-			workflowId: 'wf-1',
-			workflowName: 'WF',
-			workflowExecutionId: 'exec-1',
-		});
-		expect(w.find('[data-test-id="wf-log-viewer"]').exists()).toBe(true);
+	const ingestedItem: TimelineItem = {
+		kind: 'workflow',
+		executionId: 'e1',
+		timestamp: 0,
+		workflowId: 'wf-1',
+		workflowName: 'WF',
+		workflowExecutionId: 'exec-1',
+		toolInput: { query: 'open entries' },
+		toolOutput: {
+			executionId: 'exec-1',
+			status: 'success',
+			data: { 'Last node': [{ value: 'ingested' }] },
+		},
+	};
+
+	it('renders the ingested workflow input and output when workflowExecutionId is set', async () => {
+		const w = mountIt(ingestedItem);
+		await flushPromises();
+		expect(fetchExecution).toHaveBeenCalledWith('exec-1');
+		expect(w.find('[data-test-id="workflow-input"]').text()).toContain('open entries');
+		expect(w.find('[data-test-id="workflow-output"]').text()).toContain('ingested');
+		expect(w.find('[data-test-id="workflow-output"]').text()).toContain('Last node');
+		expect(w.find('[data-test-id="wf-error-fallback"]').exists()).toBe(false);
 	});
 
-	it('shows a soft-failure callout alongside the workflow execution viewer', () => {
+	it('shows a loading label instead of the output until the execution access resolves', () => {
+		fetchExecution.mockReturnValue(new Promise(() => {}));
+		const w = mountIt(ingestedItem);
+		expect(w.find('[data-test-id="workflow-input"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="workflow-output-loading"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="workflow-output"]').exists()).toBe(false);
+	});
+
+	it('hides the output data when the child execution is redacted', async () => {
+		fetchExecution.mockResolvedValue({
+			id: 'exec-1',
+			data: {
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			},
+		});
+		const w = mountIt(ingestedItem);
+		await flushPromises();
+		expect(w.find('[data-test-id="workflow-output-redacted"]').exists()).toBe(true);
+		const output = w.find('[data-test-id="workflow-output"]').text();
+		expect(output).toContain('exec-1');
+		expect(output).not.toContain('ingested');
+		expect(output).not.toContain('Last node');
+	});
+
+	it('hides the output data when the child execution cannot be loaded', async () => {
+		fetchExecution.mockRejectedValue(new Error('not found'));
+		const w = mountIt(ingestedItem);
+		await flushPromises();
+		expect(w.find('[data-test-id="workflow-output-unavailable"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="workflow-output"]').text()).not.toContain('ingested');
+	});
+
+	it('hides the output data when the child execution has no run data', async () => {
+		fetchExecution.mockResolvedValue({ id: 'exec-1' });
+		const w = mountIt(ingestedItem);
+		await flushPromises();
+		expect(w.find('[data-test-id="workflow-output-unavailable"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="workflow-output-redacted"]').exists()).toBe(false);
+		expect(w.find('[data-test-id="workflow-output"]').text()).not.toContain('ingested');
+	});
+
+	it('hides the output data when the child execution is too large to display', async () => {
+		fetchExecution.mockResolvedValue({
+			id: 'exec-1',
+			dataTooLargeToDisplay: true,
+			data: { resultData: { runData: {} } },
+		});
+		const w = mountIt(ingestedItem);
+		await flushPromises();
+		expect(w.find('[data-test-id="workflow-output-unavailable"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="workflow-output-redacted"]').exists()).toBe(false);
+		expect(w.find('[data-test-id="workflow-output"]').text()).not.toContain('ingested');
+	});
+
+	it('shows a soft-failure callout alongside the ingested workflow output', async () => {
 		const w = mountIt({
 			kind: 'workflow',
 			executionId: 'e1',
@@ -147,10 +266,11 @@ describe('SessionDetailPanel — workflow branches', () => {
 			toolSuccess: true,
 			toolOutput: { status: 'error', error: 'Node X failed' },
 		});
+		await flushPromises();
 		const callout = w.find('[data-test-id="workflow-error-callout"]');
 		expect(callout.exists()).toBe(true);
 		expect(callout.text()).toContain('Node X failed');
-		expect(w.find('[data-test-id="wf-log-viewer"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="workflow-output"]').text()).toContain('Node X failed');
 		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(true);
 	});
 

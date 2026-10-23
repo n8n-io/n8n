@@ -8,6 +8,7 @@ import { Telemetry } from '@/telemetry';
 
 import { AgentValidationService } from './agent-validation.service';
 import type { Agent } from './entities/agent.entity';
+import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import {
 	capabilityCountTelemetryProperties,
@@ -40,23 +41,28 @@ export class AgentSetupCompletionService {
 	) {}
 
 	/**
-	 * Config-save path. Validates only when the agent is not already marked and
+	 * Config-save path. `agent` and `skillRefs` are the state about to be
+	 * written. Validates only when the agent is not already marked and
 	 * has something to run, so the cost falls away for good once an agent
 	 * completes — and is never paid by agents that are still empty.
 	 */
 	async recordIfSetupComplete(
 		agent: Agent,
+		skillRefs: AgentSkillRefs,
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user?: User,
 	): Promise<EmitSetupCompleted | null> {
-		const counts = countAgentCapabilities(agent.schema, agent.integrations);
+		const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
+		const counts = countAgentCapabilities(config, agent.integrations);
 		if (!this.isPending(agent, counts)) return null;
 
 		const validation = await this.agentValidationService.validateLoadedAgentConfiguration(
 			agent,
 			projectId,
 			credentialProvider,
+			'publish',
+			{ skillRefs },
 		);
 		if (validation.status !== 'valid') return null;
 

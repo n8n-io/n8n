@@ -1,6 +1,6 @@
 import { jsonParse } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import type {
 	CursorPagination,
@@ -36,7 +36,7 @@ export function resolveOffsetPagination({
 				throw new BadRequestError('An invalid cursor was provided');
 			}
 			offset = decoded.offset;
-			limit = decoded.limit;
+			limit = decoded.limit || queryLimit;
 		} catch {
 			throw new BadRequestError('An invalid cursor was provided');
 		}

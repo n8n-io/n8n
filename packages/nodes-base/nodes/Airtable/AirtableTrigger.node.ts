@@ -217,7 +217,7 @@ export class AirtableTrigger implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Formulas may involve functions, numeric operations, logical operations, and text operations that operate on fields. More info <a href="https://support.airtable.com/hc/en-us/articles/203255215-Formula-Field-Reference">here</a>.',
+							'Formulas may involve functions, numeric operations, logical operations, and text operations that operate on fields. More info <a href="https://support.airtable.com/articles/7330071120-airtable-formula-field-functions-reference">here</a>.',
 					},
 					{
 						displayName: 'View ID',

@@ -68,7 +68,7 @@ function hideFavicon(event: Event): void {
 	cursor: pointer;
 
 	&:hover {
-		background: var(--background--surface--hover);
+		background: var(--background--hover);
 	}
 }
 
@@ -79,8 +79,8 @@ function hideFavicon(event: Event): void {
 }
 
 .tab-favicon {
-	width: 24px;
-	height: 24px;
+	width: var(--height--xs);
+	height: var(--height--xs);
 	border-radius: var(--radius--sm);
 }
 

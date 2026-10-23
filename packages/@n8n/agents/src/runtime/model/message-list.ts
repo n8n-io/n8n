@@ -39,6 +39,11 @@ export type LlmContext = {
  * cache breakpoint (and OpenAI's automatic prefix cache) on nearly every
  * call, for no future read. Providers that do not support multiple system
  * messages receive one merged message instead.
+ *
+ * `skillInstructions` (recovered active skills) sit between the two, in their
+ * own message with their own cache options. They change only when a skill
+ * moves out of the conversation, so the base instructions and the tools in
+ * front of them stay cached when that happens.
  */
 export function buildSystemMessages(
 	baseInstructions: string,
@@ -47,35 +52,53 @@ export function buildSystemMessages(
 	volatileInstructions?: string,
 	mcpConnectionNote?: string,
 	splitSystemMessages = true,
+	skillInstructions?: { content: string; providerOptions?: ProviderOptions },
 ): SystemModelMessage | SystemModelMessage[] {
 	const cacheOptions = instructionProviderOptions
 		? { providerOptions: instructionProviderOptions }
 		: {};
+	const skillContent = skillInstructions?.content.trim();
 	const volatileSections = [
 		volatileInstructions?.trim(),
 		mcpConnectionNote?.trim(),
 		observationLogMemory?.trim(),
 	].filter((s): s is string => Boolean(s));
 
-	if (volatileSections.length === 0 || !splitSystemMessages) {
+	if (!splitSystemMessages || (!skillContent && volatileSections.length === 0)) {
 		return {
 			role: 'system',
-			content: [baseInstructions, ...volatileSections].join('\n\n'),
+			content: [
+				baseInstructions,
+				...(skillContent ? [skillContent] : []),
+				...volatileSections,
+			].join('\n\n'),
 			...cacheOptions,
 		};
 	}
 
-	return [
+	const messages: SystemModelMessage[] = [
 		{
 			role: 'system',
 			content: baseInstructions,
 			...cacheOptions,
 		},
-		{
+	];
+	if (skillContent) {
+		messages.push({
+			role: 'system',
+			content: `\n\n${skillContent}`,
+			...(skillInstructions?.providerOptions
+				? { providerOptions: skillInstructions.providerOptions }
+				: {}),
+		});
+	}
+	if (volatileSections.length > 0) {
+		messages.push({
 			role: 'system',
 			content: `\n\n${volatileSections.join('\n\n')}`,
-		},
-	];
+		});
+	}
+	return messages;
 }
 
 type MessageSource = 'history' | 'input' | 'response';
@@ -347,6 +370,11 @@ export class AgentMessageList {
 		instructionProviderOptions?: ProviderOptions,
 		volatileInstructions?: string,
 		splitSystemMessages = true,
+		skillInstructions?: {
+			content: string;
+			/** Resolved from the conversation messages, which can hold caller breakpoints. */
+			cacheOptions?: (messages: ModelMessage[]) => ProviderOptions | undefined;
+		},
 	): LlmContext {
 		const messages = toAiMessages(
 			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
@@ -364,6 +392,10 @@ export class AgentMessageList {
 				volatileInstructions,
 				this.mcpConnectionNote,
 				splitSystemMessages,
+				skillInstructions && {
+					content: skillInstructions.content,
+					providerOptions: skillInstructions.cacheOptions?.(messages),
+				},
 			),
 			messages,
 		};
@@ -426,9 +458,13 @@ export class AgentMessageList {
 		return this.all.filter((m) => this.inputSet.has(m));
 	}
 
-	removeInput(): void {
-		this.all = this.all.filter((message) => !this.inputSet.has(message));
-		this.inputSet.clear();
+	removeInput(messageIds: readonly string[]): void {
+		const ids = new Set(messageIds);
+		this.all = this.all.filter((message) => {
+			if (!this.inputSet.has(message) || !ids.has(message.id)) return true;
+			this.inputSet.delete(message);
+			return false;
+		});
 	}
 
 	/** All messages currently in the list, as live references. */

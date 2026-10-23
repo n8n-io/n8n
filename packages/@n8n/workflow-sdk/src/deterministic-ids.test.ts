@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 
 import { parseWorkflowCodeToBuilder, generateWorkflowCode } from './index';
 import { workflow } from './workflow-builder';
-import { node, trigger } from './workflow-builder/node-builders/node-builder';
+import { node, sticky, trigger } from './workflow-builder/node-builders/node-builder';
 
 /**
  * Generate a deterministic UUID based on workflow ID, node type, and node name.
@@ -84,6 +84,80 @@ describe('Deterministic Node ID Generation', () => {
 			expect(setNode?.id).toBe(
 				generateDeterministicNodeId('test-workflow-id', 'n8n-nodes-base.set', 'Set Data'),
 			);
+		});
+
+		it('should keep a sticky anchored to its nodes after their IDs change', () => {
+			const build = () => {
+				const start = trigger({
+					type: 'n8n-nodes-base.manualTrigger',
+					version: 1,
+					config: { name: 'Start' },
+				});
+
+				const first = node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { name: 'First' },
+				});
+
+				const second = node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { name: 'Second' },
+				});
+
+				const note = sticky('Note', [first, second], { name: 'Note' });
+
+				return workflow('test-workflow-id', 'Test Workflow')
+					.add(start)
+					.to(first)
+					.to(second)
+					.add(note);
+			};
+
+			const stickyNoteOf = (wf: ReturnType<typeof build>) =>
+				wf.toJSON({ tidyUp: true }).nodes.find((node) => node.name === 'Note');
+
+			const regenerated = build();
+			regenerated.regenerateNodeIds();
+
+			const expected = stickyNoteOf(build());
+			expect(stickyNoteOf(regenerated)?.position).toEqual(expected?.position);
+			expect(stickyNoteOf(regenerated)?.parameters).toEqual(expected?.parameters);
+		});
+
+		it('should resolve a sticky anchor from a handle retained across regeneration', () => {
+			const start = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const first = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'First' },
+			});
+			const builder = workflow('test-workflow-id', 'Test Workflow').add(start).to(first);
+
+			builder.regenerateNodeIds();
+			builder.add(sticky('Note', [first], { name: 'Note' }));
+			builder.regenerateNodeIds();
+
+			const expectedBuilder = workflow('test-workflow-id', 'Test Workflow')
+				.add(start)
+				.to(first)
+				.add(sticky('Note', [first], { name: 'Note' }));
+			expectedBuilder.regenerateNodeIds();
+
+			const actualNote = builder
+				.toJSON({ tidyUp: true })
+				.nodes.find((node) => node.name === 'Note');
+			const expectedNote = expectedBuilder
+				.toJSON({ tidyUp: true })
+				.nodes.find((node) => node.name === 'Note');
+
+			expect(actualNote?.position).toEqual(expectedNote?.position);
+			expect(actualNote?.parameters).toEqual(expectedNote?.parameters);
 		});
 
 		it('should update connections to use new IDs', () => {

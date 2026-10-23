@@ -26,7 +26,11 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	LogsPanelHostKey,
+	WorkflowDocumentStoreKey,
+	WorkflowIdKey,
+} from '@/app/constants/injectionKeys';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createRunExecutionData, deepCopy } from 'n8n-workflow';
@@ -109,11 +113,12 @@ describe('LogsPanel', () => {
 		).setWorkflowExecutionData(execution);
 	}
 
-	function render() {
+	function render(provide: Record<symbol, unknown> = {}) {
 		const wfId = workflowsStore.workflowId;
 		const wrapper = renderComponent(LogsPanel, {
 			global: {
 				provide: {
+					...provide,
 					[ChatSymbol as symbol]: {},
 					[ChatOptionsSymbol as symbol]: {},
 					[WorkflowIdKey as unknown as string]: computed(() => wfId),
@@ -182,6 +187,24 @@ describe('LogsPanel', () => {
 
 		expect(await rendered.findByTestId('logs-overview-header')).toBeInTheDocument();
 		expect(rendered.queryByTestId('logs-overview-empty')).not.toBeInTheDocument();
+	});
+
+	it('should size the panel relative to the container the host provides', async () => {
+		logsStore.toggleOpen(true);
+		setWorkflow(aiManualWorkflow);
+		const heightContainer = document.createElement('div');
+		Object.defineProperty(heightContainer, 'offsetHeight', { configurable: true, get: () => 600 });
+
+		render({
+			[LogsPanelHostKey as symbol]: {
+				context: 'artifact',
+				heightStorageKey: 'TEST_LOGS_PANEL_HEIGHT',
+				heightContainer,
+			},
+		});
+
+		// 30% of the 600px container. The 800px body would give 240px.
+		expect(logsStore.height).toBe(180);
 	});
 
 	it('should only render logs panel if the workflow has no chat trigger', async () => {
@@ -571,6 +594,27 @@ describe('LogsPanel', () => {
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
 			await fireEvent.keyDown(overview, { key: 'J' });
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+		});
+
+		it('should handle arrow navigation without bubbling to canvas shortcuts', async () => {
+			const { getByTestId, findByRole } = render();
+			const overview = getByTestId('logs-overview');
+			const documentKeydown = vi.fn();
+			document.addEventListener('keydown', documentKeydown);
+
+			try {
+				await waitFor(async () =>
+					expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/),
+				);
+				await fireEvent.keyDown(overview, { key: 'ArrowUp' });
+
+				expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+				await fireEvent.keyDown(overview, { key: 'ArrowDown' });
+				expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+				expect(documentKeydown).not.toHaveBeenCalled();
+			} finally {
+				document.removeEventListener('keydown', documentKeydown);
+			}
 		});
 
 		it('should not select a log for the selected node on canvas if sync is disabled', async () => {

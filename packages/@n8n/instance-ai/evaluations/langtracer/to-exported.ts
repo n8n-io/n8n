@@ -3,7 +3,7 @@
 // network call so the disk→API key-renaming contract is unit-testable without a server.
 
 import type { CaseSeed, EvalTestCaseInput } from '../harness/schema';
-import type { TestCaseCredential } from '../types';
+import type { ExecutionScenario, TestCaseCredential } from '../types';
 
 /** One scenario in the create-case payload (`executionScenarios` renamed to `scenarios`). */
 export interface LangTracerScenario {
@@ -12,6 +12,7 @@ export interface LangTracerScenario {
 	dataSetup?: string;
 	successCriteria?: string;
 	requires?: string;
+	seedDataTables?: ExecutionScenario['seedDataTables'];
 }
 
 /** Body for `POST /api/v1/cases`. Disk keys are renamed (`complexity`→`evalComplexity`,
@@ -42,6 +43,7 @@ export interface LangTracerCreateCaseBody {
 	 *  promote/scrub over there, so pushing one would fabricate provenance. */
 	seed?: PushableSeed;
 	credentialFixture?: string;
+	requiresMemoryCompaction?: boolean;
 }
 
 type InlineSeed = Extract<CaseSeed, { mode: 'inline' }>;
@@ -159,6 +161,9 @@ export function diskCaseToLangTracerCreate(
 	// Replay never reaches here — `unsupportedPushReason` skips those cases upstream.
 	if (testCase.seed?.mode === 'inline') body.seed = pushableSeed(testCase.seed);
 	if (testCase.credentialFixture !== undefined) body.credentialFixture = testCase.credentialFixture;
+	if (testCase.requiresMemoryCompaction !== undefined) {
+		body.requiresMemoryCompaction = testCase.requiresMemoryCompaction;
+	}
 
 	return body;
 }
@@ -169,11 +174,13 @@ function mapScenario(scenario: {
 	dataSetup?: string;
 	successCriteria?: string;
 	requires?: string;
+	seedDataTables?: ExecutionScenario['seedDataTables'];
 }): LangTracerScenario {
 	const mapped: LangTracerScenario = { name: scenario.name };
 	if (scenario.description !== undefined) mapped.description = scenario.description;
 	if (scenario.dataSetup !== undefined) mapped.dataSetup = scenario.dataSetup;
 	if (scenario.successCriteria !== undefined) mapped.successCriteria = scenario.successCriteria;
 	if (scenario.requires !== undefined) mapped.requires = scenario.requires;
+	if (scenario.seedDataTables !== undefined) mapped.seedDataTables = scenario.seedDataTables;
 	return mapped;
 }

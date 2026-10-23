@@ -1,6 +1,7 @@
 import type {
 	AgentBackgroundJobSignal,
 	AgentBackgroundJobsResponse,
+	AgentChatResumeDto,
 	PushMessage,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -10,13 +11,19 @@ import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } 
 import { TIME } from '@/app/constants/durations';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
-import { getAgentBackgroundJobs } from './useAgentApi';
+import {
+	getAgentBackgroundJobs,
+	resumeAgentBackgroundJob,
+	stopAgentBackgroundJobs,
+	type AgentChatChannel,
+} from './useAgentApi';
 
 interface BackgroundJobsTarget {
 	projectId: MaybeRefOrGetter<string>;
 	agentId: MaybeRefOrGetter<string>;
 	threadId: MaybeRefOrGetter<string | undefined>;
 	active: MaybeRefOrGetter<boolean>;
+	channel?: MaybeRefOrGetter<AgentChatChannel>;
 	receivedJobs?: MaybeRefOrGetter<AgentBackgroundJobSignal['tasks']>;
 }
 
@@ -27,6 +34,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
 	const group = ref<AgentBackgroundJobsResponse>({ tasks: [] });
+	const isStopping = ref(false);
 	const jobs = computed(() => {
 		const received = new Map(toValue(target.receivedJobs)?.map((job) => [job.id, job]));
 		// A late job response must not restore a running status after its chat signal arrives.
@@ -34,7 +42,8 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 			...job,
 			status: received.get(job.id)?.status ?? job.status,
 		}));
-		if (current.some((job) => job.status === 'running')) return current;
+		if (current.some((job) => job.status === 'running' || job.status === 'suspended'))
+			return current;
 		return group.value.pendingTaskIds?.some((id) => !received.has(id)) ? current : [];
 	});
 	const active = computed(() => toValue(target.active) && visibility.value === 'visible');
@@ -57,7 +66,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		const agentId = toValue(target.agentId);
 		const threadId = toValue(target.threadId);
 		if (disposed || !active.value || !threadId) return;
-		if (inFlight) {
+		if (inFlight || isStopping.value) {
 			queued = true;
 			return;
 		}
@@ -77,6 +86,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 				projectId,
 				agentId,
 				threadId,
+				toValue(target.channel),
 			);
 			if (isCurrent()) {
 				group.value = {
@@ -120,6 +130,57 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		scheduleRefresh();
 	}
 
+	async function respondToApproval(payload: AgentChatResumeDto) {
+		const threadId = toValue(target.threadId);
+		if (!threadId) return;
+		const requestGeneration = generation;
+		try {
+			await resumeAgentBackgroundJob(
+				rootStore.restApiContext,
+				toValue(target.projectId),
+				toValue(target.agentId),
+				threadId,
+				payload,
+				toValue(target.channel),
+			);
+			if (generation === requestGeneration) {
+				for (const job of group.value.tasks) {
+					if (
+						job.approval?.runId === payload.runId &&
+						job.approval.toolCallId === payload.toolCallId
+					) {
+						delete job.approval;
+					}
+				}
+			}
+		} finally {
+			refresh();
+		}
+	}
+
+	async function stopAll() {
+		const threadId = toValue(target.threadId);
+		if (!threadId || !active.value || isStopping.value) return;
+		const requestGeneration = ++generation;
+		isStopping.value = true;
+		clearRetry();
+		try {
+			const result = await stopAgentBackgroundJobs(
+				rootStore.restApiContext,
+				toValue(target.projectId),
+				toValue(target.agentId),
+				threadId,
+				toValue(target.channel),
+			);
+			if (!disposed && generation === requestGeneration) group.value = result;
+		} catch (error) {
+			if (!disposed && generation === requestGeneration) throw error;
+		} finally {
+			if (generation === requestGeneration) isStopping.value = false;
+			refresh();
+		}
+	}
+
 	// The chat stream owns the shared connection. Subscribe before the first fetch.
 	const removeListener = pushStore.addEventListener((event: PushMessage) => {
 		if (
@@ -139,6 +200,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		],
 		() => {
 			generation++;
+			isStopping.value = false;
 			inFlight = undefined;
 			queued = false;
 			group.value = { tasks: [] };
@@ -151,6 +213,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		active,
 		(enabled) => {
 			generation++;
+			isStopping.value = false;
 			inFlight = undefined;
 			queued = false;
 			clearRetry();
@@ -171,5 +234,5 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		removeListener();
 	});
 
-	return { jobs };
+	return { jobs, respondToApproval, stopAll, isStopping };
 }

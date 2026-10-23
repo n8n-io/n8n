@@ -17,13 +17,18 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('@/features/shared/commandBar/composables/useCommandBar', () => ({
 	useCommandBar: () => ({
-		initialize: vi.fn(),
-		items: computed(() => []),
+		isOpen: ref(false),
+		query: ref(''),
+		activeTab: ref('all'),
+		tabs: computed(() => []),
+		sections: ref([]),
 		placeholder: computed(() => ''),
-		context: computed(() => undefined),
-		isLoading: ref(false),
-		onCommandBarChange: vi.fn(),
-		onCommandBarNavigateTo: vi.fn(),
+		breadcrumb: computed(() => undefined),
+		isLoading: computed(() => false),
+		hasMore: computed(() => false),
+		select: vi.fn(),
+		back: vi.fn(),
+		loadMore: vi.fn(),
 	}),
 }));
 

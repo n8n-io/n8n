@@ -1,5 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { FolderRepository, TagRepository, type User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -7,8 +8,7 @@ import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
 
 import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants';

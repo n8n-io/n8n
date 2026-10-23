@@ -10,7 +10,7 @@ import type { Project, User } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
+import { AiPreferenceService, renderAiPreferencesBlock } from '@n8n/backend-services';
 
 import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -63,6 +63,7 @@ async function seed(attributes: {
 	projectId?: string | null;
 	source?: AiPreferenceSource;
 	createdAt?: Date;
+	updatedAt?: Date;
 }) {
 	const row = await repository().save(
 		repository().create({
@@ -78,6 +79,9 @@ async function seed(attributes: {
 	// tie. A test that asserts an order sets the value it means.
 	if (attributes.createdAt) {
 		await repository().update(row.id, { createdAt: attributes.createdAt });
+	}
+	if (attributes.updatedAt) {
+		await repository().update(row.id, { updatedAt: attributes.updatedAt });
 	}
 	return row;
 }
@@ -110,7 +114,7 @@ describe('POST /ai-preferences', () => {
 
 	test('records the settings area as the surface that wrote the row', async () => {
 		// The write path names the surface. A client cannot claim `aia` or `mcp` by
-		// sending a source of its own (CONTEXT-137).
+		// sending a source of its own.
 		const response = await memberAgent
 			.post('/ai-preferences')
 			.send({ content: 'From settings.', scope: 'user', source: 'aia' });
@@ -141,6 +145,34 @@ describe('POST /ai-preferences', () => {
 		);
 
 		await repository().delete({ userId: outsider.id });
+	});
+
+	test('refuses a second row with the same text in the same scope', async () => {
+		const first = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Keep replies short.', scope: 'user' });
+		expect(first.statusCode).toBe(200);
+
+		const second = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Keep replies short.', scope: 'user' });
+		expect(second.statusCode).toBe(409);
+
+		expect(await repository().count({ where: { userId: member.id } })).toBe(1);
+		await repository().delete({ userId: member.id });
+	});
+
+	test('refuses an edit that copies another row in the scope', async () => {
+		const a = await memberAgent.post('/ai-preferences').send({ content: 'Rule A.', scope: 'user' });
+		const b = await memberAgent.post('/ai-preferences').send({ content: 'Rule B.', scope: 'user' });
+
+		const edit = await memberAgent
+			.patch(`/ai-preferences/${b.body.data.id}`)
+			.send({ content: 'Rule A.', scope: 'user', userId: member.id });
+		expect(edit.statusCode).toBe(409);
+
+		await repository().delete({ userId: member.id });
+		expect(a.statusCode).toBe(200);
 	});
 
 	test("counts the target user's scope when an admin writes for somebody else", async () => {
@@ -182,6 +214,22 @@ describe('POST /ai-preferences', () => {
 		expect(stored.createdById).toBe(member.id);
 	});
 
+	test('returns the author on the row, to the author and to other readers', async () => {
+		const created = await ownerAgent
+			.post('/ai-preferences')
+			.send({ content: 'Everyone.', scope: 'instance' });
+		const author = { id: owner.id, email: owner.email };
+		expect(created.body.data.createdBy).toMatchObject(author);
+
+		const listed = await memberAgent.get('/ai-preferences');
+		expect(listed.body.data.data).toEqual([
+			expect.objectContaining({
+				id: created.body.data.id,
+				createdBy: expect.objectContaining(author),
+			}),
+		]);
+	});
+
 	test('trims the content and refuses a blank preference', async () => {
 		const saved = await memberAgent
 			.post('/ai-preferences')
@@ -205,10 +253,12 @@ describe('POST /ai-preferences', () => {
 	});
 
 	test('lets an owner and an admin save an instance preference', async () => {
-		for (const agent of [ownerAgent, adminAgent]) {
+		// Distinct text per agent: the instance scope is one shared scope, so a second
+		// identical write to it is a duplicate, not a second grant to check.
+		for (const [index, agent] of [ownerAgent, adminAgent].entries()) {
 			const response = await agent
 				.post('/ai-preferences')
-				.send({ content: 'Everyone.', scope: 'instance' });
+				.send({ content: `Everyone, rule ${index}.`, scope: 'instance' });
 
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data).toMatchObject({ userId: null, projectId: null });
@@ -388,6 +438,37 @@ describe('GET /ai-preferences', () => {
 		expect(contentsOf(response)).toEqual(['first', 'second', 'third']);
 	});
 
+	test('sorts the rows by the requested date', async () => {
+		await seed({
+			content: 'a',
+			userId: member.id,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-03-01'),
+		});
+		await seed({
+			content: 'b',
+			userId: member.id,
+			createdAt: new Date('2026-02-01'),
+			updatedAt: new Date('2026-01-15'),
+		});
+		await seed({
+			content: 'c',
+			userId: member.id,
+			createdAt: new Date('2026-03-01'),
+			updatedAt: new Date('2026-02-01'),
+		});
+
+		const response = await memberAgent.get('/ai-preferences').query({ sortBy: 'updatedAt:desc' });
+
+		expect(contentsOf(response)).toEqual(['a', 'c', 'b']);
+	});
+
+	test('refuses an unknown sort', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ sortBy: 'content:asc' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('hides the rows of a project the caller is not a member of', async () => {
 		await seed({ content: 'Marketing', projectId: project.id });
 
@@ -499,6 +580,62 @@ describe('GET /ai-preferences', () => {
 	});
 });
 
+describe('GET /ai-preferences?ids=', () => {
+	test('returns only the named rows, in prompt order', async () => {
+		const first = await seed({
+			content: 'first',
+			userId: member.id,
+			createdAt: new Date('2026-01-01'),
+		});
+		await seed({ content: 'second', userId: member.id, createdAt: new Date('2026-02-01') });
+		const third = await seed({
+			content: 'third',
+			userId: member.id,
+			createdAt: new Date('2026-03-01'),
+		});
+
+		const response = await memberAgent
+			.get('/ai-preferences')
+			.query({ ids: `${third.id},${first.id}` });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+		expect(contentsOf(response)).toEqual(['first', 'third']);
+	});
+
+	test('does not widen what the caller may see', async () => {
+		const theirs = await seed({ content: 'Someone else', userId: outsider.id });
+		const mine = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.get('/ai-preferences')
+			.query({ ids: `${theirs.id},${mine.id}` });
+
+		expect(contentsOf(response)).toEqual(['Mine']);
+	});
+
+	test('answers an unknown id with an empty page', async () => {
+		await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ ids: crypto.randomUUID() });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(0);
+	});
+
+	test('refuses an id that is not a UUID', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ ids: 'missing' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test.each([' , ', ''])('refuses an empty ids filter (%j)', async (ids) => {
+		const response = await memberAgent.get('/ai-preferences').query({ ids });
+
+		expect(response.statusCode).toBe(400);
+	});
+});
+
 describe('GET /ai-preferences/count', () => {
 	test('returns the size of the list the caller would see, without rows', async () => {
 		await seed({ content: 'Instance' });
@@ -521,7 +658,7 @@ describe('PATCH /ai-preferences/:id', () => {
 
 		const response = await memberAgent
 			.patch(`/ai-preferences/${row.id}`)
-			.send({ content: 'New', scope: 'user' });
+			.send({ content: 'New', scope: 'user', userId: member.id });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.content).toBe('New');
@@ -531,13 +668,13 @@ describe('PATCH /ai-preferences/:id', () => {
 	test('keeps the surface that created the row, whatever the edit says', async () => {
 		const created = await memberAgent
 			.post('/ai-preferences')
-			.send({ content: 'From settings.', scope: 'user' });
+			.send({ content: 'From settings.', scope: 'user', userId: member.id });
 
 		// A body carrying a surface is ignored on an edit as it is on a create, so an
 		// assistant edit of a person's row never relabels it.
 		const response = await memberAgent
 			.patch(`/ai-preferences/${created.body.data.id}`)
-			.send({ content: 'Edited.', scope: 'user', source: 'aia' });
+			.send({ content: 'Edited.', scope: 'user', userId: member.id, source: 'aia' });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.source).toBe('ui');
@@ -576,7 +713,7 @@ describe('PATCH /ai-preferences/:id', () => {
 
 		const response = await memberAgent
 			.patch(`/ai-preferences/${row.id}`)
-			.send({ content: 'Marketing', scope: 'user' });
+			.send({ content: 'Marketing', scope: 'user', userId: member.id });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toMatchObject({ userId: member.id, projectId: null });
@@ -638,16 +775,41 @@ describe('PATCH /ai-preferences/:id', () => {
 		});
 	});
 
-	test("moves another user's preference to the admin when no user is named", async () => {
-		// The owner is explicit on the wire. A request without one means the caller.
+	test("refuses an edit of another user's row that does not name the user", async () => {
+		// An edit names its target. Without an owner the old code moved the row to the
+		// caller, so an admin could take a member's row by leaving one field out.
 		const row = await seed({ content: 'Theirs', userId: member.id });
 
 		const response = await adminAgent
 			.patch(`/ai-preferences/${row.id}`)
 			.send({ content: 'Theirs', scope: 'user' });
 
-		expect(response.statusCode).toBe(200);
-		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(admin.id);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An edit of a user preference must name the user');
+		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(member.id);
+	});
+
+	test('refuses an edit of the caller own row that does not name the user', async () => {
+		const row = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'Changed', scope: 'user' });
+
+		expect(response.statusCode).toBe(400);
+		expect((await repository().findOneByOrFail({ id: row.id })).content).toBe('Mine');
+	});
+
+	test("refuses a member who names another user's row as the target", async () => {
+		// Review focus 1: naming the owner is not the same as owning the right to edit them.
+		const row = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'Mine', scope: 'user', userId: outsider.id });
+
+		expect(response.statusCode).toBe(403);
+		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(member.id);
 	});
 
 	test('refuses a move into a project the caller may only read, even with update rights on the row', async () => {
@@ -729,16 +891,14 @@ describe('the preferences a write produces', () => {
 	});
 
 	test('keep two preferences with the same text apart by id', async () => {
-		// A remint or a conflation of ids is invisible when the text is unique, and the assistant
-		// edits by id, so the same sentence saved twice has to stay two addressable rows.
-		const first = await memberAgent
-			.post('/ai-preferences')
-			.send({ content: 'Keep replies short.', scope: 'user' });
-		const second = await memberAgent
-			.post('/ai-preferences')
-			.send({ content: 'Keep replies short.', scope: 'user' });
-
-		expect(second.body.data.id).not.toBe(first.body.data.id);
+		// The write path now refuses a second row with this text (see `refuses a second row
+		// with the same text in the same scope` above), so these two rows come from a direct
+		// insert, standing in for a pair a race between two writes left behind before the
+		// duplicate check ran, or for rows a migration inserted before this check existed. A
+		// remint or a conflation of ids is invisible when the text is not unique, and the
+		// assistant edits by id, so the same sentence twice has to stay two addressable rows.
+		const first = await seed({ content: 'Keep replies short.', userId: member.id });
+		const second = await seed({ content: 'Keep replies short.', userId: member.id });
 
 		const applicable = await Container.get(AiPreferenceService).getApplicable(member.id, []);
 
@@ -746,9 +906,7 @@ describe('the preferences a write produces', () => {
 		// falls back to `id ASC`, which is a random uuid. Order is covered where it is seeded,
 		// in `ai-preference.repository.test.ts` and in the `GET /ai-preferences` block above.
 		expect(applicable.user).toHaveLength(2);
-		expect(applicable.user.map((item) => item.id).sort()).toEqual(
-			[first.body.data.id, second.body.data.id].sort(),
-		);
+		expect(applicable.user.map((item) => item.id).sort()).toEqual([first.id, second.id].sort());
 		expect(applicable.user.every((item) => item.content === 'Keep replies short.')).toBe(true);
 	});
 

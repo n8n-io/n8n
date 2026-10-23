@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 @Config
 export class PrometheusMetricsConfig {
@@ -128,7 +129,7 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_WORKFLOW_INFO_METRIC_INTERVAL')
 	workflowInfoMetricInterval: number = 60;
 
-	/** Whether to include metrics for the database connection pool (size, usage, wait queue, acquire latency). */
+	/** Whether to include database pool metrics for usage, acquisition, connection state, and recovery. */
 	@Env('N8N_METRICS_INCLUDE_DB_POOL_METRICS')
 	includeDbPoolMetrics: boolean = false;
 
@@ -228,4 +229,8 @@ export class EndpointsConfig {
 		z.string().transform((val) => (val.startsWith('/') ? val : `/${val}`)),
 	)
 	health: string = '/healthz';
+
+	/** Milliseconds the editor waits for a health check response before showing offline status. */
+	@Env('N8N_FRONTEND_HEALTH_CHECK_TIMEOUT_MS', positiveIntSchema.max(2_147_483_647))
+	frontendHealthCheckTimeoutMs: number = 5000;
 }

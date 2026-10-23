@@ -11,9 +11,9 @@ import {
 	N8nEmptyState,
 	N8nButton,
 	N8nCallout,
-	N8nHeading,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
@@ -111,15 +111,13 @@ onMounted(() => {
 
 <template>
 	<div class="pb-2xl">
-		<div :class="$style.heading">
-			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</N8nHeading>
-		</div>
-		<p :class="$style.description">
-			{{ i18n.baseText('settings.sso.info') }}
-			<a :class="$style.docLink" href="https://docs.n8n.io/user-management/saml/" target="_blank">
-				{{ i18n.baseText('settings.sso.info.link') }}
-			</a>
-		</p>
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.sso.title')"
+			:description="i18n.baseText('settings.sso.info')"
+			docs-url="https://docs.n8n.io/user-management/saml/"
+			:class="$style.header"
+			data-test-id="sso-settings-header"
+		/>
 		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning" class="mb-m">
 			{{
 				isRulesMappingInN8n
@@ -215,25 +213,9 @@ onMounted(() => {
 <style lang="scss" module="shared" src="../styles/sso-form.module.scss" />
 
 <style lang="scss" module>
-.heading {
-	margin-bottom: var(--spacing--2xs);
-}
-
-.description {
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
-	line-height: var(--line-height--xl);
-	margin: 0 0 var(--spacing--lg);
-}
-
-.docLink {
-	color: var(--color--text);
-	text-decoration: underline;
-
-	&::after {
-		content: '↗';
-		margin-left: 2px;
-	}
+/* This page is not inside N8nSettingsLayout (which owns the header → content gap), so it keeps its own. */
+.header {
+	margin-bottom: var(--spacing--lg);
 }
 
 .protocolCard {

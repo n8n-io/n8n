@@ -55,6 +55,17 @@ describe('WorkflowPreviewSuggestions', () => {
 		});
 	});
 
+	it('omits the assistant label by default and shows it when requested', async () => {
+		const { queryByTestId, rerender } = renderComponent();
+		const labelTestId = 'instance-ai-workflow-preview-suggestions-assistant-label';
+
+		expect(queryByTestId(labelTestId)).not.toBeInTheDocument();
+
+		await rerender({ suggestions, disabled: false, label: 'Try asking n8n Assistant' });
+
+		expect(queryByTestId(labelTestId)).toHaveTextContent('Try asking n8n Assistant');
+	});
+
 	it('links "see all" to the templates website URL with instance parameters', () => {
 		const { container } = renderComponent();
 

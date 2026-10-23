@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { MAX_CONNECTION_INDEX } from './common/map-connections-by-destination';
+
 /**
  * Workflow Structure Validation
  *
@@ -46,7 +48,7 @@ const connectionEntrySchema = z
 	.object({
 		node: z.string().min(1),
 		type: z.string().min(1),
-		index: z.number().int().min(0),
+		index: z.number().int().min(0).max(MAX_CONNECTION_INDEX),
 	})
 	.passthrough();
 

@@ -51,6 +51,20 @@ export class SlackApi implements ICredentialType {
 			default: '',
 		},
 		{
+			// Set when n8n builds the Slack app for an Agent: the app sends its events to that Agent only
+			displayName: 'Agent ID',
+			name: 'agentId',
+			type: 'hidden',
+			default: '',
+		},
+		{
+			// Base URL of the connection test only, so an eval can aim the test at a stand-in. Node requests ignore it
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'hidden',
+			default: 'https://slack.com',
+		},
+		{
 			displayName:
 				'We strongly recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
 			name: 'notice',
@@ -75,7 +89,7 @@ export class SlackApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://slack.com',
+			baseURL: '={{$credentials.url}}',
 			url: '/api/users.profile.get',
 		},
 		rules: [

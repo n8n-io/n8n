@@ -1,6 +1,10 @@
 import type { IConnections } from 'n8n-workflow';
 import { mapConnectionsByDestination, getChildNodes, getParentNodes } from 'n8n-workflow';
-import type { InstanceAiAttachment, InstanceAiNodesAttachment } from '@n8n/api-types';
+import {
+	MAX_INSTANCE_AI_NODES_PER_SET,
+	type InstanceAiAttachment,
+	type InstanceAiNodesAttachment,
+} from '@n8n/api-types';
 
 export interface NodeContextNode {
 	id: string;
@@ -33,13 +37,30 @@ export function mergeNodeSets(
 	existing: InstanceAiNodesAttachment['sets'],
 	incoming: InstanceAiNodesAttachment['sets'],
 ): InstanceAiNodesAttachment['sets'] {
-	const seen = new Set(existing.map(setSignature));
-	const merged = [...existing, ...incoming.filter((s) => !seen.has(setSignature(s)))];
-	return merged.slice(0, MAX_SETS_PER_ATTACHMENT);
+	const merged = [...existing];
+	const indexBySignature = new Map(merged.map((set, index) => [setSignature(set), index]));
+	for (const incomingSet of incoming) {
+		const signature = setSignature(incomingSet);
+		const existingIndex = indexBySignature.get(signature);
+		if (existingIndex !== undefined) {
+			const existingSet = merged[existingIndex];
+			if (incomingSet.canvasGroupId) {
+				merged[existingIndex] = {
+					...existingSet,
+					canvasGroupId: incomingSet.canvasGroupId,
+					canvasGroupName: incomingSet.canvasGroupName,
+				};
+			}
+			continue;
+		}
+		if (merged.length === MAX_SETS_PER_ATTACHMENT) break;
+		indexBySignature.set(signature, merged.length);
+		merged.push(incomingSet);
+	}
+	return merged;
 }
 
 // Schema caps (instanceAiNodeSetSchema / instanceAiNodesAttachmentSchema).
-const MAX_NODES_PER_SET = 50;
 const MAX_SETS_PER_ATTACHMENT = 50;
 
 /**
@@ -142,8 +163,8 @@ export function buildNodesAttachment(
 
 	let truncated = false;
 	let names = orderSelectionIntoSet(selectedNames, workflow.connections).nodeNames;
-	if (names.length > MAX_NODES_PER_SET) {
-		names = names.slice(0, MAX_NODES_PER_SET);
+	if (names.length > MAX_INSTANCE_AI_NODES_PER_SET) {
+		names = names.slice(0, MAX_INSTANCE_AI_NODES_PER_SET);
 		truncated = true;
 	}
 

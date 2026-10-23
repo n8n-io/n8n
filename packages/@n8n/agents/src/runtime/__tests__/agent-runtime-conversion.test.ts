@@ -15,10 +15,57 @@
 import type { ModelMessage } from 'ai';
 import { describe, it, expect } from 'vitest';
 
-import type { Message } from '../../types/sdk/message';
+import type { ContentToolCall, Message } from '../../types/sdk/message';
 import { toAiMessages, fromAiMessages } from '../model/messages';
 
 describe('toAiMessages + fromAiMessages — round-trip', () => {
+	it.each(['resolved', 'rejected'] as const)(
+		'preserves separate provider result options for a %s search',
+		(state) => {
+			const aiMessages: ModelMessage[] = [
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'ts_call_1',
+							toolName: 'openai.tool_search',
+							input: {},
+							providerExecuted: true,
+							providerOptions: { openai: { itemId: 'ts_call_1' } },
+						},
+						{
+							type: 'tool-result',
+							toolCallId: 'ts_call_1',
+							toolName: 'openai.tool_search',
+							output:
+								state === 'resolved'
+									? { type: 'json', value: { tools: [] } }
+									: { type: 'error-json', value: 'search_error' },
+							providerOptions: { openai: { itemId: 'ts_result_1' } },
+						},
+					],
+				},
+			];
+			const serialized = JSON.stringify(fromAiMessages(aiMessages));
+			const stored = JSON.parse(serialized) as Message[];
+			const call = stored[0].content[0] as ContentToolCall;
+			expect(call.providerOptions).toEqual({ openai: { itemId: 'ts_call_1' } });
+			expect(call.resultProviderOptions).toEqual({ openai: { itemId: 'ts_result_1' } });
+			const replay = toAiMessages(stored)[0];
+			if (replay.role !== 'assistant' || typeof replay.content === 'string')
+				throw new Error('Expected provider search history');
+			expect(replay.content[1]).toMatchObject({
+				type: 'tool-result',
+				providerOptions: { openai: { itemId: 'ts_result_1' } },
+			});
+			expect(replay.content[0]).toMatchObject({
+				type: 'tool-call',
+				providerOptions: { openai: { itemId: 'ts_call_1' } },
+			});
+		},
+	);
+
 	it('splits a resolved tool-call into assistant + tool ModelMessages', () => {
 		const input: Message[] = [
 			{
@@ -62,6 +109,95 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(toolResultPart.toolCallId).toBe('tc-1');
 		expect(toolResultPart.output.type).toBe('json');
 		expect(toolResultPart.output.value).toEqual({ result: 3 });
+	});
+
+	it('repairs a saved tool-call ID that Anthropic cannot accept', () => {
+		// AGENT-1054: A saved ID must not break every later turn in the thread.
+		const invalidId = 'toolu.invalid/id';
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: invalidId,
+						toolName: 'lookup',
+						input: {},
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+
+		const [assistant, tool] = toAiMessages(input);
+		if (
+			assistant.role !== 'assistant' ||
+			typeof assistant.content === 'string' ||
+			tool.role !== 'tool'
+		) {
+			throw new Error('Expected a tool call and its result');
+		}
+		const toolCall = assistant.content[0];
+		const toolResult = tool.content[0];
+		if (toolCall.type !== 'tool-call' || toolResult.type !== 'tool-result') {
+			throw new Error('Expected a tool call and its result');
+		}
+		expect(toolCall.toolCallId).toMatch(/^[A-Za-z0-9_-]+$/);
+		expect(toolCall.toolCallId).not.toBe(invalidId);
+		expect(toolResult.toolCallId).toBe(toolCall.toolCallId);
+		expect(input[0].content[0]).toMatchObject({ toolCallId: invalidId });
+	});
+
+	it('keeps repaired IDs distinct and pairs provider-executed results', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'bad/id',
+						toolName: 'search',
+						input: {},
+						providerExecuted: true,
+						state: 'resolved',
+						output: { hits: 1 },
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'bad/id',
+						toolName: 'lookup',
+						input: {},
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+
+		const [assistant, tool] = toAiMessages(input);
+		if (
+			assistant.role !== 'assistant' ||
+			typeof assistant.content === 'string' ||
+			tool.role !== 'tool'
+		) {
+			throw new Error('Expected a tool call and its result');
+		}
+		const [serverCall, serverResult, clientCall] = assistant.content;
+		const clientResult = tool.content[0];
+		if (
+			serverCall.type !== 'tool-call' ||
+			serverResult.type !== 'tool-result' ||
+			clientCall.type !== 'tool-call' ||
+			clientResult.type !== 'tool-result'
+		) {
+			throw new Error('Expected paired tool calls and results');
+		}
+		expect(serverCall.toolCallId).toMatch(/^[A-Za-z0-9_-]+$/);
+		expect(clientCall.toolCallId).toMatch(/^[A-Za-z0-9_-]+$/);
+		expect(serverCall.toolCallId).not.toBe(clientCall.toolCallId);
+		expect(serverResult.toolCallId).toBe(serverCall.toolCallId);
+		expect(clientResult.toolCallId).toBe(clientCall.toolCallId);
 	});
 
 	it('preserves provider metadata on replayed assistant tool-call parts', () => {

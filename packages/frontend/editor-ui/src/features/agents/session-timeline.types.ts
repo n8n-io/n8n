@@ -1,4 +1,6 @@
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
+import type { BadgeVariant } from '@n8n/design-system';
+import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 
 export type EventKind =
 	| 'user'
@@ -27,6 +29,7 @@ export interface TimelineItem {
 	timestamp: number;
 	endTimestamp?: number;
 	content?: string;
+	thinkingSegments?: ThinkingSegment[];
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	/** Display name of the chat platform user who wrote the turn (only set for `kind: 'user'`). */
 	authorName?: string;
@@ -70,6 +73,7 @@ export interface TimelineItem {
 	 */
 	subAgentName?: string;
 	resumed?: boolean;
+	guardrailCode?: string;
 }
 
 export interface IdleRange {
@@ -87,5 +91,5 @@ export type FilterOption =
 	| (BaseFilterOption & { presentation: 'swatch'; color: string })
 	| (BaseFilterOption & {
 			presentation: 'badge';
-			badgeTheme: 'default' | 'success' | 'danger';
+			badgeTheme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 	  });

@@ -182,6 +182,25 @@ describe('telegramSendAndWaitWebhook', () => {
 		expect(genericFunctions.apiRequest).not.toHaveBeenCalled();
 	});
 
+	it('responds 403 and does not resume when the secret-token header does not match the credential access token', async () => {
+		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
+		webhookFns.getNodeParameter.mockImplementation(((name: string, fallback: unknown) =>
+			name === 'chatApproval' ? true : fallback) as never);
+		webhookFns.getHeaderData.mockReturnValue({
+			'x-telegram-bot-api-secret-token': deriveHitlSecretToken('123456:other-token'),
+		});
+		const status = vi.fn().mockReturnThis();
+		const send = vi.fn();
+		webhookFns.getResponseObject.mockReturnValue({ status, send } as never);
+
+		const result = await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(status).toHaveBeenCalledWith(403);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(genericFunctions.apiRequest).not.toHaveBeenCalled();
+		expect(sendAndWaitWebhook).not.toHaveBeenCalled();
+	});
+
 	it('responds 403 and does not resume when the secret-token header is missing', async () => {
 		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
 		webhookFns.getNodeParameter.mockImplementation((name: unknown) =>

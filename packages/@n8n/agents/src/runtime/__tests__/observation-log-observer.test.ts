@@ -1,7 +1,10 @@
 import type * as AiImport from 'ai';
 
 import type { AgentDbMessage } from '../../types/sdk/message';
-import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
+import type {
+	MemoryTaskUsageReport,
+	ObservationLogObserverInput,
+} from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { InMemoryMemory } from '../memory/memory-store';
 import {
@@ -15,6 +18,7 @@ import {
 	renderObserverTranscript,
 	runObservationLogObserver,
 } from '../memory/observation-log-observer';
+import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 
 type GenerateTextCall = Record<string, unknown>;
 type GenerateTextResult = {
@@ -40,8 +44,10 @@ vi.mock('ai', async () => {
 	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
-		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
-			await mockGenerateText(call),
+		generateText: async (call: GenerateTextCall) => {
+			const result = await mockGenerateText(call);
+			return { ...result, finalStep: { providerMetadata: result.providerMetadata } };
+		},
 	};
 });
 
@@ -109,7 +115,10 @@ describe('observation-log observer defaults', () => {
 			executionCounter: counter,
 		});
 
-		expect(result).toContain('CRITICAL');
+		// The default observe fn returns { text, usage, model }; bare-string returns
+		// stay supported for custom observe fns.
+		const observeText = typeof result === 'string' ? result : result.text;
+		expect(observeText).toContain('CRITICAL');
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(17);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
@@ -231,6 +240,68 @@ describe('parseObservationLogMarkdown', () => {
 		]);
 		expect(parsed.skippedLines).toEqual(['not a bullet']);
 	});
+
+	it('appends indented unmarked detail lines to the entry above', () => {
+		const parsed = parseObservationLogMarkdown(
+			[
+				"* CRITICAL (15:09) User's invoice rules:",
+				'  * Count only invoices with status paid or pending.',
+				'    - Status void means cancelled.',
+				'* IMPORTANT (15:10) Open questions for the user',
+				'  * INFO (15:10) Setup is blocked on two answers.',
+				'    1. Which bridge do they use?',
+				'    2. Which webhook URL?',
+			].join('\n'),
+		);
+
+		expect(parsed.entries).toEqual([
+			{
+				marker: 'critical',
+				text: "User's invoice rules: Count only invoices with status paid or pending. Status void means cancelled.",
+				parentIndex: null,
+			},
+			{ marker: 'important', text: 'Open questions for the user', parentIndex: null },
+			{
+				marker: 'info',
+				text: 'Setup is blocked on two answers. 1. Which bridge do they use? 2. Which webhook URL?',
+				parentIndex: 1,
+			},
+		]);
+		expect(parsed.skippedLines).toEqual([]);
+	});
+
+	it('joins a detail line with a semicolon when the entry has no closing punctuation', () => {
+		const parsed = parseObservationLogMarkdown(
+			['* INFO (10:02) Published version 90f4e3d6', '    * Current draft fbda5a15'].join('\n'),
+		);
+
+		expect(parsed.entries).toEqual([
+			{
+				marker: 'info',
+				text: 'Published version 90f4e3d6; Current draft fbda5a15',
+				parentIndex: null,
+			},
+		]);
+	});
+
+	it('keeps detail lines that start with an uppercase word', () => {
+		const parsed = parseObservationLogMarkdown(
+			[
+				'* INFO (10:02) Endpoints checked:',
+				'  * GET /orders returns 200.',
+				'  * API key rotated.',
+			].join('\n'),
+		);
+
+		expect(parsed.entries).toEqual([
+			{
+				marker: 'info',
+				text: 'Endpoints checked: GET /orders returns 200. API key rotated.',
+				parentIndex: null,
+			},
+		]);
+		expect(parsed.skippedLines).toEqual([]);
+	});
 });
 
 describe('renderObserverTranscript', () => {
@@ -267,7 +338,9 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).toContain('"blob":"[omitted large blob]"');
 	});
 
-	it('redacts credential-looking tool inputs and outputs before serialization', () => {
+	it('preserves document fields while redacting credentials and omitting binary data', () => {
+		const document = 'A complete document paragraph. '.repeat(30);
+		const binary = 'YWJj'.repeat(300);
 		const transcript = renderObserverTranscript([
 			{
 				id: 'a1',
@@ -290,6 +363,30 @@ describe('renderObserverTranscript', () => {
 						output: {
 							access_token: 'output-access-token',
 							message: 'Authorization: Basic output-basic-token',
+							data: document,
+							fileContent: document,
+							textDocument: { mimeType: 'text/plain', data: 'Decoded text' },
+							jsonDocument: {
+								mediaType: 'application/json',
+								data: { paragraph: 'Decoded object' },
+							},
+							arrayDocument: { mimeType: 'application/json', data: ['Decoded array'] },
+							nodeData: [{ json: { mimeType: 'text/plain', data: 'Decoded node output' } }],
+							content: Array.from({ length: 21 }, (_, index) => ({
+								type: 'text',
+								text: `Section ${index}: ${document}`,
+							})),
+							sections: Object.fromEntries(
+								Array.from({ length: 41 }, (_, index) => [`section${index}`, document]),
+							),
+							image: { type: 'image-data', data: binary, mediaType: 'image/png' },
+							file: {
+								type: 'file',
+								data: { type: 'data', data: binary },
+								mediaType: 'application/pdf',
+							},
+							blob: binary,
+							imageUrl: `data:image/png;base64,${binary}`,
 						},
 					},
 				],
@@ -299,6 +396,16 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).toContain('[REDACTED]');
 		expect(transcript).toContain('"x-safe-header":"keep-me"');
 		expect(transcript).toContain('safe=1');
+		expect(transcript).toContain(`"data":"${document}"`);
+		expect(transcript).toContain(`"fileContent":"${document}"`);
+		expect(transcript).toContain('"data":"Decoded text"');
+		expect(transcript).toContain('"data":{"paragraph":"Decoded object"}');
+		expect(transcript).toContain('"data":["Decoded array"]');
+		expect(transcript).toContain('"data":"Decoded node output"');
+		expect(transcript).toContain(`"text":"Section 20: ${document}"`);
+		expect(transcript).toContain(`"section40":"${document}"`);
+		expect(transcript).toContain('"data":"[omitted large blob]"');
+		expect(transcript).not.toContain(binary);
 		expect(transcript).not.toContain('sk-live-input-secret');
 		expect(transcript).not.toContain('input-token');
 		expect(transcript).not.toContain('inline-secret');
@@ -426,6 +533,95 @@ describe('renderObserverTranscript', () => {
 });
 
 describe('runObservationLogObserver', () => {
+	it.each(['document', 'media'] as const)(
+		'bounds oversized %s results before observation',
+		async (kind) => {
+			const store = new InMemoryMemory();
+			const document = `DOCUMENT_START ${'Document text. '.repeat(6_000)} DOCUMENT_END`;
+			const output =
+				kind === 'document'
+					? { content: document }
+					: {
+							type: 'content',
+							value: [{ type: 'file-url', url: document, mediaType: 'text/plain' }],
+						};
+			await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+			await store.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [
+					{
+						id: 'm1',
+						createdAt: new Date(0),
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'tc1',
+								toolName: 'fetch_report',
+								providerExecuted: true,
+								input: {},
+								state: 'resolved',
+								output,
+							},
+						],
+					},
+				],
+			});
+
+			await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 20,
+				tokenCounter: (text) => text.length,
+				observe: async ({ transcript }) => {
+					expect(transcript).toContain('"_truncated":true');
+					expect(transcript).toContain('DOCUMENT_START');
+					expect(transcript).toContain('DOCUMENT_END');
+					expect(transcript.length).toBeLessThan(MAX_MODEL_TOOL_RESULT_TOKENS + 1_000);
+					return 'NO_OBSERVATIONS';
+				},
+			});
+		},
+	);
+
+	it('writes observations with indented detail lists and advances the cursor', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'Remember my rules.', new Date(2026, 4, 12, 14, 30))],
+		});
+
+		const result = await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observationLogTailLimit: 20,
+			tokenCounter: () => 10,
+			now: new Date(2026, 4, 12, 14, 31),
+			observe: async () =>
+				await Promise.resolve(
+					[
+						'* CRITICAL (14:31) User rules:',
+						'  * Count paid invoices.',
+						'  * Skip void ones.',
+					].join('\n'),
+				),
+		});
+
+		expect(result).toMatchObject({
+			status: 'ran',
+			observationsWritten: 1,
+			cursorAdvanced: true,
+			skippedLines: [],
+		});
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
+			{ marker: 'critical', text: 'User rules: Count paid invoices. Skip void ones.' },
+		]);
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm1' });
+	});
+
 	it('writes parsed observations and advances the cursor after observing', async () => {
 		const store = new InMemoryMemory();
 		const parentText = 'User needs the current request remembered.';
@@ -446,10 +642,16 @@ describe('runObservationLogObserver', () => {
 			observationLogTailLimit: 20,
 			tokenCounter,
 			now,
-			observe: async () =>
-				await Promise.resolve(
-					[`* CRITICAL (14:31) ${parentText}`, `  * COMPLETION (14:31) ${childText}`].join('\n'),
-				),
+			observe: async () => {
+				await store.saveMessages({
+					threadId: 'thread-1',
+					resourceId: 'user-1',
+					messages: [message('m2', 'user', 'A later request.', new Date(2026, 4, 12, 14, 32))],
+				});
+				return [`* CRITICAL (14:31) ${parentText}`, `  * COMPLETION (14:31) ${childText}`].join(
+					'\n',
+				);
+			},
 		});
 
 		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2, cursorAdvanced: true });
@@ -477,12 +679,197 @@ describe('runObservationLogObserver', () => {
 		});
 	});
 
+	it('reports usage even when the atomic commit fails', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'Remember this.', new Date(1))],
+		});
+		const error = new Error('Storage unavailable');
+		vi.spyOn(store, 'commitObservationLogBatch').mockRejectedValueOnce(error);
+		const onUsage = vi.fn();
+		const usage = { promptTokens: 5, completionTokens: 2, totalTokens: 7 };
+		await expect(
+			runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 0,
+				tokenCounter: () => 10,
+				observe: async () => ({ text: '* IMPORTANT A fact.', model: 'test/model', usage }),
+				onUsage,
+			}),
+		).rejects.toBe(error);
+		expect(onUsage).toHaveBeenCalledWith('test/model', usage);
+		expect(await store.getCursor('thread-1')).toBeNull();
+		expect(await store.getObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
+	});
+
+	it('rebuilds missing observations once at an unchanged boundary under a fixed clock', async () => {
+		const store = new InMemoryMemory();
+		const now = new Date('2026-05-12T10:00:00Z');
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'Keep this history.', new Date(1))],
+		});
+		await store.setCursor({
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'm1',
+			lastObservedAt: new Date(1),
+			updatedAt: now,
+		});
+		let release!: () => void;
+		const ready = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let calls = 0;
+		const usage = { promptTokens: 5, completionTokens: 2, totalTokens: 7 };
+		const observe = vi.fn(async ({ deltaMessages }: ObservationLogObserverInput) => {
+			expect(deltaMessages.map((entry) => entry.id)).toEqual(['m1']);
+			calls += 1;
+			if (calls === 2) release();
+			await ready;
+			return { text: '* IMPORTANT Rebuilt fact.', model: 'test/model', usage };
+		});
+		const commit = vi.spyOn(store, 'commitObservationLogBatch');
+		const run = async () =>
+			await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 0,
+				tokenCounter: () => 10,
+				now,
+				observe,
+			});
+		const results = await Promise.all([run(), run()]);
+		expect(results).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ observationsWritten: 1, cursorAdvanced: true, usage }),
+				expect.objectContaining({ observationsWritten: 0, cursorAdvanced: false, usage }),
+			]),
+		);
+		expect(await store.getCursor('thread-1')).toEqual({
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'm1',
+			lastObservedAt: new Date(1),
+			updatedAt: new Date(now.getTime() + 1),
+		});
+		const before = await store.getObservationLog({ observationScopeId: 'thread-1' });
+		expect(before).toMatchObject([{ text: 'Rebuilt fact.' }]);
+		expect(await store.commitObservationLogBatch(commit.mock.calls[0][0])).toBe('stale');
+		expect(await store.getObservationLog({ observationScopeId: 'thread-1' })).toEqual(before);
+		expect(await run()).toEqual({ status: 'skipped', reason: 'no-delta' });
+		expect(observe).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps the original cursor guard when observations appear during the state read', async () => {
+		const store = new InMemoryMemory();
+		const now = new Date('2026-05-12T10:00:00Z');
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'Remember this.', new Date(1))],
+		});
+		const cursor = {
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'm1',
+			lastObservedAt: new Date(1),
+			updatedAt: now,
+		};
+		await store.setCursor(cursor);
+		const readCursor = store.getCursor.bind(store);
+		vi.spyOn(store, 'getCursor').mockImplementationOnce(async (scope) => {
+			await new Promise<void>((resolve) => {
+				setImmediate(resolve);
+			});
+			return await readCursor(scope);
+		});
+		const readActive = store.getActiveObservationLog.bind(store);
+		vi.spyOn(store, 'getActiveObservationLog').mockImplementationOnce(async (scope) => {
+			const rows = await readActive(scope);
+			await store.commitObservationLogBatch({
+				observationScopeId: 'thread-1',
+				expectedCursor: cursor,
+				nextCursor: cursor,
+				entries: [
+					{
+						marker: 'info',
+						text: 'Concurrent fact.',
+						parentIndex: null,
+						tokenCount: 2,
+						createdAt: now,
+					},
+				],
+			});
+			return rows;
+		});
+		const result = await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observationLogTailLimit: 0,
+			tokenCounter: () => 10,
+			now,
+			observe: async () => await Promise.resolve('* IMPORTANT Prepared fact.'),
+		});
+		expect(result).toMatchObject({ observationsWritten: 0, cursorAdvanced: false });
+		expect(await store.getObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
+			{ text: 'Concurrent fact.' },
+		]);
+		expect(await store.getCursor('thread-1')).toEqual({
+			...cursor,
+			updatedAt: new Date(now.getTime() + 1),
+		});
+	});
+
+	it('never fails observation when onUsage throws synchronously or rejects', async () => {
+		// Pricing is best-effort: a misbehaving onUsage callback (sync throw or
+		// rejected promise) must not abort the observer or surface an unhandled
+		// rejection. Observation still completes and writes entries.
+		const syncThrow = vi.fn(() => {
+			throw new Error('pricing sync boom');
+		});
+		const rejecting = vi.fn(async () => {
+			throw new Error('pricing async boom');
+		});
+
+		for (const onUsage of [syncThrow, rejecting]) {
+			const store = new InMemoryMemory();
+			await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+			await store.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [message('m1', 'user', 'I need this remembered.', new Date(2026, 4, 12, 14, 30))],
+			});
+			const result = await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 20,
+				tokenCounter: async () => await Promise.resolve(5),
+				now: new Date(2026, 4, 12, 14, 31),
+				observe: async () => await Promise.resolve('* CRITICAL (14:31) Durable fact.'),
+				onUsage,
+			});
+			expect(result).toMatchObject({ status: 'ran', observationsWritten: 1 });
+			expect(onUsage).toHaveBeenCalledTimes(1);
+		}
+	});
+
 	it.each([
 		'',
 		'   \nnot a bullet line\n',
 		'```\nNO_OBSERVATIONS\n```',
 		'NO_OBSERVATIONS\n* CRITICAL Keep this fact.',
 		'* CRITICAL Keep this fact.\nUnformatted detail.',
+		'  Indented detail before any entry.\n* CRITICAL Keep this fact.',
+		'* CRITICAL Keep this fact.\n  * COMPLETED (14:31) Unknown marker.',
+		'* CRITICAL Keep this fact.\n  * COMPLETED Deploy is set for noon.',
+		'* CRITICAL Keep this fact.\n  * INFO: Marker with a colon.',
+		'* CRITICAL Keep this fact.\n  ```\n  code\n  ```',
+		'* CRITICAL Keep this fact.\n  NO_OBSERVATIONS',
 		'* INFO    ',
 		'```\n* CRITICAL Keep this fact.\n```',
 	])('rejects an invalid response without changing memory: %j', async (output) => {

@@ -288,7 +288,7 @@ on every correct build. See "Credential validity" below for how to script a
 card-created credential that deliberately does not authenticate.
 
 **`auto` is reachable but inert** — the product genuinely rebuilds the agent
-and returns `needsBrowserSetup:true`, but this harness has no Computer Use
+and returns `needsBrowserSetup:true`, but this harness has no Browser Use
 tools attached, so the conversation stalls afterward (expected, not a bug).
 Keep any case scripting `auto` a local smoke test, never part of the gated
 suite — it will time out.
@@ -661,6 +661,24 @@ Get this wrong in the "handed it" direction — omit `attach` on a conversation 
 really had one — and the agent has to guess from prose that deliberately names
 nothing. It will list workflows and pick, or ask which one, and you will score a
 clarification failure the real user never hit.
+
+#### Seeded faults must really fail
+
+`seed.priorRuns[].hints` steer the mock for the staged run's outbound calls and
+nothing else. The builder's own runs are never mocked, and Code, Set, IF, Filter
+and Merge run for real. So:
+
+- **The fault must fail in n8n.** A Code node that returns a plain object does not
+  fail; n8n wraps it as one item. Return an array of plain values, reference a
+  node that does not exist (`$('Missing')`), or throw.
+- **The fault fires before any external call.** The builder's rerun reaches a
+  fixture host and dies there (DNS, 401), so a fault behind an HTTP node is never
+  reached. Never grade the rerun itself; grade the fix with `outcomeExpectations`
+  and the harness's `executionScenarios`.
+- **An empty branch needs a Filter that keeps nothing.** Split Out over an empty
+  array still emits a placeholder item.
+- **Walk the item flow before asserting a count.** A Slack node fed three items
+  posts three times.
 
 #### Before you ship a seeded case — three checks
 

@@ -50,6 +50,7 @@ const orphan = mock<ResumableOrphan>({
 	checkpointKey: 'checkpoint-1',
 	toolCallId: 'tool-1',
 	requestId: 'request-1',
+	messageGroupId: null,
 	checkpointTaskId: null,
 });
 
@@ -70,6 +71,62 @@ function createService(checkpoint?: SerializableAgentState): ServiceInternals {
 }
 
 describe('InstanceAiService build mode recovery', () => {
+	it.each([
+		{ toolName: 'agent_builder_build_agent', hasBuilderCheckpoint: true },
+		{ toolName: 'agent_builder_build_agent', hasBuilderCheckpoint: false },
+		// A run suspended before the rename stores the former tool name.
+		{ toolName: 'build-agent', hasBuilderCheckpoint: true },
+		{ toolName: 'workflow_builder_workflows', hasBuilderCheckpoint: true },
+	])(
+		'restores $toolName with a builder checkpoint $hasBuilderCheckpoint',
+		async ({ toolName, hasBuilderCheckpoint }) => {
+			const suspendPayload = {
+				requestId: orphan.requestId,
+				message: 'Confirm the next step',
+				...(hasBuilderCheckpoint
+					? {
+							builderCheckpoint: {
+								runId: 'builder-run-1',
+								toolCallId: 'builder-tool-1',
+								configUpdated: false,
+							},
+						}
+					: {}),
+			};
+			const restored = createService(
+				mock<SerializableAgentState>({
+					pendingToolCalls: {
+						[orphan.toolCallId]: {
+							toolName,
+							toolCallId: orphan.toolCallId,
+							input: {},
+							suspended: true,
+							suspendPayload,
+							resumeSchema: {},
+							runId: orphan.checkpointKey,
+						},
+					},
+				}),
+			);
+
+			const result = await restored.rebuildSuspendedRunFromCheckpoint(orphan);
+
+			expect(result.kind).toBe('ready');
+			if (result.kind !== 'ready') throw new Error('Expected a restored run');
+			expect(result.state).toMatchObject({ toolName, suspendPayload });
+			expect(restored.createExecutionEnvironment).toHaveBeenCalledWith(
+				user,
+				orphan.threadId,
+				orphan.runId,
+				expect.any(AbortSignal),
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+			);
+		},
+	);
+
 	it.each(['default', 'progressive'] as const)(
 		'preserves mode %s when a saved run is rebuilt in a fresh service',
 		async (mode) => {

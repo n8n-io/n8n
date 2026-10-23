@@ -1,8 +1,8 @@
+import type { EventService } from '@n8n/backend-services';
 import type { SystemTask } from '@n8n/decorators';
+import { TaskTimeoutError } from '@n8n/scheduler';
 import { SpanStatus, type Span, type StartSpanOpts, type Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import { observeSystemTaskRun } from '../system-task-run-observer';
 
@@ -37,6 +37,24 @@ describe('observeSystemTaskRun', () => {
 			throw error;
 		};
 
+	it.each(['durable', 'leader_timer', 'instance_timer'] as const)(
+		'passes the signal to a %s run',
+		async (mode) => {
+			const run = vi.fn(resolves);
+			const signal = new AbortController().signal;
+
+			await observeSystemTaskRun(
+				mock<EventService>(),
+				setupTracing().tracing,
+				taskThat(run),
+				mode,
+				signal,
+			);
+
+			expect(run).toHaveBeenCalledExactlyOnceWith(signal);
+		},
+	);
+
 	it('settles a run that throws synchronously as a failure, rather than rejecting', async () => {
 		const eventService = mock<EventService>();
 		const error = new Error('failed');
@@ -52,14 +70,14 @@ describe('observeSystemTaskRun', () => {
 			eventService,
 			setupTracing().tracing,
 			task,
-			'in_memory',
+			'leader_timer',
 			new AbortController().signal,
 		);
 
 		expect(outcome).toEqual({ result: 'failure', rejected: true, error });
 		expect(eventService.emit).toHaveBeenCalledWith(
 			'system-task-run-settled',
-			expect.objectContaining({ name: 'dummy', mode: 'in_memory', result: 'failure' }),
+			expect.objectContaining({ name: 'dummy', mode: 'leader_timer', result: 'failure' }),
 		);
 	});
 
@@ -86,15 +104,23 @@ describe('observeSystemTaskRun', () => {
 		expect(span.setAttribute).toHaveBeenCalledWith('n8n.system_task.result', 'success');
 	});
 
-	it('opens a root span in memory and a child span in durable mode', async () => {
-		const inMemory = setupTracing();
+	it('opens a root span for a run from a timer and a child span for a durable run', async () => {
+		const leaderTimer = setupTracing();
+		const perInstance = setupTracing();
 		const durable = setupTracing();
 
 		await observeSystemTaskRun(
 			mock<EventService>(),
-			inMemory.tracing,
+			leaderTimer.tracing,
 			taskThat(resolves),
-			'in_memory',
+			'leader_timer',
+			new AbortController().signal,
+		);
+		await observeSystemTaskRun(
+			mock<EventService>(),
+			perInstance.tracing,
+			taskThat(resolves),
+			'instance_timer',
 			new AbortController().signal,
 		);
 		await observeSystemTaskRun(
@@ -105,7 +131,8 @@ describe('observeSystemTaskRun', () => {
 			new AbortController().signal,
 		);
 
-		expect(inMemory.opened[0].root).toBe(true);
+		expect(leaderTimer.opened[0].root).toBe(true);
+		expect(perInstance.opened[0].root).toBe(true);
 		expect(durable.opened[0].root).toBe(false);
 	});
 
@@ -116,7 +143,7 @@ describe('observeSystemTaskRun', () => {
 			mock<EventService>(),
 			tracing,
 			taskThat(resolves),
-			'in_memory',
+			'leader_timer',
 			new AbortController().signal,
 		);
 
@@ -131,7 +158,7 @@ describe('observeSystemTaskRun', () => {
 			mock<EventService>(),
 			tracing,
 			taskThat(rejects(new Error('boom'))),
-			'in_memory',
+			'leader_timer',
 			new AbortController().signal,
 		);
 
@@ -148,9 +175,47 @@ describe('observeSystemTaskRun', () => {
 			throw new Error('stopped');
 		});
 
-		await observeSystemTaskRun(mock<EventService>(), tracing, task, 'in_memory', controller.signal);
+		await observeSystemTaskRun(
+			mock<EventService>(),
+			tracing,
+			task,
+			'leader_timer',
+			controller.signal,
+		);
 
 		expect(span.setAttribute).toHaveBeenCalledWith('n8n.system_task.result', 'aborted');
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it.each([
+		{ aborted: ['lease'], result: 'lease_lost' },
+		{ aborted: ['shutdown'], result: 'aborted' },
+		{ aborted: ['shutdown', 'lease'], result: 'lease_lost' },
+		{ aborted: ['timeout'], result: 'timed_out' },
+	] as const)('settles a run stopped by $aborted as $result', async ({ aborted, result }) => {
+		const eventService = mock<EventService>();
+		const controllers = { shutdown: new AbortController(), lease: new AbortController() };
+		const task = taskThat(async () => {
+			aborted.forEach((source) =>
+				source === 'timeout'
+					? controllers.lease.abort(new TaskTimeoutError(60))
+					: controllers[source].abort(),
+			);
+		});
+
+		const outcome = await observeSystemTaskRun(
+			eventService,
+			setupTracing().tracing,
+			task,
+			'durable',
+			controllers.shutdown.signal,
+			controllers.lease.signal,
+		);
+
+		expect(outcome.result).toBe(result);
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'system-task-run-settled',
+			expect.objectContaining({ result }),
+		);
 	});
 });

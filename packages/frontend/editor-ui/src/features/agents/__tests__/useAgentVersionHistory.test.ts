@@ -1,20 +1,31 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AgentVersionListItemDto } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 const mocks = vi.hoisted(() => ({
 	listAgentVersions: vi.fn(),
 	publishAgent: vi.fn(),
 	revertAgentToVersion: vi.fn(),
 	openAgentConfirmationModal: vi.fn(),
+	showAgentPublishedConfirmation: vi.fn(),
 	showMessage: vi.fn(),
 	showError: vi.fn(),
+	track: vi.fn(),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: mocks.track }),
 }));
 
 vi.mock('../composables/useAgentApi', () => ({
 	listAgentVersions: mocks.listAgentVersions,
 	publishAgent: mocks.publishAgent,
 	revertAgentToVersion: mocks.revertAgentToVersion,
+}));
+
+vi.mock('../composables/useAgentPublish', () => ({
+	showAgentPublishedConfirmation: mocks.showAgentPublishedConfirmation,
 }));
 
 vi.mock('../composables/useAgentConfirmationModal', () => ({
@@ -35,7 +46,10 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'ref' } }),
+	useRootStore: () => ({
+		restApiContext: { baseUrl: '/rest', pushRef: 'ref' },
+		pushRef: 'version-editor-session',
+	}),
 }));
 
 vi.mock('@/app/constants', () => ({
@@ -185,6 +199,7 @@ describe('useAgentVersionHistory', () => {
 				}),
 			);
 			expect(mocks.revertAgentToVersion).not.toHaveBeenCalled();
+			expect(mocks.track).not.toHaveBeenCalled();
 			expect(result).toBeNull();
 		});
 
@@ -211,6 +226,10 @@ describe('useAgentVersionHistory', () => {
 			);
 			expect(mocks.listAgentVersions).toHaveBeenCalledTimes(1);
 			expect(result).toBe(updatedAgent);
+			expect(mocks.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT,
+				{ agent_id: 'agent-1', push_ref: 'version-editor-session' },
+			);
 		});
 
 		it('surfaces an error toast and returns null when the API fails', async () => {
@@ -225,6 +244,7 @@ describe('useAgentVersionHistory', () => {
 				'agents.versionHistory.revert.error',
 			);
 			expect(result).toBeNull();
+			expect(mocks.track).not.toHaveBeenCalled();
 		});
 	});
 
@@ -250,6 +270,7 @@ describe('useAgentVersionHistory', () => {
 					type: 'success',
 				}),
 			);
+			expect(mocks.showAgentPublishedConfirmation).toHaveBeenCalledWith('agent-1');
 			expect(result).toBe(updatedAgent);
 		});
 
@@ -263,6 +284,7 @@ describe('useAgentVersionHistory', () => {
 				expect.any(Error),
 				'agents.versionHistory.publish.error',
 			);
+			expect(mocks.showAgentPublishedConfirmation).not.toHaveBeenCalled();
 			expect(result).toBeNull();
 		});
 	});

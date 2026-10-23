@@ -158,7 +158,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			const result = formatWorkflowLoopGuidance(action, { setupPanelEnabled: true });
 			expect(result).not.toContain('Workflow verified successfully');
 			expect(result).toContain('NOT fully verified');
-			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('workflow_builder_workflows(action="setup")');
 		});
 
 		it('should keep the setup-panel guidance honest about a stale live version', () => {
@@ -172,7 +172,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			const result = formatWorkflowLoopGuidance(action, { setupPanelEnabled: true });
 			expect(result).not.toContain('Workflow verified successfully');
 			expect(result).toContain('Verified in the draft, NOT live');
-			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('workflow_builder_workflows(action="setup")');
 			// Setup comes first. Asking to publish a workflow that still needs
 			// credentials contradicts the setup instruction in the same breath.
 			expect(result).not.toContain('publish');
@@ -194,7 +194,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).not.toContain('Workflow verified successfully');
 			expect(result).toContain('NOT fully verified');
-			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('workflow_builder_workflows(action="setup")');
 		});
 
 		it('should include workflowId when present', () => {
@@ -213,7 +213,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				summary: 'Built successfully',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).not.toContain('credentials(action="setup")');
+			expect(result).not.toContain('workflow_builder_credentials(action="setup")');
 			expect(result).not.toContain('mock');
 		});
 
@@ -224,7 +224,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				mockedCredentialTypes: [],
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).not.toContain('credentials(action="setup")');
+			expect(result).not.toContain('workflow_builder_credentials(action="setup")');
 			expect(result).toContain('Report the outcome');
 		});
 
@@ -235,7 +235,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				mockedCredentialTypes: ['slackOAuth2Api', 'gmailOAuth2'],
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('workflow_builder_workflows(action="setup")');
 			expect(result).toContain('inline setup card in the n8n Assistant panel');
 			expect(result).toContain('Do not call');
 			expect(result).not.toContain('setup UI');
@@ -249,7 +249,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				workflowId: 'wf-42',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('workflow_builder_workflows(action="setup")');
 			expect(result).toContain('wf-42');
 		});
 
@@ -271,7 +271,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				hasUnresolvedPlaceholders: true,
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('workflow_builder_workflows(action="setup")');
 			expect(result).toContain('wf-ph-1');
 		});
 
@@ -298,7 +298,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				setupSkippedByUser: true,
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).not.toContain('workflows(action="setup")');
+			expect(result).not.toContain('workflow_builder_workflows(action="setup")');
 			expect(result).toContain('skipped earlier in this conversation');
 			expect(result).toContain('offer');
 		});
@@ -312,7 +312,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				workflowId: 'wf-ph-2',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('workflow_builder_workflows(action="setup")');
 		});
 	});
 
@@ -338,7 +338,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('wi-99');
 		});
 
-		it('should default report-verification-verdict workItemId to "unknown"', () => {
+		it('should default workflow_builder_report_verification_verdict workItemId to "unknown"', () => {
 			const action: WorkflowLoopAction = {
 				type: 'verify',
 				workflowId: 'wf-456',
@@ -347,29 +347,29 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('"unknown"');
 		});
 
-		it('should mention repeatable verify-built-workflow and fixture overrides', () => {
+		it('should mention repeatable workflow_builder_verify_built_workflow and fixture overrides', () => {
 			const action: WorkflowLoopAction = {
 				type: 'verify',
 				workflowId: 'wf-789',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('workflows(action="get-as-code", workflowId)');
+			expect(result).toContain('workflow_builder_workflows(action="get-as-code", workflowId)');
 			expect(result).toContain('Build/save success only means a workflow was saved');
-			expect(result).toContain('verify-built-workflow');
+			expect(result).toContain('workflow_builder_verify_built_workflow');
 			expect(result).toContain('safe to call multiple times');
 			expect(result).toContain('fixtureOverrides');
 		});
 
-		it('should mention execution debug action and report-verification-verdict', () => {
+		it('should mention execution debug action and workflow_builder_report_verification_verdict', () => {
 			const action: WorkflowLoopAction = {
 				type: 'verify',
 				workflowId: 'wf-789',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('executions(action="debug")');
+			expect(result).toContain('workflow_builder_executions(action="debug")');
 			expect(result).toContain('needs_patch');
 			expect(result).toContain('needs_rebuild');
-			expect(result).toContain('report-verification-verdict');
+			expect(result).toContain('workflow_builder_report_verification_verdict');
 			expect(result).toContain('workflowInspection');
 		});
 	});
@@ -385,7 +385,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('BUILD FAILED');
-			expect(result).toContain('build-workflow');
+			expect(result).toContain('workflow_builder_build_workflow');
 			expect(result).toContain('src/workflows/main.workflow.ts');
 		});
 	});
@@ -437,7 +437,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('workflow-builder');
-			expect(result).toContain('build-workflow');
+			expect(result).toContain('workflow_builder_build_workflow');
 			expect(result).toContain('filePath "src/workflows/main.workflow.ts"');
 			expect(result).toContain('workflowId "wf-rebuild-2"');
 			expect(result).toContain('structural repair');
@@ -495,7 +495,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('workflow-builder');
-			expect(result).toContain('build-workflow');
+			expect(result).toContain('workflow_builder_build_workflow');
 			expect(result).toContain('filePath "src/workflows/main.workflow.ts"');
 			expect(result).toContain('workflowId "wf-patch-4"');
 			expect(result).toContain('targeted fix');
@@ -508,7 +508,7 @@ describe('formatWorkflowLoopGuidance', () => {
 		it('should pass workItemId to verify guidance', () => {
 			const action: WorkflowLoopAction = { type: 'verify', workflowId: 'wf-1' };
 			const result = formatWorkflowLoopGuidance(action, { workItemId: 'wi-abc' });
-			// workItemId appears in verify-built-workflow guidance and report-verification-verdict.
+			// workItemId appears in workflow_builder_verify_built_workflow guidance and workflow_builder_report_verification_verdict.
 			const occurrences = result.split('wi-abc').length - 1;
 			expect(occurrences).toBeGreaterThanOrEqual(2);
 		});
@@ -551,7 +551,7 @@ describe('formatWorkflowLoopGuidance — setup panel', () => {
 	it('still routes through workflows setup, but as an announcement that ends the turn', () => {
 		const result = formatWorkflowLoopGuidance(action, { setupPanelEnabled: true });
 
-		expect(result).toContain('workflows(action="setup")');
+		expect(result).toContain('workflow_builder_workflows(action="setup")');
 		expect(result).toContain('wf-123');
 		expect(result).toContain('setup panel');
 		expect(result).toContain('end your turn');

@@ -8,6 +8,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nFormInput,
 	N8nIcon,
@@ -20,6 +21,7 @@ import type { IconOrEmoji } from '@n8n/design-system';
 import { useUsersStore } from '@n8n/stores/users.store';
 import type { Rule, RuleGroup } from '@/Interface';
 
+import type { PreferenceExample } from '@/experiments/preferencesEmptyState/preferenceExamples';
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -32,6 +34,7 @@ import {
 	preferenceAudience,
 	preferenceScope,
 	preferenceUserName,
+	preferenceWriteRejectionReason,
 	toPreferencePermissions,
 } from '../context.utils';
 
@@ -39,6 +42,7 @@ import {
 const props = defineProps<{
 	open: boolean;
 	preference: Preference | null;
+	example?: PreferenceExample;
 }>();
 
 const emit = defineEmits<{
@@ -96,7 +100,7 @@ const form = reactive({
 
 function resetForm() {
 	initialScope.value = initialScopeValue();
-	form.content = preference.value?.content ?? '';
+	form.content = preference.value?.content ?? props.example?.content ?? '';
 	form.scope = initialScope.value;
 	contentValid.value = false;
 }
@@ -213,7 +217,15 @@ function parseScope(): {
 	projectId: string | null;
 	userId: string | null;
 } {
-	if (form.scope === USER_SCOPE_VALUE) return { scope: 'user', projectId: null, userId: null };
+	if (form.scope === USER_SCOPE_VALUE) {
+		// A create targets the caller by default. An edit must name its owner, or the
+		// server refuses it, so the caller's own id travels on an edit.
+		return {
+			scope: 'user',
+			projectId: null,
+			userId: mode.value === 'edit' ? (currentUserId.value ?? null) : null,
+		};
+	}
 	if (form.scope === INSTANCE_SCOPE_VALUE) {
 		return { scope: 'instance', projectId: null, userId: null };
 	}
@@ -237,7 +249,7 @@ async function handleSubmit() {
 
 	const { scope, projectId, userId } = parseScope();
 	const content = trimmedContent.value;
-	// The owner travels only when it is not the caller.
+	// The owner travels on every user-scope edit, and on a create only when it is not the caller.
 	const payload = { content, scope, projectId, ...(userId ? { userId } : {}) };
 
 	try {
@@ -248,6 +260,7 @@ async function handleSubmit() {
 				scope_type: scope,
 				text_length: content.length,
 				...(projectId ? { project_id: projectId } : {}),
+				...(props.example ? { example_id: props.example.id } : {}),
 			});
 		} else if (preference.value) {
 			await contextStore.updatePreference(preference.value.id, payload);
@@ -256,10 +269,19 @@ async function handleSubmit() {
 				text_length: content.length,
 				scope_changed: form.scope !== initialScope.value,
 				...(projectId ? { project_id: projectId } : {}),
+				surface: 'ui',
 			});
 		}
 		if (token === openToken) emit('saved');
 	} catch (error) {
+		// A refused save from the settings page reports the same reasons an assistant write does,
+		// so the cap, the duplicate check and a missing right are visible on every surface.
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+			surface: 'ui',
+			reason: preferenceWriteRejectionReason(error),
+			scope_type: scope,
+			text_length: content.length,
+		});
 		showError(error, i18n.baseText('settings.context.preferences.error.save'));
 	} finally {
 		loading.value = false;
@@ -272,6 +294,12 @@ watch(
 		if (!open) return;
 		openToken += 1;
 		resetForm();
+		// The open, not the save: an open with no save that follows is an abandoned edit.
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_PREFERENCE_MODAL, {
+			mode: mode.value,
+			...(preference.value ? { scope_type: preferenceScope(preference.value) } : {}),
+			...(props.example ? { example_id: props.example.id } : {}),
+		});
 		void projectsStore.getMyProjects();
 	},
 	{ immediate: true },
@@ -282,12 +310,17 @@ watch(
 	<N8nDialog
 		:open="open"
 		:header="modalTitle"
+		:description="
+			example
+				? i18n.baseText('experiments.preferencesEmptyState.examples.modalDescription')
+				: undefined
+		"
 		size="medium"
 		:disable-outside-pointer-events="true"
 		data-test-id="preference-modal"
 		@update:open="emit('update:open', $event)"
 	>
-		<div :class="$style.form">
+		<N8nDialogBody :class="$style.form">
 			<N8nFormInput
 				v-model="form.content"
 				name="content"
@@ -345,10 +378,10 @@ watch(
 					</N8nOption>
 				</N8nSelect>
 			</N8nInputLabel>
-		</div>
+		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				:label="i18n.baseText('settings.context.preferences.modal.cancel')"
 				data-test-id="preference-modal-cancel-button"
 				@click="closeModal"
@@ -369,7 +402,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--sm) 0;
 }
 
 .counter {

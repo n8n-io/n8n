@@ -47,6 +47,7 @@ function buildVerificationPinData(
 	// Keyed by Map, not by object literal: node names are free-form, and a few
 	// of them do not survive being assigned as a plain object key — the entry
 	// is dropped and the node it belongs to goes into the run unpinned.
+	// oxlint-disable-next-line typescript/no-deprecated
 	const merged = new Map<string, unknown[]>(Object.entries(buildOutcome.verificationPinData ?? {}));
 	const fixtures = buildOutcome.simulationFixtures ?? {};
 	const simulatedNodes: Array<{ nodeName: string; reason: string }> = [];

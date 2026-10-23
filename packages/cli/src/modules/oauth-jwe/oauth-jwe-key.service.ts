@@ -7,7 +7,7 @@ import { exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import {
 	JWE_KEY_ALGORITHMS,

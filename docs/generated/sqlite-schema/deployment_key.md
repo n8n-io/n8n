@@ -37,6 +37,7 @@ CREATE TABLE "deployment_key" ("id" varchar(36) PRIMARY KEY NOT NULL, "type" var
 | IDX_deployment_key_data_encryption_active | CREATE UNIQUE INDEX "IDX_deployment_key_data_encryption_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'data_encryption' |
 | IDX_deployment_key_instance_id_active | CREATE UNIQUE INDEX "IDX_deployment_key_instance_id_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'instance.id' |
 | IDX_deployment_key_jwe_private_key_active | CREATE UNIQUE INDEX "IDX_deployment_key_jwe_private_key_active" ON "deployment_key" ("type", "algorithm") WHERE status = 'active' AND type = 'jwe.private-key' |
+| IDX_deployment_key_oauth_signing_key_active | CREATE UNIQUE INDEX "IDX_deployment_key_oauth_signing_key_active" ON "deployment_key" ("type", "algorithm") WHERE "status" = 'active' AND "type" = 'oauth-server.signing-key' |
 | IDX_deployment_key_signing_binary_data_active | CREATE UNIQUE INDEX "IDX_deployment_key_signing_binary_data_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'signing.binary_data' |
 | IDX_deployment_key_signing_hmac_active | CREATE UNIQUE INDEX "IDX_deployment_key_signing_hmac_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'signing.hmac' |
 | IDX_deployment_key_signing_jwt_active | CREATE UNIQUE INDEX "IDX_deployment_key_signing_jwt_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'signing.jwt' |

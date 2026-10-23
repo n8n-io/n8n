@@ -253,6 +253,7 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 			sideBand.buildExpectations,
 			lanes[0]?.baseUrl,
 			sideBand.runDebug,
+			sideBand.harnessUsage,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 

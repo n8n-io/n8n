@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import get from 'lodash/get';
 import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 

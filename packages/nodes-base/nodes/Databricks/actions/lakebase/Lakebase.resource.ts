@@ -1,0 +1,6 @@
+export * as deleteRows from './deleteRows.operation';
+export * as executeFunction from './executeFunction.operation';
+export * as getAll from './getAll.operation';
+export * as insert from './insert.operation';
+export * as update from './update.operation';
+export * as upsert from './upsert.operation';

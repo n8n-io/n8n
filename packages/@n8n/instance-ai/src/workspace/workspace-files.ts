@@ -1,4 +1,5 @@
 import { isAbortError } from '@n8n/agents';
+import { OperationalError } from 'n8n-workflow';
 
 import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
@@ -69,57 +70,86 @@ export async function readWorkspaceFile(
 			}),
 		},
 		async () => {
-			const filesystem = workspace.filesystem;
-			const readFile = filesystem?.readFile;
-			if (filesystem && readFile) {
-				try {
-					return decodeWorkspaceFileContent(
-						await retryTransientSandboxIo(
-							// .call preserves the provider's `this` binding (e.g. LazyRuntimeFilesystem).
-							async () =>
-								await readFile.call(filesystem, filePath, {
-									encoding: 'utf-8',
-									abortSignal: options?.abortSignal,
-								}),
-							filePath,
-							options,
-						),
-					);
-				} catch (error) {
-					// A provider failure is not a missing file — surface it instead of reporting null.
-					if (isTransientSandboxIoError(error)) {
-						throw new Error(
-							`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
-							{ cause: error },
-						);
-					}
-					options?.logger.debug(`${resourceLabel(options)} filesystem read missed`, {
-						path: filePath,
-						error: formatErrorForLog(error),
-					});
-					return null;
-				}
-			}
-
-			if (!workspace.sandbox) return null;
-
-			try {
-				return await readFileViaSandbox(workspace, filePath, options);
-			} catch (error) {
-				if (isTransientSandboxIoError(error)) {
-					throw new Error(
-						`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
-						{ cause: error },
-					);
-				}
-				options?.logger.debug(`${resourceLabel(options)} command read missed`, {
-					path: filePath,
-					error: formatErrorForLog(error),
-				});
-				return null;
-			}
+			const startedAt = Date.now();
+			const read = await readWorkspaceFileContent(workspace, filePath, options);
+			options?.logger.debug('Read workspace file', {
+				resource: resourceLabel(options),
+				path: filePath,
+				transport: read.transport,
+				found: read.content !== null,
+				bytes: read.content === null ? 0 : sandboxFileBytes(read.content),
+				durationMs: Date.now() - startedAt,
+				...(read.missReason ? { missReason: read.missReason } : {}),
+			});
+			return read.content;
 		},
 	);
+}
+
+type WorkspaceFileTransport = 'filesystem' | 'command' | 'command-fallback' | 'none';
+
+interface WorkspaceFileRead {
+	content: string | null;
+	transport: WorkspaceFileTransport;
+	missReason?: string;
+}
+
+async function readWorkspaceFileContent(
+	workspace: WorkspaceFileTarget,
+	filePath: string,
+	options?: WorkspaceFileOptions,
+): Promise<WorkspaceFileRead> {
+	const filesystem = workspace.filesystem;
+	const readFile = filesystem?.readFile;
+	if (filesystem && readFile) {
+		try {
+			const content = decodeWorkspaceFileContent(
+				await retryTransientSandboxIo(
+					// .call preserves the provider's `this` binding (e.g. LazyRuntimeFilesystem).
+					async () =>
+						await readFile.call(filesystem, filePath, {
+							encoding: 'utf-8',
+							abortSignal: options?.abortSignal,
+						}),
+					filePath,
+					options,
+				),
+			);
+			return { content, transport: 'filesystem' };
+		} catch (error) {
+			// A provider failure is not a missing file — surface it instead of reporting null.
+			if (isTransientSandboxIoError(error)) {
+				throw new OperationalError(
+					`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+					{
+						cause: error,
+						level: 'error',
+					},
+				);
+			}
+			return { content: null, transport: 'filesystem', missReason: formatErrorForLog(error) };
+		}
+	}
+
+	if (!workspace.sandbox) return { content: null, transport: 'none' };
+
+	try {
+		return {
+			content: await readFileViaSandbox(workspace, filePath, options),
+			transport: 'command',
+		};
+	} catch (error) {
+		if (isTransientSandboxIoError(error)) {
+			throw new OperationalError(
+				`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+				{
+					cause: error,
+					level: 'error',
+				},
+			);
+		}
+		return { content: null, transport: 'command', missReason: formatErrorForLog(error) };
+	}
 }
 
 /**
@@ -136,79 +166,106 @@ export async function writeWorkspaceFile(
 		'write-file',
 		{ kind: 'io', inputs: { path: filePath, bytes: sandboxFileBytes(content) } },
 		async () => {
-			const label = resourceLabel(options);
-
-			const filesystem = workspace.filesystem;
-			if (filesystem) {
-				try {
-					await retryTransientSandboxIo(
-						async () =>
-							await filesystem.writeFile(filePath, content, {
-								recursive: true,
-								abortSignal: options?.abortSignal,
-							}),
-						filePath,
-						options,
-					);
-					return;
-				} catch (error) {
-					if (isAbortError(error)) throw error;
-					try {
-						await traceSandboxOperation(
-							'file-command-fallback',
-							{ inputs: { path: filePath } },
-							async () => await writeFileViaSandbox(workspace, filePath, content, options),
-						);
-						options?.logger.warn(`${label} filesystem write failed; used command fallback`, {
-							path: filePath,
-							error: formatErrorForLog(error),
-						});
-						return;
-					} catch (fallbackError) {
-						if (isAbortError(fallbackError)) throw fallbackError;
-						// Preserve whichever path carries quota metadata so callers can
-						// classify the combined failure correctly.
-						throw new Error(
-							`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}; command fallback failed: ${formatErrorForLog(fallbackError)}`,
-							{ cause: selectWriteFailureCause(error, fallbackError) },
-						);
-					}
-				}
-			}
-
-			try {
-				await writeFileViaSandbox(workspace, filePath, content, options);
-			} catch (error) {
-				if (isAbortError(error)) throw error;
-				throw new Error(
-					`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
-					{ cause: error },
-				);
-			}
+			const startedAt = Date.now();
+			const transport = await writeWorkspaceFileContent(workspace, filePath, content, options);
+			options?.logger.debug('Wrote workspace file', {
+				resource: resourceLabel(options),
+				path: filePath,
+				transport,
+				bytes: sandboxFileBytes(content),
+				durationMs: Date.now() - startedAt,
+			});
 		},
 	);
 }
 
+async function writeWorkspaceFileContent(
+	workspace: WorkspaceFileTarget,
+	filePath: string,
+	content: string,
+	options?: WorkspaceFileOptions,
+): Promise<WorkspaceFileTransport> {
+	const label = resourceLabel(options);
+
+	const filesystem = workspace.filesystem;
+	if (filesystem) {
+		try {
+			await retryTransientSandboxIo(
+				async () =>
+					await filesystem.writeFile(filePath, content, {
+						recursive: true,
+						abortSignal: options?.abortSignal,
+					}),
+				filePath,
+				options,
+			);
+			return 'filesystem';
+		} catch (error) {
+			if (isAbortError(error)) throw error;
+			try {
+				await traceSandboxOperation(
+					'file-command-fallback',
+					{ inputs: { path: filePath } },
+					async () => await writeFileViaSandbox(workspace, filePath, content, options),
+				);
+				options?.logger.warn(`${label} filesystem write failed; used command fallback`, {
+					path: filePath,
+					error: formatErrorForLog(error),
+				});
+				return 'command-fallback';
+			} catch (fallbackError) {
+				if (isAbortError(fallbackError)) throw fallbackError;
+				// Preserve whichever path carries quota metadata so callers can
+				// classify the combined failure correctly.
+				throw new OperationalError(
+					`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}; command fallback failed: ${formatErrorForLog(fallbackError)}`,
+					{
+						cause: selectWriteFailureCause(error, fallbackError),
+						level: 'error',
+					},
+				);
+			}
+		}
+	}
+
+	try {
+		await writeFileViaSandbox(workspace, filePath, content, options);
+		return 'command';
+	} catch (error) {
+		if (isAbortError(error)) throw error;
+		throw new OperationalError(
+			`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+			{
+				cause: error,
+				level: 'error',
+			},
+		);
+	}
+}
+
+/** Write several UTF-8 workspace files in parallel. */
 export async function writeWorkspaceFileMap(
 	workspace: WorkspaceFileTarget,
 	files: Map<string, string>,
 	options?: WorkspaceFileOptions,
 ): Promise<void> {
+	const bytes = [...files.values()].reduce((sum, content) => sum + sandboxFileBytes(content), 0);
 	return await traceSandboxOperation(
 		'write-files',
-		{
-			kind: 'batch',
-			inputs: {
-				fileCount: files.size,
-				bytes: [...files.values()].reduce((sum, content) => sum + sandboxFileBytes(content), 0),
-			},
-		},
+		{ kind: 'batch', inputs: { fileCount: files.size, bytes } },
 		async () => {
+			const startedAt = Date.now();
 			await Promise.all(
 				Array.from(files, async ([filePath, content]) => {
 					await writeWorkspaceFile(workspace, filePath, content, options);
 				}),
 			);
+			options?.logger.debug('Wrote workspace files', {
+				resource: resourceLabel(options),
+				fileCount: files.size,
+				bytes,
+				durationMs: Date.now() - startedAt,
+			});
 		},
 	);
 }

@@ -18,7 +18,8 @@ const mockFs = mock(fs);
 const mockFsPromises = mock(fsPromises);
 
 vi.mock('fast-glob', () => ({
-	default: async (pattern: string) => {
+	default: async (pattern: string | string[]) => {
+		if (Array.isArray(pattern)) return [];
 		return pattern.endsWith('.node.js')
 			? ['dist/Node1/Node1.node.js', 'dist/Node2/Node2.node.js']
 			: ['dist/Credential1.js'];

@@ -3,11 +3,13 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
+import { toErrorWorkflowContext } from 'n8n-workflow';
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import { staticErrorWorkflowId } from '@/workflows/error-workflow-id';
+import { UrlService } from '@n8n/backend-services';
 
 /**
  * Resolved lazily. A static import would close the cycle
@@ -74,7 +76,7 @@ export function executeErrorWorkflow(
 					lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
 					mode,
 					retryOf,
-					executionContext: fullRunData.data.executionData?.runtimeData,
+					executionContext: toErrorWorkflowContext(fullRunData.data.executionData?.runtimeData),
 				},
 				workflow: {
 					id: workflowId,
@@ -98,7 +100,8 @@ export function executeErrorWorkflow(
 		const { errorTriggerType } = Container.get(GlobalConfig).nodes;
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
-		const { errorWorkflow } = workflowData.settings ?? {};
+		// `DEFAULT` and expressions name no workflow, so they fall through to the own Error Trigger.
+		const errorWorkflow = staticErrorWorkflowId(workflowData.settings?.errorWorkflow);
 		if (errorWorkflow && !(mode === 'error' && workflowId && errorWorkflow === workflowId)) {
 			logger.debug('Start external error workflow', {
 				executionId,

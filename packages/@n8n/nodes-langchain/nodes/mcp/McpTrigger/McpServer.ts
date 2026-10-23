@@ -665,6 +665,7 @@ export class McpServer {
 						return MessageFormatter.formatToolResult(
 							result,
 							MessageFormatter.isErrorResult(result),
+							requestedTool?.metadata?.isFromToolkit === true,
 						);
 					}
 
@@ -673,7 +674,11 @@ export class McpServer {
 						messageId: extra.requestId?.toString(),
 					});
 
-					return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
+					return MessageFormatter.formatToolResult(
+						result,
+						MessageFormatter.isErrorResult(result),
+						requestedTool?.metadata?.isFromToolkit === true,
+					);
 				} catch (error) {
 					const errorObject = error instanceof Error ? error : new Error(String(error));
 					this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {

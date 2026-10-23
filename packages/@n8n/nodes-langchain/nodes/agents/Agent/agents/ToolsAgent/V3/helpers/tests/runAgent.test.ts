@@ -39,7 +39,6 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockContext.getNode.mockReturnValue(mockNode);
 	mockNode.typeVersion = 3;
-	mockContext.getExecuteData = vi.fn() as any;
 	(tracing.getTracingConfig as Mock).mockReturnValue({
 		runName: '[Test Workflow] Test Node',
 		metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
@@ -416,8 +415,6 @@ describe('runAgent - tracing configuration', () => {
 			isStreaming: vi.fn().mockReturnValue(true),
 			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
 		});
-		streamingContext.getExecuteData = vi.fn() as any;
-
 		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
 			output: 'Streamed answer',
@@ -568,8 +565,6 @@ describe('runAgent - intermediate steps', () => {
 			isStreaming: vi.fn().mockReturnValue(true),
 			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
 		});
-		streamingContext.getExecuteData = vi.fn() as any;
-
 		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
 		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
@@ -596,8 +591,11 @@ describe('appendToolAttributions', () => {
 	const plain = mock<Tool>();
 	plain.name = 'Calculator';
 	plain.metadata = { sourceNodeName: 'Calculator' };
-	const step = (tool: string): ToolCallData => ({
-		action: { tool, toolInput: {}, log: '', toolCallId: 'c1', type: 'tool_call' },
+	const step = (
+		tool: string,
+		flags: Pick<ToolCallData['action'], 'hitlDenied' | 'errored'> = {},
+	): ToolCallData => ({
+		action: { tool, toolInput: {}, log: '', toolCallId: 'c1', type: 'tool_call', ...flags },
 		observation: '',
 	});
 
@@ -615,6 +613,22 @@ describe('appendToolAttributions', () => {
 	it('does not repeat an attribution the model already included', () => {
 		const output = 'See link\n\n(Powered by Genie)';
 		expect(appendToolAttributions(output, [step('Genie_ask')], [genie])).toBe(output);
+	});
+
+	it('does not label a reply for a call the user denied in a Human-in-the-Loop node', () => {
+		expect(
+			appendToolAttributions('Not approved', [step('Genie_ask', { hitlDenied: true })], [genie]),
+		).toBe('Not approved');
+	});
+
+	it('does not label a reply for a call that failed', () => {
+		expect(
+			appendToolAttributions(
+				'Could not reach Genie',
+				[step('Genie_ask', { errored: true })],
+				[genie],
+			),
+		).toBe('Could not reach Genie');
 	});
 
 	it('leaves a reply without text alone, so the label never shows up on its own', () => {

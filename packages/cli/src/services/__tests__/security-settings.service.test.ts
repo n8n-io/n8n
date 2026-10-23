@@ -1,3 +1,4 @@
+import { EventService, RoleService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	SettingsRepository,
@@ -10,9 +11,8 @@ import {
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
 
-import { EventService } from '@/events/event.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { RoleService } from '@/services/role.service';
+
 import { SecuritySettingsService } from '@/services/security-settings.service';
 
 describe('SecuritySettingsService', () => {

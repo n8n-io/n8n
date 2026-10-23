@@ -26,11 +26,8 @@ const SEARCH_JSON_EVENT_OVERHEAD_CHARS = 1_500;
 const MAX_SEARCH_OPERATION_OUTPUT_CHARS = 500_000;
 export const KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE = 3;
 
-interface ParsedRipgrepContentLine {
+interface ParsedRipgrepContentLine extends SearchKnowledgeContextLine {
 	filePath: string;
-	lineNumber: number;
-	text: string;
-	matched: boolean;
 }
 
 interface SearchContextSourceLine {

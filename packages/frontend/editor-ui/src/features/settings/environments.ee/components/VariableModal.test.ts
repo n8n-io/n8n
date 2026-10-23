@@ -1,3 +1,6 @@
+import { useUsersStore } from '@n8n/stores/users.store';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { waitFor } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -10,6 +13,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import useEnvironmentsStore from '../environments.store';
 import type { EnvironmentVariable } from '../environments.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -123,6 +127,9 @@ describe('VariableModal', () => {
 		uiStore = mockedStore(useUIStore);
 
 		environmentsStore.variables = mockVariables;
+		environmentsStore.getVariablesInScope.mockImplementation((id) =>
+			mockVariables.filter((variable) => (variable.project?.id ?? null) === (id || null)),
+		);
 		environmentsStore.createVariable = vi.fn().mockResolvedValue({
 			id: '3',
 			key: 'NEW_VAR',
@@ -133,6 +140,45 @@ describe('VariableModal', () => {
 			key: 'UPDATED_VAR',
 			value: 'updated value',
 		});
+	});
+
+	it('keeps a fixed global key and blocks a second save while saving', async () => {
+		const pending = createDeferredPromise<EnvironmentVariable>();
+		const onCreate = vi.fn(() => pending.promise);
+		mockedStore(useUsersStore).currentUser = { globalScopes: ['variable:create'] } as ReturnType<
+			typeof useUsersStore
+		>['currentUser'];
+		projectsStore.currentProjectId = 'project-1';
+		const { getByTestId, queryByTestId } = renderModal({
+			props: {
+				mode: 'new',
+				projectId: null,
+				initialValues: { key: 'FIXED_KEY', value: '' },
+				fixedKey: true,
+				onCreate,
+			},
+			global,
+			pinia,
+		});
+		const key = getByTestId('variable-modal-key-input').querySelector('input')!;
+		const value = getByTestId('variable-modal-value-input').querySelector('textarea')!;
+		expect(key).toHaveValue('FIXED_KEY');
+		expect(key).toBeDisabled();
+		expect(value).toHaveValue('');
+		expect(queryByTestId('variable-modal-scope-select')).not.toBeInTheDocument();
+		await userEvent.click(value);
+		await userEvent.tab();
+		const save = getByTestId('variable-modal-save-button');
+		await userEvent.click(save);
+		await waitFor(() =>
+			expect(onCreate).toHaveBeenCalledWith({ key: 'FIXED_KEY', value: '', projectId: null }),
+		);
+		await userEvent.type(value, '{Enter}');
+		await userEvent.click(getByTestId('variable-modal-cancel-button'));
+		expect(onCreate).toHaveBeenCalledTimes(1);
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		pending.resolve({ id: 'saved', key: 'FIXED_KEY', value: '' });
+		await waitFor(() => expect(uiStore.closeModal).toHaveBeenCalledWith(VARIABLE_MODAL_KEY));
 	});
 
 	describe('mode: new', () => {
@@ -703,6 +749,97 @@ describe('VariableModal', () => {
 
 			// Modal should still be open
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('protected instance', () => {
+		const existingVariable: EnvironmentVariable = {
+			id: '1',
+			key: 'EXISTING_VAR',
+			value: 'existing value',
+		};
+
+		beforeEach(() => {
+			mockedStore(useSourceControlStore).preferences.branchReadOnly = true;
+		});
+
+		it.each([
+			['without a create handler', false],
+			['with a create handler', true],
+		])('should block saving a new variable %s', async (_name, withHandler) => {
+			// Grant create permission so only the protected-instance guard can block the save.
+			mockedStore(useUsersStore).currentUser = {
+				globalScopes: ['variable:create'],
+			} as ReturnType<typeof useUsersStore>['currentUser'];
+			const onCreate = vi.fn();
+			const { getByTestId } = renderModal({
+				props: { mode: 'new', ...(withHandler ? { onCreate } : {}) },
+				global,
+				pinia,
+			});
+
+			const keyInput = getByTestId('variable-modal-key-input').querySelector('input')!;
+			const valueInput = getByTestId('variable-modal-value-input').querySelector('textarea')!;
+			await userEvent.type(keyInput, 'NEW_VAR');
+			await userEvent.type(valueInput, 'new value');
+
+			expect(getByTestId('variable-modal-save-button')).toBeDisabled();
+
+			// Enter submits the form even when the save button is disabled.
+			await userEvent.type(keyInput, '{Enter}');
+
+			expect(onCreate).not.toHaveBeenCalled();
+			expect(environmentsStore.createVariable).not.toHaveBeenCalled();
+		});
+
+		it('should save a new variable when the caller allows it on a protected instance', async () => {
+			mockedStore(useUsersStore).currentUser = {
+				globalScopes: ['variable:create'],
+			} as ReturnType<typeof useUsersStore>['currentUser'];
+			const onCreate = vi.fn().mockResolvedValue({ id: '3', key: 'FIXED_KEY', value: '' });
+			const { getByTestId } = renderModal({
+				props: {
+					mode: 'new',
+					projectId: null,
+					initialValues: { key: 'FIXED_KEY', value: '' },
+					fixedKey: true,
+					onCreate,
+					allowOnProtectedInstance: true,
+				},
+				global,
+				pinia,
+			});
+
+			await userEvent.click(getByTestId('variable-modal-value-input').querySelector('textarea')!);
+			await userEvent.tab();
+			await userEvent.click(getByTestId('variable-modal-save-button'));
+
+			await waitFor(() =>
+				expect(onCreate).toHaveBeenCalledWith({ key: 'FIXED_KEY', value: '', projectId: null }),
+			);
+		});
+
+		it('should lock the key and allow editing the value', async () => {
+			const { getByTestId } = renderModal({
+				props: { mode: 'edit', variable: existingVariable },
+				global,
+				pinia,
+			});
+
+			const keyInput = getByTestId('variable-modal-key-input').querySelector('input')!;
+			const valueInput = getByTestId('variable-modal-value-input').querySelector('textarea')!;
+			expect(keyInput).toBeDisabled();
+			expect(valueInput).toBeEnabled();
+
+			await userEvent.clear(valueInput);
+			await userEvent.type(valueInput, 'updated value');
+			await userEvent.click(getByTestId('variable-modal-save-button'));
+
+			expect(environmentsStore.updateVariable).toHaveBeenCalledWith({
+				id: '1',
+				key: 'EXISTING_VAR',
+				value: 'updated value',
+			});
 		});
 	});
 });

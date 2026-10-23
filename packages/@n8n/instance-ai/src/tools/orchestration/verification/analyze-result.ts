@@ -1,5 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { isPlaceholderValue } from '@n8n/utils/placeholder';
+import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ExecutionRunResult, VerificationNodePreview } from './types';
 import {
@@ -153,6 +155,76 @@ export function buildNodePreviews(
 	});
 }
 
+/**
+ * Item JSON of a node, or `undefined` when the preview omits items (a size cap,
+ * or a collapsed result that keeps only its first item): the hidden items can hold data.
+ */
+function completeItems(nodeOutput: unknown): unknown[] | undefined {
+	const output = outputForInspection(nodeOutput);
+	if (Array.isArray(output)) return output;
+	if (!isRecord(output)) return undefined;
+	let items: unknown[] | undefined;
+	if (Array.isArray(output.outputs)) {
+		const branches = output.outputs.filter(isRecord).map((branch) => completeItems(branch.items));
+		items = branches.includes(undefined) ? undefined : branches.flat();
+	} else if (Array.isArray(output.items)) {
+		items = output.items;
+	} else if ('_firstItemPreview' in output) {
+		items = [output._firstItemPreview];
+	}
+	return items?.length === getCountFromMetadata(output) ? items : undefined;
+}
+
+const isEmptyItem = (item: unknown) => isRecord(item) && Object.keys(item).length === 0;
+
+/**
+ * A real node that returns only `{}` items still ends the run green, so the
+ * agent read a `[{}]` preview as a working step (INS-1583). Only the first
+ * empty node of a chain is named: nodes below it just pass the emptiness on.
+ * Roots (triggers) are skipped, because a Manual Trigger emits `{}` by design.
+ * Simulated nodes are skipped, because their output is a fixture. Nodes that
+ * output a file are not empty: their data is in the binary, which `resultData` omits.
+ */
+export function buildEmptyOutputNote(
+	resultData: Record<string, unknown> | undefined,
+	connections: WorkflowJSON['connections'] | undefined,
+	simulatedNodeNames: ReadonlySet<string>,
+	binaryOutputNodeNames: readonly string[] = [],
+): string | undefined {
+	if (!resultData || !connections) return undefined;
+	const byDestination = mapConnectionsByDestination(toEngineConnections(connections));
+	const parentsOf = (nodeName: string) =>
+		getParentNodes(byDestination, nodeName, NodeConnectionTypes.Main, 1);
+	const emptyNonRootNames = new Set(
+		Object.entries(resultData)
+			.filter(([nodeName, output]) => {
+				const items = completeItems(output);
+				return (
+					items !== undefined &&
+					items.length > 0 &&
+					items.every(isEmptyItem) &&
+					!binaryOutputNodeNames.includes(nodeName) &&
+					parentsOf(nodeName).length > 0
+				);
+			})
+			.map(([nodeName]) => nodeName),
+	);
+	const flagged = [...emptyNonRootNames].filter(
+		(nodeName) =>
+			!simulatedNodeNames.has(nodeName) &&
+			!parentsOf(nodeName).some((parent) => emptyNonRootNames.has(parent)),
+	);
+	if (flagged.length === 0) return undefined;
+	return (
+		`Node(s) ${flagged.join(', ')} returned only empty items ({}), so the nodes after them ` +
+		'received no fields. This run does not prove that part of the workflow. Before you reply, ' +
+		"check each node's parameters against its typeVersion. If they do not match, repair the " +
+		'node now, also if you did not change it: fix the source file, rebuild, and verify again. ' +
+		'Then tell the user what you repaired. If they match, do not change a node that you did ' +
+		'not build. Tell the user that it outputs no fields.'
+	);
+}
+
 export function countProducedOutputRows(
 	resultData: Record<string, unknown> | undefined,
 ): number | undefined {
@@ -261,7 +333,7 @@ function classifyVerificationFailure(
 			shouldEdit: false,
 			reason: 'mocked_credentials_or_placeholders',
 			guidance:
-				'Workflow verification reached an unresolved setup value. Stop code edits and route to workflows(action="setup").',
+				'Workflow verification reached an unresolved setup value. Stop code edits and route to workflow_builder_workflows(action="setup").',
 		});
 	}
 
@@ -284,8 +356,8 @@ function classifyVerificationFailure(
 				? 'mocked_credentials_or_placeholders'
 				: 'credential_or_setup_failure',
 			guidance: hasMockedCredentialContext
-				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflows(action="setup").'
-				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").${quotaGuidance}`,
+				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflow_builder_workflows(action="setup").'
+				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflow_builder_workflows(action="setup").${quotaGuidance}`,
 		});
 	}
 
@@ -370,8 +442,8 @@ function buildCoverageNote(
 	// wait-gate guidance — nodes behind a gate stay uncoverable either way.
 	const triggerScopeNote = triggerNodeName
 		? ` This pass started from trigger "${triggerNodeName}", so it covers that trigger's branch ` +
-			"only — nodes on another trigger's branch are expected to be unreached here. Call " +
-			'verify-built-workflow again with `triggerNodeName` set to each remaining trigger and ' +
+			"only — nodes on another trigger's branch are expected to be unreached here. Run " +
+			'verification again with `triggerNodeName` set to each remaining trigger and ' +
 			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
 			'workflow to reach them.'
 		: '';
@@ -448,8 +520,52 @@ export interface VerificationAnalysis {
 	nodesExecuted?: string[];
 	simulationNote?: string;
 	coverageNote?: string;
+	/** Set when n8n redacted the run's data for the user, so its output was not inspected. */
+	redactionNote?: string;
 	errorMessage?: string;
 	nodeErrors: ExecutionNodeError[];
+}
+
+/**
+ * A redacted run keeps only each error's type and HTTP status code. The
+ * classification still routes what those carry (credentials, rate limits),
+ * but a code repair needs the message, which the user cannot see.
+ */
+function blockRedactedRepair(
+	remediation: RemediationMetadata | undefined,
+	redaction: ExecutionRunResult['redaction'],
+	nodeErrors: ExecutionNodeError[],
+): RemediationMetadata | undefined {
+	if (!redaction || remediation?.shouldEdit !== true) return remediation;
+	const failedNodes = nodeErrors.map((nodeError) => nodeError.nodeName);
+	const howToSee = redaction.canReveal
+		? 'They can reveal the details in the execution in the editor.'
+		: redaction.reason === 'credential_inaccessible'
+			? 'Only someone who can use that credential, such as its owner, can see them.'
+			: 'They cannot reveal them from their account.';
+	return createRemediation({
+		category: 'blocked',
+		shouldEdit: false,
+		reason: 'execution_redacted',
+		guidance:
+			`n8n redacted this run's data for the user (${redaction.reason}), so the error details are hidden. ` +
+			'Do not edit the workflow based on this run. ' +
+			(failedNodes.length > 0
+				? `Tell the user that ${failedNodes.join(', ')} failed and `
+				: 'Tell the user ') +
+			`that n8n hides the details. ${howToSee}`,
+	});
+}
+
+function buildRedactionNote(
+	redaction: ExecutionRunResult['redaction'],
+	success: boolean,
+): string | undefined {
+	if (!redaction || !success) return undefined;
+	return (
+		`n8n redacted this run's output for the user (${redaction.reason}). The run finished without ` +
+		'errors, but its output was not inspected. Tell the user that verification could not check what the nodes returned.'
+	);
 }
 
 export function analyzeVerificationResult(args: {
@@ -530,11 +646,12 @@ export function analyzeVerificationResult(args: {
 				chatModelRelatedNodeNames,
 				chatModelRecovery,
 			);
+	const allowedRemediation = blockRedactedRepair(failureRemediation, result.redaction, nodeErrors);
 	const budgetRemediation =
-		failureRemediation?.shouldEdit === true
+		allowedRemediation?.shouldEdit === true
 			? terminalRemediationFromState(stateBefore, runId)
 			: undefined;
-	const remediation = budgetRemediation ?? failureRemediation;
+	const remediation = budgetRemediation ?? allowedRemediation;
 
 	return {
 		success,
@@ -552,6 +669,7 @@ export function analyzeVerificationResult(args: {
 			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
 			triggerNodeName,
 		),
+		redactionNote: buildRedactionNote(result.redaction, success),
 		errorMessage,
 		nodeErrors,
 	};

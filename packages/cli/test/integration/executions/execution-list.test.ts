@@ -47,6 +47,7 @@ const row = (workflowId: string): ExecutionListItem => ({
 	workflowId,
 	status: 'completed',
 	mode: 'manual',
+	hostMode: 'manual',
 	createdAt: time,
 	updatedAt: time,
 	finishedAt: time,
