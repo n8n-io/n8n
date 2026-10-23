@@ -15,6 +15,8 @@ Stores the token usage and estimated cost of every LLM call. Turn it on with
 3. Price catalog (`price-catalog.service.ts`): loads token prices from
    `N8N_LLM_USAGE_CATALOG_URL`. When a new version loads, the leader main process prices the
    calls that were stored without a price.
+4. API (`llm-usage.controller.ts`, `llm-usage.service.ts`): `GET /llm-usage/summary` and
+   `GET /llm-usage/calls`, with the `llmUsage:read` scope.
 
 ```bash
 pnpm turbo typecheck --filter=@n8n/backend-module-llm-usage

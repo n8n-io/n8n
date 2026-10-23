@@ -1,12 +1,21 @@
-import { testDb, testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
+import { GLOBAL_MEMBER_ROLE, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import type { LlmUsage } from '../llm-usage.entity';
 import { LlmUsageRepository } from '../llm-usage.repository';
 
 let repository: LlmUsageRepository;
+let user: User;
 
 const day = (offset: number) => new Date(Date.UTC(2026, 9, 10 + offset, 12));
+const range = { from: day(-1), to: day(5) };
+
+/** A table of another module, with the test prefix and schema. */
+const moduleTable = (name: string) => {
+	const { driver, options } = repository.manager.connection;
+	return driver.buildTableName(`${options.entityPrefix ?? ''}${name}`, driver.schema);
+};
 
 let sequence = 0;
 const row = (overrides: Partial<LlmUsage> = {}): Partial<LlmUsage> => ({
@@ -30,6 +39,10 @@ beforeAll(async () => {
 	});
 	await testDb.init();
 	repository = Container.get(LlmUsageRepository);
+	const users = Container.get(UserRepository);
+	({ user } = await users.createUserWithProject(
+		users.create({ email: 'ada@example.com', role: GLOBAL_MEMBER_ROLE }),
+	));
 });
 
 beforeEach(async () => {
@@ -48,6 +61,225 @@ describe('LlmUsageRepository', () => {
 		await repository.insertIgnoringDuplicates([call, row()]);
 
 		expect(await repository.count()).toBe(2);
+	});
+
+	it('summarizes by workflow, caller, model, project, user and mode, with names', async () => {
+		const project = await createTeamProject('Marketing');
+		const workflow = await createWorkflow({ name: 'Lead scoring' }, project);
+		await repository.insertIgnoringDuplicates([
+			row({
+				workflowId: workflow.id,
+				projectId: project.id,
+				userId: user.id,
+				executionMode: 'manual',
+				estimatedCostUsd: 2,
+			}),
+			row({
+				workflowId: workflow.id,
+				projectId: project.id,
+				executionMode: 'trigger',
+				provider: 'anthropic',
+				model: 'claude-x',
+				estimatedCostUsd: null,
+				priced: false,
+			}),
+			row({ callerType: 'agent', estimatedCostUsd: 3 }),
+		]);
+
+		const byWorkflow = await repository.totalsByGroup({ ...range, groupBy: 'workflow' });
+		// A call outside a workflow is left out.
+		expect(byWorkflow).toEqual([
+			expect.objectContaining({
+				key: workflow.id,
+				label: 'Lead scoring',
+				calls: 2,
+				unpricedCalls: 1,
+				inputTokens: 20,
+				outputTokens: 10,
+				costUsd: 2,
+			}),
+		]);
+
+		const byCaller = await repository.totalsByGroup({ ...range, groupBy: 'caller' });
+		expect(byCaller.map((g) => [g.key, g.calls])).toEqual([
+			['agent', 1],
+			['node', 2],
+		]);
+
+		const byModel = await repository.totalsByGroup({ ...range, groupBy: 'model' });
+		expect(byModel.map((g) => [g.key, g.calls])).toEqual([
+			['openai/gpt-4o-mini', 2],
+			['anthropic/claude-x', 1],
+		]);
+
+		const byProject = await repository.totalsByGroup({ ...range, groupBy: 'project' });
+		expect(byProject).toContainEqual(
+			expect.objectContaining({ key: project.id, label: 'Marketing', calls: 2 }),
+		);
+
+		const byUser = await repository.totalsByGroup({ ...range, groupBy: 'user' });
+		expect(byUser).toContainEqual(
+			expect.objectContaining({ key: user.id, label: 'ada@example.com', calls: 1 }),
+		);
+
+		const byMode = await repository.totalsByGroup({ ...range, groupBy: 'mode' });
+		expect(byMode.map((g) => g.key).sort()).toEqual(['', 'manual', 'trigger']);
+	});
+
+	it('limits totals and recent calls to the time range, newest first', async () => {
+		const project = await createTeamProject('Sales');
+		await repository.insertIgnoringDuplicates([
+			row({ callId: 'old', finishedAt: day(-3) }),
+			row({ callId: 'first', finishedAt: day(1), projectId: project.id, userId: user.id }),
+			row({ callId: 'second', finishedAt: day(2), priced: false, estimatedCostUsd: null }),
+		]);
+
+		expect(await repository.dailyTotals(range)).toEqual([
+			{
+				date: '2026-10-11',
+				calls: 1,
+				unpricedCalls: 0,
+				inputTokens: 10,
+				outputTokens: 5,
+				cacheReadTokens: 0,
+				costUsd: 0.5,
+			},
+			expect.objectContaining({ date: '2026-10-12', calls: 1, unpricedCalls: 1, costUsd: 0 }),
+		]);
+
+		const recent = await repository.listCalls({
+			...range,
+			skip: 0,
+			take: 10,
+			sortBy: 'finishedAt',
+			sortOrder: 'desc',
+		});
+		expect(recent.count).toBe(2);
+		expect(recent.items.map((call) => call.callId)).toEqual(['second', 'first']);
+		expect(recent.items[1]).toMatchObject({ projectName: 'Sales', userEmail: 'ada@example.com' });
+	});
+
+	it('pages and sorts calls', async () => {
+		await repository.insertIgnoringDuplicates([
+			row({ callId: 'cheap', estimatedCostUsd: 0.1, finishedAt: day(1) }),
+			row({ callId: 'mid', estimatedCostUsd: 0.5, finishedAt: day(2) }),
+			row({ callId: 'dear', estimatedCostUsd: 2, finishedAt: day(3) }),
+		]);
+		const page = async (skip: number, sortOrder: 'asc' | 'desc') =>
+			await repository.listCalls({
+				...range,
+				skip,
+				take: 2,
+				sortBy: 'estimatedCostUsd',
+				sortOrder,
+			});
+
+		const first = await page(0, 'desc');
+		expect(first.count).toBe(3);
+		expect(first.items.map((call) => call.callId)).toEqual(['dear', 'mid']);
+		expect((await page(2, 'desc')).items.map((call) => call.callId)).toEqual(['cheap']);
+		expect((await page(0, 'asc')).items.map((call) => call.callId)).toEqual(['cheap', 'mid']);
+
+		const byModel = await repository.listCalls({
+			...range,
+			skip: 0,
+			take: 10,
+			sortBy: 'model',
+			sortOrder: 'asc',
+		});
+		expect(byModel.items.map((call) => call.model)).toEqual([
+			'gpt-4o-mini',
+			'gpt-4o-mini',
+			'gpt-4o-mini',
+		]);
+	});
+
+	it('names the agent and the n8n Assistant session of a call, and groups by agent', async () => {
+		const project = await createTeamProject('Support');
+		const workflow = await createWorkflow({ name: 'Billing' }, project);
+		const threadId = '0b6c5f1e-8d1a-4c39-9a51-3d3f0f6b2a10';
+		// Other modules own these tables, so the rows go in by table name.
+		await repository.manager
+			.createQueryBuilder()
+			.insert()
+			.into(moduleTable('agents'), ['id', 'name', 'projectId'])
+			.values({ id: 'agent-1', name: 'Triage agent', projectId: project.id })
+			.execute();
+		await repository.manager
+			.createQueryBuilder()
+			.insert()
+			.into(moduleTable('instance_ai_threads'), ['id', 'resourceId', 'projectId', 'title'])
+			.values({ id: threadId, resourceId: user.id, projectId: project.id, title: 'Fix invoices' })
+			.execute();
+		await repository.manager
+			.createQueryBuilder()
+			.insert()
+			.into(moduleTable('agent_execution_threads'), [
+				'id',
+				'agentId',
+				'agentName',
+				'projectId',
+				'title',
+			])
+			.values({
+				id: 'session-1',
+				agentId: 'agent-1',
+				agentName: 'Triage agent',
+				projectId: project.id,
+				title: 'Refund question',
+			})
+			.execute();
+		await repository.insertIgnoringDuplicates([
+			row({
+				callId: 'agent',
+				callerType: 'agent',
+				agentId: 'agent-1',
+				threadId: 'session-1',
+				estimatedCostUsd: 3,
+			}),
+			row({ callId: 'assistant', callerType: 'instance-ai', threadId }),
+			row({ callId: 'billing', workflowId: workflow.id }),
+		]);
+
+		const sorted = await repository.listCalls({
+			...range,
+			skip: 0,
+			take: 10,
+			sortBy: 'name',
+			sortOrder: 'asc',
+		});
+		expect(
+			sorted.items.map((call) => [
+				call.callId,
+				call.agentName,
+				call.threadTitle,
+				call.workflowName,
+			]),
+		).toEqual([
+			['billing', null, null, 'Billing'],
+			['assistant', null, 'Fix invoices', null],
+			['agent', 'Triage agent', 'Refund question', null],
+		]);
+
+		const byAgent = await repository.totalsByGroup({ ...range, groupBy: 'agent' });
+		expect(byAgent).toEqual([
+			expect.objectContaining({ key: 'agent-1', label: 'Triage agent', calls: 1, costUsd: 3 }),
+		]);
+	});
+
+	it('sums each day and limits the groups', async () => {
+		await repository.insertIgnoringDuplicates([
+			row({ finishedAt: day(1), estimatedCostUsd: 1, model: 'a' }),
+			row({ finishedAt: new Date(day(1).getTime() + 3_600_000), estimatedCostUsd: 2, model: 'b' }),
+			row({ finishedAt: day(2), estimatedCostUsd: 4, model: 'c' }),
+		]);
+
+		expect(await repository.dailyTotals(range)).toEqual([
+			expect.objectContaining({ date: '2026-10-11', calls: 2, costUsd: 3 }),
+			expect.objectContaining({ date: '2026-10-12', calls: 1, costUsd: 4 }),
+		]);
+		const top = await repository.totalsByGroup({ ...range, groupBy: 'model', limit: 2 });
+		expect(top.map((group) => group.key)).toEqual(['openai/c', 'openai/b']);
 	});
 
 	it('finds unpriced calls since a date and stores their prices', async () => {

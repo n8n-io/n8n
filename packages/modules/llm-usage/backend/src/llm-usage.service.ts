@@ -1,0 +1,75 @@
+import type {
+	LlmUsageCallsQueryDto,
+	LlmUsageCallsResponse,
+	LlmUsageSummaryResponse,
+	LlmUsageTopGroup,
+	LlmUsageTotals,
+} from '@n8n/api-types';
+import { Time } from '@n8n/constants';
+import { Service } from '@n8n/di';
+
+import { LlmUsageRepository, type LlmUsageTimeRange } from './llm-usage.repository';
+
+/** The number of entries in each top-spender list. */
+const TOP_GROUP_SIZE = 5;
+
+const sumTotals = (days: LlmUsageTotals[]): LlmUsageTotals =>
+	days.reduce(
+		(sum, day) => ({
+			calls: sum.calls + day.calls,
+			unpricedCalls: sum.unpricedCalls + day.unpricedCalls,
+			inputTokens: sum.inputTokens + day.inputTokens,
+			outputTokens: sum.outputTokens + day.outputTokens,
+			cacheReadTokens: sum.cacheReadTokens + day.cacheReadTokens,
+			costUsd: sum.costUsd + day.costUsd,
+		}),
+		{ calls: 0, unpricedCalls: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, costUsd: 0 },
+	);
+
+/** The last `days` times 24 hours, up to now. */
+const lastDays = (days: number): LlmUsageTimeRange => {
+	const to = new Date();
+	return { from: new Date(to.getTime() - days * Time.days.toMilliseconds), to };
+};
+
+/** Builds the responses of the LLM usage API from the stored calls. */
+@Service()
+export class LlmUsageService {
+	constructor(private readonly repository: LlmUsageRepository) {}
+
+	/** Totals, daily spend and the top spenders of the last `days` days. */
+	async getSummary(days: number): Promise<LlmUsageSummaryResponse> {
+		const range = lastDays(days);
+		// The range total is the sum of its days, so no separate query reads the range again.
+		const dailyTotals = await this.repository.dailyTotals(range);
+		const topGroup = async (groupBy: LlmUsageTopGroup) =>
+			await this.repository.totalsByGroup({ ...range, groupBy, limit: TOP_GROUP_SIZE });
+		// One query at a time (properties are evaluated in order): each reads the whole range,
+		// and together they would take every connection of the pool from the rest of n8n.
+		const top = {
+			workflow: await topGroup('workflow'),
+			agent: await topGroup('agent'),
+			model: await topGroup('model'),
+			caller: await topGroup('caller'),
+			user: await topGroup('user'),
+		};
+		return {
+			totals: sumTotals(dailyTotals),
+			daily: dailyTotals.map(({ date, calls, costUsd }) => ({ date, calls, costUsd })),
+			top,
+		};
+	}
+
+	/** One page of the calls of the last `days` days. */
+	async getCalls({ days, ...page }: LlmUsageCallsQueryDto): Promise<LlmUsageCallsResponse> {
+		const { count, items } = await this.repository.listCalls({ ...lastDays(days), ...page });
+		return {
+			count,
+			items: items.map((call) => ({
+				...call,
+				startedAt: call.startedAt?.toISOString() ?? null,
+				finishedAt: call.finishedAt.toISOString(),
+			})),
+		};
+	}
+}

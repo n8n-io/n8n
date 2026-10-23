@@ -1,6 +1,7 @@
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
 // Webhook processes only queue executions, so they make no LLM calls to capture.
 @BackendModule({ name: 'llm-usage', instanceTypes: ['main', 'worker'] })
@@ -15,6 +16,11 @@ export class LlmUsageModule implements ModuleInterface {
 		collector.start();
 		setLlmUsageSink(collector);
 		void Container.get(PriceCatalogService).start();
+
+		// Workers also capture and store calls, but only main serves the API.
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			await import('./llm-usage.controller.js');
+		}
 	}
 
 	async entities() {
