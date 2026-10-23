@@ -201,7 +201,7 @@ const isReadOnly = computed(
 		(hasForeignCredential.value && !isHomeProjectTeam.value),
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
-const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => node.value?.type);
+const { isRestricted, restriction } = useNodeTypeRestriction(() => node.value?.type);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -751,7 +751,7 @@ function handleSelectAction(params: INodeParameters) {
 		<RestrictedNodePanel
 			v-if="node && nodeValid && isRestricted"
 			:node-type-name="nodeType?.displayName ?? node.type"
-			:scope="restrictionScope"
+			:restriction="restriction"
 			:show-replace="!isEmbeddedInCanvas && !readOnly"
 			@replace-node="emit('replaceNode', node.id)"
 		/>
