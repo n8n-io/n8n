@@ -18,7 +18,7 @@ const nodeIdColumns = [
  * stops before any change when a stored id is longer than 36 characters,
  * because cutting an id would break the rows that are keyed on it.
  */
-export class ExpandNodeIdColumns1792659262054 implements ReversibleMigration {
+export class ExpandNodeIdColumns1792738285739 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		for (const { table, column } of nodeIdColumns) {
 			await this.setLength(context, table, column, 64);

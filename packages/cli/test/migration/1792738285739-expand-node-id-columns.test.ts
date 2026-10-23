@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'ExpandNodeIdColumns1792659262054';
+const MIGRATION_NAME = 'ExpandNodeIdColumns1792738285739';
 const isSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
 
 const workflowId = 'wf-1';
