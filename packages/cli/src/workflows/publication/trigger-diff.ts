@@ -8,8 +8,13 @@ import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 // triggers on edits that don't change how they run.
 const registrationProps = ['name', 'type', 'typeVersion', 'webhookId', 'credentials', 'parameters'];
 
+/** The parts of a trigger node that decide how it is registered. */
+export function triggerRegistration(node: INode | undefined): Partial<INode> {
+	return pick(node, registrationProps);
+}
+
 function registrationEqual(base: INode | undefined, target: INode | undefined): boolean {
-	return isEqual(pick(base, registrationProps), pick(target, registrationProps));
+	return isEqual(triggerRegistration(base), triggerRegistration(target));
 }
 
 // TODO: remove this list and each special case (CAT-4492). Before the workflow

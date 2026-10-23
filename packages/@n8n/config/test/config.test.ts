@@ -255,6 +255,7 @@ describe('GlobalConfig', () => {
 			activationBatchSize: 1,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: true,
+			leasedTriggerNodeTypes: '',
 			publicationOutboxPollIntervalMs: 15_000,
 			publicationOutboxLeaseSeconds: 120,
 			workflowPublicationConcurrency: 5,
