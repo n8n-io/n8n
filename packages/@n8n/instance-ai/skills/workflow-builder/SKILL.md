@@ -608,13 +608,6 @@ every reported error and warning before calling `workflow_builder_build_workflow
   (`body.message.toolCalls[0].function.arguments`), not at the body root and
   not under `call.arguments`. Coding against an invented flat mock
   self-verifies green, then every field parses empty on the first real call.
-- SDK node `output` mocks are raw `$json` objects. Do not wrap mock items in
-  n8n runtime item envelopes like `{ json: { ... } }` unless downstream
-  expressions intentionally read `$json.json.*`. Correct:
-  `output: [{ orderId: 'ord_123', total: 42 }]`; wrong:
-  `output: [{ json: { orderId: 'ord_123', total: 42 } }]`.
-  Code node `jsCode` may still return runtime items like `[{ json: { ... } }]`;
-  this rule applies to SDK `node({ output: [...] })` mocks.
 
 Use this import shape unless the task needs fewer symbols:
 
