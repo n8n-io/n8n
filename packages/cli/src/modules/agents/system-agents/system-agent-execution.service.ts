@@ -30,7 +30,6 @@ import {
 	type AgentExecutionUsageRow,
 } from '../repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
-import { AgentRepository } from '../repositories/agent.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from '../types/agent-queued-message';
 import type { FormattedTurnError } from '../types/agent-turn-outcome';
@@ -135,7 +134,6 @@ export class SystemAgentExecutionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly registry: SystemAgentRegistry,
-		private readonly agentRepository: AgentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionService: AgentExecutionService,
@@ -148,12 +146,6 @@ export class SystemAgentExecutionService {
 		private readonly conversationState: AgentConversationStateService,
 		private readonly n8nMemory: N8nMemory,
 	) {}
-
-	/** Register a provider and make sure its instance agent row exists. */
-	async register(provider: SystemAgentProvider): Promise<void> {
-		await this.agentRepository.ensureInstanceAgent(provider.agentId, provider.name);
-		this.registry.register(provider);
-	}
 
 	resourceIdFor(user: Pick<User, 'id'>): string {
 		return systemChatMemoryResourceId(user.id);
