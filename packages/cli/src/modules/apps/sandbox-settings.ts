@@ -7,10 +7,10 @@ import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 export async function resolveAppSandboxConfig(projectId: string): Promise<SandboxConfig> {
 	const settings = Container.get(SandboxSettingsService);
 	const provider = settings.getProvider();
-	if (!settings.isAgentSandboxEnabled()) return { enabled: false, provider };
+	const config = Container.get(GlobalConfig).instanceAi;
+	if (!config.sandboxEnabled) return { enabled: false, provider };
 
 	settings.registerCredentialUses();
-	const config = Container.get(GlobalConfig).instanceAi;
 	if (provider === 'daytona') {
 		const connection = await settings.resolveDaytonaSandboxConfig(projectId, {
 			image: config.sandboxImage || undefined,

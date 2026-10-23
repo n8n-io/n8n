@@ -1,4 +1,4 @@
-import { GlobalConfig, type InstanceAiConfig } from '@n8n/config';
+import { GlobalConfig, type AgentsConfig, type InstanceAiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock, mockReset } from 'vitest-mock-extended';
 
@@ -9,10 +9,17 @@ import { resolveAppSandboxConfig } from '../sandbox-settings';
 describe('resolveAppSandboxConfig', () => {
 	const settings = mock<SandboxSettingsService>();
 	const config = mock<InstanceAiConfig>();
-	const globalConfig = mock<GlobalConfig>({ instanceAi: config });
+	const agentsConfig = mock<AgentsConfig>({
+		sandboxImage: 'agent-image',
+		sandboxSnapshot: 'agent-snapshot',
+		sandboxTimeout: 60_000,
+	});
+	const globalConfig = mock<GlobalConfig>({ instanceAi: config, agents: agentsConfig });
 
 	beforeEach(() => {
 		mockReset(settings);
+		agentsConfig.sandboxEnabled = false;
+		config.sandboxEnabled = true;
 		config.sandboxImage = 'test-image';
 		config.sandboxSnapshot = 'test-snapshot';
 		config.sandboxTimeout = 120_000;
@@ -35,10 +42,11 @@ describe('resolveAppSandboxConfig', () => {
 	afterEach(() => Container.reset());
 
 	it.each(['daytona', 'n8n-sandbox'] as const)(
-		'disables %s when sandbox use is disabled',
+		'disables %s when only Agent sandboxes are enabled',
 		async (provider) => {
 			settings.getProvider.mockReturnValue(provider);
-			settings.isAgentSandboxEnabled.mockReturnValue(false);
+			agentsConfig.sandboxEnabled = true;
+			config.sandboxEnabled = false;
 
 			await expect(resolveAppSandboxConfig('project')).resolves.toEqual({
 				enabled: false,
@@ -50,7 +58,7 @@ describe('resolveAppSandboxConfig', () => {
 		},
 	);
 
-	it('resolves the Daytona connection with the project and build settings', async () => {
+	it('uses Instance AI settings when Agent sandboxes are disabled', async () => {
 		await expect(resolveAppSandboxConfig('project')).resolves.toEqual({
 			enabled: true,
 			provider: 'daytona',
