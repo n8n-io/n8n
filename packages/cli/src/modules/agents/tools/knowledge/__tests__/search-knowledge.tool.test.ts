@@ -3,8 +3,8 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentKnowledgeMirrorService } from '../../../agent-knowledge-mirror.service';
 import type {
+	FinishKnowledgeToolCall,
 	KnowledgeToolCall,
-	KnowledgeToolCallResult,
 } from '../../../agent-knowledge-usage-tracker';
 import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
 
@@ -14,17 +14,16 @@ const agentId = 'agent-1';
 function buildTool(
 	knowledgeMirrorService: AgentKnowledgeMirrorService,
 	toolName: 'find_file' | 'search_text' | 'read_file',
-	recordToolCall: (
+	startToolCall: (
 		runId: string | undefined,
 		call: KnowledgeToolCall,
-		result: KnowledgeToolCallResult,
-	) => void = vi.fn(),
+	) => FinishKnowledgeToolCall = () => () => {},
 ): BuiltTool {
 	const tool = createKnowledgeRetrievalTools({
 		projectId,
 		agentId,
 		knowledgeMirrorService,
-		recordToolCall,
+		startToolCall,
 	})
 		.map((builder) => builder.build())
 		.find((candidate) => candidate.name === toolName);
@@ -33,6 +32,12 @@ function buildTool(
 		throw new Error(`Expected ${toolName} tool to be built`);
 	}
 	return tool;
+}
+
+function mockToolCallTracking() {
+	const finishToolCall = vi.fn<FinishKnowledgeToolCall>();
+	const startToolCall = vi.fn().mockReturnValue(finishToolCall);
+	return { startToolCall, finishToolCall };
 }
 
 /** Length of the JSON that the model gets for this tool output. */
@@ -116,7 +121,7 @@ describe('createKnowledgeRetrievalTools', () => {
 	] as const)(
 		'records one %s call with the size of the output that the model gets',
 		async (toolName, call, input) => {
-			const recordToolCall = vi.fn();
+			const { startToolCall, finishToolCall } = mockToolCallTracking();
 			const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
 			knowledgeMirrorService.globKnowledgeFiles.mockResolvedValue({
 				files: [],
@@ -138,12 +143,13 @@ describe('createKnowledgeRetrievalTools', () => {
 				ranges: [],
 				truncated: false,
 			});
-			const tool = buildTool(knowledgeMirrorService, toolName, recordToolCall);
+			const tool = buildTool(knowledgeMirrorService, toolName, startToolCall);
 
 			const output = await getToolHandler(tool)(input, { runId: 'run-1' });
 
-			expect(recordToolCall).toHaveBeenCalledTimes(1);
-			expect(recordToolCall).toHaveBeenCalledWith('run-1', call, {
+			expect(startToolCall).toHaveBeenCalledTimes(1);
+			expect(startToolCall).toHaveBeenCalledWith('run-1', call);
+			expect(finishToolCall).toHaveBeenCalledWith({
 				failed: false,
 				contentChars: modelOutputLength(tool, output),
 			});
@@ -151,7 +157,7 @@ describe('createKnowledgeRetrievalTools', () => {
 	);
 
 	it('records the size of the shortened text when the model gets only part of a file', async () => {
-		const recordToolCall = vi.fn();
+		const { startToolCall, finishToolCall } = mockToolCallTracking();
 		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
 		const file = { file: 'notes.txt', fileId: 'file-1', displayName: 'notes.txt' };
 		const longText = 'a'.repeat(20_000);
@@ -167,26 +173,39 @@ describe('createKnowledgeRetrievalTools', () => {
 			],
 			truncated: false,
 		});
-		const tool = buildTool(knowledgeMirrorService, 'read_file', recordToolCall);
+		const tool = buildTool(knowledgeMirrorService, 'read_file', startToolCall);
 
 		const output = await getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
 
 		const contentChars = modelOutputLength(tool, output);
 		expect(contentChars).toBeLessThan(longText.length);
-		expect(recordToolCall).toHaveBeenCalledWith('run-1', 'file_read', {
+		expect(finishToolCall).toHaveBeenCalledWith({
 			failed: false,
 			contentChars,
 		});
 	});
 
 	it('records a call that fails as failed, with no content characters', async () => {
-		const recordToolCall = vi.fn();
+		const { startToolCall, finishToolCall } = mockToolCallTracking();
 		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
 		knowledgeMirrorService.searchKnowledge.mockRejectedValue(new Error('search failed'));
-		const tool = buildTool(knowledgeMirrorService, 'search_text', recordToolCall);
+		const tool = buildTool(knowledgeMirrorService, 'search_text', startToolCall);
 
 		await getToolHandler(tool)({ pattern: 'refund' }, { runId: 'run-1' });
 
-		expect(recordToolCall).toHaveBeenCalledWith('run-1', 'file_search', { failed: true });
+		expect(startToolCall).toHaveBeenCalledWith('run-1', 'file_search');
+		expect(finishToolCall).toHaveBeenCalledWith({ failed: true });
+	});
+
+	it('counts a call before the knowledge mirror answers', async () => {
+		const { startToolCall, finishToolCall } = mockToolCallTracking();
+		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
+		knowledgeMirrorService.readKnowledge.mockReturnValue(new Promise(() => {}));
+		const tool = buildTool(knowledgeMirrorService, 'read_file', startToolCall);
+
+		void getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
+
+		expect(startToolCall).toHaveBeenCalledWith('run-1', 'file_read');
+		expect(finishToolCall).not.toHaveBeenCalled();
 	});
 });

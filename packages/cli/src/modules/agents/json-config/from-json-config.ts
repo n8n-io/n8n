@@ -51,7 +51,7 @@ import {
 	type AiGatewaySearchCredentialResolver,
 } from './web-search-credential';
 import { buildVectorStore } from './vector-store-factory';
-import type { KnowledgeToolCallResult } from '../agent-knowledge-usage-tracker';
+import type { FinishKnowledgeToolCall } from '../agent-knowledge-usage-tracker';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 
@@ -148,13 +148,13 @@ export interface BuildFromJsonOptions {
 	 * them on their own cache key.
 	 */
 	previewChat?: boolean;
-	/** Called once for each vector store search, with the size of the output that the model gets. */
-	onVectorStoreSearch?: (runId: string | undefined, result: KnowledgeToolCallResult) => void;
+	/** Called when each vector store search starts. The returned function gets the size of the output that the model gets. */
+	onVectorStoreSearch?: (runId: string | undefined) => FinishKnowledgeToolCall;
 }
 
 function countVectorStoreSearches(
 	searchTool: BuiltTool,
-	onVectorStoreSearch: (runId: string | undefined, result: KnowledgeToolCallResult) => void,
+	onVectorStoreSearch: (runId: string | undefined) => FinishKnowledgeToolCall,
 ): BuiltTool {
 	const searchHandler = searchTool.handler;
 	if (!searchHandler) {
@@ -164,18 +164,19 @@ function countVectorStoreSearches(
 	return {
 		...searchTool,
 		async handler(input, ctx) {
+			const finishSearch = onVectorStoreSearch(ctx.runId);
 			let output: unknown;
 			try {
 				output = await searchHandler.call(searchTool, input, ctx);
 			} catch (error) {
-				onVectorStoreSearch(ctx.runId, { failed: true });
+				finishSearch({ failed: true });
 				throw error;
 			}
 
 			const modelOutput = searchTool.toModelOutput ? searchTool.toModelOutput(output) : output;
 			const json: string | undefined = JSON.stringify(modelOutput);
 			const contentChars = json?.length ?? 0;
-			onVectorStoreSearch(ctx.runId, { failed: false, contentChars });
+			finishSearch({ failed: false, contentChars });
 			return output;
 		},
 	};

@@ -10,6 +10,8 @@ export type KnowledgeToolCall = 'file_find' | 'file_search' | 'file_read' | 'vec
 /** A failed call sends no knowledge content, so it has no characters to count. */
 export type KnowledgeToolCallResult = { failed: false; contentChars: number } | { failed: true };
 
+export type FinishKnowledgeToolCall = (result: KnowledgeToolCallResult) => void;
+
 /** Counts of one run, named like the "Agent run used knowledge" properties. */
 export interface KnowledgeRunUsage {
 	file_find_count: number;
@@ -78,13 +80,13 @@ export class AgentKnowledgeUsageTracker {
 		});
 	}
 
-	recordToolCall(
-		runId: string | undefined,
-		call: KnowledgeToolCall,
-		result: KnowledgeToolCallResult,
-	): void {
+	/**
+	 * Counts the call when it starts, so a stopped run still counts it.
+	 * The returned function adds the result of the call when it ends.
+	 */
+	startToolCall(runId: string | undefined, call: KnowledgeToolCall): FinishKnowledgeToolCall {
 		if (!runId) {
-			return;
+			return () => {};
 		}
 
 		const now = Date.now();
@@ -92,15 +94,23 @@ export class AgentKnowledgeUsageTracker {
 
 		const run = this.runs.get(runId) ?? { usage: emptyUsage(), lastCallAt: now };
 		run.usage[usageKeyByCall[call]]++;
-		if (result.failed) {
-			run.usage[failedKeyByCall[call]]++;
-		} else {
-			run.usage[contentKeyByCall[call]] += result.contentChars;
-		}
-
 		run.lastCallAt = now;
-
 		this.runs.set(runId, run);
+
+		return (result) => {
+			// Make sure a result that arrives after its run ended joins no event.
+			if (this.runs.get(runId) !== run) {
+				return;
+			}
+
+			if (result.failed) {
+				run.usage[failedKeyByCall[call]]++;
+			} else {
+				run.usage[contentKeyByCall[call]] += result.contentChars;
+			}
+
+			run.lastCallAt = Date.now();
+		};
 	}
 
 	/** Returns the counts of the run and forgets the run. Undefined when the run used no knowledge. */
