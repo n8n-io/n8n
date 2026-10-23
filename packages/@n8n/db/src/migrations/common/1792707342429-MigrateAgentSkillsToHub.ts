@@ -1,4 +1,7 @@
+import { Container } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { ErrorReporter } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 import { createHash, randomUUID } from 'node:crypto';
 
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
@@ -55,6 +58,9 @@ const SKILL_ID_MAX_LENGTH = 36;
 
 const BATCH_SIZE = 100;
 
+/** How many failed agents the Sentry event lists. It counts all of them. */
+const REPORTED_FAILURES = 100;
+
 /** Settings key of the progress that the startup copy saved on instances where it ran. */
 const STARTUP_COPY_PROGRESS_KEY = 'agents.skillsHubCopy';
 
@@ -90,7 +96,7 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 	async up(context: MigrationContext) {
 		const { escape, runInBatches, logger, migrationName } = context;
 		const counts: Counts = { agents: 0, skills: 0, versions: 0, pins: 0, skipped: 0, failed: 0 };
-		const failedAgentIds: string[] = [];
+		const failures: Array<{ agentId: string; error: string }> = [];
 		const columns = ['id', 'createdAt', 'schema', 'skills']
 			.map((name) => escape.columnName(name))
 			.join(', ');
@@ -106,19 +112,31 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 						(scope.through === null ||
 							isAfter(agent, scope.through) ||
 							scope.retryAgentIds.has(agent.id));
-					const copied = await this.copyAgentInSavepoint(context, agent, draftAllowed, counts);
-					if (!copied) failedAgentIds.push(agent.id);
+					const error = await this.copyAgentInSavepoint(context, agent, draftAllowed, counts);
+					if (error !== undefined) failures.push({ agentId: agent.id, error });
 				}
 			},
 			BATCH_SIZE,
 		);
 
 		logger.info(`[${migrationName}] Copied inline agent skills into the skills hub`, counts);
-		if (failedAgentIds.length > 0) {
-			// These agents keep their inline skills only in the legacy columns.
+		if (failures.length > 0) {
+			// These agents keep their inline skills only in the legacy columns, and nothing
+			// copies them again, so report them where Sentry is set up.
+			const agentIds = failures.map((failure) => failure.agentId);
 			logger.error(
 				`[${migrationName}] Could not copy the skills of these agents into the skills hub`,
-				{ agentIds: failedAgentIds },
+				{ agentIds },
+			);
+			Container.get(ErrorReporter).error(
+				new UnexpectedError(
+					`[${migrationName}] Could not copy the skills of some agents into the skills hub`,
+					{
+						tags: { migration: migrationName },
+						extra: { failed: failures.length, failures: failures.slice(0, REPORTED_FAILURES) },
+					},
+				),
+				{ shouldBeLogged: false },
 			);
 		}
 	}
@@ -149,14 +167,14 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 	/**
 	 * Copies one agent. A failed write rolls back only this agent, so one broken agent
 	 * does not stop the others. The agent keeps its inline skills in the legacy columns.
-	 * Returns false when the copy failed.
+	 * Returns the error message when the copy failed.
 	 */
 	private async copyAgentInSavepoint(
 		context: MigrationContext,
 		agent: AgentRow,
 		draftAllowed: boolean,
 		counts: Counts,
-	): Promise<boolean> {
+	): Promise<string | undefined> {
 		const { queryRunner, logger, migrationName } = context;
 		const draft = this.readInline(context, `agent ${agent.id}`, agent.schema, agent.skills);
 		// Published versions are loaded one at a time: an agent can have many large ones.
@@ -165,7 +183,7 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 			draftAllowed && draft.length > 0 && !(await this.hasHubState(context, agent.id));
 		if (versionIds.length === 0 && !copyDraft) {
 			counts.skipped++;
-			return true;
+			return undefined;
 		}
 
 		await queryRunner.query('SAVEPOINT copy_agent_skills');
@@ -218,21 +236,22 @@ export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigrati
 			await queryRunner.query('ROLLBACK TO SAVEPOINT copy_agent_skills');
 			await queryRunner.query('RELEASE SAVEPOINT copy_agent_skills');
 			counts.failed++;
+			const message = error instanceof Error ? error.message : String(error);
 			logger.error(`[${migrationName}] Failed to copy the skills of agent ${agent.id}. Skipping.`, {
-				error: error instanceof Error ? error.message : String(error),
+				error: message,
 			});
-			return false;
+			return message;
 		}
 		if (!copyDraft && agentCounts.pins === 0) {
 			// Its unpinned versions had no inline skills.
 			counts.skipped++;
-			return true;
+			return undefined;
 		}
 		counts.agents++;
 		counts.skills += agentCounts.skills;
 		counts.versions += agentCounts.versions;
 		counts.pins += agentCounts.pins;
-		return true;
+		return undefined;
 	}
 
 	/**

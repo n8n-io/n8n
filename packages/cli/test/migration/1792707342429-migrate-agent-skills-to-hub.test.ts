@@ -7,6 +7,7 @@ import {
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { ErrorReporter } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
 import { skillContentHash } from '@/modules/skills/skill-content-hash';
@@ -487,9 +488,16 @@ describe('MigrateAgentSkillsToHub migration', () => {
 				1,
 			);
 			const healthy = await insertAgent([ref('skill_a')], { skill_a: body('alpha') }, 2);
+			const report = vi.spyOn(Container.get(ErrorReporter), 'error').mockImplementation(() => {});
 
 			await migrate();
 
+			expect(report).toHaveBeenCalledTimes(1);
+			expect(report.mock.calls[0][0]).toMatchObject({
+				tags: { migration: migrationName },
+				extra: { failed: 1, failures: [{ agentId: broken, error: expect.any(String) }] },
+			});
+			report.mockRestore();
 			expect(await skillsOf(broken)).toEqual([]);
 			expect(await draftOf(broken)).toEqual([]);
 			expect(await draftOf(healthy)).toEqual([
@@ -517,8 +525,12 @@ describe('MigrateAgentSkillsToHub migration', () => {
 
 	it('copies nothing for agents without skills', async () => {
 		await insertAgent([], {});
+		const report = vi.spyOn(Container.get(ErrorReporter), 'error');
 
 		await migrate();
+
+		expect(report).not.toHaveBeenCalled();
+		report.mockRestore();
 
 		expect(await count('skill')).toBe(0);
 		expect(await count('agent_skill_dependency')).toBe(0);
