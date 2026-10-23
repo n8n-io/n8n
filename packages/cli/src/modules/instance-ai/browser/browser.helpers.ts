@@ -1,4 +1,5 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
+import { safeJoinPath } from '@n8n/backend-common';
 import type {
 	InstanceAiPermissionMode,
 	InstanceGatewayResourceDecision,
@@ -22,7 +23,6 @@ import type {
 import { UnexpectedError } from 'n8n-workflow';
 import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -129,7 +129,8 @@ export async function createBrowserCredential(
  * so files from different users never mix. Each kind of browser uses its own `folderName`.
  */
 export async function createBrowserWorkDir(folderName: string, userId: string): Promise<string> {
-	const workDir = join(tmpdir(), folderName, userId);
+	// Each part must stay inside its parent, so a value with `..` cannot leave the temp folder.
+	const workDir = safeJoinPath(safeJoinPath(tmpdir(), folderName), userId);
 	await mkdir(workDir, { recursive: true });
 	return workDir;
 }

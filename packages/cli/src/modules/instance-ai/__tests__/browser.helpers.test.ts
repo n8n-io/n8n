@@ -166,6 +166,16 @@ describe('createBrowserWorkDir', () => {
 		expect(workDir).toBe(expected);
 		expect(mkdir).toHaveBeenCalledWith(expected, { recursive: true });
 	});
+
+	it.each([
+		['the folder name', '../outside', 'user-1'],
+		['the user id', 'n8n-instance-ai-browser', '../n8n-instance-ai-cloud-browser'],
+	])('refuses %s when it leaves its parent folder', async (_, folderName, userId) => {
+		vi.mocked(mkdir).mockClear();
+
+		await expect(createBrowserWorkDir(folderName, userId)).rejects.toThrow('Path traversal');
+		expect(mkdir).not.toHaveBeenCalled();
+	});
 });
 
 describe('toBrowserMcpTool', () => {
