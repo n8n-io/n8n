@@ -134,7 +134,7 @@ export class LoadNodesAndCredentials {
 			}
 			try {
 				await loader.loadAll();
-				this.assertNoCredentialTypeConflicts(loader);
+				this.assertNoCredentialTypeConflicts(loader, false);
 				this.loaders[loader.packageName] = loader;
 			} catch (error) {
 				// Expected, author-side problem: no stack trace and no error report needed.
@@ -644,8 +644,9 @@ export class LoadNodesAndCredentials {
 	 * Credential types live in one flat namespace (unlike node types, which are
 	 * prefixed with the package name). A second definition would silently replace
 	 * the first, so reject the package that comes later.
+	 * @param {boolean} [throwOnConflict=true] Whether to throw an error if a conflict is detected
 	 */
-	private assertNoCredentialTypeConflicts(loader: NodeLoader) {
+	private assertNoCredentialTypeConflicts(loader: NodeLoader, throwOnConflict = true) {
 		const conflicts: Record<string, string> = {};
 
 		for (const credentialType of Object.keys(loader.known.credentials)) {
@@ -658,9 +659,15 @@ export class LoadNodesAndCredentials {
 		}
 
 		if (Object.keys(conflicts).length > 0) {
-			const error = new CredentialTypeConflictError(loader.packageName, conflicts);
-			this.packageLoadErrors.set(loader.packageName, error.message);
-			throw error;
+			if (throwOnConflict) {
+				const error = new CredentialTypeConflictError(loader.packageName, conflicts);
+				this.packageLoadErrors.set(loader.packageName, error.message);
+				throw error;
+			}
+			this.logger.warn(
+				`Credential type conflict detected for package ${loader.packageName}: ${Object.keys(conflicts).join(', ')}`,
+			);
+			return;
 		}
 
 		this.packageLoadErrors.delete(loader.packageName);

@@ -1278,12 +1278,22 @@ describe('LoadNodesAndCredentials', () => {
 			});
 
 		let instance: LoadNodesAndCredentials;
+		let logger: ReturnType<typeof mock<Logger>>;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			logger = mock<Logger>();
+			instance = new LoadNodesAndCredentials(logger, mock(), mock(), mock(), mock(), mock());
 			instance.loaders = {
 				'n8n-nodes-base': createLoader('n8n-nodes-base', ['awsAssumeRole', 'slackApi']),
 			};
+		});
+
+		describe('when conflicts are only logged', () => {
+			it('should not throw, so a package that is already installed keeps loading', () => {
+				const loader = createLoader('community-package', ['awsAssumeRole', 'uniqueApi']);
+
+				expect(() => instance['assertNoCredentialTypeConflicts'](loader, false)).not.toThrow();
+			});
 		});
 
 		it('should reject a package that reuses the credential type of a loaded package', () => {
@@ -1418,6 +1428,23 @@ describe('LoadNodesAndCredentials', () => {
 			).rejects.toThrow(CredentialTypeConflictError);
 
 			expect(instance.loaders).not.toHaveProperty('community-package');
+		});
+
+		it('should register a conflicting loader when conflicts are not rejected', async () => {
+			const conflicting = createLoader('community-package', ['awsAssumeRole']);
+			conflicting.loadAll.mockResolvedValue(undefined);
+
+			await instance['runDirectoryLoader'](
+				class {
+					constructor() {
+						return conflicting;
+					}
+				} as never,
+				'/downloads/community-package',
+			);
+
+			expect(instance.loaders).toHaveProperty('community-package');
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 });
