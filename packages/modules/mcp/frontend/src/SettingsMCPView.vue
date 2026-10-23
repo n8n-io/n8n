@@ -3,7 +3,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
-import { ElSwitch } from 'element-plus';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -19,6 +18,7 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
@@ -390,11 +390,11 @@ onBeforeUnmount(() => {
 						:description="i18n.baseText('settings.mcp.autoExpose.description')"
 					>
 						<template #action>
-							<ElSwitch
+							<N8nSwitch
 								data-test-id="mcp-auto-expose-toggle"
+								size="large"
 								:model-value="mcpStore.autoExposeNewWorkflows"
-								:disabled="mcpStore.mcpManagedByEnv"
-								:loading="autoExposeSaving"
+								:disabled="mcpStore.mcpManagedByEnv || autoExposeSaving"
 								@update:model-value="onAutoExposeSwitchUpdate"
 							/>
 						</template>
