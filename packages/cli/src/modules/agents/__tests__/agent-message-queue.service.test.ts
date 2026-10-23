@@ -9,6 +9,7 @@ import type { AgentMessageSteeringService } from '../agent-message-steering.serv
 import type { AgentsSettingsService } from '../agents-settings.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
@@ -110,6 +111,111 @@ describe('AgentMessageQueueService', () => {
 			// A running turn blocks the claim, but only after the setting check let the thread through.
 			expect(await service.claimNext('thread-1', async () => true)).toBeNull();
 			expect(steering.releaseInactive).toHaveBeenCalled();
+		});
+	});
+
+	describe('integration messages', () => {
+		it('stores the typed platform context on the origin, outside the dispatch', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>({ name: 'Agent' }));
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+			repository.enqueue.mockResolvedValue(mock<AgentMessageQueue>({ threadId: 'thread-1' }));
+			const integrationOrigin = {
+				type: 'slack' as const,
+				workspaceId: 'T1',
+				conversationKind: 'channel' as const,
+				channelId: 'C1',
+			};
+
+			await service.enqueue({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				sessionMode: 'new',
+				source: 'slack',
+				payload: {
+					kind: 'integration',
+					message: 'hello',
+					modelMessage: 'hello',
+					resourceId: 'resource-1',
+					credentialId: 'credential-1',
+					platformThreadId: 'slack:C1:1.2',
+					author: { id: 'U1', name: 'Alice' },
+					integrationOrigin,
+					sender: { userId: 'U1', userName: 'alice', fullName: 'Alice', isBot: false, isMe: false },
+					messageContext: {
+						integrationConnectionId: 'connection-1',
+						platform: 'slack',
+						messageId: 'platform-message-1',
+						target: { type: 'thread', threadId: 'slack:C1:1.2' },
+						updatedAt: '2026-10-21T00:00:00.000Z',
+					},
+					contextConversation: { threadId: 'thread-1', resourceId: 'U1' },
+				},
+			});
+
+			expect(messages.createInput).toHaveBeenCalledWith(
+				expect.objectContaining({
+					origin: {
+						source: 'slack',
+						integrationConnectionId: 'connection-1',
+						platformMessageId: 'platform-message-1',
+						platformThreadId: 'slack:C1:1.2',
+						integration: integrationOrigin,
+					},
+				}),
+				expect.anything(),
+			);
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				expect.not.objectContaining({ integrationOrigin }),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('episodic scope', () => {
+		it.each([
+			['a resolved scope', { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] }],
+			['a disabled marker', { disabled: true as const }],
+		])('keeps %s in the dispatch', async (_label, episodicScope) => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>({ name: 'Agent' }));
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+			repository.enqueue.mockResolvedValue(mock<AgentMessageQueue>({ threadId: 'thread-1' }));
+
+			await service.enqueue({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				sessionMode: 'new',
+				source: 'slack',
+				payload: {
+					kind: 'integration',
+					message: 'hello',
+					modelMessage: 'hello',
+					resourceId: 'resource-1',
+					credentialId: 'credential-1',
+					platformThreadId: 'slack:C1:1.2',
+					author: { id: 'U1', name: 'Alice' },
+					episodicScope,
+					sender: { userId: 'U1', userName: 'alice', fullName: 'Alice', isBot: false, isMe: false },
+					messageContext: {
+						integrationConnectionId: 'connection-1',
+						platform: 'slack',
+						messageId: 'platform-message-1',
+						target: { type: 'thread', threadId: 'slack:C1:1.2' },
+						updatedAt: '2026-10-21T00:00:00.000Z',
+					},
+					contextConversation: { threadId: 'thread-1', resourceId: 'U1' },
+				},
+			});
+
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				expect.objectContaining({ episodicScope }),
+				expect.anything(),
+			);
 		});
 	});
 

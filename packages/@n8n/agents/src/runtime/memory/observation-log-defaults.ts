@@ -10,7 +10,7 @@ import {
 } from './observation-log-reflector';
 import type { ModelConfig } from '../../types/sdk/agent';
 import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { loadAi } from '../model/lazy-ai';
 import { createModel } from '../model/model-factory';
@@ -178,7 +178,8 @@ export function createObservationLogObserveFn(
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
 		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
-		const modelId = getModelIdString(model);
+		// The host prices side calls by this id, so report the model a deployment serves.
+		const modelId = getCatalogModelId(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({
 				task: 'observer',
@@ -345,7 +346,8 @@ export function createObservationLogReflectFn(
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
 		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
-		const modelId = getModelIdString(model);
+		// The host prices side calls by this id, so report the model a deployment serves.
+		const modelId = getCatalogModelId(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({
 				task: 'reflector',

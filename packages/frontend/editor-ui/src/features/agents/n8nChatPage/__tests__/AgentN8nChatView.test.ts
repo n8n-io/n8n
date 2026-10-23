@@ -131,6 +131,7 @@ const agentItem: AgentN8nChatAgentDetails = {
 	},
 	project: { id: 'project-1', name: 'Marketing' },
 	attachments: { image: true, pdf: true, audio: false },
+	availableInChat: true,
 	subAgents: [],
 };
 

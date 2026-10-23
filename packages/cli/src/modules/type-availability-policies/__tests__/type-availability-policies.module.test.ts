@@ -3,8 +3,12 @@ import { ControllerRegistryMetadata, ModuleMetadata, PolicyCheckMetadata } from 
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { RestrictedNodeTypesProviderProxy } from '@n8n/backend-services';
+import {
+	InstalledTypeRestrictionsProxy,
+	RestrictedNodeTypesProviderProxy,
+} from '@n8n/backend-services';
 
+import { NodeTypePolicyInstalledTypeRestrictionsProvider } from '../installed-type-restrictions.provider';
 import { NodeTypePolicyRestrictedTypesProvider } from '../restricted-node-types.provider';
 import { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
 // Importing the module runs the @BackendModule decorator, registering its metadata.
@@ -13,11 +17,13 @@ import { TypeAvailabilityPoliciesModule } from '../type-availability-policies.mo
 describe('TypeAvailabilityPoliciesModule', () => {
 	const provider = mock<NodeTypePolicyRestrictedTypesProvider>();
 	const snapshot = mock<TypeAvailabilityPolicySnapshot>();
+	const installedTypesProvider = mock<NodeTypePolicyInstalledTypeRestrictionsProvider>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		Container.set(NodeTypePolicyRestrictedTypesProvider, provider);
 		Container.set(TypeAvailabilityPolicySnapshot, snapshot);
+		Container.set(NodeTypePolicyInstalledTypeRestrictionsProvider, installedTypesProvider);
 	});
 
 	it('registers itself under the correct module name', () => {
@@ -102,6 +108,24 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		await module.init();
 
 		expect(snapshot.start).toHaveBeenCalledTimes(1);
+	}, 30_000);
+
+	it('answers the installed type restrictions proxy from its provider on init', async () => {
+		const restrictions = {
+			nodeTypes: [
+				{ type: 'n8n-nodes-example.alpha', blockedOn: 'instance' as const, optInAvailable: false },
+			],
+		};
+		installedTypesProvider.describeRestrictions.mockResolvedValue(restrictions);
+		const module = new TypeAvailabilityPoliciesModule();
+
+		await module.init();
+
+		await expect(
+			Container.get(InstalledTypeRestrictionsProxy).describeRestrictions({
+				nodeTypes: ['n8n-nodes-example.alpha'],
+			}),
+		).resolves.toEqual(restrictions);
 	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {

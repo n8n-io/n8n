@@ -13,7 +13,6 @@ import ApplyInstanceDialog from './ApplyInstanceDialog.vue';
 const api = vi.hoisted(() => ({
 	applyPromotion: vi.fn<typeof PromotionsApi.applyPromotion>(),
 	continueApplyPromotion: vi.fn<typeof PromotionsApi.continueApplyPromotion>(),
-	continueApplyProjectSelection: vi.fn<typeof PromotionsApi.continueApplyProjectSelection>(),
 }));
 
 vi.mock('../promotionsSettings.api', () => api);
@@ -130,14 +129,12 @@ describe('ApplyInstanceDialog', () => {
 			global: {
 				stubs: {
 					PromotionBindingsFlow: defineComponent({
-						props: { continueWith: { type: Object, required: true } },
 						emits: ['applied', 'update:open'],
 						setup:
-							(props, { emit }) =>
+							(_props, { emit }) =>
 							() =>
 								h('button', {
 									'data-test-id': 'stub-applied',
-									'data-continue-kind': props.continueWith.kind,
 									// Same order as the bindings dialog after a successful Continue.
 									onClick: () => {
 										emit('applied', applied);
@@ -151,7 +148,6 @@ describe('ApplyInstanceDialog', () => {
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 		const flow = await findByTestId('stub-applied');
-		expect(flow).toHaveAttribute('data-continue-kind', 'instance');
 		await userEvent.click(flow);
 
 		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));

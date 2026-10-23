@@ -13,11 +13,9 @@ export function usePromotionChangeCount(
 ) {
 	const rootStore = useRootStore();
 	const { next } = useLatestFetch();
-	/** Changed workflows, as the banners count them. */
-	const workflowCount = ref(0);
 	/** All changed resources that the preview page can include. */
 	const changeCount = ref(0);
-	/** True when the last check failed, so the banner can say so instead of hiding. */
+	/** True when the last check failed, so the badge can show the failure. */
 	const failed = ref(false);
 
 	async function fetchCount() {
@@ -25,7 +23,6 @@ export function usePromotionChangeCount(
 		// and came back to cannot overwrite the current state.
 		const isLatest = next();
 		const requestedProjectId = projectId.value;
-		workflowCount.value = 0;
 		changeCount.value = 0;
 		failed.value = false;
 		if (!enabled.value || !requestedProjectId) {
@@ -38,7 +35,6 @@ export function usePromotionChangeCount(
 				direction,
 			);
 			if (!isLatest()) return;
-			workflowCount.value = preview.changes.length;
 			changeCount.value = totalChangeCount(buildSelectionGraph(preview, direction));
 		} catch {
 			if (isLatest()) failed.value = true;
@@ -47,5 +43,5 @@ export function usePromotionChangeCount(
 
 	watch([projectId, enabled], fetchCount, { immediate: true });
 
-	return { workflowCount, changeCount, failed, refetch: fetchCount };
+	return { changeCount, failed, refetch: fetchCount };
 }

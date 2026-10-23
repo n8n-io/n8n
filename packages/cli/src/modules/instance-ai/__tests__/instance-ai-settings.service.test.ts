@@ -3,13 +3,7 @@ import type { InstanceAiPermissions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type EventService, type CredentialsFinderService } from '@n8n/backend-services';
 import type { InstanceAiConfig } from '@n8n/config';
-import type {
-	CredentialsEntity,
-	DbLockService,
-	SettingsRepository,
-	User,
-	UserRepository,
-} from '@n8n/db';
+import type { CredentialsEntity, DbLockService, SettingsRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,7 +14,6 @@ import {
 	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 	type SandboxSettingsService,
 } from '@/services/sandbox-settings.service';
-import type { UserService } from '@/services/user.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 
@@ -52,15 +45,12 @@ describe('InstanceAiSettingsService', () => {
 			sandboxTimeout: 60,
 			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
-			localGatewayDisabled: false,
 		} as unknown as InstanceAiConfig,
 		deployment: { type: 'default' },
 	});
 	const operationContext: CredentialOperationContext = {};
 	const dbLockService = mock<DbLockService>();
 	const settingsRepository = mock<SettingsRepository>();
-	const userRepository = mock<UserRepository>();
-	const userService = mock<UserService>();
 	const aiService = mock<AiService>();
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
@@ -76,8 +66,6 @@ describe('InstanceAiSettingsService', () => {
 			globalConfig as never,
 			dbLockService,
 			settingsRepository,
-			userRepository,
-			userService,
 			aiService,
 			credentialsService,
 			credentialsFinderService,
@@ -1165,9 +1153,9 @@ describe('InstanceAiSettingsService', () => {
 			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
 
 			await expect(
-				service.updateAdminSettings({ localGatewayDisabled: true }),
+				service.updateAdminSettings({ browserUseEnabled: false }),
 			).resolves.toMatchObject({
-				localGatewayDisabled: true,
+				browserUseEnabled: false,
 			});
 		});
 
@@ -2482,58 +2470,6 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
-	describe('updateUserPreferences', () => {
-		const user = mock<User>({ id: 'user-1' });
-
-		it('should reject env-managed preference fields on self-hosted', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-
-			await expect(service.updateUserPreferences(user, { credentialId: 'cred-1' })).rejects.toThrow(
-				UnprocessableRequestError,
-			);
-			await expect(service.updateUserPreferences(user, { modelName: 'gpt-4' })).rejects.toThrow(
-				UnprocessableRequestError,
-			);
-		});
-
-		it('should include offending field names in the error message', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-
-			await expect(
-				service.updateUserPreferences(user, {
-					credentialId: 'cred-1',
-					modelName: 'gpt-4',
-				}),
-			).rejects.toThrow(/credentialId.*modelName|modelName.*credentialId/);
-		});
-
-		it('should allow localGatewayDisabled', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-
-			await expect(
-				service.updateUserPreferences(user, { localGatewayDisabled: true }),
-			).resolves.toBeDefined();
-
-			expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
-				instanceAi: { localGatewayDisabled: true },
-			});
-		});
-
-		it('should merge new preference fields with existing instanceAi settings on update', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-			const existingUser = mock<User>({
-				id: 'user-2',
-				settings: { instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5' } },
-			});
-
-			await service.updateUserPreferences(existingUser, { localGatewayDisabled: true });
-
-			expect(userService.updateSettings).toHaveBeenCalledWith('user-2', {
-				instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5', localGatewayDisabled: true },
-			});
-		});
-	});
-
 	describe('cloud-managed fields', () => {
 		beforeEach(() => {
 			globalConfig.deployment.type = 'cloud';
@@ -2593,38 +2529,12 @@ describe('InstanceAiSettingsService', () => {
 				).resolves.toBeDefined();
 			});
 
-			it('should allow localGatewayDisabled on cloud', async () => {
+			it('should allow browserUseEnabled on cloud', async () => {
 				settingsRepository.upsert.mockResolvedValue(undefined as never);
 
 				await expect(
-					service.updateAdminSettings({ localGatewayDisabled: true }),
+					service.updateAdminSettings({ browserUseEnabled: false }),
 				).resolves.toBeDefined();
-			});
-		});
-
-		describe('updateUserPreferences', () => {
-			const user = mock<User>({ id: 'user-1' });
-
-			it('should reject credentialId on cloud', async () => {
-				await expect(
-					service.updateUserPreferences(user, { credentialId: 'cred-1' }),
-				).rejects.toThrow(UnprocessableRequestError);
-			});
-
-			it('should reject modelName on cloud', async () => {
-				await expect(service.updateUserPreferences(user, { modelName: 'gpt-4' })).rejects.toThrow(
-					UnprocessableRequestError,
-				);
-			});
-
-			it('should allow localGatewayDisabled on cloud', async () => {
-				await expect(
-					service.updateUserPreferences(user, { localGatewayDisabled: true }),
-				).resolves.toBeDefined();
-
-				expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
-					instanceAi: { localGatewayDisabled: true },
-				});
 			});
 		});
 	});

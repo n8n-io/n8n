@@ -692,6 +692,151 @@ describe('WorkflowSettingsVue', () => {
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
 
+	describe('Engine type', () => {
+		const deactivateEngineV2Module = () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name: string) => name !== 'engine-v2',
+			);
+		};
+
+		it('should render the engine type row as the first row, directly above Execution Logic', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const row = getByTestId('workflow-settings-engine-type');
+			expect(row.parentElement).toBe(getByTestId('workflow-settings-dialog'));
+			expect(row.previousElementSibling).toBeNull();
+			expect(
+				row.nextElementSibling?.querySelector('[data-test-id="workflow-settings-execution-order"]'),
+			).not.toBeNull();
+		});
+
+		it('should not render the engine type row when the engine-v2 module is inactive', async () => {
+			deactivateEngineV2Module();
+
+			const { queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(queryByTestId('workflow-settings-engine-type')).not.toBeInTheDocument();
+		});
+
+		it('should offer v1 and v2 (Beta) as engine type options', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+
+			expect(dropdownItems).toHaveLength(2);
+			expect(dropdownItems[0]).toHaveTextContent('v1');
+			expect(dropdownItems[1]).toHaveTextContent('v2 (Beta)');
+		});
+
+		it.each([
+			['v2', 'v2 (Beta)'],
+			['v1', 'v1'],
+			[undefined, 'v1'],
+		] as const)('should select the option for engineType %s', async (engineType, label) => {
+			workflowDocumentStore.setSettings(engineType ? { engineType } : {});
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+			const selectedItem = Array.from(dropdownItems).find((item) =>
+				item.classList.contains('selected'),
+			);
+			expect(selectedItem).toHaveTextContent(label);
+		});
+
+		it.each([
+			[undefined, 'v2'],
+			['v1', 'v2'],
+			['v2', 'v1'],
+		] as const)(
+			'should save engineType %s as %s after the option is selected',
+			async (engineType, expected) => {
+				workflowDocumentStore.setSettings(engineType ? { engineType } : {});
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				const dropdownItems = await getDropdownItems(
+					getByTestId('workflow-settings-engine-type-select'),
+				);
+				await userEvent.click(dropdownItems[expected === 'v2' ? 1 : 0]);
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({ engineType: expected }),
+					}),
+				);
+			},
+		);
+
+		it('should not add engineType to the saved settings when the select is untouched', async () => {
+			const { getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledTimes(1);
+			const [, data] = workflowsStore.updateWorkflow.mock.calls[0];
+			expect(data.settings).not.toHaveProperty('engineType');
+		});
+
+		it('should keep a stored engineType v2 on save when the engine-v2 module is inactive', async () => {
+			deactivateEngineV2Module();
+			workflowDocumentStore.setSettings({ engineType: 'v2' });
+
+			const { getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ engineType: 'v2' }),
+				}),
+			);
+		});
+
+		it('should disable the select if env is read-only', async () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				within(getByTestId('workflow-settings-engine-type-select')).getByRole('combobox'),
+			).toBeDisabled();
+		});
+
+		it('should disable the select if user has no permission to update workflow', async () => {
+			const readOnlyWorkflow = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:read'],
+			});
+			workflowsListStore.workflowsById = { '1': readOnlyWorkflow };
+			workflowsListStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				within(getByTestId('workflow-settings-engine-type-select')).getByRole('combobox'),
+			).toBeDisabled();
+		});
+	});
+
 	describe('Execution Order & Binary Mode', () => {
 		it('should render execution order dropdown with correct options', async () => {
 			const { getByTestId } = createComponent({ pinia });

@@ -1,3 +1,4 @@
+import type { CredentialApplyResult } from '../entities/credential/credential.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { VariableApplyResult, VariableImportPlan } from '../entities/variable/variable.types';
 import type {
@@ -89,6 +90,46 @@ export function buildImportResult(input: {
 		dataTables: input.dataTables,
 		variables: input.variables,
 		tags: input.tags,
+	};
+}
+
+/**
+ * The source ids whose destination credential the import wrote, across every scope. Scopes apply
+ * in turn: when two source ids of different scopes bind to one destination, the first scope
+ * writes it and the next finds nothing left to change. Counts by destination, like the telemetry.
+ */
+export function credentialsUpdatedAcrossScopes(
+	results: Array<Pick<CredentialApplyResult, 'bindings' | 'matched' | 'updated'>>,
+): string[] {
+	const updatedTargetIds = new Set(
+		results.flatMap(({ updated, bindings }) => updated.map((sourceId) => bindings.get(sourceId))),
+	);
+
+	return results.flatMap(({ updated, matched, bindings }) => [
+		...updated,
+		...matched.filter((sourceId) => updatedTargetIds.has(bindings.get(sourceId))),
+	]);
+}
+
+/**
+ * Merges the credential outcomes of every scope: each list is a union. An updated source id
+ * matched first, but the import rewrote its credential, so `updated` wins.
+ */
+export function reconcileCredentialSummary(input: {
+	matched: Iterable<string>;
+	stubbed: Iterable<string>;
+	seeded: Iterable<string>;
+	incomplete: Iterable<string>;
+	updated: Iterable<string>;
+}): ImportCredentialSummary {
+	const updated = new Set(input.updated);
+
+	return {
+		matched: [...new Set(input.matched)].filter((sourceId) => !updated.has(sourceId)),
+		stubbed: [...new Set(input.stubbed)],
+		seeded: [...new Set(input.seeded)],
+		incomplete: [...new Set(input.incomplete)],
+		updated: [...updated],
 	};
 }
 

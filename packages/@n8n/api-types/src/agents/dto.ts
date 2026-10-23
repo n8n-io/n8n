@@ -494,3 +494,7 @@ export interface VectorStoreTestResult {
 export class AgentChatCancelDto extends Z.class({
 	scope: z.enum(['foreground', 'all']).optional(),
 }) {}
+
+export class AgentTaskCancellationDto extends Z.class({
+	planId: z.string().uuid().toLowerCase().nullable(),
+}) {}

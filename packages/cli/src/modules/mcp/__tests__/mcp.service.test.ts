@@ -701,6 +701,7 @@ describe('McpService', () => {
 							'content-type': 'application/json',
 							accept: 'application/json, text/event-stream',
 							'mcp-method': 'tools/list',
+							'mcp-protocol-version': '2026-07-28',
 						},
 						body: JSON.stringify({
 							jsonrpc: '2.0',
@@ -784,6 +785,7 @@ describe('McpService', () => {
 							'content-type': 'application/json',
 							accept: 'application/json, text/event-stream',
 							'mcp-method': MCP_DISCOVER_METHOD,
+							'mcp-protocol-version': '2026-07-28',
 						},
 						body: JSON.stringify({
 							jsonrpc: '2.0',

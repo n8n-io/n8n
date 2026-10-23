@@ -323,7 +323,13 @@ export class AgentValidationService {
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
-		await this.collectMainCredentialIssues(config, findCredential, ctx.credentialProvider, issues);
+		await this.collectMainCredentialIssues(
+			config,
+			findCredential,
+			ctx.credentialProvider,
+			scope,
+			issues,
+		);
 		await this.collectVertexModelIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
@@ -403,6 +409,7 @@ export class AgentValidationService {
 		config: AgentJsonConfig,
 		findCredential: FindCredential,
 		credentialProvider: CredentialProvider,
+		scope: AgentValidationScope,
 		issues: AgentConfigValidationIssue[],
 	) {
 		if (!config.credential?.trim()) {
@@ -443,7 +450,9 @@ export class AgentValidationService {
 			issues.push(agentIssue('incompatible_credential', 'credential'));
 		}
 
-		await this.collectAzureDeploymentIssues(config, credentialId, credentialProvider, issues);
+		if (scope === 'publish') {
+			await this.collectAzureEndpointIssues(config, credentialId, credentialProvider, issues);
+		}
 	}
 
 	private async collectVertexModelIssues(
@@ -818,27 +827,32 @@ export class AgentValidationService {
 		}
 	}
 
-	private async collectAzureDeploymentIssues(
+	/**
+	 * Agents accept only Microsoft Foundry credentials for Azure OpenAI. This
+	 * runs on publish only, so agents that already run on a Classic credential
+	 * keep running.
+	 */
+	private async collectAzureEndpointIssues(
 		config: AgentJsonConfig,
 		credentialId: string,
 		credentialProvider: CredentialProvider,
 		issues: AgentConfigValidationIssue[],
 	): Promise<void> {
 		const model = config.model?.trim();
-		const provider = model ? getProviderPrefix(model) : undefined;
-		if (provider !== 'azure-openai' || config.modelDeploymentName?.trim()) return;
+		if (!model || getProviderPrefix(model) !== 'azure-openai') return;
 		let endpointType: unknown;
 		try {
 			const data = await credentialProvider.resolve(credentialId);
 			endpointType = data?.endpointType;
 		} catch {
 			// A credential that can't be resolved here will already be reported
-			// elsewhere; don't let a transient resolve failure block publish
-			// by assuming Classic and requiring a deployment name.
+			// elsewhere; don't let a transient resolve failure block publish.
 			return;
 		}
 		if (endpointType !== 'foundry') {
-			issues.push(agentIssue('missing_required', 'modelDeploymentName'));
+			issues.push(
+				issue('incompatible_credential', 'credential', { kind: 'agent' }, 'azure_classic_endpoint'),
+			);
 		}
 	}
 
