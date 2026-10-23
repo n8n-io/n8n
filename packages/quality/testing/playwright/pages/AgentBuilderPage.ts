@@ -32,6 +32,13 @@ export class AgentBuilderPage extends BasePage {
 		return this.page.locator('[data-testid="agent-builder-editor-column"]');
 	}
 
+	async getConfigurationWidthRatio(): Promise<number> {
+		const layout = await this.getLayout().boundingBox();
+		const configuration = await this.getConfiguration().boundingBox();
+		if (!layout || !configuration) throw new Error('The builder panels are not visible');
+		return configuration.width / layout.width;
+	}
+
 	getModeButton(mode: 'build' | 'test'): Locator {
 		return this.page.locator(`[data-testid="agent-builder-mode-${mode}"]:visible`);
 	}

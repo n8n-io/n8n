@@ -6568,7 +6568,7 @@ describe('chat-first builder', () => {
 		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('inline')).toBe(true);
 		await wrapper.setProps({ builderLayout: { chatWidth: 'wide', testChat: 'dock' } });
 		expect(wrapper.get('[data-testid="agent-builder-container"]').attributes('style')).toContain(
-			'--agent-ai-panel-width: 1000px',
+			'--agent-ai-panel-width: 936px',
 		);
 		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('inline')).toBe(false);
 	});

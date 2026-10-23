@@ -41,8 +41,16 @@ test.describe(
 			await expect(builder.getModeButton('build')).toHaveAttribute('aria-pressed', 'true');
 			await expect(builder.getComposer('build')).toBeVisible();
 			await expect
-				.poll(async () => (await builder.getConfiguration().boundingBox())?.width)
-				.toBe(440);
+				.poll(async () => await builder.getConfigurationWidthRatio())
+				.toBeCloseTo(0.35, 3);
+			for (const width of [1280, 1920, 2560]) {
+				await n8n.page.setViewportSize({ width, height: 900 });
+				await expect
+					.poll(async () => await builder.getConfigurationWidthRatio())
+					.toBeCloseTo(0.35, 3);
+				await n8n.page.screenshot({ path: testInfo.outputPath(`desktop-${width}-build.png`) });
+			}
+			await n8n.page.setViewportSize({ width: 1440, height: 900 });
 			await expect(builder.getBuildAgentAttachment()).toBeVisible();
 			const longPrompt = Array.from({ length: 30 }, (_, index) => `Prompt line ${index + 1}`).join(
 				'\n',
@@ -83,10 +91,20 @@ test.describe(
 					Math.abs(((await builder.getConfiguration().boundingBox())?.width ?? 0) - 600),
 				)
 				.toBeLessThanOrEqual(1);
+			const resizedRatio = await builder.getConfigurationWidthRatio();
+			await n8n.page.setViewportSize({ width: 1920, height: 900 });
+			await expect
+				.poll(async () => await builder.getConfigurationWidthRatio())
+				.toBeCloseTo(resizedRatio, 3);
+			await n8n.page.setViewportSize({ width: 1100, height: 900 });
 			await builder.getChatResizeHandle().dblclick();
 			await expect
 				.poll(async () => (await builder.getConfiguration().boundingBox())?.width)
-				.toBe(440);
+				.toBe(360);
+			await n8n.page.setViewportSize({ width: 1440, height: 900 });
+			await expect
+				.poll(async () => await builder.getConfigurationWidthRatio())
+				.toBeCloseTo(0.35, 3);
 
 			for (const colorScheme of ['light', 'dark'] as const) {
 				await n8n.page.emulateMedia({ colorScheme });
@@ -130,6 +148,9 @@ test.describe(
 			}
 			await n8n.page.setViewportSize({ width: 1440, height: 900 });
 			await expect(builder.getConfiguration()).toBeVisible();
+			await expect
+				.poll(async () => await builder.getConfigurationWidthRatio())
+				.toBeCloseTo(0.35, 3);
 			await expect(builder.getComposer('build')).toHaveValue('Add a project knowledge tool');
 			await expect(builder.getCloseChatButton('build')).toBeHidden();
 		});

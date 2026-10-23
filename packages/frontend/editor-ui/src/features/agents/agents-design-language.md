@@ -51,11 +51,15 @@ Put the grouped Build/Test selector first in the composer toolbar. Use wrench
 and flask icons. Show a purple active state in both themes. Stop the discovery
 pulse after the first message. Disable the pulse for reduced motion.
 
-Start the configuration panel at 440 pixels. Resize it between 360 and 720
-pixels. Keep this width separate from the saved Assistant dock width. Reserve
-320 pixels for chat. Below 680 pixels of available workspace, fill the viewport
-with one panel at a time, above the sidebar. Measure the original workspace to
-keep this layout stable when the sidebar is open. Close either chat to show the
+Start chat at 65% and configuration at 35% of the workspace beside the sidebar.
+Save manual resize choices as a ratio. Keep this preference separate from the
+saved Assistant dock width and the previous fixed configuration width. Keep the
+ratio when the window or sidebar changes size. Double-click the divider to reset
+to 65/35. Reserve at least 360 pixels for configuration and 320 pixels for chat.
+Do not cap configuration at a fixed maximum width. Below 680 pixels of available
+workspace, fill the viewport with one panel at a time, above the sidebar. Measure
+the original workspace to keep this layout stable when the sidebar is open.
+Close either chat to show the
 full-width configuration. Use Chat to reopen the selected mode. Keep both panels
 mounted. Keep the mode selector and composer actions inside the input at narrow
 widths. Show the same preview disclaimer below both composers, including empty

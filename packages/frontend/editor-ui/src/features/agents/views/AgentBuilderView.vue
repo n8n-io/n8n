@@ -143,7 +143,6 @@ import {
 	useAgentBuilderLayout,
 	DEFAULT_AGENT_BUILDER_LAYOUT,
 	AGENT_CONFIG_MIN_WIDTH,
-	AGENT_CONFIG_MAX_WIDTH,
 	type AgentBuilderLayout,
 } from '../composables/useAgentBuilderLayout';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
@@ -3470,14 +3469,7 @@ useKeybindings({
 						:width="renderedSidePanelWidths.ai"
 						:is-resizing-enabled="!compactChatLayout"
 						:grid-size="wideChat ? 1 : 20"
-						:min-width="
-							wideChat
-								? Math.max(
-										AGENT_MIN_PANEL_WIDTH,
-										builderContainerWidth - separatePreviewOffset - AGENT_CONFIG_MAX_WIDTH,
-									)
-								: AGENT_MIN_PANEL_WIDTH
-						"
+						:min-width="AGENT_MIN_PANEL_WIDTH"
 						:max-width="
 							wideChat
 								? Math.max(
