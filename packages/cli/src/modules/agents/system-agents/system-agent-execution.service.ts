@@ -8,7 +8,8 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
+import { sleep } from '@n8n/utils/sleep';
 import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -106,6 +107,15 @@ function runOptionsOf(handle: SystemAgentTurnHandle) {
 		...(handle.onSideCallUsage ? { onSideCallUsage: handle.onSideCallUsage } : {}),
 	};
 }
+
+type SessionRef = Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>;
+
+/**
+ * User deletion stops a running turn first. The turn records its end
+ * asynchronously, so the delete retries a few times before it gives up.
+ */
+const USER_DELETION_DELETE_ATTEMPTS = 5;
+const USER_DELETION_RETRY_DELAY_MS = 1_000;
 
 /**
  * Runs code-defined instance agents on the Agents runtime. A conversation is
@@ -297,14 +307,139 @@ export class SystemAgentExecutionService {
 	/** Delete a thread with its executions, memory and stored files. */
 	async deleteThread(agentId: string, user: User, threadId: string): Promise<void> {
 		const thread = await this.getThread(agentId, user, threadId);
+		await this.deleteOwnedThread(thread, user.id);
+	}
+
+	/**
+	 * Delete every private system agent session of a user, before the user is
+	 * deleted. The owner column is `ON DELETE SET NULL`, so a session that is
+	 * not deleted here stays without an owner and nobody can open it again.
+	 *
+	 * It does not need a registered provider or the Agents feature toggle:
+	 * sessions created while either was on must go too. The child sessions of
+	 * delegated runs go too: they copy the owner of their parent. A running
+	 * turn is stopped first. The deletion is best effort: a session that fails
+	 * is logged and skipped, so it does not block the others or the user
+	 * deletion.
+	 */
+	async deleteThreadsOfUser(userId: string): Promise<void> {
+		let sessions: SessionRef[];
+		try {
+			sessions = await this.threadRepository.findOwnedSystemAgentSessions(userId);
+		} catch (error) {
+			this.logger.warn('Failed to find the system agent sessions of a deleted user', {
+				userId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
+		for (const session of sessions) {
+			let descendants: SessionRef[];
+			try {
+				descendants = await this.findDescendantSessions(session);
+				await this.stopRunningTurn(session, [session, ...descendants], userId);
+			} catch (error) {
+				this.logUserSessionDeletionFailure(userId, session, error);
+				continue;
+			}
+			// Children first, deepest level first: only the parent links to them.
+			for (const thread of [...descendants.reverse(), session]) {
+				try {
+					await this.deleteWithRetry(thread, userId);
+				} catch (error) {
+					this.logUserSessionDeletionFailure(userId, thread, error);
+				}
+			}
+		}
+	}
+
+	private logUserSessionDeletionFailure(userId: string, thread: SessionRef, error: unknown) {
+		this.logger.warn('Failed to delete a system agent session of a deleted user', {
+			userId,
+			agentId: thread.agentId,
+			threadId: thread.id,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+
+	/** Child sessions of delegated runs, level by level. A child stays in the project of its parent. */
+	private async findDescendantSessions(root: SessionRef): Promise<SessionRef[]> {
+		const descendants: SessionRef[] = [];
+		const visited = new Set([root.id]);
+		let level = [root];
+		while (level.length > 0) {
+			const next: SessionRef[] = [];
+			for (const parent of level) {
+				for (const child of await this.threadRepository.findByParentThreadId(
+					parent.id,
+					parent.projectId,
+				)) {
+					if (visited.has(child.id)) continue;
+					visited.add(child.id);
+					next.push({ id: child.id, agentId: child.agentId, projectId: child.projectId });
+				}
+			}
+			descendants.push(...next);
+			level = next;
+		}
+		return descendants;
+	}
+
+	/**
+	 * Cancel the latest turn of the root session when any session of the tree
+	 * runs. The cancel also stops the background jobs of the root session,
+	 * which run the child sessions.
+	 */
+	private async stopRunningTurn(
+		session: SessionRef,
+		tree: SessionRef[],
+		userId: string,
+	): Promise<void> {
+		let running = false;
+		for (const thread of tree) {
+			if (await this.executionRepository.existsRunningByThread(thread.id)) {
+				running = true;
+				break;
+			}
+		}
+		if (!running) return;
+		const latest = await this.executionRepository.findLatestByThreadId(session.id);
+		if (!latest) return;
+		await this.chatExecutionService.requestCancel({
+			projectId: session.projectId,
+			agentId: session.agentId,
+			threadId: session.id,
+			executionId: latest.id,
+			userId,
+			surface: 'system',
+		});
+	}
+
+	/** `deleteThread` refuses a session with a running turn. Wait for the stopped turn to end. */
+	private async deleteWithRetry(session: SessionRef, userId: string): Promise<void> {
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await this.deleteOwnedThread(session, userId);
+				return;
+			} catch (error) {
+				if (!(error instanceof ConflictError) || attempt >= USER_DELETION_DELETE_ATTEMPTS) {
+					throw error;
+				}
+				await sleep(USER_DELETION_RETRY_DELAY_MS);
+			}
+		}
+	}
+
+	/** Delete a session with its sandbox. The caller checks ownership. */
+	private async deleteOwnedThread(thread: SessionRef, userId: string): Promise<void> {
 		const deleted = await this.executionService.deleteThread(
 			thread.projectId,
-			agentId,
+			thread.agentId,
 			thread.id,
-			user.id,
+			userId,
 		);
 		if (!deleted) throw new NotFoundError('Session not found');
-		await this.destroyThreadWorkspace(agentId, thread.id, user.id);
+		await this.destroyThreadWorkspace(thread.agentId, thread.id, userId);
 	}
 
 	/**
