@@ -28,3 +28,57 @@ export function getOptionObjects(node: TSESTree.ObjectExpression): TSESTree.Obje
 			element?.type === TSESTree.AST_NODE_TYPES.ObjectExpression,
 	);
 }
+
+/** The resource values an operation parameter is shown for (`displayOptions.show.resource`). */
+export function getShownResources(node: TSESTree.ObjectExpression): string[] {
+	const displayOptions = findObjectProperty(node, 'displayOptions')?.value;
+	if (displayOptions?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
+		return [];
+	}
+	const show = findObjectProperty(displayOptions, 'show')?.value;
+	if (show?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
+		return [];
+	}
+	const resource = findObjectProperty(show, 'resource')?.value;
+	if (resource?.type !== TSESTree.AST_NODE_TYPES.ArrayExpression) {
+		return [];
+	}
+	return resource.elements
+		.map((element) => getStringLiteralValue(element))
+		.filter((value): value is string => value !== null);
+}
+
+const ARTICLES = new Set(['a', 'an', 'the']);
+
+/**
+ * Lowercase words without plural "s" or articles. Text in brackets is left out.
+ * "directoryContext", "directory_context" and "Directory Contexts" all give
+ * ["directory", "context"].
+ */
+function normalizedWords(text: string): string[] {
+	return text
+		.replace(/\([^)]*\)/g, ' ')
+		.replace(/([\p{Ll}\d])(\p{Lu})/gu, '$1 $2')
+		.split(/[\s_-]+/)
+		.map((word) =>
+			word
+				.replace(/^[^\p{L}\d]+|[^\p{L}\d]+$/gu, '')
+				.toLowerCase()
+				.replace(/s$/, ''),
+		)
+		.filter((word) => word !== '' && !ARTICLES.has(word));
+}
+
+/**
+ * Whether an operation name is only a verb plus the resource ("Get Contact"
+ * for the contact resource) or the resource itself. A name for an object that
+ * is not the resource ("Create Payment Link" for the payment resource) is fine.
+ */
+export function repeatsResource(operationName: string, resource: string): boolean {
+	const name = normalizedWords(operationName);
+	const resourceWords = normalizedWords(resource).join(' ');
+	return (
+		resourceWords !== '' &&
+		(name.join(' ') === resourceWords || name.slice(1).join(' ') === resourceWords)
+	);
+}
