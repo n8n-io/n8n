@@ -7,6 +7,7 @@ function row(resourceId: string, fields: Partial<MemorySourceFacetRow> = {}): Me
 	return {
 		resourceId,
 		integrationType: null,
+		conversationKind: null,
 		channelId: null,
 		channelName: null,
 		teamId: null,
@@ -65,6 +66,14 @@ describe('buildMemorySourceFacetGroups', () => {
 				row('slack:agent-1:W1:channel:C1', { ...slackContext, channelName: '#finance-ops' }),
 				// An older entry whose message has no author or origin.
 				row('integration:slack:U9'),
+				// A direct message is not a channel, but its author is a user.
+				row('slack:agent-1:W1:dm:U2', {
+					integrationType: 'slack',
+					conversationKind: 'dm',
+					channelId: 'D1',
+					authorId: 'U2',
+					authorName: 'Marco',
+				}),
 				row('linear:agent-1:credential-1:T1', {
 					integrationType: 'linear',
 					teamId: 'T1',
@@ -81,7 +90,10 @@ describe('buildMemorySourceFacetGroups', () => {
 		expect(groups).toEqual([
 			{
 				kind: 'slack',
-				users: [{ id: 'U1', name: 'Sin' }],
+				users: [
+					{ id: 'U2', name: 'Marco' },
+					{ id: 'U1', name: 'Sin' },
+				],
 				channels: [{ id: 'C1', name: 'finance-ops' }],
 			},
 			{ kind: 'linear', users: [], teams: [{ id: 'T1', name: 'Platform' }] },

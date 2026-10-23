@@ -137,6 +137,41 @@ describe('AgentMemoryEntriesService', () => {
 			);
 		});
 
+		it('shows the newest source that matches the filter', async () => {
+			const { service, memoryEntryRepository, memory } = makeService();
+			memoryEntryRepository.listActiveByAgent.mockResolvedValue([
+				makeEntry('e1', 'slack:agent-1:W1:channel:C1', '2026-10-01T10:00:00.000Z'),
+			]);
+			memoryEntryRepository.countActiveByAgent.mockResolvedValue(1);
+			const slackSource = (threadId: string, channelId: string, channelName: string) => ({
+				memoryEntryId: 'e1',
+				threadId,
+				author: { id: 'U1', name: 'Sin' },
+				origin: {
+					source: 'slack',
+					integration: {
+						type: 'slack',
+						workspaceId: 'W1',
+						conversationKind: 'channel',
+						channelId,
+						channelName,
+					},
+				},
+			});
+			memory.getEntrySourcesWithMessageContext.mockResolvedValue([
+				slackSource('t1', 'C1', 'general'),
+				slackSource('t2', 'C2', 'random'),
+			] as never);
+
+			const page = await service.list('agent-1', 'project-1', 'viewer-1', {
+				source: 'slack',
+				sourceFacet: 'channel',
+				sourceFacetId: 'C1',
+			});
+
+			expect(page.items[0].source).toMatchObject({ place: '#general' });
+		});
+
 		it('passes the source filter to the list and the count', async () => {
 			const { service, memoryEntryRepository, memory } = makeService();
 			memoryEntryRepository.listActiveByAgent.mockResolvedValue([]);

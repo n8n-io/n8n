@@ -20,7 +20,7 @@ export type MemorySourceMessageField = 'channelId' | 'teamId' | 'authorId';
 export interface MemoryEntrySourceFilter {
 	resourceId?: string;
 	resourceIdPrefix?: string;
-	/** The scope id starts with one of the prefixes, or a source message is from the integration. */
+	/** A source message is from the integration. Without one, the scope id starts with a prefix. */
 	integration?: { type: string; resourceIdPrefixes: string[] };
 	/** A source message of the entry is from the integration and has this value. */
 	sourceMessage?: { integrationType: string; field: MemorySourceMessageField; value: string };
@@ -30,6 +30,7 @@ export interface MemoryEntrySourceFilter {
 export interface MemorySourceFacetRow {
 	resourceId: string;
 	integrationType: string | null;
+	conversationKind: string | null;
 	channelId: string | null;
 	channelName: string | null;
 	teamId: string | null;
@@ -40,6 +41,7 @@ export interface MemorySourceFacetRow {
 
 const MESSAGE_JSON_PATHS = {
 	integrationType: ['origin', 'integration', 'type'],
+	conversationKind: ['origin', 'integration', 'conversationKind'],
 	channelId: ['origin', 'integration', 'channelId'],
 	channelName: ['origin', 'integration', 'channelName'],
 	teamId: ['origin', 'integration', 'teamId'],
@@ -203,7 +205,10 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		if (filter.integration) this.whereFromIntegration(query, agentId, filter.integration);
 		if (filter.sourceMessage) {
 			const { integrationType, field, value } = filter.sourceMessage;
-			const entryIds = this.sourceMessageEntryIds(query, ['integrationType', field]);
+			const entryIds = this.sourceMessageEntryIds(query, [
+				this.messageFieldEquals('integrationType'),
+				this.messageFieldEquals(field),
+			]);
 			query.andWhere(`entry.id IN ${entryIds}`, {
 				sourceAgentId: agentId,
 				integrationType,
@@ -221,21 +226,30 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		const prefixParams = Object.fromEntries(
 			resourceIdPrefixes.map((prefix, index) => [`integrationScope${index}`, `${prefix}%`]),
 		);
-		const conditions = [
-			...Object.keys(prefixParams).map((param) => `entry.resourceId LIKE :${param}`),
-			`entry.id IN ${this.sourceMessageEntryIds(query, ['integrationType'])}`,
-		];
-		query.andWhere(`(${conditions.join(' OR ')})`, {
-			...prefixParams,
-			sourceAgentId: agentId,
-			integrationType: type,
-		});
+		const scopeMatches = Object.keys(prefixParams)
+			.map((param) => `entry.resourceId LIKE :${param}`)
+			.join(' OR ');
+		const fromIntegration = this.sourceMessageEntryIds(query, [
+			this.messageFieldEquals('integrationType'),
+		]);
+		const fromAnyIntegration = this.sourceMessageEntryIds(query, [
+			`${this.messageJsonText('integrationType')} IS NOT NULL`,
+		]);
+		// Like the source line, the message decides first. The scope id only counts without one.
+		query.andWhere(
+			`(entry.id IN ${fromIntegration} OR ((${scopeMatches}) AND entry.id NOT IN ${fromAnyIntegration}))`,
+			{
+				...prefixParams,
+				sourceAgentId: agentId,
+				integrationType: type,
+			},
+		);
 	}
 
-	/** Entries with a source message whose fields equal the parameters of the same name. */
+	/** Entries with a source message that meets every condition. */
 	private sourceMessageEntryIds(
 		query: SelectQueryBuilder<AgentMemoryEntryEntity>,
-		fields: MessageJsonField[],
+		conditions: string[],
 	): string {
 		const entryIds = query
 			.subQuery()
@@ -244,8 +258,13 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 			.innerJoin(AgentMemoryEntryCandidateEntity, 'candidate', 'candidate.id = source.candidateId')
 			.innerJoin(AgentMessageEntity, 'message', 'message.id = candidate.sourceMessageId')
 			.where('source.agentId = :sourceAgentId');
-		for (const field of fields) entryIds.andWhere(`${this.messageJsonText(field)} = :${field}`);
+		for (const condition of conditions) entryIds.andWhere(condition);
 		return entryIds.getQuery();
+	}
+
+	/** Compares a message field with the query parameter of the same name. */
+	private messageFieldEquals(field: MessageJsonField): string {
+		return `${this.messageJsonText(field)} = :${field}`;
 	}
 
 	/** A text field from the `message` JSON columns, for SQLite and Postgres. */
