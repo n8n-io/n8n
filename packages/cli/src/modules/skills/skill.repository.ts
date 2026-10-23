@@ -189,8 +189,8 @@ export class SkillRepository extends BaseRepository<Skill> {
 		const files = await this.manager.find(SkillFile, {
 			where: { skillVersionId: version.id },
 			select: { path: true },
-			order: { path: 'ASC' },
 		});
+		files.sort((left, right) => compareSkillFilePaths(left.path, right.path));
 		return { skill, version, files: files.map(({ path }) => ({ path })) };
 	}
 
