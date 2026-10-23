@@ -118,10 +118,27 @@ function showConnectedServer(connectionId: string | null): void {
 	if (connectionId) activeItemId.value = connectionId;
 }
 
+const isLoadingCredentials = ref(false);
+
+/**
+ * App startup does not wait for credentials, so the store can still be empty.
+ * Block until the first fetch lands, and refresh in the background otherwise.
+ */
+async function loadCredentials() {
+	isLoadingCredentials.value = credentialsStore.allCredentials.length === 0;
+	try {
+		await credentialsStore.fetchAllCredentials();
+	} catch (error) {
+		console.error('Failed to fetch credentials', error);
+	} finally {
+		isLoadingCredentials.value = false;
+	}
+}
+
 if (settingsStore.isMcpAvailable) {
 	void mcpStore.fetchCatalogLazy();
 	void mcpStore.fetchConnectionsLazy();
-	void credentialsStore.fetchAllCredentials();
+	void loadCredentials();
 }
 
 // Clear the state on close so the next open starts
@@ -432,6 +449,7 @@ async function handleConnect(item: ToolConnectionItem) {
 		:detail-mode="detailMode"
 		:hide-back-button="isDirectConnectionOpen"
 		:show-suggestion-footer="true"
+		:loading="isLoadingCredentials"
 		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
 		@credential-dropdown-open="handleCredentialDropdownOpen"
