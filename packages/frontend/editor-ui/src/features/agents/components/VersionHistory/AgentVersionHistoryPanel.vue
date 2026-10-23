@@ -236,7 +236,6 @@ defineExpose({
 	justify-content: space-between;
 	padding: var(--spacing--xs);
 	border-bottom: var(--border);
-	border-color: var(--color--foreground--tint-2);
 	flex-shrink: 0;
 }
 
