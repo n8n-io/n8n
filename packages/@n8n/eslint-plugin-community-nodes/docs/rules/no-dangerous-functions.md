@@ -12,7 +12,13 @@ Community nodes run inside the n8n runtime, often on shared infrastructure. Func
 - **`Function(...)` / `new Function(...)`** — the `Function` constructor is an `eval` equivalent that builds a callable from a string body.
 - **`child_process` process spawners** — `exec`, `execSync`, `execFile`, `execFileSync`, `spawn`, `spawnSync`, and `fork`.
 
-The `child_process` functions are detected only when they originate from the `child_process` / `node:child_process` module (via `import` or `require`), so unrelated methods such as `RegExp.prototype.exec` are not affected.
+The `child_process` functions are detected only when they originate from the `child_process` / `node:child_process` module, so unrelated methods such as `RegExp.prototype.exec` are not affected.
+
+The module counts as the origin however it is reached: a static `import`, a `require`, or an awaited dynamic `import()`, whether it is bound to a name first or used inline. Keys are resolved whenever they are statically knowable, so `cp['exec']` and `const { 'exec': run }` are treated like `cp.exec` and `const { exec }`. Access that can only be resolved by running the code, such as `cp[name]`, is left alone.
+
+Bindings are matched by the variable they declare, resolved through lexical scope, so a parameter or block-scoped binding that happens to reuse a tracked name is left alone — as is a call to a locally declared `require`, which is not the CommonJS loader.
+
+The rule still reasons about syntax rather than values, so it does not follow the module through a callback (`import('child_process').then(cp => cp.exec(...))`) or through later reassignment (`let cp; cp = require('child_process')`), and a binding has to appear before the call that uses it. It is defence in depth for reviewers alongside [`no-restricted-imports`](no-restricted-imports.md), not a sandbox.
 
 This complements [`no-restricted-imports`](no-restricted-imports.md) (which blocks the `child_process` module entirely on n8n Cloud) and [`no-restricted-globals`](no-restricted-globals.md), providing a clear, specific error and defense-in-depth that also applies when the import restrictions are relaxed.
 
@@ -28,6 +34,18 @@ eval(userProvidedCode);
 const compiled = new Function('return ' + expression);
 
 exec(`rm -rf ${userInput}`);
+```
+
+The same calls are still reported when the module is never bound to a name, or
+when it arrives through a dynamic import:
+
+```typescript
+require('child_process').exec(`rm -rf ${userInput}`);
+
+async function run() {
+	const { spawn } = await import('node:child_process');
+	spawn('sh', ['-c', userInput]);
+}
 ```
 
 ### ✅ Correct
