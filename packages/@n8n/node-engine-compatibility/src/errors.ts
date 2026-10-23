@@ -102,6 +102,28 @@ export class UnsupportedWaitError extends UserError {
 	}
 }
 
+export class InlineSubWorkflowError extends UserError {
+	constructor(nodeName: string) {
+		super(
+			`Node "${nodeName}" calls a sub-workflow that is not stored in the database. Engine v2 runs sub-workflows from the database only.`,
+		);
+	}
+}
+
+export class RepeatedSubWorkflowCallError extends UserError {
+	constructor(nodeName: string) {
+		super(
+			`Node "${nodeName}" calls a sub-workflow more than once. Engine v2 runs one sub-workflow for each run of a node: use "Run once for all items", or Loop Over Items.`,
+		);
+	}
+}
+
+export class SubWorkflowsNotSupportedError extends UserError {
+	constructor(nodeName: string) {
+		super(`Node "${nodeName}" calls a sub-workflow. This host cannot run sub-workflows.`);
+	}
+}
+
 /** The node asked to wait until a value that is not a date, so no deadline can be declared. */
 export class InvalidWaitDateError extends UserError {
 	constructor(nodeName: string) {

@@ -56,6 +56,32 @@ function workflow(overrides: Partial<IWorkflowBase>): IWorkflowBase {
 // XX       the node is disabled
 // (back)   the loop-return edge expected to be marked `isBackEdge`
 describe('V1WorkflowConverter', () => {
+	it('emits the nodes in canvas order, top to bottom and then left to right', () => {
+		const graph = converter.convert(
+			workflow({
+				nodes: [
+					manualTrigger,
+					{ ...node('c-uuid', 'C'), position: [100, 200] },
+					{ ...node('b-uuid', 'B'), position: [300, 100] },
+					{ ...node('a-uuid', 'A'), position: [0, 100] },
+				],
+				connections: {
+					[manualTrigger.name]: {
+						main: [
+							[
+								{ node: 'A', type: 'main', index: 0 },
+								{ node: 'B', type: 'main', index: 0 },
+								{ node: 'C', type: 'main', index: 0 },
+							],
+						],
+					},
+				},
+			}),
+		);
+
+		expect(graph.nodes.map(({ name }) => name)).toEqual([manualTrigger.name, 'A', 'B', 'C']);
+	});
+
 	describe('trigger nodes', () => {
 		const trigger = (id: string, name: string, type: string, extra: Partial<INode> = {}): INode =>
 			node(id, name, { type, ...extra });

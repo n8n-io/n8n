@@ -24,6 +24,7 @@ import { NodeTypes } from '@/node-types';
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneClient } from './engine-control-plane-client';
 import { EngineCredentialsClient } from './engine-credentials-client';
+import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 
 /**
@@ -55,6 +56,7 @@ export class EngineV2Runtime {
 		private readonly logger: Logger,
 		private readonly controlPlaneClient: EngineControlPlaneClient,
 		private readonly credentialsClient: EngineCredentialsClient,
+		private readonly subWorkflowClient: EngineSubWorkflowClient,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
@@ -122,6 +124,8 @@ export class EngineV2Runtime {
 					nodeTypes: this.nodeTypes,
 					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
 					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+					resolveSubWorkflow: async (request) =>
+						await this.subWorkflowClient.resolve(request, stopping.signal),
 				}),
 			}),
 		});
