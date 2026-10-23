@@ -70,6 +70,7 @@ const environment = (direction: 'promote' | 'apply') =>
 		id: `environment-${direction}`,
 		scope: 'instance',
 		direction,
+		name: direction === 'promote' ? 'Production' : 'Development',
 		remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
 	}) as unknown as settingsApi.PromotionEnvironmentSummary;
 
@@ -159,6 +160,84 @@ const answerWorkflowDetails = () =>
 		}));
 
 describe('PromotionPreviewView', () => {
+	it.each(['promote', 'apply'] as const)(
+		'shows the selected change count and omits zero for %s',
+		async (direction) => {
+			vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment(direction)]);
+			const preview = billingPreview();
+			vi.mocked(api.getPromotionPreview).mockResolvedValue({
+				...preview,
+				resources: preview.resources.filter(({ key }) =>
+					['workflow:w1', 'workflow:w3'].includes(key),
+				),
+				dependencies: [],
+			});
+			const { getByTestId, getAllByTestId } = await render(
+				`/projects/p1/promotions/${direction}`,
+				direction,
+			);
+			const action = direction === 'promote' ? 'Promote' : 'Apply';
+			const submit = getByTestId('promotion-preview-submit');
+			expect(submit).toHaveTextContent(`${action} 2 changes`);
+			expect(submit).toBeEnabled();
+
+			await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+			expect(submit).toHaveTextContent(`${action} 1 change`);
+			expect(submit).toBeEnabled();
+
+			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
+			expect(submit).toHaveTextContent(`${action} changes`);
+			expect(submit).toBeDisabled();
+		},
+	);
+
+	it('omits the count and disables Apply when a refresh blocks every selected workflow', async () => {
+		vi.mocked(api.getApplyBlockers)
+			.mockResolvedValueOnce(check())
+			.mockResolvedValue(
+				check({ missingBindings: [{ ...variable, consumers: consumers('w1', 'w2', 'w3', 'w4') }] }),
+			);
+		const { getByTestId } = await renderApply();
+		expect(getByTestId('promotion-preview-submit')).toBeEnabled();
+
+		await userEvent.click(getByTestId('promotion-preview-refresh'));
+		await waitAllPromises();
+
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Apply changes$/);
+		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+	});
+
+	it.each([
+		{
+			direction: 'promote',
+			project: 'Engineering',
+			environmentName: 'Staging',
+			title: 'Promote Engineering changes to Staging',
+		},
+		{
+			direction: 'apply',
+			project: 'Engineering',
+			environmentName: 'QA',
+			title: 'Apply Engineering changes from QA',
+		},
+	] as const)(
+		'shows the project and environment in the $direction heading',
+		async ({ direction, project, environmentName, title }) => {
+			vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([
+				{ ...environment(direction), name: environmentName },
+			]);
+			const preview = billingPreview();
+			vi.mocked(api.getPromotionPreview).mockResolvedValue({
+				...preview,
+				resources: preview.resources.map((resource) =>
+					resource.key === 'project:p1' ? { ...resource, name: project } : resource,
+				),
+			});
+			const { getByRole } = await render(`/projects/p1/promotions/${direction}`, direction);
+			expect(getByRole('heading', { level: 1, name: title })).toBeVisible();
+		},
+	);
+
 	beforeEach(() => {
 		invalidateInstancePromotionConnection();
 		Element.prototype.scrollIntoView = vi.fn();
@@ -305,26 +384,49 @@ describe('PromotionPreviewView', () => {
 	it.each([
 		{
 			name: 'the preview',
+			direction: 'promote',
+			fail: () => vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline')),
+			heading: "Couldn't load the changes",
+		},
+		{
+			name: 'the preview',
+			direction: 'apply',
 			fail: () => vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline')),
 			heading: "Couldn't load the changes",
 		},
 		{
 			name: 'the instance connection',
+			direction: 'promote',
 			fail: () =>
 				vi
 					.mocked(settingsApi.fetchPromotionEnvironments)
 					.mockRejectedValueOnce(new Error('offline')),
 			heading: "Couldn't check the instance connection",
 		},
-	])('should offer a retry when $name fails to load', async ({ fail, heading }) => {
-		fail();
+	] as const)(
+		'should hide unknown counts and retry when $name fails to load for $direction',
+		async ({ direction, fail, heading }) => {
+			vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment(direction)]);
+			fail();
+			const { getByTestId, getByRole } = await render(
+				`/projects/p1/promotions/${direction}`,
+				direction,
+			);
+			const action = direction === 'promote' ? 'Promote' : 'Apply';
+			const tabs = getByTestId('promotion-preview-tabs');
+			const submit = getByTestId('promotion-preview-submit');
+			expect(getByTestId('promotion-preview-error')).toHaveTextContent(heading);
+			expect(tabs).toHaveTextContent(/^Changes$/);
+			expect(submit).toHaveTextContent(new RegExp(`^${action} changes$`));
+			expect(submit).toBeDisabled();
 
-		const { getByTestId, getByRole } = await render();
-		expect(getByTestId('promotion-preview-error')).toHaveTextContent(heading);
-
-		await userEvent.click(getByRole('button', { name: 'Try again' }));
-		await waitFor(() => expect(getByTestId('promotion-preview-tree')).toBeInTheDocument());
-	});
+			await userEvent.click(getByRole('button', { name: 'Try again' }));
+			await waitFor(() => expect(submit).toBeEnabled());
+			expect(getByTestId('promotion-preview-tree')).toBeInTheDocument();
+			expect(tabs).toHaveTextContent(/Changes\s*5/);
+			expect(submit).toHaveTextContent(`${action} 5 changes`);
+		},
+	);
 
 	it('should keep the changes and warn when a refresh fails', async () => {
 		const { getByTestId, getByText } = await render();
@@ -341,6 +443,7 @@ describe('PromotionPreviewView', () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValueOnce(billingPreview({ resources: [] }));
 		const { getByTestId } = await render();
 		expect(getByTestId('promotion-preview-empty')).toHaveTextContent('Nothing to promote');
+		expect(getByTestId('promotion-preview-tabs')).toHaveTextContent(/Changes\s*0/);
 		vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline'));
 
 		await userEvent.click(getByTestId('promotion-preview-refresh'));
@@ -348,6 +451,7 @@ describe('PromotionPreviewView', () => {
 
 		// "Nothing to promote" could be out of date, so the page asks for a retry.
 		expect(getByTestId('promotion-preview-error')).toHaveTextContent("Couldn't load the changes");
+		expect(getByTestId('promotion-preview-tabs')).toHaveTextContent(/^Changes$/);
 	});
 
 	it('should promote the selection to a branch that has no commit yet, then go back to the project', async () => {
@@ -421,6 +525,8 @@ describe('PromotionPreviewView', () => {
 		const blocked = treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox');
 		expect(blocked).not.toBeChecked();
 		expect(blocked).toBeDisabled();
+		// The blocked workflow also excludes its required variable from the selection.
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent('Apply 3 changes');
 
 		await userEvent.click(getByTestId('promotion-preview-submit'));
 		await userEvent.click(getByTestId('promotion-preview-submit'));
@@ -451,11 +557,9 @@ describe('PromotionPreviewView', () => {
 
 		const { getAllByTestId, getByTestId } = await renderApply();
 		const submit = getByTestId('promotion-preview-submit');
-		expect(submit).toHaveTextContent('Apply data table changes');
 
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox'));
-		expect(submit).toHaveTextContent(/^Apply \d+ changes?$/);
 		await userEvent.click(submit);
 
 		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {

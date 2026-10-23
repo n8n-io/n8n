@@ -25,7 +25,12 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 const renderComponent = createComponentRenderer(ApplyInstanceDialog, {
-	props: { open: true, environmentId: 'environment-1', branchName: 'main' },
+	props: {
+		open: true,
+		environmentId: 'environment-1',
+		environmentName: 'Development',
+		branchName: 'main',
+	},
 });
 
 describe('ApplyInstanceDialog', () => {
@@ -61,7 +66,10 @@ describe('ApplyInstanceDialog', () => {
 				},
 			},
 		});
-		const { findByTestId, emitted } = renderComponent();
+		const { findByTestId, findByRole, emitted } = renderComponent({
+			props: { environmentName: 'Staging' },
+		});
+		expect(await findByRole('heading', { name: 'Apply changes from Staging' })).toBeVisible();
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 

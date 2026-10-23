@@ -6,7 +6,7 @@ import { isBlocking, type Blocker } from '../promotionOperation';
 /** Apply keeps these resources as they are on the instance. It does not create them. */
 const KEPT_BY_APPLY = new Set<PromotionResource['type']>(['credential', 'variable']);
 
-/** The labels that the tree rows and the change cards share, so both say the same. */
+/** Labels for change details and blockers in the promotion preview. */
 export function usePromotionPreviewLabels() {
 	const i18n = useI18n();
 

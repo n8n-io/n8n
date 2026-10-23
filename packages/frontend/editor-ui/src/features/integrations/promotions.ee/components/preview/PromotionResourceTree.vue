@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
+import type { PromotionResource } from '@n8n/api-types';
 import { N8nButton, N8nCheckbox, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -30,7 +30,6 @@ const props = withDefaults(
 		/** Blocked workflows, which users cannot add. */
 		disabled: DisabledKeys;
 		locked: boolean;
-		direction: PromotionDirection;
 		blockers: BlockerIndex;
 		/** False for a list that users only read, such as a review. Rows then only open their card. */
 		selectable?: boolean;
@@ -48,16 +47,15 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
+const { blockerMessage } = usePromotionPreviewLabels();
 
 function markers(resource: PromotionResource) {
 	const blockers = blockersOf(props.blockers, resource);
 	const blocked = blockerMessage(resource, blockers);
-	// A variable warning replaces the change label, as the variable itself does not change.
 	const meta =
 		resource.type !== 'workflow' && blockers?.some(({ kind }) => kind === 'warning')
 			? i18n.baseText('promotions.preview.marker.warning')
-			: changeLabel(resource, props.direction);
+			: undefined;
 	return { blocked, meta: blocked ? undefined : meta };
 }
 

@@ -21,6 +21,7 @@ import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 const props = defineProps<{
 	open: boolean;
 	environmentId: string;
+	environmentName: string;
 	branchName: string;
 }>();
 
@@ -167,7 +168,11 @@ function onBindingsOpenChange(open: boolean) {
 	>
 		<N8nDialogHeader>
 			<N8nDialogTitle>
-				{{ i18n.baseText('settings.promotions.apply.dialog.title') }}
+				{{
+					i18n.baseText('settings.promotions.apply.dialog.title', {
+						interpolate: { environment: environmentName },
+					})
+				}}
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 
