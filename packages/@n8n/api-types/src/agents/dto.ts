@@ -18,7 +18,7 @@ import {
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import {
-	AGENT_MEMORY_ENTRY_SOURCE_KINDS,
+	AGENT_MEMORY_FILTER_SOURCES,
 	AGENT_MEMORY_SOURCE_FACETS,
 	N8N_CHAT_INTEGRATION_TYPE,
 } from './types';
@@ -133,7 +133,7 @@ export type AgentSessionQueryFilters = Pick<
 export class ListAgentMemoryEntriesQueryDto extends Z.class({
 	cursor: z.string().min(1).optional(),
 	limit: z.string().optional(),
-	source: z.enum(AGENT_MEMORY_ENTRY_SOURCE_KINDS).optional(),
+	source: z.enum(AGENT_MEMORY_FILTER_SOURCES).optional(),
 	/** Narrows `source` to one user, channel or team. Requires `source` and `sourceFacetId`. */
 	sourceFacet: z.enum(AGENT_MEMORY_SOURCE_FACETS).optional(),
 	sourceFacetId: z.string().min(1).max(255).optional(),

@@ -18,8 +18,10 @@ export type MemorySourceMessageField = 'channelId' | 'teamId' | 'authorId';
 
 /** Narrows active entries to one source. Every set part must match. */
 export interface MemoryEntrySourceFilter {
-	resourceId?: string;
-	resourceIdPrefix?: string;
+	/** The scope id is one of these. */
+	resourceIds?: string[];
+	/** The scope id starts with one of these. */
+	resourceIdPrefixes?: string[];
 	/** A source message is from the integration. Without one, the scope id starts with a prefix. */
 	integration?: { type: string; resourceIdPrefixes: string[] };
 	/** A source message of the entry is from the integration and has this value. */
@@ -194,13 +196,15 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		const query = this.createQueryBuilder('entry')
 			.where('entry.agentId = :agentId', { agentId })
 			.andWhere('entry.status = :status', { status: 'active' });
-		if (filter.resourceId !== undefined) {
-			query.andWhere('entry.resourceId = :resourceId', { resourceId: filter.resourceId });
+		if (filter.resourceIds) {
+			query.andWhere('entry.resourceId IN (:...resourceIds)', { resourceIds: filter.resourceIds });
 		}
-		if (filter.resourceIdPrefix !== undefined) {
-			query.andWhere('entry.resourceId LIKE :resourceIdPattern', {
-				resourceIdPattern: `${filter.resourceIdPrefix}%`,
-			});
+		if (filter.resourceIdPrefixes) {
+			const patterns = Object.fromEntries(
+				filter.resourceIdPrefixes.map((prefix, index) => [`scopePrefix${index}`, `${prefix}%`]),
+			);
+			const conditions = Object.keys(patterns).map((param) => `entry.resourceId LIKE :${param}`);
+			query.andWhere(`(${conditions.join(' OR ')})`, patterns);
 		}
 		if (filter.integration) this.whereFromIntegration(query, agentId, filter.integration);
 		if (filter.sourceMessage) {

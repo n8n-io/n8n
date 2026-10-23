@@ -25,10 +25,14 @@ describe('toMemoryEntrySourceFilter', () => {
 			{ source: 'slack' },
 			{ integration: { type: 'slack', resourceIdPrefixes: ['integration:slack:', 'slack:'] } },
 		],
-		[{ source: 'preview' }, { resourceIdPrefix: 'draft-chat:' }],
+		[{ source: 'users' }, { resourceIdPrefixes: ['draft-chat:', 'n8n-chat-production:'] }],
+		[
+			{ source: 'users', sourceFacet: 'user', sourceFacetId: 'u1' },
+			{ resourceIds: ['draft-chat:u1', 'n8n-chat-production:u1'] },
+		],
 		[
 			{ source: 'build', sourceFacet: 'user', sourceFacetId: 'u1' },
-			{ resourceId: 'system-chat:u1' },
+			{ resourceIds: ['system-chat:u1'] },
 		],
 		[
 			{ source: 'linear', sourceFacet: 'team', sourceFacetId: 'T1' },
@@ -46,14 +50,14 @@ describe('toMemoryEntrySourceFilter', () => {
 		{ sourceFacet: 'user', sourceFacetId: 'u1' },
 		{ source: 'slack', sourceFacet: 'channel' },
 		{ source: 'slack', sourceFacet: 'team', sourceFacetId: 'T1' },
-		{ source: 'preview', sourceFacet: 'channel', sourceFacetId: 'C1' },
+		{ source: 'users', sourceFacet: 'channel', sourceFacetId: 'C1' },
 	] as const)('rejects %j', (selection) => {
 		expect(() => toMemoryEntrySourceFilter(selection)).toThrow(BadRequestError);
 	});
 });
 
 describe('buildMemorySourceFacetGroups', () => {
-	it('groups integration authors and places by scope format, and chat owners', () => {
+	it('groups integration authors and places by scope format, and chat users across surfaces', () => {
 		const slackContext = {
 			integrationType: 'slack',
 			channelId: 'C1',
@@ -80,7 +84,10 @@ describe('buildMemorySourceFacetGroups', () => {
 					teamName: 'Platform',
 				}),
 				row('draft-chat:viewer-1'),
+				// The same person in n8n Chat is one user.
+				row('n8n-chat-production:viewer-1'),
 				row('n8n-chat-production:other'),
+				row('system-chat:viewer-1'),
 				row('task:run-1'),
 			],
 			new Map([['viewer-1', 'Robin B']]),
@@ -97,8 +104,11 @@ describe('buildMemorySourceFacetGroups', () => {
 				channels: [{ id: 'C1', name: 'finance-ops' }],
 			},
 			{ kind: 'linear', users: [], teams: [{ id: 'T1', name: 'Platform' }] },
-			{ kind: 'preview', users: [{ id: 'viewer-1', name: 'Robin B', isViewer: true }] },
-			{ kind: 'n8n-chat', users: [{ id: 'other' }] },
+			{
+				kind: 'users',
+				users: [{ id: 'other' }, { id: 'viewer-1', name: 'Robin B', isViewer: true }],
+			},
+			{ kind: 'build', users: [{ id: 'viewer-1', name: 'Robin B', isViewer: true }] },
 		]);
 	});
 });

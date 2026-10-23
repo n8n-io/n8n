@@ -93,6 +93,7 @@ function toFacetItems(
 	group: AgentMemorySourceFacetGroupDto,
 	facet: AgentMemorySourceFacet,
 	items: AgentMemorySourceFacetItemDto[],
+	withHeader: boolean,
 ): MenuItem[] {
 	const header: MenuItem = {
 		id: `${group.kind}-${facet}-header`,
@@ -100,7 +101,7 @@ function toFacetItems(
 		header: true,
 	};
 	return [
-		header,
+		...(withHeader ? [header] : []),
 		...items.map((item) => {
 			const id = selectionId({ source: group.kind, sourceFacet: facet, sourceFacetId: item.id });
 			return { id, label: facetLabel(facet, item), checked: id === currentId.value };
@@ -108,16 +109,25 @@ function toFacetItems(
 	];
 }
 
+function allLabel(group: AgentMemorySourceFacetGroupDto): string {
+	if (group.kind === 'users') {
+		return i18n.baseText('agents.builder.memory.entries.filter.allUsers' as BaseTextKey);
+	}
+	return i18n.baseText('agents.builder.memory.entries.filter.allFrom' as BaseTextKey, {
+		interpolate: { source: groupLabel(group) },
+	});
+}
+
 function toGroupItem(group: AgentMemorySourceFacetGroupDto): MenuItem {
 	const allId = selectionId({ source: group.kind });
-	const facetItems = facetSections(group).flatMap(([facet, items]) =>
-		toFacetItems(group, facet, items),
+	const sections = facetSections(group);
+	// A header only helps to tell sections apart.
+	const facetItems = sections.flatMap(([facet, items]) =>
+		toFacetItems(group, facet, items, sections.length > 1),
 	);
 	const allItem: MenuItem = {
 		id: allId,
-		label: i18n.baseText('agents.builder.memory.entries.filter.allFrom' as BaseTextKey, {
-			interpolate: { source: groupLabel(group) },
-		}),
+		label: allLabel(group),
 		checked: allId === currentId.value,
 	};
 	return {
