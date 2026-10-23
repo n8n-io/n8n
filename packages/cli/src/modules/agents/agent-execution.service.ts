@@ -1212,7 +1212,8 @@ export class AgentExecutionService {
 	 * Apply a side-call model cost (title generation, observation-log
 	 * observer/reflector, episodic-memory model calls) onto its execution row
 	 * and thread totals. The SDK prices the call and sends `{ task, model,
-	 * usage, cost, reportId }`; the host only adds `cost`. Best-effort: a
+	 * usage, cost, reportId }`; the host only adds `cost`. A report without
+	 * `cost` (the model has no pricing) changes nothing. Best-effort: a
 	 * failure logs a warning and never breaks the run.
 	 *
 	 * Both totals are updated in one transaction. Concurrent deliveries of the
@@ -1227,14 +1228,16 @@ export class AgentExecutionService {
 	async recordSideCallUsage(
 		executionId: string,
 		threadId: string,
-		report: { task: string; model?: string; cost: number; reportId: string },
+		report: { task: string; model?: string; cost?: number; reportId: string },
 	): Promise<void> {
+		const { cost } = report;
+		if (cost === undefined) return;
 		// Register the in-flight promise synchronously (before any await) so a
 		// concurrent delivery observes it and waits on the same attempt rather
 		// than starting a second transaction that would double-count.
 		let attempt = this.sideCallReportInFlight.get(report.reportId);
 		if (attempt === undefined) {
-			const created = this.applySideCallUsage(executionId, threadId, report);
+			const created = this.applySideCallUsage(executionId, threadId, { ...report, cost });
 			attempt = created;
 			this.sideCallReportInFlight.set(report.reportId, created);
 			let bucket = this.sideCallUsageInFlightByExecution.get(executionId);

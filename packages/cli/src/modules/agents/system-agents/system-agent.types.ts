@@ -88,11 +88,12 @@ export interface SystemAgentTurnHandle {
 	 * generation, the observation-log observer and reflector, and episodic
 	 * memory. The report has the model, the token usage, the cost and a
 	 * `reportId` that is stable for the call, so a provider can bill it once.
-	 * The runtime sends no report for a call without usage, or when it cannot
-	 * get a cost: the catalog is unavailable or the model has no pricing. Do
-	 * not use this callback as a complete count of model calls.
-	 * The host still adds the cost to the execution. A failing callback only
-	 * logs a warning.
+	 * `cost` is absent when the catalog is unavailable or the model has no
+	 * pricing, so bill from `usage`. The runtime sends no report for a call
+	 * that returns no usage.
+	 * The host still adds the cost to the execution. The runtime awaits the
+	 * callback, so a slow callback delays title generation. A failing callback
+	 * only logs a warning and does not stop the turn.
 	 */
 	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
 	/**
