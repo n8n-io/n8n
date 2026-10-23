@@ -1,6 +1,7 @@
 import type {
 	AssistantSkillContext,
 	AssistantSkillContent,
+	AssistantSkillFileContent,
 	AssistantSkillProvider,
 	AssistantSkillSummary,
 } from '@n8n/backend-services';
@@ -32,5 +33,15 @@ export class HubAssistantSkillProvider implements AssistantSkillProvider {
 	): Promise<AssistantSkillContent | null> {
 		if (!(await this.rollout.isEnabled())) return null;
 		return await this.skillService.readForAssistant(context, skillId, versionId);
+	}
+
+	async readFile(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null> {
+		if (!(await this.rollout.isEnabled())) return null;
+		return await this.skillService.readFileForAssistant(context, skillId, versionId, path);
 	}
 }

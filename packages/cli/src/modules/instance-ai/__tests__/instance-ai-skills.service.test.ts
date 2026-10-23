@@ -131,7 +131,7 @@ describe('Assistant Hub provider boundary', () => {
 			result.source.registry.skills.some(({ metadata }) => metadata?.hubSkillId === 'skill-1'),
 		).toBe(true);
 		expect(provider.listSkills).toHaveBeenCalledWith(context);
-		expect(result.prepareWorkspace).toBeDefined();
+		expect(result).not.toHaveProperty('prepareWorkspace');
 	});
 
 	it('supplies no Hub skills without a registered provider', async () => {
@@ -140,7 +140,7 @@ describe('Assistant Hub provider boundary', () => {
 		expect(await service.readHubSkill(context, 'unknown')).toBeNull();
 		const run = await service.loadSkills(openScope, context);
 		expect(run.source.registry.skills.length).toBeGreaterThan(0);
-		expect(run.prepareWorkspace).toBeUndefined();
+		expect(run).not.toHaveProperty('prepareWorkspace');
 		expect(run.availabilityNotice).toBeUndefined();
 	});
 });

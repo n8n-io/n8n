@@ -19,10 +19,17 @@ export interface AssistantSkillSummary {
 export interface AssistantSkillContent extends AssistantSkillSummary {
 	instructions: string;
 	frontmatter: Record<string, unknown> | null;
-	files: Array<{ path: string; content: string }>;
+	files: Array<{ path: string }>;
 }
 
-/** Both operations enforce current availability, user permissions, and session scope. */
+export interface AssistantSkillFileContent {
+	skillId: string;
+	versionId: string;
+	path: string;
+	content: string;
+}
+
+/** All reads enforce current availability, user permissions, and session scope. */
 export interface AssistantSkillProvider {
 	isEnabled(): Promise<boolean>;
 	listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]>;
@@ -32,6 +39,12 @@ export interface AssistantSkillProvider {
 		skillId: string,
 		versionId?: string,
 	): Promise<AssistantSkillContent | null>;
+	readFile(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null>;
 }
 
 /** Keeps the Assistant available when the Hub module is absent. */
@@ -57,5 +70,14 @@ export class AssistantSkillProviderProxy implements AssistantSkillProvider {
 		versionId?: string,
 	): Promise<AssistantSkillContent | null> {
 		return (await this.provider?.readSkill(context, skillId, versionId)) ?? null;
+	}
+
+	async readFile(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null> {
+		return (await this.provider?.readFile(context, skillId, versionId, path)) ?? null;
 	}
 }

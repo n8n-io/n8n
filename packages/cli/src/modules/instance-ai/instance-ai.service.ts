@@ -2966,9 +2966,7 @@ export class InstanceAiService {
 				): Promise<Workspace | undefined> => {
 					if (!workspace) return undefined;
 					const root = await getWorkspaceRoot(workspace);
-					const scoped = createScopedWorkspace(workspace, root);
-					await skills.prepareWorkspace?.(scoped);
-					return scoped;
+					return createScopedWorkspace(workspace, root);
 				};
 
 				runtimeWorkspace = createLazyRuntimeWorkspace({

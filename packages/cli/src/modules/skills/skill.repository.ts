@@ -156,17 +156,45 @@ export class SkillRepository extends BaseRepository<Skill> {
 			.getRawMany<AssistantSkillSummary>();
 	}
 
+	/** Reads instructions and reference names without reference bodies. */
 	async findAssistantSkill(
 		skillId: string,
 		projectId: string | null,
 		versionId?: string,
-	): Promise<ResolvedSkillRow | null> {
+	): Promise<{ skill: Skill; version: SkillVersion; files: Array<{ path: string }> } | null> {
 		const version = await assistantVersionsQuery(this.manager, projectId, versionId)
 			.andWhere('skill.id = :skillId', { skillId })
 			.getOne();
 		if (!version) return null;
-		const [row] = await this.resolve([version], {});
-		return row ?? null;
+		const skill = await this.findOneBy({ id: skillId });
+		if (!skill) return null;
+		const files = await this.manager.find(SkillFile, {
+			where: { skillVersionId: version.id },
+			select: { path: true },
+			order: { path: 'ASC' },
+		});
+		return { skill, version, files: files.map(({ path }) => ({ path })) };
+	}
+
+	async findAssistantSkillFile(
+		skillId: string,
+		projectId: string | null,
+		versionId: string,
+		path: string,
+	): Promise<{ skill: Skill; file: SkillFile } | null> {
+		const file = await this.manager
+			.createQueryBuilder(SkillFile, 'file')
+			.innerJoin(SkillVersion, 'version', 'version.id = file.skillVersionId')
+			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
+			.where('version.id = :versionId AND skill.id = :skillId', { versionId, skillId })
+			.andWhere('file.path = :path', { path })
+			.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
+			.andWhere('skill.agentId IS NULL')
+			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
+			.getOne();
+		if (!file) return null;
+		const skill = await this.findOneBy({ id: skillId });
+		return skill ? { skill, file } : null;
 	}
 
 	async setAssistantAvailability(

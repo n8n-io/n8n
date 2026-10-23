@@ -197,7 +197,9 @@ async function loadSkill(
 				skillId: skillEntry.id,
 				name: skillEntry.name,
 				filePath: linkedFilePath,
-				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
+				error:
+					source.getLoadError?.(skillEntry.id) ??
+					`File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
