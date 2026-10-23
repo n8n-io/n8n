@@ -1,0 +1,36 @@
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_71fde24149b9db::t_87a1bc0064b65c 63
+packages/cli/src/modules/otel/README.md
+  s_71fde24149b9db::t_87a1bc0064b65c 4,17-66,71-75,143
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_71fde24149b9db::t_87a1bc0064b65c 3-4,8,17-18,179,192-194,199,204,209,212-229,233-235,255-274,282,300,449,468,476-477,483,486-487,490,495,497,501,514,523,528,530,535,541,548,551,553,555,558,561,563-566,568-569,574,592
+  s_71fde24149b9db::t_274f1b7844d49f 208,210-211,557
+packages/cli/src/public-api/v1/controllers/otel.public.controller.ts
+  s_71fde24149b9db::t_87a1bc0064b65c 87
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_71fde24149b9db::t_87a1bc0064b65c 1392,1394,1398
+packages/cli/src/modules/otel/otel.service.ts
+  s_71fde24149b9db::t_87a1bc0064b65c 5-8,10,18,25,27,30-35,44,51,55,58,60-66,70,75,105-107,125-126,128,130,132,134-135,138-146,152,154-157,159-165,169-170,175
+  s_71fde24149b9db::t_274f1b7844d49f 148,150-151,158
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  s_71fde24149b9db::t_87a1bc0064b65c 67
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_71fde24149b9db::t_87a1bc0064b65c 1-3,5-8,13-15,20,23-32,35,38-39,42-44,58,73-75,78-79,82,92-94,96-98,102-110,116,125-129,132-133,135,137-143,145,147-148,150,152-160,162-178,180-183,185-193,195-197,199-206,208-209,211-213,215,217-219,221-222,224-229,231-245
+  s_71fde24149b9db::t_274f1b7844d49f 214,220,230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9e82e52f67953031cf18a9485bcafabcc10d9133",
+  "prompts": {},
+  "sessions": {
+    "s_71fde24149b9db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f71bd56d-a432-4323-a999-6a6b83977c41",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
