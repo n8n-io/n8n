@@ -159,7 +159,7 @@ export class AppBuildService {
 					versionId,
 					attempt: attempt.attemptNumber,
 					stage: failure.stage,
-					error: failure.message,
+					error,
 					log: failure.log,
 				});
 				if (
@@ -223,18 +223,14 @@ export class AppBuildService {
 					: 'Instance shutdown interrupted the app build. Retry the build.',
 			);
 		if (error instanceof AppBuildError) return error;
-		const retryable = !(
+		const message =
 			error instanceof BadRequestError ||
 			error instanceof ConflictError ||
 			error instanceof ForbiddenError ||
 			error instanceof NotFoundError
-		);
-		return new AppBuildError(
-			stage,
-			error instanceof Error ? error.message : 'The app build failed. Retry the build.',
-			'',
-			retryable,
-		);
+				? error.message
+				: 'The app build failed. Retry the build or contact your instance administrator.';
+		return new AppBuildError(stage, message);
 	}
 
 	private response(version: AppVersion): AppBuildResponse {

@@ -107,9 +107,8 @@ describe('AppBuildService', () => {
 	it('reports failed background builds through status and logs their errors', async () => {
 		const { service, workspaces, version, logger } = setup();
 		version.buildStatus = 'failed';
-		workspaces.build.mockRejectedValueOnce(
-			new AppBuildError('build', 'Compilation failed.', 'Build output'),
-		);
+		const error = new AppBuildError('build', 'Compilation failed.', 'Build output');
+		workspaces.build.mockRejectedValueOnce(error);
 
 		await service.startBuild('project', 'app', 'version', true);
 		await vi.waitFor(async () => {
@@ -125,7 +124,7 @@ describe('AppBuildService', () => {
 			versionId: 'version',
 			attempt: 1,
 			stage: 'build',
-			error: 'Compilation failed.',
+			error,
 			log: 'Build output',
 		});
 	});
@@ -231,6 +230,33 @@ describe('AppBuildService', () => {
 		expect(workspaces.build).toHaveBeenCalledTimes(1);
 		expect(source.attachBundle).not.toHaveBeenCalled();
 	});
+
+	it.each(['source', 'sandbox', 'store'] as const)(
+		'returns generic diagnostics for unexpected %s failures without retrying',
+		async (stage) => {
+			const { service, source, workspaces, logger } = setup();
+			const error = new Error('Operation failed with internal details.');
+			const operations = {
+				source: source.readSource,
+				sandbox: workspaces.build,
+				store: source.attachBundle,
+			};
+			operations[stage].mockRejectedValue(error);
+
+			const result = await service.build('project', 'app', 'version');
+
+			expect(result).toMatchObject({ status: 'failed', attempts: 1 });
+			expect(result.diagnostics).toEqual({
+				stage,
+				message: 'The app build failed. Retry the build or contact your instance administrator.',
+				log: '',
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'App build attempt failed.',
+				expect.objectContaining({ error }),
+			);
+		},
+	);
 
 	it('retries a temporary provider failure within the original call', async () => {
 		const { service, workspaces, versions } = setup();

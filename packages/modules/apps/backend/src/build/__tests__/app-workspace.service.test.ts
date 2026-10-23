@@ -154,6 +154,13 @@ describe('AppWorkspaceService', () => {
 		expect(archives.unpack).toHaveBeenCalledWith(Buffer.from('bundle'), true);
 	});
 
+	it('passes unexpected archive errors to the build service', async () => {
+		const { build, archives } = setup();
+		const error = new Error('Archive operation failed.');
+		archives.unpack.mockRejectedValue(error);
+		await expect(build()).rejects.toBe(error);
+	});
+
 	it('leaves staging in place when a remote command may still be running', async () => {
 		const { build, sandbox, filesystem } = setup();
 		vi.mocked(sandbox.executeCommand!).mockRejectedValue(new Error('Connection lost.'));

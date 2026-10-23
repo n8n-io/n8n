@@ -135,10 +135,8 @@ export class AppWorkspaceService {
 				});
 				return bundle;
 			} catch (error) {
-				throw new AppBuildError(
-					'validate',
-					error instanceof Error ? error.message : 'Invalid app bundle.',
-				);
+				if (error instanceof BadRequestError) throw new AppBuildError('validate', error.message);
+				throw error;
 			}
 		} finally {
 			// A cancelled remote command can still use its staging files. Let the next build clean them.
