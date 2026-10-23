@@ -361,37 +361,6 @@ describe('held task repository writes', () => {
 		expect(await taskRepo.countBy({ jobId })).toBe(0);
 	});
 
-	it('re-arms a failed held task of a live owner and seeds a missing one', async () => {
-		const failedJob = await provisionOne('a');
-		const prunedJob = await provisionOne('b');
-		const otherJob = await provisionOne('c');
-		await taskRepo.update(
-			{ jobId: failedJob },
-			{ status: 'failed', attempts: 4, finishedAt: new Date() },
-		);
-		await taskRepo.update(
-			{ jobId: otherJob },
-			{ status: 'failed', attempts: 4, finishedAt: new Date() },
-		);
-		await taskRepo.delete({ jobId: prunedJob });
-
-		expect(await jobRepo.rearmHeldTasks('held-test', ['a', 'b'])).toBe(1);
-
-		expect(await taskRepo.findOneByOrFail({ jobId: failedJob })).toMatchObject({
-			status: 'pending',
-			attempts: 0,
-			finishedAt: null,
-			heldSince: null,
-		});
-		expect(await taskRepo.findOneByOrFail({ jobId: prunedJob })).toMatchObject({
-			status: 'pending',
-			mode: 'hold',
-		});
-		expect(await taskRepo.findOneByOrFail({ jobId: otherJob })).toMatchObject({
-			status: 'failed',
-		});
-	});
-
 	it('claims an expired held task directly and leaves held tasks that are live or never ready', async () => {
 		const expiredReady = await provisionOne('a');
 		const liveReady = await provisionOne('b');

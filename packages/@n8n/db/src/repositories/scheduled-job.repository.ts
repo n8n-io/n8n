@@ -586,46 +586,6 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
-	 * Bring the hold jobs of these live owners back to a task that can be claimed:
-	 * a `failed` held task goes back to `pending` with `attempts = 0`, and a hold job
-	 * whose task is gone (for example pruned by retention) gets a new one.
-	 *
-	 * @returns how many failed held tasks were re-armed.
-	 */
-	async rearmHeldTasks(ownerType: string, ownerIds: string[]): Promise<number> {
-		if (ownerIds.length === 0) return 0;
-		const jobTable = this.metadata.tablePath;
-		const liveHoldJobs = `SELECT "id" FROM ${jobTable} WHERE "kind" = :kind AND "orphanedAt" IS NULL AND "ownerType" = :ownerType AND "ownerId" IN (:...ownerIds)`;
-		const params = { kind: ScheduledJobKind.Hold, ownerType, ownerIds };
-		const rearmed = await this.manager
-			.createQueryBuilder()
-			.update(ScheduledTask)
-			.set({
-				status: ScheduledTaskStatus.Pending,
-				attempts: 0,
-				runAt: () => dbNowLiteral(this.isPostgres),
-				finishedAt: null,
-				heldSince: null,
-			})
-			.where('"status" = :failed', { failed: ScheduledTaskStatus.Failed })
-			.andWhere('"mode" = :hold', { hold: ScheduledTaskMode.Hold })
-			.andWhere(`"jobId" IN (${liveHoldJobs})`, params)
-			.execute();
-		const jobs = await this.createQueryBuilder('job')
-			.select('job.id', 'id')
-			.where('job.kind = :kind', { kind: ScheduledJobKind.Hold })
-			.andWhere('job.orphanedAt IS NULL')
-			.andWhere('job.ownerType = :ownerType', { ownerType })
-			.andWhere('job.ownerId IN (:...ownerIds)', { ownerIds })
-			.getRawMany<{ id: number }>();
-		await this.seedHeldTasks(
-			this.manager,
-			jobs.map((job) => job.id),
-		);
-		return rearmed.affected ?? 0;
-	}
-
-	/**
 	 * Lift the quarantine on every quarantined job of this owner member, leaving
 	 * their clocks to the caller. Must run inside a transaction.
 	 *

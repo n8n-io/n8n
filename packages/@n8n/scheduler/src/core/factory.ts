@@ -632,9 +632,6 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 								...context,
 							});
 						},
-						onHeldTasksRearmed: (context) => {
-							emit('info', 'Re-armed failed held tasks whose owner still exists', { ...context });
-						},
 						onReviveClockFailed: ({ jobId, error }) => {
 							emit('warn', 'Could not recompute the clock of a revived scheduled job', {
 								jobId,
