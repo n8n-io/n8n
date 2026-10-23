@@ -1,6 +1,7 @@
 import type { Repository, SelectQueryBuilder } from '@n8n/typeorm';
 
 import type { WorkflowExecution, WorkflowStepExecution } from './entities';
+import { parentLinkSql } from './parent-link-columns';
 import { UnexpectedError } from '../common';
 import { ExecutionNotFoundError } from '../execution/execution-store';
 import type {
@@ -54,6 +55,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect('execution.status', 'status')
 			.addSelect('execution.mode', 'mode')
 			.addSelect(hostMode('execution'), 'hostMode')
+			.addSelect(parentLinkSql('execution'), 'parent')
 			.addSelect('execution.created_at', 'createdAt')
 			.addSelect('execution.updated_at', 'updatedAt')
 			.addSelect('execution.finished_at', 'finishedAt');
@@ -89,6 +91,11 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		if (query.status) qb.andWhere(`${alias}.status = ANY(:statuses)`, { statuses: query.status });
 		if (query.hostMode) {
 			qb.andWhere(`${hostMode(alias)} = :hostMode`, { hostMode: query.hostMode });
+		}
+		if (query.parentExecutionId) {
+			qb.andWhere(`${alias}.parent_execution_id = :parentExecutionId`, {
+				parentExecutionId: query.parentExecutionId,
+			});
 		}
 		if (query.createdAfter)
 			qb.andWhere(`${alias}.created_at >= :createdAfter`, { createdAfter: query.createdAfter });
@@ -152,6 +159,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect(hostMode('execution'), 'hostMode')
 			.addSelect('execution.graph', 'graph')
 			.addSelect('execution.workflow', 'workflow')
+			.addSelect(parentLinkSql('execution'), 'parent')
 			.addSelect('execution.created_at', 'createdAt')
 			.addSelect('execution.updated_at', 'updatedAt')
 			.addSelect('execution.finished_at', 'finishedAt');

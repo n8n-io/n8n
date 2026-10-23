@@ -29,6 +29,19 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 							'What kind of a response the caller expects (none, runEnd, stepResponse or stream)',
 					},
 					{
+						name: 'parent_execution_id',
+						type: 'uuid',
+						isNullable: true,
+						comment: 'The execution whose step started this one. Null for a top-level execution.',
+					},
+					{ name: 'parent_step_id', type: 'uuid', isNullable: true },
+					{
+						name: 'parent_awaited',
+						type: 'boolean',
+						isNullable: true,
+						comment: 'Whether the parent step waits for this execution to end.',
+					},
+					{
 						name: 'created_at',
 						type: 'timestamptz',
 						precision: 3,
@@ -48,6 +61,11 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 						expression:
 							"status IN ('queued', 'running', 'waiting', 'completed', 'failed', 'cancelled')",
 					},
+					{
+						name: 'chk_workflow_execution_parent',
+						expression:
+							'(parent_execution_id IS NULL AND parent_step_id IS NULL AND parent_awaited IS NULL) OR (parent_execution_id IS NOT NULL AND parent_step_id IS NOT NULL AND parent_awaited IS NOT NULL)',
+					},
 				],
 			}),
 		);
@@ -55,6 +73,10 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 		await queryRunner.createIndices(TABLE, [
 			new TableIndex({ name: 'idx_workflow_execution_workflow_id', columnNames: ['workflow_id'] }),
 			new TableIndex({ name: 'idx_workflow_execution_status', columnNames: ['status'] }),
+			new TableIndex({
+				name: 'idx_workflow_execution_parent_execution_id',
+				columnNames: ['parent_execution_id'],
+			}),
 		]);
 	}
 

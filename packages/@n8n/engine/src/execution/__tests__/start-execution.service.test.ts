@@ -66,11 +66,50 @@ describe('StartExecutionService', () => {
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
+			parent: null,
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'execution:enqueued',
 			executionId: 'exec-id-1',
 		});
+	});
+
+	it('stores the parent link as given', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore();
+		const service = new StartExecutionService(admittance, store, makeQueue());
+		const parent = { executionId: 'exec-parent', stepId: 'step-1', awaited: true };
+
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext: { hostMode: 'trigger' },
+			parent,
+		});
+
+		expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ parent }));
+	});
+
+	it('records no parent for a top-level execution', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore();
+		const service = new StartExecutionService(admittance, store, makeQueue());
+
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext: { hostMode: 'trigger' },
+		});
+
+		expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ parent: null }));
 	});
 
 	it('stores the caller context as given', async () => {

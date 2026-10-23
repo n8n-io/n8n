@@ -14,6 +14,7 @@ import type { ExecutionStore } from './execution-store';
 import type {
 	CallerContext,
 	ExecutionMode,
+	ParentLink,
 	SeededSteps,
 	TriggerOutputs,
 	WorkflowDocument,
@@ -41,6 +42,8 @@ export interface StartExecutionRequest {
 	 * starts. The engine never mints one.
 	 */
 	executionId: string;
+	/** The execution and step that asked for this one. Absent for a top-level run. */
+	parent?: ParentLink;
 }
 
 export interface StartExecutionResult {
@@ -82,6 +85,7 @@ export class StartExecutionService {
 			seededSteps: request.seededSteps,
 			callerContext: request.callerContext,
 			responseExpectation: request.responseExpectation ?? { kind: 'none' },
+			parent: request.parent ?? null,
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a
