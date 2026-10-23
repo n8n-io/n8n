@@ -67,9 +67,16 @@ function unwrapWebhookEnvelope(
 ): Record<string, unknown> {
 	const { body, headers, query, binary } = content;
 	if (!isRecord(body) || fields.some((field) => field.key === 'body')) return content;
-	if (!Object.keys(content).every((key) => WEBHOOK_ENVELOPE_KEYS.has(key))) return content;
+	// The model sometimes adds Form Trigger keys (submittedAt, formMode) to the envelope.
+	const isEnvelopeKey = (key: string) =>
+		WEBHOOK_ENVELOPE_KEYS.has(key) || FORM_OUTPUT_KEYS.has(key);
+	if (!Object.keys(content).every(isEnvelopeKey)) return content;
 
 	const flat: Record<string, unknown> = { ...body };
+	for (const key of FORM_OUTPUT_KEYS) {
+		if (WEBHOOK_ENVELOPE_KEYS.has(key) || content[key] === undefined) continue;
+		if (flat[key] === undefined) flat[key] = content[key];
+	}
 	const options: unknown = node.parameters?.options;
 	if (isRecord(options) && options.showHeaders === true && isRecord(headers)) {
 		flat.headers = headers;

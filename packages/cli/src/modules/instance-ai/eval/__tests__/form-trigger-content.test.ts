@@ -101,6 +101,24 @@ describe('normalizeFormTriggerContent', () => {
 			});
 		});
 
+		it('lifts the fields out of the body when Form Trigger keys sit next to it', () => {
+			// Seen in a replay: the mock model added submittedAt and formMode to the envelope.
+			const content = {
+				headers: {},
+				query: {},
+				body: { name: 'Alice', comments: 'Love the new dashboard' },
+				submittedAt: '2026-07-13T09:00:00.000Z',
+				formMode: 'test',
+			};
+
+			expect(normalizeFormTriggerContent(formNode(FEEDBACK_FIELDS), content, NOW)).toEqual({
+				name: 'Alice',
+				comments: 'Love the new dashboard',
+				submittedAt: '2026-07-13T09:00:00.000Z',
+				formMode: 'test',
+			});
+		});
+
 		it('leaves the body in place when other keys sit next to it', () => {
 			const content = { body: { text: 'hi' }, name: 'Alice' };
 
