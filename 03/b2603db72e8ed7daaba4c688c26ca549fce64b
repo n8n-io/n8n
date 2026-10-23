@@ -41,6 +41,7 @@ packages/@n8n/agents/src/runtime/model/model-factory.ts
   s_db23049c32d561::t_1a0a2f8b525c06 3-8,234,255-271,275-277,285-312,504-506
   s_db23049c32d561::t_792d9d56cf6dcc 278-283
   s_db23049c32d561::t_6efea4537cff29 284
+  s_db23049c32d561::t_02a21e3b2c7759 272-274
 packages/@n8n/agents/src/runtime/loop/runtime-context.ts
   s_db23049c32d561::t_1fdc5cfb6577e5 2-6,121,128-135
   s_db23049c32d561::t_b9df39d4468854 136-137
