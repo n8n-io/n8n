@@ -994,6 +994,51 @@ describe('createModel', () => {
 			expect(mockClientOAuth2.credentials.getToken).toHaveBeenCalledTimes(1);
 		});
 
+		type EntraModel = { tokenProvider: () => Promise<string>; fetch: typeof globalThis.fetch };
+		it.each([
+			{
+				endpoint: {
+					endpointType: 'classic' as const,
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+				},
+				mint: async (model: EntraModel) => await model.tokenProvider(),
+			},
+			{
+				endpoint: {
+					endpointType: 'foundry' as const,
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				},
+				mint: async (model: EntraModel) => await model.fetch('https://example.com'),
+			},
+		])(
+			'mints a $endpoint.endpointType Entra token within the given outbound policy',
+			async ({ endpoint, mint }) => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				const ssrfBridge = {
+					validateUrl: vi.fn(),
+					validateRedirectSync: vi.fn(),
+					createSecureLookup: vi.fn(),
+				};
+				const baseFetch = vi.fn(
+					async () => new Response('{}', { status: 200 }),
+				) as unknown as typeof globalThis.fetch;
+				const model = createModel(
+					{ id: 'azure-openai/gpt-4o', ...endpoint, ...entraCreds, ssrfBridge },
+					baseFetch,
+				) as unknown as EntraModel;
+
+				await mint(model);
+
+				expect(ClientOAuth2).toHaveBeenLastCalledWith(
+					expect.objectContaining({
+						additionalBodyProperties: { resource: 'https://cognitiveservices.azure.com/' },
+						ssrfBridge,
+					}),
+				);
+			},
+		);
+
 		it('mints a Foundry deployments token within the given outbound policy', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const ssrfBridge = {

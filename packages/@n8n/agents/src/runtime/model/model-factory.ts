@@ -450,7 +450,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				if (isEntra) {
 					// `buildOpenAiCompatible` has no `tokenProvider` slot, so wrap the
 					// transport to inject `Authorization: Bearer <token>` per request.
-					const tokenProvider = createEntraTokenProvider(creds);
+					const tokenProvider = createEntraTokenProvider(creds, { ssrfBridge: creds.ssrfBridge });
 					return buildOpenAiCompatible(
 						'azure-openai',
 						undefined,
@@ -485,7 +485,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// `@ai-sdk/azure` rejects `apiKey + tokenProvider` together, so pass
 			// exactly one. Entra mints a Bearer via the token provider; apiKey
 			// drives the `api-key` header path.
-			const auth = isEntra ? { tokenProvider: createEntraTokenProvider(creds) } : { apiKey };
+			const auth = isEntra
+				? { tokenProvider: createEntraTokenProvider(creds, { ssrfBridge: creds.ssrfBridge }) }
+				: { apiKey };
 			return createAzure({
 				resourceName,
 				baseURL: normalizedBaseURL,

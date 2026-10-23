@@ -1,3 +1,4 @@
+import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { z } from 'zod';
 
 const apiKeyCreds = z.object({
@@ -85,6 +86,12 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			oauthScope: z.string().optional(),
 			oauthAuthentication: z.enum(['body', 'header']).optional(),
 			oauthTokenData: z.object({ access_token: z.string() }).passthrough().optional(),
+			/** Validates the Entra token URL against the instance's outbound policy. */
+			ssrfBridge: z
+				.custom<NonNullable<ClientOAuth2Options['ssrfBridge']>>(
+					(value) => typeof value === 'object' && value !== null,
+				)
+				.optional(),
 		})
 		.superRefine((data, ctx) => {
 			const hasApiKey = hasAzureApiKey(data);
