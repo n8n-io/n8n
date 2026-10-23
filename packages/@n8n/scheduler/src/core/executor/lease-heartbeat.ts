@@ -16,11 +16,6 @@ export interface LeaseHeartbeatOptions {
 	leaseDurationMs: number;
 	/** `performance.now()` just before the write that last set the lease. */
 	leaseSetAt: number;
-	/**
-	 * Report `expired` this long before the lease runs out, so the handler can stop
-	 * before another instance may take the claim. 0 by default.
-	 */
-	fenceMarginMs?: number;
 }
 
 export interface LeaseHeartbeatHooks {
@@ -82,8 +77,7 @@ export class LeaseHeartbeat {
 	}
 
 	private armExpiry(leaseSetAt: number): void {
-		const margin = this.options.fenceMarginMs ?? 0;
-		this.expiryAlarm.set(leaseSetAt + this.options.leaseDurationMs - margin, () =>
+		this.expiryAlarm.set(leaseSetAt + this.options.leaseDurationMs, () =>
 			this.hooks.onRenewal?.('expired'),
 		);
 	}
