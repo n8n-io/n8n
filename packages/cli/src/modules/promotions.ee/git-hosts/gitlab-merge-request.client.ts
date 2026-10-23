@@ -81,6 +81,12 @@ export const parseGitLabReviewId = (remoteReviewId: string): MergeRequestRef => 
 	return { projectId: Number(groups.projectId), iid: Number(groups.iid) };
 };
 
+/**
+ * The ref that holds the merge request head. It outlives the source branch, but GitLab deletes it
+ * 14 days after the merge request closes or merges.
+ */
+export const gitLabReviewHeadRef = ({ iid }: MergeRequestRef) => `refs/merge-requests/${iid}/head`;
+
 /** Opens, reads, and merges GitLab merge requests. GitLab records each write as the token's user. */
 @Service()
 export class GitLabMergeRequestClient {

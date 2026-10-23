@@ -2,6 +2,7 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@n8n/backend-services';
@@ -33,7 +34,11 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 	} satisfies Parameters<AgentModificationTelemetryService['record']>[0];
 	const telemetry = mock<Telemetry>();
 	const activity = mock<EventService>();
-	const service = new AgentModificationTelemetryService(telemetry, activity);
+	const service = new AgentModificationTelemetryService(
+		telemetry,
+		mock<InstanceSettings>(),
+		activity,
+	);
 
 	beforeEach(() => vi.clearAllMocks());
 
