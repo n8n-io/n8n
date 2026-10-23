@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/evals/parse-judge-response.ts
+  s_88c9d7f821237a::t_c2381539fe0374 5-13,17-21,26,28-29,31-48,51
+packages/@n8n/agents/src/types/sdk/eval.ts
+  s_88c9d7f821237a::t_0bed05c23b6c94 24-28
+packages/@n8n/agents/src/evals/__tests__/parse-judge-response.test.ts
+  s_88c9d7f821237a::t_1fa14bfe572d8c 60-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d52b153f999a0764b76751ca0694e8c12c90f9d1",
+  "prompts": {},
+  "sessions": {
+    "s_88c9d7f821237a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15f40-80ed-74de-a3b5-a9bd631bdfd1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

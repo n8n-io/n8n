@@ -1,0 +1,21 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b82caf968b8c36::t_098da34cb36a64 9773-9774
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelApprovalSetting.test.ts
+  s_b82caf968b8c36::t_e7355d1af0f5c1 8-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c999ae8f400ab82482ce370d2954c4cc5ebc736",
+  "prompts": {},
+  "sessions": {
+    "s_b82caf968b8c36": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1630e-8c2e-7cb1-ab55-c37ffdbc2763",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

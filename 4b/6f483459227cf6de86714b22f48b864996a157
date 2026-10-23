@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffContent.vue
+  s_356f82909b181c::t_e123600f551b54 78-82,118-122
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffContent.readOnly.test.ts
+  s_356f82909b181c::t_98bf06215a4676 1-57,59-84,86
+  s_356f82909b181c::t_4785a1a71b8e90 58,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b6f483459227cf6de86714b22f48b864996a157",
+  "prompts": {},
+  "sessions": {
+    "s_356f82909b181c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1586f-1e01-73b2-bf79-e76c23cde950",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

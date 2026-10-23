@@ -1,0 +1,193 @@
+.agents/skills/testmax-assistant-ui/scripts/run_scenario.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-203
+packages/cli/test/integration/database/repositories/workflow-dependency.repository.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 277-324
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 10,89,197-203,226-235,266,271,275-281,440,454,460,472,484-491,507
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 1,96-132,134
+  s_65c4c5f8ca1455::t_9a7778a6a7bbf7 133,135
+.agents/skills/testmax-assistant-ui/scenarios/visual-assistant-home.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-11
+.agents/skills/testmax-n8n-ai/scripts/run_instance_ai.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-294
+packages/@n8n/agents/src/evals/__tests__/parse-judge-response.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 22,24-25,27-30,43,104-105
+  s_65c4c5f8ca1455::t_dd7adb6875a0b2 74-77
+packages/nodes-base/nodes/Workable/WorkableTrigger.node.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 2,15,192-209
+.agents/skills/testmax-n8n-ai/sandbox/screen.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-100
+.agents/skills/testmax-n8n-ai/SKILL.md
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-745
+.agents/skills/testmax-assistant-ui/scripts/common.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-175
+.agents/skills/testmax-n8n-ai/scripts/langsmith_usage.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-160
+.agents/skills/testmax-n8n-ai/scripts/run_cli_builder.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-613
+packages/nodes-base/nodes/Workable/test/WorkableTrigger.node.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-69
+.agents/skills/testmax-n8n-ai/scripts/n8n_browser.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-50
+.agents/skills/testmax-assistant-ui/SKILL.md
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-464
+.agents/skills/testmax-n8n-ai/sandbox/Dockerfile
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-21
+.agents/skills/testmax-n8n-ai/scripts/live.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-84
+.agents/skills/testmax-assistant-ui/scripts/kit.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-351
+.agents/skills/testmax-assistant-ui/scripts/report.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-690
+.agents/skills/testmax-n8n-ai/scripts/derive_checks.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-743
+.agents/skills/testmax-n8n-ai/scripts/merge_verdicts.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-122
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 349-354,360-362
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 59,61,280-288
+.agents/skills/testmax-assistant-ui/scripts/live_page.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-55
+.agents/skills/testmax-assistant-ui/scenarios/visual-thread-reply.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-11
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 112
+.agents/skills/testmax-assistant-ui/scripts/visual_diff.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-96
+.agents/skills/testmax-n8n-ai/scripts/run_scenarios.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-172
+.env.ai-surfaces.example
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-75
+.agents/skills/testmax-n8n-ai/scripts/build_report.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-2302
+.agents/skills/testmax-n8n-ai/scripts/live_server.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-635
+.agents/skills/testmax-n8n-ai/scripts/n8n_api.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-123
+.agents/skills/testmax-n8n-ai/scripts/record_iai.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-82
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 39,171-173
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 5,7,54-96
+  s_65c4c5f8ca1455::t_bc03f5fa9e962e 97
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 8,10,106-187
+.agents/skills/testmax-n8n-ai/scripts/prepare.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-109
+.agents/skills/testmax-assistant-ui/scripts/run.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-931
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 5,10-13,17,81-92
+  s_65c4c5f8ca1455::t_aefee865b6686f 93-94
+packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 52,56-67,187-199
+  s_65c4c5f8ca1455::t_03b96ef31d14e6 200
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 742
+.agents/skills/testmax-n8n-ai/scripts/claims.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-180
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 159-164,168-170
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 389
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 55-59,61-64,145,163
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-conflict-policy.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 11,49-50,367-396
+  s_65c4c5f8ca1455::t_060564a32bad9b 397
+.agents/skills/testmax-assistant-ui/examples/stop-button/scenarios.json
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-38
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 72-75,118-119,127-129
+  s_65c4c5f8ca1455::t_2aba05a763df93 130-131
+packages/@n8n/db/src/repositories/workflow-dependency.repository.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 226-230,233-235
+.agents/skills/testmax-n8n-ai/scripts/wire.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-459
+packages/@n8n/agents/src/evals/parse-judge-response.ts
+  s_65c4c5f8ca1455::t_871116b8fe6542 16,21,26,35,38-42,47,49-51
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 57-63,100
+.agents/skills/testmax-n8n-ai/scripts/binary_checks.mts
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-50
+.gitignore
+  s_65c4c5f8ca1455::t_306e068589a9cf 20
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 2-3,7-8,10,12,17-22,35-40,44-46,111-113,474,479,493-494,507-522,527-530,568,602,625,647,670-958
+  s_65c4c5f8ca1455::t_5b33085b503952 959-960
+.agents/skills/testmax-n8n-ai/scripts/compare.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-328
+.agents/skills/testmax-assistant-ui/scenarios/smoke-chat.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-17
+.agents/skills/testmax-n8n-ai/scripts/run_wire.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-313
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 1291,1392,1463,1536,1875,2238,2488,2580,2637,2702,2867
+packages/cli/src/modules/n8n-packages/__tests__/import-package-policy.integration.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 42,53-54,69-78,87-95,144-146,178-179,464-556
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 2,5-7,10,12-13,15-21,29,47-49,95,111-112,123,141,149-150,157,207-221,226,271-404
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 262,536
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 217,237,276,293-330,347,385,398,443,479
+packages/cli/src/modules/n8n-packages/engine/credential-save-policy.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 2,13,77-154
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 33,206
+.agents/skills/testmax-n8n-ai/scripts/capture_canvas.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-162
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 3502,3560
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 1437
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 3,16,20-25,29,106,112-151,164-166,503-525,687-1138
+  s_65c4c5f8ca1455::t_5c96d15e458b7b 1139
+.agents/skills/testmax-assistant-ui/scripts/baseline.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-117
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 207-228
+packages/cli/src/modules/n8n-packages/engine/__tests__/credential-save-policy.test.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 14,245-396
+  s_65c4c5f8ca1455::t_74d8328de6e2ce 397
+.agents/skills/testmax-n8n-ai/scripts/sdk.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-600
+.agents/skills/testmax-n8n-ai/scripts/summarize_runs.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-215
+.agents/skills/testmax-n8n-ai/scripts/request_recorder.py
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-192
+packages/cli/src/credentials/credentials.service.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 1093-1101
+.agents/skills/testmax-assistant-ui/examples/stop-button/stop-mid-run.mjs
+  s_65c4c5f8ca1455::t_306e068589a9cf 1-31
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_65c4c5f8ca1455::t_306e068589a9cf 436,621,624-625,728-729
+.claude/plugins/n8n/skills/testmax-assistant-ui
+  s_65c4c5f8ca1455::t_9290fd09b34c45 1
+.claude/plugins/n8n/skills/testmax-n8n-ai
+  s_65c4c5f8ca1455::t_76283cd1d73011 1
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_65c4c5f8ca1455::t_dad6027008b5b9 744-746,789
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_65c4c5f8ca1455::t_356005d3fb1c42 238-242,248-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "346f22a1b7ee9caf727d5d7a0f7c2a2564cad97b",
+  "prompts": {},
+  "sessions": {
+    "s_65c4c5f8ca1455": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2810a254-410f-4bd8-b1c6-ae4c2ba999cd",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

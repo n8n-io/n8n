@@ -1,0 +1,60 @@
+packages/@n8n/nodes-langchain/credentials/test/CustomModelEndpointApi.credentials.test.ts
+  s_b2c8dff9da12f0::t_2d3485e651b720 1-26,30,34,37,39-75,77-139
+  s_b2c8dff9da12f0::t_447cbafffa51fc 27-29,31-33,35-36,38
+  s_b2c8dff9da12f0::t_c0fa31f8953992 76
+packages/@n8n/nodes-langchain/utils/custom-model-endpoint/headers.ts
+  s_b2c8dff9da12f0::t_252da334859ca0 1
+  s_b2c8dff9da12f0::t_6b7f22101d83df 2-3,5,7-8,10,12-13,15-16,18-20,27-28,30-31,33,35-36,40-47,49-51
+  s_b2c8dff9da12f0::t_bf3587844effa6 29
+  s_b2c8dff9da12f0::t_c266c45a727209 4,6,9,11,14,17,21-26,32,34,37-39,48
+packages/@n8n/nodes-langchain/credentials/CustomModelEndpointApi.credentials.ts
+  s_b2c8dff9da12f0::t_e7c6f39ff81bec 142
+  s_b2c8dff9da12f0::t_396a8503210dd7 1-9,11-141,143-146
+  s_b2c8dff9da12f0::t_66750b701147f5 10
+packages/@n8n/nodes-langchain/utils/custom-model-endpoint/types.ts
+  s_b2c8dff9da12f0::t_2ea15bed71496c 10
+  s_b2c8dff9da12f0::t_28f0367d69e2ba 1-9,11
+packages/@n8n/nodes-langchain/utils/custom-model-endpoint/credential-data.ts
+  s_b2c8dff9da12f0::t_8ad67d03fd7176 1,4-13,15,20-22,27-29,34,39,41-47,49,51
+  s_b2c8dff9da12f0::t_82f2706fa5a7cd 2
+  s_b2c8dff9da12f0::t_0d4a1260f98f57 3,14,16-19,23-26,30-33,35-38,40,48,50,52-53
+packages/@n8n/nodes-langchain/utils/normalizeEndpoint.ts
+  s_b2c8dff9da12f0::t_76b337ceb1c1b9 3-4
+packages/@n8n/nodes-langchain/utils/custom-model-endpoint/credential-data.test.ts
+  s_b2c8dff9da12f0::t_54b4c9eee74378 1-81,83-86,88-89,91,93-94,96-97,101-103
+  s_b2c8dff9da12f0::t_41af0a5af62923 82,87,90,92,95,98-100
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/oauth2.ts
+  s_b2c8dff9da12f0::t_7c2f37d6638271 6
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/api-key.ts
+  s_b2c8dff9da12f0::t_b17bb61b73a526 4
+packages/@n8n/nodes-langchain/utils/normalizeEndpoint.test.ts
+  s_b2c8dff9da12f0::t_4b336f841a0be6 1-17
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/requireFoundryEndpoint.ts
+  s_b2c8dff9da12f0::t_1a60096a4aeb98 3
+packages/@n8n/nodes-langchain/utils/custom-model-endpoint/headers.test.ts
+  s_b2c8dff9da12f0::t_f3b6d0941ea345 3
+  s_b2c8dff9da12f0::t_7090066a7a4c5d 4,8,79,91-92,100-101,109-113,124,133,140-142,146,154
+  s_b2c8dff9da12f0::t_3f9489e068aa91 1-2,5-7,9-78,80-90,93-99,102-108,114-123,125-132,134-139,143-145,147-153,155-156
+packages/@n8n/nodes-langchain/credentials/icons/customModelEndpoint.dark.svg
+  s_b2c8dff9da12f0::t_8afff1a065ce08 1
+packages/@n8n/nodes-langchain/credentials/icons/customModelEndpoint.svg
+  s_b2c8dff9da12f0::t_eeb1a47ad35887 1
+packages/@n8n/nodes-langchain/package.json
+  s_b2c8dff9da12f0::t_19704843ab0740 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d987ebd11271a79daacf69a70436d4d0961f6aa",
+  "prompts": {},
+  "sessions": {
+    "s_b2c8dff9da12f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3daee663-6a84-4afa-ac29-c0d42efb43a9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

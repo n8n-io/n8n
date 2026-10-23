@@ -1,0 +1,33 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a26381a4168256::t_7ec73c28cb1819 8032,8079,8086,9422
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalChecksPanel.test.ts
+  s_a26381a4168256::t_ef88f67cdc25cb 48,70,358-386
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalTryRow.test.ts
+  s_a26381a4168256::t_da0502d3321caa 235-289
+packages/frontend/editor-ui/src/features/agents/components/AgentAvatar.vue
+  s_a26381a4168256::t_0f4b7431c09062 16-17,53
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalChecksPanel.vue
+  s_a26381a4168256::t_5e40b1856252ca 24,92-93,112,118-121,196,525
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalTryRow.vue
+  s_a26381a4168256::t_6c1a0e388eccd1 67-68,99-102,121-125,141-151,237,271,349-350,422-444
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agent-eval-review.test.ts
+  s_a26381a4168256::t_e041c189f297b0 11,248-266
+packages/frontend/editor-ui/src/features/agents/utils/agent-eval-review.ts
+  s_a26381a4168256::t_39cc296b1f5ef3 132-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1e91647ec24915b2fcec4bb3555dd18891db36c",
+  "prompts": {},
+  "sessions": {
+    "s_a26381a4168256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de9744d5-d4a6-4ca6-9d6e-70d7c82d2184",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
