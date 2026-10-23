@@ -10023,6 +10023,8 @@
 	"promotions.preview.badge.apply": "{count} incoming change | {count} incoming changes",
 	"promotions.preview.badge.empty.promote": "No changes to promote",
 	"promotions.preview.badge.empty.apply": "No changes to apply",
+	"promotions.preview.badge.loading.promote": "Checking for changes to promote…",
+	"promotions.preview.badge.loading.apply": "Checking for incoming changes…",
 	"promotions.preview.badge.failed.promote": "Couldn't check for changes to promote. Reload the page to try again.",
 	"promotions.preview.badge.failed.apply": "Couldn't check for incoming changes. Reload the page to try again.",
 	"promotions.preview.submit.promote": "Promote changes | Promote {count} change | Promote {count} changes",

@@ -15,6 +15,7 @@ export function usePromotionChangeCount(
 	const { next } = useLatestFetch();
 	/** All changed resources that the preview page can include. */
 	const changeCount = ref(0);
+	const loading = ref(false);
 	/** True when the last check failed, so the badge can show the failure. */
 	const failed = ref(false);
 
@@ -25,9 +26,11 @@ export function usePromotionChangeCount(
 		const requestedProjectId = projectId.value;
 		changeCount.value = 0;
 		failed.value = false;
+		loading.value = false;
 		if (!enabled.value || !requestedProjectId) {
 			return;
 		}
+		loading.value = true;
 		try {
 			const preview = await getPromotionPreview(
 				rootStore.restApiContext,
@@ -38,10 +41,12 @@ export function usePromotionChangeCount(
 			changeCount.value = totalChangeCount(buildSelectionGraph(preview, direction));
 		} catch {
 			if (isLatest()) failed.value = true;
+		} finally {
+			if (isLatest()) loading.value = false;
 		}
 	}
 
 	watch([projectId, enabled], fetchCount, { immediate: true });
 
-	return { changeCount, failed, refetch: fetchCount };
+	return { changeCount, loading, failed, refetch: fetchCount };
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PromotionDirection } from '@n8n/api-types';
-import { N8nBadge, N8nTooltip, type IconName } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nTooltip, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
@@ -112,22 +112,25 @@ const badges = computed(() => {
 		.filter(({ show }) => show)
 		.map(({ direction, changes }) => ({
 			direction,
+			loading: changes.loading.value,
 			failed: changes.failed.value,
 			changeCount: changes.changeCount.value,
-			disabled: !changes.failed.value && changes.changeCount.value === 0,
-			label: changes.failed.value
-				? i18n.baseText(`promotions.preview.badge.failed.${direction}`)
-				: changes.changeCount.value === 0
-					? i18n.baseText(`promotions.preview.badge.empty.${direction}`)
-					: i18n.baseText(`promotions.preview.badge.${direction}`, {
-							adjustToNumber: changes.changeCount.value,
-							interpolate: {
-								count: String(changes.changeCount.value),
-								environment:
-									environments.value.find((environment) => environment.direction === direction)
-										?.name ?? '',
-							},
-						}),
+			disabled: changes.loading.value || (!changes.failed.value && changes.changeCount.value === 0),
+			label: changes.loading.value
+				? i18n.baseText(`promotions.preview.badge.loading.${direction}`)
+				: changes.failed.value
+					? i18n.baseText(`promotions.preview.badge.failed.${direction}`)
+					: changes.changeCount.value === 0
+						? i18n.baseText(`promotions.preview.badge.empty.${direction}`)
+						: i18n.baseText(`promotions.preview.badge.${direction}`, {
+								adjustToNumber: changes.changeCount.value,
+								interpolate: {
+									count: String(changes.changeCount.value),
+									environment:
+										environments.value.find((environment) => environment.direction === direction)
+											?.name ?? '',
+								},
+							}),
 			to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },
 		}));
 });
@@ -135,11 +138,18 @@ const badges = computed(() => {
 
 <template>
 	<div v-if="badges.length > 0" :class="$style.badges" data-test-id="promotion-preview-badges">
-		<N8nTooltip v-for="badge in badges" :key="badge.direction" :content="badge.label">
+		<N8nTooltip
+			v-for="badge in badges"
+			:key="badge.direction"
+			:content="badge.label"
+			:disabled="badge.loading"
+		>
 			<component
 				:is="badge.disabled ? 'span' : RouterLink"
 				v-bind="badge.disabled ? {} : { to: badge.to }"
+				:role="badge.loading ? 'status' : undefined"
 				:aria-label="badge.label"
+				:aria-busy="badge.loading || undefined"
 				:aria-disabled="badge.disabled || undefined"
 				:class="[$style.link, { [$style.disabled]: badge.disabled }]"
 				:data-test-id="`promotion-preview-badge-${badge.direction}`"
@@ -149,7 +159,10 @@ const badges = computed(() => {
 					size="xsmall"
 					:leading-icon="ICONS[badge.direction]"
 				>
-					{{ badge.failed ? '?' : badge.changeCount }}
+					<span :class="$style.count">
+						<N8nIcon v-if="badge.loading" icon="loader-circle" size="small" spin />
+						<template v-else>{{ badge.failed ? '?' : badge.changeCount }}</template>
+					</span>
 				</N8nBadge>
 			</component>
 		</N8nTooltip>
@@ -161,6 +174,15 @@ const badges = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	/* Keep the count at least as wide as the small loading icon. */
+	min-width: var(--spacing--xs);
+	font-variant-numeric: tabular-nums;
 }
 
 .link {

@@ -1,4 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
+import type { PromotionPreview } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
@@ -183,19 +185,57 @@ describe('PromotionPreviewBadges', () => {
 	);
 
 	it.each(['promote', 'apply'] as const)(
-		'should load only the configured %s direction with its permission',
+		'should show a spinner only for the configured %s direction until its count loads',
 		async (direction) => {
-			vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([
+			const connection = createDeferredPromise<settingsApi.PromotionEnvironmentSummary[]>();
+			const changes = createDeferredPromise<PromotionPreview>();
+			vi.mocked(settingsApi.fetchPromotionEnvironments).mockReturnValue(connection.promise);
+			vi.mocked(api.getPromotionPreview).mockReturnValue(changes.promise);
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(queryByTestId('promotion-preview-badges')).not.toBeInTheDocument();
+			expect(api.getPromotionPreview).not.toHaveBeenCalled();
+
+			connection.resolve([
 				{
 					id: 'environment-1',
 					scope: 'instance',
 					direction,
 				} as unknown as settingsApi.PromotionEnvironmentSummary,
 			]);
-			const { findByTestId, queryByTestId } = renderComponent();
-			await findByTestId(`promotion-preview-badge-${direction}`);
+			await waitAllPromises();
+			const badge = getByTestId(`promotion-preview-badge-${direction}`);
+			expect(badge).toHaveAttribute('aria-busy', 'true');
+			expect(badge).toHaveAttribute('role', 'status');
+			expect(badge).toHaveAttribute('aria-disabled', 'true');
+			expect(badge).not.toHaveAttribute('data-route');
+			expect(badge).not.toHaveTextContent('0');
+			expect(badge.querySelector('[data-icon="loader-circle"]')).toBeInTheDocument();
+			expect(badge.querySelector('[data-icon]')).toHaveAttribute(
+				'data-icon',
+				direction === 'promote' ? 'arrow-up' : 'arrow-down',
+			);
+			expect(badge).toHaveAttribute(
+				'aria-label',
+				direction === 'promote'
+					? 'Checking for changes to promote…'
+					: 'Checking for incoming changes…',
+			);
+			expect(
+				queryByTestId(`promotion-preview-badge-${direction === 'promote' ? 'apply' : 'promote'}`),
+			).not.toBeInTheDocument();
 			expect(api.getPromotionPreview).toHaveBeenCalledTimes(1);
 			expect(api.getPromotionPreview).toHaveBeenCalledWith(expect.anything(), 'p1', direction);
+
+			badge.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
+			await waitAllPromises();
+			expect(queryByTestId('tooltip-content')).not.toBeInTheDocument();
+
+			changes.resolve(billingPreview());
+			await waitAllPromises();
+			const loadedBadge = getByTestId(`promotion-preview-badge-${direction}`);
+			expect(loadedBadge).toHaveTextContent('5');
+			expect(loadedBadge).not.toHaveAttribute('aria-busy');
+			expect(loadedBadge).toHaveAttribute('data-route', `${PROMOTION_PREVIEW_VIEWS[direction]}:p1`);
 
 			mockedStore(useUsersStore).currentUser = mock<IUser>({
 				globalScopes: ['gitConnection:list', 'gitConnection:read'],
