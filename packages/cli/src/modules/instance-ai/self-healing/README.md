@@ -38,9 +38,7 @@ A selected-workflow configuration takes precedence over all-workflow coverage, e
 The call returns `null` when no enabled configuration authorizes the investigation.
 It also returns `null` for a new failure during a Could not fix cooldown. See [Investigate again](#investigate-again).
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
-The investigation stores the version checks and the workflow snapshot in separate columns.
-Queries read only the version checks. PostgreSQL cannot read a json field when the same document
-contains an escaped NUL, and pin data can contain one.
+The investigation stores only the version checks. The run keeps the workflow snapshot in memory.
 The workflow must be fully published. The failure must belong to its current published version.
 Manual and evaluation executions are ineligible.
 Credential and network failures can still need investigation.
@@ -215,8 +213,9 @@ It keeps both fields within their output limits after replacement.
 It passes the report, runtime usage, and compiled graph directly to the result service.
 A credit-claim failure leaves unknown credits and does not discard valid output.
 
-`SelfHealingResultService.complete(...)` prepares the optional suggestion through
-`WorkflowSuggestionService`. It rechecks access and the captured baseline, then saves the result,
+`SelfHealingResultService.complete(...)` reads the workflow snapshot from the workflow after the
+version checks pass. It prepares the optional suggestion through `WorkflowSuggestionService`.
+It rechecks access and the captured baseline, then saves the result,
 suggestion, submission activity, and investigation completion in one transaction.
 Cancellation before acceptance rolls back the result and suggestion.
 Once the completion commits, a later cancellation does not change it to a canceled run.

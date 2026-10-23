@@ -59,19 +59,11 @@ export class SelfHealingInvestigation extends WithTimestampsAndStringId {
 	runId: string;
 
 	/**
-	 * Kept apart from the workflow snapshot. PostgreSQL cannot read a field from a json document
-	 * that contains an escaped NUL, and pin data can contain one.
+	 * Holds no workflow content. Completion reads the content from the workflow after the
+	 * version checks pass.
 	 */
 	@JsonColumn()
 	expectedBaseline: WorkflowSuggestionBaseline['expectedBaseline'];
-
-	@JsonColumn()
-	original: WorkflowSuggestionBaseline['original'];
-
-	get baseline(): WorkflowSuggestionBaseline {
-		const { workflowId, projectId, backgroundUserId, expectedBaseline, original } = this;
-		return { workflowId, projectId, backgroundUserId, expectedBaseline, original };
-	}
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	resultId: string | null;

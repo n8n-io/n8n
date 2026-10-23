@@ -123,7 +123,6 @@ erDiagram
   TEXT expectedBaseline
   datetime_3_ finishedAt
   varchar_36_ id PK
-  TEXT original
   varchar_36_ projectId FK
   varchar_36_ resultId FK
   varchar runId

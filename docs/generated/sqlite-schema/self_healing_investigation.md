@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "self_healing_investigation" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "projectId" varchar(36) NOT NULL, "backgroundUserId" varchar NOT NULL, "executionId" varchar(36) NOT NULL, "threadId" varchar NOT NULL, "runId" varchar NOT NULL, "resultId" varchar(36), "finishedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "configurationId" integer NOT NULL, "expectedBaseline" text NOT NULL, "original" text NOT NULL, CONSTRAINT "FK_39a928c9ea7b7afce4bdd1c6dae" FOREIGN KEY ("resultId") REFERENCES "self_healing_result" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_24923f35caa34c1f264576a7914" FOREIGN KEY ("backgroundUserId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_eb5b7d44599bd9a34f02f071b23" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_7fa67c33c27bcc5d745c75a7eab" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_self_healing_investigation_configuration" FOREIGN KEY ("configurationId") REFERENCES "self_healing_configuration" ("id") ON DELETE CASCADE)
+CREATE TABLE "self_healing_investigation" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "projectId" varchar(36) NOT NULL, "backgroundUserId" varchar NOT NULL, "executionId" varchar(36) NOT NULL, "threadId" varchar NOT NULL, "runId" varchar NOT NULL, "resultId" varchar(36), "finishedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "configurationId" integer NOT NULL, "expectedBaseline" text NOT NULL, CONSTRAINT "FK_39a928c9ea7b7afce4bdd1c6dae" FOREIGN KEY ("resultId") REFERENCES "self_healing_result" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_24923f35caa34c1f264576a7914" FOREIGN KEY ("backgroundUserId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_eb5b7d44599bd9a34f02f071b23" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_7fa67c33c27bcc5d745c75a7eab" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_self_healing_investigation_configuration" FOREIGN KEY ("configurationId") REFERENCES "self_healing_configuration" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -22,7 +22,6 @@ CREATE TABLE "self_healing_investigation" ("id" varchar(36) PRIMARY KEY NOT NULL
 | expectedBaseline | TEXT |  | false |  |  |  |
 | finishedAt | datetime(3) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
-| original | TEXT |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | resultId | varchar(36) |  | true |  | [self_healing_result](self_healing_result.md) |  |
 | runId | varchar |  | false |  |  |  |
@@ -73,7 +72,6 @@ erDiagram
   TEXT expectedBaseline
   datetime_3_ finishedAt
   varchar_36_ id PK
-  TEXT original
   varchar_36_ projectId FK
   varchar_36_ resultId FK
   varchar runId

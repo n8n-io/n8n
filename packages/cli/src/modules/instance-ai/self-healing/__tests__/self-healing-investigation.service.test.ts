@@ -95,7 +95,6 @@ describe('SelfHealingInvestigationService', () => {
 			...input,
 			id: 'investigation',
 			configurationId: configuration.id,
-			baseline,
 			threadId: 'private-thread',
 			runId: 'run',
 			resultId: null,

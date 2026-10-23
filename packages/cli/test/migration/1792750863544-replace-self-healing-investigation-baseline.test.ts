@@ -10,9 +10,9 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'SplitSelfHealingInvestigationBaseline1792750863544';
+const migrationName = 'ReplaceSelfHealingInvestigationBaseline1792750863544';
 
-describe('SplitSelfHealingInvestigationBaseline migration', () => {
+describe('ReplaceSelfHealingInvestigationBaseline migration', () => {
 	const userId = randomUUID();
 	const versionId = randomUUID();
 	const expectedBaseline = {
@@ -136,8 +136,8 @@ describe('SplitSelfHealingInvestigationBaseline migration', () => {
 		expect(await selectIds('self_healing_result')).toEqual([{ id: 'result' }]);
 
 		await insertInvestigation(
-			'split',
-			{ expectedBaseline: JSON.stringify(expectedBaseline), original: JSON.stringify(original) },
+			'replaced',
+			{ expectedBaseline: JSON.stringify(expectedBaseline) },
 			'result',
 		);
 		await withContext(async ({ escape: { tableName: t, columnName: c }, runQuery }) => {

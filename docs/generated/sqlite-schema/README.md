@@ -136,7 +136,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [self_healing_configuration](self_healing_configuration.md) | 7 |  | table |
 | [self_healing_configuration_reviewer](self_healing_configuration_reviewer.md) | 2 |  | table |
 | [self_healing_configuration_workflow](self_healing_configuration_workflow.md) | 3 |  | table |
-| [self_healing_investigation](self_healing_investigation.md) | 14 |  | table |
+| [self_healing_investigation](self_healing_investigation.md) | 13 |  | table |
 | [self_healing_result](self_healing_result.md) | 16 |  | table |
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
@@ -1750,7 +1750,6 @@ erDiagram
   TEXT expectedBaseline
   datetime_3_ finishedAt
   varchar_36_ id PK
-  TEXT original
   varchar_36_ projectId FK
   varchar_36_ resultId FK
   varchar runId

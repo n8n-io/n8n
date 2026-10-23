@@ -116,6 +116,7 @@ export class SelfHealingResultService {
 		}
 
 		const {
+			baseline,
 			content,
 			completedAt,
 			suggestion: prepared,
@@ -150,7 +151,7 @@ export class SelfHealingResultService {
 			}
 
 			await this.suggestions.readWorkflowTargetForApply(investigation.workflowId, ctx);
-			await this.suggestions.requireCurrentBaseline(current.baseline, ctx);
+			await this.suggestions.requireCurrentBaseline(baseline, ctx);
 			signal?.throwIfAborted();
 
 			let suggestionId: string | null = null;
@@ -188,7 +189,6 @@ export class SelfHealingResultService {
 			throw new ConflictError('The self-healing investigation has already finished.');
 		}
 
-		const { baseline } = investigation;
 		const { output, candidate } = input;
 
 		const content = selfHealingResultContentSchema.parse({
@@ -198,6 +198,7 @@ export class SelfHealingResultService {
 			usage: input.usage,
 		});
 
+		const baseline = await this.suggestions.loadCurrentBaseline(investigation);
 		const needsYouWithoutChanges =
 			output.outcome === 'needs_you' &&
 			candidate !== undefined &&
@@ -223,7 +224,7 @@ export class SelfHealingResultService {
 			investigation.executionId,
 		);
 
-		return { content, completedAt: new Date(input.completedAt), suggestion };
+		return { baseline, content, completedAt: new Date(input.completedAt), suggestion };
 	}
 
 	async getDetail(

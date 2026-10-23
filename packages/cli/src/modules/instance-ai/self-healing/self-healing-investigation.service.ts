@@ -107,7 +107,7 @@ export class SelfHealingInvestigationService {
 			if (!claimed || 'kind' in claimed) return claimed;
 
 			// Return the investigation ID without waiting for the agent to finish.
-			void this.run(claimed, actor).catch((error: unknown) => {
+			void this.run(claimed, baseline, actor).catch((error: unknown) => {
 				this.logger.error('Self-healing investigation failed.', {
 					investigationId: claimed.id,
 					error,
@@ -202,19 +202,23 @@ export class SelfHealingInvestigationService {
 		return { workflowId, projectId, completedAfter };
 	}
 
-	private async run(investigation: SelfHealingInvestigation, user: User) {
+	private async run(
+		investigation: SelfHealingInvestigation,
+		baseline: WorkflowSuggestionBaseline,
+		user: User,
+	) {
 		try {
 			await this.runtime.startSelfHealingRun(
 				{
 					user,
-					baseline: investigation.baseline,
+					baseline,
 					executionId: investigation.executionId,
 				},
 				{
 					threadId: investigation.threadId,
 					runId: investigation.runId,
 					onComplete: async (run, signal) =>
-						await this.handleRunCompletion(investigation, run, signal),
+						await this.handleRunCompletion(investigation, baseline, run, signal),
 				},
 			);
 		} catch (error) {
@@ -233,6 +237,7 @@ export class SelfHealingInvestigationService {
 
 	private async handleRunCompletion(
 		investigation: SelfHealingInvestigation,
+		baseline: WorkflowSuggestionBaseline,
 		run: SelfHealingRunResult,
 		signal: AbortSignal,
 	) {
@@ -300,7 +305,7 @@ export class SelfHealingInvestigationService {
 			),
 		};
 
-		await this.suggestions.requireCurrentBaseline(investigation.baseline);
+		await this.suggestions.requireCurrentBaseline(baseline);
 		signal.throwIfAborted();
 		await this.results.complete({ investigationId: investigation.id, ...result, signal });
 	}

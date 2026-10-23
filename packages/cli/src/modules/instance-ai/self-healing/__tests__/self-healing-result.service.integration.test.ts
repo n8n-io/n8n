@@ -226,7 +226,7 @@ async function prepareInvestigation(
 		completedAt: new Date().toISOString(),
 		...(withSuggestion ? { candidate: { graph } } : {}),
 	};
-	return { ...fixture, graph, input, investigation, completion };
+	return { ...fixture, graph, input, baseline, investigation, completion };
 }
 
 it.each(['same', 'different'] as const)(
@@ -408,7 +408,7 @@ describe('investigation eligibility after a result', () => {
 	});
 
 	it.each(['before expiry', 'at expiry', 'new publication'] as const)(
-		'checks cooldowns with escaped characters in the saved baseline: %s',
+		'checks cooldowns for a workflow with escaped characters in pin data: %s',
 		async (scenario) => {
 			const { input, result, original } = await fixture('could_not_fix', false, {
 				pinData: { 'Schedule Trigger': [{ json: { value: 'before\u0000after' } }] },
@@ -1316,6 +1316,7 @@ it('returns report details without changing the result or workflow', async () =>
 describe('Inbox source reads', () => {
 	async function addResult({
 		original,
+		baseline,
 		investigation,
 		completion,
 	}: Awaited<ReturnType<typeof fixture>>) {
@@ -1328,7 +1329,7 @@ describe('Inbox source reads', () => {
 			async (ctx) =>
 				await investigations.createInvestigation(
 					{
-						baseline: investigation.baseline,
+						baseline,
 						configurationId: investigation.configurationId,
 						executionId: execution.id,
 						threadId: randomUUID(),

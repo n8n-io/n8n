@@ -102,7 +102,7 @@ it('reverts and reapplies the investigation schemas', async () => {
 	const migrations = [
 		'CreateSelfHealingInvestigationTable1792578704944',
 		'CreateSelfHealingConfigurations1792742505678',
-		'SplitSelfHealingInvestigationBaseline1792750863544',
+		'ReplaceSelfHealingInvestigationBaseline1792750863544',
 	].map((name) => {
 		const migration = db.migrations.find(({ constructor }) => constructor.name === name);
 		if (!migration) throw new Error(`${name} is not registered.`);
@@ -136,7 +136,7 @@ it('reverts and reapplies the investigation schemas', async () => {
 	configurationId = (await createConfiguration(baseline.projectId, baseline.backgroundUserId)).id;
 	const investigation = await createInvestigation();
 	expect(await investigations.findInvestigation(investigation.id)).toMatchObject({
-		baseline,
+		expectedBaseline: baseline.expectedBaseline,
 		resultId: null,
 		finishedAt: null,
 	});

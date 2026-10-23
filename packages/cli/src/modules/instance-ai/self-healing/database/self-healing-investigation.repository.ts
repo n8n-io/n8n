@@ -57,7 +57,6 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 				projectId: baseline.projectId,
 				backgroundUserId: baseline.backgroundUserId,
 				expectedBaseline: baseline.expectedBaseline,
-				original: baseline.original,
 				resultId: null,
 				finishedAt: null,
 			}),
