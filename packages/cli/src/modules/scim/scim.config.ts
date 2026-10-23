@@ -11,4 +11,15 @@ export class ScimConfig {
 	 */
 	@Env('N8N_SCIM_RATE_LIMIT', z.number({ coerce: true }).int().nonnegative())
 	rateLimit: number = 600;
+
+	// Pre-GA opt-in. IAM-1565 removes it at GA. Together with the `feat:scim`
+	// license, this switch is the only gate (`scim-opt-in.ts`).
+	/**
+	 * Whether SCIM user provisioning is available on this instance before its
+	 * general release. SCIM works only when this is true and your license
+	 * includes SCIM. When false, the SCIM endpoints and settings aren't
+	 * available.
+	 */
+	@Env('N8N_SCIM_OPT_IN')
+	optIn: boolean = false;
 }

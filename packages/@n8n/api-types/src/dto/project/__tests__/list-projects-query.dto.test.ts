@@ -39,6 +39,11 @@ describe('ListProjectsQueryDto', () => {
 				expected: { activated: false },
 			},
 			{
+				name: 'with excludeDeactivatedUsers true',
+				request: { excludeDeactivatedUsers: 'true' },
+				expected: { excludeDeactivatedUsers: true },
+			},
+			{
 				name: 'with all parameters',
 				request: { skip: '20', take: '10', search: 'test', type: 'team', activated: 'true' },
 				expected: { skip: 20, take: 10, search: 'test', type: 'team', activated: true },

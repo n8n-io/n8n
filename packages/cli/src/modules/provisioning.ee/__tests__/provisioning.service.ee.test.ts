@@ -24,6 +24,7 @@ import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolve
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { type ProjectService } from '@/services/project.service.ee';
 import { type UserService } from '@/services/user.service';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 
@@ -1562,6 +1563,30 @@ describe('ProvisioningService', () => {
 				return type === 'project' ? project : instance;
 			});
 		};
+
+		const setSsoLogin = (on: boolean) =>
+			vi.spyOn(ssoHelpers, 'isSamlOrOidcLoginEnabled').mockReturnValue(on);
+
+		beforeEach(() => setSsoLogin(true));
+		afterAll(() => vi.restoreAllMocks());
+
+		describe('while SAML or OIDC sign-in is off', () => {
+			beforeEach(() => setSsoLogin(false));
+
+			it('does not manage roles when claim provisioning is enabled', async () => {
+				setEnabled({ instanceProvisioning: true, projectProvisioning: true });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(false);
+				expect(await provisioningService.isProjectRoleManaged()).toBe(false);
+			});
+
+			it('does not manage roles when expression mapping has rules for both scopes', async () => {
+				setEnabled({ expressionMapping: true });
+				setRules({ instance: 1, project: 1 });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(false);
+				expect(await provisioningService.isProjectRoleManaged()).toBe(false);
+				expect(roleMappingRuleRepository.count).not.toHaveBeenCalled();
+			});
+		});
 
 		describe('isProjectRoleManaged', () => {
 			it('is managed when project role claim provisioning is enabled', async () => {

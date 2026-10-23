@@ -383,6 +383,13 @@ export type FrontendModuleSettings = {
 		scimEnabled: boolean;
 		/** Whether the instance has a SCIM token. */
 		hasToken: boolean;
+		/**
+		 * Whether SCIM is available on the instance. The module sends these
+		 * settings only with the `feat:scim` license, and this is true when the
+		 * `N8N_SCIM_OPT_IN` config switch is on. While it is false, every SCIM
+		 * route answers 404.
+		 */
+		available: boolean;
 	};
 
 	/**
