@@ -254,8 +254,9 @@ onMounted(async () => {
 		:open="modalOpen"
 		:size="props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL ? 'medium' : 'large'"
 		:header="getModalContent.title"
-		:close-on-overlay-click="false"
+		:close-on-overlay-click="!loading"
 		:close-on-escape="!loading"
+		:show-close-button="!loading"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
