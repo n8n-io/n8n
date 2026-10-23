@@ -42,6 +42,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { BuilderCredentialService, BuilderToolsOptions } from './builder-session';
+import { runInBuilderTelemetrySession } from './builder-telemetry-session';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -620,9 +621,11 @@ export class AgentsBuilderToolsService {
 				const agentId = await resolveTargetAgentId(pinnedTarget?.builderTargetAgentId);
 				const handler = toolFor(agentId, template.name)?.handler;
 				if (!handler) throw new UnexpectedError(`Builder tool "${template.name}" has no handler`);
-				if (!isInterruptibleContext(ctx)) return await handler(input, ctx);
-				const innerContinuation = pinnedTarget ? pinnedTarget.inner : ctx.continuation;
-				return await handler(input, withPinnedTarget(ctx, agentId, innerContinuation));
+				return await runInBuilderTelemetrySession(options.session, async () => {
+					if (!isInterruptibleContext(ctx)) return await handler(input, ctx);
+					const innerContinuation = pinnedTarget ? pinnedTarget.inner : ctx.continuation;
+					return await handler(input, withPinnedTarget(ctx, agentId, innerContinuation));
+				});
 			},
 		}));
 	}

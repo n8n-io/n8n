@@ -41,6 +41,18 @@ const agentSessionMetrics = {
 		.describe('Recorded-turn tokens only; reconciles with cost_sum, unlike token_count'),
 	tool_call_count_sum: z.number(),
 	num_skills_sum: z.number(),
+	skill_load_count_sum: z
+		.number()
+		.optional()
+		.describe(
+			'Successful `load_skill` calls that activated a skill. A read of a linked file does not count. Absent on rows before CONTEXT-335',
+		),
+	loaded_skill_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct ids of the skills those calls activated, sorted. Join to "User created skill" for the scope. Absent on rows before CONTEXT-335',
+		),
 };
 
 // Spread into the session-metrics payload, matching `IAgentConfigurationTelemetryProperties`.
@@ -139,6 +151,12 @@ const agentCapabilityProfile = {
 	capability_count: z.number(),
 	tool_count: z.number(),
 	skill_count: z.number(),
+	skill_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Ids of the attached skills, sorted. Join to "User created skill" for the scope, to tell a shared skill from an agent-local one. Absent on rows before CONTEXT-335',
+		),
 	sub_agent_count: z.number(),
 	mcp_server_count: z.number(),
 	vector_store_count: z.number(),
@@ -146,6 +164,18 @@ const agentCapabilityProfile = {
 	trigger_count: z.number(),
 	model: z.string().nullable(),
 	tool_types: z.array(z.string()).describe('Tool types, never user-authored tool names'),
+};
+
+/** Present when the builder write or publish ran inside an n8n Assistant thread. */
+const builderWriteSession = {
+	thread_id: z
+		.string()
+		.optional()
+		.describe('Instance AI thread hosting the builder session. Absent on rows before CONTEXT-335'),
+	run_id: z
+		.string()
+		.optional()
+		.describe('Instance AI run that made the change. Absent on rows before CONTEXT-335'),
 };
 
 const agentKnowledgeModification = {
@@ -417,6 +447,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'The Instance AI builder persisted a new Agent. Emitted after the Agent and its initial configuration commit, including incomplete drafts. A later build failure does not undo creation. Union the user, builder, and MCP creation events to count all new Agents. Adoption of an existing Agent emits no creation event. Version 3 reports the committed insert instead of the first configuring update.',
 		properties: z.object({
 			...agentWrite,
+			...builderWriteSession,
 			event_version: z.literal('3'),
 		}),
 	},
@@ -471,6 +502,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'The Instance AI builder saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits, including the first generated configuration of a saved draft. No-op and cosmetic-only saves emit nothing. Creation emits Builder created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
+			...builderWriteSession,
 			...agentKnowledgeModification,
 			event_version: z.literal('2'),
 		}),
@@ -500,6 +532,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'The Instance AI builder published an agent version through its agent_builder_publish_agent tool. One of three same-shaped publish events ("User published agent", "MCP published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing.',
 		properties: z.object({
 			...agentPublish,
+			...builderWriteSession,
 			event_version: z.literal('1'),
 		}),
 	},
@@ -527,6 +560,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			'The Instance AI builder unpublished an agent through its agent_builder_unpublish_agent tool. One of three same-shaped unpublish events ("User unpublished agent", "MCP unpublished agent") — union them for total agent unpublishing, or read one for that surface alone. Emitted from `AgentPublishService.unpublishAgent`.',
 		properties: z.object({
 			...agentActorIdentity,
+			...builderWriteSession,
 			event_version: z.literal('1'),
 		}),
 	},
