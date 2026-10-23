@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
+import type { InstanceAiRichMessagesResponse } from '@n8n/api-types';
 
 import { setContextModuleSettings } from '../../../config/intercepts';
 import { expect, test } from '../../../fixtures/base';
@@ -14,6 +15,86 @@ test.describe(
 	'Agent builder chat modes',
 	{ annotation: [{ type: 'owner', description: 'Agent' }] },
 	() => {
+		test('switches to Test from Assistant preview links without page navigation', async ({
+			n8n,
+			api,
+		}) => {
+			setContextModuleSettings(n8n.page.context(), {
+				'instance-ai': { enabled: true, setupCompleted: true, workflowBuilderAvailable: true },
+			});
+			const project = await api.projects.getMyPersonalProject();
+			const credential = await api.credentials.createCredential({
+				name: `Preview links ${nanoid(6)}`,
+				type: 'anthropicApi',
+				data: { apiKey: 'preview-links-test-key' },
+			});
+			const name = `Preview links ${nanoid(6)}`;
+			const agent = await api.agents.create(project.id, {
+				name,
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: credential.id,
+				instructions: 'Help answer questions about the project.',
+			});
+			const threadId = randomUUID();
+			await api.instanceAi.createAgentArtifactThread({
+				threadId,
+				projectId: project.id,
+				agentId: agent.id,
+				name,
+			});
+			const path = `/projects/${project.id}/agents/${agent.id}`;
+			const messages: InstanceAiRichMessagesResponse = {
+				threadId,
+				projectId: project.id,
+				nextEventId: 1,
+				messages: [
+					{
+						id: randomUUID(),
+						role: 'assistant',
+						createdAt: new Date().toISOString(),
+						content: `[Try legacy preview](${path}/preview)\n\n[Try current preview](${path}?openPreview=true)`,
+						reasoning: '',
+						isStreaming: false,
+					},
+				],
+			};
+			await n8n.page.route(`**/rest/instance-ai/threads/${threadId}/messages*`, async (route) => {
+				await route.fulfill({ json: { data: messages } });
+			});
+			await n8n.start.fromHome();
+			const builder = n8n.agentBuilder;
+			let documentRequests = 0;
+			n8n.page.on('request', (request) => {
+				if (request.isNavigationRequest() && request.resourceType() === 'document') {
+					documentRequests++;
+				}
+			});
+			for (const { open, composer } of [
+				{
+					open: async () => await builder.goto(project.id, agent.id),
+					composer: builder.getComposer('build'),
+				},
+				{
+					open: async () => await n8n.instanceAi.gotoThread(threadId),
+					composer: builder.getArtifactBuildComposer(),
+				},
+			]) {
+				await open();
+				for (const label of ['Try legacy preview', 'Try current preview']) {
+					await expect(builder.getPreviewLink(label)).toBeVisible();
+					await composer.fill('Keep my Build draft');
+					const url = n8n.page.url();
+					documentRequests = 0;
+					await builder.getPreviewLink(label).click();
+					await expect(builder.getModeButton('test')).toHaveAttribute('aria-pressed', 'true');
+					await expect(builder.getComposer('test')).toBeVisible();
+					await expect(n8n.page).toHaveURL(url);
+					expect(documentRequests).toBe(0);
+					await builder.getModeButton('build').click();
+					await expect(composer).toHaveValue('Keep my Build draft');
+				}
+			}
+		});
 		test('preserves both drafts and fits desktop and mobile layouts', async ({
 			n8n,
 			api,

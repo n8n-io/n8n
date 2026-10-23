@@ -1,7 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick, ref, computed, reactive } from 'vue';
+import { nextTick, ref, computed, reactive, type Component } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES, type PushMessage } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -16,6 +16,7 @@ import type {
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus, type AgentCredentialHelpRequest } from '../agents.eventBus';
+import AgentMarkdownChunk from '../components/AgentMarkdownChunk.vue';
 import { AGENT_TEMPLATES, AGENT_TEMPLATE_SUGGESTIONS_VERSION } from '../agentTemplates';
 import {
 	AGENT_CONFIG_WRITE_KEY,
@@ -508,12 +509,14 @@ async function renderView({
 	waitForAsyncSetup = true,
 	props,
 	seedStores,
+	stubs,
 }: {
 	knowledgeBaseEnabled?: boolean;
 	waitForAsyncSetup?: boolean;
 	props?: Record<string, unknown>;
 	/** Runs against the fresh pinia before mount, for state the view reads on setup. */
 	seedStores?: () => void;
+	stubs?: Record<string, Component>;
 } = {}) {
 	const pinia = createPinia();
 	setActivePinia(pinia);
@@ -535,7 +538,7 @@ async function renderView({
 		props: { builderLayout: { chatWidth: 'current', testChat: 'dock' }, ...props },
 		global: {
 			plugins: [pinia],
-			stubs: commonStubs,
+			stubs: { ...commonStubs, ...stubs },
 		},
 	});
 	mountedWrappers.push(wrapper);
@@ -6537,6 +6540,58 @@ describe('chat-first builder', () => {
 	beforeEach(() => {
 		resetViewMocks();
 		agentPermissionsMock.canUpdate.value = true;
+		agentPermissionsMock.canExecute.value = true;
+	});
+	async function renderWithPreviewLink(href: string) {
+		return await renderView({
+			props: { builderLayout: undefined },
+			stubs: {
+				InstanceAiChatPanel: {
+					...commonStubs.InstanceAiChatPanel,
+					components: { AgentMarkdownChunk },
+					template: `<div><AgentMarkdownChunk source="[Preview](${href})" /><slot name="composer-start" /></div>`,
+				},
+			},
+		});
+	}
+	it.each(['/projects/p1/agents/a1/preview', '/projects/p1/agents/a1?openPreview=true'])(
+		'selects Test from an Assistant Preview link without navigation: %s',
+		async (href) => {
+			const wrapper = await renderWithPreviewLink(href);
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			const preview = wrapper.getComponent({ name: 'AgentPreviewDock' });
+			await assistant.get('a').trigger('click');
+			await flushPromises();
+			expect(preview.props('isOpen')).toBe(true);
+			expect(assistant.props('visible')).toBe(false);
+			expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(assistant.vm);
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
+	it.each(['building', 'not runnable', 'no permission'])(
+		'keeps Build selected when a Preview link is blocked: %s',
+		async (reason) => {
+			if (reason === 'not runnable') {
+				getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
+			}
+			if (reason === 'no permission') agentPermissionsMock.canExecute.value = false;
+			const wrapper = await renderWithPreviewLink('/projects/p1/agents/a1/preview');
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			if (reason === 'building') assistant.vm.$emit('update:working', true);
+			await nextTick();
+			await assistant.get('a').trigger('click');
+			await flushPromises();
+			expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+			expect(assistant.props('visible')).toBe(true);
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
+	it('routes Preview links for another agent without opening the current Test chat', async () => {
+		const wrapper = await renderWithPreviewLink('/projects/p2/agents/a2/preview');
+		await wrapper.getComponent({ name: 'InstanceAiChatPanel' }).get('a').trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith('/projects/p2/agents/a2?openPreview=true');
 	});
 	it('opens the wide builder by default and keeps both chats mounted across mode changes', async () => {
 		const wrapper = await renderView({ props: { builderLayout: undefined } });

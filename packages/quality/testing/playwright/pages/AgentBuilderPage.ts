@@ -66,6 +66,10 @@ export class AgentBuilderPage extends BasePage {
 		return this.page.locator(`[data-testid="agent-builder-mode-${mode}"]:visible`);
 	}
 
+	getPreviewLink(name: string): Locator {
+		return this.page.getByRole('link', { name, exact: true });
+	}
+
 	async hoverTestMode(): Promise<void> {
 		await this.getModeButton('test').locator('..').hover();
 	}

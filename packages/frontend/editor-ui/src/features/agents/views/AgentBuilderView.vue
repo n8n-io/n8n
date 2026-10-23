@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onBeforeUnmount, provide, useTemplateRef } from 'vue';
+import {
+	ref,
+	computed,
+	watch,
+	nextTick,
+	onBeforeUnmount,
+	inject,
+	provide,
+	useTemplateRef,
+} from 'vue';
 import {
 	StorageSerializers,
 	useElementSize,
@@ -53,6 +62,7 @@ import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vu
 import { MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
 import { copyAgentConfig } from '../utils/agentSectionEditor.utils';
+import { buildAgentPreviewHref } from '../utils/agentPreviewUrl';
 import {
 	getAgent,
 	createAgent,
@@ -418,6 +428,19 @@ async function setChatMode(mode: 'build' | 'test') {
 		return true;
 	}
 }
+const openParentAgentChatPreview = inject<
+	((agentId: string, projectId: string) => boolean) | undefined
+>('openAgentChatPreview', undefined);
+provide('openAgentChatPreview', (targetAgentId: string, targetProjectId: string): boolean => {
+	if (targetAgentId === agentId.value && targetProjectId === projectId.value) {
+		void setChatMode('test');
+	} else if (openParentAgentChatPreview) {
+		return openParentAgentChatPreview(targetAgentId, targetProjectId);
+	} else {
+		void router.push(buildAgentPreviewHref(targetProjectId, targetAgentId));
+	}
+	return true;
+});
 const defaultPanelWidth = computed(() => {
 	if (builderContainerWidth.value === 0) return AGENT_DEFAULT_PANEL_WIDTH;
 	return clampPanelWidth(builderContainerWidth.value * AGENT_DEFAULT_PANEL_WIDTH_RATIO);
