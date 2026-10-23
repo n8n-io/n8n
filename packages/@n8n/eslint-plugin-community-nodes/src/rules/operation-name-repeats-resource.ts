@@ -19,8 +19,12 @@ function getWords(value: string): string[] {
 		.filter((word) => word && !/^(a|an|the)$/i.test(word));
 }
 
-function normalize(words: string[]): string {
-	return words.join(' ').toLowerCase().replace(/s$/, '');
+function matchesResource(words: string[], resource: string): boolean {
+	const name = words.join(' ').toLowerCase();
+	return (
+		name === resource ||
+		['s', 'es'].some((suffix) => name === resource + suffix || name + suffix === resource)
+	);
 }
 
 export const OperationNameRepeatsResourceRule = createRule({
@@ -77,7 +81,7 @@ export const OperationNameRepeatsResourceRule = createRule({
 					const resource = resourceNode ? getStringLiteralValue(resourceNode) : null;
 					if (!resource) continue;
 
-					const normalizedResource = normalize(getWords(resource));
+					const normalizedResource = getWords(resource).join(' ').toLowerCase();
 					if (!normalizedResource) continue;
 
 					const options = findArrayLiteralProperty(parameter, 'options');
@@ -89,8 +93,10 @@ export const OperationNameRepeatsResourceRule = createRule({
 						if (!optionName || !name) continue;
 
 						const words = getWords(name);
-						const resourceOnly = normalize(words) === normalizedResource;
-						if (!resourceOnly && normalize(words.slice(1)) !== normalizedResource) continue;
+						const resourceIndex = words.findIndex((_, index) =>
+							matchesResource(words.slice(index), normalizedResource),
+						);
+						if (resourceIndex === -1) continue;
 
 						context.report({
 							node: optionName.value,
@@ -98,7 +104,7 @@ export const OperationNameRepeatsResourceRule = createRule({
 							data: {
 								name,
 								resource,
-								verb: resourceOnly ? 'Get' : words[0],
+								verb: resourceIndex === 0 ? 'Get' : words.slice(0, resourceIndex).join(' '),
 							},
 						});
 					}

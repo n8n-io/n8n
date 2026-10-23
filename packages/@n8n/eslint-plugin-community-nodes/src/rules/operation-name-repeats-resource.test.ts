@@ -54,6 +54,16 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 			{ resource: 'contact', name: 'Create Contact', verb: 'Create' },
 			{ resource: 'contact', name: 'Delete a Contact', verb: 'Delete' },
 			{ resource: 'contact', name: 'GET THE CONTACTS', verb: 'GET' },
+			{ resource: 'status', name: 'Get Statuses', verb: 'Get' },
+			{ resource: 'statuses', name: 'Get Status', verb: 'Get' },
+			{ resource: 'box', name: 'Get Boxes', verb: 'Get' },
+			{ resource: 'boxes', name: 'Get Box', verb: 'Get' },
+			{ resource: 'case', name: 'Get Cases', verb: 'Get' },
+			{ resource: 'cases', name: 'Get Case', verb: 'Get' },
+			{ resource: 'contact', name: 'Create New Contact', verb: 'Create New' },
+			{ resource: 'contact', name: 'Get All Contacts', verb: 'Get All' },
+			{ resource: 'status', name: 'Get All the Statuses', verb: 'Get All' },
+			{ resource: 'deliveryStatus', name: 'Get All Delivery Statuses', verb: 'Get All' },
 			{ resource: 'directoryContext', name: 'Get Directory Context', verb: 'Get' },
 			{ resource: 'httpRequest', name: 'Send HTTP Request', verb: 'Send' },
 			{ resource: 'contact', name: 'Create Contact (Legacy)', verb: 'Create' },
@@ -71,8 +81,11 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 			]);
 		});
 
-		it('reports an operation named only after its resource', () => {
-			expect(lintNode(createNodeCode(['contact'], 'Contact'))).toEqual([
+		it.each([
+			{ resource: 'contact', name: 'Contact' },
+			{ resource: 'status', name: 'Statuses' },
+		])('reports "$name" named only after $resource', ({ resource, name }) => {
+			expect(lintNode(createNodeCode([resource], name))).toEqual([
 				expect.objectContaining({ ruleId, severity: 2 }),
 			]);
 		});
@@ -81,6 +94,10 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 			{ resources: ['contact'], name: 'Create' },
 			{ resources: ['table'], name: 'Get Columns' },
 			{ resources: ['payment'], name: 'Create Payment Link' },
+			{ resources: ['contact'], name: 'Get Contact Status' },
+			{ resources: ['status'], name: 'Get All Status Reports' },
+			{ resources: ['box'], name: 'Get Inboxes' },
+			{ resources: ['directoryContext'], name: 'Get Context' },
 			{ resources: ['contact', 'company'], name: 'Create Contact' },
 		])('accepts "$name" under $resources', ({ resources, name }) => {
 			expect(lintNode(createNodeCode(resources, name))).toEqual([]);
