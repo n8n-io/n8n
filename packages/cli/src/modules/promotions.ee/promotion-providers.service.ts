@@ -127,7 +127,11 @@ export class PromotionProvidersService {
 	 * Type and auth type are immutable. Leaving `auth` out keeps the stored
 	 * credentials; sending it replaces them for every environment on this provider.
 	 */
-	async update(id: string, input: UpdatePromotionProviderDto): Promise<PromotionProviderPublicDto> {
+	async update(
+		id: string,
+		input: UpdatePromotionProviderDto,
+		actor: User,
+	): Promise<PromotionProviderPublicDto> {
 		if (Object.keys(input).length === 0) {
 			throw new BadRequestError('At least one field is required');
 		}
@@ -156,6 +160,16 @@ export class PromotionProvidersService {
 		} else {
 			await this.providerRepository.updateProvider(id, changes);
 		}
+		this.eventService.emit('promotion-provider-updated', {
+			user: actor,
+			providerId: id,
+			providerType: current.type,
+			changedFields: [
+				...(input.name !== undefined ? ['name' as const] : []),
+				...(input.auth !== undefined ? ['auth' as const] : []),
+				...(input.config !== undefined ? ['config' as const] : []),
+			],
+		});
 		return this.toPublic(await this.getEntity(id));
 	}
 
@@ -163,12 +177,17 @@ export class PromotionProvidersService {
 	 * A provider in use cannot be deleted. The pre-check answers 409 for the normal
 	 * case; the foreign key is the final guard when an environment appears in between.
 	 */
-	async delete(id: string): Promise<void> {
-		await this.getEntity(id);
+	async delete(id: string, actor: User): Promise<void> {
+		const provider = await this.getEntity(id);
 		if ((await this.environmentRepository.countByProviderId(id)) > 0) {
 			throw new ConflictError('This provider is used by a promotion environment');
 		}
 		await mapPromotionConflicts(async () => await this.providerRepository.deleteProvider(id));
+		this.eventService.emit('promotion-provider-deleted', {
+			user: actor,
+			providerId: id,
+			providerType: provider.type,
+		});
 	}
 
 	async getEntity(id: string): Promise<PromotionProvider> {

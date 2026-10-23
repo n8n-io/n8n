@@ -126,6 +126,7 @@ export class PromotionEnvironmentsService {
 	async update(
 		id: string,
 		input: UpdatePromotionEnvironmentDto,
+		actor: User,
 	): Promise<PromotionEnvironmentPublicDto> {
 		const current = await this.getEntity(id);
 
@@ -160,6 +161,17 @@ export class PromotionEnvironmentsService {
 				'The environment changed during the update. Reload it and try again.',
 			);
 		}
+		this.eventService.emit('promotion-environment-updated', {
+			user: actor,
+			environmentId: id,
+			direction: current.direction,
+			changedFields: [
+				...(input.name !== undefined ? ['name' as const] : []),
+				...(input.remote !== undefined ? ['remote' as const] : []),
+				...(input.providerId !== undefined ? ['provider' as const] : []),
+				...(input.settings !== undefined ? ['settings' as const] : []),
+			],
+		});
 		return await this.findOne(id);
 	}
 
@@ -167,9 +179,15 @@ export class PromotionEnvironmentsService {
 	 * Cascades to this environment's project links. The provider stays, because
 	 * other environments may use it.
 	 */
-	async delete(id: string): Promise<void> {
-		const { id: environmentId } = await this.getEntity(id);
+	async delete(id: string, actor: User): Promise<void> {
+		const { id: environmentId, direction, scope } = await this.getEntity(id);
 		await this.environmentRepository.deleteEnvironment(environmentId);
+		this.eventService.emit('promotion-environment-deleted', {
+			user: actor,
+			environmentId,
+			direction,
+			environmentScope: scope,
+		});
 		await this.purgeCache(environmentId);
 	}
 

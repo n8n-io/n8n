@@ -43,6 +43,54 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				.describe('Promote environments only. True when each promotion opens its own branch'),
 		}),
 	},
+	USER_UPDATED_PROMOTION_PROVIDER: {
+		name: 'User updated promotion provider',
+		description:
+			'A promotion provider was updated. Fires once per successful update. A failed or conflicted update does not fire it.',
+		properties: z.object({
+			user_id: z.string(),
+			provider_id: z.string(),
+			provider_type: z.enum(['git', 'gitlab']),
+			changed_fields: z
+				.array(z.enum(['name', 'auth', 'config']))
+				.describe('The fields the request sent, never their values. `auth` means new credentials'),
+		}),
+	},
+	USER_DELETED_PROMOTION_PROVIDER: {
+		name: 'User deleted promotion provider',
+		description:
+			'A promotion provider was deleted. Fires once per successful delete. A provider that an environment still uses cannot be deleted, so that attempt does not fire it.',
+		properties: z.object({
+			user_id: z.string(),
+			provider_id: z.string(),
+			provider_type: z.enum(['git', 'gitlab']),
+		}),
+	},
+	USER_UPDATED_PROMOTION_ENVIRONMENT: {
+		name: 'User updated promotion environment',
+		description:
+			'A promotion environment was updated. Fires once per successful update. A failed or conflicted update does not fire it.',
+		properties: z.object({
+			user_id: z.string(),
+			environment_id: z.string(),
+			direction: z.enum(['apply', 'promote']),
+			changed_fields: z
+				.array(z.enum(['name', 'remote', 'provider', 'settings']))
+				.describe(
+					'The fields the request sent, never their values. `provider` means a move to another provider',
+				),
+		}),
+	},
+	USER_DELETED_PROMOTION_ENVIRONMENT: {
+		name: 'User deleted promotion environment',
+		description: 'A promotion environment was deleted. Fires once per successful delete.',
+		properties: z.object({
+			user_id: z.string(),
+			environment_id: z.string(),
+			direction: z.enum(['apply', 'promote']),
+			environment_scope: z.enum(['instance', 'projects']),
+		}),
+	},
 	USER_CLONED_PROMOTION_REPOSITORY: {
 		name: 'User cloned promotion repository',
 		description:

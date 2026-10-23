@@ -5313,6 +5313,92 @@ describe('TelemetryEventRelay', () => {
 			).toBeNull();
 		});
 
+		it('should track an updated provider with the fields that changed', () => {
+			eventService.emit('promotion-provider-updated', {
+				user,
+				providerId: 'prov-1',
+				providerType: 'gitlab',
+				changedFields: ['name', 'auth'],
+			});
+
+			const payload = {
+				user_id: 'user123',
+				provider_id: 'prov-1',
+				provider_type: 'gitlab',
+				changed_fields: ['name', 'auth'],
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_PROVIDER,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_PROVIDER.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a deleted provider', () => {
+			eventService.emit('promotion-provider-deleted', {
+				user,
+				providerId: 'prov-1',
+				providerType: 'git',
+			});
+
+			const payload = { user_id: 'user123', provider_id: 'prov-1', provider_type: 'git' };
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_DELETED_PROMOTION_PROVIDER,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_DELETED_PROMOTION_PROVIDER.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track an updated environment with the fields that changed', () => {
+			eventService.emit('promotion-environment-updated', {
+				user,
+				environmentId: 'env-1',
+				direction: 'apply',
+				changedFields: ['provider', 'settings'],
+			});
+
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				direction: 'apply',
+				changed_fields: ['provider', 'settings'],
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_ENVIRONMENT,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_ENVIRONMENT.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a deleted environment with its direction and scope', () => {
+			eventService.emit('promotion-environment-deleted', {
+				user,
+				environmentId: 'env-1',
+				direction: 'promote',
+				environmentScope: 'projects',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				direction: 'promote',
+				environment_scope: 'projects',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_DELETED_PROMOTION_ENVIRONMENT,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_DELETED_PROMOTION_ENVIRONMENT.getValidationError(payload),
+			).toBeNull();
+		});
+
 		it('should track a failed clone with its failure kind', () => {
 			eventService.emit('promotion-repository-cloned', {
 				user,

@@ -353,6 +353,10 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-review-comment-created': (event) => this.workflowReviewCommentCreated(event),
 			'promotion-provider-created': (event) => this.promotionProviderCreated(event),
 			'promotion-environment-created': (event) => this.promotionEnvironmentCreated(event),
+			'promotion-provider-updated': (event) => this.promotionProviderUpdated(event),
+			'promotion-provider-deleted': (event) => this.promotionProviderDeleted(event),
+			'promotion-environment-updated': (event) => this.promotionEnvironmentUpdated(event),
+			'promotion-environment-deleted': (event) => this.promotionEnvironmentDeleted(event),
 			'promotion-repository-cloned': (event) => this.promotionRepositoryCloned(event),
 			'promotion-promoted': (event) => this.promotionPromoted(event),
 			'promotion-applied': (event) => this.promotionApplied(event),
@@ -2684,6 +2688,60 @@ export class TelemetryEventRelay extends EventRelay {
 			direction,
 			environment_scope: environmentScope,
 			create_branch_on_promotion: createBranchOnPromotion,
+		});
+	}
+
+	private promotionProviderUpdated({
+		user,
+		providerId,
+		providerType,
+		changedFields,
+	}: RelayEventMap['promotion-provider-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_PROVIDER, {
+			user_id: user.id,
+			provider_id: providerId,
+			provider_type: providerType,
+			changed_fields: changedFields,
+		});
+	}
+
+	private promotionProviderDeleted({
+		user,
+		providerId,
+		providerType,
+	}: RelayEventMap['promotion-provider-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_DELETED_PROMOTION_PROVIDER, {
+			user_id: user.id,
+			provider_id: providerId,
+			provider_type: providerType,
+		});
+	}
+
+	private promotionEnvironmentUpdated({
+		user,
+		environmentId,
+		direction,
+		changedFields,
+	}: RelayEventMap['promotion-environment-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			direction,
+			changed_fields: changedFields,
+		});
+	}
+
+	private promotionEnvironmentDeleted({
+		user,
+		environmentId,
+		direction,
+		environmentScope,
+	}: RelayEventMap['promotion-environment-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_DELETED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			direction,
+			environment_scope: environmentScope,
 		});
 	}
 

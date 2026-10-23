@@ -35,6 +35,8 @@ describe('PromotionEnvironmentsService', () => {
 	const projectRepository = mock<ProjectRepository>();
 	const providersService = mock<PromotionProvidersService>();
 	const gitService = mock<PromotionsGitService>();
+	const eventService = mock<EventService>();
+	const actor = mock<User>({ id: 'user-1' });
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -91,7 +93,7 @@ describe('PromotionEnvironmentsService', () => {
 			gitService,
 			workingDirectory,
 			logger,
-			mock<EventService>(),
+			eventService,
 		);
 	});
 
@@ -102,9 +104,20 @@ describe('PromotionEnvironmentsService', () => {
 	it('removes the local checkout of the environment it deletes', async () => {
 		await mkdir(workingDirectory.paths(ENVIRONMENT_ID).repositoryFolder, { recursive: true });
 
-		await service.delete(ENVIRONMENT_ID);
+		await service.delete(ENVIRONMENT_ID, actor);
 
 		await expect(stat(workingDirectory.paths(ENVIRONMENT_ID).rootFolder)).rejects.toThrow();
+	});
+
+	it('emits an event with the direction and scope of the environment it deletes', async () => {
+		await service.delete(ENVIRONMENT_ID, actor);
+
+		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-deleted', {
+			user: actor,
+			environmentId: ENVIRONMENT_ID,
+			direction: expect.any(String),
+			environmentScope: expect.any(String),
+		});
 	});
 
 	describe('checkout state', () => {

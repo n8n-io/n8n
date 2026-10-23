@@ -4,7 +4,7 @@ import type { User } from '@n8n/db';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
 import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
@@ -180,14 +180,16 @@ describe('PromotionProvidersService', () => {
 
 	describe('update', () => {
 		it('rejects an empty update before writing to the repository', async () => {
-			await expect(service.update('prov1', {})).rejects.toThrow('At least one field is required');
+			await expect(service.update('prov1', {}, actor)).rejects.toThrow(
+				'At least one field is required',
+			);
 			expect(providerRepository.updateProvider).not.toHaveBeenCalled();
 		});
 
 		it('keeps the stored credentials when the request has no auth', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 
-			await service.update('prov1', { name: 'renamed' } as UpdatePromotionProviderDto);
+			await service.update('prov1', { name: 'renamed' } as UpdatePromotionProviderDto, actor);
 
 			expect(gitService.generateSshKeyPair).not.toHaveBeenCalled();
 			expect(providerRepository.updateProvider).toHaveBeenCalledWith('prov1', {
@@ -199,9 +201,11 @@ describe('PromotionProvidersService', () => {
 		it('rotates a key without changing its algorithm', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 
-			await service.update('prov1', {
-				auth: { authType: 'ssh-key' },
-			} as UpdatePromotionProviderDto);
+			await service.update(
+				'prov1',
+				{ auth: { authType: 'ssh-key' } } as UpdatePromotionProviderDto,
+				actor,
+			);
 
 			expect(gitService.generateSshKeyPair).toHaveBeenCalledWith('rsa');
 			const [, expected, changes] = providerRepository.updateProviderIfUnchanged.mock.calls[0];
@@ -210,12 +214,69 @@ describe('PromotionProvidersService', () => {
 			expect(changes.auth).toBe('enc:{"schemaVersion":1,"privateKey":"PRIV"}');
 		});
 
+		it('emits the fields the request sent, never their values', async () => {
+			providerRepository.findById.mockResolvedValue(sshProvider());
+
+			await service.update(
+				'prov1',
+				{ name: 'renamed', auth: { authType: 'ssh-key' } } as UpdatePromotionProviderDto,
+				actor,
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-updated', {
+				user: actor,
+				providerId: 'prov1',
+				providerType: 'git',
+				changedFields: ['name', 'auth'],
+			});
+		});
+
+		it('emits no event when the update loses a race', async () => {
+			providerRepository.findById.mockResolvedValue(sshProvider());
+			providerRepository.updateProviderIfUnchanged.mockResolvedValueOnce(false);
+
+			await expect(
+				service.update(
+					'prov1',
+					{ auth: { authType: 'ssh-key' } } as UpdatePromotionProviderDto,
+					actor,
+				),
+			).rejects.toThrow(ConflictError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('reports an unknown provider as not found', async () => {
 			providerRepository.findById.mockResolvedValue(null);
 
 			await expect(
-				service.update('missing', { name: 'x' } as UpdatePromotionProviderDto),
+				service.update('missing', { name: 'x' } as UpdatePromotionProviderDto, actor),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('delete', () => {
+		it('emits an event after it deletes an unused provider', async () => {
+			providerRepository.findById.mockResolvedValue(sshProvider());
+			environmentRepository.countByProviderId.mockResolvedValue(0);
+
+			await service.delete('prov1', actor);
+
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-deleted', {
+				user: actor,
+				providerId: 'prov1',
+				providerType: 'git',
+			});
+		});
+
+		it('emits no event for a provider that an environment uses', async () => {
+			providerRepository.findById.mockResolvedValue(sshProvider());
+			environmentRepository.countByProviderId.mockResolvedValue(1);
+
+			await expect(service.delete('prov1', actor)).rejects.toThrow(ConflictError);
+
+			expect(providerRepository.deleteProvider).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 

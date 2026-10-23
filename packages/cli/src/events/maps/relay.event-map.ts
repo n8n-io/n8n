@@ -1319,6 +1319,35 @@ export type RelayEventMap = {
 		createBranchOnPromotion?: boolean;
 	};
 
+	'promotion-provider-updated': {
+		user: UserLike;
+		providerId: string;
+		providerType: PromotionProviderType;
+		/** The fields the request sent, never their values. */
+		changedFields: Array<'name' | 'auth' | 'config'>;
+	};
+
+	'promotion-provider-deleted': {
+		user: UserLike;
+		providerId: string;
+		providerType: PromotionProviderType;
+	};
+
+	'promotion-environment-updated': {
+		user: UserLike;
+		environmentId: string;
+		direction: PromotionDirection;
+		/** The fields the request sent, never their values. */
+		changedFields: Array<'name' | 'remote' | 'provider' | 'settings'>;
+	};
+
+	'promotion-environment-deleted': {
+		user: UserLike;
+		environmentId: string;
+		direction: PromotionDirection;
+		environmentScope: PromotionEnvironmentScope;
+	};
+
 	'promotion-repository-cloned': {
 		user: UserLike;
 		environmentId: string;
