@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { testWithAPIKey } from '../shared/public-api';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -23,12 +24,6 @@ beforeEach(() => {
 	authMemberAgent = testServer.publicApiAgentFor(member);
 });
 
-const testWithAPIKey = (method: 'get', url: string, apiKey: string | null) => async () => {
-	void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
-	const response = await authOwnerAgent[method](url);
-	expect(response.statusCode).toBe(401);
-};
-
 describe('GET /discover', () => {
 	test('should fail when no API key header is sent', async () => {
 		const unauthAgent = testServer.publicApiAgentWithoutApiKey();
@@ -36,9 +31,11 @@ describe('GET /discover', () => {
 		expect(response.statusCode).toBe(401);
 	});
 
-	test('should fail due to missing API Key', testWithAPIKey('get', '/discover', null));
+	test('should fail due to missing API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'get', '/discover', null));
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/discover', 'abcXYZ'));
+	test('should fail due to invalid API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'get', '/discover', 'abcXYZ'));
 
 	test('should return discover data via session cookie, without an API key', async () => {
 		const response = await testServer.publicApiAgentWithCookie(owner).get('/discover');

@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { testWithAPIKey } from '../shared/public-api';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -27,17 +28,12 @@ beforeEach(async () => {
 	authMemberAgent = testServer.publicApiAgentFor(member);
 });
 
-const testWithAPIKey =
-	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
-		const response = await authOwnerAgent[method](url);
-		expect(response.statusCode).toBe(401);
-	};
-
 describe('GET /tags', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/tags', null));
+	test('should fail due to missing API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'get', '/tags', null));
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/tags', 'abcXYZ'));
+	test('should fail due to invalid API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'get', '/tags', 'abcXYZ'));
 
 	test('should return all tags', async () => {
 		await Promise.all([createTag({}), createTag({}), createTag({})]);
@@ -91,12 +87,11 @@ describe('GET /tags', () => {
 });
 
 describe('GET /tags/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/tags/gZqmqiGAuo1dHT7q', null));
+	test('should fail due to missing API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'get', '/tags/gZqmqiGAuo1dHT7q', null));
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('get', '/tags/gZqmqiGAuo1dHT7q', 'abcXYZ'),
-	);
+	test('should fail due to invalid API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'get', '/tags/gZqmqiGAuo1dHT7q', 'abcXYZ'));
 
 	test('should fail due to non-existing tag', async () => {
 		const response = await authOwnerAgent.get('/tags/gZqmqiGAuo1dHT7q');
@@ -147,15 +142,11 @@ describe('GET /tags/:id', () => {
 });
 
 describe('DELETE /tags/:id', () => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('delete', '/tags/gZqmqiGAuo1dHT7q', null),
-	);
+	test('should fail due to missing API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'delete', '/tags/gZqmqiGAuo1dHT7q', null));
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('delete', '/tags/gZqmqiGAuo1dHT7q', 'abcXYZ'),
-	);
+	test('should fail due to invalid API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'delete', '/tags/gZqmqiGAuo1dHT7q', 'abcXYZ'));
 
 	test('should fail due to non-existing tag', async () => {
 		const response = await authOwnerAgent.delete('/tags/gZqmqiGAuo1dHT7q');
@@ -226,9 +217,11 @@ describe('DELETE /tags/:id', () => {
 });
 
 describe('POST /tags', () => {
-	test('should fail due to missing API Key', testWithAPIKey('post', '/tags', null));
+	test('should fail due to missing API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'post', '/tags', null));
 
-	test('should fail due to invalid API Key', testWithAPIKey('post', '/tags', 'abcXYZ'));
+	test('should fail due to invalid API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'post', '/tags', 'abcXYZ'));
 
 	test('should fail due to invalid body', async () => {
 		const response = await authOwnerAgent.post('/tags').send({});
@@ -325,12 +318,11 @@ describe('POST /tags', () => {
 });
 
 describe('PUT /tags/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('put', '/tags/gZqmqiGAuo1dHT7q', null));
+	test('should fail due to missing API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'put', '/tags/gZqmqiGAuo1dHT7q', null));
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('put', '/tags/gZqmqiGAuo1dHT7q', 'abcXYZ'),
-	);
+	test('should fail due to invalid API Key', async () =>
+		await testWithAPIKey(authOwnerAgent, 'put', '/tags/gZqmqiGAuo1dHT7q', 'abcXYZ'));
 
 	test('should fail due to non-existing tag', async () => {
 		const response = await authOwnerAgent.put('/tags/gZqmqiGAuo1dHT7q').send({
