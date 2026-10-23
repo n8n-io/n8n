@@ -201,8 +201,14 @@ describe('onSideCallUsage', () => {
 				},
 			});
 		const agentInstance = mock<RuntimeAgent>();
-		const reportSideCall = (options: { onSideCallUsage?: (r: SideCallUsageReport) => unknown }) =>
-			options.onSideCallUsage?.(report);
+		// The outcome of what the SDK awaits after it reports the side call.
+		let delivered: Promise<{ error?: unknown }> = Promise.resolve({});
+		const reportSideCall = (options: { onSideCallUsage?: (r: SideCallUsageReport) => unknown }) => {
+			delivered = Promise.resolve(options.onSideCallUsage?.(report)).then(
+				() => ({}),
+				(error: unknown) => ({ error }),
+			);
+		};
 		agentInstance.stream.mockImplementation(async (_input, options) => {
 			reportSideCall(options ?? {});
 			return { stream: emptyStream() } as never;
@@ -234,9 +240,7 @@ describe('onSideCallUsage', () => {
 		})) {
 			// Read the stream to the end.
 		}
-		// Let the forwarded callback's promise settle.
-		await new Promise((resolve) => setImmediate(resolve));
-		return { executions, logger };
+		return { executions, delivered };
 	}
 
 	it.each(['start', 'resume'] as const)(
@@ -258,6 +262,23 @@ describe('onSideCallUsage', () => {
 		expect(executions.recordSideCallUsage).toHaveBeenCalledWith('exec-1', 'thread-1', report);
 	});
 
+	it('returns the caller callback promise to the SDK', async () => {
+		let finishClaim!: () => void;
+		const callerOnSideCallUsage = vi.fn(
+			async () => await new Promise<void>((resolve) => (finishClaim = resolve)),
+		);
+		let settled = false;
+
+		const { delivered } = await runTurn('start', callerOnSideCallUsage);
+		void delivered.then(() => (settled = true));
+		await new Promise((resolve) => setImmediate(resolve));
+
+		expect(settled).toBe(false);
+		finishClaim();
+		await delivered;
+		expect(settled).toBe(true);
+	});
+
 	it.each([
 		[
 			'throws',
@@ -266,14 +287,14 @@ describe('onSideCallUsage', () => {
 			},
 		],
 		['rejects', async () => await Promise.reject(new Error('claim failed'))],
-	])('logs a warning and keeps the turn when the caller callback %s', async (_, callback) => {
-		const { executions, logger } = await runTurn('start', callback);
+	])(
+		'records the cost and passes the error to the SDK when the caller callback %s',
+		async (_, onUsage) => {
+			const { executions, delivered } = await runTurn('start', onUsage);
 
-		expect(executions.recordSideCallUsage).toHaveBeenCalledWith('exec-1', 'thread-1', report);
-		expect(executions.finalizeExecution).toHaveBeenCalled();
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Agent side-call usage callback failed',
-			expect.objectContaining({ task: 'observer', reportId: 'report-1' }),
-		);
-	});
+			expect(executions.recordSideCallUsage).toHaveBeenCalledWith('exec-1', 'thread-1', report);
+			expect(executions.finalizeExecution).toHaveBeenCalled();
+			expect((await delivered).error).toEqual(new Error('claim failed'));
+		},
+	);
 });
