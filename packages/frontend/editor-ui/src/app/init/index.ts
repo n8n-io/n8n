@@ -267,11 +267,21 @@ export async function initializeAuthenticatedFeatures(
 		await coordinator.initialize({ version: settingsStore.settings.versionCli });
 		await coordinator.loadNodeTypes(rootStore.baseUrl);
 	}
-	await Promise.all([
+	void Promise.allSettled([
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
-		credentialsStore.fetchAllCredentials(),
 		credentialsStore.fetchCredentialTypes(false),
-	]);
+	]).then((results) => {
+		results.forEach((result) => {
+			if (result.status === 'rejected') {
+				console.error('Failed to initialize n8n types', result.reason);
+			}
+		});
+	});
+
+	void credentialsStore.fetchAllCredentials().catch((error) => {
+		// fail silently: this is a pre-fetch, app will call this again later
+		console.error('Failed to fetch credentials', error);
+	});
 
 	authenticatedFeaturesInitialized = true;
 }
