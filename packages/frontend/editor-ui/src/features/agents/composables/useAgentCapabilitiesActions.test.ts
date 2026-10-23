@@ -53,22 +53,43 @@ function makeActions(
 	const agent = ref<AgentResource | null>(null);
 	const agentId = ref('agent-1');
 	const localConfig = ref<AgentJsonConfig | null>(makeConfig(overrides));
+	const connectedTriggers = ref<string[]>([]);
 	const actions = useAgentCapabilitiesActions({
 		localConfig,
 		agent,
 		projectId: computed(() => 'proj-1'),
 		agentId: computed(() => agentId.value),
-		connectedTriggers: ref<string[]>([]),
+		connectedTriggers,
 		scheduleConfigUpdate,
 		scheduleSkillSave,
 		telemetry,
 	});
-	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId, localConfig };
+	return {
+		actions,
+		scheduleConfigUpdate,
+		scheduleSkillSave,
+		agent,
+		agentId,
+		localConfig,
+		connectedTriggers,
+	};
 }
 
 describe('useAgentCapabilitiesActions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('stores the remaining triggers and tracks a removed trigger', () => {
+		const trackTriggerRemoved = vi.fn();
+		const { actions, connectedTriggers } = makeActions({}, { trackTriggerRemoved });
+		connectedTriggers.value = ['n8n_chat', 'slack'];
+		const payload = { triggerType: 'n8n_chat', triggers: ['slack'] };
+
+		actions.onTriggerRemoved(payload);
+
+		expect(connectedTriggers.value).toEqual(['slack']);
+		expect(trackTriggerRemoved).toHaveBeenCalledExactlyOnceWith(payload);
 	});
 
 	it('forwards the selected picker mode to the tools modal', () => {

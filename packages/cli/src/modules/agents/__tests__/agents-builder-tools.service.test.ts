@@ -64,7 +64,7 @@ const standardApprovalResumeSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA)!;
 type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'> &
 	Pick<AgentConfigService, 'updateConfig'> &
 	Pick<AgentCustomToolsService, 'buildCustomTool'> &
-	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
+	Pick<AgentIntegrationPersistenceService, 'listBuilderChatIntegrations'> &
 	Pick<AgentSkillsService, 'createAndAttachSkills' | 'getSkill' | 'listSkills' | 'updateSkill'>;
 
 function makeService() {
@@ -72,7 +72,7 @@ function makeService() {
 	const agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>();
 	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
 	const agentIntegrationPersistenceService =
-		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
+		mock<Pick<AgentIntegrationPersistenceService, 'listBuilderChatIntegrations'>>();
 	const agentSkillsService =
 		mock<
 			Pick<AgentSkillsService, 'createAndAttachSkills' | 'getSkill' | 'listSkills' | 'updateSkill'>
@@ -82,7 +82,7 @@ function makeService() {
 		findByProjectId: agentsService.findByProjectId,
 		updateConfig: agentConfigService.updateConfig,
 		buildCustomTool: agentCustomToolsService.buildCustomTool,
-		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
+		listBuilderChatIntegrations: agentIntegrationPersistenceService.listBuilderChatIntegrations,
 		createAndAttachSkills: agentSkillsService.createAndAttachSkills,
 		getSkill: agentSkillsService.getSkill,
 		listSkills: agentSkillsService.listSkills,
@@ -607,7 +607,149 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual(expect.objectContaining({ ok: true, configMutated: true, agentId }));
 		});
 
+<<<<<<< HEAD
 		it('patch_config saves a removed top-level field as removed', async () => {
+=======
+		it('agent_builder_finish_setup writes the resolved credential and path-bound answer into the config', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const gmailTool = (name: string, nodeParameters: Record<string, unknown> = {}) => ({
+				type: 'node' as const,
+				name,
+				description: name,
+				node: { nodeType: 'n8n-nodes-base.gmailTool', nodeTypeVersion: 2.2, nodeParameters },
+			});
+			const currentConfig: AgentJsonConfig = {
+				...baseConfig,
+				tools: [gmailTool('search_order_emails'), gmailTool('escalate', { sendTo: '' })],
+			};
+			let stored = currentConfig;
+			agentsService.listBuilderChatIntegrations.mockResolvedValue([]);
+			agentsService.findById.mockImplementation(async () => makeAgent(stored));
+			agentsService.updateConfig.mockImplementation(async (_agentId, _projectId, config) => {
+				stored = config as AgentJsonConfig;
+				return {
+					config: stored,
+					configHash: getAgentConfigHash(stored),
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				};
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					displayName: 'Gmail Tool',
+					name: 'n8n-nodes-base.gmailTool',
+					group: [],
+					version: 2.2,
+					description: '',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: [],
+					credentials: [{ name: 'gmailOAuth2' }],
+				},
+			} as unknown as ReturnType<NodeTypes['getByNameAndVersion']>);
+			credentialService.list.mockResolvedValue([
+				{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+			]);
+
+			const tool = getJsonTool(service, BUILDER_TOOLS.FINISH_SETUP);
+			const input = {
+				questions: [
+					{
+						id: 'escalation_email',
+						question: 'Which address receives escalations?',
+						type: 'text',
+						configPath: '/tools/1/node/nodeParameters/sendTo',
+					},
+				],
+				credentialRequests: [{ credentialType: 'gmailOAuth2', purpose: 'Order emails' }],
+			};
+			const suspendPayload = await tool.handler!(input, {
+				...ctx,
+				suspend: vi.fn(async (payload: unknown) => payload),
+			} as never);
+			const result = await tool.handler!(input, {
+				...ctx,
+				suspendPayload,
+				resumeData: {
+					answers: [
+						{
+							questionId: 'escalation_email',
+							selectedOptions: [],
+							customText: 'support@acme.test',
+						},
+					],
+				},
+			} as never);
+
+			const credentials = { gmailOAuth2: { id: 'g1', name: 'Gmail account' } };
+			expect(stored.tools?.map((t) => (t.type === 'node' ? t.node : undefined))).toEqual([
+				expect.objectContaining({ credentials }),
+				expect.objectContaining({ credentials, nodeParameters: { sendTo: 'support@acme.test' } }),
+			]);
+			expect(result).toEqual(
+				expect.objectContaining({
+					completed: true,
+					appliedToConfig: {
+						credentialTypes: ['gmailOAuth2'],
+						paths: ['/tools/1/node/nodeParameters/sendTo'],
+					},
+					configHash: getAgentConfigHash(stored),
+				}),
+			);
+		});
+
+		it('agent_builder_finish_setup does not overwrite a config field that already has a value', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.listBuilderChatIntegrations.mockResolvedValue([]);
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			const tool = getJsonTool(service, BUILDER_TOOLS.FINISH_SETUP);
+			const input = {
+				questions: [
+					{
+						id: 'escalation_email',
+						question: 'Which address receives escalations?',
+						type: 'text',
+						configPath: '/instructions',
+					},
+				],
+			};
+			const suspendPayload = await tool.handler!(input, {
+				...ctx,
+				suspend: vi.fn(async (payload: unknown) => payload),
+			} as never);
+			const result = await tool.handler!(input, {
+				...ctx,
+				suspendPayload,
+				resumeData: {
+					answers: [
+						{
+							questionId: 'escalation_email',
+							selectedOptions: [],
+							customText: 'support@acme.test',
+						},
+					],
+				},
+			} as never);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+			expect(result).toEqual(
+				expect.objectContaining({
+					completed: true,
+					configApplyErrors: [
+						expect.objectContaining({
+							path: '/instructions',
+							message: expect.stringContaining('already has a value'),
+						}),
+					],
+				}),
+			);
+			expect(result).not.toHaveProperty('appliedToConfig');
+		});
+
+		it('agent_builder_patch_config saves a removed top-level field as removed', async () => {
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 			const { service, agentsService } = makeService();
 			const telegram: AgentIntegrationConfig = {
 				type: 'telegram',
@@ -727,8 +869,13 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+<<<<<<< HEAD
 		it('patch_config can remove one integration while preserving siblings', async () => {
 			const { service, agentsService } = makeService();
+=======
+		it('agent_builder_patch_config can remove one integration while preserving siblings', async () => {
+			const { service, agentsService, telemetry } = makeService();
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 			const currentIntegrations = [
 				{ type: 'slack', credentialId: 'slack-1' },
 				{ type: 'linear', credentialId: 'linear-1' },
@@ -778,9 +925,92 @@ describe('AgentsBuilderToolsService', () => {
 				}),
 			);
 			expect(result).toEqual(expect.objectContaining({ ok: true, configMutated: true, agentId }));
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+				{
+					agent_id: agentId,
+					user_id: user.id,
+					trigger_type: 'linear',
+					triggers: ['slack', 'telegram'],
+				},
+			);
 		});
 
+<<<<<<< HEAD
 		it('patch_config strips legacy schedule integrations from the current snapshot', async () => {
+=======
+		it('agent_builder_write_config reports n8n Chat as a removed trigger', async () => {
+			const { service, agentsService, telemetry } = makeService();
+			const currentIntegrations = [
+				{ type: 'n8n_chat', credentialId: '' },
+				{ type: 'slack', credentialId: 'slack-1' },
+			] as NonNullable<AgentJsonConfig['integrations']>;
+			const currentConfig = { ...baseConfig, integrations: currentIntegrations };
+			const agent = makeAgent(baseConfig);
+			agent.integrations = currentIntegrations;
+			agentsService.findById.mockResolvedValue(agent);
+			agentsService.updateConfig.mockResolvedValue({
+				config: { ...currentConfig, integrations: [currentIntegrations[1]] },
+				configHash: 'config-hash',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					config: { integrations: [currentIntegrations[1]] },
+				},
+				ctx,
+			);
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+				expect.objectContaining({ trigger_type: 'n8n_chat', triggers: ['slack'] }),
+			);
+		});
+
+		it.each([
+			['the removed channel was a draft', { type: 'slack', credentialId: '' }, true],
+			['the save fails', { type: 'slack', credentialId: 'slack-1' }, false],
+		])(
+			'agent_builder_patch_config reports no removed trigger when %s',
+			async (_case, integration, saves) => {
+				const { service, agentsService, telemetry } = makeService();
+				const currentIntegrations = [integration] as NonNullable<AgentJsonConfig['integrations']>;
+				const currentConfig = { ...baseConfig, integrations: currentIntegrations };
+				const agent = makeAgent(baseConfig);
+				agent.integrations = currentIntegrations;
+				agentsService.findById.mockResolvedValue(agent);
+				if (saves) {
+					agentsService.updateConfig.mockResolvedValue({
+						config: { ...currentConfig, integrations: [] },
+						configHash: 'config-hash',
+						updatedAt: '2026-01-02T00:00:00.000Z',
+						versionId: 'v2',
+					});
+				} else {
+					agentsService.updateConfig.mockRejectedValue(new Error('Save failed'));
+				}
+
+				await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						operations: [{ op: 'remove', path: '/integrations/0' }],
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalled();
+				expect(telemetry.track).not.toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+					expect.anything(),
+				);
+			},
+		);
+
+		it('agent_builder_patch_config strips legacy schedule integrations from the current snapshot', async () => {
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 			const { service, agentsService } = makeService();
 			const scheduleIntegration = {
 				type: 'schedule',
@@ -3039,12 +3269,18 @@ describe('AgentsBuilderToolsService', () => {
 			vi.spyOn(
 				(
 					service as unknown as {
-						agentIntegrationPersistenceService: { listChatIntegrations: () => unknown };
+						agentIntegrationPersistenceService: { listBuilderChatIntegrations: () => unknown };
 					}
 				).agentIntegrationPersistenceService,
+<<<<<<< HEAD
 				'listChatIntegrations',
 			).mockReturnValue([{ type: 'telegram' }]);
 			const tool = tools.json.find((t) => t.name === 'configure_channel')!;
+=======
+				'listBuilderChatIntegrations',
+			).mockResolvedValue([{ type: 'telegram' }]);
+			const tool = tools.json.find((t) => t.name === 'agent_builder_configure_channel')!;
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 
 			const result = await tool.handler!({ integrationType: 'telegram' }, { ...ctx, suspend });
 

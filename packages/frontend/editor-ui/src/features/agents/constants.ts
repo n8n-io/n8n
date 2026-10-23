@@ -34,6 +34,24 @@ export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_DUPLICATE_MODAL_KEY = 'agentDuplicateModal';
 export const AGENT_DESCRIPTION_MODAL_KEY = 'agentDescriptionModal';
+<<<<<<< HEAD
+=======
+
+/**
+ * localStorage flag for the "Agent published" confirmation modal's
+ * "Don't show again" checkbox — same mechanism as the workflow-side
+ * `N8N_HIDE_ACTIVATION_ALERT`.
+ */
+export const LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION =
+	'N8N_HIDE_AGENT_PUBLISHED_CONFIRMATION';
+
+/** One-time n8n Chat hint popovers: set to `'true'` once the user dismisses the hint. */
+export const N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS = {
+	channel_chip: 'N8N_AGENTS_N8N_CHAT_HINT_CHANNEL_CHIP_DISMISSED',
+	new_chat_sidebar: 'N8N_AGENTS_N8N_CHAT_HINT_NEW_CHAT_SIDEBAR_DISMISSED',
+} as const;
+
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */

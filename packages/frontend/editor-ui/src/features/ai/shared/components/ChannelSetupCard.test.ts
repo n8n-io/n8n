@@ -36,6 +36,9 @@ const mocks = vi.hoisted(() => {
 		isConnected: vi.fn(),
 		isConfigured: vi.fn(),
 		getAgent: vi.fn(),
+		getAgentConfig: vi.fn(),
+		updateAgentConfig: vi.fn(),
+		n8nChatEnabled: true,
 		createSlackAgentApp: vi.fn(),
 		createSlackManagerCredential: vi.fn(),
 		finalizeSlackManagerCredential: vi.fn(),
@@ -96,6 +99,25 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getAgent: mocks.getAgent,
+	getAgentConfig: mocks.getAgentConfig,
+	updateAgentConfig: mocks.updateAgentConfig,
+}));
+
+vi.mock('@/features/agents/composables/useAgentsN8nChatFlag', async () => {
+	const { computed } = await import('vue');
+	return { useAgentsN8nChatFlag: () => computed(() => mocks.n8nChatEnabled) };
+});
+
+vi.mock('@/features/agents/channels/n8nChat/AgentChannelN8nChatView.vue', () => ({
+	default: {
+		props: ['savedDescription'],
+		setup(props: { savedDescription?: string }, { expose }: { expose: (e: object) => void }) {
+			const description = ref(props.savedDescription ?? '');
+			expose({ description });
+			return { description };
+		},
+		template: '<textarea data-testid="mock-n8n-chat-description" v-model="description" />',
+	},
 }));
 
 vi.mock('@/features/credentials/credentials.store', () => ({
@@ -235,6 +257,12 @@ describe('ChannelSetupCard', () => {
 		mocks.isConnected.mockReturnValue(false);
 		mocks.isConfigured.mockReturnValue(false);
 		mocks.getAgent.mockResolvedValue({ name: 'Agent', id: 'agent-1' });
+		mocks.n8nChatEnabled = true;
+		mocks.getAgentConfig.mockResolvedValue({
+			config: { name: 'Agent', description: 'Answers billing questions' },
+			configHash: 'hash-1',
+		});
+		mocks.updateAgentConfig.mockResolvedValue({});
 		mocks.createSlackAgentApp.mockResolvedValue({ installUrl: 'https://slack.com/oauth/install' });
 		mocks.createSlackManagerCredential.mockResolvedValue({
 			id: 'manager-credential',
@@ -621,4 +649,223 @@ describe('ChannelSetupCard', () => {
 		expect(mocks.connect).not.toHaveBeenCalled();
 		expect(wrapper.emitted('resolve')).toBeUndefined();
 	});
+<<<<<<< HEAD
+=======
+	describe('Microsoft Teams', () => {
+		beforeEach(() => {
+			const integrations = [mocks.slackIntegration, mocks.teamsIntegration];
+			mocks.setCatalog(integrations);
+			mocks.ensureLoaded.mockResolvedValue(integrations);
+			mocks.reloadCatalog.mockResolvedValue(integrations);
+		});
+
+		it("hands the agent's own icon to the setup view", async () => {
+			mocks.getAgent.mockResolvedValue({
+				name: 'Agent',
+				id: 'agent-1',
+				schema: {
+					personalisation: {
+						icon: 'zap',
+						gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+					},
+				},
+			});
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+
+			const setup = wrapper.find('[data-testid="mock-teams-setup"]');
+			expect(setup.attributes('data-icon')).toBe('zap');
+			expect(setup.attributes('data-gradient-from')).toBe('#2563EB');
+		});
+
+		it('offers the setup choice in the header', async () => {
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+
+			expect(wrapper.find('header [data-testid="mock-teams-setup-kind"]').exists()).toBe(true);
+		});
+
+		it('saves the provisioned channel without resolving, then resolves on Done', async () => {
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+			await wrapper.find('[data-testid="mock-teams-provision"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledWith('teams', 'teams-cred', undefined, {});
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(false);
+
+			await wrapper.find('[data-testid="mock-teams-done"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledTimes(2);
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		});
+
+		it('keeps Later while the provisioned channel failed to save', async () => {
+			mocks.connect.mockRejectedValueOnce(new Error('connect failed'));
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-teams-provision"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledTimes(1);
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(true);
+		});
+
+		it('hands the setup the credential the saved channel runs on', async () => {
+			mocks.connectedCredentials = { teams: 'teams-cred' };
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="mock-teams-saved-credential"]').text()).toBe('teams-cred');
+		});
+
+		it('removes the saved channel and starts the setup again', async () => {
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+			await wrapper.find('[data-testid="mock-teams-provision"]').trigger('click');
+			await flushPromises();
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(false);
+
+			await wrapper.find('[data-testid="mock-teams-restart"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('teams', 'teams-cred', {
+				deleteExternalResource: undefined,
+			});
+			expect(wrapper.find('[data-testid="mock-teams-credential"]').text()).toBe('');
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(true);
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+		});
+
+		it('tells the user where to remove what the old setup left behind', async () => {
+			mocks.disconnect.mockResolvedValueOnce({
+				warning: {
+					integrationType: 'teams',
+					code: 'resources_not_deleted',
+					action: { type: 'open_url', url: 'https://admin.teams.microsoft.com' },
+				},
+			});
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+			await wrapper.find('[data-testid="mock-teams-provision"]').trigger('click');
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-teams-restart"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		});
+
+		it('keeps the saved channel and reports the error when removal fails', async () => {
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+			await wrapper.find('[data-testid="mock-teams-provision"]').trigger('click');
+			await flushPromises();
+			mocks.disconnect.mockRejectedValueOnce(new Error('disconnect failed'));
+
+			await wrapper.find('[data-testid="mock-teams-restart"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.showError).toHaveBeenCalled();
+			expect(wrapper.find('[data-testid="mock-teams-credential"]').text()).toBe('teams-cred');
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(false);
+		});
+
+		it('stays open after a connect when the setup has steps past it', async () => {
+			mocks.teamsKeepOpenAfterConnect = true;
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-teams-download"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledTimes(1);
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+			// Skipping now would remove the channel this card just saved.
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(false);
+
+			await wrapper.find('[data-testid="mock-teams-done"]').trigger('click');
+			await flushPromises();
+
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		});
+	});
+
+	describe('n8n Chat', () => {
+		it('seeds the saved description, saves an edit, connects without a credential and resolves', async () => {
+			const wrapper = mountCard({ integrationType: 'n8n_chat' });
+			await flushPromises();
+
+			expect(mocks.fetchStatus).toHaveBeenCalledWith(expect.arrayContaining(['n8n_chat']));
+			const textarea = wrapper.find('[data-testid="mock-n8n-chat-description"]');
+			expect((textarea.element as HTMLTextAreaElement).value).toBe('Answers billing questions');
+
+			await textarea.setValue('Answers billing and refund questions');
+			await wrapper.find('[data-testid="channel-setup-card-n8n-chat-save"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.updateAgentConfig).toHaveBeenCalledWith(
+				expect.anything(),
+				'project-1',
+				'agent-1',
+				{ name: 'Agent', description: 'Answers billing and refund questions' },
+				'hash-1',
+			);
+			expect(mocks.connect).toHaveBeenCalledWith('n8n_chat', '');
+			expect(mocks.updateAgentConfig.mock.invocationCallOrder[0]).toBeLessThan(
+				mocks.connect.mock.invocationCallOrder[0],
+			);
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		});
+
+		it('skips the config write when the description is unchanged', async () => {
+			const wrapper = mountCard({ integrationType: 'n8n_chat' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="channel-setup-card-n8n-chat-save"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.updateAgentConfig).not.toHaveBeenCalled();
+			expect(mocks.connect).toHaveBeenCalledWith('n8n_chat', '');
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		});
+
+		it('keeps setup pending and shows an error when saving fails', async () => {
+			mocks.connect.mockRejectedValueOnce(new Error('connect failed'));
+			const wrapper = mountCard({ integrationType: 'n8n_chat' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="channel-setup-card-n8n-chat-save"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.showError).toHaveBeenCalled();
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+		});
+
+		it('resolves with approved: false on skip', async () => {
+			const wrapper = mountCard({ integrationType: 'n8n_chat' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('n8n_chat', '');
+			expect(mocks.connect).not.toHaveBeenCalled();
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: false }]]);
+		});
+
+		it('shows the load error when the n8n Chat flag is off', async () => {
+			mocks.n8nChatEnabled = false;
+			const wrapper = mountCard({ integrationType: 'n8n_chat' });
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="channel-setup-card-n8n-chat-save"]').exists()).toBe(false);
+		});
+	});
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 });

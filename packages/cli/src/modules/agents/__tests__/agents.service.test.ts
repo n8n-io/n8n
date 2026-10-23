@@ -21,6 +21,7 @@ import { AgentsService } from '../agents.service';
 import type { AgentTask } from '../entities/agent-task.entity';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { N8nChatFlagService } from '../integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
@@ -72,6 +73,38 @@ function makeService() {
 	projectScopeService.getMemberProjectIds.mockResolvedValue([]);
 	const agentsSettingsService = mock<AgentsSettingsService>();
 	const agentPolicyService = mock<AgentPolicyService>();
+<<<<<<< HEAD
+=======
+	const workflowRepository = mock<WorkflowRepository>();
+	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
+	agentTaskRepository.findByAgentId.mockResolvedValue([]);
+	const telemetry = mock<Telemetry>();
+	const broadcaster = mock<AgentUpdateBroadcaster>();
+	const saveCompletion = new AgentSaveCompletionService(
+		eventService,
+		broadcaster,
+		new AgentModificationTelemetryService(
+			telemetry,
+			mock<InstanceSettings>(),
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			eventService,
+			// EOF Experiment cleanup
+		),
+	);
+	const setupCompletion = mock<AgentSetupCompletionService>();
+	const n8nChatFlag = mock<N8nChatFlagService>();
+	n8nChatFlag.isEnabledFor.mockResolvedValue(false);
+	setupCompletion.recordIfSetupComplete.mockResolvedValue(null);
+	const configPreparation = new AgentConfigPreparationService(
+		credentialsService,
+		workflowRepository,
+		mock<NodeToolAiGatewayService>(),
+		agentRepository,
+		agentTaskRepository,
+		skillRefs,
+		agentPolicyService,
+	);
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 
 	agentsSettingsService.getEnabled.mockResolvedValue(true);
 	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
@@ -107,10 +140,25 @@ function makeService() {
 		agentPolicyService,
 		createAgentSkillRefsService(agentRepository),
 		transactionRunner,
+<<<<<<< HEAD
+=======
+		configPreparation,
+		saveCompletion,
+		setupCompletion,
+		n8nChatFlag,
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 	);
 
 	return {
 		service,
+<<<<<<< HEAD
+=======
+		n8nChatFlag,
+		telemetry,
+		setupCompletion,
+		transactionRunner,
+		skillRefs,
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 		agentPolicyService,
 		agentRepository,
 		projectRelationRepository,
@@ -139,6 +187,175 @@ describe('AgentsService', () => {
 		Container.reset();
 	});
 
+<<<<<<< HEAD
+=======
+	it.each([
+		['user', undefined, TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, '3'],
+		['user', 'openai/gpt-5-mini', TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, '3'],
+		['builder', undefined, TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, '3'],
+		['builder', 'openai/gpt-5-mini', TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, '3'],
+		['mcp', undefined, TELEMETRY_EVENT.AGENTS.MCP_CREATED_AGENT, '2'],
+		['mcp', 'openai/gpt-5-mini', TELEMETRY_EVENT.AGENTS.MCP_CREATED_AGENT, '2'],
+	] as const)(
+		'reports a committed %s creation with model %s',
+		async (createdBy, model, entry, version) => {
+			const { service, agentRepository, telemetry, transactionRunner } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+			transactionRunner.run.mockImplementation(async (ctx, write) => {
+				const result = await write(ctx);
+				expect(telemetry.track).not.toHaveBeenCalled();
+				return result;
+			});
+
+			const result = await service.createOrAdopt(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy,
+				...(model ? { defaultModel: { model, credential: '' } } : {}),
+			});
+
+			expect(result.adopted).toBe(false);
+			expect(result.config?.model).toBe(model ?? '');
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				entry,
+				expect.objectContaining({
+					agent_id: agentId,
+					project_id: projectId,
+					user_id: user.id,
+					event_version: version,
+				}),
+			);
+			expect(telemetry.track.mock.calls[0]?.[1]).not.toHaveProperty('changed_settings');
+		},
+	);
+
+	describe('default n8n Chat channel', () => {
+		it('adds n8n Chat to a new agent when the creator has the flag', async () => {
+			const { service, agentRepository, n8nChatFlag } = makeService();
+			n8nChatFlag.isEnabledFor.mockResolvedValue(true);
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'user',
+			});
+
+			expect(n8nChatFlag.isEnabledFor).toHaveBeenCalledWith(user);
+			expect(agent.integrations).toEqual([{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }]);
+		});
+
+		it('keeps n8n Chat when the create also carries an initial config', async () => {
+			const { service, agentRepository, n8nChatFlag } = makeService();
+			n8nChatFlag.isEnabledFor.mockResolvedValue(true);
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'mcp',
+				config: { instructions: 'Help users' },
+			});
+
+			expect(agent.integrations).toEqual([{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }]);
+		});
+
+		it('adds no channel when the creator does not have the flag', async () => {
+			const { service, agentRepository } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'user',
+			});
+
+			expect(agent.integrations).toEqual([]);
+		});
+
+		it('adds no channel to a create without a user', async () => {
+			const { service, agentRepository, n8nChatFlag } = makeService();
+			n8nChatFlag.isEnabledFor.mockResolvedValue(true);
+			mockCreateReturning(agentRepository, makeAgent());
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', { actor });
+
+			expect(n8nChatFlag.isEnabledFor).not.toHaveBeenCalled();
+			expect(agent.integrations).toEqual([]);
+		});
+	});
+
+	it('saves the prepared initial configuration and reports the stored profile', async () => {
+		const { service, agentRepository, telemetry, setupCompletion } = makeService();
+		const saved = makeAgent();
+		mockCreateReturning(agentRepository, saved);
+		const emitSetupCompleted = vi.fn();
+		setupCompletion.recordIfSetupComplete.mockResolvedValue(emitSetupCompleted);
+		const result = await service.createOrAdopt(projectId, 'Support Agent', {
+			actor,
+			user,
+			createdBy: 'user',
+			defaultModel: { model: 'anthropic/default', credential: '' },
+			config: {
+				model: 'openai/gpt-5-mini',
+				instructions: 'Help users',
+				credential: 'inaccessible',
+			},
+		});
+
+		expect(saved.schema).toMatchObject({
+			model: 'openai/gpt-5-mini',
+			instructions: 'Help users',
+			credential: '',
+		});
+		expect(result.config).toMatchObject(saved.schema!);
+		expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+			expect.objectContaining({ model: 'openai/gpt-5-mini' }),
+		);
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+		expect(setupCompletion.recordIfSetupComplete).toHaveBeenCalledWith(
+			saved,
+			[],
+			projectId,
+			expect.anything(),
+			user,
+		);
+		expect(emitSetupCompleted).toHaveBeenCalledOnce();
+	});
+
+	it('rejects invalid initial configuration before inserting an Agent', async () => {
+		const { service, agentRepository, telemetry } = makeService();
+		mockCreateReturning(agentRepository, makeAgent());
+		await expect(
+			service.create(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'user',
+				config: { model: null },
+			}),
+		).rejects.toThrow('Invalid agent config');
+		expect(agentRepository.insertNew).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('does not report creation when the skill-reference write fails', async () => {
+		const { service, agentRepository, skillRefs, telemetry } = makeService();
+		mockCreateReturning(agentRepository, makeAgent());
+		skillRefs.replaceDraftRefs.mockRejectedValue(new Error('Skill write failed'));
+		await expect(
+			service.create(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'user',
+				config: { instructions: 'Help users' },
+			}),
+		).rejects.toThrow('Skill write failed');
+		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 	it('creates a draft agent without a default model or credential', async () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();

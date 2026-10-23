@@ -250,6 +250,10 @@ describe('useAgentVersionHistory', () => {
 					type: 'success',
 				}),
 			);
+<<<<<<< HEAD
+=======
+			expect(mocks.showAgentPublishedConfirmation).toHaveBeenCalledWith(updatedAgent);
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 			expect(result).toBe(updatedAgent);
 		});
 
