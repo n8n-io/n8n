@@ -32,7 +32,6 @@ import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OpenEndedNodeFieldsRule } from './open-ended-node-fields.js';
-import { OperationGetManyActionRule } from './operation-get-many-action.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireHomepageRule } from './require-homepage.js';
@@ -95,5 +94,4 @@ export const rules = {
 	'valid-node-categories': ValidNodeCategoriesRule,
 	'valid-peer-dependencies': ValidPeerDependenciesRule,
 	'webhook-lifecycle-complete': WebhookLifecycleCompleteRule,
-	'operation-get-many-action': OperationGetManyActionRule,
 } satisfies Record<string, AnyRuleModule>;

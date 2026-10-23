@@ -7,6 +7,25 @@ import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 
 const ruleTester = new RuleTester();
 
+/** Operations as most nodes define them: in a description file, outside the node class. */
+function createOperations(options: string): string {
+	return `
+		import type { INodeProperties } from 'n8n-workflow';
+
+		export const contactOperations: INodeProperties[] = [
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['contact'] } },
+				options: [${options}],
+				default: 'getAll',
+			},
+		];
+	`;
+}
+
 ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 	valid: [
 		{
@@ -132,6 +151,38 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 				}
 			`,
 		},
+		{
+			name: 'get many: getAll action that starts with "Get many"',
+			filename: '/tmp/ContactDescription.ts',
+			code: createOperations("{ name: 'Get Many', value: 'getAll', action: 'Get many contacts' }"),
+		},
+		{
+			name: 'get many: getAll operation without an action',
+			filename: '/tmp/ContactDescription.ts',
+			code: createOperations("{ name: 'Get Many', value: 'getAll' }"),
+		},
+		{
+			name: 'get many: action that starts with "Get all", which another rule fixes',
+			filename: '/tmp/ContactDescription.ts',
+			code: createOperations("{ name: 'Get Many', value: 'getAll', action: 'Get all contacts' }"),
+		},
+		{
+			name: 'get many: other operations',
+			filename: '/tmp/ContactDescription.ts',
+			code: createOperations("{ name: 'Search', value: 'search', action: 'Search contacts' }"),
+		},
+		{
+			name: 'get many: options that are not the operation parameter',
+			filename: '/tmp/ContactDescription.ts',
+			code: `
+				const format = {
+					displayName: 'Format',
+					name: 'format',
+					type: 'options',
+					options: [{ name: 'List', value: 'getAll', action: 'List contacts' }],
+				};
+			`,
+		},
 	],
 	invalid: [
 		{
@@ -215,6 +266,18 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 					data: { operationCount: '8' },
 				},
 			],
+		},
+		{
+			name: 'get many: getAll action with another verb',
+			filename: '/tmp/ContactDescription.ts',
+			code: createOperations("{ name: 'Get Many', value: 'getAll', action: 'List contacts' }"),
+			errors: [{ messageId: 'wrongGetManyAction', data: { action: 'List contacts' } }],
+		},
+		{
+			name: 'get many: getAll action without "many"',
+			filename: '/tmp/ContactDescription.ts',
+			code: createOperations("{ name: 'Get Many', value: 'getAll', action: 'Get contacts' }"),
+			errors: [{ messageId: 'wrongGetManyAction', data: { action: 'Get contacts' } }],
 		},
 	],
 });
