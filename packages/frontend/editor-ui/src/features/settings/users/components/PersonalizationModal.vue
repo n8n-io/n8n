@@ -101,6 +101,7 @@ import {
 	N8nButton,
 	N8nDialog,
 	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nFormInputs,
 } from '@n8n/design-system';
@@ -631,13 +632,15 @@ const onSubmit = async (values: object) => {
 		:open="modalOpen"
 		size="medium"
 		:header="i18n.baseText('personalizationModal.customizeN8n')"
-		:description="i18n.baseText('personalizationModal.theseQuestionsHelpUs')"
 		:show-close-button="false"
 		:close-on-overlay-click="false"
 		:close-on-escape="false"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody :data-test-id="`${PERSONALIZATION_MODAL_KEY}-modal`">
+			<N8nDialogDescription>
+				{{ i18n.baseText('personalizationModal.theseQuestionsHelpUs') }}
+			</N8nDialogDescription>
 			<div :class="$style.container" data-test-id="personalization-form">
 				<N8nFormInputs
 					v-model="formValues"
