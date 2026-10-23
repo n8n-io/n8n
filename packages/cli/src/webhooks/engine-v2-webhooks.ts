@@ -143,15 +143,14 @@ export class EngineV2Webhooks {
 	}
 
 	/**
-	 * A resumed run answers the resume request with the waiting node's own
-	 * response mode. `responseNode` is refused: on engine v2 the Respond to
-	 * Webhook node answers the request that started the run (CAT-4569), and a
-	 * resume request would wait for an answer that goes elsewhere.
+	 * On engine v2 a Respond to Webhook node answers the request that started the
+	 * run, and so does the next form page. With either mode, a resume request
+	 * would wait for an answer that goes elsewhere.
 	 */
 	private assertResumeResponseSupported(responseMode: WebhookResponseMode): void {
-		if (responseMode === 'responseNode') {
+		if (responseMode === 'responseNode' || responseMode === 'formPage') {
 			throw new UserError(
-				'Engine v2 cannot answer a resume request from a Respond to Webhook node yet. Set the waiting node to respond immediately or with the last node.',
+				'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
 			);
 		}
 
