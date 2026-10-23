@@ -4,10 +4,8 @@ import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/bac
 import type { Mock } from 'vitest';
 
 import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../../internal-messages';
-import {
-	AssistantTurnInputBuilder,
-	type AssistantTurnEnvironment,
-} from '../assistant-turn-input.builder';
+import type { AssistantTurnEnvironment } from '../assistant-turn-environment.factory';
+import { AssistantTurnInputBuilder } from '../assistant-turn-input.builder';
 
 describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 	type Context = {

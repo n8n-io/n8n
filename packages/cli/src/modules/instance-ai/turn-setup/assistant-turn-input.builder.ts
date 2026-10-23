@@ -43,7 +43,7 @@ import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import type { AssistantTurnEnvironmentFactory } from './assistant-turn-environment.factory';
+import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
 import type { AssistantTurnMemory, AssistantTurnRuntime } from './assistant-turn-runtime';
 import {
 	assertAgentPreviewHandoffScopes,
@@ -122,10 +122,6 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 
 	return `${CREDENTIAL_CONTEXT_OPEN_TAG}\n${JSON.stringify(context)}\n\n${prose}\n${CREDENTIAL_CONTEXT_CLOSE_TAG}`;
 }
-
-export type AssistantTurnEnvironment = Awaited<
-	ReturnType<AssistantTurnEnvironmentFactory['create']>
->;
 
 export interface AssistantTurnScopeParams {
 	threadId: string;
