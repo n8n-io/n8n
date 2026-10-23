@@ -1,5 +1,6 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -13,15 +14,17 @@ import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { WebhookNotification } from './v2/helpers/types';
 import {
-	createSubscription,
-	deleteSubscription,
+	createSubscriptions,
+	deleteSubscriptions,
 	generateClientState,
 	getResourcePath,
+	getStoredIds,
 	getStoredSecret,
 	handleLifecycleNotifications,
 	isLifecycleNotification,
-	isLiveSubscription,
 	listOwnSubscriptions,
+	logTrigger,
+	reconcileSubscriptions,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
@@ -356,51 +359,54 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const event = this.getNodeParameter('event', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
+				// `create()` owns the "Invalid Notification URL" error.
+				if (!webhookUrl?.startsWith('https://')) return false;
 
-				try {
-					const matchingSubscriptions = await listOwnSubscriptions.call(this, webhookUrl);
-					const hasSecret = getStoredSecret(webhookData) !== undefined;
+				// An activation that cannot see Graph must not claim success and must not create
+				// blind. The error reaches core, which removes everything own through `delete()`,
+				// shows it and retries on init.
+				const subscriptions = await listOwnSubscriptions
+					.call(this, webhookUrl)
+					.catch(async (error: unknown) => {
+						if (!(error instanceof NodeApiError && error.httpCode === '429')) throw error;
+						// ponytail: one fixed wait with jitter for the documented list budget (25 per
+						// 20 s per app per tenant, 40 per 20 s per app across tenants); the transport
+						// does not expose Retry-After.
+						await sleep(20_000 + Math.floor(Math.random() * 10_000));
+						return await listOwnSubscriptions.call(this, webhookUrl);
+					});
 
-					// Without the secret the webhook cannot verify any of these subscriptions, for
-					// example after the static data was lost, so none of them counts. With it, the
-					// ones about to expire do not count. Partition once, before the awaited deletes.
-					const validSubscriptions = hasSecret
-						? matchingSubscriptions.filter((subscription) => isLiveSubscription(subscription))
-						: [];
-					const validIds = new Set(validSubscriptions.map((subscription) => subscription.id));
-					// What does not count is removed, so `create()` adds no duplicate next to it.
-					for (const { id } of matchingSubscriptions) {
-						if (validIds.has(id)) continue;
-						try {
-							await deleteSubscription.call(this, id);
-						} catch (error) {
-							this.logger.warn('Microsoft Teams Trigger: failed to remove a stale subscription', {
-								workflowId: this.getWorkflow().id,
-								nodeName: this.getNode().name,
-								subscriptionId: id,
-								error: ensureError(error).message,
-							});
-						}
-					}
-					if (!hasSecret) return false;
-
-					const resourcePaths = await getResourcePath.call(this, event);
-					const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
-
-					const subscribedResources = validSubscriptions.map((sub) => sub.resource);
-					const allResourcesSubscribed = requiredResources.every((resource) =>
-						subscribedResources.includes(resource),
-					);
-
-					if (!allResourcesSubscribed) return false;
-
-					webhookData.subscriptionIds = validSubscriptions.map((sub) => sub.id);
-					return true;
-				} catch (error) {
+				const storedIds = getStoredIds(webhookData);
+				const clientState = getStoredSecret(webhookData);
+				if (clientState === undefined) {
+					// Without the secret nothing own can be verified and no stored id can be
+					// trusted, so `create()` starts clean.
+					await deleteSubscriptions.call(this, [
+						...subscriptions.map((subscription) => subscription.id),
+						...storedIds,
+					]);
+					delete webhookData.subscriptionIds;
 					return false;
 				}
+
+				const requiredResources = [await getResourcePath.call(this, event)].flat();
+				const { failures } = await reconcileSubscriptions.call(this, {
+					webhookUrl,
+					clientState,
+					requiredResources,
+					subscriptions,
+				});
+				// A resource without a live subscription is a dark trigger, so the activation
+				// fails with the Graph error. A failed removal only warns: the next activation
+				// retries it, from the listing or from the stored ids.
+				const createFailure = failures.find((failure) => failure.step === 'create');
+				if (createFailure) throw createFailure.error;
+				return true;
 			},
 
+			// Runs only after `checkExists` returned false: after the no-secret sweep, or on an
+			// invalid URL, which the guard below rejects before any create. So a fresh secret
+			// never strands a trusted subscription.
 			async create(this: IHookFunctions): Promise<boolean> {
 				const event = this.getNodeParameter('event', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
@@ -414,59 +420,43 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				}
 
 				const clientState = generateClientState();
-				const resourcePaths = await getResourcePath.call(this, event);
-				const subscriptionIds: string[] = [];
+				const requiredResources = [await getResourcePath.call(this, event)].flat();
+				const { ids, failures } = await createSubscriptions.call(
+					this,
+					webhookUrl,
+					requiredResources,
+					clientState,
+				);
+				if (failures.length > 0) throw failures[0].error;
 
-				if (Array.isArray(resourcePaths)) {
-					await Promise.all(
-						resourcePaths.map(async (resource) => {
-							const subscription = await createSubscription.call(
-								this,
-								webhookUrl,
-								resource,
-								clientState,
-							);
-							subscriptionIds.push(subscription.id);
-							return subscription;
-						}),
-					);
-
-					webhookData.subscriptionIds = subscriptionIds;
-				} else {
-					const subscription = await createSubscription.call(
-						this,
-						webhookUrl,
-						resourcePaths,
-						clientState,
-					);
-					webhookData.subscriptionIds = [subscription.id];
-				}
-
+				webhookData.subscriptionIds = ids;
 				webhookData.webhookSecret = clientState;
 				return true;
 			},
 
 			async delete(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const storedIds = webhookData.subscriptionIds as string[] | undefined;
 
-				if (!Array.isArray(storedIds)) {
-					return false;
-				}
-
+				const ids = new Set(getStoredIds(webhookData));
 				try {
-					await Promise.all(
-						storedIds.map(
-							async (subscriptionId) => await deleteSubscription.call(this, subscriptionId),
-						),
-					);
-
-					delete webhookData.subscriptionIds;
-					delete webhookData.webhookSecret;
-					return true;
+					for (const { id } of await listOwnSubscriptions.call(this, webhookUrl)) ids.add(id);
 				} catch (error) {
-					return false;
+					logTrigger.call(
+						this,
+						'warn',
+						'failed to list subscriptions, removing the stored ids only',
+						{
+							error: ensureError(error).message,
+						},
+					);
 				}
+				const failures = await deleteSubscriptions.call(this, ids);
+				// A leftover at this URL is removed by the next publish, one at an old URL expires
+				// within three days, and core ignores the result.
+				delete webhookData.subscriptionIds;
+				delete webhookData.webhookSecret;
+				return failures.length === 0;
 			},
 		},
 	};
@@ -481,16 +471,25 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		if (!verifyWebhook.call(this)) {
+		const accepted = verifyWebhook.call(this);
+		if (accepted.length === 0) {
 			res.status(401).send('Unauthorized').end();
 			return { noWebhookResponse: true };
 		}
 
-		// `verifyWebhook` proved a non-empty array. Without a stored secret it accepts any
-		// item shape, so only records become workflow items.
+		// `verifyWebhook` proved a non-empty array and dropped the items with another
+		// clientState. When the batch also carries an accepted lifecycle item, the handler
+		// lists and reconciles for the dropped ones (not in a manual run). Without a stored
+		// secret it accepts any item shape, so only records become workflow items.
 		const notifications: unknown[] = req.body.value;
-		const lifecycleNotifications = notifications.filter(isLifecycleNotification);
-		const changeNotifications = notifications.filter(
+		const rejected = notifications.length - accepted.length;
+		if (rejected > 0) {
+			logTrigger.call(this, 'debug', 'rejected notifications with an unknown clientState', {
+				rejected,
+			});
+		}
+		const lifecycleNotifications = accepted.filter(isLifecycleNotification);
+		const changeNotifications = accepted.filter(
 			(item) => isRecord(item) && !isLifecycleNotification(item),
 		) as WebhookNotification[];
 		const workflowData = changeNotifications.map((event) => [
@@ -508,7 +507,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		// A test run would list by the production URL and write production ids into the
 		// test static data.
 		if (this.getMode() !== 'manual') {
-			await handleLifecycleNotifications.call(this, lifecycleNotifications);
+			await handleLifecycleNotifications.call(this, lifecycleNotifications, rejected);
 		}
 
 		// A lifecycle-only batch must leave `workflowData` undefined: any value starts an execution.
