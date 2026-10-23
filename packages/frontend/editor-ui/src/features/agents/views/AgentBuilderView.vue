@@ -25,6 +25,7 @@ import {
 	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
 	type AgentSkillAvailability,
@@ -75,6 +76,11 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
+<<<<<<< HEAD
+=======
+import { useAgentsN8nChatFlag } from '../composables/useAgentsN8nChatFlag';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentConfigValidation } from '../composables/useAgentConfigValidation';
@@ -223,6 +229,11 @@ const rootStore = useRootStore();
 const pushConnectionStore = usePushConnectionStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+<<<<<<< HEAD
+=======
+const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
+const { trackClickedTraceDetailsFromTestPanel } = useAgentTelemetry();
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiReady = useInstanceAiReady();
 const sessionsStore = useAgentSessionsStore();
@@ -2010,6 +2021,7 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
+		trackTriggerRemoved: builderTelemetry.trackTriggerRemoved,
 	},
 });
 // Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`
@@ -2067,10 +2079,9 @@ async function applyTemplateConfig(template: AgentTemplate): Promise<boolean> {
 		return false;
 	}
 	replaceConfigAndScheduleSave(next);
-	// Derive trigger chips from the template's draft integrations so the two
-	// stay in sync — a template can't declare chips without the matching
-	// integration entry.
-	connectedTriggers.value = (template.config.integrations ?? []).map((i) => i.type);
+	// Derive trigger chips from the applied integrations so the two stay in
+	// sync — the template's draft entries plus a default n8n Chat it kept.
+	connectedTriggers.value = (next.integrations ?? []).map((i) => i.type);
 	templateApplied.value = true;
 	// Persist the agent and flush the config autosave before sending the chat
 	// message. The chat's `beforeSend` hook calls `flushAutosave` too — if we
@@ -2748,12 +2759,17 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 				instructions: '',
 				tools: [],
 				skills: [],
+				// New agents start available in n8n Chat, as the backend's own create does.
+				...(isAgentsN8nChatFlag.value
+					? { integrations: [{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }] }
+					: {}),
 			};
 			// Seed the icon and gradient the backfill would normally add, so the
 			// draft looks like any other new agent and the first save carries them.
 			// Seeded rather than backfilled because the backfill schedules a save,
 			// which would persist the agent on mount.
 			localConfig.value = addMissingAgentPersonalisation(draftConfig) ?? draftConfig;
+			connectedTriggers.value = (localConfig.value.integrations ?? []).map(({ type }) => type);
 			agent.value = draftAgentResource(localConfig.value.personalisation);
 			agentName.value = agent.value.name;
 			if (currentStarter() && isCurrentInitialization()) {
@@ -3334,6 +3350,7 @@ useKeybindings({
 					@remove-skill="caps.onRemoveSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
+					@trigger-removed="caps.onTriggerRemoved"
 					@toggle-task="caps.onToggleTask"
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"

@@ -32,6 +32,7 @@ export type AgentConfigPart =
 	| 'credential'
 	| 'memory'
 	| 'name'
+	| 'description'
 	| 'config'
 	| 'tools'
 	| 'providerTools'
@@ -49,6 +50,7 @@ const CONFIG_PARTS = [
 	'credential',
 	'memory',
 	'name',
+	'description',
 	'config',
 	'tools',
 	'providerTools',
@@ -202,7 +204,72 @@ export class AgentModificationTelemetryService {
 		}
 	}
 
+<<<<<<< HEAD
 	private recordCreation(
+=======
+	/** Make sure a failed fingerprint leaves out only the fingerprints, not the whole event. */
+	private vectorStoreFingerprints(event: AgentModificationEvent): {
+		vector_store_fingerprints?: string[];
+	} {
+		if (!event.changedParts.includes('vectorStores')) {
+			return {};
+		}
+
+		try {
+			return {
+				vector_store_fingerprints: buildVectorStoreFingerprints(
+					event.config?.vectorStores ?? [],
+					this.instanceSettings.hmacSignatureSecret,
+				),
+			};
+		} catch {
+			return {};
+		}
+	}
+
+	recordCreation(event: AgentCreationEvent): void {
+		try {
+			const changedParts = diffAgentConfigParts(
+				null,
+				event.config,
+				[],
+				event.agent.integrations ?? [],
+			);
+			const properties = modificationProperties({ ...event, changedParts });
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			this.recordAssistantActivity(event, properties.capability_count);
+			// EOF Experiment cleanup
+			this.trackCreation(event.by, properties);
+		} catch {
+			// Telemetry must never fail a write that already succeeded.
+		}
+	}
+
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	private recordAssistantActivity(
+		event: AgentCreationEvent,
+		capabilityCount: number,
+		changedParts?: AgentConfigPart[],
+	): void {
+		if (event.by !== 'builder') return;
+		// Empty shells and cosmetic changes alone do not count as Assistant use.
+		if (
+			!event.config?.model?.trim() &&
+			!event.config?.instructions?.trim() &&
+			capabilityCount === 0 &&
+			!changedParts?.some((part) => part !== 'name' && part !== 'description')
+		) {
+			return;
+		}
+		this.eventService.emit('experiment-assistant-change-saved', {
+			userId: event.user.id,
+			at: Date.now(),
+		});
+	}
+	// EOF Experiment cleanup
+
+	private trackCreation(
+>>>>>>> 3f72e8f3 (feat: Add agents to n8n Chat by default and guide users to it (no-changelog) (#41837))
 		by: AgentActor,
 		properties: ReturnType<typeof modificationProperties>,
 	): void {
