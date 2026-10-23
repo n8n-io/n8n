@@ -317,7 +317,10 @@ export type RelayEventMap = {
 	};
 
 	'user-deleted': {
-		user: UserLike;
+		/** The user who deleted the user. `null` when no user asked for the deletion. */
+		user: UserLike | null;
+		/** The system that deleted the user without a user request. */
+		source?: 'scim';
 		publicApi: boolean;
 		targetUserOldStatus: 'active' | 'invited';
 		migrationStrategy?: 'transfer_data' | 'delete_data';

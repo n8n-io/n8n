@@ -9,13 +9,14 @@ import { GlobalConfig } from '@n8n/config';
 import type { AuthProviderType, Person } from '@n8n/db';
 import { PersonRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { GLOBAL_MEMBER_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { GLOBAL_MEMBER_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
 import { randomString } from 'n8n-workflow';
 
 import { EventService, UrlService } from '@n8n/backend-services';
 import { PasswordUtility } from '@/services/password.utility';
 
 import { ScimUserRepository } from './database/scim-user.repository';
+import { ScimDeprovisioningService } from './scim-deprovisioning.service';
 import {
 	ScimConflictError,
 	ScimForbiddenError,
@@ -43,6 +44,7 @@ export class ScimService {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventService: EventService,
 		private readonly personRepository: PersonRepository,
+		private readonly scimDeprovisioningService: ScimDeprovisioningService,
 	) {}
 
 	/**
@@ -369,18 +371,44 @@ export class ScimService {
 	}
 
 	/**
-	 * Deactivate a user. n8n deliberately soft-deletes on SCIM DELETE:
-	 * the user is disabled (which immediately invalidates their sessions
-	 * and API keys) but their workflows and credentials are kept, so
-	 * ownership can be transferred by an admin afterwards.
+	 * Apply the deprovisioning policy to a SCIM DELETE.
+	 *
+	 * `disable` (the default) deactivates the user, which ends their sessions
+	 * and API keys at once. Their workflows and credentials are kept, so an
+	 * admin can transfer the ownership later.
+	 *
+	 * `delete` deactivates the user first. Then it deletes the user, and
+	 * transfers or deletes their work. The delete is not atomic. When it
+	 * fails, the user stays deactivated and the identity provider gets the
+	 * SCIM error, so it can send the DELETE again.
+	 *
+	 * `delete` only deactivates an admin (a user with `scim:manage`). A
+	 * mistake in the identity provider must not remove an admin and their
+	 * work for good. The instance owner always gets a SCIM 403.
 	 */
 	async deleteUser(id: string): Promise<void> {
 		const person = await this.getUserEntity(id);
-
 		if (this.isOwner(person)) {
 			throw new ScimForbiddenError('The instance owner cannot be deleted via SCIM');
 		}
 
+		const policy = await this.scimDeprovisioningService.getPolicy();
+		await this.deactivate(person);
+		if (policy.onDelete !== 'delete') return;
+
+		if (hasGlobalScope(person, 'scim:manage')) {
+			this.logger.warn(
+				'SCIM: Skipped the policy delete for an admin. The admin is only deactivated.',
+				{ userId: person.id },
+			);
+			return;
+		}
+
+		await this.scimDeprovisioningService.deleteUser(person, policy);
+	}
+
+	/** Deactivate the user. This ends their sessions and API keys at once. */
+	private async deactivate(person: Person): Promise<void> {
 		person.disabled = true;
 		await this.personRepository.save(person);
 		this.eventService.emit('user-updated', { user: person, fieldsChanged: ['disabled'] });

@@ -2301,6 +2301,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private userDeleted({
 		user,
+		source,
 		publicApi,
 		targetUserOldStatus,
 		migrationStrategy,
@@ -2308,7 +2309,11 @@ export class TelemetryEventRelay extends EventRelay {
 		migrationUserId,
 	}: RelayEventMap['user-deleted']) {
 		this.telemetry.track('User deleted user', {
-			user_id: user.id,
+			// A system deletion, for example by SCIM, has no acting user.
+			// RudderStack then gets the event under the instance id, PostHog
+			// drops it, and `source` names the system.
+			user_id: user?.id,
+			...(source && { source }),
 			public_api: publicApi,
 			target_user_old_status: targetUserOldStatus,
 			migration_strategy: migrationStrategy,

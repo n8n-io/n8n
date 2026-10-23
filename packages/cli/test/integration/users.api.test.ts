@@ -42,6 +42,7 @@ import { validateUser } from './shared/utils/users';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { OwnershipService } from '@/services/ownership.service';
 import { CHANGE_ROLE_ERROR_MESSAGES } from '@/services/user.service';
 import { Telemetry } from '@/telemetry';
@@ -1337,6 +1338,23 @@ describe('DELETE /users/:id', () => {
 		expect(deletedUserFolders).toHaveLength(0);
 	});
 
+	test('should transfer the work to a team project without members', async () => {
+		const memberToDelete = await createMember();
+		const emptyTeamProject = await createTeamProject('empty project');
+		const workflow = await createWorkflow({ name: 'workflow1' }, memberToDelete);
+
+		await ownerAgent
+			.delete(`/users/${memberToDelete.id}`)
+			.query({ transferId: emptyTeamProject.id })
+			.expect(200);
+
+		const owningProject = await Container.get(SharedWorkflowRepository).getWorkflowOwningProject(
+			workflow.id,
+		);
+		expect(owningProject?.id).toBe(emptyTeamProject.id);
+		expect(await Container.get(UserRepository).findOneBy({ id: memberToDelete.id })).toBeNull();
+	});
+
 	test('should fail to delete self', async () => {
 		await ownerAgent.delete(`/users/${owner.id}`).expect(400);
 
@@ -1752,12 +1770,16 @@ describe('PATCH /users/:id/role', () => {
 			await provisioningService.getConfig();
 			// @ts-expect-error - provisioningConfig is private
 			savedConfig = { ...provisioningService.provisioningConfig };
+			// The lock applies only while SAML or OIDC sign-in is on.
+			testServer.license.enable('feat:saml');
+			await setSamlLoginEnabled(true);
 		});
 
 		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
 			await Container.get(RoleMappingRuleRepository).delete({});
+			await setSamlLoginEnabled(false);
 		});
 
 		test('should return 403 when SSO provider controls instance roles', async () => {

@@ -16,6 +16,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	AuthIdentity,
 	AuthIdentityRepository,
+	GLOBAL_MEMBER_ROLE,
 	type User,
 	UserRepository,
 	RoleRepository,
@@ -46,7 +47,7 @@ import {
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 
 import { sampleConfig, sampleMetadata } from './sample-metadata';
-import { createOwner, createUser } from '../shared/db/users';
+import { createOwner, createUser, createUserShell } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -1186,6 +1187,25 @@ describe('SAML account linking', () => {
 
 		expect(result.authenticatedUser?.id).toBe(user.id);
 		expect(await samlIdentitiesOf(user)).toEqual([expect.objectContaining({ providerId: upn })]);
+	});
+
+	// Admins can invite under SAML while SCIM is on. The invitee then signs in through SAML.
+	test('links a SAML identity to an invited user by email and completes the invite', async () => {
+		const invitee = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const upn = `upn-${invitee.id}`;
+
+		const result = await loginWith({ email: invitee.email, userPrincipalName: upn });
+
+		expect(result.authenticatedUser?.id).toBe(invitee.id);
+		expect(await samlIdentitiesOf(invitee)).toEqual([expect.objectContaining({ providerId: upn })]);
+		const userRepository = Container.get(UserRepository);
+		expect(
+			await userRepository.findOneOrFail({
+				where: { id: invitee.id },
+				relations: ['authIdentities', 'role'],
+			}),
+		).toMatchObject({ isPending: false, role: { slug: GLOBAL_MEMBER_ROLE.slug } });
+		expect(await userRepository.countBy({ email: invitee.email })).toBe(1);
 	});
 
 	test('does not link an existing user by email when the identity provider marks the email as not verified', async () => {
