@@ -98,7 +98,7 @@ describe('AgentMemoryEntriesService', () => {
 			memoryEntryRepository.countActiveByAgent.mockResolvedValue(1);
 			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
 			userRepository.findManyByIds.mockResolvedValue([
-				{ id: 'other', firstName: null, lastName: null, email: 'private@example.com' } as User,
+				{ id: 'other', email: 'private@example.com' } as User,
 			]);
 
 			const page = await service.list('agent-1', 'project-1', 'viewer-1', {});
