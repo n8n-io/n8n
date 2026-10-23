@@ -8,6 +8,7 @@ import type { AgentExecutionOrchestratorService } from '../../agent-execution-or
 import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentMessageQueue } from '../../entities/agent-message-queue.entity';
+import { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { QueuedIntegrationMessage } from '../../types/agent-queued-message';
 import { mock } from 'vitest-mock-extended';
 import { deepCopy, UserError, type Logger } from 'n8n-workflow';
@@ -3566,50 +3567,90 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
-		it('queues the typed platform context of the incoming message', async () => {
-			const { bot, handlers } = makeBot();
-			const queue = mock<AgentMessageQueueService>();
-			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				makeAgentExecutor([finishChunk]) as never,
-				componentMapper,
-				logger,
-				'project-1',
-				{ type: 'slack', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
-				undefined,
-				undefined,
-				undefined,
-				queue,
-			);
-			const thread = {
-				...makeThread('slack:C1:1.2', {
-					decodeThreadId: vi.fn().mockReturnValue({ channel: 'C1', threadTs: '1.2' }),
-				} as unknown as FakeThread['adapter']),
-				isDM: false,
-				channel: { fetchMetadata: vi.fn().mockResolvedValue({ name: 'general' }) },
+		describe('typed platform context', () => {
+			const slackOrigin = {
+				type: 'slack',
+				workspaceId: 'T1',
+				conversationKind: 'channel',
+				channelId: 'C1',
 			};
 
-			await handlers.subscribed!(thread, {
-				text: 'hi',
-				author: { userId: 'u1', userName: 'user1' },
-				raw: { n8nWorkspaceId: 'T1', channel_type: 'channel' },
+			function slackTurn(fetchMetadata: Mock, status: 'accepted' | 'duplicate' = 'accepted') {
+				const { bot, handlers } = makeBot();
+				const queue = mock<AgentMessageQueueService>();
+				queue.enqueue.mockResolvedValue(
+					status === 'accepted'
+						? { status, item: mock<AgentMessageQueue>({ messageId: 'message-1' }) }
+						: { status },
+				);
+				const messages = mock<AgentMessageRepository>();
+				Container.set(AgentMessageRepository, messages);
+				new AgentChatBridge(
+					bot as unknown as ChatBotLike,
+					'agent-1',
+					makeAgentExecutor([finishChunk]) as never,
+					componentMapper,
+					logger,
+					'project-1',
+					{ type: 'slack', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+					undefined,
+					undefined,
+					undefined,
+					queue,
+				);
+				const thread = {
+					...makeThread('slack:C1:1.2', {
+						decodeThreadId: vi.fn().mockReturnValue({ channel: 'C1', threadTs: '1.2' }),
+					} as unknown as FakeThread['adapter']),
+					isDM: false,
+					channel: { fetchMetadata },
+				};
+				const turn = handlers.subscribed!(thread, {
+					text: 'hi',
+					author: { userId: 'u1', userName: 'user1' },
+					raw: { n8nWorkspaceId: 'T1', channel_type: 'channel' },
+				});
+				return { turn, queue, messages };
+			}
+
+			it('queues the origin IDs and stores the channel name after enqueue', async () => {
+				const { turn, queue, messages } = slackTurn(vi.fn().mockResolvedValue({ name: 'general' }));
+				await turn;
+
+				expect(queue.enqueue).toHaveBeenCalledWith(
+					expect.objectContaining({
+						payload: expect.objectContaining({ integrationOrigin: slackOrigin }),
+					}),
+				);
+				await vi.waitFor(() =>
+					expect(messages.updateIntegrationOrigin).toHaveBeenCalledWith('message-1', {
+						...slackOrigin,
+						channelName: 'general',
+					}),
+				);
 			});
 
-			expect(queue.enqueue).toHaveBeenCalledWith(
-				expect.objectContaining({
-					payload: expect.objectContaining({
-						integrationOrigin: {
-							type: 'slack',
-							workspaceId: 'T1',
-							conversationKind: 'channel',
-							channelId: 'C1',
-							channelName: 'general',
-						},
-					}),
-				}),
-			);
+			it('starts the channel name lookup only after the turn is enqueued', async () => {
+				const fetchMetadata = vi.fn().mockReturnValue(new Promise(() => {}));
+				const { turn, queue, messages } = slackTurn(fetchMetadata);
+
+				await turn;
+
+				expect(fetchMetadata).toHaveBeenCalledTimes(1);
+				expect(queue.enqueue.mock.invocationCallOrder[0]).toBeLessThan(
+					fetchMetadata.mock.invocationCallOrder[0],
+				);
+				expect(messages.updateIntegrationOrigin).not.toHaveBeenCalled();
+			});
+
+			it('does not look up the channel name for a duplicate message', async () => {
+				const fetchMetadata = vi.fn().mockResolvedValue({ name: 'general' });
+				const { turn } = slackTurn(fetchMetadata, 'duplicate');
+
+				await turn;
+
+				expect(fetchMetadata).not.toHaveBeenCalled();
+			});
 		});
 	});
 
