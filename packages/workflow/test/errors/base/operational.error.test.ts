@@ -16,6 +16,11 @@ describe('OperationalError', () => {
 		expect(error).toBeInstanceOf(BaseError);
 	});
 
+	it('should set name to the class name', () => {
+		const error = new OperationalError('test');
+		expect(error.name).toBe('OperationalError');
+	});
+
 	it('should have correct defaults', () => {
 		const error = new OperationalError('test');
 		expect(error.level).toBe('warning');

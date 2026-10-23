@@ -119,6 +119,62 @@ Variants.args = {
 	options,
 };
 
+export const Overflow: StoryFn = () => ({
+	components: { N8nTabs },
+	data() {
+		return { val: 'first', options };
+	},
+	template: `
+		<div style="width: 40%; min-width: var(--spacing--xl); display: flex; flex-direction: column; gap: var(--spacing--xl);">
+			<n8n-tabs v-model="val" :options="options" />
+			<n8n-tabs v-model="val" size="small" :options="options" />
+			<n8n-tabs v-model="val" variant="modern" :options="options" />
+			<n8n-tabs v-model="val" variant="modern" size="small" :options="options" />
+		</div>
+	`,
+});
+
+export const OversizedTab: StoryFn = () => ({
+	components: { N8nTabs },
+	data() {
+		return {
+			val: 'wide',
+			options: [
+				{
+					value: 'wide',
+					label:
+						'A very long tab label that is wider than its container and needs several scroll steps to read',
+					tag: '2',
+				},
+			],
+		};
+	},
+	template: `
+		<div style="width: 40%;">
+			<n8n-tabs v-model="val" :options="options" />
+		</div>
+	`,
+});
+
+export const Justified: StoryFn = () => ({
+	components: { N8nTabs },
+	data() {
+		return {
+			val: 'first',
+			options: [
+				{ value: 'first', label: 'A long first tab label', notification: true },
+				{ value: 'second', label: 'Second tab' },
+				{ value: 'third', label: 'A long third tab label' },
+			],
+		};
+	},
+	template: `
+		<div style="width: 40%;">
+			<n8n-tabs v-model="val" justified :options="options" />
+		</div>
+	`,
+});
+
 export const Sizes: StoryFn = () => ({
 	components: { N8nTabs },
 	data() {

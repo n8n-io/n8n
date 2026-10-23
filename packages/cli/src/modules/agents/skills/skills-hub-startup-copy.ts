@@ -1,18 +1,20 @@
 import type { AgentSkill } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SettingsRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
+import { skillContentHash, type SkillContent } from '@/modules/skills/skill-content-hash';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { toSkillContent } from '@/modules/skills/skill.service';
+import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
+
 import type { Agent } from '../entities/agent.entity';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import { AgentRepository } from '../repositories/agent.repository';
-import { SkillRepository } from '../repositories/skill.repository';
-import { skillContentHash, type SkillContent } from './skill-content-hash';
-import { toSkillContent } from './skill.service';
-import { SkillsHubRollout } from './skills-hub-rollout';
+import { AgentSkillRepository } from '../repositories/agent-skill.repository';
 
 /** `skill.id` is varchar(36). A longer inline ref id gets a new id. */
 const SKILL_ID_MAX_LENGTH = 36;
@@ -102,13 +104,17 @@ export class SkillsHubStartupCopy {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentRepository: AgentRepository,
 		private readonly skillRepository: SkillRepository,
+		private readonly agentSkillRepository: AgentSkillRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
-	/** Called when the agents module starts, after the rollout flag is read. */
+	/** Called when the agents module starts, after the skills module read the rollout flag. */
 	async runOnStartup(): Promise<void> {
 		if (this.instanceSettings.instanceType !== 'main') return;
+		// Without the skills module there are no hub tables to copy into or compare with.
+		if (!this.moduleRegistry.isActive('skills')) return;
 		if (this.rollout.isEnabled) await this.copyAll();
 		// One warning per instance is enough: only the leader logs it.
 		else if (this.instanceSettings.isLeader) await this.warnAboutHubOnlySkills();
@@ -191,10 +197,10 @@ export class SkillsHubStartupCopy {
 	 */
 	private async warnAboutHubOnlySkills(): Promise<void> {
 		const changed: string[] = [];
-		const withRefs = await this.skillRepository.findAgentIdsWithDraftRefs();
+		const withRefs = await this.agentSkillRepository.findAgentIdsWithDraftRefs();
 		for (let start = 0; start < withRefs.length; start += BATCH_SIZE) {
 			const page = withRefs.slice(start, start + BATCH_SIZE);
-			const hubHashes = await this.skillRepository.findDraftContentHashes(page);
+			const hubHashes = await this.agentSkillRepository.findDraftContentHashes(page);
 			for (const agentId of page) {
 				const agent = await this.agentRepository.findForSkillCopy(agentId);
 				const inline = agent
@@ -307,13 +313,13 @@ export class SkillsHubStartupCopy {
 	): Promise<AgentWork | null> {
 		const agent = await this.agentRepository.findForSkillCopy(agentId, ctx);
 		if (!agent) return null;
-		const versions = (await this.skillRepository.findUnpinnedVersions(agentId, ctx)).filter(
+		const versions = (await this.agentSkillRepository.findUnpinnedVersions(agentId, ctx)).filter(
 			(version) => inlineSkills(version).length > 0,
 		);
 		const copyDraft =
 			draftAllowed &&
 			inlineSkills(agent).length > 0 &&
-			!(await this.skillRepository.hasHubState(agentId, ctx));
+			!(await this.agentSkillRepository.hasHubState(agentId, ctx));
 		if (versions.length === 0 && !copyDraft) return null;
 		return { agent, versions, copyDraft };
 	}
@@ -343,7 +349,7 @@ export class SkillsHubStartupCopy {
 						});
 					}
 				}
-				await this.skillRepository.insertPins(pins, ctx);
+				await this.agentSkillRepository.insertPins(pins, ctx);
 				counts.pins += pins.length;
 			}
 			if (copyDraft) {
@@ -353,7 +359,7 @@ export class SkillsHubStartupCopy {
 					const { skillId } = await this.versionFor(agent, refId, body, true, state, counts, ctx);
 					if (!refs.some((ref) => ref.skillId === skillId)) refs.push({ skillId });
 				}
-				await this.skillRepository.replaceDependencies(agent.id, refs, ctx);
+				await this.agentSkillRepository.replaceDependencies(agent.id, refs, ctx);
 			}
 			return { ...counts, publishedVersions: versions.length, draft: copyDraft };
 		});
@@ -366,7 +372,7 @@ export class SkillsHubStartupCopy {
 			refBySkill: new Map(),
 			latest: new Map(),
 		};
-		for (const row of await this.skillRepository.findAgentSkillVersions(agentId, ctx)) {
+		for (const row of await this.agentSkillRepository.findAgentSkillVersions(agentId, ctx)) {
 			addByHash(state, row.contentHash, { id: row.id, skillId: row.skillId });
 			const current = state.latest.get(row.skillId);
 			if (!current || row.version > current.version) {

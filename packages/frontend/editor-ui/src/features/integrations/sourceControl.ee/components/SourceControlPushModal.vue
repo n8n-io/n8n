@@ -303,7 +303,7 @@ function clearProjectFilter() {
 
 const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
 	{
-		label: 'New',
+		label: i18n.baseText('generic.new'),
 		value: SOURCE_CONTROL_FILE_STATUS.created,
 	},
 	{

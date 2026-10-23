@@ -3,8 +3,9 @@ import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { SkillNameTakenError } from '@/modules/agents/skills/skill-name-taken.error';
-import type { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+import { SkillNameTakenError } from '@/modules/skills/skill-name-taken.error';
+import type { SkillsApiService } from '@/modules/skills/skills-api.service';
+import type { AssistantSkillsRollout } from '@/modules/skills/assistant-skills-rollout';
 import type { Telemetry } from '@/telemetry';
 
 import { SKILL_TOOLS } from '../mcp-scopes';
@@ -25,6 +26,7 @@ const listItem: SkillListItem = {
 	projectType: 'team',
 	agentId: null,
 	agentName: null,
+	availableToAssistant: false,
 	source: 'ui',
 	createdBy: { id: 'user-2', email: 'someone@example.com', firstName: 'Some', lastName: 'One' },
 	latestVersion: 2,
@@ -46,7 +48,8 @@ describe('McpSkillToolsService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const telemetry = mock<Telemetry>();
 	const skillsApi = mock<SkillsApiService>();
-	const service = new McpSkillToolsService(telemetry, skillsApi);
+	const rollout = mock<AssistantSkillsRollout>();
+	const service = new McpSkillToolsService(telemetry, skillsApi, rollout);
 	let tools: Map<string, Handler>;
 
 	const callTool = async (name: string, input: Record<string, unknown>) => {
@@ -55,24 +58,41 @@ describe('McpSkillToolsService', () => {
 		return await handler(input, {});
 	};
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks();
+		rollout.isEnabled.mockResolvedValue(true);
 		tools = new Map();
 		const registerTool: RegisterToolFn = (tool) => {
 			tools.set(tool.name, tool.handler as unknown as Handler);
 		};
-		service.registerTools(registerTool, user);
+		await service.registerTools(registerTool, user);
 	});
 
 	it('registers exactly the skill tools of the scope map (drift guard)', () => {
 		expect(new Set(tools.keys())).toEqual(SKILL_TOOLS);
 	});
 
-	describe('search_skills', () => {
+	it('hides Assistant availability from MCP when its flag is off', async () => {
+		rollout.isEnabled.mockResolvedValue(false);
+		const registered: Array<Parameters<RegisterToolFn>[0]> = [];
+		await service.registerTools((tool) => {
+			registered.push(tool);
+			tools.set(tool.name, tool.handler as unknown as Handler);
+		}, user);
+		expect(
+			registered.find((tool) => tool.name === 'update_skill')?.config.inputSchema,
+		).not.toHaveProperty('availableToAssistant');
+		skillsApi.get.mockResolvedValue(detail);
+		expect(
+			(await callTool('get_skill', { skillId: 'skill_a' })).structuredContent,
+		).not.toHaveProperty('availableToAssistant');
+	});
+
+	describe('search_n8n_skills', () => {
 		it('lists the skills with the filters the client sent', async () => {
 			skillsApi.list.mockResolvedValue({ count: 1, data: [listItem] });
 
-			const result = await callTool('search_skills', {
+			const result = await callTool('search_n8n_skills', {
 				query: 'brand',
 				attachableToAgentId: 'agent-1',
 				limit: 20,
@@ -87,14 +107,20 @@ describe('McpSkillToolsService', () => {
 			});
 			expect(result.structuredContent).toEqual({
 				count: 1,
-				skills: [expect.objectContaining({ id: 'skill_a', name: 'Brand voice' })],
+				skills: [
+					expect.objectContaining({
+						id: 'skill_a',
+						name: 'Brand voice',
+						availableToAssistant: false,
+					}),
+				],
 			});
 		});
 
 		it('does not return who created a skill', async () => {
 			skillsApi.list.mockResolvedValue({ count: 1, data: [listItem] });
 
-			const result = await callTool('search_skills', { limit: 50, skip: 0 });
+			const result = await callTool('search_n8n_skills', { limit: 50, skip: 0 });
 
 			expect(JSON.stringify(result.structuredContent)).not.toContain('someone@example.com');
 		});
@@ -102,7 +128,7 @@ describe('McpSkillToolsService', () => {
 
 	describe('get_skill', () => {
 		it('returns the content and the hash for the next update', async () => {
-			skillsApi.get.mockResolvedValue(detail);
+			skillsApi.get.mockResolvedValue({ ...detail, availableToAssistant: true });
 
 			const result = await callTool('get_skill', { skillId: 'skill_a' });
 
@@ -112,6 +138,7 @@ describe('McpSkillToolsService', () => {
 				skill: detail.skill,
 				skillHash: 'hash-2',
 				usedBy: detail.usedBy,
+				availableToAssistant: true,
 			});
 		});
 
@@ -182,12 +209,13 @@ describe('McpSkillToolsService', () => {
 				skillId: 'skill_a',
 				baseSkillHash: 'hash-2',
 				instructions: 'Be kinder.',
+				availableToAssistant: true,
 			});
 
 			expect(skillsApi.update).toHaveBeenCalledWith(
 				user,
 				'skill_a',
-				{ baseSkillHash: 'hash-2', instructions: 'Be kinder.' },
+				{ baseSkillHash: 'hash-2', instructions: 'Be kinder.', availableToAssistant: true },
 				'mcp',
 			);
 			expect(result.structuredContent).toEqual({

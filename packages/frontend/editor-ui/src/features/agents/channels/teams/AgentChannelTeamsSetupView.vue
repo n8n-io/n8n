@@ -3,7 +3,7 @@ import { N8nLoading } from '@n8n/design-system';
 import type { AgentTeamsIntegrationSettings } from '@n8n/api-types';
 import { computed, onMounted, ref, watch } from 'vue';
 
-import type { AgentChannelViewExpose, AgentChannelViewProps } from '../types';
+import type { AgentChannelRestart, AgentChannelViewExpose, AgentChannelViewProps } from '../types';
 import AgentChannelTeamsManagedSetup from './AgentChannelTeamsManagedSetup.vue';
 import AgentChannelTeamsSetup from './AgentChannelTeamsSetup.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
@@ -22,6 +22,7 @@ const emit = defineEmits<{
 	connect: [];
 	/** Either flow finishing: both outlive the connect and close themselves. */
 	done: [];
+	restart: [restart: AgentChannelRestart];
 }>();
 
 const manualRef = ref<AgentChannelViewExpose>();
@@ -51,7 +52,8 @@ const loading = computed(
 watch(
 	() => [props.projectId, props.agentId] as const,
 	() => {
-		props.runtime.setupKind.value = 'managed';
+		props.runtime.setupKind.value = props.runtime.nextSetupKind.value ?? 'managed';
+		props.runtime.nextSetupKind.value = null;
 	},
 	{ immediate: true },
 );
@@ -144,6 +146,7 @@ defineExpose({
 			@provisioned="credentialId = $event"
 			@persist="emit('persist')"
 			@done="emit('done')"
+			@restart="emit('restart', $event)"
 		/>
 		<AgentChannelTeamsSetup
 			v-else
@@ -162,11 +165,13 @@ defineExpose({
 			:error-message="errorMessage"
 			:error-is-conflict="errorIsConflict"
 			:force-new-credential="forceNewCredential"
+			:saved-credential-id="savedCredentialId"
 			:saved-settings="savedSettings"
 			@create="emit('create')"
 			@edit="emit('edit')"
 			@connect="emit('connect')"
 			@done="emit('done')"
+			@restart="emit('restart', $event)"
 		/>
 	</div>
 </template>

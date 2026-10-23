@@ -57,20 +57,35 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
 	});
 
-	it.each(['instance-ai', 'agents', 'agent-evals', 'inbox', 'type-availability-policies'])(
-		'should include %s by default',
-		(moduleName) => {
-			expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
-		},
-	);
+	it.each([
+		'skills',
+		'instance-ai',
+		'knowledge',
+		'agents',
+		'agent-evals',
+		'inbox',
+		'type-availability-policies',
+	])('should include %s by default', (moduleName) => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
+	});
 
-	it.each(['instance-ai', 'agents', 'agent-evals', 'inbox', 'type-availability-policies'])(
-		'should allow opting out of the default %s module via env var',
-		(moduleName) => {
-			process.env.N8N_DISABLED_MODULES = moduleName;
-			expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
-		},
-	);
+	it.each([
+		'skills',
+		'instance-ai',
+		'knowledge',
+		'agents',
+		'agent-evals',
+		'inbox',
+		'type-availability-policies',
+	])('should allow opting out of the default %s module via env var', (moduleName) => {
+		process.env.N8N_DISABLED_MODULES = moduleName;
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
+	});
+
+	it('should initialize knowledge before agents', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		expect(eligible.indexOf('knowledge')).toBeLessThan(eligible.indexOf('agents'));
+	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
@@ -109,7 +124,9 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'inbox',
+			'skills',
 			'instance-ai',
+			'knowledge',
 			'agents',
 			'agent-evals',
 			'scim',
@@ -155,7 +172,9 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'inbox',
+			'skills',
 			'instance-ai',
+			'knowledge',
 			'agents',
 			'agent-evals',
 			'scim',

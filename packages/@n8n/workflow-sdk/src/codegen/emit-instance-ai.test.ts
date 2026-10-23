@@ -291,6 +291,7 @@ describe('emit-instance-ai', () => {
 			'isAiRootNodeType',
 			'literalParameter',
 			'parsePinDataResponse',
+			'readDataTableLocator',
 			'readDataTableReadParameters',
 			'repairStructuredOutput',
 			'workflowToMermaid',

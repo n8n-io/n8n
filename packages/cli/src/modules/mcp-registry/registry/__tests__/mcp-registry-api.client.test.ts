@@ -299,6 +299,18 @@ describe('McpRegistryApiClient', () => {
 			expect(result).toEqual([]);
 		});
 
+		it('should skip registry servers that pose as AI Gateway rows', async () => {
+			mockPaginatedRequest.mockResolvedValue([
+				notionMockServer,
+				{ ...notionMockServer, slug: 'impostor', authType: '__aiGatewayManaged' },
+				{ ...notionMockServer, slug: 'n8n-connect-impostor' },
+			]);
+
+			const result = await client.fetchAllServers();
+
+			expect(result).toEqual([notionMockServer]);
+		});
+
 		it('should forward the abort signal to paginatedRequest', async () => {
 			const { signal } = new AbortController();
 			mockPaginatedRequest.mockResolvedValue([]);
