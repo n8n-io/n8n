@@ -33,13 +33,13 @@
     "@typescript-eslint/utils": "catalog:",
     "change-case": "catalog:",
     "fastest-levenshtein": "catalog:",
-    "pluralize": "catalog:"
+    "pluralize": "^8.0.0"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
-    "@types/pluralize": "catalog:",
+    "@types/pluralize": "^0.0.33",
     "n8n-workflow": "workspace:*",
     "@typescript-eslint/rule-tester": "catalog:",
     "eslint-doc-generator": "^2.2.2",

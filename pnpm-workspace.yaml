@@ -299,8 +299,6 @@ catalog:
   rate-limit-redis: 4.3.1
   ioredis-mock: ^8.8.1
   '@types/ioredis-mock': 8.2.2
-  pluralize: ^8.0.0
-  '@types/pluralize': ^0.0.33
 
 catalogMode: strict
 
