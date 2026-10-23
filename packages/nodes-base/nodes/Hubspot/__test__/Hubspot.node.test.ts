@@ -370,4 +370,24 @@ describe('Hubspot Node', () => {
 			workflowFiles: ['engagements.workflow.json'],
 		});
 	});
+
+	describe('tickets', () => {
+		beforeAll(() => {
+			hubspotNock
+				.put('/crm-objects/v1/objects/tickets/123', [{ name: 'closed_date', value: 1768435200000 }])
+				.reply(200, {
+					objectType: 'TICKET',
+					portalId: 62515,
+					objectId: 123,
+					properties: { closed_date: { value: '1768435200000' } },
+					isDeleted: false,
+				});
+		});
+
+		afterAll(() => hubspotNock.done());
+
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['tickets.workflow.json'],
+		});
+	});
 });

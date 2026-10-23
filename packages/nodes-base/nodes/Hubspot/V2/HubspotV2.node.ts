@@ -3013,7 +3013,7 @@ export class HubspotV2 implements INodeType {
 							if (updateFields.closeDate) {
 								body.push({
 									name: 'closed_date',
-									value: new Date(updateFields.createDate as string).getTime(),
+									value: new Date(updateFields.closeDate as string).getTime(),
 								});
 							}
 							if (updateFields.createDate) {
