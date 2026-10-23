@@ -16,6 +16,7 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { redactSecretKeys, redactSecretValuePatterns } from './request-sanitizer';
 import {
 	conformContentToSchema,
 	discoverStructuredOutputSchema,
@@ -257,9 +258,14 @@ const FINAL_WITHOUT_CONTENT = 'kind="final" requires content';
  */
 const MAX_SUBMIT_ATTEMPTS = 2;
 
+/** Scrub secret-looking values, then cap: a cap before the scrub can keep a secret's first bytes. */
+function scrubForLog(text: string): string {
+	return truncate(redactSecretValuePatterns(text));
+}
+
 /** Bounded JSON for the log: a rejected input can hold a whole document. */
 function toLogJson(value: unknown): string {
-	return truncate(JSON.stringify(value) ?? String(value));
+	return scrubForLog(JSON.stringify(redactSecretKeys(value)) ?? String(value));
 }
 
 /**
@@ -276,7 +282,9 @@ function unhandledSubmits(messages: readonly unknown[]): string[] {
 			}
 			if (part.state === 'resolved') continue;
 			const reason =
-				typeof part.error === 'string' ? truncate(part.error) : `call left ${String(part.state)}`;
+				typeof part.error === 'string'
+					? scrubForLog(part.error)
+					: `call left ${String(part.state)}`;
 			found.push(`${reason}; input=${toLogJson(part.input)}`);
 		}
 	}
@@ -293,7 +301,7 @@ function summarizeRejected(all: string[]): string {
 /** Why an attempt accepted no step, in one bounded line for the log and the re-ask. */
 function describeFailedAttempt(result: GenerateResult, rejected: string[]): string {
 	const parts = [`finishReason=${String(result.finishReason)}`];
-	if (result.error) parts.push(`error=${truncate(String(result.error))}`);
+	if (result.error) parts.push(`error=${scrubForLog(String(result.error))}`);
 	if (result.guardrail) parts.push(`guardrail=${result.guardrail.code}`);
 	parts.push(`rejected: ${summarizeRejected([...rejected, ...unhandledSubmits(result.messages)])}`);
 	return parts.join('; ');

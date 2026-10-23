@@ -337,6 +337,65 @@ describe('createLlmCompletionMockHandler', () => {
 		expect(warning).toContain('Invalid tool input');
 	});
 
+	it('redacts secrets in the run error and rejected submits before the log caps them', async () => {
+		const apiKey = 'sk-proj-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+		const bearer = 'eyJhbGciOiJIUzI1NiJ9abcdefghijklmnopqrstuvwxyz';
+		// The key starts just before the 500-character cap: a cap that runs before
+		// the scrub keeps its leading bytes.
+		const longError = `${'a'.repeat(470)} ${apiKey}`;
+		mockGenerate.mockImplementationOnce((async () => ({
+			finishReason: 'error',
+			error: new Error(`401 from provider: ${longError}`),
+			messages: [
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'call-1',
+							toolName: 'submit_agent_step',
+							state: 'rejected',
+							input: {
+								kind: 'final',
+								content: { apiKey },
+								note: `Authorization: Bearer ${bearer}`,
+							},
+							error: `Invalid tool input for key ${apiKey}`,
+						},
+					],
+				},
+			],
+			_text: '',
+		})) as never);
+		const handler = createLlmCompletionMockHandler();
+
+		await expect(
+			handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node),
+		).rejects.toThrow('401 from provider');
+		const warning = String(mockLogger.warn.mock.calls.at(-1)?.[0]);
+		expect(warning).toContain('finishReason=error');
+		expect(warning).not.toContain('sk-proj-');
+		expect(warning).not.toContain(apiKey.slice(0, 20));
+		expect(warning).not.toContain(bearer.slice(0, 20));
+		expect(warning).toContain('<redacted>');
+	});
+
+	it('redacts secrets in a rejected submit from the log and the re-ask prompt', async () => {
+		const apiKey = 'sk-ant-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+		submitQueue.push({ kind: 'tool_call', content: `use api_key=${apiKey}` });
+		submitQueue.push({ kind: 'final', content: 'ok' });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(res?.body).toEqual({ content: 'ok' });
+		const warning = String(mockLogger.warn.mock.calls.at(-1)?.[0]);
+		expect(warning).toContain('kind="tool_call" requires toolName');
+		expect(warning).not.toContain(apiKey.slice(0, 20));
+		expect(promptCapture.prompt).toContain('## Previous attempt');
+		expect(promptCapture.prompt).not.toContain(apiKey.slice(0, 20));
+	});
+
 	it('caps the total length of the rejected list in the log', async () => {
 		const rejectedPart = (i: number) => ({
 			type: 'tool-call',
