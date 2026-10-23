@@ -314,7 +314,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 		});
 	}
 
-	/** The number of each version, keyed by version id. */
 	/** The skill of each version, keyed by version id, without its content. */
 	async findSkillIdsOfVersions(
 		versionIds: string[],
@@ -332,6 +331,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return new Map(versions.map((version) => [version.id, version.skillId]));
 	}
 
+	/** The number of each version, keyed by version id. */
 	async findVersionNumbers(
 		versionIds: string[],
 		ctx: OperationContext = {},
