@@ -167,6 +167,31 @@ describe('WorkflowCreationService', () => {
 			);
 			expect(context.allowedCredentialIds).toEqual(new Set(['target-credential']));
 		});
+
+		it.each([new Error('cache down'), 'cache down'])(
+			'disables auto-exposure and logs the cause when the setting lookup rejects with %s',
+			async (error) => {
+				const project = mock<Project>({ id: 'project-1' });
+				projectServiceMock.getProjectWithScope.mockResolvedValue(project);
+				folderServiceMock.getFoldersByIds.mockResolvedValue([]);
+				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+				mcpSettingsService.getAutoExposeNewWorkflows.mockRejectedValue(error);
+
+				const context = await workflowCreationService.prepareBatchContext(
+					mock<User>(),
+					project.id,
+					[],
+					[],
+					new Map(),
+				);
+
+				expect(context.autoExposeNewWorkflows).toBe(false);
+				expect(loggerMock.warn).toHaveBeenCalledExactlyOnceWith(
+					'Failed to resolve auto-expose setting for new workflow',
+					{ cause: 'cache down' },
+				);
+			},
+		);
 	});
 
 	function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
