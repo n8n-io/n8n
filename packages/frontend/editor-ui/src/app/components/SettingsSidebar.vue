@@ -27,11 +27,13 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
-			<div :class="$style.arrowIcon">
-				<N8nIcon icon="arrow-left" size="small" />
+		<div :class="$style.returnBar">
+			<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
+				<div :class="$style.arrowIcon">
+					<N8nIcon icon="arrow-left" size="small" />
+				</div>
+				<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 			</div>
-			<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 		</div>
 		<!-- The back link stays put; only the links scroll, with faded edges showing there is more. -->
 		<N8nScrollArea edge-fade="y" :class="$style.scrollArea" data-test-id="settings-sidebar-scroll">
@@ -88,13 +90,21 @@ onMounted(() => {
 	min-height: 0;
 }
 
-.returnButton {
-	padding: var(--spacing--xs);
+.returnBar {
+	/* Same horizontal inset as the links below, so the hover pill lines up with theirs. */
+	padding: var(--spacing--2xs) var(--spacing--3xs);
 	border-bottom: var(--border);
-	cursor: pointer;
+}
+
+.returnButton {
+	/* Mirrors the N8nMenuItem box and hover so the back link reads as part of the list. */
 	display: flex;
-	gap: var(--spacing--4xs);
 	align-items: center;
+	gap: var(--spacing--4xs);
+	height: var(--spacing--xl);
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
+	cursor: pointer;
 
 	.arrowIcon {
 		display: grid;
@@ -104,7 +114,8 @@ onMounted(() => {
 	}
 
 	&:hover {
-		color: var(--color--primary);
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
 	}
 }
 
