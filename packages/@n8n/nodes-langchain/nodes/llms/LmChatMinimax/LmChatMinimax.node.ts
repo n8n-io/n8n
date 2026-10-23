@@ -30,7 +30,7 @@ export class LmChatMinimax implements INodeType {
 		group: ['transform'],
 		version: [1, 1.1, 1.2],
 		defaultVersion: 1.2,
-		description: 'For advanced usage with an AI chain',
+		description: 'Run MiniMax models, with options to hide or show reasoning',
 		defaults: {
 			name: 'MiniMax Chat Model',
 		},
