@@ -3,6 +3,7 @@ import { describe, it, vi, beforeEach, afterEach } from 'vitest';
 import { screen, within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -731,6 +732,48 @@ describe('NodeCredentials', () => {
 	});
 
 	describe('onCredentialSelected', () => {
+		it.each([
+			{ forAgent: true, isResolvable: true, shouldSelect: false },
+			{ forAgent: true, isResolvable: false, shouldSelect: true },
+			{ forAgent: false, isResolvable: true, shouldSelect: true },
+		])(
+			'selects newly created credentials only when supported (forAgent=$forAgent, isResolvable=$isResolvable)',
+			async ({ forAgent, isResolvable, shouldSelect }) => {
+				const credential = createCredential({ id: 'new-credential', isResolvable });
+				vi.spyOn(credentialsApi, 'createNewCredential').mockResolvedValue(credential);
+				const { emitted } = renderComponent({
+					props: { node: openAiNodeNoCreds, forAgent, skipAutoSelect: true },
+				});
+
+				await userEvent.click(
+					within(screen.getByTestId('node-credentials-empty-state')).getByRole('button'),
+				);
+				await credentialsStore.createNewCredential({
+					name: credential.name,
+					type: credential.type,
+					isResolvable,
+				});
+				await flushPromises();
+
+				if (shouldSelect) {
+					expect(emitted('credentialSelected')).toEqual([
+						[
+							{
+								name: openAiNodeNoCreds.name,
+								properties: {
+									credentials: {
+										openAiApi: { id: credential.id, name: credential.name },
+									},
+								},
+							},
+						],
+					]);
+				} else {
+					expect(emitted('credentialSelected')).toBeUndefined();
+				}
+			},
+		);
+
 		it.each([
 			{
 				format: 'a credential without an ID',

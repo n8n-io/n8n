@@ -33,8 +33,9 @@ interface ModelLookupOptions {
  * that backs the chat sub-nodes' model dropdowns). Nothing from
  * `@n8n/n8n-nodes-langchain` is loaded on this path.
  *
- * The credential must be usable by the user within the given project — the
- * same set as the workflow editor's credential picker.
+ * The credential must be usable by the user within the given project.
+ * Agent lookups exclude resolvable credentials and credentials available only
+ * through the personal route.
  */
 @Service()
 export class BuilderModelLiveLookupService {
