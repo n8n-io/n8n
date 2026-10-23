@@ -35,7 +35,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'session-xyz' }),
 }));
 
-const editorContext = { agent_id: 'agent-1', session_id: 'session-xyz' };
+const editorContext = { agent_id: 'agent-1', push_ref: 'session-xyz' };
 
 vi.mock('@n8n/composables/useClipboard', function mockUseClipboard() {
 	return {

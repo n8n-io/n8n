@@ -69,6 +69,10 @@ describe('CreateSkillDto', () => {
 });
 
 describe('SaveSkillDto', () => {
+	it('does not default availability on an unrelated save', () => {
+		expect(SaveSkillDto.parse({ baseSkillHash: 'h1' })).not.toHaveProperty('availableToAssistant');
+	});
+
 	it('accepts changed fields with the base hash', () => {
 		expect(SaveSkillDto.safeParse({ instructions: 'Be brief.', baseSkillHash: 'h1' }).success).toBe(
 			true,

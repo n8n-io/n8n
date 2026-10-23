@@ -74,6 +74,18 @@ export interface AgentCatalogModel {
 	priority?: number;
 }
 
+/**
+ * Why a provider's model list is unavailable, when the user can fix it:
+ * - `endpoint_type_unsupported`: the credential uses an endpoint type that
+ *   agents do not support (a Classic Azure OpenAI credential).
+ * - `project_missing`: the credential has no project to list deployments from.
+ * - `project_not_found`: the provider does not know the credential's project.
+ */
+export type AgentModelsUnavailableReason =
+	| 'endpoint_type_unsupported'
+	| 'project_missing'
+	| 'project_not_found';
+
 /** Response of `GET /agents/v2/catalog/models/:provider`. */
 export interface AgentProviderModelsResponse {
 	provider: string;
@@ -91,5 +103,7 @@ export interface AgentProviderModelsResponse {
 	 * empty. Lets the picker say "couldn't load" instead of "no models available".
 	 */
 	unavailable?: boolean;
+	/** Set with `unavailable` when the user can fix the cause. */
+	unavailableReason?: AgentModelsUnavailableReason;
 	models: AgentCatalogModel[];
 }

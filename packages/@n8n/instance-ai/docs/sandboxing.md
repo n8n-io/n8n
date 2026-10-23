@@ -213,9 +213,9 @@ when the sandbox is unavailable.
 
 ## Boundaries
 
-The runtime sandbox is not the local Computer Use gateway. The sandbox is a
-private provider workspace for Instance AI. The local gateway exposes tools on
-the user's machine under daemon permissions.
+The runtime sandbox is not the user's browser. The sandbox is a
+private provider workspace for Instance AI. Browser Use exposes tools in the
+user's browser under extension permissions.
 
 Sandbox isolation does not grant product authorization. Backend services still
 apply RBAC, project scope, session grants, and HITL confirmation rules.

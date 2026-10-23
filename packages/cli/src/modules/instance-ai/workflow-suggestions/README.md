@@ -10,7 +10,7 @@ Use `WorkflowSuggestionService` from trusted backend code.
 
 1. Call `captureBaseline(workflowId, backgroundUserId)` before preparing a fix. Keep the returned baseline outside model control.
 2. Call `prepareSuggestion(baseline, { graph, explanation, errorContext, resultKind })` with the proposed changes. `graph` accepts only nodes and connections. Supply `fix_ready` or `needs_you` as `resultKind`.
-3. Immediately call `createSuggestion(prepared, ctx)` inside the caller's completion transaction. Use the prepared value, never raw model output. Creation rechecks the baseline and records the suggestion and submission activity together.
+3. Call `createSuggestion(prepared, ctx)`. Self-healing calls this in its completion transaction, then stores the suggestion ID on its result. Use the prepared value, never raw model output. Creation rechecks the baseline and records the suggestion and submission activity together.
 
 Storage checks current edit access and basic graph structure. Apply runs credential checks, workflow-save policies, and normal save preparation. It rejects preparation that changes the reviewed fix. A result without valid graph changes has no suggestion.
 
@@ -20,7 +20,7 @@ Storage checks current edit access and basic graph structure. Apply runs credent
 
 The read requires an enabled user with current workflow read and edit access, including access through sharing. It checks the proposal's original project and the workflow's current owner project. Publish access is not required.
 
-The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events update pending suggestions. Save events are debounced per workflow for 30 seconds, with a maximum wait of 60 seconds during continuous saves. Publish, unpublish, and archive events cancel the pending save check and reconcile immediately. Reads can show a pending suggestion until an event or action updates its state. Actions check the current state before saving.
+The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events update pending suggestions. Save events are debounced per workflow for 30 seconds, with a maximum wait of 60 seconds during continuous saves. Publish and archive hooks, and unpublish events, cancel the pending save check and reconcile immediately. Reads can show a pending suggestion until an event or action updates its state. Actions check the current state before saving.
 
 ## Review actions
 

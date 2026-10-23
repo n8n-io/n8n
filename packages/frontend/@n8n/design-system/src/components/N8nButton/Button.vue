@@ -104,7 +104,12 @@ const handleClick = (event: MouseEvent) => {
 
 		<div :class="$style['button-inner']">
 			<slot v-if="!loading" name="icon">
-				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
+				<N8nIcon
+					v-if="icon && !loading"
+					:icon="icon"
+					:fallback-icon="fallbackIcon"
+					:size="computedIconSize"
+				/>
 			</slot>
 
 			<span v-if="label">{{ label }}</span>

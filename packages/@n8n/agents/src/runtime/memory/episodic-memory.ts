@@ -17,9 +17,11 @@ import type {
 	EpisodicMemoryEntry,
 	EpisodicMemoryScope,
 	EpisodicMemorySearchOptions,
+	EpisodicScopeDecision,
 	RetrievedEpisodicMemoryEntry,
 } from '../../types';
 import type { AgentExecutionCounter, AgentPersistenceOptions } from '../../types/sdk/agent';
+import type { JSONObject } from '../../types/utils/json';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { inferMemoryStoreAttributes, withMemorySpan } from '../telemetry/runtime-telemetry';
 
@@ -274,17 +276,51 @@ export function hashEpisodicMemoryEvidence(evidenceText: string): string {
 	return createHash('sha256').update(normalizeHashContent(evidenceText)).digest('hex');
 }
 
-function requireEpisodicMemoryScope(
-	persistence: AgentPersistenceOptions | undefined,
-): EpisodicMemoryScope | null {
-	if (!persistence?.resourceId) return null;
-	return { resourceId: persistence.resourceId, threadId: persistence.threadId };
+/** `hostMetadata` key that carries the turn's resolved episodic scope through checkpoints. */
+export const EPISODIC_SCOPE_METADATA_KEY = 'n8nEpisodicScope';
+
+const resolvedEpisodicScopeSchema = z.object({
+	writeScopeId: z.string().min(1),
+	readScopeIds: z.array(z.string().min(1)),
+});
+
+const episodicScopeMetadataSchema = z.union([
+	resolvedEpisodicScopeSchema,
+	z.object({ disabled: z.literal(true) }),
+]);
+
+/** Encodes a resolved scope, or the marker that turns episodic memory off for the turn. */
+export function encodeEpisodicScopeMetadata(scope: EpisodicScopeDecision): JSONObject {
+	return { [EPISODIC_SCOPE_METADATA_KEY]: 'disabled' in scope ? { disabled: true } : { ...scope } };
 }
 
+/**
+ * The scope decision a host carried in `hostMetadata`, or `undefined` when it
+ * carried none. A host forwards it to child runs of the same turn.
+ */
+export function readEpisodicScopeDecision(
+	hostMetadata: JSONObject | undefined,
+): EpisodicScopeDecision | undefined {
+	const raw = hostMetadata?.[EPISODIC_SCOPE_METADATA_KEY];
+	if (raw === undefined) return undefined;
+	const parsed = episodicScopeMetadataSchema.safeParse(raw);
+	// A malformed value disables memory. It must not fall back to a broader scope.
+	return parsed.success ? parsed.data : { disabled: true };
+}
+
+/**
+ * The scope of the current turn. Returns `null` when the turn has no resource or
+ * the host switched episodic memory off for it.
+ */
 export function getEpisodicMemoryScope(
 	persistence: AgentPersistenceOptions | undefined,
 ): EpisodicMemoryScope | null {
-	return requireEpisodicMemoryScope(persistence);
+	if (!persistence?.resourceId) return null;
+	const { resourceId, threadId } = persistence;
+	const metadata = readEpisodicScopeDecision(persistence.hostMetadata);
+	if (!metadata) return { resourceId, threadId };
+	if ('disabled' in metadata) return null;
+	return { resourceId, threadId, episodic: metadata };
 }
 
 function normalizeHashContent(content: string): string {

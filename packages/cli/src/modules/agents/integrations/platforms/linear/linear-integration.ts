@@ -1,3 +1,5 @@
+import type { ResolvedEpisodicScope } from '@n8n/agents';
+import type { AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
@@ -5,6 +7,7 @@ import { Service } from '@n8n/di';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
+	type EpisodicScopeContext,
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
 } from '../../agent-chat-integration';
@@ -20,7 +23,7 @@ import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
 } from './linear-tool-definitions';
-import { buildLinearOriginDraft } from './linear-origin';
+import { buildLinearOriginDraft, fetchLinearOriginNames } from './linear-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /**
@@ -108,6 +111,29 @@ export class LinearIntegration extends AgentChatIntegration {
 
 	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
 		return buildLinearOriginDraft(input, decoded);
+	}
+
+	async fetchOriginNames(input: OriginInput, origin: AgentMessageIntegrationOrigin) {
+		return await fetchLinearOriginNames(input, origin);
+	}
+
+	/**
+	 * A Linear team owns its memories. Issues, projects, authors and names do not
+	 * define ownership. Without the agent, credential or team, memory stays off.
+	 */
+	resolveEpisodicScope({
+		agentId,
+		credentialId,
+		integrationType,
+		origin,
+	}: EpisodicScopeContext): ResolvedEpisodicScope | null {
+		if (integrationType !== 'linear' || origin?.type !== 'linear') return null;
+		if (!agentId || !credentialId || !origin.teamId) return null;
+
+		const scopeId = ['linear', agentId, credentialId, origin.teamId]
+			.map(encodeURIComponent)
+			.join(':');
+		return { writeScopeId: scopeId, readScopeIds: [scopeId] };
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

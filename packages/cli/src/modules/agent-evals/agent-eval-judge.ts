@@ -65,7 +65,6 @@ export async function judgeAgentAnswer(
 			config.model,
 			config.credential,
 			credentialProvider,
-			config.modelDeploymentName,
 		);
 
 		// Lazy-loaded: `@n8n/agents` is heavy, and judging only runs for cases that

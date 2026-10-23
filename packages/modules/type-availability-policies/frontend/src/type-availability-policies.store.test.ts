@@ -9,7 +9,13 @@ const mocks = vi.hoisted(() => ({
 	fetchAvailableTypes: vi.fn(),
 	fetchAvailableCredentialTypes: vi.fn(),
 	fetchSubWorkflowPolicyCheck: vi.fn(),
+	getProject: vi.fn(),
 	isModuleActive: vi.fn(),
+}));
+
+vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getProject: mocks.getProject,
 }));
 
 vi.mock('./type-availability-policies.api', () => ({
@@ -42,6 +48,8 @@ const PROJECT_B_RESPONSE: AvailableTypesResponse = [
 	{ name: RESTRICTED, available: true },
 ];
 
+const TEAM_PROJECT = { id: 'project-a', type: 'team', relations: [] };
+
 const ALLOWED_CREDENTIAL = 'sysdigApi';
 const RESTRICTED_CREDENTIAL = 'virusTotalApi';
 
@@ -57,6 +65,7 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 		mocks.fetchAvailableTypes.mockReset();
 		mocks.fetchAvailableCredentialTypes.mockReset().mockResolvedValue([]);
 		mocks.fetchSubWorkflowPolicyCheck.mockReset();
+		mocks.getProject.mockReset().mockResolvedValue(TEAM_PROJECT);
 		mocks.isModuleActive.mockReset().mockReturnValue(true);
 		errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 	});
@@ -304,7 +313,33 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			store.reset();
 
 			expect(store.loadedProjectId).toBeNull();
+			expect(store.policyProject).toBeNull();
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
+		});
+
+		it('loads the project together with its availability', async () => {
+			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+
+			expect(mocks.getProject).toHaveBeenCalledWith(
+				expect.objectContaining({ baseUrl: 'http://localhost' }),
+				'project-a',
+			);
+			expect(store.policyProject).toEqual(TEAM_PROJECT);
+		});
+
+		it('keeps the availability when the caller cannot read the project', async () => {
+			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
+			mocks.getProject.mockRejectedValue(new Error('Forbidden'));
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+
+			expect(store.policyProject).toBeNull();
+			expect(store.loadedProjectId).toBe('project-a');
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(false);
 		});
 	});
 

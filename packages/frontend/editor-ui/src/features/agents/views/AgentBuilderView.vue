@@ -100,6 +100,10 @@ import {
 import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import {
 	AGENT_BUILDER_VIEW,
+	AGENT_MIN_PANEL_WIDTH,
+	AGENT_MAX_PANEL_WIDTH,
+	AGENT_DEFAULT_PANEL_WIDTH,
+	AGENT_DEFAULT_PANEL_WIDTH_RATIO,
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
@@ -243,10 +247,7 @@ const agentCollaborationStore = useAgentCollaborationStore();
 useActivityDetection(agentCollaborationStore);
 const { isCtrlKeyPressed } = useDeviceSupport();
 
-// No design tokens cover these layout widths. Keep the editor usable while the
-// two resizable side panels adapt to the available viewport.
 const AGENT_BUILDER_EDITOR_MIN_WIDTH = 480;
-const AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH = 320;
 
 // Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
 // the backend: Daytona sandbox env vars (N8N_AGENTS_AI_SANDBOX_ENABLED +
@@ -328,11 +329,21 @@ const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
 });
 const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
-const previewDockWidth = ref(480);
+const resizedPreviewDockWidth = ref<number>();
+const previewDockWidth = computed({
+	get: () => resizedPreviewDockWidth.value ?? defaultPanelWidth.value,
+	set: (width: number) => {
+		resizedPreviewDockWidth.value = width;
+	},
+});
 const isPreviewDockResizing = ref(false);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const { width: builderContainerWidth } = useElementSize(builderContainer, undefined, {
 	box: 'border-box',
+});
+const defaultPanelWidth = computed(() => {
+	if (builderContainerWidth.value === 0) return AGENT_DEFAULT_PANEL_WIDTH;
+	return clampPanelWidth(builderContainerWidth.value * AGENT_DEFAULT_PANEL_WIDTH_RATIO);
 });
 const isPreviewDockOpen = computed(function isPreviewDockOpen() {
 	return !isStandalonePreview.value && persistedPreviewOpen.value;
@@ -481,43 +492,49 @@ function onCredentialHelpRequested(request: AgentCredentialHelpRequest) {
 	};
 }
 agentsEventBus.on('credentialHelpRequested', onCredentialHelpRequested);
-const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
+const savedAiPanelWidth = useStorage<number | null>('N8N_AGENT_AI_PANEL_WIDTH', null, undefined, {
+	serializer: StorageSerializers.number,
+	writeDefaults: false,
+});
+
+const aiPanelWidth = computed({
+	get: () => savedAiPanelWidth.value ?? defaultPanelWidth.value,
+	set: (width: number) => {
+		savedAiPanelWidth.value = width;
+	},
+});
 type SidePanel = 'assistant' | 'preview';
 const preferredSidePanel = ref<SidePanel>('assistant');
 
 function bothSidePanelsFit() {
 	if (builderContainerWidth.value === 0) return true;
-	return (
-		builderContainerWidth.value >=
-		AGENT_BUILDER_EDITOR_MIN_WIDTH + AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH * 2
-	);
+	return builderContainerWidth.value >= AGENT_BUILDER_EDITOR_MIN_WIDTH + AGENT_MIN_PANEL_WIDTH * 2;
+}
+
+function clampPanelWidth(width: number, maxWidth = AGENT_MAX_PANEL_WIDTH) {
+	return Math.min(maxWidth, Math.max(width, AGENT_MIN_PANEL_WIDTH));
 }
 
 const renderedSidePanelWidths = computed(function getRenderedSidePanelWidths() {
-	const desiredAiWidth = Math.max(aiPanelWidth.value, AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH);
-	const desiredPreviewWidth = Math.max(previewDockWidth.value, AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH);
 	const containerWidth = builderContainerWidth.value;
-	if (containerWidth === 0) {
-		return { ai: desiredAiWidth, preview: desiredPreviewWidth };
-	}
-
-	const availableSidePanelWidth = Math.max(
-		AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH,
-		containerWidth - AGENT_BUILDER_EDITOR_MIN_WIDTH,
+	const bothPanelsOpen = showAiPanel.value && isPreviewDockOpen.value;
+	const availableSidePanelWidth =
+		containerWidth === 0
+			? Infinity
+			: Math.max(AGENT_MIN_PANEL_WIDTH, containerWidth - AGENT_BUILDER_EDITOR_MIN_WIDTH);
+	const openPanelMaxWidth = bothPanelsOpen
+		? AGENT_MAX_PANEL_WIDTH
+		: Math.min(AGENT_MAX_PANEL_WIDTH, availableSidePanelWidth);
+	const desiredAiWidth = clampPanelWidth(
+		aiPanelWidth.value,
+		showAiPanel.value ? openPanelMaxWidth : AGENT_MAX_PANEL_WIDTH,
 	);
-	if (showAiPanel.value && !isPreviewDockOpen.value) {
-		return {
-			ai: Math.min(desiredAiWidth, availableSidePanelWidth),
-			preview: desiredPreviewWidth,
-		};
-	}
-	if (!showAiPanel.value && isPreviewDockOpen.value) {
-		return {
-			ai: desiredAiWidth,
-			preview: Math.min(desiredPreviewWidth, availableSidePanelWidth),
-		};
-	}
-	if (!showAiPanel.value || !isPreviewDockOpen.value || !bothSidePanelsFit()) {
+	const desiredPreviewWidth = clampPanelWidth(
+		previewDockWidth.value,
+		isPreviewDockOpen.value ? openPanelMaxWidth : AGENT_MAX_PANEL_WIDTH,
+	);
+
+	if (!bothPanelsOpen || !bothSidePanelsFit()) {
 		return { ai: desiredAiWidth, preview: desiredPreviewWidth };
 	}
 
@@ -525,13 +542,12 @@ const renderedSidePanelWidths = computed(function getRenderedSidePanelWidths() {
 		return { ai: desiredAiWidth, preview: desiredPreviewWidth };
 	}
 
-	const availableExtraWidth = availableSidePanelWidth - AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH * 2;
-	const desiredAiExtraWidth = desiredAiWidth - AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH;
-	const desiredPreviewExtraWidth = desiredPreviewWidth - AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH;
+	const availableExtraWidth = availableSidePanelWidth - AGENT_MIN_PANEL_WIDTH * 2;
+	const desiredAiExtraWidth = desiredAiWidth - AGENT_MIN_PANEL_WIDTH;
+	const desiredPreviewExtraWidth = desiredPreviewWidth - AGENT_MIN_PANEL_WIDTH;
 	const desiredExtraWidth = desiredAiExtraWidth + desiredPreviewExtraWidth;
 	const renderedAiWidth =
-		AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH +
-		availableExtraWidth * (desiredAiExtraWidth / desiredExtraWidth);
+		AGENT_MIN_PANEL_WIDTH + availableExtraWidth * (desiredAiExtraWidth / desiredExtraWidth);
 
 	return {
 		ai: renderedAiWidth,
@@ -3296,9 +3312,9 @@ useKeybindings({
 			<aside v-if="showAiPanel" :class="$style.aiDock" data-testid="agent-ai-dock">
 				<N8nResizeWrapper
 					:width="renderedSidePanelWidths.ai"
-					:min-width="AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH"
-					:max-width="720"
-					:default-width="460"
+					:min-width="AGENT_MIN_PANEL_WIDTH"
+					:max-width="AGENT_MAX_PANEL_WIDTH"
+					:default-width="defaultPanelWidth"
 					:supported-directions="['right']"
 					@resize="onAiPanelResize"
 				>
@@ -3434,8 +3450,11 @@ useKeybindings({
 				<N8nResizeWrapper
 					v-if="!isStandalonePreview"
 					:class="[$style.previewResizeWrapper, { [$style.previewResizeOpen]: isPreviewDockOpen }]"
+					:is-resizing-enabled="isPreviewDockOpen"
 					:width="renderedSidePanelWidths.preview"
-					:min-width="AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH"
+					:max-width="AGENT_MAX_PANEL_WIDTH"
+					:default-width="defaultPanelWidth"
+					:min-width="AGENT_MIN_PANEL_WIDTH"
 					:supported-directions="['left']"
 					:grid-size="8"
 					@resizestart="isPreviewDockResizing = true"

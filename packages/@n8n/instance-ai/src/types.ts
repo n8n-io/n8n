@@ -28,7 +28,6 @@ import type {
 	TaskList,
 	InstanceAiPromptConfiguration,
 	InstanceAiFileAttachment,
-	ComputerUseChannel,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
 	InstanceAiThreadArtifact,
@@ -757,8 +756,15 @@ export type ExecuteNodeResult =
 			output: string;
 			truncated?: { totalItems: number; shownItems: number; message: string };
 			outputSuppressed?: string;
+			/** Set when n8n redacted the run's data for the user. `output` is then empty. */
+			redaction?: ExecutionRedaction;
 	  }
-	| { status: 'error'; error: { message: string; description?: string; nodeErrorType?: string } };
+	| {
+			status: 'error';
+			error: { message: string; description?: string; nodeErrorType?: string };
+			/** Set when n8n redacted the run's data for the user. Only the error type remains. */
+			redaction?: ExecutionRedaction;
+	  };
 
 /** Executes a single node standalone through the regular execution engine.
  *  The request mirrors a workflow-sdk node (`{ type, version, config }`). */
@@ -1356,11 +1362,11 @@ export interface InstanceAiWebResearchService {
 	): Promise<FetchedPage>;
 }
 
-// ── Filesystem MCP server ────────────────────────────────────────────────────
+// ── Local MCP server ─────────────────────────────────────────────────────────
 
 /**
- * Minimal interface for a connected filesystem MCP server.
- * Implemented by `LocalGateway` (remote daemon) in the CLI module.
+ * Minimal interface for a connected local MCP server.
+ * Implemented by the Browser Use server in the CLI module.
  */
 export interface LocalMcpServer {
 	getAvailableTools(): McpTool[];
@@ -1491,22 +1497,15 @@ export interface AgentValidationSummary {
 	capabilityCount: number;
 }
 
-// ── Computer Use state ──────────────────────────────────────────────────────
+// ── Browser Use state ───────────────────────────────────────────────────────
 
-export type ComputerUseChannelState =
+export type BrowserUseState =
 	/** Not offered to this user, so the + menu has no entry to name. */
 	| { status: 'unavailable' }
-	/** In the + menu, not paired. */
+	/** In the + menu, extension not connected. */
 	| { status: 'disconnected' }
-	/** In the + menu, switched off in the user's own settings. */
-	| { status: 'disabledByUser' }
-	/** Live. `toolCategories` are the categories this channel serves, in the
-	 *  daemon's own vocabulary: `filesystem`, `shell`, `browser`, … */
-	| { status: 'connected'; toolCategories: string[] };
-
-export type ComputerUseState = Record<ComputerUseChannel, ComputerUseChannelState>;
-
-export type { ComputerUseChannel };
+	/** Live: the `browser_*` tools are available. */
+	| { status: 'connected' };
 
 // ── Conversation history ─────────────────────────────────────────────────────
 
@@ -1653,11 +1652,11 @@ export interface InstanceAiContext {
 	workspaceService?: InstanceAiWorkspaceService;
 	workflowTemplateService: InstanceAiWorkflowTemplateService;
 	/**
-	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
+	 * Connected local MCP server (the Browser Use session). When set, dynamic tools are created from its advertised capabilities.
 	 */
 	localMcpServer?: LocalMcpServer;
-	/** Per-channel Computer Use state — drives system prompt guidance. */
-	computerUseState?: ComputerUseState;
+	/** Browser Use state — drives system prompt guidance. */
+	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
 	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
@@ -1719,6 +1718,18 @@ export interface InstanceAiContext {
 	 * Wired by the host only while the setup panel flag is on.
 	 */
 	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
+	/**
+	 * Rejects a write target outside the thread's project with the error the
+	 * adapter throws on write. Lets tools fail before an approval card or sandbox
+	 * work. The adapter still enforces the rule. Absent: no pre-check.
+	 */
+	assertInThreadProject?: (
+		target:
+			| { kind: 'workflow'; id: string }
+			| { kind: 'credential'; id: string }
+			| { kind: 'data-table'; id: string; projectId?: string }
+			| { kind: 'project'; id: string },
+	) => Promise<void>;
 	/**
 	 * Called after a tool creates or changes a workflow, data table, or agent,
 	 * and after it reads a data table, as the frontend previews those too.
@@ -2254,7 +2265,7 @@ export interface OrchestrationContext {
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
-	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
+	/** Local MCP server (Browser Use session) for the browser tools. */
 	localMcpServer?: LocalMcpServer;
 	/** Validated, approval-wrapped MCP tools available to Agent Builder. */
 	mcpTools?: InstanceAiToolRegistry;
