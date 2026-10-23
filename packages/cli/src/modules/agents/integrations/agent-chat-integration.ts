@@ -650,7 +650,6 @@ export abstract class AgentChatIntegration {
 	shouldHandleInboundMessage?(params: {
 		message: Message<unknown>;
 		integration: AgentIntegrationConfig;
-		isNewMention: boolean;
 	}): boolean;
 
 	/**

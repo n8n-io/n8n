@@ -3979,7 +3979,21 @@ describe('AgentChatBridge — Slack thread history', () => {
 			const thread = makeThread(
 				'thread-1',
 				undefined,
-				asyncIterableOf([{ id: 'skipped', text: 'The deadline is Friday', author }]),
+				asyncIterableOf([
+					{ id: 'trigger', text: '<@U_BOT> When is the deadline?', author },
+					{ id: 'skipped', text: 'The deadline is Friday', author },
+					{
+						id: 'other-bot',
+						text: 'Updated the project calendar',
+						author: { userId: 'U_OTHER_BOT', userName: 'calendar-bot', isBot: true, isMe: false },
+					},
+					{
+						id: 'agent-reply',
+						text: 'The old deadline was Monday',
+						author: { userId: 'U_BOT', userName: 'agent-bot' },
+					},
+					{ id: 'answered-mention', text: '<@U_BOT> What was the old deadline?', author },
+				]),
 			);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 			makeQueuedBridge(
@@ -4015,6 +4029,11 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 			expect(agentExecutor.captured).toHaveLength(1);
 			expect(agentExecutor.captured[0].modelMessage).toContain('[alice]: The deadline is Friday');
+			expect(agentExecutor.captured[0].modelMessage).toContain(
+				'[calendar-bot]: Updated the project calendar',
+			);
+			expect(agentExecutor.captured[0].modelMessage).not.toContain('The old deadline was Monday');
+			expect(agentExecutor.captured[0].modelMessage).not.toContain('What was the old deadline?');
 			expect(agentExecutor.captured[0].message).toBe('When is the deadline?');
 		},
 	);
@@ -4059,49 +4078,70 @@ describe('AgentChatBridge — Slack thread history', () => {
 		expect(call.modelMessage).toBe('[alice (u1)]: help');
 	});
 
-	it('labels the agent\'s own prior messages as "you (the agent)"', async () => {
-		const { bot, handlers } = makeBot();
-		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
-		const thread = makeThread('thread-1', undefined, {
-			[Symbol.asyncIterator]: () => {
-				return (async function* () {
-					yield { id: 'trigger', text: '@U_BOT help', author: { userId: 'u1', userName: 'alice' } };
-					yield {
-						id: 'prev-bot',
-						text: 'I can do that',
-						author: { userId: 'U_BOT', userName: 'agent-bot' },
-					};
-				})();
-			},
-		});
-		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+	it.each([
+		{
+			identity: 'bot user ID',
+			botUserId: 'U_BOT',
+			author: { userId: 'U_BOT', userName: 'agent-bot' },
+			text: 'I can do that',
+		},
+		{
+			identity: 'adapter self marker on an empty message',
+			botUserId: undefined,
+			author: { userId: 'U_BOT', userName: 'agent-bot', isMe: true },
+			text: '',
+		},
+	])(
+		'stops history at the agent message identified by $identity',
+		async ({ botUserId, author, text }) => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId });
+			const thread = makeThread('thread-1', undefined, {
+				[Symbol.asyncIterator]: () => {
+					return (async function* () {
+						yield {
+							id: 'trigger',
+							text: '@U_BOT help',
+							author: { userId: 'u1', userName: 'alice' },
+						};
+						yield {
+							id: 'prev-bot',
+							text,
+							author,
+						};
+						yield { id: 'older', text: 'Already answered', author: { userId: 'u1' } };
+					})();
+				},
+			});
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		makeQueuedBridge(
-			bot as unknown as ChatBotLike,
-			'agent-1',
-			agentExecutor as never,
-			componentMapper,
-			logger,
-			'project-1',
-			slackIntegration,
-		);
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
 
-		await handlers.mention!(thread, {
-			id: 'trigger',
-			text: '@U_BOT help',
-			author: { userId: 'u1', userName: 'alice' },
-			raw: {
-				channel: 'C123',
-				channel_type: 'channel',
-				thread_ts: '1779466577.518139',
-				ts: '1779466588.518139',
-			},
-		});
+			await handlers.mention!(thread, {
+				id: 'trigger',
+				text: '@U_BOT help',
+				author: { userId: 'u1', userName: 'alice' },
+				raw: {
+					channel: 'C123',
+					channel_type: 'channel',
+					thread_ts: '1779466577.518139',
+					ts: '1779466588.518139',
+				},
+			});
 
-		const call = agentExecutor.captured[0];
-		expect(call.modelMessage).toContain('[you (the agent)]: I can do that');
-		expect(call.modelMessage).not.toContain('[agent-bot]');
-	});
+			const call = agentExecutor.captured[0];
+			expect(call.modelMessage).not.toContain('<slack_thread_history>');
+			expect(call.modelMessage).not.toContain('Already answered');
+		},
+	);
 
 	it('neutralizes framing tags in prior messages so history cannot break out of the context block', async () => {
 		const { bot, handlers } = makeBot();
@@ -4183,7 +4223,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 			.filter((line) => line.startsWith('['));
 	}
 
-	it('caps the number of prior messages at the message-count limit', async () => {
+	it('reads to the start of the thread when more than 30 messages have no agent reply', async () => {
 		const { bot, handlers } = makeBot();
 		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
 		// thread.messages is newest-first: trigger, then hist-1 (newest prior) … hist-35.
@@ -4221,11 +4261,11 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 		const call = agentExecutor.captured[0];
 		const lines = historyLines(call.modelMessage);
-		expect(lines).toHaveLength(30);
-		// The 30 newest priors are kept (hist-1..hist-30); the oldest 5 are dropped.
+		expect(lines).toHaveLength(35);
 		expect(call.modelMessage).toContain('[alice]: hist-1');
-		expect(call.modelMessage).toContain('[alice]: hist-30');
-		expect(call.modelMessage).not.toContain('hist-31');
+		expect(call.modelMessage).toContain('[alice]: hist-35');
+		expect(lines[0]).toBe('[alice]: hist-35');
+		expect(lines.at(-1)).toBe('[alice]: hist-1');
 	});
 
 	it('caps the total history size at the character limit', async () => {

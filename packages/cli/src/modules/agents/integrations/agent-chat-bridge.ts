@@ -791,7 +791,6 @@ export class AgentChatBridge {
 			this.integrationImpl?.shouldHandleInboundMessage?.({
 				message,
 				integration: this.integration,
-				isNewMention: options.isNewMention,
 			}) === false
 		) {
 			return;
