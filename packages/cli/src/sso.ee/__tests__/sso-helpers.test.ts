@@ -159,6 +159,7 @@ describe('sso-helpers', () => {
 		const logger = mockLogger();
 		const licenseState = mock<LicenseState>();
 		let scimSwitchReader: ScimSwitchReader;
+		const turnOffScim = vi.fn<(protocol: 'saml' | 'oidc') => Promise<void>>();
 
 		/** The switch that is saved in the settings table. */
 		const savedScimSwitch = (value: string) =>
@@ -178,7 +179,7 @@ describe('sso-helpers', () => {
 			['saml', true],
 			['oidc', false],
 		] as const)('emits the protocol %s and the SCIM state %s', async (protocol, scimWasEnabled) => {
-			scimSwitchReader.register(async () => scimWasEnabled);
+			scimSwitchReader.register(async () => scimWasEnabled, turnOffScim);
 
 			await emitSsoLoginDisabled(protocol);
 
@@ -235,7 +236,7 @@ describe('sso-helpers', () => {
 
 		it('reads the switch through the SCIM module once it has started', async () => {
 			savedScimSwitch('false');
-			scimSwitchReader.register(async () => true);
+			scimSwitchReader.register(async () => true, turnOffScim);
 
 			await emitSsoLoginDisabled('saml');
 
@@ -249,7 +250,7 @@ describe('sso-helpers', () => {
 		it('still emits the event when the SCIM state cannot be read', async () => {
 			scimSwitchReader.register(async () => {
 				throw new Error('db down');
-			});
+			}, turnOffScim);
 
 			await emitSsoLoginDisabled('saml');
 
@@ -258,6 +259,42 @@ describe('sso-helpers', () => {
 				scimWasEnabled: false,
 			});
 			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		// The event reads the switch before SCIM turns off.
+		it('turns SCIM off after the event', async () => {
+			scimSwitchReader.register(async () => true, turnOffScim);
+			turnOffScim.mockImplementation(async () => {
+				expect(eventService.emit).toHaveBeenCalledOnce();
+			});
+
+			await emitSsoLoginDisabled('oidc');
+
+			expect(turnOffScim).toHaveBeenCalledExactlyOnceWith('oidc');
+		});
+
+		// A silent failure leaves SCIM on, and SCIM serves again when single
+		// sign-on turns on again.
+		it('emits the event and then throws when SCIM does not turn off', async () => {
+			const error = new Error('SCIM did not turn off');
+			scimSwitchReader.register(async () => true, turnOffScim);
+			turnOffScim.mockRejectedValue(error);
+
+			await expect(emitSsoLoginDisabled('saml')).rejects.toBe(error);
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('sso-login-disabled', {
+				protocol: 'saml',
+				scimWasEnabled: true,
+			});
+		});
+
+		// The SCIM module turns SCIM off at its own start.
+		it('does not turn SCIM off while the SCIM module has not started', async () => {
+			savedScimSwitch('true');
+
+			await expect(emitSsoLoginDisabled('saml')).resolves.toBeUndefined();
+
+			expect(turnOffScim).not.toHaveBeenCalled();
 		});
 	});
 

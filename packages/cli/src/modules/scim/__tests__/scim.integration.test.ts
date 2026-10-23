@@ -400,10 +400,8 @@ describe('SCIM and single sign-on', () => {
 			.send({ loginEnabled })
 			.expect(200);
 
-	// The SCIM module turns SCIM off in an event listener, after the toggle
-	// returns.
-	const waitForScimOff = async () =>
-		await vi.waitFor(async () => expect(await scimSettings().isEnabled()).toBe(false));
+	// SCIM turns off before the toggle returns.
+	const expectScimOff = async () => expect(await scimSettings().isEnabled()).toBe(false);
 
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -480,7 +478,7 @@ describe('SCIM and single sign-on', () => {
 
 		await toggleSamlLogin(false);
 
-		await waitForScimOff();
+		await expectScimOff();
 		expect(emit).toHaveBeenCalledWith('sso-login-disabled', {
 			protocol: 'saml',
 			scimWasEnabled: true,
@@ -509,9 +507,35 @@ describe('SCIM and single sign-on', () => {
 		);
 	});
 
+	// A silent failure leaves SCIM on, and SCIM serves again when SAML turns
+	// on again. The toggle fails, so the admin knows that SCIM is still on.
+	// The steps in the message then turn SCIM and single sign-on off.
+	it('fails the SAML toggle and rejects SCIM requests when SCIM does not turn off', async () => {
+		const turnOff = vi.spyOn(scimSettings(), 'turnOff').mockRejectedValue(new Error('db down'));
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.post('/sso/saml/config/toggle')
+			.send({ loginEnabled: false });
+
+		expect(response.status).toBe(500);
+		expect(response.body.message).toBe(
+			'SCIM provisioning did not turn off, so single sign-on did not turn off fully. Turn off SCIM provisioning in the SCIM settings. Then turn off single sign-on again.',
+		);
+		expect(await scimSettings().isEnabled()).toBe(true);
+		await scimRequest('get', '/Users').expect(403);
+
+		turnOff.mockRestore();
+		await testServer.authAgentFor(admin).patch('/scim/config').send({ enabled: false }).expect(200);
+		await toggleSamlLogin(false);
+
+		await expectScimOff();
+		await scimRequest('get', '/Users').expect(403);
+	});
+
 	it('keeps SCIM off when SAML turns on again, and the old token works once an admin enables SCIM', async () => {
 		await toggleSamlLogin(false);
-		await waitForScimOff();
+		await expectScimOff();
 
 		await setSamlLoginEnabled(true);
 

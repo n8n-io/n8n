@@ -95,22 +95,27 @@ export function isSamlOrOidcLoginEnabled(): boolean {
 export type SamlOrOidc = Extract<AuthProviderType, 'saml' | 'oidc'>;
 
 /**
- * Emits `sso-login-disabled`, the contract for every path that turns SAML or
- * OIDC sign-in off. Call it only when the authentication method changes from
- * `protocol` to email. A switch from one protocol to the other keeps single
- * sign-on on, so it must not call this.
+ * Emits `sso-login-disabled` and then turns SCIM provisioning off. This is
+ * the contract for every path that turns SAML or OIDC sign-in off. Call it
+ * only when the authentication method changes from `protocol` to email. A
+ * switch from one protocol to the other keeps single sign-on on, so it must
+ * not call this.
+ *
+ * A SCIM failure reaches the caller, so that the change does not leave SCIM
+ * on without notice.
  */
 export async function emitSsoLoginDisabled(protocol: SamlOrOidc): Promise<void> {
 	Container.get(EventService).emit('sso-login-disabled', {
 		protocol,
 		scimWasEnabled: await isScimProvisioningEnabled(),
 	});
+
+	await Container.get(ScimSwitchReader).turnOff(protocol);
 }
 
 /**
- * The SCIM module turns SCIM off when it gets `sso-login-disabled`, so read
- * the switch before the event. The SSO change is already saved, so a read
- * failure must not fail it.
+ * Reads the switch before SCIM turns off. The SSO change is already saved,
+ * so a read failure must not fail it.
  */
 async function isScimProvisioningEnabled(): Promise<boolean> {
 	try {
