@@ -130,9 +130,13 @@ export type AgentSessionQueryFilters = Pick<
 	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
 >;
 
+export const MAX_AGENT_MEMORY_SEARCH_LENGTH = 500;
+
 export class ListAgentMemoryEntriesQueryDto extends Z.class({
 	cursor: z.string().min(1).optional(),
 	limit: z.string().optional(),
+	/** Ranks by relevance and returns one page without a cursor. */
+	search: z.string().trim().min(1).max(MAX_AGENT_MEMORY_SEARCH_LENGTH).optional(),
 	source: z.enum(AGENT_MEMORY_FILTER_SOURCES).optional(),
 	/** Narrows `source` to one user, channel or team. Requires `source` and `sourceFacetId`. */
 	sourceFacet: z.enum(AGENT_MEMORY_SOURCE_FACETS).optional(),

@@ -195,9 +195,7 @@ export type NewEpisodicMemoryEntrySourceForEntry = NewEpisodicMemoryEntrySourceF
 	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
 
 export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
-	lexicalScore: number;
 	vectorScore: number;
-	rrfScore: number;
 	finalScore: number;
 }
 

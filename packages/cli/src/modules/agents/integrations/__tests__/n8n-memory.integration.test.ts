@@ -421,7 +421,7 @@ describe('N8nMemoryImpl', () => {
 			await captureEntry(memory, other, 'Channel two chose MySQL.', { episodic: other.episodic });
 
 			const recalled = async (scope: typeof first) =>
-				(await memory.episodic.searchEntries(scope, 'Channel'))
+				(await memory.episodic.searchEntries(scope, 'Channel', { queryEmbedding: [1, 0] }))
 					.map(({ content }) => content)
 					.sort();
 
@@ -463,7 +463,7 @@ describe('N8nMemoryImpl', () => {
 			}
 
 			async function recall(scope: EpisodicMemoryScope, store = memory) {
-				return (await store.episodic.searchEntries(scope, 'Slack'))
+				return (await store.episodic.searchEntries(scope, 'Slack', { queryEmbedding: [1, 0] }))
 					.map(({ content }) => content)
 					.sort();
 			}

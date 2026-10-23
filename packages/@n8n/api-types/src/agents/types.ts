@@ -304,7 +304,7 @@ export interface AgentMemoryEntryDto {
 
 export interface AgentMemoryEntriesPageDto {
 	items: AgentMemoryEntryDto[];
-	/** Count of all active entries that match the filter, not just this page. */
+	/** Count of all active entries that match the filter, not just this page. A search returns its result count. */
 	total: number;
 	nextCursor: string | null;
 }

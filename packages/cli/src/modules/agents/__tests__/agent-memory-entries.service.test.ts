@@ -3,13 +3,30 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentMemoryEntriesService } from '../agent-memory-entries.service';
+import type { AgentMemoryQueryEmbedder } from '../agent-memory-query-embedder';
 import type { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import type { N8nMemory, N8nMemoryImpl } from '../integrations/n8n-memory';
 import type { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
-function makeEntry(id: string, resourceId: string, createdAt: string): AgentMemoryEntryEntity {
-	return { id, resourceId, content: `fact ${id}`, createdAt: new Date(createdAt) } as never;
+const viewer = { id: 'viewer-1' } as User;
+
+function makeEntry(
+	id: string,
+	resourceId: string,
+	createdAt: string,
+	content = `fact ${id}`,
+): AgentMemoryEntryEntity {
+	const date = new Date(createdAt);
+	return {
+		id,
+		resourceId,
+		content,
+		status: 'active',
+		createdAt: date,
+		updatedAt: date,
+		lastSeenAt: date,
+	} as never;
 }
 
 function makeService() {
@@ -20,13 +37,15 @@ function makeService() {
 	const n8nMemory = mock<N8nMemory>();
 	n8nMemory.getImplementation.mockReturnValue(memory);
 	const userRepository = mock<UserRepository>();
+	const queryEmbedder = mock<AgentMemoryQueryEmbedder>();
 	const service = new AgentMemoryEntriesService(
 		agentRepository,
 		memoryEntryRepository,
 		n8nMemory,
 		userRepository,
+		queryEmbedder,
 	);
-	return { service, agentRepository, memoryEntryRepository, memory, userRepository };
+	return { service, agentRepository, memoryEntryRepository, memory, userRepository, queryEmbedder };
 }
 
 describe('AgentMemoryEntriesService', () => {
@@ -57,7 +76,7 @@ describe('AgentMemoryEntriesService', () => {
 				},
 			] as never);
 
-			const page = await service.list('agent-1', 'project-1', 'viewer-1', { limit: '1' });
+			const page = await service.list('agent-1', 'project-1', viewer, { limit: '1' });
 
 			expect(memoryEntryRepository.listActiveByAgent).toHaveBeenCalledWith(
 				'agent-1',
@@ -89,7 +108,7 @@ describe('AgentMemoryEntriesService', () => {
 				{ id: 'viewer-1', firstName: 'Robin', lastName: 'B', email: 'r@example.com' } as User,
 			]);
 
-			const page = await service.list('agent-1', 'project-1', 'viewer-1', {});
+			const page = await service.list('agent-1', 'project-1', viewer, {});
 
 			expect(page.nextCursor).toBeNull();
 			expect(page.items[0].source).toEqual({ kind: 'build', userName: 'Robin B', isViewer: true });
@@ -106,7 +125,7 @@ describe('AgentMemoryEntriesService', () => {
 				{ id: 'other', email: 'private@example.com' } as User,
 			]);
 
-			const page = await service.list('agent-1', 'project-1', 'viewer-1', {});
+			const page = await service.list('agent-1', 'project-1', viewer, {});
 
 			expect(page.items[0].source).toEqual({ kind: 'n8n-chat' });
 		});
@@ -115,7 +134,7 @@ describe('AgentMemoryEntriesService', () => {
 			const { service } = makeService();
 
 			await expect(
-				service.list('agent-1', 'project-1', 'viewer-1', { cursor: 'nonsense' }),
+				service.list('agent-1', 'project-1', viewer, { cursor: 'nonsense' }),
 			).rejects.toThrow(BadRequestError);
 		});
 
@@ -125,7 +144,7 @@ describe('AgentMemoryEntriesService', () => {
 			memoryEntryRepository.countActiveByAgent.mockResolvedValue(0);
 			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
 
-			await service.list('agent-1', 'project-1', 'viewer-1', {
+			await service.list('agent-1', 'project-1', viewer, {
 				cursor: '2026-10-02T10:00:00.000Z|e2',
 			});
 
@@ -163,7 +182,7 @@ describe('AgentMemoryEntriesService', () => {
 				slackSource('t2', 'C2', 'random'),
 			] as never);
 
-			const page = await service.list('agent-1', 'project-1', 'viewer-1', {
+			const page = await service.list('agent-1', 'project-1', viewer, {
 				source: 'slack',
 				sourceFacet: 'channel',
 				sourceFacetId: 'C1',
@@ -178,7 +197,7 @@ describe('AgentMemoryEntriesService', () => {
 			memoryEntryRepository.countActiveByAgent.mockResolvedValue(0);
 			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
 
-			await service.list('agent-1', 'project-1', 'viewer-1', {
+			await service.list('agent-1', 'project-1', viewer, {
 				source: 'slack',
 				sourceFacet: 'channel',
 				sourceFacetId: 'C1',
@@ -194,6 +213,72 @@ describe('AgentMemoryEntriesService', () => {
 				filter,
 			);
 			expect(memoryEntryRepository.countActiveByAgent).toHaveBeenCalledWith('agent-1', filter);
+		});
+	});
+
+	describe('search', () => {
+		it('finds nothing when the agent has no embedder', async () => {
+			const { service, memoryEntryRepository, memory, queryEmbedder } = makeService();
+			memoryEntryRepository.findActiveForSearch.mockResolvedValue([
+				makeEntry(
+					'e1',
+					'integration:slack:U1',
+					'2026-10-02T10:00:00.000Z',
+					'Uses EU data residency',
+				),
+			]);
+			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
+			queryEmbedder.embed.mockResolvedValue(undefined);
+
+			const page = await service.list('agent-1', 'project-1', viewer, { search: 'residency' });
+
+			expect(memoryEntryRepository.listActiveByAgent).not.toHaveBeenCalled();
+			expect(page).toEqual({ items: [], total: 0, nextCursor: null });
+		});
+
+		it('ranks by similarity, newest first on ties, without a minimum score', async () => {
+			const { service, memoryEntryRepository, memory, queryEmbedder } = makeService();
+			const withEmbedding = (id: string, createdAt: string, content: string, x: number) => ({
+				...makeEntry(id, 'integration:slack:U1', createdAt, content),
+				embedding: [x, Math.sqrt(1 - x ** 2)],
+				embeddingModel: 'model-a',
+			});
+			memoryEntryRepository.findActiveForSearch.mockResolvedValue([
+				// Shares the word "tea" with the query, but is the least similar.
+				withEmbedding('keyword', '2026-10-03T10:00:00.000Z', 'Tea time', 0.1),
+				withEmbedding('older', '2026-10-01T10:00:00.000Z', 'Likes coffee', 0.3),
+				withEmbedding('newer', '2026-10-02T10:00:00.000Z', 'Drinks espresso', 0.3),
+				withEmbedding('best', '2026-09-01T10:00:00.000Z', 'Prefers black coffee', 0.9),
+				{
+					...makeEntry('other-model', 'integration:slack:U1', '2026-10-04T10:00:00.000Z', 'Tea'),
+					embedding: [1, 0],
+					embeddingModel: 'model-b',
+				},
+			] as never);
+			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
+			queryEmbedder.embed.mockResolvedValue({ embedding: [1, 0], model: 'model-a' });
+
+			const page = await service.list('agent-1', 'project-1', viewer, { search: 'tea drinks' });
+
+			expect(page.items.map(({ id }) => id)).toEqual(['best', 'newer', 'older', 'keyword']);
+		});
+
+		it('returns at most 50 results', async () => {
+			const { service, memoryEntryRepository, memory, queryEmbedder } = makeService();
+			memoryEntryRepository.findActiveForSearch.mockResolvedValue(
+				Array.from({ length: 60 }, (_, index) => ({
+					...makeEntry(`e${index}`, 'integration:slack:U1', '2026-10-01T10:00:00.000Z', 'fact'),
+					embedding: [1, 0],
+					embeddingModel: 'model-a',
+				})) as never,
+			);
+			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
+			queryEmbedder.embed.mockResolvedValue({ embedding: [1, 0], model: 'model-a' });
+
+			const page = await service.list('agent-1', 'project-1', viewer, { search: 'fact' });
+
+			expect(page.items).toHaveLength(50);
+			expect(page).toMatchObject({ total: 50, nextCursor: null });
 		});
 	});
 
