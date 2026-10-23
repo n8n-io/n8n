@@ -166,7 +166,7 @@ function formatBlockedByAdminError(blocked: PlannedTaskBlockedByAdmin[]): string
 	const titles = blocked.map(({ task }) => `"${task.title}"`).join(', ');
 	return (
 		`Error: An admin blocked ${[...actions].join(' and ')} on this instance, so these tasks ` +
-		`cannot run: ${titles}. Do not call create-tasks with these tasks. Tell the user which ` +
+		`cannot run: ${titles}. Do not call ${ORCHESTRATION_TOOL_IDS.CREATE_TASKS} with these tasks. Tell the user which ` +
 		'action is blocked and that an instance admin can change this permission.'
 	);
 }
