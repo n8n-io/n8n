@@ -70,7 +70,7 @@ const STARTUP_COPY_PROGRESS_KEY = 'agents.skillsHubCopy';
  *
  * The legacy columns stay as they are. A later migration removes them.
  */
-export class MigrateAgentSkillsToHub1792707342429 implements IrreversibleMigration {
+export class MigrateAgentSkillsToHub1792764566513 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
 		const { escape, runInBatches, logger, migrationName } = context;
 		const counts: Counts = { agents: 0, skills: 0, versions: 0, pins: 0, skipped: 0, failed: 0 };

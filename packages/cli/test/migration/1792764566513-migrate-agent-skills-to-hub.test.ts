@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 
 import { skillContentHash } from '@/modules/skills/skill-content-hash';
 
-const migrationName = 'MigrateAgentSkillsToHub1792707342429';
+const migrationName = 'MigrateAgentSkillsToHub1792764566513';
 
 type Row = Record<string, string | number | boolean | null>;
 type Body = {
