@@ -91,6 +91,10 @@ export class AgentTaskService {
 		return tasks.map((task) => this.toDto(task));
 	}
 
+	async findImportIdOwners(taskIds: string[]): Promise<Array<Pick<AgentTask, 'id' | 'agentId'>>> {
+		return await this.taskRepository.findImportIdOwners(taskIds);
+	}
+
 	/**
 	 * Create a task body and attach a `{ type:'task', id, enabled }` ref to the
 	 * agent's draft config in one transaction. Does not register a cron job —

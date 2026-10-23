@@ -14,6 +14,8 @@ import {
 	isErroredToolCallTimelineItem,
 	matchesTimelineFilters,
 	timelineItemErrorMessage,
+	executionErrorLabel,
+	executionErrorMessage,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -242,6 +244,8 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		failureSummary: null,
 		hitlStatus: null,
 		source: null,
+		finishReason: null,
+		guardrailCode: null,
 		...overrides,
 	};
 }
@@ -453,6 +457,24 @@ describe('flattenExecutionsToTimelineItems', () => {
 				executionStatus: status,
 				content: error,
 				timestamp: Date.parse('2026-04-24T10:00:05Z'),
+			},
+		]);
+	});
+
+	it('adds a stop item at the guardrail event', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'guardrail', code: 'budget.session', timestamp: 500 }], {
+				finishReason: 'guardrail',
+				guardrailCode: 'budget.session',
+			}),
+		]);
+
+		expect(items).toEqual([
+			{
+				kind: 'execution-error',
+				executionId: 'e-1',
+				guardrailCode: 'budget.session',
+				timestamp: 500,
 			},
 		]);
 	});
@@ -1205,5 +1227,22 @@ describe('background task signals', () => {
 			expect(matchesSearch(event, query, labelForKey)).toBe(true);
 		}
 		expect(kindColorToken(event.kind)).toBeDefined();
+	});
+});
+
+describe('guardrail stop copy', () => {
+	const i18n = { baseText: (key: string) => key } as Parameters<typeof executionErrorLabel>[1];
+
+	it.each([
+		['budget.session', 'agentSessions.timeline.guardrailStop.session'],
+		['budget.monthly', 'agentSessions.timeline.guardrailStop.monthly'],
+		['budget.credits', 'agentSessions.timeline.guardrailStop.credits'],
+		['budget.freeCredits', 'agentSessions.timeline.guardrailStop.freeCredits'],
+		['budget.misconfigured', 'agentSessions.timeline.guardrailStop.fallback'],
+	])('labels a %s stop', (guardrailCode, messageKey) => {
+		const stop = item({ kind: 'execution-error', guardrailCode });
+
+		expect(executionErrorLabel(stop, i18n)).toBe('agentSessions.timeline.guardrailStop.label');
+		expect(executionErrorMessage(stop, i18n)).toBe(messageKey);
 	});
 });

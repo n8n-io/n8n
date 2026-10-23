@@ -20,6 +20,7 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nHeading,
@@ -358,12 +359,14 @@ const openCommunityRegisterModal = () => {
 				size="small"
 				:header="locale.baseText('settings.usageAndPlan.license.activation.success.title')"
 			>
-				<N8nDialogDescription
-					:class="$style.activationSuccessDescription"
-					data-test-id="license-activation-success-dialog"
-				>
-					{{ locale.baseText('settings.usageAndPlan.license.activation.success.message') }}
-				</N8nDialogDescription>
+				<N8nDialogBody>
+					<N8nDialogDescription
+						:class="$style.activationSuccessDescription"
+						data-test-id="license-activation-success-dialog"
+					>
+						{{ locale.baseText('settings.usageAndPlan.license.activation.success.message') }}
+					</N8nDialogDescription>
+				</N8nDialogBody>
 				<N8nDialogFooter>
 					<N8nButton
 						data-test-id="license-activation-success-close-button"

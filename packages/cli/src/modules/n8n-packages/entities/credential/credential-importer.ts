@@ -1,12 +1,24 @@
 import type { SerializedCredential } from '@n8n/api-types';
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { NotFoundError, UnprocessableRequestError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
+import { CredentialDataError } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets.utils';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 
-import { credentialDiffers, isUpdateCandidate } from './credential-conflict-policy';
+import {
+	credentialDiffers,
+	credentialOwnerProjectId,
+	isUpdateCandidate,
+	mergeIntoStored,
+	plannedCredentialUpdates,
+} from './credential-conflict-policy';
 import { CredentialMatcherFactory } from './credential-matcher-factory';
 import {
 	credentialBlockingFailures,
@@ -14,7 +26,7 @@ import {
 	credentialsToStub,
 } from './credential-missing-mode';
 import type {
-	CredentialApplyResult,
+	CredentialBindResult,
 	CredentialBindingRequest,
 	CredentialImportPlan,
 	CredentialMatch,
@@ -32,6 +44,9 @@ export class CredentialImporter {
 		private readonly credentialMatcherFactory: CredentialMatcherFactory,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinder: CredentialsFinderService,
+		private readonly eventService: EventService,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	/**
@@ -77,6 +92,7 @@ export class CredentialImporter {
 			match: CredentialMatch;
 			packageCredential: SerializedCredential;
 			destination: CredentialsEntity;
+			ownerProjectId: string;
 		}> = [];
 
 		for (const [sourceId, targetId] of resolution.successes) {
@@ -92,6 +108,8 @@ export class CredentialImporter {
 			}
 			const destination = destinations.get(targetId);
 			if (!destination || !isUpdateCandidate(destination, request.updateScope)) continue;
+			const ownerProjectId = credentialOwnerProjectId(destination);
+			if (ownerProjectId === undefined) continue;
 
 			inScope.push({
 				match: {
@@ -102,6 +120,7 @@ export class CredentialImporter {
 				},
 				packageCredential,
 				destination,
+				ownerProjectId,
 			});
 		}
 
@@ -119,7 +138,7 @@ export class CredentialImporter {
 		const updates: CredentialUpdateCandidate[] = [];
 		const forbidden: CredentialMatch[] = [];
 
-		for (const { match, packageCredential, destination } of inScope) {
+		for (const { match, packageCredential, destination, ownerProjectId } of inScope) {
 			if (!updatableIds.has(match.targetId)) {
 				forbidden.push(match);
 				continue;
@@ -127,13 +146,15 @@ export class CredentialImporter {
 
 			const candidate: CredentialUpdateCandidate = {
 				...match,
+				targetType: destination.type,
+				ownerProjectId,
 				name: packageCredential.name,
 				...(packageCredential.data !== undefined ? { data: packageCredential.data } : {}),
 			};
 			candidates.push(candidate);
 
 			const differs = credentialDiffers(
-				{ name: destination.name, data: await this.credentialsService.decrypt(destination, true) },
+				{ name: destination.name, data: await this.readStoredData(destination) },
 				packageCredential,
 			);
 			if (differs) updates.push(candidate);
@@ -158,11 +179,20 @@ export class CredentialImporter {
 		context: ImportContext,
 		request: CredentialBindingRequest,
 		resolution: CredentialResolution,
+		projectPendingCreation: boolean,
 	): Promise<void> {
+		const toCreate = credentialsToStub(request.missingMode, resolution);
+		if (toCreate.length === 0) return;
+
+		// The import creates this project and makes the user its admin, so it has no scopes to look up yet.
+		if (!projectPendingCreation) {
+			await this.credentialsService.assertCanCreateInProject(context.user, context.projectId);
+		}
+
 		if (!credentialMissingModeUsesPackageData(request.missingMode)) return;
 
 		const packageData = packageDataBySourceId(request.requirements);
-		for (const { sourceId } of credentialsToStub(request.missingMode, resolution)) {
+		for (const { sourceId } of toCreate) {
 			const data = packageData.get(sourceId);
 			if (data !== undefined) {
 				await this.credentialsService.validateStubCredentialData(
@@ -174,11 +204,26 @@ export class CredentialImporter {
 		}
 	}
 
+	/**
+	 * Prepares each planned update without writing it, so that a validation error stops the
+	 * import before its first write. Errors of `prepareUpdateData` propagate unchanged: external
+	 * secrets permission and provider access, entity validation, OAuth URLs.
+	 */
+	async assertCanUpdate(
+		context: ImportContext,
+		request: CredentialBindingRequest,
+		plan: CredentialImportPlan,
+	): Promise<void> {
+		for (const [, [update]] of plannedCredentialUpdates(request.conflictPolicy, [plan])) {
+			await this.prepareUpdate(context.user, update);
+		}
+	}
+
 	async apply(
 		context: ImportContext,
 		request: CredentialBindingRequest,
 		resolution: CredentialResolution,
-	): Promise<CredentialApplyResult> {
+	): Promise<CredentialBindResult> {
 		const bindings: ImportBindingMap = new Map(resolution.successes);
 		const matched = [...resolution.successes.keys()];
 		const stubbed: string[] = [];
@@ -223,6 +268,140 @@ export class CredentialImporter {
 
 		return { bindings, matched, stubbed, seeded, incomplete };
 	}
+
+	/**
+	 * Writes the planned updates under `overwrite`, one write for each destination credential.
+	 * Loads, decrypts and merges again, and skips a credential that no longer differs: another
+	 * scope of the import or a concurrent edit already wrote the same values. Emits
+	 * `credentials-updated` for each write. Returns the source ids of the credentials it wrote.
+	 */
+	async applyUpdates(
+		context: ImportContext,
+		request: CredentialBindingRequest,
+		plan: CredentialImportPlan,
+	): Promise<string[]> {
+		const updated: string[] = [];
+
+		for (const [targetId, group] of plannedCredentialUpdates(request.conflictPolicy, [plan])) {
+			const prepared = await this.prepareUpdate(context.user, group[0]);
+			if (prepared === null) continue;
+
+			// Like the credential UI route. `createEncryptedData` sets only the id, name, type and
+			// data, and the update writes only the set columns: sharing, `isGlobal`,
+			// `isResolvable` and the description stay.
+			const encrypted = await this.credentialsService.createEncryptedData({
+				id: targetId,
+				name: prepared.name,
+				type: prepared.type,
+				data: prepared.data,
+			});
+			const saved = await this.credentialsService.update(
+				targetId,
+				encrypted,
+				{ kind: 'user', user: context.user },
+				prepared.data,
+				{ user: context.user },
+			);
+			if (saved === null) throw credentialNotFound(group[0]);
+
+			await this.emitCredentialUpdated(context.user, saved, prepared.data);
+			updated.push(...group.map(({ sourceId }) => sourceId));
+		}
+
+		return updated;
+	}
+
+	/**
+	 * The same event as a credential save in the UI or the public API, so that its listeners
+	 * (agent runtime cache, activity, log streaming, telemetry) see an import update too.
+	 */
+	private async emitCredentialUpdated(
+		user: User,
+		saved: CredentialsEntity,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void> {
+		this.eventService.emit('credentials-updated', {
+			user,
+			credentialType: saved.type,
+			credentialId: saved.id,
+			credentialName: saved.name,
+			...((await this.credentialDescriptions.isEnabled()) && {
+				credentialDescriptionLength: saved.description?.length ?? 0,
+			}),
+			isDynamic: saved.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(data).length > 0,
+			jweEnabled: data.jweEnabled === true,
+			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(saved.type),
+			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(saved.type, data),
+		});
+	}
+
+	/**
+	 * The data that one update writes, prepared like the credential UI prepares a save. `null`
+	 * when the stored credential already holds what the package writes. The decrypted data
+	 * stays with the caller and is never logged.
+	 */
+	private async prepareUpdate(
+		user: User,
+		update: CredentialUpdateCandidate,
+	): Promise<{ name: string; type: string; data: ICredentialDataDecryptedObject } | null> {
+		// `prepareUpdateData` reads the owner project from the `shared` relation.
+		const credential = await this.credentialsFinder.findById(update.targetId, {
+			includeSharedProject: true,
+		});
+		if (!credential) throw credentialNotFound(update);
+
+		const stored = await this.readStoredData(credential);
+		if (!credentialDiffers({ name: credential.name, data: stored }, update)) return null;
+
+		const merged = mergeIntoStored(stored, update.data ?? {});
+		// `prepareUpdateData` adds the stored token back, except when the update points a
+		// client-credentials grant at another client. A token in the input skips that decision.
+		delete merged.oauthTokenData;
+
+		// The default merge, not `partial`: `partial` adds all stored values back, which also
+		// keeps the token that the client-credentials decision drops. `merged` already holds
+		// the stored values.
+		const prepared = await this.credentialsService.prepareUpdateData(
+			user,
+			{ name: update.name, type: credential.type, data: merged },
+			credential,
+		);
+		if (!isCredentialData(prepared.data)) {
+			throw new UnexpectedError(`Prepared data of credential "${credential.id}" is not an object`);
+		}
+
+		return { name: prepared.name, type: credential.type, data: prepared.data };
+	}
+
+	/**
+	 * The stored data, decrypted. Unreadable data blocks the import: read as empty, it would
+	 * compare as different, and the merge would replace the stored values.
+	 */
+	private async readStoredData(
+		credential: CredentialsEntity,
+	): Promise<ICredentialDataDecryptedObject> {
+		try {
+			return await this.credentialsService.decryptOrFail(credential);
+		} catch (error) {
+			if (!(error instanceof CredentialDataError)) throw error;
+			throw new UnprocessableRequestError(
+				`n8n cannot read the stored data of credential "${credential.name}" (${credential.id}). The import cannot compare or update it.`,
+				'Fix or recreate the credential in this instance, or import with the "keep-existing" conflict policy.',
+			);
+		}
+	}
+}
+
+function credentialNotFound(update: CredentialUpdateCandidate): NotFoundError {
+	return new NotFoundError(
+		`Credential "${update.targetName}" (${update.targetId}) does not exist. The import cannot update it.`,
+	);
+}
+
+/** `prepareUpdateData` returns the decrypted data in `data`, which the entity types as a string. */
+function isCredentialData(data: unknown): data is ICredentialDataDecryptedObject {
+	return isRecord(data);
 }
 
 /** Non-empty bundled expression data per source id; empty data means an empty stub. */

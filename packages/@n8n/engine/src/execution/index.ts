@@ -31,6 +31,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
+	ExecutionListFilter,
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
