@@ -1005,6 +1005,51 @@ describe('NodeResourceExplorerService', () => {
 			});
 		});
 
+		test('uses the lookup of the property shown for the current resource when names repeat', async () => {
+			const resource = {
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				default: 'image',
+				options: [
+					{ name: 'Image', value: 'image' },
+					{ name: 'Video', value: 'video' },
+				],
+			};
+			const modelFor = (res: string, method: string) => ({
+				displayName: 'Model',
+				name: 'modelId',
+				type: 'options',
+				default: '',
+				typeOptions: { loadOptionsMethod: method },
+				displayOptions: { show: { resource: [res] } },
+			});
+			mockNodeDescription({
+				name: 'n8n-nodes-base.openAi',
+				properties: [
+					resource,
+					modelFor('image', 'imageGenerateModelSearch'),
+					modelFor('video', 'videoGenerateModelSearch'),
+				] as never,
+			});
+			dynamicNodeParametersService.getOptionsViaMethodName.mockResolvedValue([] as never);
+
+			const videoResult = await service.resolveParameterOptions(user, {
+				nodeType: 'n8n-nodes-base.openAi',
+				version: 2.3,
+				parameterPath: 'modelId',
+				nodeParameters: { resource: 'video' },
+			});
+			const defaultResult = await service.resolveParameterOptions(user, {
+				nodeType: 'n8n-nodes-base.openAi',
+				version: 2.3,
+				parameterPath: 'modelId',
+			});
+
+			expect(videoResult).toMatchObject({ ok: true, methodName: 'videoGenerateModelSearch' });
+			expect(defaultResult).toMatchObject({ ok: true, methodName: 'imageGenerateModelSearch' });
+		});
+
 		test('passes a gateway-managed credential for the managed tag', async () => {
 			mockSlackNode();
 			dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({

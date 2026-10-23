@@ -504,6 +504,7 @@ async function handleTypeDefinition(
 async function handleSuggested(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'suggested' }>,
+	toNodeName: (name: string) => string | undefined = (name) => name,
 ) {
 	const results: Array<{
 		category: string;
@@ -516,8 +517,12 @@ async function handleSuggested(
 	for (const cat of input.categories) {
 		const data = suggestedNodesData[cat];
 		if (data) {
+			const nodes = data.nodes.flatMap((node) => {
+				const name = toNodeName(node.name);
+				return name ? [{ ...node, name }] : [];
+			});
 			const suggestedNodes = await Promise.all(
-				data.nodes.map(async (node) => await enrichWithSetupPreference(context, node)),
+				nodes.map(async (node) => await enrichWithSetupPreference(context, node)),
 			);
 			results.push({
 				category: cat,
@@ -531,6 +536,21 @@ async function handleSuggested(
 	}
 
 	return { results, unknownCategories };
+}
+
+/**
+ * Curated categories list workflow nodes such as `gmail`. An n8n Agent can only run the
+ * `*Tool` variant, so map each name to that variant and drop nodes without one.
+ */
+async function buildAgentToolNameResolver(
+	context: InstanceAiContext,
+): Promise<(name: string) => string | undefined> {
+	const available = new Set((await context.nodeService.listSearchable()).map((n) => n.name));
+	return (name) => {
+		if (isAgentToolNodeType(name) && available.has(name)) return name;
+		const toolName = `${name}Tool`;
+		return isAgentToolNodeType(toolName) && available.has(toolName) ? toolName : undefined;
+	};
 }
 
 async function handleExploreResources(
@@ -780,18 +800,18 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 			const hasSearchLookup =
 				queryList.length > 0 || Boolean(input.connectionType) || Boolean(input.gatewayCreditsOnly);
 
+			const toCategoryNodeName =
+				input.scope === 'agent_tool' && hasCategoryLookup
+					? await buildAgentToolNameResolver(context)
+					: undefined;
+			const categoryInput = { action: 'suggested' as const, categories: input.categories ?? [] };
+
 			if (hasCategoryLookup && !hasSearchLookup) {
-				return await handleSuggested(context, {
-					action: 'suggested',
-					categories: input.categories!,
-				});
+				return await handleSuggested(context, categoryInput, toCategoryNodeName);
 			}
 
 			const categorySummary = hasCategoryLookup
-				? await handleSuggested(context, {
-						action: 'suggested',
-						categories: input.categories!,
-					})
+				? await handleSuggested(context, categoryInput, toCategoryNodeName)
 				: undefined;
 
 			if (input.gatewayCreditsOnly && !input.connectionType) {
@@ -1030,7 +1050,13 @@ export function createGetNodeParameterOptionsTool(context: InstanceAiContext) {
 
 export function createExecuteNodeTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.EXECUTE_NODE)
-		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTE_NODE))
+		.legacyNames(
+			...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTE_NODE),
+			// Only the `execute` action of the former combined nodes tool suspends, so approvals
+			// saved under its names must resume here.
+			DOMAIN_TOOL_IDS.NODES,
+			...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES),
+		)
 		.description(
 			'Execute a single n8n node standalone with real credentials and return its real output items. ' +
 				'Use it to perform a one-off operation or to learn the exact output shape of a node before wiring ' +
