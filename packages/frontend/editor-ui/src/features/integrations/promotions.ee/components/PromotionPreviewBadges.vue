@@ -136,7 +136,7 @@ const badges = computed(() => {
 			>
 				<N8nBadge
 					:variant="badge.failed ? 'warning' : 'subtle'"
-					size="small"
+					size="xsmall"
 					:leading-icon="badge.failed ? 'circle-alert' : ICONS[badge.direction]"
 				>
 					<template v-if="!badge.failed">{{ badge.changeCount }}</template>
@@ -155,7 +155,7 @@ const badges = computed(() => {
 
 .link {
 	display: inline-flex;
-	/* Matches the small badge, so the focus ring follows its shape. */
+	/* Match the badge radius so the focus ring follows its shape. */
 	border-radius: var(--radius--xs);
 
 	&:focus-visible {
