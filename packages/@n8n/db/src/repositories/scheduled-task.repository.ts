@@ -19,6 +19,8 @@ import {
 	type TerminalTaskStatus,
 	TerminalTaskStatusList,
 } from '../entities/scheduled-task';
+import type { OperationContext } from '../services/transaction';
+import { TypeOrmTransaction } from '../services/typeorm-transaction';
 import {
 	columnOrNowPlusMsLiteral,
 	dbNowLiteral,
@@ -43,13 +45,6 @@ export interface ClaimDueTasksOptions {
 	 * without waiting for the reaper. A row's own `leaseSeconds` overrides `leaseMs`.
 	 */
 	takeExpiredHeld?: boolean;
-}
-
-/** One claim in a batched lease renewal. */
-export interface LeaseRenewal {
-	id: string;
-	claimedEpoch: number;
-	expiresInMs: number;
 }
 
 /**
@@ -587,41 +582,33 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Extend the leases of many running claims of one host in one statement.
-	 * Each claim is fenced on its own epoch.
+	 * Whether `claim` still holds its task: the same lease epoch, still `running`,
+	 * claimed by `claim.host`, and the lease not expired on the database clock.
+	 * Must run inside the caller's transaction.
 	 *
-	 * @returns the ids whose lease was extended. A claim missing from it is gone.
+	 * On Postgres the row stays locked for share until the transaction ends, so a
+	 * reclaim or a new claim cannot commit before the caller's own writes. SQLite
+	 * runs every transaction on its one write connection, with the same effect.
 	 */
-	async renewLeases(host: string, renewals: LeaseRenewal[]): Promise<Set<string>> {
-		if (renewals.length === 0) return new Set();
-		if (!this.isPostgres) {
-			const renewed = new Set<string>();
-			for (const renewal of renewals) {
-				const ok = await this.renewLease(
-					{ host, id: renewal.id, claimedEpoch: renewal.claimedEpoch },
-					renewal.expiresInMs,
-				);
-				if (ok) renewed.add(renewal.id);
-			}
-			return renewed;
+	async isHeld(claim: HostedClaimedRef, ctx: OperationContext): Promise<boolean> {
+		if (!(ctx.trx instanceof TypeOrmTransaction)) {
+			throw new UnexpectedError('A held task fence must be checked inside a transaction');
 		}
-		const [rows]: [Array<{ id: string | number }>, number] = await this.query(
-			`UPDATE ${this.tableName} t
-			    SET "leaseExpiresAt" = now() + (v.ms || ' milliseconds')::interval
-			   FROM unnest($2::bigint[], $3::int[], $4::int[]) AS v(id, epoch, ms)
-			  WHERE t."id" = v.id
-			    AND t."leaseEpoch" = v.epoch
-			    AND t."status" = '${ScheduledTaskStatus.Running}'
-			    AND t."claimedBy" = $1
-			 RETURNING t."id"`,
-			[
-				host,
-				renewals.map((r) => r.id),
-				renewals.map((r) => r.claimedEpoch),
-				renewals.map((r) => r.expiresInMs),
-			],
-		);
-		return new Set(rows.map((row) => String(row.id)));
+
+		const query = ctx.trx
+			.getEntityManager()
+			.createQueryBuilder(ScheduledTask, 'task')
+			.select('task.id')
+			.where({
+				id: claim.id,
+				status: ScheduledTaskStatus.Running,
+				claimedBy: claim.host,
+				leaseEpoch: claim.claimedEpoch,
+			})
+			.andWhere(`task.leaseExpiresAt > ${dbNowLiteral(this.isPostgres)}`);
+		if (this.isPostgres) query.setLock('pessimistic_read');
+
+		return (await query.getRawOne()) !== undefined;
 	}
 
 	/**

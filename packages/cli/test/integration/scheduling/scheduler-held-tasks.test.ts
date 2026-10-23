@@ -1,6 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createScheduler } from '@n8n/scheduler';
 import type {
 	ClaimedTask,
 	HoldReporter,
@@ -8,12 +9,13 @@ import type {
 	HoldTaskHandler,
 	Scheduler,
 	SchedulerPasses,
+	SchedulerTaskStore,
 } from '@n8n/scheduler';
 
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 import { HeldTaskProvisioner } from '@/scheduling/held-tasks/held-task-provisioner';
 
 import { retryUntil } from '../shared/retry-until';
-import { buildHeldTaskMain } from './shared/held-task-main';
 
 const TASK_TYPE = 'integration-held-task';
 const LEASE_SECONDS = 6;
@@ -56,6 +58,21 @@ class RecordingHolder implements HoldTaskHandler {
 	}
 }
 
+function partitionable(store: ScheduledTaskRepository) {
+	const state = { partitioned: false };
+	const proxy = new Proxy(store, {
+		get(target, property, receiver) {
+			const value: unknown = Reflect.get(target, property, receiver);
+			if (typeof value !== 'function') return value;
+			return async (...args: unknown[]) => {
+				if (state.partitioned) throw new Error('partitioned');
+				return await (value as (...a: unknown[]) => Promise<unknown>).apply(target, args);
+			};
+		},
+	});
+	return { store: proxy as unknown as SchedulerTaskStore, state };
+}
+
 function overlappingHolds(events: ArmEvent[]): string[] {
 	const holders = new Map<string, Set<string>>();
 	const overlaps: string[] = [];
@@ -92,11 +109,26 @@ describe('held tasks across two mains over one database', () => {
 	const mains: Array<Scheduler & SchedulerPasses> = [];
 
 	const buildMain = (hostId: string) => {
-		const { scheduler, partition } = buildHeldTaskMain(hostId);
+		const { store, state } = partitionable(taskRepo);
 		const holder = new RecordingHolder(hostId, events);
+		const scheduler = createScheduler({
+			hostId,
+			materializerTransaction: buildMaterializerTransaction(
+				Container.get(DataSource),
+				jobRepo,
+				taskRepo,
+			),
+			taskStore: store,
+			executor: {
+				leaseSeconds: 30,
+				lookaheadSeconds: 5,
+				batchSize: 100,
+				hold: { shutdownGraceMs: 2_000 },
+			},
+		});
 		scheduler.registerTaskHandler(TASK_TYPE, holder);
 		mains.push(scheduler);
-		return { scheduler, holder, partition };
+		return { scheduler, holder, partition: state };
 	};
 
 	const provision = async (count: number) =>
@@ -243,9 +275,6 @@ describe('held tasks across two mains over one database', () => {
 		expect(await taskRepo.markHeld(staleClaim)).toBe(0);
 		expect(await taskRepo.releaseHeld(staleClaim, 0, null)).toBe(0);
 		expect(await taskRepo.releaseClaim(staleClaim)).toBe(0);
-		expect([
-			...(await taskRepo.renewLeases('main-a', [{ ...staleClaim, expiresInMs: 60_000 }])),
-		]).toEqual([]);
 
 		const [after] = await taskRepo.find();
 		expect(after.claimedBy).toBe('main-b');
@@ -332,37 +361,6 @@ describe('held task repository writes', () => {
 		expect(await taskRepo.countBy({ jobId })).toBe(0);
 	});
 
-	it('re-arms a failed held task of a live owner and seeds a missing one', async () => {
-		const failedJob = await provisionOne('a');
-		const prunedJob = await provisionOne('b');
-		const otherJob = await provisionOne('c');
-		await taskRepo.update(
-			{ jobId: failedJob },
-			{ status: 'failed', attempts: 4, finishedAt: new Date() },
-		);
-		await taskRepo.update(
-			{ jobId: otherJob },
-			{ status: 'failed', attempts: 4, finishedAt: new Date() },
-		);
-		await taskRepo.delete({ jobId: prunedJob });
-
-		expect(await jobRepo.rearmHeldTasks('held-test', ['a', 'b'])).toBe(1);
-
-		expect(await taskRepo.findOneByOrFail({ jobId: failedJob })).toMatchObject({
-			status: 'pending',
-			attempts: 0,
-			finishedAt: null,
-			heldSince: null,
-		});
-		expect(await taskRepo.findOneByOrFail({ jobId: prunedJob })).toMatchObject({
-			status: 'pending',
-			mode: 'hold',
-		});
-		expect(await taskRepo.findOneByOrFail({ jobId: otherJob })).toMatchObject({
-			status: 'failed',
-		});
-	});
-
 	it('claims an expired held task directly and leaves held tasks that are live or never ready', async () => {
 		const expiredReady = await provisionOne('a');
 		const liveReady = await provisionOne('b');
@@ -445,22 +443,5 @@ describe('held task repository writes', () => {
 			status: 'pending',
 			mode: 'hold',
 		});
-	});
-
-	it('renews only the leases of claims that still match their epoch', async () => {
-		const first = await provisionOne('a');
-		const second = await provisionOne('b');
-		const claimed = await claim();
-		const byJob = new Map(claimed.map((task) => [task.jobId, task]));
-		const current = byJob.get(first)!;
-		const stale = byJob.get(second)!;
-		await taskRepo.update({ id: stale.id }, { leaseEpoch: stale.leaseEpoch + 1 });
-
-		const renewed = await taskRepo.renewLeases('main-a', [
-			{ id: current.id, claimedEpoch: current.leaseEpoch, expiresInMs: 30_000 },
-			{ id: stale.id, claimedEpoch: stale.leaseEpoch, expiresInMs: 30_000 },
-		]);
-
-		expect([...renewed]).toEqual([current.id]);
 	});
 });

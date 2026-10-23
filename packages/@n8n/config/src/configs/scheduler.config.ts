@@ -340,13 +340,6 @@ export class SchedulerConfig {
 	enabledForHeldTasks: boolean = false;
 
 	/**
-	 * How long, in seconds, a main that shuts down waits for its held tasks to
-	 * stop before it releases them. Defaults to 10 seconds.
-	 */
-	@Env('N8N_SCHEDULER_HELD_TASK_SHUTDOWN_GRACE', positiveIntSchema)
-	heldTaskShutdownGraceSeconds: number = 10;
-
-	/**
 	 * How many times a scheduled run may be reclaimed (for example after a crash)
 	 * or retried on error before it's given up on and dead-lettered. Defaults to
 	 * 5. Raise it on infrastructure prone to instance restarts or transient

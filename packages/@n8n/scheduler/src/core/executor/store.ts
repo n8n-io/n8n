@@ -29,13 +29,6 @@ export interface ClaimDueTasksBatch {
 	takeExpiredHeld?: boolean;
 }
 
-/** One claim in a batched lease renewal. */
-export interface LeaseRenewal {
-	id: string;
-	claimedEpoch: number;
-	expiresInMs: number;
-}
-
 /**
  * The store operations the executor needs, defined here as the executor's own
  * surface so it depends on nothing concrete. `ScheduledTaskRepository`
@@ -104,11 +97,4 @@ export interface ExecutorTaskStore {
 		delayMs: number,
 		errorMessage: string | null,
 	): Promise<number>;
-
-	/**
-	 * Extend many leases of one host in one write.
-	 *
-	 * @returns the ids whose lease was extended
-	 */
-	renewLeases?(host: string, renewals: LeaseRenewal[]): Promise<Set<string>>;
 }

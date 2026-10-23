@@ -70,12 +70,4 @@ export interface ReconciliationJobStore {
 	 * @returns how many quarantines this call lifted (0 or 1).
 	 */
 	liftQuarantine(id: number, nextRunAt: Date | null): Promise<number>;
-
-	/**
-	 * Bring the hold jobs of these live owners back to a claimable task: re-arm a
-	 * `failed` held task with no attempts, and seed a missing one.
-	 *
-	 * @returns how many failed held tasks were re-armed.
-	 */
-	rearmHeldTasks?(ownerType: string, ownerIds: string[]): Promise<number>;
 }

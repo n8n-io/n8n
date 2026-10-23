@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { HeldTaskFenceRepository } from '@n8n/db';
+import { ScheduledTaskRepository } from '@n8n/db';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LeaseService } from '@n8n/leases';
@@ -22,7 +22,7 @@ export class ClusterLeases {
 		private readonly logger: Logger,
 		scheduler: DurableScheduler,
 		provisioner: HeldTaskProvisioner,
-		fence: HeldTaskFenceRepository,
+		fence: ScheduledTaskRepository,
 		instanceSettings: InstanceSettings,
 	) {
 		this.service = scheduler.holdsTasks()

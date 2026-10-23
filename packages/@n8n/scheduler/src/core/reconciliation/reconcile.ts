@@ -55,8 +55,6 @@ export interface ReconciliationHooks {
 	onDeleted?: (context: { ownerType: string; jobs: number }) => void;
 	/** Quarantined jobs were revived. */
 	onRevived?: (context: { ownerType: string; ownerIds: string[]; jobs: number }) => void;
-	/** Failed held tasks of live owners went back to `pending`. */
-	onHeldTasksRearmed?: (context: { ownerType: string; tasks: number }) => void;
 	/** A revived job's schedule could not be planned. It revived with no clock. */
 	onReviveClockFailed?: (context: { jobId: number; error: Error }) => void;
 }
@@ -289,12 +287,6 @@ async function sweepPage(sweep: Sweep, after?: string): Promise<PageResult> {
 	}
 	const deleted = await deleteExpired(store, ownerType, missing, clock.quarantinedBefore, hooks);
 	const revival = await revive(store, ownerType, alive, sweep.now, options, hooks, sweep.signal);
-	if (alive.length > 0 && store.rearmHeldTasks !== undefined) {
-		const rearmed = await store.rearmHeldTasks(ownerType, alive);
-		if (rearmed > 0) {
-			notify(() => hooks.onHeldTasksRearmed?.({ ownerType, tasks: rearmed }));
-		}
-	}
 
 	const totals: SweepTotals = {
 		ownersChecked: ownerIds.length,

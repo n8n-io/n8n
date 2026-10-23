@@ -5,7 +5,7 @@ import type {
 	LeaseProvider,
 	LeaseSpec,
 } from '@n8n/leases';
-import type { HeldTaskFenceRepository, OperationContext } from '@n8n/db';
+import type { OperationContext, ScheduledTaskRepository } from '@n8n/db';
 import { LeaseEndedError } from '@n8n/leases';
 import { HolderShutdownError, TaskTimeoutError } from '@n8n/scheduler';
 import type { ClaimedTask } from '@n8n/scheduler';
@@ -30,7 +30,7 @@ export type LeaseScheduler = Pick<DurableScheduler, 'registerHoldTaskHandler' | 
 export type LeaseProvisioner = Pick<HeldTaskProvisioner, 'sync'>;
 
 /** The fence check the provider needs. */
-export type LeaseFenceCheck = Pick<HeldTaskFenceRepository, 'isHeld'>;
+export type LeaseFenceCheck = Pick<ScheduledTaskRepository, 'isHeld'>;
 
 interface LeasePayload {
 	key: string;

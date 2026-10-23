@@ -524,7 +524,6 @@ describe('GlobalConfig', () => {
 			enabledForSystemTasks: false,
 			enabledForAgentTasks: false,
 			enabledForHeldTasks: false,
-			heldTaskShutdownGraceSeconds: 10,
 			ownerReconciliationEnabled: true,
 			ownerReconciliationIntervalSeconds: 900,
 			ownerReconciliationTimeoutSeconds: 300,
