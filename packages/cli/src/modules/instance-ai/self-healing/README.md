@@ -36,7 +36,7 @@ Supply `projectId`, `workflowId`, and the original failed `executionId`.
 The producer selects the project configuration and checks the enabling user’s current access.
 A selected-workflow configuration takes precedence over all-workflow coverage, even when paused.
 The call returns `null` when no enabled configuration authorizes the investigation.
-It also returns `null` during a Could not fix cooldown. See [Investigate again](#investigate-again).
+It also returns `null` for a new failure during a Could not fix cooldown. See [Investigate again](#investigate-again).
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
 The investigation stores the version checks and the workflow snapshot in separate columns.
 Queries read only the version checks. PostgreSQL cannot read a json field when the same document
