@@ -9,7 +9,7 @@ Guidance for the agents module (`packages/cli/src/modules/agents`). See the [cli
 
 ## Backend boundary
 
-- Instance AI calls `AgentsBuilderService`, `AgentContextService`, `AgentDraftService`, and `AgentEvaluationService` directly. Skills are not part of this module: Instance AI calls `SkillsApiService` in the [skills module](../skills/AGENTS.md). These services own their operations and access checks. Keep repositories, entities, and runtime reconstruction services private.
+- Instance AI calls `AgentsBuilderService`, `AgentContextService`, `AgentDraftService`, and `AgentEvaluationService` directly. It implements a system agent provider (`system-agents/system-agent.types.ts`) and registers it with `SystemAgentRegistrationService`. The runtime passes the turn state to the provider; the other system-agent services stay private. Skills are not part of this module: Instance AI calls `SkillsApiService` in the [skills module](../skills/AGENTS.md). These services own their operations and access checks. Keep repositories, entities, and runtime reconstruction services private.
 - Keep contracts beside their owner: `agent-context.contracts.ts`, `agent-draft.contracts.ts`, `agent-credential-provider.contracts.ts`, `builder/builder-session.ts`, and `evaluation/agent-evaluation.contracts.ts`. Evaluation callers can also use `pruneConfigForEval` from `evaluation/evaluation-config.ts`.
 - The `agents-instance-ai-boundary` Code Health rule lists the supported import paths. Do not add an umbrella facade or a barrel of internals.
 - Do not import the Instance AI backend or `@n8n/instance-ai` here. This includes types and tests.
