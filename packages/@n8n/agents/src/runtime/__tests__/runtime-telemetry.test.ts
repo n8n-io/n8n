@@ -98,6 +98,7 @@ describe('RuntimeTelemetry.withRootSpan()', () => {
 			'gen_ai.operation.name': 'invoke_agent',
 			'gen_ai.agent.name': 'my-agent',
 			'gen_ai.agent.id': 'agent-1',
+			'gen_ai.provider.name': 'openai',
 			'gen_ai.request.model': 'openai/gpt-4o-mini',
 		});
 		expect(Object.keys(attributes).some((key) => key.startsWith('langsmith.'))).toBe(false);

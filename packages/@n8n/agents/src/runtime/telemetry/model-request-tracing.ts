@@ -26,6 +26,12 @@ const GEN_AI_PROVIDER_NAME_BY_PROVIDER: Record<ProviderId, GenAiProviderName | u
 	xai: 'x_ai',
 };
 
+export function getGenAiProviderName(provider: string): GenAiProviderName | undefined {
+	const providerNames: Partial<Record<string, GenAiProviderName>> =
+		GEN_AI_PROVIDER_NAME_BY_PROVIDER;
+	return Object.hasOwn(providerNames, provider) ? providerNames[provider] : undefined;
+}
+
 function isTracer(value: unknown): value is Tracer {
 	return (
 		value !== null &&
@@ -44,7 +50,7 @@ export function traceModelRequests(
 	if (!telemetry?.enabled || !telemetry.traceModelRequests || !isTracer(telemetry.tracer))
 		return delegate;
 	const tracer = telemetry.tracer;
-	const providerName = GEN_AI_PROVIDER_NAME_BY_PROVIDER[provider];
+	const providerName = getGenAiProviderName(provider);
 	return async (input, init) => {
 		let span: Span | undefined;
 		try {
