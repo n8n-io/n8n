@@ -87,6 +87,22 @@ vi.mock('@/experiments/quickjsExpressionShadow/init', () => ({
 	stopQuickJsExpressionShadow: vi.fn(),
 }));
 
+const dataWorker = vi.hoisted(() => ({
+	enabled: vi.fn(() => false),
+	initialize: vi.fn(async () => {}),
+	loadNodeTypes: vi.fn(async () => {}),
+}));
+
+vi.mock('@/app/workers/isDataWorkerEnabled', () => ({
+	isDataWorkerEnabled: dataWorker.enabled,
+}));
+
+// The real module spawns the SharedWorker and dedicated worker on import.
+vi.mock('@/app/workers', () => ({
+	initialize: dataWorker.initialize,
+	loadNodeTypes: dataWorker.loadNodeTypes,
+}));
+
 vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({
 		initialize: vi.fn(),
@@ -340,6 +356,7 @@ describe('Init', () => {
 			sourceControlStore.isEnterpriseSourceControlEnabled = true;
 			rootStore.defaultLocale = 'es';
 			credentialsStore.fetchAllCredentials.mockResolvedValue([]);
+			credentialsStore.fetchCredentialTypes.mockResolvedValue();
 		});
 
 		afterEach(() => {
@@ -363,22 +380,79 @@ describe('Init', () => {
 			expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
 		});
 
-		it('loads node types, credential types and credentials without waiting for them', async () => {
+		it('loads node types before authenticated pages render', async () => {
 			settingsStore.isCloudDeployment = false;
 			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
-			// Requests that never settle: init must still finish.
-			nodeTypesStore.loadNodeTypesIfNotLoaded.mockReturnValueOnce(new Promise(() => {}));
-			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(new Promise(() => {}));
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockReturnValueOnce(promise);
+			let initialized = false;
+			const initializing = initializeAuthenticatedFeatures(false).then(() => {
+				initialized = true;
+			});
+
+			await flushPromises();
+			expect(initialized).toBe(false);
+
+			resolve();
+			await initializing;
+			expect(initialized).toBe(true);
+		});
+
+		it('initializes the data worker before loading node types', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			dataWorker.enabled.mockReturnValue(true);
+			const calls: string[] = [];
+			dataWorker.initialize.mockImplementationOnce(async () => {
+				calls.push('worker:initialize');
+			});
+			dataWorker.loadNodeTypes.mockImplementationOnce(async () => {
+				calls.push('worker:loadNodeTypes');
+			});
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockImplementationOnce(async () => {
+				calls.push('store:loadNodeTypes');
+			});
+
+			try {
+				await initializeAuthenticatedFeatures(false);
+			} finally {
+				dataWorker.enabled.mockReturnValue(false);
+			}
+
+			expect(calls).toEqual(['worker:initialize', 'worker:loadNodeTypes', 'store:loadNodeTypes']);
+		});
+
+		it('loads credential types before authenticated pages render', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const { promise, resolve } = Promise.withResolvers<void>();
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
+			let initialized = false;
+			const initializing = initializeAuthenticatedFeatures(false).then(() => {
+				initialized = true;
+			});
+
+			await flushPromises();
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
+			expect(initialized).toBe(false);
+
+			resolve();
+			await initializing;
+			expect(initialized).toBe(true);
+		});
+
+		it('loads credentials without waiting for them', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			// A request that never settles: init must still finish.
 			credentialsStore.fetchAllCredentials.mockReturnValueOnce(new Promise(() => {}));
 
 			await initializeAuthenticatedFeatures(false);
 
-			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalledTimes(1);
-			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
 			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledTimes(1);
 		});
 
-		it('logs background loading failures without failing init', async () => {
+		it('logs type and credential loading failures without failing init', async () => {
 			settingsStore.isCloudDeployment = false;
 			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
 			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
