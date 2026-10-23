@@ -50,7 +50,6 @@ export class SelfHealingInvestigation extends WithTimestampsAndStringId {
 	@Column({ type: 'uuid' })
 	runId: string;
 
-	/** The run keeps the captured baseline in memory. The cooldown needs only this version. */
 	@Column({ type: 'varchar', length: 36 })
 	publishedVersionId: string;
 

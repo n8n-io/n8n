@@ -98,7 +98,6 @@ it('removes investigations when their workflow is deleted', async () => {
 it('reverts and reapplies the investigation schemas', async () => {
 	const db = Container.get(DataSource);
 	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
-	// Oldest first. Revert in reverse order and reapply what was reverted.
 	const migrations = [
 		'CreateSelfHealingInvestigationTable1792578704944',
 		'CreateSelfHealingConfigurations1792742505678',

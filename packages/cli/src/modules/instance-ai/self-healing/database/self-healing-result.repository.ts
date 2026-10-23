@@ -102,7 +102,6 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 			.getOne();
 	}
 
-	/** Checks for a Could not fix result for the workflow's current published version. */
 	async isInCooldown(
 		{ workflowId, projectId, completedAfter }: CooldownQuery,
 		ctx: OperationContext = {},

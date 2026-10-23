@@ -93,7 +93,6 @@ export class SelfHealingInvestigationService {
 		const existing = await this.findExisting(input);
 		if (existing) return existing;
 
-		// Skip a cooldown before the baseline capture and the locked claim. The claim checks again.
 		if (await this.resultRepository.isInCooldown(this.cooldownQuery(input))) return null;
 
 		try {
@@ -180,7 +179,6 @@ export class SelfHealingInvestigationService {
 			const existing = await this.findExisting(input, ctx);
 			if (existing) return existing;
 
-			// The baseline check confirms that the current published version is the captured version.
 			await this.suggestions.requireCurrentBaseline(baseline, ctx);
 			if (await this.resultRepository.isInCooldown(this.cooldownQuery(input), ctx)) return null;
 

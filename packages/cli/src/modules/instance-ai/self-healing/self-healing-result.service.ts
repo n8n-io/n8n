@@ -104,9 +104,6 @@ export class SelfHealingResultService {
 		return await this.results.countForInbox(access);
 	}
 
-	/**
-	 * Uses the baseline that the run captured. The investigation stores only the published version.
-	 */
 	async complete({
 		investigationId,
 		baseline,

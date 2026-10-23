@@ -119,7 +119,7 @@ describe('ReplaceSelfHealingInvestigationBaseline migration', () => {
 	afterAll(async () => await Container.get(DbConnection).close());
 
 	it('clears investigations, keeps results, and stores the published version', async () => {
-		const combined = {
+		const oldBaseline = {
 			baseline: JSON.stringify({
 				workflowId: 'heal-workflow',
 				projectId: 'heal-project',
@@ -128,8 +128,8 @@ describe('ReplaceSelfHealingInvestigationBaseline migration', () => {
 				original,
 			}),
 		};
-		await insertInvestigation('finished', combined, 'result');
-		await insertInvestigation('unfinished', combined);
+		await insertInvestigation('finished', oldBaseline, 'result');
+		await insertInvestigation('unfinished', oldBaseline);
 
 		await runSingleMigration(migrationName);
 		expect(await selectIds('self_healing_investigation')).toEqual([]);
@@ -145,7 +145,7 @@ describe('ReplaceSelfHealingInvestigationBaseline migration', () => {
 		await undoLastSingleMigration();
 		expect(await selectIds('self_healing_investigation')).toEqual([]);
 		expect(await selectIds('self_healing_result')).toEqual([{ id: 'result' }]);
-		await insertInvestigation('restored', combined);
+		await insertInvestigation('restored', oldBaseline);
 
 		await runSingleMigration(migrationName);
 		expect(await selectIds('self_healing_investigation')).toEqual([]);

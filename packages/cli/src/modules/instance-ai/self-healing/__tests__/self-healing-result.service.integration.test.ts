@@ -458,7 +458,6 @@ describe('investigation eligibility after a result', () => {
 		await Container.get(WorkflowService).activateWorkflow(user, original.id, {
 			versionId: original.versionId,
 		});
-		// The publication worker is mocked in this suite. Settle its outbox record.
 		await Container.get(WorkflowPublicationOutboxRepository).update(
 			{ workflowId: original.id },
 			{ status: 'completed' },
@@ -567,7 +566,6 @@ describe('investigation eligibility after a result', () => {
 		const failureAfterEdit = await nextFailure(input);
 
 		await expect(producer.start(failureAfterEdit)).resolves.toBeNull();
-		// A null result also means no enabled configuration. Confirm that the cooldown skipped it.
 		expect(cooldown).toHaveBeenCalledTimes(1);
 		await expect(cooldown.mock.results[0].value).resolves.toBe(true);
 
@@ -959,9 +957,7 @@ it.each([
 		expect(response.body.data.reviewState).toBe(reviewState);
 		const firstDismissal = await results.findOneByOrFail({ id: result.id });
 		if (outcome === 'could_not_fix') {
-			expect(firstDismissal).toEqual(result);
-			expect(firstDismissal.dismissedAt).toBeNull();
-			expect(firstDismissal.dismissedById).toBeNull();
+			expect(firstDismissal).toEqual({ ...result, dismissedAt: null, dismissedById: null });
 		}
 		await service.dismiss(editor, project.id, original.id, result.id);
 		expect(await results.findOneByOrFail({ id: result.id })).toEqual(firstDismissal);
@@ -1358,7 +1354,8 @@ describe('Inbox source reads', () => {
 		'lists one compact row for %s with suggestion=%s',
 		async (outcome, withSuggestion) => {
 			const { user, original, result, input } = await fixture(outcome, withSuggestion);
-			const state = outcome === 'could_not_fix' ? 'closed' : 'open';
+			const [state, otherState] =
+				outcome === 'could_not_fix' ? (['closed', 'open'] as const) : (['open', 'closed'] as const);
 			const rows = await service.listForInbox(user, { state, limit: 10 });
 			expect(rows).toEqual([
 				{
@@ -1375,15 +1372,8 @@ describe('Inbox source reads', () => {
 					completedAt: result.completedAt.toISOString(),
 				},
 			]);
-			expect(await service.countForInbox(user)).toEqual(
-				state === 'closed' ? { open: 0, closed: 1 } : { open: 1, closed: 0 },
-			);
-			expect(
-				await service.listForInbox(user, {
-					state: state === 'closed' ? 'open' : 'closed',
-					limit: 10,
-				}),
-			).toEqual([]);
+			expect(await service.countForInbox(user)).toEqual({ [state]: 1, [otherState]: 0 });
+			expect(await service.listForInbox(user, { state: otherState, limit: 10 })).toEqual([]);
 		},
 	);
 
