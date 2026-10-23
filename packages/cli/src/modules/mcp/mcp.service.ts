@@ -39,7 +39,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -71,7 +71,6 @@ import { getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
-	areSkillToolsAvailable,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
 import type {
@@ -861,7 +860,7 @@ export class McpService {
 			);
 		}
 
-		if (areSkillToolsAvailable(Container.get(SkillsHubRollout))) {
+		if (Container.get(SkillAgentsProxy).hasProvider) {
 			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
 			await Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
 		}

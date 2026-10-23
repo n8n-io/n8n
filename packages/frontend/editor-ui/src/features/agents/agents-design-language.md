@@ -290,8 +290,9 @@ the Global tab at `Global`, and the other tabs at `This agent only`. Only a
 user who can create global skills sees `Global`. An existing skill that the
 user can edit shows the same field. Disable it, with a tooltip that gives the
 reason, when another Agent uses the skill. `Save skill` stays disabled until
-the user changes the skill or its target. Do not show the field when the
-skills hub is off. Then `Add skill` creates the skill on the Agent, without the picker.
+the user changes the skill or its target. Do not show the field for an inline
+Agent, which keeps its skills in the node. Then `Add skill` creates the skill on
+the Agent, without the picker.
 
 Show a read-only skill as a document, not as a disabled form. Show each label
 in muted text without the required mark, the description as text, and the

@@ -728,7 +728,6 @@ export class InstanceAiAdapterService {
 		try {
 			const moduleRegistry = Container.get(ModuleRegistry);
 			if (!moduleRegistry.isActive('agents')) return undefined;
-			if (moduleRegistry.settings.get('agents')?.skillsHubEnabled !== true) return undefined;
 			return Container.get(InstanceAiSkillsAdapterService).createService(user);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {

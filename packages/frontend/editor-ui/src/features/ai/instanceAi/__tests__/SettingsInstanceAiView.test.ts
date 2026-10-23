@@ -777,7 +777,7 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
 		});
 
-		it('shows the Skills group while the skills hub is on', () => {
+		it('shows the Skills group while context skills are enabled', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('n8n-agent-permission-group-skills').textContent).toContain(
@@ -785,7 +785,7 @@ describe('SettingsInstanceAiView', () => {
 			);
 		});
 
-		it('hides the Skills group while the skills hub is off', () => {
+		it('hides the Skills group while context skills are disabled', () => {
 			contextSkillsEnabledMock.mockReturnValueOnce(false);
 
 			const { queryByTestId } = renderComponent();

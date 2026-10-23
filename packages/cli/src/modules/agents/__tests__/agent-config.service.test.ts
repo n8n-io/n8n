@@ -856,26 +856,6 @@ describe('AgentConfigService', () => {
 			]);
 		});
 
-		it('drops the inline body of a removed skill ref while the skills hub is off', async () => {
-			const { service, agentRepository, skillRefs } = makeService();
-			Object.assign(skillRefs, { usesSkillsHub: false });
-			const kept = { name: 'Kept', description: 'Kept', instructions: 'Keep.' };
-			const agent = makeAgent({
-				skills: { kept, removed: { name: 'Removed', description: 'Removed', instructions: 'Go.' } },
-			});
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, skills: [{ type: 'skill', id: 'kept' }] },
-				user,
-				byUser,
-			);
-
-			expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({ kept });
-		});
-
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {
 			const { service, agentRepository, agentTaskRepository, skillRefs, runtimeCacheService } =
 				makeService();

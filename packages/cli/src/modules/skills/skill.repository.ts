@@ -218,6 +218,22 @@ export class SkillRepository extends BaseRepository<Skill> {
 		);
 	}
 
+	/** The id of the latest version of each skill, keyed by skill id, without its content. */
+	async findLatestVersionIds(
+		skillIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string>> {
+		const manager = this.managerFor(ctx);
+		const versions = await inChunks(
+			skillIds,
+			async (chunk) =>
+				await latestVersionsQuery(manager, chunk)
+					.select(['version.id', 'version.skillId'])
+					.getMany(),
+		);
+		return new Map(versions.map((version) => [version.skillId, version.id]));
+	}
+
 	/**
 	 * The name of the latest version of every skill in one target: the same agent, the
 	 * same project (its agent skills not included) or the instance. For the name check.
@@ -296,6 +312,23 @@ export class SkillRepository extends BaseRepository<Skill> {
 			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
 			return id;
 		});
+	}
+
+	/** The skill of each version, keyed by version id, without its content. */
+	async findSkillIdsOfVersions(
+		versionIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string>> {
+		const manager = this.managerFor(ctx);
+		const versions = await inChunks(
+			unique(versionIds),
+			async (chunk) =>
+				await manager.find(SkillVersion, {
+					select: ['id', 'skillId'],
+					where: { id: In(chunk) },
+				}),
+		);
+		return new Map(versions.map((version) => [version.id, version.skillId]));
 	}
 
 	/** The number of each version, keyed by version id. */

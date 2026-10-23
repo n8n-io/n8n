@@ -413,18 +413,27 @@ export class SkillService {
 	// ---------------------------------------------------------------- publish
 
 	/**
-	 * Publish, step 1: the version each ref resolves to. Publish
+	 * Publish, step 1: the version id each ref resolves to, keyed by ref id. Publish
 	 * creates no version. Needs the caller's transaction for the publish lock.
 	 */
-	async snapshotForPublish(
-		refs: SkillRef[],
-		ctx: OperationContext,
-	): Promise<{ skills: Record<string, AgentSkill>; versionByRef: Map<string, string> }> {
+	async snapshotForPublish(refs: SkillRef[], ctx: OperationContext): Promise<Map<string, string>> {
 		const refIds = [...new Set(refs.map((ref) => ref.id))];
 		await this.skillRepository.lockForPublish(refIds, ctx);
-		const rows = await this.resolveRows(refs, ctx);
-		const versionByRef = new Map([...rows].map(([refId, row]) => [refId, row.version.id]));
-		return { skills: toRecord(rows), versionByRef };
+		// The same rule as `resolveRows`, without loading the content that publish does not use.
+		const latest = await this.skillRepository.findLatestVersionIds(refIds, ctx);
+		const pinnedSkillIds = await this.skillRepository.findSkillIdsOfVersions(
+			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
+			ctx,
+		);
+		const versionByRef = new Map<string, string>();
+		for (const ref of refs) {
+			const versionId =
+				ref.versionId && pinnedSkillIds.get(ref.versionId) === ref.id
+					? ref.versionId
+					: latest.get(ref.id);
+			if (versionId) versionByRef.set(ref.id, versionId);
+		}
+		return versionByRef;
 	}
 
 	// ---------------------------------------------------------------- move

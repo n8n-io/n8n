@@ -16,7 +16,6 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { HubAssistantSkillProvider } from '@/modules/skills/hub-assistant-skill-provider.service';
 import { skillContentHash, type SkillContent } from '@/modules/skills/skill-content-hash';
 import { SkillRepository, type SkillVisibility } from '@/modules/skills/skill.repository';
@@ -59,7 +58,6 @@ describe('SkillRepository', () => {
 		histories = Container.get(AgentHistoryRepository);
 		txRunner = Container.get(TransactionRunner);
 		registerSkillAgentsProvider();
-		setSkillsHubFlag(true);
 		assistantSkills = Container.get(HubAssistantSkillProvider);
 		owner = await createOwner();
 		user = await createUser();
@@ -612,6 +610,20 @@ describe('SkillRepository', () => {
 				new Map([
 					[v1, 1],
 					[v2, 2],
+				]),
+			);
+		});
+
+		it('finds version ids without their content, for publish', async () => {
+			const id = await createSkill();
+			const v1 = await latestVersionId(id);
+			const v2 = await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
+
+			expect(await skills.findLatestVersionIds([id, 'skill_unknown'])).toEqual(new Map([[id, v2]]));
+			expect(await skills.findSkillIdsOfVersions([v1, v2, randomUUID()])).toEqual(
+				new Map([
+					[v1, id],
+					[v2, id],
 				]),
 			);
 		});
