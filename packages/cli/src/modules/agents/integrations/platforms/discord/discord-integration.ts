@@ -1,4 +1,4 @@
-import type { RichCardComponentType } from '@n8n/api-types';
+import type { AgentMessageIntegrationOrigin, RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
@@ -43,7 +43,7 @@ import {
 	settleDiscordActionMessage,
 } from './discord-operations';
 import { startTypingIndicator } from '../typing-indicator';
-import { buildDiscordOriginDraft } from './discord-origin';
+import { buildDiscordOriginDraft, fetchDiscordOriginNames } from './discord-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /** Discord's typing indicator expires after ~10s, so keep it alive on an interval. */
@@ -217,8 +217,12 @@ export class DiscordIntegration extends AgentChatIntegration {
 		await this.validateDiscordCredential(ctx);
 	}
 
-	async buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
-		return await buildDiscordOriginDraft(input, decoded);
+	buildOriginDraft(_input: OriginInput, decoded: DecodedThread) {
+		return buildDiscordOriginDraft(decoded);
+	}
+
+	async fetchOriginNames(input: OriginInput, origin: AgentMessageIntegrationOrigin) {
+		return await fetchDiscordOriginNames(input, origin);
 	}
 
 	/** Episodic memory stays off until this channel defines its ownership policy. */
