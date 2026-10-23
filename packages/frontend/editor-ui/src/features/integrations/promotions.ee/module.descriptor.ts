@@ -17,9 +17,9 @@ const SettingsView = async () => await import('./views/PromotionsSettingsView.vu
 const EnvironmentView = async () => await import('./views/PromotionEnvironmentView.vue');
 const PreviewView = async () => await import('./views/PromotionPreviewView.vue');
 
-// Check the rollout flag here because module routes skip custom middleware.
+// Module routes skip custom middleware, so the gate runs here.
 const requirePromotionsEnabled = () =>
-	usePromotionsEnabled().isEnabled.value || { name: VIEWS.HOMEPAGE };
+	usePromotionsEnabled().isEnabled.value || { name: VIEWS.SOURCE_CONTROL };
 
 /** A project page that shows the changes before the user promotes or applies them. */
 const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({

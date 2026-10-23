@@ -26,6 +26,7 @@ import { useRouter } from 'vue-router';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
@@ -50,6 +51,7 @@ const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 const { next: nextLoad } = useLatestFetch();
 const { connectErrors, canClone, connect } = usePromotionCheckout();
+const { canSwitchBack, switchTo: switchEnvironmentsVersion } = useEnvironmentsVersionSwitch();
 const {
 	busy: protectionBusy,
 	isProtected,
@@ -237,6 +239,27 @@ async function remove(environment: PromotionEnvironment) {
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
+		<N8nText
+			v-if="canSwitchBack"
+			tag="p"
+			size="small"
+			color="text-light"
+			class="mt-2xl"
+			data-test-id="promotions-switch-back"
+		>
+			<I18nT keypath="settings.promotions.switchBack.text" tag="span" scope="global">
+				<template #action>
+					<button
+						type="button"
+						:class="$style.switchBack"
+						data-test-id="promotions-switch-to-v1"
+						@click="switchEnvironmentsVersion('v1')"
+					>
+						{{ i18n.baseText('settings.promotions.switchBack.button') }}
+					</button>
+				</template>
+			</I18nT>
+		</N8nText>
 	</N8nSettingsLayout>
 </template>
 
@@ -269,6 +292,16 @@ async function remove(environment: PromotionEnvironment) {
 			border-block-start: var(--border-width, 1px) solid var(--border-color--subtle);
 		}
 	}
+}
+
+.switchBack {
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	color: inherit;
+	text-decoration: underline;
+	cursor: pointer;
 }
 
 .empty {
