@@ -480,7 +480,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Do NOT wire branches as standalone statements after `export default`',
 		);
-		expect(loaded?.instructions).toContain('never reaches the builder');
+		expect(loaded?.instructions).toContain('calls never reach the builder');
 	});
 
 	it('loads the bundled one-off-operations skill', async () => {
