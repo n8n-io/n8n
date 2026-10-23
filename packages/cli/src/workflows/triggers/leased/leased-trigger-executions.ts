@@ -16,7 +16,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { OperationalError, createRunExecutionData } from 'n8n-workflow';
+import { OperationalError, UserError, createRunExecutionData } from 'n8n-workflow';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
@@ -26,7 +26,6 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { EngineV2ActiveTriggers } from '@/workflows/triggers/engine-v2-active-triggers';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 /** The lease a leased trigger emits under, and what to do once it turns out lost. */
 export interface LeasedTriggerRun {
@@ -48,7 +47,6 @@ export class LeasedTriggerExecutions {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly workflowRunner: WorkflowRunner,
-		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly ownershipService: OwnershipService,
 		private readonly engineV2ActiveTriggers: EngineV2ActiveTriggers,
 	) {
@@ -67,22 +65,9 @@ export class LeasedTriggerExecutions {
 		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
 	): Promise<string | undefined> {
 		if (this.engineV2ActiveTriggers.handles(workflowData, mode)) {
-			// Engine v2 keeps no execution row to insert with the check, so the check runs just before the start.
-			const held = await this.transactionRunner.run(
-				{},
-				async (ctx) => await lease.fence.isHeld(ctx),
-			);
-			if (!held) return this.refuse(lease, workflowData, node, responsePromise);
-			return await this.workflowExecutionService.runWorkflow(
-				workflowData,
-				node,
-				data,
-				additionalData,
-				mode,
-				responsePromise,
-				deduplicationKey,
-				callerAwaitsOutcome,
-			);
+			const error = new UserError('Leased triggers run on engine v1 only');
+			responsePromise?.reject(error);
+			throw error;
 		}
 
 		const nodeExecutionStack: IExecuteData[] = [{ node, data: { main: data }, source: null }];

@@ -16,7 +16,6 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { EngineV2ActiveTriggers } from '@/workflows/triggers/engine-v2-active-triggers';
-import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { node } from '../../__tests__/trigger-test-utils';
 import { LeasedTriggerExecutions } from '../leased-trigger-executions';
@@ -33,8 +32,6 @@ const setup = ({ held = true, engineV2 = false } = {}) => {
 	const executionCrashService = mock<ExecutionCrashService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	workflowRunner.establishContextForPersistence.mockResolvedValue(undefined);
-	const workflowExecutionService = mock<WorkflowExecutionService>();
-	workflowExecutionService.runWorkflow.mockResolvedValue('exec-v2');
 	const ownershipService = mock<OwnershipService>();
 	ownershipService.getWorkflowProjectCached.mockResolvedValue(
 		mock<Project>({ id: 'project-1', name: 'Project' }),
@@ -50,7 +47,6 @@ const setup = ({ held = true, engineV2 = false } = {}) => {
 		executionPersistence,
 		executionCrashService,
 		workflowRunner,
-		workflowExecutionService,
 		ownershipService,
 		engineV2ActiveTriggers,
 	);
@@ -76,7 +72,6 @@ const setup = ({ held = true, engineV2 = false } = {}) => {
 		executionPersistence,
 		executionCrashService,
 		workflowRunner,
-		workflowExecutionService,
 	};
 };
 
@@ -151,37 +146,16 @@ describe('LeasedTriggerExecutions', () => {
 		expect(executionPersistence.create).not.toHaveBeenCalled();
 	});
 
-	it('starts an engine v2 run only after the lease check passes', async () => {
-		const { run, isHeld, workflowExecutionService, executionPersistence } = setup({
-			engineV2: true,
-		});
+	it('refuses a workflow that engine v2 would run and starts nothing', async () => {
+		const { run, isHeld, onLeaseLost, responsePromise, executionPersistence, workflowRunner } =
+			setup({ engineV2: true });
 
-		await expect(run()).resolves.toBe('exec-v2');
+		await expect(run()).rejects.toThrow('Leased triggers run on engine v1 only');
+		await expect(responsePromise.promise).rejects.toThrow('Leased triggers run on engine v1 only');
 
-		expect(isHeld).toHaveBeenCalledWith(ctx);
-		expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
-			workflowData,
-			trigger,
-			[[{ json: { offset: 1 } }]],
-			expect.anything(),
-			'trigger',
-			expect.anything(),
-			'dedup-1',
-			'none',
-		);
+		expect(isHeld).not.toHaveBeenCalled();
 		expect(executionPersistence.create).not.toHaveBeenCalled();
-	});
-
-	it('starts no engine v2 run when the lease is lost', async () => {
-		const { run, onLeaseLost, workflowExecutionService, responsePromise } = setup({
-			held: false,
-			engineV2: true,
-		});
-
-		await expect(run()).resolves.toBeUndefined();
-		await expect(responsePromise.promise).rejects.toThrow('the lease is lost');
-
-		expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
-		expect(onLeaseLost).toHaveBeenCalledOnce();
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+		expect(onLeaseLost).not.toHaveBeenCalled();
 	});
 });
