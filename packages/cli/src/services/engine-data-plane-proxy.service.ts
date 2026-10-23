@@ -166,6 +166,7 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		return await this.provider.locateResumeTarget(id, request);
 	}
 
+	/** As `getExecution`: no provider, no v2 execution that could wait. */
 	async resolveStep(
 		stepId: string,
 		request: ResolveStepRequest,

@@ -73,10 +73,11 @@ function toResumeRefusal(executionId: string, status: number, reason: string): E
 }
 
 /**
- * Routes a run to the engine v2 data plane.
+ * Routes a run to the engine v2 data plane, and starts or resumes it there.
  *
  * The single dispatch point for the v2 path: {@link routesToEngineV2} decides,
- * {@link start} runs. A workflow that opts into engine v2 never falls back to
+ * {@link start} runs, and {@link resume} ends a wait that the waiting-webhook
+ * route located. A workflow that opts into engine v2 never falls back to
  * v1 — anything the v2 path cannot do fails with a user-facing reason instead,
  * because a silent fallback would run the workflow on an engine the user did
  * not pick.
@@ -142,7 +143,8 @@ export class EngineV2Dispatcher {
 
 		// The files the node stored belong to the run only once the data plane takes
 		// the outputs. A refusal deletes them. A failed call keeps them, because the
-		// data plane may have taken the outputs before the answer was lost.
+		// data plane may have taken the outputs before the answer was lost. After a
+		// crash, the files stay until the execution is pruned.
 		const { workflowData } = data;
 		try {
 			await this.credentialsPermissionChecker.check(

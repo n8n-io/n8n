@@ -47,10 +47,8 @@ const isLiveSnapshot = ({ status }: ExecutionSnapshot): boolean =>
 
 /**
  * Puts the waiting node where the v1 resume path expects it. The data plane
- * keeps no stack, so the execution gets one entry. The node is a copy, because
- * `disableNode` flags the stack entry, and a disabled workflow node has no
- * webhooks to look up. `preserveInputOverride` pops the node's last run, so one
- * must exist.
+ * keeps no stack, so the execution gets one entry. `preserveInputOverride`
+ * pops the node's last run, so one must exist.
  */
 function seedResumingNode(execution: IExecutionResponse, node: INode): void {
 	const { data } = execution;
@@ -461,6 +459,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		this.sanitizeEngineV2Request(req, node);
 		seedResumingNode(execution, node);
 
+		// A form wait reached through the webhook route: send the browser to the
+		// form route, as v1 does.
 		if (
 			!this.includeForms &&
 			this.isFormResumeExecution(execution) &&
@@ -488,8 +488,9 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * A request that reads the execution's state instead of resuming it. Only
-	 * the form route has one, the status poll of the form page.
+	 * A request that reads the execution's state instead of resuming it. The
+	 * webhook route has none. The form route overrides this for the status poll
+	 * of the form page.
 	 */
 	protected answerEngineV2Status(_located: {
 		snapshot: ExecutionSnapshot;
@@ -502,9 +503,10 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * The data plane found no step that accepts the request. A live execution has
-	 * not reached its wait yet, or waits for a deadline only. Any other execution
-	 * has ended.
+	 * No step accepts the request. A queued, running or waiting execution answers
+	 * "is running already": it has not reached its wait yet, or its wait ends
+	 * only at a deadline. A completed, failed or cancelled execution answers "has
+	 * finished already".
 	 */
 	protected answerEngineV2WithoutTarget(
 		executionId: string,
@@ -519,9 +521,9 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * Strips the auth cookies before node code sees the request. It runs after the
-	 * data plane named the node, so the form route can keep them for a node that
-	 * opts in.
+	 * Strips the auth cookies before node code sees the request. The form route
+	 * overrides this to keep them for a node that opts in, so it runs after the
+	 * data plane named the node.
 	 */
 	protected sanitizeEngineV2Request(req: WaitingWebhookRequest, _resumeNode: INode): void {
 		sanitizeWebhookRequest(req);

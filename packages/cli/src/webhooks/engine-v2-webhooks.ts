@@ -147,6 +147,7 @@ export class EngineV2Webhooks {
 	 * would wait for an answer that goes elsewhere.
 	 */
 	private assertResumeResponseSupported(responseMode: WebhookResponseMode): void {
+		// TODO(CET-476): answer these modes once the data plane can answer a resume request.
 		if (responseMode === 'responseNode' || responseMode === 'formPage') {
 			throw new UserError(
 				'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
