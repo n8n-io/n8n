@@ -4257,7 +4257,7 @@
 	"settings.promotions.environments.add": "Add environment",
 	"settings.promotions.environments.error.title": "Couldn't load environments",
 	"settings.promotions.environments.error.description": "Check your network and try again.",
-	"settings.promotions.protected.description": "Prevent editing workflows (recommended for production environments).",
+	"settings.promotions.protected.description": "Prevent edits to workflows and agents. Recommended for production environments.",
 	"settings.promotions.protected.toast.error.save": "Couldn't update the protected instance setting",
 	"settings.promotions.protected.toast.error.load": "Couldn't load the protected instance setting",
 	"settings.promotions.protected.toast.error.description": "Check your network and try again.",
