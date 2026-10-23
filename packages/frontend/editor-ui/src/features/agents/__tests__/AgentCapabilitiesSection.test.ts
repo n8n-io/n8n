@@ -37,8 +37,8 @@ const storeRestrictions = new Map<string, { scope: 'instance' | 'project' }>();
 vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
 	getNodeTypeRestriction: (name: string) => storeRestrictions.get(name) ?? null,
 	isNodeTypeRestricted: (name: string) => storeRestrictions.has(name),
-	describeAgentToolRestriction: (nodeType: string, scope?: string) =>
-		`typeAvailabilityPolicies.restrictedNode.agentTool.${scope ?? 'generic'}:${nodeType}`,
+	describeAgentToolRestriction: (nodeType: string, verdict?: { scope?: string } | null) =>
+		`typeAvailabilityPolicies.restrictedNode.agentTool.${verdict?.scope ?? 'generic'}:${nodeType}`,
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({

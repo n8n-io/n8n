@@ -16,7 +16,8 @@ export const MIN_GROUPED_TOOLS_PER_TYPE = 2;
 /** One translated sentence, so a locale owns its wording and order. */
 export function chipRestrictionText(restriction: ChipRestriction): string {
 	return (
-		restriction.message ?? describeAgentToolRestriction(restriction.typeLabel, restriction.scope)
+		restriction.message ??
+		describeAgentToolRestriction(restriction.typeLabel, { scope: restriction.scope })
 	);
 }
 
