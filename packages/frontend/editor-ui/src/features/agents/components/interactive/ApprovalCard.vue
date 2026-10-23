@@ -61,6 +61,7 @@ function submit(key: string) {
 
 <template>
 	<N8nApprovalCard
+		variant="inline"
 		:title="i18n.baseText('agents.chat.approval.title')"
 		:labels="approvalLabels"
 		:args="input.args"

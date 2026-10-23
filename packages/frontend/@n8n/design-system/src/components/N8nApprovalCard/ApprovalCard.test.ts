@@ -10,6 +10,36 @@ const OPTIONS: ApprovalOption[] = [
 ];
 
 describe('N8nApprovalCard', () => {
+	it('collapses inline details while keeping decision buttons available', async () => {
+		const { getByRole, getByTestId, queryByRole, emitted } = render(N8nApprovalCard, {
+			props: {
+				title: 'Approval required',
+				description: 'Run the tool',
+				variant: 'inline',
+				args: { query: 'Example' },
+				options: OPTIONS,
+			},
+		});
+		const trigger = getByRole('button', { name: 'Run the tool' });
+		expect(trigger).toHaveAttribute('aria-expanded', 'false');
+		expect(getByTestId('approval-card-args')).not.toBeVisible();
+		expect(queryByRole('listbox')).toBeNull();
+		await userEvent.click(trigger);
+		expect(trigger).toHaveAttribute('aria-expanded', 'true');
+		expect(getByTestId('approval-card-args')).toBeVisible();
+		await userEvent.click(trigger);
+		expect(getByTestId('approval-card-args')).not.toBeVisible();
+		await userEvent.click(getByRole('button', { name: 'Allow once' }));
+		expect(emitted('select')).toEqual([['allow-once']]);
+	});
+
+	it('disables inline decision buttons', () => {
+		const { getByRole } = render(N8nApprovalCard, {
+			props: { title: 'Approval required', variant: 'inline', disabled: true },
+		});
+		expect(getByRole('button', { name: 'Allow once' })).toBeDisabled();
+	});
+
 	it('focuses the choices on mount by default', () => {
 		const { getByRole } = render(N8nApprovalCard, {
 			props: { title: 'Approval required' },

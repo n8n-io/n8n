@@ -2,6 +2,7 @@
 import { computed, ref, useId, useTemplateRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nButton from '../N8nButton';
 import N8nCodeBlock from '../N8nCodeBlock';
 import N8nIcon, { type IconName } from '../N8nIcon';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
@@ -42,6 +43,8 @@ export interface ApprovalCardLabels {
 }
 
 interface ApprovalCardProps {
+	/** Use the full card or collapsible inline layout. */
+	variant?: 'full' | 'inline';
 	/** Heading that describes the action. */
 	title: string;
 	/** Action details shown in a scrollable text region. */
@@ -70,6 +73,7 @@ interface ApprovalCardProps {
 
 defineOptions({ name: 'N8nApprovalCard' });
 const props = withDefaults(defineProps<ApprovalCardProps>(), {
+	variant: 'full',
 	autoFocus: true,
 	useKeyShortcuts: true,
 });
@@ -123,6 +127,12 @@ const options = computed<readonly ApprovalOption[]>(() => {
 const id = useId();
 const containerRef = useTemplateRef<HTMLElement>('list');
 const highlightedIndex = ref(0);
+const expanded = ref(false);
+
+const inlineOptions = computed(() => [
+	...options.value.filter((option) => option.key === 'deny'),
+	...options.value.filter((option) => option.key !== 'deny'),
+]);
 
 watch(
 	() => options.value.length,
@@ -134,19 +144,22 @@ watch(
 watch(
 	containerRef,
 	(listbox) => {
-		if (props.autoFocus && !props.disabled) listbox?.focus({ preventScroll: true });
+		if (props.autoFocus && !props.disabled) {
+			const target = props.variant === 'inline' ? listbox?.querySelector('button') : listbox;
+			target?.focus({ preventScroll: true });
+		}
 	},
 	{ flush: 'post' },
 );
 
 function selectOption(key: string) {
 	if (props.disabled) return;
-	containerRef.value?.focus({ preventScroll: true });
+	if (props.variant === 'full') containerRef.value?.focus({ preventScroll: true });
 	emit('select', key);
 }
 
 function focusListbox(event: MouseEvent) {
-	if (props.disabled || !(event.target instanceof Element)) return;
+	if (props.variant === 'inline' || props.disabled || !(event.target instanceof Element)) return;
 	if (event.target.closest('a, button, input, select, textarea, [tabindex], [role="button"]'))
 		return;
 	containerRef.value?.focus({ preventScroll: true });
@@ -192,16 +205,38 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-	<article :class="[$style.card, disabled && $style.disabled]" @click="focusListbox">
+	<article
+		:class="[$style.card, variant === 'inline' && $style.inline, disabled && $style.disabled]"
+		@click="focusListbox"
+	>
 		<div :class="$style.header">
 			<span :class="$style.iconContainer">
 				<span :class="$style.statusDot" aria-hidden="true" />
 			</span>
-			<N8nText :id="`${id}-title`" step="sm" bold :class="$style.title">{{ title }}</N8nText>
+			<N8nText
+				:id="`${id}-title`"
+				step="sm"
+				bold
+				:class="variant === 'inline' ? $style.srOnly : $style.title"
+				>{{ title }}</N8nText
+			>
+			<button
+				v-if="variant === 'inline'"
+				type="button"
+				:class="$style.trigger"
+				:aria-expanded="expanded"
+				:aria-controls="`${id}-details`"
+				@click="expanded = !expanded"
+			>
+				<span
+					><slot name="description">{{ description ?? title }}</slot></span
+				>
+				<N8nIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" size="small" />
+			</button>
 			<slot name="header-label" />
 		</div>
-		<div :class="$style.body">
-			<slot name="description">
+		<div v-show="variant === 'full' || expanded" :id="`${id}-details`" :class="$style.body">
+			<slot v-if="variant === 'full'" name="description">
 				<N8nText v-if="description" step="sm">
 					{{ description }}
 				</N8nText>
@@ -224,6 +259,19 @@ function onKeydown(event: KeyboardEvent) {
 				<N8nText size="small">
 					{{ labels[decision] }}
 				</N8nText>
+			</div>
+			<div v-else-if="variant === 'inline'" ref="list" :class="$style.inlineOptions">
+				<N8nButton
+					v-for="option in inlineOptions"
+					:key="option.key"
+					:disabled="disabled"
+					:variant="option.key === 'deny' ? 'ghost' : option.destructive ? 'destructive' : 'solid'"
+					:icon="option.icon"
+					:data-test-id="option.testId ?? `approval-card-${option.key}`"
+					@click="selectOption(option.key)"
+				>
+					{{ option.label }}<template v-if="option.suffix"> {{ option.suffix }}</template>
+				</N8nButton>
 			</div>
 			<ul
 				v-else
@@ -288,6 +336,65 @@ function onKeydown(event: KeyboardEvent) {
 	background-clip: padding-box;
 	box-shadow: var(--shadow--xs);
 }
+.srOnly {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+.trigger {
+	display: flex;
+	align-items: center;
+	flex: 1;
+	min-width: 0;
+	gap: var(--spacing--xs);
+	padding: 0;
+	border: none;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+.inlineOptions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
+}
+
+.inline {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+
+	.header {
+		flex: 1;
+		min-width: 0;
+		border-bottom: none;
+	}
+
+	.footer {
+		flex-shrink: 0;
+		align-items: flex-end;
+		padding: var(--spacing--sm);
+	}
+
+	.body {
+		order: 1;
+		flex-basis: 100%;
+		min-width: 0;
+	}
+}
+
 .header {
 	display: flex;
 	justify-content: space-between;

@@ -18,7 +18,11 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const Inline: Story = {
-	args: { autoFocus: false },
+	args: {
+		variant: 'inline',
+		autoFocus: false,
+		args: { query: 'Example tool input' },
+	},
 };
 
 export const KeyboardNavigation: Story = {
