@@ -66,7 +66,21 @@ export const getRequestHelperFunctions = (
 	// Eval LLM mock handler: extract once for use in direct helpers below
 	const evalLlmMock = additionalData.evalLlmMockHandler;
 
+	const getTraceHeaders = (): Record<string, string> => {
+		const { otel, executionId } = additionalData;
+		if (!otel?.injectTraceHeaders || !executionId) return {};
+
+		const headers: Record<string, string> = {};
+		try {
+			otel.injectTraceHeaders(executionId, node.name, headers);
+		} catch {
+			return {};
+		}
+		return headers;
+	};
+
 	return {
+		getTraceHeaders,
 		httpRequest: async (requestOptions: IHttpRequestOptions) => {
 			if (evalLlmMock) {
 				const evalMockResponse = await callEvalMockHandler(

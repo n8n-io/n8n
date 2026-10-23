@@ -164,6 +164,7 @@ export async function connectMcpClient({
 	signal,
 	allowedDomains,
 	secureEgressFilter,
+	getTraceHeaders,
 }: {
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
@@ -183,6 +184,13 @@ export async function connectMcpClient({
 	 * pinned to the validated address.
 	 */
 	secureEgressFilter: NodeEgressFilter;
+	/**
+	 * Returns the W3C trace context headers of the node that runs now. It is called
+	 * for each request: one client serves many tool calls, under a different span
+	 * each time. Omit it when there is no execution, for example in a load-options
+	 * call.
+	 */
+	getTraceHeaders?: () => Record<string, string>;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -190,7 +198,13 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	const authFetch = createAuthFetch(headers, secureEgressFilter, onUnauthorized, allowedDomains);
+	const authFetch = createAuthFetch({
+		initialHeaders: headers,
+		secureEgressFilter,
+		onUnauthorized,
+		allowedDomains,
+		getTraceHeaders,
+	});
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	let onAbort: (() => void) | undefined;
@@ -321,6 +335,30 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
 }
 
 /**
+ * Wraps a fetch so that each request carries the W3C trace context of the node that
+ * runs now. One MCP client serves many tool calls under different spans, so the
+ * headers are read for each request and not once at connect.
+ */
+function withTraceHeaders(
+	baseFetch: typeof fetch,
+	getTraceHeaders: () => Record<string, string>,
+): typeof fetch {
+	return async (input, init) => {
+		let tracedInit: RequestInit | undefined;
+		try {
+			const traceHeaders = new Headers(getTraceHeaders());
+			if (!traceHeaders.keys().next().done) {
+				const headers = new Headers(init?.headers);
+				traceHeaders.forEach((value, name) => headers.set(name, value));
+				tracedInit = { ...init, headers };
+			}
+		} catch {}
+
+		return await baseFetch(input, tracedInit ?? init);
+	};
+}
+
+/**
  * Creates a fetch wrapper that:
  *   - injects auth headers into every request,
  *   - retries once on 401 after refreshing the token via onUnauthorized,
@@ -329,17 +367,29 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
  *   - validates the initial URL and every redirect hop against the instance
  *     `secureEgressFilter`, and pins the connection to the validated address,
  *   - withholds the auth headers once a redirect crosses origins, so
- *     credentials never reach a host other than the one the request started on.
+ *     credentials never reach a host other than the one the request started on,
+ *   - adds the W3C trace context of the running node to every request.
  */
-function createAuthFetch(
-	initialHeaders: Record<string, string> | undefined,
-	secureEgressFilter: NodeEgressFilter,
-	onUnauthorized?: OnUnauthorizedHandler,
-	allowedDomains?: string,
-): typeof fetch {
+function createAuthFetch({
+	initialHeaders,
+	secureEgressFilter,
+	onUnauthorized,
+	allowedDomains,
+	getTraceHeaders,
+}: {
+	initialHeaders?: Record<string, string>;
+	secureEgressFilter: NodeEgressFilter;
+	onUnauthorized?: OnUnauthorizedHandler;
+	allowedDomains?: string;
+	getTraceHeaders?: () => Record<string, string>;
+}): typeof fetch {
+	const proxied: typeof fetch = async (input, init) =>
+		await proxyFetch({ input, init, egressFilter: secureEgressFilter });
+
 	return createRefreshingAuthFetch({
-		baseFetch: async (input, init) =>
-			await proxyFetch({ input, init, egressFilter: secureEgressFilter }),
+		// Wrapped here, so the trace headers are written after the auth merge and go
+		// with every redirect hop and every 401 retry
+		baseFetch: getTraceHeaders ? withTraceHeaders(proxied, getTraceHeaders) : proxied,
 		initialHeaders,
 		...(onUnauthorized
 			? {
@@ -528,6 +578,10 @@ export async function connectMcpClientForCredential(
 		headers: authHeaders,
 		allowedDomains,
 		secureEgressFilter: ctx.helpers.getSecureEgressFilter(),
+		// Safe to hold for the life of the client: a cached client never serves another
+		// execution, because the cache key holds the execution id (see shared/runtime.ts).
+		// The span is read for each request, so it is always the one that is active now.
+		getTraceHeaders: () => ctx.helpers.getTraceHeaders(),
 		name: node.type,
 		version: node.typeVersion,
 		onUnauthorized: isOAuth2

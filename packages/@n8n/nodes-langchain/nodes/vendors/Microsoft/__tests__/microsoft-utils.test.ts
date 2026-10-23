@@ -691,6 +691,27 @@ describe('microsoft-utils', () => {
 			expect(connectMcpClient).toHaveBeenCalledTimes(2);
 		});
 
+		test('should send the trace context on MCP requests', async () => {
+			const mockServers = [{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' }];
+
+			mockConfigService.listToolServers.mockResolvedValue(mockServers);
+			(connectMcpClient as Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
+			(getAllTools as Mock).mockResolvedValue([]);
+
+			const getTraceHeaders = () => ({ traceparent: 'span-a' });
+
+			await getMicrosoftMcpTools(
+				mockTurnContext,
+				mockAuthorization,
+				'test-token',
+				undefined,
+				testEgressFilter,
+				getTraceHeaders,
+			);
+
+			expect(connectMcpClient).toHaveBeenCalledWith(expect.objectContaining({ getTraceHeaders }));
+		});
+
 		test('should connect to MCP servers with correct headers', async () => {
 			const mockServers = [{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' }];
 

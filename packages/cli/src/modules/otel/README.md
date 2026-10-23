@@ -40,6 +40,36 @@ Consequences:
 - The resource uses the env, process and host detectors. `OTEL_NODE_RESOURCE_DETECTORS` has
   no effect.
 
+### Outbound propagation
+
+n8n puts the W3C trace context on the requests it makes during an execution, so the service
+it calls can continue the trace. There are two producers, and both read the same span:
+
+- The **request helpers** `httpRequest` and `request` add the headers themselves. A node that
+  uses them needs no code.
+- **A node that builds its own HTTP transport** asks for the headers with
+  `helpers.getTraceHeaders()` and adds them to its own request. The MCP client nodes do this,
+  because the MCP SDK opens its own connection. The helper is public, so a community node can
+  use it too.
+
+`getTraceHeaders()` returns `traceparent`, and `tracestate` when the trace has one. It
+returns an empty object when OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is
+off, or when no execution runs, for example a load-options call. A caller can therefore use
+the result without a guard.
+
+Rules that both producers follow:
+
+- **Read the headers for each request.** They point to the span that is active now: the
+  running node, or the workflow span between nodes. A transport that stays open serves many
+  spans — one MCP client answers many tool calls — so a value read once at connect would name
+  the wrong span for every later call.
+- **The trace context wins** over a header of the same name that the request already has.
+- **The headers follow a redirect**, including one that crosses origins. A trace id is not a
+  credential, so it is not withheld the way an auth header is. On the MCP path every hop is
+  also checked against the credential allowlist and the instance egress filter first.
+- **A failure never stops the request.** `getTraceHeaders()` gives no headers and the request
+  goes out without them. The tracer logs the cause.
+
 ### Execution identity
 
 Workflow and node spans carry `n8n.execution.id`, `n8n.workflow.id`, `n8n.workflow.name`,
@@ -129,7 +159,9 @@ graph TD
         PUB(("Pub/Sub
         reload-otel-config"))
         REQ["Request helpers
-        module context injectTraceHeaders"]
+        httpRequest, request"]
+        MCP["Nodes with their own transport
+        MCP client nodes, helpers.getTraceHeaders()"]
         AGT["AgentRunTracingService
         AgentWorkflowExecutionService"]
     end
@@ -152,6 +184,7 @@ graph TD
     LCH -- "persist and read" --> TCS
     ELT -- "getTracer()" --> SVC
     REQ -- "outbound traceparent" --> ELT
+    MCP -- "outbound traceparent" --> ELT
     AGT -- "getActiveContext()" --> ELT
     AGT -- "getTracer()" --> SVC
     SDK -. "exports spans" .-> COL
@@ -166,7 +199,7 @@ graph TD
     class CFG,SET,CTRL config
     class SVC,SDK,API sdk
     class LCH,ELT,TCS inst
-    class LC,PUB,REQ,AGT,COL core
+    class LC,PUB,REQ,MCP,AGT,COL core
 ```
 
 #### Manual validation
