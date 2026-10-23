@@ -196,7 +196,7 @@ function onLogout() {
 					</template>
 				</N8nPopover>
 				<!-- Settings menu. The height cap keeps it from filling a tall screen; the links
-				     scroll in their own area, with faded edges while there is more, and Sign out
+				     scroll in their own area, with faded edges as a hint that they do, and Sign out
 				     stays below it. On a short screen the available height wins. -->
 				<N8nDropdownMenu
 					v-else-if="item.children && item.id === 'settings'"

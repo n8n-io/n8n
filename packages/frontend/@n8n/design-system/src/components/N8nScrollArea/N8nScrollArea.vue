@@ -49,10 +49,9 @@ export interface Props {
 	 */
 	asChild?: boolean;
 	/**
-	 * Fade the content out at this edge of the viewport, or at both edges of this axis, while
-	 * more of it lies beyond that edge. The fade is a CSS mask that follows the scroll position,
-	 * so it works on any background and disappears once the edge is reached. Set
-	 * `--scroll-area--fade-size` on the component to change its depth.
+	 * Fade the content out at this edge of the viewport, or at both edges of this axis, as a
+	 * hint that more of it scrolls into view. The fade is a CSS mask, so it works on any
+	 * background. Set `--scroll-area--fade-size` on the component to change its depth.
 	 */
 	edgeFade?: ScrollAreaEdgeFade;
 }
@@ -241,34 +240,31 @@ defineExpose({
 	overflow-anchor: none;
 }
 
-/*
- * The mask sits on the viewport, so the scrollbar next to it stays untouched. It follows the
- * scroll position: an edge fades only while content lies beyond it.
- */
-$fade-size: var(--scroll-area--fade-size, var(--spacing--2xl));
+/* The mask sits on the viewport, so the scrollbar next to it stays untouched. */
+$fade-size: var(--scroll-area--fade-size, var(--spacing--sm));
 
 .fadeTop {
-	@include mixins.scroll-mask(top, $fade-size, $dynamic: true);
+	@include mixins.scroll-mask(top, $fade-size);
 }
 
 .fadeBottom {
-	@include mixins.scroll-mask(bottom, $fade-size, $dynamic: true);
+	@include mixins.scroll-mask(bottom, $fade-size);
 }
 
 .fadeLeft {
-	@include mixins.scroll-mask(left, $fade-size, $dynamic: true);
+	@include mixins.scroll-mask(left, $fade-size);
 }
 
 .fadeRight {
-	@include mixins.scroll-mask(right, $fade-size, $dynamic: true);
+	@include mixins.scroll-mask(right, $fade-size);
 }
 
 .fadeY {
-	@include mixins.scroll-mask(y, $fade-size, $dynamic: true);
+	@include mixins.scroll-mask(y, $fade-size);
 }
 
 .fadeX {
-	@include mixins.scroll-mask(x, $fade-size, $dynamic: true);
+	@include mixins.scroll-mask(x, $fade-size);
 }
 
 .scrollbar {
