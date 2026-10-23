@@ -168,7 +168,9 @@ export class PromotionEnvironmentsService {
 			changedFields: [
 				...(input.name !== undefined ? ['name' as const] : []),
 				...(input.remote !== undefined ? ['remote' as const] : []),
-				...(input.providerId !== undefined ? ['provider' as const] : []),
+				...(input.providerId !== undefined && input.providerId !== current.providerId
+					? ['provider' as const]
+					: []),
 				...(input.settings !== undefined ? ['settings' as const] : []),
 			],
 		});

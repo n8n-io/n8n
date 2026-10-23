@@ -115,8 +115,21 @@ describe('PromotionEnvironmentsService', () => {
 		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-deleted', {
 			user: actor,
 			environmentId: ENVIRONMENT_ID,
-			direction: expect.any(String),
-			environmentScope: expect.any(String),
+			direction: 'promote',
+			environmentScope: 'projects',
+		});
+	});
+
+	it('does not report the provider as changed when the request resends the current one', async () => {
+		environmentRepository.updateEnvironment.mockResolvedValue(true);
+
+		await service.update(ENVIRONMENT_ID, { name: 'Renamed', providerId: 'prov1' }, actor);
+
+		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-updated', {
+			user: actor,
+			environmentId: ENVIRONMENT_ID,
+			direction: 'promote',
+			changedFields: ['name'],
 		});
 	});
 

@@ -231,6 +231,16 @@ describe('PromotionProvidersService', () => {
 			});
 		});
 
+		it('emits no event when the provider is gone after a name-only update', async () => {
+			providerRepository.findById.mockResolvedValueOnce(sshProvider()).mockResolvedValueOnce(null);
+
+			await expect(
+				service.update('prov1', { name: 'renamed' } as UpdatePromotionProviderDto, actor),
+			).rejects.toThrow(NotFoundError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('emits no event when the update loses a race', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 			providerRepository.updateProviderIfUnchanged.mockResolvedValueOnce(false);

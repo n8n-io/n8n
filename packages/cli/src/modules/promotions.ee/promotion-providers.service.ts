@@ -160,6 +160,8 @@ export class PromotionProvidersService {
 		} else {
 			await this.providerRepository.updateProvider(id, changes);
 		}
+		// Read the row back first. A provider deleted in between must not count as updated.
+		const updatedProvider = await this.getEntity(id);
 		this.eventService.emit('promotion-provider-updated', {
 			user: actor,
 			providerId: id,
@@ -170,7 +172,7 @@ export class PromotionProvidersService {
 				...(input.config !== undefined ? ['config' as const] : []),
 			],
 		});
-		return this.toPublic(await this.getEntity(id));
+		return this.toPublic(updatedProvider);
 	}
 
 	/**
