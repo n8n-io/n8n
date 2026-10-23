@@ -150,9 +150,13 @@ describe('PreferencesTable', () => {
 		]);
 
 		const authors = getAllByTestId('preference-created-by');
-		expect(authors[0]).toHaveTextContent(/^Jane Doe$/);
-		expect(authors[1]).toHaveTextContent('Jane Doe (n8n assistant)');
-		expect(authors[2]).toHaveTextContent('Jane Doe (MCP)');
+		authors.forEach((author) => {
+			expect(author).toHaveTextContent('Jane Doe');
+			expect(author).toHaveTextContent('jane@acme.com');
+		});
+		expect(within(authors[0]).queryByTestId('preference-source')).not.toBeInTheDocument();
+		expect(within(authors[1]).getByTestId('preference-source')).toHaveTextContent('n8n assistant');
+		expect(within(authors[2]).getByTestId('preference-source')).toHaveTextContent('MCP');
 	});
 
 	it('names only the surface when the author no longer exists', () => {

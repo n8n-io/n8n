@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nActionToggle, N8nDataTableServer, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nDataTableServer, N8nText, N8nUserInfo } from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
+
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
@@ -10,7 +12,7 @@ import PreferenceContentCell from './PreferenceContentCell.vue';
 import PreferenceScopeBadge from './PreferenceScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import type { Preference } from '../context.types';
-import { preferenceCreatorLabel, preferenceScope, toPreferencePermissions } from '../context.utils';
+import { preferenceScope, toPreferencePermissions } from '../context.utils';
 
 type PreferenceAction = 'edit' | 'delete';
 
@@ -41,6 +43,7 @@ const tableOptions = defineModel<TableOptions>('tableOptions', { default: () => 
 const selection = defineModel<string[]>('selection', { default: () => [] });
 
 const i18n = useI18n();
+const usersStore = useUsersStore();
 const $style = useCssModule();
 
 function permissions(preference: Preference) {
@@ -99,7 +102,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 	{
 		title: i18n.baseText('settings.context.preferences.columns.preference'),
 		key: 'content',
-		width: 550,
+		width: 510,
 		disableSort: true,
 		resize: false,
 	},
@@ -117,7 +120,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 		// tool saved on their behalf and take it back.
 		title: i18n.baseText('settings.context.preferences.columns.createdBy'),
 		key: 'createdBy',
-		width: 180,
+		width: 220,
 		disableSort: true,
 		resize: false,
 	},
@@ -170,9 +173,23 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 			</template>
 
 			<template #[`item.createdBy`]="{ item }">
-				<N8nText size="small" color="text-base" data-test-id="preference-created-by">
-					{{ preferenceCreatorLabel(i18n, item) }}
-				</N8nText>
+				<div :class="$style.creator" data-test-id="preference-created-by">
+					<N8nUserInfo
+						v-if="item.createdBy"
+						:first-name="item.createdBy.firstName"
+						:last-name="item.createdBy.lastName"
+						:email="item.createdBy.email"
+						:is-current-user="item.createdBy.id === usersStore.currentUserId"
+					/>
+					<N8nText
+						v-if="!item.createdBy || item.source !== 'ui'"
+						size="small"
+						color="text-light"
+						data-test-id="preference-source"
+					>
+						{{ i18n.baseText(`settings.context.preferences.source.${item.source}`) }}
+					</N8nText>
+				</div>
 			</template>
 
 			<template #[`item.updatedAt`]="{ item }">
@@ -195,6 +212,14 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 </template>
 
 <style lang="scss" module>
+.creator {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	padding-block: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .actions {
 	display: flex;
 	justify-content: flex-end;
