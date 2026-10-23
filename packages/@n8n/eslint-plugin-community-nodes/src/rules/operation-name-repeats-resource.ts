@@ -30,7 +30,6 @@ export const OperationNameRepeatsResourceRule = createRule({
 					return;
 				}
 
-				// An operation list shared by several resources can't name just one of them.
 				const resources = getShownResources(node);
 				const [resource] = resources;
 				if (resources.length !== 1 || resource === undefined) {
