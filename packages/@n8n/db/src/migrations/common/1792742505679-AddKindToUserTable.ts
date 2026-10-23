@@ -14,7 +14,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * inline CHECK into one. `down` would then need a rebuild with foreign keys
  * off, and then the delete of the service accounts would not cascade.
  */
-export class AddKindToUserTable1792666710382 implements ReversibleMigration {
+export class AddKindToUserTable1792742505679 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres, tablePrefix }: MigrationContext) {
 		const table = escape.tableName('user');
 		const kind = escape.columnName('kind');
