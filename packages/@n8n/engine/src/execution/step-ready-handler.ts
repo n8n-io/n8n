@@ -2,7 +2,7 @@ import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
 import type {
 	ExternalDependencies,
 	IStepExecutor,
-	SpawnDeclaration,
+	ChildDeclaration,
 	StepExecutionResult,
 } from '../dependencies';
 import {
@@ -126,9 +126,9 @@ export class StepReadyHandler {
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
-			| { kind: 'outputs'; outputs: StepSlots; detached: SpawnDeclaration[] }
+			| { kind: 'outputs'; outputs: StepSlots; detached: ChildDeclaration[] }
 			| { kind: 'wait'; wait: WaitDeclaration }
-			| { kind: 'spawn'; spawn: SpawnDeclaration }
+			| { kind: 'child'; child: ChildDeclaration }
 			| { kind: 'error'; error: unknown };
 		try {
 			let result: StepExecutionResult;
@@ -140,7 +140,7 @@ export class StepReadyHandler {
 				result = { outputs: await this.runBatchNode(step, execution, node) };
 			}
 			if (result.wait) run = { kind: 'wait', wait: result.wait };
-			else if (result.spawn) run = { kind: 'spawn', spawn: result.spawn };
+			else if (result.child) run = { kind: 'child', child: result.child };
 			else run = { kind: 'outputs', outputs: result.outputs, detached: result.detached ?? [] };
 		} catch (error) {
 			run = { kind: 'error', error };
@@ -151,12 +151,12 @@ export class StepReadyHandler {
 			recorded = await this.stepStore.completeStep(event.stepId, run.outputs);
 		} else if (run.kind === 'wait') {
 			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
-		} else if (run.kind === 'spawn') {
+		} else if (run.kind === 'child') {
 			// Suspend before start, so the child cannot end before this step can
 			// be resumed. A crash between the two leaves a waiting step with no
 			// child row, which reconciliation (CAT-2938) fails.
 			recorded = await this.stepStore.suspendStep(event.stepId, {
-				childExecutionId: run.spawn.executionId,
+				childExecutionId: run.child.executionId,
 				acceptsResumeRequest: false,
 			});
 		} else {
@@ -180,9 +180,9 @@ export class StepReadyHandler {
 			return;
 		}
 
-		if (run.kind === 'spawn') {
+		if (run.kind === 'child') {
 			await this.executionStore.refreshLiveStatus(execution.id);
-			const started = await this.startChild(step, execution, run.spawn, true);
+			const started = await this.startChild(step, execution, run.child, true);
 			// A child that never started resumes nothing, so the step fails here,
 			// where the reason is known. The failure settles it like any other.
 			if (started.kind === 'error') {
@@ -236,12 +236,12 @@ export class StepReadyHandler {
 	private async startDetachedChildren(
 		step: StepRecord,
 		execution: ExecutionRecord,
-		spawns: SpawnDeclaration[],
+		children: ChildDeclaration[],
 	): Promise<Array<{ executionId: string; error: unknown }>> {
 		const notStarted: Array<{ executionId: string; error: unknown }> = [];
-		for (const spawn of spawns) {
-			const started = await this.startChild(step, execution, spawn, false);
-			if (started.kind === 'error') notStarted.push({ executionId: spawn.executionId, ...started });
+		for (const child of children) {
+			const started = await this.startChild(step, execution, child, false);
+			if (started.kind === 'error') notStarted.push({ executionId: child.executionId, ...started });
 		}
 		return notStarted;
 	}
@@ -254,16 +254,16 @@ export class StepReadyHandler {
 	private async startChild(
 		step: StepRecord,
 		execution: ExecutionRecord,
-		spawn: SpawnDeclaration,
+		child: ChildDeclaration,
 		awaited: boolean,
 	): Promise<{ kind: 'started' } | { kind: 'error'; error: unknown }> {
 		try {
 			await this.childStarter.start({
-				executionId: spawn.executionId,
-				workflowId: spawn.workflowId,
-				graph: spawn.graph,
-				workflow: spawn.workflow,
-				triggerOutputs: spawn.triggerOutputs,
+				executionId: child.executionId,
+				workflowId: child.workflowId,
+				graph: child.graph,
+				workflow: child.workflow,
+				triggerOutputs: child.triggerOutputs,
 				mode: execution.mode,
 				callerContext: execution.callerContext,
 				parent: { executionId: execution.id, stepId: step.id, awaited },
@@ -542,7 +542,7 @@ function validateWaitDeclaration(stepId: string, wait: WaitDeclaration): void {
 	// executor it would wait for a child that nothing starts.
 	if ('childExecutionId' in wait) {
 		throw new UnexpectedError(
-			`step ${stepId} declares a wait on a child, which only a spawn can start`,
+			`step ${stepId} declares a wait on a child, which only a child declaration can start`,
 		);
 	}
 
