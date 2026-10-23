@@ -20,6 +20,10 @@ on:
         description: 'If publishing an early-access version'
         type: boolean
         default: false
+      available-on-cloud:
+        description: 'If the version is available on cloud'
+        type: boolean
+        default: true
   workflow_call:
     inputs:
       previous-version:
@@ -38,6 +42,10 @@ on:
         description: 'If publishing an early-access version'
         type: boolean
         default: false
+      available-on-cloud:
+        description: 'If the version is available on cloud'
+        type: boolean
+        default: true
 
 jobs:
   determine-changes:
@@ -77,6 +85,7 @@ jobs:
               "has_core_changes": ${{ steps.get-changes.outputs.has_core_changes }},
               "has_breaking_change": false,
               "is_experimental": ${{ inputs.experimental }},
-              "is_early_access": ${{ inputs.early-access }}
+              "is_early_access": ${{ inputs.early-access }},
+              "is_available_on_cloud": ${{ inputs.available-on-cloud }}
             }
         run: node ./.github/scripts/populate-cloud-databases.mjs
