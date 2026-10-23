@@ -17,7 +17,9 @@ import { useRouter } from 'vue-router';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import { useAgentSessionsStore } from '../agentSessions.store';
-import { formatAgentUsage, getAgentSessionUsage } from '../utils/agent-usage';
+import { formatAgentUsage } from '../utils/agent-usage';
+import { useAgentSessionUsage } from '../composables/useAgentSessionUsage';
+import { useAgentExecutionUpdates } from '../composables/useAgentExecutionUpdates';
 import type { ThreadDetail } from '../composables/useAgentThreadsApi';
 import type { AgentUsageUpdate } from '../types';
 import { useAgentTelemetry, type AgentPreviewMoreOption } from '../composables/useAgentTelemetry';
@@ -154,17 +156,24 @@ const triggerIcon = computed<IconName>(() => {
 	}
 });
 
-const tokenSpendLabel = computed(() => {
-	if (!sessionDetail.value) return null;
-	const { totalTokens, cost } = getAgentSessionUsage(sessionDetail.value, props.usageUpdates);
-	return formatAgentUsage(totalTokens, cost);
-});
-
+const { usage, duration, onExecutionUpdated } = useAgentSessionUsage(
+	() => sessionDetail.value,
+	() => props.usageUpdates,
+);
+const tokenSpendLabel = computed(() => formatAgentUsage(usage.value.totalTokens, usage.value.cost));
 const durationLabel = computed(() => {
-	const duration = sessionMetadata.value?.totalDuration ?? 0;
-	if (duration < 1000) return `${duration}ms`;
-	return `${(duration / 1000).toFixed(1)}s`;
+	if (duration.value < 1000) return `${duration.value}ms`;
+	return `${(duration.value / 1000).toFixed(1)}s`;
 });
+useAgentExecutionUpdates(
+	{
+		projectId: computed(() => props.projectId),
+		agentId: computed(() => props.agentId),
+		threadId: computed(() => props.effectiveSessionId),
+	},
+	() => loadSessionMetadata(),
+	onExecutionUpdated,
+);
 
 const lastMessageLabel = computed(() => {
 	const updatedAt = sessionMetadata.value?.updatedAt;

@@ -284,7 +284,14 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		await flushPromises();
 		stream.emit([{ type: 'text-delta', id: 'text-1', delta: 'hello' }]);
 		await flushPromises();
-		expect(onUsageUpdated).not.toHaveBeenCalled();
+		expect(onUsageUpdated).toHaveBeenCalledOnce();
+		expect(onUsageUpdated).toHaveBeenLastCalledWith({
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: undefined,
+			startedAt: expect.any(Number),
+			complete: false,
+		});
 		const usage = { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 };
 		stream.emit([{ type: 'usage', usage }]);
 		await flushPromises();
@@ -292,6 +299,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			sessionId: 'thread-1',
 			executionId: 'execution-1',
 			usage,
+			startedAt: expect.any(Number),
 			complete: false,
 		});
 		const finalUsage = { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.02 };
@@ -301,16 +309,19 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		]);
 		await sending;
 		await flushPromises();
-		expect(onUsageUpdated).toHaveBeenNthCalledWith(2, {
+		expect(onUsageUpdated).toHaveBeenNthCalledWith(3, {
 			sessionId: 'thread-1',
 			executionId: 'execution-1',
 			usage: finalUsage,
+			startedAt: expect.any(Number),
 			complete: false,
 		});
 		expect(onUsageUpdated).toHaveBeenLastCalledWith({
 			sessionId: 'thread-1',
 			executionId: 'execution-1',
 			usage: undefined,
+			startedAt: expect.any(Number),
+			stoppedAt: expect.any(Number),
 			complete: true,
 		});
 	});

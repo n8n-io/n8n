@@ -42,3 +42,37 @@ export function getAgentSessionUsage(
 	}
 	return { totalTokens, cost: priceKnown ? cost : null };
 }
+
+/** Add elapsed execution time until the saved session total includes it. */
+export function getAgentSessionDuration(
+	detail: ThreadDetail,
+	updates: Record<string, AgentUsageUpdate>,
+	now: number,
+): { duration: number; running: boolean } {
+	let duration = detail.thread.totalDuration ?? 0;
+	let running = false;
+	const pending = new Map<string, { startedAt?: number; stoppedAt?: number; complete: boolean }>();
+	for (const execution of detail.executions) {
+		if (execution.status !== 'running') continue;
+		const startedAt = execution.startedAt ? Date.parse(execution.startedAt) : undefined;
+		pending.set(execution.id, { startedAt, complete: false });
+	}
+	const executions = new Map(detail.executions.map((execution) => [execution.id, execution]));
+	for (const update of Object.values(updates)) {
+		if (update.sessionId !== detail.thread.id) continue;
+		const execution = executions.get(update.executionId);
+		if (execution && execution.status !== 'running') continue;
+		pending.set(update.executionId, {
+			...update,
+			startedAt: pending.get(update.executionId)?.startedAt ?? update.startedAt,
+		});
+	}
+	for (const execution of pending.values()) {
+		const start = execution.startedAt;
+		if (start === undefined || !Number.isFinite(start)) continue;
+		if (!execution.complete) running = true;
+		const end = execution.complete ? (execution.stoppedAt ?? start) : now;
+		duration += Math.max(0, end - start);
+	}
+	return { duration, running };
+}

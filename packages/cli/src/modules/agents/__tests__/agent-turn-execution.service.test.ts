@@ -120,6 +120,29 @@ describe('onBeforeFinalize', () => {
 		return { onBeforeFinalize, executions };
 	}
 
+	it('broadcasts each completed model turn before finalization', async () => {
+		const first = { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 };
+		const second = { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.02 };
+		const { executions } = await runTurn([
+			{ type: 'usage', model: 'test-model', usage: first },
+			{ type: 'usage', model: 'test-model', usage: second },
+			{ type: 'finish', finishReason: 'stop', usage: second },
+		]);
+		expect(executions.reportUsage.mock.calls).toEqual([
+			[
+				{ projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1', executionId: 'exec-1' },
+				first,
+			],
+			[
+				{ projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1', executionId: 'exec-1' },
+				second,
+			],
+		]);
+		expect(executions.reportUsage.mock.invocationCallOrder[1]).toBeLessThan(
+			executions.finalizeExecution.mock.invocationCallOrder[0],
+		);
+	});
+
 	it('reports a completed turn once, before the record is stored', async () => {
 		const { onBeforeFinalize, executions } = await runTurn([
 			{ type: 'text-delta', id: 't-1', delta: 'Hello' },

@@ -20,6 +20,8 @@ export interface AgentUsageUpdate {
 	sessionId: string;
 	executionId: string;
 	usage?: AgentTokenUsage;
+	startedAt?: number;
+	stoppedAt?: number;
 	complete: boolean;
 }
 

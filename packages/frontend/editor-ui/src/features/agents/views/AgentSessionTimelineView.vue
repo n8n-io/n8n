@@ -11,7 +11,7 @@ import {
 } from '@/features/agents/constants';
 import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
-import { getAgentSessionUsage } from '@/features/agents/utils/agent-usage';
+import { useAgentSessionUsage } from '@/features/agents/composables/useAgentSessionUsage';
 import {
 	defaultAgentSessionFilters,
 	type AgentExecution,
@@ -203,13 +203,13 @@ function onUsageUpdated(update: AgentUsageUpdate) {
 	};
 }
 
-const sessionUsage = computed(() =>
-	thread.value
-		? getAgentSessionUsage(
-				{ thread: thread.value, executions: executions.value },
-				usageUpdates.value,
-			)
-		: { totalTokens: 0, cost: null },
+const {
+	usage: sessionUsage,
+	duration,
+	onExecutionUpdated,
+} = useAgentSessionUsage(
+	() => (thread.value ? { thread: thread.value, executions: executions.value } : null),
+	() => usageUpdates.value,
 );
 const totalTokens = computed(() => sessionUsage.value.totalTokens);
 
@@ -221,7 +221,7 @@ const canPreviewSession = computed(
 );
 const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
 const totalCost = computed(() => sessionUsage.value.cost);
-const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
+const durationLabel = computed(() => formatDuration(duration.value));
 
 /**
  * The dock resolves the live session's title and its trace/export/delete
@@ -307,17 +307,21 @@ watch(isPreviewSessionStale, (stale) => {
  * The new session has no thread to fetch until the backend records its first
  * turn, and that push is the signal it now has one — so re-bind the page to it.
  */
-useAgentExecutionUpdates({ projectId, agentId, threadId: effectiveSessionId }, () => {
-	if (!isPreviewSessionStale.value || !effectiveSessionId.value) return;
-	void router.replace({
-		name: AGENT_SESSION_DETAIL_VIEW,
-		params: {
-			projectId: projectId.value,
-			agentId: agentId.value,
-			threadId: effectiveSessionId.value,
-		},
-	});
-});
+useAgentExecutionUpdates(
+	{ projectId, agentId, threadId: effectiveSessionId },
+	() => {
+		if (!isPreviewSessionStale.value || !effectiveSessionId.value) return;
+		void router.replace({
+			name: AGENT_SESSION_DETAIL_VIEW,
+			params: {
+				projectId: projectId.value,
+				agentId: agentId.value,
+				threadId: effectiveSessionId.value,
+			},
+		});
+	},
+	onExecutionUpdated,
+);
 
 function formatDuration(ms: number): string {
 	if (!ms || ms <= 0) return '0ms';

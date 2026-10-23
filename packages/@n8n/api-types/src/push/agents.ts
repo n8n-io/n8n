@@ -1,3 +1,4 @@
+import type { AgentTokenUsage } from '../agent-sse';
 import type { AgentActor } from '../agents/types';
 
 export type AgentExecutionUpdated = {
@@ -7,6 +8,7 @@ export type AgentExecutionUpdated = {
 		agentId: string;
 		threadId: string;
 		executionId: string;
+		usage?: AgentTokenUsage;
 	};
 };
 

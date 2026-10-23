@@ -1,4 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
+import type { PushMessage } from '@n8n/api-types';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { cleanup, render, screen, waitFor } from '@testing-library/vue';
@@ -27,6 +28,16 @@ const { clipboardCopy, getThreadDetail, routerResolve, showError, showMessage } 
 	},
 );
 
+const pushListeners = new Set<(event: PushMessage) => void>();
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: vi.fn(),
+		addEventListener: (listener: (event: PushMessage) => void) => {
+			pushListeners.add(listener);
+			return () => pushListeners.delete(listener);
+		},
+	}),
+}));
 const track = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
@@ -452,6 +463,59 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		});
 		expect(wrapper.text()).toContain('140t');
 		expect(wrapper.text()).not.toContain('$');
+	});
+
+	it('updates elapsed time and receives cost without a preview stream', async () => {
+		vi.useFakeTimers();
+		const startedAt = Date.parse('2026-10-23T12:00:00Z');
+		vi.setSystemTime(startedAt);
+		try {
+			getThreadDetail.mockResolvedValue({
+				thread,
+				executions: [
+					mock<AgentExecution>({
+						id: 'live-1',
+						source: null,
+						status: 'running',
+						startedAt: new Date(startedAt).toISOString(),
+					}),
+				],
+			});
+			const wrapper = mountMenu();
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(wrapper.text()).toContain('3.5s');
+			for (const listener of pushListeners)
+				listener({
+					type: 'agentExecutionUpdated',
+					data: {
+						projectId: 'project-1',
+						agentId: 'agent-1',
+						threadId: 'thread-1',
+						executionId: 'live-1',
+						usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+					},
+				});
+			await flushPromises();
+			expect(wrapper.text()).toContain('155t ($0.1750)');
+			await wrapper.setProps({
+				usageUpdates: {
+					'live-1': {
+						sessionId: 'thread-1',
+						executionId: 'live-1',
+						startedAt,
+						stoppedAt: startedAt + 2000,
+						complete: true,
+					},
+				},
+			});
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(wrapper.text()).toContain('3.5s');
+			wrapper.unmount();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('replaces turn snapshots and reconciles them with the saved result', async () => {

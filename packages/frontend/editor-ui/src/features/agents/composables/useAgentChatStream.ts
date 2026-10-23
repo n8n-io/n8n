@@ -606,6 +606,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		queueId?: string;
 		userMessage?: ChatMessage;
 		executionId?: string;
+		sessionId?: string;
+		startedAt?: number;
+		stoppedAt?: number;
 		needsStartValidation?: boolean;
 		busy?: boolean;
 		/** Gets the queue item id when the message was queued rather than started. */
@@ -1058,6 +1061,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				void refreshQueue();
 				clearTimeout(stopAcceptanceTimer);
 				session.executionId = event.executionId;
+				session.sessionId = event.sessionId;
+				session.startedAt = Date.now();
+				notifyUsage(session);
 				activeExecutionId.value = event.executionId;
 				acceptedSessionId.value = event.sessionId;
 				session.onAccepted?.();
@@ -1329,6 +1335,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					);
 				}
 				session.terminalEventReceived = true;
+				notifyUsage(session, undefined, true);
 				break;
 			}
 			case 'done':
@@ -1360,9 +1367,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function notifyUsage(session: StreamSession, usage?: AgentTokenUsage, complete = false): void {
-		const sessionId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		const sessionId = session.sessionId;
 		if (!sessionId || !session.executionId) return;
-		params.onUsageUpdated?.({ sessionId, executionId: session.executionId, usage, complete });
+		if (complete) session.stoppedAt ??= Date.now();
+		params.onUsageUpdated?.({
+			sessionId,
+			executionId: session.executionId,
+			usage,
+			startedAt: session.startedAt,
+			...(session.stoppedAt !== undefined && { stoppedAt: session.stoppedAt }),
+			complete: session.stoppedAt !== undefined,
+		});
 	}
 
 	function detachExcessWaitingStreams(): void {
