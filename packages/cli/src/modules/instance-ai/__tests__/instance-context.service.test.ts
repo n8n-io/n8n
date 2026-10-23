@@ -913,7 +913,9 @@ describe('InstanceContextService', () => {
 			expect(expansion?.entry.id).toBe(10);
 			// The entry itself is not repeated inside its own history.
 			expect(expansion?.resourceHistory.map((other) => other.id)).toEqual([4]);
-			expect(expansion?.liveRecordHint).toBe('workflows(action="get", workflowId="wf-1")');
+			expect(expansion?.liveRecordHint).toBe(
+				'workflow_builder_workflows(action="get", workflowId="wf-1")',
+			);
 			expect(activityEventRepository.findByResource).toHaveBeenCalledWith(
 				expect.objectContaining({ projectIds: [PROJECT_ID] }),
 			);
@@ -1092,7 +1094,7 @@ describe('InstanceContextService', () => {
 				expect(blockOf(built)).toContain('get_instance_activity');
 				expect(blockOf(built)).toContain('search_workflows');
 				expect(blockOf(built)).not.toContain('activity(action=');
-				expect(blockOf(built)).not.toContain('workflows(action=');
+				expect(blockOf(built)).not.toContain('workflow_builder_workflows(action=');
 			});
 
 			it('still tags the block and names Instance AI tools on a conversation', async () => {

@@ -5,6 +5,7 @@ type MockAgentInstance = {
 	instructions: Mock;
 	thinking: Mock;
 	configuration: Mock;
+	telemetry: Mock;
 };
 
 const mockAgentInstances: MockAgentInstance[] = [];
@@ -15,6 +16,7 @@ vi.mock('@n8n/agents', () => ({
 		this.instructions = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
 		this.configuration = vi.fn().mockReturnThis();
+		this.telemetry = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Tool: vi.fn(),
@@ -68,6 +70,18 @@ describe('eval agent model config', () => {
 
 	afterAll(() => {
 		process.env = ORIGINAL_ENV;
+	});
+
+	it('attaches caller telemetry to helper agents', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'test';
+		const telemetry = {
+			enabled: true,
+			recordInputs: false,
+			recordOutputs: false,
+			integrations: [],
+		};
+		createEvalAgent('helper', { instructions: 'test', telemetry });
+		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
 	});
 
 	it('keeps the legacy Anthropic key fallback for eval models', () => {

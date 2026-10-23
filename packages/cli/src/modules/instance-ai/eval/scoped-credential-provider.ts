@@ -1,15 +1,12 @@
-import type { CredentialProvider } from '@n8n/agents';
+import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 
-import type { AiGatewayModelCredentialResolver } from '@/modules/agents/json-config/model-config';
-
-export type AgentCredentialProvider = CredentialProvider &
-	Partial<AiGatewayModelCredentialResolver>;
+export type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 
 /**
  * An eval run pins a thread to the credentials its case declared. The Agent
  * Builder lists credentials through its own provider, so without this scope it
  * sees every credential in the shared project, including the ones concurrent
- * cases seeded, and `resolve_llm` answers `ambiguous_credential`.
+ * cases seeded, and `agent_builder_resolve_llm` answers `ambiguous_credential`.
  *
  * The allowlist is read on every `list` call, not snapshotted: a credential the
  * harness creates on a setup card must show on the next card of the same run.

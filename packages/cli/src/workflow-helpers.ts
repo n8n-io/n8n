@@ -36,7 +36,6 @@ import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@n8n/errors';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
@@ -256,6 +255,11 @@ export function removeDefaultValues(
 	// Remove credentialResolverId if it was cleared (empty string from UI clear action)
 	if (!cleanedSettings.credentialResolverId) {
 		delete cleanedSettings.credentialResolverId;
+	}
+
+	// Remove redactCallerExecutions if it is on, because an unset value is on
+	if (cleanedSettings.redactCallerExecutions === true) {
+		delete cleanedSettings.redactCallerExecutions;
 	}
 
 	return cleanedSettings;
@@ -499,12 +503,9 @@ export async function updateParentExecutionWithChildResults(
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
 	// (never calling `executeWorkflow` again), so the child's private-credential usage must
 	// ride on the stack entry to reach the freshly stamped task (see `WorkflowExecute`).
-	const childCredentialIds =
-		isCredSharingEnabled() && childWorkflowData
-			? Container.get(CredentialsPermissionChecker).getCredentialIdsForNodes(
-					childWorkflowData.nodes,
-				)
-			: [];
+	const childCredentialIds = childWorkflowData
+		? Container.get(CredentialsPermissionChecker).getCredentialIdsForNodes(childWorkflowData.nodes)
+		: [];
 	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(
 		subworkflowResults.data,
 		childCredentialIds,
@@ -558,9 +559,13 @@ export async function updateParentExecutionWithChildResults(
 
 	// The parent keeps a copy of the child's output (or error), so it redacts at least what the
 	// child redacts. The resume restores this context as is, so escalate it before it is saved.
+	// Without the child's saved workflow, the opt-out cannot be read, so the child's own
+	// channels pass up.
 	escalateSubWorkflowRedaction(
 		parentWithSubWorkflowResults.data.executionData?.runtimeData,
-		summarizeSubWorkflowRedaction(subworkflowResults.data, { includeOwn: true }),
+		summarizeSubWorkflowRedaction(subworkflowResults.data, {
+			includeOwn: childWorkflowData?.settings?.redactCallerExecutions !== false,
+		}),
 	);
 
 	if (subworkflowError) {

@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import * as usersApi from '@n8n/rest-api-client/api/users';
@@ -24,6 +24,8 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
+import { useAgentListStore } from '@/features/agents/agentList.store';
 
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
@@ -845,5 +847,86 @@ describe('onboarding loading state', () => {
 
 		await waitAllPromises();
 		expect(queryByTestId('workflows-onboarding-loading')).not.toBeInTheDocument();
+	});
+
+	describe('agent content', () => {
+		const renderOverview = createComponentRenderer(
+			defineComponent({
+				setup() {
+					const { isTrulyEmpty } = useEmptyStateDetection();
+					mockedStore(useReadyToRunStore).getSimplifiedLayoutVisibility.mockImplementation(
+						isTrulyEmpty,
+					);
+					return () => h(WorkflowsView);
+				},
+			}),
+			{ global: { plugins: [router] } },
+		);
+
+		beforeEach(() => {
+			foldersStore.workflowsCountLoaded = true;
+			mockedStore(useSettingsStore).isAgentsEnabled = true;
+		});
+
+		it.each([0, 2])('waits for the agent count %i before selecting the layout', async (count) => {
+			const agentListStore = mockedStore(useAgentListStore);
+			let resolveCount!: () => void;
+			agentListStore.fetchTotalCount.mockReturnValue(
+				new Promise<void>((resolve) => {
+					resolveCount = resolve;
+				}),
+			);
+			const { getByTestId, queryByTestId } = renderOverview({ pinia });
+
+			await waitFor(() => expect(agentListStore.fetchTotalCount).toHaveBeenCalledOnce());
+			expect(getByTestId('workflows-onboarding-loading')).toBeInTheDocument();
+
+			agentListStore.totalCount = count;
+			resolveCount();
+			await waitAllPromises();
+
+			expect(queryByTestId('workflows-onboarding-loading')).not.toBeInTheDocument();
+			if (count > 0) {
+				expect(getByTestId('add-resource-buttons')).toBeInTheDocument();
+				expect(queryByTestId('new-workflow-card')).not.toBeInTheDocument();
+			} else {
+				expect(queryByTestId('add-resource-buttons')).not.toBeInTheDocument();
+			}
+		});
+
+		it('does not fetch agents when the feature is disabled', async () => {
+			mockedStore(useSettingsStore).isAgentsEnabled = false;
+			const agentListStore = mockedStore(useAgentListStore);
+			const { queryByTestId } = renderOverview({ pinia });
+			await waitAllPromises();
+
+			expect(agentListStore.fetchTotalCount).not.toHaveBeenCalled();
+			expect(queryByTestId('add-resource-buttons')).not.toBeInTheDocument();
+		});
+
+		it('refreshes known agents when returning to the overview without workflows', async () => {
+			const agentListStore = mockedStore(useAgentListStore);
+			agentListStore.totalCount = 2;
+			agentListStore.fetchTotalCount.mockImplementation(async () => {
+				agentListStore.totalCount = 0;
+			});
+			const { getByTestId, queryByTestId } = renderOverview({ pinia });
+
+			expect(getByTestId('add-resource-buttons')).toBeInTheDocument();
+			await waitAllPromises();
+
+			expect(agentListStore.fetchTotalCount).toHaveBeenCalledOnce();
+			expect(queryByTestId('add-resource-buttons')).not.toBeInTheDocument();
+		});
+
+		it('keeps the overview available when the agent count request fails', async () => {
+			const error = new Error('Request failed');
+			mockedStore(useAgentListStore).fetchTotalCount.mockRejectedValueOnce(error);
+			const { getByTestId } = renderOverview({ pinia });
+			await waitAllPromises();
+
+			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String));
+			expect(getByTestId('add-resource-buttons')).toBeInTheDocument();
+		});
 	});
 });

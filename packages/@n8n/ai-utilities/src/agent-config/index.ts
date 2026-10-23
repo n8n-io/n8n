@@ -1,5 +1,11 @@
 export { getProviderPrefix, splitModelId } from './model-id';
 export {
+	getModelPromptCachingCapability,
+	isGoogleVertexAnthropicModel,
+	isOpenRouterAnthropicModel,
+	isRoutedAnthropicModel,
+} from '@n8n/api-types';
+export {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,

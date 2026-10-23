@@ -1,6 +1,9 @@
+import type { AgentPlanTaskRef } from './task-cancellation';
+
 import type { AgentBuilderOpenSuspension } from './types';
 
 export interface AgentBackgroundJobDto {
+	planTask?: AgentPlanTaskRef;
 	id: string;
 	title: string;
 	/** Source of the background job. */

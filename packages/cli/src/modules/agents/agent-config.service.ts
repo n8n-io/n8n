@@ -6,37 +6,30 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { ConflictError } from '@n8n/errors';
 
+import type { AgentActor } from './agent-modification-telemetry.service';
 import {
-	type AgentConfigPart,
-	diffAgentConfigParts,
-	isUnconfiguredAgent,
-	type AgentActor,
-} from './agent-modification-telemetry.service';
-import { AgentConfigPreparationService } from './agent-config-preparation.service';
-import { AgentPolicyService } from './agent-policy.service';
+	AgentConfigPreparationService,
+	writesField,
+	type ConfigReplacement,
+} from './agent-config-preparation.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
-import type { Agent, ProjectAgent } from './entities/agent.entity';
+import type { ProjectAgent } from './entities/agent.entity';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
-import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
-import {
-	fromAgentDocument,
-	toAgentDocument,
-	type AgentSkillRefs,
-} from './json-config/agent-document';
-import { pruneMissingConfigReferences } from './json-config/prune-missing-config-references';
+import { assertSingleConnections } from './integrations/single-connection';
+import { composeJsonConfig } from './json-config/agent-config-composition';
+import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
-import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 import type { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 
 interface AgentConfigUpdateOptions {
@@ -46,14 +39,6 @@ interface AgentConfigUpdateOptions {
 	modifiedBy: AgentActor;
 	/** Push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
 	pushRef?: string;
-}
-
-interface ConfigReplacement {
-	nextSchema: AgentJsonConfig;
-	nextIntegrations: NonNullable<Agent['integrations']>;
-	previousSchema: AgentJsonConfig | null;
-	previousIntegrations: NonNullable<Agent['integrations']>;
-	changedParts: AgentConfigPart[];
 }
 
 @Service()
@@ -66,8 +51,8 @@ export class AgentConfigService {
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly saveCompletion: AgentSaveCompletionService,
-		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
 	/**
@@ -123,40 +108,12 @@ export class AgentConfigService {
 		}
 
 		const clearOmitted = options.clearOmittedOptionalFields === true;
-		const { validatedConfig, credentialProvider } = await this.configPreparation.prepareConfig(
-			config,
-			projectId,
-			user,
-		);
-		const previousSchema = entity.schema ? toAgentDocument(entity.schema, previousSkillRefs) : null;
-		const existingTaskIds = await this.reconcileConfigReferences(
-			entity,
-			previousSchema,
-			validatedConfig,
-			clearOmitted,
-		);
-		const replacement = this.buildConfigReplacement(
-			entity,
-			previousSchema,
-			validatedConfig,
-			config,
-			clearOmitted,
-		);
-		if (replacement.nextSchema.skills !== undefined) {
-			// Validate, store and report the refs that are saved, not the submitted ones.
-			replacement.nextSchema.skills = await this.agentSkillRefs.effectiveDraftRefs(
-				entity,
-				replacement.nextSchema.skills,
-				{},
-			);
-		}
-		await this.agentPolicyService.enforceSave(
-			projectId,
-			agentId,
-			replacement.nextSchema,
-			replacement.previousSchema,
-			{ kind: 'user', user },
-		);
+		const { validatedConfig, credentialProvider, replacement, existingTaskIds } =
+			await this.configPreparation.prepareForSave(entity, config, user, {
+				previousSkillRefs,
+				clearOmitted,
+			});
+		assertSingleConnections(this.chatIntegrationRegistry, replacement.nextIntegrations);
 		const next = fromAgentDocument(replacement.nextSchema);
 		entity.schema = next.config;
 		entity.name = validatedConfig.name;
@@ -223,7 +180,7 @@ export class AgentConfigService {
 		existingTaskIds: string[],
 	) {
 		const { id: agentId, projectId } = entity;
-		const { changedParts, previousSchema, previousIntegrations } = replacement;
+		const { changedParts, changedSettings } = replacement;
 
 		// Gate evaluated against the state about to be written; the marker is
 		// claimed and reported only once that write succeeded.
@@ -249,7 +206,7 @@ export class AgentConfigService {
 				user,
 				by: options.modifiedBy,
 				changedParts,
-				wasUnconfigured: isUnconfiguredAgent(previousSchema, previousIntegrations),
+				changedSettings,
 			},
 			options.pushRef,
 			emitSetupCompleted,
@@ -291,178 +248,4 @@ export class AgentConfigService {
 		for (const id of orphanIds) delete tools[id];
 		entity.tools = tools;
 	}
-
-	private buildConfigReplacement(
-		entity: ProjectAgent,
-		previousSchema: AgentJsonConfig | null,
-		validatedConfig: AgentJsonConfig,
-		rawConfig: unknown,
-		clearOmitted: boolean,
-	): ConfigReplacement {
-		const previousIntegrations = entity.integrations ?? [];
-		const { schemaConfig, integrations } = decomposeJsonConfig(validatedConfig);
-		const nextIntegrations = writesField(validatedConfig, 'integrations', clearOmitted)
-			? integrations
-			: previousIntegrations;
-		const nextSchema = this.mergeConfigSchema(
-			schemaConfig,
-			previousSchema,
-			rawConfig,
-			clearOmitted,
-		);
-		// Compare before the entity is changed.
-		const changedParts = diffAgentConfigParts(
-			previousSchema,
-			nextSchema,
-			previousIntegrations,
-			nextIntegrations,
-		);
-		return {
-			nextSchema,
-			nextIntegrations,
-			previousSchema,
-			previousIntegrations,
-			changedParts,
-		};
-	}
-
-	private mergeConfigSchema(
-		decomposedSchema: AgentJsonConfig,
-		previousSchema: AgentJsonConfig | null,
-		config: unknown,
-		clearOmitted: boolean,
-	): AgentJsonConfig {
-		const nextSchema: AgentJsonConfig = {
-			...previousSchema,
-			name: decomposedSchema.name,
-			model: decomposedSchema.model,
-			instructions: decomposedSchema.instructions,
-		};
-		for (const field of OPTIONAL_SCHEMA_FIELDS) {
-			applyOptionalField(nextSchema, decomposedSchema, field, clearOmitted);
-		}
-
-		// Under clearOmittedOptionalFields an omitted gradient is a deliberate
-		// removal, so the schema default wins instead of the previous gradient.
-		if (decomposedSchema.personalisation !== undefined && !clearOmitted) {
-			nextSchema.personalisation = mergePersonalisationWithPreviousGradient(
-				decomposedSchema.personalisation,
-				previousSchema,
-				config,
-			);
-		}
-
-		// Both are trimmed by the schema; an empty string clears the stored value.
-		for (const field of ['description', 'modelDeploymentName'] as const) {
-			if (decomposedSchema[field] === '') delete nextSchema[field];
-		}
-		return nextSchema;
-	}
-
-	private async reconcileConfigReferences(
-		entity: ProjectAgent,
-		previousSchema: AgentJsonConfig | null,
-		config: AgentJsonConfig,
-		clearOmitted: boolean,
-	) {
-		const existingTaskIds = writesField(config, 'tasks', clearOmitted)
-			? (await this.agentTaskRepository.findByAgentId(entity.id)).map((task) => task.id)
-			: [];
-		pruneMissingConfigReferences(config, previousSchema, {
-			tools: entity.tools ?? {},
-			taskIds: new Set(existingTaskIds),
-		});
-		const resolvedSubAgents = await this.reconcileSubAgentReferences(config, entity);
-		this.validateSubAgentRefs(resolvedSubAgents, entity);
-		return existingTaskIds;
-	}
-
-	private async reconcileSubAgentReferences(
-		config: AgentJsonConfig,
-		entity: ProjectAgent,
-	): Promise<ResolvedSubAgentRef[]> {
-		if (config.subAgents?.agents !== undefined) {
-			const existingAgentIds = new Set(
-				(entity.schema?.subAgents?.agents ?? []).map((ref) => ref.agentId),
-			);
-			const resolvedSubAgents = await resolveUniqueSubAgents({
-				refs: config.subAgents.agents,
-				projectId: entity.projectId,
-				agentRepository: this.agentRepository,
-			});
-			config.subAgents.agents = resolvedSubAgents
-				.filter(({ agentId, agent }) => existingAgentIds.has(agentId) || agent !== null)
-				.map(({ agent: _agent, ...ref }) => ref);
-			return resolvedSubAgents;
-		}
-
-		return [];
-	}
-
-	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: ProjectAgent) {
-		for (const { agentId } of resolvedSubAgents) {
-			if (agentId === entity.id) {
-				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
-			}
-		}
-	}
-}
-
-function mergePersonalisationWithPreviousGradient(
-	personalisation: AgentJsonConfig['personalisation'],
-	previousSchema: AgentJsonConfig | null,
-	rawConfig: unknown,
-): AgentJsonConfig['personalisation'] {
-	if (!personalisation || !isRecord(rawConfig) || !isRecord(rawConfig.personalisation)) {
-		return personalisation;
-	}
-
-	if (rawConfig.personalisation.gradient !== undefined) return personalisation;
-
-	const previousGradient = previousSchema?.personalisation?.gradient;
-	if (!previousGradient) return personalisation;
-
-	return {
-		...personalisation,
-		gradient: previousGradient,
-	};
-}
-
-const OPTIONAL_SCHEMA_FIELDS = [
-	'credential',
-	'description',
-	'modelDeploymentName',
-	'personalisation',
-	'memory',
-	'subAgents',
-	'tools',
-	'skills',
-	'tasks',
-	'providerTools',
-	'config',
-	'mcpServers',
-	'vectorStores',
-] as const;
-
-/**
- * Whether a write decides `field`. A sent value always does. An omitted field
- * does only when the write clears omitted fields; otherwise it keeps the stored value.
- */
-function writesField(
-	config: AgentJsonConfig,
-	field: keyof AgentJsonConfig,
-	clearOmitted: boolean,
-): boolean {
-	return config[field] !== undefined || clearOmitted;
-}
-
-function applyOptionalField<K extends keyof AgentJsonConfig>(
-	target: AgentJsonConfig,
-	submitted: AgentJsonConfig,
-	field: K,
-	clearOmitted: boolean,
-): void {
-	if (!writesField(submitted, field, clearOmitted)) return;
-	if (submitted[field] === undefined) delete target[field];
-	else target[field] = submitted[field];
 }

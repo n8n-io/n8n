@@ -1,4 +1,7 @@
 <script lang="ts" setup>
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+// EOF Experiment cleanup
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
@@ -641,6 +644,12 @@ watch(
 	},
 );
 
+// Variant B: the project dropdown follows the picked agent's project, and goes
+// back to the entry project when the user switches back to the Assistant.
+watch(selectedChatAgent, (agent) => {
+	selectedProject.value = agent ? agent.project.id : resolveInitialProjectId();
+});
+
 type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
 	promptKey: BaseTextKey;
 	suggestionId: string;
@@ -900,6 +909,9 @@ async function handleWorkflowPreviewExampleUse(
 						</template>
 					</InstanceAiInput>
 				</div>
+				<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+				<ClaudeEntryPoint placement="footer" />
+				<!-- EOF Experiment cleanup -->
 			</div>
 			<InstanceAiSplitEmptyState
 				v-else-if="isSplitLayoutActive"
@@ -948,6 +960,9 @@ async function handleWorkflowPreviewExampleUse(
 								</div>
 							</template>
 						</InstanceAiInput>
+						<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+						<ClaudeEntryPoint placement="footer" />
+						<!-- EOF Experiment cleanup -->
 					</div>
 				</template>
 			</InstanceAiSplitEmptyState>
@@ -1037,6 +1052,9 @@ async function handleWorkflowPreviewExampleUse(
 							</div>
 						</template>
 					</InstanceAiInput>
+					<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+					<ClaudeEntryPoint placement="footer" />
+					<!-- EOF Experiment cleanup -->
 				</div>
 				<!-- Variant A shows the agent picker here instead of the workflow preview;
 				variant B drops the preview canvas entirely (hover preview stays off). -->

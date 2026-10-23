@@ -468,8 +468,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 
 	/**
 	 * Move a top-level private session of a user with an agent to another
-	 * project. Returns false when no such session exists. The caller must check
-	 * that the user can use the target project.
+	 * project, with its chat attachments. Returns false when no such session
+	 * exists. The caller must check that the user can use the target project,
+	 * and run this in a transaction.
 	 */
 	async moveOwned(
 		agentId: string,
@@ -478,12 +479,16 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		projectId: string,
 		ctx: OperationContext,
 	): Promise<boolean> {
-		const result = await this.managerFor(ctx).update(
+		const manager = this.managerFor(ctx);
+		const result = await manager.update(
 			AgentExecutionThread,
 			ownedSessionWhere(agentId, ownerId, threadId),
 			{ projectId },
 		);
-		return result.affected === 1;
+		if (result.affected !== 1) return false;
+		// Attachment lookups and session deletion filter on the project of the thread.
+		await manager.update(AgentChatAttachment, { agentId, threadId }, { projectId });
+		return true;
 	}
 
 	/**

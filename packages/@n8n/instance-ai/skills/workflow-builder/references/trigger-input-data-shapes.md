@@ -1,14 +1,14 @@
 ---
 name: trigger-input-data-shapes
 description: >-
-  Load before passing `inputData` to `verify-built-workflow` or
-  `executions(action="run")`, to use the shape that matches the workflow's
+  Load before passing `inputData` to `workflow_builder_verify_built_workflow` or
+  `workflow_builder_executions(action="run")`, to use the shape that matches the workflow's
   trigger type.
 ---
 
 # Per-trigger `inputData` shape
 
-Used by `verify-built-workflow`, `executions(action="run")`, and checkpoint
+Used by `workflow_builder_verify_built_workflow`, `workflow_builder_executions(action="run")`, and checkpoint
 verification. The pin-data adapter spreads or wraps based on trigger type —
 passing the wrong shape gives null downstream values that look like an
 expression bug.

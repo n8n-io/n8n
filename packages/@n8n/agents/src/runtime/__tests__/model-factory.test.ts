@@ -1,4 +1,5 @@
 import { createGoogleVertex } from '@ai-sdk/google-vertex';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
 
 import {
@@ -192,14 +193,14 @@ vi.mock('@ai-sdk/azure', () => ({
 }));
 
 vi.mock('@openrouter/ai-sdk-provider', () => ({
-	createOpenRouter: (opts?: ProviderOpts) => (model: string) => ({
+	createOpenRouter: vi.fn((opts?: ProviderOpts) => (model: string) => ({
 		provider: 'openrouter',
 		modelId: model,
 		apiKey: opts?.apiKey,
 		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
-	}),
+	})),
 }));
 
 // Entra OAuth2 token mint: stubbed so the model-factory's tokenProvider
@@ -600,7 +601,7 @@ describe('createModel', () => {
 			}) as unknown as Record<string, unknown>;
 			expect(model.provider).toBe('openrouter');
 			expect(model.modelId).toBe('openai/gpt-4o');
-			expect(model.apiKey).toBe('or-test');
+			expect(createOpenRouter).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'or-test' }));
 		});
 
 		it('should create model for nvidia with SDK defaults for usage and structured outputs', () => {

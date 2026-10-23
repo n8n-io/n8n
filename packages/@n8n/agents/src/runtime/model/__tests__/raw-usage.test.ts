@@ -40,6 +40,33 @@ describe('AnthropicRawUsageReader', () => {
 		});
 	});
 
+	it('keeps cache counts reported as zero and leaves out missing ones', () => {
+		const zeroCache = new AnthropicRawUsageReader();
+		zeroCache.capture({
+			type: 'message_start',
+			message: {
+				usage: {
+					input_tokens: 20,
+					cache_creation_input_tokens: 0,
+					cache_read_input_tokens: 0,
+					output_tokens: 1,
+				},
+			},
+		});
+		const noCacheFields = new AnthropicRawUsageReader();
+		noCacheFields.capture({
+			type: 'message_start',
+			message: { usage: { input_tokens: 20, output_tokens: 1 } },
+		});
+
+		expect(zeroCache.getUsage()?.inputTokenDetails).toEqual({
+			noCache: 20,
+			cacheRead: 0,
+			cacheWrite: 0,
+		});
+		expect(noCacheFields.getUsage()?.inputTokenDetails).toEqual({ noCache: 20 });
+	});
+
 	it('returns undefined before any usable event', () => {
 		expect(new AnthropicRawUsageReader().getUsage()).toBeUndefined();
 	});

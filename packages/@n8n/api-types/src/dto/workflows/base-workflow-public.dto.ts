@@ -99,6 +99,10 @@ const workflowSettingsWritePublicSchema = z
 			.enum(['none', 'non-manual', 'manual-only', 'all'])
 			.optional()
 			.openapi(workflowSettingsFieldDocs.redactionPolicy),
+		redactCallerExecutions: z
+			.boolean()
+			.optional()
+			.openapi(workflowSettingsFieldDocs.redactCallerExecutions),
 		availableInMCP: z.boolean().optional().openapi(workflowSettingsFieldDocs.availableInMCP),
 		customTelemetryTags: z.array(customTelemetryTagPublicSchema).optional(),
 		credentialResolverId: z

@@ -1,5 +1,5 @@
 /**
- * Setup panel v2 changes what `workflows(action="setup")` does. The prompt has
+ * Setup panel v2 changes what `workflow_builder_workflows(action="setup")` does. The prompt has
  * to describe the variant that is live, or the agent narrates a card that never
  * opens (or waits on one that does).
  */

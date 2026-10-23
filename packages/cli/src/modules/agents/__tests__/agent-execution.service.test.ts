@@ -26,6 +26,7 @@ import type { AgentMessageRepository } from '../repositories/agent-message.repos
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import { MARK_SESSION_FAILED_TOOL_NAME } from '../tools/mark-session-failed.tool';
 import { MAX_ITERATIONS_STOPPED_MESSAGE } from '../utils/fatal-session-outcome';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
 
@@ -85,6 +86,7 @@ function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecor
 		startTime: 0,
 		duration: 1,
 		error: null,
+		guardrailCode: null,
 		...overrides,
 	};
 }
@@ -148,6 +150,7 @@ describe('AgentExecutionService', () => {
 			txRunner,
 			queueRepository,
 			messageRepository,
+			new SystemAgentRegistry(),
 		);
 	});
 
@@ -726,6 +729,25 @@ describe('AgentExecutionService', () => {
 		},
 	);
 
+	it('stores the finish reason and guardrail code on the execution row', async () => {
+		await service.finalizeExecution('execution-1', {
+			threadId: 'thread-1',
+			agentId: 'agent-1',
+			agentName: 'Agent',
+			projectId: 'project-1',
+			userMessage: null,
+			record: makeMessageRecord({ finishReason: 'guardrail', guardrailCode: 'budget.monthly' }),
+		});
+
+		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({ finishReason: 'guardrail', guardrailCode: 'budget.monthly' }),
+			undefined,
+			expect.any(Object),
+			undefined,
+		);
+	});
+
 	it('keeps terminal persistence successful when usage totals and model backfill fail', async () => {
 		agentExecutionThreadRepository.incrementUsage.mockRejectedValue(
 			new Error('usage update failed'),
@@ -783,6 +805,7 @@ describe('AgentExecutionService', () => {
 				txRunner,
 				queueRepository,
 				messageRepository,
+				new SystemAgentRegistry(),
 			);
 
 			const record = makeMessageRecord({
@@ -880,6 +903,7 @@ describe('AgentExecutionService', () => {
 					txRunner,
 					queueRepository,
 					messageRepository,
+					new SystemAgentRegistry(),
 				);
 
 				const record = makeMessageRecord({
@@ -962,6 +986,7 @@ describe('AgentExecutionService', () => {
 				startTime: Date.parse('2026-05-07T10:00:00Z'),
 				duration: 1234,
 				error: null,
+				guardrailCode: null,
 			};
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({ thread, created: true });
 			agentExecutionRepository.create.mockImplementation((entity) => entity as AgentExecution);
@@ -1494,6 +1519,7 @@ describe('AgentExecutionService', () => {
 				txRunner,
 				queueRepository,
 				messageRepository,
+				new SystemAgentRegistry(),
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);

@@ -52,7 +52,7 @@ export async function handleBlockedVerification(args: {
 		reason,
 		guidance,
 	});
-	context.logger.warn('verify-built-workflow: preflight blocked verification', {
+	context.logger.warn('workflow_builder_verify_built_workflow: preflight blocked verification', {
 		workItemId: input.workItemId,
 		workflowId,
 		reason,
@@ -90,11 +90,14 @@ export async function handleBlockedVerification(args: {
 			summary: guidance,
 		});
 	} catch (error) {
-		context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
-			workItemId: input.workItemId,
-			workflowId,
-			error: error instanceof Error ? error.message : String(error),
-		});
+		context.logger.warn(
+			'workflow_builder_verify_built_workflow: failed to persist terminal verdict',
+			{
+				workItemId: input.workItemId,
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			},
+		);
 	}
 	return {
 		success: false,
@@ -200,11 +203,14 @@ async function reportTerminalRemediation(args: {
 			summary: remediation.guidance,
 		});
 	} catch (error) {
-		context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
-			workItemId: input.workItemId,
-			workflowId,
-			error: error instanceof Error ? error.message : String(error),
-		});
+		context.logger.warn(
+			'workflow_builder_verify_built_workflow: failed to persist terminal verdict',
+			{
+				workItemId: input.workItemId,
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			},
+		);
 	}
 	try {
 		context.trackTelemetry?.('Builder remediation guard fired', {
@@ -217,10 +223,13 @@ async function reportTerminalRemediation(args: {
 			reason: remediation.reason,
 		});
 	} catch (error) {
-		context.logger.warn('verify-built-workflow: failed to emit remediation telemetry', {
-			workItemId: input.workItemId,
-			workflowId,
-			error: error instanceof Error ? error.message : String(error),
-		});
+		context.logger.warn(
+			'workflow_builder_verify_built_workflow: failed to emit remediation telemetry',
+			{
+				workItemId: input.workItemId,
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			},
+		);
 	}
 }

@@ -122,11 +122,6 @@ const baseAgent = {
 } as unknown as AgentResource;
 
 const globalStubs = {
-	ProjectIcon: {
-		name: 'ProjectIcon',
-		template: '<span data-testid="stub-project-icon" />',
-		props: ['icon', 'size', 'borderLess'],
-	},
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
@@ -241,12 +236,15 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.text()).toContain('Darwin');
 	});
 
-	it('shows the project icon before the breadcrumb', () => {
+	it('passes the project icon to the breadcrumb', () => {
 		const projectIcon = { type: 'emoji' as const, value: '🚀' };
 		const wrapper = mountHeader({ projectIcon });
+		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
+		const items = breadcrumbs.props('items') as Array<{
+			icon?: { type: 'icon' | 'emoji'; value: string };
+		}>;
 
-		expect(wrapper.getComponent({ name: 'ProjectIcon' }).props('icon')).toEqual(projectIcon);
-		expect(wrapper.getComponent({ name: 'ProjectIcon' }).props('size')).toBe('mini');
+		expect(items[0].icon).toEqual(projectIcon);
 	});
 
 	it('links the project breadcrumb to the project agents page', () => {
@@ -337,24 +335,26 @@ describe('AgentBuilderHeader', () => {
 			label: 'opens',
 			isPreviewOpen: false,
 			event: 'open-preview',
+			payload: ['primary'],
 			accessibleLabel: 'agents.builder.preview.button',
 		},
 		{
 			label: 'closes',
 			isPreviewOpen: true,
 			event: 'close-preview',
+			payload: [],
 			accessibleLabel: 'agents.builder.preview.close.ariaLabel',
 		},
 	])(
 		'$label Preview from the preview action',
-		async ({ isPreviewOpen, event, accessibleLabel }) => {
+		async ({ isPreviewOpen, event, payload, accessibleLabel }) => {
 			const wrapper = mountHeader({ isPreviewOpen });
 			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
 			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
 			expect(previewButton.text()).toBe(accessibleLabel);
 
 			await previewButton.trigger('click');
-			expect(wrapper.emitted(event)).toEqual([[]]);
+			expect(wrapper.emitted(event)).toEqual([payload]);
 			expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
 		},
 	);

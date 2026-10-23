@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.44.0",
+  "version": "2.45.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -263,12 +263,12 @@
     "@langchain/langgraph": "catalog:",
     "@langchain/langgraph-checkpoint": "catalog:",
     "@langchain/mistralai": "1.1.0",
-    "@langchain/mongodb": "1.0.1",
+    "@langchain/mongodb": "1.3.1",
     "@langchain/ollama": "1.2.6",
     "@langchain/openai": "catalog:",
     "@langchain/pinecone": "1.0.1",
     "@langchain/qdrant": "1.0.1",
-    "@langchain/redis": "1.0.1",
+    "@langchain/redis": "1.1.1",
     "@langchain/textsplitters": "1.0.1",
     "@langchain/weaviate": "1.0.1",
     "@microsoft/agents-a365-observability": "1.0.0",

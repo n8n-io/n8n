@@ -1,162 +1,197 @@
-import { AGENT_BUILDER_TEST_TOOL_NAME, type InstanceAiAgentActivity } from '@n8n/api-types';
+import { AGENT_BUILDER_TEST_TOOL_NAME } from '@n8n/api-types';
 import { z } from 'zod';
 
-import { hasConfigMutationMarker } from '../../stream/work-summary-accumulator';
 import {
 	canEmitBuilderMetric,
 	detachBuilderMetricWork,
 	emitBuilderMetric,
 } from '../../tracing/builder-metric-event';
-import type {
-	AgentValidationSummary,
-	BuilderTurnStream,
-	InstanceAiBuilderDelegate,
-	OrchestrationContext,
-} from '../../types';
+import type { AgentValidationSummary, OrchestrationContext } from '../../types';
 
 /**
- * A pass that suspends for user input is not recorded: like a suspended
- * `workflow_build`, it reports its real result after the resume.
- * `cancelled`: the user stopped the run before the pass settled.
- */
-export type AgentBuildOutcome = 'completed' | 'failed' | 'cancelled';
-
-/** Same `operation` values as the `workflow_build` metric, so one query can group both. */
-function toBuildOperation(activity: InstanceAiAgentActivity): 'create' | 'update' {
-	return activity === 'creating' ? 'create' : 'update';
-}
-
-/**
- * Records the outcome of one builder pass (`agent_build`). After a pass that
- * completed and changed the config, it also records whether the agent now passes
- * the Publish validation with at least one capability (`agent_verification`).
- * All of it runs detached: a metric must not delay the tool result or a cancel,
- * and the trace stays open until the work settles so the spans still export.
- */
-export function emitAgentBuildMetrics(args: {
-	context: OrchestrationContext;
-	delegate: InstanceAiBuilderDelegate;
-	agentId: string;
-	activity: InstanceAiAgentActivity;
-	outcome: AgentBuildOutcome;
-	configUpdated: boolean;
-	/** Time the user took to answer the suspension that this pass resumes. */
-	userWaitMs?: number;
-}): void {
-	const { context, delegate, agentId, activity, outcome, configUpdated, userWaitMs } = args;
-	// No trace, no work: the validation costs a draft read and credential checks.
-	if (!canEmitBuilderMetric(context.tracing)) return;
-	const operation = toBuildOperation(activity);
-
-	detachBuilderMetricWork(context.tracing, async () => {
-		await emitBuilderMetric(context.tracing, 'agent_build', {
-			success: outcome === 'completed',
-			outcome,
-			agent_id: agentId,
-			operation,
-			activity,
-			config_updated: configUpdated,
-			user_wait_ms: userWaitMs,
-		});
-
-		if (!configUpdated || outcome !== 'completed') return;
-		let validation: AgentValidationSummary | undefined;
-		try {
-			validation = await delegate.validateAgent?.(agentId);
-		} catch (error) {
-			context.logger.debug(
-				`[agent-build-metrics] validation for ${agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
-			);
-			return;
-		}
-		if (!validation) return;
-		await emitBuilderMetric(context.tracing, 'agent_verification', {
-			success: validation.valid && validation.capabilityCount > 0,
-			valid: validation.valid,
-			issue_codes: validation.issueCodes.join(','),
-			issue_count: validation.issueCount,
-			capability_count: validation.capabilityCount,
-			agent_id: agentId,
-			operation,
-			activity,
-		});
-	});
-}
-
-/**
- * Wraps a builder turn so that its stream events are recorded when they stream
- * in, not when the builder pass ends:
- * - `agent_shown`: the first config change of the build. The open agent panel
- *   refetches on it, so the user first sees the built agent at this point.
+ * Agent builder metrics for the inline builder tools. Each one is emitted from
+ * the builder tool call that caused it, so it shares the tool span's trace.
+ *
+ * - `agent_shown`: the first config change of each agent in the run.
+ * - `agent_build`: each successful config change.
+ * - `agent_verification`: after each successful config change, whether the
+ *   agent passes the Publish validation with at least one capability.
  * - `agent_test`: each Preview test result.
  */
-export function withAgentStreamMetrics(
-	context: OrchestrationContext,
-	turn: BuilderTurnStream,
-	options: {
-		agentId: string;
-		activity: InstanceAiAgentActivity;
-		/** An earlier pass of this build already changed the config, so the agent is already shown. */
-		alreadyShown: boolean;
-	},
-): BuilderTurnStream {
-	if (!canEmitBuilderMetric(context.tracing)) return turn;
-	return { ...turn, fullStream: tapBuilderStream(context, turn.fullStream, options) };
+
+/** Same values as the old build-agent `activity` input, derived from what the run did. */
+type AgentBuildActivity = 'creating' | 'working' | 'testing' | 'exploring';
+
+interface AgentBuildState {
+	created: boolean;
+	configUpdated: boolean;
+	tested: boolean;
 }
 
-const toolResultChunkSchema = z.object({
-	type: z.literal('tool-result'),
-	toolName: z.string(),
-	isError: z.unknown(),
-	output: z.unknown(),
-});
+interface RunBuildState {
+	agents: Map<string, AgentBuildState>;
+	suspendedAt?: number;
+	/** Time the user took to answer the builder suspensions since the last config change. */
+	userWaitMs?: number;
+}
 
-type ToolResultChunk = z.infer<typeof toolResultChunkSchema>;
+const runStates = new WeakMap<OrchestrationContext, RunBuildState>();
+
+function runStateFor(context: OrchestrationContext): RunBuildState {
+	let state = runStates.get(context);
+	if (!state) {
+		state = { agents: new Map() };
+		runStates.set(context, state);
+	}
+	return state;
+}
+
+function agentStateFor(context: OrchestrationContext, agentId: string): AgentBuildState {
+	const { agents } = runStateFor(context);
+	let state = agents.get(agentId);
+	if (!state) {
+		state = { created: false, configUpdated: false, tested: false };
+		agents.set(agentId, state);
+	}
+	return state;
+}
+
+function activityFor(state: AgentBuildState): AgentBuildActivity {
+	if (state.created) return 'creating';
+	if (state.configUpdated) return 'working';
+	if (state.tested) return 'testing';
+	return 'exploring';
+}
+
+/** Same `operation` values as the `workflow_build` metric, so one query can group both. */
+function operationFor(state: AgentBuildState): 'create' | 'update' {
+	return state.created ? 'create' : 'update';
+}
+
+/** A resume that rebuilds the orchestration context continues the same run. */
+export function carryAgentBuildRunState(
+	previous: OrchestrationContext,
+	rebuilt: OrchestrationContext,
+): void {
+	const state = runStates.get(previous);
+	if (!state || previous === rebuilt) return;
+	runStates.delete(previous);
+	runStates.set(rebuilt, state);
+}
+
+export function recordAgentSelected(
+	context: OrchestrationContext,
+	agentId: string,
+	options: { created: boolean },
+): void {
+	const state = agentStateFor(context, agentId);
+	if (options.created) state.created = true;
+}
+
+export function recordAgentBuilderSuspended(context: OrchestrationContext): void {
+	runStateFor(context).suspendedAt = Date.now();
+}
+
+export function recordAgentBuilderResumed(context: OrchestrationContext): void {
+	const state = runStateFor(context);
+	// A resume after a restart rebuilds the context, so the suspension time is unknown.
+	if (state.suspendedAt === undefined) return;
+	state.userWaitMs = (state.userWaitMs ?? 0) + Math.max(0, Date.now() - state.suspendedAt);
+	state.suspendedAt = undefined;
+}
 
 const agentTestOutputSchema = z.object({
 	status: z.string().catch('unknown'),
 	code: z.string().optional().catch(undefined),
 });
 
-async function* tapBuilderStream(
-	context: OrchestrationContext,
-	stream: AsyncIterable<unknown>,
-	options: { agentId: string; activity: InstanceAiAgentActivity; alreadyShown: boolean },
-): AsyncGenerator<unknown> {
-	let shown = options.alreadyShown;
-	for await (const chunk of stream) {
-		const parsed = toolResultChunkSchema.safeParse(chunk);
-		if (parsed.success) {
-			const toolResult = parsed.data;
-			if (!shown && toolResult.isError !== true && hasConfigMutationMarker(toolResult.output)) {
-				shown = true;
-				await emitBuilderMetric(context.tracing, 'agent_shown', {
-					success: true,
-					agent_id: options.agentId,
-					operation: toBuildOperation(options.activity),
-					activity: options.activity,
-					tool_name: toolResult.toolName,
-				});
-			}
-			const test = readAgentTestResult(toolResult);
-			if (test) {
-				await emitBuilderMetric(context.tracing, 'agent_test', {
-					success: test.status === 'completed',
-					status: test.status,
-					code: test.code,
-					agent_id: options.agentId,
-				});
-			}
-		}
-		yield chunk;
-	}
+function readAgentTestResult(result: {
+	isError: boolean;
+	output?: unknown;
+}): { status: string; code?: string } {
+	if (result.isError) return { status: 'error' };
+	const output = agentTestOutputSchema.safeParse(result.output);
+	return output.success ? output.data : { status: 'unknown' };
 }
 
-function readAgentTestResult(
-	toolResult: ToolResultChunk,
-): { status: string; code?: string } | undefined {
-	if (toolResult.toolName !== AGENT_BUILDER_TEST_TOOL_NAME) return undefined;
-	if (toolResult.isError === true) return { status: 'error' };
-	const output = agentTestOutputSchema.safeParse(toolResult.output);
-	return output.success ? output.data : { status: 'unknown' };
+/** Records one settled (not suspended) builder tool call on `agentId`. */
+export function recordAgentBuilderToolResult(
+	context: OrchestrationContext,
+	agentId: string,
+	toolCall: { toolName: string; isError: boolean; output?: unknown; configMutated: boolean },
+): void {
+	const runState = runStateFor(context);
+	const state = agentStateFor(context, agentId);
+	const firstChange = toolCall.configMutated && !state.configUpdated;
+	if (toolCall.configMutated) state.configUpdated = true;
+	const isTest = toolCall.toolName === AGENT_BUILDER_TEST_TOOL_NAME;
+	if (isTest) state.tested = true;
+
+	if (!toolCall.configMutated && !isTest) return;
+	if (!canEmitBuilderMetric(context.tracing)) return;
+	const activity = activityFor(state);
+	const operation = operationFor(state);
+	const userWaitMs = toolCall.configMutated ? runState.userWaitMs : undefined;
+	if (toolCall.configMutated) runState.userWaitMs = undefined;
+
+	detachBuilderMetricWork(context.tracing, async () => {
+		// The open agent panel refetches on the first change, so the user first sees the built agent here.
+		if (firstChange) {
+			await emitBuilderMetric(context.tracing, 'agent_shown', {
+				success: true,
+				agent_id: agentId,
+				operation,
+				activity,
+				tool_name: toolCall.toolName,
+			});
+		}
+		if (toolCall.configMutated) {
+			await emitBuilderMetric(context.tracing, 'agent_build', {
+				success: true,
+				outcome: 'completed',
+				agent_id: agentId,
+				operation,
+				activity,
+				config_updated: true,
+				tool_name: toolCall.toolName,
+				user_wait_ms: userWaitMs,
+			});
+			await emitAgentVerification(context, agentId, { operation, activity });
+		}
+		if (isTest) {
+			const test = readAgentTestResult(toolCall);
+			await emitBuilderMetric(context.tracing, 'agent_test', {
+				success: test.status === 'completed',
+				status: test.status,
+				code: test.code,
+				agent_id: agentId,
+			});
+		}
+	});
+}
+
+async function emitAgentVerification(
+	context: OrchestrationContext,
+	agentId: string,
+	fields: { operation: 'create' | 'update'; activity: AgentBuildActivity },
+): Promise<void> {
+	let validation: AgentValidationSummary | undefined;
+	try {
+		validation = await context.domainContext?.builderDelegate?.validateAgent?.(agentId);
+	} catch (error) {
+		context.logger.debug(
+			`[agent-build-metrics] validation for ${agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return;
+	}
+	if (!validation) return;
+	await emitBuilderMetric(context.tracing, 'agent_verification', {
+		success: validation.valid && validation.capabilityCount > 0,
+		valid: validation.valid,
+		issue_codes: validation.issueCodes.join(','),
+		issue_count: validation.issueCount,
+		capability_count: validation.capabilityCount,
+		agent_id: agentId,
+		...fields,
+	});
 }

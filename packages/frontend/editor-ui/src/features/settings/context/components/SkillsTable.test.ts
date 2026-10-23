@@ -31,6 +31,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
+		availableToAssistant: false,
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
@@ -197,5 +198,18 @@ describe('SkillsTable', () => {
 		await userEvent.click(document.querySelector('[data-test-id="action-delete"]')!);
 
 		expect(emitted('delete')).toEqual([[row]]);
+	});
+
+	it('emits download for any skill, also one the user cannot change', async () => {
+		const row = skill({ canEdit: false, canDelete: false });
+		const { getByTestId, emitted } = render([row]);
+
+		await openActions(getByTestId('skills-table'));
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-download"]')).toBeInTheDocument(),
+		);
+		await userEvent.click(document.querySelector('[data-test-id="action-download"]')!);
+
+		expect(emitted('download')).toEqual([[row]]);
 	});
 });

@@ -7,11 +7,14 @@ import { z } from 'zod';
  *
  * - `upgradeBlocked`: the instance does not start, or the update cannot proceed.
  * - `executionsFail`: affected executions error.
+ * - `executionsMightFail`: a default changes, so affected executions can error, depending on the
+ *   workload. The admin can keep the current value through configuration.
  * - `behaviorChanges`: executions keep running, but with a different result.
  * - `capabilityRemoved`: no runtime impact, a removed capability is no longer available.
  */
 export const breakingChangeRuleImpactSchema = z.enum([
 	'executionsFail',
+	'executionsMightFail',
 	'behaviorChanges',
 	'capabilityRemoved',
 	'upgradeBlocked',
@@ -107,6 +110,9 @@ export type BreakingChangeWorkflowOwner = z.infer<typeof workflowOwnerSchema>;
 
 /** The owner of a workflow after a change to it. `null` when nobody owns it. */
 export type MigrationWorkflowOwnerResponse = { owner: BreakingChangeWorkflowOwner | null };
+
+/** A user who can read the workflow, so they can be its owner. */
+export type MigrationOwnerCandidate = Omit<BreakingChangeWorkflowOwner, 'source'>;
 
 const affectedWorkflowSchema = z.object({
 	id: z.string(),
