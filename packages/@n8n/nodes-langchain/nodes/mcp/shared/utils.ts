@@ -185,10 +185,9 @@ export async function connectMcpClient({
 	 */
 	secureEgressFilter: NodeEgressFilter;
 	/**
-	 * Returns the W3C trace context headers of the node that runs now. It is called
-	 * for each request: one client serves many tool calls, under a different span
-	 * each time. Omit it when there is no execution, for example in a load-options
-	 * call.
+	 * Returns the W3C trace context of the node that runs now. It is called for each
+	 * request: one client serves many tool calls, each under a different span. Omit it
+	 * when the caller has no node context to read it from.
 	 */
 	getTraceHeaders?: () => Record<string, string>;
 }): Promise<Result<Client, ConnectMcpClientError>> {
