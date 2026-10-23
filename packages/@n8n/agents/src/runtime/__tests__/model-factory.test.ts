@@ -3,6 +3,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
 
 import {
+	mintAzureFoundryDeploymentsToken,
 	createEmbeddingModel,
 	createModel,
 	supportsSplitSystemMessages,
@@ -845,23 +846,7 @@ describe('createModel', () => {
 			expect(model.useDeploymentBasedUrls).toBe(true);
 		});
 
-		it('should use the user-provided deploymentName as the deployment id for classic', () => {
-			const model = createModel({
-				id: 'azure-openai/gpt-4o',
-				apiKey: 'az-key',
-				resourceName: 'my-resource',
-				apiVersion: '2024-02-01',
-				endpointType: 'classic',
-				deploymentName: 'my-gpt4o-deployment',
-			}) as unknown as Record<string, unknown>;
-			// The catalog model id is not the Azure deployment id; the factory
-			// hands the user's deployment name to .chat(...).
-			expect(model.modelId).toBe('my-gpt4o-deployment');
-			expect(model.builder).toBe('chat');
-			expect(model.useDeploymentBasedUrls).toBe(true);
-		});
-
-		it('should fall back to the catalog model id when classic has no deploymentName', () => {
+		it('should use the model id as the deployment id for classic', () => {
 			const model = createModel({
 				id: 'azure-openai/gpt-4o',
 				apiKey: 'az-key',
@@ -887,19 +872,6 @@ describe('createModel', () => {
 			expect(model.baseURL).toBe(foundryURL);
 			expect(model.builder).toBeUndefined();
 			expect(model.useDeploymentBasedUrls).toBeUndefined();
-		});
-
-		it('should use the deployment name on a Foundry endpoint when provided', () => {
-			// A Foundry deployment can be named differently from the model it
-			// serves, so the user's deployment name must reach the request path.
-			const model = createModel({
-				id: 'azure-openai/gpt-4.1-nano',
-				apiKey: 'az-key',
-				endpointType: 'foundry',
-				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
-				deploymentName: 'my-chat-model',
-			}) as unknown as Record<string, unknown>;
-			expect(model.modelId).toBe('my-chat-model');
 		});
 
 		it('should treat a foundry endpoint without resourceName as valid', () => {
@@ -1022,17 +994,75 @@ describe('createModel', () => {
 			expect(mockClientOAuth2.credentials.getToken).toHaveBeenCalledTimes(1);
 		});
 
-		it('uses the deployment name on the Foundry Entra path when provided', () => {
-			// The deployment name can differ from the model it serves; it reaches
-			// the OpenAI-compatible path as the model id.
-			const model = createModel({
-				id: 'azure-openai/gpt-4.1-nano',
-				endpointType: 'foundry',
-				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
-				deploymentName: 'my-chat-model',
-				...entraCreds,
-			}) as unknown as Record<string, unknown>;
-			expect(model.modelId).toBe('my-chat-model');
+		type EntraModel = { tokenProvider: () => Promise<string>; fetch: typeof globalThis.fetch };
+		it.each([
+			{
+				endpoint: {
+					endpointType: 'classic' as const,
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+				},
+				mint: async (model: EntraModel) => await model.tokenProvider(),
+			},
+			{
+				endpoint: {
+					endpointType: 'foundry' as const,
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				},
+				mint: async (model: EntraModel) => await model.fetch('https://example.com'),
+			},
+		])(
+			'mints a $endpoint.endpointType Entra token within the given outbound policy',
+			async ({ endpoint, mint }) => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				const ssrfBridge = {
+					validateUrl: vi.fn(),
+					validateRedirectSync: vi.fn(),
+					createSecureLookup: vi.fn(),
+				};
+				const baseFetch = vi.fn(
+					async () => new Response('{}', { status: 200 }),
+				) as unknown as typeof globalThis.fetch;
+				const model = createModel(
+					{ id: 'azure-openai/gpt-4o', ...endpoint, ...entraCreds, ssrfBridge },
+					baseFetch,
+				) as unknown as EntraModel;
+
+				await mint(model);
+
+				expect(ClientOAuth2).toHaveBeenLastCalledWith(
+					expect.objectContaining({
+						additionalBodyProperties: { resource: 'https://cognitiveservices.azure.com/' },
+						ssrfBridge,
+					}),
+				);
+			},
+		);
+
+		it('mints a Foundry deployments token within the given outbound policy', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const ssrfBridge = {
+				validateUrl: vi.fn(),
+				validateRedirectSync: vi.fn(),
+				createSecureLookup: vi.fn(),
+			};
+
+			const token = await mintAzureFoundryDeploymentsToken(
+				{
+					endpointType: 'foundry',
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+					...entraCreds,
+				},
+				ssrfBridge,
+			);
+
+			expect(token).toBe('minted-bearer');
+			expect(ClientOAuth2).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: 'https://ai.azure.com/' },
+					ssrfBridge,
+				}),
+			);
 		});
 
 		it('rejects credentials that supply both apiKey and Entra', () => {

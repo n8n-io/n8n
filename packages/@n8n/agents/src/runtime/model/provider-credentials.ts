@@ -1,3 +1,4 @@
+import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { z } from 'zod';
 
 const apiKeyCreds = z.object({
@@ -75,13 +76,6 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			 */
 			endpointType: z.enum(['classic', 'foundry']).optional(),
 			/**
-			 * User-defined Azure deployment name. The catalog model id is not the
-			 * deployment id, so the agent flow must carry this separately. Used by
-			 * both the classic and Foundry branches; on Foundry it overrides the
-			 * model id in the request path.
-			 */
-			deploymentName: z.string().optional(),
-			/**
 			 * Entra OAuth2 fields. The model factory mints a Bearer token from these
 			 * via `@n8n/client-oauth2` (client-credentials), mirroring the LangChain
 			 * Azure node. Mutually exclusive with `apiKey`.
@@ -92,6 +86,12 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			oauthScope: z.string().optional(),
 			oauthAuthentication: z.enum(['body', 'header']).optional(),
 			oauthTokenData: z.object({ access_token: z.string() }).passthrough().optional(),
+			/** Validates the Entra token URL against the instance's outbound policy. */
+			ssrfBridge: z
+				.custom<NonNullable<ClientOAuth2Options['ssrfBridge']>>(
+					(value) => typeof value === 'object' && value !== null,
+				)
+				.optional(),
 		})
 		.superRefine((data, ctx) => {
 			const hasApiKey = hasAzureApiKey(data);

@@ -1,7 +1,10 @@
-import type { ModelConfig } from '@n8n/agents';
+import { isAzureEntraCredential, type ModelConfig, type ResolvedCredential } from '@n8n/agents';
 import type { AgentCredentialProvider } from '../agent-credential-provider.contracts';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
@@ -10,14 +13,6 @@ export async function resolveCredentialAwareModelConfig(
 	model: string,
 	credential: string,
 	credentialProvider: AgentCredentialProvider,
-	/**
-	 * Azure OpenAI deployments are user-named in Azure and surfaced in the URL
-	 * path on both endpoint types. The catalog model id is not the deployment
-	 * id, so the agent flow must carry the user's deployment name separately.
-	 * Only meaningful for the `azure-openai` provider — on classic it is
-	 * required, on Foundry it is optional and overrides the model id.
-	 */
-	deploymentName?: string,
 ): Promise<ModelConfig> {
 	const { provider, model: modelName } = splitModelId(model);
 	if (provider === 'google-vertex') {
@@ -55,9 +50,12 @@ export async function resolveCredentialAwareModelConfig(
 		const sdk = catalog?.[provider]?.models[modelName]?.sdk;
 		return { id: model, ...mapped, ...(sdk !== undefined && { sdk }) };
 	}
-	return {
-		id: model,
-		...mapped,
-		...(provider === 'azure-openai' && deploymentName ? { deploymentName } : {}),
-	};
+	return { id: model, ...mapped, ...entraSsrfBridge(provider, raw) };
+}
+
+/** Entra ID token mints for Azure OpenAI must follow the instance's outbound policy. */
+function entraSsrfBridge(provider: string, raw: ResolvedCredential) {
+	if (provider !== 'azure-openai' || !isAzureEntraCredential(raw)) return {};
+	if (!Container.get(SsrfProtectionConfig).enabled) return {};
+	return { ssrfBridge: Container.get(SsrfProtectionService) };
 }
