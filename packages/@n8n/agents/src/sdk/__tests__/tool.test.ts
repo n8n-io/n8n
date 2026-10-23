@@ -85,6 +85,50 @@ describe('Tool builder — .requireApproval()', () => {
 // Tool builder — .needsApprovalFn()
 // ---------------------------------------------------------------------------
 
+describe('Tool builder — .riskLevel()', () => {
+	it('build() requires approval for high-risk tools and exposes the risk metadata', () => {
+		const tool = new Tool('delete')
+			.description('Delete a record')
+			.input(z.object({ id: z.string() }))
+			.riskLevel('high')
+			.handler(async ({ id }) => {
+				return await Promise.resolve({ deleted: id });
+			})
+			.build();
+
+		expect(tool.suspendSchema).toBeDefined();
+		expect(tool.resumeSchema).toBeDefined();
+		expect(tool.approval?.required).toBe(true);
+		expect(tool.approval?.riskLevel).toBe('high');
+	});
+
+	it('suspends with the risk level attached so the UI can show a safety warning', async () => {
+		const { ctx, suspendMock } = makeCtx();
+		const tool = new Tool('delete')
+			.description('Delete a record')
+			.input(z.object({ id: z.string() }))
+			.riskLevel('high')
+			.handler(async ({ id }) => {
+				return await Promise.resolve({ deleted: id });
+			})
+			.build();
+
+		await tool.handler!(
+			{ id: '42' },
+			{ ...ctx, approvalContext: { approvedKeys: new Set(), onDecision: vi.fn() } },
+		);
+
+		expect(suspendMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'approval',
+				toolName: 'delete',
+				riskLevel: 'high',
+			}),
+			expect.any(Object),
+		);
+	});
+});
+
 describe('Tool builder — .needsApprovalFn()', () => {
 	it('build() returns a tool with suspendSchema and resumeSchema when .needsApprovalFn() is set', () => {
 		const tool = new Tool('query')

@@ -41,6 +41,7 @@ function submit(key: string) {
 			})
 		"
 		:args="input.args"
+		:risk-level="input.riskLevel"
 		:supports-session-approval="input.supportsSessionApproval"
 		:disabled="disabled"
 		data-testid="agent-approval-card"

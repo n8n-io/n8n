@@ -141,12 +141,21 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 	if (!isRecord(value)) return undefined;
 	if (value.type !== 'approval') return undefined;
 	if (typeof value.toolName !== 'string' || value.toolName.length === 0) return undefined;
+	const riskLevel = value.riskLevel;
+	const validRiskLevel =
+		riskLevel === 'low' ||
+		riskLevel === 'medium' ||
+		riskLevel === 'high' ||
+		riskLevel === 'critical'
+		? riskLevel
+		: undefined;
 	return {
 		type: 'approval',
 		toolName: value.toolName,
 		...(value.supportsSessionApproval === true && { supportsSessionApproval: true }),
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
+		...(validRiskLevel !== undefined && { riskLevel: validRiskLevel }),
 		args: value.args,
 	};
 }
