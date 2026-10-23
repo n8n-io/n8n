@@ -107,22 +107,24 @@ function toStoredGraph(graph: WorkflowGraph, seededSteps: SeededSteps): StoredWo
 }
 
 /**
- * Rejects seeded steps that a settlement could not record correctly.
+ * Rejects seeded steps the run could not use.
  *
- * When the run reaches a seeded node, the settlement that would have queued it
- * records it as completed with the seeded outputs for that pass instead. That
- * only works when:
+ * A seeded node does not run. When the run reaches it, settlement records it
+ * as completed with the seeded outputs for that pass, and the run goes on from
+ * there. Settlement throws if it reaches a seeded node and finds no outputs
+ * for that pass, so this check makes sure that cannot happen:
  *
- * - no entry names the trigger: its outputs arrive as `triggerOutputs`.
- * - the trigger reaches every seeded node: no settlement ever reaches any
- *   other node, so its outputs would never be used.
- * - a node outside any loop has exactly one pass: it has no other.
- * - a loop is seeded whole or not at all: the batch node with t + 1 passes,
- *   filling its loop slot on every pass but the last, and every member with t.
- *   The loop replays through those passes as the back-edge drives it, and the
- *   loop ledger reads the loop's end from the batch node's last pass, so any
- *   other shape would run passes the caller already holds or leave the loop
- *   unfinished.
+ * - The trigger cannot be seeded. Its outputs arrive as `triggerOutputs`.
+ * - Every seeded node must be downstream of the trigger. The run never
+ *   reaches any other node, so its seeded outputs would never be used.
+ * - A node outside any loop runs once, so it must have exactly one pass.
+ * - A loop is seeded whole or not at all. The caller must seed the batch node
+ *   with t + 1 passes, where every pass but the last fills the loop slot and
+ *   the last one does not, and every other node in the loop with exactly t
+ *   passes. The batch node's outputs decide how many times the loop runs, and
+ *   the loop ends when a batch pass does not fill the loop slot. So fewer
+ *   member passes would leave a pass without outputs, and a batch node whose
+ *   last pass still fills the loop slot would leave the loop unfinished.
  */
 function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): void {
 	// The graph was validated first, so the trigger exists.
@@ -138,9 +140,7 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 			);
 		}
 		if (!reachable.has(nodeId)) {
-			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which the trigger does not reach`,
-			);
+			throw new GraphValidationError(`Node ${nodeId} is seeded, but the trigger does not reach it`);
 		}
 		if (passes.length === 0) {
 			throw new GraphValidationError(`Node ${nodeId} is seeded with no passes`);
@@ -154,7 +154,7 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 	for (const loop of loops) validateSeededLoop(loop, seededSteps);
 }
 
-/** A loop is seeded whole or not at all. See `validateSeededSteps`. */
+/** Checks that a loop is seeded whole or not at all. See `validateSeededSteps` for why. */
 function validateSeededLoop(loop: WorkflowLoop, seededSteps: SeededSteps): void {
 	const seeded = new Set(Object.keys(seededSteps));
 	const seededMemberIds = [...loop.memberIds].filter((id) => seeded.has(id));

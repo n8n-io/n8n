@@ -243,15 +243,18 @@ export class EngineV2ManualRunPlanner {
 	}
 
 	/**
-	 * Every pass of a loop the caller holds complete results for, or nothing
-	 * when the loop has not run. v1 keeps a member's passes as its runs in
-	 * order, so run i is pass i. The batch node runs once more than the body:
-	 * its last run fires the done slot instead of the loop slot.
+	 * Seeds every pass of a loop that finished, or nothing when the loop has
+	 * not run. v1 stores a node's runs in order, so run i of a loop member is
+	 * pass i. The batch node has one more run than the rest of the loop: on
+	 * its last run it fires the done slot instead of the loop slot.
 	 *
-	 * The engine records a loop whole or not at all, so anything short of that
-	 * is refused here with the node named: a pinned member, which v1 would pin
-	 * on every pass; a loop that did not finish; and a member that skipped a
-	 * pass, which v1's run data cannot place.
+	 * The engine accepts a loop seeded whole or not at all, so this refuses
+	 * anything else and tells the user which node is the problem:
+	 *
+	 * - A pinned node inside the loop. v1 would use the pin on every pass.
+	 * - A loop that did not finish.
+	 * - A node that ran a different number of times than the loop had passes.
+	 *   v1's run data cannot say which pass it skipped.
 	 */
 	private loopSeeds(loop: Set<INode>, runData: IRunData, pinData: IPinData): SeededNode[] {
 		const members = [...loop];
