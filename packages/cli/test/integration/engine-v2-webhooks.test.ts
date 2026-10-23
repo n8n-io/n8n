@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto';
 import { agent as testAgent } from 'supertest';
 
 import { CacheService } from '@n8n/backend-services';
+import { ActiveExecutions } from '@/active-executions';
 import { InMemoryExecutionResponseChannel } from '@/modules/engine-v2/response-channel/in-memory-execution-response-channel';
 import { InMemoryExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/in-memory-execution-response-receiver';
 import { InMemoryExecutionResponseSender } from '@/modules/engine-v2/response-channel/in-memory-execution-response-sender';
@@ -243,5 +244,40 @@ describe('webhook runs on engine v2', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.text).toBe(`${JSON.stringify(errorChunk)}\n`);
+	});
+});
+
+describe.each([
+	{ engine: 'with engineType v1', settings: { engineType: 'v1' as const } },
+	{ engine: 'with no engineType', settings: {} },
+])('test webhook runs $engine', ({ settings }) => {
+	test('runs the workflow on v1 and persists the execution', async () => {
+		const webhookId = randomUUID();
+		const workflow = await createWorkflow(
+			{ active: false, nodes: [webhookNode(webhookId)], connections: {}, settings },
+			builder,
+		);
+
+		const listening = await startListening(workflow.id);
+		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+
+		const response = await webhookAgent
+			.post(`/${webhookTestEndpoint}/${webhookId}`)
+			.send({ order: 42 });
+
+		expect(response.statusCode).toBe(200);
+		expect(startExecution).not.toHaveBeenCalled();
+
+		const executions = await getAllExecutions();
+		expect(executions.filter((e) => e.workflowId === workflow.id)).toEqual([
+			expect.objectContaining({ id: expect.stringMatching(/^\d+$/), mode: 'manual' }),
+		]);
+
+		// Let the v1 run finish before the next test truncates its row.
+		const activeExecutions = Container.get(ActiveExecutions);
+		const [{ id: executionId }] = executions;
+		if (activeExecutions.has(executionId)) {
+			await activeExecutions.getPostExecutePromise(executionId);
+		}
 	});
 });
