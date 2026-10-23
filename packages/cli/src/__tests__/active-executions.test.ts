@@ -201,6 +201,72 @@ describe('ActiveExecutions', () => {
 		);
 	});
 
+	describe('starter of an unsaved manual execution', () => {
+		const unsavedExecutionData: IWorkflowExecutionDataProcess = {
+			...executionData,
+			workflowData: { ...executionData.workflowData, settings: { saveManualExecutions: false } },
+		};
+
+		const { pruneData, pruneDataHardDeleteBuffer } = executionsConfig;
+
+		beforeEach(() => {
+			executionsConfig.pruneData = true;
+			executionsConfig.pruneDataHardDeleteBuffer = 1;
+		});
+
+		afterEach(() => {
+			executionsConfig.pruneData = pruneData;
+			executionsConfig.pruneDataHardDeleteBuffer = pruneDataHardDeleteBuffer;
+		});
+
+		test('Should record the user who starts a manual execution that n8n will not save', async () => {
+			await activeExecutions.add(unsavedExecutionData);
+
+			expect(executionPersistence.create).toHaveBeenCalledWith(
+				expect.objectContaining({ startedByUserId: executionData.userId }),
+			);
+		});
+
+		test('Should not record a starter for a manual execution that n8n saves', async () => {
+			await activeExecutions.add(executionData);
+
+			expect(executionPersistence.create).toHaveBeenCalledWith(
+				expect.objectContaining({ startedByUserId: null }),
+			);
+		});
+
+		test('Should not record a starter while pruning is off', async () => {
+			executionsConfig.pruneData = false;
+
+			await activeExecutions.add(unsavedExecutionData);
+
+			expect(executionPersistence.create).toHaveBeenCalledWith(
+				expect.objectContaining({ startedByUserId: null }),
+			);
+		});
+
+		test('Should not record a starter for a non-manual execution', async () => {
+			await activeExecutions.add({ ...unsavedExecutionData, executionMode: 'webhook' });
+
+			expect(executionPersistence.create).toHaveBeenCalledWith(
+				expect.objectContaining({ startedByUserId: null }),
+			);
+		});
+
+		test('Should not change the starter when an execution resumes', async () => {
+			executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+			await activeExecutions.add(unsavedExecutionData, {
+				executionId: FAKE_SECOND_EXECUTION_ID,
+				expectedStatus: 'waiting',
+			});
+
+			expect(executionPersistence.create).not.toHaveBeenCalled();
+			const update = executionPersistence.updateExistingExecution.mock.calls[0][1];
+			expect(update).not.toHaveProperty('startedByUserId');
+		});
+	});
+
 	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
 		// Mock updateExistingExecution to return false (status check failed)
 		executionPersistence.updateExistingExecution.mockResolvedValue(false);

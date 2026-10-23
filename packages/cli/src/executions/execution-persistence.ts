@@ -56,6 +56,7 @@ type UpdatableEntityColumns = Omit<
 	| 'createdAt'
 	| 'startedAt'
 	| 'customData'
+	| 'deletedAt'
 >;
 
 /**
@@ -238,6 +239,7 @@ export class ExecutionPersistence {
 		const entity = await this.executionRepository.findOne({
 			where: this.buildEntityWhereCondition(executionId, conditions),
 			select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
+			withDeleted: conditions?.includeDeleted,
 		});
 
 		if (!entity) return false;
@@ -320,6 +322,38 @@ export class ExecutionPersistence {
 
 		if (!entity) return undefined;
 
+		return await this.readSingleExecution(entity, options);
+	}
+
+	/**
+	 * A manual execution that n8n did not save, with its run data, for the user who
+	 * started it. See `ExecutionRepository.findUnsavedManualExecution`.
+	 */
+	async findUnsavedManualExecution(
+		executionId: string,
+		startedByUserId: string,
+	): Promise<IExecutionResponse | undefined> {
+		const entity = await this.executionRepository.findUnsavedManualExecution(
+			executionId,
+			startedByUserId,
+		);
+		if (!entity) return undefined;
+
+		return await this.readSingleExecution(entity, { includeData: true, unflattenData: true });
+	}
+
+	private async readSingleExecution(
+		entity: ExecutionEntity,
+		options: { includeData: true; unflattenData: true; includeAnnotation?: boolean },
+	): Promise<IExecutionResponse | undefined>;
+	private async readSingleExecution(
+		entity: ExecutionEntity,
+		options: { unflattenData?: boolean; includeAnnotation?: boolean; maxDataSizeBytes?: number },
+	): Promise<FoundExecution | undefined>;
+	private async readSingleExecution(
+		entity: ExecutionEntity,
+		options: { unflattenData?: boolean; includeAnnotation?: boolean; maxDataSizeBytes?: number },
+	): Promise<FoundExecution | undefined> {
 		const max = this.maxDisplayDataSize(options);
 		const ref = { workflowId: entity.workflowId, executionId: entity.id };
 
@@ -802,6 +836,7 @@ export class ExecutionPersistence {
 					where: whereCondition,
 					select: ['id'],
 					lock,
+					withDeleted: conditions.includeDeleted,
 				});
 				if (!matchingRow) return false;
 			}
@@ -899,6 +934,9 @@ export class ExecutionPersistence {
 			customData: _customData,
 			jsonSizeBytes: _jsonSizeBytes,
 			binaryDataSizeBytes: _binaryDataSizeBytes,
+			// Only the delete paths set it. A caller that writes back an execution it read
+			// earlier must not restore a row that was deleted in the meantime.
+			deletedAt: _deletedAt,
 			...updatableColumns
 		} = execution;
 		return updatableColumns;

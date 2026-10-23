@@ -203,8 +203,10 @@ export class WorkflowRunner {
 								const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
 								const isManualExecution = fullExecutionData.mode === 'manual';
 								if (isManualExecution && !saveSettings.manual) {
-									await this.executionRepository.softDelete(executionId);
-								} else if (!isManualExecution && !saveSettings.success) {
+									await this.executionRepository.softDeleteUnsavedManualExecution(executionId);
+								} else if (isManualExecution) {
+									await this.executionRepository.clearUnsavedManualExecutionStarter(executionId);
+								} else if (!saveSettings.success) {
 									await this.executionPersistence.deleteInFlightExecution({
 										workflowId: fullExecutionData.workflowId,
 										executionId,

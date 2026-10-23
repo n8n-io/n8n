@@ -27,6 +27,7 @@ import type PCancelable from 'p-cancelable';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { resolveUnsavedManualExecutionStarter } from '@/execution-lifecycle/unsaved-manual-execution';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	IExecutingWorkflowData,
@@ -104,6 +105,8 @@ export class ActiveExecutions {
 					retryOf: executionData.retryOf ?? undefined,
 					tracingContext: executionData.tracingContext ?? null,
 					deduplicationKey: executionData.deduplicationKey,
+					startedByUserId:
+						resolveUnsavedManualExecutionStarter(executionData, this.executionsConfig) ?? null,
 				};
 
 				const workflowId = executionData.workflowData.id;

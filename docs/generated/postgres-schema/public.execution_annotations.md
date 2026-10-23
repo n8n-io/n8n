@@ -57,6 +57,7 @@ erDiagram
   varchar retryOf
   varchar retrySuccessId
   timestamp_3__with_time_zone startedAt
+  uuid startedByUserId
   varchar status
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt

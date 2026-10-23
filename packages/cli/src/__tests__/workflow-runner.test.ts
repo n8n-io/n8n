@@ -281,8 +281,8 @@ describe('processError', () => {
 			'deleteInFlightExecution',
 		);
 		const softDeleteSpy = vi
-			.spyOn(Container.get(ExecutionRepository), 'softDelete')
-			.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+			.spyOn(Container.get(ExecutionRepository), 'softDeleteUnsavedManualExecution')
+			.mockResolvedValue(false);
 
 		globalConfig.executions.mode = 'queue';
 		await runner.processError(

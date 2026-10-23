@@ -2159,16 +2159,22 @@ export class InstanceAiAdapterService {
 			executionId: string,
 			scopes: Scope[] = ['workflow:read'],
 		) => {
-			const execution = await executionRepository.findSingleExecution(executionId, {
+			const savedExecution = await executionRepository.findSingleExecution(executionId, {
 				includeData: false,
 			});
+			// A manual execution that n8n did not save stays readable only for the user who
+			// started it, until pruning hard-deletes it.
+			const execution =
+				savedExecution ??
+				(await executionRepository.findUnsavedManualExecution(executionId, user.id));
 			if (!execution) {
 				throw new Error(`Execution ${executionId} not found`);
 			}
 			const workflow = await workflowFinderService.findWorkflowForUser(
 				execution.workflowId,
 				user,
-				scopes,
+				// The user must still be allowed to read executions of the workflow.
+				savedExecution ? scopes : [...scopes, 'execution:read'],
 			);
 			if (!workflow) {
 				throw new Error(`Execution ${executionId} not found`);

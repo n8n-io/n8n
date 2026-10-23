@@ -694,6 +694,16 @@ function handleFixWithAiFromOffer() {
 		{
 			authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
 			pushRef: rootStore.pushRef,
+			// Names the failed run, so the agent reads that execution instead of
+			// guessing from the list. A run that n8n did not save has no list entry.
+			attachments: [
+				{
+					type: 'workflow',
+					id: offer.workflowId,
+					...(offer.workflowName ? { name: offer.workflowName } : {}),
+					executionId: offer.executionId,
+				},
+			],
 		},
 	);
 }

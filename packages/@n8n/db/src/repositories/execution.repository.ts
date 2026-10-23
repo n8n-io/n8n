@@ -94,6 +94,8 @@ export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
 	requireNotFinished?: boolean;
 	requireNotCanceled?: boolean;
+	/** Also update a soft-deleted execution. */
+	includeDeleted?: boolean;
 }
 
 export interface IGetExecutionsQueryFilter {
@@ -760,6 +762,68 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			executionId,
 			storedAt,
 		}));
+	}
+
+	/**
+	 * Soft-deletes a finished manual execution that the save settings say not to keep.
+	 * A repeat call keeps the first deletion time.
+	 *
+	 * @returns whether the execution records the user who started it, who can read it
+	 * until pruning hard-deletes it. See {@link findUnsavedManualExecution}.
+	 */
+	async softDeleteUnsavedManualExecution(executionId: string): Promise<boolean> {
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+
+		await this.createQueryBuilder()
+			.update(ExecutionEntity)
+			.set({ deletedAt: () => dbNowLiteral(isPostgres) })
+			.where({ id: executionId, deletedAt: IsNull() })
+			.execute();
+
+		const execution = await this.findOne({
+			select: ['id', 'startedByUserId'],
+			where: { id: executionId },
+			withDeleted: true,
+		});
+		return Boolean(execution?.startedByUserId);
+	}
+
+	/** Stops a kept manual execution from being read as an unsaved one. */
+	async clearUnsavedManualExecutionStarter(executionId: string) {
+		await this.update(
+			{ id: executionId, startedByUserId: Not(IsNull()) },
+			{ startedByUserId: null },
+		);
+	}
+
+	/**
+	 * A manual execution that n8n did not save, if `startedByUserId` started it and the
+	 * hard-delete buffer still keeps it. Other users never get it, and nobody gets it
+	 * after the buffer or while pruning is off, also when the row still exists.
+	 */
+	async findUnsavedManualExecution(
+		executionId: string,
+		startedByUserId: string,
+	): Promise<ExecutionEntity | null> {
+		const { pruneData, pruneDataHardDeleteBuffer } = this.globalConfig.executions;
+		if (!pruneData || pruneDataHardDeleteBuffer <= 0) return null;
+
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+		const bufferMs = pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
+
+		return await this.findOne({
+			where: {
+				id: executionId,
+				mode: 'manual',
+				startedByUserId,
+				// A run whose final data was never written still has its start status.
+				status: In(['success', 'error', 'crashed', 'canceled']),
+				deletedAt: Raw((column) => `${column} > ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+			},
+			relations: { metadata: true },
+			// An unsaved manual execution is soft-deleted when it finishes.
+			withDeleted: true,
+		});
 	}
 
 	async deleteByIds(executionIds: string[]) {

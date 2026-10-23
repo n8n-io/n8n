@@ -217,6 +217,8 @@ describe('Execution Lifecycle Hooks', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		executionsConfig.preExecuteErrorCreatesExecution = false;
+		executionsConfig.pruneData = true;
+		executionsConfig.pruneDataHardDeleteBuffer = 1;
 		userRepository.findOne.mockResolvedValue(mock<User>());
 		redactionProxy.processExecution.mockImplementation(async (execution) => execution);
 		workflowData.settings = {};
@@ -1329,13 +1331,114 @@ describe('Execution Lifecycle Hooks', () => {
 					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 
-				it('should soft delete manual executions when manual saving is disabled', async () => {
-					lifecycleHooks.workflowData.settings = { saveManualExecutions: false };
-					lifecycleHooks = createHooks();
+				describe('when manual saving is disabled', () => {
+					beforeEach(() => {
+						workflowData.settings = { saveManualExecutions: false };
+						lifecycleHooks = createHooks();
+						executionRepository.softDeleteUnsavedManualExecution.mockResolvedValue(true);
+					});
+
+					it('should soft delete the execution, then keep its run data for its starter', async () => {
+						await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+
+						expect(executionRepository.softDeleteUnsavedManualExecution).toHaveBeenCalledWith(
+							executionId,
+						);
+						expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+							executionId,
+							expect.objectContaining({ status: 'error', data: failedRun.data }),
+							{ requireNotCanceled: true, includeDeleted: true },
+						);
+						const [deleteOrder] =
+							executionRepository.softDeleteUnsavedManualExecution.mock.invocationCallOrder;
+						const [writeOrder] =
+							executionPersistence.updateExistingExecution.mock.invocationCallOrder;
+						expect(deleteOrder).toBeLessThan(writeOrder);
+					});
+
+					it('should keep the data of a canceled run without the cancel guard', async () => {
+						const canceledRun = mock<IRun>({
+							status: 'canceled',
+							finished: false,
+							waitTill: undefined,
+							storedAt: 'db',
+							data: failedRun.data,
+						});
+
+						await lifecycleHooks.runHook('workflowExecuteAfter', [canceledRun, {}]);
+
+						expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+							executionId,
+							expect.objectContaining({ status: 'canceled' }),
+							{ includeDeleted: true },
+						);
+					});
+
+					it('should not keep run data when the execution records no starter', async () => {
+						executionRepository.softDeleteUnsavedManualExecution.mockResolvedValue(false);
+
+						await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+						expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+					});
+
+					it('should not keep run data while pruning is off', async () => {
+						executionsConfig.pruneData = false;
+
+						await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+						expect(executionRepository.softDeleteUnsavedManualExecution).toHaveBeenCalled();
+						expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+					});
+
+					it('should not keep run data with no hard-delete buffer', async () => {
+						executionsConfig.pruneDataHardDeleteBuffer = 0;
+
+						await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+						expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+					});
+
+					it('should not fail the run when keeping its data fails', async () => {
+						executionPersistence.updateExistingExecution.mockRejectedValueOnce(
+							new Error('Storage unavailable'),
+						);
+
+						await expect(
+							lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]),
+						).resolves.not.toThrow();
+					});
+				});
+
+				it('should stop a kept manual execution from being read as an unsaved one', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+						executionId,
+						expect.objectContaining({ startedByUserId: null }),
+						{ requireNotCanceled: true },
+					);
+				});
+
+				it('should clear the starter of a kept manual execution when the guarded write is skipped', async () => {
+					executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-					expect(executionRepository.softDelete).toHaveBeenCalledWith(executionId);
+					expect(executionRepository.clearUnsavedManualExecutionStarter).toHaveBeenCalledWith(
+						executionId,
+					);
+				});
+
+				it('should keep the starter of a manual execution that goes into waiting', async () => {
+					workflowData.settings = { saveManualExecutions: false };
+					lifecycleHooks = createHooks();
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+					const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
+					expect(payload).not.toHaveProperty('startedByUserId');
+					expect(executionRepository.clearUnsavedManualExecutionStarter).not.toHaveBeenCalled();
 				});
 
 				it('should not soft delete manual executions with waitTill', async () => {
@@ -1344,7 +1447,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
-					expect(executionRepository.softDelete).not.toHaveBeenCalled();
+					expect(executionRepository.softDeleteUnsavedManualExecution).not.toHaveBeenCalled();
 				});
 			});
 
@@ -1596,6 +1699,34 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 
 		describe('workflowExecuteAfter', () => {
+			it('should soft delete unsaved manual executions', async () => {
+				workflowData.settings = { saveManualExecutions: false };
+				const testHooks = getLifecycleHooksForScalingMain(
+					{ executionMode: 'manual', workflowData, pushRef, retryOf, userId },
+					executionId,
+				);
+
+				await testHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(executionRepository.softDeleteUnsavedManualExecution).toHaveBeenCalledWith(
+					executionId,
+				);
+				expect(executionPersistence.deleteInFlightExecution).not.toHaveBeenCalled();
+			});
+
+			it('should stop a kept manual execution from being read as an unsaved one', async () => {
+				const testHooks = getLifecycleHooksForScalingMain(
+					{ executionMode: 'manual', workflowData, pushRef, retryOf, userId },
+					executionId,
+				);
+
+				await testHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(executionRepository.clearUnsavedManualExecutionStarter).toHaveBeenCalledWith(
+					executionId,
+				);
+			});
+
 			it('should delete unsaved successful executions when success saving is disabled', async () => {
 				workflowData.settings = {
 					saveDataSuccessExecution: 'none',
@@ -2074,6 +2205,35 @@ describe('Execution Lifecycle Hooks', () => {
 				const payload = getUpdatePayload();
 				expect(payload.data).toBeDefined();
 				expect(payload.workflowData).toBeDefined();
+			});
+
+			it('should stop a kept manual execution from being read as an unsaved one', async () => {
+				const lifecycleHooks = createHooks('manual');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(getUpdatePayload()).toMatchObject({ startedByUserId: null });
+			});
+
+			it('should clear the starter of a kept manual execution when the guarded write is skipped', async () => {
+				executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
+				const lifecycleHooks = createHooks('manual');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(executionRepository.clearUnsavedManualExecutionStarter).toHaveBeenCalledWith(
+					executionId,
+				);
+			});
+
+			it('should keep the starter of an unsaved manual execution for main to soft-delete', async () => {
+				workflowData.settings = { saveManualExecutions: false };
+				const lifecycleHooks = createHooks('manual');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(getUpdatePayload()).not.toHaveProperty('startedByUserId');
+				expect(executionRepository.clearUnsavedManualExecutionStarter).not.toHaveBeenCalled();
 			});
 
 			it('should write run data when a workflow.postExecute external hook is registered', async () => {

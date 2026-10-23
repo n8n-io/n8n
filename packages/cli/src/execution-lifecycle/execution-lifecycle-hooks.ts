@@ -28,6 +28,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
@@ -39,6 +40,7 @@ import {
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
+import { keepsUnsavedManualExecutions } from './unsaved-manual-execution';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -654,6 +656,30 @@ function hookFunctionsSave(
 				}
 			}
 
+			// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
+			// As a result, we should create an IWorkflowBase object with only the data we want to save in it.
+			const prepareFullExecutionData = () => {
+				const fullExecutionData = prepareExecutionDataForDbUpdate({
+					runData: fullRunData,
+					workflowData: this.workflowData,
+					workflowStatusFinal: fullRunData.status,
+					retryOf,
+				});
+
+				const resultRunData = fullRunData.data?.resultData?.runData;
+				fullExecutionData.usedPrivateCredentials =
+					runDataUsedDynamicCredentials(resultRunData) ||
+					runDataAttemptedDynamicCredentials(resultRunData);
+
+				return fullExecutionData;
+			};
+
+			// A completed run must never overwrite a status the user already canceled. This applies
+			// to every save path that runs this hook; the case that motivated it is a subworkflow
+			// stopped in queue mode, where the worker keeps running the child to completion after
+			// the cancel and would otherwise write `success` over `canceled`.
+			const saveConditions = { requireNotCanceled: true };
+
 			if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
 				/**
 				 * When manual executions are not being saved, we only soft-delete
@@ -663,8 +689,38 @@ function hookFunctionsSave(
 				 * The manual execution and its binary data will be hard-deleted
 				 * on the next pruning cycle after the grace period set by
 				 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
+				 *
+				 * Until then, the user recorded as its starter can also read its run
+				 * data, for example in the n8n Assistant. The execution is deleted
+				 * before its run data is written, so no other reader gets that data.
+				 * Known limit: in blob storage, a write that stalls for longer than the
+				 * buffer can leave its data behind after pruning removes the execution.
 				 */
-				await executionRepository.softDelete(this.executionId);
+				const keptForStarter = await executionRepository.softDeleteUnsavedManualExecution(
+					this.executionId,
+				);
+				if (keptForStarter && keepsUnsavedManualExecutions(Container.get(ExecutionsConfig))) {
+					try {
+						await updateExistingExecution({
+							executionId: this.executionId,
+							workflowId: this.workflowData.id,
+							executionData: prepareFullExecutionData(),
+							// A canceled run writes its own outcome, like a worker does.
+							conditions:
+								fullRunData.status === 'canceled'
+									? { includeDeleted: true }
+									: { ...saveConditions, includeDeleted: true },
+						});
+					} catch (error) {
+						// The run data is only kept for reading. Failing to keep it must not
+						// replace the run's own outcome.
+						logger.warn('Failed to keep the run data of an unsaved manual execution', {
+							executionId: this.executionId,
+							workflowId: this.workflowData.id,
+							error: ensureError(error),
+						});
+					}
+				}
 
 				return;
 			}
@@ -693,35 +749,27 @@ function hookFunctionsSave(
 				return;
 			}
 
-			// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
-			// As a result, we should create an IWorkflowBase object with only the data we want to save in it.
-			const fullExecutionData = prepareExecutionDataForDbUpdate({
-				runData: fullRunData,
-				workflowData: this.workflowData,
-				workflowStatusFinal: fullRunData.status,
-				retryOf,
-			});
+			const fullExecutionData = prepareFullExecutionData();
 
 			// When going into the waiting state, store the pushRef in the execution-data
 			if (fullRunData.waitTill && isManualMode) {
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
-			const resultRunData = fullRunData.data?.resultData?.runData;
-			fullExecutionData.usedPrivateCredentials =
-				runDataUsedDynamicCredentials(resultRunData) ||
-				runDataAttemptedDynamicCredentials(resultRunData);
+			// A run that started unsaved can finish saved when the save settings change
+			// while it waits. A kept execution must not stay readable as an unsaved one.
+			const keepsManualExecution = isManualMode && !fullRunData.waitTill;
+			if (keepsManualExecution) fullExecutionData.startedByUserId = null;
 
-			await updateExistingExecution({
+			const updated = await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData: fullExecutionData,
-				// A completed run must never overwrite a status the user already canceled. This applies
-				// to every save path that runs this hook; the case that motivated it is a subworkflow
-				// stopped in queue mode, where the worker keeps running the child to completion after
-				// the cancel and would otherwise write `success` over `canceled`.
-				conditions: { requireNotCanceled: true },
+				conditions: saveConditions,
 			});
+			if (keepsManualExecution && !updated) {
+				await executionRepository.clearUnsavedManualExecutionStarter(this.executionId);
+			}
 
 			await updateExistingExecutionMetadata(
 				this.executionId,
@@ -828,6 +876,11 @@ function hookFunctionsSaveWorker(
 				? { ...fullExecutionData, data: undefined, workflowData: undefined }
 				: fullExecutionData;
 
+			// A kept manual execution must not stay readable as an unsaved one. Cleared
+			// here as well as on main, because main may never handle the finished job.
+			const keepsManualExecution = isManualMode && saveSettings.manual && !fullRunData.waitTill;
+			if (keepsManualExecution) executionData.startedByUserId = null;
+
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations
 			// The guard only applies for a non-canceled outcome. This run's own canceled
@@ -838,6 +891,11 @@ function hookFunctionsSaveWorker(
 				executionData,
 				conditions: fullRunData.status === 'canceled' ? undefined : { requireNotCanceled: true },
 			});
+			if (keepsManualExecution && !wasUpdated) {
+				await Container.get(ExecutionRepository).clearUnsavedManualExecutionStarter(
+					this.executionId,
+				);
+			}
 		} finally {
 			// Counted only when the write above lands, so completions stay in sync with the database.
 			if (wasUpdated) {
@@ -982,8 +1040,11 @@ export function getLifecycleHooksForScalingMain(
 			 * The manual execution and its binary data will be hard-deleted
 			 * on the next pruning cycle after the grace period set by
 			 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
+			 *
+			 * The worker already wrote the run data, so until then the user
+			 * recorded as its starter can also read it.
 			 */
-			await executionRepository.softDelete(this.executionId);
+			await executionRepository.softDeleteUnsavedManualExecution(this.executionId);
 
 			return;
 		}
@@ -1004,6 +1065,11 @@ export function getLifecycleHooksForScalingMain(
 				this.executionId,
 				fullRunData.data?.resultData?.metadata,
 			);
+			// Main and the worker can resolve the save settings differently, for
+			// example during a configuration rollout.
+			if (isManualMode && !fullRunData.waitTill) {
+				await executionRepository.clearUnsavedManualExecutionStarter(this.executionId);
+			}
 		}
 	});
 

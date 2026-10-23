@@ -152,7 +152,12 @@ export class ExecutionsConfig {
 	@Env('EXECUTIONS_DATA_SAVE_ON_PROGRESS')
 	saveExecutionProgress: boolean = false;
 
-	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
+	/**
+	 * Whether to save execution data for manual executions. You can override this for each workflow.
+	 * When set to false and pruning is on, n8n keeps each finished manual execution only for the user
+	 * who ran it, for example to debug it with the n8n Assistant, and deletes it once
+	 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER` has passed.
+	 */
 	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
 	saveDataManualExecutions: boolean = true;
 

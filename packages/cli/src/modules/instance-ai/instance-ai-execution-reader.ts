@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import type { ExecutionRedaction } from '@n8n/instance-ai';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 /**
  * Load an execution with its run data, redacted for `viewer` the same way the
@@ -13,15 +14,19 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
  * This is the only place the Assistant may read execution data from. The
  * extractors take the loaded execution, so they cannot read raw data. The
  * caller checks that the viewer can read the workflow first.
+ *
+ * A manual execution that n8n did not save is loaded only for the user who
+ * started it, until pruning hard-deletes it. See {@link loadUnsavedManualExecution}.
  */
 export async function loadExecutionForViewer(
 	executionId: string,
 	viewer: User,
 ): Promise<IExecutionResponse | undefined> {
-	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
+	const execution =
+		(await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		})) ?? (await loadUnsavedManualExecution(executionId, viewer));
 	if (!execution) return undefined;
 
 	// Redacts in place. Never reveals: a reveal is an audited user action in the
@@ -30,6 +35,29 @@ export async function loadExecutionForViewer(
 		user: viewer,
 	});
 	return execution;
+}
+
+/**
+ * An unsaved manual execution that `viewer` started, with its run data. It also
+ * checks that the viewer may still read executions of its workflow, because a
+ * caller's earlier check may have passed while the execution was still saved.
+ */
+async function loadUnsavedManualExecution(
+	executionId: string,
+	viewer: User,
+): Promise<IExecutionResponse | undefined> {
+	const execution = await Container.get(ExecutionPersistence).findUnsavedManualExecution(
+		executionId,
+		viewer.id,
+	);
+	if (!execution) return undefined;
+
+	const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
+		execution.workflowId,
+		viewer,
+		['execution:read'],
+	);
+	return workflow ? execution : undefined;
 }
 
 /**

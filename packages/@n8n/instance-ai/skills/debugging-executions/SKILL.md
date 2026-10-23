@@ -94,6 +94,20 @@ shape — do not rebuild the workflow with a Manual Trigger. For trigger
 `knowledge-base/reference/trigger-input-data-shapes.md`
 when a sandbox workspace is available.
 
+## The run the user is looking at
+
+A message about a failed run often names its execution, for example "currently
+viewing its execution `<id>`". Read that execution by its id. Do not pick a run
+from `list` instead: `list` can return an older run, and it does not show a
+manual run that n8n did not save.
+
+When saving manual executions is turned off, n8n keeps a manual run only for a
+short time after it finishes, and only the user who ran it can read it. You act
+as that user, so you can read it by its id in that time. When the id is not
+found, tell the user that n8n no longer has that run. Ask the user to run it
+again, or offer to run it yourself: n8n saves every run you start. A new run
+repeats what its nodes do, so check for write nodes first (see below).
+
 ## Failed execution
 
 `workflow_builder_executions(action="debug")` already includes `failedNode.resolvedParameters` —
