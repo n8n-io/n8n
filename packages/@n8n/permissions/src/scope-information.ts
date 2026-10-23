@@ -194,40 +194,37 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	},
 	'promotions:create': {
 		displayName: 'Create promotion setup',
-		description:
-			'Allows creating promotion providers, including their credentials, and promotion environments.',
+		description: 'Allows creating promotion providers and environments.',
 	},
 	'promotions:read': {
 		displayName: 'Read promotion setup',
 		description:
-			'Allows reading promotion providers, environments, and their linked projects. Credentials are never returned.',
+			'Allows reading promotion providers, environments, and the projects linked to each environment.',
 	},
 	'promotions:update': {
 		displayName: 'Update promotion setup',
-		description:
-			'Allows updating promotion providers, including their credentials, and promotion environments.',
+		description: 'Allows updating promotion providers and environments.',
 	},
 	'promotions:delete': {
 		displayName: 'Delete promotion setup',
-		description:
-			'Allows deleting promotion providers and environments. Deleting an environment also removes its local working copy.',
+		description: 'Allows deleting promotion providers and environments.',
 	},
 	'promotions:list': {
 		displayName: 'List promotion setup',
 		description: 'Allows listing promotion providers and environments.',
 	},
 	'promotions:discover': {
-		displayName: 'Discover promotion repositories',
-		description: 'Allows listing remote repositories and branches with saved provider credentials.',
+		displayName: 'Discover promotion locations',
+		description: 'Allows listing the locations that a promotion provider can reach.',
 	},
 	'promotions:connect': {
 		displayName: 'Connect promotion environment',
-		description: 'Allows creating and removing the local working copy of a promotion environment.',
+		description: 'Allows connecting this instance to a promotion environment and disconnecting it.',
 	},
 	'promotions:promote': {
 		displayName: 'Promote',
 		description:
-			'Allows previewing and promoting changes from team projects to the Git branch of a promotion environment.',
+			'Allows previewing and promoting changes from team projects to a promotion environment.',
 	},
 	'promotions:manageProjects': {
 		displayName: 'Manage promotion environment projects',
@@ -236,14 +233,15 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'promotions:apply': {
 		displayName: 'Apply',
 		description:
-			'Allows previewing and applying changes from the Git branch of a promotion environment to this instance.',
+			'Allows previewing and applying changes from a promotion environment to this instance.',
 	},
 	'promotions:readReviews': {
 		displayName: 'Read promotion reviews',
-		description: 'Allows listing promotion reviews and reading their state from the Git host.',
+		description: 'Allows listing promotion reviews and viewing their status and changes.',
 	},
 	'promotions:approveReviews': {
 		displayName: 'Approve promotion reviews',
-		description: 'Allows approving and merging promotion reviews on the Git host.',
+		description:
+			'Allows approving promotion reviews, which adds their changes to the promotion environment.',
 	},
 };
