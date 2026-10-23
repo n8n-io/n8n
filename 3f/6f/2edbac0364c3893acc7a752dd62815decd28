@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_5785bc20fb92a9::t_3e9162a9fe9e38 1247
+  s_5785bc20fb92a9::t_edb8347917531e 271,280-282,284
+  s_5785bc20fb92a9::t_2761d3bd94f7d4 41,247,332,594-596,624
+  s_5785bc20fb92a9::t_5975314ee1f911 1363,1476
+  s_5785bc20fb92a9::t_f87a7ff0607e61 1379,1482
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f6f2edbac0364c3893acc7a752dd62815decd28",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}
