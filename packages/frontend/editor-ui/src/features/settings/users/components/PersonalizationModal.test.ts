@@ -42,14 +42,18 @@ const renderModal = createComponentRenderer(PersonalizationModal, {
 					</div>
 				`,
 			},
+			DialogDescription: {
+				template: '<p><slot /></p>',
+			},
 		},
 	},
 });
 
 describe('PersonalizationModal', () => {
 	it('mounts', () => {
-		const { getByRole } = renderModal({ pinia: createTestingPinia() });
+		const { getByRole, getByText } = renderModal({ pinia: createTestingPinia() });
 		expect(getByRole('heading', { name: 'Customize n8n to you' })).toBeInTheDocument();
+		expect(getByText('These questions help us tailor n8n to you')).toBeInTheDocument();
 	});
 
 	describe('Company field', () => {
