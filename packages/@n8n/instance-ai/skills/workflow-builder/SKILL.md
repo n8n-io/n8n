@@ -734,9 +734,6 @@ asked for that exact name.
   Paths are shared by all workflows on the instance: a second active workflow
   with the same path and method cannot be published. Without a path, the URL
   uses the random webhook ID.
-- Gmail archive: the message resource has no `archive` operation. To archive a
-  Gmail message, remove the `INBOX` label with `operation: 'removeLabels'` and
-  `labelIds: ['INBOX']`; do not add an invented `ARCHIVE` label.
 
 ## Expression Reference
 
