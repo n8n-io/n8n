@@ -265,6 +265,7 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { RESOURCE_EXPLORATION_UNAVAILABLE } from './constants/resource-exploration';
 export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
@@ -519,10 +520,6 @@ defineLazyExport(
 defineLazyExport('attemptRecordSchema', () => loadWorkflowLoop().attemptRecordSchema);
 defineLazyExport('workflowLoopStateSchema', () => loadWorkflowLoop().workflowLoopStateSchema);
 defineLazyExport('verificationResultSchema', () => loadWorkflowLoop().verificationResultSchema);
-defineLazyExport(
-	'PLANNED_TASK_PERMISSION_OVERRIDES',
-	() => loadPlannedTaskPermissions().PLANNED_TASK_PERMISSION_OVERRIDES,
-);
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export const buildAgentTreeFromEvents: typeof AgentTreeMod.buildAgentTreeFromEvents = lazyFunction(
 	() => loadAgentTree().buildAgentTreeFromEvents,
@@ -732,7 +729,8 @@ export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRunt
 export type PlannedTaskCoordinator = PlannedTaskServiceMod.PlannedTaskCoordinator;
 export const PlannedTaskCoordinator: typeof PlannedTaskServiceMod.PlannedTaskCoordinator =
 	lazyClass(() => loadPlannedTaskService().PlannedTaskCoordinator);
-export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermissionsMod.PLANNED_TASK_PERMISSION_OVERRIDES;
+export const applyPlannedTaskPermissionOverrides: typeof PlannedTaskPermissionsMod.applyPlannedTaskPermissionOverrides =
+	lazyFunction(() => loadPlannedTaskPermissions().applyPlannedTaskPermissionOverrides);
 export type {
 	InstanceAiChangedArtifact,
 	InstanceAiContext,

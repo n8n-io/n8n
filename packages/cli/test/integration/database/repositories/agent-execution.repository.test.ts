@@ -63,6 +63,7 @@ import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interru
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
 import type { AgentToolApprovalService } from '@/modules/agents/agent-tool-approval.service';
+import type { AgentKnowledgeUsageTracker } from '@/modules/agents/agent-knowledge-usage-tracker';
 import {
 	AgentMessageQueueService,
 	type ClaimedAgentMessage,
@@ -277,6 +278,7 @@ describe('AgentExecutionRepository', () => {
 				queue,
 				steering,
 				mock<AgentToolApprovalService>(),
+				mock<AgentKnowledgeUsageTracker>(),
 			),
 		};
 	}
