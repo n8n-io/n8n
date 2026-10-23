@@ -52,7 +52,7 @@ export class PromotionChangesController {
 		);
 	}
 
-	// Apply needs the pull scope, so its check does too.
+	// The Apply check uses the same scope as Apply.
 	@Get('/:projectId/changes/apply/blockers')
 	@GlobalScope('promotions:apply')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)

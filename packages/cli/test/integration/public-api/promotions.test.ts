@@ -2323,7 +2323,7 @@ describe('Promotions in Public API', () => {
 		});
 
 		it('rejects a user without the promote grant', async () => {
-			// The key carries the push scope, but a member's role does not grant it.
+			// The key carries the promote scope, but a member's role does not grant it.
 			const member = await createMemberWithApiKey({ scopes: ['promotions:promote'] });
 			const response = await testServer
 				.publicApiAgentFor(member)
@@ -2433,9 +2433,9 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each(['apply', 'apply/continue'])(
-			'%s rejects a user without the pull grant',
+			'%s rejects a user without the apply grant',
 			async (route) => {
-				// The key carries the pull scope, but a member's role does not grant it.
+				// The key carries the apply scope, but a member's role does not grant it.
 				const member = await createMemberWithApiKey({ scopes: ['promotions:apply'] });
 				const response = await testServer
 					.publicApiAgentFor(member)
@@ -2496,7 +2496,7 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each(['blocked', 'applied', 'source-changed'] as const)(
-			'returns the %s contract through both selective apply routes with only the pull scope',
+			'returns the %s contract through both selective apply routes with only the apply scope',
 			async (status) => {
 				const consumers = [
 					{
@@ -2622,7 +2622,7 @@ describe('Promotions in Public API', () => {
 		);
 
 		it.each(['apply', 'apply/continue'])(
-			'%s rejects a user without the pull grant',
+			'%s rejects a user without the apply grant',
 			async (route) => {
 				await Container.get(UserRepository).update(owner.id, { role: GLOBAL_MEMBER_ROLE });
 				const response = await testServer

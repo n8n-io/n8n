@@ -775,7 +775,7 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	await server.authAgentFor(owner).get(blockersEndpoint).expect(403);
 });
 
-// No built-in role has the read scope without the pull scope, so the requests above cannot tell them apart.
+// No built-in role has the read scope without the apply scope, so the requests above cannot tell them apart.
 it('requires the global apply scope for the Apply check', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 		PromotionChangesController as Controller,
