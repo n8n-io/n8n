@@ -128,6 +128,32 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill('skill_missing', project.id)).toBeNull();
 	});
 
+	it('reads instructions in two queries and one reference in one query', async () => {
+		const id = await createSkill(
+			{ projectId: project.id },
+			content({ files: [{ path: 'references/guide.md', content: 'Guide.' }] }),
+		);
+		await skills.update(id, { availableToAssistant: true });
+		const versionId = await latestVersionId(id);
+		const query = vi.spyOn(skills.manager.connection.logger, 'logQuery');
+		try {
+			expect((await skills.findAssistantSkill(id, project.id, versionId))?.files).toEqual([
+				{ path: 'references/guide.md' },
+			]);
+			const queries = query.mock.calls.map(([sql]) => sql);
+			expect(queries).toHaveLength(2);
+			expect(queries[1]).not.toContain('content');
+			query.mockClear();
+			expect(
+				(await skills.findAssistantSkillFile(id, project.id, versionId, 'references/guide.md'))
+					?.file.content,
+			).toBe('Guide.');
+			expect(query).toHaveBeenCalledTimes(1);
+		} finally {
+			query.mockRestore();
+		}
+	});
+
 	it('reads a selected saved version with current availability and scope checks', async () => {
 		const id = await createSkill(
 			{ projectId: project.id },

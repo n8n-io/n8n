@@ -21,7 +21,12 @@ import { getSkillHash } from './skill-hash';
 import { SkillNameTakenError } from './skill-name-taken.error';
 import type { SkillFrontmatter } from './skill-version.entity';
 import type { Skill, SkillSource } from './skill.entity';
-import { SkillRepository, type ResolvedSkillRow, type SkillTarget } from './skill.repository';
+import {
+	SkillRepository,
+	type AssistantSkillAccess,
+	type ResolvedSkillRow,
+	type SkillTarget,
+} from './skill.repository';
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };
@@ -177,7 +182,7 @@ export class SkillService {
 
 	private async canReadForAssistant(
 		context: AssistantSkillContext,
-		skill: Skill,
+		skill: AssistantSkillAccess,
 		projectId: string | null,
 	): Promise<boolean> {
 		return (

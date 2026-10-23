@@ -81,6 +81,70 @@ describe('active skills', () => {
 		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([]);
 	});
 
+	it.each(['catalog', 'content'] as const)(
+		'preserves active selections across a temporary %s failure',
+		async (failure) => {
+			const memory = new InMemoryMemory();
+			await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['planning']);
+			const unavailable: RuntimeSkillSource = {
+				...(failure === 'catalog' ? filterRuntimeSkillSource(source, ['planning']) : source),
+				loadSkill: async (id) => (id === 'planning' ? null : await source.loadSkill(id)),
+				getLoadError: (id) =>
+					id === 'planning' ? { message: 'Temporarily unavailable.', retryable: true } : undefined,
+			};
+			const list = new AgentMessageList();
+			list.addHistory([
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: 'load_skill',
+							toolCallId: 'old-planning',
+							input: { skillId: 'planning' },
+							state: 'resolved',
+							output: { success: true, skillId: 'planning', content: 'Old planning instructions.' },
+						},
+					],
+				},
+			]);
+			const active = new ActiveSkills(unavailable, 'assistant', memory.skillState);
+			await active.restore(list, scope);
+			expect(active.instructions()).toBeUndefined();
+			expect(JSON.stringify(active.modelMessages(list.forLlm('').messages, list))).not.toContain(
+				'Old planning instructions.',
+			);
+			expect(list.activeSkillIds).toEqual(['planning']);
+			await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([
+				'planning',
+			]);
+
+			await active.load('builder');
+			expect(list.activeSkillIds).toEqual(['planning', 'builder']);
+			const resumed = AgentMessageList.deserialize(list.serialize());
+			const recovered = new ActiveSkills(source, 'assistant', memory.skillState);
+			await recovered.restore(resumed, scope);
+			expect(resumed.activeSkillIds).toEqual(['planning', 'builder']);
+			expect(
+				JSON.stringify(recovered.modelMessages(resumed.forLlm('').messages, resumed)),
+			).toContain('Create a task plan.');
+		},
+	);
+
+	it('removes a selection after a confirmed unavailable content result', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['planning']);
+		const unavailable: RuntimeSkillSource = {
+			...source,
+			loadSkill: async () => null,
+			getLoadError: () => ({ message: 'No longer available.', retryable: false }),
+		};
+		const list = new AgentMessageList();
+		await new ActiveSkills(unavailable, 'assistant', memory.skillState).restore(list, scope);
+		expect(list.activeSkillIds).toEqual([]);
+		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([]);
+	});
+
 	it('initializes stored state from historical skill loads', async () => {
 		const memory = new InMemoryMemory();
 		const list = new AgentMessageList();

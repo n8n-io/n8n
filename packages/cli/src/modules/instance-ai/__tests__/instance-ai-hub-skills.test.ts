@@ -127,7 +127,9 @@ describe('Assistant Hub runtime skills', () => {
 		const builtIns = createRuntimeSkillSource([builtIn]);
 		const provider = providerFor([content()]);
 		provider.isEnabled.mockRejectedValue(new Error('Flag unavailable'));
-		expect(await loadHubRunSkills(builtIns, provider, context)).toEqual({ source: builtIns });
+		const result = await loadHubRunSkills(builtIns, provider, context);
+		expect(await result.source.loadSkill(builtIn.id)).toMatchObject(builtIn);
+		expect(result.source.getLoadError?.('hub-existing')).toMatchObject({ retryable: true });
 		expect(provider.listSkills).not.toHaveBeenCalled();
 		expect(provider.readSkill).not.toHaveBeenCalled();
 	});
@@ -299,7 +301,7 @@ describe('Assistant Hub runtime skills', () => {
 		);
 		const [entry] = hubEntries(result.source);
 		expect(await result.source.loadSkill(entry.id)).toBeNull();
-		expect(result.source.getLoadError?.(entry.id)).toContain('invalid instructions');
+		expect(result.source.getLoadError?.(entry.id)?.message).toContain('invalid instructions');
 	});
 
 	it('applies the same UTF-8 byte limit to ASCII and non-ASCII content', async () => {
@@ -328,7 +330,7 @@ describe('Assistant Hub runtime skills', () => {
 			);
 			const [entry] = hubEntries(tooLarge.source);
 			expect(await tooLarge.source.loadSkill(entry.id)).toBeNull();
-			expect(tooLarge.source.getLoadError?.(entry.id)).toContain('UTF-8 bytes');
+			expect(tooLarge.source.getLoadError?.(entry.id)?.message).toContain('UTF-8 bytes');
 		}
 	});
 
@@ -338,7 +340,9 @@ describe('Assistant Hub runtime skills', () => {
 		const builtIns = createRuntimeSkillSource([builtIn]);
 		const result = await loadHubRunSkills(builtIns, provider, context);
 		expect(await result.source.loadSkill(builtIn.id)).toMatchObject(builtIn);
-		expect(result.availabilityNotice).toContain('Hub skills are unavailable for this turn');
+		expect(result.availabilityNotice).toContain('Hub skills are temporarily unavailable');
+		expect(result.source.getLoadError?.('hub-existing')?.retryable).toBe(true);
+		expect(result.source.getLoadError?.(builtIn.id)).toBeUndefined();
 	});
 
 	it('isolates a content-read failure from other skills', async () => {
@@ -348,7 +352,29 @@ describe('Assistant Hub runtime skills', () => {
 		const [failed, valid] = hubEntries(result.source);
 		expect(await result.source.loadSkill(failed.id)).toBeNull();
 		expect(await result.source.loadSkill(valid.id)).not.toBeNull();
-		expect(result.source.getLoadError?.(failed.id)).toContain('could not be loaded');
+		expect(result.source.getLoadError?.(failed.id)?.message).toContain('could not be loaded');
+	});
+
+	it('shares concurrent reads and retries temporary instruction failures', async () => {
+		const saved = content();
+		const provider = providerFor([saved]);
+		provider.readSkill.mockRejectedValueOnce(new Error('Unavailable'));
+		const { source } = await loadHubRunSkills(
+			createRuntimeSkillSource([builtIn]),
+			provider,
+			context,
+		);
+		const [entry] = hubEntries(source);
+		expect(await Promise.all([source.loadSkill(entry.id), source.loadSkill(entry.id)])).toEqual([
+			null,
+			null,
+		]);
+		expect(provider.readSkill).toHaveBeenCalledTimes(1);
+		expect(source.getLoadError?.(entry.id)?.retryable).toBe(true);
+		expect(await source.loadSkill(entry.id)).toMatchObject({ version: saved.versionId });
+		expect(provider.readSkill).toHaveBeenCalledTimes(2);
+		expect(provider.readSkill).toHaveBeenLastCalledWith(context, saved.id, saved.versionId);
+		expect(source.getLoadError?.(entry.id)).toBeUndefined();
 	});
 
 	it('does not activate a skill that becomes unavailable between discovery and reading', async () => {
@@ -462,7 +488,7 @@ describe('Assistant Hub runtime skills', () => {
 		);
 		const [entry] = hubEntries(source);
 		expect(await source.loadFile?.(entry.id, 'references/guide.md')).toBeNull();
-		expect(source.getLoadError?.(entry.id)).toContain('could not be loaded');
+		expect(source.getLoadError?.(entry.id)?.message).toContain('could not be loaded');
 		expect(await source.loadSkill(entry.id)).not.toBeNull();
 	});
 
@@ -481,7 +507,7 @@ describe('Assistant Hub runtime skills', () => {
 		);
 		const [entry] = hubEntries(result.source);
 		expect(await result.source.loadSkill(entry.id)).toBeNull();
-		expect(result.source.getLoadError?.(entry.id)).toContain('Unsupported');
+		expect(result.source.getLoadError?.(entry.id)?.message).toContain('Unsupported');
 	});
 
 	it('checks the UTF-8 limit for reference files', async () => {
@@ -497,7 +523,7 @@ describe('Assistant Hub runtime skills', () => {
 			const file = await result.source.loadFile?.(entry.id, 'references/guide.markdown');
 			if (extra) {
 				expect(file).toBeNull();
-				expect(result.source.getLoadError?.(entry.id)).toContain('UTF-8 bytes');
+				expect(result.source.getLoadError?.(entry.id)?.message).toContain('UTF-8 bytes');
 			} else expect(file?.bytes).toBe(RUNTIME_SKILL_MAX_OUTPUT_BYTES);
 		}
 	});
@@ -539,7 +565,9 @@ describe('Assistant Hub runtime skills', () => {
 			const result = await loadHubRunSkills(createRuntimeSkillSource([builtIn]), provider, context);
 			const [entry] = hubEntries(result.source);
 			expect(await result.source.loadSkill(entry.id)).toBeNull();
-			expect(result.source.getLoadError?.(entry.id)).toContain('version listed for this turn');
+			expect(result.source.getLoadError?.(entry.id)?.message).toContain(
+				'version listed for this turn',
+			);
 		},
 	);
 
@@ -562,22 +590,29 @@ describe('Assistant Hub runtime skills', () => {
 		expect(second.source.registry.skillsHash).not.toBe(first.source.registry.skillsHash);
 	});
 
-	it('preserves a prepared built-in registry without reading Hub content', async () => {
-		const builtIns = createRuntimeSkillSource([builtIn]);
-		builtIns.prepare = async () => {
-			builtIns.registry = {
-				...builtIns.registry,
-				skillsHash: 'prepared',
-				skills: builtIns.registry.skills.map((entry) => ({ ...entry, hash: 'prepared' })),
+	it.each(['available', 'flag-unavailable', 'catalog-unavailable'])(
+		'preserves a prepared built-in registry without reading Hub content: %s',
+		async (availability) => {
+			const builtIns = createRuntimeSkillSource([builtIn]);
+			builtIns.prepare = async () => {
+				builtIns.registry = {
+					...builtIns.registry,
+					skillsHash: 'prepared',
+					skills: builtIns.registry.skills.map((entry) => ({ ...entry, hash: 'prepared' })),
+				};
 			};
-		};
-		const provider = providerFor([content()]);
-		const result = await loadHubRunSkills(builtIns, provider, context);
-		const previousHash = result.source.registry.skillsHash;
-		await result.source.prepare?.();
-		expect(result.source.registry.skills[0].hash).toBe('prepared');
-		expect(result.source.registry.skillsHash).not.toBe(previousHash);
-		expect(hubEntries(result.source)).toHaveLength(1);
-		expect(provider.readSkill).not.toHaveBeenCalled();
-	});
+			const provider = providerFor([content()]);
+			if (availability === 'flag-unavailable')
+				provider.isEnabled.mockRejectedValue(new Error('Unavailable'));
+			if (availability === 'catalog-unavailable')
+				provider.listSkills.mockRejectedValue(new Error('Unavailable'));
+			const result = await loadHubRunSkills(builtIns, provider, context);
+			const previousHash = result.source.registry.skillsHash;
+			await result.source.prepare?.();
+			expect(result.source.registry.skills[0].hash).toBe('prepared');
+			expect(result.source.registry.skillsHash).not.toBe(previousHash);
+			expect(hubEntries(result.source)).toHaveLength(availability === 'available' ? 1 : 0);
+			expect(provider.readSkill).not.toHaveBeenCalled();
+		},
+	);
 });
