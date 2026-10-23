@@ -15,6 +15,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, toRef, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -31,6 +32,7 @@ import { usePromotionOperation } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
 import { usePromotionSelection } from '../composables/usePromotionSelection';
+import { getPromotionResourceDetails } from '../promotions.api';
 import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
 	indexBlockers,
@@ -42,7 +44,12 @@ import {
 	scopeCheck,
 	touchesDestructiveChange,
 } from '../promotionOperation';
-import { includedChangeCount, totalChangeCount } from '../promotionPreview.selection';
+import {
+	includedChangeCount,
+	totalChangeCount,
+	type ResourceKey,
+} from '../promotionPreview.selection';
+import { defaultActiveWorkflow, hasWorkflowDiff } from '../promotionPreview.workflow';
 import { buildPreviewTree, cardOrder } from '../promotionPreview.tree';
 
 const props = defineProps<{ projectId: string; direction: PromotionDirection }>();
@@ -52,6 +59,7 @@ const route = useRoute();
 const router = useRouter();
 const projectsStore = useProjectsStore();
 const rbacStore = useRBACStore();
+const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 
 const projectId = toRef(props, 'projectId');
@@ -88,7 +96,17 @@ const selection = usePromotionSelection(graph, {
 	disabled: computed(() => blockers.value.blocked),
 	locked: operation.isBusy,
 });
-const details = usePromotionResourceDetails(projectId, direction, preview, graph);
+const activeWorkflowKey = ref<ResourceKey>();
+const details = usePromotionResourceDetails(
+	async (keys) =>
+		await getPromotionResourceDetails(rootStore.restApiContext, props.projectId, props.direction, {
+			commitSha: preview.value?.commitSha ?? null,
+			keys,
+		}),
+	preview,
+	graph,
+	activeWorkflowKey,
+);
 
 const title = computed(() => i18n.baseText(`promotions.preview.title.${props.direction}`));
 watch(title, (value) => documentTitle.set(value), { immediate: true });
@@ -109,7 +127,30 @@ const inspectedKey = computed(() =>
 	typeof route.query.resource === 'string' ? route.query.resource : undefined,
 );
 const cards = ref<InstanceType<typeof PromotionChangeCards> | null>(null);
+
+const hasDiff = (key: ResourceKey) => {
+	const resource = graph.value?.resources.get(key);
+	return !!resource && hasWorkflowDiff(resource);
+};
+
+// One workflow diff is active at a time. A new preview keeps it while the workflow still has
+// changes. The first preview activates the inspected or the first changed workflow.
+watch(
+	order,
+	(keys, previous = []) => {
+		const key = activeWorkflowKey.value;
+		if (key ? keys.includes(key) && hasDiff(key) : previous.length > 0) return;
+		activeWorkflowKey.value = graph.value
+			? defaultActiveWorkflow(keys, graph.value.resources, inspectedKey.value)
+			: undefined;
+	},
+	{ immediate: true },
+);
+watch(inspectedKey, (key) => {
+	if (key && hasDiff(key)) activeWorkflowKey.value = key;
+});
 async function inspect(key: string) {
+	if (hasDiff(key)) activeWorkflowKey.value = key;
 	// The URL does not change for the same item, so scroll to its card again directly.
 	if (key === inspectedKey.value) {
 		await cards.value?.scrollToCard(key);
@@ -407,6 +448,7 @@ const treeResizer = useResizablePanel({
 					</N8nCallout>
 					<PromotionChangeCards
 						ref="cards"
+						v-model:active-workflow="activeWorkflowKey"
 						:order="order"
 						:graph="graph"
 						:direction="direction"
@@ -424,7 +466,6 @@ const treeResizer = useResizablePanel({
 				v-if="showBlockersTab && scopedCheck"
 				v-show="activeTab === 'blockers'"
 				:class="$style.blockers"
-				:project-id="projectId"
 				:check="scopedCheck"
 				:locations="locations"
 				:busy="operation.isBusy.value"

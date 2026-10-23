@@ -31,7 +31,7 @@ export function useAgentTelemetry() {
 	const rootStore = useRootStore();
 	const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 
-	const common = () => ({ session_id: rootStore.pushRef });
+	const common = () => ({ push_ref: rootStore.pushRef });
 
 	// Reports `null` when the user has no flag value for this experiment.
 	function currentN8nChatVariant(): string | null {

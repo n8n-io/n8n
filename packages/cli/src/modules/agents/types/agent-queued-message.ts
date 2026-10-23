@@ -1,4 +1,4 @@
-import type { SerializableAgentState } from '@n8n/agents';
+import type { EpisodicScopeDecision, JSONObject, SerializableAgentState } from '@n8n/agents';
 import type { AgentMessageAuthor, AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import type { Author } from 'chat';
 import type { BridgeExecutionContext } from '../integrations/agent-chat-integration';
@@ -47,6 +47,8 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	author: AgentMessageAuthor;
 	/** Typed platform context. The queue stores it on the message origin. */
 	integrationOrigin?: AgentMessageIntegrationOrigin;
+	/** The channel's episodic ownership for this turn. Absent on work queued before channels resolved it: that work has no episodic memory. */
+	episodicScope?: EpisodicScopeDecision;
 	sender: Author;
 	messageContext: IntegrationMessageContext;
 	contextConversation: SessionBinding;
@@ -83,6 +85,12 @@ export interface AgentExecutionAdmission {
 }
 
 export const EXECUTION_METADATA_KEY = 'n8nExecutionId';
+
+/** Execution id that a host stored in a persistence scope's metadata. */
+export function hostMetadataExecutionId(metadata: JSONObject | undefined): string | undefined {
+	const id = metadata?.[EXECUTION_METADATA_KEY];
+	return typeof id === 'string' ? id : undefined;
+}
 
 export function checkpointExecutionId(state: SerializableAgentState): string | undefined {
 	if (state.persistence?.delegated) return undefined;

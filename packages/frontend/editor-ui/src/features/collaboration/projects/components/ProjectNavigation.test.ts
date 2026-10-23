@@ -131,7 +131,6 @@ describe('ProjectsNavigation', () => {
 			'instance-ai': {
 				enabled: true,
 				mcpConnectionsAvailable: true,
-				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,
@@ -140,6 +139,7 @@ describe('ProjectsNavigation', () => {
 				workflowBuilderAvailable: true,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
 			},
 		};
 	}
@@ -447,7 +447,7 @@ describe('ProjectsNavigation', () => {
 				{
 					item: 'new_chat',
 					variant: 'variant-a',
-					session_id: expect.any(String),
+					push_ref: expect.any(String),
 				},
 			);
 		});
@@ -475,7 +475,7 @@ describe('ProjectsNavigation', () => {
 					item: 'chat',
 					chat_type: 'agent',
 					variant: 'variant-a',
-					session_id: expect.any(String),
+					push_ref: expect.any(String),
 				},
 			);
 		});

@@ -226,6 +226,57 @@ describe('TestRunner', () => {
 		});
 	});
 
+	describe('makeRpcCall', () => {
+		const bytes = Buffer.from([0, 255, 128, 10, 0xc3]);
+
+		/** Simulates the JSON transport between runner and broker. */
+		const throughJson = <T>(value: unknown): T => {
+			const json = JSON.stringify(value);
+			return JSON.parse(json) as T;
+		};
+
+		it('should send buffer params as base64 across JSON', async () => {
+			runner = newTestRunner();
+			const sendSpy = vi.spyOn(runner, 'send').mockImplementation((message) => {
+				const sent = throughJson<{ callId: string; params: unknown[] }>(message);
+				expect(sent.params).toEqual([{ type: 'Buffer', base64: bytes.toString('base64') }, 'file']);
+				runner.handleRpcResponse(sent.callId, 'success', undefined);
+			});
+
+			await runner.makeRpcCall('task-1', 'helpers.prepareBinaryData', [bytes, 'file']);
+
+			expect(sendSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['base64', (buffer: Buffer) => ({ type: 'Buffer', base64: buffer.toString('base64') })],
+			['byte array', (buffer: Buffer) => buffer.toJSON()],
+		])('should decode a %s buffer return value across JSON', async (_, serialize) => {
+			runner = newTestRunner();
+			vi.spyOn(runner, 'send').mockImplementation((message) => {
+				const { callId } = throughJson<{ callId: string }>(message);
+				runner.handleRpcResponse(callId, 'success', throughJson(serialize(bytes)));
+			});
+
+			const result = await runner.makeRpcCall('task-1', 'helpers.getBinaryDataBuffer', [0, 'data']);
+
+			expect(Buffer.isBuffer(result)).toBe(true);
+			expect(result).toEqual(bytes);
+		});
+
+		it('should reject with the message of an RPC error', async () => {
+			runner = newTestRunner();
+			vi.spyOn(runner, 'send').mockImplementation((message) => {
+				const { callId } = throughJson<{ callId: string }>(message);
+				runner.handleRpcResponse(callId, 'error', 'Failed to send RPC response to task runner');
+			});
+
+			await expect(
+				runner.makeRpcCall('task-1', 'helpers.getBinaryDataBuffer', [0, 'data']),
+			).rejects.toThrow('Failed to send RPC response to task runner');
+		});
+	});
+
 	describe('taskCancelled', () => {
 		test.each<[TaskStatus, string]>([
 			['aborting:cancelled', 'cancelled'],

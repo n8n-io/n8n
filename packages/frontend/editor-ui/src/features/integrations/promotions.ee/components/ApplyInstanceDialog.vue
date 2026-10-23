@@ -206,7 +206,6 @@ function onBindingsOpenChange(open: boolean) {
 		v-else
 		:open="true"
 		:blocked-result="blockedResult"
-		:continue-with="{ kind: 'instance' }"
 		@applied="onBindingsApplied"
 		@source-changed="onBindingsSourceChanged"
 		@update:open="onBindingsOpenChange"
