@@ -80,6 +80,7 @@ const emit = defineEmits<{
 	'session-select': [sessionId: string];
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
@@ -96,6 +97,7 @@ function onUsageUpdated(update: AgentUsageUpdate) {
 		...update,
 		usage: update.usage ?? previous?.usage,
 	};
+	emit('usage-updated', usageUpdates.value[update.executionId]);
 }
 
 const agentTelemetry = useAgentTelemetry();

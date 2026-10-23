@@ -191,9 +191,11 @@ describe('AgentPreviewDock', () => {
 		chat.vm.$emit('usage-updated', update);
 		await wrapper.vm.$nextTick();
 		expect(menu.props('usageUpdates')).toEqual({ 'execution-1': update });
+		expect(wrapper.emitted('usage-updated')).toEqual([[update]]);
 		chat.vm.$emit('usage-updated', { ...update, usage: undefined, complete: true });
 		await wrapper.vm.$nextTick();
 		expect(menu.props('usageUpdates')).toEqual({ 'execution-1': { ...update, complete: true } });
+		expect(wrapper.emitted('usage-updated')?.at(-1)).toEqual([{ ...update, complete: true }]);
 	});
 
 	it('keeps live usage when switching away from a session and back', async () => {

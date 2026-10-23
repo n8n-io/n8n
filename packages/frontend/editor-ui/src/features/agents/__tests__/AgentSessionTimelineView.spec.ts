@@ -168,6 +168,50 @@ describe('AgentSessionTimelineView', () => {
 		expect(wrapper.findComponent(AgentPreviewDock).props('canDeleteSession')).toBe(false);
 	});
 
+	it('shows live turn usage in the header and replaces it with saved totals', async () => {
+		const wrapper = await renderPrivateTimeline();
+		const panel = wrapper.findComponent(AgentSessionTimelinePanel);
+		const header = wrapper.findComponent(AgentSessionTimelineHeader);
+		const thread = {
+			...privateThread('thread-a'),
+			totalPromptTokens: 0,
+			totalCompletionTokens: 0,
+			totalCost: 0,
+		};
+		panel.vm.$emit('loaded', { thread, executions: [] });
+		await nextTick();
+		const dock = wrapper.findComponent(AgentPreviewDock);
+		const update = {
+			sessionId: 'thread-a',
+			executionId: 'execution-1',
+			complete: false,
+			usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+		};
+		dock.vm.$emit('usage-updated', update);
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 30, totalCost: 0.05 });
+		dock.vm.$emit('usage-updated', { ...update, sessionId: 'thread-c', executionId: 'other' });
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 30, totalCost: 0.05 });
+		const next = {
+			...update,
+			usage: { promptTokens: 40, completionTokens: 20, totalTokens: 60, cost: 0.1 },
+		};
+		dock.vm.$emit('usage-updated', next);
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 60, totalCost: 0.1 });
+		dock.vm.$emit('usage-updated', { ...update, usage: undefined, complete: true });
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 60, totalCost: 0.1 });
+		panel.vm.$emit('loaded', {
+			thread: { ...thread, totalPromptTokens: 40, totalCompletionTokens: 20, totalCost: 0.11 },
+			executions: [{ id: 'execution-1', status: 'success', totalTokens: 60, cost: 0.11 }],
+		});
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 60, totalCost: 0.11 });
+		wrapper.unmount();
+	});
+
 	it.each([
 		{ kind: 'current', sessionId: 'thread-a', shouldRedirect: true },
 		{ kind: 'non-current', sessionId: 'thread-c', shouldRedirect: false },

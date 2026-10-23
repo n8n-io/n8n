@@ -27,7 +27,7 @@ import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
-import type { AgentResource } from '@/features/agents/types';
+import type { AgentResource, AgentUsageUpdate } from '@/features/agents/types';
 import {
 	increasedBudgetConfig,
 	type BudgetAmountField,
@@ -62,6 +62,7 @@ const threadId = computed(() => route.params.threadId as string);
 // title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
+const usageUpdates = ref<Record<string, AgentUsageUpdate>>({});
 const agent = ref<AgentResource | null>(null);
 const isPreviewOpen = ref(false);
 const previewInitialized = ref(false);
@@ -194,10 +195,23 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropd
 	}));
 });
 
-const totalTokens = computed(() => {
-	if (!thread.value) return 0;
-	return thread.value.totalPromptTokens + thread.value.totalCompletionTokens;
-});
+function onUsageUpdated(update: AgentUsageUpdate) {
+	const previous = usageUpdates.value[update.executionId];
+	usageUpdates.value[update.executionId] = {
+		...update,
+		usage: update.usage ?? previous?.usage,
+	};
+}
+
+const sessionUsage = computed(() =>
+	thread.value
+		? getAgentSessionUsage(
+				{ thread: thread.value, executions: executions.value },
+				usageUpdates.value,
+			)
+		: { totalTokens: 0, cost: null },
+);
+const totalTokens = computed(() => sessionUsage.value.totalTokens);
 
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
 const canPreviewSession = computed(
@@ -206,11 +220,7 @@ const canPreviewSession = computed(
 		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
 );
 const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
-const totalCost = computed(() =>
-	thread.value
-		? getAgentSessionUsage({ thread: thread.value, executions: executions.value }).cost
-		: null,
-);
+const totalCost = computed(() => sessionUsage.value.cost);
 const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
 
 /**
@@ -445,6 +455,7 @@ function viewPreviewTrace() {
 				@delete-session="onDeletePreviewSession"
 				@session-select="onSessionPick"
 				@session-created="markSessionCreated"
+				@usage-updated="onUsageUpdated"
 				@close="togglePreview"
 			/>
 		</div>
