@@ -1,6 +1,6 @@
 import { createRuntimeSkillSource } from '../../../skills/registry';
 import type { ModelConfig } from '../../../types/sdk/agent';
-import { getModelIdString } from '../../../utils/model';
+import { getCatalogModelId, getModelIdString } from '../../../utils/model';
 import { AgentMessageList } from '../../model/message-list';
 import { ActiveSkills } from '../../skills/active-skills';
 import { RuntimeContextBuilder } from '../runtime-context';
@@ -36,6 +36,19 @@ describe('getModelIdString', () => {
 	it('falls back to "unknown" when neither id nor modelId is present', () => {
 		const model = {} as unknown as ModelConfig;
 		expect(getModelIdString(model)).toBe('unknown');
+	});
+});
+
+describe('getCatalogModelId', () => {
+	it('returns the served model of a Foundry deployment', () => {
+		expect(
+			getCatalogModelId({ id: 'azure-openai/my-chat', catalogModelId: 'azure-openai/gpt-4.1' }),
+		).toBe('azure-openai/gpt-4.1');
+	});
+
+	it('falls back to the model id', () => {
+		expect(getCatalogModelId({ id: 'azure-openai/my-chat' })).toBe('azure-openai/my-chat');
+		expect(getCatalogModelId('anthropic/claude-opus-4-8')).toBe('anthropic/claude-opus-4-8');
 	});
 });
 
@@ -149,24 +162,33 @@ describe('Vertex thinking options', () => {
 
 describe('Foundry reasoning', () => {
 	it.each([
-		{ modelId: 'azure-openai/anthropic/my-claude', expected: undefined },
-		{ modelId: 'azure-openai/my-chat', expected: 'high' },
-	])('passes reasoning $expected for $modelId', ({ modelId, expected }) => {
-		const builder = new RuntimeContextBuilder(
-			{
-				name: 'test',
-				model: {
-					id: modelId,
-					apiKey: 'az-key',
-					endpointType: 'foundry',
-					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+		{ modelId: 'azure-openai/anthropic/my-claude', catalogModelId: undefined, expected: undefined },
+		{
+			modelId: 'azure-openai/anthropic/my-claude',
+			catalogModelId: 'azure-openai/claude-opus-4-5',
+			expected: 'high',
+		},
+		{ modelId: 'azure-openai/my-chat', catalogModelId: undefined, expected: 'high' },
+	])(
+		'passes reasoning $expected for $modelId served as $catalogModelId',
+		({ modelId, catalogModelId, expected }) => {
+			const builder = new RuntimeContextBuilder(
+				{
+					name: 'test',
+					model: {
+						id: modelId,
+						...(catalogModelId ? { catalogModelId } : {}),
+						apiKey: 'az-key',
+						endpointType: 'foundry',
+						baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+					},
+					instructions: '',
+					reasoning: 'high',
 				},
-				instructions: '',
-				reasoning: 'high',
-			},
-			undefined,
-		);
+				undefined,
+			);
 
-		expect(builder.buildStaticLoopContext().reasoning).toBe(expected);
-	});
+			expect(builder.buildStaticLoopContext().reasoning).toBe(expected);
+		},
+	);
 });

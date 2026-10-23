@@ -8,6 +8,7 @@ import {
 	isOpenAiCustomEndpoint,
 } from '@n8n/ai-utilities/model-discovery';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
+import { isRecord } from '@n8n/utils/is-record';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
@@ -260,7 +261,7 @@ function buildAzureFoundryModel(
 	model: string,
 	fetch: FetchFn | undefined,
 ): LanguageModel {
-	const { baseURL, apiKey } = creds;
+	const { baseURL, apiKey, catalogModelId } = creds;
 	// Neither SDK takes a token provider, so Entra ID wraps the transport to
 	// send a fresh `Authorization: Bearer <token>` on every request.
 	const isEntra = isAzureEntraCredential(creds);
@@ -269,13 +270,10 @@ function buildAzureFoundryModel(
 		: fetch;
 
 	if (model.startsWith(AZURE_FOUNDRY_ANTHROPIC_PREFIX)) {
-		const deployment = model.slice(AZURE_FOUNDRY_ANTHROPIC_PREFIX.length);
-		return buildAzureFoundryAnthropicModel(
-			baseURL,
-			isEntra ? undefined : apiKey,
-			deployment,
-			transport,
-		);
+		return buildAzureFoundryAnthropicModel(baseURL, isEntra ? undefined : apiKey, transport, {
+			deployment: model.slice(AZURE_FOUNDRY_ANTHROPIC_PREFIX.length),
+			servedModel: catalogModelId ? splitModelId(catalogModelId).model : undefined,
+		});
 	}
 	return buildOpenAiCompatible(
 		'azure-openai',
@@ -286,12 +284,17 @@ function buildAzureFoundryModel(
 	);
 }
 
-/** Claude on Foundry answers on `<resource origin>/anthropic`; the SDK appends `/messages` to the versioned base. */
+/**
+ * Claude on Foundry answers on `<resource origin>/anthropic`; the SDK appends
+ * `/messages` to the versioned base. The SDK reads output limits, structured
+ * output and thinking support from the model id, so it gets the served model
+ * when known, and the request still names the deployment.
+ */
 function buildAzureFoundryAnthropicModel(
 	baseURL: string | undefined,
 	apiKey: string | undefined,
-	deployment: string,
-	fetch: FetchFn | undefined,
+	transport: FetchFn | undefined,
+	{ deployment, servedModel }: { deployment: string; servedModel?: string },
 ): LanguageModel {
 	if (!baseURL) throw new Error('baseURL is required for a Microsoft Foundry credential');
 	const { createAnthropic } = require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
@@ -301,8 +304,19 @@ function buildAzureFoundryAnthropicModel(
 		// token also keeps it from reading ANTHROPIC_API_KEY off the host; the Entra
 		// transport replaces it on every request.
 		...(apiKey ? { apiKey } : { authToken: 'entra-id' }),
-		fetch,
-	})(deployment);
+		fetch: servedModel ? withRequestModel(transport, deployment) : transport,
+	})(servedModel ?? deployment);
+}
+
+/** Wraps a `fetch` so each JSON request body names `model` instead of the SDK's model id. */
+function withRequestModel(fetch: FetchFn | undefined, model: string): FetchFn {
+	const base = fetch ?? globalFetch;
+	return async (input, init) => {
+		if (typeof init?.body !== 'string') return await base(input, init);
+		const body: unknown = JSON.parse(init.body);
+		if (!isRecord(body)) return await base(input, init);
+		return await base(input, { ...init, body: JSON.stringify({ ...body, model }) });
+	};
 }
 
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(

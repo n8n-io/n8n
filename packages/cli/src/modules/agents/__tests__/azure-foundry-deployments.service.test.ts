@@ -135,6 +135,48 @@ describe('AzureFoundryDeploymentsService', () => {
 		});
 	});
 
+	describe('findUnderlyingModel', () => {
+		const credential = {
+			endpointType: 'foundry',
+			foundryEndpoint,
+			apiKey: 'key',
+			project: 'my-project',
+		};
+
+		it('finds the served model and caches the list for the credential', async () => {
+			const { service } = makeService();
+			listAzureOpenAiModels.mockResolvedValue([
+				{ id: 'my-chat', name: 'my-chat (gpt-4.1)', modelFamily: 'openai', modelName: 'gpt-4.1' },
+				{
+					id: 'my-claude',
+					name: 'my-claude (claude-opus-4-5)',
+					modelFamily: 'anthropic',
+					modelName: 'claude-opus-4-5',
+				},
+			]);
+
+			await expect(service.findUnderlyingModel('cred-1', credential, 'my-chat')).resolves.toBe(
+				'gpt-4.1',
+			);
+			await expect(
+				service.findUnderlyingModel('cred-1', credential, 'anthropic/my-claude'),
+			).resolves.toBe('claude-opus-4-5');
+			expect(listAzureOpenAiModels).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not cache a failed listing', async () => {
+			const { service } = makeService();
+			listAzureOpenAiModels.mockRejectedValueOnce(new Error('down'));
+
+			await expect(
+				service.findUnderlyingModel('cred-1', credential, 'my-chat'),
+			).resolves.toBeUndefined();
+			await service.findUnderlyingModel('cred-1', credential, 'my-chat');
+
+			expect(listAzureOpenAiModels).toHaveBeenCalledTimes(2);
+		});
+	});
+
 	it('reports a project the deployments API does not know', async () => {
 		const { service } = makeService();
 		const error = new AzureProjectNotFoundError('missing-project');

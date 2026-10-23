@@ -66,8 +66,18 @@ describe('listAzureOpenAiModels', () => {
 		);
 		expect(calledHeaders(fetch)).toEqual({ 'api-key': 'key' });
 		expect(models).toEqual([
-			{ id: 'a-chat-model', name: 'a-chat-model (gpt-4o)', modelFamily: 'openai' },
-			{ id: 'my-gpt4', name: 'my-gpt4 (gpt-4.1-nano)', modelFamily: 'openai' },
+			{
+				id: 'a-chat-model',
+				name: 'a-chat-model (gpt-4o)',
+				modelFamily: 'openai',
+				modelName: 'gpt-4o',
+			},
+			{
+				id: 'my-gpt4',
+				name: 'my-gpt4 (gpt-4.1-nano)',
+				modelFamily: 'openai',
+				modelName: 'gpt-4.1-nano',
+			},
 		]);
 	});
 

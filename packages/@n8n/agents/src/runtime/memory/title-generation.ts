@@ -9,7 +9,7 @@ import type {
 	TokenUsage,
 } from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId } from '../../utils/model';
 import { createFilteredLogger } from '../logger';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { computeSideCallCost } from '../loop/side-call-cost';
@@ -279,7 +279,8 @@ export async function generateThreadTitle(opts: {
 		if (usage && opts.onSideCallUsage) {
 			await reportTitleUsage(
 				opts.onSideCallUsage,
-				getModelIdString(titleModelId),
+				// Priced by this id, so report the model a deployment serves.
+				getCatalogModelId(titleModelId),
 				usage,
 				opts.promptCaching,
 			);
