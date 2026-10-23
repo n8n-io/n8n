@@ -67,19 +67,27 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		},
 	);
 
-	it('does not count renaming an empty agent shell', () => {
-		const emptyConfig = { name: 'New name', model: '', instructions: '' } satisfies AgentJsonConfig;
-		service.record({
-			...event,
-			agent: Object.assign(new Agent(), { schema: emptyConfig, integrations: [] }),
-			config: emptyConfig,
-			changedParts: ['name'],
-			wasUnconfigured: true,
-		});
+	it.each(['name', 'description'] as const)(
+		'does not count a %s change to an empty agent shell',
+		(part) => {
+			const emptyConfig = {
+				name: 'New name',
+				description: 'Answers billing questions',
+				model: '',
+				instructions: '',
+			} satisfies AgentJsonConfig;
+			service.record({
+				...event,
+				agent: Object.assign(new Agent(), { schema: emptyConfig, integrations: [] }),
+				config: emptyConfig,
+				changedParts: [part],
+				wasUnconfigured: true,
+			});
 
-		expect(activity.emit).not.toHaveBeenCalled();
-		expect(telemetry.track).not.toHaveBeenCalled();
-	});
+			expect(activity.emit).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
+		},
+	);
 
 	it('does not count creating an empty agent shell', () => {
 		const emptyConfig = {
