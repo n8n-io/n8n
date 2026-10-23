@@ -1284,6 +1284,8 @@ export class AgentRuntimeReconstructionService {
 						mapping.model,
 						mapping.credential,
 						credentialProvider,
+						mapping.modelDeploymentName,
+						mapping.modelCatalogId,
 					),
 				abortSignal,
 			);

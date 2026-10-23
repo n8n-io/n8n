@@ -138,11 +138,12 @@ describe('rewriteAgentInstructions', () => {
 		await expect(rewriteAgentInstructions(deps, subject, ctx)).resolves.toBe(rewritten);
 	});
 
-	it('passes the Azure deployment name to the model resolver', async () => {
+	it('passes the Azure deployment and model identity to the model resolver', async () => {
 		agentConfigService.getConfig.mockResolvedValue({
 			model: 'azure-openai/gpt-4o',
 			credential: 'cred-1',
 			modelDeploymentName: 'my-deployment',
+			modelCatalogId: 'gpt-4o',
 			instructions: CURRENT,
 		} as never);
 		generateMock.mockResolvedValue(answer(BOTH_ADDED));
@@ -154,6 +155,7 @@ describe('rewriteAgentInstructions', () => {
 			'cred-1',
 			expect.anything(),
 			'my-deployment',
+			'gpt-4o',
 		);
 	});
 

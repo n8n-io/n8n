@@ -693,6 +693,36 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
 		});
 
+		it('persists modelCatalogId, retains it when omitted, and drops it on an empty value', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, modelCatalogId: 'gpt-4.1' },
+				user,
+				fencedOn(agent),
+			);
+			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
+			expect(saved.schema?.modelCatalogId).toBe('gpt-4.1');
+
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
+			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
+			expect(saved.schema?.modelCatalogId).toBe('gpt-4.1');
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, modelCatalogId: '' },
+				user,
+				fencedOn(agent),
+			);
+			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
+			expect(saved.schema).not.toHaveProperty('modelCatalogId');
+		});
+
 		it('drops stored optional fields omitted from the payload when clearOmittedOptionalFields is set', async () => {
 			const { service, agentRepository, credentialsService } = makeService();
 			const agent = makeAgent({

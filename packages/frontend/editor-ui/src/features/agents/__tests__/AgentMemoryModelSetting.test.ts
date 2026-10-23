@@ -9,6 +9,7 @@ const credentialMocks = vi.hoisted(() => ({
 		value: {
 			anthropic: 'local-anthropic-credential',
 			openai: 'local-openai-credential',
+			'azure-openai': 'azure-credential',
 		},
 	},
 	selectCredential: vi.fn(),
@@ -36,6 +37,30 @@ vi.mock('../composables/useModelCatalog', () => ({
 		getModelsForPicker: vi.fn(() => ({
 			anthropic: { models: [] },
 			openai: { models: [] },
+			'azure-openai': {
+				models: [
+					{
+						provider: 'azure-openai',
+						model: 'gpt-4o-mini',
+						name: 'GPT-4o mini',
+						metadata: { functionCalling: true, available: true },
+					},
+					{
+						provider: 'azure-openai',
+						model: 'gpt-4o',
+						name: 'GPT-4o',
+						metadata: { functionCalling: true, available: true },
+					},
+					{
+						provider: 'azure-openai',
+						model: 'My-Chat',
+						catalogModelId: 'gpt-4.1',
+						deploymentName: 'My-Chat',
+						name: 'My-Chat (gpt-4.1)',
+						metadata: { functionCalling: true, available: true },
+					},
+				],
+			},
 		})),
 		isLoading: { value: false },
 	}),
@@ -94,16 +119,67 @@ function makeConfig(): AgentJsonConfig {
 	};
 }
 
-function mountSetting() {
+function mountSetting(config: AgentJsonConfig = makeConfig()) {
 	return mount(AgentMemoryModelSetting, {
 		props: {
-			config: makeConfig(),
+			config,
 			projectId: 'project-1',
 		},
 	});
 }
 
 describe('AgentMemoryModelSetting', () => {
+	it('saves and restores the Foundry deployment for each memory worker', async () => {
+		const wrapper = mountSetting();
+		const selector = wrapper.getComponent({ name: 'AgentModelSelector' });
+		selector.vm.$emit('change', { provider: 'azure-openai', model: 'My-Chat' });
+		await wrapper.vm.$nextTick();
+		const changes = wrapper.emitted('update:config')?.[0]?.[0] as Partial<AgentJsonConfig>;
+		const worker = {
+			model: 'azure-openai/My-Chat',
+			modelCatalogId: 'gpt-4.1',
+			credential: 'azure-credential',
+		};
+		expect(changes.memory).toMatchObject({
+			observationalMemory: { observerModel: worker, reflectorModel: worker },
+			episodicMemory: { reflectorModel: worker },
+		});
+		expect(selector.props('selectedModel')).toMatchObject({
+			model: 'My-Chat',
+			name: 'My-Chat (gpt-4.1)',
+		});
+		await wrapper.setProps({ config: { ...makeConfig(), ...changes } });
+		expect(selector.props('selectedModel')).toMatchObject({
+			model: 'My-Chat',
+			name: 'My-Chat (gpt-4.1)',
+		});
+	});
+
+	it('matches a classic worker by model ID when its deployment has another model ID', () => {
+		const wrapper = mountSetting({
+			...makeConfig(),
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: {
+					enabled: true,
+					credential: 'embedding-credential',
+					reflectorModel: {
+						model: 'azure-openai/gpt-4o',
+						modelDeploymentName: 'gpt-4o-mini',
+						credential: 'azure-credential',
+					},
+				},
+			},
+		});
+		expect(
+			wrapper.getComponent({ name: 'AgentModelSelector' }).props('selectedModel'),
+		).toMatchObject({
+			model: 'gpt-4o',
+			name: 'GPT-4o',
+		});
+	});
+
 	it('uses the persisted worker credential when changing models within its provider', async () => {
 		const wrapper = mountSetting();
 		const selector = wrapper.getComponent({ name: 'AgentModelSelector' });

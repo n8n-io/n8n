@@ -339,6 +339,25 @@ describe('AgentModelSelector', () => {
 		aiGatewayState.fetchConfig.mockReset();
 	});
 
+	it('shows guidance for a Foundry project that cannot list deployments', async () => {
+		credentialsByType.value.azureOpenAiApi = [
+			{ id: 'foundry', name: 'Foundry', type: 'azureOpenAiApi' },
+		];
+		const wrapper = await mountSelector({ 'azure-openai': 'foundry' });
+		await wrapper.setProps({
+			modelsByProvider: {
+				'azure-openai': { models: [], unavailable: true, deploymentNameRequired: false },
+			},
+		});
+		const provider = getProviderItem(wrapper, 'azure-openai');
+		expect(
+			getMenuItemByLabel(
+				provider?.children ?? [],
+				'agents.modelSelector.foundryDeploymentsUnavailable',
+			),
+		).toMatchObject({ disabled: true });
+	});
+
 	it('fetches the gateway config on mount so the managed option can be gated', async () => {
 		await mountSelector({ anthropic: null });
 

@@ -89,6 +89,8 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			oauthClientId: z.string().optional(),
 			oauthClientSecret: z.string().optional(),
 			oauthAccessTokenUrl: z.string().optional(),
+			/** Entra tenant the app-only token is minted for; validated before minting. */
+			oauthTenantId: z.string().optional(),
 			oauthScope: z.string().optional(),
 			oauthAuthentication: z.enum(['body', 'header']).optional(),
 			oauthTokenData: z.object({ access_token: z.string() }).passthrough().optional(),

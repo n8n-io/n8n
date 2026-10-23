@@ -11,6 +11,33 @@ const minimalConfig = {
 	instructions: 'Help the user.',
 };
 
+describe('AgentJsonConfigSchema — Azure deployments', () => {
+	it('retains deployment names on the agent, memory workers, and difficulty models', () => {
+		const worker = {
+			model: 'azure-openai/My-Chat',
+			modelCatalogId: 'gpt-4.1',
+			credential: 'azure-credential',
+			modelDeploymentName: 'My-Chat',
+		};
+		const config = {
+			...minimalConfig,
+			...worker,
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: { observerModel: worker, reflectorModel: worker },
+				episodicMemory: {
+					enabled: true,
+					credential: 'embedding-credential',
+					reflectorModel: worker,
+				},
+			},
+			subAgents: { modelsByDifficulty: { high: worker } },
+		};
+		expect(AgentJsonConfigSchema.parse(config)).toMatchObject(config);
+	});
+});
+
 describe('AgentJsonConfigSchema — capability activation', () => {
 	it.each([undefined, true, false])('preserves enabled=%s on capability references', (enabled) => {
 		const activation = enabled === undefined ? {} : { enabled };

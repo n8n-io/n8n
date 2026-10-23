@@ -640,6 +640,7 @@ async function resolveModelConfig(
 		config.credential,
 		credentialProvider,
 		config.modelDeploymentName,
+		config.modelCatalogId,
 	);
 }
 
@@ -655,5 +656,7 @@ async function resolveMemoryWorkerModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
+		config.modelDeploymentName,
+		config.modelCatalogId,
 	);
 }

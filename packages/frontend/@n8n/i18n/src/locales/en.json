@@ -6083,6 +6083,7 @@
 	"agents.modelSelector.includedInN8n": "Included in n8n",
 	"agents.modelSelector.noMatch": "No models found",
 	"agents.modelSelector.noModels": "No models available for this provider",
+	"agents.modelSelector.foundryDeploymentsUnavailable": "Couldn’t load deployments. Check the project and access in your Microsoft Foundry credential.",
 	"agents.modelSelector.modelsUnavailable": "Couldn't load models, try again",
 	"agents.builder.credentials.refreshError": "Couldn't refresh the credential list. Reload the page if the new credential is not selected.",
 	"agents.modelSelector.moreModels": "More {provider} models",

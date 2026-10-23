@@ -14,7 +14,7 @@ import {
 	type AgentModelsByProvider,
 } from '../model-providers';
 import type { AgentJsonConfig } from '../types';
-import { modelToString, parseModelString, sanitizeModelId } from '../utils/model-string';
+import { modelToString, parseModelString, resolveModelSelection } from '../utils/model-string';
 import shared from '../styles/agent-panel.module.scss';
 import AgentModelSelector from './AgentModelSelector.vue';
 
@@ -78,19 +78,22 @@ const effectiveCredentials = computed(() => {
 
 	return effectiveCredentials;
 });
-const selectedMemoryModel = ref<string | null>(configuredMemoryModel.value);
+const selectedMemoryModel = ref(configuredMemoryWorker.value);
 const modelsByProvider = computed<AgentModelsByProvider>(() =>
 	getModelsForPicker(effectiveCredentials.value),
 );
 const selectedModel = computed<AgentModelOption | null>(() => {
-	const modelString = selectedMemoryModel.value ?? modelToString(props.config?.model);
+	const worker = selectedMemoryModel.value ?? props.config;
+	const modelString = modelToString(worker?.model);
 	if (!modelString) return null;
 
 	const parsed = parseModelString(modelString);
 	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
 
+	const selectedId =
+		parsed.provider === 'azure-openai' ? worker?.modelDeploymentName || parsed.name : parsed.name;
 	const catalogModel = modelsByProvider.value[parsed.provider]?.models.find(
-		(model) => model.model === parsed.name,
+		(model) => model.model === (model.deploymentName ? selectedId : parsed.name),
 	);
 	if (catalogModel) return catalogModel;
 
@@ -115,7 +118,7 @@ watch(
 	{ immediate: true },
 );
 
-watch(configuredMemoryModel, (model) => {
+watch(configuredMemoryWorker, (model) => {
 	selectedMemoryModel.value = model;
 });
 
@@ -132,12 +135,12 @@ function onMemoryModelChange(selection: AgentModelSelection) {
 	const credentialId = effectiveCredentials.value?.[selection.provider] ?? '';
 	if (!credentialId) return;
 
-	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
-	const workerModel = { model, credential: credentialId };
+	const resolved = resolveModelSelection(selection, modelsByProvider.value);
+	const workerModel = { ...resolved, credential: credentialId };
 	const existingMemory = props.config?.memory;
 	const existingEpisodicMemory = existingMemory?.episodicMemory;
 
-	selectedMemoryModel.value = model;
+	selectedMemoryModel.value = workerModel;
 	emit('update:config', {
 		memory: {
 			...existingMemory,

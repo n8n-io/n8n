@@ -272,6 +272,16 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const selectedProviderCredentialId = credentials?.[provider] ?? null;
 	const models = modelsByProvider[provider]?.models ?? [];
 	const modelsUnavailable = modelsByProvider[provider]?.unavailable === true;
+	let emptyModelsLabel = i18n.baseText('agents.modelSelector.noModels');
+	if (modelsUnavailable) {
+		emptyModelsLabel = i18n.baseText('agents.modelSelector.modelsUnavailable');
+		if (
+			provider === 'azure-openai' &&
+			modelsByProvider[provider]?.deploymentNameRequired === false
+		) {
+			emptyModelsLabel = i18n.baseText('agents.modelSelector.foundryDeploymentsUnavailable');
+		}
+	}
 	const isAiGatewayManagedSelected = selectedProviderCredentialId === AI_GATEWAY_MANAGED_TAG;
 	const hasProviderCredential =
 		isAiGatewayManagedSelected ||
@@ -397,11 +407,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 				? [
 						{
 							id: `${provider}::empty`,
-							label: i18n.baseText(
-								modelsUnavailable
-									? 'agents.modelSelector.modelsUnavailable'
-									: 'agents.modelSelector.noModels',
-							),
+							label: emptyModelsLabel,
 							disabled: true,
 						},
 					]

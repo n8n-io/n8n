@@ -1,6 +1,10 @@
 import { UserError } from 'n8n-workflow';
 
-import { shouldIncludeAzureModel, listAzureOpenAiModels } from '../providers/azure';
+import {
+	findEntraTenantIdIssue,
+	listAzureOpenAiModels,
+	shouldIncludeAzureModel,
+} from '../providers/azure';
 
 function mockFetch(body: unknown, ok = true, status = 200) {
 	return vi.fn().mockResolvedValue({
@@ -36,6 +40,45 @@ describe('shouldIncludeAzureModel', () => {
 	});
 });
 
+describe('findEntraTenantIdIssue', () => {
+	it.each(['8f2a1b3c-4d5e-6f70-8192-a3b4c5d6e7f8', 'contoso.onmicrosoft.com'])(
+		'accepts %s',
+		(value) => {
+			expect(findEntraTenantIdIssue(value)).toBeUndefined();
+		},
+	);
+
+	it('trims before validating', () => {
+		expect(findEntraTenantIdIssue('  contoso.onmicrosoft.com  ')).toBeUndefined();
+	});
+
+	it.each(['common', 'organizations', 'consumers', 'Common'])(
+		'rejects the multi-tenant alias %s',
+		(value) => {
+			expect(findEntraTenantIdIssue(value)?.message).toBe(`Tenant ID cannot be "${value}"`);
+		},
+	);
+
+	it.each([
+		['empty', ''],
+		['whitespace', '   '],
+		['undefined', undefined],
+	])('rejects %s', (_, value) => {
+		expect(findEntraTenantIdIssue(value)?.message).toContain('Tenant ID is missing');
+	});
+
+	// The value becomes a path segment of the token URL. `.` and `..` matter most: URL parsing
+	// collapses them, so the token request would carry no tenant at all.
+	it.each(['.', '..', 'a..b', 'a/b', 'a?b', 'a#b', 'a b', 'a\\b', 'a@b'])(
+		'rejects a value that could reshape the token URL: %s',
+		(value) => {
+			expect(findEntraTenantIdIssue(value)?.message).toBe(
+				'Tenant ID is not a Directory ID or a domain',
+			);
+		},
+	);
+});
+
 describe('listAzureOpenAiModels', () => {
 	it('maps deployment name to id, sorted by name, and drops non-chat deployments', async () => {
 		const fetch = mockFetch({
@@ -45,7 +88,12 @@ describe('listAzureOpenAiModels', () => {
 					modelName: 'text-embedding-3-small',
 					capabilities: { embeddings: 'true' },
 				},
-				{ name: 'my-gpt4', modelName: 'gpt-4.1-nano', capabilities: { chat_completion: 'true' } },
+				{
+					name: 'my-gpt4',
+					modelName: 'gpt-4.1-nano',
+					modelPublisher: 'OpenAI',
+					capabilities: { chat_completion: 'true' },
+				},
 				{ name: 'a-chat-model', modelName: 'gpt-4o', capabilities: { chat_completion: 'true' } },
 			],
 		});
@@ -62,8 +110,13 @@ describe('listAzureOpenAiModels', () => {
 		);
 		expect(calledHeaders(fetch)).toEqual({ 'api-key': 'key' });
 		expect(models).toEqual([
-			{ id: 'a-chat-model', name: 'a-chat-model (gpt-4o)' },
-			{ id: 'my-gpt4', name: 'my-gpt4 (gpt-4.1-nano)' },
+			{ id: 'a-chat-model', name: 'a-chat-model (gpt-4o)', modelName: 'gpt-4o' },
+			{
+				id: 'my-gpt4',
+				name: 'my-gpt4 (gpt-4.1-nano)',
+				modelName: 'gpt-4.1-nano',
+				modelPublisher: 'OpenAI',
+			},
 		]);
 	});
 

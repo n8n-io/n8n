@@ -64,6 +64,8 @@ export function getAgentModelProviderCredentialTypes(provider: string): readonly
 /** A model offered in the agent model picker. Mirrors the catalog's `ModelInfo` shape. */
 export interface AgentCatalogModel {
 	id: string;
+	catalogModelId?: string;
+	deploymentName?: string;
 	name: string;
 	releaseDate?: string;
 	reasoning?: boolean;
@@ -91,5 +93,7 @@ export interface AgentProviderModelsResponse {
 	 * empty. Lets the picker say "couldn't load" instead of "no models available".
 	 */
 	unavailable?: boolean;
+	/** Classic Azure needs a separate deployment name. Foundry selects it from the list. */
+	deploymentNameRequired?: boolean;
 	models: AgentCatalogModel[];
 }

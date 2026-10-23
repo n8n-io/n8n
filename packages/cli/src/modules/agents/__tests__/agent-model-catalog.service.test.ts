@@ -1,6 +1,7 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentModelCatalogService } from '../agent-model-catalog.service';
@@ -504,6 +505,154 @@ describe('AgentModelCatalogService', () => {
 		expect(result.verified).toBe(false);
 		expect(result.models).toHaveLength(1);
 		expect(lookupService.lookup).not.toHaveBeenCalled();
+	});
+
+	describe('azure-openai Foundry deployments', () => {
+		const azureCatalog = {
+			'azure-openai': {
+				id: 'azure-openai',
+				name: 'Azure OpenAI',
+				models: {
+					'gpt-4.1': {
+						id: 'gpt-4.1',
+						name: 'GPT-4.1',
+						toolCall: false,
+						reasoning: false,
+						cost: { input: 2, output: 8 },
+					},
+				},
+			},
+		};
+
+		it('returns a Foundry credential deployments as exact, verified models', async () => {
+			const { service, lookupService } = makeService();
+			fetchProviderCatalog.mockResolvedValue(azureCatalog);
+			lookupService.lookup.mockResolvedValue({
+				status: 'success',
+				policy: 'endpoint-only',
+				deploymentNameRequired: false,
+				models: [
+					{ name: 'my-chat (gpt-4.1)', value: 'my-chat', catalogModelId: 'gpt-4.1' },
+					{
+						name: 'my-other (gpt-4.1-mini)',
+						value: 'my-other',
+						catalogModelId: 'gpt-4.1-mini',
+					},
+					{ name: 'gpt-4.1', value: 'gpt-4.1' },
+				],
+			});
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				deploymentNameRequired: false,
+				models: [
+					{
+						id: 'my-chat',
+						deploymentName: 'my-chat',
+						name: 'my-chat (gpt-4.1)',
+						catalogModelId: 'gpt-4.1',
+						toolCall: false,
+						reasoning: false,
+						cost: { input: 2, output: 8 },
+					},
+					{
+						id: 'my-other',
+						deploymentName: 'my-other',
+						name: 'my-other (gpt-4.1-mini)',
+						catalogModelId: 'gpt-4.1-mini',
+						toolCall: true,
+					},
+					{ id: 'gpt-4.1', name: 'gpt-4.1', deploymentName: 'gpt-4.1', toolCall: true },
+				],
+			});
+			expect(lookupService.lookup).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				credentialId,
+				'azureOpenAiApi',
+				'azure-openai',
+			);
+		});
+
+		it('keeps the catalog and separate deployment input for classic credentials', async () => {
+			const { service, lookupService, logger } = makeService();
+			fetchProviderCatalog.mockResolvedValue(azureCatalog);
+			lookupService.lookup.mockResolvedValue({
+				status: 'unavailable',
+				policy: 'curated',
+				deploymentNameRequired: true,
+				error: new UserError('Only a Microsoft Foundry credential can list deployments'),
+			});
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result.verified).toBe(false);
+			expect(result.deploymentNameRequired).toBe(true);
+			expect(result.models.map((m) => m.id)).toEqual(['gpt-4.1']);
+			// An expected picker state is logged quietly, not as a warn.
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Live model list failed',
+				expect.objectContaining({ provider: 'azure-openai' }),
+			);
+		});
+
+		it('reports an unavailable deployments list without catalog fallback', async () => {
+			const { service, lookupService } = makeService();
+			lookupService.lookup.mockResolvedValue({
+				status: 'unavailable',
+				policy: 'endpoint-only',
+				deploymentNameRequired: false,
+				error: new Error('Project "missing" was not found'),
+			});
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				deploymentNameRequired: false,
+				unavailable: true,
+				models: [],
+			});
+			expect(fetchProviderCatalog).not.toHaveBeenCalled();
+		});
+
+		it('keeps the static catalog for the n8n Connect managed tag', async () => {
+			const { service, lookupService } = makeService();
+			fetchProviderCatalog.mockResolvedValue(azureCatalog);
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				AI_GATEWAY_MANAGED_TAG,
+			);
+
+			// The managed gateway serves its own model ids, not the user's
+			// deployments, so its list is not fetched live.
+			expect(result.verified).toBe(false);
+			expect(result.models.map((m) => m.id)).toEqual(['gpt-4.1']);
+			expect(lookupService.lookup).not.toHaveBeenCalled();
+		});
 	});
 
 	it('still returns live models (verified: true) when the catalog fetch fails', async () => {

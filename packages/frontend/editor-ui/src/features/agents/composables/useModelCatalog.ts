@@ -32,6 +32,7 @@ const verifiedModelsByKey = ref<Record<string, ModelInfo[] | null>>({});
 const verifiedDefaultModelsByKey = ref<Record<string, string | null>>({});
 // Keys whose list could not be retrieved at all, so the picker can say
 // "couldn't load" rather than "no models available".
+const deploymentNameRequiredByKey = ref<Record<string, boolean | undefined>>({});
 const unavailableByKey = ref<Record<string, boolean>>({});
 const verifiedFetchesInFlight = new Set<string>();
 const verificationStatusByKey = ref<Record<string, 'loading' | 'resolved' | 'failed'>>({});
@@ -48,6 +49,8 @@ function toAgentModel(provider: AgentModelProvider, model: ModelInfo): AgentMode
 	return {
 		provider,
 		model: model.id,
+		...(model.catalogModelId ? { catalogModelId: model.catalogModelId } : {}),
+		...(model.deploymentName ? { deploymentName: model.deploymentName } : {}),
 		name: model.name,
 		description: null,
 		createdAt: model.releaseDate ?? null,
@@ -127,6 +130,10 @@ export function useModelCatalog() {
 					...verifiedDefaultModelsByKey.value,
 					[key]: result.defaultModelId ?? null,
 				};
+				deploymentNameRequiredByKey.value = {
+					...deploymentNameRequiredByKey.value,
+					[key]: result.deploymentNameRequired,
+				};
 				unavailableByKey.value = { ...unavailableByKey.value, [key]: result.unavailable === true };
 				verificationStatusByKey.value = {
 					...verificationStatusByKey.value,
@@ -164,12 +171,14 @@ export function useModelCatalog() {
 
 			let models: ModelInfo[] | undefined;
 			let unavailable = false;
+			let deploymentNameRequired: boolean | undefined;
 			const projectId = activeProjectId.value;
 			if (projectId) {
 				ensureVerifiedModels(projectId, provider, providerCredentialId);
 				const key = `${projectId}|${provider}|${providerCredentialId}`;
 				models = verifiedModelsByKey.value[key] ?? undefined;
 				unavailable = unavailableByKey.value[key] === true;
+				deploymentNameRequired = deploymentNameRequiredByKey.value[key];
 			}
 
 			if (!models) {
@@ -184,6 +193,7 @@ export function useModelCatalog() {
 					(model) => model.priority,
 				).map((model) => toAgentModel(provider, model)),
 				...(unavailable ? { unavailable: true } : {}),
+				...(deploymentNameRequired !== undefined ? { deploymentNameRequired } : {}),
 			};
 		}
 

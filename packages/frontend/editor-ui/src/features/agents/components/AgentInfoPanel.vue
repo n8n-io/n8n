@@ -36,7 +36,7 @@ import {
 } from '../model-providers';
 import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
 import type { AgentJsonConfig } from '../types';
-import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
+import { parseModelString, modelToString, resolveModelSelection } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
 import { normalizeReasoningForModelChange } from '../utils/reasoning';
@@ -126,8 +126,12 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	const parsed = parseModelString(modelStr);
 	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
 
+	const selectedId =
+		parsed.provider === 'azure-openai'
+			? props.config?.modelDeploymentName || parsed.name
+			: parsed.name;
 	const registryEntry = filteredAgents.value[parsed.provider]?.models.find(
-		(m) => m.model === parsed.name,
+		(model) => model.model === (model.deploymentName ? selectedId : parsed.name),
 	);
 	if (registryEntry) return registryEntry;
 
@@ -144,34 +148,10 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	};
 });
 
-// Azure OpenAI classic deployments are user-named in Azure and surfaced in the
-// deployment-based URL path; Foundry endpoints take the model id directly, so
-// the deployment name only applies to classic. The credential's `endpointType`
-// is only readable with credential edit access — when it can't be determined,
-// keep the field visible and let backend validation stay the enforcement point.
-const azureEndpointType = ref<'classic' | 'foundry' | 'unknown'>('unknown');
-
-watch(
-	[configProvider, () => props.config?.credential],
-	async ([provider, credentialId]) => {
-		azureEndpointType.value = 'unknown';
-		if (provider !== 'azure-openai' || !credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) {
-			return;
-		}
-		try {
-			const credential = await credentialsStore.getCredentialData({ id: credentialId });
-			// Ignore stale responses from rapid credential switches.
-			if (props.config?.credential !== credentialId) return;
-			const data = credential && typeof credential.data === 'object' ? credential.data : undefined;
-			if (data?.endpointType === 'classic' || data?.endpointType === 'foundry') {
-				azureEndpointType.value = data.endpointType;
-			}
-		} catch {
-			// No read access to the credential data (e.g. shared credential) —
-			// keep 'unknown' so the field stays visible.
-		}
-	},
-	{ immediate: true },
+// Only an explicit `false` (Foundry) drops the input. A failed or pending list
+// keeps it, so a Classic config can still be repaired.
+const deploymentNameRequired = computed(
+	() => filteredAgents.value['azure-openai']?.deploymentNameRequired !== false,
 );
 
 const showDeploymentName = computed(() => {
@@ -180,9 +160,7 @@ const showDeploymentName = computed(() => {
 	const credentialId = props.config?.credential;
 	if (!credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) return false;
 	if (!credentialsStore.getCredentialById(credentialId)) return false;
-	// Visible for classic, foundry, and unknown endpoint types alike: a
-	// deployment name is optional on Foundry but can override the model id.
-	return true;
+	return deploymentNameRequired.value;
 });
 
 const deploymentName = ref(props.config?.modelDeploymentName ?? '');
@@ -232,25 +210,16 @@ function onDeploymentNameInput(value: string) {
 	scheduleDeploymentNameEmit(value);
 }
 
-function deriveDefaultDeploymentName(selection: AgentModelSelection): string {
-	// Azure deployments are conventionally named after the model. Default the
-	// deployment name to the chosen model's display name, lowercased with
-	// whitespace turned into dashes (e.g. "GPT-4o mini" → "gpt-4o-mini").
-	const displayName =
-		filteredAgents.value[selection.provider]?.models.find((m) => m.model === selection.model)
-			?.name ?? selection.model;
-	return displayName.toLowerCase().replace(/\s+/g, '-');
+function deploymentNameForSelection(selection: AgentModelSelection): {
+	modelDeploymentName?: string;
+} {
+	if (selection.provider !== 'azure-openai') return {};
+	return { modelDeploymentName: deploymentNameRequired.value ? selection.model : '' };
 }
 
-function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' = 'user') {
-	const credentialId = effectiveCredentials.value?.[selection.provider];
-	if (!credentialId) {
-		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
-		return;
-	}
-	const modelName = sanitizeModelId(selection.provider, selection.model);
-	const model = `${selection.provider}/${modelName}`;
-	const capabilities = PROVIDER_CAPABILITIES[selection.provider];
+function settingsForModel(model: string, provider: AgentModelProvider) {
+	const modelName = parseModelString(model)?.name;
+	const capabilities = PROVIDER_CAPABILITIES[provider];
 	const webSearchChanges = normalizeWebSearchForModelChange(
 		props.config,
 		capabilities?.webSearch ?? false,
@@ -265,35 +234,38 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;
 	const reasoningChanges = normalizeReasoningForModelChange(
 		normalizedConfig,
-		catalog.value[selection.provider]?.models[modelName]?.reasoning,
+		modelName ? catalog.value[provider]?.models[modelName]?.reasoning : undefined,
 	);
+	return { ...webSearchChanges, ...promptCachingChanges, ...reasoningChanges };
+}
+
+function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' = 'user') {
+	const credentialId = effectiveCredentials.value?.[selection.provider];
+	if (!credentialId) {
+		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
+		return;
+	}
+	const resolved = resolveModelSelection(selection, filteredAgents.value);
 	// A default applied by the resolver surfaces a hint so the user knows they
 	// can change it; any explicit user pick clears the hint.
 	defaultModelHint.value = source === 'auto';
-	// The deployment name is optional on Foundry: an empty value means the
-	// call uses the model id. Classic requires a user-named deployment, so
-	// seed it from the model — deployments are usually named after the model.
-	// Foundry deployments are often named differently, so a model-derived
-	// guess would be wrong; clear instead, so the old model's deployment
-	// name can't survive a model switch.
 	cancelDeploymentNameEmit();
-	const deploymentNameChange: { modelDeploymentName?: string } =
-		selection.provider !== 'azure-openai'
-			? {}
-			: azureEndpointType.value === 'foundry'
-				? { modelDeploymentName: '' }
-				: { modelDeploymentName: deriveDefaultDeploymentName(selection) };
+	const deploymentNameChange = deploymentNameForSelection(selection);
 	if (deploymentNameChange.modelDeploymentName !== undefined) {
 		deploymentName.value = deploymentNameChange.modelDeploymentName;
 	}
 	emit(
 		'update:config',
 		{
-			model,
+			model: resolved.model,
+			modelCatalogId: resolved.modelCatalogId ?? '',
 			credential: credentialId,
-			...webSearchChanges,
-			...promptCachingChanges,
-			...reasoningChanges,
+			...settingsForModel(
+				resolved.modelCatalogId
+					? `${selection.provider}/${resolved.modelCatalogId}`
+					: resolved.model,
+				selection.provider,
+			),
 			...deploymentNameChange,
 		},
 		// A pending agent must not be persisted just because a default model was

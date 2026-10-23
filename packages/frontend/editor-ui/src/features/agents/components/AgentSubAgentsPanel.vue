@@ -6,6 +6,7 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MIN,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	type SubAgentTaskDifficulty,
+	type AgentModelCredentialConfig,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import { N8nIconButton, N8nInputNumber, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -26,7 +27,7 @@ import {
 	isAgentModelProvider,
 } from '../model-providers';
 import type { AgentJsonConfig } from '../types';
-import { parseModelString, sanitizeModelId } from '../utils/model-string';
+import { parseModelString, resolveModelSelection } from '../utils/model-string';
 import shared from '../styles/agent-panel.module.scss';
 
 const DIFFICULTY_LABEL_KEYS: Record<SubAgentTaskDifficulty, BaseTextKey> = {
@@ -176,8 +177,10 @@ function selectedModelForDifficulty(difficulty: SubAgentTaskDifficulty): AgentMo
 	const parsed = parseModelString(mapping.model);
 	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
 
+	const selectedId =
+		parsed.provider === 'azure-openai' ? mapping.modelDeploymentName || parsed.name : parsed.name;
 	const registryEntry = modelsByDifficulty.value[difficulty][parsed.provider]?.models.find(
-		(model) => model.model === parsed.name,
+		(model) => model.model === (model.deploymentName ? selectedId : parsed.name),
 	);
 	if (registryEntry) return registryEntry;
 
@@ -228,7 +231,7 @@ watch(
 
 function emitModelsByDifficulty(
 	difficulty: SubAgentTaskDifficulty,
-	mapping: { model: string; credential: string } | undefined,
+	mapping: AgentModelCredentialConfig | undefined,
 ) {
 	const existing = { ...(props.config?.subAgents?.modelsByDifficulty ?? {}) };
 	if (mapping) {
@@ -270,8 +273,8 @@ function onDifficultyModelChange(
 		return;
 	}
 
-	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
-	emitModelsByDifficulty(difficulty, { model, credential: credentialId });
+	const resolved = resolveModelSelection(selection, modelsByDifficulty.value[difficulty]);
+	emitModelsByDifficulty(difficulty, { ...resolved, credential: credentialId });
 	// The choice is now persisted in the mapping — drop the transient pending value.
 	clearPendingDifficultyCredential(difficulty, selection.provider);
 }

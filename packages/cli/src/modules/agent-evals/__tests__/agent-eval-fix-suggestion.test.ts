@@ -86,11 +86,12 @@ describe('generateFixSuggestion', () => {
 		);
 	});
 
-	it('passes the Azure deployment name to the model resolver', async () => {
+	it('passes the Azure deployment and model identity to the model resolver', async () => {
 		agentConfigService.getConfig.mockResolvedValue({
 			model: 'azure-openai/gpt-4o',
 			credential: 'cred-1',
 			modelDeploymentName: 'my-deployment',
+			modelCatalogId: 'gpt-4o',
 			instructions: 'Be brief.',
 		} as never);
 
@@ -101,6 +102,7 @@ describe('generateFixSuggestion', () => {
 			'cred-1',
 			expect.anything(),
 			'my-deployment',
+			'gpt-4o',
 		);
 	});
 

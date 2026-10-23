@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { isGoogleVertexAnthropicModel, splitModelId } from '@n8n/ai-utilities/agent-config';
-import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
+import {
+	ensureUrlPathSuffix,
+	findEntraTenantIdIssue,
+	isOpenAiCustomEndpoint,
+} from '@n8n/ai-utilities/model-discovery';
+import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
@@ -17,6 +22,7 @@ import {
 } from './openai-api-style';
 import {
 	PROVIDER_CREDENTIAL_SCHEMAS,
+	hasAzureEntraToken,
 	isAzureEntraCredential,
 	type ProviderId,
 	type ProviderCredentials,
@@ -110,38 +116,68 @@ const AZURE_OPENAI_ENTRA_RESOURCE = 'https://cognitiveservices.azure.com/';
  *
  * `@ai-sdk/azure`'s `createAzure` accepts this shape directly as `tokenProvider`;
  * it must not be paired with `apiKey`.
+ *
+ * `resource` is the audience the token is minted for. Each tenant's Entra ID
+ * app registration grants access per audience, so a call that needs a different
+ * audience (e.g. the Foundry deployments list) passes it explicitly.
+ *
+ * The fields take the `oauth*` names of the mapped credential (see
+ * `credential-field-mapping.ts` in the cli agents module). Values are
+ * `unknown` because callers pass raw, unvalidated credential records.
  */
-function createEntraTokenProvider(creds: {
-	oauthClientId?: string;
-	oauthClientSecret?: string;
-	oauthAccessTokenUrl?: string;
-	oauthScope?: string;
-	oauthAuthentication?: 'body' | 'header';
-	oauthTokenData?: { access_token: string } & Record<string, unknown>;
-}): () => Promise<string> {
+export function createEntraTokenProvider(
+	creds: {
+		oauthClientId?: unknown;
+		oauthClientSecret?: unknown;
+		oauthAccessTokenUrl?: unknown;
+		oauthTenantId?: unknown;
+		oauthScope?: unknown;
+		oauthAuthentication?: unknown;
+		oauthTokenData?: unknown;
+	},
+	resource: string = AZURE_OPENAI_ENTRA_RESOURCE,
+	ssrfBridge?: NonNullable<ClientOAuth2Options['ssrfBridge']>,
+): () => Promise<string> {
 	const {
 		oauthClientId,
 		oauthClientSecret,
 		oauthAccessTokenUrl,
+		oauthTenantId,
 		oauthScope,
 		oauthAuthentication,
 		oauthTokenData,
 	} = creds;
 	return async () => {
-		if (!oauthTokenData?.access_token) {
+		if (!hasAzureEntraToken({ oauthTokenData })) {
 			throw new Error('Azure Entra OAuth2 credential is not connected');
 		}
-		if (!oauthClientId || !oauthAccessTokenUrl) {
-			throw new Error('Azure Entra OAuth2 credential is missing clientId or accessTokenUrl');
+		// The token endpoint builds its URL from the tenant, so a saved
+		// multi-tenant alias or a URL-reshaping value is caught here, not by an
+		// opaque Entra rejection.
+		const tenantIssue = findEntraTenantIdIssue(
+			typeof oauthTenantId === 'string' ? oauthTenantId : undefined,
+		);
+		if (tenantIssue) {
+			throw new Error(tenantIssue.message);
+		}
+		if (typeof oauthClientId !== 'string' || !oauthClientId) {
+			throw new Error('Azure Entra OAuth2 credential is missing clientId');
+		}
+		if (typeof oauthAccessTokenUrl !== 'string' || !oauthAccessTokenUrl) {
+			throw new Error('Azure Entra OAuth2 credential is missing accessTokenUrl');
 		}
 		const { ClientOAuth2 } = require('@n8n/client-oauth2') as typeof import('@n8n/client-oauth2');
 		const client = new ClientOAuth2({
 			clientId: oauthClientId,
-			clientSecret: oauthClientSecret,
+			clientSecret: typeof oauthClientSecret === 'string' ? oauthClientSecret : undefined,
 			accessTokenUri: oauthAccessTokenUrl,
-			scopes: oauthScope?.split(' '),
-			authentication: oauthAuthentication,
-			additionalBodyProperties: { resource: AZURE_OPENAI_ENTRA_RESOURCE },
+			scopes: typeof oauthScope === 'string' && oauthScope ? oauthScope.split(' ') : undefined,
+			authentication:
+				oauthAuthentication === 'body' || oauthAuthentication === 'header'
+					? oauthAuthentication
+					: undefined,
+			additionalBodyProperties: { resource },
+			...(ssrfBridge ? { ssrfBridge } : {}),
 		});
 		const token = await client.credentials.getToken();
 		return (token.data as { access_token: string }).access_token;

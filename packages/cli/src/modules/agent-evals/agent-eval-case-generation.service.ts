@@ -332,6 +332,7 @@ export class AgentEvalCaseGenerationService {
 			credential,
 			credentialProvider,
 			config.modelDeploymentName,
+			config.modelCatalogId,
 		);
 	}
 

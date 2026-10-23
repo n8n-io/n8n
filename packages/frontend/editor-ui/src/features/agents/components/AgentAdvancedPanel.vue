@@ -37,7 +37,13 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
-const selectedModel = computed(() => parseModelString(modelToString(props.config?.model)));
+const selectedModel = computed(() => {
+	const model = parseModelString(modelToString(props.config?.model));
+	if (model?.provider === 'azure-openai' && props.config?.modelCatalogId) {
+		return { ...model, name: props.config.modelCatalogId };
+	}
+	return model;
+});
 const selectedCatalogModel = computed(() => {
 	if (!selectedModel.value) return undefined;
 	return catalog.value[selectedModel.value.provider]?.models[selectedModel.value.name];
@@ -53,7 +59,7 @@ const reasoningHintKey = computed(() => {
 	return 'agents.builder.advanced.reasoning.hint';
 });
 const promptCachingCapability = computed(() =>
-	getModelPromptCachingCapability(modelToString(props.config?.model)),
+	getModelPromptCachingCapability(modelToString(selectedModel.value ?? undefined)),
 );
 
 watch(

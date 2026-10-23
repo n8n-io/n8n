@@ -829,10 +829,14 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				};
 			}
 			if (credentialId === 'low-cred') {
-				return { apiKey: 'low-key', url: 'https://low.example/v1' };
+				return { apiKey: 'low-key', resourceName: 'low-resource' };
 			}
 			if (credentialId === 'high-cred') {
-				return { apiKey: 'high-key' };
+				return {
+					apiKey: 'high-key',
+					endpointType: 'foundry',
+					foundryEndpoint: 'https://res.services.ai.azure.com/openai/v1',
+				};
 			}
 			throw new Error(`unexpected credential ${credentialId}`);
 		});
@@ -840,12 +844,20 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const entity = makeAgentEntity(undefined, {
 			subAgents: {
 				modelsByDifficulty: {
-					low: { model: 'openai/gpt-4o-mini', credential: 'low-cred' },
+					low: {
+						model: 'azure-openai/gpt-4o-mini',
+						credential: 'low-cred',
+						modelDeploymentName: 'My-Mini',
+					},
 					medium: {
 						model: 'google-vertex/gemini-3-flash-preview',
 						credential: 'vertex-cred',
 					},
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					high: {
+						model: 'azure-openai/My-Chat',
+						modelCatalogId: 'gpt-4.1',
+						credential: 'high-cred',
+					},
 				},
 			},
 		});
@@ -858,9 +870,10 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 
 		expect(getInjectedInlineSubAgentModelsByDifficulty()).toEqual({
 			low: {
-				id: 'openai/gpt-4o-mini',
+				id: 'azure-openai/gpt-4o-mini',
 				apiKey: 'low-key',
-				baseURL: 'https://low.example/v1',
+				resourceName: 'low-resource',
+				deploymentName: 'My-Mini',
 			},
 			medium: {
 				id: 'google-vertex/gemini-3-flash-preview',
@@ -871,8 +884,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				privateKey: 'private-key',
 			},
 			high: {
-				id: 'anthropic/claude-sonnet-4-5',
+				id: 'azure-openai/gpt-4.1',
 				apiKey: 'high-key',
+				baseURL: 'https://res.services.ai.azure.com/openai/v1',
+				endpointType: 'foundry',
+				deploymentName: 'My-Chat',
 			},
 		});
 	});
