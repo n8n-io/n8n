@@ -5,6 +5,7 @@ import {
 } from '@n8n/api-types';
 import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -52,6 +53,7 @@ export class AgentKnowledgeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async uploadFiles(
@@ -88,6 +90,11 @@ export class AgentKnowledgeService {
 	}
 
 	private async hashUploadedFile(filePath: string): Promise<string | undefined> {
+		// The hash exists only for telemetry, so skip the extra read when telemetry is off.
+		if (!this.globalConfig.diagnostics.enabled) {
+			return undefined;
+		}
+
 		try {
 			const hash = createKnowledgeTelemetryHmac(this.instanceSettings.hmacSignatureSecret);
 			for await (const chunk of createReadStream(filePath)) {

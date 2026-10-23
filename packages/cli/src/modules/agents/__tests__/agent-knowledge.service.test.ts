@@ -7,6 +7,7 @@ import { Readable } from 'node:stream';
 
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
 import { NotFoundError } from '@n8n/errors';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -156,6 +157,7 @@ describe('AgentKnowledgeService', () => {
 
 	function makeService(
 		knowledgeAvailabilityService: KnowledgeAvailabilityService = makeKnowledgeAvailabilityService(),
+		diagnosticsEnabled = true,
 	) {
 		return new AgentKnowledgeService(
 			agentRepository,
@@ -166,6 +168,7 @@ describe('AgentKnowledgeService', () => {
 			mock<InstanceSettings>({ hmacSignatureSecret: instanceSecret }),
 			logger,
 			knowledgeAvailabilityService,
+			mock<GlobalConfig>({ diagnostics: { enabled: diagnosticsEnabled } }),
 		);
 	}
 
@@ -281,6 +284,25 @@ describe('AgentKnowledgeService', () => {
 			expect(hashes[0]).not.toBe(knowledgeHash('hello', 'other-instance-secret'));
 			expect(hashes[1]).toBe(hashes[0]);
 			expect(hashes[2]).not.toBe(hashes[0]);
+		} finally {
+			await rm(directory, { recursive: true, force: true });
+		}
+	});
+
+	it('does not hash uploads when telemetry is off', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		service = makeService(makeKnowledgeAvailabilityService(), false);
+		const directory = await mkdtemp(path.join(tmpdir(), 'knowledge-hash-disabled-'));
+		try {
+			const filePath = path.join(directory, 'notes.txt');
+			await writeFile(filePath, 'hello');
+
+			const [result] = await service.uploadFiles(agentId, projectId, [
+				makeMulterFile({ path: filePath, originalname: 'notes.txt', size: 5 }),
+			]);
+
+			expect(result.contentHash).toBeUndefined();
+			expect(agentFileRepository.all()).toHaveLength(1);
 		} finally {
 			await rm(directory, { recursive: true, force: true });
 		}
