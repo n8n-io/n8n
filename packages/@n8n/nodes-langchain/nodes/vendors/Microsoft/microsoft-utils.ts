@@ -368,7 +368,6 @@ export async function getMicrosoftMcpTools(
 	mcpAuthToken: string,
 	selectedTools: string[] | undefined,
 	secureEgressFilter: NodeEgressFilter,
-	getTraceHeaders?: () => Record<string, string>,
 ) {
 	const configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
 
@@ -431,7 +430,6 @@ export async function getMicrosoftMcpTools(
 			name: 'Microsoft-Agent-365',
 			version: 1,
 			secureEgressFilter,
-			getTraceHeaders,
 		});
 
 		if (!clientResult.ok) {
@@ -573,7 +571,6 @@ export const configureActivityCallback = (
 								mcpTokenRef.token,
 								selectedTools,
 								nodeContext.helpers.getSecureEgressFilter(),
-								() => nodeContext.helpers.getTraceHeaders(),
 							);
 
 							mcpClient = result?.client;

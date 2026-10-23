@@ -91,13 +91,9 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			if (additionalData.otel?.injectTraceHeaders) {
-				requestOptions.headers ??= {};
-				additionalData.otel.injectTraceHeaders(
-					additionalData.executionId!,
-					node.name,
-					requestOptions.headers as Record<string, string>,
-				);
+			const traceHeaders = getTraceHeaders();
+			if (Object.keys(traceHeaders).length) {
+				Object.assign((requestOptions.headers ??= {}), traceHeaders);
 			}
 			return await Container.get(OutboundHttp).requests().request(requestOptions);
 		},
@@ -168,14 +164,10 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			if (additionalData.otel?.injectTraceHeaders) {
+			const traceHeaders = getTraceHeaders();
+			if (Object.keys(traceHeaders).length) {
 				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
-				target.headers ??= {};
-				additionalData.otel.injectTraceHeaders(
-					additionalData.executionId!,
-					node.name,
-					target.headers as Record<string, string>,
-				);
+				Object.assign((target.headers ??= {}), traceHeaders);
 			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);

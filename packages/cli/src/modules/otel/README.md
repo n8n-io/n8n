@@ -68,7 +68,8 @@ Rules that both producers follow:
   credential, so it is not withheld the way an auth header is. On the MCP path every hop is
   also checked against the credential allowlist and the instance egress filter first.
 - **A failure never stops the request.** `getTraceHeaders()` gives no headers and the request
-  goes out without them. The tracer logs the cause.
+  goes out without them. The tracer logs the cause when the failure happens inside it. A
+  failure in the caller, for example a context that supplies no `getTraceHeaders`, is silent.
 
 ### Execution identity
 

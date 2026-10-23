@@ -346,10 +346,10 @@ function withTraceHeaders(
 	return async (input, init) => {
 		let tracedInit: RequestInit | undefined;
 		try {
-			const traceHeaders = new Headers(getTraceHeaders());
-			if (!traceHeaders.keys().next().done) {
+			const traceHeaders = getTraceHeaders();
+			if (Object.keys(traceHeaders).length) {
 				const headers = new Headers(init?.headers);
-				traceHeaders.forEach((value, name) => headers.set(name, value));
+				for (const [name, value] of Object.entries(traceHeaders)) headers.set(name, value);
 				tracedInit = { ...init, headers };
 			}
 		} catch {}
