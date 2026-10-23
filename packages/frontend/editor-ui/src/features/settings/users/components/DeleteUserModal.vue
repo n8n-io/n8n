@@ -79,7 +79,7 @@ const filterFn = (project: ProjectListItem) =>
 const { showMessage, showError } = useToast();
 
 async function onSubmit() {
-	if (!enabled.value) {
+	if (loading.value || !enabled.value) {
 		return;
 	}
 
@@ -127,7 +127,7 @@ function onDialogOpenUpdate(open: boolean) {
 <template>
 	<N8nDialog :open="modalOpen" size="large" :header="title" @update:open="onDialogOpenUpdate">
 		<N8nDialogBody>
-			<div :data-test-id="`${modalName}-modal`">
+			<div :data-test-id="`${modalName}-modal`" @keyup.enter="onSubmit">
 				<div v-if="isPending">
 					<N8nText color="text-base">{{
 						i18n.baseText('settings.users.confirmUserDeletion')
