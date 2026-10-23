@@ -910,7 +910,7 @@ describe('buildThreadArtifactsBlock', () => {
 		});
 
 		expect(block).not.toContain('[current]');
-		expect(block).toContain('match it against this list');
+		expect(block).toContain('Match the user’s references to this list.');
 	});
 
 	it('escapes a name that would close the block early', () => {

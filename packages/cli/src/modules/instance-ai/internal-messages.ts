@@ -601,7 +601,7 @@ export function buildThreadArtifactsBlock(
 
 	const currentGuidance = activeId
 		? 'Treat “this workflow”, “the agent”, “the data table”, or “it” as the item marked current.'
-		: 'When the user refers to an artifact in this conversation, match it against this list.';
+		: 'Match the user’s references to this list. Change an item only when the request asks for that change.';
 
 	// The hand-off rides the user's own request, so the agent acts on that request;
 	// it must not treat the list itself as a prompt to go and look at everything.
