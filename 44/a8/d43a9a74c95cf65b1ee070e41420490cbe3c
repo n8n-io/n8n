@@ -1,0 +1,29 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 9960-9964
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  ai_agent 43-67
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.ts
+  ai_agent 2,20-21,30,42,50
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  ai_agent 19-20,85
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  ai_agent 2,4-5,13,65,346-397
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  ai_agent 96-127
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.test.ts
+  ai_agent 20-26
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  ai_agent 99-101,110-113,117,121-126,134-153,155,166,190-197
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  ai_agent 30,363
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionReviewBlocker.vue
+  ai_agent 1-40
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  ai_agent 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44a8d43a9a74c95cf65b1ee070e41420490cbe3c",
+  "prompts": {}
+}

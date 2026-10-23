@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_2f11138676dd94::t_8fe3a5eac4eaf0 292-293
+  s_2f11138676dd94::t_19bc52a876055d 206,211,243,265-272,274-279
+  s_2f11138676dd94::t_c33cb8e43af999 204-205,207-210,273,290-291,295-299
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_2f11138676dd94::t_ec922e94b1f907 623-624,627,629
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bc9f134c0b5bd894dd4c37733b4d3ed0d04b9cd6",
+  "prompts": {},
+  "sessions": {
+    "s_2f11138676dd94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e08c8945-18a8-4472-b774-b45c212b0e6f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

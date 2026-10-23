@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/credentials/credentials.utils.ts
+  s_8b9f3fbba12f0d::t_83c3697ea25d01 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "62f449c6ac7761fb2b42f70c5f1eb48907f49fd6",
+  "prompts": {},
+  "sessions": {
+    "s_8b9f3fbba12f0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab0d5a27-37d3-4a83-8740-f538a15bd34f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
