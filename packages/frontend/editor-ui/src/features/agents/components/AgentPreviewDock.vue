@@ -231,6 +231,7 @@ defineExpose({ clearBudgetStops });
 					</AgentSessionHistoryDropdown>
 				</div>
 				<div :class="$style.actions">
+					<slot name="header-actions" />
 					<N8nTooltip
 						v-if="props.hasSession && props.effectiveSessionId"
 						:content="i18n.baseText('agents.builder.preview.viewSession')"

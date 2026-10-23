@@ -39,6 +39,7 @@ import { getThreadDisplayTitle } from '../instanceAi.threadRuntime';
 import { provideThread, useInstanceAiStore } from '../instanceAi.store';
 import { useAgentMutationRefresh } from '../composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	provisionSubjectThread,
@@ -64,6 +65,7 @@ const props = withDefaults(
 		threadId?: string;
 		visible?: boolean;
 		closable?: boolean;
+		showOpenFullAssistant?: boolean;
 		placeholder?: string;
 		composerHeight?: string;
 		/** Runs before a new thread is minted (e.g. flush a pending autosave). */
@@ -71,12 +73,13 @@ const props = withDefaults(
 		/** Runs before every message send (e.g. flush a pending autosave). */
 		beforeSend?: () => Promise<void>;
 	}>(),
-	{ visible: true, closable: true },
+	{ visible: true, closable: true, showOpenFullAssistant: true },
 );
 
 const emit = defineEmits<{
 	'update:threadId': [threadId: string];
 	'update:building': [building: boolean];
+	'update:working': [working: boolean];
 	close: [];
 	'message-sent': [];
 }>();
@@ -381,6 +384,7 @@ watch(
 onUnmounted(() => {
 	// A host closing the panel mid-build must not stay locked forever.
 	emit('update:building', false);
+	emit('update:working', false);
 	if (props.threadId && props.threadId !== handedOffThreadId) store.disposeRuntime(props.threadId);
 });
 
@@ -445,6 +449,8 @@ const ThreadScope = defineComponent({
 	emits: ['thread-missing', 'update:building'],
 	setup(scopeProps, { emit: scopeEmit }) {
 		const runtime = provideThread(scopeProps.threadId);
+		const working = useIsAgentWorking(runtime);
+		watch(working, (value) => emit('update:working', value), { immediate: true });
 		useAgentMutationRefresh(runtime);
 		const buildingArtifactIds = useBuildingArtifactIds(runtime);
 		watch(
@@ -530,6 +536,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 					/>
 				</N8nTooltip>
 				<N8nTooltip
+					v-if="props.showOpenFullAssistant"
 					:content="i18n.baseText('instanceAi.embed.openFullAssistant')"
 					placement="bottom"
 					:show-after="TOOLTIP_DELAY_MS"

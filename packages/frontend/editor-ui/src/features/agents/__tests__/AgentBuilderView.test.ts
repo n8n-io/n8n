@@ -712,9 +712,10 @@ const commonStubs = {
 			'beforeSend',
 			'visible',
 			'closable',
+			'showOpenFullAssistant',
 			'placeholder',
 		],
-		emits: ['update:threadId', 'update:building', 'close', 'message-sent'],
+		emits: ['update:threadId', 'update:building', 'update:working', 'close', 'message-sent'],
 		// Stands in for the real `defineExpose`d `handoff`, `setPrefill` and `submitSuggestion` — the
 		// view calls these through a template ref, not a prop or emit.
 		methods: {
@@ -6542,6 +6543,7 @@ describe('chat-first builder', () => {
 		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
 		const preview = wrapper.getComponent({ name: 'AgentPreviewDock' });
 		expect(assistant.props('closable')).toBe(false);
+		expect(assistant.props('showOpenFullAssistant')).toBe(false);
 		expect(preview.props('inline')).toBe(true);
 		expect(assistant.props('visible')).toBe(true);
 		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
@@ -6555,6 +6557,68 @@ describe('chat-first builder', () => {
 		expect(preview.props('isOpen')).toBe(false);
 		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).vm).toBe(preview.vm);
 	});
+
+	it('hides the mode selector until the agent can run', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatMode' }).exists()).toBe(false);
+	});
+
+	it('waits for the first artifact build to finish, then preserves readiness during later work', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p1',
+				artifactAgentId: 'a1',
+				artifactAssistantWorking: true,
+			},
+		});
+		expect(wrapper.vm.chatModeState.visible).toBe(false);
+		await wrapper.setProps({ artifactAssistantWorking: false });
+		expect(wrapper.vm.chatModeState.visible).toBe(true);
+		await wrapper.setProps({ artifactAssistantWorking: true });
+		expect(wrapper.vm.chatModeState.visible).toBe(true);
+		expect(wrapper.vm.chatModeState.disabled).toBe(true);
+	});
+
+	it('keeps both mode selectors visible and disabled while the Assistant works', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		assistant.vm.$emit('update:working', true);
+		await nextTick();
+		for (const selector of wrapper.findAllComponents({ name: 'AgentBuilderChatMode' })) {
+			expect(selector.props('disabled')).toBe(true);
+			for (const button of selector.findAll('button'))
+				expect(button.attributes('disabled')).toBeDefined();
+		}
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+		assistant.vm.$emit('update:working', false);
+		await nextTick();
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+	});
+
+	it.each([true, false])(
+		'switches from Test to Build only after an accepted handoff (%s)',
+		async (accepted) => {
+			handoffMock.mockReturnValueOnce(accepted);
+			const wrapper = await renderView({ props: { builderLayout: undefined } });
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+			await flushPromises();
+			const preview = wrapper.getComponent({ name: 'AgentPreviewDock' });
+			preview.vm.$emit('send-to-assistant');
+			await flushPromises();
+			expect(handoffMock).toHaveBeenCalled();
+			expect(preview.props('isOpen')).toBe(!accepted);
+			expect(assistant.props('visible')).toBe(accepted);
+			expect(
+				assistant.get('[data-testid="agent-builder-mode-build"]').attributes('aria-pressed'),
+			).toBe(String(accepted));
+		},
+	);
 
 	it('keeps width and test placement independent', async () => {
 		const wrapper = await renderView({

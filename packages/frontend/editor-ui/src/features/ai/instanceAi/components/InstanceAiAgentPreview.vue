@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AgentCreationResource } from '@/features/agents/types';
-import { computed, onBeforeUnmount } from 'vue';
+import { computed, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
 import { persistPendingAgent } from '../instanceAi.memory.api';
@@ -16,12 +16,14 @@ import {
 } from '../constants';
 import type { AgentPreviewHandoffParams } from '../composables/useInstanceAiAgentPreviewHandoff';
 import AgentBuildingIndicator from './AgentBuildingIndicator.vue';
+import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	previewSessionId?: string;
 	previewOpen: boolean;
+	testChatTarget?: HTMLElement | null;
 	/** No agent row exists yet — the builder renders a local draft and persists on first edit. */
 	pending?: boolean;
 }>();
@@ -39,6 +41,13 @@ const emit = defineEmits<{
 // inspectable — only editing/publishing is disabled, via
 // `artifact-editing-locked` on `AgentBuilderView`.
 const thread = useThread();
+const assistantWorking = useIsAgentWorking();
+const builder = useTemplateRef<InstanceType<typeof AgentBuilderView>>('builder');
+const chatModeState = computed(() => builder.value?.chatModeState);
+async function setChatMode(mode: 'build' | 'test') {
+	return await builder.value?.setChatMode(mode);
+}
+defineExpose({ chatModeState, setChatMode });
 const instanceAiStore = useInstanceAiStore();
 const rootStore = useRootStore();
 
@@ -122,18 +131,25 @@ async function persistAgent(
 			<AgentBuildingIndicator v-if="showBuildingIndicator" />
 		</Transition>
 		<AgentBuilderView
+			ref="builder"
 			artifact-mode
 			:artifact-project-id="props.projectId"
 			:artifact-agent-id="props.agentId"
 			:artifact-preview-session-id="props.previewSessionId"
 			:artifact-preview-open="props.previewOpen"
+			:artifact-test-chat-target="props.testChatTarget"
+			:artifact-assistant-working="assistantWorking"
 			:artifact-agent-pending="props.pending"
 			:artifact-editing-locked="isAgentBuilding"
 			:artifact-persist-agent="persistAgent"
 			@preview-open-change="emit('preview-open-change', $event)"
 			@assistant-handoff="emit('assistant-handoff', $event)"
 			@name-saved="syncAgentTarget"
-		/>
+		>
+			<template v-if="$slots['test-chat-actions']" #artifact-test-actions>
+				<slot name="test-chat-actions" />
+			</template>
+		</AgentBuilderView>
 	</div>
 </template>
 

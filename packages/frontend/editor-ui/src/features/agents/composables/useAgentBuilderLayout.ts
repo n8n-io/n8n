@@ -15,6 +15,7 @@ export const DEFAULT_AGENT_BUILDER_LAYOUT: AgentBuilderLayout = {
 const DEFAULT_CONFIG_RATIO = 0.35;
 export const AGENT_CONFIG_MIN_WIDTH = 360;
 const MIN_CHAT_WIDTH = 320;
+export const AGENT_BUILDER_COMPACT_WIDTH = AGENT_CONFIG_MIN_WIDTH + MIN_CHAT_WIDTH;
 
 export function useAgentBuilderLayout(
 	containerWidth: MaybeRefOrGetter<number>,
@@ -23,7 +24,7 @@ export function useAgentBuilderLayout(
 	const configRatio = useLocalStorage('N8N_AGENT_BUILDER_CONFIG_RATIO', DEFAULT_CONFIG_RATIO);
 	const compact = computed(() => {
 		const width = toValue(availableWidth);
-		return width > 0 && width < AGENT_CONFIG_MIN_WIDTH + MIN_CHAT_WIDTH;
+		return width > 0 && width < AGENT_BUILDER_COMPACT_WIDTH;
 	});
 	const maxConfigWidth = computed(() =>
 		Math.max(AGENT_CONFIG_MIN_WIDTH, toValue(containerWidth) - MIN_CHAT_WIDTH),

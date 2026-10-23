@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { randomUUID } from 'node:crypto';
 
 import { setContextModuleSettings } from '../../../config/intercepts';
 import { expect, test } from '../../../fixtures/base';
@@ -40,6 +41,7 @@ test.describe(
 			const builder = n8n.agentBuilder;
 			await expect(builder.getModeButton('build')).toHaveAttribute('aria-pressed', 'true');
 			await expect(builder.getComposer('build')).toBeVisible();
+			await expect(builder.getOpenFullAssistantButton()).toBeHidden();
 			await expect
 				.poll(async () => await builder.getConfigurationWidthRatio())
 				.toBeCloseTo(0.35, 3);
@@ -186,6 +188,83 @@ test.describe(
 						path: testInfo.outputPath(`375-${mode}-placeholder-${colorScheme}.png`),
 					});
 				}
+			}
+		});
+
+		test('uses the main Assistant chat for testing an agent artifact', async ({
+			n8n,
+			api,
+		}, testInfo) => {
+			setContextModuleSettings(n8n.page.context(), {
+				'instance-ai': { enabled: true, setupCompleted: true, workflowBuilderAvailable: true },
+			});
+			const project = await api.projects.getMyPersonalProject();
+			const credential = await api.credentials.createCredential({
+				name: `Artifact modes ${nanoid(6)}`,
+				type: 'anthropicApi',
+				data: { apiKey: 'artifact-modes-test-key' },
+			});
+			const agentName = `Artifact modes ${nanoid(6)}`;
+			const agent = await api.agents.create(project.id, {
+				name: agentName,
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: credential.id,
+				instructions: 'Help answer questions about the project.',
+			});
+			const threadId = randomUUID();
+			await api.instanceAi.createAgentArtifactThread({
+				threadId,
+				projectId: project.id,
+				agentId: agent.id,
+				name: agentName,
+			});
+			await n8n.page.setViewportSize({ width: 1440, height: 900 });
+			await n8n.start.fromHome();
+			await n8n.instanceAi.gotoThread(threadId);
+			const builder = n8n.agentBuilder;
+			await expect(builder.getModeButton('test')).toBeEnabled();
+			await builder.getArtifactBuildComposer().fill('Add a project knowledge tool');
+			await n8n.page.screenshot({ path: testInfo.outputPath('assistant-artifact-build.png') });
+			await builder.getModeButton('test').click();
+			await expect(builder.getArtifactBuildComposer()).toBeHidden();
+			await expect(builder.getComposer('test')).toBeVisible();
+			await expect(builder.getConfiguration()).toBeVisible();
+			const testChat = await builder.getArtifactTestChat().boundingBox();
+			const configuration = await builder.getConfiguration().boundingBox();
+			expect(testChat).not.toBeNull();
+			expect(configuration).not.toBeNull();
+			expect((testChat?.x ?? 0) + (testChat?.width ?? 0)).toBeLessThanOrEqual(
+				configuration?.x ?? 0,
+			);
+			await builder.getComposer('test').fill('What can you help me with?');
+			await n8n.page.screenshot({ path: testInfo.outputPath('assistant-artifact-test.png') });
+			await builder.getModeButton('build').click();
+			await expect(builder.getArtifactBuildComposer()).toHaveValue('Add a project knowledge tool');
+			await builder.getModeButton('test').click();
+			await expect(builder.getComposer('test')).toHaveValue('What can you help me with?');
+			for (const colorScheme of ['light', 'dark'] as const) {
+				await n8n.page.emulateMedia({ colorScheme });
+				await n8n.page.setViewportSize({ width: 375, height: 667 });
+				await expect(builder.getConfiguration()).toBeHidden();
+				await expect(builder.getComposer('test')).toBeVisible();
+				const { composer, controls } = await builder.getComposerLayout('test');
+				for (const bounds of controls) {
+					expect(bounds.x).toBeGreaterThanOrEqual(composer.x);
+					expect(bounds.x + bounds.width).toBeLessThanOrEqual(composer.x + composer.width);
+				}
+				await n8n.page.screenshot({
+					path: testInfo.outputPath(`assistant-artifact-mobile-${colorScheme}.png`),
+				});
+				await builder.getTestShowConfigurationButton().click();
+				await expect(builder.getConfiguration()).toBeVisible();
+				await expect(builder.getComposer('test')).toBeHidden();
+				await builder.getArtifactPanelToggle().click();
+				await expect(builder.getComposer('test')).toHaveValue('What can you help me with?');
+				await builder.getModeButton('build').click();
+				await expect(builder.getArtifactBuildComposer()).toHaveValue(
+					'Add a project knowledge tool',
+				);
+				await builder.getModeButton('test').click();
 			}
 		});
 	},

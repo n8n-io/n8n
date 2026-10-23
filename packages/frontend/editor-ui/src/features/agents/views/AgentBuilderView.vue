@@ -198,6 +198,9 @@ const props = withDefaults(
 		artifactPreviewSessionId?: string;
 		/** Controls the preview chat when the builder is inside Instance AI. */
 		artifactPreviewOpen?: boolean;
+		/** Renders the artifact's Test chat in the host's main chat area. */
+		artifactTestChatTarget?: HTMLElement | null;
+		artifactAssistantWorking?: boolean;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
 		/** True when no agent row exists behind `artifactAgentId` yet — the builder
@@ -222,6 +225,8 @@ const props = withDefaults(
 		artifactAgentId: undefined,
 		artifactPreviewSessionId: undefined,
 		artifactPreviewOpen: undefined,
+		artifactTestChatTarget: undefined,
+		artifactAssistantWorking: false,
 		artifactEditingLocked: false,
 		artifactAgentPending: false,
 		artifactPersistAgent: undefined,
@@ -361,7 +366,12 @@ const wideChat = computed(
 	() => chatLayoutEnabled.value && props.builderLayout.chatWidth === 'wide',
 );
 const inlineTestChat = computed(
-	() => chatLayoutEnabled.value && props.builderLayout.testChat === 'inline',
+	() =>
+		artifactInlineTestChat.value ||
+		(chatLayoutEnabled.value && props.builderLayout.testChat === 'inline'),
+);
+const artifactInlineTestChat = computed(
+	() => isArtifactMode.value && props.artifactTestChatTarget !== undefined,
 );
 const {
 	compact: compactLayout,
@@ -399,11 +409,13 @@ const hasSentBuilderMessage = useLocalStorage(
 );
 const chatMode = computed(() => (isPreviewDockOpen.value ? 'test' : 'build'));
 async function setChatMode(mode: 'build' | 'test') {
+	if (chatModeBusy.value) return false;
 	if (mode === 'test') {
-		if (!canExecuteAgent.value || embeddedAiBuilding.value) return;
-		await onOpenPreview(undefined, { projectId: projectId.value, agentId: agentId.value });
+		if (!canExecuteAgent.value) return false;
+		return await onOpenPreview(undefined, { projectId: projectId.value, agentId: agentId.value });
 	} else {
 		closePreviewDock();
+		return true;
 	}
 }
 const defaultPanelWidth = computed(() => {
@@ -486,6 +498,10 @@ function onAiThreadIdChange(threadId: string) {
 }
 /** True while the embedded assistant is actively mutating this agent. */
 const embeddedAiBuilding = ref(false);
+const embeddedAiWorking = ref(false);
+const chatModeBusy = computed(
+	() => props.artifactAssistantWorking || embeddedAiWorking.value || embeddedAiBuilding.value,
+);
 const aiPanelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('aiPanelRef');
 // The standalone preview route doesn't render the AI dock (`showAiPanel`
 // requires the builder route), so a hand-off requested from there has nowhere
@@ -1072,12 +1088,29 @@ const builderTelemetry = useAgentBuilderTelemetry({
  * Preview or stays in the builder.
  */
 const isBuilt = computed(() => agent.value?.isRunnable === true);
+const hasBeenReadyToTest = ref(false);
+watch(
+	[projectId, agentId, isBuilt, chatModeBusy, initialized],
+	([project, id, ready, busy, loaded], previous) => {
+		if (previous && (project !== previous[0] || id !== previous[1])) {
+			hasBeenReadyToTest.value = false;
+		}
+		if (loaded && agent.value?.id === id && ready && !busy) hasBeenReadyToTest.value = true;
+	},
+	{ immediate: true },
+);
 const testModeDisabledReason = computed(() => {
 	if (!canExecuteAgent.value) return locale.baseText('agents.builder.chatMode.noPermission');
-	if (embeddedAiBuilding.value) return locale.baseText('agents.builder.chatMode.building');
+	if (chatModeBusy.value) return locale.baseText('agents.builder.chatMode.building');
 	if (!isBuilt.value) return locale.baseText('agents.builder.chatMode.unavailable');
 	return undefined;
 });
+const chatModeState = computed(() => ({
+	visible: hasBeenReadyToTest.value,
+	disabled: chatModeBusy.value,
+	testDisabledReason: testModeDisabledReason.value,
+}));
+defineExpose({ chatModeState, setChatMode });
 
 const showBuilderLoading = computed(() => !initialized.value);
 
@@ -3489,6 +3522,7 @@ useKeybindings({
 								(!inlineTestChat || !isPreviewDockOpen) && !(compactChatLayout && showConfiguration)
 							"
 							:closable="compactChatLayout || (!inlineTestChat && !wideChat)"
+							:show-open-full-assistant="false"
 							:composer-height="inlineTestChat ? 'var(--agent-builder-composer-height)' : undefined"
 							:placeholder="
 								inlineTestChat
@@ -3505,6 +3539,7 @@ useKeybindings({
 							data-testid="agent-ai-chat-panel"
 							@update:thread-id="onAiThreadIdChange"
 							@update:building="embeddedAiBuilding = $event"
+							@update:working="embeddedAiWorking = $event"
 							@close="closeBuilderChat"
 						>
 							<template v-if="inlineTestChat" #composer-footer>
@@ -3512,7 +3547,9 @@ useKeybindings({
 							</template>
 							<template v-if="inlineTestChat" #composer-start>
 								<AgentBuilderChatMode
+									v-if="hasBeenReadyToTest"
 									:model-value="chatMode"
+									:disabled="chatModeBusy"
 									:test-disabled="!!testModeDisabledReason"
 									:test-disabled-reason="testModeDisabledReason"
 									:discovery="!hasSentBuilderMessage && !isPreviewDockOpen && !showConfiguration"
@@ -3640,80 +3677,93 @@ useKeybindings({
 						@unpublished="onUnpublished"
 					/>
 
-					<N8nResizeWrapper
+					<Teleport
 						v-if="!isStandalonePreview"
-						:class="[
-							$style.previewResizeWrapper,
-							{ [$style.previewResizeOpen]: isPreviewDockOpen },
-						]"
-						:is-resizing-enabled="isPreviewDockOpen && !inlineTestChat"
-						v-show="!(compactChatLayout && showConfiguration)"
-						:width="renderedSidePanelWidths.preview"
-						:max-width="AGENT_MAX_PANEL_WIDTH"
-						:default-width="defaultPanelWidth"
-						:min-width="AGENT_MIN_PANEL_WIDTH"
-						:supported-directions="['left']"
-						:grid-size="8"
-						@resizestart="isPreviewDockResizing = true"
-						@resize="onPreviewDockResize"
-						@resizeend="isPreviewDockResizing = false"
+						:to="props.artifactTestChatTarget ?? 'body'"
+						:disabled="!artifactInlineTestChat || !props.artifactTestChatTarget"
 					>
-						<AgentPreviewDock
-							ref="previewDock"
-							:inline="inlineTestChat"
-							:closable="compactChatLayout"
-							:placeholder="
-								inlineTestChat
-									? locale.baseText('agents.builder.chatMode.testPlaceholder', {
-											interpolate: { agentName: localConfig?.name || agentName },
-										})
-									: undefined
-							"
-							@message-sent="hasSentBuilderMessage = true"
-							:is-open="isPreviewDockOpen && !(compactChatLayout && showConfiguration)"
-							:session-title="currentSessionTitle"
-							:session-options="sessionMenu"
-							:has-session="currentSessionHasMessages"
-							:initialized="initialized && previewSessionReady"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:agent="agent"
-							:local-config="localConfig"
-							:connected-triggers="connectedTriggers"
-							:effective-session-id="effectiveSessionId"
-							:new-session="currentSessionIsEphemeral"
-							:initial-prompt="taskPreviewPrompt"
-							:can-delete-session="canDeletePreviewSession"
-							:is-deleting-session="isDeletingSession"
-							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
-							:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
-							:before-send="beforePreviewSend"
-							budget-cards
-							:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
-							@view-trace="viewPreviewTrace"
-							@new-session="startNewPreviewSession"
-							@delete-session="onDeletePreviewSession"
-							@session-select="onSessionPick"
-							@close="closeTestChat"
-							@continue-loaded="onContinueLoaded"
-							@session-created="markSessionCreated"
-							@send-to-assistant="onSendPreviewToAssistant"
-							@initial-consumed="taskPreviewPrompt = undefined"
+						<N8nResizeWrapper
+							:class="[
+								$style.previewResizeWrapper,
+								{
+									[$style.previewResizeOpen]: isPreviewDockOpen,
+									[$style.artifactTestChat]: artifactInlineTestChat,
+								},
+							]"
+							:is-resizing-enabled="isPreviewDockOpen && !inlineTestChat"
+							v-show="!(compactChatLayout && showConfiguration)"
+							:width="renderedSidePanelWidths.preview"
+							:max-width="AGENT_MAX_PANEL_WIDTH"
+							:default-width="defaultPanelWidth"
+							:min-width="AGENT_MIN_PANEL_WIDTH"
+							:supported-directions="['left']"
+							:grid-size="8"
+							@resizestart="isPreviewDockResizing = true"
+							@resize="onPreviewDockResize"
+							@resizeend="isPreviewDockResizing = false"
 						>
-							<template v-if="inlineTestChat" #composer-footer>
-								<AgentBuilderChatDisclaimer />
-							</template>
-							<template v-if="inlineTestChat" #composer-start>
-								<AgentBuilderChatMode
-									:model-value="chatMode"
-									:test-disabled="!!testModeDisabledReason"
-									:test-disabled-reason="testModeDisabledReason"
-									:discovery="!hasSentBuilderMessage && isPreviewDockOpen && !showConfiguration"
-									@update:model-value="setChatMode"
-								/>
-							</template>
-						</AgentPreviewDock>
-					</N8nResizeWrapper>
+							<AgentPreviewDock
+								ref="previewDock"
+								:inline="inlineTestChat"
+								:closable="compactChatLayout"
+								:placeholder="
+									inlineTestChat
+										? locale.baseText('agents.builder.chatMode.testPlaceholder', {
+												interpolate: { agentName: localConfig?.name || agentName },
+											})
+										: undefined
+								"
+								@message-sent="hasSentBuilderMessage = true"
+								:is-open="isPreviewDockOpen && !(compactChatLayout && showConfiguration)"
+								:session-title="currentSessionTitle"
+								:session-options="sessionMenu"
+								:has-session="currentSessionHasMessages"
+								:initialized="initialized && previewSessionReady"
+								:project-id="projectId"
+								:agent-id="agentId"
+								:agent="agent"
+								:local-config="localConfig"
+								:connected-triggers="connectedTriggers"
+								:effective-session-id="effectiveSessionId"
+								:new-session="currentSessionIsEphemeral"
+								:initial-prompt="taskPreviewPrompt"
+								:can-delete-session="canDeletePreviewSession"
+								:is-deleting-session="isDeletingSession"
+								:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
+								:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+								:before-send="beforePreviewSend"
+								budget-cards
+								:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
+								@view-trace="viewPreviewTrace"
+								@new-session="startNewPreviewSession"
+								@delete-session="onDeletePreviewSession"
+								@session-select="onSessionPick"
+								@close="closeTestChat"
+								@continue-loaded="onContinueLoaded"
+								@session-created="markSessionCreated"
+								@send-to-assistant="onSendPreviewToAssistant"
+								@initial-consumed="taskPreviewPrompt = undefined"
+							>
+								<template v-if="$slots['artifact-test-actions']" #header-actions>
+									<slot name="artifact-test-actions" />
+								</template>
+								<template v-if="inlineTestChat" #composer-footer>
+									<AgentBuilderChatDisclaimer />
+								</template>
+								<template v-if="inlineTestChat" #composer-start>
+									<AgentBuilderChatMode
+										v-if="hasBeenReadyToTest"
+										:model-value="chatMode"
+										:disabled="chatModeBusy"
+										:test-disabled="!!testModeDisabledReason"
+										:test-disabled-reason="testModeDisabledReason"
+										:discovery="!hasSentBuilderMessage && isPreviewDockOpen && !showConfiguration"
+										@update:model-value="setChatMode"
+									/>
+								</template>
+							</AgentPreviewDock>
+						</N8nResizeWrapper>
+					</Teleport>
 				</template>
 			</div>
 		</div>
@@ -3844,6 +3894,18 @@ useKeybindings({
 
 .previewResizeOpen {
 	pointer-events: auto;
+}
+
+.artifactTestChat {
+	--agent-preview-chat-column-width: 100%;
+	--agent-builder-composer-height: calc(
+		var(--height--5xl) + var(--height--4xl) + var(--height--xs)
+	);
+	--agent-chat-max-width: 100%;
+	--agent-chat-input-padding: 0 var(--spacing--lg) var(--spacing--sm);
+
+	width: 100%;
+	container-type: inline-size;
 }
 
 .loading {

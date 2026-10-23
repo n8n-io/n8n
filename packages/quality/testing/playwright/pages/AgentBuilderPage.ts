@@ -28,6 +28,29 @@ export class AgentBuilderPage extends BasePage {
 		return this.page.locator('[data-testid="agent-ai-chat-panel"]');
 	}
 
+	getArtifactBuildComposer(): Locator {
+		return this.page
+			.getByTestId('instance-ai-builder-chat')
+			.getByTestId('instance-ai-composer')
+			.locator('textarea');
+	}
+
+	getArtifactTestChat(): Locator {
+		return this.page.getByTestId('instance-ai-agent-test-chat');
+	}
+
+	getArtifactPanelToggle(): Locator {
+		return this.page.locator('[data-test-id="instance-ai-artifacts-preview-toggle"]:visible');
+	}
+
+	getTestShowConfigurationButton(): Locator {
+		return this.page.getByTestId('instance-ai-agent-test-show-config');
+	}
+
+	getOpenFullAssistantButton(): Locator {
+		return this.getAssistantChat().getByTestId('instance-ai-embed-open-full');
+	}
+
 	getConfiguration(): Locator {
 		return this.page.locator('[data-testid="agent-builder-editor-column"]');
 	}

@@ -211,6 +211,11 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 	},
 });
 
+const artifactChatModeState = ref({
+	visible: true,
+	disabled: false,
+	testDisabledReason: undefined as string | undefined,
+});
 const InstanceAiAgentPreviewStub = defineComponent({
 	name: 'InstanceAiAgentPreviewStub',
 	props: {
@@ -220,7 +225,11 @@ const InstanceAiAgentPreviewStub = defineComponent({
 		previewOpen: { type: Boolean, required: true },
 	},
 	emits: ['preview-open-change', 'assistant-handoff'],
-	setup(props, { emit }) {
+	setup(props, { emit, expose }) {
+		expose({
+			chatModeState: artifactChatModeState,
+			setChatMode: async (mode: 'build' | 'test') => emit('preview-open-change', mode === 'test'),
+		});
 		const openAgentChatPreview = inject<
 			((agentId: string, projectId: string) => boolean) | undefined
 		>('openAgentChatPreview', undefined);
@@ -435,6 +444,7 @@ describe('InstanceAiThreadView', () => {
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
+		artifactChatModeState.value = { visible: true, disabled: false, testDisabledReason: undefined };
 		storedThreadTabs.clear();
 		// Default `stubActions: true` — every store action becomes a no-op spy.
 		const pinia = createTestingPinia();
@@ -961,8 +971,32 @@ describe('InstanceAiThreadView', () => {
 
 	// Leaving it open puts the agent chat beside the Assistant composer that now
 	// holds the same request — two places to ask the same thing.
+	it('shows the artifact mode selector only after readiness and keeps it disabled during work', async () => {
+		artifactChatModeState.value.visible = false;
+		const { queryByRole, getByRole, user, getByTestId } = await renderAgentArtifact();
+		expect(queryByRole('button', { name: 'Test', exact: true })).not.toBeInTheDocument();
+		artifactChatModeState.value.visible = true;
+		await nextTick();
+		expect(getByRole('button', { name: 'Test', exact: true })).toBeEnabled();
+		artifactChatModeState.value.disabled = true;
+		await nextTick();
+		expect(getByRole('button', { name: 'Build', exact: true })).toBeDisabled();
+		expect(getByRole('button', { name: 'Test', exact: true })).toBeDisabled();
+		artifactChatModeState.value.disabled = false;
+		await nextTick();
+		await user.click(getByRole('button', { name: 'Test', exact: true }));
+		expect(getByTestId('instance-ai-agent-test-chat')).toBeVisible();
+		expect(getByTestId('instance-ai-input-stub')).not.toBeVisible();
+		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
+		expect(getByRole('button', { name: 'Build', exact: true })).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+		expect(getByTestId('instance-ai-input-stub')).toBeVisible();
+	});
+
 	it('closes the preview dock once the request is staged in the composer', async () => {
-		const { getByTestId, user } = await renderAgentArtifact();
+		const { getByTestId, getByRole, user } = await renderAgentArtifact();
 		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
 
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
@@ -976,6 +1010,10 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
 			'data-preview-open',
 			'false',
+		);
+		expect(getByRole('button', { name: 'Build', exact: true })).toHaveAttribute(
+			'aria-pressed',
+			'true',
 		);
 	});
 

@@ -554,6 +554,27 @@ describe('InstanceAiChatPanel', () => {
 		);
 	});
 
+	it('hides the full Assistant link when the host disables it', () => {
+		const { queryByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match', showOpenFullAssistant: false },
+		});
+		expect(queryByTestId('instance-ai-embed-open-full')).not.toBeInTheDocument();
+	});
+
+	it('reports Assistant activity before an artifact mutation starts', async () => {
+		const runtime = makeThread();
+		store.getOrCreateRuntime.mockReturnValue(runtime);
+		const { emitted } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		await flushPromises();
+		runtime.isSendingMessage = true;
+		await flushPromises();
+		expect(emitted('update:working')).toContainEqual([true]);
+		expect(buildingIds.value.size).toBe(0);
+		runtime.isSendingMessage = false;
+		await flushPromises();
+		expect(emitted('update:working')?.at(-1)).toEqual([false]);
+	});
+
 	it('navigates to the full assistant thread view', async () => {
 		const { getByTestId } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
 

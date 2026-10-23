@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 
 defineProps<{
 	modelValue: 'build' | 'test';
+	disabled?: boolean;
 	testDisabled?: boolean;
 	testDisabledReason?: string;
 	discovery?: boolean;
@@ -23,6 +24,7 @@ const i18n = useI18n();
 			variant="ghost"
 			:class="[$style.mode, { [$style.active]: modelValue === 'build' }]"
 			:aria-pressed="modelValue === 'build'"
+			:disabled="disabled"
 			data-testid="agent-builder-mode-build"
 			@click="emit('update:modelValue', 'build')"
 		>
@@ -38,7 +40,7 @@ const i18n = useI18n();
 					variant="ghost"
 					:class="[$style.mode, { [$style.active]: modelValue === 'test' }]"
 					:aria-pressed="modelValue === 'test'"
-					:disabled="testDisabled"
+					:disabled="disabled || testDisabled"
 					data-testid="agent-builder-mode-test"
 					@click="emit('update:modelValue', 'test')"
 				>
