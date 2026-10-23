@@ -19,7 +19,7 @@ import type { WorkflowHookContextService } from '@/workflow-hook-context.service
 // `ExternalHooks` loads hook files via `require(<path>)`. Vitest cannot mock a
 // path that doesn't resolve to a real module, so write a real fixture that
 // delegates to a per-test global, letting the test assert on its own spy.
-const { validHookPath } = vi.hoisted(() => {
+const { validHookPath, registerHookPath } = vi.hoisted(() => {
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	const { mkdtempSync, writeFileSync } = require('fs');
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -32,7 +32,12 @@ const { validHookPath } = vi.hoisted(() => {
 		p,
 		'module.exports = { workflow: { create: [(...args) => globalThis.__extHookFn(...args)] } };',
 	);
-	return { validHookPath: p as string };
+	const registerHookPath = join(dir, 'register-hook.js');
+	writeFileSync(
+		registerHookPath,
+		'module.exports = { register: async () => {}, workflow: { create: [async () => {}] } };',
+	);
+	return { validHookPath: p as string, registerHookPath: registerHookPath as string };
 });
 
 vi.mock('/path/to/non-existent-hook.js', () => {
@@ -94,6 +99,34 @@ describe('ExternalHooks', () => {
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
 			expect(hookFn).toHaveBeenCalledWith(workflowData, workflowContext);
+		});
+	});
+
+	describe('versioned hooks API', () => {
+		it('should collect the register export and still load legacy hooks from the same file', async () => {
+			globalConfig.externalHooks.files = [registerHookPath];
+
+			await externalHooks.init();
+
+			expect(externalHooks.registerFunctions).toHaveLength(1);
+			expect(externalHooks.hasHook('workflow.create')).toBe(true);
+		});
+
+		it('should not collect a register function from a legacy hook file', async () => {
+			globalConfig.externalHooks.files = [validHookPath];
+
+			await externalHooks.init();
+
+			expect(externalHooks.registerFunctions).toHaveLength(0);
+		});
+
+		it('should run hooks added with registerHook()', async () => {
+			const fn = vi.fn();
+			externalHooks.registerHook('workflow.delete', fn);
+
+			await externalHooks.run('workflow.delete', ['workflow-1']);
+
+			expect(fn).toHaveBeenCalledWith('workflow-1');
 		});
 	});
 

@@ -127,6 +127,8 @@ packages/cli/src/modules/token-exchange/                @n8n-io/iam
 
 packages/cli/src/environments.ee/                       @n8n-io/ligo
 packages/cli/src/public-api/                            @n8n-io/ligo
+packages/cli/src/hooks-api/                             @n8n-io/api-and-oem
+packages/@n8n/hooks-api/                                @n8n-io/api-and-oem required
 packages/cli/src/modules/source-control.ee/             @n8n-io/ligo
 packages/cli/src/modules/external-secrets.ee/           @n8n-io/ligo
 packages/modules/insights/                              @n8n-io/ligo

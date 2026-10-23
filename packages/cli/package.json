@@ -176,6 +176,7 @@
     "@n8n/di": "workspace:*",
     "@n8n/engine": "workspace:*",
     "@n8n/errors": "workspace:*",
+    "@n8n/hooks-api": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/inbound-auth": "workspace:*",
     "@n8n/instance-ai": "workspace:*",

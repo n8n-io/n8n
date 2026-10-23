@@ -117,6 +117,17 @@ export abstract class AbstractServer {
 		// Additional configuration in derived classes
 	}
 
+	/**
+	 * Mounts extension routes after the built-in API routes and before the
+	 * editor fallback. Routes added during `register()` stay reachable.
+	 */
+	protected async mountExtensionRoutes(): Promise<void> {
+		if (Container.get(ExternalHooks).registerFunctions.length === 0) return;
+
+		const { PublicHttpService } = await import('@/hooks-api/v1/public-http.service.js');
+		this.app.use(Container.get(PublicHttpService).router);
+	}
+
 	private async setupErrorHandlers() {
 		const { app } = this;
 
@@ -349,6 +360,12 @@ export abstract class AbstractServer {
 			const { defaultLocale } = this.globalConfig;
 			if (defaultLocale !== 'en') {
 				this.logger.info(`Locale: ${defaultLocale}`);
+			}
+
+			// Read from the container: `start()` can run without `init()`, for example in tests.
+			if (Container.get(ExternalHooks).registerFunctions.length > 0) {
+				const { HooksApiService } = await import('@/hooks-api/hooks-api.service.js');
+				await Container.get(HooksApiService).register();
 			}
 
 			await this.externalHooks.run('n8n.ready', [this, config]);
