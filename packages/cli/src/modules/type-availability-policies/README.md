@@ -14,19 +14,16 @@ Notion for why the substrate looks the way it does.
 
 ## Turn it on
 
-Two gates, both required:
+This is a default module. The license feature `feat:typeAvailabilityPolicies` is the only gate.
+Without it, `init()` never runs, so the controllers are not mounted and no check is registered.
 
-1. The license feature `feat:typeAvailabilityPolicies`. Without it, `init()` never runs, so the
-   controllers are not mounted and no check is registered.
-2. `N8N_ENABLED_MODULES=type-availability-policies`. This module is not a default module yet.
+**Do not disable the module on only some instance types.** Each process reads its own
+configuration. An instance that disables it only on its queue workers enforces saves and
+publishes on main, and enforces nothing at all on the workers — every execution there is
+admitted.
 
-**Set the environment variable on every instance type.** The module has no instance-type
-restriction, but each process reads its own configuration. An instance that enables it only on
-main enforces saves and publishes, and enforces nothing at all on its queue workers — every
-execution there is admitted.
-
-The break-glass levers stay the ones the substrate documents: remove this module from
-`N8N_ENABLED_MODULES`, or disable `policy-infrastructure` to stop every policy feature.
+The break-glass levers stay the ones the substrate documents: add this module to
+`N8N_DISABLED_MODULES`, or disable `policy-infrastructure` to stop every policy feature.
 
 ## What each point decides
 
@@ -101,13 +98,14 @@ A rule of this kind is written on `/credential-type-policies` and
 `/projects/:projectId/credential-type-policies`, behind `credentialTypePolicy:manage` — its
 own permission, because blocking `oAuth2Api` is a wider lever than blocking one node.
 
-It implements all seven points:
+It implements all eight points:
 
-| Point               | What it reads                                      |
-| ------------------- | -------------------------------------------------- |
-| the five workflow points | the keys of every node's `credentials` map    |
-| `credentialSave`    | the type of the credential being written           |
-| `credentialDecrypt` | `credentialType` — the credential's own type       |
+| Point                    | What it reads                                         |
+| ------------------------ | ----------------------------------------------------- |
+| the five workflow points | the keys of every node's `credentials` map, the type HTTP Request names by parameter, and `extendsCredential` |
+| `credentialSave`         | the type of the credential being written              |
+| `credentialTransfer`     | the credential's type, against the **target** project |
+| `credentialDecrypt`      | `credentialType` — the credential's own type          |
 
 Two differences from the node check are the point of the whole thing:
 
@@ -127,12 +125,30 @@ Workflow-point grandfathering works the same way, one level down: the save diff 
 credential **types**, so swapping which `slackApi` credential a node uses, or copying the node,
 adds nothing to police.
 
+### Credential-only nodes
+
+The VirusTotal, Sysdig and Zabbix nodes, and every other node the editor generates from a
+credential type with `httpRequestNode`, are HTTP Request with one credential type attached. The
+editor names them `n8n-creds-base.<credentialType>` and stores them as
+`n8n-nodes-base.httpRequest` with `extendsCredential: '<credentialType>'`. No package registers
+the generated name, so the backend never sees it.
+
+Both kinds agree on such a node: it is available when `n8n-nodes-base.httpRequest` is available
+under the node kind **and** its credential type is available under the credential kind. The node
+check judges the stored `httpRequest` node; this check judges `extendsCredential` (and the
+parameter and `credentials` sources, which name the same type once configured). The frontend
+module composes the same two verdicts for the nodes panel, so a credential type rule on
+`virusTotalApi` hides the VirusTotal node and leaves HTTP Request and Sysdig in place.
+
+A node type rule on `n8n-creds-base.*` would match nothing, so the service refuses it at every
+write and names the credential type rule to write instead. Blocking HTTP Request itself still
+hides every credential-only node, as before.
+
 ### What the second kind costs
 
-The cache is keyed per kind, so the two kinds share nothing. A cold decision on a project with
-both scopes configured and attached costs 12 queries where one kind cost 6, and a warm one
-costs none — pinned in `node-type-policy.store-reads.test.ts`. The decision service runs the
-checks together, so the second kind costs queries rather than latency.
+The snapshot holds both kinds, so the second kind costs no query at decision time. A snapshot
+reload reads every scope of every kind in 4 queries, up to 10,000 scopes — pinned in
+`node-type-policy.store-reads.test.ts`.
 
 ## What a violation looks like
 
@@ -146,12 +162,23 @@ One violation per blocked type, deduplicated, in the order the types first appea
 	"subject": "n8n-nodes-base.slack",
 	"subjectType": "nodeType",
 	"scope": "instance",
-	"matchedRuleId": "rule-7"
+	"matchedRuleId": "rule-7",
+	"projectId": "project-1",
+	"optInAvailable": false
 }
 ```
 
 `matchedRuleId` is absent when the scope's default action decided and no rule matched. `scope`
 names the scope whose verdict decided, which is what a user needs to know who to ask.
+
+`projectId` names the project whose policy was evaluated, also for an instance denial. A
+sub-workflow is checked against its own project, so its refusal names that project, not the
+caller's. It is absent when no project applied. A project denial's message says "a project
+policy" and never names the project: the client resolves the name, and only for a project the
+user can see.
+
+`optInAvailable` is `true` when the instance delegated the type, so the project can lift the
+block with its own allow rule. It is always `false` when no project applied.
 
 The violations reach the caller as HTTP 403 with `meta.violations`, and a blocked run stores
 them on the execution's error. Today that error is the whole story a user gets: the builder
@@ -168,7 +195,8 @@ A policy lives in three tables:
 - **attachments**, which bind a document to a scope with a priority and a floor flag.
 
 `projectId: null` is the instance scope. An unwritten scope has no row: it allows everything and
-reports version `0`, so a first write sends `expectedVersion: 0`.
+reports version `0`, so a first write sends `expectedVersion: 0`. One accepted write moves the
+version by exactly one, whatever it changed.
 
 Evaluation is `instance ∩ project`, and a project can only restrict further. `delegate` is the
 one exception: an instance `delegate` is satisfied only by an explicit project `allow` rule,
@@ -185,41 +213,59 @@ lint warns about it. The verdict names the variant the user placed and the rule 
 Grandfathering compares literal type names, so adding `gmailTool` to a workflow that already
 stores `gmail` is a new type and is judged.
 
+A credential type policy has a third selector, `extends`. It matches the named type and every
+type built on it through the credential's `extends` list, at any depth: `extends oAuth2Api`
+covers `googleOAuth2Api` and `googleSheetsOAuth2Api`. A `name` rule stays exact, so
+`name oAuth2Api` blocks only the generic OAuth2 credential. Rule order decides as usual: an
+`allow name googleSheetsOAuth2Api` placed before `deny extends oAuth2Api` keeps Sheets usable,
+and placed after it, the shadow lint warns that it can never match. A write rejects an `extends`
+rule in a node type policy.
+
+A rule can name a package or type that this instance has not loaded. The write saves it and
+returns a `notLoaded` warning for it, next to the `shadowed` warnings. This applies to all
+three selectors. Thus, when you uninstall a package, its rules do not block later writes to the
+policy. An installed node that `NODES_EXCLUDE` or `NODES_INCLUDE` filters out is not loaded
+either. The policy still enforces its rule, because evaluation matches type names, but a policy
+cannot make a filtered-out node available. One exception: a write rejects a `package` rule on `n8n-creds-base`, because no package
+can ever provide it.
+
 ### Reading it on the execution path
 
 `workflowStart` runs for every execution and every sub-execution, under a 250 ms deadline it
-fails closed on — so a slow database fails runs rather than slowing them. Evaluation therefore
-reads each scope through a `CacheService` entry keyed
-`type-availability-policy:scope:{kind}:{projectId ?? 'instance'}`, and a warm decision costs no
-queries at all. The instance entry is one row shared by every project.
+fails closed on. Any I/O on that path can miss the deadline, even when the store is healthy: a
+worker whose event loop stalls fires the deadline timer before it handles a reply that has
+already arrived.
 
-Every write drops the entries it changed, after its transaction commits. Invalidation is what
-keeps the cache fresh; the 10-minute TTL is only a backstop — see "Cache staleness" under
-"Known limits" for what is left for it to heal.
+So each process holds every configured scope in memory, in
+`TypeAvailabilityPolicySnapshot`. A decision reads that map and does no I/O. It resolves before
+any timer can fire. A project with no scope row reads as allow-all, which is correct only
+because the snapshot holds every row.
 
-In front of that entry, each process shares its own read of a scope. It holds the promise
-rather than the value, and registers it before the read starts, which buys two things on two
-different time scales:
+The database stays the source of truth. Three things keep the snapshot fresh:
 
-- **Callers that arrive while the read is running share it.** A burst of decisions on a cold
-  entry costs one database read rather than one for each. Nothing survives from before here —
-  the first caller registers its promise before any I/O, so the rest find it. The window is
-  that one read.
-- **Callers that arrive after it finished share it too, until 1 second after it began.** The
-  window runs from the start of the read, not from its result, so a slow read leaves less of
-  it. A warm decision then costs no round trip and no parse of every rule. That parse is what
-  makes a decision on Redis grow more expensive as an admin writes more rules.
+- **The process that wrote reloads after its transaction commits.** The response waits for
+  that reload, so the editor sees its own change at once.
+- **The other processes reload on the `reload-type-availability-policies` pubsub command.** The
+  writer publishes it after the commit. The subscriber debounces it for 300 ms, as it does every
+  command not in `IMMEDIATE_COMMANDS`, so a burst of writes costs one reload. Outside queue mode
+  there is one process and no command.
+- **A poll catches a command that was lost.** Redis pubsub does not redeliver. Every 30 seconds,
+  each process reads `COUNT(*)`, `SUM(version)` and `MAX(createdAt)` of the scope table. A delete
+  lowers the count, an update bumps a version, and an insert sets the newest `createdAt`. So a
+  different result means a missed change, and the process reloads.
+  A process also reloads when its pubsub subscriber reconnects.
 
-The 1 second must stay longer than one read, or the first of those leaks: a caller arriving
-late in a slow read would find the entry expired and start a second read.
+A reload reads every scope of every kind in 4 queries. Above 10,000 scopes or attached policies,
+each further batch of 10,000 IDs adds one query. Reloads run one at a time, so an older reload can
+never overwrite a newer one.
 
-A cache call is also bounded at 50 ms and falls through to the database. ioredis queues
-commands while it is disconnected rather than rejecting them, so without the bound a lost Redis
-would hang the read and spend the whole 250 ms budget instead of failing over.
+The module loads the snapshot in `init()`, before the process takes work. If that first load
+fails, the process still boots: decisions read the database directly, under the same deadline,
+and the poll retries the load.
 
-The admin reads (`getEffectivePolicy`, behind the `GET` routes) stay uncached on purpose: the
-`version` they report is what the editor sends back as `expectedVersion`, so a stale read there
-would surface as a write conflict.
+The admin reads (`getEffectivePolicy`, behind the `GET` routes) read the database on purpose:
+the `version` they report is what the editor sends back as `expectedVersion`, so a stale read
+there would surface as a write conflict.
 
 ## The write seal
 
@@ -241,28 +287,12 @@ through a sealed repository method, and the lint rule that guards that has no al
   asking — an OAuth authorize or revoke, the agents adapter, a log-streaming destination. There
   is no node type to evaluate there, and the credential's type is deliberately not a stand-in,
   so the decryption goes through.
-- **A policy change applies at once, plus up to 1 second.** The write drops the shared entry,
-  which reaches every process, because every deployment with more than one process reading
-  policy shares one Redis cache — unless `N8N_CACHE_BACKEND=memory` is set by hand in queue
-  mode. What is left is each process's 1-second shared read, so that is the staleness window a
-  builder or an execution can see.
-
-  A read that hit the database before the write committed can put its old snapshot back after
-  the delete. Two rules stop it. On the process that wrote, a counter of invalidations makes
-  that read skip its write-back. And any read that took longer than a second skips it as well,
-  whichever process it ran on — because the invalidated keys are also dropped a second time one
-  second later, so a read that finished inside that second cannot outlive both deletes. A read
-  that skips the write-back still answers its own caller; only the rest of the cluster waits
-  for the next read.
-
-  `CacheService` has no compare-and-set, so a slow read pays for this by not populating the
-  cache at all. Pubsub invalidation would remove the need, and is the step that would also let
-  that 1 second grow and the TTL go away.
-
-- **The 10-minute TTL heals only what invalidation cannot reach.** Three cases, all
-  operator-level: that forced memory backend, where each process keeps its own copy and no
-  delete reaches it; a `deleteMany` that failed after its write committed, which is logged and
-  not retried; and a row edited outside the service, by a migration or manual SQL.
+- **A policy change reaches other processes after the pubsub command, or within 30
+  seconds.** The command normally takes effect about 300 ms after the last write. If a process
+  misses it, the fingerprint poll finds the change on its next run.
+- **A row edited outside the service is picked up by the poll only.** A migration or manual
+  SQL publishes no command. The poll sees the change if it moves a version, the row count or
+  the newest `createdAt`.
 - **Type-level policy is not a data boundary.** Blocking a node does not block the API behind
   it, because HTTP Request and Code remain available. Load-time exclusion
   (`NODES_EXCLUDE`) is the stronger tool for the types that must never load.
@@ -284,11 +314,14 @@ through a sealed repository method, and the lint rule that guards that has no al
 | File                                              | Role                                                                            |
 | ------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `node-type-policy.check.ts`                       | Node types: the six points, the save diff, the violations                       |
-| `credential-type-policy.check.ts`                 | Credential types: all seven points, including `credentialSave`                  |
+| `credential-type-policy.check.ts`                 | Credential types: all eight points, including `credentialSave`                  |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
+| `policy-rule-lint.ts`                             | Adds `notLoaded` warnings and merges all write-time warnings in rule order      |
 | `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
+| `type-availability-policy-snapshot.ts`            | Holds every scope in memory for decisions, and keeps it fresh                   |
+| `effective-policy.ts`                             | The composed policy of one scope, and its allow-all default                     |
 | `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments, `node-types`                         |
 | `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
 | `credential-type-policy-instance.controller.ts`   | Instance scope, documents and attachments, `credential-types`                   |

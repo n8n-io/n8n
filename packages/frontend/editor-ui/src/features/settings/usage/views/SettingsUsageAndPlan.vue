@@ -20,6 +20,7 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nHeading,
@@ -305,7 +306,7 @@ const openCommunityRegisterModal = () => {
 
 			<div :class="$style.buttons">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					v-if="canUserActivateLicense"
 					:class="$style.buttonTertiary"
 					size="large"
@@ -343,7 +344,7 @@ const openCommunityRegisterModal = () => {
 				</template>
 				<template #footer>
 					<div :class="$style.dialogButtonsContainer">
-						<N8nButton variant="subtle" @click="onActivationCancel">
+						<N8nButton variant="outline" @click="onActivationCancel">
 							{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 						</N8nButton>
 						<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
@@ -358,12 +359,14 @@ const openCommunityRegisterModal = () => {
 				size="small"
 				:header="locale.baseText('settings.usageAndPlan.license.activation.success.title')"
 			>
-				<N8nDialogDescription
-					:class="$style.activationSuccessDescription"
-					data-test-id="license-activation-success-dialog"
-				>
-					{{ locale.baseText('settings.usageAndPlan.license.activation.success.message') }}
-				</N8nDialogDescription>
+				<N8nDialogBody>
+					<N8nDialogDescription
+						:class="$style.activationSuccessDescription"
+						data-test-id="license-activation-success-dialog"
+					>
+						{{ locale.baseText('settings.usageAndPlan.license.activation.success.message') }}
+					</N8nDialogDescription>
+				</N8nDialogBody>
 				<N8nDialogFooter>
 					<N8nButton
 						data-test-id="license-activation-success-close-button"

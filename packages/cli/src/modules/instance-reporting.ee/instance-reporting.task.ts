@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { InstanceReportingService } from './instance-reporting.service';
 
@@ -10,15 +10,10 @@ export class InstanceReportingTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(15 * Time.minutes.toSeconds);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = {
-		scope: 'cluster',
-		durable: true,
-		runOnTakeover: true,
-	};
-
-	readonly maxAttempts = 1;
+	readonly target = clusterTarget({
+		scheduler: { retryOnFailure: false },
+		leaderTimer: { runOnTakeover: true },
+	});
 
 	constructor(private readonly reportingService: InstanceReportingService) {}
 

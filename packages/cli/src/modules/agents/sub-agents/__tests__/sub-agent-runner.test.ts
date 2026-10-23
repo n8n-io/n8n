@@ -1,5 +1,7 @@
 import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import {
+	encodeEpisodicScopeMetadata,
+	EPISODIC_SCOPE_METADATA_KEY,
 	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
 	type BuiltTelemetry,
@@ -32,6 +34,7 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
 import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
+import { AgentSpendLedger } from '../../budget-guardrail';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import { SubAgentRunner } from '../sub-agent-runner';
 import type {
@@ -190,6 +193,59 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		['a disabled decision', { disabled: true as const }],
+		['a resolved scope', { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] }],
+	])(
+		'keeps the parent turn episodic scope for the child: %s',
+		async (_label, parentEpisodicScope) => {
+			agentExecutionService.startExecutionRecording.mockImplementation(
+				async (_params, startedAt) => ({
+					executionId: 'agent-execution-1',
+					startedAt,
+					inputMessageIds: ['message-1'],
+				}),
+			);
+			agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
+
+			await runner.run(
+				{ ...spawnRequest, parentResourceId: 'task:task-1' },
+				{
+					parentAgentId,
+					projectId,
+					credentialProvider,
+					runType: 'production',
+					parentEpisodicScope,
+				},
+			);
+
+			const options = childAgent.stream.mock.calls[0][1];
+			expect(options?.persistence?.hostMetadata).toMatchObject(
+				encodeEpisodicScopeMetadata(parentEpisodicScope),
+			);
+		},
+	);
+
+	it('leaves a task resource child on its own scope when the parent decided nothing', async () => {
+		agentExecutionService.startExecutionRecording.mockImplementation(
+			async (_params, startedAt) => ({
+				executionId: 'agent-execution-1',
+				startedAt,
+				inputMessageIds: ['message-1'],
+			}),
+		);
+		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
+
+		await runner.run(
+			{ ...spawnRequest, parentResourceId: 'task:task-1' },
+			{ parentAgentId, projectId, credentialProvider, runType: 'production' },
+		);
+
+		expect(childAgent.stream.mock.calls[0][1]?.persistence?.hostMetadata).not.toHaveProperty(
+			EPISODIC_SCOPE_METADATA_KEY,
+		);
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
@@ -665,13 +721,14 @@ describe('SubAgentRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('reports a guardrail stop as a completion that carries the finish reason', async () => {
+	it('reports a guardrail stop as a failure that carries the stop code', async () => {
 		childAgent.stream.mockResolvedValue(
 			makeStreamResult([
 				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
 				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
 			]),
 		);
+		const onBudgetNotice = vi.fn();
 
 		await expect(
 			runner.run(spawnRequest, {
@@ -679,14 +736,122 @@ describe('SubAgentRunner', () => {
 				projectId,
 				credentialProvider,
 				runType: 'production',
+				onBudgetNotice,
 			}),
 		).resolves.toMatchObject({
-			status: 'completed',
+			status: 'failed',
 			result: {
 				runId: 'child-run-1',
 				finishReason: 'guardrail',
+				guardrail: { code: 'budget.session' },
 			},
 		});
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.session' });
+	});
+
+	it('names the child as the budget owner on a monthly guardrail stop', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.monthly' } },
+			]),
+		);
+		const onBudgetNotice = vi.fn();
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onBudgetNotice,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			result: {
+				runId: 'child-run-1',
+				finishReason: 'guardrail',
+				guardrail: { code: 'budget.monthly' },
+			},
+		});
+		expect(onBudgetNotice).toHaveBeenCalledWith({
+			code: 'budget.monthly',
+			agentId: 'agent-1',
+		});
+	});
+
+	it('does not emit a budget notice for a non-budget guardrail stop', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.misconfigured' } },
+			]),
+		);
+		const onBudgetNotice = vi.fn();
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onBudgetNotice,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			result: { finishReason: 'guardrail' },
+		});
+		expect(onBudgetNotice).not.toHaveBeenCalled();
+	});
+
+	it('forwards the budget notice sink into the child guardrail options', async () => {
+		Container.set(AgentSpendLedger, mock<AgentSpendLedger>());
+		const onBudgetNotice = vi.fn();
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			rootSessionId: parentThreadId,
+			rootSessionCapUsd: 5,
+			onBudgetNotice,
+		});
+
+		const options = childAgent.stream.mock.calls[0]?.[1];
+		const sink = options?.guardrails?.onNotice;
+		expect(sink).toBeDefined();
+		// A locally-originated notice gets this child's source id.
+		sink?.({ code: 'budget.alert' });
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.alert', agentId: 'agent-1' });
+		// A deeper child's stamp survives: the innermost owner wins.
+		sink?.({ code: 'budget.alert', agentId: 'grandchild-1' });
+		expect(onBudgetNotice).toHaveBeenCalledWith({
+			code: 'budget.alert',
+			agentId: 'grandchild-1',
+		});
+		// A session stop always spends the root bucket, so it carries no owner.
+		sink?.({ code: 'budget.session', agentId: 'grandchild-1' });
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.session' });
+		sink?.({ code: 'pii.block' });
+		expect(onBudgetNotice).toHaveBeenCalledTimes(3);
+	});
+
+	it('installs the notice ferry even when the child has no budget bucket', async () => {
+		Container.set(AgentSpendLedger, mock<AgentSpendLedger>());
+		const onBudgetNotice = vi.fn();
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			onBudgetNotice,
+		});
+
+		const options = childAgent.stream.mock.calls[0]?.[1];
+		expect(options?.guardrails?.hooks).toEqual([]);
+		expect(options?.guardrails?.onNotice).toBeDefined();
 	});
 
 	it('applies the self-delegation model while preserving the parent draft', async () => {

@@ -1,18 +1,26 @@
-import type { AiPreferenceScope, AiPreferenceSource, AiPreferenceUserDto } from '@n8n/api-types';
+import type {
+	AiPreferenceScope,
+	AiPreferenceSortOption,
+	AiPreferenceUserDto,
+} from '@n8n/api-types';
 import {
+	AI_PREFERENCES_SORT_OPTIONS,
 	aiPreferenceScopeOf,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
+import type { TableOptions } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 
-import { usePostHog } from '@/app/stores/posthog.store';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
+import { PREFERENCES_DEFAULT_SORT_BY } from './context.constants';
 import type { Preference, PreferencePermissions } from './context.types';
 
 /**
@@ -28,20 +36,31 @@ export function isContextPreferencesEnabled(): boolean {
 
 const FLAG_WAIT_TIMEOUT_MS = 3000;
 
-/** Waits for a pending client-side flag evaluation before a deep link fails closed. */
+/**
+ * Waits for a pending client-side flag evaluation before a deep link fails closed.
+ * `waitForFeatureFlagsWithTimeout` resolves immediately when nothing is pending, so
+ * this doesn't need its own `hasPendingFeatureFlags()` guard.
+ */
 export async function isContextPreferencesEnabledOnceEvaluated(): Promise<boolean> {
-	const posthog = usePostHog();
-	if (posthog.hasPendingFeatureFlags()) {
-		let timeoutId: number | undefined;
-		await Promise.race([
-			posthog.waitForFeatureFlags(),
-			new Promise<void>((resolve) => {
-				timeoutId = window.setTimeout(resolve, FLAG_WAIT_TIMEOUT_MS);
-			}),
-		]);
-		if (timeoutId !== undefined) window.clearTimeout(timeoutId);
-	}
+	await waitForFeatureFlagsWithTimeout(usePostHog(), FLAG_WAIT_TIMEOUT_MS);
 	return isContextPreferencesEnabled();
+}
+
+/**
+ * The Context overview lists preferences and skills, so either flag opens it. Synchronous,
+ * for the settings menu: it reads the PostHog flags as they are now.
+ */
+export function isContextEnabled(): boolean {
+	return isContextPreferencesEnabled() || isContextSkillsEnabled();
+}
+
+/**
+ * `isContextEnabled` for the route guard. A deep link can arrive before PostHog has
+ * evaluated the flags, so it waits for them instead of sending the user away. The skills
+ * setting comes from the backend env var and is already known.
+ */
+export async function isContextEnabledOnceEvaluated(): Promise<boolean> {
+	return isContextSkillsEnabled() || (await isContextPreferencesEnabledOnceEvaluated());
 }
 
 export function preferenceScope(row: Pick<Preference, 'userId' | 'projectId'>): AiPreferenceScope {
@@ -78,18 +97,33 @@ export function preferenceAudience(
 	}
 }
 
-/** The surface that wrote the row, as the settings list names it. */
-export function preferenceSourceLabel(
-	i18n: { baseText: (key: BaseTextKey) => string },
-	source: AiPreferenceSource,
+export function preferenceCreatorLabel(
+	i18n: {
+		baseText: (key: BaseTextKey, options?: { interpolate: Record<string, string> }) => string;
+	},
+	row: Pick<Preference, 'createdBy' | 'source'>,
 ): string {
-	return i18n.baseText(`settings.context.preferences.source.${source}`);
+	const source = i18n.baseText(`settings.context.preferences.source.${row.source}`);
+	const name = preferenceUserName(row.createdBy);
+	if (!name) return source;
+	if (row.source === 'ui') return name;
+	return i18n.baseText('settings.context.preferences.createdBy.withSource', {
+		interpolate: { name, source },
+	});
 }
 
 export function preferenceUserName(user: AiPreferenceUserDto | null): string {
 	if (!user) return '';
 	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
 	return fullName || user.email || '';
+}
+
+export function toPreferenceSortOption(
+	sortBy: TableOptions['sortBy'],
+): AiPreferenceSortOption | undefined {
+	const [sort] = sortBy.length > 0 ? sortBy : PREFERENCES_DEFAULT_SORT_BY;
+	const option = `${sort.id}:${sort.desc ? 'desc' : 'asc'}`;
+	return AI_PREFERENCES_SORT_OPTIONS.find((candidate) => candidate === option);
 }
 
 /** The API reports row scopes in the `aiPreference` namespace whatever granted them. */
@@ -112,6 +146,27 @@ export function canWriteProjectScope(projectId: string | null | undefined): bool
 export function canWriteInstanceScope(): boolean {
 	const { currentUser } = useUsersStore();
 	return getResourcePermissions(currentUser?.globalScopes).aiPreference?.create === true;
+}
+
+/* The same two checks for skills, which have their own scopes. */
+
+export function canWriteProjectSkillScope(projectId: string | null | undefined): boolean {
+	if (!projectId) return false;
+	const project = useProjectsStore().myProjects.find((candidate) => candidate.id === projectId);
+	return getResourcePermissions(project?.scopes).projectSkill?.create === true;
+}
+
+export function canWriteInstanceSkillScope(): boolean {
+	const { currentUser } = useUsersStore();
+	return getResourcePermissions(currentUser?.globalScopes).skill?.create === true;
+}
+
+/**
+ * The backend reads `N8N_AGENTS_SKILLS_HUB_ENABLED` once at startup and reports it here.
+ * The skills routes answer 404 while it is off, so the editor follows the same value.
+ */
+export function isContextSkillsEnabled(): boolean {
+	return useSettingsStore().moduleSettings.agents?.skillsHubEnabled === true;
 }
 
 /** The service builds the cap message from the scope and the number, so match the fixed part. */

@@ -12,11 +12,11 @@ describe('SchedulerConfig', () => {
 		vi.restoreAllMocks();
 	});
 
-	describe('flag off (defaults)', () => {
-		it('should be disabled by default', () => {
+	describe('defaults', () => {
+		it('should be enabled by default', () => {
 			const { scheduler } = Container.get(GlobalConfig);
 
-			expect(scheduler.enabled).toBe(false);
+			expect(scheduler.enabled).toBe(true);
 		});
 
 		it('should use default tunables', () => {
@@ -32,29 +32,36 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.retentionSeconds).toBe(24 * 60 * 60);
 			expect(scheduler.failedRetentionSeconds).toBe(7 * 24 * 60 * 60);
 			expect(scheduler.retentionIntervalSeconds).toBe(60 * 60);
-			expect(scheduler.minIntervalSeconds).toBe(0);
 			expect(scheduler.jitterRatio).toBe(0.1);
 			expect(scheduler.materializationTimeoutSeconds).toBe(60);
 			expect(scheduler.executorTimeoutSeconds).toBe(60);
 			expect(scheduler.reaperTimeoutSeconds).toBe(60);
 			expect(scheduler.retentionTimeoutSeconds).toBe(5 * 60);
 			expect(scheduler.maxConcurrentPasses).toBe(10);
-			expect(scheduler.triggerNodeMode).toBe('legacy');
-			expect(scheduler.allowSkipDurableScheduler).toBe(false);
+			expect(scheduler.triggerNodeMode).toBe('new');
 			expect(scheduler.maxAttempts).toBe(5);
+			expect(scheduler.taskTimeoutSeconds).toBe(300);
 			expect(scheduler.enabledForPollTriggers).toBe(false);
 			expect(scheduler.pollTimeoutSeconds).toBe(45);
 			expect(scheduler.enabledForSystemTasks).toBe(false);
 		});
 	});
 
-	describe('flag on (env overrides)', () => {
-		it('should enable via env', () => {
-			vi.stubEnv('N8N_SCHEDULER_ENABLED', 'true');
+	describe('env overrides', () => {
+		it('should disable via env', () => {
+			vi.stubEnv('N8N_SCHEDULER_ENABLED', 'false');
 
 			const { scheduler } = Container.get(GlobalConfig);
 
-			expect(scheduler.enabled).toBe(true);
+			expect(scheduler.enabled).toBe(false);
+		});
+
+		it('should allow the legacy trigger node mode via env', () => {
+			vi.stubEnv('N8N_SCHEDULER_TRIGGER_NODE_MODE', 'legacy');
+
+			const { scheduler } = Container.get(GlobalConfig);
+
+			expect(scheduler.triggerNodeMode).toBe('legacy');
 		});
 
 		it('should override each tunable from env', () => {
@@ -66,7 +73,6 @@ describe('SchedulerConfig', () => {
 			vi.stubEnv('N8N_SCHEDULER_RETENTION', '43200');
 			vi.stubEnv('N8N_SCHEDULER_FAILED_RETENTION', '86400');
 			vi.stubEnv('N8N_SCHEDULER_RETENTION_INTERVAL', '600');
-			vi.stubEnv('N8N_SCHEDULER_MIN_INTERVAL', '15');
 			vi.stubEnv('N8N_SCHEDULER_JITTER_RATIO', '0.25');
 			vi.stubEnv('N8N_SCHEDULER_MATERIALIZATION_TIMEOUT', '30');
 			vi.stubEnv('N8N_SCHEDULER_EXECUTOR_TIMEOUT', '15');
@@ -74,6 +80,7 @@ describe('SchedulerConfig', () => {
 			vi.stubEnv('N8N_SCHEDULER_RETENTION_TIMEOUT', '120');
 			vi.stubEnv('N8N_SCHEDULER_MAX_CONCURRENT_PASSES', '4');
 			vi.stubEnv('N8N_SCHEDULER_MAX_ATTEMPTS', '3');
+			vi.stubEnv('N8N_SCHEDULER_TASK_TIMEOUT_SECONDS', '600');
 			vi.stubEnv('N8N_SCHEDULER_POLL_TRIGGERS_ENABLED', 'true');
 			vi.stubEnv('N8N_SCHEDULER_POLL_TIMEOUT', '30');
 			vi.stubEnv('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED', 'true');
@@ -88,7 +95,6 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.retentionSeconds).toBe(43200);
 			expect(scheduler.failedRetentionSeconds).toBe(86400);
 			expect(scheduler.retentionIntervalSeconds).toBe(600);
-			expect(scheduler.minIntervalSeconds).toBe(15);
 			expect(scheduler.jitterRatio).toBe(0.25);
 			expect(scheduler.materializationTimeoutSeconds).toBe(30);
 			expect(scheduler.executorTimeoutSeconds).toBe(15);
@@ -96,17 +102,10 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.retentionTimeoutSeconds).toBe(120);
 			expect(scheduler.maxConcurrentPasses).toBe(4);
 			expect(scheduler.maxAttempts).toBe(3);
+			expect(scheduler.taskTimeoutSeconds).toBe(600);
 			expect(scheduler.enabledForPollTriggers).toBe(true);
 			expect(scheduler.pollTimeoutSeconds).toBe(30);
 			expect(scheduler.enabledForSystemTasks).toBe(true);
-		});
-
-		it('should expose the durable-scheduler skip escape hatch via env', () => {
-			vi.stubEnv('N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER', 'true');
-
-			const { scheduler } = Container.get(GlobalConfig);
-
-			expect(scheduler.allowSkipDurableScheduler).toBe(true);
 		});
 
 		it('should fall back to the default poll timeout when the value exceeds one day', () => {
@@ -118,12 +117,13 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.pollTimeoutSeconds).toBe(45);
 		});
 
-		it('should allow disabling the min-interval clamp with 0', () => {
-			vi.stubEnv('N8N_SCHEDULER_MIN_INTERVAL', '0');
+		it('should fall back to the default task timeout when the value exceeds the timer limit', () => {
+			vi.spyOn(console, 'warn').mockImplementation(() => {});
+			vi.stubEnv('N8N_SCHEDULER_TASK_TIMEOUT_SECONDS', '2147484');
 
 			const { scheduler } = Container.get(GlobalConfig);
 
-			expect(scheduler.minIntervalSeconds).toBe(0);
+			expect(scheduler.taskTimeoutSeconds).toBe(300);
 		});
 	});
 });

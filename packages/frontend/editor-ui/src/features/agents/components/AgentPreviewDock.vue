@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 
@@ -9,6 +9,10 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
+import {
+	useAgentTelemetry,
+	type AgentPreviewNewChatSource,
+} from '../composables/useAgentTelemetry';
 
 import type {
 	AgentContinueLoadedEvent,
@@ -82,6 +86,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const agentTelemetry = useAgentTelemetry();
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -122,7 +127,8 @@ function exportSession() {
 	});
 }
 
-function createNewSession() {
+function createNewSession(source: Exclude<AgentPreviewNewChatSource, 'standalone'>) {
+	agentTelemetry.trackClickedNewTestChat({ agentId: props.agentId, source });
 	emit('new-session');
 }
 
@@ -179,7 +185,11 @@ function handleEscapeKey(event: KeyboardEvent) {
 }
 
 useKeybindings({
-	'ctrl+shift+;': createNewSession,
+	'ctrl+shift+;': {
+		allowInInputs: true,
+		disabled: () => !props.isOpen,
+		run: () => createNewSession('shortcut'),
+	},
 });
 
 defineExpose({ clearBudgetStops });
@@ -245,7 +255,7 @@ defineExpose({ clearBudgetStops });
 							icon-size="large"
 							:aria-label="i18n.baseText('agents.builder.chat.newChat.label')"
 							data-testid="agent-preview-new-chat-btn"
-							@click="createNewSession"
+							@click="createNewSession('test-panel')"
 						/>
 					</KeyboardShortcutTooltip>
 
@@ -266,7 +276,7 @@ defineExpose({ clearBudgetStops });
 					/>
 					<KeyboardShortcutTooltip
 						placement="bottom"
-						:label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+						:label="i18n.baseText('agents.builder.preview.close.ariaLabel')"
 						:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 					>
 						<N8nIconButton
@@ -274,7 +284,7 @@ defineExpose({ clearBudgetStops });
 							variant="ghost"
 							size="small"
 							icon-size="large"
-							:aria-label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+							:aria-label="i18n.baseText('agents.builder.preview.close.ariaLabel')"
 							data-testid="agent-preview-close-btn"
 							@click="close"
 						/>

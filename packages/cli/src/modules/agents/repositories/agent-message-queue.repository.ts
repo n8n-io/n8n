@@ -5,7 +5,7 @@ import { isDraftIntegration } from '@n8n/api-types';
 
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import { Agent } from '../entities/agent.entity';
-import type { AgentQueueDispatch } from '../types/agent-queued-message';
+import type { AgentQueueDispatch, QueuedUserChatMessage } from '../types/agent-queued-message';
 
 @Service()
 export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueue> {
@@ -42,6 +42,15 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		});
 	}
 
+	/**
+	 * Whether the thread has a queued or claimed message, hidden machine turns
+	 * included. A hidden follow-up turn waits here between two executions, so
+	 * the thread still has work when no execution runs.
+	 */
+	async hasItems(threadId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(AgentMessageQueue, { threadId });
+	}
+
 	async findItem(threadId: string, id: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(AgentMessageQueue, {
 			where: { threadId, id },
@@ -54,13 +63,17 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		id: string,
 		targetId: string,
 		expectedIds: string[],
+		kind: QueuedUserChatMessage['kind'],
 		ctx: OperationContext,
 	): Promise<boolean> {
 		const manager = this.managerFor(ctx);
-		const items = await manager.find(AgentMessageQueue, {
+		const pending = await manager.find(AgentMessageQueue, {
 			where: { threadId, executionId: IsNull(), steeringExecutionId: IsNull() },
+			relations: { message: true },
 			order: { position: 'ASC', id: 'ASC' },
 		});
+		// Clients do not see hidden machine turns, so they keep their positions.
+		const items = pending.filter((entry) => entry.message.origin?.hidden !== true);
 		if (
 			items.length !== expectedIds.length ||
 			items.some((item, index) => item.id !== expectedIds[index])
@@ -73,7 +86,7 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		if (!item || to < 0 || from === to) return false;
 		const start = Math.min(from, to);
 		const end = Math.max(from, to);
-		if (items.slice(start, end + 1).some((entry) => entry.payload.kind !== 'preview')) return false;
+		if (items.slice(start, end + 1).some((entry) => entry.payload.kind !== kind)) return false;
 
 		const reordered = [...items];
 		reordered.splice(from, 1);
@@ -122,6 +135,18 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 			where: { threadId, executionId: IsNull(), steeringExecutionId: executionId },
 			relations: { message: true },
 			order: { steeringOrder: 'ASC' },
+		});
+	}
+
+	/**
+	 * Cheap, unlocked pre-check for `findSteering`: lets a steering consumer skip its
+	 * locking transaction on every input boundary that has nothing queued to merge.
+	 */
+	async hasSteeringFor(threadId: string, executionId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).existsBy(AgentMessageQueue, {
+			threadId,
+			executionId: IsNull(),
+			steeringExecutionId: executionId,
 		});
 	}
 

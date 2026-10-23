@@ -1,5 +1,8 @@
 import getPort from 'get-port';
 import { createHash } from 'node:crypto';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { Network } from 'testcontainers';
 
@@ -367,6 +370,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			return meta?.n8nFilesToMount ?? [];
 		});
 
+		// The main and the engine container share one binary data store, so a
+		// file one plane stores is read by the other. Deleted with the stack.
+		let binaryDataHostDir: string | undefined;
+		if (engine === 'container') {
+			binaryDataHostDir = mkdtempSync(join(tmpdir(), `${uniqueProjectName}-binary-data-`));
+			resources.trackPath(binaryDataHostDir);
+		}
+
 		// Earliest log line the readiness gate below may accept
 		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
 		const n8nStartupStart = performance.now();
@@ -400,6 +411,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				startupDeadline,
 				image,
 				userHomeHostDir,
+				binaryDataHostDir,
 				user,
 				startupTimeoutMs,
 			});
@@ -635,6 +647,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						startupDeadline: replacementDeadline,
 						image: options.image,
 						userHomeHostDir,
+						// The kept engine container still writes here.
+						binaryDataHostDir,
 						user,
 						startupTimeoutMs,
 					});

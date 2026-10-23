@@ -7,7 +7,7 @@ import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
-import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
+import { BinaryDataConfig, InstanceSettings, type Types } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
@@ -18,7 +18,6 @@ import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -26,6 +25,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { InboxService } from '@/modules/inbox/inbox.service';
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
@@ -119,6 +119,8 @@ export class FrontendService {
 
 	private publishedWorkflowCountRequest?: Promise<number>;
 
+	private writeQueue: Promise<void> = Promise.resolve();
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
@@ -139,6 +141,7 @@ export class FrontendService {
 		private readonly aiUsageService: AiUsageService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
+		private readonly inboxService: InboxService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
@@ -203,6 +206,7 @@ export class FrontendService {
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
 			endpointHealth: resolveFrontendHealthEndpointPath(this.globalConfig),
+			healthCheckTimeoutMs: this.globalConfig.endpoints.frontendHealthCheckTimeoutMs,
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -305,7 +309,6 @@ export class FrontendService {
 			workflowsGroupsWithManyBoundariesEnabled:
 				this.globalConfig.workflows.groupsWithManyBoundariesEnabled,
 			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
-			granularCredentialSharing: isCredSharingEnabled(),
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -439,6 +442,7 @@ export class FrontendService {
 				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
 				configEvalsEnabled: this.globalConfig.evaluation.configEvalsEnabled,
 				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
+				forceAgentWorthTesting: this.globalConfig.evaluation.forceAgentWorthTesting,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly.enabled,
@@ -453,8 +457,17 @@ export class FrontendService {
 	async generateTypes() {
 		this.overwriteCredentialsProperties();
 
-		const { credentials, nodes } = await this.loadNodesAndCredentials.collectTypes();
+		const types = await this.loadNodesAndCredentials.collectTypes();
+		await this.enqueueWrite(types);
+	}
 
+	private async enqueueWrite(types: Types) {
+		const write = this.writeQueue.then(async () => await this.writeTypesFiles(types));
+		this.writeQueue = write.catch(() => {});
+		await write;
+	}
+
+	private async writeTypesFiles({ credentials, nodes }: Types) {
 		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
@@ -653,6 +666,9 @@ export class FrontendService {
 		} else {
 			delete this.settings.workflowReviews;
 		}
+		this.settings.inbox = this.moduleRegistry.isActive('inbox')
+			? await this.inboxService.getSettings()
+			: { enabled: false, availableTypes: [], failedTypes: [] };
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 

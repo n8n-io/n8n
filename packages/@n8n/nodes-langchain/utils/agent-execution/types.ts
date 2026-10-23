@@ -35,6 +35,10 @@ export type ToolCallData = {
 		messageLog?: AIMessage[];
 		toolCallId: IDataObject | GenericValue | GenericValue[] | IDataObject[];
 		type: string | number | true | object;
+		/** True when the user denied this call in a Human-in-the-Loop node, so the tool never ran */
+		hitlDenied?: boolean;
+		/** True when the tool run failed, so the observation is an error and not a result */
+		errored?: boolean;
 	};
 	observation: string;
 };
@@ -178,6 +182,8 @@ export type RequestResponseMetadata = {
 export interface ToolMetadata extends Record<string, unknown> {
 	/** The n8n node name that provides this tool */
 	sourceNodeName?: string;
+	/** The stable canvas node ID of the node that provides this tool. Survives a rename. */
+	sourceNodeId?: string;
 	/** For HITL tools, the gated tool node that will be executed after approval */
 	gatedToolNodeName?: string;
 	/** The original schema of the tool */

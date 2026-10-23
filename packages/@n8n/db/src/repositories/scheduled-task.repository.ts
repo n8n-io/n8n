@@ -80,6 +80,7 @@ export interface NewOccurrence {
 	scheduledFor: Date;
 	runAt: Date;
 	maxAttempts: number;
+	timeoutSeconds: number;
 	missedAfter?: Date | null;
 }
 
@@ -268,6 +269,21 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		);
 		const result = await qb.execute();
 		return result.affected ?? 0;
+	}
+
+	/** Set the timeout of the still-`pending` occurrences of the given jobs. */
+	async updateTimeoutForPendingJobs(
+		manager: EntityManager,
+		jobIds: number[],
+		timeoutSeconds: number,
+	): Promise<void> {
+		if (jobIds.length > 0) {
+			await manager.update(
+				ScheduledTask,
+				{ jobId: In(jobIds), status: ScheduledTaskStatus.Pending },
+				{ timeoutSeconds },
+			);
+		}
 	}
 
 	/**
@@ -491,6 +507,22 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			},
 		);
 		return result.affected ?? 0;
+	}
+
+	/**
+	 * Extend the lease of a running claim, so the reaper leaves a handler that is
+	 * still working alone. Only the claiming host, at the current epoch, can renew.
+	 *
+	 * @param {HostedClaimedRef} claim the claim to renew
+	 * @param {number} expiresInMs the new lease expiry, in milliseconds from the database's now
+	 * @returns {Promise<boolean>} `true` when the lease was extended, `false` when the
+	 *   claim is gone (reclaimed, finished or deleted)
+	 */
+	async renewLease(claim: HostedClaimedRef, expiresInMs: number): Promise<boolean> {
+		const rowsAffected = await this.runGuardedUpdate(claim, {
+			leaseExpiresAt: () => dbNowPlusMsLiteral(this.isPostgres, expiresInMs),
+		});
+		return rowsAffected > 0;
 	}
 
 	/**

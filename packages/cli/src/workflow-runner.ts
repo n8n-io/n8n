@@ -17,10 +17,10 @@ import {
 	InstanceSettings,
 	StorageConfig,
 	WorkflowExecute,
-	WorkflowHasIssuesError,
 } from 'n8n-core';
 import type {
 	ExecutionError,
+	ExecutionStorageLocation,
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
@@ -135,6 +135,7 @@ export class WorkflowRunner {
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
 		hooks?: ExecutionLifecycleHooks,
+		storedAt: ExecutionStorageLocation = this.storageConfig.modeTag,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -311,7 +312,7 @@ export class WorkflowRunner {
 			startedAt,
 			stoppedAt: new Date(),
 			status: error instanceof MaxStalledCountError ? 'crashed' : 'error',
-			storedAt: this.storageConfig.modeTag,
+			storedAt,
 		};
 
 		// Remove from active execution with empty data. That will
@@ -469,7 +470,7 @@ export class WorkflowRunner {
 					executionId,
 					workflowId,
 					data,
-					shouldReloadStaticData,
+					loadStaticData,
 					realtime,
 					existingExecution?.executionId,
 				);
@@ -478,7 +479,7 @@ export class WorkflowRunner {
 					executionId,
 					data,
 					shouldReloadStaticData,
-					existingExecution?.executionId,
+					existingExecution,
 					executionWorkflow,
 				);
 			}
@@ -563,7 +564,7 @@ export class WorkflowRunner {
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
-		restartExecutionId?: string,
+		existingExecution?: ResumableExecution,
 		executionWorkflow?: Workflow,
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
@@ -605,12 +606,14 @@ export class WorkflowRunner {
 				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 			workflowSettings,
 		});
-		additionalData.restartExecutionId = restartExecutionId;
+		additionalData.restartExecutionId = existingExecution?.executionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
 		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
 
 		additionalData.executionId = executionId;
 		additionalData.evaluationRunId = data.evaluationRunId;
+
+		const storedAt = existingExecution?.storedAt ?? this.storageConfig.modeTag;
 
 		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
@@ -654,6 +657,7 @@ export class WorkflowRunner {
 					additionalData,
 					data.executionMode,
 					data.executionData,
+					storedAt,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else {
@@ -711,20 +715,17 @@ export class WorkflowRunner {
 							data.executionMode,
 							executionId,
 							additionalData.hooks,
+							storedAt,
 						),
 				);
 		} catch (error) {
-			if (error instanceof WorkflowHasIssuesError) {
-				await this.failExecution(data, executionId, error);
-				return;
-			}
-
 			await this.processError(
 				error,
 				new Date(),
 				data.executionMode,
 				executionId,
 				additionalData.hooks,
+				storedAt,
 			);
 
 			throw error;
@@ -752,7 +753,7 @@ export class WorkflowRunner {
 
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
-		let job: Job;
+		let job: Job | undefined;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
 			const { queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data);
@@ -763,6 +764,7 @@ export class WorkflowRunner {
 				loadStaticData: !!loadStaticData,
 				pushRef: data.pushRef,
 				streamingEnabled: data.streamingEnabled,
+				callerAwaitsOutcome: data.callerAwaitsOutcome,
 				restartExecutionId,
 				projectId: data.projectId,
 				projectName: data.projectName,
@@ -791,7 +793,7 @@ export class WorkflowRunner {
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
 			// Nobody will wait for this job, so drop any outcome the worker already reported
-			this.scalingService.popJobResult(executionId);
+			if (job) this.scalingService.popJobResult(job);
 			throw error;
 		}
 
@@ -845,12 +847,12 @@ export class WorkflowRunner {
 						lifecycleHooks,
 					);
 
-					this.scalingService.popJobResult(executionId);
+					this.scalingService.popJobResult(job);
 
 					return reject(error);
 				}
 
-				const jobResult = this.scalingService.popJobResult(executionId);
+				const jobResult = this.scalingService.popJobResult(job);
 
 				let runData: IRun;
 
@@ -903,8 +905,9 @@ export class WorkflowRunner {
 						mode: fullExecutionData.mode,
 						startedAt: fullExecutionData.startedAt,
 						stoppedAt: fullExecutionData.stoppedAt,
-						status: fullExecutionData.status,
-						waitTill: fullExecutionData.waitTill,
+						// The row may already belong to a resumed segment on another main.
+						status: jobResult ? jobResult.status : fullExecutionData.status,
+						waitTill: jobResult ? jobResult.waitTill : fullExecutionData.waitTill,
 						data: fullExecutionData.data,
 						jobId: job.id.toString(),
 						storedAt: fullExecutionData.storedAt,

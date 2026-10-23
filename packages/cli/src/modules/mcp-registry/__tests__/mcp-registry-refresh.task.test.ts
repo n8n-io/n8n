@@ -15,9 +15,11 @@ describe('McpRegistryRefreshTask', () => {
 	it('should refresh every 8 hours on the durable scheduler, once on in-memory takeover, without an early retry', () => {
 		expect(task.name).toBe('mcp-registry-refresh');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 8 * 3600 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
-		expect(task.retryDelaySeconds).toBeUndefined();
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true },
+			leaderTimer: { runOnTakeover: true },
+		});
 	});
 
 	it('should refresh the registry on run and hand it the abort signal', async () => {

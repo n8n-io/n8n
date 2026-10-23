@@ -6,7 +6,8 @@ import { buildDispatcher, createDispatcherTransport } from '../undici/transport'
 // response well past a tight `headersTimeout`: with the knob applied the request
 // aborts, and with undici's default (5 min) the same slow response succeeds.
 
-const RESPONSE_DELAY_MS = 1000;
+// Undici's coarse timer can add nearly one second to short timeouts.
+const RESPONSE_DELAY_MS = 2000;
 const TIGHT_TIMEOUT_MS = 50;
 
 describe('transport timeouts', () => {

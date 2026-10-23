@@ -4,6 +4,7 @@
 // reconstruct each seed workflow from its source at the build boundary. Transient:
 // traces retain ~14 days.
 
+import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
@@ -17,12 +18,19 @@ import { COMPILED_WORKFLOW_TRACE_RUN_NAME, DOMAIN_TOOL_IDS } from '../../src/too
 const DEFAULT_SOURCE_PROJECT = 'instance-ai';
 
 // Reference the live tool-id so a rename there follows here (or breaks the import).
-// patch/submit-workflow were removed in #32545 but stay for older traces.
+// Trace tool names are resolved with `resolveTraceToolName` so older traces still match.
 const WORKFLOW_BUILD_TOOLS = new Set<string>([
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-	'patch-workflow',
-	'submit-workflow',
+	REMOVED_BUILDER_TOOL_NAMES.PATCH_WORKFLOW,
+	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
 ]);
+
+/** Resolves a former tool name in a trace run name and keeps an `[action]` suffix. */
+function resolveTraceToolName(name: string): string {
+	const bracket = name.indexOf('[');
+	if (bracket === -1) return resolveBuilderToolName(name);
+	return resolveBuilderToolName(name.slice(0, bracket)) + name.slice(bracket);
+}
 
 // Workspace tools (@n8n/agents) whose ops mutate file content we replay. The names
 // live here only; a contract test pins them — and the arg keys below — against the
@@ -230,7 +238,7 @@ function isSuspendArtifact(output: unknown): boolean {
 }
 
 /** A HITL request envelope: `{ payload: { requestId, … } }` — emitted by both the
- *  suspend and resume halves of ask-user / setup-card. Used (with the absence of
+ *  suspend and resume halves of workflow_builder_ask_user / setup-card. Used (with the absence of
  *  a pending id) to identify the suspend half to drop. */
 function isHitlRequestEnvelope(output: unknown): boolean {
 	return (
@@ -470,11 +478,12 @@ function buildSeedMessages(rootRuns: Run[], toolRuns: Run[], boundaryMs: number)
 			emittedToolCallIds.add(toolCallId);
 			// Redact data-table row payloads: seeded messages are written to the eval
 			// instance + shown to the judge, so real (PII) rows must not ride along.
-			const isDataTable = tool.name.startsWith('data-tables');
+			const toolName = resolveTraceToolName(tool.name);
+			const isDataTable = toolName.split('[')[0] === DOMAIN_TOOL_IDS.DATA_TABLES;
 			content.push({
 				type: 'tool-call',
 				toolCallId,
-				toolName: tool.name,
+				toolName,
 				state: 'resolved',
 				input: isDataTable ? redactDataTableRowPayload(tool.inputs) : (tool.inputs ?? {}),
 				output: isDataTable ? redactDataTableRowPayload(tool.outputs) : (tool.outputs ?? {}),
@@ -553,7 +562,7 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 
 /** Reconstruct the seed's workflows: the latest successful build per workflow id
  *  before the boundary, excluding any workflow deleted (and not rebuilt) before it.
- *  Post-#32545 the builder builds from a workspace file (`build-workflow {filePath}`,
+ *  Post-#32545 the builder builds from a workspace file (`workflow_builder_build_workflow {filePath}`,
  *  no inline code), so the source is that file replayed from the workspace ops; inline
  *  `code` and `get-as-code` are fallbacks. Only files an actual build references become
  *  workflows. */
@@ -623,12 +632,12 @@ function buildSeedWorkflows(
 			continue;
 		}
 
-		// A `workflows`-tool delete (traced as `workflows[delete]`) drops that id's prior
-		// reconstruction. Gated to the `workflows` tool so an unrelated delete-shaped input
+		// A `workflow_builder_workflows`-tool delete (traced as `workflow_builder_workflows[delete]`, or `workflows[delete]` in older traces) drops that id's prior
+		// reconstruction. Gated to the `workflow_builder_workflows` tool so an unrelated delete-shaped input
 		// can't evict a seed workflow, and to success === true so a suspended (HITL) or denied
 		// delete keeps it. Chronological loop ⇒ a later rebuild re-adds it.
 		if (
-			tool.name.split('[')[0] === DOMAIN_TOOL_IDS.WORKFLOWS &&
+			resolveTraceToolName(tool.name).split('[')[0] === DOMAIN_TOOL_IDS.WORKFLOWS &&
 			isRecord(tool.inputs) &&
 			tool.inputs.action === 'delete'
 		) {
@@ -658,7 +667,7 @@ function buildSeedWorkflows(
 		if (filePath === undefined && inlineCode === undefined) continue;
 		// A build happened for this id (even if the tool's name isn't recognised).
 		buildSignalIds.add(workflowId);
-		if (!WORKFLOW_BUILD_TOOLS.has(tool.name)) continue;
+		if (!WORKFLOW_BUILD_TOOLS.has(resolveTraceToolName(tool.name))) continue;
 		// Current builder: the workspace file's content at this build. Legacy: inline code.
 		const code = filePath !== undefined ? (files.get(filePath) ?? '') : (inlineCode ?? '');
 		const diverged = filePath !== undefined ? divergedPaths.has(filePath) : false;

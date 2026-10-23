@@ -303,25 +303,53 @@ describe('EmailReadImapV2', () => {
 		});
 	});
 
-	describe('catching up after a gap', () => {
-		it('looks at the mailbox when it has processed mail before', async () => {
-			staticData.lastMessageUid = 42;
-			const connection = createConnection();
-			connectMock.mockResolvedValueOnce(connection);
+	describe('catching up on activation', () => {
+		// Mail that landed while the workflow was inactive sends no arrival event.
+		it.each([
+			{
+				case: 'mail processed before',
+				typeVersion: 2.1,
+				lastMessageUid: 42,
+				options: {},
+				criteria: ['UNSEEN', ['UID', '42:*']],
+			},
+			{
+				case: 'a first activation',
+				typeVersion: 2.1,
+				lastMessageUid: undefined,
+				options: {},
+				criteria: ['UNSEEN', ['SINCE', '13-Oct-2026']],
+			},
+			{
+				case: 'an untracked last message id',
+				typeVersion: 2.1,
+				lastMessageUid: 42,
+				options: { trackLastMessageId: false },
+				criteria: ['UNSEEN'],
+			},
+			{
+				case: 'version 2',
+				typeVersion: 2,
+				lastMessageUid: 42,
+				options: {},
+				criteria: ['UNSEEN'],
+			},
+		])(
+			'searches the mailbox after $case',
+			async ({ typeVersion, lastMessageUid, options, criteria }) => {
+				vi.setSystemTime(new Date('2026-10-13T12:00:00Z'));
+				triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion }));
+				staticData.lastMessageUid = lastMessageUid;
+				const connection = createConnection();
+				connectMock.mockResolvedValueOnce(connection);
 
-			await startTrigger();
+				await startTrigger(options);
+				expect(connection.catchUp).toHaveBeenCalledTimes(1);
+				await arrive(connection, 'unknown');
 
-			expect(connection.catchUp).toHaveBeenCalledTimes(1);
-		});
-
-		it('leaves the mailbox alone on a first activation', async () => {
-			const connection = createConnection();
-			connectMock.mockResolvedValueOnce(connection);
-
-			await startTrigger();
-
-			expect(connection.catchUp).not.toHaveBeenCalled();
-		});
+				expect(fetched).toHaveBeenCalledWith(expect.objectContaining({ searchCriteria: criteria }));
+			},
+		);
 	});
 
 	describe('credential test', () => {

@@ -27,8 +27,21 @@ const manifest: PackageManifest = {
 	],
 	requirements: {
 		variables: [
-			{ name: 'API_URL', usedByWorkflows: ['wfA', 'wfB'] },
-			{ name: 'TOKEN', usedByWorkflows: ['wfB'] },
+			{
+				name: 'API_URL',
+				usedBy: [
+					{ kind: 'workflow', id: 'wfA' },
+					{ kind: 'workflow', id: 'wfB' },
+					{ kind: 'agent', id: 'wfA' },
+				],
+			},
+			{
+				name: 'TOKEN',
+				usedBy: [
+					{ kind: 'workflow', id: 'wfB' },
+					{ kind: 'agent', id: 'wfA' },
+				],
+			},
 		],
 	},
 };
@@ -39,7 +52,9 @@ describe('scopeManifestToProject', () => {
 
 		expect(ids(scoped.workflows)).toEqual(['wfA']);
 		expect(ids(scoped.variables)).toEqual(['varA', 'varT']);
-		expect(scoped.requirements?.variables).toEqual([{ name: 'API_URL', usedByWorkflows: ['wfA'] }]);
+		expect(scoped.requirements?.variables).toEqual([
+			{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'wfA' }] },
+		]);
 	});
 
 	it('resolves a shared name to each project regardless of the entry order', () => {

@@ -91,8 +91,29 @@ describe('DeprecationService', () => {
 		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'true', false],
 		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'invalid', false],
 		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', undefined, false],
+		['N8N_SCHEDULER_ENABLED', 'true', true],
+		['N8N_SCHEDULER_ENABLED', 'false', true],
+		['N8N_SCHEDULER_ENABLED', '0', true],
+		['N8N_SCHEDULER_ENABLED', undefined, false],
+		['N8N_SCHEDULER_TRIGGER_NODE_MODE', 'new', true],
+		['N8N_SCHEDULER_TRIGGER_NODE_MODE', 'legacy', true],
+		['N8N_SCHEDULER_TRIGGER_NODE_MODE', undefined, false],
+		['N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER', 'true', true],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
+	});
+
+	test.each([
+		['N8N_SCHEDULER_ENABLED', 'true', 'now on by default'],
+		['N8N_SCHEDULER_ENABLED', 'false', 'in-memory scheduler is deprecated'],
+		['N8N_SCHEDULER_TRIGGER_NODE_MODE', 'new', 'now the default'],
+		['N8N_SCHEDULER_TRIGGER_NODE_MODE', 'legacy', '`legacy` mode is deprecated'],
+	])('should explain the scheduler default when %s is `%s`', (envVar, value, expected) => {
+		process.env[envVar] = value;
+
+		deprecationService.warn();
+
+		expect(logger.warn.mock.lastCall?.[0]).toContain(expected);
 	});
 
 	// `toTest` treats a blank value as unset, so set it here directly.

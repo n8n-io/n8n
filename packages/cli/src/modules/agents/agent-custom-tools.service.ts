@@ -1,8 +1,8 @@
 import { type ToolDescriptor } from '@n8n/agents';
 import {
-	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 	CUSTOM_TOOL_ID_REGEX,
+	type StoredAgentConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -10,14 +10,13 @@ import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
 import {
-	AgentModificationTelemetryService,
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
-	captureAgentMutation,
 } from './agent-modification-telemetry.service';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
+import { AgentSaveCompletionService } from './agent-save-completion.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent } from './entities/agent.entity';
+import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
@@ -29,9 +28,8 @@ export class AgentCustomToolsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly modificationTelemetry: AgentModificationTelemetryService,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly saveCompletion: AgentSaveCompletionService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -66,19 +64,14 @@ export class AgentCustomToolsService {
 			return { ok: true, id: toolId, descriptor, changed: false };
 		}
 
-		const previous = captureAgentMutation(entity);
+		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
 
 		entity.tools = {
 			...entity.tools,
 			[toolId]: nextEntry,
 		};
 
-		const saved = await this.saveToolChanges(entity, projectId, context);
-		if (options.recordTelemetry !== false) {
-			this.modificationTelemetry.record(
-				buildAgentMutationEvent(saved, projectId, context, previous, { tools: true }),
-			);
-		}
+		await this.saveToolChanges(entity, skillRefs, projectId, context, options.recordTelemetry);
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
@@ -102,7 +95,7 @@ export class AgentCustomToolsService {
 		);
 		if (!entity.tools?.[toolId]) return;
 
-		const previous = captureAgentMutation(entity);
+		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
 
 		const tools = { ...entity.tools };
 		delete tools[toolId];
@@ -114,16 +107,13 @@ export class AgentCustomToolsService {
 			);
 		}
 
-		const saved = await this.saveToolChanges(entity, projectId, context);
-		this.modificationTelemetry.record(
-			buildAgentMutationEvent(saved, projectId, context, previous, { tools: true }),
-		);
+		await this.saveToolChanges(entity, skillRefs, projectId, context);
 
 		this.logger.debug('Deleted custom tool', { agentId, projectId, toolId });
 	}
 
 	private getMissingCustomToolIds(
-		config: AgentJsonConfig | null,
+		config: StoredAgentConfig | null,
 		tools: AgentToolEntries,
 	): string[] {
 		const refs = (config?.tools ?? []).filter(
@@ -143,7 +133,7 @@ export class AgentCustomToolsService {
 	}
 
 	snapshotConfiguredTools(
-		config: AgentJsonConfig | null,
+		config: StoredAgentConfig | null,
 		tools: AgentToolEntries,
 	): AgentToolEntries | null {
 		if (!config) return null;
@@ -160,18 +150,20 @@ export class AgentCustomToolsService {
 		}
 		return snapshot;
 	}
+	/** Custom tool writes keep the skill refs: the fenced save keeps them as they are. */
 	private async saveToolChanges(
 		entity: Agent,
+		skillRefs: AgentSkillRefs,
 		projectId: string,
 		context: AgentMutationTelemetryContext,
-	): Promise<Agent> {
+		recordTelemetry = true,
+	): Promise<void> {
 		markAgentDraftDirty(entity);
-		this.runtimeCacheService.clearRuntimes(entity.id);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId, agentId: entity.id, source: context.modifiedBy },
+		await this.saveCompletion.bodySaved(
+			buildAgentMutationEvent(saved, skillRefs, projectId, context, ['tools']),
 			context.pushRef,
+			recordTelemetry,
 		);
-		return saved;
 	}
 }

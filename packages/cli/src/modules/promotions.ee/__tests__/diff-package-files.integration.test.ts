@@ -12,7 +12,7 @@ import { diffPackageFiles } from '../diff-package-files';
 it('compares Git and writer output without losing scoped identities, and ignores workflow metadata', async () => {
 	const root = await mkdtemp(path.join(tmpdir(), 'promotion-diff-'));
 	try {
-		const project = 'n8n-export/projects/orders-Project1';
+		const project = 'n8n/projects/orders-Project1';
 		const base = [
 			{ path: `${project}/workflows/same-Same/workflow.json`, content: 'same' },
 			{ path: `${project}/workflows/edit-Edit/workflow.json`, content: 'before' },
@@ -25,7 +25,7 @@ it('compares Git and writer output without losing scoped identities, and ignores
 				content: 'before',
 			},
 			{ path: `${project}/variables/api-1/variable.json`, content: 'project' },
-			{ path: 'n8n-export/variables/api-2/variable.json', content: 'global' },
+			{ path: 'n8n/variables/api-2/variable.json', content: 'global' },
 			{ path: `${project}/credentials/shared-Edit/credential.json`, content: 'credential' },
 		];
 		const directoryWriter = new DirectoryPackageWriter(root);
@@ -36,7 +36,7 @@ it('compares Git and writer output without losing scoped identities, and ignores
 		await git.add('.');
 		const tree = (await git.raw(['write-tree'])).trim();
 		const baseFiles = parseBaseBranchFiles(await git.raw(['ls-tree', '-r', '-z', tree]), {
-			exportRoot: 'n8n-export',
+			exportRoot: 'n8n',
 			projectId: 'Project1',
 		});
 		const writer = new HashingPackageWriter();
@@ -47,10 +47,10 @@ it('compares Git and writer output without losing scoped identities, and ignores
 			);
 		}
 		writer.writeFile(`${project}/workflows/new-New/workflow.json`, 'new');
-		writer.writeFile('n8n-export/variables/api-2/variable.json', 'changed global');
-		writer.writeFile('n8n-export/manifest.json', 'ignored export metadata');
+		writer.writeFile('n8n/variables/api-2/variable.json', 'changed global');
+		writer.writeFile('n8n/manifest.json', 'ignored export metadata');
 		const desiredFiles = parsePackageFiles(writer.finalize(), {
-			exportRoot: 'n8n-export',
+			exportRoot: 'n8n',
 			projectId: 'Project1',
 		});
 		expect(baseFiles.filter(({ type }) => type === 'variable')).toEqual([

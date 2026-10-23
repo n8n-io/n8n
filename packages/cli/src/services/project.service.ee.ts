@@ -8,12 +8,13 @@ import {
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
-	RoleRepository,
 	ProjectIdConflictError,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	type ProjectListOptions,
+	type OperationContext,
+	RoleRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
@@ -27,11 +28,9 @@ import {
 	GLOBAL_ADMIN_ROLE_SLUG,
 	GLOBAL_OWNER_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
-	PROJECT_ADMIN_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
-import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
-import { In } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -112,6 +111,12 @@ export class ProjectService {
 	private get credentialsService() {
 		return import('@/credentials/credentials.service.js').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
+		);
+	}
+
+	private get ownershipTransferService() {
+		return import('@/services/ownership-transfer/ownership-transfer.service.js').then(
+			({ OwnershipTransferService }) => Container.get(OwnershipTransferService),
 		);
 	}
 
@@ -212,6 +217,14 @@ export class ProjectService {
 					`Can't migrate end-user credentials (${names}) to a personal project. Switch them back to fixed credentials, move them to another team project, or delete this project without migrating.`,
 				);
 			}
+		}
+
+		if (targetProject) {
+			const ownershipTransferService = await this.ownershipTransferService;
+			await ownershipTransferService.enforceTransferPolicy(project.id, targetProject.id, {
+				kind: 'user',
+				user,
+			});
 		}
 
 		// 1. delete or migrate workflows owned by this project
@@ -342,6 +355,10 @@ export class ProjectService {
 		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
 	}
 
+	async findTeamProjectsWorkflowIsIn(workflowId: string) {
+		return await this.sharedWorkflowRepository.findTeamProjectIds(workflowId);
+	}
+
 	/**
 	 * Enrich projects with the requesting user's role and scopes.
 	 * Mirrors the logic in getMyProjects controller: for each project,
@@ -353,13 +370,10 @@ export class ProjectService {
 	): Promise<Array<Project & { role: string; scopes: Scope[] }>> {
 		if (projects.length === 0) return [];
 
-		const relations = await this.projectRelationRepository.find({
-			where: {
-				userId: user.id,
-				projectId: In(projects.map((p) => p.id)),
-			},
-			relations: ['role'],
-		});
+		const relations = await this.projectRelationRepository.findByUserAndProjects(
+			user.id,
+			projects.map((p) => p.id),
+		);
 		const relationsByProject = new Map(relations.map((r) => [r.projectId, r]));
 		const globalScopes = getAuthPrincipalScopes(user);
 
@@ -904,66 +918,30 @@ export class ProjectService {
 		user: User,
 		projectId: string,
 		scopes: Scope[],
-		entityManager?: EntityManager,
+		ctx: OperationContext = {},
 	) {
-		const em = entityManager ?? this.projectRepository.manager;
-		let where: FindOptionsWhere<Project> = {
-			id: projectId,
-		};
+		const projectRoles = hasGlobalScope(user, scopes, { mode: 'allOf' })
+			? undefined
+			: await this.roleService.rolesWithScope(
+					'project',
+					scopes,
+					async () => await this.roleRepository.findAll(ctx),
+				);
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope(
-				'project',
-				scopes,
-				async () => await this.roleRepository.findAll(em),
-			);
-
-			where = {
-				...where,
-				projectRelations: {
-					role: In(projectRoles),
-					userId: user.id,
-				},
-			};
-		}
-
-		return await em.findOne(Project, {
-			where,
-		});
+		return await this.projectRepository.findOneWithUserRoles(projectId, user.id, projectRoles, ctx);
 	}
 
 	async getProjectIdsWithScope(user: User, scopes: Scope[], projectIds?: string[]) {
-		const where: FindOptionsWhere<Project> = {};
-		if (projectIds) {
-			where.id = In(projectIds);
-		}
+		const projectRoles = hasGlobalScope(user, scopes, { mode: 'allOf' })
+			? undefined
+			: await this.roleService.rolesWithScope('project', scopes);
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			// if we're not checking specific projects, restrict to team projects
-			if (!projectIds) {
-				where.type = 'team';
-			}
-			where.projectRelations = {
-				role: In(projectRoles),
-				userId: user.id,
-			};
-		}
-
-		const projects = await this.projectRepository.find({
-			where,
-			select: ['id'],
-		});
-		return projects.map((p) => p.id);
+		return await this.projectRepository.findIdsWithUserRoles(user.id, projectRoles, projectIds);
 	}
 
 	async findExistingProjectIds(projectIds: string[]): Promise<Set<string>> {
 		if (projectIds.length === 0) return new Set();
-		const projects = await this.projectRepository.find({
-			select: ['id'],
-			where: { id: In(projectIds) },
-		});
-		return new Set(projects.map(({ id }) => id));
+		return new Set(await this.projectRepository.findExistingIds(projectIds));
 	}
 
 	async findProjectsByIdsForUser(
@@ -975,22 +953,11 @@ export class ProjectService {
 			return [];
 		}
 
-		const where: FindOptionsWhere<Project> = {
-			id: In(projectIds),
-		};
+		const projectRoles = hasGlobalScope(user, scopes, { mode: 'allOf' })
+			? undefined
+			: await this.roleService.rolesWithScope('project', scopes);
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			where.projectRelations = {
-				role: In(projectRoles),
-				userId: user.id,
-			};
-		}
-
-		return await this.projectRepository.find({
-			where,
-			order: { createdAt: 'ASC', id: 'ASC' },
-		});
+		return await this.projectRepository.findByIdsWithUserRoles(projectIds, user.id, projectRoles);
 	}
 
 	/**
@@ -1086,14 +1053,7 @@ export class ProjectService {
 	}
 
 	async getUserOwnedOrAdminProjects(userId: string): Promise<Project[]> {
-		return await this.projectRepository.find({
-			where: {
-				projectRelations: {
-					userId,
-					role: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]),
-				},
-			},
-		});
+		return await this.projectRepository.findOwnedOrAdminByUser(userId);
 	}
 
 	async getProjectCounts(): Promise<Record<ProjectType, number>> {

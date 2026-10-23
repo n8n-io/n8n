@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -23,6 +23,7 @@ import type {
 	Role,
 	WorkflowHistory,
 	WorkflowEntity,
+	Project,
 } from '@n8n/db';
 import {
 	ProjectRepository,
@@ -31,6 +32,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
+import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
@@ -46,7 +48,6 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
@@ -63,6 +64,7 @@ import {
 	createUser,
 } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import { createWorkflowPublishHistoryItem } from '../shared/db/workflow-publish-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
@@ -142,7 +144,7 @@ beforeEach(async () => {
 	authMemberAgent = testServer.authAgentFor(member);
 	anotherMember = await createMember();
 
-	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
@@ -880,6 +882,50 @@ describe('POST /workflows', () => {
 		expect(workflowsInDb).toHaveLength(0);
 	});
 
+	describe('deprecated nodes', () => {
+		const nodesConfig = Container.get(NodesConfig);
+		let previousBlockDeprecated: boolean;
+		beforeAll(() => {
+			previousBlockDeprecated = nodesConfig.blockDeprecated;
+			nodesConfig.blockDeprecated = true;
+		});
+		afterAll(() => {
+			nodesConfig.blockDeprecated = previousBlockDeprecated;
+		});
+
+		const deprecatedNode: INode = {
+			id: uuid(),
+			name: 'Function',
+			type: 'n8n-nodes-base.function',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { functionCode: 'return items;' },
+		};
+
+		test('blocks creating a workflow that contains a deprecated node', async () => {
+			const response = await authOwnerAgent.post('/workflows').send({
+				name: 'has deprecated',
+				nodes: [deprecatedNode],
+				connections: {},
+				settings: {},
+				active: false,
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toMatch(/deprecated/i);
+			expect(response.body.meta?.violations).toEqual([
+				expect.objectContaining({
+					kind: 'node-type-deprecated',
+					message: expect.stringContaining(
+						'Cannot use a "n8n-nodes-base.function" node ("Function")',
+					),
+					subject: 'n8n-nodes-base.function',
+					subjectType: 'nodeType',
+				}),
+			]);
+		});
+	});
+
 	describe('Security: Mass Assignment Protection', () => {
 		test.each([
 			{
@@ -1085,6 +1131,20 @@ describe('GET /workflows/:workflowId', () => {
 			event: 'activated',
 			versionId: workflow.activeVersionId,
 		});
+	});
+
+	test('should return only the latest activation of the active version', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		const activeVersion = { workflowId: workflow.id, versionId: workflow.activeVersionId! };
+		await createWorkflowPublishHistoryItem(activeVersion, { event: 'deactivated' });
+		const latest = await createWorkflowPublishHistoryItem(activeVersion);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+		const { data } = response.body as { data: { activeVersion: WorkflowHistory } };
+		expect(data.activeVersion.workflowPublishHistory).toEqual([
+			expect.objectContaining({ id: latest.id, event: 'activated' }),
+		]);
 	});
 
 	test('should return parent folder', async () => {
@@ -1916,185 +1976,26 @@ describe('GET /workflows', () => {
 			expect(response.body.data).toHaveLength(1); // Should return all workflows when nodeTypes is empty
 		});
 
-		describe('includeCallableSubworkflows', () => {
-			const executeWorkflowTriggerNode = (id = uuid()) => ({
-				id,
-				name: 'When Executed by Another Workflow',
-				type: 'n8n-nodes-base.executeWorkflowTrigger',
-				parameters: {},
-				typeVersion: 1,
-				position: [0, 0] as [number, number],
+		test('should ignore callable sub-workflow filter keys', async () => {
+			const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+			const anyPolicyWorkflow = await createWorkflow(
+				{ name: 'Any Policy', settings: { callerPolicy: 'any' } },
+				owner,
+			);
+
+			const filter = JSON.stringify({
+				includeCallableSubworkflows: true,
+				parentWorkflowId: parentWorkflow.id,
 			});
 
-			test('should include workflows callable by the parent workflow based on callerPolicy', async () => {
-				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+			const response = await authMemberAgent
+				.get('/workflows')
+				.query(`filter=${filter}`)
+				.expect(200);
 
-				// callerPolicy: 'any' — callable by everyone
-				const anyPolicyWorkflow = await createWorkflow(
-					{
-						name: 'Any Policy',
-						nodes: [executeWorkflowTriggerNode()],
-						settings: { callerPolicy: 'any' },
-					},
-					owner,
-				);
-
-				// callerPolicy: 'workflowsFromAList' — parentWorkflow is explicitly listed
-				const fromListWorkflow = await createWorkflow(
-					{
-						name: 'From List Policy',
-						nodes: [executeWorkflowTriggerNode()],
-						settings: {
-							callerPolicy: 'workflowsFromAList',
-							callerIds: parentWorkflow.id,
-						},
-					},
-					owner,
-				);
-
-				// callerPolicy: 'none' — callable by nobody
-				await createWorkflow(
-					{
-						name: 'None Policy',
-						nodes: [executeWorkflowTriggerNode()],
-						settings: { callerPolicy: 'none' },
-					},
-					owner,
-				);
-
-				const filter = JSON.stringify({
-					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
-					includeCallableSubworkflows: true,
-					parentWorkflowId: parentWorkflow.id,
-				});
-
-				const response = await authMemberAgent
-					.get('/workflows')
-					.query(`filter=${filter}`)
-					.expect(200);
-
-				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
-				expect(returnedIds).toContain(anyPolicyWorkflow.id);
-				expect(returnedIds).toContain(fromListWorkflow.id);
-				expect(returnedIds).not.toContain(
-					(
-						await createWorkflow(
-							{
-								name: 'None Policy Check',
-								nodes: [executeWorkflowTriggerNode()],
-								settings: { callerPolicy: 'none' },
-							},
-							owner,
-						)
-					).id,
-				);
-			});
-
-			test('should not include callable workflows when includeCallableSubworkflows is false', async () => {
-				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
-
-				const anyPolicyWorkflow = await createWorkflow(
-					{
-						name: 'Any Policy',
-						nodes: [executeWorkflowTriggerNode()],
-						settings: { callerPolicy: 'any' },
-					},
-					owner,
-				);
-
-				const filter = JSON.stringify({
-					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
-					includeCallableSubworkflows: false,
-					parentWorkflowId: parentWorkflow.id,
-				});
-
-				const response = await authMemberAgent
-					.get('/workflows')
-					.query(`filter=${filter}`)
-					.expect(200);
-
-				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
-				// member doesn't own anyPolicyWorkflow, so without expansion it should not be visible
-				expect(returnedIds).not.toContain(anyPolicyWorkflow.id);
-			});
-
-			test('should not expand the list when the requester cannot read the parent workflow', async () => {
-				// Parent workflow owned by `owner`, inaccessible to `member`.
-				const parentWorkflow = await createWorkflow({ name: 'Owner Parent' }, owner);
-
-				// Subworkflow owned by the same owner, callable by same-owner workflows.
-				const sameOwnerSubworkflow = await createWorkflow(
-					{
-						name: 'Same Owner Sub',
-						nodes: [executeWorkflowTriggerNode()],
-						settings: { callerPolicy: 'workflowsFromSameOwner' },
-					},
-					owner,
-				);
-
-				// Subworkflow that explicitly allowlists the inaccessible parent id.
-				const fromListSubworkflow = await createWorkflow(
-					{
-						name: 'From List Sub',
-						nodes: [executeWorkflowTriggerNode()],
-						settings: {
-							callerPolicy: 'workflowsFromAList',
-							callerIds: parentWorkflow.id,
-						},
-					},
-					owner,
-				);
-
-				const filter = JSON.stringify({
-					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
-					includeCallableSubworkflows: true,
-					parentWorkflowId: parentWorkflow.id,
-				});
-
-				const response = await authMemberAgent
-					.get('/workflows')
-					.query(`filter=${filter}`)
-					.expect(200);
-
-				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
-				// member cannot read the supplied parent workflow, so callable
-				// subworkflows must not be exposed regardless of caller policy.
-				expect(returnedIds).not.toContain(sameOwnerSubworkflow.id);
-				expect(returnedIds).not.toContain(fromListSubworkflow.id);
-			});
-
-			test('should match callerIds by whole id, not by substring', async () => {
-				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
-
-				// Allowlist contains the parent id only as a substring of a longer id.
-				const substringSubworkflow = await createWorkflow(
-					{
-						name: 'Substring Allowlist',
-						nodes: [executeWorkflowTriggerNode()],
-						settings: {
-							callerPolicy: 'workflowsFromAList',
-							callerIds: `${parentWorkflow.id}-extra-suffix`,
-						},
-					},
-					owner,
-				);
-
-				const filter = JSON.stringify({
-					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
-					includeCallableSubworkflows: true,
-					parentWorkflowId: parentWorkflow.id,
-				});
-
-				const response = await authMemberAgent
-					.get('/workflows')
-					.query(`filter=${filter}`)
-					.expect(200);
-
-				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
-				// parentWorkflow.id is only a substring of the allowlisted id, so it must
-				// not be treated as an allowed caller.
-				expect(returnedIds).not.toContain(substringSubworkflow.id);
-			});
+			const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+			expect(returnedIds).toEqual([parentWorkflow.id]);
+			expect(returnedIds).not.toContain(anyPolicyWorkflow.id);
 		});
 	});
 
@@ -3995,6 +3896,146 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(response.body.data.name).toBe('Updated name');
 	});
 
+	describe('deprecated nodes', () => {
+		const nodesConfig = Container.get(NodesConfig);
+		let previousBlockDeprecated: boolean;
+		beforeAll(() => {
+			previousBlockDeprecated = nodesConfig.blockDeprecated;
+			nodesConfig.blockDeprecated = true;
+		});
+		afterAll(() => {
+			nodesConfig.blockDeprecated = previousBlockDeprecated;
+		});
+
+		const buildDeprecatedNode = (overrides: Partial<INode> = {}): INode => ({
+			id: 'deprecated-node-id',
+			name: 'Function',
+			type: 'n8n-nodes-base.function',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { functionCode: 'return items;' },
+			...overrides,
+		});
+
+		const buildCleanNode = (overrides: Partial<INode> = {}): INode => ({
+			id: 'clean-node-id',
+			name: 'Manual Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+			...overrides,
+		});
+
+		test('blocks adding a deprecated node to an existing workflow', async () => {
+			const workflow = await createWorkflow({ nodes: [buildCleanNode()] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [buildCleanNode(), buildDeprecatedNode()],
+				connections: {},
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.meta?.violations).toEqual([
+				expect.objectContaining({
+					kind: 'node-type-deprecated',
+					message: expect.stringContaining(
+						'Cannot use a "n8n-nodes-base.function" node ("Function")',
+					),
+					subject: 'n8n-nodes-base.function',
+					subjectType: 'nodeType',
+				}),
+			]);
+		});
+
+		test('blocks editing a deprecated node that already exists in the workflow', async () => {
+			const deprecated = buildDeprecatedNode();
+			const workflow = await createWorkflow({ nodes: [deprecated] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [{ ...deprecated, parameters: { functionCode: 'return [];' } }],
+				connections: {},
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.meta?.violations).toEqual([
+				expect.objectContaining({
+					kind: 'node-type-deprecated',
+					message: expect.stringContaining(
+						'Cannot modify a "n8n-nodes-base.function" node ("Function")',
+					),
+					subject: 'n8n-nodes-base.function',
+					subjectType: 'nodeType',
+				}),
+			]);
+		});
+
+		test('allows editing other nodes while a deprecated node stays unchanged', async () => {
+			const deprecated = buildDeprecatedNode();
+			const cleanNode = buildCleanNode();
+			const workflow = await createWorkflow({ nodes: [deprecated, cleanNode] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [deprecated, { ...cleanNode, notes: 'edited' }],
+				connections: workflow.connections,
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('allows the editor-saved shape of a deprecated node stored with explicit defaults', async () => {
+			const deprecated = buildDeprecatedNode();
+			const cleanNode = buildCleanNode();
+			const workflow = await createWorkflow(
+				{
+					nodes: [
+						{ ...deprecated, notes: '', onError: 'stopWorkflow', continueOnFail: false },
+						cleanNode,
+					],
+				},
+				owner,
+			);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [deprecated, { ...cleanNode, notes: 'edited' }],
+				connections: workflow.connections,
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('allows moving a deprecated node on the canvas', async () => {
+			const deprecated = buildDeprecatedNode();
+			const workflow = await createWorkflow({ nodes: [deprecated] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [{ ...deprecated, position: [400, 200] }],
+				connections: workflow.connections,
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('allows removing a deprecated node from an existing workflow', async () => {
+			const deprecated = buildDeprecatedNode();
+			const cleanNode = buildCleanNode();
+			const workflow = await createWorkflow({ nodes: [deprecated, cleanNode] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [cleanNode],
+				connections: {},
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+	});
+
 	describe('Security: Mass Assignment Protection on Update', () => {
 		test.each([
 			{
@@ -5131,9 +5172,10 @@ describe('POST /workflows/:workflowId/run', () => {
 			startExecution.mockResolvedValue({ executionId: 'a3c1e0f2-0000-4000-8000-000000000001' });
 		});
 
-		const createV2Workflow = async () =>
+		const createV2Workflow = async (pinData?: IPinData) =>
 			await createWorkflow(
 				{
+					pinData,
 					nodes: [
 						{
 							id: uuid(),
@@ -5186,8 +5228,9 @@ describe('POST /workflows/:workflowId/run', () => {
 			expect(executions.filter((e) => e.workflowId === dbWorkflow.id)).toHaveLength(0);
 		});
 
-		test('should return 400 for a partial execution', async () => {
-			const dbWorkflow = await createV2Workflow();
+		test('should seed a pinned node and reuse the trigger run data for a partial execution', async () => {
+			const dbWorkflow = await createV2Workflow({ [SET_NAME]: [{ json: { pinned: true } }] });
+			const setNode = dbWorkflow.nodes.find((node) => node.name === SET_NAME);
 
 			const response = await authOwnerAgent.post(`/workflows/${dbWorkflow.id}/run`).send({
 				destinationNode: { nodeName: SET_NAME, mode: 'inclusive' },
@@ -5198,17 +5241,21 @@ describe('POST /workflows/:workflowId/run', () => {
 							executionTime: 0,
 							executionIndex: 0,
 							source: [],
-							data: { main: [[{ json: {} }]] },
+							data: { main: [[{ json: { from: 'earlier' } }]] },
 						},
 					],
 				},
 			});
 
-			expect(response.statusCode).toBe(400);
-			expect(response.body.message).toBe(
-				'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+			expect(response.statusCode).toBe(200);
+			expect(startExecution).toHaveBeenCalledWith(
+				objectContaining({
+					triggerOutputs: [[{ json: { from: 'earlier' } }]],
+					seededSteps: {
+						[setNode?.id ?? '']: [[[{ json: { pinned: true }, pairedItem: { item: 0 } }]]],
+					},
+				}),
 			);
-			expect(startExecution).not.toHaveBeenCalled();
 		});
 	});
 });
@@ -5670,6 +5717,157 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 			.expect(200);
 
 		expect(response.body.data).toBeNull();
+	});
+});
+
+describe('GET /workflows/:workflowId/callable-subworkflows', () => {
+	const executeWorkflowTriggerNode = () => ({
+		id: uuid(),
+		name: 'When Executed by Another Workflow',
+		type: 'n8n-nodes-base.executeWorkflowTrigger',
+		parameters: {},
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+	});
+
+	const createSubworkflow = async (
+		name: string,
+		settings: WorkflowEntity['settings'],
+		userOrProject: User | Project,
+	) =>
+		await createWorkflow({ name, nodes: [executeWorkflowTriggerNode()], settings }, userOrProject);
+
+	const getCallableIds = async (agent: SuperAgentTest, parentWorkflowId: string) => {
+		const response = await agent
+			.get(`/workflows/${parentWorkflowId}/callable-subworkflows`)
+			.expect(200);
+		return (response.body.data.data as Array<{ id: string }>).map((w) => w.id);
+	};
+
+	test('should list readable workflows and workflows that allow the parent explicitly', async () => {
+		const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+		const ownSubworkflow = await createSubworkflow('Own', undefined, member);
+		const anyPolicyWorkflow = await createSubworkflow('Any', { callerPolicy: 'any' }, owner);
+		const fromListWorkflow = await createSubworkflow(
+			'From List',
+			{ callerPolicy: 'workflowsFromAList', callerIds: `other-id, ${parentWorkflow.id}` },
+			owner,
+		);
+		const nonePolicyWorkflow = await createSubworkflow('None', { callerPolicy: 'none' }, owner);
+		const substringListWorkflow = await createSubworkflow(
+			'Substring List',
+			{ callerPolicy: 'workflowsFromAList', callerIds: `${parentWorkflow.id}-extra-suffix` },
+			owner,
+		);
+		// Readable, but has no Execute Workflow Trigger node.
+		await createWorkflow({ name: 'No Trigger' }, member);
+		// Callable by the parent, but has no Execute Workflow Trigger node.
+		const callableNoTriggerWorkflow = await createWorkflow(
+			{ name: 'Any Policy No Trigger', settings: { callerPolicy: 'any' } },
+			owner,
+		);
+
+		const returnedIds = await getCallableIds(authMemberAgent, parentWorkflow.id);
+
+		expect(returnedIds.sort()).toEqual(
+			[ownSubworkflow.id, anyPolicyWorkflow.id, fromListWorkflow.id].sort(),
+		);
+		expect(returnedIds).not.toContain(nonePolicyWorkflow.id);
+		expect(returnedIds).not.toContain(substringListWorkflow.id);
+		expect(returnedIds).not.toContain(callableNoTriggerWorkflow.id);
+	});
+
+	test('should not list unshared workflows of the user who shared the parent', async () => {
+		const sharedParent = await createWorkflow({ name: 'Shared Parent' }, owner);
+		await shareWorkflowWithUsers(sharedParent, [member]);
+		const sameOwnerWorkflow = await createSubworkflow(
+			'Same Owner',
+			{ callerPolicy: 'workflowsFromSameOwner' },
+			owner,
+		);
+		const defaultPolicyWorkflow = await createSubworkflow('Default Policy', undefined, owner);
+
+		const returnedIds = await getCallableIds(authMemberAgent, sharedParent.id);
+
+		expect(returnedIds).not.toContain(sameOwnerWorkflow.id);
+		expect(returnedIds).not.toContain(defaultPolicyWorkflow.id);
+	});
+
+	test('should return only the minimal fields and the project name for team projects', async () => {
+		const parentWorkflow = await createWorkflow({ name: 'Parent' }, owner);
+		const teamProject = await createTeamProject('Team Project', owner);
+		const teamWorkflow = await createSubworkflow('Team Sub', undefined, teamProject);
+		const personalWorkflow = await createSubworkflow('Personal Sub', undefined, owner);
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${parentWorkflow.id}/callable-subworkflows`)
+			.query({ select: '["nodes"]', filter: '{"nodeTypes":["n8n-nodes-base.code"]}' })
+			.expect(200);
+
+		expect(response.body.data.count).toBe(2);
+		expect(response.body.data.data).toEqual(
+			arrayContaining([
+				{
+					id: teamWorkflow.id,
+					name: 'Team Sub',
+					active: false,
+					isArchived: false,
+					projectName: 'Team Project',
+				},
+				{ id: personalWorkflow.id, name: 'Personal Sub', active: false, isArchived: false },
+			]),
+		);
+	});
+
+	test('should filter by name and paginate', async () => {
+		const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+		await createSubworkflow('Alpha One', undefined, member);
+		await createSubworkflow('Alpha Two', undefined, member);
+		await createSubworkflow('Beta', undefined, member);
+
+		const response = await authMemberAgent
+			.get(`/workflows/${parentWorkflow.id}/callable-subworkflows`)
+			.query({ query: 'alpha', take: 1 })
+			.expect(200);
+
+		expect(response.body.data.count).toBe(2);
+		expect(response.body.data.data).toHaveLength(1);
+		expect(response.body.data.data[0].name).toMatch(/^Alpha/);
+	});
+
+	test('should match the search query against workflow names only', async () => {
+		const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+		await createWorkflow(
+			{
+				name: 'Callable',
+				description: 'contains uniqueterm',
+				nodes: [executeWorkflowTriggerNode()],
+				settings: { callerPolicy: 'any' },
+			},
+			owner,
+		);
+
+		const response = await authMemberAgent
+			.get(`/workflows/${parentWorkflow.id}/callable-subworkflows`)
+			.query({ query: 'uniqueterm' })
+			.expect(200);
+
+		expect(response.body.data).toEqual({ count: 0, data: [] });
+	});
+
+	test('should forbid users who cannot update the parent workflow', async () => {
+		const teamProject = await createTeamProject('Team Project', owner);
+		await linkUserToProject(member, teamProject, 'project:viewer');
+		const parentWorkflow = await createWorkflow({ name: 'Parent' }, teamProject);
+
+		await authMemberAgent.get(`/workflows/${parentWorkflow.id}/callable-subworkflows`).expect(403);
+	});
+
+	test('should forbid users who cannot access the parent workflow', async () => {
+		const parentWorkflow = await createWorkflow({ name: 'Parent' }, owner);
+		await createSubworkflow('Allows Parent', { callerPolicy: 'any' }, owner);
+
+		await authMemberAgent.get(`/workflows/${parentWorkflow.id}/callable-subworkflows`).expect(403);
 	});
 });
 

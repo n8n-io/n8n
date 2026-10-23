@@ -6,6 +6,7 @@ import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { getLdapUsers, saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee';
+import { LdapConnectionError, LdapRejectionError } from '@/modules/ldap.ee/ldap.errors';
 import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
@@ -398,6 +399,17 @@ describe('LDAP configuration in Public API', () => {
 			});
 		});
 
+		it('rejects an invalid cursor with 400', async () => {
+			testServer.license.enable('feat:ldap');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/settings/ldap/sync?cursor=not-a-cursor');
+
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({ message: 'An invalid cursor was provided' });
+		});
+
 		it('rejects with 403 when not licensed', async () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/ldap/sync');
 
@@ -421,7 +433,7 @@ describe('LDAP configuration in Public API', () => {
 			const response = await testServer.publicApiAgentWithoutApiKey().get('/settings/ldap/sync');
 
 			expect(response.status).toBe(401);
-			expect(response.body).toStrictEqual({ message: "'X-N8N-API-KEY' header required" });
+			expect(response.body).toStrictEqual({ message: 'Unauthorized' });
 		});
 	});
 
@@ -498,8 +510,40 @@ describe('LDAP configuration in Public API', () => {
 
 			expect(response.status).toBe(400);
 			expect(response.body).toStrictEqual({
-				message: 'request/body/type must be equal to one of the allowed values: live, dry',
+				message:
+					"request/body/type Invalid enum value. Expected 'live' | 'dry', received 'invalid-mode'",
 			});
+		});
+
+		it('rejects unknown properties with 400', async () => {
+			testServer.license.enable('feat:ldap');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/ldap/sync')
+				.send({ type: 'dry', unknownField: 'nope' });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({
+				message: "request/body Unrecognized key(s) in object: 'unknownField'",
+			});
+		});
+
+		it.each([
+			['rejects the bind', new LdapRejectionError('Invalid credentials')],
+			['cannot be reached', new LdapConnectionError('connect ECONNREFUSED')],
+		] as const)('returns 400 when the LDAP server %s', async (_label, error) => {
+			testServer.license.enable('feat:ldap');
+			await testServer.publicApiAgentFor(owner).put('/settings/ldap').send(defaultLdapConfig);
+			vi.spyOn(Container.get(LdapService), 'searchWithAdminBinding').mockRejectedValue(error);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/ldap/sync')
+				.send({ type: 'dry' });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({ message: error.message });
 		});
 
 		it('rejects with 403 when not licensed', async () => {
@@ -534,7 +578,7 @@ describe('LDAP configuration in Public API', () => {
 				.send({ type: 'dry' });
 
 			expect(response.status).toBe(401);
-			expect(response.body).toStrictEqual({ message: "'X-N8N-API-KEY' header required" });
+			expect(response.body).toStrictEqual({ message: 'Unauthorized' });
 		});
 	});
 });

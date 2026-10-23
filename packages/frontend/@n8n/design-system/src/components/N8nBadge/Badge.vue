@@ -58,7 +58,11 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 			:size="effectiveIconSize"
 		/>
 		<slot name="leading" />
-		<N8nText :class="$style.label" :step="effectiveTextSize" bold>
+		<N8nText
+			:class="[$style.label, { [$style.hasIcon]: props.leadingIcon || props.trailingIcon }]"
+			:step="effectiveTextSize"
+			bold
+		>
 			<slot></slot>
 		</N8nText>
 		<slot name="trailing" />
@@ -79,7 +83,6 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	display: inline-flex;
 	align-items: center;
 	white-space: nowrap;
-	border-radius: var(--radius--full);
 	user-select: none;
 	appearance: none;
 	width: fit-content;
@@ -91,9 +94,11 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	--n8n-badge--padding-inline-start: var(--spacing--2xs);
 	--n8n-badge--padding-inline-end: var(--spacing--2xs);
 	--n8n-badge--gap: var(--spacing--4xs);
+	--n8n-badge--radius: var(--radius--xs);
 
+	border-radius: var(--n8n-badge--radius);
 	gap: var(--n8n-badge--gap);
-	background-color: var(--n8n-badge--background);
+	background: var(--n8n-badge--background);
 	border: 1px solid var(--n8n-badge--border-color);
 	height: var(--n8n-badge--height);
 	padding-inline: var(--n8n-badge--padding-inline-start) var(--n8n-badge--padding-inline-end);
@@ -130,12 +135,14 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	--n8n-badge--height: var(--height--2xs);
 	--n8n-badge--padding-inline-start: var(--spacing--2xs);
 	--n8n-badge--padding-inline-end: var(--spacing--2xs);
+	--n8n-badge--radius: var(--radius--2xs);
 }
 
 .xsmall {
 	--n8n-badge--height: var(--height--xs);
 	--n8n-badge--padding-inline-start: var(--spacing--2xs);
 	--n8n-badge--padding-inline-end: var(--spacing--2xs);
+	--n8n-badge--radius: var(--radius--2xs);
 }
 
 .small {
@@ -160,6 +167,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	--n8n-badge--height: var(--height--xl);
 	--n8n-badge--padding-inline-start: var(--spacing--sm);
 	--n8n-badge--padding-inline-end: var(--spacing--sm);
+	--n8n-badge--radius: var(--radius--sm);
 }
 
 .filled {
@@ -170,7 +178,8 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 .primary {
 	--n8n-badge--background: var(--background--brand);
-	--n8n-badge--text-color: var(--color--neutral-white);
+	--n8n-badge--text-color: var(--color--neutral-black);
+	box-shadow: var(--shadow--xs);
 }
 
 .secondary {
@@ -222,6 +231,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	flex-shrink: 0;
 	opacity: 0.9;
 }
+
 .leadingIcon + .label {
 	margin-inline-end: calc(var(--n8n-badge--padding-inline-end) * 0.2);
 }

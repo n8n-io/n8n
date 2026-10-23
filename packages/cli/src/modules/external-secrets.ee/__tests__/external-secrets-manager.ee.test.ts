@@ -29,6 +29,7 @@ const createDeferred = () => {
 
 describe('ExternalSecretsManager', () => {
 	const connectTimeoutMs = Container.get(ExternalSecretsConfig).connectTimeout * 1000;
+	const signal = new AbortController().signal;
 	vi.useFakeTimers();
 
 	let manager: ExternalSecretsManager;
@@ -138,16 +139,6 @@ describe('ExternalSecretsManager', () => {
 			expect(manager.initialized).toBe(true);
 		});
 
-		it('should start secrets refresh interval', async () => {
-			await manager.init();
-
-			expect(mockSecretsCache.refreshAll).not.toHaveBeenCalled();
-
-			vi.advanceTimersByTime(60000); // 60 seconds
-
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(1);
-		});
-
 		it('should not initialize twice', async () => {
 			await manager.init();
 			await manager.init();
@@ -164,27 +155,13 @@ describe('ExternalSecretsManager', () => {
 	});
 
 	describe('shutdown', () => {
-		it('should stop refresh interval and disconnect all providers', async () => {
+		it('should disconnect all providers', async () => {
 			await manager.init();
 
 			manager.shutdown();
 
 			expect(mockProviderConnectionManager.shutdown).toHaveBeenCalled();
 			expect(manager.initialized).toBe(false);
-		});
-
-		it('should stop calling refresh after shutdown', async () => {
-			await manager.init();
-
-			const callsAfterInit = mockSecretsCache.refreshAll.mock.calls.length;
-
-			vi.advanceTimersByTime(60000);
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1);
-
-			manager.shutdown();
-
-			vi.advanceTimersByTime(60000);
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1); // No additional calls
 		});
 	});
 
@@ -739,7 +716,7 @@ describe('ExternalSecretsManager', () => {
 
 	describe('updateSecrets', () => {
 		it('should delegate to secrets cache', async () => {
-			await manager.updateSecrets();
+			await manager.updateSecrets(signal);
 
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
 		});
@@ -751,7 +728,7 @@ describe('ExternalSecretsManager', () => {
 
 			expect(manager.initialized).toBe(true);
 
-			await manager.updateSecrets();
+			await manager.updateSecrets(signal);
 
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
 
@@ -1405,7 +1382,7 @@ describe('ExternalSecretsManager', () => {
 					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
 					expect(retryManager.isRetrying('my-vault')).toBe(true);
 
-					await manager.updateSecrets();
+					await manager.updateSecrets(signal);
 					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
 
 					await vi.advanceTimersToNextTimerAsync();
@@ -1420,7 +1397,7 @@ describe('ExternalSecretsManager', () => {
 					// The healed slot must take part in the refresh loop again, which only holds if
 					// its connected state was restored.
 					healed._updateSecrets = { test1: 'newest-value' };
-					await manager.updateSecrets();
+					await manager.updateSecrets(signal);
 					expect(manager.getSecret('my-vault', 'test1')).toBe('newest-value');
 				} finally {
 					manager.shutdown();

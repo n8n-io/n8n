@@ -1,4 +1,8 @@
-import { AgentIntegrationConfigSchema, AgentIntegrationSchema } from '../agent-integration.schema';
+import {
+	AgentIntegrationConfigSchema,
+	AgentIntegrationSchema,
+	resolveWhatsAppSettings,
+} from '../agent-integration.schema';
 import { AgentJsonConfigSchema } from '../agent-json-config.schema';
 
 describe('AgentIntegrationSchema', () => {
@@ -208,6 +212,81 @@ describe('AgentIntegrationSchema', () => {
 
 		it('still rejects an unknown setting', () => {
 			expect(parse({ somethingElse: true }).success).toBe(false);
+		});
+	});
+
+	describe('WhatsApp settings', () => {
+		const parse = (settings: Record<string, unknown>) =>
+			AgentIntegrationSchema.safeParse({ type: 'whatsapp', credentialId: 'cred-123', settings });
+
+		it('accepts a WhatsApp integration without settings', () => {
+			expect(
+				AgentIntegrationSchema.safeParse({ type: 'whatsapp', credentialId: 'cred-123' }).success,
+			).toBe(true);
+		});
+
+		it('accepts the typing indicator, media download and retention settings', () => {
+			const result = parse({
+				sessionIdleTimeoutMinutes: 30,
+				typingIndicator: false,
+				downloadMedia: false,
+				mediaRetentionDays: 7,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual({
+				sessionIdleTimeoutMinutes: 30,
+				typingIndicator: false,
+				downloadMedia: false,
+				mediaRetentionDays: 7,
+			});
+		});
+
+		it.each([1, 365])('accepts a retention of %i days', (mediaRetentionDays) => {
+			expect(parse({ mediaRetentionDays }).success).toBe(true);
+		});
+
+		it.each([0, 366, 1.5, -1])('rejects a retention of %s days', (mediaRetentionDays) => {
+			expect(parse({ mediaRetentionDays }).success).toBe(false);
+		});
+
+		it.each([
+			['typingIndicator', 'yes'],
+			['downloadMedia', 1],
+		])('rejects a non-boolean %s', (key, value) => {
+			expect(parse({ [key]: value }).success).toBe(false);
+		});
+
+		it('rejects an unknown setting', () => {
+			expect(parse({ accessMode: 'public' }).success).toBe(false);
+		});
+	});
+
+	describe('resolveWhatsAppSettings', () => {
+		it('applies the defaults when no settings are saved', () => {
+			const defaults = { typingIndicator: true, downloadMedia: true, mediaRetentionDays: 30 };
+
+			expect(resolveWhatsAppSettings()).toEqual(defaults);
+			expect(resolveWhatsAppSettings({})).toEqual(defaults);
+			expect(resolveWhatsAppSettings({ sessionIdleTimeoutMinutes: 10 })).toEqual(defaults);
+		});
+
+		it('keeps the saved values', () => {
+			expect(
+				resolveWhatsAppSettings({
+					typingIndicator: false,
+					downloadMedia: false,
+					mediaRetentionDays: 90,
+				}),
+			).toEqual({ typingIndicator: false, downloadMedia: false, mediaRetentionDays: 90 });
+		});
+
+		it('fills only the settings that are unset', () => {
+			expect(resolveWhatsAppSettings({ downloadMedia: false })).toEqual({
+				typingIndicator: true,
+				downloadMedia: false,
+				mediaRetentionDays: 30,
+			});
 		});
 	});
 });

@@ -37,7 +37,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '={{"/api/v1/users/" + $parameter["userId"]}}',
+						url: '=/api/v1/users/{{ toPathSegment($parameter["userId"]) }}',
 						returnFullResponse: true,
 					},
 					output: {
@@ -61,7 +61,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/api/v1/users/" + $parameter["userId"]}}',
+						url: '=/api/v1/users/{{ toPathSegment($parameter["userId"]) }}',
 						returnFullResponse: true,
 						qs: {},
 					},
@@ -103,7 +103,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/api/v1/users/" + $parameter["userId"]}}',
+						url: '=/api/v1/users/{{ toPathSegment($parameter["userId"]) }}',
 						returnFullResponse: true,
 					},
 				},

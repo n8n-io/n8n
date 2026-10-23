@@ -31,7 +31,7 @@ const steps = [
 	{
 		id: 'nodes-search',
 		label: 'Search nodes',
-		toolName: 'nodes',
+		toolName: 'workflow_builder_nodes',
 		args: { action: 'search', query: 'Slack trigger', limit: 5 },
 		result: {
 			nodes: [
@@ -43,14 +43,14 @@ const steps = [
 	{
 		id: 'workflow-code',
 		label: 'Generated workflow code',
-		toolName: 'workflows',
+		toolName: 'workflow_builder_workflows',
 		args: { action: 'get-as-code' },
 		result: { code: 'const workflow = {\n  nodes: [scheduleTrigger, slackMessage],\n};' },
 	},
 	{
 		id: 'workflows-list',
 		label: 'Listed workflows',
-		toolName: 'workflows',
+		toolName: 'workflow_builder_workflows',
 		args: { action: 'list' },
 		result: {
 			workflows: [
@@ -118,7 +118,7 @@ const StoryToolResultRenderer = defineComponent({
 		code(): string | undefined {
 			const result = this.result as { code?: unknown };
 			const toolArgs = this.toolArgs as { action?: unknown } | undefined;
-			return this.toolName === 'workflows' && toolArgs?.action === 'get-as-code'
+			return this.toolName === 'workflow_builder_workflows' && toolArgs?.action === 'get-as-code'
 				? typeof result.code === 'string'
 					? result.code
 					: undefined
@@ -244,7 +244,7 @@ const Template: StoryFn = (args) => ({
 export const NodeSearch = Template.bind({});
 NodeSearch.args = {
 	label: 'Search nodes',
-	toolName: 'nodes',
+	toolName: 'workflow_builder_nodes',
 	toolArgs: { action: 'search', query: 'Slack trigger', limit: 5 },
 	result: {
 		nodes: [
@@ -265,7 +265,7 @@ Reasoning.args = {
 export const CodeResult = Template.bind({});
 CodeResult.args = {
 	label: 'Generated workflow code',
-	toolName: 'workflows',
+	toolName: 'workflow_builder_workflows',
 	toolArgs: { action: 'get-as-code' },
 	result: {
 		code: `const workflow = {
@@ -280,7 +280,7 @@ CodeResult.args = {
 export const TableResult = Template.bind({});
 TableResult.args = {
 	label: 'Listed workflows',
-	toolName: 'workflows',
+	toolName: 'workflow_builder_workflows',
 	toolArgs: { action: 'list' },
 	result: {
 		workflows: [

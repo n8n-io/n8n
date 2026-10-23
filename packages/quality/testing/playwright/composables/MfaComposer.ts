@@ -24,6 +24,7 @@ export class MfaComposer {
 
 		const token = authenticator.generate(mfaSecret);
 		await this.n8n.mfaSetupModal.fillToken(token);
+		await this.n8n.mfaSetupModal.clickContinue();
 		await expect(this.n8n.mfaSetupModal.getDownloadRecoveryCodesButton()).toBeVisible();
 		await this.n8n.mfaSetupModal.clickDownloadRecoveryCodes();
 		await this.n8n.mfaSetupModal.clickSave();

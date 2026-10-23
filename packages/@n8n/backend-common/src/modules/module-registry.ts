@@ -46,6 +46,10 @@ export class ModuleRegistry {
 		// policy-infrastructure leads: it registers the enforcement implementation
 		// that every policy feature's checks are run by.
 		'policy-infrastructure',
+		// inbound-auth-core binds the inbound-auth contracts that later modules inject. Modules
+		// initialize in this order, and an unbound abstract constructor parameter resolves to
+		// `undefined` in the container, so it has to run before every consumer.
+		'inbound-auth-core',
 		'insights',
 		'external-secrets',
 		'community-packages',
@@ -54,6 +58,9 @@ export class ModuleRegistry {
 		// resource with the oauth-server module's registry on init.
 		'oauth-server',
 		'mcp',
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		'mcp-discovery',
+		// EOF Experiment cleanup
 		'provisioning',
 		'breaking-changes',
 		'source-control',
@@ -77,9 +84,18 @@ export class ModuleRegistry {
 		'runtime-credentials',
 		'mcp-registry',
 		'workflow-reviews',
+		'inbox',
+		// skills precedes instance-ai and agents: agents reads the skills hub setting
+		// and copies inline skills into the hub on init.
+		'skills',
 		'instance-ai',
+		// knowledge precedes agents: a module counts as active only after its own
+		// init, and the agents module reads `isActive('knowledge')` in `settings()`.
+		'knowledge',
 		'agents',
-		'inbound-auth-core',
+		'agent-evals',
+		'scim',
+		'type-availability-policies',
 	];
 
 	private readonly activeModules: string[] = [];

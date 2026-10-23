@@ -5,10 +5,10 @@ import {
 	N8nButton,
 	N8nDropdownMenu,
 	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -16,6 +16,7 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nStatusDot,
 	N8nSwitch,
 	N8nText,
 	type DropdownMenuItemProps,
@@ -35,8 +36,10 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
-import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import {
+	isContextPreferencesEnabled,
+	isContextSkillsEnabled,
+} from '@/features/settings/context/context.utils';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -61,8 +64,6 @@ const {
 	searchCredential,
 	searchState,
 } = useInstanceAiConfiguration();
-
-const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
 const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
 
@@ -202,7 +203,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'system',
 		labelKey: 'settings.n8nAgent.permissions.group.system',
-		keys: ['readFilesystem', 'cleanupTestExecutions'],
+		keys: ['cleanupTestExecutions'],
 	},
 	{
 		id: 'web',
@@ -223,11 +224,17 @@ const PREFERENCES_PERMISSION_GROUP: PermissionGroup = {
 	keys: ['createPreference'],
 };
 
-const permissionGroups = computed(() =>
-	isContextPreferencesEnabled()
-		? [...PERMISSION_GROUPS, PREFERENCES_PERMISSION_GROUP]
-		: PERMISSION_GROUPS,
-);
+const SKILLS_PERMISSION_GROUP: PermissionGroup = {
+	id: 'skills',
+	labelKey: 'settings.n8nAgent.permissions.group.skills',
+	keys: ['createSkill', 'updateSkill', 'deleteSkill'],
+};
+
+const permissionGroups = computed(() => [
+	...PERMISSION_GROUPS,
+	...(isContextPreferencesEnabled() ? [PREFERENCES_PERMISSION_GROUP] : []),
+	...(isContextSkillsEnabled() ? [SKILLS_PERMISSION_GROUP] : []),
+]);
 
 const expandedGroups = reactive<Record<string, boolean>>({});
 
@@ -431,11 +438,6 @@ async function handleStatusAction(action: string) {
 	if (confirmed === MODAL_CONFIRM) await store.persistEnabled(false);
 }
 
-function handleComputerUseToggle(value: boolean) {
-	store.setField('localGatewayDisabled', !value);
-	void store.save();
-}
-
 function handleBrowserUseToggle(value: boolean) {
 	store.setField('browserUseEnabled', value);
 	void store.save();
@@ -464,8 +466,11 @@ function openAiUsageSettings() {
 			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="medium" />
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="n8n-agent-enterprise-readiness-badge"
+				/>
 			</template>
 		</N8nSettingsPageHeader>
 
@@ -520,12 +525,10 @@ function openAiUsageSettings() {
 										:aria-label="i18n.baseText('settings.n8nAgent.status.manage')"
 									>
 										<span :class="$style.statusLabel">
-											<span
-												:class="[
-													$style.statusDot,
-													isSetupRequired ? $style.statusDotWarning : $style.statusDotSuccess,
-												]"
-												aria-hidden="true"
+											<N8nStatusDot
+												:variant="isSetupRequired ? 'warning' : 'success'"
+												:pulse="!isSetupRequired"
+												data-test-id="n8n-agent-status-dot"
 											/>
 											{{
 												isSetupRequired
@@ -653,23 +656,6 @@ function openAiUsageSettings() {
 								{{ searchValue }}
 							</N8nText>
 							<N8nSettingsRowConfigure v-else :value="searchValue" />
-						</template>
-					</N8nSettingsRow>
-
-					<N8nSettingsRow
-						v-if="isComputerUseExperimentEnabled"
-						:class="{ [$style.dim]: isOff }"
-						:title="i18n.baseText('settings.n8nAgent.computerUse.label')"
-						:description="i18n.baseText('settings.n8nAgent.computerUse.description')"
-					>
-						<template #action>
-							<N8nSwitch
-								:model-value="!(store.settings?.localGatewayDisabled ?? false)"
-								:disabled="store.isSaving || isOff"
-								:aria-label="i18n.baseText('settings.n8nAgent.computerUse.label')"
-								data-test-id="n8n-agent-computer-use-toggle"
-								@update:model-value="handleComputerUseToggle"
-							/>
 						</template>
 					</N8nSettingsRow>
 
@@ -828,20 +814,6 @@ function openAiUsageSettings() {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
-
-.statusDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: var(--radius--full);
-}
-
-.statusDotSuccess {
-	background: var(--text-color--success);
-}
-
-.statusDotWarning {
-	background: var(--text-color--warning);
 }
 
 .danger {

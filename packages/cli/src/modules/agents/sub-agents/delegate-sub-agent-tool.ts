@@ -4,6 +4,7 @@ import {
 	INLINE_SUB_AGENT_ID,
 	type InlineSubAgentProviderToolsResolver,
 	type ModelConfig,
+	readEpisodicScopeDecision,
 	type SubAgentTaskDifficulty,
 } from '@n8n/agents';
 import type { BudgetGuardrailConfig, SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
@@ -25,6 +26,7 @@ export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentRunContext
 	policy?: SubAgentRunPolicy;
 	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
+	runBackgroundSubAgent?: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
 }
 
 export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgentToolOptions) {
@@ -35,6 +37,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 		policy,
 		inlineSubAgentModelsByDifficulty,
 		resolveInlineSubAgentProviderTools,
+		runBackgroundSubAgent,
 		parentBudget,
 		...runContext
 	} = options;
@@ -47,6 +50,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			? { resolveInlineSubAgentProviderTools }
 			: {}),
 		shouldRetrySubAgentResumeError,
+		runBackgroundSubAgent,
 		runSubAgent: async (request, helpers) => {
 			const isSelfDelegation = request.subAgentId === INLINE_SUB_AGENT_ID;
 			const selectedSource = selectSubAgentSource({
@@ -63,6 +67,10 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				};
 			}
 			const parentSandboxScope = decodeAgentSandboxHostMetadata(request.parentHostMetadata);
+			// A child never inherits a parent's scope, but it must not re-enable memory the parent turned off.
+			const parentDecision = readEpisodicScopeDecision(request.parentHostMetadata);
+			const parentEpisodicScope =
+				parentDecision && 'disabled' in parentDecision ? parentDecision : undefined;
 
 			const result = await runner.run(
 				{
@@ -86,6 +94,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				},
 				{
 					...runContext,
+					...(parentEpisodicScope !== undefined ? { parentEpisodicScope } : {}),
 					...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
@@ -97,6 +106,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					onChunk: helpers.emitChunk,
 					...(isSelfDelegation && request.difficulty !== undefined
 						? { selfDelegationDifficulty: request.difficulty }
+						: {}),
+					...(request.parentOnGuardrailNotice !== undefined
+						? { onBudgetNotice: request.parentOnGuardrailNotice }
 						: {}),
 				},
 			);
@@ -126,6 +138,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				onChunk: helpers.emitChunk,
 				...(request.subAgentId === INLINE_SUB_AGENT_ID && request.difficulty !== undefined
 					? { selfDelegationDifficulty: request.difficulty }
+					: {}),
+				...(request.parentOnGuardrailNotice !== undefined
+					? { onBudgetNotice: request.parentOnGuardrailNotice }
 					: {}),
 			};
 			const result =

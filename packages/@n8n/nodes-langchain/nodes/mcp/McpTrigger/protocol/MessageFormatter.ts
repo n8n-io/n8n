@@ -1,6 +1,27 @@
 import type { CredentialCheckResult } from 'n8n-workflow';
 
+import { isToolErrorResult } from '@utils/tool-error-result';
+
 import type { McpToolResult } from './types';
+import { isMcpContentArray, type McpContentBlock } from '../../shared/utils';
+
+/**
+ * Parse a tool result string that may be a JSON-serialized MCP content array.
+ *
+ * Proxy mode passes the tool result through `DynamicStructuredTool.invoke`,
+ * which serializes the tool's return value to a string before it leaves the
+ * tool. The raw content array therefore arrives here as JSON text. Malformed
+ * JSON and JSON that is not an MCP content array return `null` so the caller
+ * wraps the original string.
+ */
+function parseMcpContentArrayString(value: string): McpContentBlock[] | null {
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return isMcpContentArray(parsed) ? parsed : null;
+	} catch {
+		return null;
+	}
+}
 
 /**
  * Result of presenting a single missing credential's connection URL to the
@@ -15,60 +36,48 @@ export interface CredentialGateElicitationOutcome {
 }
 
 export class MessageFormatter {
-	static formatToolResult(result: unknown, isError = false): McpToolResult {
-		let content: McpToolResult['content'];
+	static formatToolResult(result: unknown, isError = false, isFromMcpTool = false): McpToolResult {
+		let content: McpContentBlock[];
 
-		if (typeof result === 'object' && result !== null) {
-			content = [{ type: 'text', text: JSON.stringify(result) }];
+		if (isFromMcpTool && isMcpContentArray(result)) {
+			content = result; // pass-through
+		} else if (typeof result === 'object' && result !== null) {
+			content = [{ type: 'text' as const, text: JSON.stringify(result) }];
 		} else if (typeof result === 'string') {
-			content = [{ type: 'text', text: result }];
+			// Proxy mode hands us a JSON string, so parse before wrapping. A failed
+			// parse or a non-MCP value falls back to the original string, never the
+			// parsed value.
+			const parsedContent = isFromMcpTool ? parseMcpContentArrayString(result) : null;
+			content = parsedContent ?? [{ type: 'text' as const, text: result }];
 		} else if (result === null || result === undefined) {
-			content = [{ type: 'text', text: String(result) }];
+			content = [{ type: 'text' as const, text: String(result) }];
 		} else if (
 			typeof result === 'number' ||
 			typeof result === 'boolean' ||
 			typeof result === 'bigint'
 		) {
-			content = [{ type: 'text', text: result.toString() }];
+			content = [{ type: 'text' as const, text: result.toString() }];
 		} else {
 			// Remaining types: symbol, function - convert to string representation
 			content = [
-				{ type: 'text', text: String(result as symbol | ((...args: unknown[]) => unknown)) },
+				{
+					type: 'text' as const,
+					text: String(result),
+				},
 			];
 		}
 
 		return isError ? { isError: true, content } : { content };
 	}
 
-	/**
-	 * Detect whether a tool result represents an error.
-	 *
-	 * In direct mode, N8nTool catches errors and returns `e.toString()` producing
-	 * strings like `"NodeApiError: Bad request"`. ToolHttpRequest catches HTTP errors
-	 * and returns `"There was an error: \"...\"" or `"HTTP 401 There was an error: \"...\""`.
-	 *
-	 * In queue mode, the job processor wraps errors as `{ error: { message, name } }`.
-	 */
 	static isErrorResult(result: unknown): boolean {
-		if (typeof result === 'object' && result !== null && 'error' in result) {
-			const { error } = result as { error: unknown };
-			return (
-				typeof error === 'object' &&
-				error !== null &&
-				'message' in error &&
-				typeof (error as { message: unknown }).message === 'string'
-			);
-		}
-		if (typeof result === 'string') {
-			return /^(\w+Error: |HTTP \d{3} There was an error: |There was an error: )/.test(result);
-		}
-		return false;
+		return isToolErrorResult(result);
 	}
 
 	static formatError(error: Error): McpToolResult {
 		return {
 			isError: true,
-			content: [{ type: 'text', text: `${error.name}: ${error.message}` }],
+			content: [{ type: 'text' as const, text: `${error.name}: ${error.message}` }],
 		};
 	}
 
@@ -96,7 +105,7 @@ export class MessageFormatter {
 
 		return {
 			isError: true,
-			content: [{ type: 'text', text }],
+			content: [{ type: 'text' as const, text }],
 			credentialGate: result,
 		};
 	}
@@ -127,7 +136,7 @@ export class MessageFormatter {
 			);
 		}
 
-		const content = [{ type: 'text', text: lines.join('\n') }];
+		const content = [{ type: 'text' as const, text: lines.join('\n') }];
 		// Omit `isError` when nothing is left to connect, matching formatToolResult.
 		return skipped.length > 0 ? { isError: true, content } : { content };
 	}

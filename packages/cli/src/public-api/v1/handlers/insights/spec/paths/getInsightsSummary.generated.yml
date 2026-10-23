@@ -4,9 +4,6 @@ tags:
 summary: Retrieve insights summary
 description: Retrieve the insights summary for the selected date range.
 x-required-scope: insights:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

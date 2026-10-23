@@ -140,6 +140,7 @@ const emit = defineEmits<{
 }
 
 .alertIcon {
+	display: block;
 	flex-shrink: 0;
 }
 

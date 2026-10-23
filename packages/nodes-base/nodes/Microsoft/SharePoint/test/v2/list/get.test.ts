@@ -5,7 +5,7 @@ import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
-import { LIST_SIMPLIFY_SELECT } from '../../../v2/helpers/utils';
+import { LIST_SIMPLIFY_SELECT } from '../../../helpers/utils';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 import * as transport from '../../../transport';
 import type * as _importType0 from '../../../transport';

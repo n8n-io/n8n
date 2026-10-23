@@ -4,9 +4,8 @@ tags:
 summary: Create a workflow
 description: Create a workflow in your instance.
 x-required-scope: workflow:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
   required: true
   content:
@@ -23,7 +22,13 @@ requestBody:
             example: Workflow 1
           active:
             type: boolean
+            description: Deprecated. Check whether `activeVersionId` is not null instead.
             readOnly: true
+            deprecated: true
+          activeVersionId:
+            type: string
+            readOnly: true
+            nullable: true
           createdAt:
             type: string
             format: date-time
@@ -229,6 +234,10 @@ requestBody:
                   - `manual-only`: Redact manually triggered executions only.
                   - `all`: Redact all executions, manual and production.
                 example: non-manual
+              redactCallerExecutions:
+                type: boolean
+                description: Controls whether a workflow that calls this workflow as a sub-workflow has its executions redacted on the same channels as this workflow. The calling execution keeps a copy of the output of this workflow. Defaults to true. Turn it off only when the output of this workflow is not sensitive. Redaction that this workflow received from its own sub-workflows always passes to the caller.
+                example: true
               availableInMCP:
                 type: boolean
                 description: Controls whether this workflow is reachable over the Model Context Protocol (MCP). Defaults to false. The workflow must be active and must hold at least one active Webhook node.
@@ -576,6 +585,8 @@ responses:
               nullable: true
             active:
               type: boolean
+              description: Deprecated. Check whether `activeVersionId` is not null instead.
+              deprecated: true
             activeVersionId:
               type: string
               nullable: true
@@ -813,6 +824,10 @@ responses:
                     - `non-manual`: Redact production (non-manually triggered) executions only.
                     - `manual-only`: Redact manually triggered executions only.
                     - `all`: Redact all executions, manual and production.
+                redactCallerExecutions:
+                  type: boolean
+                  example: true
+                  description: Controls whether a workflow that calls this workflow as a sub-workflow has its executions redacted on the same channels as this workflow. The calling execution keeps a copy of the output of this workflow. Defaults to true. Turn it off only when the output of this workflow is not sensitive. Redaction that this workflow received from its own sub-workflows always passes to the caller.
                 availableInMCP:
                   type: boolean
                   example: false
@@ -1218,6 +1233,8 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':

@@ -50,7 +50,7 @@ const json = (data: unknown) => ({
 
 test.describe(
 	'Eval collection compare view @auth:owner',
-	{ annotation: [{ type: 'owner', description: 'AI' }] },
+	{ annotation: [{ type: 'owner', description: 'AI Trust' }] },
 	() => {
 		let workflowId: string;
 

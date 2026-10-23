@@ -51,11 +51,12 @@ export class WorkflowSharingService {
 				? await this.roleService.rolesWithScope('workflow', options.scopes)
 				: options.workflowRoles;
 
-		return await this.sharedWorkflowRepository.findWorkflowIdsAccessibleToUser(
-			user.id,
-			workflowRoles,
-			projectRoles,
-		);
+		return await this.sharedWorkflowRepository.findWorkflowIdsAccessibleToUser({
+			userId: user.id,
+			workflowRoleSlugs: workflowRoles,
+			projectRoleSlugs: projectRoles,
+			projectId,
+		});
 	}
 
 	/**

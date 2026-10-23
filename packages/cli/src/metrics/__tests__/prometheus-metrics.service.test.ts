@@ -5,6 +5,8 @@ import type express from 'express';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
+import type { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
+
 import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
 import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.service';
 import type { PrometheusDbPoolMetricsService } from '../prometheus/db-pool-metrics.service';
@@ -63,6 +65,7 @@ describe('PrometheusMetricsService', () => {
 	let scheduler: Mocked<PrometheusSchedulerMetricsService>;
 	let pollTrigger: Mocked<PrometheusPollTriggerMetricsService>;
 	let systemTask: Mocked<PrometheusSystemTaskMetricsService>;
+	const databaseIndependentRoutes = mock<DatabaseIndependentRoutes>();
 
 	let service: PrometheusMetricsService;
 
@@ -94,6 +97,7 @@ describe('PrometheusMetricsService', () => {
 			pollTrigger,
 			encryption,
 			systemTask,
+			databaseIndependentRoutes,
 		);
 
 	beforeEach(() => {
@@ -191,6 +195,7 @@ describe('PrometheusMetricsService', () => {
 			service.init(app);
 
 			expect(app.get).toHaveBeenCalledWith('/metrics', expect.any(Function));
+			expect(databaseIndependentRoutes.add).toHaveBeenCalledWith('/metrics');
 		});
 
 		it('should return metrics string with correct content-type when /metrics handler is called', async () => {

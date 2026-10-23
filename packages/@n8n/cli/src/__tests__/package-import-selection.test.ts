@@ -17,6 +17,7 @@ interface ImportSelectionFlags {
 	deletedWorkflowIds?: string[];
 	workflowConflictPolicy?: string;
 	workflowIdPolicy?: string;
+	overwriteDeletionPolicy?: string;
 }
 
 interface ImportSelectionInternals {
@@ -54,6 +55,7 @@ describe('package import-selection command', () => {
 			deletedWorkflowIds: ['w-3'],
 			workflowConflictPolicy: 'skip',
 			workflowIdPolicy: 'new',
+			overwriteDeletionPolicy: 'hard-delete',
 		});
 
 		await command.run();
@@ -69,6 +71,7 @@ describe('package import-selection command', () => {
 			deletedWorkflowIds: ['w-3'],
 			workflowConflictPolicy: 'skip',
 			workflowIdPolicy: 'new',
+			overwriteDeletionPolicy: 'hard-delete',
 		});
 	});
 
@@ -87,6 +90,7 @@ describe('package import-selection command', () => {
 			deletedWorkflowIds: undefined,
 			workflowConflictPolicy: 'new-version',
 			workflowIdPolicy: undefined,
+			overwriteDeletionPolicy: undefined,
 		});
 	});
 
@@ -100,6 +104,11 @@ describe('package import-selection command', () => {
 		expect(idPolicy.aliases).toEqual(['workflow-id-policy']);
 		expect(idPolicy.options).toEqual(['new', 'source']);
 		expect(idPolicy.default).toBeUndefined();
+
+		const deletionPolicy = PackageImportSelection.flags.overwriteDeletionPolicy;
+		expect(deletionPolicy.aliases).toEqual(['overwrite-deletion-policy']);
+		expect(deletionPolicy.options).toEqual(['archive', 'hard-delete']);
+		expect(deletionPolicy.default).toBeUndefined();
 	});
 
 	// Use the real parser to verify flag defaults, aliases, and array parsing.

@@ -143,7 +143,11 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			<template #item-label="slotProps">
 				<span :class="[slotProps.ui.class, $style.label]">
 					<slot name="menuItem" v-bind="slotProps.item.data as ActionDropdownItem<T>">
-						{{ slotProps.item.data?.label ?? slotProps.item.label }}
+						<span v-if="slotProps.item.data?.description" :class="$style.withDescription">
+							{{ slotProps.item.data.label }}
+							<span :class="$style.description">{{ slotProps.item.data.description }}</span>
+						</span>
+						<template v-else>{{ slotProps.item.data?.label ?? slotProps.item.label }}</template>
 					</slot>
 				</span>
 			</template>
@@ -238,6 +242,18 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 .label {
 	flex-grow: 1;
 	flex-shrink: 1;
+}
+
+.withDescription {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	white-space: normal;
+}
+
+.description {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--3xs);
 }
 
 .checkIcon {

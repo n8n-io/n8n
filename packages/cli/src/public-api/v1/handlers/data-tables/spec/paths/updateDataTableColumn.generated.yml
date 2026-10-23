@@ -4,9 +4,6 @@ tags:
 summary: Update a column
 description: Rename and/or reorder a column in a data table.
 x-required-scope: dataTableColumn:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

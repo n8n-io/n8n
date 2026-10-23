@@ -72,6 +72,35 @@ describe('createSsrfInterceptor', () => {
 		expect(handler.onResponseError).not.toHaveBeenCalled();
 	});
 
+	it('keeps the origin authority when the request target starts with a double slash', async () => {
+		const bridge = makeSsrfBridge();
+		const { innerDispatch, dispatch } = makeInterceptedDispatch(bridge);
+		const handler = makeHandler();
+
+		dispatch(
+			makeOpts('//openai/deployments/gpt-4o/chat/completions', 'https://res.openai.azure.com'),
+			handler,
+		);
+		await flush();
+
+		expect(bridge.validateUrl).toHaveBeenCalledWith(
+			validatedUrl('https://res.openai.azure.com//openai/deployments/gpt-4o/chat/completions'),
+		);
+		expect(innerDispatch).toHaveBeenCalledTimes(1);
+	});
+
+	it('uses an absolute-URI request target as-is', async () => {
+		const bridge = makeSsrfBridge();
+		const { innerDispatch, dispatch } = makeInterceptedDispatch(bridge);
+		const handler = makeHandler();
+
+		dispatch(makeOpts('https://api.example.com/data', 'http://proxy.example.com'), handler);
+		await flush();
+
+		expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl('https://api.example.com/data'));
+		expect(innerDispatch).toHaveBeenCalledTimes(1);
+	});
+
 	it('fails the dispatch and does not dispatch when SSRF rejects the target', async () => {
 		const error = new Error('SSRF: blocked');
 		const bridge = makeSsrfBridge({

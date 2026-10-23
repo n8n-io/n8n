@@ -127,7 +127,10 @@ const instanceAiHandoffMock = vi.hoisted(() => ({
 
 vi.mock('../composables/useInstanceAiAvailability', async () => {
 	const { computed } = await import('vue');
-	return { useInstanceAiAvailable: () => computed(() => true) };
+	return {
+		useInstanceAiAvailable: () => computed(() => true),
+		useInstanceAiReady: () => computed(() => true),
+	};
 });
 
 vi.mock('../composables/useInstanceAiHandoff', async (importOriginal) => {

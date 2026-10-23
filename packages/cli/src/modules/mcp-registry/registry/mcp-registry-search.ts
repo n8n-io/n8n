@@ -4,9 +4,10 @@
  * adapter consume. Kept here (not inlined per call site) so the matching + result
  * mapping live in one place.
  */
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { camelCase } from 'change-case';
 
-import type { McpRegistryServer } from './mcp-registry.types';
+import { isAiGatewayMcpServer, type McpRegistryServer } from './mcp-registry.types';
 import {
 	getConfiguredEndpointUrl,
 	resolveMcpRegistryConnection,
@@ -22,6 +23,16 @@ export interface McpRegistrySearchResult {
 	transport: 'streamableHttp' | 'sse';
 	authentication: string;
 	credentialType: string;
+	/**
+	 * Gateway-only row: an AI Gateway server with no registry twin. Gateway credits are its
+	 * only auth, so this is the `mcpServers[].credential` value.
+	 */
+	credential?: string;
+	/**
+	 * Registry row paired with an AI Gateway twin: it keeps its own `credentialType`, and
+	 * Gateway credits are an extra option with this credential value.
+	 */
+	aiGatewayCredential?: string;
 	tools: Array<{ name: string; title?: string }>;
 	metadata: { nodeTypeName: string };
 	/** `url` is an unresolved `$self`-expression, not a literal endpoint. Consumers
@@ -30,10 +41,14 @@ export interface McpRegistrySearchResult {
 }
 
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
+	// Its twin offers this AI Gateway row as Gateway credits.
+	if (server.pairedSlug) return null;
 	const connection = resolveMcpRegistryConnection(server);
 	if (!connection) return null;
 	const defaultCredential = connection.credentialBindings[0];
 	if (!defaultCredential) return null;
+	// The agent entry of a gateway-only row stores no credential, only the Gateway credits marker.
+	const isAiGatewayOnly = isAiGatewayMcpServer(server);
 	return {
 		slug: server.slug,
 		name: camelCase(server.slug),
@@ -41,8 +56,10 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 		description: server.tagline,
 		url: getConfiguredEndpointUrl(connection),
 		transport: toAgentMcpTransport(connection.transport),
-		authentication: defaultCredential.credentialType,
-		credentialType: defaultCredential.credentialType,
+		authentication: isAiGatewayOnly ? 'none' : defaultCredential.credentialType,
+		credentialType: isAiGatewayOnly ? '' : defaultCredential.credentialType,
+		...(isAiGatewayOnly ? { credential: AI_GATEWAY_MANAGED_TAG } : {}),
+		...(server.aiGateway ? { aiGatewayCredential: AI_GATEWAY_MANAGED_TAG } : {}),
 		tools: server.tools.map((tool) => ({
 			name: tool.name,
 			...(tool.title ? { title: tool.title } : {}),

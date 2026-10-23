@@ -2,21 +2,31 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	skillNameKey,
+	type AgentConfigValidationIssue,
+	type AgentSkillAvailability,
+	type SkillCreateMethod,
+	type SkillDetail,
+	type SkillListItem,
+	type SkillNewNameQueryDto,
+} from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { createAgentSkill } from './useAgentApi';
+import { createAgentSkill, getHubSkill, getNewSkillName } from './useAgentApi';
+import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 } from '../constants';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
-import { normalizeAgentSkillForSave } from '../utils/agentSkill';
+import { isSkillNameTakenError, normalizeAgentSkillForSave } from '../utils/agentSkill';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
-import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
+import type { AgentSkillConfirmResult } from '../components/AgentSkillModal.vue';
 import type {
 	AgentResource,
 	AgentJsonConfig,
@@ -59,7 +69,11 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * `onOpenAddSkillModal` via the shared `createAgentSkill` API call.
 	 * Unused when `localSkills` is provided.
 	 */
-	scheduleSkillSave: (payload: { skillId: string; skill: AgentSkill }) => void;
+	scheduleSkillSave: (payload: {
+		skillId: string;
+		skill: AgentSkill;
+		availableTo?: AgentSkillAvailability;
+	}) => void;
 	/**
 	 * Skill store for hosts whose bodies live outside an agent entity — inline
 	 * agents keep them in the node parameter. `bodies` is where the handlers
@@ -85,6 +99,7 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * Hosts whose agent always exists omit it.
 	 */
 	ensureAgentPersisted?: () => Promise<void>;
+	flushConfigSave?: () => Promise<unknown>;
 	/**
 	 * Flushes pending agent edits before an API mutation that also writes the
 	 * agent config. This prevents the mutation from advancing the config hash
@@ -119,6 +134,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		localSkills,
 		supportsToolApproval,
 		ensureAgentPersisted,
+		flushConfigSave,
 		beforeAgentMutation,
 		refreshAgentAfterMutation,
 		validationIssues,
@@ -129,7 +145,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const rbacStore = useRBACStore();
+	const settingsStore = useSettingsStore();
 	const { showError, showMessage } = useToast();
+	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
+
+	const hubSkillsEnabled = computed(
+		() => !localSkills && settingsStore.moduleSettings.agents?.skillsHubEnabled === true,
+	);
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -223,6 +246,37 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		const mcpServer = mcpServers[mcpServerIndex];
 		if (!mcpServer) return;
 
+		if (mcpServer.metadata?.nodeTypeName) {
+			const targetAgentId = agentId.value;
+			telemetry?.trackOpenedToolFromList?.('mcpServer');
+			uiStore.openModalWithData({
+				name: AGENT_TOOL_CONFIG_MODAL_KEY,
+				data: {
+					kind: 'registryMcpServer',
+					mcpServer,
+					projectId: projectId.value,
+					supportsToolApproval,
+					existingToolNames: mcpServers
+						.filter((_, index) => index !== mcpServerIndex)
+						.map((server) => server.name),
+					onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+						if (agentId.value !== targetAgentId) return;
+						const nextMcpServers = [...(localConfig.value?.mcpServers ?? [])];
+						nextMcpServers[mcpServerIndex] = updatedServer;
+						scheduleConfigUpdate({ mcpServers: nextMcpServers });
+					},
+					onRemove: () => {
+						if (agentId.value !== targetAgentId) return;
+						const nextMcpServers = (localConfig.value?.mcpServers ?? []).filter(
+							(_, index) => index !== mcpServerIndex,
+						);
+						scheduleConfigUpdate({ mcpServers: nextMcpServers });
+					},
+				},
+			});
+			return;
+		}
+
 		const preferredNodeTypeName = mcpServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
 		const nodeType =
 			nodeTypesStore.getNodeType(preferredNodeTypeName) ??
@@ -253,34 +307,31 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		});
 	}
 
-	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill; enabled?: boolean }>>(
-		() => {
-			// Inline hosts read refs from unvalidated node-parameter JSON: tolerate a
-			// non-array `skills`, skip malformed refs, and resolve bodies by own key
-			// only so ids like "constructor" can't surface prototype members.
-			const rawRefs = localConfig.value?.skills;
-			const refs = Array.isArray(rawRefs) ? rawRefs : [];
-			const bodies = localSkills?.bodies.value ?? agent.value?.skills ?? {};
-			const seen = new Set<string>();
-			const out: Array<{ id: string; skill: AgentSkill; enabled?: boolean }> = [];
+	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
+		// Inline hosts read refs from unvalidated node-parameter JSON: tolerate a
+		// non-array `skills`, skip malformed refs, and resolve bodies by own key
+		// only so ids like "constructor" can't surface prototype members.
+		const rawRefs = localConfig.value?.skills;
+		const refs = Array.isArray(rawRefs) ? rawRefs : [];
+		const bodies = localSkills?.bodies.value ?? agent.value?.skills ?? {};
+		const seen = new Set<string>();
+		const out: Array<{ id: string; skill: AgentSkill }> = [];
 
-			for (const skillRef of refs) {
-				if (typeof skillRef?.id !== 'string' || !skillRef.id || seen.has(skillRef.id)) continue;
-				seen.add(skillRef.id);
-				out.push({
-					id: skillRef.id,
-					enabled: skillRef.enabled,
-					skill: (Object.hasOwn(bodies, skillRef.id) ? bodies[skillRef.id] : undefined) ?? {
-						name: skillRef.id,
-						description: '',
-						instructions: '',
-					},
-				});
-			}
+		for (const skillRef of refs) {
+			if (typeof skillRef?.id !== 'string' || !skillRef.id || seen.has(skillRef.id)) continue;
+			seen.add(skillRef.id);
+			out.push({
+				id: skillRef.id,
+				skill: (Object.hasOwn(bodies, skillRef.id) ? bodies[skillRef.id] : undefined) ?? {
+					name: skillRef.id,
+					description: '',
+					instructions: '',
+				},
+			});
+		}
 
-			return out;
-		},
-	);
+		return out;
+	});
 
 	function onOpenSkillFromList(id: string) {
 		const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
@@ -300,16 +351,31 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				agentId: targetAgentId,
 				skill,
 				skillId: id,
-				availableTools: configuredToolOptions(),
 				existingSkillNames: appliedSkillNames(id),
+				hubSkillsEnabled: hubSkillsEnabled.value,
+				outdated: hubSkillsEnabled.value && (agent.value?.outdatedSkillIds ?? []).includes(id),
+				projectLabel: projectName.value ?? undefined,
+				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
+				onUseLatestVersion: (skillId: string) => {
+					if (agentId.value !== targetAgentId) return;
+					void useLatestSkillVersion(skillId);
+				},
 				onRemove: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
 					onRemoveSkill(skillId);
 				},
-				onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
+				onConfirm: ({
+					id: skillId,
+					skill: updatedSkill,
+					availableTo,
+				}: {
+					id?: string;
+					skill: AgentSkill;
+					availableTo?: AgentSkillAvailability;
+				}) => {
 					if (!skillId) return;
 					if (agentId.value !== targetAgentId) return;
-					const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
+					const sanitizedSkill = normalizeAgentSkillForSave(updatedSkill);
 
 					if (localSkills) {
 						if (hasDuplicateSkillName(sanitizedSkill.name, skillId)) {
@@ -328,51 +394,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							[skillId]: sanitizedSkill,
 						},
 					};
-					scheduleSkillSave({ skillId, skill: sanitizedSkill });
+					scheduleSkillSave({
+						skillId,
+						skill: sanitizedSkill,
+						...(availableTo && hubSkillsEnabled.value ? { availableTo } : {}),
+					});
 				},
 			},
 		});
-	}
-
-	function configuredToolOptions(): AgentSkillAllowedToolOption[] {
-		const tools: AgentSkillAllowedToolOption[] = [];
-
-		for (const tool of localConfig.value?.tools ?? []) {
-			if (tool.type === 'custom') {
-				const name = agent.value?.tools?.[tool.id]?.descriptor.name ?? tool.id;
-				if (name) {
-					tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'code' });
-				}
-			} else if (tool.type === 'workflow') {
-				const name = tool.name ?? tool.workflow;
-				tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'workflow' });
-			} else {
-				tools.push({
-					name: tool.name,
-					label: formatToolNameForDisplay(tool.name) || tool.name,
-					icon: 'globe',
-				});
-			}
-		}
-
-		for (const server of localConfig.value?.mcpServers ?? []) {
-			if (!server.name) continue;
-			tools.push({
-				name: server.name,
-				label: formatToolNameForDisplay(server.name) || server.name,
-				icon: 'mcp',
-			});
-		}
-
-		return tools;
-	}
-
-	function configuredToolNames(): Set<string> {
-		return new Set(configuredToolOptions().map((tool) => tool.name));
-	}
-
-	function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
-		return normalizeAgentSkillForSave(skill, configuredToolNames());
 	}
 
 	/** Names the skill modal validates against: every applied skill except the one being edited. */
@@ -384,11 +413,20 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	 * Authoring-time mirror of the backend's `assertSkillNameIsUnique` for
 	 * local-skill hosts. The modal validates against `existingSkillNames` before closing
 	 */
+	/** The scope of the new-name lookup for an "available to" choice. */
+	function newNameTarget(
+		availableTo: string,
+		targetProjectId: string,
+		targetAgentId: string,
+	): Pick<SkillNewNameQueryDto, 'scope' | 'projectId' | 'agentId'> {
+		if (availableTo === 'instance') return { scope: 'instance' };
+		if (availableTo === 'agent') return { scope: 'agent', agentId: targetAgentId };
+		return { scope: 'project', projectId: targetProjectId };
+	}
+
 	function hasDuplicateSkillName(name: string, excludeId?: string): boolean {
-		const normalized = name.trim().toLowerCase();
-		return appliedSkillNames(excludeId).some(
-			(existing) => existing.trim().toLowerCase() === normalized,
-		);
+		const key = skillNameKey(name);
+		return appliedSkillNames(excludeId).some((existing) => skillNameKey(existing) === key);
 	}
 
 	function showDuplicateSkillNameError(name: string) {
@@ -427,15 +465,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		scheduleConfigUpdate({ tasks: nextTasks });
 	}
 
-	function onToggleSkill({ id, enabled }: { id: string; enabled: boolean }) {
-		scheduleConfigUpdate({
-			skills: (localConfig.value?.skills ?? []).map((ref) =>
-				ref.id === id ? { ...ref, enabled } : ref,
-			),
-		});
-	}
-
-	function onOpenAddSkillModal() {
+	async function onOpenAddSkillModal() {
 		telemetry?.trackOpenedAddSkillModal?.();
 
 		// Capture the target at open time: the modal can outlive an agent/node
@@ -447,58 +477,107 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		const isCurrentTarget = () =>
 			projectId.value === targetProjectId && agentId.value === targetAgentId;
 
+		if (hubSkillsEnabled.value && ensureAgentPersisted) {
+			try {
+				await ensureAgentPersisted();
+			} catch (error) {
+				showError(error, locale.baseText('agents.builder.skills.picker.loadError'));
+				return;
+			}
+			if (!isCurrentTarget()) return;
+		}
+
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
 			data: {
 				projectId: targetProjectId,
 				agentId: targetAgentId,
-				availableTools: configuredToolOptions(),
 				existingSkillNames: appliedSkillNames(),
-				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
+				hubSkillsEnabled: hubSkillsEnabled.value,
+				getAttachedSkills: () =>
+					appliedSkills.value.map(({ id, skill }) => ({ id, name: skill.name })),
+				projectLabel: projectName.value ?? undefined,
+				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
+				// The hub refuses a name that the skill's scope already has, so the default
+				// name comes from the server, for the "available to" choice.
+				...(hubSkillsEnabled.value
+					? {
+							getDefaultName: async (availableTo: string) =>
+								await getNewSkillName(rootStore.restApiContext, {
+									...newNameTarget(availableTo, targetProjectId, targetAgentId),
+									name: locale.baseText('agents.builder.skills.defaultName'),
+								}),
+						}
+					: {}),
+				onRemove: (skillId: string) => {
+					if (!isCurrentTarget()) return;
+					onRemoveSkill(skillId);
+				},
+				onAttach: async (librarySkill: SkillListItem) =>
+					await attachHubSkill(
+						isCurrentTarget,
+						async () => await getHubSkill(rootStore.restApiContext, librarySkill.id),
+					),
+				// The modal stays open until the skill is created, and stays open when the create
+				// fails, so the user keeps what they typed. A taken name shows on the name field.
+				onConfirm: async ({
+					skill,
+					availableTo,
+					method,
+				}: {
+					id?: string;
+					skill: AgentSkill;
+					availableTo?: AgentSkillAvailability;
+					method?: SkillCreateMethod;
+				}): Promise<AgentSkillConfirmResult> => {
 					if (localSkills) {
-						if (!isCurrentTarget()) return;
-						const sanitizedSkill = filterSkillAllowedTools(skill);
+						if (!isCurrentTarget()) return undefined;
+						const sanitizedSkill = normalizeAgentSkillForSave(skill);
 						if (hasDuplicateSkillName(sanitizedSkill.name)) {
 							showDuplicateSkillNameError(sanitizedSkill.name);
-							return;
+							return undefined;
 						}
 
 						// The host mints the skill id and writes body + ref together.
 						localSkills.createSkill(sanitizedSkill);
-						return;
+						return undefined;
 					}
 
+					const sanitizedSkill = normalizeAgentSkillForSave(skill);
+					try {
+						await beforeAgentMutation?.();
+					} catch {
+						// The host owns the autosave error message. Do not also report
+						// this as a skill-creation failure.
+						return { saved: false };
+					}
+					if (!isCurrentTarget()) return undefined;
+					let result: Awaited<ReturnType<typeof createAgentSkill>>;
+					try {
+						await ensureAgentPersisted?.();
+						if (!isCurrentTarget()) return undefined;
+						result = await createAgentSkill(
+							rootStore.restApiContext,
+							targetProjectId,
+							targetAgentId,
+							sanitizedSkill,
+							hubSkillsEnabled.value ? availableTo : undefined,
+							method,
+						);
+					} catch (error) {
+						if (isSkillNameTakenError(error)) {
+							return {
+								saved: false,
+								nameError: locale.baseText('settings.context.skills.error.nameTaken'),
+							};
+						}
+						showError(error, locale.baseText('agents.builder.skills.create.error'));
+						return { saved: false };
+					}
+
+					// The skill exists now, so the modal can close while the agent catches up.
 					void (async () => {
-						const sanitizedSkill = filterSkillAllowedTools(skill);
-						let created: AgentSkill;
-						let skillHash: string;
-						let versionId: string | null;
-						let skillId: string;
-						try {
-							await beforeAgentMutation?.();
-						} catch {
-							// The host owns the autosave error message. Do not also report
-							// this as a skill-creation failure.
-							return;
-						}
-						if (!isCurrentTarget()) return;
-						try {
-							await ensureAgentPersisted?.();
-							if (!isCurrentTarget()) return;
-							const result = await createAgentSkill(
-								rootStore.restApiContext,
-								targetProjectId,
-								targetAgentId,
-								sanitizedSkill,
-							);
-							skillId = result.id;
-							created = result.skill;
-							skillHash = result.skillHash;
-							versionId = result.versionId;
-						} catch (error) {
-							showError(error, locale.baseText('agents.builder.skills.create.error'));
-							return;
-						}
+						const { id: skillId, skill: created, skillHash, versionId } = result;
 						if (!isCurrentTarget() || agent.value?.id !== targetAgentId) return;
 						agent.value = {
 							...agent.value,
@@ -530,9 +609,90 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							};
 						}
 					})();
+					return undefined;
 				},
 			},
 		});
+	}
+
+	async function attachHubSkill(
+		isCurrentTarget: () => boolean,
+		loadSkill: () => Promise<SkillDetail>,
+	) {
+		let hubSkill: SkillDetail;
+		try {
+			hubSkill = await loadSkill();
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.skills.attach.error'));
+			return;
+		}
+		if (!isCurrentTarget() || !agent.value || !localConfig.value) return;
+		if (hasDuplicateSkillName(hubSkill.skill.name)) {
+			showDuplicateSkillNameError(hubSkill.skill.name);
+			return;
+		}
+		agent.value = {
+			...agent.value,
+			skillHashes: { ...(agent.value.skillHashes ?? {}), [hubSkill.id]: hubSkill.skillHash },
+			skills: { ...(agent.value.skills ?? {}), [hubSkill.id]: hubSkill.skill },
+		};
+		scheduleConfigUpdate({
+			skills: [
+				...(localConfig.value.skills ?? []).filter((ref) => ref.id !== hubSkill.id),
+				{ type: 'skill', id: hubSkill.id },
+			],
+		});
+		if (!flushConfigSave) return;
+		try {
+			await flushConfigSave();
+		} catch {
+			if (isCurrentTarget()) undoRefusedAttach(hubSkill.id);
+		}
+	}
+
+	function undoRefusedAttach(skillId: string) {
+		if (!agent.value || !localConfig.value) return;
+		const withoutSkill = <T>(byId: Record<string, T> | undefined) =>
+			Object.fromEntries(Object.entries(byId ?? {}).filter(([id]) => id !== skillId));
+		agent.value = {
+			...agent.value,
+			skills: withoutSkill(agent.value.skills),
+			skillHashes: withoutSkill(agent.value.skillHashes),
+		};
+		scheduleConfigUpdate({
+			skills: (localConfig.value.skills ?? []).filter((ref) => ref.id !== skillId),
+		});
+	}
+
+	async function useLatestSkillVersion(skillId: string) {
+		const targetAgentId = agentId.value;
+		let hubSkill: SkillDetail;
+		try {
+			hubSkill = await getHubSkill(rootStore.restApiContext, skillId);
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.skills.useLatest.error'));
+			return;
+		}
+		if (agentId.value !== targetAgentId || agent.value?.id !== targetAgentId) return;
+		if (!localConfig.value) return;
+		agent.value = {
+			...agent.value,
+			skills: { ...(agent.value.skills ?? {}), [skillId]: hubSkill.skill },
+			skillHashes: { ...(agent.value.skillHashes ?? {}), [skillId]: hubSkill.skillHash },
+			outdatedSkillIds: (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId),
+		};
+		scheduleConfigUpdate({
+			skills: (localConfig.value.skills ?? []).map((ref) =>
+				ref.id === skillId ? { type: 'skill', id: skillId } : ref,
+			),
+		});
+		try {
+			await beforeAgentMutation?.();
+		} catch {
+			return;
+		}
+		if (agentId.value !== targetAgentId) return;
+		onOpenSkillFromList(skillId);
 	}
 
 	function onConnectedTriggersUpdate(triggers: string[]) {
@@ -553,7 +713,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		onOpenSkillFromList,
 		onRemoveSkill,
 		onToggleTask,
-		onToggleSkill,
 		onConnectedTriggersUpdate,
 		onTriggerAdded,
 	};

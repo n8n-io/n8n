@@ -2,11 +2,8 @@ operationId: getPromotionChanges
 tags:
   - Promotions
 summary: List the changes of a project in one direction
-description: Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.
+description: Compares a team project on this instance with the branch of its promotion environment for that direction and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the environment to be connected first.
 x-required-scope: gitConnection:push,gitConnection:pull
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -58,6 +55,18 @@ responses:
             commitSha:
               type: string
               nullable: true
+            source:
+              type: object
+              properties:
+                environmentId:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                branchName:
+                  type: string
+              required:
+                - environmentId
+                - branchName
             changes:
               type: array
               items:
@@ -106,6 +115,7 @@ responses:
                   - dependencyCount
           required:
             - commitSha
+            - source
             - changes
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml

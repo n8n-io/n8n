@@ -40,7 +40,7 @@ export interface McpServerConfig {
 	// URL-based transports (exactly one of url or command must be provided)
 	/** Server endpoint URL for SSE or Streamable HTTP transport. */
 	url?: string;
-	/** Transport type for URL-based servers. Defaults to 'sse'. */
+	/** Transport type for URL-based servers. Defaults to Streamable HTTP. Legacy SSE is also supported. */
 	transport?: 'sse' | 'streamableHttp';
 
 	// Stdio transport
@@ -80,6 +80,13 @@ export interface McpServerConfig {
 	 * This callback runs once for each tool listing before tools are resolved.
 	 */
 	configureTools?: (tools: McpToolDescriptor[]) => McpToolConfiguration;
+
+	/**
+	 * Set when `configureTools` never returns `requireApproval`. The agent then
+	 * does not need checkpoint storage for this server just because `configureTools`
+	 * exists. A static `requireApproval` still counts.
+	 */
+	configureToolsNonInterrupting?: boolean;
 
 	/**
 	 * Custom fetch implementation used by URL-based transports (SSE,

@@ -1,3 +1,4 @@
+export { getModuleDisabledNodeTypes, getModuleDisabledNotice } from './module-gated-node-types';
 export {
 	NodeCatalogService,
 	type CatalogScopeOptions,

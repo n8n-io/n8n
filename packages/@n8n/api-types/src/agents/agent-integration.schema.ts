@@ -104,6 +104,44 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
+export const WHATSAPP_MEDIA_RETENTION_DAYS_MAX = 365;
+
+/**
+ * Applied when a setting is unset, so channels saved before these settings
+ * existed get the same behavior as new ones.
+ */
+export const WHATSAPP_SETTING_DEFAULTS = {
+	typingIndicator: true,
+	downloadMedia: true,
+	mediaRetentionDays: 30,
+} as const;
+
+export const AgentWhatsAppSettingsSchema = z
+	.object({
+		sessionIdleTimeoutMinutes,
+		/**
+		 * Shows WhatsApp's "typing…" indicator while the agent works. The Cloud API
+		 * sends it together with a read receipt, so this also marks the message read.
+		 */
+		typingIndicator: z.boolean().optional(),
+		/** Whether the agent receives the images, documents and audio customers send. */
+		downloadMedia: z.boolean().optional(),
+		/** Days to keep downloaded media before it is deleted. */
+		mediaRetentionDays: z.number().int().min(1).max(WHATSAPP_MEDIA_RETENTION_DAYS_MAX).optional(),
+	})
+	.strict();
+export type AgentWhatsAppIntegrationSettings = z.infer<typeof AgentWhatsAppSettingsSchema>;
+
+/** The WhatsApp settings in effect, with the defaults for any that were never saved. */
+export function resolveWhatsAppSettings(settings?: AgentWhatsAppIntegrationSettings) {
+	return {
+		typingIndicator: settings?.typingIndicator ?? WHATSAPP_SETTING_DEFAULTS.typingIndicator,
+		downloadMedia: settings?.downloadMedia ?? WHATSAPP_SETTING_DEFAULTS.downloadMedia,
+		mediaRetentionDays:
+			settings?.mediaRetentionDays ?? WHATSAPP_SETTING_DEFAULTS.mediaRetentionDays,
+	};
+}
+
 /**
  * Where the Teams app may be used, and how much it may read there.
  *
@@ -169,6 +207,7 @@ export const AgentIntegrationSettingsSchema = z.union([
 	AgentSlackSettingsSchema,
 	AgentDiscordSettingsSchema,
 	AgentLinearSettingsSchema,
+	AgentWhatsAppSettingsSchema,
 	// Teams was left out while it aliased the shared shape, when the entry was a
 	// no-op. Its settings now differ, so leaving it out would reject them.
 	AgentTeamsSettingsSchema,
@@ -191,6 +230,9 @@ const credentialIntegrations = [
 	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
+	}),
 	createCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
 		settings: AgentTeamsSettingsSchema.optional(),
 	}),
@@ -208,6 +250,9 @@ const draftCredentialIntegrations = [
 	}),
 	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
+	}),
+	createDraftCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
 	}),
 	createDraftCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
 		settings: AgentTeamsSettingsSchema.optional(),

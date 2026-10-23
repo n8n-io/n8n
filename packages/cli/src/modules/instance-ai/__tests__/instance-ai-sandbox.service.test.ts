@@ -529,6 +529,29 @@ describe('InstanceAiSandboxService', () => {
 			expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 		});
 
+		it('passes the verified bundles of the sandbox to workspace setup', async () => {
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+			});
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+			const entry = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+
+			expect(entry?.verifiedBundles).toEqual(new Map());
+			const setupOptions = (setupSandboxWorkspace as Mock).mock.calls[0]?.[2] as {
+				verifiedBundles: unknown;
+			};
+			expect((setupSandboxWorkspace as Mock).mock.calls[0]?.[0]).toBe(workspace);
+			expect(setupOptions.verifiedBundles).toBe(entry?.verifiedBundles);
+		});
+
 		it('assigns a deterministic thread-scoped UUID for the n8n-sandbox provider', async () => {
 			const n8nSandboxConfig: Overrides['config'] = {
 				sandboxEnabled: true,

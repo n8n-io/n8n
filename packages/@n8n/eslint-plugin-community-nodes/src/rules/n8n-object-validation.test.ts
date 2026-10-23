@@ -27,6 +27,21 @@ ruleTester.run('n8n-object-validation', N8nObjectValidationRule, {
 			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 2, "nodes": ["dist/x.js"] } }',
 		},
 		{
+			name: 'major-only string api version is allowed',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": "3", "nodes": ["dist/x.js"] } }',
+		},
+		{
+			name: 'major.minor string api version is allowed',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": "3.1", "nodes": ["dist/x.js"] } }',
+		},
+		{
+			name: 'two-digit minor string api version is allowed',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": "3.10", "nodes": ["dist/x.js"] } }',
+		},
+		{
 			name: 'non-package.json file is ignored',
 			filename: 'some-config.json',
 			code: '{ "n8n": null }',
@@ -77,10 +92,22 @@ ruleTester.run('n8n-object-validation', N8nObjectValidationRule, {
 			errors: [{ messageId: 'missingNodesApiVersion' }],
 		},
 		{
-			name: 'n8nNodesApiVersion is a string',
+			name: 'n8nNodesApiVersion is a non-numeric string',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": "1", "nodes": ["dist/x.js"] } }',
-			errors: [{ messageId: 'invalidNodesApiVersion', data: { value: '1' } }],
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": "v3", "nodes": ["dist/x.js"] } }',
+			errors: [{ messageId: 'invalidNodesApiVersion', data: { value: 'v3' } }],
+		},
+		{
+			name: 'n8nNodesApiVersion is a string with a patch part',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": "3.1.0", "nodes": ["dist/x.js"] } }',
+			errors: [{ messageId: 'invalidNodesApiVersion', data: { value: '3.1.0' } }],
+		},
+		{
+			name: 'n8nNodesApiVersion is a zero-major string',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": "0.1", "nodes": ["dist/x.js"] } }',
+			errors: [{ messageId: 'invalidNodesApiVersion', data: { value: '0.1' } }],
 		},
 		{
 			name: 'n8nNodesApiVersion is zero',

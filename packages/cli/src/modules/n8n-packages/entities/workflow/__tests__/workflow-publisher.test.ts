@@ -339,7 +339,9 @@ describe('WorkflowPublisher', () => {
 				user,
 				persisted: [persisted('CHEDDAR'), persisted('BRIE')],
 				policy: WorkflowPublishingPolicy.PublishAll,
-				subWorkflowRequirements: [{ id: 'BRIE', name: 'BRIE', usedByWorkflows: ['CHEDDAR'] }],
+				subWorkflowRequirements: [
+					{ id: 'BRIE', name: 'BRIE', usedBy: [{ kind: 'workflow', id: 'CHEDDAR' }] },
+				],
 			});
 
 			expect(activationOrder()).toEqual(['BRIE', 'CHEDDAR']);

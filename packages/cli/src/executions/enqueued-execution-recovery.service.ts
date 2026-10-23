@@ -87,7 +87,11 @@ export class EnqueuedExecutionRecoveryService {
 
 				// do not block - each execution either runs concurrently or is queued
 				void this.workflowRunner
-					.run(data, undefined, false, { executionId, expectedStatus: 'new' })
+					.run(data, undefined, false, {
+						executionId,
+						expectedStatus: 'new',
+						storedAt: execution.storedAt,
+					})
 					.catch(async (error) => await this.crashUnstartableExecution(executionId, error));
 			} catch (error) {
 				await this.crashUnstartableExecution(executionId, error);

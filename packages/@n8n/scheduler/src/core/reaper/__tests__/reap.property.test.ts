@@ -36,6 +36,7 @@ describe('reap decision (fast-check)', () => {
 					scheduledFor: new Date('2026-01-01T00:00:00.000Z'),
 					runAt: new Date('2026-01-01T00:00:00.000Z'),
 					status: 'running',
+					timeoutSeconds: 300,
 					dispatchedAt: dispatched ? new Date('2026-01-01T00:00:00.000Z') : null,
 					...row,
 				}),

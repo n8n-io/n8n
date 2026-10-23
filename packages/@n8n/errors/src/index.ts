@@ -1,5 +1,5 @@
-// oxlint-disable-next-line typescript/no-deprecated
-export { ApplicationError } from './application.error';
+// Keep this export for community nodes that still import ApplicationError.
+export * from './application.error';
 export { BaseError, type BaseErrorOptions } from './base.error';
 export { IsolateError } from './isolate.error';
 export { OperationalError, type OperationalErrorOptions } from './operational.error';

@@ -4,7 +4,7 @@ import type { INode, INodeCredentials, INodeParameters, INodeTypeDescription } f
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { AgentJsonMcpServerConfig } from '../types';
-import type { McpAuthenticationSchemaType } from '@n8n/api-types';
+import type { McpAuthenticationSchemaType, McpToolPermissions } from '@n8n/api-types';
 
 const MCP_REGISTRY_NODE_PREFIX = '@n8n/mcp-registry.';
 const HTTP_STREAMABLE_TRANSPORT = 'httpStreamable';
@@ -24,12 +24,6 @@ function toNodeTransport(
 
 function toServerTransport(transport: unknown): AgentJsonMcpServerConfig['transport'] {
 	return transport === 'sse' ? 'sse' : 'streamableHttp';
-}
-
-function toArray(value: unknown): string[] {
-	return Array.isArray(value)
-		? value.filter((item): item is string => typeof item === 'string')
-		: [];
 }
 
 function toNumber(value: unknown): number | undefined {
@@ -132,7 +126,7 @@ function resolveAuthenticationFromNode(node: INode): string {
 	return 'none';
 }
 
-function isMcpRegistryNodeType(nodeTypeName: string): boolean {
+export function isMcpRegistryNodeType(nodeTypeName: string): boolean {
 	return nodeTypeName.startsWith(MCP_REGISTRY_NODE_PREFIX);
 }
 
@@ -172,43 +166,23 @@ function resolveDefaultAuthentication(
 	return 'none';
 }
 
-function resolveNodeToolFilter(
-	toolFilter: AgentJsonMcpServerConfig['toolFilter'],
-): Pick<INode['parameters'], 'include' | 'includeTools' | 'excludeTools'> {
-	if (!toolFilter) {
-		return { include: 'all', includeTools: [], excludeTools: [] };
-	}
-
-	if (toolFilter.mode === 'allow') {
-		return { include: 'selected', includeTools: toolFilter.tools, excludeTools: [] };
-	}
-
-	return { include: 'except', includeTools: [], excludeTools: toolFilter.tools };
-}
-
-function resolveServerToolFilter(
-	parameters: INode['parameters'],
-): AgentJsonMcpServerConfig['toolFilter'] {
-	const includeMode = parameters.include;
-	const includeTools = toArray(parameters.includeTools);
-	const excludeTools = toArray(parameters.excludeTools);
-
-	if (includeMode === 'selected') {
-		return { mode: 'allow', tools: includeTools };
-	}
-
-	if (includeMode === 'except') {
-		return { mode: 'exclude', tools: excludeTools };
-	}
-
-	return undefined;
-}
-
 export function isMcpRelatedNodeType(nodeTypeName: string): boolean {
 	return isMcpClientNodeType(nodeTypeName) || isMcpRegistryNodeType(nodeTypeName);
 }
 
-export function nodeTypeToNewMcpServer(nodeType: INodeTypeDescription): AgentJsonMcpServerConfig {
+export function defaultAgentMcpToolPermissions(supportsApproval = true): McpToolPermissions {
+	return {
+		categories: {
+			read: 'always_allow',
+			write: supportsApproval ? 'require_approval' : 'always_allow',
+		},
+	};
+}
+
+export function nodeTypeToNewMcpServer(
+	nodeType: INodeTypeDescription,
+	supportsApproval = true,
+): AgentJsonMcpServerConfig {
 	const defaults = resolveDefaultParameters(nodeType);
 	const endpointUrl =
 		toStringValue(defaults.endpointUrl) ?? toStringValue(defaults.sseEndpoint) ?? '';
@@ -226,6 +200,7 @@ export function nodeTypeToNewMcpServer(nodeType: INodeTypeDescription): AgentJso
 		authentication,
 		connectionTimeoutMs: resolveDefaultTimeout(nodeType),
 		metadata,
+		toolPermissions: defaultAgentMcpToolPermissions(supportsApproval),
 	};
 }
 
@@ -255,7 +230,6 @@ export function mcpServerToNode(
 					},
 				}
 			: undefined;
-	const toolFilterParams = resolveNodeToolFilter(server.toolFilter);
 	const options = server.connectionTimeoutMs ? { timeout: server.connectionTimeoutMs } : {};
 	const authentication = isMcpRegistryNodeType(nodeTypeDescription.name)
 		? resolveAuthenticationParameterFromCredentialType(server.authentication, nodeTypeDescription)
@@ -270,7 +244,6 @@ export function mcpServerToNode(
 			endpointUrl: server.url,
 			serverTransport: toNodeTransport(server.transport),
 			authentication,
-			...toolFilterParams,
 			options,
 		},
 		credentials,
@@ -297,9 +270,8 @@ export function nodeToMcpServer(
 		transport: toServerTransport(node.parameters.serverTransport),
 		authentication,
 		credential,
-		toolFilter: resolveServerToolFilter(node.parameters),
 		description: original?.description,
-		approval: original?.approval,
+		toolPermissions: original?.toolPermissions ?? defaultAgentMcpToolPermissions(),
 		connectionTimeoutMs: timeout,
 		metadata: resolveMetadata(node.type, original),
 	};

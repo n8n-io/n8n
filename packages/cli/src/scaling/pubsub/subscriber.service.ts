@@ -197,7 +197,10 @@ export class Subscriber {
 			this.logger.error('Failed to resubscribe to pubsub channels after Redis reconnect', {
 				error,
 			});
+			return;
 		}
+
+		this.pubsubEventBus.emit('pubsub-reconnected');
 	}
 
 	/**

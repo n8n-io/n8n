@@ -1,3 +1,4 @@
+import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import { describe, expect, it } from 'vitest';
@@ -62,6 +63,34 @@ describe('agent channel platform registry', () => {
 			false,
 		);
 		expect(platform.disconnectConfirmationComponent).toBeDefined();
+	});
+
+	it('confirms every Teams removal', () => {
+		const platform = getAgentChannelPlatform('teams');
+		const runtime = { loading: ref(false), load: async () => {} };
+
+		expect(platform.shouldConfirmDisconnect?.(runtime, 'any', { isPublished: false })).toBe(true);
+		expect(platform.disconnectConfirmationComponent).toBeDefined();
+	});
+
+	it('points a Teams removal that leaves the app behind to the Teams admin center', () => {
+		const platform = getAgentChannelPlatform('teams');
+		const presentation = platform.presentDisconnectWarning?.(
+			{
+				integrationType: 'teams',
+				code: 'resources_not_deleted',
+				action: { type: 'open_url', url: 'https://admin.teams.microsoft.com/policies/manage-apps' },
+			},
+			{ text },
+		);
+
+		expect(presentation?.title).toBe('agents.channels.modal.teamsResourcesNotDeleted.title');
+		const wrapper = mount(() => presentation?.message);
+		expect(wrapper.text()).toContain('agents.channels.modal.teamsResourcesNotDeleted.message');
+		expect(wrapper.get('a').attributes('href')).toBe(
+			'https://admin.teams.microsoft.com/policies/manage-apps',
+		);
+		expect(wrapper.get('a').text()).toBe('agents.channels.modal.teamsResourcesNotDeleted.link');
 	});
 
 	it('registers n8n Chat with its "Make available" connect action', () => {

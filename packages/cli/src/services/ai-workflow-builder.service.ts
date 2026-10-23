@@ -5,6 +5,7 @@ import {
 	ChatPayload,
 } from '@n8n/ai-workflow-builder';
 import { Logger } from '@n8n/backend-common';
+import { WorkflowBuilderSessionRepository } from '@n8n/backend-module-workflow-builder';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
@@ -24,7 +25,6 @@ import * as path from 'path';
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { UrlService } from '@n8n/backend-services';

@@ -15,7 +15,7 @@ import { installConnectionGuard, UnknownConnectionHostError } from '../connectio
 import { EnvProxyHttpAgent } from '../env-proxy-http-agent';
 import { EnvProxyHttpsAgent } from '../env-proxy-https-agent';
 import { type LocalServer, startServer } from '../local-server';
-import { buildNodeAgents, type ProxyUrl } from '../node-agents';
+import { buildNodeAgents, type NodeAgentOptions, type ProxyUrl } from '../node-agents';
 
 // HttpsProxyAgent stores `lookup` in `connectOpts` rather than `options`
 // (unlike http.Agent and HttpProxyAgent which use `options`).
@@ -30,6 +30,10 @@ function getAgentLookup(agent: http.Agent | https.Agent): unknown {
 // `http.Agent['options']` is not exposed on the public Node types.
 function getAgentOptions(agent: http.Agent | https.Agent): { keepAlive?: boolean } {
 	return (agent as unknown as { options?: { keepAlive?: boolean } }).options ?? {};
+}
+
+function withSocketPath(socketPath: string): NodeAgentOptions {
+	return { socketPath } as unknown as NodeAgentOptions;
 }
 
 // ---------------------------------------------------------------------------
@@ -108,6 +112,29 @@ describe('buildNodeAgents', () => {
 
 		it('allows other agentOptions without a lookup', () => {
 			expect(() => buildNodeAgents(false, 'disabled', { keepAlive: true })).not.toThrow();
+		});
+	});
+
+	describe('rejects a caller-provided socketPath (not a validated connection target)', () => {
+		const socketPath = '/tmp/backend-network.sock';
+
+		it.each([
+			['ssrf disabled', 'disabled' as const],
+			['ssrf active', makeSsrfBridge()],
+		])('throws when agentOptions.socketPath is set (%s)', (_label, ssrf) => {
+			expect(() => buildNodeAgents(false, ssrf, withSocketPath(socketPath))).toThrow(
+				'`agentOptions.socketPath` is not supported',
+			);
+		});
+
+		it.each([
+			['direct', false as const],
+			['env proxy', 'env' as const],
+			['explicit proxy', 'http://proxy.internal:3128' as ProxyUrl],
+		])('throws on the %s path too', (_label, proxy) => {
+			expect(() => buildNodeAgents(proxy, makeSsrfBridge(), withSocketPath(socketPath))).toThrow(
+				'`agentOptions.socketPath` is not supported',
+			);
 		});
 	});
 

@@ -9,7 +9,9 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
+	NodeApiError,
 	NodeConnectionTypes,
+	setSafeObjectProperty,
 } from 'n8n-workflow';
 
 import { cameraProxyFields, cameraProxyOperations } from './CameraProxyDescription';
@@ -252,17 +254,30 @@ export class HomeAssistant implements INodeType {
 							attributes: IDataObject[];
 						};
 
-						const body = {
+						const body: { state: string; attributes?: IDataObject } = {
 							state,
-							attributes: {},
 						};
 
-						if (Object.entries(stateAttributes).length) {
-							if (stateAttributes.attributes !== undefined) {
-								stateAttributes.attributes.map((attribute) => {
-									// @ts-ignore
-									body.attributes[attribute.name as string] = attribute.value;
-								});
+						if (stateAttributes.attributes?.length) {
+							const attributes: IDataObject = {};
+							stateAttributes.attributes.forEach((attribute) => {
+								setSafeObjectProperty(attributes, attribute.name as string, attribute.value);
+							});
+							body.attributes = attributes;
+						} else {
+							// Home Assistant replaces all attributes on upsert, so keep the existing ones
+							try {
+								const currentState = (await homeAssistantApiRequest.call(
+									this,
+									'GET',
+									`/states/${entityId}`,
+								)) as IDataObject;
+								if (currentState?.attributes) {
+									body.attributes = currentState.attributes as IDataObject;
+								}
+							} catch (error) {
+								// The entity does not exist yet, so there are no attributes to keep
+								if (!(error instanceof NodeApiError && error.httpCode === '404')) throw error;
 							}
 						}
 

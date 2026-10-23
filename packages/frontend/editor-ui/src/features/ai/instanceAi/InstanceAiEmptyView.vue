@@ -1,10 +1,19 @@
 <script lang="ts" setup>
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+// EOF Experiment cleanup
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-types';
+import type {
+	AgentChatListItem,
+	InstanceAiAttachment,
+	InstanceAiFileAttachment,
+	InstanceAiThreadSource,
+} from '@n8n/api-types';
+import { acceptedMimeTypesFromCapabilities } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -18,6 +27,7 @@ import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT,
 } from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
@@ -41,6 +51,14 @@ import {
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION,
 	useInstanceAiPromptSuggestionsV2Experiment,
 } from '@/experiments/instanceAiPromptSuggestionsV2';
+// Experiment cleanup (124_workflow_previews_above_assistant)
+import {
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_SUGGESTIONS_VERSION,
+	WorkflowPreviewsAboveAssistant,
+	useWorkflowPreviewsAboveAssistantExperiment,
+	type WorkflowPreviewExampleData,
+} from '@/experiments/workflowPreviewsAboveAssistant';
+// EOF Experiment cleanup
 import {
 	InstanceAiPersonalizedPromptSuggestions,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
@@ -75,6 +93,7 @@ import {
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
+import DitherTrailGrid from './components/DitherTrailGrid.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './components/LimitedModeNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
@@ -86,6 +105,15 @@ import {
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
+import { useAgentsN8nChatVariant } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import { AGENT_N8N_CHAT_VIEW } from '@/features/agents/constants';
+import N8nChatAgentSection from '@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue';
+import N8nChatAgentPicker from '@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue';
+import {
+	discardPendingN8nChatMessage,
+	stashPendingN8nChatMessage,
+} from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
+import { base64ToFile } from '@/app/utils/fileUtils';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -138,7 +166,7 @@ const canSelectProject = computed(
 	() => projectsStore.isTeamProjectFeatureEnabled && projectsStore.myProjects.length > 1,
 );
 const settingsStore = useInstanceAiSettingsStore();
-const { showCreditWarning, quotaLocked } = storeToRefs(store);
+const { isLowCredits, isOutOfCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
@@ -148,15 +176,48 @@ const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 // this view mounts on every entry to the empty route, the parent layout doesn't.
 useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(showCreditWarning);
+const creditBanner = useCreditWarningBanner(isLowCredits);
+const outOfCreditsMessage = computed(() => {
+	if (!isOutOfCredits.value) return undefined;
+	return i18n.baseText('instanceAi.error.outOfCredits.title');
+});
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
+// Experiment cleanup (124_workflow_previews_above_assistant)
+const {
+	isFeatureEnabled: isWorkflowPreviewsAboveAssistantEnabled,
+	variant: workflowPreviewsAboveAssistantVariant,
+} = useWorkflowPreviewsAboveAssistantExperiment();
+// EOF Experiment cleanup
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
+// Variant A replaces the empty state with an agent picker, variant B with a
+// "Chat with [agent]" picker — both force the default layout and win over
+// every other empty-state experiment.
+const { isVariantA: isAgentsN8nChatVariantA, isVariantB: isAgentsN8nChatVariantB } =
+	useAgentsN8nChatVariant();
+const forcesDefaultEmptyLayout = computed(
+	() => isAgentsN8nChatVariantA.value || isAgentsN8nChatVariantB.value,
+);
+// Variant B's picker selection: null is n8n Assistant, matching its own v-model contract.
+const selectedChatAgent = ref<AgentChatListItem | null>(null);
+// Experiment cleanup (124_workflow_previews_above_assistant)
+const showWorkflowPreviewsAboveAssistant = computed(
+	() => isWorkflowPreviewsAboveAssistantEnabled.value && !forcesDefaultEmptyLayout.value,
+);
+// EOF Experiment cleanup
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
 const composerHasContent = ref(false);
+// Experiment cleanup (124_workflow_previews_above_assistant)
+const workflowPreviewPromptKey = ref<BaseTextKey | null>(null);
+const workflowPreviewInjectPulse = ref(false);
+const workflowPreviewInputProps = computed(() => ({
+	previewPromptKey: composerHasContent.value ? null : workflowPreviewPromptKey.value,
+	suggestionCatalogVersion: WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_SUGGESTIONS_VERSION,
+}));
+// EOF Experiment cleanup
 const {
 	currentVariant: personalizedPromptSuggestionsVariant,
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
@@ -166,18 +227,23 @@ const {
 	currentVariant: inspirationFromTaxonomyVariant,
 	isTreatmentVariant: isInspirationFromTaxonomyTreatmentVariant,
 } = useInstanceAiInspirationFromTaxonomyExperiment();
-const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
+const showProactiveStarter = computed(
+	() => isProactiveAgentExperimentEnabled.value && !forcesDefaultEmptyLayout.value,
+);
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // hosts the view header inside its chat column; the proactive starter (082)
 // keeps precedence.
 const isSplitLayoutActive = computed(
-	() => isSplitVariantEnabled.value && !showProactiveStarter.value,
+	() =>
+		isSplitVariantEnabled.value && !showProactiveStarter.value && !forcesDefaultEmptyLayout.value,
 );
 const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 	() =>
 		typeof personalizedPromptSuggestionsVariant.value === 'string' &&
 		!showProactiveStarter.value &&
 		!isSplitLayoutActive.value &&
+		!forcesDefaultEmptyLayout.value &&
+		!showWorkflowPreviewsAboveAssistant.value && // Experiment cleanup (124_workflow_previews_above_assistant)
 		settingsStore.isWorkflowBuilderAvailable,
 );
 const personalizedPromptSuggestionResolution = ref<
@@ -194,9 +260,15 @@ const isTaxonomySegmentResolved = computed(
 			'taxonomy',
 );
 const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
-	if (showProactiveStarter.value || isSplitLayoutActive.value) {
+	if (showProactiveStarter.value || isSplitLayoutActive.value || forcesDefaultEmptyLayout.value) {
 		return false;
 	}
+
+	// Experiment cleanup (124_workflow_previews_above_assistant)
+	if (showWorkflowPreviewsAboveAssistant.value) {
+		return false;
+	}
+	// EOF Experiment cleanup
 
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return false;
@@ -220,6 +292,16 @@ const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride()
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
 let hasTrackedPersonalizedPromptSuggestionsExposure = false;
 let hasTrackedInspirationFromTaxonomyExposure = false;
+// Experiment cleanup (124_workflow_previews_above_assistant)
+let hasTrackedWorkflowPreviewsEmptyStateView = false;
+const shouldTrackWorkflowPreviewsEmptyStateView = computed(
+	() =>
+		workflowPreviewsAboveAssistantVariant.value !== null &&
+		!showProactiveStarter.value &&
+		!isSplitLayoutActive.value &&
+		!forcesDefaultEmptyLayout.value,
+);
+// EOF Experiment cleanup
 const isAnyPersonalizedSuggestionsTreatmentActive = computed(
 	() =>
 		isInspirationFromTaxonomyTreatmentVariant.value ||
@@ -360,6 +442,25 @@ watch(
 	{ immediate: true },
 );
 
+// Experiment cleanup (124_workflow_previews_above_assistant)
+watch(
+	shouldTrackWorkflowPreviewsEmptyStateView,
+	(shouldTrack) => {
+		const variant = workflowPreviewsAboveAssistantVariant.value;
+		if (!shouldTrack || hasTrackedWorkflowPreviewsEmptyStateView || variant === null) {
+			return;
+		}
+
+		telemetry.track(
+			TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED,
+			getExperimentTelemetryPayload(WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT, variant),
+		);
+		hasTrackedWorkflowPreviewsEmptyStateView = true;
+	},
+	{ immediate: true },
+);
+// EOF Experiment cleanup
+
 watch(
 	[() => cloudPlanStore.state.initialized, () => cloudPlanStore.currentUserCloudInfo],
 	([initialized]) => {
@@ -387,6 +488,25 @@ const shouldShowPersonalizedPromptSuggestions = computed(() =>
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
+	// Variant A shows the agent picker, not suggestion chips.
+	if (isAgentsN8nChatVariantA.value) {
+		return { placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY };
+	}
+
+	// Variant B shows its own "Chat with" picker above; the composer only gets
+	// suggestions while n8n Assistant (not an agent) is the current selection.
+	if (isAgentsN8nChatVariantB.value) {
+		if (selectedChatAgent.value) return {};
+		return {
+			suggestions: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
+			suggestionsComponent: WorkflowPreviewSuggestions,
+			suggestionsComponentProps: {
+				label: i18n.baseText('agents.n8nChatPage.picker.tryAskingAssistant'),
+			},
+			suggestionCatalogVersion: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
+		};
+	}
+
 	if (showProactiveStarter.value) {
 		return {};
 	}
@@ -463,6 +583,10 @@ const emptyStatePromptSuggestionProps = computed(() => {
 	};
 });
 const emptyStateTitleKey = computed<BaseTextKey>(() => {
+	// Variant A keeps the default empty-state title.
+	if (isAgentsN8nChatVariantA.value) {
+		return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
+	}
 	if (
 		shouldShowTaxonomySuggestions.value ||
 		isTaxonomySuggestionsPending.value ||
@@ -478,12 +602,37 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 	return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
 });
 
+// Variant B always overrides the placeholder with who is selected, agent or Assistant.
+const n8nChatPickerPlaceholder = computed(() =>
+	i18n.baseText('agents.n8nChatPage.picker.placeholder', {
+		interpolate: { name: selectedChatAgent.value?.name ?? i18n.baseText('instanceAi.view.title') },
+	}),
+);
+// An agent chat does not need the workflow builder, so a selected agent keeps the composer usable.
+const isComposerAvailable = computed(
+	() => settingsStore.isWorkflowBuilderAvailable || !!selectedChatAgent.value,
+);
+// Mentions only make sense against the Assistant, so they're off while an agent is selected.
+const inputMentionsEnabled = computed(() => mentionsEnabled.value && !selectedChatAgent.value);
+// An agent can't use connectors or computer/browser use, so the composer offers only the file
+// types its model accepts; n8n Assistant keeps the full "+" menu.
+const composerAttachOnlyMimeTypes = computed(() =>
+	selectedChatAgent.value
+		? acceptedMimeTypesFromCapabilities(selectedChatAgent.value.attachments)
+		: undefined,
+);
+
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 // Layout changes mount a new, empty composer.
 watch(chatInputRef, () => {
 	composerHasContent.value = false;
 });
 const isStartingThread = ref(false);
+// Blocks switching the recipient while a send targeting the current one is being
+// prepared (e.g. a file still encoding), so it cannot land with the wrong agent.
+const isChatAgentPickerDisabled = computed(
+	() => isStartingThread.value || !!chatInputRef.value?.isPreparingSubmission,
+);
 
 watch(
 	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
@@ -494,6 +643,12 @@ watch(
 		selectedProject.value = resolveInitialProjectId();
 	},
 );
+
+// Variant B: the project dropdown follows the picked agent's project, and goes
+// back to the entry project when the user switches back to the Assistant.
+watch(selectedChatAgent, (agent) => {
+	selectedProject.value = agent ? agent.project.id : resolveInitialProjectId();
+});
 
 type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
 	promptKey: BaseTextKey;
@@ -564,6 +719,35 @@ async function handleSubmit(
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
+	if (selectedChatAgent.value) {
+		const agentId = selectedChatAgent.value.id;
+		// Resource attachments (workflow/agent/nodes references) don't apply to an
+		// agent's own n8n Chat page, only binary files do.
+		const fileAttachments = (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
+		);
+		const files = fileAttachments.map((attachment) =>
+			base64ToFile(attachment.data, attachment.fileName, attachment.mimeType),
+		);
+		// Nothing the agent can take (e.g. only resource references): keep the draft.
+		if (!message.trim() && files.length === 0) {
+			restoreDraftAfterFailedSubmit(restoreDraft);
+			return;
+		}
+		const pendingMessage = { agentId, text: message, files };
+		stashPendingN8nChatMessage(pendingMessage);
+		acceptDraft();
+		const failure = await router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId } });
+		// A blocked or cancelled navigation must not leave the hand-off for a later
+		// visit. Only discard and restore the draft if the slot still holds this
+		// submission: a second submit made while this push was pending already
+		// replaced it, and that one must not lose its stash or its draft.
+		if (failure && discardPendingN8nChatMessage(pendingMessage)) {
+			restoreDraftAfterFailedSubmit(restoreDraft);
+		}
+		return;
+	}
+
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
@@ -576,6 +760,9 @@ async function handleSubmit(
 
 	const threadId = uuidv4();
 	isStartingThread.value = true;
+	// The composer clears on submit, but this view stays up until the send is
+	// accepted. Put the prompt back so the user sees what they sent meanwhile.
+	void nextTick(restoreDraft);
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
 	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
@@ -658,6 +845,30 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	splitPreviewPromptKey.value = null;
 	void chatInputRef.value?.insertSuggestion(payload);
 }
+
+// Experiment cleanup (124_workflow_previews_above_assistant)
+function handleWorkflowPreviewPrompt(promptKey: BaseTextKey | null) {
+	workflowPreviewPromptKey.value = promptKey;
+}
+
+async function handleWorkflowPreviewExampleUse(
+	example: WorkflowPreviewExampleData,
+	position: number,
+) {
+	workflowPreviewPromptKey.value = null;
+	await chatInputRef.value?.insertSuggestion({
+		promptKey: example.promptKey,
+		suggestionId: example.id,
+		suggestionKind: 'prompt',
+		position,
+		prefillType: 'suggestion_catalog',
+	});
+
+	workflowPreviewInjectPulse.value = false;
+	await nextTick();
+	workflowPreviewInjectPulse.value = true;
+}
+// EOF Experiment cleanup
 </script>
 
 <template>
@@ -671,10 +882,11 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				</div>
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
-						v-if="creditBanner.visible.value"
+						v-if="isOutOfCredits || creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
-						:amounts-hidden="quotaLocked"
+						:message="outOfCreditsMessage"
+						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
@@ -683,6 +895,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
+						:is-out-of-credits="isOutOfCredits"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:mentions-enabled="mentionsEnabled"
 						:mention-project-id="selectedProject"
@@ -696,9 +909,12 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						</template>
 					</InstanceAiInput>
 				</div>
+				<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+				<ClaudeEntryPoint placement="footer" />
+				<!-- EOF Experiment cleanup -->
 			</div>
 			<InstanceAiSplitEmptyState
-				v-else-if="isSplitVariantEnabled"
+				v-else-if="isSplitLayoutActive"
 				:project-id="selectedProject"
 				:disabled="isStartingThread || !settingsStore.isWorkflowBuilderAvailable"
 				:writing="composerHasContent"
@@ -712,10 +928,11 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				<template #input>
 					<div :class="$style.centeredInput">
 						<CreditWarningBanner
-							v-if="creditBanner.visible.value"
+							v-if="isOutOfCredits || creditBanner.visible.value"
 							:credits-remaining="store.creditsRemaining"
 							:credits-quota="store.creditsQuota"
-							:amounts-hidden="quotaLocked"
+							:message="outOfCreditsMessage"
+							:dismissible="!isOutOfCredits"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 							@dismiss="creditBanner.dismiss()"
 						/>
@@ -724,6 +941,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						<InstanceAiInput
 							ref="chatInputRef"
 							:is-submitting="isStartingThread"
+							:is-out-of-credits="isOutOfCredits"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 							:mentions-enabled="mentionsEnabled"
 							:mention-project-id="selectedProject"
@@ -742,36 +960,88 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 								</div>
 							</template>
 						</InstanceAiInput>
+						<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+						<ClaudeEntryPoint placement="footer" />
+						<!-- EOF Experiment cleanup -->
 					</div>
 				</template>
 			</InstanceAiSplitEmptyState>
-			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
-				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
-				<div ref="centeredInput" :class="$style.centeredInput">
+			<div
+				v-else
+				ref="emptyLayout"
+				:class="[
+					$style.emptyLayout,
+					// Experiment cleanup (124_workflow_previews_above_assistant)
+					{ [$style.workflowPreviewsLayout]: showWorkflowPreviewsAboveAssistant },
+					// EOF Experiment cleanup
+				]"
+				data-test-id="instance-ai-empty-layout"
+			>
+				<!-- Experiment cleanup (124_workflow_previews_above_assistant) -->
+				<div
+					v-if="showWorkflowPreviewsAboveAssistant"
+					:class="$style.workflowPreviewSlot"
+					data-test-id="workflow-previews-above-assistant-slot"
+				>
+					<WorkflowPreviewsAboveAssistant
+						@preview-prompt="handleWorkflowPreviewPrompt"
+						@use-example="handleWorkflowPreviewExampleUse"
+					/>
+				</div>
+				<!-- EOF Experiment cleanup -->
+				<N8nChatAgentPicker
+					v-if="isAgentsN8nChatVariantB"
+					v-model="selectedChatAgent"
+					:project-id="selectedProject"
+					:disabled="isChatAgentPickerDisabled"
+				/>
+				<InstanceAiEmptyState v-else :title-key="emptyStateTitleKey" :show-title-icon="true" />
+				<div
+					ref="centeredInput"
+					:class="[
+						$style.centeredInput,
+						workflowPreviewInjectPulse && $style.promptInjected, // Experiment cleanup (124_workflow_previews_above_assistant)
+					]"
+					data-test-id="instance-ai-centered-input"
+					@animationend="
+						workflowPreviewInjectPulse = false // Experiment cleanup (124_workflow_previews_above_assistant)
+					"
+				>
 					<InstanceAiFreeNudge
 						:eligible="
 							store.creditsQuota !== undefined &&
+							!isOutOfCredits &&
 							!creditBanner.visible.value &&
 							settingsStore.isWorkflowBuilderAvailable
 						"
 					/>
 					<CreditWarningBanner
-						v-if="creditBanner.visible.value"
+						v-if="isOutOfCredits || creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
-						:amounts-hidden="quotaLocked"
+						:message="outOfCreditsMessage"
+						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
-					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+					<WorkflowBuilderUnavailableNotice v-if="!isComposerAvailable" />
 					<LimitedModeNotice />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
-						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
-						:mentions-enabled="mentionsEnabled"
+						:is-out-of-credits="isOutOfCredits"
+						:is-workflow-builder-available="isComposerAvailable"
+						:mentions-enabled="inputMentionsEnabled"
 						:mention-project-id="selectedProject"
-						v-bind="emptyStatePromptSuggestionProps"
+						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
+						:attach-only-mime-types="composerAttachOnlyMimeTypes"
+						v-bind="
+							// Experiment cleanup (124_workflow_previews_above_assistant)
+							showWorkflowPreviewsAboveAssistant
+								? workflowPreviewInputProps
+								: emptyStatePromptSuggestionProps
+							// EOF Experiment cleanup
+						"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
 						@content-change="composerHasContent = $event"
@@ -782,10 +1052,20 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							</div>
 						</template>
 					</InstanceAiInput>
+					<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+					<ClaudeEntryPoint placement="footer" />
+					<!-- EOF Experiment cleanup -->
 				</div>
-				<Transition name="workflow-preview-fade">
+				<!-- Variant A shows the agent picker here instead of the workflow preview;
+				variant B drops the preview canvas entirely (hover preview stays off). -->
+				<N8nChatAgentSection v-if="isAgentsN8nChatVariantA" />
+				<Transition v-else-if="!isAgentsN8nChatVariantB" name="workflow-preview-fade">
 					<div
-						v-if="activeWorkflowPreview && hasSpaceForPreview"
+						v-if="
+							!showWorkflowPreviewsAboveAssistant && // Experiment cleanup (124_workflow_previews_above_assistant)
+							activeWorkflowPreview &&
+							hasSpaceForPreview
+						"
 						:class="$style.workflowPreviewWrapper"
 						:style="workflowPreviewWrapperStyle"
 					>
@@ -797,10 +1077,14 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				</Transition>
 			</div>
 		</div>
+
+		<DitherTrailGrid :height="640" />
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion'; // Experiment cleanup (124_workflow_previews_above_assistant)
+
 .inputFooter {
 	padding-top: calc(var(--spacing--2xs) + var(--radius--xl));
 	padding-bottom: var(--spacing--2xs);
@@ -811,6 +1095,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
 	border-bottom-left-radius: var(--radius--xl);
 	border-bottom-right-radius: var(--radius--xl);
+	border: var(--border);
 	display: flex;
 	flex-direction: row;
 }
@@ -826,10 +1111,12 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 }
 
 .contentArea {
+	position: relative;
 	display: flex;
 	flex: 1;
 	min-height: 0;
 	position: relative;
+	z-index: 1;
 }
 
 .emptyLayout {
@@ -851,6 +1138,39 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 }
+
+// Experiment cleanup (124_workflow_previews_above_assistant)
+.workflowPreviewsLayout {
+	gap: var(--spacing--lg);
+	padding: 0 var(--spacing--lg) var(--spacing--2xl);
+}
+
+.workflowPreviewSlot {
+	flex: 1;
+	min-height: 0;
+	width: 100%;
+}
+
+.promptInjected {
+	animation: prompt-injected var(--duration--base) var(--easing--ease-out);
+
+	@include motion.reduced-motion;
+}
+
+@keyframes prompt-injected {
+	0% {
+		transform: scale(1);
+	}
+
+	40% {
+		transform: scale(1.02);
+	}
+
+	100% {
+		transform: scale(1);
+	}
+}
+// EOF Experiment cleanup
 
 .workflowPreviewWrapper {
 	width: 100%;

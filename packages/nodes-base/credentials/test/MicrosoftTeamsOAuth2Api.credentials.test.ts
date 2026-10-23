@@ -5,18 +5,10 @@ import { MicrosoftTeamsOAuth2Api } from '../MicrosoftTeamsOAuth2Api.credentials'
 
 describe('MicrosoftTeamsOAuth2Api Credential', () => {
 	const microsoftTeamsOAuth2Api = new MicrosoftTeamsOAuth2Api();
-	const defaultScopes = [
-		'openid',
-		'offline_access',
-		'User.Read.All',
-		'Group.ReadWrite.All',
-		'Chat.ReadWrite',
-		'ChannelMessage.Read.All',
-		'OnlineMeetings.ReadWrite',
-		'ChannelMessage.ReadWrite',
-		'TeamworkTag.Read',
-		'TeamsActivity.Send',
-	];
+	// The list comes from the credential class, so the flow tests below fail when a default scope goes missing.
+	const defaultScopes = String(
+		microsoftTeamsOAuth2Api.properties.find((p) => p.name === 'enabledScopes')?.default,
+	).split(' ');
 
 	// Shared OAuth2 configuration
 	const baseUrl = 'https://login.microsoftonline.com';
@@ -74,7 +66,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			(p) => p.name === 'enabledScopes',
 		);
 		expect(enabledScopesProperty?.default).toBe(
-			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite ChannelMessage.ReadWrite TeamworkTag.Read TeamsActivity.Send',
+			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite ChannelMessage.ReadWrite TeamworkTag.Read TeamsActivity.Send TeamMember.Read.All',
 		);
 	});
 
@@ -83,7 +75,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 
 		// This expression, not `enabledScopes`, is what the authorize URL is built from.
 		expect(scopeProperty?.default).toBe(
-			'={{$self["customScopes"] ? $self["enabledScopes"] : "openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite ChannelMessage.ReadWrite TeamworkTag.Read TeamsActivity.Send"}}',
+			'={{$self["customScopes"] ? $self["enabledScopes"] : "openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite ChannelMessage.ReadWrite TeamworkTag.Read TeamsActivity.Send TeamMember.Read.All"}}',
 		);
 	});
 
@@ -102,7 +94,9 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			expect(authUri).toContain('ChannelMessage.Read.All');
 			expect(authUri).toContain('OnlineMeetings.ReadWrite');
 			expect(authUri).toContain('ChannelMessage.ReadWrite');
+			expect(authUri).toContain('TeamworkTag.Read');
 			expect(authUri).toContain('TeamsActivity.Send');
+			expect(authUri).toContain('TeamMember.Read.All');
 			expect(authUri).toContain(`client_id=${clientId}`);
 			expect(authUri).toContain('response_type=code');
 		});
@@ -122,7 +116,9 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			expect(token.data.scope).toContain('ChannelMessage.Read.All');
 			expect(token.data.scope).toContain('OnlineMeetings.ReadWrite');
 			expect(token.data.scope).toContain('ChannelMessage.ReadWrite');
+			expect(token.data.scope).toContain('TeamworkTag.Read');
 			expect(token.data.scope).toContain('TeamsActivity.Send');
+			expect(token.data.scope).toContain('TeamMember.Read.All');
 		});
 	});
 

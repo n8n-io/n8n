@@ -7,6 +7,7 @@ import type { Scope } from '../types.ee';
  * every operation exists in that resource's definition in @n8n/permissions.
  */
 export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
+	app: ['read', 'list', 'create', 'update', 'delete'],
 	project: ['read', 'update', 'delete', 'export', 'manageMembers'],
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: [
@@ -23,7 +24,17 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'enableRedaction',
 		'disableRedaction',
 	],
-	agent: ['read', 'execute', 'list', 'create', 'update', 'delete', 'publish', 'unpublish'],
+	agent: [
+		'read',
+		'execute',
+		'list',
+		'create',
+		'update',
+		'delete',
+		'publish',
+		'unpublish',
+		'export',
+	],
 	credential: [
 		'read',
 		'connect',
@@ -51,6 +62,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 	],
 	projectVariable: ['read', 'update', 'create', 'delete'],
 	projectAiPreference: ['read', 'update', 'create', 'delete'],
+	projectSkill: ['read', 'update', 'create', 'delete'],
 } as const satisfies {
 	[R in keyof typeof RESOURCES]?: ReadonlyArray<(typeof RESOURCES)[R][number]>;
 };
@@ -73,6 +85,10 @@ type InstanceScopeGroups = {
 };
 
 export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
+	app: {
+		View: ['app:list', 'app:read'],
+		Manage: ['app:list', 'app:read', 'app:create', 'app:update', 'app:delete'],
+	},
 	settings: {
 		// Grants access to every instance Settings page, including MCP and n8n
 		// Assistant management. MCP and n8n Assistant also have their own narrower
@@ -103,11 +119,16 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'aiPreference:update',
 			'aiPreference:delete',
 			'aiPreference:list',
+			'skill:create', // Context (instance skills)
+			'skill:read',
+			'skill:update',
+			'skill:delete',
+			'skill:list',
 			'chatHub:manage', // Chat
 			'aiAssistant:manage', // n8n Assistant
 			'instanceAi:manage',
 			'instanceAi:message',
-			'instanceAi:gateway', // computer-use gateway pairing
+			'instanceAi:gateway', // Browser Use pairing
 			'mcp:manage', // Instance-level MCP
 			'mcp:oauth', // MCP OAuth clients
 			'mcpApiKey:create', // MCP personal API key

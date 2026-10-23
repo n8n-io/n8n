@@ -1,8 +1,11 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
-	const { WorkflowNotFoundError } = await import('@n8n/instance-ai/errors');
+	const { WorkflowNotFoundError, OutsideThreadProjectError } = await import(
+		'@n8n/instance-ai/errors'
+	);
 	return {
 		WorkflowNotFoundError,
+		OutsideThreadProjectError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -31,10 +34,13 @@ import {
 	type EventService,
 	type RoleService,
 	type CredentialsFinderService,
+	type InstanceWriteAccessService,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
-import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { OutsideThreadProjectError } from '@n8n/instance-ai/errors';
+import { LessThan } from '@n8n/typeorm';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
 	CredentialsEntity,
@@ -65,7 +71,6 @@ import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { NodeTypes } from '@/node-types';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 
@@ -393,7 +398,7 @@ describe('stop execution — workflow:execute scope', () => {
 // ---------------------------------------------------------------------------
 
 describe('cleanupTestExecutions — scope and deletion pipeline', () => {
-	it('rejects when user lacks workflow:execute scope', async () => {
+	it('rejects when user lacks execution:delete scope', async () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
 		const ctx = service.createContext(user);
@@ -402,26 +407,60 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		);
 
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
-			'workflow:execute',
+			'execution:delete',
 		]);
 	});
 
-	it('calls hardDeleteBy instead of deleteByIds', async () => {
+	it('deletes only the counted manual executions by ID', async () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-1' } as never);
 		executionRepository.find.mockResolvedValue([{ id: 'exec-1' }, { id: 'exec-2' }] as never);
+		executionPersistence.hardDeleteBy.mockResolvedValue(undefined);
+
+		const now = new Date('2026-10-07T12:00:00.000Z');
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(now);
+
+		try {
+			const ctx = service.createContext(user);
+			const result = await ctx.workspaceService!.cleanupTestExecutions('wf-1');
+
+			expect(result.deletedCount).toBe(2);
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(executionRepository.find).toHaveBeenCalledWith({
+			select: ['id'],
+			where: {
+				workflowId: 'wf-1',
+				mode: 'manual',
+				startedAt: LessThan(new Date(now.getTime() - 60 * 60 * 1000)),
+			},
+		});
+		expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith({
+			filters: undefined,
+			accessibleWorkflowIds: ['wf-1'],
+			deleteConditions: { ids: ['exec-1', 'exec-2'] },
+		});
+		// Verify deleteByIds is NOT called
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
+
+	it('deletes a large set of executions in chunks', async () => {
+		workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-1' } as never);
+		const ids = Array.from({ length: 1201 }, (_, i) => `exec-${i}`);
+		executionRepository.find.mockResolvedValue(ids.map((id) => ({ id })) as never);
 		executionPersistence.hardDeleteBy.mockResolvedValue(undefined);
 
 		const ctx = service.createContext(user);
 		const result = await ctx.workspaceService!.cleanupTestExecutions('wf-1');
 
-		expect(result.deletedCount).toBe(2);
-		expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith({
-			filters: { workflowId: 'wf-1', mode: 'manual' },
-			accessibleWorkflowIds: ['wf-1'],
-			deleteConditions: { deleteBefore: expect.any(Date) },
-		});
-		// Verify deleteByIds is NOT called
-		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+		expect(result.deletedCount).toBe(1201);
+		const chunks = executionPersistence.hardDeleteBy.mock.calls.map(
+			([criteria]) => criteria.deleteConditions.ids,
+		);
+		expect(chunks.map((chunk) => chunk?.length)).toEqual([500, 500, 201]);
+		expect(chunks.flat()).toEqual(ids);
 	});
 
 	it('emits execution-deleted audit event', async () => {
@@ -676,5 +715,111 @@ describe('credentialService.get — credential ownership revalidation', () => {
 			'Credential with ID "cred-other" could not be found.',
 		);
 		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-other', false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Bound project: changes stay inside the conversation's project
+// ---------------------------------------------------------------------------
+
+describe('bound project write guard', () => {
+	type Context = ReturnType<typeof service.createContext>;
+	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+
+	beforeEach(() => {
+		userHasScopesMock.mockResolvedValue(true);
+		vi.spyOn(Container, 'get').mockImplementation(
+			(cls) =>
+				(cls === SharedCredentialsRepository
+					? sharedCredentialsRepository
+					: executionPersistence) as never,
+		);
+	});
+
+	const expectRejectedOutsideProject = async (write: Promise<unknown>) => {
+		await expect(write).rejects.toThrow(OutsideThreadProjectError);
+	};
+
+	it('rejects tagWorkflow on a workflow owned by another project before loading it', async () => {
+		sharedWorkflowRepository.findProjectIds.mockResolvedValue(['other-project']);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+		await expectRejectedOutsideProject(ctx.workspaceService!.tagWorkflow('wf-1', ['new-tag']));
+		expect(sharedWorkflowRepository.findProjectIds).toHaveBeenCalledWith('wf-1');
+		expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+		expect(tagService.save).not.toHaveBeenCalled();
+	});
+
+	it('rejects creating a folder in another project before checking access', async () => {
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+		await expectRejectedOutsideProject(
+			ctx.workspaceService!.createFolder!('Reports', 'other-project'),
+		);
+		expect(userHasScopesMock).not.toHaveBeenCalled();
+		expect(folderService.createFolder).not.toHaveBeenCalled();
+	});
+
+	describe('assertInThreadProject', () => {
+		type ThreadTarget = Parameters<NonNullable<Context['assertInThreadProject']>>[0];
+
+		const ownResourcesIn = (projectId: string) => {
+			sharedWorkflowRepository.findProjectIds.mockResolvedValue([projectId]);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue({
+				id: projectId,
+			} as never);
+			dataTableRepository.findOneBy.mockResolvedValue({
+				id: 'dt-1',
+				name: 'Orders',
+				projectId,
+			} as never);
+		};
+
+		const targetsIn = (projectId: string): ThreadTarget[] => [
+			{ kind: 'workflow', id: 'wf-1' },
+			{ kind: 'credential', id: 'cred-1' },
+			{ kind: 'data-table', id: 'dt-1' },
+			{ kind: 'project', id: projectId },
+		];
+
+		it.each(targetsIn('other-project').map((target) => ({ kind: target.kind, target })))(
+			'rejects a $kind target outside the bound project',
+			async ({ target }) => {
+				ownResourcesIn('other-project');
+				const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+				await expectRejectedOutsideProject(ctx.assertInThreadProject!(target));
+			},
+		);
+
+		it('allows targets in the bound project', async () => {
+			ownResourcesIn('bound-project');
+			const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+			for (const target of targetsIn('bound-project')) {
+				await expect(ctx.assertInThreadProject!(target)).resolves.toBeUndefined();
+			}
+			expect(sharedWorkflowRepository.findProjectIds).toHaveBeenCalledWith('wf-1');
+			expect(sharedCredentialsRepository.findCredentialOwningProject).toHaveBeenCalledWith(
+				'cred-1',
+			);
+			expect(dataTableRepository.findOneBy).toHaveBeenCalledWith({ id: 'dt-1' });
+		});
+
+		it('does no lookup when the context has no bound project', async () => {
+			workflowService.archive.mockResolvedValue({ id: 'wf-1' } as never);
+			const ctx = service.createContext(user);
+
+			for (const target of targetsIn('other-project')) {
+				await expect(ctx.assertInThreadProject!(target)).resolves.toBeUndefined();
+			}
+			await ctx.workflowService.archive('wf-1');
+			await ctx.credentialService.delete('cred-1');
+			expect(sharedWorkflowRepository.findProjectIds).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepository.findCredentialOwningProject).not.toHaveBeenCalled();
+			expect(dataTableRepository.findOneBy).not.toHaveBeenCalled();
+			expect(dataTableRepository.findBy).not.toHaveBeenCalled();
+		});
 	});
 });

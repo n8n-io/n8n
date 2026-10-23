@@ -8,10 +8,10 @@ import type {
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
-import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
+import { toRunDataGeneration } from './extract-responding-model';
 import { logAiEvent } from './log-ai-event';
 import { redactHeaderValues } from './redact-headers';
 import { stripNonXHeaders } from './strip-non-x-headers';
@@ -32,6 +32,27 @@ type ProviderTokenUsageResult = TokenUsageResult & {
 };
 
 type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
+
+/** Anthropic Messages usage. Cached input tokens count as prompt tokens. */
+export function anthropicTokensUsageParser(result: LLMResult): TokenUsageResult {
+	const usage = (result?.llmOutput?.usage as
+		| {
+				input_tokens: number;
+				output_tokens: number;
+				cache_creation_input_tokens?: number;
+				cache_read_input_tokens?: number;
+		  }
+		| undefined) ?? { input_tokens: 0, output_tokens: 0 };
+	const promptTokens =
+		usage.input_tokens +
+		(usage.cache_creation_input_tokens ?? 0) +
+		(usage.cache_read_input_tokens ?? 0);
+	return {
+		completionTokens: usage.output_tokens,
+		promptTokens,
+		totalTokens: promptTokens + usage.output_tokens,
+	};
+}
 
 type RunDetail = {
 	index: number;
@@ -137,9 +158,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		// but just in case, we set the index to the length of the runsMap
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
-		output.generations = output.generations.map((gen) =>
-			gen.map((g) => pick(g, ['text', 'generationInfo'])),
-		);
+		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));
 
 		const tokenUsageEstimate = {
 			completionTokens: 0,

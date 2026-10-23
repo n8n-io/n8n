@@ -1,5 +1,5 @@
 import { context, trace } from '@opentelemetry/api';
-import { AsyncHooksContextManager } from '@opentelemetry/context-async-hooks';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import {
 	BasicTracerProvider,
 	InMemorySpanExporter,
@@ -8,7 +8,7 @@ import {
 
 /**
  * Disposable OTel test harness. Sets up an in-memory tracer that captures
- * spans for assertion, plus a real async-hooks context manager so parent/child
+ * spans for assertion, plus a real context manager so parent/child
  * span nesting is preserved across `await` boundaries (without it, every span
  * looks like a root regardless of `startActiveSpan` nesting, since the default
  * no-op context manager never tracks an "active" context).
@@ -24,8 +24,7 @@ export class OtelTestProvider {
 	private constructor(
 		private readonly provider: BasicTracerProvider,
 		private readonly exporter: InMemorySpanExporter,
-		// oxlint-disable-next-line typescript/no-deprecated
-		private readonly contextManager: AsyncHooksContextManager,
+		private readonly contextManager: AsyncLocalStorageContextManager,
 	) {}
 
 	static create(): OtelTestProvider {
@@ -34,8 +33,7 @@ export class OtelTestProvider {
 			spanProcessors: [new SimpleSpanProcessor(exporter)],
 		});
 		trace.setGlobalTracerProvider(provider);
-		// oxlint-disable-next-line typescript/no-deprecated
-		const contextManager = new AsyncHooksContextManager().enable();
+		const contextManager = new AsyncLocalStorageContextManager().enable();
 		context.setGlobalContextManager(contextManager);
 		return new OtelTestProvider(provider, exporter, contextManager);
 	}

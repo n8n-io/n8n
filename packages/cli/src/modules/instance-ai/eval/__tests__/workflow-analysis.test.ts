@@ -14,12 +14,10 @@ import { UserError } from 'n8n-workflow';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
-	emitsDataTableRows,
 	generateMockHints,
 	TRIGGER_CONTENT_CORRECTION,
 	identifyNodesForHints,
 	identifyNodesForPinData,
-	isDataTableRead,
 	partitionAiRoots,
 } from '../workflow-analysis';
 
@@ -49,35 +47,6 @@ function makeWorkflow(nodes: INode[], connections: IConnections = {}): IWorkflow
 		updatedAt: new Date(),
 	};
 }
-
-describe('Data Table read predicates', () => {
-	function makeDataTableNode(parameters: INodeParameters): INode {
-		return makeNode({ name: 'Table', type: 'n8n-nodes-base.dataTable', parameters });
-	}
-
-	it.each(['get', 'rowExists', 'rowNotExists'])('treats %s as a read', (operation) => {
-		expect(isDataTableRead(makeDataTableNode({ resource: 'row', operation }))).toBe(true);
-	});
-
-	it.each(['insert', 'update', 'deleteRows'])('treats %s as a write', (operation) => {
-		expect(isDataTableRead(makeDataTableNode({ resource: 'row', operation }))).toBe(false);
-	});
-
-	it('only counts `get` as row-emitting', () => {
-		// rowExists/rowNotExists return `[this.getInputData()[index]]` — the input
-		// item passed through — so the table's column contract does not apply.
-		expect(emitsDataTableRows(makeDataTableNode({ resource: 'row', operation: 'get' }))).toBe(true);
-		for (const operation of ['rowExists', 'rowNotExists', 'insert']) {
-			expect(emitsDataTableRows(makeDataTableNode({ resource: 'row', operation }))).toBe(false);
-		}
-	});
-
-	it('ignores non-Data-Table nodes', () => {
-		const node = makeNode({ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' });
-		expect(isDataTableRead(node)).toBe(false);
-		expect(emitsDataTableRows(node)).toBe(false);
-	});
-});
 
 describe('identifyNodesForPinData', () => {
 	it('should identify AI root nodes as needing pin data', () => {
@@ -237,26 +206,24 @@ describe('identifyNodesForPinData', () => {
 		});
 	});
 
-	it('leaves only the Data Table reads in the live set unpinned', () => {
-		const read = (name: string, operation: string) =>
-			makeNode({
-				name,
-				type: 'n8n-nodes-base.dataTable',
-				parameters: { resource: 'row', operation },
-			});
+	it('leaves Data Table nodes unpinned: they run for real against a prepared table', () => {
 		const nodes = [
-			read('Read Seeded', 'get'),
-			read('Read Other', 'rowExists'),
+			makeNode({
+				name: 'Read',
+				type: 'n8n-nodes-base.dataTable',
+				parameters: { resource: 'row', operation: 'get' },
+			}),
+			makeNode({
+				name: 'Check',
+				type: 'n8n-nodes-base.dataTable',
+				parameters: { resource: 'row', operation: 'rowNotExists' },
+			}),
 			makeNode({ name: 'Cache', type: 'n8n-nodes-base.redis' }),
 		];
 
-		const result = identifyNodesForPinData(
-			makeWorkflow(nodes),
-			undefined,
-			new Set(['Read Seeded', 'Cache']),
-		);
+		const result = identifyNodesForPinData(makeWorkflow(nodes));
 
-		expect(result.map((n) => n.name)).toEqual(['Read Other', 'Cache']);
+		expect(result.map((n) => n.name)).toEqual(['Cache']);
 	});
 });
 
@@ -1139,6 +1106,32 @@ describe('generateMockHints', () => {
 		expect(result.warnings).toEqual([]);
 	});
 
+	it('should unwrap trigger content that comes back as an n8n item', async () => {
+		const binary = { CV_0: { mimeType: 'application/pdf', fileName: 'cv.pdf' } };
+		mockAgentResponses(
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { json: { 'Full Name': 'Ada Lovelace' }, binary },
+				nodeHints: { Slack: 'post a message' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(result.triggerContent).toEqual({ 'Full Name': 'Ada Lovelace', binary });
+	});
+
+	it('should keep trigger content whose json field sits next to other fields', async () => {
+		const triggerContent = { json: { id: 1 }, headers: {}, body: {} };
+		mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent, nodeHints: { Slack: 'post' } }),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(result.triggerContent).toEqual(triggerContent);
+	});
+
 	it('should retry when the first attempt returns empty triggerContent, then succeed', async () => {
 		const generate = mockAgentResponses(
 			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
@@ -1260,6 +1253,56 @@ describe('generateMockHints', () => {
 			expect(result.warnings).toEqual([]);
 		},
 	);
+
+	describe('Manual Trigger start', () => {
+		const manualWorkflow = makeWorkflow([
+			makeNode({ name: 'Run', type: 'n8n-nodes-base.manualTrigger' }),
+			makeNode({ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger' }),
+			makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' }),
+		]);
+
+		it('accepts empty triggerContent without a retry, and keeps the hints', async () => {
+			const generate = mockAgentResponses(
+				JSON.stringify({ globalContext: 'ctx', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			);
+
+			const result = await generateMockHints({
+				workflow: manualWorkflow,
+				nodeNames: ['Run', 'Slack'],
+				defaultStartNodeName: 'Run',
+			});
+
+			expect(generate).toHaveBeenCalledTimes(1);
+			expect(result.triggerContent).toEqual({});
+			expect(result.globalContext).toBe('ctx');
+			expect(result.warnings).toEqual([]);
+		});
+
+		it('still retries empty triggerContent when the hints name another trigger', async () => {
+			const generate = mockAgentResponses(
+				JSON.stringify({
+					triggerContent: {},
+					startNodeName: 'Schedule',
+					nodeHints: { Slack: 'foo' },
+				}),
+				JSON.stringify({
+					triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+					startNodeName: 'Schedule',
+					nodeHints: { Slack: 'foo' },
+				}),
+			);
+
+			const result = await generateMockHints({
+				workflow: manualWorkflow,
+				nodeNames: ['Schedule', 'Slack'],
+				defaultStartNodeName: 'Run',
+			});
+
+			expect(generate).toHaveBeenCalledTimes(2);
+			expect(result.startNodeName).toBe('Schedule');
+			expect(result.triggerContent).toEqual({ timestamp: '2024-01-01T00:00:00Z' });
+		});
+	});
 
 	it('should not call the agent when there are no hint-eligible nodes', async () => {
 		const generate = mockAgentResponses('should never be called');

@@ -136,14 +136,13 @@ function onClick(event: MouseEvent) {
 					rx="4"
 					fill="light-dark(var(--color--neutral-200), var(--color--neutral-850))"
 				/>
-				<path
-					stroke="currentColor"
-					stroke-width="1.5"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					d="M8 12h8m-4-4v8"
-					class="source clickable"
-				/>
+				<svg x="6" y="6" width="12" height="12" viewBox="0 0 12 12" class="source clickable">
+					<path
+						class="source clickable"
+						fill="currentColor"
+						d="M6.6 5.4h4.75v1.2H6.6v4.75H5.4V6.6H.65V5.4H5.4V.65h1.2z"
+					/>
+				</svg>
 			</g>
 		</svg>
 	</div>
@@ -201,10 +200,6 @@ function onClick(event: MouseEvent) {
 		&:hover {
 			cursor: pointer;
 			color: light-dark(var(--color--neutral-850), var(--color--neutral-150));
-
-			path {
-				fill: light-dark(var(--color--neutral-250), var(--color--neutral-800));
-			}
 
 			rect {
 				stroke: light-dark(var(--color--neutral-250), var(--color--neutral-800));

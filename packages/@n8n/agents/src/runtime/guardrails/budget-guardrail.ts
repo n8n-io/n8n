@@ -11,37 +11,10 @@ export interface SpendTotal {
 	previousUsd: number;
 }
 
-/** Process-local spend. `add` is atomic and idempotent on `callId`. */
+/** Spend totals. `add` is idempotent on `callId`. */
 export interface SpendLedger {
 	add(callId: string, entries: SpendEntry[]): Promise<SpendTotal[]>;
 	read(key: string): Promise<number>;
-}
-
-export class InMemorySpendLedger implements SpendLedger {
-	private readonly totals = new Map<string, number>();
-	private readonly appliedCallIds = new Set<string>();
-
-	async add(callId: string, entries: SpendEntry[]): Promise<SpendTotal[]> {
-		if (this.appliedCallIds.has(callId)) {
-			return entries.map((entry) => {
-				const totalUsd = this.totals.get(entry.key) ?? 0;
-				return { key: entry.key, totalUsd, previousUsd: totalUsd };
-			});
-		}
-
-		const totals = entries.map((entry) => {
-			const previousUsd = this.totals.get(entry.key) ?? 0;
-			const totalUsd = previousUsd + entry.usd;
-			this.totals.set(entry.key, totalUsd);
-			return { key: entry.key, totalUsd, previousUsd };
-		});
-		this.appliedCallIds.add(callId);
-		return totals;
-	}
-
-	async read(key: string): Promise<number> {
-		return this.totals.get(key) ?? 0;
-	}
 }
 
 export interface BudgetGuardrailOptions {

@@ -10,6 +10,7 @@
 // https://www.npmjs.com/package/@n8n_io/n8n-demo-component
 // ---------------------------------------------------------------------------
 
+import { REMOVED_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -190,7 +191,7 @@ function isErroredToolCall(trace: ToolCallTrace): boolean {
 
 function countSubmitCalls(traces: ToolCallTrace[] | undefined): number {
 	if (!traces) return 0;
-	return traces.filter((t) => t.toolName === 'submit-workflow').length;
+	return traces.filter((t) => t.toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW).length;
 }
 
 function countToolCallErrors(traces: ToolCallTrace[] | undefined): number {
@@ -356,8 +357,10 @@ function renderExample(record: ResultRecord, idPrefix: string): string {
 	const exampleId = `${idPrefix}-${record.exampleId}-${record.iteration}`;
 	const interact = record.build.interactivity;
 	const interactBits: string[] = [];
-	if (interact.askUserCount > 0) interactBits.push(`ask-user ×${interact.askUserCount}`);
-	if (interact.planToolCount > 0) interactBits.push(`create-tasks ×${interact.planToolCount}`);
+	if (interact.askUserCount > 0)
+		interactBits.push(`workflow_builder_ask_user ×${interact.askUserCount}`);
+	if (interact.planToolCount > 0)
+		interactBits.push(`workflow_builder_create_tasks ×${interact.planToolCount}`);
 	if (interact.autoApprovedSuspensions > 0)
 		interactBits.push(`suspend ×${interact.autoApprovedSuspensions}`);
 	if (interact.mockedCredentialTypes.length > 0)
@@ -470,8 +473,8 @@ function renderRun(run: Run, index: number): string {
 			s.interactivity.mockedCredentialTypes.length > 0
 				? `<div class="run-interactivity">
           <strong>Interactivity:</strong>
-          ask-user ×${s.interactivity.askUserCount} ·
-          create-tasks ×${s.interactivity.planToolCount} ·
+          workflow_builder_ask_user ×${s.interactivity.askUserCount} ·
+          workflow_builder_create_tasks ×${s.interactivity.planToolCount} ·
           suspend ×${s.interactivity.autoApprovedSuspensions} ·
           mocked creds: ${s.interactivity.mockedCredentialTypes.map(escapeHtml).join(', ') || 'none'}
         </div>`

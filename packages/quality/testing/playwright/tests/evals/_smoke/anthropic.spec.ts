@@ -7,7 +7,7 @@ const HAS_KEY = !!process.env.ANTHROPIC_API_KEY;
 
 test.describe(
 	'real anthropic call wrapped in traced()',
-	{ annotation: [{ type: 'owner', description: 'AI' }] },
+	{ annotation: [{ type: 'owner', description: 'AI Trust' }] },
 	() => {
 		test.skip(!HAS_KEY, 'ANTHROPIC_API_KEY not set');
 

@@ -4,9 +4,6 @@ tags:
 summary: Retrieve the OpenTelemetry configuration
 description: Retrieve the current OpenTelemetry configuration, including every field exposed in the UI. Requires the `otel:manage` scope.
 x-required-scope: otel:manage
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.

@@ -706,7 +706,11 @@ export class SourceControlService {
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
 
 		const projectsToBeDeleted = getDeletedResources(statusResult, 'project');
-		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(projectsToBeDeleted);
+		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(
+			user,
+			projectsToBeDeleted,
+			credentialsToBeImported,
+		);
 
 		// #region Tracking Information
 		this.eventService.emit(
@@ -724,7 +728,15 @@ export class SourceControlService {
 	async getStatus(user: User, options: SourceControlGetStatus) {
 		return await this.workfolderMutex(async () => {
 			await this.sanityCheck();
-			return await this.sourceControlStatusService.getStatus(user, options);
+			const result = await this.sourceControlStatusService.getStatus(user, options);
+
+			// Only the preview pays for this; the pull enforces on its own status call.
+			if (options.direction === 'pull') {
+				const files = Array.isArray(result) ? result : result.sourceControlledFiles;
+				await this.sourceControlImportService.previewContentImportPolicy(files, user.id);
+			}
+
+			return result;
 		});
 	}
 

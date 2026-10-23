@@ -174,9 +174,12 @@ describe('LmChatDatabricks', () => {
 			await node.supplyData.call(ctx, 0);
 
 			const [, databricksHandler] = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0];
-			expect(() => databricksHandler?.(Object.assign(new Error('429 x'), { status: 429 }))).toThrow(
-				'Databricks rate limit reached for my-chat-endpoint',
-			);
+			const rateLimited = Object.assign(new Error('429 x'), { status: 429 });
+			expect(() => databricksHandler?.(rateLimited)).not.toThrow();
+			expect(rateLimited).toMatchObject({
+				message: 'Databricks rate limit reached for my-chat-endpoint',
+				description: expect.stringMatching(/throttling requests to this model service/),
+			});
 		});
 
 		it('should send the bearer and the partner User-Agent on every request', async () => {

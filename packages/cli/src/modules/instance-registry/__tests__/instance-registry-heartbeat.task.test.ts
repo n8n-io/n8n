@@ -16,8 +16,7 @@ describe('InstanceRegistryHeartbeatTask', () => {
 	it('should refresh the entry of its own process every 30 seconds', () => {
 		expect(task.name).toBe('instance-registry-heartbeat');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({
+		expect(task.target).toEqual({
 			scope: 'instance',
 			instanceTypes: ['main', 'worker', 'webhook'],
 		});

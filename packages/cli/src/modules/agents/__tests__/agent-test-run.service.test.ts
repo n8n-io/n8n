@@ -125,6 +125,28 @@ describe('AgentTestRunService', () => {
 		);
 	});
 
+	it.each([undefined, ''])(
+		'prepares a new session with a generated id when sessionId is %j',
+		async (sessionId) => {
+			const { service, agentExecutionService } = makeService();
+
+			const result = await service.prepareDraftRun({
+				agentId,
+				projectId,
+				user,
+				sessionId,
+				credentialProvider,
+			});
+
+			expect(result).toEqual({
+				status: 'ready',
+				sessionId: expect.stringMatching(/^[0-9a-f-]{36}$/),
+				sessionMode: 'new',
+			});
+			expect(agentExecutionService.canUseDraftThread).not.toHaveBeenCalled();
+		},
+	);
+
 	it('flags a run that stopped on the iteration cap', async () => {
 		const { service, agentExecutionOrchestratorService } = makeService();
 		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {

@@ -26,7 +26,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { RoleCacheService } from '@n8n/backend-services';
+import { EventService, RoleCacheService } from '@n8n/backend-services';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { PostHogClient } from '@/posthog';
 import { CredentialsTester } from '@/services/credentials-tester.service';
@@ -1133,6 +1133,70 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(updatedCredential.name).toBe(updatePayload.name);
 		expect(updatedCredential.type).toBe(savedCredential.type);
+	});
+
+	test('should emit credentials-updated after a successful update', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ name: 'Renamed Credential' });
+
+		expect(response.statusCode).toBe(200);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'credentials-updated',
+			expect.objectContaining({
+				user: expect.objectContaining({ id: owner.id }),
+				credentialId: savedCredential.id,
+				credentialType: savedCredential.type,
+				credentialName: 'Renamed Credential',
+				usesExternalSecrets: false,
+				jweEnabled: false,
+				supportsManagedAuth: false,
+			}),
+		);
+
+		emitSpy.mockRestore();
+	});
+
+	test('should report stored credential data flags on a name-only update', async () => {
+		const credential = dbCredential();
+		const savedCredential = await saveCredential(
+			{
+				...credential,
+				data: { ...credential.data, accessToken: '={{ $secrets.vault.token }}', jweEnabled: true },
+			},
+			{ user: owner },
+		);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ name: 'Renamed Credential' });
+
+		expect(response.statusCode).toBe(200);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'credentials-updated',
+			expect.objectContaining({
+				credentialId: savedCredential.id,
+				usesExternalSecrets: true,
+				jweEnabled: true,
+			}),
+		);
+
+		emitSpy.mockRestore();
+	});
+
+	test('should not emit credentials-updated when the credential is not found', async () => {
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		const response = await authOwnerAgent.patch('/credentials/123').send({ name: 'Nope' });
+
+		expect(response.statusCode).toBe(404);
+		expect(emitSpy).not.toHaveBeenCalledWith('credentials-updated', expect.anything());
+
+		emitSpy.mockRestore();
 	});
 
 	test('should update credential data for owner', async () => {

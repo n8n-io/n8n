@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { TransactionRunner } from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,7 +17,7 @@ describe('AgentRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		repository = new AgentRepository(mockDataSource as never);
+		repository = new AgentRepository(mockDataSource as never, mock<TransactionRunner>());
 	});
 
 	describe('findByIdAndProjectId', () => {
@@ -27,7 +28,7 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIdAndProjectId('agent-1', 'project-1');
 
 			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: 'agent-1', projectId: 'project-1' },
+				where: { id: 'agent-1', projectId: 'project-1', scope: 'project' },
 				relations: { activeVersion: true },
 			});
 			expect(result).toBe(agent);
@@ -43,14 +44,14 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findById', () => {
-		it('calls findOne with the id alone and the activeVersion relation', async () => {
+		it('calls findOne with the id, the project scope and the activeVersion relation', async () => {
 			const agent = mock<Agent>({ id: 'agent-1' });
 			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
 
 			const result = await repository.findById('agent-1');
 
 			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: 'agent-1' },
+				where: { id: 'agent-1', scope: 'project' },
 				relations: { activeVersion: true },
 			});
 			expect(result).toBe(agent);
@@ -74,7 +75,7 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIdInProjects('agent-1', ['project-1', 'project-2']);
 
 			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: 'agent-1', projectId: In(['project-1', 'project-2']) },
+				where: { id: 'agent-1', projectId: In(['project-1', 'project-2']), scope: 'project' },
 				relations: { activeVersion: true },
 			});
 			expect(result).toBe(agent);
@@ -89,11 +90,11 @@ describe('AgentRepository', () => {
 			const result = await repository.findByProjectId('project-1');
 
 			expect(repository.find).toHaveBeenCalledWith({
-				where: { projectId: 'project-1' },
+				where: { projectId: 'project-1', scope: 'project' },
 				relations: { activeVersion: true },
 				order: { updatedAt: 'DESC' },
 			});
-			expect(result).toBe(agents);
+			expect(result).toEqual(agents);
 		});
 
 		it('returns an empty array when the project has no agents', async () => {
@@ -138,10 +139,11 @@ describe('AgentRepository', () => {
 				'agent.availableInMCP',
 				'agent.updatedAt',
 			]);
-			expect(mockQb.where).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
+			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
 				projectIds: ['project-1'],
 			});
-			expect(mockQb.andWhere).not.toHaveBeenCalled();
+			expect(mockQb.andWhere).toHaveBeenCalledTimes(1);
 			expect(mockQb.take).not.toHaveBeenCalled();
 		});
 
@@ -151,7 +153,8 @@ describe('AgentRepository', () => {
 
 			await repository.findSummariesByProjectIds(null);
 
-			expect(mockQb.where).not.toHaveBeenCalled();
+			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
+			expect(mockQb.andWhere).not.toHaveBeenCalled();
 		});
 
 		it('pushes all filters and the limit into the query', async () => {
@@ -208,7 +211,8 @@ describe('AgentRepository', () => {
 				sortBy: 'name:asc',
 			} as never);
 
-			expect(mockQb.where).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
+			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
 				projectIds: ['project-1'],
 			});
 			expect(mockQb.skip).toHaveBeenCalledWith(0);
@@ -225,7 +229,11 @@ describe('AgentRepository', () => {
 				take: 25,
 			} as never);
 
-			expect(mockQb.where).not.toHaveBeenCalled();
+			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
+			expect(mockQb.andWhere).not.toHaveBeenCalledWith(
+				'agent.projectId IN (:...projectIds)',
+				expect.anything(),
+			);
 		});
 
 		it('applies the name search filter', async () => {
@@ -315,15 +323,122 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('findChatReachableById', () => {
+		const makeSingleQb = (result: Agent | null = null) => ({
+			leftJoinAndSelect: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			andWhere: vi.fn().mockReturnThis(),
+			getOne: vi.fn().mockResolvedValue(result),
+		});
+
+		it('returns null without querying when projectIds is empty', async () => {
+			const createQueryBuilder = vi.spyOn(repository, 'createQueryBuilder');
+
+			const result = await repository.findChatReachableById('agent-1', []);
+
+			expect(result).toBeNull();
+			expect(createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('filters by id and the availableInChat predicate, joining project and activeVersion', async () => {
+			const agent = mock<Agent>({ id: 'agent-1' });
+			const mockQb = makeSingleQb(agent);
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			const result = await repository.findChatReachableById('agent-1', ['project-1']);
+
+			expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith('agent.activeVersion', 'activeVersion');
+			expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith('agent.project', 'project');
+			expect(mockQb.where).toHaveBeenCalledWith('agent.id = :id', { id: 'agent-1' });
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
+				projectIds: ['project-1'],
+			});
+			expect(mockQb.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining('json_each'),
+				expect.objectContaining({ n8nChatType: 'n8n_chat' }),
+			);
+			expect(result).toBe(agent);
+		});
+
+		it('omits the project filter when project access is global', async () => {
+			const mockQb = makeSingleQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findChatReachableById('agent-1', null);
+
+			expect(mockQb.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining('json_each'),
+				expect.anything(),
+			);
+			expect(mockQb.andWhere).not.toHaveBeenCalledWith(
+				'agent.projectId IN (:...projectIds)',
+				expect.anything(),
+			);
+		});
+	});
+
 	describe('findMcpAvailabilityCandidates', () => {
-		it('omits the where clause when all agents are requested', async () => {
+		it('filters only on the project scope when all agents are requested', async () => {
 			const find = vi.spyOn(repository, 'find').mockResolvedValue([]);
 
 			await repository.findMcpAvailabilityCandidates({ all: true });
 
 			expect(find).toHaveBeenCalledWith({
 				select: ['id', 'projectId', 'availableInMCP'],
+				where: { scope: 'project' },
 			});
+		});
+	});
+
+	describe('findWithIntegrationType', () => {
+		const makeQb = (rows: unknown[]) => ({
+			select: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			getMany: vi.fn().mockResolvedValue(rows),
+		});
+
+		it('pre-filters in SQL on the quoted type and selects only id and integrations', async () => {
+			const mockQb = makeQb([]);
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findWithIntegrationType('whatsapp');
+
+			expect(mockQb.select).toHaveBeenCalledWith(['agent.id', 'agent.integrations']);
+			expect(mockQb.where).toHaveBeenCalledWith(
+				expect.stringContaining('CAST(agent.integrations AS TEXT) LIKE :pattern'),
+				{ pattern: '%"whatsapp"%' },
+			);
+		});
+
+		it('escapes LIKE metacharacters in the type', async () => {
+			const mockQb = makeQb([]);
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findWithIntegrationType('my_type%');
+
+			expect(mockQb.where).toHaveBeenCalledWith(expect.any(String), {
+				pattern: '%"my\\_type\\%"%',
+			});
+		});
+
+		it('keeps only agents with an exactly matching integration type', async () => {
+			const whatsAppAgent = {
+				id: 'agent-whatsapp',
+				integrations: [
+					{ type: 'telegram', credentialId: 'cred-1' },
+					{ type: 'whatsapp', credentialId: 'cred-2' },
+				],
+			} as Agent;
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(
+				makeQb([
+					whatsAppAgent,
+					// The SQL pre-filter can match the string in another field.
+					{ id: 'agent-telegram', integrations: [{ type: 'telegram', credentialId: 'whatsapp' }] },
+					{ id: 'agent-null', integrations: null },
+				]) as never,
+			);
+
+			expect(await repository.findWithIntegrationType('whatsapp')).toEqual([whatsAppAgent]);
 		});
 	});
 

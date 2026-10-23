@@ -13,6 +13,15 @@ import type { Config, ToolDefinition } from './types';
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
 
+/**
+ * How long a session may go without a request before it is evicted, and how often to sweep.
+ * A session only ends on `transport.onclose`, which the SDK fires on an explicit HTTP DELETE —
+ * a client that simply goes away never sends one, so without this its BrowserConnection (and the
+ * browser it holds) would be retained for the lifetime of the process.
+ */
+const SESSION_IDLE_TTL_MS = 30 * 60 * 1000;
+const SESSION_SWEEP_INTERVAL_MS = 60 * 1000;
+
 function registerTools(server: McpServer, tools: ToolDefinition[]) {
 	for (const tool of tools) {
 		server.registerTool(
@@ -79,16 +88,54 @@ export async function startHttpTransport(opts: {
 	host: string;
 	port: number;
 	authToken: string;
+	/** Overridable for tests; defaults to SESSION_IDLE_TTL_MS / SESSION_SWEEP_INTERVAL_MS. */
+	sessionIdleTtlMs?: number;
+	sessionSweepIntervalMs?: number;
 }): Promise<{
 	httpServer: ReturnType<typeof createServer>;
 	activeConnections: Set<BrowserConnection>;
 }> {
-	const { config, host, port, authToken } = opts;
+	const {
+		config,
+		host,
+		port,
+		authToken,
+		sessionIdleTtlMs = SESSION_IDLE_TTL_MS,
+		sessionSweepIntervalMs = SESSION_SWEEP_INTERVAL_MS,
+	} = opts;
 	const sessions = new Map<string, StreamableHTTPServerTransport>();
 	const activeConnections = new Set<BrowserConnection>();
+	// Keyed by transport rather than by session id: a connection is created (and its browser
+	// reserved) as soon as a request arrives, which is BEFORE `onsessioninitialized` assigns an
+	// id -- one that never finishes initializing has no session id at all, and would otherwise
+	// never become reapable.
+	const lastActivityAt = new Map<StreamableHTTPServerTransport, number>();
+	const inFlightRequests = new Map<StreamableHTTPServerTransport, number>();
+
+	const trackRequest = (transport: StreamableHTTPServerTransport, res: ServerResponse) => {
+		lastActivityAt.set(transport, Date.now());
+		inFlightRequests.set(transport, (inFlightRequests.get(transport) ?? 0) + 1);
+
+		const onResponseClose = () => {
+			const inFlight = inFlightRequests.get(transport);
+			if (inFlight === undefined) return;
+			if (inFlight === 1) inFlightRequests.delete(transport);
+			else inFlightRequests.set(transport, inFlight - 1);
+
+			// A long-running request counts as activity when it completes. Do not let the
+			// next sweep evict it immediately just because it started before the TTL.
+			if (lastActivityAt.has(transport)) lastActivityAt.set(transport, Date.now());
+		};
+
+		res.once('close', onResponseClose);
+	};
 	const allowedHosts = buildAllowedHosts(host, port);
 
 	const httpServer = createServer((req, res) => {
+		// Let the OS detect clients that disappear without closing the TCP connection. An open
+		// SSE response otherwise stays in-flight forever and pins its browser session.
+		req.socket.setKeepAlive(true, 60_000);
+
 		// Reject any request that carries an Origin header. The transport has no
 		// browser clients; the only way an Origin header appears is from a
 		// fetch/XHR initiated by web content, which we never want to serve.
@@ -107,6 +154,7 @@ export async function startHttpTransport(opts: {
 		const existingTransport = sessionId ? sessions.get(sessionId) : undefined;
 
 		if (existingTransport) {
+			trackRequest(existingTransport, res);
 			void existingTransport.handleRequest(req, res);
 			return;
 		}
@@ -128,15 +176,25 @@ export async function startHttpTransport(opts: {
 			enableDnsRebindingProtection: allowedHosts !== undefined,
 			allowedHosts,
 			onsessioninitialized: (id) => {
+				// A sweep can fire while this request is still in flight and evict the transport
+				// before the SDK gets here. `lastActivityAt` doubles as the liveness registry
+				// (onclose removes the entry), so a missing entry means "already torn down" —
+				// registering the session now would resurrect a closed transport into `sessions`
+				// with no activity tracking behind it, i.e. an entry nothing can ever reap.
+				if (!lastActivityAt.has(transport)) return;
 				sessions.set(id, transport);
 			},
 		});
+		lastActivityAt.set(transport, Date.now());
 
 		transport.onclose = () => {
 			if (transport.sessionId) sessions.delete(transport.sessionId);
+			lastActivityAt.delete(transport);
+			inFlightRequests.delete(transport);
 			activeConnections.delete(connection);
 			void connection.shutdown();
 		};
+		trackRequest(transport, res);
 
 		const mcpServer = new McpServer({ name: 'n8n-browser', version: '1.0.0' });
 		registerTools(mcpServer, tools);
@@ -146,8 +204,33 @@ export async function startHttpTransport(opts: {
 		});
 	});
 
-	await new Promise<void>((resolve) => {
+	// Evict sessions no client has touched for a while. `unref` so this timer never keeps the
+	// process (or a test run) alive on its own.
+	const sweeper = setInterval(() => {
+		const cutoff = Date.now() - sessionIdleTtlMs;
+		for (const [transport, seenAt] of [...lastActivityAt]) {
+			if ((inFlightRequests.get(transport) ?? 0) > 0) continue;
+			if (seenAt > cutoff) continue;
+			// `transport.close()` fires onclose, which removes the session, drops the connection
+			// from activeConnections and shuts the browser down -- same teardown path as an
+			// explicit client DELETE, so the cleanup logic lives in exactly one place.
+			void transport.close();
+		}
+	}, sessionSweepIntervalMs);
+	sweeper.unref();
+	httpServer.on('close', () => clearInterval(sweeper));
+
+	await new Promise<void>((resolve, reject) => {
+		// Without an `error` handler a failed bind (EADDRINUSE, EACCES on a privileged port…)
+		// never settles this promise, so the caller hangs forever instead of reporting why the
+		// server did not come up.
+		const onError = (error: Error) => {
+			clearInterval(sweeper);
+			reject(error);
+		};
+		httpServer.once('error', onError);
 		httpServer.listen(port, host, () => {
+			httpServer.removeListener('error', onError);
 			console.debug(`n8n-browser MCP server listening on http://${host}:${port}`);
 			resolve();
 		});

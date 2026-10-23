@@ -47,11 +47,20 @@
         "domain": {
             "type": "string"
         },
+        "FamilyName": {
+            "type": "string"
+        },
         "FullyQualifiedName": {
+            "type": "string"
+        },
+        "GivenName": {
             "type": "string"
         },
         "Id": {
             "type": "string"
+        },
+        "IsProject": {
+            "type": "boolean"
         },
         "Job": {
             "type": "boolean"
@@ -117,7 +126,10 @@
         },
         "Taxable": {
             "type": "boolean"
+        },
+        "V4IDPseudonym": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

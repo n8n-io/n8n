@@ -22,6 +22,7 @@ import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { NodeTypes } from '@/node-types';
 import { WorkflowRunner } from '@/workflow-runner';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 export const DEFAULT_EXECUTE_NODE_TIMEOUT_MS = 30_000;
 export const MAX_EXECUTE_NODE_TIMEOUT_MS = 60_000;
@@ -86,6 +87,7 @@ export class ExecuteNodeService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	async run(user: User, request: ExecuteNodeRequest): Promise<ExecuteNodeResult> {
@@ -98,6 +100,7 @@ export class ExecuteNodeService {
 		await this.checkCredentialAccess(user, credentials);
 
 		const node = this.buildNode(request, credentials);
+		this.deprecatedNodesValidationService.validateOnCreate([node]);
 		const timeoutMs = Math.min(
 			request.timeoutMs ?? DEFAULT_EXECUTE_NODE_TIMEOUT_MS,
 			MAX_EXECUTE_NODE_TIMEOUT_MS,

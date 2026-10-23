@@ -1,6 +1,11 @@
 <script lang="ts" setup>
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 import { ref, type Ref } from 'vue';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { useClaudeCreateMenu } from '@/experiments/surfaceMcpToClaudeTrialUsers/useClaudeCreateMenu';
+import claudeStyles from '@/experiments/surfaceMcpToClaudeTrialUsers/createMenu.module.scss';
+import ClaudeLogo from '@/experiments/surfaceMcpToClaudeTrialUsers/ClaudeLogo.vue';
+// EOF Experiment cleanup
 import { I18nT } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import {
@@ -15,6 +20,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { PROTECTED_INSTANCE_DOCS_URL } from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
@@ -56,6 +62,12 @@ const {
 	upgradeLabel,
 	hasPermissionToCreateProjects,
 } = useGlobalEntityCreation();
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+const { claudeMenu, claudeAppendSlotName, selectItem, trackOpen } = useClaudeCreateMenu(
+	menu,
+	handleMenuSelect,
+);
+// EOF Experiment cleanup
 </script>
 
 <template>
@@ -78,10 +90,7 @@ const {
 					<template #content>
 						<I18nT keypath="readOnlyEnv.tooltip" scope="global">
 							<template #link>
-								<N8nLink
-									to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
-									size="small"
-								>
+								<N8nLink :to="PROTECTED_INSTANCE_DOCS_URL" size="small">
 									{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
 								</N8nLink>
 							</template>
@@ -95,13 +104,15 @@ const {
 				</N8nTooltip>
 			</N8nLogo>
 		</RouterLink>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): keep the dropdown; restore :menu="menu" and @select="handleMenuSelect". Remove submenu-class and the button @click="trackOpen". -->
 		<N8nNavigationDropdown
 			v-if="!hideCreate"
 			ref="createBtn"
 			data-test-id="universal-add"
-			:menu="menu"
+			:menu="claudeMenu"
+			:submenu-class="claudeStyles.claudeMenu"
 			:teleport="true"
-			@select="handleMenuSelect"
+			@select="selectItem"
 		>
 			<N8nIconButton
 				class="n8n-button--highlight"
@@ -110,7 +121,13 @@ const {
 				icon="plus"
 				icon-size="large"
 				aria-label="Add new item"
+				@click="trackOpen"
 			/>
+			<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+			<template #[claudeAppendSlotName]
+				><ClaudeLogo :class="claudeStyles.claudeMenuIcon"
+			/></template>
+			<!-- EOF Experiment cleanup -->
 			<template #[createWorkflowsAppendSlotName]>
 				<N8nTooltip
 					v-if="sourceControlStore.preferences.branchReadOnly"
@@ -149,7 +166,7 @@ const {
 						size="xsmall"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						v-else
 						:size="'mini'"
 						:class="$style.upgradeButton"
@@ -202,6 +219,8 @@ const {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus' as focus;
+
 .header {
 	display: flex;
 	align-items: center;
@@ -224,6 +243,11 @@ const {
 
 .logo {
 	margin-right: auto;
+	padding-inline-start: var(--spacing--3xs);
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
 }
 
 .readOnlyEnvironmentIcon {

@@ -17,6 +17,7 @@ import type {
 	RunOutputSink,
 	RunServices,
 } from '../../types/runtime/agent-loop';
+import { withPromptSizeBreakdown } from './prompt-size-usage';
 import { RuntimeContextBuilder, type StaticLoopContext } from './runtime-context';
 import {
 	extractSettledToolCalls,
@@ -61,6 +62,7 @@ import { AgentMessageList, type SerializedMessageList } from '../model/message-l
 import { createModelTokenCounter } from '../model/model-token-counter';
 import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
+import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
@@ -69,6 +71,7 @@ import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
+import { buildToolMap } from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -83,6 +86,36 @@ export type {
 } from '../../types/runtime/agent-runtime';
 
 const MAX_LOOP_ITERATIONS = 100;
+
+function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): boolean {
+	return batch.results.some(
+		({ toolName, toolEntry }) => toolMap.get(toolName)?.endsTurn?.(toolEntry.output) === true,
+	);
+}
+
+/**
+ * A resumed batch holds only the calls that were pending, so the calls that
+ * settled before the suspension are read back from their assistant message.
+ */
+function resumedTurnEnds(
+	messages: readonly AgentMessage[],
+	resumedToolCallId: string,
+	toolMap: Map<string, BuiltTool>,
+): boolean {
+	const calls = messages
+		.flatMap((message) => ('content' in message ? [message.content] : []))
+		.find((content) =>
+			content.some((c) => c.type === 'tool-call' && c.toolCallId === resumedToolCallId),
+		);
+	return (
+		calls?.some(
+			(c) =>
+				c.type === 'tool-call' &&
+				c.state === 'resolved' &&
+				toolMap.get(c.toolName)?.endsTurn?.(c.output) === true,
+		) ?? false
+	);
+}
 
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
 const MAX_EMPTY_TURN_RETRIES = 2;
@@ -164,7 +197,8 @@ export class AgentRuntime {
 	private toolExecutor: ToolCallExecutor;
 	private activeSkills?: ActiveSkills;
 
-	constructor(config: AgentRuntimeConfig) {
+	constructor(runtimeConfig: AgentRuntimeConfig) {
+		const config = activateSkillDependencyTools(runtimeConfig);
 		this.config = config;
 		// Keep full tool results when the memory backend cannot persist active skill IDs.
 		if (config.skillSource && (!config.memory || config.memory.skillState)) {
@@ -177,7 +211,7 @@ export class AgentRuntime {
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
-		if (config.deferredTools && config.deferredTools.length > 0) {
+		if (!config.nativeToolDeferral && config.deferredTools && config.deferredTools.length > 0) {
 			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
 				...config.toolSearch,
 				// Let the discovery tools recognize the always-available toolset, so a
@@ -507,9 +541,11 @@ export class AgentRuntime {
 
 		const list = await this.restoreCheckpointMessages(state);
 
-		const tool = this.context
-			.getCurrentTools(state.persistence)
-			.find((t) => t.name === toolCall.toolName);
+		// A skill dependency loads a deferred tool without a `load_tool` record, and
+		// skills restore only when the loop starts. Accept any registered deferred tool.
+		const tool =
+			buildToolMap(this.context.getCurrentTools(state.persistence)).get(toolCall.toolName) ??
+			this.deferredToolManager?.getTool(toolCall.toolName);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
@@ -687,11 +723,7 @@ export class AgentRuntime {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
-			// oxlint-disable-next-line typescript/no-deprecated
-			...(options?.onStepEnd || options?.onStepFinish
-				? // oxlint-disable-next-line typescript/no-deprecated
-					{ onStepEnd: options.onStepEnd ?? options.onStepFinish }
-				: {}),
+			...(options?.onStepEnd ? { onStepEnd: options.onStepEnd } : {}),
 			repairToolCall: async (options) => {
 				return await fixToolCall(
 					{
@@ -741,6 +773,7 @@ export class AgentRuntime {
 			threadId: options.persistence.threadId,
 			resourceId: options.persistence.resourceId,
 			titleConfig: this.config.titleGeneration,
+			telemetry: this.telemetry.resolve(options),
 			agentModel: this.config.model,
 			modelFetch: this.config.modelFetch,
 			turnDelta: list.turnDelta(),
@@ -938,7 +971,7 @@ export class AgentRuntime {
 		state: LoopState,
 		pendingResume: PendingResume,
 	): Promise<ToolBatchSettlement<T>> {
-		const { toolMap } = this.context.buildToolLoopContext(
+		const { toolMap } = await this.context.buildToolLoopContext(
 			ctx.staticContext.aiProviderTools,
 			ctx.options?.persistence,
 			ctx.options?.executionCounter,
@@ -959,6 +992,10 @@ export class AgentRuntime {
 		if (settlement.suspended) return settlement;
 		// Resumed tool results form a new observation boundary before the next model call.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
+		if (resumedTurnEnds(ctx.list.messages(), pendingResume.resumeToolCallId, toolMap)) {
+			state.lastFinishReason = 'stop';
+			state.reachedStopCondition = true;
+		}
 		return settlement;
 	}
 
@@ -1007,16 +1044,18 @@ export class AgentRuntime {
 			state.iterationCount + 1,
 		);
 		if (settlement.suspended) return settlement;
-		await this.completeToolTurn(ctx, state, turn);
+		const stop = endsTurn(batch, toolMap);
+		await this.completeToolTurn(ctx, state, turn, { stepCheckpoint: !stop });
+		if (stop) {
+			state.lastFinishReason = 'stop';
+			state.reachedStopCondition = true;
+		}
 		return settlement;
 	}
 
 	private async prepareModelCall(ctx: PreparedLoopContext) {
 		const { list, options, abortScope, staticContext } = ctx;
-		for (const toolName of this.activeSkills?.toolDependencies() ?? []) {
-			this.deferredToolManager?.load(toolName);
-		}
-		const tools = this.context.buildToolLoopContext(
+		const tools = await this.context.buildToolLoopContext(
 			staticContext.aiProviderTools,
 			options?.persistence,
 			options?.executionCounter,
@@ -1027,6 +1066,7 @@ export class AgentRuntime {
 			list,
 			tools,
 			instructionProviderOptions: ctx.instructionProviderOptions,
+			providerOptions: staticContext.providerOptions,
 			hostVolatileInstructions,
 			activeSkills: this.activeSkills,
 		});
@@ -1038,7 +1078,7 @@ export class AgentRuntime {
 			hasTools: options?.toolsEnabled !== false && tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
-			providerOptions: staticContext.providerOptions,
+			providerOptions: prompt.providerOptions,
 			outputSpec: staticContext.outputSpec,
 			maxOutputTokens: staticContext.maxOutputTokens,
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),
@@ -1101,7 +1141,7 @@ export class AgentRuntime {
 		state: LoopState,
 		turn: ModelTurnResult,
 	): void {
-		state.totalUsage = mergeUsage(state.totalUsage, turn.usage);
+		state.totalUsage = mergeUsage(state.totalUsage, withPromptSizeBreakdown(turn.usage));
 		incrementTokenCountFromUsage(ctx.options?.executionCounter, turn.usage);
 		sink.reportUsage(state.totalUsage);
 	}
@@ -1169,11 +1209,14 @@ export class AgentRuntime {
 		ctx: PreparedLoopContext,
 		state: LoopState,
 		turn: ModelTurnResult,
+		// A step checkpoint resumes at the next model call, which a run that
+		// ends here must not make.
+		{ stepCheckpoint }: { stepCheckpoint: boolean },
 	): Promise<void> {
 		this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(ctx.list.responseDelta()));
 		// All tools have settled. Observe before the next call and its checkpoint.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
-		if (ctx.options?.stepCheckpoints) {
+		if (stepCheckpoint && ctx.options?.stepCheckpoints) {
 			await this.persistStepCheckpoint(
 				ctx.list,
 				state.totalUsage,

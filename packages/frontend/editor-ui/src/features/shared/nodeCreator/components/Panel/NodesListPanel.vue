@@ -252,7 +252,7 @@ function onBackButton() {
 						:class="$style.backButton"
 						@click="onBackButton"
 					>
-						<N8nIcon :class="$style.backButtonIcon" icon="arrow-left" :size="22" />
+						<N8nIcon :class="$style.backButtonIcon" icon="arrow-left" size="large" />
 					</button>
 					<NodeIcon
 						v-if="activeViewStack.nodeIcon"
@@ -356,7 +356,9 @@ function onBackButton() {
 	background: transparent;
 	border: none;
 	cursor: pointer;
-	padding: var(--spacing--2xs) var(--spacing--xs) 0 0;
+	display: inline-flex;
+	align-items: center;
+	padding: 0 var(--spacing--xs) 0 0;
 }
 
 .backButtonIcon {
@@ -416,7 +418,7 @@ function onBackButton() {
 }
 .header {
 	font-size: var(--font-size--lg);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--sm);
 
 	padding: var(--spacing--sm) var(--spacing--sm);
@@ -428,7 +430,7 @@ function onBackButton() {
 }
 .title {
 	line-height: 24px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--lg);
 	margin: 0;
 

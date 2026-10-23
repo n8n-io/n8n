@@ -18,19 +18,34 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'oauth-server', instanceTypes: ['main', 'webhook', 'worker'] })
 export class OAuthServerModule implements ModuleInterface {
 	async init() {
+		const { instanceType } = Container.get(InstanceSettings);
+
 		// Only import controllers in the main process, since the webhook/worker processes don't run an HTTP server and don't need them.
-		if (Container.get(InstanceSettings).instanceType === 'main') {
+		if (instanceType === 'main') {
 			await import('./oauth.controller.js');
 			await import('./oauth-consent.controller.js');
 			await import('./oauth-clients.controller.js');
 		}
 
+		// Main and webhook processes mint access tokens (Form and Chat flows mint
+		// on webhook processes), so they load the private signing key. Workers only
+		// verify, and load the public keys on first use.
+		if (instanceType === 'main' || instanceType === 'webhook') {
+			const { OAuthSigningKeyService } = await import('./oauth-signing-key.service.js');
+			await Container.get(OAuthSigningKeyService).initialize();
+		}
+
+		// The JWKS endpoint is served by main only.
+		if (instanceType === 'main') {
+			const { JwksRegistry } = await import('@n8n/backend-services/auth');
+			const { OAuthSigningJwksProvider } = await import('./oauth-signing-jwks.provider.js');
+			Container.get(JwksRegistry).register(Container.get(OAuthSigningJwksProvider));
+		}
+
 		// Register the token service as the OAuth token verifier provider, so
 		// protected-resource modules verify bearer tokens through the core
 		// `OAuthTokenVerifierProxy` instead of importing this module.
-		const { OAuthTokenVerifierProxy } = await import(
-			'@/services/oauth-token-verifier-proxy.service.js'
-		);
+		const { OAuthTokenVerifierProxy } = await import('@n8n/backend-services/auth');
 		const { OAuthTokenService } = await import('./oauth-token.service.js');
 		Container.get(OAuthTokenVerifierProxy).registerProvider(Container.get(OAuthTokenService));
 
@@ -39,9 +54,21 @@ export class OAuthServerModule implements ModuleInterface {
 		);
 		registerProtectedResourceResolvers();
 
-		const { OAuth2FlowProxy } = await import('@/services/oauth2-flow-proxy.service.js');
+		const { OAuth2FlowProxy } = await import('@n8n/backend-services/auth');
 		const { OAuth2FlowService } = await import('./oauth-flow.service.js');
 		Container.get(OAuth2FlowProxy).registerProvider(Container.get(OAuth2FlowService));
+
+		// Last: discovery reads this server's metadata in process as soon as it registers, and
+		// that metadata lists the scopes of the resolvers registered above.
+		const { LocalAuthorizationServerProxy } = await import(
+			'@/modules/inbound-auth-core/local-authorization-server.proxy.js'
+		);
+		const { OAuthServerLocalAuthorizationServer } = await import(
+			'./oauth-local-authorization-server.js'
+		);
+		await Container.get(LocalAuthorizationServerProxy).registerProvider(
+			Container.get(OAuthServerLocalAuthorizationServer),
+		);
 	}
 
 	async entities() {

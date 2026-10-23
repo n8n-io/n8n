@@ -99,6 +99,10 @@ const workflowSettingsWritePublicSchema = z
 			.enum(['none', 'non-manual', 'manual-only', 'all'])
 			.optional()
 			.openapi(workflowSettingsFieldDocs.redactionPolicy),
+		redactCallerExecutions: z
+			.boolean()
+			.optional()
+			.openapi(workflowSettingsFieldDocs.redactCallerExecutions),
 		availableInMCP: z.boolean().optional().openapi(workflowSettingsFieldDocs.availableInMCP),
 		customTelemetryTags: z.array(customTelemetryTagPublicSchema).optional(),
 		credentialResolverId: z
@@ -156,6 +160,7 @@ export const workflowWritePublicShape = {
 	id: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.id),
 	name: z.string().openapi(workflowCreateFieldDocs.name),
 	active: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.active),
+	activeVersionId: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.activeVersionId),
 	createdAt: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.createdAt),
 	updatedAt: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.updatedAt),
 	isArchived: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.isArchived),

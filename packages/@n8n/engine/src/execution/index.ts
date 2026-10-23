@@ -16,6 +16,7 @@ export type {
 	ResumeCause,
 	StepSlots,
 	StepStatus,
+	SeededSteps,
 	TriggerOutputs,
 	WaitDeclaration,
 	WorkflowDocument,

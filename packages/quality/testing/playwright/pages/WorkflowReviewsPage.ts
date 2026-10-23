@@ -2,15 +2,15 @@ import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
-/** The review inbox at `/reviews`: request list, activity feed and decision popover. */
+/** Reviews in the shared Inbox, with their activity and decisions. */
 export class WorkflowReviewsPage extends BasePage {
 	async goto(): Promise<void> {
-		await this.page.goto('/reviews');
-		await this.page.getByTestId('workflow-review-requests-view').waitFor({ state: 'visible' });
+		await this.page.goto('/inbox');
+		await this.page.getByTestId('inbox-view').waitFor({ state: 'visible' });
 	}
 
 	getRequestRow(title: string): Locator {
-		return this.page.getByTestId('workflow-review-request-row').filter({ hasText: title });
+		return this.page.getByTestId('inbox-row').filter({ hasText: title });
 	}
 
 	getSelectedRequestTitle(): Locator {

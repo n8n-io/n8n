@@ -7,7 +7,7 @@ test.use(chatHubTestConfig);
 test.describe(
 	'Workflow agent',
 	{
-		annotation: [{ type: 'owner', description: 'Chat' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test('manage workflow agents @auth:admin', async ({ n8n, agentWorkflow }) => {

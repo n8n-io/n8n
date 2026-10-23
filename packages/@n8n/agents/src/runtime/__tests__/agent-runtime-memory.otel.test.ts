@@ -34,7 +34,8 @@ function makeGenerateSuccess(text = 'OK') {
 	return {
 		finishReason: 'stop',
 		usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
-		response: { messages: [{ role: 'assistant', content: [{ type: 'text', text }] }] },
+		responseMessages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
+		finalStep: { providerMetadata: undefined },
 		toolCalls: [],
 	};
 }
@@ -52,9 +53,8 @@ function makeStreamSuccess(text = 'OK') {
 		stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text }]),
 		finishReason: Promise.resolve('stop'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
-		response: Promise.resolve({
-			messages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
-		}),
+		responseMessages: Promise.resolve([{ role: 'assistant', content: [{ type: 'text', text }] }]),
+		finalStep: Promise.resolve({ providerMetadata: undefined }),
 		toolCalls: Promise.resolve([]),
 	};
 }

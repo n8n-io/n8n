@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 /**
  * The durable scheduler's shared vocabulary: schedule definitions, recurrence
  * kinds, misfire handling and the task lifecycle.
@@ -122,6 +121,9 @@ export type ScheduledJobMisfirePolicy =
  */
 export const DEFAULT_MISFIRE_GRACE_SECONDS = 60;
 
+/** Longest delay, in seconds, a Node.js timer honors. Node fires a longer one after about 1 ms. */
+export const MAX_TIMER_DELAY_SECONDS = Math.floor((2 ** 31 - 1) / 1000);
+
 /**
  * Where a scheduled task is in its lifecycle, from waiting to run to a final outcome.
  */
@@ -166,6 +168,9 @@ export const ScheduledJobOwnerType = {
 	/** A published agent. `ownerId` is the agent id, `ownerMemberId` is the scheduled task id. */
 	Agent: 'agent',
 } as const;
+
+/** Longest accepted job `name`. */
+export const SCHEDULED_JOB_NAME_MAX_LENGTH = 255;
 
 /** Longest accepted `ownerType`. */
 export const SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH = 32;

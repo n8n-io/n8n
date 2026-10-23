@@ -1,20 +1,20 @@
 import {
 	intervalFromMilliseconds,
 	intervalFromSeconds,
-	resolveSystemTaskSchedule,
+	resolveSystemTask,
 	type SystemTask,
-	type SystemTaskSchedule,
 } from '../system-task';
-import type { SystemTaskPlacement } from '../system-task-placement';
+import type { SystemTaskTarget, SystemTaskSchedule } from '../types';
+
+const resolveSystemTaskSchedule = (task: SystemTask) => resolveSystemTask(task).schedule;
 
 const taskWith = (
 	schedule: SystemTaskSchedule,
-	placement: SystemTaskPlacement = { scope: 'cluster', durable: false },
+	target: SystemTaskTarget = { scope: 'cluster', leaderTimer: {} },
 ): SystemTask => ({
 	name: 'test-task',
 	schedule,
-	effects: 'idempotent',
-	placement,
+	target,
 	run: async () => {},
 });
 
@@ -48,9 +48,12 @@ it.each([
 	expect(schedule).toEqual({ kind: 'interval', intervalSeconds: expected });
 });
 
-it('should round a sub-second interval of a durable task to one second', () => {
+it('should round a sub-second interval of a scheduler task to one second', () => {
 	const schedule = resolveSystemTaskSchedule(
-		taskWith({ kind: 'interval', intervalSeconds: 0.5 }, { scope: 'cluster', durable: true }),
+		taskWith(
+			{ kind: 'interval', intervalSeconds: 0.5 },
+			{ scope: 'cluster', scheduler: { retryOnFailure: true } },
+		),
 	);
 
 	expect(schedule).toEqual({ kind: 'interval', intervalSeconds: 1 });

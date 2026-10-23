@@ -24,16 +24,18 @@ import {
 	AgentMessageRepository,
 } from './repositories/agent-message.repository';
 import { AgentRepository } from './repositories/agent.repository';
-import type {
-	AgentExecutionAdmission,
-	AgentQueuedMessage,
-	AgentQueueDispatch,
-	QueuedIntegrationMessage,
-	QueuedUserChatMessage,
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
+import {
+	acceptsSteering,
+	type AgentExecutionAdmission,
+	type AgentQueuedMessage,
+	type AgentQueueDispatch,
+	type QueuedIntegrationMessage,
+	type QueuedUserChatMessage,
 } from './types/agent-queued-message';
 import {
-	canContinueThreadInN8nChat,
-	canContinueThreadInPreview,
+	canContinueThreadOnSurface,
+	chatSurfaceForKind,
 	type AgentSessionMode,
 } from './utils/agent-thread-access';
 import { buildInboundUserMessage, readInboundUserMessage } from './utils/inbound-attachments';
@@ -75,6 +77,7 @@ export class AgentMessageQueueService {
 		private readonly messages: AgentMessageRepository,
 		private readonly steering: AgentMessageSteeringService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
 	/** Save a pending message. It is durably accepted when the transaction commits. */
@@ -89,15 +92,21 @@ export class AgentMessageQueueService {
 		},
 		onInserted?: (queueId: string) => void,
 	): Promise<{ status: 'accepted'; item: AgentMessageQueue } | { status: 'duplicate' }> {
-		await this.settingsService.assertEnabled();
-		const agent = await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
-		if (!agent) throw new UserError('Agent not found');
 		const { payload } = input;
+
+		// Only the system kind reaches a system agent. Project lookups never return instance agents.
+		const agent =
+			payload.kind === 'system'
+				? this.systemAgents.get(input.agentId)
+				: await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
+		if (!agent) throw new UserError('Agent not found');
+		await this.settingsService.assertEnabledFor(input.agentId);
+
 		const messageId = queuedMessageId(input.agentId, input.threadId, payload);
 		let item: AgentMessageQueue;
 		try {
 			item = await this.txRunner.run({}, async (ctx) => {
-				await this.settingsService.assertEnabled(ctx);
+				await this.settingsService.assertEnabledFor(input.agentId, ctx);
 				await this.executionService.prepareThread(
 					{
 						...input,
@@ -151,6 +160,7 @@ export class AgentMessageQueueService {
 			const {
 				modelMessage,
 				author: inputAuthor,
+				integrationOrigin,
 				platformThreadId,
 				messageContext: fullContext,
 				...integrationDispatch
@@ -169,15 +179,25 @@ export class AgentMessageQueueService {
 				integrationConnectionId,
 				platformMessageId,
 				platformThreadId,
+				...(integrationOrigin ? { integration: integrationOrigin } : {}),
 			};
 		} else {
-			queueDispatch = { kind: dispatch.kind };
+			queueDispatch = {
+				kind: dispatch.kind,
+				...(dispatch.options ? { options: dispatch.options } : {}),
+			};
+			if (dispatch.hidden) origin = { source, hidden: true };
 		}
 		const input = await this.messages.createInput(
 			{ id: messageId, threadId, resourceId, content, modelContent, author, origin },
 			ctx,
 		);
 		return await this.repository.enqueue(threadId, input.id, queueDispatch, ctx);
+	}
+
+	/** Whether a message waits in the thread queue, hidden machine turns included. */
+	async hasQueuedMessages(threadId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.repository.hasItems(threadId, ctx);
 	}
 
 	async listPending(input: PendingMessageScope): Promise<AgentChatQueueResponse> {
@@ -187,12 +207,12 @@ export class AgentMessageQueueService {
 		if (!thread) return { items: [], steerableExecutionId: null };
 		await this.assertUserChatAccess(thread, input);
 		const items = await this.repository.listPending(thread.id);
-		// Only Preview executions accept steering.
-		const steerable = kind === 'preview' ? await this.steering.findEligible(thread) : null;
+		const steerable = acceptsSteering(kind) ? await this.steering.findEligible(thread) : null;
 		return {
 			steerableExecutionId: steerable?.id ?? null,
 			items: items
-				.filter((item) => item.payload.kind === kind)
+				// Hidden machine turns are not user messages.
+				.filter((item) => item.payload.kind === kind && !isHidden(item))
 				// Show accepted steers first. Keep future turns in their saved queue order.
 				.sort(
 					(a, b) =>
@@ -214,7 +234,7 @@ export class AgentMessageQueueService {
 			if (!thread) throw new NotFoundError('Session not found');
 			await this.assertUserChatAccess(thread, input, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== input.kind)
+			if (item?.payload.kind !== input.kind || isHidden(item))
 				throw new NotFoundError('Queued message not found');
 			if (
 				item.executionId !== null ||
@@ -241,7 +261,7 @@ export class AgentMessageQueueService {
 			if (!thread) throw new NotFoundError('Session not found');
 			await this.assertUserChatAccess(thread, input, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== input.kind)
+			if (item?.payload.kind !== input.kind || isHidden(item))
 				throw new NotFoundError('Queued message not found');
 			if (item.executionId !== null) throw new ConflictError('This message has already started');
 			if (item.steeringExecutionId !== null)
@@ -264,16 +284,18 @@ export class AgentMessageQueueService {
 		queueId: string;
 		targetQueueId: string;
 		expectedQueueIds: string[];
+		kind: QueuedUserChatMessage['kind'];
 	}): Promise<void> {
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(input.threadId, ctx);
 			if (!thread) throw new NotFoundError('Session not found');
-			await this.assertUserChatAccess(thread, { ...input, kind: 'preview' }, ctx);
+			await this.assertUserChatAccess(thread, input, ctx);
 			const moved = await this.repository.movePending(
 				thread.id,
 				input.queueId,
 				input.targetQueueId,
 				input.expectedQueueIds,
+				input.kind,
 				ctx,
 			);
 			if (!moved) {
@@ -290,13 +312,14 @@ export class AgentMessageQueueService {
 		userId: string;
 		queueId: string;
 		executionId: string;
+		kind: QueuedUserChatMessage['kind'];
 	}): Promise<void> {
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(input.threadId, ctx);
 			if (!thread) throw new NotFoundError('Session not found');
-			await this.assertUserChatAccess(thread, { ...input, kind: 'preview' }, ctx);
+			await this.assertUserChatAccess(thread, input, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== 'preview')
+			if (item?.payload.kind !== input.kind || isHidden(item))
 				throw new ConflictError('This message is no longer available');
 			const execution = await this.steering.findEligible(thread, ctx);
 			if (
@@ -323,9 +346,13 @@ export class AgentMessageQueueService {
 		if (
 			thread.projectId !== input.projectId ||
 			thread.agentId !== input.agentId ||
-			!(input.kind === 'n8n_chat'
-				? canContinueThreadInN8nChat(thread, input.userId, source)
-				: canContinueThreadInPreview(thread, input.userId, source))
+			!canContinueThreadOnSurface(
+				chatSurfaceForKind(input.kind),
+				thread,
+				input.userId,
+				source,
+				this.systemAgents.has(thread.agentId),
+			)
 		) {
 			throw new NotFoundError('Session not found');
 		}
@@ -345,17 +372,21 @@ export class AgentMessageQueueService {
 	): Promise<ClaimedAgentMessage | null> {
 		let steeringChanged = false;
 		const claimed = await this.txRunner.run({}, async (ctx) => {
-			if (!(await this.settingsService.getEnabled(ctx))) return null;
+			// Read the setting before the thread lock. Disabling Agents locks the setting
+			// and then the threads, so the opposite order can deadlock on PostgreSQL.
+			const enabled = await this.settingsService.getEnabled(ctx);
 			const thread = await this.threadRepository.lockById(threadId, ctx);
 			if (!thread) return null;
+
+			if (!enabled && this.settingsService.appliesTo(thread.agentId)) return null;
+
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);
 			if (await this.isBlocked(thread, ctx)) return null;
 			const active = await this.repository.findActive(threadId, ctx);
 			if (active?.executionId)
 				await this.repository.removeActive(threadId, active.executionId, ctx);
 			const item = await this.repository.findHead(threadId, ctx);
-			if (!item || item.steeringExecutionId !== null || !(await canConsume(item, thread, ctx)))
-				return null;
+			if (item?.steeringExecutionId !== null || !(await canConsume(item, thread, ctx))) return null;
 			const payload = this.restoreInput(item);
 			const recording = this.recordingFor(item, thread, payload);
 			await this.threadRepository.bumpUpdatedAt(threadId, ctx);
@@ -445,6 +476,7 @@ export class AgentMessageQueueService {
 			sessionMode: 'existing',
 			queueItemId: item.id,
 			previewChat: item.payload.kind === 'preview',
+			acceptsSteering: acceptsSteering(item.payload.kind),
 			userMessage: payload.message,
 			resourceId: payload.resourceId,
 			source: item.message.origin?.source ?? undefined,
@@ -458,7 +490,8 @@ export class AgentMessageQueueService {
 			...readInboundUserMessage(item.message.content),
 			resourceId: item.message.resourceId,
 		};
-		if (item.payload.kind !== 'integration') return { ...item.payload, ...input };
+		if (item.payload.kind !== 'integration')
+			return { ...item.payload, ...input, ...(isHidden(item) ? { hidden: true } : {}) };
 		if (!item.message.author) throw new UnexpectedError('Queued integration input has no author');
 		const { origin } = item.message;
 		if (!origin?.source || !origin.integrationConnectionId || !origin.platformThreadId)
@@ -478,4 +511,8 @@ export class AgentMessageQueueService {
 				.message,
 		};
 	}
+}
+
+function isHidden(item: AgentMessageQueue): boolean {
+	return item.message.origin?.hidden === true;
 }

@@ -1,8 +1,14 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import { execFile, execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 
 import { startSelfSignedGitServer, TLS_VERIFICATION_ERROR } from '@test/self-signed-git-server';
 
+import { PromotionsGitService } from '../promotions-git.service';
 import { buildHttpsGitConfig } from '../promotions-git.utils';
 
 describe('Promotion Git credentials', () => {
@@ -74,5 +80,111 @@ describe('Promotion Git TLS trust', () => {
 		process.env.GIT_SSL_CAINFO = server.certPath;
 
 		await expect(listRemote()).resolves.toBeUndefined();
+	});
+});
+
+describe('Promotion Git checkout', () => {
+	let tmpRoot: string;
+
+	beforeEach(async () => {
+		tmpRoot = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-checkout-'));
+	});
+
+	afterEach(async () => {
+		await rm(tmpRoot, { recursive: true, force: true });
+	});
+
+	it.each([
+		{ authType: 'token', username: 'git-user', password: 'git-password' },
+		{ authType: 'ssh-key', privateKey: 'unused-private-key' },
+	] as const)('bootstraps a checkout from an empty remote ($authType)', async (credentials) => {
+		const remotePath = path.join(tmpRoot, 'remote.git');
+		execFileSync('git', ['init', '--bare', '--quiet', remotePath]);
+		const remoteUrl = pathToFileURL(remotePath).href;
+		const rootFolder = path.join(tmpRoot, 'checkout');
+		const paths = {
+			rootFolder,
+			repositoryFolder: path.join(rootFolder, 'repository'),
+			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
+			sshDir: path.join(rootFolder, 'ssh'),
+		};
+
+		await new PromotionsGitService(mockLogger()).clone({
+			remoteUrl,
+			credentials,
+			paths,
+			branchName: 'main',
+			environmentId: 'environment-1',
+		});
+
+		const git = (...args: string[]) =>
+			execFileSync('git', ['-C', paths.repositoryFolder, ...args], { encoding: 'utf8' }).trim();
+		expect(git('remote', 'get-url', 'origin')).toBe(remoteUrl);
+		expect(git('symbolic-ref', '--short', 'HEAD')).toBe('main');
+	});
+});
+
+describe('Promotion Git reads at a commit', () => {
+	let tmpRoot: string;
+
+	beforeEach(async () => {
+		tmpRoot = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-tree-'));
+	});
+
+	afterEach(async () => {
+		await rm(tmpRoot, { recursive: true, force: true });
+	});
+
+	const limits = {
+		maxEntries: 5,
+		maxEntryBytes: 1024,
+		maxUncompressedBytes: 1024,
+		maxPathLength: 100,
+	};
+
+	it.each([
+		{ limit: 'file count', lowered: { maxEntries: 1 }, error: 'Package contains too many entries' },
+		{
+			limit: 'path length',
+			lowered: { maxPathLength: 5 },
+			error: 'Package entry path exceeds the maximum allowed length',
+		},
+	])('rejects a package over the $limit limit, as Apply does', async ({ lowered, error }) => {
+		const repositoryFolder = path.join(tmpRoot, 'repository');
+		const git = (...args: string[]) =>
+			execFileSync('git', ['-C', repositoryFolder, ...args], { encoding: 'utf8' }).trim();
+		execFileSync('git', ['init', '--quiet', '--initial-branch=main', repositoryFolder]);
+		await mkdir(path.join(repositoryFolder, 'n8n'), { recursive: true });
+		await writeFile(path.join(repositoryFolder, 'n8n', 'a.json'), '{}');
+		await writeFile(path.join(repositoryFolder, 'n8n', 'b.json'), '{}');
+		git('add', '--all');
+		git(
+			'-c',
+			'user.name=n8n',
+			'-c',
+			'user.email=n8n@example.com',
+			'commit',
+			'--quiet',
+			'-m',
+			'Add',
+		);
+
+		await expect(
+			new PromotionsGitService(mockLogger()).readTreeAtCommit({
+				remoteUrl: pathToFileURL(repositoryFolder).href,
+				credentials: { authType: 'token', username: 'git-user', password: 'git-password' },
+				paths: {
+					rootFolder: tmpRoot,
+					repositoryFolder,
+					nextRepositoryFolder: path.join(tmpRoot, 'next'),
+					sshDir: path.join(tmpRoot, 'ssh'),
+				},
+				branchName: 'main',
+				environmentId: 'environment-1',
+				commitSha: git('rev-parse', 'HEAD'),
+				directory: 'n8n',
+				limits: { ...limits, ...lowered },
+			}),
+		).rejects.toThrow(error);
 	});
 });

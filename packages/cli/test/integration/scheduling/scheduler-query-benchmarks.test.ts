@@ -512,6 +512,7 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 						scheduledFor: when,
 						runAt: when,
 						maxAttempts: 1,
+						timeoutSeconds: 300,
 					};
 				});
 				const inserted = await dataSource.transaction(
@@ -544,6 +545,7 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 					fireAt: null,
 					nextRunAt: secondsFromNow(3600),
 					maxAttempts: 1,
+					timeoutSeconds: 300,
 					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 					misfireGraceSeconds: 60,
 					concurrencyLimit: null,

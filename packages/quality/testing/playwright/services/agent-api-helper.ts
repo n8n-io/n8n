@@ -1,4 +1,5 @@
 import type {
+	AgentBackgroundJobsResponse,
 	AgentChatMessageDto,
 	AgentChatMessagesResponse,
 	AgentChatQueueResponse,
@@ -103,6 +104,32 @@ export class AgentApiHelper {
 			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
 		);
 		if (!response.ok()) throw new TestError(`Failed to read chat: ${await response.text()}`);
+		return (await response.json()).data;
+	}
+
+	async backgroundTasks(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+	): Promise<AgentBackgroundJobsResponse> {
+		const response = await this.api.request.get(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/background-tasks`,
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to read background tasks: ${await response.text()}`);
+		return (await response.json()).data;
+	}
+
+	async stopBackgroundTasks(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+	): Promise<AgentBackgroundJobsResponse> {
+		const response = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/background-tasks/stop`,
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to stop background tasks: ${await response.text()}`);
 		return (await response.json()).data;
 	}
 

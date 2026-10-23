@@ -25,7 +25,13 @@ import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgent
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
+import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import type { AgentResource } from '@/features/agents/types';
+import {
+	increasedBudgetConfig,
+	type BudgetAmountField,
+} from '@/features/agents/utils/budget-config';
+import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import { N8nEmptyState } from '@n8n/design-system';
@@ -44,7 +50,8 @@ const {
 	sendSession,
 } = useAgentSessionLangSmithExport();
 const rootStore = useRootStore();
-const { config: localConfig, fetchConfig } = useAgentConfig();
+const toast = useToast();
+const { config: localConfig, fetchConfig, updateConfig } = useAgentConfig();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -101,6 +108,8 @@ const triggerIcon = computed((): IconName => {
 			return 'slack';
 		case 'instance-ai':
 			return 'sparkles';
+		case 'n8n_chat_production':
+			return 'message-square';
 		default:
 			return 'bolt-filled';
 	}
@@ -115,6 +124,9 @@ const triggerLabel = computed((): string => {
 	// Instance AI runs are labelled with the product name, not the source id.
 	if (source === 'instance-ai') {
 		return i18n.baseText('agentSessions.origin.instanceAi');
+	}
+	if (source === 'n8n_chat_production') {
+		return i18n.baseText('agentSessions.origin.n8nChat');
 	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
@@ -304,22 +316,9 @@ function formatDate(fullDate: string): string {
 	return `${date} ${time}`;
 }
 
-function closeTimeline() {
-	/**
-	 * Get the last visited route from Vue router so we return to the correct starting point (e.g Preview)
-	 * If no state is available, it's most likey because the link was visited directly.
-	 * Here we fallback to default Agents view.
-	 */
-	const previousRoute = router.options.history.state.back;
-	const resolvedPreviousRoute =
-		typeof previousRoute === 'string' ? router.resolve(previousRoute) : null;
-
-	if (resolvedPreviousRoute?.matched.length) {
-		router.back();
-		return;
-	}
-	void router.push(agentExecutionsRoute.value);
-}
+// Returns to the correct starting point (e.g. Preview) when there is one;
+// otherwise falls back to the agent's executions tab, e.g. for a direct visit.
+const closeTimeline = useBackOrFallback(agentExecutionsRoute);
 
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id === projectId.value) {
@@ -342,6 +341,29 @@ async function onDeletePreviewSession(sessionId: string) {
 	const deleted = await deleteSession(sessionId);
 	if (!deleted || sessionId !== threadId.value) return;
 	void router.replace(agentExecutionsRoute.value);
+}
+
+/**
+ * Raises a budget cap from the timeline's budget notice. Only a persisted cap
+ * counts: a stale or failed save would stop the next run against the old cap.
+ */
+async function onIncreaseBudget(payload: {
+	field: BudgetAmountField;
+	amount: number;
+}): Promise<boolean> {
+	const current = localConfig.value;
+	if (!canUpdate.value || !current) return false;
+	const update = increasedBudgetConfig(current, payload.field, payload.amount);
+	if (!update) return false;
+	try {
+		const result = await updateConfig(projectId.value, agentId.value, { ...current, ...update });
+		if (result.stale) return false;
+		localConfig.value = result.config;
+		return true;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.budget'));
+		return false;
+	}
 }
 
 function togglePreview() {
@@ -386,6 +408,7 @@ function viewPreviewTrace() {
 				:project-id="projectId"
 				:agent-id="agentId"
 				:thread-id="threadId"
+				:increase-budget="canUpdate ? onIncreaseBudget : undefined"
 				@loaded="onPanelLoaded"
 			/>
 			<div v-else :class="$style.newSessionEmpty">

@@ -79,7 +79,7 @@ export interface WorkflowFolderConflict {
 	sourceWorkflowId: string;
 	existingWorkflowId: string;
 	existingParentFolderId: string | null;
-	targetFolderId: string;
+	targetFolderId: string | null;
 	name: string;
 }
 
@@ -126,7 +126,7 @@ export type PersistedWorkflowOutcome =
 			item: PersistedWorkflowPlanItem;
 			/**
 			 * Why this workflow must stay inactive even if the policy wants it published — it depends on
-			 * a credential that was stubbed, or a node type this instance does not have.
+			 * a credential that was stubbed or created incomplete, or a node type this instance does not have.
 			 */
 			blockedFromPublish?: WorkflowPublishingBlockedReason;
 	  };

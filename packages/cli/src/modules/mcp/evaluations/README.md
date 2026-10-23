@@ -49,8 +49,6 @@ N8N_INSTANCE_AI_MODEL_API_KEY=sk-ant-...
 N8N_EVAL_EMAIL=eval@example.com
 N8N_EVAL_PASSWORD=...
 
-CONTEXT7_API_KEY=ctx7sk-...
-
 # Optional — record this run to LangSmith. Pair with --dataset and
 # --baseline-prefix (see "Record runs in LangSmith") so MCP runs never touch
 # the Instance AI dataset or baseline.
@@ -332,8 +330,8 @@ dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instanc
   --output-dir /tmp/n8n-mcp-cohort-eval
 ```
 
-The eval CLI reads `N8N_EVAL_EMAIL`, `N8N_EVAL_PASSWORD`, model keys, and
-Context7 settings from `.env.mcp-evals`.
+The eval CLI reads `N8N_EVAL_EMAIL`, `N8N_EVAL_PASSWORD`, and model keys from
+`.env.mcp-evals`.
 
 ## Evaluate one generated test case
 

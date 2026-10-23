@@ -13,7 +13,12 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-import { ExecutionBaseError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	ExecutionBaseError,
+	hasPolicyRefusalMarker,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
@@ -137,6 +142,9 @@ export async function httpRequestWithAuthentication(
 		requestSent = true;
 		return await Container.get(OutboundHttp).requests().request(requestOptions);
 	} catch (error) {
+		// Keep the policy reason visible instead of reporting it as a failed API call.
+		if (hasPolicyRefusalMarker(error)) throw error;
+
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
 		if (
@@ -316,7 +324,7 @@ export async function requestWithAuthentication(
 			}
 			throw error;
 		} catch (error) {
-			if (error instanceof ExecutionBaseError) throw error;
+			if (error instanceof ExecutionBaseError || hasPolicyRefusalMarker(error)) throw error;
 
 			throw new NodeApiError(this.getNode(), error);
 		}

@@ -440,6 +440,74 @@ describe('PublicationStatusReporter', () => {
 			'v-2',
 			operationContext,
 		);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'partial registration failed', nodeId: 'b' },
+			},
+			userIds,
+		);
+	});
+
+	test('failed with several failed triggers pushes no nodeId', async () => {
+		const errorMessage =
+			'Triggers failed to activate: "Schedule": cron unavailable; "Cron": bad cron';
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error: new Error(errorMessage),
+			triggerStatuses: [
+				{
+					nodeId: 'b',
+					nodeName: 'Schedule',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'cron unavailable',
+				},
+				{
+					nodeId: 'c',
+					nodeName: 'Cron',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'bad cron',
+				},
+			],
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'workflowFailedToActivate', data: { workflowId: 'wf-1', errorMessage } },
+			userIds,
+		);
+	});
+
+	// A policy refusal marks every trigger failed with the policy error, so the
+	// one failed row is not the node whose own error this is.
+	test('failed by policy with one failed row pushes no nodeId', async () => {
+		const error = new PolicyViolationError([
+			{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+		]);
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			triggerStatuses: [
+				{
+					nodeId: 'b',
+					nodeName: 'Schedule',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message },
+			},
+			userIds,
+		);
 	});
 
 	test('partial marks partial_success, writes all trigger rows, and pushes the failures without registering activation errors', async () => {

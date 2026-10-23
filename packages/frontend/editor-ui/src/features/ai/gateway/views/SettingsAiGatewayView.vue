@@ -192,7 +192,7 @@ onMounted(async () => {
 			/>
 		</header>
 
-		<div :class="$style.usageTableContainer">
+		<div>
 			<div v-if="showUsageSectionSkeleton">
 				<N8nLoading :loading="true" variant="h1" :class="$style.usageTableHeader" />
 				<N8nLoading :loading="true" variant="p" :rows="5" :shrink-last="false" />
@@ -205,7 +205,7 @@ onMounted(async () => {
 					<div :class="$style.usageTableActions">
 						<N8nTooltip :content="i18n.baseText('settings.n8nConnect.usage.refresh.tooltip')">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon-only
 								size="small"
 								icon="refresh-cw"
@@ -226,6 +226,7 @@ onMounted(async () => {
 					:headers="tableHeaders"
 					:items="entries"
 					:items-length="entries.length"
+					:pagination="false"
 					:loading="isLoading && isAppending"
 					:item-value="rowId"
 					:row-props="(row) => (isRowClickable(row) ? { class: $style.clickableRow } : {})"
@@ -306,12 +307,6 @@ onMounted(async () => {
 	margin-bottom: var(--spacing--5xs);
 }
 
-.usageTableContainer {
-	:global(.table-pagination) {
-		display: none;
-	}
-}
-
 .usageTableHeader {
 	display: flex;
 	justify-content: space-between;
@@ -344,7 +339,7 @@ onMounted(async () => {
 	padding: var(--spacing--5xs) var(--spacing--2xs);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	background-color: var(--color--foreground);
 	color: var(--color--text);
 }

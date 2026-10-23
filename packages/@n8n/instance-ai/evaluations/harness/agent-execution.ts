@@ -20,6 +20,7 @@ import type { EvalLogger } from './logger';
 import { writeScenarioVerificationSnapshot, type VerificationArtifact } from './scenario-execution';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import {
+	throwIfFrameworkIssue,
 	throwIfServerBudgetStop,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
@@ -170,6 +171,8 @@ export async function executeAgentScenario(
 	buildTrace?: BuildTrace,
 	outputDir?: string,
 	seedContext?: ScenarioSeedContext,
+	/** The build's project. Absent: the client's personal project. */
+	projectId?: string,
 ): Promise<ExecutionScenarioResult> {
 	if (seedContext) {
 		await reseedScenarioTables(
@@ -182,10 +185,10 @@ export async function executeAgentScenario(
 	}
 
 	const execStart = Date.now();
-	const projectId = await client.getPersonalProjectId();
+	const agentProjectId = projectId ?? (await client.getPersonalProjectId());
 	let evalResult = await client.executeAgentWithLlmMock(
 		agentId,
-		projectId,
+		agentProjectId,
 		scenario.dataSetup,
 		timeoutMs,
 	);
@@ -203,13 +206,14 @@ export async function executeAgentScenario(
 		await delay(500 * attempt);
 		evalResult = await client.executeAgentWithLlmMock(
 			agentId,
-			projectId,
+			agentProjectId,
 			scenario.dataSetup,
 			timeoutMs,
 		);
 	}
 	// Killed for time, not by the builder — throw so the timeout path classifies it.
 	throwIfServerBudgetStop(evalResult);
+	throwIfFrameworkIssue(evalResult);
 
 	const execMs = Date.now() - execStart;
 
@@ -243,6 +247,7 @@ export async function executeAgentScenario(
 		result,
 		verificationResults,
 		verifierAttempts: verification.attempts,
+		verifierInput: { checklist: scenarioChecklist, artifact },
 		buildTrace,
 		logger,
 		outputDir,

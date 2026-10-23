@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -41,31 +40,18 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 vi.mock('../instanceAi.settings.api', () => ({
 	fetchSettings: vi.fn().mockResolvedValue(null),
 	updateSettings: vi.fn(),
-	fetchPreferences: vi.fn().mockResolvedValue({
-		credentialId: null,
-		credentialType: null,
-		credentialName: null,
-		modelName: 'gpt-4',
-		localGatewayDisabled: false,
-	}),
-	updatePreferences: vi.fn(),
 	fetchServiceCredentials: vi.fn().mockResolvedValue([]),
 	fetchInstanceModelCredentials: vi.fn().mockResolvedValue([]),
-}));
-
-vi.mock('../instanceAi.api', () => ({
-	createGatewayLink: vi.fn(),
-	getGatewayStatus: vi.fn(),
 }));
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { computerUseExperimentMock, contextPreferencesEnabledMock, routerPushMock } = vi.hoisted(
+const { contextPreferencesEnabledMock, contextSkillsEnabledMock, routerPushMock } = vi.hoisted(
 	() => ({
-		computerUseExperimentMock: vi.fn(),
 		contextPreferencesEnabledMock: vi.fn(() => true),
+		contextSkillsEnabledMock: vi.fn(() => true),
 		routerPushMock: vi.fn(),
 	}),
 );
@@ -75,12 +61,9 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: () => ({ push: routerPushMock }),
 }));
 
-vi.mock('@/experiments/instanceAiComputerUse', () => ({
-	useInstanceAiComputerUseExperiment: computerUseExperimentMock,
-}));
-
 vi.mock('@/features/settings/context/context.utils', () => ({
 	isContextPreferencesEnabled: () => contextPreferencesEnabledMock(),
+	isContextSkillsEnabled: () => contextSkillsEnabledMock(),
 }));
 
 const renderComponent = createComponentRenderer(SettingsInstanceAiView);
@@ -100,6 +83,10 @@ async function selectOption(select: HTMLElement, label: string) {
 	await fireEvent.click(option!);
 }
 
+function setPlanName(settingsStore: ReturnType<typeof useSettingsStore>, planName: string) {
+	settingsStore.settings.license = { ...settingsStore.settings.license, planName };
+}
+
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
 	instanceAi: FrontendModuleSettings['instance-ai'],
@@ -116,7 +103,6 @@ describe('SettingsInstanceAiView', () => {
 		vi.clearAllMocks();
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
-		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		fetchCredentialTypesSpy = vi
@@ -180,7 +166,6 @@ describe('SettingsInstanceAiView', () => {
 				modelEnvConfigured: false,
 				sandboxEnvConfigured: false,
 				searchEnvConfigured: false,
-				localGatewayDisabled: false,
 			},
 		});
 	});
@@ -301,6 +286,30 @@ describe('SettingsInstanceAiView', () => {
 		});
 	});
 
+	describe('page header', () => {
+		it('shows the limited enterprise support badge next to the title on enterprise', () => {
+			setPlanName(settingsStore, 'Enterprise');
+
+			const { getByRole, getByTestId } = renderComponent();
+			const title = getByRole('heading', { name: 'settings.n8nAgent' });
+			expect(title.parentElement).toContainElement(
+				getByTestId('n8n-agent-enterprise-readiness-badge'),
+			);
+		});
+
+		it('does not show the limited enterprise support badge on other plans', () => {
+			setPlanName(settingsStore, 'Business');
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('n8n-agent-enterprise-readiness-badge')).toBeNull();
+		});
+
+		it('does not show a Preview badge', () => {
+			const { queryByText } = renderComponent();
+			expect(queryByText('Preview')).toBeNull();
+		});
+	});
+
 	describe('status row', () => {
 		it('renders the enabled status action', () => {
 			store.$patch({
@@ -316,6 +325,38 @@ describe('SettingsInstanceAiView', () => {
 			const { getByTestId, getByText } = renderComponent();
 			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
 			expect(getByText('settings.n8nAgent.status.enabled')).toBeVisible();
+		});
+
+		it('renders a pulsing success dot when enabled and fully configured', () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelCredentialId: 'openai-id',
+					modelEnvConfigured: true,
+					sandboxEnabled: true,
+					sandboxEnvConfigured: true,
+					searchDisabled: true,
+				},
+			});
+			const { getByTestId } = renderComponent();
+			const dot = getByTestId('n8n-agent-status-dot');
+			expect(dot.className).toContain('success');
+			expect(dot.className).toContain('pulse');
+		});
+
+		it('renders a static warning dot when setup is required', () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelCredentialId: 'openai-id',
+					modelName: null,
+					sandboxEnvConfigured: true,
+				},
+			});
+			const { getByTestId } = renderComponent();
+			const dot = getByTestId('n8n-agent-status-dot');
+			expect(dot.className).toContain('warning');
+			expect(dot.className).not.toContain('pulse');
 		});
 
 		it('shows setup required for a credential-only legacy model assignment', () => {
@@ -358,6 +399,15 @@ describe('SettingsInstanceAiView', () => {
 			const { getByText, queryByText } = renderComponent();
 			expect(getByText('settings.n8nAgent.empty.title')).toBeVisible();
 			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
+		});
+
+		it('shows the limited enterprise support badge in the empty state', () => {
+			setPlanName(settingsStore, 'Enterprise');
+			store.$patch({ settings: { ...store.settings!, enabled: false } });
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-enterprise-readiness-badge')).toBeVisible();
 		});
 
 		it('hides content when disabled via moduleSettings fallback', () => {
@@ -445,9 +495,11 @@ describe('SettingsInstanceAiView', () => {
 			expect(modelInput).not.toBeDisabled();
 
 			await fireEvent.click(modelInput);
-			await fireEvent.click(await findByText('claude-opus-5 · instanceAi.onboarding.recommended'));
+			await fireEvent.click(
+				await findByText('claude-opus-5-5 · instanceAi.onboarding.recommended'),
+			);
 			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
-			await waitFor(() => expect(store.draft).toMatchObject({ modelName: 'claude-opus-5' }));
+			await waitFor(() => expect(store.draft).toMatchObject({ modelName: 'claude-opus-5-5' }));
 		});
 
 		it('shows fully environment-managed model and sandbox rows without edit affordances', async () => {
@@ -561,21 +613,6 @@ describe('SettingsInstanceAiView', () => {
 		it('shows the browser use toggle', () => {
 			const { getByTestId } = renderComponent();
 			expect(getByTestId('n8n-agent-browser-use-toggle')).toBeVisible();
-		});
-	});
-
-	describe('Computer use settings', () => {
-		it('shows the computer use toggle when the experiment is enabled', () => {
-			const { getByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-computer-use-toggle')).toBeVisible();
-		});
-
-		it('hides the computer use toggle when the experiment is disabled', () => {
-			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('n8n-agent-computer-use-toggle')).toBeNull();
 		});
 	});
 
@@ -738,6 +775,22 @@ describe('SettingsInstanceAiView', () => {
 
 			expect(queryByTestId('n8n-agent-permission-group-preferences')).toBeNull();
 			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
+		});
+
+		it('shows the Skills group while the skills hub is on', () => {
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-permission-group-skills').textContent).toContain(
+				'settings.n8nAgent.permissions.group.default',
+			);
+		});
+
+		it('hides the Skills group while the skills hub is off', () => {
+			contextSkillsEnabledMock.mockReturnValueOnce(false);
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-permission-group-skills')).toBeNull();
 		});
 
 		it('summarises the untouched Preferences group as the default', () => {

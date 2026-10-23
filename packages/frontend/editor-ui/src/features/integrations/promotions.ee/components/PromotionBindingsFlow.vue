@@ -11,7 +11,10 @@ import type {
 	SourceChangedResult,
 } from '../promotions.types';
 
-const props = defineProps<{ open: boolean; blockedResult: BlockedApplyResult }>();
+const props = defineProps<{
+	open: boolean;
+	blockedResult: BlockedApplyResult;
+}>();
 const emit = defineEmits<{
 	'update:open': [open: boolean];
 	applied: [result: AppliedResult];

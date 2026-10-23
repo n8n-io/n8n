@@ -500,6 +500,7 @@ export type SimplifiedNodeType = Pick<
 	| 'codex'
 	| 'defaults'
 	| 'outputs'
+	| 'deprecated'
 > & {
 	tag?: NodeCreatorTag;
 	isNew?: boolean;
@@ -735,6 +736,8 @@ export interface NewCredentialsModal extends ModalState {
 	hideAskAssistant?: boolean;
 	appendToBody?: boolean;
 	usageScope?: 'project' | 'instance';
+	/** The tab the modal opens on, for a surface that sends the user to one part of it. */
+	initialTab?: 'connection' | 'sharing' | 'details';
 	/** Behavior for the Instance AI credential setup-help button, supplied by the
 	 * surface that opened the modal (an editor capability, or the credentials list).
 	 * Resolves to whether the credential modal should close (false keeps it open for

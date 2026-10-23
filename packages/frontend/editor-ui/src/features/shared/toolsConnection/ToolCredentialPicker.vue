@@ -2,9 +2,11 @@
 import { computed, inject, nextTick, ref, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	type ToolConnectionCredentialAdapter,
 	type ToolConnectionItem,
 	type ToolCredentialRef,
 } from './types';
@@ -15,10 +17,13 @@ const props = withDefaults(
 		credentials: ToolCredentialRef[];
 		connectVariant?: 'solid' | 'outline';
 		teleported?: boolean;
+		adapter?: ToolConnectionCredentialAdapter | null;
+		showConnectedIcon?: boolean;
 	}>(),
 	{
 		connectVariant: 'solid',
 		teleported: false,
+		showConnectedIcon: true,
 	},
 );
 
@@ -31,7 +36,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const adapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+const injectedAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+const adapter = computed(() => props.adapter ?? injectedAdapter);
 
 const isOpen = ref(false);
 const searchQuery = ref('');
@@ -43,14 +49,38 @@ function open(): void {
 
 defineExpose({ open });
 
+// Gateway credits have no stored credential, so they get their own row; the
+// lists below cover the own credential options only.
+const aiGatewayRef = computed(() => props.credentials.find((ref) => ref.aiGateway));
+const ownRefs = computed(() => props.credentials.filter((ref) => !ref.aiGateway));
+const isAiGatewayOnly = computed(
+	() => aiGatewayRef.value !== undefined && ownRefs.value.length === 0,
+);
+const isAiGatewaySelected = computed(
+	() => aiGatewayRef.value?.credentialId === AI_GATEWAY_MANAGED_TAG,
+);
+const aiGatewayLabel = i18n.baseText('aiGateway.credentialMode.n8nConnect.title');
+const showAiGatewayRow = computed(
+	() =>
+		aiGatewayRef.value !== undefined &&
+		aiGatewayLabel.toLowerCase().includes(searchQuery.value.trim().toLowerCase()),
+);
+
+function pickAiGateway(): void {
+	if (!aiGatewayRef.value) return;
+	emit('select-credential', props.item, aiGatewayRef.value.authType, AI_GATEWAY_MANAGED_TAG);
+	isOpen.value = false;
+}
+
 const selectedCredentialIds = computed(() =>
-	props.credentials.map((c) => c.credentialId).filter((id): id is string => Boolean(id)),
+	ownRefs.value.map((c) => c.credentialId).filter((id): id is string => Boolean(id)),
 );
 
 const availableCredentials = computed(() => {
-	if (!adapter) return [];
-	return props.credentials.flatMap((cred) =>
-		adapter.getCredentialsByType(cred.authType).map((c) => ({
+	const credentialAdapter = adapter.value;
+	if (!credentialAdapter) return [];
+	return ownRefs.value.flatMap((cred) =>
+		credentialAdapter.getCredentialsByType(cred.authType).map((c) => ({
 			id: c.id,
 			name: c.name,
 			authType: cred.authType,
@@ -60,9 +90,9 @@ const availableCredentials = computed(() => {
 });
 
 const selectedCredentialName = computed(() => {
-	for (const credentialRef of props.credentials) {
+	for (const credentialRef of ownRefs.value) {
 		if (!credentialRef.credentialId) continue;
-		const credential = adapter
+		const credential = adapter.value
 			?.getCredentialsByType(credentialRef.authType)
 			.find(({ id }) => id === credentialRef.credentialId);
 		if (credential) return credential.name;
@@ -71,6 +101,7 @@ const selectedCredentialName = computed(() => {
 });
 
 const statusLabel = computed(() => {
+	if (isAiGatewaySelected.value) return aiGatewayLabel;
 	if (selectedCredentialName.value) return selectedCredentialName.value;
 	if (props.item.status === 'connected') return i18n.baseText('tools.connection.action.connected');
 	if (props.item.status === 'disconnected')
@@ -102,7 +133,7 @@ function pickCredential(authType: string, credentialId: string) {
 }
 
 const creatableCredentials = computed(() =>
-	props.credentials.filter(
+	ownRefs.value.filter(
 		(credential, index, credentials) =>
 			credentials.findIndex(({ authType }) => authType === credential.authType) === index,
 	),
@@ -120,12 +151,12 @@ function createCredential(authType: string, source: 'direct' | 'dropdown') {
 			? creatableCredentials.value.map((credential) => credential.authType)
 			: undefined;
 
-	adapter?.openNewCredential(authType, props.item, credentialTypes);
+	adapter.value?.openNewCredential(authType, props.item, credentialTypes);
 	isOpen.value = false;
 }
 
 function editCredential(credentialId: string) {
-	adapter?.openExistingCredential(credentialId);
+	adapter.value?.openExistingCredential(credentialId);
 	isOpen.value = false;
 }
 </script>
@@ -139,9 +170,33 @@ function editCredential(credentialId: string) {
 		<N8nSpinner size="small" />
 		{{ i18n.baseText('tools.connection.action.connecting') }}
 	</span>
+	<span
+		v-else-if="isAiGatewayOnly && item.status === 'connected'"
+		:class="[$style.statusPill, $style.aiGatewayStatus]"
+		data-test-id="tool-credential-picker-ai-gateway-connected"
+	>
+		<N8nIcon
+			v-if="showConnectedIcon"
+			icon="check"
+			:size="12"
+			:class="$style.statusIconConnected"
+			aria-hidden="true"
+		/>
+		<span :class="$style.statusLabel">{{ aiGatewayLabel }}</span>
+	</span>
+	<N8nButton
+		v-else-if="isAiGatewayOnly && !hasToolConnection(item.status)"
+		:variant="connectVariant"
+		size="small"
+		data-test-id="tool-credential-picker-ai-gateway"
+		@click="pickAiGateway"
+	>
+		<span>{{ i18n.baseText('tools.connection.action.connect') }}</span>
+	</N8nButton>
 	<N8nPopover
 		v-else-if="
 			hasToolConnection(item.status) ||
+			aiGatewayRef !== undefined ||
 			availableCredentials.length > 0 ||
 			creatableCredentials.length > 1
 		"
@@ -177,7 +232,13 @@ function editCredential(credentialId: string) {
 				:class="$style.statusPill"
 				:data-test-id="`tool-credential-picker-trigger-${item.status}`"
 			>
-				<N8nIcon icon="check" :size="12" :class="$style.statusIconConnected" aria-hidden="true" />
+				<N8nIcon
+					v-if="showConnectedIcon"
+					icon="check"
+					:size="12"
+					:class="$style.statusIconConnected"
+					aria-hidden="true"
+				/>
 				<span :class="$style.statusLabel" :title="statusLabel">{{ statusLabel }}</span>
 				<N8nIcon icon="chevron-down" :size="12" />
 			</button>
@@ -208,7 +269,23 @@ function editCredential(credentialId: string) {
 				</N8nInput>
 			</div>
 			<ul :class="$style.list" data-test-id="tool-credential-picker-list">
-				<li v-if="filteredCredentials.length === 0" :class="$style.emptyRow">
+				<li
+					v-if="showAiGatewayRow"
+					:class="$style.row"
+					data-test-id="tool-credential-picker-ai-gateway-row"
+					@click="pickAiGateway"
+				>
+					<span :class="$style.aiGatewayRowLabel">
+						<N8nIcon icon="wallet" :size="14" aria-hidden="true" />
+						{{ aiGatewayLabel }}
+					</span>
+					<span :class="$style.rowActions">
+						<span :class="$style.rowCheck" aria-hidden="true">
+							<N8nIcon v-if="isAiGatewaySelected" icon="check" :size="14" />
+						</span>
+					</span>
+				</li>
+				<li v-if="filteredCredentials.length === 0 && !showAiGatewayRow" :class="$style.emptyRow">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('tools.connection.credentialPicker.noResults') }}
 					</N8nText>
@@ -361,6 +438,16 @@ function editCredential(credentialId: string) {
 			color: var(--color--text);
 		}
 	}
+}
+
+.aiGatewayStatus {
+	cursor: default;
+}
+
+.aiGatewayRowLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .rowLabel {

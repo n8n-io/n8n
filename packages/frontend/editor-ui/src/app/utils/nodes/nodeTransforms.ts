@@ -19,7 +19,10 @@ import {
 	traverseNodeParameters,
 } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import {
+	getCredentialOnlyNodeCredentialType,
+	isCredentialOnlyNodeType,
+} from '@/app/utils/credentialOnlyNodes';
 import {
 	getInactiveCredentials,
 	usesParameterSelectedCredentials,
@@ -220,7 +223,7 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 
 		if (isCredentialOnly) {
 			nodeData.type = HTTP_REQUEST_NODE_TYPE;
-			nodeData.extendsCredential = getCredentialTypeName(nodeType.name);
+			nodeData.extendsCredential = getCredentialOnlyNodeCredentialType(nodeType.name);
 		}
 
 		// Node-Type is known so we can save the parameters correctly

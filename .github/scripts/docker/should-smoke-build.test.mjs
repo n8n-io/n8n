@@ -8,9 +8,16 @@ import {
 	packageManagerChanged,
 } from './should-smoke-build.mjs';
 
-const workspace = ({ kafka = '1.9.1', vm = '^7.0.0', sentry = '10.70.0', allowVm = true } = {}) => `
+const workspace = ({
+	canvas = '1.0.11',
+	kafka = '1.9.1',
+	vm = '^7.0.0',
+	sentry = '10.70.0',
+	allowVm = true,
+} = {}) => `
 catalog:
   '@confluentinc/kafka-javascript': ${kafka}
+  '@napi-rs/canvas': ${canvas}
   '@sentry/core': ${sentry}
   isolated-vm: ${vm}
 
@@ -34,6 +41,10 @@ describe('isBumpOnly', () => {
 
 	it('accepts a package.json at any depth', () => {
 		assert.equal(isBumpOnly(['pnpm-workspace.yaml', 'packages/cli/package.json']), true);
+	});
+
+	it('forces a build for the nodes-base manifest', () => {
+		assert.equal(isBumpOnly(['packages/nodes-base/package.json']), false);
 	});
 
 	it('rejects a Dockerfile change', () => {
@@ -72,6 +83,11 @@ describe('nativePinsChanged', () => {
 
 	it('catches a native version bump', () => {
 		const { changed } = nativePinsChanged(workspace(), workspace({ vm: '^8.0.0' }));
+		assert.equal(changed, true);
+	});
+
+	it('catches an Edit Image native dependency bump', () => {
+		const { changed } = nativePinsChanged(workspace(), workspace({ canvas: '1.0.12' }));
 		assert.equal(changed, true);
 	});
 

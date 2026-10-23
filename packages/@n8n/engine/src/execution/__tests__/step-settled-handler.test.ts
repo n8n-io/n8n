@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { WorkflowGraph } from '../../graph';
+import type { StoredWorkflowGraph, WorkflowGraph } from '../../graph';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
@@ -46,7 +46,7 @@ const defaultSummaries = [
 ];
 
 function makeExecutionStore(
-	overrides: Partial<ExecutionRecord> = {},
+	overrides: Partial<Omit<ExecutionRecord, 'graph'>> & { graph?: WorkflowGraph } = {},
 	storeOverrides: Partial<ExecutionStore> = {},
 ): ExecutionStore {
 	const execution: ExecutionRecord = {
@@ -54,13 +54,13 @@ function makeExecutionStore(
 		workflowId: 'wf-1',
 		status: 'running',
 		mode: 'production',
-		graph,
 		workflow: {},
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		finishedAt: null,
 		...overrides,
+		graph: { seeded: [], ...(overrides.graph ?? graph) },
 	};
 	return {
 		createExecution: vi.fn(),
@@ -70,6 +70,7 @@ function makeExecutionStore(
 			.fn()
 			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
 		cancelExecution: vi.fn().mockResolvedValue(null),
+		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
 		...storeOverrides,
 	};
@@ -198,6 +199,82 @@ describe('StepSettledHandler', () => {
 			stepId: 'step-c',
 		});
 		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
+	});
+
+	describe('a seeded successor', () => {
+		/** The same graph, with b's outputs supplied by the caller. */
+		const seededGraph: StoredWorkflowGraph = { ...graph, seeded: ['b'] };
+		const seededOutputs = [[{ json: { seeded: true } }]];
+		const executionStore = () =>
+			makeExecutionStore(
+				{ graph: seededGraph },
+				{
+					loadSeededOutputs: vi
+						.fn()
+						.mockResolvedValue(
+							new Map([[stepKeyId({ nodeId: 'b', iteration: 0 }), seededOutputs]]),
+						),
+				},
+			);
+
+		it('is recorded completed with its outputs and announced settled, while the rest is queued', async () => {
+			const stepStore = makeStepStore();
+			const {
+				handler,
+				stepQueue,
+				orchestrationQueue,
+				executionStore: store,
+			} = makeHandler(stepStore, { executionStore: executionStore() });
+
+			await handler.handle(event);
+
+			expect(store.loadSeededOutputs).toHaveBeenCalledExactlyOnceWith('exec-1', [
+				{ nodeId: 'b', iteration: 0 },
+			]);
+			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+				{ nodeId: 'c', iteration: 0, status: 'queued' },
+				{ nodeId: 'b', iteration: 0, status: 'completed', outputs: seededOutputs },
+			]);
+			expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
+				type: 'step:ready',
+				executionId: 'exec-1',
+				stepId: 'step-c',
+			});
+			expect(orchestrationQueue.publish).toHaveBeenCalledExactlyOnceWith({
+				type: 'step:settled',
+				executionId: 'exec-1',
+				stepId: 'step-b',
+			});
+		});
+
+		it('is skipped like any other node when its inputs are dead, its outputs unused', async () => {
+			// a's slot 0 did not fire, and only that slot feeds b.
+			const stepStore = makeStepStore({}, {}, [
+				summary('trigger', 'completed', [true]),
+				summary('a', 'completed', [false, true]),
+			]);
+			const { handler, executionStore: store } = makeHandler(stepStore, {
+				executionStore: executionStore(),
+			});
+
+			await handler.handle(event);
+
+			expect(store.loadSeededOutputs).toHaveBeenCalledExactlyOnceWith('exec-1', []);
+			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+				{ nodeId: 'c', iteration: 0, status: 'queued' },
+				{ nodeId: 'b', iteration: 0, status: 'skipped' },
+			]);
+		});
+
+		it('fails loudly when the marked node has no stored outputs', async () => {
+			const stepStore = makeStepStore();
+			const { handler } = makeHandler(stepStore, {
+				executionStore: makeExecutionStore({ graph: seededGraph }),
+			});
+
+			await expect(handler.handle(event)).rejects.toMatchObject({ name: 'UnexpectedError' });
+			expect(stepStore.createSteps).not.toHaveBeenCalled();
+		});
 	});
 
 	it("plans the trigger's successors like any other node's", async () => {

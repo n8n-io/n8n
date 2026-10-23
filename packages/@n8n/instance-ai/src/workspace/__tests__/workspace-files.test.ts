@@ -1,3 +1,5 @@
+import { OperationalError } from 'n8n-workflow';
+
 import { isQuotaExhaustedError } from '../../stream/map-chunk';
 import type { WorkspaceFileTarget } from '../workspace-files';
 import { readWorkspaceFile, writeWorkspaceFile, writeWorkspaceFileMap } from '../workspace-files';
@@ -194,6 +196,89 @@ describe('workspace-files', () => {
 		expect(writes.get('/tmp/c.txt')).toBe('gamma');
 	});
 
+	it('logs each read with its transport and result', async () => {
+		const { target } = createWorkspaceTarget(new Map([['/tmp/found.json', '{}']]));
+		target.filesystem = { writeFile: vi.fn(async () => {}) };
+		const logger = createLogger();
+		const options = { logger, resourceLabel: 'Test file' };
+
+		await readWorkspaceFile(target, '/tmp/found.json', options);
+		await readWorkspaceFile(target, '/tmp/missing.json', options);
+
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Read workspace file',
+			expect.objectContaining({
+				resource: 'Test file',
+				path: '/tmp/found.json',
+				transport: 'command',
+				found: true,
+				bytes: 2,
+			}),
+		);
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Read workspace file',
+			expect.objectContaining({ path: '/tmp/missing.json', transport: 'command', found: false }),
+		);
+	});
+
+	it('logs the miss reason of a filesystem read', async () => {
+		const readFile = vi.fn(async () => await Promise.reject(new Error('ENOENT')));
+		const target: WorkspaceFileTarget = {
+			filesystem: { readFile, writeFile: vi.fn(async () => {}) },
+		};
+		const logger = createLogger();
+
+		await readWorkspaceFile(target, '/tmp/manifest.json', { logger });
+
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Read workspace file',
+			expect.objectContaining({
+				transport: 'filesystem',
+				found: false,
+				missReason: expect.stringContaining('ENOENT'),
+			}),
+		);
+	});
+
+	it('logs each write and a summary for batch writes', async () => {
+		const { target } = createWorkspaceTarget(new Map());
+		const logger = createLogger();
+		const options = { logger, resourceLabel: 'Test file' };
+
+		await writeWorkspaceFileMap(
+			target,
+			new Map([
+				['/tmp/b.txt', 'beta'],
+				['/tmp/c.txt', 'gamma'],
+			]),
+			options,
+		);
+
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Wrote workspace file',
+			expect.objectContaining({ path: '/tmp/b.txt', transport: 'filesystem', bytes: 4 }),
+		);
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Wrote workspace files',
+			expect.objectContaining({ resource: 'Test file', fileCount: 2, bytes: 9 }),
+		);
+	});
+
+	it('logs a write that used the command fallback', async () => {
+		const { target } = createWorkspaceTarget(new Map());
+		target.filesystem = {
+			writeFile: vi.fn(async () => await Promise.reject(new Error('permission denied'))),
+		};
+		const logger = createLogger();
+
+		await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', { logger, retryBackoffBaseMs: 1 });
+
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Wrote workspace file',
+			expect.objectContaining({ path: '/tmp/a.txt', transport: 'command-fallback' }),
+		);
+	});
+
 	it('retries filesystem writes on transient upstream errors', async () => {
 		const { target, writes } = createWorkspaceTarget(new Map());
 		const writeFile = vi
@@ -264,6 +349,20 @@ describe('workspace-files', () => {
 
 		expect(writeFile).toHaveBeenCalledTimes(3);
 		expect(executeCommand).toHaveBeenCalledTimes(3);
+	});
+
+	it('reports a failed write as an operational error at error level', async () => {
+		const writeFile = vi.fn(async () => await Promise.reject(new Error('permission denied')));
+		const executeCommand = vi.fn(async () => await Promise.reject(new Error('sandbox gone')));
+		const target: WorkspaceFileTarget = { filesystem: { writeFile }, sandbox: { executeCommand } };
+
+		const error = await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger: createLogger(),
+			retryBackoffBaseMs: 1,
+		}).catch((caught: unknown) => caught);
+
+		expect(error).toBeInstanceOf(OperationalError);
+		expect(error).toMatchObject({ level: 'error' });
 	});
 
 	it('keeps a classifiable primary quota error as cause when both write paths fail', async () => {
@@ -382,6 +481,9 @@ describe('workspace-files', () => {
 			'Knowledge base file filesystem write failed; used command fallback',
 			expect.objectContaining({ path: '/tmp/a.txt' }),
 		);
-		expect(logger.debug).not.toHaveBeenCalled();
+		expect(logger.debug).not.toHaveBeenCalledWith(
+			'Knowledge base file filesystem write failed; used command fallback',
+			expect.anything(),
+		);
 	});
 });

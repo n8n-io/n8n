@@ -37,7 +37,7 @@ describe('OutboundHttp.requests', () => {
 
 		expect(res).toEqual({ statusCode: 200, body: 'ok' });
 		expect(mockedHttpRequest).toHaveBeenCalledTimes(1);
-		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, expect.anything());
+		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, expect.anything(), undefined);
 	});
 
 	it('uses the container SSRF service as the bridge by default', async () => {
@@ -46,7 +46,7 @@ describe('OutboundHttp.requests', () => {
 
 		await client.request(REQUEST);
 
-		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, service);
+		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, service, undefined);
 	});
 
 	it('omits the bridge when the instance disables SSRF protection', async () => {
@@ -54,7 +54,7 @@ describe('OutboundHttp.requests', () => {
 
 		await client.request(REQUEST);
 
-		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined);
+		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined, undefined);
 	});
 
 	it('omits the bridge when SSRF protection is disabled', async () => {
@@ -62,7 +62,7 @@ describe('OutboundHttp.requests', () => {
 
 		await client.request(REQUEST);
 
-		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined);
+		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined, undefined);
 	});
 
 	describe('bound baseURL', () => {
@@ -77,6 +77,7 @@ describe('OutboundHttp.requests', () => {
 					baseURL: 'https://vault.test/v1/',
 				}),
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -88,6 +89,7 @@ describe('OutboundHttp.requests', () => {
 			expect(mockedHttpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ baseURL: 'https://other.test/' }),
 				expect.anything(),
+				undefined,
 			);
 		});
 	});
@@ -101,6 +103,7 @@ describe('OutboundHttp.requests', () => {
 			expect(mockedHttpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ timeout: 5000 }),
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -112,6 +115,7 @@ describe('OutboundHttp.requests', () => {
 			expect(mockedHttpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ timeout: 1000 }),
 				expect.anything(),
+				undefined,
 			);
 		});
 	});
@@ -129,6 +133,7 @@ describe('OutboundHttp.requests', () => {
 					headers: { 'X-Vault-Namespace': 'admin', Accept: 'text/plain' },
 				}),
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -142,6 +147,7 @@ describe('OutboundHttp.requests', () => {
 			expect(mockedHttpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ headers: { 'content-type': 'text/plain' } }),
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -159,11 +165,13 @@ describe('OutboundHttp.requests', () => {
 				1,
 				expect.objectContaining({ headers: { Authorization: 'Bearer first' } }),
 				expect.anything(),
+				undefined,
 			);
 			expect(mockedHttpRequest).toHaveBeenNthCalledWith(
 				2,
 				expect.objectContaining({ headers: { Authorization: 'Bearer second' } }),
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -175,6 +183,7 @@ describe('OutboundHttp.requests', () => {
 			expect(mockedHttpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ headers: {} }),
 				expect.anything(),
+				undefined,
 			);
 		});
 	});
