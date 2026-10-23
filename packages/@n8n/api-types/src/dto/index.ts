@@ -22,6 +22,10 @@ export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
 } from './ai/ai-gateway-config-response.dto';
+export {
+	AiGatewayMcpServersResponse,
+	type AiGatewayMcpServer,
+} from './ai/ai-gateway-mcp-servers-response.dto';
 export { AiGatewayUsageQueryDto } from './ai/ai-gateway-usage-response.dto';
 export type {
 	AiGatewayUsageEntry,
@@ -304,11 +308,20 @@ export {
 	CommunityPackageListPublicDto,
 	CommunityPackagePublicDto,
 	InstallCommunityPackagePublicDto,
+	InstallCommunityPackageResponsePublicDto,
 	ListCommunityPackagesQueryDto,
 	UpdateCommunityPackagePublicDto,
 	communityPackagePublicSchema,
+	installCommunityPackageResponsePublicSchema,
 	type CommunityPackagePublic,
+	type InstallCommunityPackageResponsePublic,
 } from './community-packages/community-package-public.dto';
+export {
+	packagePolicyRestrictionsSchema,
+	restrictedPackageTypeSchema,
+	type PackagePolicyRestrictions,
+	type RestrictedPackageType,
+} from './community-packages/package-policy-restrictions';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
@@ -693,6 +706,11 @@ export {
 	OtelTestTraceRequestPublicDto,
 	OtelTestTraceResultPublicDto,
 } from './otel/otel-test-trace-public.dto';
+export {
+	UpdatePublicApiRateLimitSettingsDto,
+	type PublicApiRateLimitSettings,
+	type PublicApiRateLimitSettingsResponse,
+} from './public-api-rate-limit-settings/update-public-api-rate-limit-settings.dto';
 
 export {
 	PromotionChangesDto,
@@ -797,6 +815,7 @@ export {
 	type PromotionEnvironmentSummary,
 } from './promotions/promotion-environment.dto';
 export {
+	ApplyCheckQueryDto,
 	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,
@@ -811,6 +830,7 @@ export {
 	promotionGitResultSchema,
 	promotionPromoteWarningSchema,
 	type PromotionPromoteWarning,
+	type ApplyCheckResult,
 } from './promotions/promotion-operations.dto';
 export {
 	parsePromotionRunDetails,
@@ -822,6 +842,7 @@ export {
 	type PromotionRunType,
 } from './promotions/promotion-run.dto';
 export {
+	ApprovePromotionReviewDto,
 	ListPromotionReviewsQueryDto,
 	PromotionReviewDetailDto,
 	PromotionReviewListPublicDto,
@@ -842,6 +863,7 @@ export {
 	type PromotionReviewResult,
 	type PromotionReviewChangeKind,
 	type PromotionReviewRemote,
+	type PromotionReviewRemoteError,
 	type PromotionReviewState,
 	type PromotionReviewSummary,
 	type PromotionReviewType,

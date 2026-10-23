@@ -8,6 +8,7 @@ import {
 	uniqueStrings,
 } from './memory-lifecycle';
 import { normalizeObservationLogReflection } from './observation-log-reflector';
+import { observationCursorsMatch, prepareObservationLogBatchCursor } from './observation-log-batch';
 import type { RuntimeSkillStateStore } from '../../skills/types';
 import type {
 	BuiltEpisodicMemoryCaptureStore,
@@ -35,6 +36,8 @@ import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
+	ObservationLogBatch,
+	ObservationLogBatchCommitResult,
 	ObservationLogEntry,
 	ObservationLogReadOptions,
 	ObservationLogReflection,
@@ -123,6 +126,17 @@ export class InMemoryMemory
 	private episodicMemoryLocksByResource = new Map<string, EpisodicMemoryTaskLockHandle>();
 
 	readonly episodic: BuiltEpisodicMemoryCaptureStore['episodic'] = {
+		getEntriesByContentHashes: async (scope, contentHashes) => {
+			const hashes = new Set(contentHashes);
+			return await Promise.resolve(
+				this.episodicMemory
+					.filter(
+						(entry) =>
+							entry.resourceId === episodicWriteScopeId(scope) && hashes.has(entry.contentHash),
+					)
+					.map(cloneEpisodicMemoryEntry),
+			);
+		},
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
 		searchEntries: async (scope, query, opts) =>
@@ -140,7 +154,7 @@ export class InMemoryMemory
 			await this.recordEpisodicMemoryCaptureCandidateFailure(ids, maxAttempts),
 		taskLock: {
 			acquire: async (scope, opts) =>
-				await this.acquireEpisodicMemoryTaskLock(scope.resourceId, opts),
+				await this.acquireEpisodicMemoryTaskLock(episodicWriteScopeId(scope), opts),
 			release: async (handle) => await this.releaseEpisodicMemoryTaskLock(handle),
 		},
 	};
@@ -280,6 +294,34 @@ export class InMemoryMemory
 	}
 
 	// ── Observational memory ─────────────────────────────────────────────
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		const cursor = prepareObservationLogBatchCursor(batch);
+		const storedCursor = this.cursorsByScope.get(batch.observationScopeId) ?? null;
+		if (!cursor || !observationCursorsMatch(storedCursor, batch.expectedCursor)) {
+			return 'stale';
+		}
+
+		const staged: ObservationLogEntry[] = [];
+		for (const entry of batch.entries) {
+			staged.push({
+				id: crypto.randomUUID(),
+				observationScopeId: batch.observationScopeId,
+				marker: entry.marker,
+				text: entry.text,
+				parentId: entry.parentIndex === null ? null : staged[entry.parentIndex].id,
+				tokenCount: entry.tokenCount,
+				createdAt: new Date(entry.createdAt),
+				...activeLifecycleState(),
+			});
+		}
+		const existing = this.observationLogByScope.get(batch.observationScopeId) ?? [];
+		this.observationLogByScope.set(batch.observationScopeId, [...existing, ...staged]);
+		this.cursorsByScope.set(batch.observationScopeId, cursor);
+		return await Promise.resolve('committed');
+	}
 
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],
@@ -497,8 +539,10 @@ export class InMemoryMemory
 		if (existing) return cloneEpisodicMemoryCaptureCandidate(existing);
 
 		const now = new Date();
+		const { episodic: _episodic, ...candidateData } = candidate;
 		const row: EpisodicMemoryCaptureCandidate = {
-			...candidate,
+			...candidateData,
+			resourceId: episodicWriteScopeId(candidate),
 			id: crypto.randomUUID(),
 			status: 'pending',
 			attemptCount: 0,
@@ -516,7 +560,8 @@ export class InMemoryMemory
 	): Promise<EpisodicMemoryCaptureCandidate[]> {
 		return this.episodicMemoryCaptureCandidates
 			.filter(
-				(candidate) => candidate.resourceId === scope.resourceId && candidate.status === 'pending',
+				(candidate) =>
+					candidate.resourceId === episodicWriteScopeId(scope) && candidate.status === 'pending',
 			)
 			.sort((a, b) => compareKeyset(a, b))
 			.slice(0, opts?.limit)
@@ -555,21 +600,19 @@ export class InMemoryMemory
 		const saved: EpisodicMemoryEntry[] = [];
 		for (const entry of entries) {
 			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
+			const resourceId = episodicWriteScopeId(entry);
 			const duplicate = this.episodicMemory.find(
-				(existing) =>
-					existing.resourceId === entry.resourceId && existing.contentHash === contentHash,
+				(existing) => existing.resourceId === resourceId && existing.contentHash === contentHash,
 			);
 			if (duplicate) {
-				markLifecycleActive(duplicate);
-				duplicate.lastSeenAt = entry.lastSeenAt ?? now;
-				duplicate.updatedAt = now;
+				refreshEpisodicMemoryEntry(duplicate, entry, now);
 				saved.push(cloneEpisodicMemoryEntry(duplicate));
 				continue;
 			}
 
 			const row: EpisodicMemoryEntry = {
 				id: crypto.randomUUID(),
-				resourceId: entry.resourceId,
+				resourceId,
 				content: entry.content,
 				contentHash,
 				...activeLifecycleState(),
@@ -645,9 +688,18 @@ export class InMemoryMemory
 		query: string,
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
-		const scoped = this.episodicMemory
-			.filter((entry) => entry.resourceId === scope.resourceId)
-			.map(cloneEpisodicMemoryEntry);
+		const scopeIds = opts?.writeScopeOnly
+			? [episodicWriteScopeId(scope)]
+			: episodicReadScopeIds(scope);
+		// The same fact told in two scopes is one memory to the reader.
+		const newestByContent = new Map<string, EpisodicMemoryEntry>();
+		for (const entry of this.episodicMemory) {
+			if (!scopeIds.includes(entry.resourceId)) continue;
+			const key = `${entry.status}\n${entry.contentHash}`;
+			const seen = newestByContent.get(key);
+			if (!seen || entry.lastSeenAt > seen.lastSeenAt) newestByContent.set(key, entry);
+		}
+		const scoped = [...newestByContent.values()].map(cloneEpisodicMemoryEntry);
 		return rankEpisodicMemoryEntries(scoped, query, opts);
 	}
 
@@ -678,7 +730,9 @@ export class InMemoryMemory
 	): Promise<EpisodicMemoryReflectionResult> {
 		const activeIds = new Set(
 			this.episodicMemory
-				.filter((entry) => entry.resourceId === scope.resourceId && entry.status === 'active')
+				.filter(
+					(entry) => entry.resourceId === episodicWriteScopeId(scope) && entry.status === 'active',
+				)
 				.map((entry) => entry.id),
 		);
 		const normalized = normalizeFlatReflectionActions({
@@ -776,6 +830,18 @@ export async function saveMessagesToThread(
 	});
 }
 
+function refreshEpisodicMemoryEntry(
+	entry: EpisodicMemoryEntry,
+	update: NewEpisodicMemoryEntry,
+	now: Date,
+): void {
+	markLifecycleActive(entry);
+	entry.lastSeenAt = update.lastSeenAt ?? now;
+	entry.updatedAt = now;
+	if (update.embedding !== undefined) entry.embedding = [...update.embedding];
+	if (update.embeddingModel !== undefined) entry.embeddingModel = update.embeddingModel;
+}
+
 function cloneEpisodicMemoryEntry(entry: EpisodicMemoryEntry): EpisodicMemoryEntry {
 	return {
 		...entry,
@@ -807,4 +873,13 @@ function provenanceOf(source: {
 	if (source.observationId) return { observationId: source.observationId };
 	if (source.candidateId) return { candidateId: source.candidateId };
 	return null;
+}
+
+/** The scope a turn writes to. A host-resolved scope wins over the resource. */
+function episodicWriteScopeId(scope: Pick<EpisodicMemoryScope, 'resourceId' | 'episodic'>): string {
+	return scope.episodic?.writeScopeId ?? scope.resourceId;
+}
+
+function episodicReadScopeIds(scope: EpisodicMemoryScope): string[] {
+	return scope.episodic?.readScopeIds ?? [scope.resourceId];
 }

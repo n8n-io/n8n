@@ -62,11 +62,13 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
+import { resolveEpisodicScopeDecision } from './episodic-scope-resolver';
+import { buildIntegrationOrigin } from './integration-origin';
 import type {
 	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
 } from './integration-tools';
-import { downloadDiscordAttachment } from './platforms/discord-operations';
+import { downloadDiscordAttachment } from './platforms/discord/discord-operations';
 import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 import { type InternalThread, toInternalThreadId } from './types';
@@ -330,6 +332,7 @@ export class AgentChatBridge {
 				sandboxPrincipalHash,
 				messageContext,
 				contextConversation,
+				episodicScope,
 				sessionMode,
 				admittedExecution,
 				abortSignal,
@@ -352,6 +355,7 @@ export class AgentChatBridge {
 					sandboxPrincipalHash,
 					messageContext,
 					contextConversation,
+					episodicScope,
 					sessionMode,
 					admittedExecution,
 					abortSignal,
@@ -912,13 +916,24 @@ export class AgentChatBridge {
 			}) ?? 'required';
 		let accepted = false;
 		try {
-			const [context, subject] = await Promise.all([
+			const subjectPromise = this.messageContextBridge.resolveSubject(message);
+			const [context, subject, integrationOrigin] = await Promise.all([
 				this.resolveBridgeExecutionContext(thread, message, platformAgentContext, {
 					isNewMention,
 					inSubscribedThread,
 					replyExpectation,
 				}),
-				this.messageContextBridge.resolveSubject(message),
+				subjectPromise,
+				// The origin lookup overlaps the other fetches so it adds little delay.
+				subjectPromise.then(
+					async (subject) =>
+						this.integrationImpl &&
+						(await buildIntegrationOrigin(
+							this.integrationImpl,
+							{ thread, message, subject },
+							this.logger,
+						)),
+				),
 			]);
 			const messageContext = this.messageContextBridge.capture(thread, {
 				messageId: message.id,
@@ -929,6 +944,18 @@ export class AgentChatBridge {
 				replyExpectation,
 			});
 			const author = toMessageAuthor(message.author);
+			const episodicScope = await resolveEpisodicScopeDecision(
+				this.integrationImpl,
+				{
+					agentId: this.agentId,
+					credentialId: this.integration.credentialId,
+					integrationType: this.integration.type,
+					threadId: this.resolvePlatformThreadId(thread),
+					author,
+					origin: integrationOrigin,
+				},
+				this.logger,
+			);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const { userId, userName, fullName, isBot, isMe } = message.author;
 			const result = await this.messageQueue.enqueue({
@@ -945,6 +972,8 @@ export class AgentChatBridge {
 						context,
 					),
 					author,
+					integrationOrigin,
+					episodicScope,
 					sender: { userId, userName, fullName, isBot, isMe },
 					attachments: attachments.length ? attachments : undefined,
 					resourceId: session.memory.resourceId,
@@ -999,6 +1028,7 @@ export class AgentChatBridge {
 				attachments: payload.attachments,
 				messageContext: payload.messageContext,
 				contextConversation: payload.contextConversation,
+				episodicScope: payload.episodicScope,
 				memory: { threadId: toInternalThreadId(threadId), resourceId: payload.resourceId },
 				sessionMode: 'existing',
 				integrationType: this.integration.type,

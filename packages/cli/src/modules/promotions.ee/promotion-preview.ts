@@ -43,7 +43,8 @@ export type SideIndex = ReadonlyMap<string, SideResource>;
  */
 export type ApplyDestination = {
 	credentialNames: ReadonlyMap<string, string>;
-	tagNames: ReadonlyMap<string, string>;
+	/** The local tag that Apply uses for each branch tag ID, with its blob SHA. */
+	tags: ReadonlyMap<string, { id: string; name: string; blobSha: string }>;
 	variableKeys: ReadonlySet<string>;
 	/** The blob SHA of each data table, serialized as the package stores it. */
 	dataTables: ReadonlyMap<string, { blobSha: string }>;
@@ -63,7 +64,6 @@ const RESOURCE_TYPES = {
 const KEPT_BY_APPLY = new Set<PromotionResourceType>([
 	'project',
 	'folder',
-	'tag',
 	'credential',
 	'variable',
 ]);
@@ -217,8 +217,8 @@ function applyOperationRules(
 		return resource;
 	}
 
-	// Apply keeps the names and properties of existing projects, folders, and tags, and the
-	// values of existing credentials and variables. A folder move stays: Apply reports it as a conflict.
+	// Apply keeps the names and properties of existing projects and folders, and the values of
+	// existing credentials and variables. It renames tags. A folder move stays: Apply reports it as a conflict.
 	if (change === 'modified') {
 		if (type === 'folder' && resource.previousParentKey !== undefined) {
 			return {
@@ -231,9 +231,22 @@ function applyOperationRules(
 	}
 
 	if (change === 'added' && destination) {
+		// Apply renames the local tag with the branch ID, or moves the local tag with the branch name
+		// to the branch ID. Tags are instance-wide, so this also changes workflows outside the project.
+		const localTag = type === 'tag' ? destination.tags.get(resource.id) : undefined;
+		if (localTag) {
+			const revision = { ...resource.revision, before: localTag.blobSha };
+			if (localTag.id !== resource.id) {
+				return { ...withoutChanges, change: 'modified', previousId: localTag.id, revision };
+			}
+			if (localTag.name !== resource.name) {
+				return { ...withoutChanges, change: 'modified', previousName: localTag.name, revision };
+			}
+			return { ...withoutChanges, change: 'unchanged', revision };
+		}
+
 		let localName: string | undefined;
 		if (type === 'credential') localName = destination.credentialNames.get(resource.id);
-		if (type === 'tag') localName = destination.tagNames.get(resource.id);
 		if (type === 'variable' && destination.variableKeys.has(resource.key))
 			localName = resource.name;
 		if (localName !== undefined) return { ...withoutChanges, name: localName, change: 'unchanged' };

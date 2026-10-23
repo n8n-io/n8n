@@ -135,7 +135,11 @@ beforeAll(async () => {
 			revision: 0,
 		});
 		await taskRepository.save(
-			Object.entries(draft.tasks).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
+			Object.entries(draft.tasks).map(([id, task]) => ({
+				id,
+				agentId: agent.id,
+				...task,
+			})),
 		);
 		const history = await historyRepository.saveVersion({
 			versionId: `${agent.id}_published`,

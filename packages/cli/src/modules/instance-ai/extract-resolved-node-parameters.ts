@@ -6,7 +6,7 @@
  *
  * Lives in its own module to keep `instance-ai.adapter.service.ts` focused.
  */
-import { Container } from '@n8n/di';
+import type { IExecutionResponse } from '@n8n/db';
 import {
 	wrapUntrustedData,
 	type EmptyExpressionResolution,
@@ -26,9 +26,9 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-
 import type { NodeTypes } from '@/node-types';
+
+import { getExecutionRedaction } from './instance-ai-execution-reader';
 
 /**
  * Maximum characters for a single resolved parameter leaf. Resolved parameter
@@ -230,17 +230,25 @@ function reconstructExecuteData(
  */
 export async function extractResolvedNodeParameters(
 	nodeTypes: NodeTypes,
-	executionId: string,
+	execution: IExecutionResponse,
 	nodeName: string,
 	options?: { itemIndex?: number; runIndex?: number },
 ): Promise<ResolvedNodeParametersResult> {
-	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
+	const executionId = execution.id;
 
-	if (!execution) {
-		throw new Error(`Execution ${executionId} not found`);
+	// Redacted items resolve every expression to nothing, which would read as a
+	// real bug in the node.
+	if (getExecutionRedaction(execution)) {
+		return {
+			nodeName,
+			runIndex: options?.runIndex ?? 0,
+			itemIndex: options?.itemIndex ?? 0,
+			parameters: null,
+			resolved: null,
+			failedExpressions: [],
+			emptyResolutions: [],
+			suppressed: 'execution-redacted',
+		};
 	}
 
 	// Resolve against the execution's workflow snapshot — what the user actually

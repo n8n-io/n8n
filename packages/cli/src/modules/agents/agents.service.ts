@@ -62,14 +62,16 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
-import { toAgentRef } from './utils/agent-ref';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
+	hasN8nChatChannel,
+	type AgentImportIdentity,
 	type AgentSummary,
 	type AgentListResult,
 	type AgentSummaryFilters,
 } from './repositories/agent.repository';
+import { toAgentRef } from './utils/agent-ref';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
@@ -347,6 +349,17 @@ export class AgentsService {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 	}
 
+	async findImportCandidates(
+		projectId: string,
+		sourceAgentIds: string[],
+	): Promise<AgentImportIdentity[]> {
+		return await this.agentRepository.findImportCandidates(projectId, sourceAgentIds);
+	}
+
+	async findImportIdOwners(agentIds: string[]): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+		return await this.agentRepository.findImportIdOwners(agentIds);
+	}
+
 	async isN8nChatPublished(agentId: string, projectId: string): Promise<boolean> {
 		return await this.agentRepository.isN8nChatPublished(agentId, projectId);
 	}
@@ -451,22 +464,30 @@ export class AgentsService {
 	 *
 	 * Carries the project relation, because the chat page labels each agent
 	 * with its project.
+	 *
+	 * Also lists every agent in the projects the user is a member of with
+	 * `agent:update` and `agent:publish`, published to n8n Chat or not, so the
+	 * page can offer to make it available. That audience may read the config.
 	 */
 	async findChatReachableByUserPaginated(
 		user: User,
 		options: ListAgentsQueryDto,
 	): Promise<AgentChatListResponse> {
 		if (!(await this.settingsService.getEnabled())) return { count: 0, data: [] };
-		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const [projectIds, ownedProjectIds] = await Promise.all([
+			this.projectScopeService.getProjectIds(user, ['agent:execute']),
+			this.projectScopeService.getMemberProjectIds(user, ['agent:update', 'agent:publish']),
+		]);
 		// Usage counts are only meaningful (and only needed) for the usage sort.
 		const usageCounts =
 			options.sortBy === 'usage:desc'
 				? await this.agentExecutionService.countN8nChatThreadsByAgent(user.id, projectIds)
 				: undefined;
-		const { count, data } = await this.agentRepository.findByProjectIdsPaginated(
+		const { count, data } = await this.agentRepository.findN8nChatListPaginated(
 			projectIds,
+			ownedProjectIds,
 			options,
-			{ withProject: true, usageCounts },
+			usageCounts,
 		);
 		return { count, data: data.map(toChatListItem) };
 	}
@@ -745,14 +766,19 @@ export class AgentsService {
 	}
 }
 
-/** Keeps the chat list to what the page renders: icon, blurb, and attachment support from the published snapshot. */
+/**
+ * Keeps the chat list to what the page renders: icon, blurb, and attachment support
+ * from the published snapshot, or from the draft for an agent not in n8n Chat yet.
+ */
 function toChatListItem(agent: ProjectAgent): AgentChatListItem {
-	const schema = agent.activeVersion?.schema;
+	const availableInChat = hasN8nChatChannel(agent.activeVersion?.schema?.integrations);
+	const schema = availableInChat ? agent.activeVersion?.schema : agent.schema;
 	const description = schema?.description;
 	if (!agent.project) throw new UnexpectedError('Agent project relation is not loaded');
 	return {
-		...toAgentRef(agent),
+		...toAgentRef(agent, schema),
 		...(description ? { description } : {}),
+		availableInChat,
 		project: { id: agent.projectId, name: agent.project.name },
 		attachments: getProviderAttachmentCapabilities(
 			schema?.model ? splitModelId(schema.model).provider : undefined,

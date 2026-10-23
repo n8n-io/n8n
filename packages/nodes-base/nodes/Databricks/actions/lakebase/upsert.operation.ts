@@ -1,8 +1,8 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { lakebaseApiRequest } from '../../transport';
-import { quotePostgrestComponent } from './conditions';
+import { lakebaseApiRequest, lakebaseErrorBody } from '../../transport';
+import { buildLakebaseFilter, quotePostgrestComponent } from './conditions';
 import { resolveLakebaseTableUrl } from './helpers';
 import { columnsPresentInTable, columnsTheUserSet } from './mapping';
 
@@ -34,7 +34,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	// different, so the upsert would quietly insert a duplicate every run. Own
 	// properties only: a column named after one of Object's would read through.
 	const missing = matchingColumns.filter(
-		(column) => !Object.hasOwn(row, column) || row[column] === null,
+		(column) => !Object.hasOwn(row, column) || row[column] === null || row[column] === undefined,
 	);
 	if (missing.length > 0) {
 		throw new NodeOperationError(
@@ -48,21 +48,58 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		);
 	}
 
-	const response = await lakebaseApiRequest(this, {
-		method: 'POST',
-		url,
-		// Quoted, as everywhere else a column name reaches the query string: the
-		// parser reads an unquoted name only as far as its first reserved character.
-		qs: { on_conflict: matchingColumns.map(quotePostgrestComponent).join(',') },
-		// Unlike Update, the match columns stay in the body: ON CONFLICT reads them
-		// from the row being inserted.
-		body: row,
-		json: true,
-		headers: {
-			Accept: 'application/json',
-			Prefer: 'resolution=merge-duplicates,return=representation',
-		},
-	});
+	let response: unknown;
+	try {
+		response = await lakebaseApiRequest(this, {
+			method: 'POST',
+			url,
+			// Quoted, as everywhere else a column name reaches the query string: the
+			// parser reads an unquoted name only as far as its first reserved character.
+			qs: { on_conflict: matchingColumns.map(quotePostgrestComponent).join(',') },
+			// Unlike Update, the match columns stay in the body: ON CONFLICT reads them
+			// from the row being inserted.
+			body: row,
+			json: true,
+			headers: {
+				Accept: 'application/json',
+				Prefer: 'resolution=merge-duplicates,return=representation',
+			},
+		});
+	} catch (error) {
+		// Postgres checks NOT NULL before ON CONFLICT, so a partial row never reaches
+		// the merge. Update the existing row with a second call. The match columns are
+		// unique by now: a non-unique conflict target fails earlier with 42P10.
+		if (lakebaseErrorBody(error)?.code !== '23502') throw error;
+
+		const body = Object.fromEntries(
+			Object.entries(row).filter(([column]) => !matchingColumns.includes(column)),
+		);
+		// Nothing to update
+		if (Object.keys(body).length === 0) throw error;
+
+		const where = matchingColumns.map((column) => ({
+			column,
+			condition: 'eq',
+			value: row[column],
+		}));
+		const qs = buildLakebaseFilter({ where, combineConditions: 'AND' });
+		// Never update without a filter
+		if (Object.keys(qs).length === 0) throw error;
+
+		const updated = await lakebaseApiRequest(this, {
+			method: 'PATCH',
+			url,
+			qs,
+			body,
+			json: true,
+			headers: { Accept: 'application/json', Prefer: 'return=representation' },
+		});
+		// No row back means the row is new, so the insert error names the missing
+		// column. A project that does not echo rows looks the same; the error wins
+		// over a false success.
+		if (!Array.isArray(updated) || updated.length === 0) throw error;
+		response = updated;
+	}
 
 	// An upsert always writes its row, so an empty answer means the project does
 	// not honour `return=representation`, not that nothing happened.

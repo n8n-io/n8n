@@ -15,6 +15,7 @@ const moduleRoutes = (PromotionsModule.routes ?? []).map(
 	(route) =>
 		({
 			...route,
+			component: stub,
 			children: route.children?.map((child) => ({ ...child, component: stub })),
 		}) as RouteRecordRaw,
 );

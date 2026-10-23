@@ -3,6 +3,7 @@ import type { PromotionDirection } from '@n8n/api-types';
 import { computed, nextTick, ref, watch } from 'vue';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
+import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import type { Inclusion, ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
 import PromotionChangeCard from './PromotionChangeCard.vue';
 
@@ -13,7 +14,11 @@ const props = defineProps<{
 	inclusion: Inclusion;
 	entries: ReadonlyMap<ResourceKey, DetailEntry>;
 	inspectedKey?: ResourceKey;
+	blockers: BlockerIndex;
+	branchName?: string;
 }>();
+
+const activeWorkflow = defineModel<ResourceKey | undefined>('activeWorkflow');
 
 const emit = defineEmits<{
 	retry: [key: ResourceKey];
@@ -29,7 +34,7 @@ const resources = computed(() =>
 	}),
 );
 
-// Scrolls the card to the top. An instant jump keeps loading cards from pushing it away.
+// Tree navigation scrolls to the requested card. Card toggles keep their position.
 async function scrollToCard(key: ResourceKey | undefined) {
 	if (!key) return;
 	await nextTick();
@@ -54,6 +59,11 @@ defineExpose({ scrollToCard });
 			:included="inclusion.included.has(resource.key)"
 			:entry="entries.get(resource.key)"
 			:inspected="inspectedKey === resource.key"
+			:blockers="blockersOf(blockers, resource)"
+			:branch-name="branchName"
+			:diff-active="activeWorkflow === resource.key"
+			@activate-diff="activeWorkflow = resource.key"
+			@deactivate-diff="activeWorkflow = undefined"
 			@inspect="emit('inspect', $event)"
 			@retry="emit('retry', resource.key)"
 			@refresh="emit('refresh')"

@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import type { PromotionResource } from '@n8n/api-types';
-import { N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
+import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
+import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import {
+	availableKeys,
 	containerCheckState,
 	selectableDescendants,
-	selectableKeys,
+	type DisabledKeys,
 	type Inclusion,
 	type ResourceKey,
 	type SelectionGraph,
@@ -24,6 +26,11 @@ const props = defineProps<{
 	includedChanges: number;
 	totalChanges: number;
 	inspectedKey?: ResourceKey;
+	/** Blocked workflows, which users cannot add. */
+	disabled: DisabledKeys;
+	locked: boolean;
+	direction: PromotionDirection;
+	blockers: BlockerIndex;
 }>();
 
 const emit = defineEmits<{
@@ -32,23 +39,41 @@ const emit = defineEmits<{
 	selectAll: [];
 	clear: [];
 	inspect: [key: ResourceKey];
+	showBlockers: [];
 }>();
 
 const i18n = useI18n();
-const { changeLabel } = usePromotionPreviewLabels();
+const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
+
+function markers(resource: PromotionResource) {
+	const blockers = blockersOf(props.blockers, resource);
+	const blocked = blockerMessage(resource, blockers);
+	// A variable warning replaces the change label, as the variable itself does not change.
+	const meta =
+		resource.type !== 'workflow' && blockers?.some(({ kind }) => kind === 'warning')
+			? i18n.baseText('promotions.preview.marker.warning')
+			: changeLabel(resource, props.direction);
+	return { blocked, meta: blocked ? undefined : meta };
+}
 
 const rows = computed(() =>
 	flattenPreviewTree(props.tree).map(({ item, indent }) => {
 		const resource = props.graph.resources.get(item.id);
-		return { item, indent, resource, check: resource ? checkbox(resource) : undefined };
+		return {
+			item,
+			indent,
+			resource,
+			check: resource ? checkbox(resource) : undefined,
+			marker: resource ? markers(resource) : undefined,
+		};
 	}),
 );
 
-const selectableCount = computed(() => selectableKeys(props.graph).length);
+const available = computed(() => availableKeys(props.graph, props.disabled));
 
 const allState = computed(() => {
 	if (props.selected.size === 0) return 'unchecked';
-	return props.selected.size >= selectableCount.value ? 'checked' : 'indeterminate';
+	return available.value.every((key) => props.selected.has(key)) ? 'checked' : 'indeterminate';
 });
 
 /**
@@ -57,14 +82,23 @@ const allState = computed(() => {
  */
 function checkbox(resource: PromotionResource) {
 	if (resource.selectable) {
-		return { checked: props.selected.has(resource.key), indeterminate: false, disabled: false };
+		const checked = props.selected.has(resource.key);
+		return {
+			checked,
+			indeterminate: false,
+			// A blocked workflow can still be cleared.
+			disabled: props.locked || (!checked && props.disabled.has(resource.key)),
+		};
 	}
 	if (isContainer(resource)) {
-		const state = containerCheckState(props.graph, props.selected, resource.key);
+		const state = containerCheckState(props.graph, props.selected, resource.key, props.disabled);
+		const canAdd = selectableDescendants(props.graph, resource.key).some(
+			(key) => !props.disabled.has(key),
+		);
 		return {
 			checked: state === 'checked',
 			indeterminate: state === 'indeterminate',
-			disabled: selectableDescendants(props.graph, resource.key).length === 0,
+			disabled: props.locked || (!canAdd && state === 'unchecked'),
 		};
 	}
 	return {
@@ -86,6 +120,7 @@ function onToggle(resource: PromotionResource) {
 			<N8nCheckbox
 				:model-value="allState === 'checked'"
 				:indeterminate="allState === 'indeterminate'"
+				:disabled="locked || (available.length === 0 && allState === 'unchecked')"
 				:aria-label="i18n.baseText('promotions.preview.tree.selectAll')"
 				data-test-id="promotion-preview-select-all"
 				@update:model-value="allState === 'checked' ? emit('clear') : emit('selectAll')"
@@ -104,15 +139,19 @@ function onToggle(resource: PromotionResource) {
 		</div>
 
 		<ul :class="$style.list" role="list">
-			<template v-for="{ item, indent, resource, check } in rows" :key="item.id">
+			<template v-for="{ item, indent, resource, check, marker } in rows" :key="item.id">
 				<li v-if="item.kind === 'section'" :class="$style.heading">
 					<N8nText step="2xs" bold color="text-base">
 						{{ item.label }}
 					</N8nText>
 				</li>
 				<li
-					v-else-if="resource && check"
-					:class="[$style.row, $style.resource, { [$style.inspected]: inspectedKey === item.id }]"
+					v-else-if="resource && check && marker"
+					:class="[
+						$style.row,
+						$style.resource,
+						{ [$style.inspected]: inspectedKey === item.id, [$style.blocked]: marker.blocked },
+					]"
 					data-test-id="promotion-preview-tree-row"
 					:data-resource-key="item.id"
 				>
@@ -134,11 +173,27 @@ function onToggle(resource: PromotionResource) {
 						@click="emit('inspect', item.id)"
 					>
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
-						<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
-						<N8nText step="2xs" color="text-light" :class="$style.meta">
-							{{ changeLabel(resource) }}
-						</N8nText>
+						<span :class="$style.text">
+							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
+							<N8nText v-if="marker.meta" step="2xs" color="text-light" :class="$style.meta">
+								{{ marker.meta }}
+							</N8nText>
+						</span>
 					</button>
+					<N8nTooltip v-if="marker.blocked" :content="marker.blocked" placement="right">
+						<N8nButton
+							variant="ghost"
+							size="xsmall"
+							icon-only
+							:aria-label="marker.blocked"
+							data-test-id="promotion-preview-tree-blocker"
+							@click="emit('showBlockers')"
+						>
+							<template #icon>
+								<N8nIcon icon="circle-alert" size="small" color="warning" />
+							</template>
+						</N8nButton>
+					</N8nTooltip>
 				</li>
 			</template>
 		</ul>
@@ -176,6 +231,10 @@ function onToggle(resource: PromotionResource) {
 	background-color: var(--background--subtle);
 }
 
+.resource.blocked {
+	background-color: var(--callout--color--background--warning);
+}
+
 .heading {
 	display: flex;
 	align-items: center;
@@ -210,6 +269,13 @@ function onToggle(resource: PromotionResource) {
 .icon {
 	flex-shrink: 0;
 	color: var(--icon-color);
+}
+
+.text {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--3xs);
+	min-width: 0;
 }
 
 .label {

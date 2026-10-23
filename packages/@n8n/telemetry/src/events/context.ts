@@ -64,6 +64,13 @@ const skillMethod = z
 		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. Filter out `ai` to count the skills people write by hand',
 	);
 
+const preferenceExampleId = z
+	.enum(['workflows', 'agents', 'credentials', 'answers'])
+	.optional()
+	.describe(
+		'The example card on the empty preferences page that filled the text (experiment 127). Absent when the text box opened empty',
+	);
+
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_PREFERENCES: {
 		name: 'User viewed preferences',
@@ -89,6 +96,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				.enum(['new', 'edit'])
 				.describe('`new` is the Add button. `edit` is the pencil on an existing row'),
 			scope_type: scopeType.optional().describe('Scope of the row being edited. Absent on `new`'),
+			example_id: preferenceExampleId,
 		}),
 	},
 	USER_CREATED_PREFERENCE: {
@@ -99,6 +107,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			scope_type: scopeType,
 			text_length: textLength,
 			project_id: z.string().optional().describe('Present only for a project-scoped preference'),
+			example_id: preferenceExampleId,
 		}),
 	},
 	USER_UPDATED_PREFERENCE: {
@@ -320,6 +329,19 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			scope: skillScope,
 			project_id: skillProjectId,
 			read_only: z.boolean().describe('Whether the user may only read the skill'),
+		}),
+	},
+	USER_DOWNLOADED_SKILL: {
+		name: 'User downloaded skill',
+		description:
+			'A user downloaded one skill from the row menu on the Skills settings page. Fires once the browser gets the file.',
+		properties: z.object({
+			skill_id: skillId,
+			scope: skillScope,
+			project_id: skillProjectId,
+			format: z
+				.enum(['markdown', 'zip'])
+				.describe('`markdown` is a lone SKILL.md. `zip` holds SKILL.md and its reference files'),
 		}),
 	},
 	USER_CREATED_SKILL: {

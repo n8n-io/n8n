@@ -179,6 +179,7 @@ describe('buildFromJson()', () => {
 		getMessages: vi.fn().mockResolvedValue([]),
 		saveMessages: vi.fn(),
 		deleteMessages: vi.fn(),
+		commitObservationLogBatch: vi.fn(),
 		appendObservationLogEntries: vi.fn(),
 		getActiveObservationLog: vi.fn(),
 		getObservationLog: vi.fn(),

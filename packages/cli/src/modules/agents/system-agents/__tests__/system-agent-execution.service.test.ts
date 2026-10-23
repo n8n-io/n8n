@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
-import { NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
@@ -9,7 +9,10 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
+import { AgentFormattedTurnError } from '../../agent-formatted-turn.error';
 import type { AgentExecutionService } from '../../agent-execution.service';
+import { toChatErrorEvent } from '../../agent-sse-stream';
+import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.error';
 import type {
 	AgentMessageQueueService,
 	ClaimedAgentMessage,
@@ -31,6 +34,7 @@ import type {
 	SystemAgentProvider,
 	SystemAgentTurn,
 	SystemAgentTurnHandle,
+	SystemAgentWorkspaceSource,
 } from '../system-agent.types';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -71,6 +75,11 @@ function suspendedCheckpoint(resourceId = 'system-chat:user-1') {
 	};
 }
 
+/** A provider-defined lease type. The runtime never looks inside it. */
+interface TestLease {
+	sandboxName: string;
+}
+
 /**
  * `outcome` is what the runtime reports through `onBeforeFinalize` after the
  * chunks. `null` means the turn has no execution record, so no report.
@@ -78,6 +87,7 @@ function suspendedCheckpoint(resourceId = 'system-chat:user-1') {
 function setup(
 	chunks: AgentExecutionStreamChunk[] = [],
 	outcome: Omit<AgentTurnFinalizeOutcome, 'executionId'> | null = { status: 'completed' },
+	workspace?: SystemAgentWorkspaceSource<TestLease>,
 ) {
 	const registry = new SystemAgentRegistry();
 	const threadRepository = mock<AgentExecutionThreadRepository>();
@@ -107,9 +117,10 @@ function setup(
 		agentId: AGENT_ID,
 		name: 'Test Assistant',
 		authorize: vi.fn(async (_user: User, _projectId: string) => true),
-		prepareTurn: vi.fn(async (_turn: SystemAgentTurn) => handle),
+		prepareTurn: vi.fn(async (_turn: SystemAgentTurn<TestLease>) => handle),
 		normalizeResumeData: vi.fn((data: unknown) => ({ normalized: data })),
-	} satisfies SystemAgentProvider;
+		...(workspace ? { workspace } : {}),
+	} satisfies SystemAgentProvider<TestLease>;
 	registry.register(provider);
 
 	threadRepository.findOwnedById.mockImplementation(async () => ({ ...thread }));
@@ -188,6 +199,23 @@ function claimFor(options: Record<string, unknown> = {}): ClaimedAgentMessage {
 }
 
 const textChunk = { type: 'text-delta', id: 't-1', delta: 'Hello' } as AgentExecutionStreamChunk;
+
+function workspaceSource() {
+	const lease: TestLease = { sandboxName: 'sandbox-thread-1' };
+	const source = {
+		acquire: vi.fn(async (): Promise<TestLease | undefined> => lease),
+		release: vi.fn(async () => {}),
+		destroy: vi.fn(async () => {}),
+	} satisfies SystemAgentWorkspaceSource<TestLease>;
+	return { lease, source };
+}
+
+const workspaceScope = {
+	agentId: AGENT_ID,
+	threadId: 'thread-1',
+	projectId: 'project-1',
+	user,
+};
 
 describe('SystemAgentExecutionService', () => {
 	beforeEach(() => {
@@ -481,6 +509,184 @@ describe('SystemAgentExecutionService', () => {
 
 			await expect(service.consume(claimFor(), user, controller.signal, vi.fn())).rejects.toThrow();
 			expect(provider.prepareTurn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('error formatting', () => {
+		const failure = new Error('raw provider failure');
+		const errorChunk = { type: 'error', error: failure } as AgentExecutionStreamChunk;
+		const quotaError = { message: 'You ran out of credits.', code: 'quota_exhausted' };
+
+		it('sends the raw error text when the handle has no formatter', async () => {
+			const { service, turnExecutionService } = setup([errorChunk]);
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'raw provider failure' });
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			await expect(config.formatError?.(failure)).resolves.toBeUndefined();
+		});
+
+		it('sends the formatted text and code, and keeps the raw error for the settle hook', async () => {
+			const { service, handle, turnExecutionService, onSettled } = setup([errorChunk], {
+				status: 'errored',
+				error: failure,
+			});
+			handle.formatError = vi.fn(async () => quotaError);
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(handle.formatError).toHaveBeenCalledWith(failure);
+			expect(send).toHaveBeenCalledWith({
+				type: 'error',
+				message: 'You ran out of credits.',
+				errorCode: 'quota_exhausted',
+			});
+			expect(send).not.toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'raw provider failure' }),
+			);
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			await expect(config.formatError?.(failure)).resolves.toEqual(quotaError);
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'errored', error: failure }),
+			);
+		});
+
+		it('calls the hook once when the recorder and the live event format the same error', async () => {
+			const { service, handle, turnExecutionService } = setup();
+			handle.formatError = vi.fn(async () => quotaError);
+			turnExecutionService.execute.mockImplementation(async function* (config) {
+				// The turn service formats the error for the record before it yields the chunk.
+				await config.formatError?.(failure);
+				yield errorChunk;
+			});
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(handle.formatError).toHaveBeenCalledTimes(1);
+		});
+
+		it('sends no error code when the formatter gives only text', async () => {
+			const { service, handle } = setup([errorChunk]);
+			handle.formatError = vi.fn(async () => ({ message: 'Something went wrong.' }));
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'Something went wrong.' });
+		});
+
+		it.each([
+			['undefined', undefined],
+			['an empty message', { message: '', code: 'quota_exhausted' }],
+		])('keeps the raw error when the formatter returns %s', async (_name, formatted) => {
+			const { service, handle } = setup([errorChunk]);
+			handle.formatError = vi.fn(async () => formatted);
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'raw provider failure' });
+		});
+
+		it('keeps the raw error and logs when the formatter rejects', async () => {
+			const { service, handle, logger, turnExecutionService } = setup([errorChunk]);
+			handle.formatError = vi.fn(async () => {
+				throw new Error('formatter broke');
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(send).toHaveBeenCalledWith({ type: 'error', message: 'raw provider failure' });
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent error formatter failed',
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			await expect(config.formatError?.(failure)).resolves.toBeUndefined();
+		});
+
+		it('rethrows a thrown turn error with the formatted text, code and raw cause', async () => {
+			const { service, handle, onSettled, turnExecutionService } = setup();
+			handle.formatError = vi.fn(async () => quotaError);
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw failure;
+			});
+
+			const consumed = service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			await expect(consumed).rejects.toBeInstanceOf(AgentFormattedTurnError);
+			await expect(consumed).rejects.toMatchObject({
+				message: 'You ran out of credits.',
+				errorCode: 'quota_exhausted',
+				cause: failure,
+			});
+			const thrown: unknown = await consumed.catch((error: unknown) => error);
+			// The queue consumer and the resume relay send the thrown error with this event.
+			expect(toChatErrorEvent(thrown, 'Chat failed')).toEqual({
+				type: 'error',
+				message: 'You ran out of credits.',
+				errorCode: 'quota_exhausted',
+			});
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'errored', error: failure }),
+			);
+		});
+
+		it('rethrows a thrown turn error as is when the handle has no formatter', async () => {
+			const { service, turnExecutionService } = setup();
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw failure;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(failure);
+		});
+
+		it('does not format an error that already has a client error code', async () => {
+			const { service, handle, turnExecutionService } = setup();
+			handle.formatError = vi.fn(async () => quotaError);
+			const running = new AgentTurnAlreadyRunningError();
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw running;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(running);
+			expect(handle.formatError).not.toHaveBeenCalled();
+			expect(toChatErrorEvent(running, 'Chat failed')).toMatchObject({
+				errorCode: 'turn_already_running',
+			});
+		});
+
+		it('formats the errors of a resumed turn', async () => {
+			const { service, handle, checkpointStorage } = setup([errorChunk]);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			handle.formatError = vi.fn(async () => quotaError);
+			const send = vi.fn();
+
+			const { done } = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				resumeData: { approved: true },
+				send,
+			});
+			await done;
+
+			expect(send).toHaveBeenCalledWith({
+				type: 'error',
+				message: 'You ran out of credits.',
+				errorCode: 'quota_exhausted',
+			});
 		});
 	});
 
@@ -834,6 +1040,237 @@ describe('SystemAgentExecutionService', () => {
 					message: 'hi',
 				}),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('workspace source', () => {
+		it('gives a start turn no workspace when the provider has no source', async () => {
+			const { service, provider } = setup([textChunk]);
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(provider.prepareTurn.mock.calls[0][0]).not.toHaveProperty('workspace');
+		});
+
+		it('passes the lease to a start turn and releases it with the outcome', async () => {
+			const { source, lease } = workspaceSource();
+			const { service, provider } = setup([suspendedChunk], { status: 'suspended' }, source);
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(source.acquire).toHaveBeenCalledWith(workspaceScope);
+			expect(provider.prepareTurn).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'start', workspace: lease }),
+			);
+			expect(source.release).toHaveBeenCalledTimes(1);
+			expect(source.release).toHaveBeenCalledWith(workspaceScope, lease, {
+				status: 'suspended',
+				executionId: 'exec-1',
+			});
+		});
+
+		it('acquires the lease before the turn is prepared', async () => {
+			const { source } = workspaceSource();
+			const { service, provider } = setup([textChunk], undefined, source);
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(source.acquire.mock.invocationCallOrder[0]).toBeLessThan(
+				provider.prepareTurn.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('passes a new lease to a resume turn and releases it with the outcome', async () => {
+			const { source, lease } = workspaceSource();
+			const { service, provider, checkpointStorage } = setup([textChunk], undefined, source);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+
+			const result = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				resumeData: { approved: true },
+			});
+			await result.done;
+
+			expect(source.acquire).toHaveBeenCalledWith(workspaceScope);
+			expect(provider.prepareTurn).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'resume', workspace: lease }),
+			);
+			expect(source.release).toHaveBeenCalledWith(
+				workspaceScope,
+				lease,
+				expect.objectContaining({ status: 'completed' }),
+			);
+		});
+
+		it('runs the turn without a workspace and does not release when the source gives no lease', async () => {
+			const { source } = workspaceSource();
+			source.acquire.mockResolvedValue(undefined);
+			const { service, provider, onSettled } = setup([textChunk], undefined, source);
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(provider.prepareTurn.mock.calls[0][0]).not.toHaveProperty('workspace');
+			expect(onSettled).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }));
+			expect(source.release).not.toHaveBeenCalled();
+		});
+
+		it('keeps the turn result when the release fails', async () => {
+			const { source } = workspaceSource();
+			source.release.mockRejectedValue(new Error('sandbox gone'));
+			const { service, onSettled, logger } = setup([textChunk], undefined, source);
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(onSettled).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }));
+			expect(send).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'done' }));
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent workspace release failed',
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+		});
+
+		it('releases the lease as errored when the turn throws', async () => {
+			const { source, lease } = workspaceSource();
+			const { service, turnExecutionService } = setup([], undefined, source);
+			const failure = new Error('stream broke');
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw failure;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toThrow('stream broke');
+			expect(source.release).toHaveBeenCalledWith(
+				workspaceScope,
+				lease,
+				expect.objectContaining({ status: 'errored', error: failure }),
+			);
+		});
+
+		it('releases the lease when the provider cannot prepare the turn', async () => {
+			const { source, lease } = workspaceSource();
+			const { service, provider, turnExecutionService } = setup([], undefined, source);
+			const failure = new Error('no model');
+			provider.prepareTurn.mockRejectedValue(failure);
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toThrow('no model');
+			expect(source.release).toHaveBeenCalledWith(workspaceScope, lease, {
+				status: 'errored',
+				error: failure,
+			});
+			expect(turnExecutionService.execute).not.toHaveBeenCalled();
+		});
+
+		it('stops the turn setup and releases the lease as cancelled after a stop during the acquisition', async () => {
+			const { source, lease } = workspaceSource();
+			const claimController = new AbortController();
+			source.acquire.mockImplementation(async () => {
+				claimController.abort();
+				return lease;
+			});
+			const { service, provider, turnExecutionService } = setup([], undefined, source);
+			const failure = new Error('setup stopped');
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				expect(turn.abortSignal.aborted).toBe(true);
+				throw failure;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, claimController.signal, vi.fn()),
+			).rejects.toThrow('setup stopped');
+			expect(provider.prepareTurn).toHaveBeenCalledTimes(1);
+			expect(source.release).toHaveBeenCalledWith(workspaceScope, lease, {
+				status: 'cancelled',
+				error: failure,
+			});
+			expect(turnExecutionService.execute).not.toHaveBeenCalled();
+		});
+
+		it('fails the turn before it is prepared when the acquisition fails', async () => {
+			const { source } = workspaceSource();
+			source.acquire.mockRejectedValue(new Error('no sandbox provider'));
+			const { service, provider } = setup([], undefined, source);
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toThrow('no sandbox provider');
+			expect(provider.prepareTurn).not.toHaveBeenCalled();
+			expect(source.release).not.toHaveBeenCalled();
+		});
+
+		it('destroys the workspace of a deleted thread', async () => {
+			const { source } = workspaceSource();
+			const { service, executionService } = setup([], undefined, source);
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await service.deleteThread(AGENT_ID, user, 'thread-1');
+
+			expect(source.destroy).toHaveBeenCalledWith({
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				userId: 'user-1',
+			});
+			expect(executionService.deleteThread.mock.invocationCallOrder[0]).toBeLessThan(
+				source.destroy.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps a busy thread and its workspace', async () => {
+			const { source } = workspaceSource();
+			const { service, executionService } = setup([], undefined, source);
+			executionService.deleteThread.mockRejectedValue(
+				new ConflictError('The session has active work and cannot be deleted'),
+			);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(ConflictError);
+			expect(source.destroy).not.toHaveBeenCalled();
+		});
+
+		it('does not destroy a workspace when the thread was not deleted', async () => {
+			const { source } = workspaceSource();
+			const { service, executionService } = setup([], undefined, source);
+			executionService.deleteThread.mockResolvedValue(false);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(NotFoundError);
+			expect(source.destroy).not.toHaveBeenCalled();
+		});
+
+		it('keeps a thread deletion when the destroy fails', async () => {
+			const { source } = workspaceSource();
+			source.destroy.mockRejectedValue(new Error('sandbox api down'));
+			const { service, executionService, logger } = setup([], undefined, source);
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent workspace destroy failed',
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+		});
+
+		it('destroys a workspace for a host that deletes the thread on its own path', async () => {
+			const { source } = workspaceSource();
+			const { service } = setup([], undefined, source);
+
+			await service.destroyThreadWorkspace(AGENT_ID, 'thread-2');
+
+			expect(source.destroy).toHaveBeenCalledWith({ agentId: AGENT_ID, threadId: 'thread-2' });
+		});
+
+		it('does nothing for an agent id without a registered provider', async () => {
+			const { source } = workspaceSource();
+			const { service } = setup([], undefined, source);
+
+			await expect(
+				service.destroyThreadWorkspace('unknown-agent', 'thread-1', 'user-1'),
+			).resolves.toBeUndefined();
+			expect(source.destroy).not.toHaveBeenCalled();
 		});
 	});
 

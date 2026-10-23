@@ -1,8 +1,11 @@
 import {
 	AgentIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
+	type AgentMessageAuthor,
+	type AgentMessageIntegrationOrigin,
 	type RichCardComponentType,
 } from '@n8n/api-types';
+import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Attachment, Thread, Author, Message } from 'chat';
@@ -28,6 +31,7 @@ import type {
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
+import type { DecodedThread, OriginDraft, OriginInput } from './integration-origin-support';
 
 /**
  * The platform refused an attachment download for a reason the user can fix.
@@ -43,6 +47,17 @@ export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
 	credentialId: string;
+}
+
+/** Trusted source context of one incoming chat turn. */
+export interface EpisodicScopeContext {
+	agentId: string;
+	credentialId: string;
+	integrationType: string;
+	/** The platform conversation of the incoming message. */
+	threadId: string;
+	author: AgentMessageAuthor;
+	origin?: AgentMessageIntegrationOrigin;
 }
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
@@ -392,6 +407,29 @@ export abstract class AgentChatIntegration {
 
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
+
+	/**
+	 * Builds the typed origin fields of an inbound message from the decoded adapter
+	 * thread ID and the message. Every channel must decide what it records. Return
+	 * `undefined` when the channel has no platform context to store. The result is
+	 * validated against `AgentMessageIntegrationOriginSchema`, so a new channel also
+	 * needs a variant there.
+	 */
+	abstract buildOriginDraft(
+		input: OriginInput,
+		decoded: DecodedThread,
+	): Promise<OriginDraft | undefined> | OriginDraft | undefined;
+
+	/**
+	 * Decides who owns the episodic memories of an incoming chat turn. Every
+	 * channel must decide. Build identifiers from trusted source context and
+	 * namespace them by agent, platform, and workspace or account. Return `null`
+	 * when the channel has no policy or the required identity is missing: the turn
+	 * then runs without episodic memory. There is no shared fallback.
+	 */
+	abstract resolveEpisodicScope(
+		context: EpisodicScopeContext,
+	): Promise<ResolvedEpisodicScope | null> | ResolvedEpisodicScope | null;
 
 	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;

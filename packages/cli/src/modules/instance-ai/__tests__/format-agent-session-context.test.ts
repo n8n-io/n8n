@@ -231,6 +231,18 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).toContain('error=boom');
 	});
 
+	it('renders a guardrail stop with its code instead of a tool call', () => {
+		const block = formatPreviewSessionContext(makeThread(), [
+			makeExecution({
+				timeline: [toolCallEvent(), { type: 'guardrail', code: 'budget.session', timestamp: 2000 }],
+			}),
+		]);
+
+		expect(block).toContain('[stopped by guardrail budget.session]');
+		expect(block).toContain('Tool call: search_orders');
+		expect(block?.match(/Tool call:/g)).toHaveLength(1);
+	});
+
 	it('omits turns beyond the whole-block cap and reports the omission', () => {
 		const bigText = 'y'.repeat(3_900);
 		const executions = Array.from({ length: 40 }, (_, i) =>

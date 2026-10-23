@@ -1,9 +1,10 @@
 ---
 name: workflow-builder
 description: >-
-  Load before calling workflow_builder_build_workflow. Default path for all single-workflow
+  Load before calling workflow_builder_build_workflow. Use for single-workflow
   work: new one-off workflows, existing-workflow edits, verification repairs,
-  and workflow-local data tables. Write or edit a workspace source file, run
+  and workflow-local data tables. For any other new workflow, load
+  intent-recognition first when it is listed. Write or edit a workspace source file, run
   workflow-sdk validate via workspace_execute_command, then call workflow_builder_build_workflow
   with filePath. When the workflow creates or writes Data Tables, load
   data-table-manager first, then this skill. Do not load planning or
@@ -11,10 +12,11 @@ description: >-
   or shared cross-task data tables require a dependency-aware task graph.
   Don't use this skill for explicit one-off tasks that can be done by a single
   node execution: load one-off-operations and run the node with
-  workflow_builder_nodes(action="execute"). Load it before you ask the user any
-  question about a new workflow. Also load for a workflow's evaluations, model
-  choices, credential setup, error workflows, and post-build verification: this
-  skill lists the references for those steps.
+  workflow_builder_nodes(action="execute"). Once the user wants a workflow, load
+  it before you ask any question about that workflow. Do not load it to ask
+  about a request that does not yet say what to build. Also load for a
+  workflow's evaluations, model choices, credential setup, error workflows, and
+  post-build verification: this skill lists the references for those steps.
 recommended_tools:
   - read_file
   - write_file
