@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
+import { isNodeIdTooLong } from '@n8n/constants';
 import {
 	WorkflowEntity,
 	WorkflowHistory,
@@ -722,7 +722,7 @@ export class WorkflowPublicationApplier {
 		const { runnable, unresolvable } = this.partitionByResolvability(newVersion);
 		const enabledTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
 		const oversized = [...enabledTriggerNodes, ...unresolvable.map(({ node }) => node)].filter(
-			(node) => node.id.length > NODE_ID_MAX_LENGTH,
+			(node) => isNodeIdTooLong(node.id),
 		);
 		if (oversized.length === 0) return null;
 
@@ -733,7 +733,7 @@ export class WorkflowPublicationApplier {
 		});
 
 		const error = new TriggerNodeIdTooLongError(oversized);
-		const storable = enabledTriggerNodes.filter((node) => node.id.length <= NODE_ID_MAX_LENGTH);
+		const storable = enabledTriggerNodes.filter((node) => !isNodeIdTooLong(node.id));
 		return {
 			type: 'failed',
 			error,

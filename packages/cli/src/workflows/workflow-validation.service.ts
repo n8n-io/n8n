@@ -1,4 +1,4 @@
-import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
+import { NODE_ID_MAX_LENGTH, isNodeIdTooLong } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -287,7 +287,7 @@ export class WorkflowValidationService {
 				continue;
 			}
 
-			if (node.id.length > NODE_ID_MAX_LENGTH) {
+			if (isNodeIdTooLong(node.id)) {
 				violations.push(
 					`trigger "${node.name}" has a node ID longer than ${NODE_ID_MAX_LENGTH} characters`,
 				);
