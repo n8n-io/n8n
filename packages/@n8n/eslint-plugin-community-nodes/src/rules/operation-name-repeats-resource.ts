@@ -41,7 +41,6 @@ export const OperationNameRepeatsResourceRule = createRule({
 					const nameProperty = findObjectProperty(option, 'name');
 					const name = getStringLiteralValue(nameProperty?.value ?? null);
 					if (nameProperty && name !== null && repeatsResource(name, resource)) {
-						// The UX guidelines call the list operation "Get Many", whatever its name says now.
 						const value = getStringLiteralValue(findObjectProperty(option, 'value')?.value ?? null);
 						context.report({
 							node: nameProperty.value,
