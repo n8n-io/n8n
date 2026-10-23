@@ -15,6 +15,7 @@ import {
 	CloudBrowserLocalMcpServer,
 	SESSION_IDLE_TIMEOUT_MS,
 	START_SESSION_TOOL_NAME,
+	USER_CONTROL_TIMEOUT_MS,
 } from '../browser/cloud-browser-local-mcp-server';
 import type { BrowserDomainGate } from '../browser/browser.helpers';
 import type { CloudBrowserSessionProvider } from '../browser/cloud-browser-session-provider';
@@ -923,6 +924,224 @@ describe('CloudBrowserLocalMcpServer', () => {
 		});
 	});
 
+	describe('user control', () => {
+		const releasedMessage = 'The browser task has ended. No browser tools can run.';
+		const userControlTimeoutMessage =
+			'The browser session was closed because the user did not return control within 30 minutes. Its pages, sign-ins and cookies are gone. Call browser_start_session with a URL to open a session.';
+		const skippedResult = (note = '') => ({
+			content: [
+				{
+					type: 'text',
+					text: `The user took control of the browser, so this call did not run.${note} Call browser_snapshot to see the page, then continue.`,
+				},
+			],
+		});
+		const clickOn = (toolkit: ReturnType<typeof fakeToolkit>) =>
+			toolkit.tools.find(({ name }) => name === 'browser_click')!.execute;
+
+		it('refuses to give control when no session is open', () => {
+			const { server } = setup();
+
+			expect(server.giveControlToUser()).toBe(
+				'No browser session is open. Call browser_start_session with a URL to open a session.',
+			);
+			expect(server.isUserInControl()).toBe(false);
+		});
+
+		it('refuses to give control after the release', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+			await server.release();
+
+			expect(server.giveControlToUser()).toBe(releasedMessage);
+			expect(server.isUserInControl()).toBe(false);
+		});
+
+		it('says whether the user is in control', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			expect(server.isUserInControl()).toBe(false);
+			expect(server.giveControlToUser()).toBeUndefined();
+			expect(server.isUserInControl()).toBe(true);
+			expect(server.returnControlToAgent()).toBeUndefined();
+			expect(server.isUserInControl()).toBe(false);
+		});
+
+		it("holds a tool call until control returns, then skips it with the user's note", async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+
+			const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+			server.returnControlToAgent('x');
+
+			expect(await call).toEqual(skippedResult(' The user says: "x"'));
+			expect(clickOn(toolkits[0])).not.toHaveBeenCalled();
+		});
+
+		it('skips a held tool call without a note when the user gives none', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+
+			const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+			server.returnControlToAgent();
+
+			expect(await call).toEqual(skippedResult());
+			expect(clickOn(toolkits[0])).not.toHaveBeenCalled();
+		});
+
+		it('runs tool calls again after control returns', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+			server.returnControlToAgent();
+
+			const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+
+			expect(result).toEqual({ content: [{ type: 'text', text: 'clicked e1' }] });
+			expect(clickOn(toolkits[0])).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns the released error to a held tool call on release', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+
+			const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+			await server.release();
+
+			expect(await call).toEqual({
+				content: [{ type: 'text', text: releasedMessage }],
+				isError: true,
+			});
+			expect(server.isUserInControl()).toBe(false);
+			expect(clickOn(toolkits[0])).not.toHaveBeenCalled();
+		});
+
+		it('refuses to return control when the user is not in control', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			expect(server.returnControlToAgent('x')).toBe(
+				'The user does not have control of the browser.',
+			);
+		});
+
+		it('keeps one wait when control is given twice', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+
+			const first = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+			expect(server.giveControlToUser()).toBeUndefined();
+			const second = server.callTool({ name: 'browser_click', arguments: { ref: 'e2' } });
+			server.returnControlToAgent('done');
+
+			expect(await first).toEqual(skippedResult(' The user says: "done"'));
+			expect(await second).toEqual(skippedResult(' The user says: "done"'));
+			expect(server.isUserInControl()).toBe(false);
+		});
+
+		describe('requestUserAction', () => {
+			it('gives the user control and resolves with their note when they return it', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				const request = server.requestUserAction();
+				expect(server.isUserInControl()).toBe(true);
+				server.returnControlToAgent('Signed in');
+
+				expect(await request).toEqual({ returned: true, note: 'Signed in' });
+			});
+
+			it('resolves without a note when the user gives none', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				const request = server.requestUserAction();
+				server.returnControlToAgent();
+
+				expect(await request).toEqual({ returned: true });
+			});
+
+			it('does not give control when no session is open', async () => {
+				const { server } = setup();
+
+				expect(await server.requestUserAction()).toEqual({
+					returned: false,
+					error:
+						'No browser session is open. Call browser_start_session with a URL to open a session.',
+				});
+				expect(server.isUserInControl()).toBe(false);
+			});
+
+			it('resolves as not returned when the browser is released', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				const request = server.requestUserAction();
+				await server.release();
+
+				expect(await request).toEqual({ returned: false, error: releasedMessage });
+			});
+		});
+
+		describe('idle limit', () => {
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
+
+			it('keeps the session open for the longer limit while the user is in control', async () => {
+				const { server, openSessions, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
+
+				expect([...openSessions]).toEqual(['sess-1']);
+
+				await vi.advanceTimersByTimeAsync(USER_CONTROL_TIMEOUT_MS - SESSION_IDLE_TIMEOUT_MS);
+
+				expect(openSessions.size).toBe(0);
+			});
+
+			it('ends the wait when the user does not return control in time', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				const request = server.requestUserAction();
+				const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+				await vi.advanceTimersByTimeAsync(USER_CONTROL_TIMEOUT_MS);
+
+				expect(await request).toEqual({ returned: false, error: userControlTimeoutMessage });
+				expect(await call).toEqual({
+					content: [{ type: 'text', text: userControlTimeoutMessage }],
+					isError: true,
+				});
+				expect(server.isUserInControl()).toBe(false);
+			});
+
+			it('uses the normal limit again after control returns', async () => {
+				const { server, openSessions, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS + 1000);
+
+				server.returnControlToAgent();
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS - 1000);
+
+				expect([...openSessions]).toEqual(['sess-1']);
+
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(openSessions.size).toBe(0);
+				const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+				expect(result).toEqual(idleResult);
+			});
+		});
+	});
+
 	describe('getLiveView', () => {
 		it('has no session before the agent opens one', async () => {
 			const { server } = setup();
@@ -976,6 +1195,26 @@ describe('CloudBrowserLocalMcpServer', () => {
 			expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(scope, 'sess-1');
 		});
 
+		it('says the user is in control while they have the browser', async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+			await start({ url: 'https://example.com' });
+			server.giveControlToUser();
+
+			expect(await server.getLiveView()).toEqual({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+				userInControl: true,
+			});
+
+			server.returnControlToAgent();
+
+			expect(await server.getLiveView()).toEqual({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+			});
+		});
+
 		it('is disconnected when the connection dropped', async () => {
 			const { server, toolkits, start } = setup();
 			await start({ url: 'https://example.com' });
@@ -1007,6 +1246,18 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(await server.getLiveView()).toEqual({
 					status: 'disconnected',
 					reason: 'idleTimeout',
+				});
+			});
+
+			it('is disconnected for a user control timeout when the user had the browser', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+				await vi.advanceTimersByTimeAsync(USER_CONTROL_TIMEOUT_MS);
+
+				expect(await server.getLiveView()).toEqual({
+					status: 'disconnected',
+					reason: 'userControlTimeout',
 				});
 			});
 		});

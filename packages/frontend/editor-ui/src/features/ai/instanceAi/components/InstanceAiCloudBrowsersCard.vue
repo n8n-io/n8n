@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 /**
  * The Browsers card in the sidebar: one row per running cloud browser task, with a small
- * read-only live view and a stop button. A finished task stays, with no browser, until its
- * result reaches the assistant.
+ * read-only live view that opens the browser tab, and a stop button. A finished task stays, with
+ * no browser, until its result reaches the assistant.
  */
 import { N8nButton, N8nHeading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -19,6 +19,10 @@ const i18n = useI18n();
 const thread = useThread();
 const tasks = useCloudBrowserTasks();
 const liveViews = inject(CloudBrowserLiveViewsKey, undefined);
+const openCloudBrowserTab = inject<((taskId: string) => void) | undefined>(
+	'openCloudBrowserTab',
+	undefined,
+);
 
 // A running task the instance no longer runs (for example after a restart) is not shown.
 const rows = computed(() =>
@@ -41,9 +45,14 @@ function liveViewUrlOf(task: CloudBrowserTask): string | undefined {
 function subtitleOf(task: CloudBrowserTask): string {
 	if (task.state === 'done') return i18n.baseText('instanceAi.cloudBrowser.doneWaitingToSend');
 	if (task.state === 'failed') return i18n.baseText('instanceAi.cloudBrowser.failedWaitingToSend');
-	const status = liveViews?.get(task.taskId)?.status;
-	if (status === 'live') return i18n.baseText('instanceAi.cloudBrowser.working');
-	if (status === 'disconnected') return i18n.baseText('instanceAi.cloudBrowser.disconnected');
+	if (task.userAction) return i18n.baseText('instanceAi.cloudBrowser.needsYou');
+	const view = liveViews?.get(task.taskId);
+	if (view?.status === 'live') {
+		return view.userInControl
+			? i18n.baseText('instanceAi.cloudBrowser.youHaveControl')
+			: i18n.baseText('instanceAi.cloudBrowser.working');
+	}
+	if (view?.status === 'disconnected') return i18n.baseText('instanceAi.cloudBrowser.disconnected');
 	return i18n.baseText('instanceAi.cloudBrowser.opening');
 }
 </script>
@@ -85,20 +94,29 @@ function subtitleOf(task: CloudBrowserTask): string {
 						@click="thread.cancelBackgroundTask(task.taskId)"
 					/>
 				</div>
-				<div
+				<button
 					v-if="task.state === 'running'"
+					type="button"
 					:class="$style.thumbnail"
+					:aria-label="i18n.baseText('instanceAi.cloudBrowser.openBrowser')"
 					data-test-id="instance-ai-cloud-browser-live-view"
+					@click="openCloudBrowserTab?.(task.taskId)"
 				>
 					<iframe
 						v-if="liveViewUrlOf(task)"
 						:src="embeddedLiveViewUrl(liveViewUrlOf(task) ?? '')"
 						:class="$style.thumbnailFrame"
+						:data-cloud-browser-task-id="task.taskId"
 						tabindex="-1"
 						aria-hidden="true"
 						sandbox="allow-same-origin allow-scripts"
 					/>
-				</div>
+					<span :class="$style.thumbnailOverlay">
+						<span :class="$style.openButton">
+							{{ i18n.baseText('instanceAi.cloudBrowser.openBrowser') }}
+						</span>
+					</span>
+				</button>
 			</div>
 		</div>
 	</div>
@@ -206,12 +224,20 @@ function subtitleOf(task: CloudBrowserTask): string {
 /* The live view laid out at 4x its box and scaled down, so the page renders at desktop size. */
 .thumbnail {
 	position: relative;
+	display: block;
 	width: 100%;
+	padding: 0;
 	aspect-ratio: 16 / 10;
 	overflow: hidden;
 	border: var(--border);
 	border-radius: var(--radius);
 	background: var(--color--background--shade-1);
+	cursor: pointer;
+
+	&:hover .thumbnailOverlay,
+	&:focus-visible .thumbnailOverlay {
+		opacity: 1;
+	}
 }
 
 .thumbnailFrame {
@@ -221,5 +247,25 @@ function subtitleOf(task: CloudBrowserTask): string {
 	transform: scale(0.25);
 	transform-origin: 0 0;
 	pointer-events: none;
+}
+
+.thumbnailOverlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--color--black-alpha-300);
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+
+.openButton {
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border-radius: var(--radius);
+	background: var(--color--primary);
+	color: var(--color--background--light-3);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
 }
 </style>

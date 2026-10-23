@@ -48,6 +48,15 @@ describe('getSystemPrompt — cloud browser', () => {
 		expect(section).toContain('Do not start the task again unless the user asks');
 	});
 
+	it('tells the model the browser agent can get the user to sign in', () => {
+		const section = cloudBrowserSection();
+
+		expect(section).toContain('**The browser agent can get the user to sign in.**');
+		expect(section).toContain('Never tell the browser agent to stop at a sign-in');
+		expect(section).toContain('never ask the user for a password');
+		expect(section).not.toContain('The browser agent cannot sign in for them');
+	});
+
 	it('does not prefer a browser by sign-in', () => {
 		expect(cloudBrowserSection({ status: 'connected' })).not.toContain('Prefer the');
 	});

@@ -202,6 +202,72 @@ describe('InstanceAiCloudBrowserService', () => {
 		});
 	});
 
+	describe('giveControlToUser', () => {
+		it("passes on the server's answer to its owner", async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const giveControlToUser = vi
+				.spyOn(server, 'giveControlToUser')
+				.mockReturnValue('No browser session is open.');
+
+			expect(service.giveControlToUser('user-1', 'thread-1', 'task-1')).toBe(
+				'No browser session is open.',
+			);
+			expect(giveControlToUser).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['another user', 'user-2', 'thread-1'],
+			['another thread', 'user-1', 'thread-2'],
+		])('says the task is not running for %s', async (_, userId, threadId) => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const giveControlToUser = vi.spyOn(server, 'giveControlToUser');
+
+			expect(service.giveControlToUser(userId, threadId, 'task-1')).toBe(
+				'This browser task is not running.',
+			);
+			expect(giveControlToUser).not.toHaveBeenCalled();
+		});
+
+		it('says the task is not running for a task with no server', () => {
+			expect(service.giveControlToUser('user-1', 'thread-1', 'task-1')).toBe(
+				'This browser task is not running.',
+			);
+		});
+	});
+
+	describe('returnControlToAgent', () => {
+		it('passes the note to the server of its owner', async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const returnControlToAgent = vi
+				.spyOn(server, 'returnControlToAgent')
+				.mockReturnValue(undefined);
+
+			expect(
+				service.returnControlToAgent('user-1', 'thread-1', 'task-1', 'Signed in'),
+			).toBeUndefined();
+			expect(returnControlToAgent).toHaveBeenCalledWith('Signed in');
+		});
+
+		it.each([
+			['another user', 'user-2', 'thread-1'],
+			['another thread', 'user-1', 'thread-2'],
+		])('says the task is not running for %s', async (_, userId, threadId) => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const returnControlToAgent = vi.spyOn(server, 'returnControlToAgent');
+
+			expect(service.returnControlToAgent(userId, threadId, 'task-1')).toBe(
+				'This browser task is not running.',
+			);
+			expect(returnControlToAgent).not.toHaveBeenCalled();
+		});
+
+		it('says the task is not running for a task with no server', () => {
+			expect(service.returnControlToAgent('user-1', 'thread-1', 'task-1')).toBe(
+				'This browser task is not running.',
+			);
+		});
+	});
+
 	describe('isAvailable', () => {
 		beforeEach(() => {
 			postHogClient.getFeatureFlagForInstance.mockReset();

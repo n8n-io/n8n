@@ -22,6 +22,8 @@ import { CloudBrowserLocalMcpServer } from './cloud-browser-local-mcp-server';
 import type { CloudBrowserSessionProvider } from './cloud-browser-session-provider';
 
 /** Creates the cloud browser for a background task. Each task gets its own server. */
+const TASK_NOT_RUNNING_MESSAGE = 'This browser task is not running.';
+
 @Service()
 export class InstanceAiCloudBrowserService {
 	private readonly logger: Logger;
@@ -125,6 +127,28 @@ export class InstanceAiCloudBrowserService {
 		const entry = this.serversByTaskId.get(taskId);
 		if (entry?.userId !== userId || entry.threadId !== threadId) return { status: 'not-found' };
 		return await entry.server.getLiveView();
+	}
+
+	/**
+	 * Gives the user control of the task's browser, for its owner only. Returns why they cannot
+	 * take over.
+	 */
+	giveControlToUser(userId: string, threadId: string, taskId: string): string | undefined {
+		const entry = this.serversByTaskId.get(taskId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return TASK_NOT_RUNNING_MESSAGE;
+		return entry.server.giveControlToUser();
+	}
+
+	/** Gives control of the task's browser back to its agent, for its owner only. */
+	returnControlToAgent(
+		userId: string,
+		threadId: string,
+		taskId: string,
+		note?: string,
+	): string | undefined {
+		const entry = this.serversByTaskId.get(taskId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return TASK_NOT_RUNNING_MESSAGE;
+		return entry.server.returnControlToAgent(note);
 	}
 
 	/** Ends the task's browser and forgets its server. Called when the task ends. */
