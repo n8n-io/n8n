@@ -394,7 +394,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					scheduleSkillSave({
 						skillId,
 						skill: sanitizedSkill,
-						...(availableTo && hubSkillsEnabled.value ? { availableTo } : {}),
+						...(availableTo ? { availableTo } : {}),
 					});
 				},
 			},
@@ -558,7 +558,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							targetProjectId,
 							targetAgentId,
 							sanitizedSkill,
-							hubSkillsEnabled.value ? availableTo : undefined,
+							availableTo,
 							method,
 						);
 					} catch (error) {
