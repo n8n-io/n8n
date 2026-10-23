@@ -179,7 +179,7 @@ async function searchSlackUsers(
 			return userLookupResult(response.user, input);
 		} catch (error) {
 			abortSignal?.throwIfAborted();
-			const code = isRecord(error) && isRecord(error.data) ? error.data.error : undefined;
+			const code = slackErrorCode(error);
 			if (code !== 'user_not_found') throw error;
 			if (input.query?.startsWith('<@')) return userLookupResult(undefined, input);
 			// A plain uppercase name can also match the user ID format.
@@ -196,7 +196,7 @@ async function searchSlackUsers(
 			return userLookupResult(response.user, input);
 		} catch (error) {
 			abortSignal?.throwIfAborted();
-			const code = isRecord(error) && isRecord(error.data) ? error.data.error : undefined;
+			const code = slackErrorCode(error);
 			if (code === 'missing_scope') {
 				return integrationError(
 					INTEGRATION_ERROR_CODES.PERMISSION_NOT_GRANTED,
@@ -331,6 +331,11 @@ export async function subscribeSlackThread(thread: {
 	subscribe?: () => Promise<void>;
 }): Promise<void> {
 	await thread.subscribe?.();
+}
+
+function slackErrorCode(error: unknown): string | undefined {
+	if (!isRecord(error) || !isRecord(error.data)) return undefined;
+	return stringValue(error.data.error);
 }
 
 function getSlackAdapter(chat: ChatInstance): SlackAdapter | undefined {
