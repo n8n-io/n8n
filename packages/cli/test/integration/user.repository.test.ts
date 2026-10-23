@@ -20,8 +20,37 @@ describe('UserRepository', () => {
 		await testDb.terminate();
 	});
 
+	describe('disableMfaForUser()', () => {
+		test('clears MFA data only for the selected user', async () => {
+			const user = await createMember();
+			const other = await createMember();
+			await userRepository.save([
+				{ ...user, mfaEnabled: true, mfaSecret: 'secret', mfaRecoveryCodes: ['code'] },
+				{ ...other, mfaEnabled: true, mfaSecret: 'other-secret', mfaRecoveryCodes: ['other-code'] },
+			]);
+
+			await userRepository.disableMfaForUser(user.id);
+
+			const updated = await userRepository.findOneByOrFail({ id: user.id });
+			const untouched = await userRepository.findOneByOrFail({ id: other.id });
+			expect(updated).toMatchObject({
+				id: user.id,
+				email: user.email,
+				mfaEnabled: false,
+				mfaSecret: null,
+				mfaRecoveryCodes: [],
+			});
+			expect(untouched).toMatchObject({
+				mfaEnabled: true,
+				mfaSecret: 'other-secret',
+				mfaRecoveryCodes: ['other-code'],
+			});
+		});
+	});
+
 	describe('countUsersByRole()', () => {
 		test('should return the number of users in each role', async () => {
+			await testDb.truncate(['User']);
 			await Promise.all([
 				createOwner(),
 				createAdmin(),
