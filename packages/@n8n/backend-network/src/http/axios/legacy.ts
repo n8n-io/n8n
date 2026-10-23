@@ -72,10 +72,7 @@ export async function buildAxiosConfigFromLegacyRequest(
 	// - Lastly, we should have a regular `body` that is probably a JSON.
 
 	const contentTypeHeaderKeyName =
-		axiosConfig.headers &&
-		Object.keys(axiosConfig.headers).find(
-			(headerName) => headerName.toLowerCase() === 'content-type',
-		);
+		axiosConfig.headers && searchForHeader(axiosConfig, 'content-type');
 	const contentType =
 		contentTypeHeaderKeyName &&
 		(axiosConfig.headers?.[contentTypeHeaderKeyName] as string | undefined);
