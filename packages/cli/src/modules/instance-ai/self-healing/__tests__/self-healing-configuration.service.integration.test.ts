@@ -841,7 +841,7 @@ it('reverts and reapplies the configuration schema', async () => {
 	const db = Container.get(DataSource);
 	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
 	const migration = db.migrations.find(
-		({ constructor }) => constructor.name === 'CreateSelfHealingConfigurations1792681078631',
+		({ constructor }) => constructor.name === 'CreateSelfHealingConfigurations1792742505678',
 	);
 	if (!migration) throw new Error('Configuration migration is not registered.');
 	const runner = db.createQueryRunner();

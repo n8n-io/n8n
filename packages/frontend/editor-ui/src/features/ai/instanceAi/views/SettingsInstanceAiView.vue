@@ -5,10 +5,10 @@ import {
 	N8nButton,
 	N8nDropdownMenu,
 	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -36,7 +36,6 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
-import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import {
 	isContextPreferencesEnabled,
 	isContextSkillsEnabled,
@@ -65,8 +64,6 @@ const {
 	searchCredential,
 	searchState,
 } = useInstanceAiConfiguration();
-
-const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
 const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
 
@@ -206,7 +203,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'system',
 		labelKey: 'settings.n8nAgent.permissions.group.system',
-		keys: ['readFilesystem', 'cleanupTestExecutions'],
+		keys: ['cleanupTestExecutions'],
 	},
 	{
 		id: 'web',
@@ -441,11 +438,6 @@ async function handleStatusAction(action: string) {
 	if (confirmed === MODAL_CONFIRM) await store.persistEnabled(false);
 }
 
-function handleComputerUseToggle(value: boolean) {
-	store.setField('localGatewayDisabled', !value);
-	void store.save();
-}
-
 function handleBrowserUseToggle(value: boolean) {
 	store.setField('browserUseEnabled', value);
 	void store.save();
@@ -474,8 +466,11 @@ function openAiUsageSettings() {
 			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="xsmall" />
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="n8n-agent-enterprise-readiness-badge"
+				/>
 			</template>
 		</N8nSettingsPageHeader>
 
@@ -661,23 +656,6 @@ function openAiUsageSettings() {
 								{{ searchValue }}
 							</N8nText>
 							<N8nSettingsRowConfigure v-else :value="searchValue" />
-						</template>
-					</N8nSettingsRow>
-
-					<N8nSettingsRow
-						v-if="isComputerUseExperimentEnabled"
-						:class="{ [$style.dim]: isOff }"
-						:title="i18n.baseText('settings.n8nAgent.computerUse.label')"
-						:description="i18n.baseText('settings.n8nAgent.computerUse.description')"
-					>
-						<template #action>
-							<N8nSwitch
-								:model-value="!(store.settings?.localGatewayDisabled ?? false)"
-								:disabled="store.isSaving || isOff"
-								:aria-label="i18n.baseText('settings.n8nAgent.computerUse.label')"
-								data-test-id="n8n-agent-computer-use-toggle"
-								@update:model-value="handleComputerUseToggle"
-							/>
 						</template>
 					</N8nSettingsRow>
 

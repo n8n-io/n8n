@@ -18,7 +18,7 @@ import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
-import type { AgentTurnFinalizeOutcome } from './types/agent-turn-outcome';
+import type { AgentTurnFinalizeOutcome, FormattedTurnError } from './types/agent-turn-outcome';
 import { AgentToolApprovalService } from './agent-tool-approval.service';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
@@ -75,6 +75,11 @@ interface ExecuteTurnConfig {
 	 * no execution record.
 	 */
 	onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
+	/**
+	 * Map a turn error to the text to store on the execution. Return
+	 * `undefined` to store the raw error. Must not reject.
+	 */
+	formatError?: (error: unknown) => Promise<FormattedTurnError | undefined>;
 }
 
 interface TurnExecutionState {
@@ -161,7 +166,8 @@ export class AgentTurnExecutionService {
 				return;
 
 			state.executionError = error;
-			recorder.record({ type: 'error', error });
+			const formatted = await config.formatError?.(error);
+			recorder.record({ type: 'error', error: formatted?.message ?? error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
@@ -272,7 +278,12 @@ export class AgentTurnExecutionService {
 				chunk = { ...chunk, finishReason: 'cancelled' };
 			}
 
-			recorder.record(chunk);
+			if (chunk.type === 'error') {
+				const formatted = await config.formatError?.(chunk.error);
+				recorder.record({ ...chunk, error: formatted?.message ?? chunk.error });
+			} else {
+				recorder.record(chunk);
+			}
 
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;

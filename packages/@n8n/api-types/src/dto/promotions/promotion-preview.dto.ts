@@ -47,6 +47,8 @@ export const promotionResourceSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	previousName: z.string().optional(),
+	/** Only for tags on Apply: the local tag with this name that Apply moves to the branch id. */
+	previousId: z.string().optional(),
 	/** The project or folder that holds the resource. `null` for instance-wide resources. */
 	parentKey: z.string().nullable(),
 	previousParentKey: z.string().nullable().optional(),

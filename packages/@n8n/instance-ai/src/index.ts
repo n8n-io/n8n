@@ -274,6 +274,8 @@ export {
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
 	FolderResolutionError,
+	OutsideThreadProjectError,
+	formatRedactedError,
 } from './errors';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
@@ -794,6 +796,7 @@ export type {
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
 	ExecutionResult,
+	ExecutionRedaction,
 	StepExecutionResult,
 	StepRunInputMode,
 	ExecutionDebugInfo,
@@ -838,9 +841,7 @@ export type {
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
 	InstanceAiSkillService,
-	ComputerUseChannel,
-	ComputerUseChannelState,
-	ComputerUseState,
+	BrowserUseState,
 } from './types';
 export {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,

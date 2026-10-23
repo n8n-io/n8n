@@ -10,10 +10,11 @@ import {
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
+import type { Blocker } from '../../promotionOperation';
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
 import {
 	describeDataTable,
@@ -26,8 +27,11 @@ import {
 } from '../../promotionPreview.content';
 import type { ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
 import { isContainer, resourceIcon } from '../../promotionPreview.tree';
+import { hasWorkflowDiff } from '../../promotionPreview.workflow';
 import DataTableChangeDetails from './DataTableChangeDetails.vue';
 import PromotionFieldChanges from './PromotionFieldChanges.vue';
+import PromotionWorkflowPreview from './PromotionWorkflowPreview.vue';
+import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
 const props = defineProps<{
 	resource: PromotionResource;
@@ -36,31 +40,55 @@ const props = defineProps<{
 	included: boolean;
 	entry?: DetailEntry;
 	inspected: boolean;
+	blockers?: Blocker[];
+	branchName?: string;
+	diffActive?: boolean;
 }>();
 
 const emit = defineEmits<{
 	inspect: [key: ResourceKey];
 	retry: [];
 	refresh: [];
+	activateDiff: [];
+	deactivateDiff: [];
 }>();
 
 const i18n = useI18n();
 const nameOf = (key: string) => props.graph.resources.get(key)?.name ?? key;
-const { changeLabel } = usePromotionPreviewLabels();
+const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
+// A moved folder explains itself in the card body.
+const blocker = computed(() =>
+	props.resource.type === 'folder' ? undefined : blockerMessage(props.resource, props.blockers),
+);
 
 // Cards start open. Inspecting a resource from the tree opens its card again.
-const open = ref(true);
+const open = defineModel<boolean>('open', { default: true });
 watch(
 	() => props.inspected,
 	(inspected) => {
 		if (inspected) open.value = true;
 	},
 );
-const statusLabel = computed(() =>
-	i18n.baseText(
-		props.included ? 'promotions.preview.card.included' : 'promotions.preview.card.notIncluded',
-	),
-);
+watch(open, (isOpen) => {
+	if (!isOpen && props.diffActive) emit('deactivateDiff');
+});
+// A blocker matters more than the inclusion, so it takes the place of the inclusion icon.
+const status = computed(() => {
+	if (blocker.value) {
+		return { label: blocker.value, icon: 'circle-alert' as const, tone: 'blocked' };
+	}
+	return props.included
+		? {
+				label: i18n.baseText('promotions.preview.card.included'),
+				icon: 'circle-check' as const,
+				tone: 'included',
+			}
+		: {
+				label: i18n.baseText('promotions.preview.card.notIncluded'),
+				icon: 'circle-minus' as const,
+				tone: undefined,
+			};
+});
 
 // On a project page, project scope is the default, so only global variables say so.
 const scope = computed(() =>
@@ -69,28 +97,24 @@ const scope = computed(() =>
 		: undefined,
 );
 
-type Footer = { keypath: BaseTextKey; resourceKeys: readonly ResourceKey[] };
+type Footer = { keypath: BaseTextKey; workflows: Array<{ key: ResourceKey; name: string }> };
 
 // Resources that users cannot select name the workflows that use or call them.
 const footer = computed((): Footer | undefined => {
 	const { resource, graph } = props;
 	if (resource.selectable || isContainer(resource)) return undefined;
 	const users = graph.requiredBy.get(resource.key) ?? [];
-	if (users.length > 0) return { keypath: 'promotions.preview.card.usedBy', resourceKeys: users };
+	const named = (keys: readonly ResourceKey[]) => keys.map((key) => ({ key, name: nameOf(key) }));
+	if (users.length > 0)
+		return { keypath: 'promotions.preview.card.usedBy', workflows: named(users) };
 	return {
 		keypath: 'promotions.preview.card.calledBy',
-		resourceKeys: graph.calledBy.get(resource.key) ?? [],
+		workflows: named(graph.calledBy.get(resource.key) ?? []),
 	};
 });
 
-// The list format adds the separators and the "and" of the current language.
-const footerNames = computed(() =>
-	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).formatToParts(
-		footer.value?.resourceKeys ?? [],
-	),
-);
-
 const detail = computed(() => (props.entry?.status === 'loaded' ? props.entry.detail : undefined));
+const hasDiff = computed(() => hasWorkflowDiff(props.resource));
 const stale = computed(() => !!detail.value && isStaleDetail(detail.value, props.resource));
 const fieldChanges = computed(() => {
 	const context = { direction: props.direction, resource: props.resource, containerName: nameOf };
@@ -115,6 +139,16 @@ const isApplyMove = computed(
 		props.resource.type === 'folder' &&
 		props.resource.previousParentKey !== undefined,
 );
+// Tags belong to the whole instance, so Apply changes them outside this project too.
+const tagNote = computed(() => {
+	const { direction, resource } = props;
+	if (direction !== 'apply' || resource.type !== 'tag' || resource.change !== 'modified') {
+		return undefined;
+	}
+	if (resource.previousId !== undefined) return i18n.baseText('promotions.preview.tag.linked');
+	if (resource.previousName !== undefined) return i18n.baseText('promotions.preview.tag.renamed');
+	return undefined;
+});
 </script>
 
 <template>
@@ -126,44 +160,55 @@ const isApplyMove = computed(
 		>
 			<CollapsibleTrigger :class="$style.header" data-test-id="promotion-preview-card-toggle">
 				<N8nIcon :icon="resourceIcon(resource.type)" size="small" :class="$style.icon" />
-				<N8nText bold size="medium" color="text-dark" :title="resource.name" :class="$style.title">
-					{{ resource.name }}
-				</N8nText>
-				<N8nText v-if="changeLabel(resource)" step="xs" color="text-light">
-					{{ changeLabel(resource) }}
-				</N8nText>
+				<span :class="$style.heading">
+					<N8nText
+						bold
+						size="medium"
+						color="text-dark"
+						:title="resource.name"
+						:class="$style.title"
+					>
+						{{ resource.name }}
+					</N8nText>
+					<N8nText v-if="changeLabel(resource, direction)" step="xs" color="text-light">
+						{{ changeLabel(resource, direction) }}
+					</N8nText>
+				</span>
 				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-				<N8nTooltip :content="statusLabel" as-child>
+				<N8nTooltip :content="status.label" as-child>
 					<span
 						role="img"
-						:aria-label="statusLabel"
-						:class="[$style.status, { [$style.included]: included }]"
+						:aria-label="status.label"
+						:class="[$style.status, status.tone && $style[status.tone]]"
 						data-test-id="promotion-preview-card-status"
 						:data-included="included"
 					>
-						<N8nIcon :icon="included ? 'circle-check' : 'circle-minus'" size="medium" />
+						<N8nIcon :icon="status.icon" size="medium" />
 					</span>
 				</N8nTooltip>
 			</CollapsibleTrigger>
 
 			<CollapsibleContent>
 				<div :class="$style.notices">
-					<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>
-						{{ i18n.baseText('promotions.preview.card.missing') }}
-						<template #trailingContent>
-							<N8nButton variant="outline" size="small" @click="emit('refresh')">
-								{{ i18n.baseText('promotions.preview.refresh') }}
-							</N8nButton>
-						</template>
-					</N8nCallout>
-					<N8nCallout v-else-if="entry?.status === 'error'" theme="danger" slim>
-						{{ i18n.baseText('promotions.preview.card.loadFailed') }}
-						<template #trailingContent>
-							<N8nButton variant="outline" size="small" @click="emit('retry')">
-								{{ i18n.baseText('promotions.preview.state.retry') }}
-							</N8nButton>
-						</template>
-					</N8nCallout>
+					<!-- A workflow diff shows these states in its own area. -->
+					<template v-if="!hasDiff">
+						<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>
+							{{ i18n.baseText('promotions.preview.card.missing') }}
+							<template #trailingContent>
+								<N8nButton variant="outline" size="small" @click="emit('refresh')">
+									{{ i18n.baseText('promotions.preview.refresh') }}
+								</N8nButton>
+							</template>
+						</N8nCallout>
+						<N8nCallout v-else-if="entry?.status === 'error'" theme="danger" slim>
+							{{ i18n.baseText('promotions.preview.card.loadFailed') }}
+							<template #trailingContent>
+								<N8nButton variant="outline" size="small" @click="emit('retry')">
+									{{ i18n.baseText('promotions.preview.state.retry') }}
+								</N8nButton>
+							</template>
+						</N8nCallout>
+					</template>
 					<N8nCallout v-if="stale" theme="warning" slim data-test-id="promotion-preview-card-stale">
 						{{ i18n.baseText('promotions.preview.card.stale') }}
 						<template #trailingContent>
@@ -172,7 +217,7 @@ const isApplyMove = computed(
 							</N8nButton>
 						</template>
 					</N8nCallout>
-					<N8nCallout v-if="detail && hasUnreadableSide(detail)" theme="info" slim>
+					<N8nCallout v-if="!hasDiff && detail && hasUnreadableSide(detail)" theme="info" slim>
 						{{ i18n.baseText('promotions.preview.card.unreadable') }}
 					</N8nCallout>
 				</div>
@@ -185,7 +230,11 @@ const isApplyMove = computed(
 				>
 					{{ i18n.baseText('promotions.preview.card.noChanges') }}
 				</N8nText>
-				<N8nLoading v-else-if="entry?.status === 'loading'" :rows="2" :class="$style.padded" />
+				<N8nLoading
+					v-else-if="entry?.status === 'loading' && !hasDiff"
+					:rows="2"
+					:class="$style.padded"
+				/>
 				<template v-else>
 					<DataTableChangeDetails
 						v-if="dataTable"
@@ -198,6 +247,19 @@ const isApplyMove = computed(
 						:direction="direction"
 						:absent-sides="absentSides"
 					/>
+					<PromotionWorkflowPreview
+						v-if="hasDiff"
+						:active="!!diffActive && open"
+						:entry="entry"
+						:resource-key="resource.key"
+						:workflow-name="resource.name"
+						:direction="direction"
+						:branch-name="branchName"
+						:graph="graph"
+						@activate="emit('activateDiff')"
+						@retry="emit('retry')"
+						@refresh="emit('refresh')"
+					/>
 					<N8nText
 						v-if="detail?.type === 'variable' && detail.valueHidden"
 						step="2xs"
@@ -209,6 +271,9 @@ const isApplyMove = computed(
 					<N8nText v-if="isApplyMove" step="2xs" color="text-light" :class="$style.padded">
 						{{ i18n.baseText('promotions.preview.folder.moveConflict') }}
 					</N8nText>
+					<N8nText v-if="tagNote" step="2xs" color="text-light" :class="$style.padded">
+						{{ tagNote }}
+					</N8nText>
 				</template>
 
 				<footer v-if="footer" :class="$style.footer">
@@ -216,18 +281,10 @@ const isApplyMove = computed(
 					<N8nText step="2xs" color="text-light" data-test-id="promotion-preview-card-inclusion">
 						<I18nT :keypath="footer.keypath" scope="global">
 							<template #names>
-								<template v-for="(part, index) in footerNames" :key="index">
-									<button
-										v-if="part.type === 'element'"
-										type="button"
-										:class="$style.nameLink"
-										data-test-id="promotion-preview-card-relation"
-										@click="emit('inspect', part.value)"
-									>
-										{{ nameOf(part.value) }}
-									</button>
-									<template v-else>{{ part.value }}</template>
-								</template>
+								<PromotionWorkflowLinks
+									:workflows="footer.workflows"
+									@inspect="emit('inspect', $event)"
+								/>
 							</template>
 						</I18nT>
 					</N8nText>
@@ -293,6 +350,13 @@ const isApplyMove = computed(
 	color: var(--icon-color);
 }
 
+.heading {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .title {
 	min-width: 0;
 	overflow: hidden;
@@ -331,25 +395,6 @@ const isApplyMove = computed(
 	margin-right: var(--spacing--2xs);
 }
 
-/* N8nLink has no light theme, so the names use the footer text color. */
-.nameLink {
-	padding: 0;
-	border: none;
-	background: none;
-	color: inherit;
-	font: inherit;
-	text-decoration: underline;
-	cursor: pointer;
-
-	&:hover {
-		color: var(--text-color);
-	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--outline-color);
-	}
-}
-
 .status {
 	display: flex;
 	margin-left: auto;
@@ -358,5 +403,9 @@ const isApplyMove = computed(
 
 .included {
 	color: var(--icon-color--success);
+}
+
+.blocked {
+	color: var(--icon-color--warning);
 }
 </style>

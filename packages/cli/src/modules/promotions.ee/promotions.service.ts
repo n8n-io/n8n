@@ -832,6 +832,7 @@ export class PromotionsService {
 				dataTableSchemaConflictPolicy: confirmDestructiveChanges
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+				tagConflictPolicy: IMPORT_POLICY.tagConflictPolicy,
 			},
 			{ sourceDir: packageFolder },
 			selection,

@@ -1,9 +1,15 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen, within } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { MODAL_CONFIRM } from '@/app/constants';
+import {
+	getPreferences,
+	updatePreferences,
+} from '@/features/integrations/sourceControl.ee/sourceControl.api';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 import {
 	invalidateInstancePromotionConnection,
 	useInstancePromotionConnection,
@@ -20,6 +26,7 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('../promotionsSettings.api', () => api);
+vi.mock('@/features/integrations/sourceControl.ee/sourceControl.api');
 
 const mockConfirm = vi.fn();
 
@@ -61,7 +68,7 @@ describe('PromotionsSettingsView', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		invalidateInstancePromotionConnection();
-		createTestingPinia();
+		createTestingPinia({ stubActions: false });
 	});
 
 	it('removes the environment, then its provider, then refreshes the cached environments', async () => {
@@ -90,5 +97,47 @@ describe('PromotionsSettingsView', () => {
 		);
 		await cachedEnvironments.load();
 		expect(cachedEnvironments.hasApplyConfig.value).toBe(false);
+	});
+
+	it('allows a toggle only after the current protection state loads, and saves branchReadOnly only', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
+		const sourceControlStore = useSourceControlStore();
+		const preferences = Promise.withResolvers<SourceControlPreferences>();
+		vi.mocked(getPreferences).mockReturnValue(preferences.promise);
+		vi.mocked(updatePreferences).mockResolvedValue({
+			...sourceControlStore.preferences,
+			branchReadOnly: false,
+		});
+		renderView();
+
+		const toggle = await screen.findByRole('switch', { name: 'Protected instance' });
+		expect(toggle).toBeDisabled();
+		preferences.resolve({ ...sourceControlStore.preferences, branchReadOnly: true });
+		await waitFor(() => expect(toggle).toBeEnabled());
+		expect(toggle).toBeChecked();
+		await userEvent.click(toggle);
+
+		expect(updatePreferences).toHaveBeenCalledWith(expect.anything(), { branchReadOnly: false });
+		expect(sourceControlStore.preferences.branchReadOnly).toBe(false);
+		expect(toggle).not.toBeChecked();
+	});
+
+	it('keeps the protection state when saving fails', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
+		const sourceControlStore = useSourceControlStore();
+		vi.mocked(getPreferences).mockResolvedValue({
+			...sourceControlStore.preferences,
+			branchReadOnly: true,
+		});
+		vi.mocked(updatePreferences).mockRejectedValue(new Error('Request failed'));
+		renderView();
+
+		const toggle = await screen.findByRole('switch', { name: 'Protected instance' });
+		await waitFor(() => expect(toggle).toBeChecked());
+		await userEvent.click(toggle);
+
+		expect(updatePreferences).toHaveBeenCalled();
+		expect(sourceControlStore.preferences.branchReadOnly).toBe(true);
+		expect(toggle).toBeChecked();
 	});
 });

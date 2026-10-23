@@ -103,7 +103,7 @@ it('reverts and reapplies the investigation and configuration schemas', async ()
 	);
 	if (!migration) throw new Error('The investigation migration is not registered.');
 	const configurationMigration = db.migrations.find(
-		({ constructor }) => constructor.name === 'CreateSelfHealingConfigurations1792681078631',
+		({ constructor }) => constructor.name === 'CreateSelfHealingConfigurations1792742505678',
 	);
 	if (!configurationMigration) throw new Error('The configuration migration is not registered.');
 	async function runMigration(migration: MigrationInterface, direction: 'up' | 'down') {

@@ -9,6 +9,8 @@ import type {
 } from '../../types';
 import {
 	createRecallMemoryTool,
+	encodeEpisodicScopeMetadata,
+	EPISODIC_SCOPE_METADATA_KEY,
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	rankEpisodicMemoryEntries,
@@ -356,6 +358,160 @@ describe('getEpisodicMemoryScope', () => {
 			resourceId: 'chat-user-1',
 			threadId: 'thread-1',
 		});
+	});
+
+	it('carries the host-resolved scope from persistence metadata', () => {
+		const episodic = { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] };
+
+		expect(
+			getEpisodicMemoryScope({
+				resourceId: 'integration:slack:U1',
+				threadId: 'thread-1',
+				hostMetadata: encodeEpisodicScopeMetadata(episodic),
+			}),
+		).toEqual({ resourceId: 'integration:slack:U1', threadId: 'thread-1', episodic });
+	});
+
+	it('returns no scope when the host turned episodic memory off for the turn', () => {
+		expect(
+			getEpisodicMemoryScope({
+				resourceId: 'integration:slack:U1',
+				threadId: 'thread-1',
+				hostMetadata: encodeEpisodicScopeMetadata({ disabled: true }),
+			}),
+		).toBeNull();
+	});
+
+	it('turns episodic memory off when the carried scope is malformed', () => {
+		expect(
+			getEpisodicMemoryScope({
+				resourceId: 'integration:slack:U1',
+				threadId: 'thread-1',
+				hostMetadata: { [EPISODIC_SCOPE_METADATA_KEY]: { writeScopeId: '' } },
+			}),
+		).toBeNull();
+	});
+});
+
+describe('InMemoryMemory resolved episodic scope', () => {
+	const inChannel = (channel: string) => ({
+		resourceId: 'user-1',
+		threadId: `thread-${channel}`,
+		episodic: { writeScopeId: `channel:${channel}`, readScopeIds: [`channel:${channel}`] },
+	});
+	const content = 'The team chose Postgres.';
+
+	async function saveIn(memory: InMemoryMemory, scope: ReturnType<typeof inChannel>) {
+		const saved = await memory.episodic.saveEntryWithSources(
+			{ resourceId: scope.resourceId, episodic: scope.episodic, content },
+			[
+				{
+					candidateId: `candidate-${scope.threadId}`,
+					threadId: scope.threadId,
+					evidenceText: content,
+				},
+			],
+		);
+		if (!saved) throw new Error('Expected an episodic entry');
+		return saved;
+	}
+
+	it('keeps entries of one resource apart by their resolved scope', async () => {
+		const memory = new InMemoryMemory();
+		const one = inChannel('1');
+		const two = inChannel('2');
+
+		const first = await saveIn(memory, one);
+		const second = await saveIn(memory, two);
+
+		expect(first.id).not.toBe(second.id);
+		expect(first.resourceId).toBe('channel:1');
+		expect(second.resourceId).toBe('channel:2');
+		const ids = async (scope: typeof one) =>
+			(await memory.episodic.searchEntries(scope, 'team chose Postgres')).map(({ id }) => id);
+		expect(await ids(one)).toEqual([first.id]);
+		expect(await ids(two)).toEqual([second.id]);
+		expect(
+			(
+				await memory.episodic.getEntriesByContentHashes(one, [hashEpisodicMemoryContent(content)])
+			).map(({ id }) => id),
+		).toEqual([first.id]);
+	});
+
+	it('recalls a fact stored in two read scopes once, keeping the newest', async () => {
+		const memory = new InMemoryMemory();
+		const one = inChannel('1');
+		const two = inChannel('2');
+		const save = async (scope: typeof one, lastSeenAt: Date) =>
+			await memory.episodic.saveEntryWithSources(
+				{ resourceId: scope.resourceId, episodic: scope.episodic, content, lastSeenAt },
+				[
+					{
+						candidateId: `candidate-${scope.threadId}`,
+						threadId: scope.threadId,
+						evidenceText: content,
+					},
+				],
+			);
+		await save(one, new Date('2026-05-01T00:00:00Z'));
+		const newer = await save(two, new Date('2026-05-09T00:00:00Z'));
+
+		const results = await memory.episodic.searchEntries(
+			{
+				...one,
+				episodic: { writeScopeId: 'channel:1', readScopeIds: ['channel:1', 'channel:2'] },
+			},
+			'team chose Postgres',
+		);
+
+		expect(results.map(({ id }) => id)).toEqual([newer?.id]);
+	});
+
+	it('queues pending candidates and takes locks per resolved scope', async () => {
+		const memory = new InMemoryMemory();
+		const one = inChannel('1');
+		const two = inChannel('2');
+
+		const candidate = await memory.episodic.enqueueCaptureCandidate({
+			...one,
+			sourceMessageId: null,
+			runId: 'run-1',
+			toolCallId: 'call-1',
+			content,
+			evidenceText: content,
+			kind: 'fact',
+		});
+
+		expect(candidate.resourceId).toBe('channel:1');
+		expect(candidate).not.toHaveProperty('episodic');
+		expect(await memory.episodic.getPendingCaptureCandidates(one)).toHaveLength(1);
+		expect(await memory.episodic.getPendingCaptureCandidates(two)).toEqual([]);
+		const options = { ttlMs: 60_000 };
+		expect(
+			await memory.episodic.taskLock?.acquire(one, { ...options, holderId: 'A' }),
+		).not.toBeNull();
+		expect(
+			await memory.episodic.taskLock?.acquire(two, { ...options, holderId: 'B' }),
+		).not.toBeNull();
+		expect(await memory.episodic.taskLock?.acquire(one, { ...options, holderId: 'C' })).toBeNull();
+	});
+
+	it('limits reflection to the resolved scope', async () => {
+		const memory = new InMemoryMemory();
+		const one = inChannel('1');
+		const entry = await saveIn(memory, one);
+
+		const fromOtherScope = await memory.episodic.applyReflection(inChannel('2'), {
+			drop: [entry.id],
+			merge: [],
+		});
+		const fromOwnScope = await memory.episodic.applyReflection(one, {
+			drop: [entry.id],
+			merge: [],
+		});
+
+		expect(fromOtherScope.droppedIds).toEqual([]);
+		expect(fromOwnScope.droppedIds).toEqual([entry.id]);
 	});
 });
 
