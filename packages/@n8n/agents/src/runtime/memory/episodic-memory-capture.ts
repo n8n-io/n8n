@@ -222,13 +222,7 @@ export async function runEpisodicMemoryCandidateProcessor(
 		config.reflect &&
 		candidates.some((candidate) => candidate.kind === 'correction')
 	) {
-		const reflectReports = await runEpisodicMemoryReflection(
-			opts,
-			config,
-			savedEntries,
-			candidates,
-			now,
-		);
+		const reflectReports = await runEpisodicMemoryReflection(opts, config, savedEntries, now);
 		usageReports.push(...reflectReports);
 	}
 	return {
@@ -446,11 +440,10 @@ async function runEpisodicMemoryReflection(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
 	savedEntries: EpisodicMemoryEntry[],
-	candidates: EpisodicMemoryCaptureCandidate[],
 	now: Date,
 ): Promise<EpisodicMemoryUsageReport[]> {
 	if (!config.reflect) return [];
-	const cluster = await buildReflectionCluster(opts, config, savedEntries, candidates);
+	const cluster = await buildReflectionCluster(opts, config, savedEntries);
 	if (cluster.length === 0) return [];
 
 	const sources = await opts.memory.episodic.getEntrySources(cluster.map((entry) => entry.id));
@@ -516,16 +509,20 @@ async function buildReflectionCluster(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
 	savedEntries: EpisodicMemoryEntry[],
-	candidates: EpisodicMemoryCaptureCandidate[],
 ): Promise<RetrievedEpisodicMemoryEntry[]> {
-	const query = [
-		...savedEntries.map((entry) => entry.content),
-		...candidates.flatMap((candidate) => [candidate.content, candidate.evidenceText]),
-	].join('\n');
-	const related = await opts.memory.episodic.searchEntries(opts.scope, query, {
-		topK: Math.max(config.topK, 20),
-		writeScopeOnly: true,
-	});
+	// Each new entry looks up the older entries closest to it, by its own embedding.
+	const searches = savedEntries.flatMap((entry) =>
+		entry.embedding
+			? [
+					opts.memory.episodic.searchEntries(opts.scope, entry.content, {
+						topK: Math.max(config.topK, 20),
+						queryEmbedding: entry.embedding,
+						writeScopeOnly: true,
+					}),
+				]
+			: [],
+	);
+	const related = (await Promise.all(searches)).flat();
 	const relatedById = new Map(related.map((entry) => [entry.id, entry]));
 	for (const saved of savedEntries) {
 		if (saved.status !== 'active' || relatedById.has(saved.id)) continue;
@@ -560,11 +557,5 @@ function normalizeEntryContent(content: string): string {
 }
 
 function toRetrievedEntry(entry: EpisodicMemoryEntry): RetrievedEpisodicMemoryEntry {
-	return {
-		...entry,
-		lexicalScore: 0,
-		vectorScore: 0,
-		rrfScore: 0,
-		finalScore: 0,
-	};
+	return { ...entry, vectorScore: 0, finalScore: 0 };
 }

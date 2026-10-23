@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { getCatalogModelId } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
-import { createModel } from '../model/model-factory';
+import { createModel, type FetchFn } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
 
 export const DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL = 'openai/text-embedding-3-small';
@@ -52,6 +52,8 @@ const EpisodicMemoryReflectionSchema = z.object({
 
 export interface CreateEpisodicMemoryReflectFnOptions {
 	reflectionPrompt?: string;
+	/** Proxy-aware `fetch` for the reflector model call (see `AgentRuntimeConfig.modelFetch`). */
+	modelFetch?: FetchFn;
 }
 
 export function buildEpisodicMemoryReflectorPrompt(input: EpisodicMemoryReflectorInput): string {
@@ -70,7 +72,7 @@ export function createEpisodicMemoryReflectFn(
 	return async (input): Promise<EpisodicMemoryReflectResult> => {
 		const { generateText, Output } = await import('ai');
 		const response = await generateText({
-			model: createModel(model),
+			model: createModel(model, options.modelFetch),
 			instructions: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 			prompt: buildEpisodicMemoryReflectorPrompt(input),
 			output: Output.object({ schema: EpisodicMemoryReflectionSchema }),

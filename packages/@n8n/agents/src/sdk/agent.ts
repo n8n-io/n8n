@@ -1107,7 +1107,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		const modelConfig: ModelConfig = this.modelConfig;
 		const memoryConfig = this.memoryConfig
-			? resolveMemoryConfigDefaults(this.memoryConfig, { defaultModel: modelConfig })
+			? resolveMemoryConfigDefaults(this.memoryConfig, {
+					defaultModel: modelConfig,
+					modelFetch: this.modelFetchValue,
+				})
 			: undefined;
 
 		let instructions = this.instructionsText;

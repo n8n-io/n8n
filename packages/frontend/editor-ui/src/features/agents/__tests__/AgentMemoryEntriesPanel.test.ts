@@ -15,6 +15,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgentMemoryEntry: (...args: unknown[]) => deleteAgentMemoryEntry(...args),
 	getAgentMemorySourceFacets: (...args: unknown[]) => getAgentMemorySourceFacets(...args),
 }));
+vi.mock('@n8n/composables/useDebounce', () => ({ getDebounceTime: () => 0 }));
 
 const showError = vi.fn();
 const showMessage = vi.fn();
@@ -270,7 +271,7 @@ describe('AgentMemoryEntriesPanel', () => {
 		expect(wrapper.find('[data-testid="agent-memory-entry-delete"]').exists()).toBe(false);
 	});
 
-	describe('source filter', () => {
+	describe('search and source filter', () => {
 		async function openFullList() {
 			listAgentMemoryEntries.mockResolvedValue(page([makeEntry('e1')], { total: 14 }));
 			const wrapper = await mountPanel();
@@ -283,27 +284,37 @@ describe('AgentMemoryEntriesPanel', () => {
 			wrapper.findComponent(AgentMemorySourceFilter).vm.$emit('update:modelValue', selection);
 		}
 
-		it('shows the filter only in the full list and loads its options', async () => {
+		it('shows the search and the filter only in the full list, and loads the filter options', async () => {
 			listAgentMemoryEntries.mockResolvedValue(page([makeEntry('e1')], { total: 14 }));
 			const wrapper = await mountPanel();
+			expect(wrapper.find('[data-testid="agent-memory-entries-search"]').exists()).toBe(false);
 			expect(wrapper.findComponent(AgentMemorySourceFilter).exists()).toBe(false);
 
 			await wrapper.find('[data-testid="agent-memory-entries-view-all"]').trigger('click');
 			await flushPromises();
 
+			expect(wrapper.find('[data-testid="agent-memory-entries-search"]').exists()).toBe(true);
 			expect(wrapper.findComponent(AgentMemorySourceFilter).exists()).toBe(true);
 			expect(getAgentMemorySourceFacets).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		});
 
-		it('reloads the full list with the selected source', async () => {
+		it('reloads the full list with the search and the selected source', async () => {
 			const wrapper = await openFullList();
 
-			selectSource(wrapper, { source: 'slack', sourceFacet: 'channel', sourceFacetId: 'C1' });
+			await wrapper.find('[data-testid="agent-memory-entries-search"]').setValue(' tea ');
 			await flushPromises();
-
 			expect(listAgentMemoryEntries).toHaveBeenLastCalledWith({}, 'project-1', 'agent-1', {
 				limit: 25,
 				cursor: undefined,
+				search: 'tea',
+			});
+
+			selectSource(wrapper, { source: 'slack', sourceFacet: 'channel', sourceFacetId: 'C1' });
+			await flushPromises();
+			expect(listAgentMemoryEntries).toHaveBeenLastCalledWith({}, 'project-1', 'agent-1', {
+				limit: 25,
+				cursor: undefined,
+				search: 'tea',
 				source: 'slack',
 				sourceFacet: 'channel',
 				sourceFacetId: 'C1',
@@ -322,18 +333,38 @@ describe('AgentMemoryEntriesPanel', () => {
 			);
 		});
 
-		it('clears the filter when the user goes back', async () => {
+		it('clears the search and the filter when the user goes back', async () => {
 			const wrapper = await openFullList();
+			await wrapper.find('[data-testid="agent-memory-entries-search"]').setValue('tea');
 			selectSource(wrapper, { source: 'slack' });
 			await flushPromises();
 
 			await wrapper.find('[data-testid="agent-memory-entries-back"]').trigger('click');
 			await flushPromises();
+			await wrapper.find('[data-testid="agent-memory-entries-view-all"]').trigger('click');
+			await flushPromises();
 
-			expect(listAgentMemoryEntries).toHaveBeenLastCalledWith({}, 'project-1', 'agent-1', {
-				limit: 10,
-				cursor: undefined,
-			});
+			const lastOptions = listAgentMemoryEntries.mock.lastCall?.[3];
+			expect(lastOptions).toMatchObject({ limit: 25 });
+			expect(lastOptions.search).toBeUndefined();
+			expect(lastOptions.source).toBeUndefined();
+		});
+
+		it('drops the old list when a search fails, so Load more cannot extend it', async () => {
+			listAgentMemoryEntries.mockResolvedValue(
+				page([makeEntry('e1')], { total: 14, nextCursor: 'cursor-1' }),
+			);
+			const wrapper = await mountPanel();
+			await wrapper.find('[data-testid="agent-memory-entries-view-all"]').trigger('click');
+			await flushPromises();
+			listAgentMemoryEntries.mockRejectedValue(new Error('nope'));
+
+			await wrapper.find('[data-testid="agent-memory-entries-search"]').setValue('tea');
+			await flushPromises();
+
+			expect(wrapper.findAll('[data-testid="agent-memory-entry"]')).toHaveLength(0);
+			expect(wrapper.find('[data-testid="agent-memory-entries-load-more"]').exists()).toBe(false);
+			expect(showError).toHaveBeenCalled();
 		});
 	});
 });

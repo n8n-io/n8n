@@ -28,10 +28,10 @@ import { inferMemoryStoreAttributes, withMemorySpan } from '../telemetry/runtime
 export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
 
 const RRF_K = 60;
-// Recency breaks ties between comparably relevant entries. At full weight it
-// outranks relevance once entries share most tokens, so old relevant entries
-// fall out of topK behind recent unrelated ones.
-const RECENCY_RRF_WEIGHT = 0.25;
+// Recency lifts a corrected fact above the value it replaced. In our retrieval eval a
+// weight of 0.05 kept nearly all of the similarity ranking; higher weights pushed
+// relevant entries out of topK behind recent unrelated ones.
+const RECENCY_RRF_WEIGHT = 0.05;
 const CAPTURE_STORE_METHODS = [
 	'getEntriesByContentHashes',
 	'enqueueCaptureCandidate',
@@ -50,9 +50,7 @@ const RecallMemoryOutputSchema = z.object({
 			id: z.string(),
 			content: z.string(),
 			createdAt: z.string(),
-			lexicalScore: z.number(),
 			vectorScore: z.number(),
-			rrfScore: z.number(),
 			finalScore: z.number(),
 		}),
 	),
@@ -194,71 +192,40 @@ export function createRecallMemoryTool(opts: {
 		.build();
 }
 
+/**
+ * Ranks entries by similarity to the query embedding, with a small recency signal.
+ * There is no keyword matching: in our retrieval eval it added nothing for exact IDs
+ * and pushed paraphrase matches out of topK. Without a query embedding, nothing matches.
+ */
 export function rankEpisodicMemoryEntries(
 	entries: EpisodicMemoryEntry[],
-	query: string,
 	opts: EpisodicMemorySearchOptions = {},
 ): RetrievedEpisodicMemoryEntry[] {
+	const { queryEmbedding } = opts;
+	if (!queryEmbedding) return [];
 	const topK = opts.topK ?? DEFAULT_EPISODIC_MEMORY_TOP_K;
 	const statuses = new Set(opts.includeStatuses ?? ['active']);
-	const candidates = entries.filter((entry) => statuses.has(entry.status));
-	const queryTokens = tokenize(query);
-	const lexical = candidates
-		.map((entry) => ({ entry, score: lexicalScore(queryTokens, tokenize(entry.content)) }))
-		.filter((item) => item.score > 0)
-		.sort(compareScoredEntries);
 	// No absolute similarity cutoff: with small embedding models, scores of
 	// same-customer entries cluster in a narrow band, so a fixed gate drops the
 	// best match as often as noise. topK bounds the result instead.
-	const vector = candidates
-		.map((entry) => ({
-			entry,
-			score:
-				opts.queryEmbedding && entry.embedding
-					? cosineSimilarity(opts.queryEmbedding, entry.embedding)
-					: 0,
-		}))
+	const bySimilarity = entries
+		.filter((entry) => statuses.has(entry.status) && entry.embedding)
+		.map((entry) => ({ entry, score: cosineSimilarity(queryEmbedding, entry.embedding ?? []) }))
 		.filter((item) => item.score > 0)
 		.sort(compareScoredEntries);
-	const relevantIds = new Set([
-		...lexical.map((item) => item.entry.id),
-		...vector.map((item) => item.entry.id),
-	]);
-	const recency = candidates
-		.filter((entry) => relevantIds.has(entry.id))
-		.sort((a, b) => getEntryRecencyDate(b).getTime() - getEntryRecencyDate(a).getTime());
-	const scores = new Map<
-		string,
-		{ entry: EpisodicMemoryEntry; lexicalScore: number; vectorScore: number; rrfScore: number }
-	>();
-	for (const entry of candidates) {
-		scores.set(entry.id, { entry, lexicalScore: 0, vectorScore: 0, rrfScore: 0 });
-	}
-	for (let rank = 0; rank < lexical.length; rank++) {
-		const score = scores.get(lexical[rank].entry.id);
-		if (!score) continue;
-		score.lexicalScore = lexical[rank].score;
-		score.rrfScore += 1 / (RRF_K + rank + 1);
-	}
-	for (let rank = 0; rank < vector.length; rank++) {
-		const score = scores.get(vector[rank].entry.id);
-		if (!score) continue;
-		score.vectorScore = vector[rank].score;
-		score.rrfScore += 1 / (RRF_K + rank + 1);
-	}
-	for (let rank = 0; rank < recency.length; rank++) {
-		const score = scores.get(recency[rank].id);
-		if (!score) continue;
-		score.rrfScore += RECENCY_RRF_WEIGHT / (RRF_K + rank + 1);
-	}
-	return [...scores.values()]
-		.filter((score) => score.rrfScore > 0)
-		.map((score) => ({
-			...score.entry,
-			lexicalScore: score.lexicalScore,
-			vectorScore: score.vectorScore,
-			rrfScore: score.rrfScore,
-			finalScore: score.rrfScore,
+	const recencyRank = new Map(
+		bySimilarity
+			.map((item) => item.entry)
+			.sort((a, b) => getEntryRecencyDate(b).getTime() - getEntryRecencyDate(a).getTime())
+			.map((entry, rank) => [entry.id, rank]),
+	);
+	return bySimilarity
+		.map(({ entry, score }, rank) => ({
+			...entry,
+			vectorScore: score,
+			finalScore:
+				1 / (RRF_K + rank + 1) +
+				RECENCY_RRF_WEIGHT / (RRF_K + (recencyRank.get(entry.id) ?? 0) + 1),
 		}))
 		.sort(
 			(a, b) =>
@@ -327,21 +294,6 @@ function normalizeHashContent(content: string): string {
 	return content.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-function tokenize(text: string): string[] {
-	return text
-		.toLowerCase()
-		.split(/[^a-z0-9_@./-]+/i)
-		.map((token) => token.trim())
-		.filter((token) => token.length > 1);
-}
-
-function lexicalScore(queryTokens: string[], entryTokens: string[]): number {
-	if (queryTokens.length === 0 || entryTokens.length === 0) return 0;
-	const entryTokenSet = new Set(entryTokens);
-	const matches = queryTokens.filter((token) => entryTokenSet.has(token)).length;
-	return matches / Math.sqrt(entryTokens.length);
-}
-
 function cosineSimilarity(a: number[], b: number[]): number {
 	if (a.length !== b.length || a.length === 0) return 0;
 	let dot = 0;
@@ -377,9 +329,7 @@ function toRecallToolEntry(
 		id: entry.id,
 		content: entry.content,
 		createdAt: entry.createdAt.toISOString(),
-		lexicalScore: entry.lexicalScore,
 		vectorScore: entry.vectorScore,
-		rrfScore: entry.rrfScore,
 		finalScore: entry.finalScore,
 	};
 }

@@ -91,6 +91,35 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 		await expect(entryRepository.countActiveByAgent(agentId)).resolves.toBe(3);
 	});
 
+	it('finds the active entries of the agent with their embeddings for search', async () => {
+		const active = await insertEntry('a', '2026-10-01T10:00:00.000Z');
+		await entryRepository.update({ id: active }, { embedding: [0.1, 0.2], embeddingModel: 'm' });
+		await insertEntry('hidden', '2026-10-02T10:00:00.000Z', 'dropped');
+		const otherAgent = agentRepository.create({
+			id: uuid(),
+			name: 'Other Agent',
+			projectId: (await agentRepository.findOneByOrFail({ id: agentId })).projectId,
+			integrations: [],
+			tools: {},
+			skills: {},
+		} as Partial<Agent>);
+		await agentRepository.save(otherAgent);
+		await entryRepository.insert({
+			id: uuid(),
+			agentId: otherAgent.id,
+			resourceId,
+			content: 'other agent',
+			contentHash: 'other agent',
+			status: 'active',
+			lastSeenAt: new Date(),
+		});
+
+		const found = await entryRepository.findActiveForSearch(agentId);
+
+		expect(found.map(({ id }) => id)).toEqual([active]);
+		expect(found[0]).toMatchObject({ embedding: [0.1, 0.2], embeddingModel: 'm' });
+	});
+
 	it('deletes an entry by dropping it and hides it from the list and the count', async () => {
 		const id = await insertEntry('a', '2026-10-01T10:00:00.000Z');
 

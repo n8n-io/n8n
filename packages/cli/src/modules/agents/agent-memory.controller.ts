@@ -18,7 +18,7 @@ export class AgentMemoryController {
 		@Param('agentId') agentId: string,
 		@Query query: ListAgentMemoryEntriesQueryDto,
 	) {
-		return await this.agentMemoryEntriesService.list(agentId, projectId, req.user.id, query);
+		return await this.agentMemoryEntriesService.list(agentId, projectId, req.user, query);
 	}
 
 	@Get('/:agentId/memory-entries/facets')

@@ -16,7 +16,7 @@ import {
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 } from '../runtime/memory/observation-log-defaults';
 import { hasObservationLogStore } from '../runtime/memory/observation-log-store';
-import { createEmbeddingModel } from '../runtime/model/model-factory';
+import { createEmbeddingModel, type FetchFn } from '../runtime/model/model-factory';
 import type {
 	BuiltMemory,
 	EpisodicMemoryConfig,
@@ -30,6 +30,8 @@ export { DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS, DEFAULT_OBSERVATION_LOG_RENDER_TOK
 
 export interface ResolveObservationalMemoryConfigOptions {
 	defaultModel: ModelConfig;
+	/** Proxy-aware `fetch` for the default memory worker models. */
+	modelFetch?: FetchFn;
 }
 
 export type ResolveMemoryConfigDefaultsOptions = ResolveObservationalMemoryConfigOptions;
@@ -52,8 +54,12 @@ export function resolveObservationalMemoryConfig(
 		...(config.midRunObservation !== undefined
 			? { midRunObservation: config.midRunObservation }
 			: {}),
-		observe: config.observe ?? createObservationLogObserveFn(observerModel),
-		reflect: config.reflect ?? createObservationLogReflectFn(reflectorModel),
+		observe:
+			config.observe ??
+			createObservationLogObserveFn(observerModel, { modelFetch: options.modelFetch }),
+		reflect:
+			config.reflect ??
+			createObservationLogReflectFn(reflectorModel, { modelFetch: options.modelFetch }),
 	};
 }
 
@@ -75,6 +81,7 @@ export function resolveEpisodicMemoryConfig(
 			config.reflect ??
 			createEpisodicMemoryReflectFn(reflectorModel, {
 				reflectionPrompt: config.prompts?.reflection,
+				modelFetch: options.modelFetch,
 			}),
 		prompts: config.prompts,
 	};

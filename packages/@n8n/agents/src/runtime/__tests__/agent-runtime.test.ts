@@ -8447,7 +8447,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			memory.episodic.searchEntries(
 				{ resourceId: 'resource-1', threadId: 'thread-1' },
 				'Remember',
-				{ topK: 10 },
+				{ queryEmbedding: [1, 1], topK: 10 },
 			),
 		).resolves.toHaveLength(2);
 	});

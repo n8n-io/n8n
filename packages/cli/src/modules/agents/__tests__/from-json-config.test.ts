@@ -1340,6 +1340,7 @@ describe('buildFromJson()', () => {
 				},
 			},
 		});
+		const modelFetch = vi.fn();
 
 		await buildFromJson(
 			config,
@@ -1348,6 +1349,7 @@ describe('buildFromJson()', () => {
 				toolExecutor: makeMockToolExecutor(),
 				credentialProvider,
 				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+				modelFetch,
 			},
 		);
 
@@ -1359,19 +1361,25 @@ describe('buildFromJson()', () => {
 			privateKey: 'main-key-private-key',
 			location: 'europe-west4',
 		});
-		expect(observeSpy).toHaveBeenCalledWith({
-			id: 'google-vertex/gemini-3-flash-preview',
-			sdk: '@ai-sdk/google-vertex',
-			project: 'observer-key-project',
-			clientEmail: 'observer-key@example.iam.gserviceaccount.com',
-			privateKey: 'observer-key-private-key',
-			location: 'europe-west4',
-		});
-		expect(reflectSpy).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-5',
-			apiKey: 'reflector-key-api-key',
-			baseURL: 'https://reflector-key.example/v1',
-		});
+		expect(observeSpy).toHaveBeenCalledWith(
+			{
+				id: 'google-vertex/gemini-3-flash-preview',
+				sdk: '@ai-sdk/google-vertex',
+				project: 'observer-key-project',
+				clientEmail: 'observer-key@example.iam.gserviceaccount.com',
+				privateKey: 'observer-key-private-key',
+				location: 'europe-west4',
+			},
+			{ modelFetch },
+		);
+		expect(reflectSpy).toHaveBeenCalledWith(
+			{
+				id: 'anthropic/claude-sonnet-4-5',
+				apiKey: 'reflector-key-api-key',
+				baseURL: 'https://reflector-key.example/v1',
+			},
+			{ modelFetch },
+		);
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('observer-key');
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('reflector-key');
 	});
@@ -1437,6 +1445,36 @@ describe('buildFromJson()', () => {
 		});
 		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
 		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
+	});
+
+	it('sends credential episodic memory embeddings through the model fetch', async () => {
+		const modelFetch = vi.fn();
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: { enabled: true, credential: 'openai-key' },
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: {
+					resolve: vi.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+					list: vi.fn().mockResolvedValue([]),
+				},
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+				modelFetch,
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.episodicMemory?.embeddingProviderOptions).toEqual({
+			apiKey: 'test-api-key',
+			fetch: modelFetch,
+		});
 	});
 
 	it('configures episodic memory with managed proxy embedding credentials', async () => {
@@ -1516,11 +1554,14 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(reflectSpy).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-5',
-			apiKey: 'episodic-reflector-key-api-key',
-			baseURL: 'https://episodic-reflector-key.example/v1',
-		});
+		expect(reflectSpy).toHaveBeenCalledWith(
+			{
+				id: 'anthropic/claude-sonnet-4-5',
+				apiKey: 'episodic-reflector-key-api-key',
+				baseURL: 'https://episodic-reflector-key.example/v1',
+			},
+			{ modelFetch: undefined },
+		);
 		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
 			embeddingProviderOptions: {
 				apiKey: 'embedding-key-api-key',

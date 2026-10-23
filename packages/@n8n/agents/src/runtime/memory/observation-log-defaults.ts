@@ -13,7 +13,7 @@ import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
 import { getCatalogModelId } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { loadAi } from '../model/lazy-ai';
-import { createModel } from '../model/model-factory';
+import { createModel, type FetchFn } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
 import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
@@ -146,6 +146,8 @@ export interface CreateObservationLogObserveFnOptions {
 	maxRetries?: number;
 	/** Called with normalized token usage after each observer LLM call. */
 	onUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
+	/** Proxy-aware `fetch` for the observer model call (see `AgentRuntimeConfig.modelFetch`). */
+	modelFetch?: FetchFn;
 }
 
 export function buildObservationLogObserverPrompt(input: ObservationLogObserverInput): string {
@@ -169,7 +171,7 @@ export function createObservationLogObserveFn(
 ): ObservationLogObserveFn {
 	return async (input) => {
 		const { text, usage, finalStep } = await loadAi().generateText({
-			model: createModel(model, undefined, input.telemetry),
+			model: createModel(model, options.modelFetch, input.telemetry),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
 			maxRetries: options.maxRetries ?? DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES,
@@ -306,6 +308,8 @@ export interface CreateObservationLogReflectFnOptions {
 	reflectorPrompt?: string;
 	/** Called with normalized token usage after each reflector LLM call. */
 	onUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
+	/** Proxy-aware `fetch` for the reflector model call (see `AgentRuntimeConfig.modelFetch`). */
+	modelFetch?: FetchFn;
 }
 
 export function buildObservationLogReflectorPrompt(input: ObservationLogReflectorInput): string {
@@ -338,7 +342,7 @@ export function createObservationLogReflectFn(
 			})),
 		);
 		const { text, usage, finalStep } = await loadAi().generateText({
-			model: createModel(model, undefined, input.telemetry),
+			model: createModel(model, options.modelFetch, input.telemetry),
 			instructions: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt({ ...input, renderedObservationLog }),
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-reflector' }),

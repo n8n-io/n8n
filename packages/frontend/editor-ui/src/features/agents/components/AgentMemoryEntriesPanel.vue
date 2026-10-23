@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { refDebounced } from '@vueuse/core';
+import { N8nButton, N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
-import type {
-	AgentMemoryEntryDto,
-	AgentMemoryEntrySourceDto,
-	AgentMemorySourceFacetGroupDto,
+import {
+	MAX_AGENT_MEMORY_SEARCH_LENGTH,
+	type AgentMemoryEntryDto,
+	type AgentMemoryEntrySourceDto,
+	type AgentMemorySourceFacetGroupDto,
 } from '@n8n/api-types';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { MODAL_CONFIRM } from '@/app/constants';
+import { DEBOUNCE_TIME, MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import {
 	deleteAgentMemoryEntry,
@@ -50,10 +53,14 @@ const deletingId = ref<string | null>(null);
 const showAll = defineModel<boolean>('showAll', { default: false });
 /** The mode the user asked for. `showAll` can lag when the parent owns it. */
 const fullList = ref(showAll.value);
-/** The source filter only applies to the full list. */
+/** Search and the source filter only apply to the full list. */
+const search = ref('');
+const debouncedSearch = refDebounced(search, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 const sourceSelection = ref<AgentMemorySourceSelection>({});
 const facetGroups = ref<AgentMemorySourceFacetGroupDto[]>([]);
-const isFiltered = computed(() => fullList.value && !!sourceSelection.value.source);
+const isFiltered = computed(
+	() => fullList.value && (debouncedSearch.value.trim() !== '' || !!sourceSelection.value.source),
+);
 const emptyText = computed(() =>
 	i18n.baseText(
 		isFiltered.value
@@ -73,15 +80,31 @@ function isStale(projectId: string, agentId: string) {
 // Only the newest request may write state, so a slow Load more cannot land on a newer list.
 let latestRequestId = 0;
 
+function onLoadFailed(
+	error: unknown,
+	{ append, filtered }: { append: boolean; filtered: boolean },
+) {
+	loadFailed.value = true;
+	// Load more must not append to a list that does not match the search or filter.
+	if (!append && filtered) {
+		entries.value = [];
+		nextCursor.value = null;
+	}
+	showError(error, i18n.baseText('agents.builder.memory.entries.loadError' as BaseTextKey));
+}
+
 async function loadEntries({ append, limit }: { append: boolean; limit: number }) {
 	const { projectId, agentId } = props;
 	const requestId = ++latestRequestId;
 	const isOutdated = () => requestId !== latestRequestId || isStale(projectId, agentId);
+	const search = (fullList.value && debouncedSearch.value.trim()) || undefined;
+	const filtered = !!search || (fullList.value && !!sourceSelection.value.source);
 	loading.value = true;
 	try {
 		const page = await listAgentMemoryEntries(rootStore.restApiContext, projectId, agentId, {
 			limit,
 			cursor: append ? (nextCursor.value ?? undefined) : undefined,
+			search,
 			...(fullList.value && sourceSelection.value),
 		});
 		if (isOutdated()) return;
@@ -90,10 +113,7 @@ async function loadEntries({ append, limit }: { append: boolean; limit: number }
 		total.value = page.total;
 		nextCursor.value = page.nextCursor;
 	} catch (error) {
-		if (!isOutdated()) {
-			loadFailed.value = true;
-			showError(error, i18n.baseText('agents.builder.memory.entries.loadError' as BaseTextKey));
-		}
+		if (!isOutdated()) onLoadFailed(error, { append, filtered });
 	} finally {
 		if (!isOutdated()) loading.value = false;
 	}
@@ -111,6 +131,7 @@ async function loadFacets() {
 }
 
 function resetFilters() {
+	search.value = '';
 	sourceSelection.value = {};
 }
 
@@ -216,7 +237,7 @@ watch(showAll, (value) => {
 	fullList.value = value;
 });
 
-watch(sourceSelection, async () => {
+watch([debouncedSearch, sourceSelection], async () => {
 	if (!fullList.value) return;
 	await loadEntries({ append: false, limit: FULL_PAGE_SIZE });
 });
@@ -268,6 +289,21 @@ watch(sourceSelection, async () => {
 			</template>
 
 			<div v-if="showAll" :class="$style.toolbar">
+				<N8nInput
+					v-model="search"
+					:class="$style.search"
+					size="medium"
+					:placeholder="
+						i18n.baseText('agents.builder.memory.entries.search.placeholder' as BaseTextKey)
+					"
+					:maxlength="MAX_AGENT_MEMORY_SEARCH_LENGTH"
+					clearable
+					data-testid="agent-memory-entries-search"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" :size="12" />
+					</template>
+				</N8nInput>
 				<AgentMemorySourceFilter v-model="sourceSelection" :groups="facetGroups" />
 			</div>
 			<N8nText
@@ -328,8 +364,14 @@ watch(sourceSelection, async () => {
 
 .toolbar {
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
+	gap: var(--spacing--xs);
 	padding-bottom: var(--spacing--xs);
+}
+
+.search {
+	flex: 1;
+	min-width: 0;
 }
 
 .backRow {

@@ -848,7 +848,7 @@ export class AgentRuntimeReconstructionService {
 	 * does not verify it against n8n users. Agent runtimes pass their project id; a user
 	 * id works equally if a caller ever has one.
 	 */
-	private async resolveManagedEmbeddingProviderOptions(
+	async resolveManagedEmbeddingProviderOptions(
 		ownerId: string,
 	): Promise<ManagedEmbeddingProviderOptions | null> {
 		if (!this.aiService.isProxyEnabled()) return null;
