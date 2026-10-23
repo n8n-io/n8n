@@ -465,6 +465,26 @@ function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonCo
 		},
 	};
 }
+const FRESH_AGENT_MEMORY: NonNullable<AgentJsonConfig['memory']> = {
+	enabled: true,
+	storage: 'n8n',
+	observationalMemory: { enabled: true },
+};
+
+/**
+ * A fresh Agent (no stored instructions yet) gets n8n session memory unless the
+ * write sets memory itself. Existing Agents keep what they have, so an Agent
+ * that was saved without memory is not changed by a later edit.
+ */
+function applyFreshAgentMemoryDefault(
+	config: AgentJsonConfig,
+	currentConfig: AgentJsonConfig | null,
+): AgentJsonConfig {
+	const isFresh = !currentConfig?.instructions?.trim();
+	if (!isFresh || config.memory !== undefined) return config;
+	return { ...config, memory: FRESH_AGENT_MEMORY };
+}
+
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
@@ -1618,7 +1638,9 @@ export class AgentsBuilderToolsService {
 		);
 		if (dynamicSelectorFromAi) return { ok: false, errors: dynamicSelectorFromAi };
 		// Save defaults explicitly so the write and read paths agree.
-		const config = applyPromptCachingBuilderDefaults(applyNativeWebSearchDefaultOn(parsed.data));
+		const config = applyPromptCachingBuilderDefaults(
+			applyNativeWebSearchDefaultOn(applyFreshAgentMemoryDefault(parsed.data, currentConfig)),
+		);
 		return { ok: true, config };
 	}
 

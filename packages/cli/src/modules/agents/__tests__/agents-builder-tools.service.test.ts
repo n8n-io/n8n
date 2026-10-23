@@ -1671,6 +1671,60 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		// The default used to live in the agent-builder skill as text the model had to copy.
+		describe('memory defaults', () => {
+			const defaultMemory = {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: { enabled: true },
+			};
+
+			async function writeConfig(
+				stored: AgentJsonConfig,
+				written: AgentJsonConfig,
+			): Promise<AgentJsonConfig> {
+				const { service, agentsService } = makeService();
+				agentsService.findById.mockResolvedValue(makeAgent(stored));
+				agentsService.updateConfig.mockImplementation(async (_id, _project, config) => ({
+					config: config as AgentJsonConfig,
+					configHash: 'config-hash',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				}));
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{ baseConfigHash: getAgentConfigHash(stored), config: written },
+					ctx,
+				);
+				return agentsService.updateConfig.mock.calls[0][2] as AgentJsonConfig;
+			}
+
+			const fresh = { ...baseConfig, instructions: '', integrations: [] };
+
+			it('gives a fresh Agent the default n8n memory when the write omits memory', async () => {
+				const saved = await writeConfig(fresh, { ...fresh, instructions: 'Help the user.' });
+
+				expect(saved.memory).toEqual(defaultMemory);
+			});
+
+			it('keeps the memory that the write sets for a fresh Agent', async () => {
+				const memory = { enabled: false, storage: 'n8n' as const };
+				const saved = await writeConfig(fresh, {
+					...fresh,
+					instructions: 'Help the user.',
+					memory,
+				});
+
+				expect(saved.memory).toEqual(memory);
+			});
+
+			it('does not add memory to an existing Agent that has none', async () => {
+				const existing = { ...baseConfig, integrations: [] };
+				const saved = await writeConfig(existing, { ...existing, name: 'Renamed' });
+
+				expect(saved.memory).toBeUndefined();
+			});
+		});
+
 		describe('prompt caching defaults', () => {
 			it.each([
 				'anthropic/claude-sonnet-4-5',
