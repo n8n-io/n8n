@@ -12,7 +12,11 @@ import type { SystemAgentProvider } from './system-agent.types';
 export class SystemAgentRegistry {
 	private readonly providers = new Map<string, SystemAgentProvider>();
 
-	register(provider: SystemAgentProvider): void {
+	/**
+	 * The registry forgets the lease type of the provider. This is safe: the
+	 * runtime gives a lease only back to the provider whose source made it.
+	 */
+	register<TLease>(provider: SystemAgentProvider<TLease>): void {
 		if (this.providers.has(provider.agentId)) {
 			throw new UnexpectedError(`System agent "${provider.agentId}" is already registered`);
 		}

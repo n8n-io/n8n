@@ -12,6 +12,7 @@ import { type CollectionSearchOptions, searchGraphCollection } from '../../helpe
 import {
 	addUniqueConstraintHint,
 	assertPathSegment,
+	autoMapInputData,
 	HYPERLINK_WRITE_HEADERS,
 	NON_INDEXED_QUERY_HEADERS,
 	nonIndexedFilterThresholdError,
@@ -161,17 +162,18 @@ export async function resolveMatchedItemIds(
 
 /**
  * Resolves the resource mapper into the item's effective column values — from
- * the input JSON in auto-map mode (schema-unknown keys dropped), otherwise
- * from the mapper's own value. The mapper's shipped default is `{ value: null }`
- * and the `{}` fallback only covers undefined — coalesce so
- * create-with-server-defaults survives.
+ * the input JSON in auto-map mode (schema-unknown keys dropped, an empty schema
+ * rejected), otherwise from the mapper's own value. The mapper's shipped
+ * default is `{ value: null }` and the `{}` fallback only covers undefined —
+ * coalesce so create-with-server-defaults survives.
  */
 export function resolveItemMapperValues(this: IExecuteFunctions, i: number): IDataObject {
 	if (this.getNodeParameter('columns.mappingMode', i) === 'autoMapInputData') {
-		const schema = this.getNodeParameter('columns.schema', i, []) as ResourceMapperField[];
-		const knownColumns = new Set(schema.map((field) => field.id));
-		return Object.fromEntries(
-			Object.entries(this.getInputData()[i].json).filter(([key]) => knownColumns.has(key)),
+		return autoMapInputData(
+			this.getNode(),
+			this.getNodeParameter('columns.schema', i, []) as ResourceMapperField[],
+			this.getInputData()[i].json,
+			i,
 		);
 	}
 	return (this.getNodeParameter('columns.value', i, {}) ?? {}) as IDataObject;

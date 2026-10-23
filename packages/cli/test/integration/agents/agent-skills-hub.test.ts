@@ -486,7 +486,7 @@ describe('Agent skills in the skills hub', () => {
 		expect(created.skillHash).toBe(getAgentSkillHash(skills[created.id]!));
 	});
 
-	it('changes where a skill can be added only while no other agent uses it', async () => {
+	it('changes where a skill can be added only while every other agent keeps it', async () => {
 		const agent = await createAgent([]);
 		const context = { user: editor, modifiedBy: 'user' as const };
 		const created = await agentSkillsService.createAndAttachSkill(
@@ -515,7 +515,7 @@ describe('Agent skills in the skills hub', () => {
 		});
 		await update('project');
 		const other = await createAgent([created.id]);
-		await expect(update('agent')).rejects.toThrow('Other agents use this skill.');
+		await expect(update('agent')).rejects.toThrow('would lose access to this skill.');
 		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
 			agentId: null,
 		});
@@ -524,7 +524,7 @@ describe('Agent skills in the skills hub', () => {
 		await publish(other);
 		await skillRefs.replaceDraftRefs(await reload(other), [], {});
 		expect(await skillRefs.refsForDraft(await reload(other), {})).toEqual([]);
-		await expect(update('agent')).rejects.toThrow('Other agents use this skill.');
+		await expect(update('agent')).rejects.toThrow('would lose access to this skill.');
 	});
 
 	it('renames and moves a skill in one save to a name that only the old scope holds', async () => {

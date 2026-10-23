@@ -154,8 +154,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'teams';
 
-	/** Hidden from the catalog and the add-trigger UI until the setup stepper ships. */
-	readonly internal = true;
+	readonly internal = false;
 
 	readonly singleConnectionPerAgent = true;
 
@@ -328,6 +327,11 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
 		return buildTeamsOriginDraft(input, decoded);
+	}
+
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

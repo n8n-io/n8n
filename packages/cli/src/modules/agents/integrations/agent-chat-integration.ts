@@ -1,8 +1,11 @@
 import {
 	AgentIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
+	type AgentMessageAuthor,
+	type AgentMessageIntegrationOrigin,
 	type RichCardComponentType,
 } from '@n8n/api-types';
+import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Attachment, Thread, Author, Message } from 'chat';
@@ -44,6 +47,17 @@ export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
 	credentialId: string;
+}
+
+/** Trusted source context of one incoming chat turn. */
+export interface EpisodicScopeContext {
+	agentId: string;
+	credentialId: string;
+	integrationType: string;
+	/** The platform conversation of the incoming message. */
+	threadId: string;
+	author: AgentMessageAuthor;
+	origin?: AgentMessageIntegrationOrigin;
 }
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
@@ -405,6 +419,17 @@ export abstract class AgentChatIntegration {
 		input: OriginInput,
 		decoded: DecodedThread,
 	): Promise<OriginDraft | undefined> | OriginDraft | undefined;
+
+	/**
+	 * Decides who owns the episodic memories of an incoming chat turn. Every
+	 * channel must decide. Build identifiers from trusted source context and
+	 * namespace them by agent, platform, and workspace or account. Return `null`
+	 * when the channel has no policy or the required identity is missing: the turn
+	 * then runs without episodic memory. There is no shared fallback.
+	 */
+	abstract resolveEpisodicScope(
+		context: EpisodicScopeContext,
+	): Promise<ResolvedEpisodicScope | null> | ResolvedEpisodicScope | null;
 
 	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;

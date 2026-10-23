@@ -1,5 +1,7 @@
 import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import {
+	encodeEpisodicScopeMetadata,
+	EPISODIC_SCOPE_METADATA_KEY,
 	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
 	type BuiltTelemetry,
@@ -191,6 +193,59 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		['a disabled decision', { disabled: true as const }],
+		['a resolved scope', { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] }],
+	])(
+		'keeps the parent turn episodic scope for the child: %s',
+		async (_label, parentEpisodicScope) => {
+			agentExecutionService.startExecutionRecording.mockImplementation(
+				async (_params, startedAt) => ({
+					executionId: 'agent-execution-1',
+					startedAt,
+					inputMessageIds: ['message-1'],
+				}),
+			);
+			agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
+
+			await runner.run(
+				{ ...spawnRequest, parentResourceId: 'task:task-1' },
+				{
+					parentAgentId,
+					projectId,
+					credentialProvider,
+					runType: 'production',
+					parentEpisodicScope,
+				},
+			);
+
+			const options = childAgent.stream.mock.calls[0][1];
+			expect(options?.persistence?.hostMetadata).toMatchObject(
+				encodeEpisodicScopeMetadata(parentEpisodicScope),
+			);
+		},
+	);
+
+	it('leaves a task resource child on its own scope when the parent decided nothing', async () => {
+		agentExecutionService.startExecutionRecording.mockImplementation(
+			async (_params, startedAt) => ({
+				executionId: 'agent-execution-1',
+				startedAt,
+				inputMessageIds: ['message-1'],
+			}),
+		);
+		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
+
+		await runner.run(
+			{ ...spawnRequest, parentResourceId: 'task:task-1' },
+			{ parentAgentId, projectId, credentialProvider, runType: 'production' },
+		);
+
+		expect(childAgent.stream.mock.calls[0][1]?.persistence?.hostMetadata).not.toHaveProperty(
+			EPISODIC_SCOPE_METADATA_KEY,
+		);
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {

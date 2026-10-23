@@ -17,6 +17,7 @@ import type { ResolvedSkillRow, SkillRepository } from '../skill.repository';
 import type { SkillService } from '../skill.service';
 import { SkillsApiService } from '../skills-api.service';
 import type { SkillsTelemetry } from '../skills-telemetry';
+import type { AssistantSkillsRollout } from '../assistant-skills-rollout';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
@@ -36,6 +37,7 @@ function skill(
 		projectId: target.projectId ?? null,
 		agentId: target.agentId ?? null,
 		source: 'ui',
+		availableToAssistant: false,
 		createdById: target.createdById ?? null,
 		createdAt: DATE,
 		updatedAt: DATE,
@@ -81,6 +83,7 @@ describe('SkillsApiService', () => {
 	const userRepository = mock<UserRepository>();
 	const skillsTelemetry = mock<SkillsTelemetry>();
 	const skillAgents = mock<SkillAgentsProxy>();
+	const rollout = mock<AssistantSkillsRollout>();
 	const service = new SkillsApiService(
 		skillService,
 		repository,
@@ -89,12 +92,14 @@ describe('SkillsApiService', () => {
 		userRepository,
 		skillsTelemetry,
 		skillAgents,
+		rollout,
 	);
 	const TX_CTX = { trx: {} } as OperationContext;
 	let visible: Skill[];
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		rollout.isEnabled.mockResolvedValue(true);
 		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		visible = Object.keys(NAMES).map((id) => skill(id));
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
@@ -277,6 +282,7 @@ describe('SkillsApiService', () => {
 				createdBy: null,
 				latestVersion: 2,
 				usedByAgents: 2,
+				availableToAssistant: false,
 				canEdit: true,
 				canDelete: false,
 				createdAt: DATE.toISOString(),
@@ -538,6 +544,14 @@ describe('SkillsApiService', () => {
 			followingAgentIds: ['agent-1'],
 		};
 
+		it('refuses availability changes when the Assistant flag is off', async () => {
+			rollout.isEnabled.mockResolvedValue(false);
+			await expect(
+				service.update(user, 'skill_a', update({ availableToAssistant: true })),
+			).rejects.toThrow(NotFoundError);
+			expect(skillService.setAssistantAvailability).not.toHaveBeenCalled();
+		});
+
 		it('saves the update for a user who may edit the skill', async () => {
 			skillService.save.mockResolvedValue(saved);
 
@@ -618,8 +632,14 @@ describe('SkillsApiService', () => {
 				undefined,
 				TX_CTX,
 				// The move is refused under its lock if the skill left the scope checked here.
-				{ nameAfterMove: undefined, checkedSource: { projectId: null, agentId: null } },
+				// A refusal names only the agents in projects the user may read.
+				{
+					nameAfterMove: undefined,
+					checkedSource: { projectId: null, agentId: null },
+					agentProjectIds: ['project-1'],
+				},
 			);
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
 			expect(skillService.save).toHaveBeenCalledWith(
 				'skill_a',
 				{ baseSkillHash: 'base' },
@@ -638,6 +658,24 @@ describe('SkillsApiService', () => {
 			// The move runs first, so the save checks a rename in the new scope.
 			expect(skillService.changeTarget.mock.invocationCallOrder[0]).toBeLessThan(
 				skillService.save.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('lets a move refusal name every agent for a user who may read all agents', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			skillService.save.mockResolvedValue(saved);
+			skillService.assertCanMove.mockResolvedValue({ projectId: 'project-1', agentId: null });
+			visible = [skill('skill_a', { projectId: 'project-1' })];
+
+			await service.update(user, 'skill_a', update({ scope: 'instance', baseSkillHash: 'base' }));
+
+			expect(skillService.changeTarget).toHaveBeenCalledWith(
+				'skill_a',
+				{ projectId: null, agentId: null },
+				undefined,
+				TX_CTX,
+				expect.objectContaining({ agentProjectIds: 'all' }),
 			);
 		});
 

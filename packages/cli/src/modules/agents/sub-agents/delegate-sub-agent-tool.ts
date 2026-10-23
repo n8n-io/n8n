@@ -4,6 +4,7 @@ import {
 	INLINE_SUB_AGENT_ID,
 	type InlineSubAgentProviderToolsResolver,
 	type ModelConfig,
+	readEpisodicScopeDecision,
 	type SubAgentTaskDifficulty,
 } from '@n8n/agents';
 import type { BudgetGuardrailConfig, SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
@@ -66,6 +67,10 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				};
 			}
 			const parentSandboxScope = decodeAgentSandboxHostMetadata(request.parentHostMetadata);
+			// A child never inherits a parent's scope, but it must not re-enable memory the parent turned off.
+			const parentDecision = readEpisodicScopeDecision(request.parentHostMetadata);
+			const parentEpisodicScope =
+				parentDecision && 'disabled' in parentDecision ? parentDecision : undefined;
 
 			const result = await runner.run(
 				{
@@ -89,6 +94,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				},
 				{
 					...runContext,
+					...(parentEpisodicScope !== undefined ? { parentEpisodicScope } : {}),
 					...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }

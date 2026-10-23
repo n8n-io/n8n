@@ -30,6 +30,7 @@ import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
 	identifyRequirements,
+	reconcileCredentialSummary,
 	toImportedWorkflowSummaries,
 	toPackageSummary,
 	toTagSummary,
@@ -202,12 +203,7 @@ export class WorkflowPackageImporter {
 			folders: content.folderSummaries,
 			projects: [],
 			bindings: content.bindings,
-			credentials: {
-				matched: content.credentialResult.matched,
-				stubbed: content.credentialResult.stubbed,
-				seeded: content.credentialResult.seeded,
-				incomplete: content.credentialResult.incomplete,
-			},
+			credentials: reconcileCredentialSummary(content.credentialResult),
 			dataTables: {
 				matched: content.dataTablePlan.matchedCount,
 				created: content.dataTablePlan.creations.length,
