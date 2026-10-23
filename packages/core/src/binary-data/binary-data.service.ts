@@ -232,6 +232,14 @@ export class BinaryDataService {
 		await manager.rename(oldFileId, newFileId);
 	}
 
+	async claimForExecution(fileId: string, executionId: string) {
+		const manager = this.getManager(this.mode);
+
+		if (!manager) return fileId;
+
+		return await manager.claimForExecution(fileId, executionId);
+	}
+
 	// ----------------------------------
 	//         private methods
 	// ----------------------------------
