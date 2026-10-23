@@ -138,9 +138,10 @@ Skills are not stored in the sandbox. `load_skill` serves built-in text from mem
 Built-in knowledge paths, such as `knowledge-base/index.json`, are relative to the
 workspace root.
 
-The Assistant discovers Hub skill summaries behind the PostHog flag
-`130_attach_skills_to_assistant` and the Hub rollout gate. It loads instructions
-only when a skill is selected. Markdown reference bodies load separately through
+Hub skills require the `skills`, `agents`, and `instance-ai` modules,
+`N8N_AGENTS_SKILLS_HUB_ENABLED=true` at startup, and the instance PostHog flag
+`130_attach_skills_to_assistant`. Discovery reads summaries only. Instructions load
+when a skill is selected. Markdown reference bodies load separately through
 `load_skill({ skillId, filePath })`. Both reads use the version selected for the
 turn and check current access. Paths under `.n8n/skills/hub/<stable-id>/` are virtual
 identifiers. No files are written to the workspace.
