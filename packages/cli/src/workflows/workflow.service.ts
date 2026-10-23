@@ -22,6 +22,7 @@ import type {
 	WorkflowFolderUnionFull,
 	WorkflowHistory,
 	OperationContext,
+	TagEntity,
 	WorkflowIdsQuery,
 } from '@n8n/db';
 import {
@@ -79,6 +80,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
+import { WorkflowChecksumConflictError } from '@/errors/response-errors/workflow-checksum-conflict.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
@@ -134,6 +136,16 @@ type WorkflowUpdateOptions = {
 	apiKeyScopes?: readonly string[];
 	aiBuilderAssisted?: boolean;
 	expectedChecksum?: string;
+	/**
+	 * Tag ids the caller based `tagIds` on. The checksum excludes tags, so a caller that
+	 * rewrites tags from an earlier read passes this to reject a concurrent tag change.
+	 */
+	expectedTagIds?: string[];
+	/**
+	 * Tag names to set instead of `tagIds`. Missing tags are created in the save
+	 * transaction after the conflict checks, so a rejected save creates no tag.
+	 */
+	tagNames?: string[];
 	autosaved?: boolean;
 	source?: WorkflowActionSource;
 	versionName?: string;
@@ -157,6 +169,8 @@ type PreparedWorkflowUpdate = {
 	tagsDisabled: boolean;
 	versionIdToPublish: string | null;
 	settingsChanged: boolean;
+	/** Set by savePreparedUpdate when it resolves `options.tagNames`. */
+	resolvedTags?: { tagIds: string[]; created: TagEntity[] };
 	options: WorkflowUpdateOptions &
 		Required<
 			Pick<WorkflowUpdateOptions, 'autosaved' | 'source' | 'publicApi' | 'aiBuilderAssisted'>
@@ -557,7 +571,19 @@ export class WorkflowService {
 		options: WorkflowUpdateOptions = {},
 	): Promise<WorkflowEntity> {
 		const prepared = await this.prepareUpdate(user, workflowUpdateData, workflowId, options);
-		const saved = await this.savePreparedUpdate(prepared);
+		// A guarded save re-checks the checksum and tags under a row lock, so the checks
+		// and the writes must share one transaction. Tags created from tagNames join it
+		// too, so a rejected save leaves no tag behind. History errors then propagate:
+		// a failed insert aborts the transaction, so the save cannot continue anyway.
+		const { expectedChecksum, expectedTagIds, tagNames } = prepared.options;
+		const saved =
+			expectedChecksum || expectedTagIds || tagNames
+				? await this.workflowRepository.runInTransaction(
+						{},
+						async (_trx, ctx) =>
+							await this.savePreparedUpdate(prepared, ctx, { propagateVersionHistoryErrors: true }),
+					)
+				: await this.savePreparedUpdate(prepared);
 		return await this.finishUpdate(prepared, saved);
 	}
 
@@ -571,7 +597,9 @@ export class WorkflowService {
 	): Promise<PreparedWorkflowUpdate> {
 		const {
 			expectedChecksum,
+			expectedTagIds,
 			tagIds,
+			tagNames,
 			parentFolderId,
 			forceSave = false,
 			publicApi = false,
@@ -892,7 +920,10 @@ export class WorkflowService {
 			versionIdToPublish,
 			settingsChanged,
 			options: {
+				expectedChecksum: !forceSave && expectedChecksum ? expectedChecksum : undefined,
+				expectedTagIds: !forceSave ? expectedTagIds : undefined,
 				tagIds,
+				tagNames,
 				autosaved,
 				source,
 				publicApi,
@@ -912,7 +943,49 @@ export class WorkflowService {
 	) {
 		const { user, changes, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
 		const workflowId = prepared.workflow.id;
-		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
+		const {
+			expectedChecksum,
+			expectedTagIds,
+			tagNames,
+			autosaved,
+			source,
+			versionName,
+			versionDescription,
+		} = prepared.options;
+		let { tagIds } = prepared.options;
+		if (expectedChecksum || expectedTagIds) {
+			// The check in prepareUpdate ran before slow, async preparation. Re-read the
+			// row (locked when ctx carries a transaction) so a concurrent save that landed
+			// in between is rejected instead of overwritten.
+			const current = await this.workflowRepository.findForContentUpdate(workflowId, ctx);
+			if (!current) {
+				throw new BadRequestError(
+					`Workflow with ID "${workflowId}" could not be found to be updated.`,
+				);
+			}
+			if (expectedChecksum) {
+				await this._detectConflicts(current, expectedChecksum);
+			}
+		}
+		if (expectedTagIds && (tagIds || tagNames) && !tagsDisabled) {
+			// The checksum excludes tags, so compare the tag mappings that tagIds would replace.
+			const currentTagIds = await this.workflowTagMappingRepository.findTagIdsByWorkflowId(
+				workflowId,
+				ctx,
+			);
+			if (!isEqual([...currentTagIds].sort(), [...expectedTagIds].sort())) {
+				throw new WorkflowChecksumConflictError();
+			}
+		}
+		if (tagNames && !tagsDisabled) {
+			// After the conflict checks, so a rejected save creates no tag.
+			const { tags, created } = await this.tagService.findOrCreateByNamesInTransaction(
+				tagNames,
+				ctx,
+			);
+			tagIds = tags.map((tag) => tag.id);
+			prepared.resolvedTags = { tagIds, created };
+		}
 		if (saveNewVersion) {
 			const versionMetadata =
 				versionName || versionDescription
@@ -953,8 +1026,12 @@ export class WorkflowService {
 	async finishUpdate(prepared: PreparedWorkflowUpdate, updatedWorkflow: WorkflowEntity) {
 		const { user, previousWorkflow: workflow, versionIdToPublish, settingsChanged } = prepared;
 		const workflowId = workflow.id;
-		const { tagIds, source, publicApi, apiKeyScopes, aiBuilderAssisted } = prepared.options;
+		const { source, publicApi, apiKeyScopes, aiBuilderAssisted } = prepared.options;
+		const tagIds = prepared.resolvedTags?.tagIds ?? prepared.options.tagIds;
 
+		if (prepared.resolvedTags?.created.length) {
+			await this.tagService.runAfterCreateHooks(prepared.resolvedTags.created);
+		}
 		if (updatedWorkflow.tags?.length && tagIds?.length) {
 			updatedWorkflow.tags = this.tagService.sortByRequestOrder(updatedWorkflow.tags, {
 				requestOrder: tagIds,
@@ -2040,9 +2117,7 @@ export class WorkflowService {
 		const currentChecksum = await calculateWorkflowChecksum(dbWorkflow);
 
 		if (expectedChecksum !== currentChecksum) {
-			throw new ConflictError(
-				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
-			);
+			throw new WorkflowChecksumConflictError();
 		}
 	}
 
