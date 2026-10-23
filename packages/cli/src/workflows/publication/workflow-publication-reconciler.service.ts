@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
@@ -18,7 +19,6 @@ import {
 } from 'n8n-core';
 import type { WorkflowId } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
 import { PublishedWorkflowTriggerDeactivator } from './published-workflow-trigger-deactivator';

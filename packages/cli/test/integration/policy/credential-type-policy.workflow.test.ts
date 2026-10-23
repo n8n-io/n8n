@@ -10,6 +10,7 @@ import {
 	createTeamProject,
 	createWorkflow,
 	createWorkflowWithHistory,
+	getPersonalProject,
 	randomCredentialPayload,
 	testDb,
 } from '@n8n/backend-test-utils';
@@ -36,7 +37,7 @@ import { createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { denyRule, putCredentialTypePolicy } from './shared/credential-type-policy';
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 const CHECK_ID = 'credential-type-availability';
 
@@ -103,14 +104,17 @@ const violationFor = (
 	credentialType: string,
 	scope: 'instance' | 'project',
 	matchedRuleId: string,
+	{ projectId, optInAvailable = false }: { projectId?: string; optInAvailable?: boolean } = {},
 ) => ({
 	kind: 'credential-type-unavailable',
 	checkId: CHECK_ID,
-	message: `Credential type "${credentialType}" is blocked by ${scope === 'instance' ? 'an instance policy' : "this project's policy"}`,
+	message: `Credential type "${credentialType}" is blocked by ${scope === 'instance' ? 'an instance policy' : 'a project policy'}`,
 	subject: credentialType,
 	subjectType: 'credentialType',
 	scope,
 	matchedRuleId,
+	...(projectId !== undefined && { projectId }),
+	optInAvailable,
 });
 
 type CredentialOwner = Parameters<typeof saveCredential>[1];
@@ -183,7 +187,7 @@ afterEach(async () => {
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
 	]);
-	await clearPolicyCache();
+	await reloadPolicySnapshot();
 });
 
 describe('saving a workflow', () => {
@@ -248,8 +252,48 @@ describe('saving a workflow', () => {
 			})
 			.expect(403);
 
+		const { id: projectId } = await getPersonalProject(owner);
 		expect(response.body.meta.violations).toEqual([
-			violationFor(BLOCKED, 'instance', 'deny-github'),
+			violationFor(BLOCKED, 'instance', 'deny-github', { projectId }),
+		]);
+		await expect(workflowRepository.count()).resolves.toBe(0);
+	});
+
+	test('blocks a create whose inline agent has a node tool with a blocked credential', async () => {
+		await denyBlockedAtInstanceScope();
+		const inlineAgent: INode = {
+			...node('n8n-nodes-base.messageAnAgent', 'Message an Agent'),
+			parameters: {
+				agentSource: 'inline',
+				inlineAgent: {
+					config: {
+						tools: [
+							{
+								type: 'node',
+								name: 'Call API',
+								node: {
+									nodeType: HTTP_REQUEST,
+									nodeTypeVersion: 1,
+									nodeParameters: {},
+									credentials: {
+										[BLOCKED]: { id: ownerCredentials[BLOCKED], name: `${BLOCKED} account` },
+									},
+								},
+							},
+						],
+					},
+				},
+			},
+		};
+
+		const response = await ownerAgent
+			.post('/workflows')
+			.send({ name: 'New workflow', nodes: [node(MANUAL_TRIGGER), inlineAgent], connections: {} })
+			.expect(403);
+
+		const { id: projectId } = await getPersonalProject(owner);
+		expect(response.body.meta.violations).toEqual([
+			violationFor(BLOCKED, 'instance', 'deny-github', { projectId }),
 		]);
 		await expect(workflowRepository.count()).resolves.toBe(0);
 	});
@@ -349,7 +393,10 @@ describe('starting a run', () => {
 		});
 		const error = stored?.data.resultData.error as unknown as { violations?: unknown[] };
 
-		expect(error?.violations).toEqual([violationFor(BLOCKED, 'instance', 'deny-github')]);
+		const { id: projectId } = await getPersonalProject(owner);
+		expect(error?.violations).toEqual([
+			violationFor(BLOCKED, 'instance', 'deny-github', { projectId }),
+		]);
 	});
 
 	test('runs as usual when no rule matches', async () => {
@@ -385,7 +432,9 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 
 		expect(response.body).toMatchObject({
 			code: 403,
-			meta: { violations: [violationFor(BLOCKED, 'project', 'deny-github')] },
+			meta: {
+				violations: [violationFor(BLOCKED, 'project', 'deny-github', { projectId: project.id })],
+			},
 		});
 	});
 

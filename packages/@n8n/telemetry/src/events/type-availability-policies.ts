@@ -65,6 +65,9 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 			...ruleCounts,
 			name_selector_count: z.number().describe('Rules that target one exact type name'),
 			package_selector_count: z.number().describe('Rules that target a whole package'),
+			extends_selector_count: z
+				.number()
+				.describe('Rules that target a credential type and every type built on it'),
 			evaluated_type_count: z
 				.number()
 				.describe(
@@ -87,6 +90,9 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 			shadow_warning_count: z
 				.number()
 				.describe('Saved rules that can never match, because an earlier rule already covers them'),
+			not_loaded_warning_count: z
+				.number()
+				.describe('Saved rules that name a package or type this instance has not loaded'),
 			version: z.number().describe('The scope version after the write'),
 		}),
 	},

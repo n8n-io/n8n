@@ -8,10 +8,18 @@ import type * as AsyncHooks from 'node:async_hooks';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { AGENT_BUILDER_TEST_TOOL_NAME } from '@n8n/api-types';
+import {
+	recordAgentBuilderToolResult,
+	recordAgentSelected,
+} from '../../tools/orchestration/agent-build-metrics';
+import type { AgentValidationSummary, OrchestrationContext } from '../../types';
 import { createToolRegistry } from '../../tool-registry';
 import { createAskUserTool } from '../../tools/shared/ask-user.tool';
 import {
+	getCurrentHelperTelemetry,
 	buildAgentTraceInputs,
+	canEmitTraceOnlyChildRun,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	createTraceReplayOnlyContext,
@@ -443,7 +451,13 @@ describe('createInstanceAiTraceContext', () => {
 			runId: 'run-1',
 			userId: 'user-1',
 			input: { message: 'What workflows do I have?' },
-			metadata: { n8n_version: '2.19.0' },
+			metadata: {
+				n8n_version: '2.19.0',
+				self_healing: true,
+				self_healing_workflow_id: 'workflow-1',
+				self_healing_execution_id: 'execution-1',
+				self_healing_project_id: 'project-1',
+			},
 			browserExtension: { connectionState: 'connected', version: '0.0.7' },
 		});
 
@@ -487,6 +501,13 @@ describe('createInstanceAiTraceContext', () => {
 		);
 		expect(typeof telemetry.metadata?.agents_version).toBe('string');
 		expect(typeof telemetry.metadata?.workflow_sdk_version).toBe('string');
+		const rootSpan = agentsMock.getSpans().find((span) => span.id === tracing?.rootRun.otelSpanId);
+		expect(rootSpan?.attributes).toMatchObject({
+			'langsmith.metadata.self_healing': true,
+			'langsmith.metadata.self_healing_workflow_id': 'workflow-1',
+			'langsmith.metadata.self_healing_execution_id': 'execution-1',
+			'langsmith.metadata.self_healing_project_id': 'project-1',
+		});
 
 		await telemetry.provider?.shutdown();
 	});
@@ -598,6 +619,21 @@ describe('createInstanceAiTraceContext', () => {
 		}
 
 		await telemetry.provider?.shutdown();
+	});
+
+	it('writes span tags as one comma-separated string', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'conversation-1',
+			messageId: 'message-1',
+			messageGroupId: 'group-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'Hello' },
+		});
+
+		const span = agentsMock.getSpans().find((entry) => entry.id === tracing!.rootRun.otelSpanId);
+		expect(span?.attributes['langsmith.span.tags']).toBe('instance-ai, message-turn');
 	});
 
 	it('stamps model_id on root and actor runs and native telemetry metadata', async () => {
@@ -1031,7 +1067,7 @@ describe('createInstanceAiTraceContext', () => {
 							{
 								type: 'tool-call',
 								toolCallId: 'toolu-1',
-								toolName: 'credentials',
+								toolName: 'workflow_builder_credentials',
 								input: { action: 'list', name: 'Slack account' },
 								providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
 							},
@@ -1043,7 +1079,7 @@ describe('createInstanceAiTraceContext', () => {
 							{
 								type: 'tool-result',
 								toolCallId: 'toolu-1',
-								toolName: 'credentials',
+								toolName: 'workflow_builder_credentials',
 								output: {
 									ok: true,
 									items: [{ name: 'Slack account', apiKey: 'sk-secret' }],
@@ -1055,7 +1091,7 @@ describe('createInstanceAiTraceContext', () => {
 				'ai.prompt.tools': [
 					JSON.stringify({
 						type: 'function',
-						name: 'credentials',
+						name: 'workflow_builder_credentials',
 						description: 'List credentials',
 						input_schema: {
 							type: 'object',
@@ -1084,7 +1120,7 @@ describe('createInstanceAiTraceContext', () => {
 					id: 'toolu-1',
 					type: 'function',
 					function: {
-						name: 'credentials',
+						name: 'workflow_builder_credentials',
 						arguments: JSON.stringify({ action: 'list', name: 'Slack account' }),
 					},
 				},
@@ -1093,7 +1129,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(prompt.input[2]).toEqual({
 			role: 'tool',
 			tool_call_id: 'toolu-1',
-			name: 'credentials',
+			name: 'workflow_builder_credentials',
 			content: JSON.stringify({
 				ok: true,
 				items: [{ name: 'Slack account', apiKey: '[redacted]' }],
@@ -1164,6 +1200,23 @@ describe('createInstanceAiTraceContext', () => {
 		expect(provider.shutdown).toHaveBeenCalledTimes(1);
 	});
 
+	it('reports whether a trace-only child run can still export', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-can-emit',
+			messageId: 'message-can-emit',
+			runId: 'run-can-emit',
+			userId: 'user-can-emit',
+			input: { message: 'hello' },
+		});
+
+		expect(canEmitTraceOnlyChildRun(undefined)).toBe(false);
+		expect(canEmitTraceOnlyChildRun(tracing)).toBe(true);
+
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+
+		expect(canEmitTraceOnlyChildRun(tracing)).toBe(false);
+	});
+
 	it('shuts down product telemetry once when releasing a trace client, with no outstanding memory-task leases', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-release',
@@ -1183,6 +1236,66 @@ describe('createInstanceAiTraceContext', () => {
 		// spans to flush — only the provider shuts down.
 		expect(provider.forceFlush).not.toHaveBeenCalled();
 		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the trace open for a background operation that outlives the root run', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-background-op',
+			messageId: 'message-background-op',
+			runId: 'run-background-op',
+			userId: 'user-background-op',
+			input: { message: 'hi' },
+		});
+		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
+		const provider = agentsMock.getProvider();
+
+		const started = createDeferredPromise<undefined>();
+		const operation = tracing!.withActiveSpan(tracing!.actorRun, async () => {
+			await withCurrentTraceSpan({ name: 'background: start' }, async () => await started.promise);
+			await withCurrentTraceSpan({ name: 'background: finish' }, async () => {});
+		});
+		tracing!.keepOpenUntilSettled?.(operation);
+
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+		expect(provider.shutdown).not.toHaveBeenCalled();
+		expect(tracing?.isLive?.()).toBe(true);
+
+		started.resolve(undefined);
+		await operation;
+		await vi.waitFor(() => expect(provider.shutdown).toHaveBeenCalledTimes(1));
+
+		const spans = agentsMock.getSpans();
+		const startSpan = spans.find((span) => span.name === 'background: start');
+		expect(startSpan?.ended).toBe(true);
+		expect(startSpan?.status?.message).toBeUndefined();
+		expect(spans.find((span) => span.name === 'background: finish')?.ended).toBe(true);
+		expect(tracing?.isLive?.()).toBe(false);
+	});
+
+	it('releases the trace after a time limit when a background operation does not settle', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-stuck-op',
+			messageId: 'message-stuck-op',
+			runId: 'run-stuck-op',
+			userId: 'user-stuck-op',
+			input: { message: 'hi' },
+		});
+		expect(tracing).toBeDefined();
+		const provider = agentsMock.getProvider();
+
+		vi.useFakeTimers();
+		try {
+			tracing!.keepOpenUntilSettled?.(new Promise<void>(() => {}));
+			await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+			expect(provider.shutdown).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+			expect(provider.shutdown).toHaveBeenCalledTimes(1);
+			expect(tracing?.isLive?.()).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('keeps the provider alive for a queued memory task until it releases, then exports its span and shuts down', async () => {
@@ -1537,16 +1650,16 @@ describe('createInstanceAiTraceContext', () => {
 		expect(JSON.stringify(inputs)).not.toContain('custom.endpoint');
 	});
 
-	it('attaches runtime skill metadata to trace inputs without skill bodies', () => {
+	it('attaches skill metadata to trace inputs without skill bodies', () => {
 		const inputs = buildAgentTraceInputs({
 			tools: createToolRegistry(),
-			runtimeSkills: createRuntimeSkillRegistry([
+			skills: createRuntimeSkillRegistry([
 				{
 					id: 'data-table-manager',
 					name: 'data-table-manager',
 					description: 'Manage n8n Data Tables directly.',
 					category: 'data',
-					recommendedTools: ['data-tables'],
+					recommendedTools: ['data_tables'],
 					instructions: 'Full skill instructions must stay out of trace inputs.',
 				},
 			]),
@@ -1681,13 +1794,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['ask-user', createAskUserTool()]]),
+			createToolRegistry([['workflow_builder_ask_user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('ask-user');
+		const wrappedAskUser = wrappedTools.get('workflow_builder_ask_user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped ask-user tool is not executable');
+			throw new Error('Wrapped workflow_builder_ask_user tool is not executable');
 		}
 
 		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
@@ -1966,13 +2079,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['ask-user', createAskUserTool()]]),
+			createToolRegistry([['workflow_builder_ask_user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('ask-user');
+		const wrappedAskUser = wrappedTools.get('workflow_builder_ask_user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped ask-user tool is not executable');
+			throw new Error('Wrapped workflow_builder_ask_user tool is not executable');
 		}
 
 		const result = await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
@@ -2096,6 +2209,35 @@ describe('createInstanceAiTraceContext', () => {
 				input: { message: 'hello' },
 			}),
 		).resolves.toBeUndefined();
+	});
+
+	it('shares product telemetry with helpers only inside an active trace', async () => {
+		expect(getCurrentHelperTelemetry('verification-helper')).toBeUndefined();
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'helper-thread',
+			messageId: 'message',
+			runId: 'run',
+			userId: 'user',
+			input: {},
+		});
+		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
+		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
+			const helper = getCurrentHelperTelemetry('verification-helper');
+			expect(helper).toMatchObject({
+				enabled: true,
+				rootAnchored: false,
+				recordInputs: false,
+				recordOutputs: false,
+				metadata: {
+					thread_id: 'helper-thread',
+					evalRole: 'helper',
+					agent_role: 'verification-helper',
+				},
+			});
+			expect(helper?.provider).toBe(agentsMock.getProvider());
+		});
+		expect(getCurrentHelperTelemetry('verification-helper')).toBeUndefined();
 	});
 
 	it('runs ad-hoc span callbacks when product span creation fails', async () => {
@@ -2703,6 +2845,99 @@ describe('createInstanceAiTraceContext', () => {
 			expect(operation).toHaveBeenCalledTimes(2);
 			expect(agentsMock.getSpans()).toEqual([]);
 		});
+	});
+
+	describe('agent build metrics', () => {
+		const METRICS = ['agent_shown', 'agent_test', 'agent_build', 'agent_verification'];
+
+		async function runAgentBuild(options: { withProxy?: boolean } = {}) {
+			const tracing = await createInstanceAiTraceContext({
+				threadId: 'thread-agent-build',
+				messageId: 'message-agent-build',
+				runId: 'run-agent-build',
+				userId: 'user-agent-build',
+				input: { message: 'Build a support agent' },
+				...(options.withProxy
+					? {
+							proxyConfig: {
+								apiUrl: 'https://proxy.example.com/langsmith',
+								getAuthHeaders: async () =>
+									await Promise.resolve({ Authorization: 'Bearer proxy-token' }),
+							},
+						}
+					: {}),
+			});
+			expect(tracing).toBeDefined();
+			const actorRun = await startForegroundActor(tracing!);
+			const validation = createDeferredPromise<AgentValidationSummary>();
+			const context = {
+				tracing,
+				logger: { debug: vi.fn() },
+				domainContext: {
+					builderDelegate: { validateAgent: vi.fn(async () => await validation.promise) },
+				},
+			} as unknown as OrchestrationContext;
+			const provider = agentsMock.getProvider();
+			let endedAtShutdown: string[] = [];
+			provider.shutdown.mockImplementation(async () => {
+				endedAtShutdown = agentsMock
+					.getSpans()
+					.filter((span) => span.ended)
+					.map((span) => span.name);
+				await Promise.resolve();
+			});
+
+			// Tool calls run inside the orchestrator span.
+			await tracing!.withActiveSpan(actorRun, async () => {
+				recordAgentSelected(context, 'agent-1', { created: true });
+				recordAgentBuilderToolResult(context, 'agent-1', {
+					toolName: 'agent_builder_patch_config',
+					isError: false,
+					configMutated: true,
+				});
+				recordAgentBuilderToolResult(context, 'agent-1', {
+					toolName: AGENT_BUILDER_TEST_TOOL_NAME,
+					isError: false,
+					output: { status: 'completed' },
+					configMutated: false,
+				});
+				await Promise.resolve();
+			});
+
+			// The service order at the end of a run: finalize the orchestrator span,
+			// then finish the message trace.
+			await tracing!.finishRun(tracing!.actorRun, { outputs: { status: 'completed' } });
+			await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'completed' } });
+			// The Publish validation settles after both spans finished.
+			validation.resolve({ valid: true, issueCodes: [], issueCount: 0, capabilityCount: 1 });
+			await vi.waitFor(() => expect(provider.shutdown).toHaveBeenCalledTimes(1));
+
+			return { actorRun, endedAtShutdown: () => endedAtShutdown };
+		}
+
+		it.each([{ withProxy: false }, { withProxy: true }])(
+			'exports every metric under the orchestrator run before the trace shuts down (proxy: $withProxy)',
+			async ({ withProxy }) => {
+				const { actorRun, endedAtShutdown } = await runAgentBuild({ withProxy });
+
+				const spans = agentsMock.getSpans();
+				for (const name of METRICS) {
+					const span = spans.find((candidate) => candidate.name === name);
+					expect(span, name).toBeDefined();
+					expect({ name, traceId: span?.traceId, parent: span?.parentSpanId }).toEqual({
+						name,
+						traceId: actorRun.otelTraceId,
+						parent: actorRun.otelSpanId,
+					});
+					expect(span?.attributes).toHaveProperty('langsmith.metadata.success', true);
+					expect(span?.attributes).toHaveProperty(
+						'langsmith.metadata.thread_id',
+						'thread-agent-build',
+					);
+				}
+				expect(endedAtShutdown()).toEqual(expect.arrayContaining(METRICS));
+			},
+		);
 	});
 });
 

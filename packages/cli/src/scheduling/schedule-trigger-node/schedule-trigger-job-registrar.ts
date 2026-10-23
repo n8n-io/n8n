@@ -6,10 +6,11 @@ import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
 import { computeFirstRunAt, validateSchedule } from '@n8n/scheduler';
 import type { Cron, INode, SchedulingFunctions, Workflow } from 'n8n-workflow';
-import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { CRON_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { nameDesiredJobs } from '../desired-job-name';
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import { seededCron } from '../seeded-cron';
 import { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 import type { ScheduleTriggerTaskPayload } from './schedule-trigger-task';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from './schedule-trigger-task';
@@ -75,7 +76,7 @@ export interface ScheduleTriggerCollectionSession {
 }
 
 /**
- * Registers a Schedule Trigger node's rules as durable `scheduled_job` rows.
+ * Registers a Schedule Trigger or legacy Cron node's rules as durable `scheduled_job` rows.
  * The publication activation path's counterpart to the in-memory `ScheduledTaskManager`.
  *
  * Each activation attempt works through its own {@link ScheduleTriggerCollectionSession}:
@@ -101,7 +102,7 @@ export interface ScheduleTriggerCollectionSession {
  */
 @Service()
 export class ScheduleTriggerJobRegistrar {
-	/** Whether this instance diverts schedule trigger registrations to durable jobs. */
+	/** Whether this instance diverts Schedule Trigger and Cron node registrations to durable jobs. */
 	private readonly intercepting: boolean;
 
 	/** Instance-default timezone, used to resolve a null cron timezone for the first-run math only. */
@@ -109,9 +110,6 @@ export class ScheduleTriggerJobRegistrar {
 
 	/** How a fixed second/minute interval is represented (see `SchedulerConfig`). */
 	private readonly triggerNodeMode: 'legacy' | 'new';
-
-	/** Whether a node's "Skip Durable Scheduler" toggle is honored (see `SchedulerConfig`). */
-	private readonly allowSkipDurableScheduler: boolean;
 
 	constructor(
 		private readonly logger: Logger,
@@ -121,28 +119,32 @@ export class ScheduleTriggerJobRegistrar {
 		private readonly owner: WorkflowScheduledJobOwner,
 	) {
 		this.intercepting =
+			// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
 		this.defaultTimezone = globalConfig.generic.timezone;
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		this.triggerNodeMode = globalConfig.scheduler.triggerNodeMode;
-		this.allowSkipDurableScheduler = globalConfig.scheduler.allowSkipDurableScheduler;
 		this.logger = this.logger.scoped('scheduler');
 
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		if (globalConfig.scheduler.enabled && !workflowsConfig.useWorkflowPublicationService) {
 			this.logger.warn(
-				'N8N_SCHEDULER_ENABLED is set but the workflow publication service is disabled. The durable scheduler cannot take over schedule triggers, which keep using the legacy in-memory engine.',
+				'N8N_SCHEDULER_ENABLED is set but the workflow publication service is disabled. The durable scheduler cannot take over schedule and cron triggers, which keep using the legacy in-memory engine.',
 			);
 		}
 	}
 
 	/**
+	 * Only Schedule Trigger and legacy Cron nodes are diverted; their rules are
+	 * plain crons the durable engine can hold.
+	 *
 	 * @param node The trigger node about to register its cron rules.
 	 * @returns `true` to hand the node a durable collector, `false` to leave it on the legacy path.
 	 */
 	interceptsNode(node: INode): boolean {
 		if (
 			!this.intercepting ||
-			node.type !== SCHEDULE_TRIGGER_NODE_TYPE ||
-			(this.allowSkipDurableScheduler && node.parameters?.skipDurableScheduler === true)
+			(node.type !== SCHEDULE_TRIGGER_NODE_TYPE && node.type !== CRON_NODE_TYPE)
 		) {
 			return false;
 		}
@@ -169,6 +171,7 @@ export class ScheduleTriggerJobRegistrar {
 			createCollector: (workflow: Workflow, node: INode): SchedulingFunctions => {
 				const timezone = explicitTimezone(workflow);
 				const collected: CollectedSchedule[] = [];
+				const customCronExpressions = new Set<Cron['expression']>();
 				pending.set(pendingKey(workflow.id, node.id), {
 					misfirePolicy: resolveMisfirePolicy(node),
 					misfireGraceSeconds: resolveMisfireGraceSeconds(node, workflow.id, this.logger),
@@ -176,8 +179,18 @@ export class ScheduleTriggerJobRegistrar {
 				});
 
 				return {
-					registerCron: ({ expression, recurrence, source }: Cron) => {
-						const schedule = this.toSchedule(expression, timezone, recurrence, source);
+					registerCron: ({ expression, recurrence, source, triggerTime }: Cron) => {
+						const isCustomCron = node.type === CRON_NODE_TYPE && triggerTime?.mode === 'custom';
+						// The legacy engine compares expressions before presets and five-field crons are normalized.
+						if (isCustomCron && customCronExpressions.has(expression)) {
+							return;
+						}
+
+						const cronExpression =
+							node.type === CRON_NODE_TYPE && triggerTime
+								? seededCron(triggerTime, `${workflow.id}:${node.id}`)
+								: expression;
+						const schedule = this.toSchedule(cronExpression, timezone, recurrence, source);
 
 						if (isDegenerateRecurrence(recurrence)) {
 							// The legacy engine never fires such a rule (its recurrence check
@@ -200,7 +213,7 @@ export class ScheduleTriggerJobRegistrar {
 							// cron tick, not activation + interval — seed from the cron.
 							const seedSchedule: Schedule =
 								this.triggerNodeMode === 'legacy' && schedule.kind === 'interval'
-									? { kind: 'cron', cronExpression: expression, timezone }
+									? { kind: 'cron', cronExpression, timezone }
 									: schedule;
 
 							// Validates the expression/timezone and returns the first instant.
@@ -210,6 +223,9 @@ export class ScheduleTriggerJobRegistrar {
 							);
 
 							collected.push({ schedule, firstRunAt: computed });
+						}
+						if (isCustomCron) {
+							customCronExpressions.add(expression);
 						}
 					},
 				};

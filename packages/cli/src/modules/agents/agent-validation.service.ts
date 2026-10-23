@@ -13,6 +13,7 @@ import {
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
+	type AgentConfigValidationWarning,
 	type AgentIntegrationConfig,
 	type AgentTaskConfig,
 	type AgentJsonConfig,
@@ -34,16 +35,23 @@ import { NodeTypes } from '@/node-types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
+import { AgentDefinitionService } from './agent-definition.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
+import {
+	getAgentDefinitionContent,
+	type AgentDefinition,
+	type PendingSkillRefs,
+} from './utils/agent-definition';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
+import type { AgentSkillRefs } from './json-config/agent-document';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { isValidCronExpression } from './integrations/cron-validation';
-import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
-import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
+import { findNameClashGroups } from '@/modules/skills/skill-names';
 
 type AgentValidationScope = 'runtime' | 'publish';
 
@@ -85,12 +93,12 @@ function agentIssue(
 export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly agentTaskRepository: AgentTaskRepository,
-		private readonly agentTaskSnapshotRepository: AgentTaskSnapshotRepository,
+		private readonly definitionService: AgentDefinitionService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -154,23 +162,30 @@ export class AgentValidationService {
 		);
 	}
 
+	/** `pending`: skill refs that the caller is about to save, in place of the stored refs. */
 	async validateLoadedAgentConfiguration(
 		agent: Agent,
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
+		pending?: PendingSkillRefs,
 	): Promise<AgentConfigValidationResponse> {
-		const tasks =
-			scope === 'publish'
-				? new Map(
-						(await this.agentTaskRepository.findByAgentId(agent.id)).map((task) => [task.id, task]),
-					)
-				: new Map<string, TaskBody>();
-
-		return await this.validateAgentEntityConfiguration(
-			agent,
+		if (scope === 'runtime') {
+			return await this.validateAgentEntityConfiguration(
+				agent,
+				pending ? pending.skillRefs : await this.agentSkillRefs.refsForDraft(agent, {}),
+				projectId,
+				new Map(),
+				credentialProvider,
+				scope,
+			);
+		}
+		const definition = await this.definitionService.readDraft(agent, {}, pending);
+		return await this.validateDefinition(
+			agent.id,
 			projectId,
-			tasks,
+			definition,
+			agent.integrations ?? [],
 			credentialProvider,
 			scope,
 		);
@@ -187,22 +202,19 @@ export class AgentValidationService {
 	 */
 	async validateAgentEntityConfiguration(
 		agent: Agent,
+		skillRefs: AgentSkillRefs,
 		projectId: string,
 		tasks: ReadonlyMap<string, TaskBody>,
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
 	): Promise<AgentConfigValidationResponse> {
-		return await this.runValidation(
-			{
-				agentId: agent.id,
-				projectId,
-				config: agent.schema,
-				skills: agent.skills ?? {},
-				customTools: agent.tools ?? {},
-				integrations: agent.integrations ?? [],
-				tasks,
-				credentialProvider,
-			},
+		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
+		return await this.validateDefinition(
+			agent.id,
+			projectId,
+			{ ...getAgentDefinitionContent(agent, skillRefs, skills), tasks },
+			agent.integrations ?? [],
+			credentialProvider,
 			scope,
 		);
 	}
@@ -210,9 +222,8 @@ export class AgentValidationService {
 	/**
 	 * Same as {@link validateAgentConfiguration}, but against a specific
 	 * published history snapshot instead of the live draft. Used before
-	 * re-publishing a previously published version. Integrations are not
-	 * versioned, so the agent's *current* integrations are always validated,
-	 * regardless of which historical schema is checked.
+	 * re-publishing a previously published version. Credential-backed
+	 * integrations use the current draft; n8n Chat needs no credential check.
 	 */
 	async validateAgentHistoryConfiguration(
 		agentId: string,
@@ -221,24 +232,37 @@ export class AgentValidationService {
 		currentIntegrations: AgentIntegrationConfig[],
 		credentialProvider: CredentialProvider,
 	): Promise<AgentConfigValidationResponse> {
-		const tasks = new Map(
-			(await this.agentTaskSnapshotRepository.findByVersionId(history.versionId)).map(
-				(snapshot) => [snapshot.taskId, snapshot],
-			),
+		const definition = await this.definitionService.readVersion(history);
+		return await this.validateDefinition(
+			agentId,
+			projectId,
+			definition,
+			currentIntegrations,
+			credentialProvider,
+			'publish',
 		);
+	}
 
+	private async validateDefinition(
+		agentId: string,
+		projectId: string,
+		definition: AgentDefinition,
+		integrations: AgentIntegrationConfig[],
+		credentialProvider: CredentialProvider,
+		scope: AgentValidationScope,
+	): Promise<AgentConfigValidationResponse> {
 		return await this.runValidation(
 			{
 				agentId,
 				projectId,
-				config: history.schema,
-				skills: history.skills ?? {},
-				customTools: history.tools ?? {},
-				integrations: currentIntegrations,
-				tasks,
+				config: definition.schema,
+				skills: definition.skills,
+				customTools: definition.tools,
+				tasks: definition.tasks,
+				integrations,
 				credentialProvider,
 			},
-			'publish',
+			scope,
 		);
 	}
 
@@ -251,7 +275,27 @@ export class AgentValidationService {
 		}
 
 		const issues = await this.collectIssues({ ...ctx, config: ctx.config }, scope);
-		return { status: issues.length === 0 ? 'valid' : 'invalid', issues };
+		const warnings = this.collectSkillNameWarnings(ctx.config, ctx.skills);
+		return {
+			status: issues.length === 0 ? 'valid' : 'invalid',
+			issues,
+			...(warnings.length > 0 ? { warnings } : {}),
+		};
+	}
+
+	/** Skill names that are hard to tell apart confuse the model, but do not block a run. */
+	private collectSkillNameWarnings(
+		config: AgentJsonConfig,
+		skills: Record<string, AgentSkill>,
+	): AgentConfigValidationWarning[] {
+		const names = (config.skills ?? []).flatMap((ref) =>
+			Object.hasOwn(skills, ref.id) ? [skills[ref.id].name] : [],
+		);
+		return findNameClashGroups(names).map((group) => ({
+			code: 'similar_skill_names',
+			capability: { kind: 'skill' },
+			names: group,
+		}));
 	}
 
 	private missingConfigIssues(): AgentConfigValidationIssue[] {
@@ -279,11 +323,19 @@ export class AgentValidationService {
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
-		await this.collectMainCredentialIssues(config, findCredential, ctx.credentialProvider, issues);
+		await this.collectMainCredentialIssues(
+			config,
+			findCredential,
+			ctx.credentialProvider,
+			scope,
+			issues,
+		);
+		await this.collectVertexModelIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
 			for (const violation of findHttpRequestToolUrlFromAiViolations(config.tools)) {
+				if (config.tools?.[violation.toolIndex].enabled === false) continue;
 				issues.push(
 					issue('invalid_value', violation.path, {
 						kind: 'tool',
@@ -307,9 +359,12 @@ export class AgentValidationService {
 		workflowsByReference: Map<string, WorkflowEntity>;
 	}> {
 		const subAgentIds = new Set<string>();
-		const workflowRefs = extractAgentWorkflowRefs(ctx.config).filter((ref) => ref.workflow);
+		const workflowRefs = extractAgentWorkflowRefs(ctx.config).filter(
+			(ref) => ref.enabled !== false && ref.workflow,
+		);
 
 		for (const ref of ctx.config.subAgents?.agents ?? []) {
+			if (ref.enabled === false) continue;
 			if (ref.agentId && ref.agentId !== ctx.agentId) {
 				subAgentIds.add(ref.agentId);
 			}
@@ -354,6 +409,7 @@ export class AgentValidationService {
 		config: AgentJsonConfig,
 		findCredential: FindCredential,
 		credentialProvider: CredentialProvider,
+		scope: AgentValidationScope,
 		issues: AgentConfigValidationIssue[],
 	) {
 		if (!config.credential?.trim()) {
@@ -394,7 +450,51 @@ export class AgentValidationService {
 			issues.push(agentIssue('incompatible_credential', 'credential'));
 		}
 
-		await this.collectAzureDeploymentIssues(config, credentialId, credentialProvider, issues);
+		if (scope === 'publish') {
+			await this.collectAzureEndpointIssues(config, credentialId, credentialProvider, issues);
+		}
+	}
+
+	private async collectVertexModelIssues(
+		config: AgentJsonConfig,
+		findCredential: FindCredential,
+		issues: AgentConfigValidationIssue[],
+	): Promise<void> {
+		type ModelSlot = Pick<AgentJsonConfig, 'model' | 'credential'>;
+		const slots: Array<[string, ModelSlot | undefined]> = [
+			...Object.entries(config.subAgents?.modelsByDifficulty ?? {}).map(
+				([difficulty, model]): [string, ModelSlot] => [
+					`subAgents.modelsByDifficulty.${difficulty}.`,
+					model,
+				],
+			),
+		];
+		if (config.memory?.enabled) {
+			const observational = config.memory.observationalMemory;
+			if (observational?.enabled !== false) {
+				slots.push(
+					['memory.observationalMemory.observerModel.', observational?.observerModel],
+					['memory.observationalMemory.reflectorModel.', observational?.reflectorModel],
+				);
+			}
+			const episodic = config.memory.episodicMemory;
+			if (episodic?.enabled) {
+				slots.push(['memory.episodicMemory.reflectorModel.', episodic.reflectorModel]);
+			}
+		}
+		for (const [path, model] of slots) {
+			if (!model || getProviderPrefix(model.model) !== 'google-vertex') continue;
+			if (!model.credential?.trim()) {
+				issues.push(agentIssue('missing_credential', `${path}credential`));
+				continue;
+			}
+			const credential = await this.findCredentialSafe(findCredential, model.credential.trim());
+			if (!credential) {
+				issues.push(agentIssue('invalid_credential', `${path}credential`));
+			} else if (!this.credentialSupportsModel(credential.type, model.model)) {
+				issues.push(agentIssue('incompatible_credential', `${path}credential`));
+			}
+		}
 	}
 
 	private collectSubAgentRefIssues(
@@ -405,6 +505,7 @@ export class AgentValidationService {
 		const refs = ctx.config.subAgents?.agents ?? [];
 		for (let index = 0; index < refs.length; index++) {
 			const ref = refs[index];
+			if (ref.enabled === false) continue;
 			const path = `subAgents.agents.${index}.agentId`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'subAgent',
@@ -429,7 +530,7 @@ export class AgentValidationService {
 		skills: Record<string, AgentSkill>,
 		issues: AgentConfigValidationIssue[],
 	) {
-		for (const skillId of getMissingSkillIds(config, skills)) {
+		for (const skillId of getMissingSkillIds(config.skills, skills)) {
 			issues.push(issue('missing_reference', `skill:${skillId}`, { kind: 'skill', id: skillId }));
 		}
 	}
@@ -486,6 +587,7 @@ export class AgentValidationService {
 	) {
 		for (let index = 0; index < integrations.length; index++) {
 			const integration = integrations[index];
+			if (integration.type === 'n8n_chat') continue;
 			const path = `integrations.${index}.credentialId`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'channel',
@@ -521,6 +623,7 @@ export class AgentValidationService {
 		const tools = ctx.config.tools ?? [];
 		for (let index = 0; index < tools.length; index++) {
 			const tool = tools[index];
+			if (tool.enabled === false) continue;
 
 			if (tool.type === 'custom') {
 				this.collectCustomToolIssues(tool.id, index, ctx.customTools, issues);
@@ -724,27 +827,32 @@ export class AgentValidationService {
 		}
 	}
 
-	private async collectAzureDeploymentIssues(
+	/**
+	 * Agents accept only Microsoft Foundry credentials for Azure OpenAI. This
+	 * runs on publish only, so agents that already run on a Classic credential
+	 * keep running.
+	 */
+	private async collectAzureEndpointIssues(
 		config: AgentJsonConfig,
 		credentialId: string,
 		credentialProvider: CredentialProvider,
 		issues: AgentConfigValidationIssue[],
 	): Promise<void> {
 		const model = config.model?.trim();
-		const provider = model ? getProviderPrefix(model) : undefined;
-		if (provider !== 'azure-openai' || config.modelDeploymentName?.trim()) return;
+		if (!model || getProviderPrefix(model) !== 'azure-openai') return;
 		let endpointType: unknown;
 		try {
 			const data = await credentialProvider.resolve(credentialId);
 			endpointType = data?.endpointType;
 		} catch {
 			// A credential that can't be resolved here will already be reported
-			// elsewhere; don't let a transient resolve failure block publish
-			// by assuming Classic and requiring a deployment name.
+			// elsewhere; don't let a transient resolve failure block publish.
 			return;
 		}
 		if (endpointType !== 'foundry') {
-			issues.push(agentIssue('missing_required', 'modelDeploymentName'));
+			issues.push(
+				issue('incompatible_credential', 'credential', { kind: 'agent' }, 'azure_classic_endpoint'),
+			);
 		}
 	}
 

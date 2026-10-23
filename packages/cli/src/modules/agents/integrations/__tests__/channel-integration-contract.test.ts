@@ -83,6 +83,14 @@ runSharedChannelIntegrationContract({
 // real Linear behavior. Linear's real flow is covered by its recorded
 // agent-session test (platforms/__tests__/linear/recorded-integration.test.ts).
 
+// NOTE: WhatsApp is intentionally not in the shared contract either, for a
+// narrower reason than Linear's. Its mention/DM and context-persistence
+// behavior fits, but @chat-adapter/whatsapp's inbound path hardcodes
+// `author.isMe: false` unconditionally, and the Cloud API never delivers a
+// business's own sends back through the inbound webhook — there's no real
+// payload for the self-authored-message case. Covered directly in
+// platforms/__tests__/whatsapp/synthetic-integration.test.ts instead.
+
 runSharedChannelIntegrationContract({
 	name: 'Telegram',
 	fixtures: telegramFixtures,
@@ -148,8 +156,10 @@ runSharedChannelIntegrationContract({
 		},
 		resourceId: TEAMS_USER_ID,
 		firstPost: {
+			// A direct message reply is rendered by editing this post, so the first
+			// post is the placeholder and the text arrives in a later edit.
 			type: 'message',
-			text: 'Got it',
+			text: '…',
 			conversation: { id: TEAMS_DM_CONVERSATION_ID },
 		},
 		respondPost: {

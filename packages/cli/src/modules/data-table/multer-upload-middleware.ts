@@ -9,7 +9,7 @@ import multer from 'multer';
 import { nanoid } from 'nanoid';
 import { extname } from 'path';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import { DataTableSizeValidator } from './data-table-size-validator.service';
 import { DataTableRepository } from './data-table.repository';

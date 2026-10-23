@@ -11,6 +11,12 @@ describe('system prompt: saving preferences', () => {
 		);
 	});
 
+	it('tells the model to retry a too-long text once, and to stop on any other refusal', () => {
+		const prompt = getSystemPrompt({ preferenceSavingEnabled: true });
+		expect(prompt).toContain('shorten it to the limit the result names and call it once more');
+		expect(prompt).toContain('do not call it again in this turn');
+	});
+
 	it('says nothing about preferences when the feature is off', () => {
 		const prompt = getSystemPrompt({ preferenceSavingEnabled: false });
 		expect(prompt).not.toContain('## Saving Preferences');

@@ -6,7 +6,9 @@ import {
 	N8nButton,
 	N8nCheckbox,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogClose,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nIcon,
 	N8nInput,
@@ -100,8 +102,16 @@ function headerValuePlaceholder(pair: { key: string; value: string }): string {
 
 // State-first copy: the row tells the admin whether tracing is live right now,
 // instead of describing what the disabled state would mean hypothetically.
+/*
+ * The control shows a status click at once, while the save runs. A loading
+ * state would resize the button twice: once for the spinner, once for the new label.
+ */
+const pendingStatus = ref<boolean | null>(null);
+const statusSaving = computed(() => pendingStatus.value !== null);
+const displayedEnabled = computed(() => pendingStatus.value ?? otelStore.settings.enabled);
+
 const statusDescription = computed(() =>
-	otelStore.settings.enabled
+	displayedEnabled.value
 		? i18n.baseText('settings.opentelemetry.status.enabledDescription')
 		: i18n.baseText('settings.opentelemetry.status.disabledDescription'),
 );
@@ -148,7 +158,10 @@ function envTooltip(field: keyof typeof OTEL_FIELD_ENV_VARS): string {
 		: envVariable;
 }
 
+// The status save and the form save both send a full PUT. One must wait for the
+// other, or the request that finishes last overwrites the status.
 async function save(): Promise<boolean> {
+	if (statusSaving.value) return false;
 	try {
 		const wasEnabled = otelStore.savedSettings.enabled;
 		await otelStore.saveSettings();
@@ -192,24 +205,36 @@ function discard() {
 	syncHeaderPairsFromStore();
 }
 
-const statusSaving = ref(false);
-
 /*
  * Enabling/disabling is a live status change, not a form draft: it applies
- * immediately by committing the current on-screen draft with the flag set.
- * Saving only the flag would silently enable with stale, previously-saved
- * config while the screen shows unsaved edits.
+ * immediately with the saved config. Unsaved field edits stay in the save bar.
  */
 async function onToggleEnabled(enabled: boolean) {
-	otelStore.settings.enabled = enabled;
-	statusSaving.value = true;
+	if (otelStore.saving || statusSaving.value) return;
+	pendingStatus.value = enabled;
 	try {
-		const saved = await save();
-		if (!saved) {
-			otelStore.settings.enabled = !enabled;
+		await otelStore.saveEnabled(enabled);
+
+		if (enabled) {
+			telemetry.track('Activated otel via UI', {
+				protocol: otelStore.savedSettings.exporterProtocol,
+				includeNodeSpans: otelStore.savedSettings.includeNodeSpans,
+				productionExecutionsOnly: otelStore.savedSettings.productionExecutionsOnly,
+				tracesSampleRate: otelStore.savedSettings.tracesSampleRate,
+				injectOutbound: otelStore.savedSettings.injectOutbound,
+			});
+		} else {
+			telemetry.track('Disabled otel via UI');
 		}
+
+		toast.showMessage({
+			title: i18n.baseText('settings.opentelemetry.savedSuccess'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.opentelemetry.savedError'));
 	} finally {
-		statusSaving.value = false;
+		pendingStatus.value = null;
 	}
 }
 
@@ -417,9 +442,8 @@ watch(
 					>
 						<template #action>
 							<OtelStatusControl
-								:enabled="otelStore.settings.enabled"
-								:disabled="isEnvManaged('enabled')"
-								:loading="statusSaving"
+								:enabled="displayedEnabled"
+								:disabled="isEnvManaged('enabled') || otelStore.saving"
 								@update:enabled="onToggleEnabled"
 							/>
 						</template>
@@ -556,7 +580,7 @@ watch(
 								</div>
 								<N8nButton
 									icon="plus"
-									variant="subtle"
+									variant="outline"
 									size="small"
 									native-type="button"
 									:disabled="isEnvManaged('exporterHeaders')"
@@ -704,6 +728,38 @@ watch(
 					</OtelSettingsRow>
 
 					<OtelSettingsRow
+						:title="i18n.baseText('settings.opentelemetry.emitWorkflowStartSpan.label')"
+						:description="i18n.baseText('settings.opentelemetry.emitWorkflowStartSpan.description')"
+						:env-tooltip="envTooltip('emitWorkflowStartSpan')"
+					>
+						<template #action>
+							<N8nCheckbox
+								:model-value="otelStore.settings.emitWorkflowStartSpan"
+								:disabled="isEnvManaged('emitWorkflowStartSpan')"
+								data-test-id="otel-emit-workflow-start-span"
+								@update:model-value="otelStore.settings.emitWorkflowStartSpan = Boolean($event)"
+							/>
+						</template>
+					</OtelSettingsRow>
+
+					<OtelSettingsRow
+						:title="i18n.baseText('settings.opentelemetry.emitNodeStartSpan.label')"
+						:description="i18n.baseText('settings.opentelemetry.emitNodeStartSpan.description')"
+						:env-tooltip="envTooltip('emitNodeStartSpan')"
+					>
+						<template #action>
+							<N8nCheckbox
+								:model-value="otelStore.settings.emitNodeStartSpan"
+								:disabled="
+									isEnvManaged('emitNodeStartSpan') || !otelStore.settings.includeNodeSpans
+								"
+								data-test-id="otel-emit-node-start-span"
+								@update:model-value="otelStore.settings.emitNodeStartSpan = Boolean($event)"
+							/>
+						</template>
+					</OtelSettingsRow>
+
+					<OtelSettingsRow
 						:title="i18n.baseText('settings.opentelemetry.injectOutbound.label')"
 						:description="i18n.baseText('settings.opentelemetry.injectOutbound.description')"
 						:env-tooltip="envTooltip('injectOutbound')"
@@ -744,6 +800,7 @@ watch(
 				:save-label="i18n.baseText('settings.opentelemetry.save')"
 				:discard-label="i18n.baseText('settings.opentelemetry.discard')"
 				:saving="otelStore.saving"
+				:save-disabled="statusSaving"
 				floating
 				@save="save"
 				@discard="discard"
@@ -753,31 +810,33 @@ watch(
 		<N8nDialog
 			v-model:open="showUnsavedChangesDialog"
 			:header="i18n.baseText('settings.opentelemetry.unsavedChanges.title')"
-			:description="i18n.baseText('settings.opentelemetry.unsavedChanges.message')"
 			size="medium"
 		>
-			<div data-test-id="otel-unsaved-changes-dialog">
-				<N8nDialogFooter>
-					<N8nDialogClose as-child>
-						<N8nButton
-							variant="outline"
-							:label="i18n.baseText('settings.opentelemetry.unsavedChanges.cancel')"
-							@click="onKeepEditing"
-						/>
-					</N8nDialogClose>
+			<N8nDialogBody>
+				<N8nDialogDescription>
+					{{ i18n.baseText('settings.opentelemetry.unsavedChanges.message') }}
+				</N8nDialogDescription>
+			</N8nDialogBody>
+			<N8nDialogFooter data-test-id="otel-unsaved-changes-dialog">
+				<N8nDialogClose as-child>
 					<N8nButton
 						variant="outline"
-						:label="i18n.baseText('settings.opentelemetry.unsavedChanges.leaveWithoutSaving')"
-						@click="onLeaveWithoutSaving"
+						:label="i18n.baseText('settings.opentelemetry.unsavedChanges.cancel')"
+						@click="onKeepEditing"
 					/>
-					<N8nButton
-						variant="solid"
-						:label="i18n.baseText('settings.opentelemetry.unsavedChanges.saveAndLeave')"
-						:loading="otelStore.saving"
-						@click="onSaveAndLeave"
-					/>
-				</N8nDialogFooter>
-			</div>
+				</N8nDialogClose>
+				<N8nButton
+					variant="outline"
+					:label="i18n.baseText('settings.opentelemetry.unsavedChanges.leaveWithoutSaving')"
+					@click="onLeaveWithoutSaving"
+				/>
+				<N8nButton
+					variant="solid"
+					:label="i18n.baseText('settings.opentelemetry.unsavedChanges.saveAndLeave')"
+					:loading="otelStore.saving"
+					@click="onSaveAndLeave"
+				/>
+			</N8nDialogFooter>
 		</N8nDialog>
 	</N8nSettingsLayout>
 </template>

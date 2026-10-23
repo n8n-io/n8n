@@ -1,4 +1,5 @@
 import { MOONSHOTAI_KIMI_K3_MODEL_ID, UNLIMITED_CREDITS } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -39,13 +40,14 @@ describe('InstanceAiModelService', () => {
 	const settingsService = mock<InstanceAiSettingsService>();
 	const aiService = mock<AiService>();
 	const outboundHttp = mock<OutboundHttp>();
+	const logger = mock<Logger>();
 
 	let service: InstanceAiModelService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedTokenGetters.length = 0;
-		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
+		service = new InstanceAiModelService(settingsService, aiService, outboundHttp, logger);
 	});
 
 	afterEach(() => {
@@ -190,6 +192,102 @@ describe('InstanceAiModelService', () => {
 					feature: 'instance-ai',
 				}),
 			);
+		});
+	});
+
+	describe('resolveMemoryModelConfig', () => {
+		const tokenManager = { getAuthHeaders: vi.fn() } as never;
+		const proxyRun = { proxyBaseUrl: 'https://proxy.base', tokenManager };
+		const proxyMainModel = { provider: 'anthropic.messages', modelId: 'claude-opus-5-5' } as never;
+
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+		});
+
+		it('returns undefined when no memory model is configured', async () => {
+			settingsService.getConfiguredMemoryModelName.mockReturnValue('');
+
+			await expect(
+				service.resolveMemoryModelConfig(fakeUser, proxyMainModel, proxyRun),
+			).resolves.toBeUndefined();
+			expect(createProxyLanguageModel).not.toHaveBeenCalled();
+		});
+
+		it('routes the memory model name through the run proxy', async () => {
+			settingsService.getConfiguredMemoryModelName.mockReturnValue('claude-haiku-4-5');
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'anthropic.messages',
+				modelId: 'claude-haiku-4-5',
+			});
+
+			await service.resolveMemoryModelConfig(fakeUser, proxyMainModel, {
+				...proxyRun,
+				proxyContext: { runId: 'run-1', threadId: 'thread-1' },
+			});
+
+			expect(createProxyLanguageModel).toHaveBeenCalledWith(
+				expect.objectContaining({
+					proxyBaseUrl: 'https://proxy.base',
+					modelId: 'claude-haiku-4-5',
+					tokenManager,
+					runId: 'run-1',
+					threadId: 'thread-1',
+				}),
+			);
+			expect(settingsService.resolveModelName).not.toHaveBeenCalled();
+		});
+
+		it('sends the bare model name to the proxy when the value has the main provider prefix', async () => {
+			settingsService.getConfiguredMemoryModelName.mockReturnValue('anthropic/claude-haiku-5-5');
+			settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude-opus-5-5');
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'anthropic.messages',
+				modelId: 'claude-haiku-5-5',
+			});
+
+			await service.resolveMemoryModelConfig(fakeUser, proxyMainModel, proxyRun);
+
+			expect(createProxyLanguageModel).toHaveBeenCalledWith(
+				expect.objectContaining({ modelId: 'claude-haiku-5-5' }),
+			);
+		});
+
+		it('returns undefined and warns when the memory model cannot be resolved', async () => {
+			settingsService.getConfiguredMemoryModelName.mockReturnValue('claude-haiku-4-5');
+			createProxyLanguageModel.mockRejectedValue(new Error('proxy unavailable'));
+
+			await expect(
+				service.resolveMemoryModelConfig(fakeUser, proxyMainModel, proxyRun),
+			).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to resolve the Instance AI memory model'),
+				{ modelName: 'claude-haiku-4-5', error: 'proxy unavailable' },
+			);
+		});
+
+		it('renames the main model without resolving the settings again', async () => {
+			settingsService.getConfiguredMemoryModelName.mockReturnValue('claude-haiku-4-5');
+
+			await expect(
+				service.resolveMemoryModelConfig(
+					fakeUser,
+					{ id: 'anthropic/claude-opus-5-5', url: 'https://anthropic.example', apiKey: 'main-key' },
+					{},
+				),
+			).resolves.toEqual({
+				id: 'anthropic/claude-haiku-4-5',
+				url: 'https://anthropic.example',
+				apiKey: 'main-key',
+			});
+			expect(settingsService.resolveModelConfig).not.toHaveBeenCalled();
+		});
+
+		it('uses the main model for a pre-built model outside a proxy', async () => {
+			settingsService.getConfiguredMemoryModelName.mockReturnValue('claude-haiku-4-5');
+
+			await expect(
+				service.resolveMemoryModelConfig(fakeUser, proxyMainModel, {}),
+			).resolves.toBeUndefined();
 		});
 	});
 });

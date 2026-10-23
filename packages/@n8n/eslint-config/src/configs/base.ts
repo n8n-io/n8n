@@ -100,7 +100,7 @@ export const baseConfig = tseslint.config(
 			// ----------------------------------
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/array-type.md
+			 * https://typescript-eslint.io/rules/array-type/
 			 */
 			'@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
 
@@ -108,7 +108,7 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/await-thenable': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
+			 * https://typescript-eslint.io/rules/ban-ts-comment/
 			 */
 			'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],
 
@@ -152,19 +152,19 @@ export const baseConfig = tseslint.config(
 			],
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-assertions.md
+			 * https://typescript-eslint.io/rules/consistent-type-assertions/
 			 */
 			'@typescript-eslint/consistent-type-assertions': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-imports.md
+			 * https://typescript-eslint.io/rules/consistent-type-imports/
 			 */
 			'@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 
 			'@typescript-eslint/consistent-type-exports': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
+			 * https://eslint.style/rules/member-delimiter-style
 			 */
 			'@stylistic/member-delimiter-style': [
 				'error',
@@ -181,22 +181,22 @@ export const baseConfig = tseslint.config(
 			],
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-invalid-void-type.md
+			 * https://typescript-eslint.io/rules/no-invalid-void-type/
 			 */
 			'@typescript-eslint/no-invalid-void-type': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-misused-promises.md
+			 * https://typescript-eslint.io/rules/no-misused-promises/
 			 */
 			'@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.30.0/packages/eslint-plugin/docs/rules/no-floating-promises.md
+			 * https://typescript-eslint.io/rules/no-floating-promises/
 			 */
 			'@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.33.0/packages/eslint-plugin/docs/rules/no-namespace.md
+			 * https://typescript-eslint.io/rules/no-namespace/
 			 */
 			'@typescript-eslint/no-namespace': 'off',
 
@@ -206,37 +206,37 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/only-throw-error': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unnecessary-boolean-literal-compare.md
+			 * https://typescript-eslint.io/rules/no-unnecessary-boolean-literal-compare/
 			 */
 			'@typescript-eslint/no-unnecessary-boolean-literal-compare': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unnecessary-qualifier.md
+			 * https://typescript-eslint.io/rules/no-unnecessary-qualifier/
 			 */
 			'@typescript-eslint/no-unnecessary-qualifier': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unused-expressions.md
+			 * https://typescript-eslint.io/rules/no-unused-expressions/
 			 */
 			'@typescript-eslint/no-unused-expressions': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-optional-chain.md
+			 * https://typescript-eslint.io/rules/prefer-optional-chain/
 			 */
 			'@typescript-eslint/prefer-optional-chain': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/promise-function-async.md
+			 * https://typescript-eslint.io/rules/promise-function-async/
 			 */
 			'@typescript-eslint/promise-function-async': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/triple-slash-reference.md
+			 * https://typescript-eslint.io/rules/triple-slash-reference/
 			 */
 			'@typescript-eslint/triple-slash-reference': 'off', // @TECH_DEBT: Enable, disallowing in all cases - N8N-5820
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/return-await.md
+			 * https://typescript-eslint.io/rules/return-await/
 			 */
 			'@typescript-eslint/return-await': ['error', 'always'],
 

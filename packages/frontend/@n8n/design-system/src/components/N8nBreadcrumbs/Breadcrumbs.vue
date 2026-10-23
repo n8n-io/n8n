@@ -1,8 +1,11 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
 import N8nActionToggle from '../N8nActionToggle';
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
+import N8nIcon from '../N8nIcon';
+import type { IconOrEmoji } from '../N8nIconPicker/types';
 import N8nLink from '../N8nLink';
 import N8nLoading from '../N8nLoading';
 import N8nText from '../N8nText';
@@ -12,6 +15,8 @@ export type PathItem = {
 	id: string;
 	label: string;
 	href?: string;
+	/** Decorative icon or emoji shown next to the item label. */
+	icon?: IconOrEmoji;
 };
 
 type Props = {
@@ -50,6 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
 	hiddenItemsTrigger: 'click',
 	dragActive: false,
 });
+const { t } = useI18n();
 
 const loadedHiddenItems = ref<PathItem[]>([]);
 const isLoadingHiddenItems = ref(false);
@@ -73,6 +79,7 @@ const hiddenItemActions = computed((): Array<DropdownMenuItemProps<string>> => {
 	return loadedHiddenItems.value.map((item) => ({
 		id: item.id,
 		label: item.label,
+		icon: item.icon,
 		disabled: false,
 	}));
 });
@@ -208,7 +215,15 @@ const handleTooltipClose = () => {
 						@action="emitItemSelected"
 						@item-mouseup="onHiddenItemMouseUp"
 					>
-						<N8nText :bold="true" :class="$style.dots">...</N8nText>
+						<N8nText
+							tag="button"
+							type="button"
+							:aria-label="t('breadcrumbs.showMoreItems')"
+							:bold="true"
+							:class="$style.dots"
+						>
+							...
+						</N8nText>
 					</N8nActionToggle>
 				</div>
 				<!-- Just a tooltip for smaller versions -->
@@ -257,8 +272,32 @@ const handleTooltipClose = () => {
 					@mouseenter="emitItemHover(item.id)"
 					@mouseup="onItemMouseUp(item)"
 				>
-					<N8nLink v-if="item.href" :to="item.href" theme="text">{{ item.label }}</N8nLink>
-					<N8nText v-else>{{ item.label }}</N8nText>
+					<N8nLink v-if="item.href" :to="item.href" theme="text">
+						<span v-if="item.icon" :class="$style.itemContent">
+							<N8nIcon
+								v-if="item.icon.type === 'icon'"
+								:icon="item.icon.value"
+								:color="item.icon.color"
+								:class="$style.itemIcon"
+							/>
+							<span v-else :class="$style.itemIcon" aria-hidden="true">{{ item.icon.value }}</span>
+							<span :class="$style.itemLabel">{{ item.label }}</span>
+						</span>
+						<template v-else>{{ item.label }}</template>
+					</N8nLink>
+					<N8nText v-else>
+						<span v-if="item.icon" :class="$style.itemContent">
+							<N8nIcon
+								v-if="item.icon.type === 'icon'"
+								:icon="item.icon.value"
+								:color="item.icon.color"
+								:class="$style.itemIcon"
+							/>
+							<span v-else :class="$style.itemIcon" aria-hidden="true">{{ item.icon.value }}</span>
+							<span :class="$style.itemLabel">{{ item.label }}</span>
+						</span>
+						<template v-else>{{ item.label }}</template>
+					</N8nText>
 				</li>
 				<li v-if="index !== items.length - 1" :class="$style.separator">
 					{{ separator }}
@@ -310,6 +349,20 @@ const handleTooltipClose = () => {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.item .itemContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.item .itemIcon {
+	flex-shrink: 0;
+}
+
+.item .itemLabel {
+	min-width: 0;
 }
 
 .item.current span {
@@ -395,7 +448,12 @@ const handleTooltipClose = () => {
 }
 
 .dots {
+	appearance: none;
 	padding: 0 var(--spacing--4xs);
+	border: none;
+	background: none;
+	font: inherit;
+	cursor: pointer;
 	color: var(--color--text--tint-1);
 	border-radius: var(--radius);
 

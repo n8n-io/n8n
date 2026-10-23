@@ -3,7 +3,7 @@ import type { Stats } from 'node:fs';
 import { lstat, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import type { PackageManifest } from '../../spec/manifest.schema';
 import type { PackageReader } from '../package-reader';

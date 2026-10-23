@@ -20,7 +20,7 @@ export class DotenvUpgradeRule implements IBreakingChangeInstanceRule {
 			description:
 				'The dotenv library has been upgraded, which may affect how .env files are parsed',
 			category: BreakingChangeCategory.environment,
-			severity: 'low',
+			impact: 'behaviorChanges',
 			documentationUrl: 'https://docs.n8n.io/2-0-breaking-changes/#upgrade-dotenv',
 		};
 	}

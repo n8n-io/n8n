@@ -3,7 +3,7 @@ import type { AuthIdentity } from '@n8n/db';
 import { generateNanoId, User, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import * as helpers from '../saml-helpers';
 import type { SamlUserAttributes } from '../types';
@@ -100,6 +100,63 @@ describe('sso/saml/samlHelpers', () => {
 					userPrincipalName: 'test',
 				},
 			});
+		});
+
+		test('returns the email verification attribute when it is mapped', () => {
+			const flowResult = {
+				extract: {
+					attributes: {
+						email: 'test@test.com',
+						firstName: 'test',
+						lastName: 'test',
+						userPrincipalName: 'test',
+						emailVerified: ['true'],
+					},
+				},
+			} as any;
+			const attributeMapping = {
+				email: 'email',
+				firstName: 'firstName',
+				lastName: 'lastName',
+				userPrincipalName: 'userPrincipalName',
+				emailVerified: 'emailVerified',
+			};
+
+			const result = helpers.getMappedSamlAttributesFromFlowResult(flowResult, attributeMapping, {
+				instanceRole: null,
+				projectRoles: null,
+			});
+
+			expect(result.attributes?.emailVerified).toBe('true');
+			expect(result.missingAttributes).toEqual([]);
+		});
+
+		test('does not report a mapped email verification attribute that the response lacks', () => {
+			const flowResult = {
+				extract: {
+					attributes: {
+						email: 'test@test.com',
+						firstName: 'test',
+						lastName: 'test',
+						userPrincipalName: 'test',
+					},
+				},
+			} as any;
+			const attributeMapping = {
+				email: 'email',
+				firstName: 'firstName',
+				lastName: 'lastName',
+				userPrincipalName: 'userPrincipalName',
+				emailVerified: 'emailVerified',
+			};
+
+			const result = helpers.getMappedSamlAttributesFromFlowResult(flowResult, attributeMapping, {
+				instanceRole: null,
+				projectRoles: null,
+			});
+
+			expect(result.attributes?.emailVerified).toBeUndefined();
+			expect(result.missingAttributes).toEqual([]);
 		});
 
 		test('returns the missing attributes from the flow result', () => {

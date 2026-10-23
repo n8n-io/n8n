@@ -85,9 +85,13 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agents_messages" {
+  TEXT author
   TEXT content
   datetime_3_ createdAt
   varchar_36_ id PK
+  TEXT modelContent
+  DATETIME modelContextAt
+  TEXT origin
   varchar_255_ resourceId
   varchar_36_ role
   varchar_255_ threadId FK

@@ -1,0 +1,29 @@
+operationId: getPromotionEnvironment
+tags:
+  - Promotions
+summary: Retrieve a promotion environment
+description: Returns the environment with its provider summary and the state of its local checkout.
+x-required-scope: gitConnection:read
+parameters:
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionEnvironmentPublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

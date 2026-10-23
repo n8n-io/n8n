@@ -21,7 +21,10 @@ export type CreatedPromotionBinding =
 			scope: PromotionVariableScope;
 	  };
 
-// Resolve after the editor closes. Return null on cancellation. Report a failure, then reject.
+export type CreatedPromotionProject = { id: string; name: string };
+
+// Resolve after the editor closes. Return null on cancellation. Save errors keep the editor open.
+// Report a setup error, then reject.
 export type CreatePromotionBinding = (
 	binding: MissingPromotionBinding,
 ) => Promise<CreatedPromotionBinding | null>;

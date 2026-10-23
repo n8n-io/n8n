@@ -15,7 +15,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { NodeTypes } from '@/node-types';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -140,6 +140,17 @@ export class NodeResourceExplorerService {
 			});
 			throw error;
 		}
+	}
+
+	/**
+	 * Run the credential access and type check `exploreResources` runs, without the
+	 * provider lookup. Throws as `exploreResources` does when the check fails.
+	 */
+	async assertExploreCredentialAccess(
+		user: User,
+		params: Pick<ExploreResourcesParams, 'credentialId' | 'credentialType'>,
+	): Promise<void> {
+		await this.resolveExploreCredentials(user, params);
 	}
 
 	/**

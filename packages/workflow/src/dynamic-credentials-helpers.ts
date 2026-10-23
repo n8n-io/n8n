@@ -29,12 +29,21 @@ export function runDataAttemptedDynamicCredentials(runData: IRunData | undefined
  * Summarizes a run's private-credential usage so a sub-execution can report it to its caller.
  * Credentials resolve under the sub-workflow's own context, so the parent would otherwise never
  * flag that its embedded output used a private credential; recurses via the child's task flags.
+ *
+ * Also reports `usedCredentialIds`: every credential the run's workflows reference, private or
+ * not, which credential usability redaction reads.
  */
 export function summarizeDynamicCredentialsUsage(
 	executionData: IRunExecutionData | undefined,
+	/** The credentials the run's own workflow references. */
+	workflowCredentialIds: readonly string[] = [],
 ): DynamicCredentialsUsage {
 	const runData = executionData?.resultData?.runData;
 	const usage: DynamicCredentialsUsage = {};
+
+	const usedCredentialIds = new Set(workflowCredentialIds);
+	for (const id of runDataUsedCredentialIds(runData)) usedCredentialIds.add(id);
+	if (usedCredentialIds.size > 0) usage.usedCredentialIds = [...usedCredentialIds].sort();
 
 	if (runDataUsedDynamicCredentials(runData)) {
 		usage.usedDynamicCredentials = true;
@@ -51,17 +60,33 @@ export function summarizeDynamicCredentialsUsage(
 	return usage;
 }
 
+/** The credentials sub-workflows reported onto the run's tasks. */
+export function runDataUsedCredentialIds(runData: IRunData | undefined): string[] {
+	const ids = new Set<string>();
+	for (const tasks of Object.values(runData ?? {})) {
+		for (const task of tasks) {
+			// Persisted run data is not validated, so read the ids only when they are a list.
+			const taskIds: unknown = task?.usedCredentialIds;
+			if (!Array.isArray(taskIds)) continue;
+			for (const id of taskIds) if (typeof id === 'string') ids.add(id);
+		}
+	}
+	return [...ids];
+}
+
 /** The per-node dynamic-credential flags carried on `IWorkflowExecuteAdditionalData`. */
 interface DynamicCredentialsUsageTarget {
 	currentNodeUsedDynamicCredentials?: boolean;
 	currentNodeAttemptedDynamicCredentials?: boolean;
 	dynamicCredentialsResolvedUserId?: string;
+	currentNodeUsedCredentialIds?: string[];
 }
 
 /**
  * Applies a reported usage summary onto the per-node flags additively (flags only ever get set,
  * matching the other flag writers — the engine resets them per node). Resolved user id is
- * execution-scoped, so a present value wins (matches credential resolution).
+ * execution-scoped, so a present value wins (matches credential resolution). The plain
+ * credential ids are joined with the ones the node already collected.
  */
 export function applyDynamicCredentialsUsage(
 	target: DynamicCredentialsUsageTarget,
@@ -75,6 +100,11 @@ export function applyDynamicCredentialsUsage(
 	}
 	if (usage.attemptedDynamicCredentials) {
 		target.currentNodeAttemptedDynamicCredentials = true;
+	}
+	if (usage.usedCredentialIds?.length) {
+		target.currentNodeUsedCredentialIds = [
+			...new Set([...(target.currentNodeUsedCredentialIds ?? []), ...usage.usedCredentialIds]),
+		];
 	}
 }
 
@@ -118,6 +148,10 @@ export function takeAttachedDynamicCredentialsUsage(
 		typeof attached.dynamicCredentialsResolvedUserId === 'string'
 	) {
 		usage.dynamicCredentialsResolvedUserId = attached.dynamicCredentialsResolvedUserId;
+	}
+	if ('usedCredentialIds' in attached && Array.isArray(attached.usedCredentialIds)) {
+		const ids = attached.usedCredentialIds.filter((id): id is string => typeof id === 'string');
+		if (ids.length > 0) usage.usedCredentialIds = ids;
 	}
 	return Object.keys(usage).length > 0 ? usage : undefined;
 }

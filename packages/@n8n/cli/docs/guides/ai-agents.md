@@ -58,6 +58,8 @@ n8n-cli execution list --workflow=1234 --status=error --limit=5 --format=json
 | `0` | Success |
 | `1` | General error |
 | `2` | Authentication failure |
+| `3` | Promotion Apply: the source changed since the review. Nothing was imported |
+| `4` | Promotion Apply: preflight found missing bindings, access requirements, or conflicts. Nothing was imported |
 
 AI agents can branch on `$?` for error handling.
 

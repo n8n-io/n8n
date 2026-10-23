@@ -51,4 +51,30 @@ describe('SsrfDefaultBlockedRangesRule', () => {
 			expect(result.instanceIssues).toHaveLength(0);
 		});
 	});
+
+	describe('getMetadata()', () => {
+		it('should report an executionsMightFail impact because only a default changes and the admin can override it', () => {
+			expect(createRule(true).getMetadata().impact).toBe('executionsMightFail');
+		});
+
+		it('should say that only the default list changes', () => {
+			const { description } = createRule(true).getMetadata();
+
+			expect(description).toMatch(/only the default/i);
+			expect(description).not.toMatch(/will fail|will be aborted|start failing/);
+		});
+	});
+
+	describe('recommendation', () => {
+		it('should name the variables that allow hosts or keep the current list, and say when to act', async () => {
+			const { recommendations } = await createRule(true).detect();
+			const { description } = recommendations[0];
+
+			expect(description).toContain('N8N_SSRF_ALLOWED_IP_RANGES');
+			expect(description).toContain('N8N_SSRF_ALLOWED_HOSTNAMES');
+			expect(description).toContain('N8N_SSRF_BLOCKED_IP_RANGES');
+			expect(description).toContain('`default` keyword');
+			expect(description).toMatch(/do not need to do anything/i);
+		});
+	});
 });

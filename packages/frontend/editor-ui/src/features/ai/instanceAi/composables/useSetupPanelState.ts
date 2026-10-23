@@ -1,6 +1,8 @@
 import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
+import { REMOVED_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
 import { isAgentEditingWorkflow } from '../canvasPreview.utils';
 
@@ -36,6 +38,7 @@ function completeCredentialContext(
 		nodeBindings: item.nodeBindings?.length ? item.nodeBindings : fallback.nodeBindings,
 		setupHint: item.setupHint ?? fallback.setupHint,
 		reason: item.reason ?? fallback.reason,
+		preferNew: item.preferNew ?? fallback.preferNew,
 		appDisplayName: item.appDisplayName ?? fallback.appDisplayName,
 	};
 }
@@ -77,6 +80,35 @@ export function useSetupPanelState(options: {
 		if (!id || !Object.hasOwn(thread.setupItemsByWorkflowId, id)) return [];
 		return thread.setupItemsByWorkflowId[id];
 	});
+	const isAwaitingFirstBuild = computed(() => {
+		const id = toValue(options.workflowId);
+		let pending = false;
+		let latestCompletedAt: string | undefined;
+		function visit(node: InstanceAiAgentNode) {
+			for (const call of node.toolCalls) {
+				if (!isRecord(call.result) || call.result.success !== true || call.result.workflowId !== id)
+					continue;
+				const earlySetup =
+					call.toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS &&
+					call.args.action === 'setup' &&
+					call.result.preBuild === true;
+				if (
+					!earlySetup &&
+					call.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
+					call.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
+				)
+					continue;
+				if (latestCompletedAt && call.completedAt && call.completedAt < latestCompletedAt) continue;
+				pending = earlySetup;
+				latestCompletedAt = call.completedAt;
+			}
+			for (const child of node.children) visit(child);
+		}
+		for (const message of thread.messages) {
+			if (message.agentTree) visit(message.agentTree);
+		}
+		return pending;
+	});
 	const credentialContext = shallowReactive(new Map<string, InstanceAiSetupItem>());
 	watch(
 		[() => toValue(options.workflowId), eventItems],
@@ -113,7 +145,13 @@ export function useSetupPanelState(options: {
 	 * right after a thread refresh.
 	 */
 	const rowSource = computed<'events' | 'derived'>(() =>
-		!isAgentBuilding.value && derivation.isWorkflowAvailable.value ? 'derived' : 'events',
+		!isAgentBuilding.value &&
+		derivation.isWorkflowAvailable.value &&
+		(!isAwaitingFirstBuild.value ||
+			derivation.hasWorkflowNodes.value ||
+			eventItems.value.length === 0)
+			? 'derived'
+			: 'events',
 	);
 
 	const rows = computed<SetupPanelRow[]>(() => {
@@ -154,10 +192,14 @@ export function useSetupPanelState(options: {
 
 	return {
 		credentialsAvailable: derivation.credentialsAvailable,
+		workflowNodes: derivation.workflowNodes,
+		savedWorkflowChecksum: derivation.savedWorkflowChecksum,
+		isCheckingOAuthCredentials: derivation.isCheckingOAuthCredentials,
 		isRefreshingWorkflow: derivation.isRefreshingWorkflow,
 		rows,
 		rowSource,
 		isAgentBuilding,
+		isAwaitingFirstBuild,
 		getNodeByName: derivation.getNodeByName,
 		workflowProjectId: derivation.workflowProjectId,
 		refreshWorkflow: derivation.refreshWorkflow,

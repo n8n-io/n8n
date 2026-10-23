@@ -1,4 +1,6 @@
 export { StartExecutionService } from './start-execution.service';
+export { CancelExecutionService } from './cancel-execution.service';
+export type { CancelExecutionResult } from './cancel-execution.service';
 export type {
 	StartExecutionRequest,
 	StartExecutionResult,
@@ -14,6 +16,7 @@ export type {
 	ResumeCause,
 	StepSlots,
 	StepStatus,
+	SeededSteps,
 	TriggerOutputs,
 	WaitDeclaration,
 	WorkflowDocument,
@@ -24,6 +27,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
+	ExecutionListFilter,
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
@@ -39,3 +43,4 @@ export {
 	DEFAULT_WAIT_SWEEP_BATCH_SIZE,
 	DEFAULT_WAIT_SWEEP_INTERVAL_MS,
 } from './wait-sweeper';
+export { ExecutionFileCleanup } from './execution-file-cleanup';

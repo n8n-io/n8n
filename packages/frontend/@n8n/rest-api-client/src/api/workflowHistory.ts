@@ -92,10 +92,12 @@ export type { PublishTimelineEvent } from '@n8n/api-types';
 export const getPublishTimeline = async (
 	context: IRestApiContext,
 	workflowId: string,
+	queryParams: WorkflowHistoryRequestParams,
 ): Promise<PublishTimelineEvent[]> => {
 	const { data } = await get(
 		context.baseUrl,
 		`/workflow-history/workflow/${workflowId}/publish-timeline`,
+		queryParams,
 	);
 	return data;
 };

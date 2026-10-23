@@ -10,7 +10,7 @@ import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { onBeforeUnmount, ref, computed, onBeforeMount, onMounted } from 'vue';
+import { onBeforeUnmount, ref, computed, onBeforeMount, onMounted, watch } from 'vue';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
 import { usePushConnection } from '@/app/composables/usePushConnection';
@@ -18,6 +18,8 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 import { N8nEmptyState, N8nButton, N8nHeading, N8nNotice } from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;
@@ -36,6 +38,8 @@ const documentTitle = useDocumentTitle();
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
+const projectsStore = useProjectsStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 
 const isManagedByEnv = computed((): boolean => {
 	return settingsStore.settings.communityNodesManagedByEnv ?? false;
@@ -154,6 +158,16 @@ onBeforeUnmount(() => {
 	pushStore.pushDisconnect();
 	pushConnection.terminate();
 });
+
+// Node type availability is project-scoped, but this page has no project context of its own.
+// The personal project is only used to carry the instance-wide verdicts the cards need.
+watch(
+	() => projectsStore.personalProject?.id,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

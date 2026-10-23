@@ -7,7 +7,7 @@ import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 // can a real bridge be built from inside the synchronous evaluate() path?
 // isolated-vm uses its sync APIs directly; QuickJS relies on the WASM module
 // cached by pool warmup (an earlier async initialize). The cold start's cost
-// is tracked in packages/testing/performance (cold-start.bench.ts).
+// is tracked in packages/quality/efficiency/microbenchmarks (cold-start.bench.ts).
 
 describe(`Lazy acquisition: synchronous cold start (${engineName})`, () => {
 	it('builds a working bridge synchronously when the pool is exhausted', async () => {

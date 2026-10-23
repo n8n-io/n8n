@@ -21,7 +21,6 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -39,8 +38,7 @@ import {
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
-import type { FrontendSettings, NodeTypeAvailabilityScope } from '@n8n/api-types';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { FrontendSettings } from '@n8n/api-types';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 
 export const mockNode = ({
@@ -95,6 +93,8 @@ export const mockNodeTypeDescription = ({
 	webhooks,
 	eventTriggerDescription,
 	maxNodes,
+	deprecated,
+	replacedByNodeType,
 }: Partial<INodeTypeDescription> = {}) =>
 	mock<INodeTypeDescription>({
 		name,
@@ -119,6 +119,8 @@ export const mockNodeTypeDescription = ({
 		parameterPane: undefined,
 		hidden,
 		eventTriggerDescription,
+		deprecated,
+		replacedByNodeType,
 	});
 
 export const mockLoadedNodeType = (name: string) => {
@@ -340,19 +342,4 @@ export function createTestExpressionLocalResolveContext(
 		additionalKeys: {},
 		...data,
 	};
-}
-
-/**
- * Makes the active pinia's policy store report these node types as restricted. Call after
- * `setActivePinia` (or after rendering with the pinia the component uses).
- */
-export function mockRestrictedNodeTypes(
-	restricted: Record<string, NodeTypeAvailabilityScope> = {},
-): void {
-	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
-		(name) => {
-			const scope = restricted[name];
-			return scope ? { name, available: false, scope } : { name, available: true };
-		},
-	);
 }

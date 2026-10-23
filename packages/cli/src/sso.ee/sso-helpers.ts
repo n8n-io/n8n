@@ -4,7 +4,7 @@ import { isAuthProviderType, SettingsRepository, type AuthProviderType } from '@
 import { Container } from '@n8n/di';
 
 import config from '@/config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 /**
  * Only one authentication method can be active at a time. This function sets

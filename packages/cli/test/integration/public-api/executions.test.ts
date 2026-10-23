@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import {
 	createManyWorkflows,
 	createTeamProject,
@@ -7,19 +8,22 @@ import {
 	shareWorkflowWithUsers,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { ExecutionEntity, IExecutionResponse, User } from '@n8n/db';
+import { type ExecutionEntity, type IExecutionResponse, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { stringify } from 'flatted';
 import { InstanceSettings } from 'n8n-core';
-import { type ExecutionStatus } from 'n8n-workflow';
+import { type ExecutionStatus, type IRun } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import { ExecutionService } from '@/executions/execution.service';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { Telemetry } from '@/telemetry';
+import { WorkflowRunner } from '@/workflow-runner';
 
 import {
 	createAnnotationTags,
@@ -29,6 +33,7 @@ import {
 	createManyExecutions,
 	createSuccessfulExecution,
 } from '../shared/db/executions';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -42,9 +47,11 @@ let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowManager;
 
 mockInstance(Telemetry);
+mockInstance(CommunityPackagesService);
 mockInstance(InstanceSettings, {
 	isMultiMain: false,
 	n8nFolder: '/tmp/n8n-test',
+	nodesDownloadDir: '/tmp/n8n-test/nodes',
 });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
@@ -90,6 +97,12 @@ const testWithAPIKey =
 		expect(response.statusCode).toBe(401);
 	};
 
+function createTraceparent() {
+	const traceId = randomBytes(16).toString('hex');
+	const spanId = randomBytes(8).toString('hex');
+	return `00-${traceId}-${spanId}-01`;
+}
+
 describe('GET /executions/:id', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/executions/1', null));
 
@@ -107,8 +120,16 @@ describe('GET /executions/:id', () => {
 
 	test('owner should be able to get an execution owned by him', async () => {
 		const workflow = await createWorkflow({}, owner);
+		const traceparent = createTraceparent();
 
-		const execution = await createSuccessfulExecution(workflow);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				tracingContext: { traceparent },
+			},
+			workflow,
+		);
 
 		const response = await authOwnerAgent.get(`/executions/${execution.id}`);
 
@@ -124,6 +145,7 @@ describe('GET /executions/:id', () => {
 			stoppedAt,
 			workflowId,
 			waitTill,
+			tracingContext,
 		} = response.body;
 
 		expect(id).toBeDefined();
@@ -135,6 +157,53 @@ describe('GET /executions/:id', () => {
 		expect(stoppedAt).not.toBeNull();
 		expect(workflowId).toBe(execution.workflowId);
 		expect(waitTill).toBeNull();
+		expect(tracingContext).toEqual({ traceparent });
+	});
+
+	test('should return a webhook execution when the stored tracestate is null', async () => {
+		const traceparent = createTraceparent();
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				mode: 'webhook',
+				tracingContext: {
+					traceparent,
+					tracestate: null,
+				} as unknown as ExecutionEntity['tracingContext'],
+			},
+			workflow,
+		);
+
+		const withoutData = await authOwnerAgent.get(`/executions/${execution.id}`);
+		const withData = await authOwnerAgent.get(`/executions/${execution.id}?includeData=true`);
+
+		expect(withoutData.statusCode).toBe(200);
+		expect(withData.statusCode).toBe(200);
+		expect(withoutData.body.tracingContext).toEqual({ traceparent });
+		expect(withData.body.tracingContext).toEqual({ traceparent });
+	});
+
+	test('should return a webhook execution when the stored traceparent is missing', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				mode: 'webhook',
+				tracingContext: {} as unknown as ExecutionEntity['tracingContext'],
+			},
+			workflow,
+		);
+
+		const withoutData = await authOwnerAgent.get(`/executions/${execution.id}`);
+		const withData = await authOwnerAgent.get(`/executions/${execution.id}?includeData=true`);
+
+		expect(withoutData.statusCode).toBe(200);
+		expect(withData.statusCode).toBe(200);
+		expect(withoutData.body.tracingContext).toBeNull();
+		expect(withData.body.tracingContext).toBeNull();
 	});
 
 	test('owner should be able to read executions of other users', async () => {
@@ -442,6 +511,79 @@ describe('POST /executions/:id/retry', () => {
 		});
 
 		executionServiceSpy.mockRestore();
+	});
+
+	describe('with a custom project role', () => {
+		const baseScopes = ['workflow:read', 'workflow:list', 'workflow:execute'];
+
+		/**
+		 * A failed execution that a retry can continue. The retry run itself is mocked,
+		 * so the test exercises the access check and the response, not the engine.
+		 */
+		const retryAs = async (scopes: string[]) => {
+			testServer.license.enable('feat:sharing');
+			const member = await createMemberWithApiKey();
+			const teamProject = await createTeamProject();
+			const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+			await linkUserToProject(member, teamProject, role.slug);
+			const workflow = await createWorkflow({}, teamProject);
+			const execution = await createExecution(
+				{
+					finished: false,
+					status: 'error',
+					data: stringify({
+						resultData: { runData: { Canary: [] } },
+						executionData: {
+							contextData: {},
+							nodeExecutionStack: [],
+							metadata: {},
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+					}),
+				},
+				workflow,
+			);
+
+			const run = vi.spyOn(Container.get(WorkflowRunner), 'run').mockResolvedValue('999');
+			const outcome = vi
+				.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+				.mockResolvedValue({
+					data: { resultData: { runData: {} } },
+					mode: 'retry',
+					startedAt: new Date(),
+					finished: true,
+					status: 'success',
+					waitTill: null,
+				} as unknown as IRun);
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post(`/executions/${execution.id}/retry`);
+
+			run.mockRestore();
+			outcome.mockRestore();
+			return response;
+		};
+
+		test('should retry without the execution data when the role has no execution:read', async () => {
+			const response = await retryAs(baseScopes);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toMatchObject({ id: '999', status: 'success' });
+			expect(response.body).not.toHaveProperty('data');
+			expect(response.body).not.toHaveProperty('workflowData');
+			expect(response.body).not.toHaveProperty('customData');
+		});
+
+		test('should retry with the execution data when the role has execution:read', async () => {
+			const response = await retryAs([...baseScopes, 'execution:read']);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toMatchObject({ id: '999', status: 'success' });
+			expect(response.body).toHaveProperty('data');
+			expect(response.body).toHaveProperty('workflowData');
+		});
 	});
 
 	test('should return 404 when execution is not found', async () => {
@@ -932,41 +1074,61 @@ describe('GET /executions', () => {
 		}
 	});
 
-	test('should return executions filtered by project ID', async () => {
-		/**
-		 * Arrange
-		 */
-		const [firstProject, secondProject] = await Promise.all([
-			createTeamProject(),
-			createTeamProject(),
-		]);
-		const [firstWorkflow, secondWorkflow] = await Promise.all([
-			createWorkflow({}, firstProject),
-			createWorkflow({}, secondProject),
-		]);
-		const [firstExecution, secondExecution, _] = await Promise.all([
-			createExecution({}, firstWorkflow),
-			createExecution({}, firstWorkflow),
-			createExecution({}, secondWorkflow),
-		]);
+	test.each<{
+		data: () => User;
+		type: 'owner' | 'member';
+	}>([
+		{ type: 'owner', data: () => owner },
+		{ type: 'member', data: () => user1 },
+	])(
+		'should return executions filtered by project ID for $type',
+		async ({ data: getUser, type }) => {
+			testServer.license.enable('feat:sharing');
+			const user = getUser();
+			const agent = testServer.publicApiAgentFor(user);
 
-		/**
-		 * Act
-		 */
-		const response = await authOwnerAgent.get('/executions').query({
-			projectId: firstProject.id,
-		});
+			/**
+			 * Arrange
+			 */
+			const [firstProject, secondProject] = await Promise.all([
+				createTeamProject('first project', owner),
+				createTeamProject('second project', owner),
+			]);
+			if (type === 'member') {
+				await Promise.all([
+					linkUserToProject(user, firstProject, 'project:editor'),
+					linkUserToProject(user, secondProject, 'project:editor'),
+				]);
+			}
 
-		/**
-		 * Assert
-		 */
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(2);
-		expect(response.body.nextCursor).toBeNull();
-		expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual(
-			expect.arrayContaining([firstExecution.id, secondExecution.id]),
-		);
-	});
+			const [firstWorkflow, secondWorkflow] = await Promise.all([
+				createWorkflow({}, firstProject),
+				createWorkflow({}, secondProject),
+			]);
+			const [firstExecution, secondExecution, _] = await Promise.all([
+				createExecution({}, firstWorkflow),
+				createExecution({}, firstWorkflow),
+				createExecution({}, secondWorkflow),
+			]);
+
+			/**
+			 * Act
+			 */
+			const response = await agent.get('/executions').query({
+				projectId: firstProject.id,
+			});
+
+			/**
+			 * Assert
+			 */
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.length).toBe(2);
+			expect(response.body.nextCursor).toBeNull();
+			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual(
+				expect.arrayContaining([firstExecution.id, secondExecution.id]),
+			);
+		},
+	);
 
 	describe('with startedAfter and startedBefore filters', () => {
 		test('should retrieve executions started after a given time', async () => {

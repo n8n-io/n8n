@@ -1,7 +1,8 @@
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
 
-import { buildToolCallDetails, ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
+import { ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
+import { executionToMessagesDto } from '../utils/execution-to-message-mapper';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
 	return { type: 'tool-call', toolCallId, toolName, input } satisfies StreamChunk;
@@ -12,6 +13,41 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 }
 
 describe('ExecutionRecorder', () => {
+	it.each([true, false])(
+		'keeps canceled tool state in saved chat messages (started: %s)',
+		(started) => {
+			const recorder = new ExecutionRecorder();
+			if (started) recorder.record(makeToolCallChunk('update_plan', {}, 'tc-canceled'));
+			recorder.record({
+				type: 'tool-result',
+				toolCallId: 'tc-canceled',
+				toolName: 'update_plan',
+				output: 'Tool call canceled',
+				canceled: true,
+			});
+			const { timeline } = recorder.getMessageRecord();
+			expect(timeline[0]).toMatchObject({ type: 'tool-call', canceled: true, success: true });
+			const messages = executionToMessagesDto({
+				id: 'execution-1',
+				userMessage: 'Update the comparison',
+				author: null,
+				timeline,
+				attachments: null,
+				status: 'cancelled',
+				error: null,
+				createdAt: new Date(),
+			});
+			expect(messages.find((message) => message.role === 'assistant')?.content).toEqual([
+				expect.objectContaining({
+					type: 'tool-call',
+					toolCallId: 'tc-canceled',
+					state: 'resolved',
+					canceled: true,
+				}),
+			]);
+		},
+	);
+
 	it('scrubs titles in the initial signal', () => {
 		const recorder = new ExecutionRecorder(undefined, undefined, {
 			tasks: [
@@ -50,44 +86,6 @@ describe('ExecutionRecorder', () => {
 			...initial,
 			expect.objectContaining({ type: 'text', content: 'Done' }),
 		]);
-	});
-
-	it('builds full node tool details when the model input is empty', () => {
-		const registry = buildToolRegistry([
-			{
-				name: 'check_ledger',
-				description: 'Read rows from the configured ledger table',
-				metadata: {
-					kind: 'node',
-					nodeType: 'n8n-nodes-base.dataTableTool',
-					nodeTypeVersion: 1.1,
-					displayName: 'Check ledger',
-					nodeParameters: {
-						resource: 'row',
-						operation: 'get',
-						dataTableId: { mode: 'id', value: 'table-1' },
-						returnAll: true,
-					},
-				},
-			} satisfies BuiltTool,
-		]);
-
-		expect(buildToolCallDetails(registry, 'check_ledger', {})).toEqual({
-			toolName: 'check_ledger',
-			displayName: 'Check ledger',
-			kind: 'node',
-			input: {},
-			node: {
-				type: 'n8n-nodes-base.dataTableTool',
-				typeVersion: 1.1,
-				parameters: {
-					resource: 'row',
-					operation: 'get',
-					dataTableId: { mode: 'id', value: 'table-1' },
-					returnAll: true,
-				},
-			},
-		});
 	});
 
 	describe('per-tool execution timing', () => {
@@ -291,6 +289,39 @@ describe('ExecutionRecorder', () => {
 			]);
 		});
 
+		it('keeps committed inputs in order when restored markers repeat', () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+			const inputC = {
+				type: 'input',
+				messageId: 'c',
+				timestamp: 2_000,
+			} satisfies TimelineEvent;
+			const inputD = {
+				type: 'input',
+				messageId: 'd',
+				timestamp: 3_000,
+			} satisfies TimelineEvent;
+
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Before C' });
+			vi.setSystemTime(2_000);
+			recorder.recordInputs([inputC]);
+			recorder.record({ type: 'text-delta', id: 't2', delta: 'After C' });
+			vi.setSystemTime(3_000);
+			recorder.recordInputs([structuredClone(inputC), inputD]);
+			recorder.record({ type: 'text-delta', id: 't3', delta: 'After D' });
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+
+			expect(recorder.getMessageRecord().timeline).toEqual([
+				{ type: 'text', content: 'Before C', timestamp: 1_000, endTime: 2_000 },
+				inputC,
+				{ type: 'text', content: 'After C', timestamp: 2_000, endTime: 3_000 },
+				inputD,
+				{ type: 'text', content: 'After D', timestamp: 3_000, endTime: 3_000 },
+			]);
+		});
+
 		it('does not create empty text events for whitespace-only segments', () => {
 			const recorder = new ExecutionRecorder();
 
@@ -372,6 +403,125 @@ describe('ExecutionRecorder', () => {
 			const record = recorder.getMessageRecord();
 			expect(record.assistantResponse).toBe('Hello world');
 		});
+
+		it('records a guardrail stop after the final text', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Partial' });
+			recorder.record({
+				type: 'finish',
+				finishReason: 'guardrail',
+				guardrail: { code: 'budget.session' },
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.guardrailCode).toBe('budget.session');
+			expect(record.timeline.map((event) => event.type)).toEqual(['text', 'guardrail']);
+			expect(record.timeline[1]).toMatchObject({ type: 'guardrail', code: 'budget.session' });
+		});
+
+		it('records no guardrail stop for a normal finish', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+
+			const record = recorder.getMessageRecord();
+			expect(record.guardrailCode).toBeNull();
+			expect(record.timeline).toEqual([]);
+		});
+	});
+
+	describe('prompt-cache tokens', () => {
+		it('stores the prompt-cache tokens of the finish usage as subsets of the prompt tokens', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 1000,
+					completionTokens: 40,
+					totalTokens: 1040,
+					cost: 0.1,
+					inputTokenDetails: { noCache: 100, cacheRead: 800, cacheWrite: 100 },
+				},
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.usage).toEqual({
+				promptTokens: 1000,
+				completionTokens: 40,
+				totalTokens: 1040,
+			});
+			expect(record.cacheReadTokens).toBe(800);
+			expect(record.cacheWriteTokens).toBe(100);
+		});
+
+		it('keeps zero cache reads apart from a missing value', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 10,
+					completionTokens: 1,
+					totalTokens: 11,
+					inputTokenDetails: { cacheRead: 0 },
+				},
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.cacheReadTokens).toBe(0);
+			expect(record.cacheWriteTokens).toBeNull();
+		});
+
+		it('has no cache tokens when the turn reports none', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: { promptTokens: 10, completionTokens: 1, totalTokens: 11 },
+			});
+
+			const record = recorder.getMessageRecord();
+			expect(record.cacheReadTokens).toBeNull();
+			expect(record.cacheWriteTokens).toBeNull();
+		});
+
+		it('does not add sub-agent usage to the turn', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'subagent-completed',
+				taskName: 'builder',
+				taskPath: 'builder',
+				parentToolCallId: 'tc1',
+				status: 'completed',
+				startedAt: 0,
+				finishedAt: 1,
+				durationMs: 1,
+				usage: { promptTokens: 300, completionTokens: 30, totalTokens: 330, cost: 0.03 },
+			});
+			recorder.record({
+				type: 'finish',
+				finishReason: 'stop',
+				usage: {
+					promptTokens: 1000,
+					completionTokens: 40,
+					totalTokens: 1040,
+					cost: 0.1,
+					inputTokenDetails: { cacheRead: 900 },
+				},
+			});
+
+			// The child records its own execution, linked to this one.
+			const record = recorder.getMessageRecord();
+			expect(record.usage).toEqual({ promptTokens: 1000, completionTokens: 40, totalTokens: 1040 });
+			expect(record.totalCost).toBe(0.1);
+			expect(record.cacheReadTokens).toBe(900);
+		});
 	});
 
 	describe('secret scrubbing', () => {
@@ -424,6 +574,88 @@ describe('ExecutionRecorder', () => {
 			const timelineEntry = record.timeline.find((e) => e.type === 'tool-call');
 
 			expect(timelineEntry).toMatchObject({ output: { error: '[REDACTED]' } });
+		});
+	});
+
+	describe('host events', () => {
+		it('records a host event between the text segments around it', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'before' });
+			recorder.recordHostEvent('test.notice', { level: 'info' });
+			recorder.record({ type: 'text-delta', id: 't2', delta: 'after' });
+
+			const { timeline } = recorder.getMessageRecord();
+			expect(timeline.map((event) => event.type)).toEqual(['text', 'host-event', 'text']);
+			expect(timeline[1]).toMatchObject({
+				type: 'host-event',
+				name: 'test.notice',
+				payload: { level: 'info' },
+			});
+		});
+
+		it('sanitizes the payload and returns the recorded event', () => {
+			const recorder = new ExecutionRecorder();
+
+			const recorded = recorder.recordHostEvent('test.notice', {
+				apiKey: 'secret-api-key',
+				message: 'ok',
+			});
+
+			expect(recorded.payload).toEqual({ apiKey: '[REDACTED]', message: 'ok' });
+			expect(recorder.getMessageRecord().timeline).toEqual([recorded]);
+		});
+
+		it('replaces a keyed event in its position and keeps its timestamp', () => {
+			const recorder = new ExecutionRecorder();
+
+			const first = recorder.recordHostEvent('test.progress', { done: 0 }, 'build');
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'working' });
+			const replaced = recorder.recordHostEvent('test.progress', { done: 1 }, 'build');
+			recorder.record({ type: 'text-delta', id: 't1', delta: ' more' });
+
+			const { timeline } = recorder.getMessageRecord();
+			expect(timeline).toEqual([
+				{
+					type: 'host-event',
+					name: 'test.progress',
+					key: 'build',
+					payload: { done: 1 },
+					timestamp: first.timestamp,
+				},
+				expect.objectContaining({ type: 'text', content: 'working more' }),
+			]);
+			expect(replaced).toEqual(timeline[0]);
+		});
+
+		it('keeps streaming text in the snapshot of a keyed replacement', () => {
+			const onTimelineSnapshot = vi.fn();
+			const recorder = new ExecutionRecorder(undefined, onTimelineSnapshot);
+
+			recorder.recordHostEvent('test.progress', { done: 0 }, 'build');
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'working' });
+			recorder.recordHostEvent('test.progress', { done: 1 }, 'build');
+
+			expect(onTimelineSnapshot).toHaveBeenLastCalledWith([
+				expect.objectContaining({ type: 'host-event', payload: { done: 1 } }),
+				expect.objectContaining({ type: 'text', content: 'working' }),
+			]);
+		});
+
+		it('appends events without a key, or with another name or key', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.recordHostEvent('test.progress', { done: 0 });
+			recorder.recordHostEvent('test.progress', { done: 1 });
+			recorder.recordHostEvent('test.progress', { done: 2 }, 'a');
+			recorder.recordHostEvent('test.progress', { done: 3 }, 'b');
+			recorder.recordHostEvent('test.other', { done: 4 }, 'a');
+
+			expect(
+				recorder
+					.getMessageRecord()
+					.timeline.map((event) => (event.type === 'host-event' ? event.payload : event.type)),
+			).toEqual([{ done: 0 }, { done: 1 }, { done: 2 }, { done: 3 }, { done: 4 }]);
 		});
 	});
 });

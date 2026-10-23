@@ -1,27 +1,29 @@
 import {
-	AgentIntegrationSchema,
+	AgentIntegrationConfigSchema,
 	isDraftIntegration,
 	type AgentIntegrationConfig,
 	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 
 import {
 	AgentModificationTelemetryService,
 	diffAgentConfigParts,
-	isUnconfiguredAgent,
 	type AgentActor,
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
-import type { Agent } from './entities/agent.entity';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
+import type { Agent, ProjectAgent } from './entities/agent.entity';
+import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { assertSingleConnections } from './integrations/single-connection';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import type { IntegrationRef } from './utils/agent-channel';
@@ -41,7 +43,7 @@ export interface IntegrationDelta {
 }
 
 export interface IntegrationDeltaResult {
-	agent: Agent;
+	agent: ProjectAgent;
 	/** False when the delta was already satisfied — nothing was written. */
 	changed: boolean;
 	/** The entry that was actually removed, for the caller's runtime teardown. */
@@ -95,6 +97,7 @@ export class AgentIntegrationPersistenceService {
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 		private readonly credentialsService: CredentialsService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -124,14 +127,12 @@ export class AgentIntegrationPersistenceService {
 	/**
 	 * Apply one durable change to an agent's channels.
 	 *
-	 * The delta is projected onto the freshly read column and only
-	 * `integrations`/`versionId` are written, so it can neither clobber unrelated
-	 * columns nor lose a concurrent channel change; a lost compare-and-set retries
-	 * against a fresh read. Runtime connections are the caller's concern, and
-	 * anything observable outside the row waits until the write has landed.
+	 * Apply the delta to the current draft and advance its revision.
+	 * Retry a lost compare-and-set with fresh state for setup validation.
+	 * Leave runtime connections to the caller. Emit effects after the write.
 	 */
 	async applyIntegrationDelta(
-		agent: Agent,
+		agent: ProjectAgent,
 		delta: IntegrationDelta,
 		context: CredentialIntegrationMutationContext,
 	): Promise<IntegrationDeltaResult> {
@@ -163,9 +164,12 @@ export class AgentIntegrationPersistenceService {
 		);
 	}
 
-	/** Reject anything that must never reach the `integrations` column. */
+	/**
+	 * Reject anything that must never reach the `integrations` column. The config
+	 * schema also covers n8n Chat; `isDraftIntegration` still rejects a blank credential.
+	 */
 	private validateAddition(integration: AgentIntegrationConfig): AgentIntegrationConfig {
-		const parseResult = AgentIntegrationSchema.safeParse(integration);
+		const parseResult = AgentIntegrationConfigSchema.safeParse(integration);
 		if (!parseResult.success) {
 			throw new UserError(`Invalid credential integration: ${parseResult.error.message}`);
 		}
@@ -176,36 +180,36 @@ export class AgentIntegrationPersistenceService {
 	}
 
 	private recordIntegrationMutation(
-		agent: Agent,
+		agent: ProjectAgent,
+		skillRefs: AgentSkillRefs,
 		previousIntegrations: AgentIntegrationConfig[],
 		context: CredentialIntegrationMutationContext,
 	): void {
-		// The schema is not re-read — it is not part of this write, and the entity
-		// copy is only used to classify the change for telemetry.
-		const previousSchema = agent.schema ?? null;
-		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+		const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 		this.modificationTelemetry.record({
 			agent,
+			config,
 			projectId: agent.projectId,
 			user: context.user,
 			by: context.modifiedBy,
 			changedParts: diffAgentConfigParts(
-				previousSchema,
-				agent.schema,
+				config,
+				config,
 				previousIntegrations,
 				agent.integrations ?? [],
 			),
-			wasUnconfigured,
 		});
 	}
 	private async applyIntegrationAttempt(
-		agent: Agent,
+		agent: ProjectAgent,
 		{ add, remove }: IntegrationDelta,
 		context: CredentialIntegrationMutationContext,
 		credentialProvider: ReturnType<typeof createAgentCredentialProvider>,
 	): Promise<IntegrationDeltaResult | undefined> {
-		const state = await this.agentRepository.findIntegrationState(agent.id);
+		const state = await this.agentRepository.findById(agent.id);
 		if (!state) throw new UserError(`Agent "${agent.id}" no longer exists`);
+		// Setup validation must use the definition that belongs to this revision.
+		Object.assign(agent, state);
 
 		const current = state.integrations ?? [];
 		const removed = remove
@@ -213,22 +217,20 @@ export class AgentIntegrationPersistenceService {
 			: undefined;
 
 		const published = state.activeVersionId !== null;
-		// Callers derive their response and their runtime decisions from the
-		// entity, so correct it to what was read. Scalar only — nothing here reads
-		// the `activeVersion` relation, and fabricating one would be worse.
-		agent.activeVersionId = state.activeVersionId;
 
 		// A removal of something already gone is not a failure — and with
 		// nothing to add there is no write left to make.
 		if (!add && !removed) {
-			agent.integrations = current;
-			agent.versionId = state.versionId;
 			return { agent, changed: false, published };
 		}
 
 		const integrations = projectIntegrations(current, { add, remove });
+		assertSingleConnections(this.chatIntegrationRegistry, integrations);
+		// A channel write keeps the skill refs as they are.
+		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
 		const written = await this.persistIntegrations(
 			agent,
+			skillRefs,
 			integrations,
 			state,
 			context,
@@ -238,21 +240,20 @@ export class AgentIntegrationPersistenceService {
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		this.eventService.emit('agent-saved', { agentId: agent.id });
 		await written.emitSetupCompleted?.();
-		this.recordIntegrationMutation(agent, current, context);
+		this.recordIntegrationMutation(agent, skillRefs, current, context);
 
 		return { agent, changed: true, published, ...(removed ? { removed } : {}) };
 	}
 
 	private async persistIntegrations(
-		agent: Agent,
+		agent: ProjectAgent,
+		skillRefs: AgentSkillRefs,
 		integrations: AgentIntegrationConfig[],
-		state: Pick<Agent, 'versionId' | 'activeVersionId'>,
+		state: Pick<Agent, 'revision' | 'versionId' | 'activeVersionId'>,
 		context: CredentialIntegrationMutationContext,
 		credentialProvider: ReturnType<typeof createAgentCredentialProvider>,
 	) {
-		// Always fresh: `versionId` is the compare-and-set token, so writing back
-		// the value we guarded on would let two concurrent writes both match.
-		// Consumers only compare it to `activeVersionId`, which a rotation keeps.
+		// Keep each channel change distinct from the published version.
 		const versionId = uuid();
 
 		// Gate evaluated against the state about to be written; the marker is
@@ -260,6 +261,7 @@ export class AgentIntegrationPersistenceService {
 		agent.integrations = integrations;
 		const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
 			agent,
+			skillRefs,
 			agent.projectId,
 			credentialProvider,
 			context.user,
@@ -268,12 +270,17 @@ export class AgentIntegrationPersistenceService {
 		const written = await this.agentRepository.updateIntegrations(
 			agent.id,
 			integrations,
-			{ versionId: state.versionId, activeVersionId: state.activeVersionId },
+			{
+				revision: state.revision,
+				versionId: state.versionId,
+				activeVersionId: state.activeVersionId,
+			},
 			versionId,
 		);
 		if (!written) return undefined;
 
 		agent.versionId = versionId;
+		agent.revision = state.revision + 1;
 		return { emitSetupCompleted };
 	}
 }

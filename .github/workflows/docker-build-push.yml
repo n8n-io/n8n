@@ -8,7 +8,7 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('Docker: Build
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '26.7.0'
+  NODE_VERSION: '26.12.1'
 
 on:
   schedule:
@@ -55,6 +55,12 @@ on:
       n8n_digest:
         description: 'Multi-arch manifest digest of the n8n image'
         value: ${{ jobs.create_multi_arch_manifest.outputs.n8n_digest }}
+      n8n_pc_image:
+        description: 'GHCR repo for the pointer-compressed n8n image (no tag; same repo as n8n)'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.n8n_pc_image }}
+      n8n_pc_digest:
+        description: 'Multi-arch manifest digest of the pointer-compressed n8n image'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.n8n_pc_digest }}
       runners_image:
         description: 'GHCR repo for the runners image (no tag)'
         value: ${{ jobs.create_multi_arch_manifest.outputs.runners_image }}
@@ -98,7 +104,7 @@ jobs:
       short_sha: ${{ steps.sha.outputs.short_sha }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
 
@@ -188,7 +194,7 @@ jobs:
       runners_distroless_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_date_primary_tag }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 1
@@ -294,7 +300,7 @@ jobs:
       runners_distroless_image: ${{ steps.get-digests.outputs.runners_distroless_image }}
     steps:
       - name: Checkout CI helpers
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github
           persist-credentials: false
@@ -614,7 +620,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
@@ -809,7 +815,7 @@ jobs:
       always() && github.event_name == 'schedule' &&
       (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/scripts/slack
           sparse-checkout-cone-mode: false

@@ -7,11 +7,12 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
-import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
+import { buildEmptyOutputNote, buildNodePreviews } from './verification/analyze-result';
 import { deriveVerificationClaim } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
@@ -28,7 +29,7 @@ import {
 	resolvedParameterWarningSchema,
 	skippedParameterCheckSchema,
 } from './verification/resolved-parameter-warnings';
-import { runScriptedGateVerification } from './verification/scripted-gate-run';
+import { runWorkflowVerification } from './verification/run-workflow-verification';
 import { checkToolSimulationSupport } from './verification/tool-simulation-preflight';
 import { createVerificationGraph, getTriggerMainFlowScope } from '../workflows/verification-graph';
 import { describeClaimLiveState } from '../../workflow-loop/render-claim';
@@ -38,6 +39,7 @@ import {
 	verificationClaimSchema,
 } from '../../workflow-loop/workflow-loop-state';
 import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
+import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -96,8 +98,8 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 			'Name of the trigger node to start verification from. REQUIRED when the workflow has ' +
 				'more than one trigger: without it a single trigger is auto-detected and the other ' +
 				"triggers' branches are never verified. To cover every branch, call verify once per " +
-				"trigger. Trigger names come from build-workflow's `triggerNodes` or " +
-				'workflows(action="get-as-code"). Never disable, delete, reorder, or re-save a workflow — ' +
+				"trigger. Trigger names come from workflow_builder_build_workflow's `triggerNodes` or " +
+				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, reorder, or re-save a workflow — ' +
 				'and never build a throwaway copy — to reach a branch; use this instead.',
 		),
 	timeout: z
@@ -191,6 +193,10 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
+	/** Real nodes that returned only `{}` items. */
+	emptyOutputNote: z.string().optional(),
+	/** Set when n8n redacted the run's output for the user, so it was not inspected. */
+	redactionNote: z.string().optional(),
 	/**
 	 * Present only while the published version is older than the verified
 	 * draft. The claim carries the same fact as `liveState`; this is the
@@ -207,11 +213,12 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema>;
 
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
-	return new Tool('verify-built-workflow')
+	return new Tool(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW)
+		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW))
 		.description(
 			'Standard post-build verifier: runs a built workflow with sidecar verification context from the build outcome ' +
 				'(pin data, mocked credentials, trigger-shaped inputData; all trigger types supported). ' +
-				'Use `executions(action="run")` only for ad hoc runs outside build verification. ' +
+				'Use `workflow_builder_executions(action="run")` only for ad hoc runs outside build verification. ' +
 				'CRITICAL: `inputData` shape depends on the trigger type (see the field description) — a wrong shape produces ' +
 				'null downstream values that look like an expression bug; re-run verify with the correct shape instead of patching the workflow.',
 		)
@@ -222,6 +229,21 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			if (targetResult.kind === 'blocked') return targetResult.result;
 			const { target } = targetResult;
 			const { input: resolvedInput, workflowId, workflowTaskService } = target;
+
+			// Verification executes the workflow, so it follows the same admin policy as
+			// workflow_builder_executions(action="run"). Plan approval does not lift a block.
+			if (target.domainContext.permissions?.runWorkflow === 'blocked') {
+				return await handleBlockedVerification({
+					input: resolvedInput,
+					context,
+					workflowTaskService,
+					workflowId,
+					reason: 'permission_blocked',
+					guidance:
+						'Verification was not run because an admin blocked running workflows on this instance. ' +
+						'Tell the user the workflow is saved but untested, and that an instance admin can change this permission.',
+				});
+			}
 
 			// Credentials assigned after the build never rebuild the plan, so
 			// refresh stale mocked-credential verdicts before pinning.
@@ -327,60 +349,38 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				verificationScope ? selectedTriggerNodeName : undefined,
 			);
 
-			// A scripted gate replaces the halt with one loop-safe pass per decision;
-			// otherwise run the single standard pass (halted gates pin zero items).
-			const { result, analysis, parameterCheckRuns } = prepared.gateScript
-				? await runScriptedGateVerification({
-						script: prepared.gateScript,
-						prepared,
-						executionService: target.domainContext.executionService,
-						workflowId,
-						inputData: resolvedInput.inputData,
-						triggerNodeName: resolvedInput.triggerNodeName,
-						timeout: resolvedInput.timeout,
-						abortSignal: context.abortSignal,
-						buildOutcome,
-						stateBefore: target.stateBefore,
-						runId: context.runId,
-						chatModelRelatedNodeNames,
-						chatModelRecovery,
-						verificationScope,
-					})
-				: await (async () => {
-						const runResult = await target.domainContext.executionService.run(
-							workflowId,
-							resolvedInput.inputData,
-							{
-								timeout: resolvedInput.timeout,
-								triggerNodeName: resolvedInput.triggerNodeName,
-								verificationPinData: prepared.verificationPinData,
-								isVerificationRun: true,
-								abortSignal: context.abortSignal,
-							},
-						);
-						const analysis = analyzeVerificationResult({
-							result: runResult,
-							buildOutcome,
-							simulatedNodes: prepared.simulatedNodes,
-							haltedGateNames: prepared.haltedGateNames,
-							triggerNodeName: resolvedInput.triggerNodeName,
-							stateBefore: target.stateBefore,
-							runId: context.runId,
-							chatModelRelatedNodeNames,
-							chatModelRecovery,
-							verificationScope,
-						});
-						return {
-							result: runResult,
-							analysis,
-							parameterCheckRuns: [
-								{
-									executionId: runResult.executionId,
-									nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
-								},
-							],
-						};
-					})();
+			let verification: Awaited<ReturnType<typeof runWorkflowVerification>>;
+			try {
+				verification = await runWorkflowVerification({
+					prepared,
+					executionService: target.domainContext.executionService,
+					workflowId,
+					inputData: resolvedInput.inputData,
+					triggerNodeName: resolvedInput.triggerNodeName,
+					timeout: resolvedInput.timeout,
+					abortSignal: context.abortSignal,
+					buildOutcome,
+					stateBefore: target.stateBefore,
+					runId: context.runId,
+					chatModelRelatedNodeNames,
+					chatModelRecovery,
+					verificationScope,
+				});
+			} catch (error) {
+				if (context.abortSignal?.aborted) {
+					await workflowTaskService.updateBuildOutcome(resolvedInput.workItemId, {
+						verification: {
+							attempted: true,
+							success: false,
+							status: 'error',
+							evidence: { errorMessage: 'Verification was canceled.' },
+							verifiedAt: new Date().toISOString(),
+						},
+					});
+				}
+				throw error;
+			}
+			const { result, analysis, parameterCheckRuns } = verification;
 
 			// The repair target from an earlier verdict counts even when the model
 			// omits it here — that is exactly the turn where it stops mentioning it.
@@ -474,6 +474,13 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 				coverageNote: analysis.coverageNote,
+				emptyOutputNote: buildEmptyOutputNote(
+					result.data,
+					workflow?.connections,
+					simulatedNames,
+					result.binaryOutputNodeNames,
+				),
+				redactionNote: analysis.redactionNote,
 				liveStateNote: formatLiveStateNote(claim),
 				...(resolvedInput.includeData ? { data: result.data } : {}),
 				error: analysis.errorMessage,

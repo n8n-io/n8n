@@ -113,11 +113,11 @@ const supportedIconName = computed((): IconName | NodeIconName | undefined => {
 	text-align: center;
 }
 
+// Fill the slot so icons declared smaller than it scale up, not only down.
 .nodeIconImage {
-	max-width: 100%;
-	max-height: 100%;
-	width: auto;
-	height: auto;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
 }
 
 .badge {

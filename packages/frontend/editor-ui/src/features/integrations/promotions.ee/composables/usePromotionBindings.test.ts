@@ -8,6 +8,7 @@ import {
 	blocked,
 	consumers,
 	credential,
+	projectDeletion,
 	savedCredential,
 	variable,
 } from '../__tests__/bindings.fixtures';
@@ -96,7 +97,7 @@ it('guards creation and Continue while the editor is open and recovers after fai
 	const create = vi.fn().mockReturnValue(pending.promise);
 	const first = session.createBinding(promotionBindingKey(credential), create);
 	await session.createBinding(promotionBindingKey(credential), create);
-	await session.continueApply();
+	await session.continueInstanceApply();
 	expect(create).toHaveBeenCalledTimes(1);
 	expect(continueApplyPromotion).not.toHaveBeenCalled();
 	expect(session.isCreating.value).toBe(true);
@@ -129,7 +130,7 @@ it.each(['access', 'conflict'] as const)('blocks Continue for %s requirements', 
 	);
 	expect(session.canContinue.value).toBe(false);
 	expect(session.unresolvedCount.value).toBe(1);
-	await session.continueApply();
+	await session.continueInstanceApply();
 	expect(continueApplyPromotion).not.toHaveBeenCalled();
 });
 
@@ -160,19 +161,59 @@ it('submits once with the original source and allows warnings', async () => {
 	const result = blocked({ missingBindings: [], warnings: applied.warnings });
 	session.start(result);
 	expect(session.canContinue.value).toBe(true);
-	const first = session.continueApply();
-	await session.continueApply();
+	const first = session.continueInstanceApply();
+	await session.continueInstanceApply();
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
 	expect(continueApplyPromotion).toHaveBeenCalledWith(
 		{ baseUrl: '/custom/api/v1' },
-		result.connectionId,
-		{ expectedSource: { configId: result.configId, ...result.git } },
+		result.environmentId,
+		{ expectedSource: { environmentId: result.environmentId, ...result.git } },
 	);
 	pending.resolve(applied);
 	expect(await first).toBe(applied);
 	expect(session.canContinue.value).toBe(false);
-	await session.continueApply();
+	await session.continueInstanceApply();
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
+});
+
+it('asks to review project deletions and confirms them on Continue', async () => {
+	vi.mocked(continueApplyPromotion).mockResolvedValue(applied);
+	const session = usePromotionBindings();
+	const result = blocked({ missingBindings: [], conflicts: [projectDeletion] });
+	session.start(result);
+	expect(session.mode.value).toBe('review');
+	expect(session.projectDeletions.value).toEqual([projectDeletion]);
+	expect(session.hardConflicts.value).toEqual([]);
+	expect(await session.continueInstanceApply()).toBe(applied);
+	expect(continueApplyPromotion).toHaveBeenCalledWith(
+		{ baseUrl: '/custom/api/v1' },
+		result.environmentId,
+		{
+			expectedSource: { environmentId: result.environmentId, ...result.git },
+			confirmDestructiveChanges: true,
+		},
+	);
+});
+
+it('reconciles a blocked result and stops on a source change', async () => {
+	const session = usePromotionBindings();
+	const initial = blocked({ missingBindings: [] });
+	session.start(initial);
+	const next = blocked({ missingBindings: [credential] });
+	vi.mocked(continueApplyPromotion).mockResolvedValueOnce(next);
+	await session.continueInstanceApply();
+	expect(session.preflight.value).toBe(next.preflight);
+	expect(session.unresolvedCount.value).toBe(1);
+	await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
+	const changed = {
+		...initial,
+		status: 'source-changed' as const,
+		git: { branchName: 'main', commitSha: 'b'.repeat(40) },
+	};
+	vi.mocked(continueApplyPromotion).mockResolvedValueOnce(changed);
+	expect(await session.continueInstanceApply()).toBe(changed);
+	expect(session.sourceChanged.value).toBe(true);
+	expect(continueApplyPromotion).toHaveBeenCalledTimes(2);
 });
 
 it('replaces blockers and preserves saved rows after another blocked result', async () => {
@@ -191,7 +232,7 @@ it('replaces blockers and preserves saved rows after another blocked result', as
 		warnings: applied.warnings,
 	});
 	vi.mocked(continueApplyPromotion).mockResolvedValue(next);
-	await session.continueApply();
+	await session.continueInstanceApply();
 	expect(session.preflight.value).toBe(next.preflight);
 	expect(session.originalResult.value).toBe(result);
 	expect(session.unresolvedCount.value).toBe(2);
@@ -212,10 +253,10 @@ it('stops after a source change without retrying', async () => {
 		git: { branchName: 'main', commitSha: 'b'.repeat(40) },
 	};
 	vi.mocked(continueApplyPromotion).mockResolvedValue(changed);
-	expect(await session.continueApply()).toBe(changed);
+	expect(await session.continueInstanceApply()).toBe(changed);
 	expect(session.sourceChanged.value).toBe(true);
 	expect(session.originalResult.value).toBe(initial);
-	await session.continueApply();
+	await session.continueInstanceApply();
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
 });
 
@@ -226,7 +267,7 @@ it.each([new Error('Offline'), new ResponseError('Forbidden', { httpStatusCode: 
 		session.start(blocked());
 		await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
 		vi.mocked(continueApplyPromotion).mockRejectedValue(error);
-		await session.continueApply();
+		await session.continueInstanceApply();
 		expect(session.error.value).toEqual({ kind: 'continue', cause: error });
 		expect(session.savedResources.value).toEqual([savedCredential]);
 		expect(session.canContinue.value).toBe(true);

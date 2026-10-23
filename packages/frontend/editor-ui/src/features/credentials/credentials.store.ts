@@ -44,7 +44,7 @@ export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 export type { CredentialFetchScope };
 
 const scopeKey = (scope: CredentialFetchScope): string =>
-	'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`;
+	`${'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`}${scope.forAgent ? ':agent' : ''}`;
 
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
@@ -444,7 +444,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		data: CredentialPayload,
 		projectId?: string,
 		uiContext?: string,
-		options?: { skipStoreUpdate?: boolean },
+		options?: { skipStoreUpdate?: boolean; pendingAuthorization?: boolean },
 	): Promise<ICredentialsResponse> => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
@@ -459,6 +459,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			isGlobal: data.isGlobal,
 			isResolvable: data.isResolvable,
 			usageScope: data.usageScope,
+			pendingAuthorization: options?.pendingAuthorization,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
@@ -499,13 +500,14 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return credential;
 	};
 
-	const deleteCredential = async ({ id }: { id: string }) => {
+	const deleteCredential = async ({ id }: { id: string }): Promise<boolean> => {
 		const deleted = await credentialsApi.deleteCredential(rootStore.restApiContext, id);
 		if (deleted) {
 			const { [id]: deletedCredential, ...rest } = state.value.credentials;
 			state.value.credentials = rest;
 			credentialTestResults.value.delete(id);
 		}
+		return deleted;
 	};
 
 	const disconnectMyConnection = async ({ id }: { id: string }) => {
@@ -724,6 +726,8 @@ export const listenForCredentialChanges = (opts: {
 					break;
 
 				case 'deleteCredential':
+					// Action returns the API delete flag; do not treat failures as deletes.
+					if (returnValue !== true) return;
 					const credentialId = args[0].id;
 					onCredentialDeleted?.(credentialId);
 					break;

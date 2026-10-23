@@ -1,6 +1,8 @@
+import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type {
 	AgentIntegrationConfig,
 	AgentIntegrationDisconnectWarning,
+	AgentMessageIntegrationOrigin,
 	RichCardComponentType,
 } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
@@ -16,28 +18,34 @@ import {
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
+	type EpisodicScopeContext,
 	type PlatformAgentContext,
 	type PlatformContextQueryParams,
+	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
 import { assertCredentialNotClaimed } from '../../credential-claim';
-import { loadSlackAdapter } from '../../esm-loader';
 import { connectionUnavailable } from '../../integration-helpers';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
 } from '../../integration-tool-definitions';
 import type { ReplyExpectation } from '../../integration-tools';
+import { createSlackSourceAdapter } from './slack-adapter';
 import {
 	createSlackBridgeExecutionContext,
 	createSlackResumeExecutionContext,
 	getSlackPlatformAgentContext,
 	getSlackReplyExpectation,
+	isSlackDirectMessage,
 	prepareSlackInboundText,
+	type SlackThreadContext,
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
+import { buildSlackOriginDraft, fetchSlackOriginNames } from './slack-origin';
+import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /**
  * Slack platform integration.
@@ -160,6 +168,22 @@ export class SlackIntegration extends AgentChatIntegration {
 		return prepareSlackInboundText(text, context);
 	}
 
+	shouldHandleInboundMessage({
+		message,
+		integration,
+	}: {
+		message: BridgeMessageContextParams['message'];
+		integration: AgentIntegrationConfig;
+	}): boolean {
+		// The SDK can route DMs through the mention handler. Check the message itself.
+		return (
+			integration.type !== 'slack' ||
+			integration.settings?.onlyRespondWhenMentioned !== true ||
+			message.isMention === true ||
+			isSlackDirectMessage(message.raw)
+		);
+	}
+
 	getReplyExpectation(params: {
 		message: BridgeMessageContextParams['message'];
 		isNewMention: boolean;
@@ -179,6 +203,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		thread: BridgeMessageContextParams['thread'];
 		logger: BridgeMessageContextParams['logger'];
 		agentId: string;
+		slackThreadContext?: SlackThreadContext;
 	}): Promise<BridgeResumeExecutionContext> {
 		return await createSlackResumeExecutionContext(params);
 	}
@@ -192,13 +217,51 @@ export class SlackIntegration extends AgentChatIntegration {
 		});
 	}
 
+	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
+		return buildSlackOriginDraft(input, decoded);
+	}
+
+	async fetchOriginNames(input: OriginInput, origin: AgentMessageIntegrationOrigin) {
+		return await fetchSlackOriginNames(input, origin);
+	}
+
+	resolveEpisodicScope({
+		agentId,
+		integrationType,
+		author,
+		origin,
+	}: EpisodicScopeContext): ResolvedEpisodicScope | null {
+		if (integrationType !== 'slack' || origin?.type !== 'slack') return null;
+		if (!agentId || !origin.workspaceId || !origin.channelId) return null;
+
+		let ownerId: string;
+		switch (origin.conversationKind) {
+			case 'channel':
+			case 'group':
+				ownerId = origin.channelId;
+				break;
+			case 'dm':
+				ownerId = author.id;
+				break;
+			default:
+				return null;
+		}
+		if (!ownerId || ownerId === 'unknown') return null;
+
+		const scopeId = ['slack', agentId, origin.workspaceId, origin.conversationKind, ownerId]
+			.map(encodeURIComponent)
+			.join(':');
+		return { writeScopeId: scopeId, readScopeIds: [scopeId] };
+	}
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const signingSecret = this.extractSigningSecret(ctx.credential);
-		const { createSlackAdapter } = await loadSlackAdapter();
-		return createSlackAdapter({
+		return await createSlackSourceAdapter({
 			botToken,
 			signingSecret,
+			// Post-and-edit delivers short updates without a native stream buffer.
+			nativeStreaming: false,
 			agentView: this.usesAgentMessagingExperience(ctx.integration),
 		});
 	}
@@ -209,7 +272,10 @@ export class SlackIntegration extends AgentChatIntegration {
 	 * bot token + signing secret in n8n. Slack's docs:
 	 * https://api.slack.com/events/url_verification
 	 */
-	handleUnauthenticatedWebhook(body: unknown): UnauthenticatedWebhookResponse | undefined {
+	handleUnauthenticatedWebhook(
+		context: UnauthenticatedWebhookContext,
+	): UnauthenticatedWebhookResponse | undefined {
+		const { body } = context;
 		if (!body || typeof body !== 'object') return undefined;
 		const evt = body as { type?: unknown; challenge?: unknown };
 		if (evt.type === 'url_verification' && typeof evt.challenge === 'string') {

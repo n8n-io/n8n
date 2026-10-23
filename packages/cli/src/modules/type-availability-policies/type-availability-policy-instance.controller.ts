@@ -20,7 +20,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import { NODE_TYPES_KIND } from './constants';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
@@ -143,6 +143,17 @@ export class TypeAvailabilityPolicyInstanceController {
 		return { success: true };
 	}
 
+	@Get('/scopes/:scopeId/attachments')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('nodeTypePolicy:manage')
+	async getAttachments(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('scopeId') scopeId: string,
+	) {
+		return await this.service.getAttachments(NODE_TYPES_KIND, scopeId);
+	}
+
 	@Put('/scopes/:scopeId/attachments')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
@@ -156,6 +167,7 @@ export class TypeAvailabilityPolicyInstanceController {
 			NODE_TYPES_KIND,
 			scopeId,
 			dto.attachments,
+			dto.version,
 			req.user.id,
 		);
 	}

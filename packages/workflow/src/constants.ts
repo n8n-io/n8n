@@ -45,6 +45,11 @@ export const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+/**
+ * Package prefix of the node types the editor generates from credential types that declare
+ * `httpRequestNode`. No package registers them; see `credential-only-nodes.ts`.
+ */
+export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
@@ -74,6 +79,7 @@ export const POSTGRES_NODE_TYPE = 'n8n-nodes-base.postgres';
 export const MYSQL_NODE_TYPE = 'n8n-nodes-base.mySql';
 export const MICROSOFT_AGENT365_TRIGGER_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.microsoftAgent365Trigger';
+export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
 export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';

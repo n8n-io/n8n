@@ -3,6 +3,7 @@ import type { Mock } from 'vitest';
 import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
 import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
 import { createExecutionsTool } from '../executions.tool';
@@ -911,6 +912,25 @@ describe('executions tool', () => {
 
 	// ── run-step ────────────────────────────────────────────────────────────
 
+	it.each([
+		{ action: 'run' as const, workflowId: 'wf-1' },
+		{ action: 'run-step' as const, workflowId: 'wf-1', nodeName: 'Send Slack message' },
+	])('rejects $action outside the thread project before asking for approval', async (input) => {
+		const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
+		const suspendFn = vi.fn();
+		const context = createMockContext({ permissions: {}, assertInThreadProject });
+
+		const tool = createExecutionsTool(context);
+		await expect(
+			executeTool(tool, input, createAgentCtx({ suspend: suspendFn }) as never),
+		).rejects.toThrow(OutsideThreadProjectError);
+
+		expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-1' });
+		expect(suspendFn).not.toHaveBeenCalled();
+		expect(context.executionService.run).not.toHaveBeenCalled();
+		expect(context.executionService.runStep).not.toHaveBeenCalled();
+	});
+
 	describe('run-step action', () => {
 		const stepInput = {
 			action: 'run-step' as const,
@@ -995,6 +1015,7 @@ describe('executions tool', () => {
 					...stepInput,
 					reuseExecutionId: 'exec-9',
 					mockInput: [{ text: 'hi' }],
+					toolArguments: { title: 'Login fails' },
 					versionId: 'v-2',
 					timeout: 30_000,
 				},
@@ -1007,9 +1028,28 @@ describe('executions tool', () => {
 				expect.objectContaining({
 					reuseExecutionId: 'exec-9',
 					mockInput: [{ text: 'hi' }],
+					toolArguments: { title: 'Login fails' },
 					versionId: 'v-2',
 					timeout: 30_000,
 				}),
+			);
+		});
+
+		it('accepts a bare string as the tool arguments', async () => {
+			const context = createMockContext({ permissions: {} });
+
+			const tool = createExecutionsTool(context);
+			await executeTool(
+				tool,
+				{ ...stepInput, toolArguments: 'Napoleon' },
+				createAgentCtx({ resumeData: { approved: true } }) as never,
+			);
+
+			// A tool with one free-text input takes the query directly, not wrapped.
+			expect(context.executionService.runStep).toHaveBeenCalledWith(
+				'wf-1',
+				'Send Slack message',
+				expect.objectContaining({ toolArguments: 'Napoleon' }),
 			);
 		});
 

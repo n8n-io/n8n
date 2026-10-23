@@ -219,8 +219,11 @@ describe('ExecutionListV2Service', () => {
 
 			expect(searchRequests()).toEqual(
 				expect.arrayContaining([
+					// `waiting` belongs to the completed block, not the current one, because
+					// v1 counts only `new` and `running` as current. The two engines must
+					// put a waiting execution in the same block.
 					expect.objectContaining({
-						status: ['completed', 'failed', 'cancelled'],
+						status: ['waiting', 'completed', 'failed', 'cancelled'],
 						includeTotal: true,
 					}),
 					expect.objectContaining({
@@ -293,7 +296,7 @@ describe('ExecutionListV2Service', () => {
 	});
 
 	describe('scope wider than one data plane search', () => {
-		it('fails rather than reporting a list missing engine 2.0 rows', async () => {
+		it('fails rather than reporting a list missing engine v2 rows', async () => {
 			workflows.findWorkflowIdsForExecutionList.mockResolvedValue(
 				Array.from({ length: 10_001 }, (_, i) => `wf-${i}`),
 			);

@@ -8,5 +8,10 @@
 		"/apps/:appId/install-on-team": "install.html",
 		"/apps/:appId/oauth": "install.html"
 	},
-	"defaultRoute": "/apps"
+	"defaultRoute": "/apps",
+	"verify": {
+		"path": "/api/users.profile.get",
+		"header": "Authorization",
+		"scheme": "Bearer"
+	}
 }

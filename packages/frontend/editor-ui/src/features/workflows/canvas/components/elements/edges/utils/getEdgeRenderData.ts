@@ -17,14 +17,21 @@ export function getEdgeRenderData(
 	>,
 	{
 		connectionType = NodeConnectionTypes.Main,
+		useBezierPath = false,
 	}: {
 		connectionType?: NodeConnectionType;
+		/** Live connections from an input handle should not use backwards-edge routing. */
+		useBezierPath?: boolean;
 	} = {},
 ) {
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
 	const isConnectorStraight = sourceY === targetY;
 
-	if (!isRightOfSourceHandle(sourceX, targetX) || connectionType !== NodeConnectionTypes.Main) {
+	if (
+		useBezierPath ||
+		!isRightOfSourceHandle(sourceX, targetX) ||
+		connectionType !== NodeConnectionTypes.Main
+	) {
 		const segment = getBezierPath(props);
 		return {
 			segments: [segment],

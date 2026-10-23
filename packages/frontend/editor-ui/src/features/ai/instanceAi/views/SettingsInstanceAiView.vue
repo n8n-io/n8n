@@ -5,10 +5,10 @@ import {
 	N8nButton,
 	N8nDropdownMenu,
 	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -16,6 +16,7 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nStatusDot,
 	N8nSwitch,
 	N8nText,
 	type DropdownMenuItemProps,
@@ -33,17 +34,19 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
-import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import {
+	isContextPreferencesEnabled,
+	isContextSkillsEnabled,
+} from '@/features/settings/context/context.utils';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
-import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../constants';
+import type { InstanceAiConnectionKind } from '../constants';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
+import SandboxSettingsRow from '../components/settings/SandboxSettingsRow.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -62,10 +65,7 @@ const {
 	searchState,
 } = useInstanceAiConfiguration();
 
-const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
-const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
-
-const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
+const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
 
 const isAdmin = computed(() => store.canManage);
 const isEnabled = computed(
@@ -111,23 +111,6 @@ const modelDescription = computed<{ key: BaseTextKey; warning: boolean } | null>
 	return { key: 'settings.n8nAgent.modelCredential.missing.description', warning: !isOff.value };
 });
 
-const sandboxValue = computed(() => {
-	if (isSandboxEnvManaged.value) return i18n.baseText('instanceAi.onboarding.foundOnServer');
-	if (sandboxCredentialId.value) {
-		return store.settings?.sandboxProvider === 'daytona'
-			? SANDBOX_PROVIDER_LABELS.daytona
-			: SANDBOX_PROVIDER_LABELS['n8n-sandbox'];
-	}
-	return i18n.baseText('settings.n8nAgent.sandbox.env.value');
-});
-const sandboxDescription = computed<{ key: BaseTextKey; warning: boolean }>(() => {
-	if (isSandboxEnvManaged.value)
-		return { key: 'settings.n8nAgent.sandbox.env.description', warning: false };
-	if (sandboxCredentialId.value)
-		return { key: 'settings.n8nAgent.sandbox.set.description', warning: false };
-	return { key: 'settings.n8nAgent.sandbox.missing.description', warning: !isOff.value };
-});
-
 const searchValue = computed(() => {
 	if (isSearchEnvManaged.value) return i18n.baseText('instanceAi.onboarding.foundOnServer');
 	if (searchState.value === 'disabled') return i18n.baseText('instanceAi.onboarding.disabled');
@@ -167,11 +150,6 @@ const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'blocked',
 ];
 
-const MCP_TOOL_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
-	'require_approval',
-	'always_allow',
-];
-
 const PREFERENCE_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = ['always_allow', 'blocked'];
 
 const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
@@ -183,6 +161,7 @@ const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 interface PermissionGroup {
 	id: string;
 	labelKey: BaseTextKey;
+	descriptionKey?: BaseTextKey;
 	keys: Array<keyof InstanceAiPermissions>;
 }
 
@@ -224,7 +203,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'system',
 		labelKey: 'settings.n8nAgent.permissions.group.system',
-		keys: ['readFilesystem', 'cleanupTestExecutions'],
+		keys: ['cleanupTestExecutions'],
 	},
 	{
 		id: 'web',
@@ -234,7 +213,8 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'mcp',
 		labelKey: 'settings.n8nAgent.permissions.group.mcp',
-		keys: ['executeMcpTool'],
+		descriptionKey: 'settings.n8nAgent.permissions.group.mcpDescription',
+		keys: ['mcpRead', 'mcpWrite'],
 	},
 ];
 
@@ -244,11 +224,17 @@ const PREFERENCES_PERMISSION_GROUP: PermissionGroup = {
 	keys: ['createPreference'],
 };
 
-const permissionGroups = computed(() =>
-	isContextPreferencesEnabled()
-		? [...PERMISSION_GROUPS, PREFERENCES_PERMISSION_GROUP]
-		: PERMISSION_GROUPS,
-);
+const SKILLS_PERMISSION_GROUP: PermissionGroup = {
+	id: 'skills',
+	labelKey: 'settings.n8nAgent.permissions.group.skills',
+	keys: ['createSkill', 'updateSkill', 'deleteSkill'],
+};
+
+const permissionGroups = computed(() => [
+	...PERMISSION_GROUPS,
+	...(isContextPreferencesEnabled() ? [PREFERENCES_PERMISSION_GROUP] : []),
+	...(isContextSkillsEnabled() ? [SKILLS_PERMISSION_GROUP] : []),
+]);
 
 const expandedGroups = reactive<Record<string, boolean>>({});
 
@@ -273,7 +259,6 @@ function groupSummary(group: PermissionGroup) {
 }
 
 function permissionOptionsFor(key: keyof InstanceAiPermissions) {
-	if (key === 'executeMcpTool') return MCP_TOOL_PERMISSION_OPTIONS;
 	if (key === 'createPreference') return PREFERENCE_PERMISSION_OPTIONS;
 	return PERMISSION_OPTIONS;
 }
@@ -453,11 +438,6 @@ async function handleStatusAction(action: string) {
 	if (confirmed === MODAL_CONFIRM) await store.persistEnabled(false);
 }
 
-function handleComputerUseToggle(value: boolean) {
-	store.setField('localGatewayDisabled', !value);
-	void store.save();
-}
-
 function handleBrowserUseToggle(value: boolean) {
 	store.setField('browserUseEnabled', value);
 	void store.save();
@@ -486,8 +466,11 @@ function openAiUsageSettings() {
 			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="medium" />
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="n8n-agent-enterprise-readiness-badge"
+				/>
 			</template>
 		</N8nSettingsPageHeader>
 
@@ -542,12 +525,10 @@ function openAiUsageSettings() {
 										:aria-label="i18n.baseText('settings.n8nAgent.status.manage')"
 									>
 										<span :class="$style.statusLabel">
-											<span
-												:class="[
-													$style.statusDot,
-													isSetupRequired ? $style.statusDotWarning : $style.statusDotSuccess,
-												]"
-												aria-hidden="true"
+											<N8nStatusDot
+												:variant="isSetupRequired ? 'warning' : 'success'"
+												:pulse="!isSetupRequired"
+												data-test-id="n8n-agent-status-dot"
 											/>
 											{{
 												isSetupRequired
@@ -614,51 +595,13 @@ function openAiUsageSettings() {
 						</template>
 					</N8nSettingsRow>
 
-					<N8nSettingsRow
+					<SandboxSettingsRow
 						v-if="showSandboxRow"
 						:class="{ [$style.dim]: isOff }"
-						:clickable="!isOff && isSandboxConfigured && !isSandboxEnvManaged"
-						data-test-id="n8n-agent-sandbox-row"
-						@click="openSandboxDialog"
-					>
-						<template #info>
-							<N8nText bold size="medium" color="text-dark">
-								{{ i18n.baseText('settings.n8nAgent.sandbox.label') }}
-							</N8nText>
-							<N8nText size="small" :color="sandboxDescription.warning ? 'warning' : 'text-light'">
-								{{ i18n.baseText(sandboxDescription.key) }}
-							</N8nText>
-						</template>
-						<template v-if="!isOff" #action>
-							<N8nButton
-								v-if="isSandboxEnvManaged && !isSandboxConfigured"
-								variant="solid"
-								size="medium"
-								:label="i18n.baseText('settings.n8nAgent.sandbox.enable')"
-								:disabled="store.isSaving"
-								data-test-id="n8n-agent-sandbox-enable"
-								@click="enableEnvironmentSandboxIfNeeded"
-							/>
-							<N8nText
-								v-else-if="isSandboxEnvManaged"
-								size="small"
-								color="text-light"
-								data-test-id="n8n-agent-sandbox-env-value"
-							>
-								{{ sandboxValue }}
-							</N8nText>
-							<N8nButton
-								v-else-if="!isSandboxConfigured"
-								variant="solid"
-								size="medium"
-								:label="i18n.baseText('settings.n8nAgent.sandbox.add')"
-								:disabled="store.isSaving"
-								data-test-id="n8n-agent-sandbox-add"
-								@click="openSandboxDialog"
-							/>
-							<N8nSettingsRowConfigure v-else :value="sandboxValue" />
-						</template>
-					</N8nSettingsRow>
+						:disabled="isOff"
+						@configure="openSandboxDialog"
+						@enable="enableEnvironmentSandboxIfNeeded"
+					/>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
@@ -666,7 +609,6 @@ function openAiUsageSettings() {
 			<DefaultEditorSetting />
 
 			<N8nSettingsSection
-				v-if="showCredentialsRows || isComputerUseExperimentEnabled || isBrowserUseEnabled"
 				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
 				:description="i18n.baseText('settings.n8nAgent.capabilities.description')"
 			>
@@ -718,24 +660,6 @@ function openAiUsageSettings() {
 					</N8nSettingsRow>
 
 					<N8nSettingsRow
-						v-if="isComputerUseExperimentEnabled"
-						:class="{ [$style.dim]: isOff }"
-						:title="i18n.baseText('settings.n8nAgent.computerUse.label')"
-						:description="i18n.baseText('settings.n8nAgent.computerUse.description')"
-					>
-						<template #action>
-							<N8nSwitch
-								:model-value="!(store.settings?.localGatewayDisabled ?? false)"
-								:disabled="store.isSaving || isOff"
-								:aria-label="i18n.baseText('settings.n8nAgent.computerUse.label')"
-								data-test-id="n8n-agent-computer-use-toggle"
-								@update:model-value="handleComputerUseToggle"
-							/>
-						</template>
-					</N8nSettingsRow>
-
-					<N8nSettingsRow
-						v-if="isBrowserUseEnabled"
 						:class="{ [$style.dim]: isOff }"
 						:title="i18n.baseText('settings.n8nAgent.browserUse.label')"
 						:description="i18n.baseText('settings.n8nAgent.browserUse.description')"
@@ -797,6 +721,14 @@ function openAiUsageSettings() {
 						</template>
 						<template #expanded>
 							<div :class="$style.permissionList">
+								<N8nText
+									v-if="group.descriptionKey"
+									:class="$style.permissionDescription"
+									size="small"
+									color="text-light"
+								>
+									{{ i18n.baseText(group.descriptionKey) }}
+								</N8nText>
 								<div v-for="key in group.keys" :key="key" :class="$style.permissionRow">
 									<N8nText size="small" color="text-dark">
 										{{ i18n.baseText(`settings.n8nAgent.permissions.${key}` as BaseTextKey) }}
@@ -884,20 +816,6 @@ function openAiUsageSettings() {
 	gap: var(--spacing--3xs);
 }
 
-.statusDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: var(--radius--full);
-}
-
-.statusDotSuccess {
-	background: var(--text-color--success);
-}
-
-.statusDotWarning {
-	background: var(--text-color--warning);
-}
-
 .danger {
 	color: var(--text-color--danger);
 }
@@ -918,6 +836,10 @@ function openAiUsageSettings() {
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
+}
+
+.permissionDescription {
+	padding-bottom: var(--spacing--2xs);
 }
 
 .permissionRow {

@@ -1,5 +1,6 @@
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, Repository, type EntityManager } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
 import { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 
@@ -9,19 +10,25 @@ type AgentTaskSnapshotData = Pick<
 >;
 
 @Service()
-export class AgentTaskSnapshotRepository extends Repository<AgentTaskSnapshot> {
-	constructor(dataSource: DataSource) {
-		super(AgentTaskSnapshot, dataSource.manager);
+export class AgentTaskSnapshotRepository extends BaseRepository<AgentTaskSnapshot> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentTaskSnapshot, dataSource.manager, transactionRunner);
 	}
 
-	async saveForVersion(snapshots: AgentTaskSnapshotData[], trx?: EntityManager): Promise<void> {
+	async saveForVersion(
+		snapshots: AgentTaskSnapshotData[],
+		ctx: OperationContext = {},
+	): Promise<void> {
 		if (snapshots.length === 0) return;
-		const repo = trx?.getRepository(AgentTaskSnapshot) ?? this;
+		const repo = this.managerFor(ctx).getRepository(AgentTaskSnapshot);
 		await repo.insert(snapshots);
 	}
 
-	async findByVersionId(versionId: string, trx?: EntityManager): Promise<AgentTaskSnapshot[]> {
-		const repo = trx?.getRepository(AgentTaskSnapshot) ?? this;
+	async findByVersionId(
+		versionId: string,
+		ctx: OperationContext = {},
+	): Promise<AgentTaskSnapshot[]> {
+		const repo = this.managerFor(ctx).getRepository(AgentTaskSnapshot);
 		return await repo.find({ where: { versionId }, order: { createdAt: 'ASC' } });
 	}
 

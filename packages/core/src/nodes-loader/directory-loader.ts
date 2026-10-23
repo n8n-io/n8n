@@ -211,6 +211,11 @@ export abstract class DirectoryLoader implements NodeLoader {
 				: tempNode.description.version;
 		}
 
+		const nodeDescriptions = this.getVersionedNodeTypeAll(tempNode).map(
+			({ description }) => description,
+		);
+		nodeDescriptions.forEach(validateNodeDescription);
+
 		this.known.nodes[nodeType] = {
 			className: tempNode.constructor.name,
 			sourcePath: filePath,
@@ -226,10 +231,7 @@ export abstract class DirectoryLoader implements NodeLoader {
 			version: nodeVersion,
 		});
 
-		this.getVersionedNodeTypeAll(tempNode).forEach(({ description }) => {
-			validateNodeDescription(description);
-			this.types.nodes.push(description);
-		});
+		this.types.nodes.push(...nodeDescriptions);
 
 		for (const credential of this.getCredentialsForNode(tempNode)) {
 			if (!this.nodesByCredential[credential.name]) {

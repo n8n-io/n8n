@@ -7,16 +7,26 @@ export const AgentModalTestStub = defineComponent({
 		open: { type: Boolean, default: true },
 		title: { type: String, default: '' },
 		editableTitle: { type: Boolean, default: false },
+		titleError: { type: String, default: '' },
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
 		bodyFlush: { type: Boolean, default: false },
+		stableHeight: { type: Boolean, default: false },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },
 		disableOutsidePointerEvents: { type: Boolean, default: true },
 	},
 	emits: ['update:open', 'update:title', 'back', 'interactOutside'],
+	methods: {
+		/** Mirrors `AgentModal.focusTitle`. */
+		focusTitle() {
+			(this.$el as HTMLElement | null)
+				?.querySelector<HTMLInputElement>('[data-testid="agent-modal-title-input"]')
+				?.focus();
+		},
+	},
 	template: `
 		<section
 			v-if="open"
@@ -35,6 +45,7 @@ export const AgentModalTestStub = defineComponent({
 					:disabled="busy"
 					@click="$emit('back')"
 				/>
+				<slot name="titlePrefix" />
 				<input
 					v-if="editableTitle"
 					:value="title"
@@ -43,6 +54,7 @@ export const AgentModalTestStub = defineComponent({
 					@input="$emit('update:title', $event.target.value)"
 				/>
 				<h2 v-else>{{ title }}</h2>
+				<span v-if="titleError" data-testid="agent-modal-title-error">{{ titleError }}</span>
 				<slot name="headerActions" />
 				<button
 					data-testid="dialog-close-button"
@@ -92,6 +104,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
 		bodyFlush: { type: Boolean, default: false },
+		stableHeight: { type: Boolean, default: false },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },
@@ -106,6 +119,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 			@update:title="$emit('update:title', $event)"
 			@back="$emit('back')"
 		>
+			<template #titlePrefix><slot name="titlePrefix" /></template>
 			<template #headerActions><slot name="headerActions" /></template>
 			<slot />
 			<template #footerLeft><slot name="footerLeft" /></template>

@@ -17,8 +17,9 @@ register at install time and the failure is opaque to the user.
 This rule enforces the structural contract:
 
 - `package.json` must contain an `n8n` object.
-- `n8n.n8nNodesApiVersion` must be present and a positive integer. It must live
-  inside `n8n`, not at the root.
+- `n8n.n8nNodesApiVersion` must be present and a positive integer, or a
+  `"<major>"` or `"<major>.<minor>"` string such as `"3"` or `"3.1"`. It must
+  live inside `n8n`, not at the root.
 - `n8n.nodes` must be a non-empty array of strings, each starting with `dist/`.
 - `n8n.credentials`, if present, must be an array of strings, each starting
   with `dist/`.
@@ -53,7 +54,7 @@ the templates published by `@n8n/node-cli` and `@n8n/create-node`.
 {
   "name": "n8n-nodes-example",
   "n8n": {
-    "n8nNodesApiVersion": "1",
+    "n8nNodesApiVersion": "v1",
     "nodes": ["nodes/Foo/Foo.node.js"]
   }
 }

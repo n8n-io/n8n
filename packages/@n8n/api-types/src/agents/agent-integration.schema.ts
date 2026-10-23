@@ -89,6 +89,8 @@ export const SLACK_MESSAGING_EXPERIENCES = ['assistant', 'agent'] as const;
 export const AgentSlackSettingsSchema = z
 	.object({
 		messagingExperience: z.enum(SLACK_MESSAGING_EXPERIENCES),
+		/** Require a mention in shared conversations. Unset keeps automatic thread replies. */
+		onlyRespondWhenMentioned: z.boolean().optional(),
 		sessionIdleTimeoutMinutes,
 	})
 	.strict();
@@ -104,7 +106,102 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
-export const AgentTeamsSettingsSchema = AgentSessionOnlySettingsSchema;
+export const WHATSAPP_MEDIA_RETENTION_DAYS_MAX = 365;
+
+/**
+ * Applied when a setting is unset, so channels saved before these settings
+ * existed get the same behavior as new ones.
+ */
+export const WHATSAPP_SETTING_DEFAULTS = {
+	typingIndicator: true,
+	downloadMedia: true,
+	mediaRetentionDays: 30,
+} as const;
+
+export const AgentWhatsAppSettingsSchema = z
+	.object({
+		sessionIdleTimeoutMinutes,
+		/**
+		 * Shows WhatsApp's "typing…" indicator while the agent works. The Cloud API
+		 * sends it together with a read receipt, so this also marks the message read.
+		 */
+		typingIndicator: z.boolean().optional(),
+		/** Whether the agent receives the images, documents and audio customers send. */
+		downloadMedia: z.boolean().optional(),
+		/** Days to keep downloaded media before it is deleted. */
+		mediaRetentionDays: z.number().int().min(1).max(WHATSAPP_MEDIA_RETENTION_DAYS_MAX).optional(),
+	})
+	.strict();
+export type AgentWhatsAppIntegrationSettings = z.infer<typeof AgentWhatsAppSettingsSchema>;
+
+/** The WhatsApp settings in effect, with the defaults for any that were never saved. */
+export function resolveWhatsAppSettings(settings?: AgentWhatsAppIntegrationSettings) {
+	return {
+		typingIndicator: settings?.typingIndicator ?? WHATSAPP_SETTING_DEFAULTS.typingIndicator,
+		downloadMedia: settings?.downloadMedia ?? WHATSAPP_SETTING_DEFAULTS.downloadMedia,
+		mediaRetentionDays:
+			settings?.mediaRetentionDays ?? WHATSAPP_SETTING_DEFAULTS.mediaRetentionDays,
+	};
+}
+
+/**
+ * Where the Teams app may be used, and how much it may read there.
+ *
+ * These are manifest fields, not runtime switches: they become the bot's
+ * `scopes` and its resource-specific permissions, so changing one means a new
+ * app package. Direct chat is not listed because it is always on — it is what
+ * makes the connection testable.
+ *
+ * Both reads default off. Without them Teams delivers only @mentions in a
+ * shared conversation; with them every message arrives.
+ */
+/** Teams rejects a longer short name or short description outright. */
+export const TEAMS_DISPLAY_NAME_MAX = 30;
+export const TEAMS_DESCRIPTION_MAX = 80;
+
+export const AgentTeamsSettingsSchema = z
+	.object({
+		sessionIdleTimeoutMinutes,
+		/**
+		 * How the app appears in Teams. Both fall back to the agent's own name
+		 * when unset, so a first setup needs neither.
+		 */
+		displayName: z
+			.string()
+			.trim()
+			.min(1)
+			.max(TEAMS_DISPLAY_NAME_MAX)
+			// Teams strips control and formatting characters, so a name made only of
+			// those would be stored as an override that never appears.
+			.refine((value) => /[^\p{Cc}\p{Cf}\s]/u.test(value), {
+				message: 'Enter a name with at least one visible character',
+			})
+			.optional(),
+		description: z.string().trim().min(1).max(TEAMS_DESCRIPTION_MAX).optional(),
+		teamChannels: z.boolean().optional(),
+		groupChats: z.boolean().optional(),
+		readAllChannelMessages: z.boolean().optional(),
+		readAllGroupMessages: z.boolean().optional(),
+	})
+	.strict()
+	.superRefine((value, ctx) => {
+		// A read permission without its surface would sit in the manifest doing
+		// nothing, and would read to the user as if it were in effect.
+		if (value.readAllChannelMessages && !value.teamChannels) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['readAllChannelMessages'],
+				message: 'Turn on team channels before reading all channel messages',
+			});
+		}
+		if (value.readAllGroupMessages && !value.groupChats) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['readAllGroupMessages'],
+				message: 'Turn on group and meeting chats before reading all group messages',
+			});
+		}
+	});
 export type AgentTeamsIntegrationSettings = z.infer<typeof AgentTeamsSettingsSchema>;
 
 export const AgentIntegrationSettingsSchema = z.union([
@@ -112,6 +209,10 @@ export const AgentIntegrationSettingsSchema = z.union([
 	AgentSlackSettingsSchema,
 	AgentDiscordSettingsSchema,
 	AgentLinearSettingsSchema,
+	AgentWhatsAppSettingsSchema,
+	// Teams was left out while it aliased the shared shape, when the entry was a
+	// no-op. Its settings now differ, so leaving it out would reject them.
+	AgentTeamsSettingsSchema,
 	z.undefined(),
 ]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
@@ -131,6 +232,9 @@ const credentialIntegrations = [
 	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
+	}),
 	createCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
 		settings: AgentTeamsSettingsSchema.optional(),
 	}),
@@ -149,17 +253,38 @@ const draftCredentialIntegrations = [
 	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createDraftCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
+	}),
 	createDraftCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
 		settings: AgentTeamsSettingsSchema.optional(),
 	}),
 ] as const;
 
+const n8nChatIntegration = z
+	.object({
+		type: z.literal('n8n_chat'),
+		credentialId: z.literal('').default(''),
+	})
+	.strict();
+
 export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);
 
 /** Draft config variant that allows cleared stale credential IDs. */
-export const AgentIntegrationConfigSchema = z.discriminatedUnion(
-	'type',
-	draftCredentialIntegrations,
-);
+export const AgentIntegrationConfigSchema = z.discriminatedUnion('type', [
+	...draftCredentialIntegrations,
+	n8nChatIntegration,
+]);
 
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationConfigSchema>;
+
+export type CredentialAgentIntegrationConfig = Exclude<
+	AgentIntegrationConfig,
+	{ type: 'n8n_chat' }
+>;
+
+export function isCredentialAgentIntegration(
+	integration: AgentIntegrationConfig,
+): integration is CredentialAgentIntegrationConfig {
+	return integration.type !== 'n8n_chat';
+}

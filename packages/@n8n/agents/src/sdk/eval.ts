@@ -3,6 +3,7 @@ import { AgentRuntime } from '../runtime/loop/agent-runtime';
 import type { BuiltEval, CheckFn, EvalInput, EvalScore, JudgeFn, JudgeHandlerFn } from '../types';
 import type { ModelConfig } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
+import { modelConfigToId } from '../utils/model';
 
 /** Extract text content from LLM messages (custom messages are skipped). */
 function extractText(messages: AgentMessage[]): string {
@@ -51,7 +52,7 @@ export class Eval {
 
 	private judgeFn?: JudgeHandlerFn;
 
-	private modelId?: string;
+	private modelConfig?: ModelConfig;
 
 	private credentialName?: string;
 
@@ -65,10 +66,16 @@ export class Eval {
 		return this;
 	}
 
-	/** Set the judge model (LLM-as-judge mode). */
-	model(modelId: string): this {
-		// TODO: support full model config
-		this.modelId = modelId;
+	/**
+	 * Set the judge model (LLM-as-judge mode). Accepts a bare model id, same as
+	 * `Agent.model()`, or an already credential-resolved `ModelConfig` object —
+	 * a caller that has its own (e.g. project-scoped, BYOK) credential
+	 * resolution, like n8n's agent-eval judge, resolves it up front and passes
+	 * the result straight in rather than naming a credential via `.credential()`
+	 * for this builder to resolve itself (it doesn't — see `.credential()`).
+	 */
+	model(modelConfig: ModelConfig): this {
+		this.modelConfig = modelConfig;
 		return this;
 	}
 
@@ -115,12 +122,17 @@ export class Eval {
 			throw new Error(`Eval "${this.evalName}" requires either .check() or .judge()`);
 		}
 
-		if (this.judgeFn && !this.modelId) {
+		if (this.judgeFn && !this.modelConfig) {
 			throw new Error(`Eval "${this.evalName}" uses .judge() but no .model() was set`);
 		}
 
 		const name = this.evalName;
 		const desc = this.desc;
+		// Diagnostic only — `modelConfigToId` best-effort-extracts a `provider/model`
+		// string even when `.model()` was given a pre-resolved config object (which
+		// may carry a credential's API key), so that object itself is never surfaced
+		// on `BuiltEval`.
+		const modelId = this.modelConfig ? (modelConfigToId(this.modelConfig) ?? null) : null;
 
 		if (this.checkFn) {
 			const checkFn = this.checkFn;
@@ -128,7 +140,7 @@ export class Eval {
 				name,
 				description: desc,
 				evalType: 'check' as const,
-				modelId: this.modelId ?? null,
+				modelId,
 				credentialName: this.credentialName ?? null,
 				_run: async (input: EvalInput) => await checkFn(input),
 			};
@@ -136,10 +148,10 @@ export class Eval {
 
 		// LLM-as-judge mode
 		const judgeFn = this.judgeFn!;
-		if (!this.modelId) {
+		if (!this.modelConfig) {
 			throw new Error(`Eval "${this.evalName}" uses .judge() but no .model() was set`);
 		}
-		const modelConfig: ModelConfig = this.modelId;
+		const modelConfig = this.modelConfig;
 
 		const runtime = new AgentRuntime({
 			name: `${name}-judge`,
@@ -158,7 +170,7 @@ export class Eval {
 			name,
 			description: desc,
 			evalType: 'judge' as const,
-			modelId: this.modelId ?? null,
+			modelId,
 			credentialName: this.credentialName ?? null,
 			_run: async (input: EvalInput) => await judgeFn({ ...input, llm }),
 		};

@@ -632,7 +632,7 @@ const onDragEnd = (el: HTMLElement) => {
 											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											telemetry-source="inputs"
 											size="small"
-											variant="subtle"
+											variant="outline"
 											hide-icon
 											execution-mode="exclusive"
 										/>

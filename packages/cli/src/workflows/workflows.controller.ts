@@ -5,13 +5,16 @@ import {
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
+	ListCallableSubworkflowsQueryDto,
 	ManualRunDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type CallableSubworkflowsResponse,
 	type WorkflowPublicationStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	AuthenticatedRequest,
@@ -41,10 +44,7 @@ import express from 'express';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExecutionService } from '@/executions/execution.service';
 import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
@@ -126,6 +126,7 @@ export class WorkflowsController {
 		return { ...savedWorkflowWithMetaData, scopes, checksum };
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: WorkflowRequest.GetMany, res: express.Response) {
 		try {
@@ -209,6 +210,7 @@ export class WorkflowsController {
 	async getWorkflow(req: WorkflowRequest.Get) {
 		const { workflowId } = req.params;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isSharingEnabled()) {
 			const relations: FindOptionsRelations<WorkflowEntity> = {
 				shared: {
@@ -230,6 +232,7 @@ export class WorkflowsController {
 					includeTags: !this.globalConfig.tags.disabled,
 					includeParentFolder: true,
 					includeActiveVersion: true,
+					publishHistory: 'latestActivation',
 				},
 			);
 
@@ -263,6 +266,7 @@ export class WorkflowsController {
 				includeTags: !this.globalConfig.tags.disabled,
 				includeParentFolder: true,
 				includeActiveVersion: true,
+				publishHistory: 'latestActivation',
 			},
 		);
 
@@ -307,7 +311,15 @@ export class WorkflowsController {
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'update');
 
-		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } = body;
+		const {
+			tags,
+			parentFolderId,
+			aiBuilderAssisted,
+			expectedChecksum,
+			autosaved,
+			restoredFromVersionId,
+			...rest
+		} = body;
 
 		// Validate timeSavedMode if present
 		if (
@@ -320,6 +332,7 @@ export class WorkflowsController {
 		const updateData = createWorkflowEntityFromPayload(rest);
 
 		// Credential tamper protection is enforced centrally in WorkflowService.update
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isSharingEnabled = this.license.isSharingEnabled();
 		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
 			tagIds: tags,
@@ -328,6 +341,7 @@ export class WorkflowsController {
 			expectedChecksum,
 			aiBuilderAssisted,
 			autosaved,
+			restoredFromVersionId,
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
@@ -462,6 +476,7 @@ export class WorkflowsController {
 			name,
 			description,
 			expectedChecksum,
+			publishHistory: 'latestActivation',
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
@@ -702,6 +717,22 @@ export class WorkflowsController {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 		return await this.workflowPublicationStatusService.getStatus(workflowId);
+	}
+
+	/**
+	 * Lists the workflows that this workflow can call as sub-workflows. Only
+	 * editors of the parent can add a sub-workflow call, so this requires
+	 * `workflow:update` on the parent.
+	 */
+	@Get('/:workflowId/callable-subworkflows')
+	@ProjectScope('workflow:update')
+	async getCallableSubworkflows(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Query query: ListCallableSubworkflowsQueryDto,
+	): Promise<CallableSubworkflowsResponse> {
+		return await this.workflowService.getCallableSubworkflows(req.user, workflowId, query);
 	}
 
 	@Post('/with-node-types')

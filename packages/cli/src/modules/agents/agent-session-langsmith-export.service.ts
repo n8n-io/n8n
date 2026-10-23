@@ -13,9 +13,7 @@ import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION } from '@/constants';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { ConflictError, NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -317,6 +315,20 @@ function buildExecutionRun(
 
 function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: string): DraftRun {
 	switch (event.type) {
+		case 'input':
+			return {
+				path,
+				name: 'Additional user input',
+				runType: 'chain',
+				startTime: event.timestamp,
+				endTime: event.timestamp,
+				inputs: {
+					message: execution.inputMessages?.find(({ id }) => id === event.messageId),
+				},
+				outputs: {},
+				metadata: {},
+				children: [],
+			};
 		case 'background-task-signal':
 			return buildBackgroundTaskSignalRun(event, path);
 		case 'text':
@@ -327,8 +339,22 @@ function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: st
 			return buildSuspensionRun(event, path);
 		case 'hitl-response':
 			return buildHitlResponseRun(event, path);
+		case 'host-event':
+			return buildHostEventRun(event, path);
 		case 'tool-call':
 			return buildToolCallRun(event, path);
+		case 'guardrail':
+			return {
+				path,
+				name: 'Guardrail stop',
+				runType: 'chain',
+				startTime: event.timestamp,
+				endTime: event.timestamp,
+				inputs: { code: event.code },
+				outputs: { status: 'stopped' },
+				metadata: {},
+				children: [],
+			};
 	}
 }
 
@@ -417,6 +443,23 @@ function buildHitlResponseRun(
 		inputs: { toolCallId: event.toolCallId },
 		outputs: toRecord(event.response),
 		metadata: {},
+		children: [],
+	};
+}
+
+function buildHostEventRun(
+	event: Extract<TimelineEvent, { type: 'host-event' }>,
+	path: string,
+): DraftRun {
+	return {
+		path,
+		name: `Host event: ${event.name}`,
+		runType: 'chain',
+		startTime: event.timestamp,
+		endTime: event.timestamp,
+		inputs: {},
+		outputs: { payload: event.payload },
+		metadata: event.key !== undefined ? { key: event.key } : {},
 		children: [],
 	};
 }

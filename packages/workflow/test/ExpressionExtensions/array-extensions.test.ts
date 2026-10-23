@@ -417,6 +417,13 @@ describe('Data Transformation Functions', () => {
 			]);
 		});
 
+		test('.chunk() should reject a size that is not a positive number', () => {
+			expect(() => evaluate('={{ numberList(1, 20).chunk(-1) }}')).toThrow();
+			expect(() => evaluate('={{ numberList(1, 20).chunk(0) }}')).toThrow();
+			expect(() => evaluate('={{ numberList(1, 20).chunk(NaN) }}')).toThrow();
+			expect(() => evaluate('={{ numberList(1, 20).chunk("5") }}')).toThrow();
+		});
+
 		test('.toJsonString() should work on an array', () => {
 			expect(evaluate('={{ [true, 1, "one", {foo: "bar"}].toJsonString() }}')).toEqual(
 				'[true,1,"one",{"foo":"bar"}]',

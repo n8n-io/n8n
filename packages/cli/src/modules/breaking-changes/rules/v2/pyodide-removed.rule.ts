@@ -22,9 +22,9 @@ export class PyodideRemovedRule implements IBreakingChangeWorkflowRule {
 			description:
 				'The Pyodide-based Python implementation in the Code node has been removed and replaced with a native Python task runner implementation',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'executionsFail',
 			documentationUrl:
-				'https://docs.n8n.io/2-0-breaking-changes/#remove-pyodide-based-python-code-node',
+				'https://docs.n8n.io/2-0-breaking-changes/#remove-pyodide-based-python-code-node-and-tool',
 		};
 	}
 
@@ -40,7 +40,7 @@ export class PyodideRemovedRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Review and adjust Python scripts',
 				description:
-					'Review Code node scripts relying on Pyodide syntax and adjust for breaking changes. See: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/#python-native-beta',
+					'Review Code node scripts relying on Pyodide syntax and adjust for breaking changes. See: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/#python-native',
 			},
 			{
 				action: 'Set up Python task runner',

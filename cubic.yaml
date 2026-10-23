@@ -202,7 +202,7 @@ reviews:
         - docker/**
         - scripts/**
         - patches/**
-        - packages/testing/**
+        - packages/quality/**
         - packages/@n8n/eslint-config/**
         - packages/@n8n/stylelint-config/**
         - packages/@n8n/vitest-config/**

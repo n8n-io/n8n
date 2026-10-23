@@ -7,7 +7,7 @@ import { Cipher, type EncryptionKeyProxy, InstanceSettings } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { KeyManagerService } from '@/encryption/key-manager.service';
 
 const makeKey = (overrides: Partial<DeploymentKey> = {}): DeploymentKey =>

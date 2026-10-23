@@ -10,13 +10,14 @@ import type {
 	INodeParameters,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { isToolType, nodeNameToToolName } from 'n8n-workflow';
+import { nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { EphemeralNodeExecutor } from '@/node-execution';
+import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 
-import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
+import { toPolicyRefusalResult } from './policy-refusal';
 
 type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 
@@ -48,18 +49,6 @@ function toExecutorCredentials(
 		}
 	}
 	return Object.keys(out).length > 0 ? out : undefined;
-}
-
-function resolveToolNodeType(nodeType: string, nodeTypeVersion: number): string {
-	if (isToolType(nodeType)) return nodeType;
-
-	const toolNodeType = `${nodeType}Tool`;
-	try {
-		Container.get(NodeTypes).getByNameAndVersion(toolNodeType, nodeTypeVersion);
-		return toolNodeType;
-	} catch {
-		return nodeType;
-	}
 }
 
 function createNativeStringToolInputSchema(description: string): z.ZodType {
@@ -176,6 +165,13 @@ export async function resolveNodeTool(
 				projectId: ctx.projectId,
 				...instrumentedExecution,
 			});
+			// A refusal is returned, not thrown: thrown errors reach the chat as plain text.
+			if (result.status === 'error' && result.violations) {
+				return toPolicyRefusalResult(
+					result.error ?? result.violations[0].message,
+					result.violations,
+				);
+			}
 			// Throw on the executor's structured error so the agent runtime
 			// flags the tool-result with `isError: true` and the recorder
 			// marks the timeline entry as a failed call. Returning the error

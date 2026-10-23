@@ -20,7 +20,7 @@ import {
 	getVersionedSystemPrompt,
 	resolvePromptProfile,
 } from '../src/prompts/prompt-profiles';
-import { loadInstanceAiPromptSkills } from '../src/skills/runtime-skills';
+import { loadInstanceAiPromptSkills } from '../src/skills/skills';
 
 interface Variant {
 	/** File name (without extension) inside the agent's folder. */
@@ -75,14 +75,10 @@ function collectAgents(): AgentEntry[] {
 				{
 					file: 'all-features',
 					label:
-						'all features enabled (research, filesystem, gateway connected, tool-search, browser, sample license hint)',
+						'all features enabled (research, filesystem, tool-search, browser connected, sample license hint)',
 					body: getSystemPrompt({
-						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
-						computerUseState: {
-							localComputer: { status: 'connected', toolCategories: ['filesystem'] },
-							browser: { status: 'connected', toolCategories: ['browser'] },
-						},
+						browserUseState: { status: 'connected' },
 						toolSearchEnabled: true,
 						licenseHints: ['<sample license hint — replace with real hint at runtime>'],
 						timeZone: 'UTC',
@@ -92,7 +88,7 @@ function collectAgents(): AgentEntry[] {
 				{
 					file: 'default',
 					label:
-						'no options set — what a fresh OSS install sees (no webhook URL, no filesystem, no gateway, no browser, no tool search)',
+						'no options set — what a fresh OSS install sees (no filesystem, no browser, no tool search)',
 					body: getSystemPrompt({}),
 				},
 				{
@@ -102,28 +98,11 @@ function collectAgents(): AgentEntry[] {
 					body: getSystemPrompt({ branchReadOnly: true }),
 				},
 				{
-					file: 'computer-use-prompting',
+					file: 'browser-use-prompting',
 					label:
-						"both Computer Use channels available but neither connected — renders the 'install Computer Use' pitch for both + menu entries",
+						"Browser Use available but not connected — renders the 'connect Browser Use' pitch for the + menu entry",
 					body: getSystemPrompt({
-						webhookBaseUrl: 'https://your-instance.example.com',
-						computerUseState: {
-							localComputer: { status: 'disconnected' },
-							browser: { status: 'disconnected' },
-						},
-					}),
-				},
-				{
-					file: 'gateway-no-browser',
-					label:
-						"local computer connected serving filesystem, browser channel available but not connected — renders 'Project Filesystem Access' and 'Browser Automation (Disabled in Computer Use)'",
-					body: getSystemPrompt({
-						webhookBaseUrl: 'https://your-instance.example.com',
-						filesystemAccess: true,
-						computerUseState: {
-							localComputer: { status: 'connected', toolCategories: ['filesystem'] },
-							browser: { status: 'disconnected' },
-						},
+						browserUseState: { status: 'disconnected' },
 					}),
 				},
 			],

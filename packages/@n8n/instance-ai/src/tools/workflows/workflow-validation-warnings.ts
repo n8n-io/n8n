@@ -20,7 +20,7 @@ export const GROUPING_DECISION_MISSING_CODE = 'GROUPING_DECISION_MISSING';
 export const GROUP_DROPPED_OVER_CEILING_CODE = 'GROUP_DROPPED_OVER_CEILING';
 
 /**
- * What the agent tells build-workflow about groups.
+ * What the agent tells workflow_builder_build_workflow about groups.
  * `grouped`: the source declares groups.
  * `not_warranted`: no group is needed, and a reason is given.
  */
@@ -141,7 +141,7 @@ export function groupingDecisionBlocker(input: {
 			`The canvas would have ${summary.total} boxes with every group collapsed and no node group. ` +
 			`Ungrouped: ${summary.groupableNodeNames.join(', ')}. ` +
 			'Wrap each stage in `.group(name, members, { description })` and build again. ' +
-			"If no valid group can hold these nodes, call build-workflow again with `groupingDecision: 'not_warranted'` " +
+			"If no valid group can hold these nodes, call workflow_builder_build_workflow again with `groupingDecision: 'not_warranted'` " +
 			'and a `groupingReason` that says why.',
 	};
 }

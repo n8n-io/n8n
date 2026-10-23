@@ -1,14 +1,14 @@
 # Enforce proper resource/operation pattern for better UX in n8n nodes (`@n8n/community-nodes/resource-operation-pattern`)
 
-⚠️ This rule _warns_ in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
+💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 
 <!-- end auto-generated rule header -->
 
 ## Rule Details
 
-Warns when a regular node has no Operation field or an operation option has no action label. The rule checks only inline properties and options. It skips the action check for triggers and AI-only sub-nodes. A node with one operation still needs an Operation field. A node with one resource can omit the Resource field.
+Reports an error when a regular node has no Operation field or an operation option has no action label. The rule checks only inline properties and options. It skips the action check for triggers and AI-only sub-nodes. A node with one operation still needs an Operation field. A node with one resource can omit the Resource field.
 
-Warns when a node has more than 5 operations without organizing them into resources. Group related operations to make complex nodes easier to navigate.
+Reports an error when a node has more than 5 operations without resources. Use resources to group related operations. This pattern makes complex nodes easier to navigate.
 
 When you have many operations, users benefit from having them organized into logical resource groups (e.g., "User", "Project", "File") rather than seeing a long flat list of operations.
 

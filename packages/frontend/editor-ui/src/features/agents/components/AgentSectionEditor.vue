@@ -154,7 +154,7 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 				<slot>
 					<N8nIconButton
 						:icon="copied ? 'check' : 'copy'"
-						variant="subtle"
+						variant="outline"
 						size="xmini"
 						:class="$style.copyBtn"
 						:title="

@@ -7,7 +7,7 @@ import { type INode, type IWorkflowBase, type WorkflowSettings } from 'n8n-workf
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;

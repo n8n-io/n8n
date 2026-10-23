@@ -217,7 +217,57 @@ describe('ChatTrigger Node', () => {
 		});
 	});
 
+	describe('trustedSource property', () => {
+		it("defaults to the instance's own OAuth2 server and is scoped to n8nUserAuth hosted chat", () => {
+			const trustedSourceParam = chatTrigger.description.properties.find(
+				(property) => property.name === 'trustedSource',
+			);
+
+			expect(trustedSourceParam).toMatchObject({
+				type: 'options',
+				default: 'n8n-internal',
+				typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+				displayOptions: {
+					show: { authentication: ['n8nUserAuth'], mode: ['hostedChat'], public: [true] },
+				},
+			});
+			expect(chatTrigger.methods.loadOptions.listTrustedSources).toBeDefined();
+		});
+	});
+
 	describe('webhook method', () => {
+		it('answers a rejected frame token with the challenge the validation carried', async () => {
+			mockContext.getMode.mockReturnValue('webhook');
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1,
+				webhookId: 'abc123',
+			} as INode);
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return 'n8nUserAuth';
+					return defaultValue;
+				},
+			);
+			const challenge = 'Bearer resource_metadata="https://n8n.example/.well-known/x"';
+			vi.mocked(validateAuth).mockRejectedValueOnce(
+				new ChatTriggerAuthorizationError(401, 'Invalid authentication token', challenge),
+			);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(401, { 'www-authenticate': challenge });
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
 		it('returns 404 for public chat when instance policy disables public chat', async () => {
 			chatTriggerConfig.disablePublicChat = true;
 
@@ -984,6 +1034,17 @@ describe('ChatTrigger Node', () => {
 			expect(renderedView().sandbox).not.toContain('allow-popups-to-escape-sandbox');
 		});
 
+		it('removes the route sandbox from the public chat page', async () => {
+			await renderSetupPage('none');
+
+			expect(mockResponse.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
+			expect(mockResponse.setHeader).not.toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.anything(),
+			);
+			expect(renderedPage()).toContain('createChat');
+		});
+
 		it('renders the author chat for the frame own request', async () => {
 			mockRequest.query = { n8nShellInner: '1' };
 			mockRequest.headers = {
@@ -998,6 +1059,7 @@ describe('ChatTrigger Node', () => {
 				'Content-Security-Policy',
 				'sandbox allow-scripts allow-forms allow-modals allow-popups',
 			);
+			expect(mockResponse.removeHeader).not.toHaveBeenCalled();
 			expect(renderedPage()).toContain('createChat');
 			// Identity injected server-side, and a header token for the messages that follow.
 			expect(renderedPage()).toContain('"email":"visitor@example.com"');
@@ -1265,6 +1327,16 @@ describe('ChatTrigger Node', () => {
 
 				expect(mockContext.checkTriggerCredentialStatus).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('trustedSource', () => {
+		// The resolvers read the stored value as the source id, without evaluating it.
+		it('takes no expression, so the stored value is the source id', () => {
+			const property = new ChatTrigger().description.properties.find(
+				(p) => p.name === 'trustedSource',
+			);
+			expect(property).toMatchObject({ default: 'n8n-internal', noDataExpression: true });
 		});
 	});
 });

@@ -1,5 +1,7 @@
 import { i18n } from '@n8n/i18n';
+import { SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import type { LocationQuery } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_MODALS } from './modals';
 import {
@@ -8,10 +10,13 @@ import {
 	INSTANCE_AI_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 	INSTANCE_AI_THREADS_VIEW,
+	INSTANCE_AI_SOURCE_QUERY,
 } from './constants';
 import {
 	ensurePersonalProjectId,
 	provisionLaunchedThread,
+	provisionOnboardingThread,
+	type InstanceAiOnboardingLaunch,
 } from './composables/useInstanceAiHandoff';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { launchWorkflowThread } from '@/experiments/openWorkflowInAssistant/launchWorkflowThread';
@@ -22,6 +27,7 @@ import {
 	useInstanceAiReady,
 } from './composables/useInstanceAiAvailability';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { canManageInstanceAi } from './instanceAiPermissions';
 
 /**
@@ -45,6 +51,31 @@ function hasInstanceAiSettingsContent(): boolean {
 	return isAssistantEnabled && useOpenWorkflowInAssistantStore().isTreatment;
 }
 
+/** `?team=` on the onboarding handoff URL answers the survey's team question, on any deployment. */
+const ONBOARDING_TEAM_QUERY = 'team';
+
+/**
+ * The team question of the n8n Cloud signup survey: from the URL when it carries one (a test
+ * run, or a handoff that passes it), otherwise from the cloud account. Only n8n Cloud has one;
+ * elsewhere the onboarding card asks the team itself.
+ */
+async function readSignupSurvey(
+	query: LocationQuery,
+): Promise<InstanceAiOnboardingLaunch | undefined> {
+	const teamFromUrl = query[ONBOARDING_TEAM_QUERY];
+	if (typeof teamFromUrl === 'string' && teamFromUrl) {
+		return { survey: { what_team_are_you_on: teamFromUrl }, surveySource: 'url' };
+	}
+	if (!useSettingsStore().isCloudDeployment) return undefined;
+	const cloudPlanStore = useCloudPlanStore();
+	// Idempotent; a failed fetch leaves the account empty and logs a warning.
+	await cloudPlanStore.initialize();
+	const team = cloudPlanStore.currentUserCloudInfo?.information?.what_team_are_you_on;
+	return typeof team === 'string' && team
+		? { survey: { what_team_are_you_on: team }, surveySource: 'cloud' }
+		: undefined;
+}
+
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
@@ -55,8 +86,28 @@ export const InstanceAiModule = defineFrontendModule({
 	id: 'instance-ai',
 	name: 'n8n Assistant',
 	description: 'Chat with your n8n instance.',
-	icon: 'sparkles',
+	icon: 'n8n-assistant',
 	routes: [
+		{
+			path: 'settings/self-healing/:configurationId',
+			name: SELF_HEALING_CONFIGURATION_VIEW,
+			component: async () =>
+				(await import('@n8n/frontend-module-self-healing')).SelfHealingConfigView,
+			props: true,
+			meta: { projectRoute: true },
+			beforeEnter: async (to) => {
+				const { useProjectsStore } = await import(
+					'@/features/collaboration/projects/projects.store'
+				);
+				const { getResourcePermissions } = await import('@n8n/permissions');
+				const project = useProjectsStore().myProjects.find(({ id }) => id === to.params.projectId);
+				const canConfigure =
+					!!useSettingsStore().moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
+					!!getResourcePermissions(project?.scopes).project.update;
+
+				return canConfigure ? true : { name: VIEWS.HOMEPAGE };
+			},
+		},
 		{
 			path: '/assistant',
 			component: InstanceAiView,
@@ -121,6 +172,22 @@ export const InstanceAiModule = defineFrontendModule({
 					name: INSTANCE_AI_VIEW,
 					path: '',
 					component: InstanceAiEmptyView,
+					// n8n Cloud sends a new signup to `/assistant?source=onboarding` after its survey.
+					// The onboarding thread opens with the greeting and the first question card in
+					// place, so the guard creates it with the survey and lands on it. `&team=Sales`
+					// answers the team question from the URL, so one account can run it again.
+					beforeEnter: async (to) => {
+						if (to.query[INSTANCE_AI_SOURCE_QUERY] !== 'onboarding') return true;
+						// Whoever cannot use the assistant yet lands on the empty view and its setup.
+						const projectId = useInstanceAiReady().value ? await ensurePersonalProjectId() : null;
+						const threadId = projectId
+							? await provisionOnboardingThread(projectId, await readSignupSurvey(to.query))
+							: null;
+						// Both redirects drop the query, so the back button creates no second thread.
+						return threadId
+							? { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } }
+							: { name: INSTANCE_AI_VIEW };
+					},
 				},
 				{
 					name: INSTANCE_AI_THREADS_VIEW,
@@ -213,11 +280,11 @@ export const InstanceAiModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',
-			icon: 'sparkles',
+			order: 230,
+			icon: 'n8n-assistant',
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
-			preview: true,
 			get available() {
 				return hasInstanceAiSettingsContent();
 			},

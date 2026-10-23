@@ -113,11 +113,16 @@ export const createSearchExecutionsTool = (
 		try {
 			// Validate workflow access if workflowId is provided
 			if (workflowId) {
-				await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
+				await getMcpWorkflow(
+					workflowId,
+					user,
+					['workflow:read', 'execution:read'],
+					workflowFinderService,
+				);
 			}
 
 			const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
-			const sharingOptions = await executionListService.buildSharingOptions('workflow:read');
+			const sharingOptions = await executionListService.buildSharingOptions('execution:read');
 			const parsedCursor = parseExecutionCursor(cursor);
 
 			const query = {

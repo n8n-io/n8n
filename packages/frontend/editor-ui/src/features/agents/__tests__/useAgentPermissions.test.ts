@@ -125,6 +125,29 @@ describe('useAgentPermissions', () => {
 		expect(useAgentPermissions(PROJECT_ID).canExecute.value).toBe(false);
 	});
 
+	// A chat-only member holds execute but not read — canRead must count global
+	// scopes too, so an instance owner sees the open-agent-page link even for a
+	// project they are not an explicit member of.
+	it('grants read from global scopes when no project is found', () => {
+		usersStore.currentUser = { globalScopes: ['agent:read'] } as never;
+
+		expect(useAgentPermissions(PROJECT_ID).canRead.value).toBe(true);
+	});
+
+	it('withholds read when neither scope source allows it', () => {
+		projectsStore.myProjects = [makeProject(['agent:execute'])];
+		usersStore.currentUser = { globalScopes: [] } as never;
+
+		expect(useAgentPermissions(PROJECT_ID).canRead.value).toBe(false);
+	});
+
+	it('keeps read available in a read-only branch', () => {
+		projectsStore.myProjects = [makeProject(['agent:read'])];
+		sourceControlStore.preferences = { branchReadOnly: true } as never;
+
+		expect(useAgentPermissions(PROJECT_ID).canRead.value).toBe(true);
+	});
+
 	// Running an agent writes no config, so a read-only branch is no reason to stop
 	// it — unlike every mutating flag below.
 	it('keeps execute available in a read-only branch', () => {

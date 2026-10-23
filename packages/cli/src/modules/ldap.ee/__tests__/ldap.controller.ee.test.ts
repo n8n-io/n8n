@@ -1,8 +1,7 @@
+import type { EventService } from '@n8n/backend-services';
 import type { LdapConfig } from '@n8n/constants';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import { LdapController } from '../ldap.controller.ee';
 import type { LdapService } from '../ldap.service.ee';

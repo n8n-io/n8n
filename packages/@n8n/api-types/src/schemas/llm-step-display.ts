@@ -35,8 +35,59 @@ export interface StepDebugSummary {
 	systemCharCount?: number;
 }
 
+export interface ReadableStepSetting {
+	label: string;
+	value: string;
+}
+
+export interface ReadableStepTool {
+	name: string;
+	description?: string;
+	inputSchema?: unknown;
+	/** Character-based estimate, not a provider token count. */
+	estimatedTokens: number;
+}
+
+export interface ReadableStepConfig {
+	settings: ReadableStepSetting[];
+	tools: ReadableStepTool[];
+	toolsEstimatedTokens: number;
+}
+
+/**
+ * Most likely reason a step lost its prompt cache:
+ * - `tools`, `system`, `settings`: that part of the request changed since the previous step.
+ * - `expired`: more than the cache lifetime passed between the steps. Reported only
+ *   when the step requested a known cache lifetime.
+ * - `messages`: none of the above, so an earlier message probably changed.
+ */
+export type CacheBreakCause = 'tools' | 'system' | 'settings' | 'expired' | 'messages';
+
+export interface StepCacheBreak {
+	/** Cached tokens the previous step left for this step to read. */
+	expectedReadTokens: number;
+	readTokens: number;
+	lostTokens: number;
+	cause: CacheBreakCause;
+	/** Cache lifetime the previous step requested. Set only when `cause` is `expired`. */
+	cacheTtlMinutes?: number;
+}
+
+export interface ReadableUsageDetail {
+	label: string;
+	tokens: number;
+}
+
+export interface ReadableUsageRow {
+	label: string;
+	tokens: number;
+	details: ReadableUsageDetail[];
+}
+
 export interface ReadableUsageSummary {
 	label: string;
+	rows: ReadableUsageRow[];
+	settings: ReadableStepSetting[];
 	metadata: unknown;
 }
 
@@ -576,7 +627,7 @@ export function parseUsageSummary(usage: unknown): ReadableUsageSummary | undefi
 	}
 
 	if (!isRecord(usage)) {
-		return { label: formatDebugJson(usage), metadata: usage };
+		return { label: formatDebugJson(usage), rows: [], settings: [], metadata: usage };
 	}
 
 	const inputTokens = usage.inputTokens ?? usage.promptTokens;
@@ -588,9 +639,190 @@ export function parseUsageSummary(usage: unknown): ReadableUsageSummary | undefi
 	if (typeof outputTokens === 'number') parts.push(`out: ${outputTokens}`);
 	if (typeof totalTokens === 'number') parts.push(`total: ${totalTokens}`);
 
+	const rows: ReadableUsageRow[] = [];
+	if (typeof inputTokens === 'number') {
+		rows.push({
+			label: 'input',
+			tokens: inputTokens,
+			details: parseTokenDetails(usage.inputTokenDetails),
+		});
+	}
+	if (typeof outputTokens === 'number') {
+		rows.push({
+			label: 'output',
+			tokens: outputTokens,
+			details: parseTokenDetails(usage.outputTokenDetails),
+		});
+	}
+	if (typeof totalTokens === 'number') {
+		rows.push({ label: 'total', tokens: totalTokens, details: [] });
+	}
+
 	return {
 		label: parts.length > 0 ? parts.join(' · ') : formatDebugJson(usage),
+		rows,
+		settings: parseRawUsageSettings(usage.raw),
 		metadata: usage,
+	};
+}
+
+const TOKEN_DETAIL_LABELS: Record<string, string> = {
+	noCacheTokens: 'uncached',
+	cacheReadTokens: 'cache read',
+	cacheWriteTokens: 'cache write',
+	textTokens: 'text',
+	reasoningTokens: 'reasoning',
+};
+
+function humanizeTokenKey(key: string): string {
+	return (
+		TOKEN_DETAIL_LABELS[key] ??
+		key
+			.replace(/Tokens$/, '')
+			.replace(/([a-z])([A-Z])/g, '$1 $2')
+			.toLowerCase()
+	);
+}
+
+function parseTokenDetails(details: unknown): ReadableUsageDetail[] {
+	if (!isRecord(details)) return [];
+	return Object.entries(details).flatMap(([key, tokens]) =>
+		typeof tokens === 'number' ? [{ label: humanizeTokenKey(key), tokens }] : [],
+	);
+}
+
+/**
+ * The provider's raw usage repeats the token counts under other names. Only its
+ * non-numeric facts (such as service tier or region) add information.
+ */
+function parseRawUsageSettings(raw: unknown): ReadableStepSetting[] {
+	if (!isRecord(raw)) return [];
+	return Object.entries(raw).flatMap(([key, value]) =>
+		typeof value === 'string' || typeof value === 'boolean'
+			? [{ label: key.replace(/_/g, ' '), value: String(value) }]
+			: [],
+	);
+}
+
+function isEmptyContainer(value: unknown): boolean {
+	if (Array.isArray(value)) return value.length === 0;
+	return isRecord(value) && Object.keys(value).length === 0;
+}
+
+function formatSettingValue(value: unknown): string {
+	return typeof value === 'string' ? value : formatDebugJson(value);
+}
+
+function flattenSettings(value: unknown, path: string, settings: ReadableStepSetting[]): void {
+	if (isRecord(value)) {
+		for (const [key, entry] of Object.entries(value)) {
+			flattenSettings(entry, path ? `${path}.${key}` : key, settings);
+		}
+		return;
+	}
+	if (value !== undefined && value !== null && path) {
+		settings.push({ label: path, value: formatSettingValue(value) });
+	}
+}
+
+function formatToolChoice(toolChoice: unknown): string | undefined {
+	if (typeof toolChoice === 'string') return toolChoice;
+	if (!isRecord(toolChoice) || typeof toolChoice.type !== 'string') return undefined;
+	return typeof toolChoice.toolName === 'string'
+		? `${toolChoice.type}: ${toolChoice.toolName}`
+		: toolChoice.type;
+}
+
+/** A Zod instance serialized as plain data. It holds no readable schema. */
+function isSerializedZodSchema(value: unknown): boolean {
+	return isRecord(value) && (isRecord(value._def) || isRecord(value._zod));
+}
+
+/**
+ * Rough size of a tool definition in the prompt: about 4 characters per token.
+ * The provider tokenizer and its tool framing differ, so this is only an estimate.
+ */
+function estimateToolTokens(name: string, description?: string, inputSchema?: unknown): number {
+	const serialized = JSON.stringify({ name, description, inputSchema }) ?? '';
+	return Math.ceil(serialized.length / 4);
+}
+
+function toReadableTool(
+	name: string,
+	description?: string,
+	inputSchema?: unknown,
+): ReadableStepTool {
+	return {
+		name,
+		description,
+		inputSchema,
+		estimatedTokens: estimateToolTokens(name, description, inputSchema),
+	};
+}
+
+function parseStepTools(input: Record<string, unknown>): ReadableStepTool[] {
+	if (Array.isArray(input.stepTools)) {
+		return input.stepTools
+			.filter(isRecord)
+			.map((tool, index) =>
+				toReadableTool(
+					typeof tool.name === 'string' ? tool.name : `tool ${index + 1}`,
+					typeof tool.description === 'string' ? tool.description : undefined,
+					tool.inputSchema,
+				),
+			);
+	}
+
+	if (isRecord(input.tools)) {
+		return Object.entries(input.tools).map(([name, tool]) =>
+			toReadableTool(
+				name,
+				isRecord(tool) && typeof tool.description === 'string' ? tool.description : undefined,
+				isRecord(tool) && !isSerializedZodSchema(tool.inputSchema) ? tool.inputSchema : undefined,
+			),
+		);
+	}
+
+	return [];
+}
+
+/**
+ * Model settings and the tool list the model received for a step, in a form
+ * that renders as chips and one row for each tool.
+ */
+export function parseStepConfig(
+	input: Record<string, unknown> | undefined,
+): ReadableStepConfig | undefined {
+	if (!input) return undefined;
+
+	const settings: ReadableStepSetting[] = [];
+	if (typeof input.modelId === 'string') settings.push({ label: 'model', value: input.modelId });
+	if (typeof input.provider === 'string') {
+		settings.push({ label: 'provider', value: input.provider });
+	}
+
+	// With a single provider namespace, its name only repeats the provider setting.
+	if (isRecord(input.providerOptions)) {
+		const [onlyNamespace, ...otherNamespaces] = Object.keys(input.providerOptions);
+		flattenSettings(
+			onlyNamespace !== undefined && otherNamespaces.length === 0
+				? input.providerOptions[onlyNamespace]
+				: input.providerOptions,
+			'',
+			settings,
+		);
+	}
+
+	const toolChoice = formatToolChoice(input.stepToolChoice ?? input.toolChoice);
+	if (toolChoice) settings.push({ label: 'tool choice', value: toolChoice });
+
+	const tools = parseStepTools(input);
+	if (settings.length === 0 && tools.length === 0) return undefined;
+
+	return {
+		settings,
+		tools,
+		toolsEstimatedTokens: tools.reduce((total, tool) => total + tool.estimatedTokens, 0),
 	};
 }
 
@@ -599,17 +831,27 @@ export function parseInputExtras(input: Record<string, unknown> | undefined): un
 
 	const extras: Record<string, unknown> = {};
 	// `instructions` is the v7 name for `system` — both are rendered as the System
-	// section, so neither belongs in the extras dump.
-	const primaryKeys = new Set([
+	// section, so neither belongs in the extras dump. Config keys render through
+	// `parseStepConfig`. `promptMessages` and `steps` repeat data shown elsewhere.
+	const shownElsewhere = new Set([
 		'system',
 		'instructions',
 		'messages',
 		'stepNumber',
 		'sdkStepNumber',
+		'modelId',
+		'provider',
+		'providerOptions',
+		'toolChoice',
+		'stepToolChoice',
+		'tools',
+		'stepTools',
+		'promptMessages',
+		'steps',
 	]);
 
 	for (const [key, value] of Object.entries(input)) {
-		if (!primaryKeys.has(key)) {
+		if (!shownElsewhere.has(key) && !isEmptyContainer(value)) {
 			extras[key] = value;
 		}
 	}
@@ -792,4 +1034,143 @@ export function parseStepSummary(
 		messagePreview,
 		systemCharCount,
 	};
+}
+
+/**
+ * Smallest cached prefix a provider stores (Anthropic: 1024 tokens). A shortfall
+ * below this is normal breakpoint movement, not a lost cache.
+ */
+const CACHE_BREAK_MIN_LOST_TOKENS = 1024;
+
+/** Anthropic `cacheControl.ttl` values. A marker without `ttl` uses the 5-minute default. */
+const ANTHROPIC_CACHE_TTL_MINUTES: Record<string, number> = { '5m': 5, '1h': 60 };
+const ANTHROPIC_DEFAULT_CACHE_TTL_MINUTES = 5;
+
+/** OpenAI `promptCacheRetention` values. `in_memory` has no fixed lifetime, so it is not listed. */
+const OPENAI_CACHE_RETENTION_MINUTES: Record<string, number> = { '24h': 24 * 60 };
+
+interface StepLike {
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown>;
+}
+
+/** OpenAI reports cache reads but not cache writes, so one missing count means zero. */
+function readCacheTokens(output: Record<string, unknown> | undefined) {
+	const usage = output?.usage;
+	if (!isRecord(usage) || !isRecord(usage.inputTokenDetails)) return undefined;
+	const { cacheReadTokens, cacheWriteTokens } = usage.inputTokenDetails;
+	const hasRead = typeof cacheReadTokens === 'number';
+	const hasWrite = typeof cacheWriteTokens === 'number';
+	if (!hasRead && !hasWrite) return undefined;
+	return { read: hasRead ? cacheReadTokens : 0, write: hasWrite ? cacheWriteTokens : 0 };
+}
+
+function collectCacheTtls(value: unknown, ttls: number[]): void {
+	if (Array.isArray(value)) {
+		for (const item of value) collectCacheTtls(item, ttls);
+		return;
+	}
+	if (!isRecord(value)) return;
+
+	if (isRecord(value.cacheControl)) {
+		const { ttl } = value.cacheControl;
+		const minutes =
+			ttl === undefined
+				? ANTHROPIC_DEFAULT_CACHE_TTL_MINUTES
+				: typeof ttl === 'string'
+					? ANTHROPIC_CACHE_TTL_MINUTES[ttl]
+					: undefined;
+		if (minutes !== undefined) ttls.push(minutes);
+	}
+	if (typeof value.promptCacheRetention === 'string') {
+		const minutes = OPENAI_CACHE_RETENTION_MINUTES[value.promptCacheRetention];
+		if (minutes !== undefined) ttls.push(minutes);
+	}
+
+	for (const child of Object.values(value)) collectCacheTtls(child, ttls);
+}
+
+/**
+ * Longest cache lifetime the step requested, from Anthropic `cacheControl`
+ * markers and the OpenAI `promptCacheRetention` option. Undefined when the step
+ * requests no lifetime with a known length.
+ */
+function stepCacheTtlMinutes(step: StepLike): number | undefined {
+	const ttls: number[] = [];
+	collectCacheTtls(
+		[step.input?.providerOptions, stepInstructions(step.input), step.input?.messages],
+		ttls,
+	);
+	return ttls.length > 0 ? Math.max(...ttls) : undefined;
+}
+
+function responseTime(output: Record<string, unknown> | undefined): number | undefined {
+	const timestamp = isRecord(output?.response) ? output.response.timestamp : undefined;
+	if (typeof timestamp !== 'string') return undefined;
+	const time = Date.parse(timestamp);
+	return Number.isNaN(time) ? undefined : time;
+}
+
+function sameJson(a: unknown, b: unknown): boolean {
+	return formatDebugJson(a) === formatDebugJson(b);
+}
+
+/**
+ * Checks the cached prompt parts in the order the provider hashes them
+ * (tools, then system, then request settings). A change in one part discards
+ * the cache from that point on.
+ */
+function findCacheBreakCause(
+	previous: StepLike,
+	current: StepLike,
+): Pick<StepCacheBreak, 'cause' | 'cacheTtlMinutes'> {
+	const toolsOf = (step: StepLike) => step.input?.stepTools ?? step.input?.tools;
+	if (!sameJson(toolsOf(previous), toolsOf(current))) return { cause: 'tools' };
+	if (!sameJson(stepInstructions(previous.input), stepInstructions(current.input))) {
+		return { cause: 'system' };
+	}
+	const settingsOf = (step: StepLike) => ({
+		modelId: step.input?.modelId,
+		providerOptions: step.input?.providerOptions,
+		toolChoice: step.input?.stepToolChoice ?? step.input?.toolChoice,
+	});
+	if (!sameJson(settingsOf(previous), settingsOf(current))) return { cause: 'settings' };
+
+	const previousTime = responseTime(previous.output);
+	const currentTime = responseTime(current.output);
+	if (previousTime !== undefined && currentTime !== undefined) {
+		const cacheTtlMinutes = stepCacheTtlMinutes(previous);
+		if (cacheTtlMinutes !== undefined && currentTime - previousTime > cacheTtlMinutes * 60_000) {
+			return { cause: 'expired', cacheTtlMinutes };
+		}
+	}
+	return { cause: 'messages' };
+}
+
+/**
+ * Finds steps that read back less of the prompt cache than the previous step
+ * left in it. A step normally reads what the previous step read plus what it
+ * wrote; a large shortfall means the provider recomputed that prompt prefix.
+ * Returns one entry for each step, in order.
+ */
+export function parseStepCacheBreaks(steps: StepLike[]): Array<StepCacheBreak | undefined> {
+	return steps.map((step, index) => {
+		const previous = index > 0 ? steps[index - 1] : undefined;
+		if (!previous) return undefined;
+
+		const previousCache = readCacheTokens(previous.output);
+		const currentCache = readCacheTokens(step.output);
+		if (!previousCache || !currentCache) return undefined;
+
+		const expectedReadTokens = previousCache.read + previousCache.write;
+		const lostTokens = expectedReadTokens - currentCache.read;
+		if (lostTokens < CACHE_BREAK_MIN_LOST_TOKENS) return undefined;
+
+		return {
+			expectedReadTokens,
+			readTokens: currentCache.read,
+			lostTokens,
+			...findCacheBreakCause(previous, step),
+		};
+	});
 }

@@ -1,3 +1,5 @@
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref } from 'vue';
 
@@ -52,8 +54,9 @@ function makeActions(
 	const scheduleSkillSave = vi.fn();
 	const agent = ref<AgentResource | null>(null);
 	const agentId = ref('agent-1');
+	const localConfig = ref<AgentJsonConfig | null>(makeConfig(overrides));
 	const actions = useAgentCapabilitiesActions({
-		localConfig: ref<AgentJsonConfig | null>(makeConfig(overrides)),
+		localConfig,
 		agent,
 		projectId: computed(() => 'proj-1'),
 		agentId: computed(() => agentId.value),
@@ -62,12 +65,13 @@ function makeActions(
 		scheduleSkillSave,
 		telemetry,
 	});
-	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId };
+	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId, localConfig };
 }
 
 describe('useAgentCapabilitiesActions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		setActivePinia(createTestingPinia());
 	});
 
 	it('forwards the selected picker mode to the tools modal', () => {
@@ -115,6 +119,12 @@ describe('useAgentCapabilitiesActions', () => {
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools });
 	});
 
+	it('offers no skill activation toggle', () => {
+		const { actions } = makeActions({ skills: [{ type: 'skill', id: 'skill-1' }] });
+
+		expect(actions).not.toHaveProperty('onToggleSkill');
+	});
+
 	it('opens the MCP-server modal for a numeric target past the tools array', () => {
 		const { actions } = makeActions({
 			tools: [{ type: 'node', name: 'get_dates' } as AgentJsonToolConfig],
@@ -124,6 +134,9 @@ describe('useAgentCapabilitiesActions', () => {
 					url: 'https://mcp.example.com',
 					authentication: 'none',
 					transport: 'streamableHttp',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+					},
 				},
 			],
 		} as Partial<AgentJsonConfig>);
@@ -138,6 +151,68 @@ describe('useAgentCapabilitiesActions', () => {
 		};
 		expect(modalData.data.kind).toBe('mcpServer');
 		expect(modalData.data.mcpServer?.name).toBe('srv');
+	});
+
+	it('updates and removes only the selected registry MCP server', () => {
+		const github: AgentJsonMcpServerConfig = {
+			name: 'github',
+			url: 'https://mcp.github.test',
+			authentication: 'githubOAuth2Api',
+			transport: 'streamableHttp',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+		};
+		const notion: AgentJsonMcpServerConfig = {
+			name: 'notion',
+			url: 'https://mcp.notion.test',
+			authentication: 'notionMcpOAuth2Api',
+			transport: 'streamableHttp',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.notion' },
+		};
+		const { actions, scheduleConfigUpdate } = makeActions({ mcpServers: [github, notion] });
+
+		actions.onOpenToolFromList(0);
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: {
+				kind: string;
+				onConfirm: (server: AgentJsonMcpServerConfig) => void;
+				onRemove: () => void;
+			};
+		};
+		const updated = { ...github, description: 'Updated' };
+
+		expect(modalData.data.kind).toBe('registryMcpServer');
+		modalData.data.onConfirm(updated);
+		expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+			mcpServers: [updated, notion],
+		});
+
+		modalData.data.onRemove();
+		expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({ mcpServers: [notion] });
+	});
+
+	it('drops registry MCP callbacks that land after an agent switch', () => {
+		const server: AgentJsonMcpServerConfig = {
+			name: 'github',
+			url: 'https://mcp.github.test',
+			authentication: 'githubOAuth2Api',
+			transport: 'streamableHttp',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+		};
+		const { actions, scheduleConfigUpdate, agentId } = makeActions({ mcpServers: [server] });
+
+		actions.onOpenToolFromList(0);
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: {
+				onConfirm: (updated: AgentJsonMcpServerConfig) => void;
+				onRemove: () => void;
+			};
+		};
+		agentId.value = 'agent-2';
+
+		modalData.data.onConfirm({ ...server, description: 'Stale edit' });
+		modalData.data.onRemove();
+
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
 	});
 
 	it('drops a skill-modal confirm that lands after an agent switch', () => {
@@ -205,26 +280,70 @@ describe('useAgentCapabilitiesActions', () => {
 		expect(agent.value.skills?.s1?.name).toBe('Renamed skill');
 	});
 
-	it('drops the tool ref from the config when onRemoveTool removes it', () => {
-		const removedTool = {
-			type: 'node',
-			name: 'get_dates',
-		} as AgentJsonToolConfig;
-		const { actions, scheduleConfigUpdate } = makeActions({ tools: [removedTool] });
+	it.each([0, 1, 2, 3])(
+		'removes combined tool entry %i and keeps the other references',
+		(index) => {
+			const tools: AgentJsonToolConfig[] = [
+				{
+					type: 'node',
+					name: 'get_dates',
+					node: { nodeType: 'n8n-nodes-base.dateTimeTool', nodeTypeVersion: 1, nodeParameters: {} },
+				},
+				{ type: 'workflow', workflow: 'shared-workflow', name: 'First lookup' },
+				{ type: 'workflow', workflow: 'shared-workflow', name: 'Second lookup' },
+			];
+			const mcpServer: AgentJsonMcpServerConfig = {
+				name: 'remote',
+				url: 'https://example.com/mcp',
+				authentication: 'none',
+				transport: 'streamableHttp',
+			};
+			const { actions, scheduleConfigUpdate } = makeActions({ tools, mcpServers: [mcpServer] });
+			actions.onRemoveTool(index);
+			const expected = [
+				{ tools: [tools[1], tools[2]] },
+				{ tools: [tools[0], tools[2]] },
+				{ tools: [tools[0], tools[1]] },
+				{ mcpServers: [] },
+			];
+			expect(scheduleConfigUpdate).toHaveBeenCalledWith(expected[index]);
+		},
+	);
 
-		actions.onRemoveTool(0);
+	it('keeps MCP servers when the tool in an open modal no longer exists', () => {
+		const { actions, scheduleConfigUpdate, localConfig } = makeActions({
+			tools: [{ type: 'custom', id: 'helper' }],
+			mcpServers: [
+				{
+					name: 'remote',
+					url: 'https://example.com/mcp',
+					authentication: 'none',
+					transport: 'streamableHttp',
+				},
+			],
+		});
+		actions.onOpenToolFromList(0);
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: { onRemove: () => void };
+		};
+		localConfig.value!.tools = [];
 
-		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [] });
+		modalData.data.onRemove();
+
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
 	});
 
-	it('drops the MCP server from the config when removed from the tool-config modal', () => {
+	it('removes the MCP server from its modal after the tools list changes', () => {
 		const mcpServer: AgentJsonMcpServerConfig = {
 			name: 'srv',
 			url: 'https://mcp.example.com',
 			authentication: 'none',
 			transport: 'streamableHttp',
+			toolPermissions: {
+				categories: { read: 'always_allow', write: 'require_approval' },
+			},
 		};
-		const { actions, scheduleConfigUpdate } = makeActions({
+		const { actions, scheduleConfigUpdate, localConfig } = makeActions({
 			tools: [{ type: 'node', name: 'get_dates' } as AgentJsonToolConfig],
 			mcpServers: [mcpServer],
 		});
@@ -234,6 +353,7 @@ describe('useAgentCapabilitiesActions', () => {
 		const modalData = openModalWithData.mock.calls[0][0] as {
 			data: { onRemove?: () => void };
 		};
+		localConfig.value!.tools = [];
 		modalData.data.onRemove?.();
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ mcpServers: [] });

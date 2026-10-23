@@ -30,11 +30,9 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UserRequest } from '@/requests';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { JwtService, RoleService, UrlService } from '@n8n/backend-services';
 import { UserService } from '@/services/user.service';
 
 @RestController('/users')
@@ -45,6 +43,7 @@ export class UsersController {
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
+		private readonly roleService: RoleService,
 	) {}
 
 	private removeSupplementaryFields(
@@ -87,7 +86,9 @@ export class UsersController {
 	) {
 		await this.userService.assertGetUsersAccess(req.user, listQueryOptions.filter?.projectId);
 
-		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
+		const scope = listQueryOptions.filter?.scope;
+		const roleSlugs = scope ? await this.roleService.rolesWithScope('global', scope) : undefined;
+		const userQuery = this.userRepository.buildUserQuery(listQueryOptions, roleSlugs);
 		const response = await userQuery.getManyAndCount();
 
 		const [users, count] = response;
@@ -151,6 +152,7 @@ export class UsersController {
 		}
 
 		const token = this.jwtService.sign(
+			'invite',
 			{
 				inviterId,
 				inviteeId,

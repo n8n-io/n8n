@@ -13,6 +13,16 @@ const descriptionProperties = {
 };
 
 export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
+	USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE: {
+		name: 'User viewed Gateway credits credential error nudge',
+		description:
+			'The credential modal showed a Gateway credits suggestion after a failed credential test for an eligible workflow node.',
+		properties: z.object({
+			credential_type: z.string(),
+			node_type: z.string(),
+			workflow_id: z.string().optional(),
+		}),
+	},
 	USER_CREATED_CREDENTIALS: {
 		name: 'User created credentials',
 		description:
@@ -99,6 +109,16 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					"'accepted' = the service took the credential (2xx, or a service-declared accepted status code); 'rejected' = explicit 401/403 auth rejection; 'unverified' = anything else (wrong test URL, unreachable service) — proves nothing about the credential",
 				),
+		}),
+	},
+	USER_OPENED_CREDENTIAL_SHARING_FROM_REDACTED_DATA: {
+		name: 'User opened credential sharing from redacted data',
+		description:
+			'A user who can share a credential but cannot use it clicked the link on redacted execution data that opens its sharing tab. Fires once per click.',
+		properties: z.object({
+			credential_id: z.string(),
+			workflow_id: z.string(),
+			execution_id: z.string().optional(),
 		}),
 	},
 });

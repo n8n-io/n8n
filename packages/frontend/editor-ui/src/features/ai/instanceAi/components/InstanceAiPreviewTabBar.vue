@@ -1,5 +1,13 @@
 <script lang="ts" setup>
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import {
+	N8nDropdownMenu,
+	N8nHoverCard,
+	N8nIcon,
+	N8nIconButton,
+	N8nLoading,
+} from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import {
 	ContextMenuContent,
@@ -7,14 +15,19 @@ import {
 	ContextMenuPortal,
 	ContextMenuRoot,
 	ContextMenuTrigger,
-	TabsIndicator,
 	TabsList,
 	TabsTrigger,
 } from 'reka-ui';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, shallowRef, watch } from 'vue';
+import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
+import TimeAgo from '@/app/components/TimeAgo.vue';
+import { DEBOUNCE_TIME, HOVER_DELAY } from '@/app/constants/durations';
 import type { ArtifactTab } from '../useCanvasPreview';
+import { hasTabSummary, useArtifactTabSummaries } from '../useArtifactTabSummaries';
+import { useProjectResourceSearch } from '../composables/useProjectResourceSearch';
+import { TAB_DRAG_IGNORE_ATTRIBUTE, useTabDragReorder } from '../composables/useTabDragReorder';
 
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
@@ -26,17 +39,23 @@ const props = withDefaults(
 		isExpanded?: boolean;
 		isExpandDisabled?: boolean;
 		previewToggleLabel?: string;
+		/** The thread's project. The new tab picker lists its resources. */
+		projectId?: string;
 	}>(),
 	{
 		isExpanded: false,
 		isExpandDisabled: false,
 		previewToggleLabel: undefined,
+		projectId: undefined,
 	},
 );
 
 const emit = defineEmits<{
 	togglePreview: [];
 	toggleExpanded: [];
+	closeTab: [tabId: string];
+	openTab: [tab: ArtifactTab];
+	reorderTab: [tabId: string, toIndex: number];
 }>();
 
 const i18n = useI18n();
@@ -64,8 +83,9 @@ function scrollTabIntoView(tabId: string) {
 	const tabList = getTabListElement();
 	if (!tabList) return;
 
-	const activeTab = Array.from(tabList.querySelectorAll<HTMLElement>('[data-tab-id]')).find(
-		(tab) => tab.dataset.tabId === tabId,
+	// Measure the tab item, not the trigger, which is positioned inside it.
+	const activeTab = Array.from(tabList.querySelectorAll<HTMLElement>('[data-tab-item-id]')).find(
+		(tab) => tab.dataset.tabItemId === tabId,
 	);
 	if (!activeTab) return;
 
@@ -118,6 +138,146 @@ function handleOpenInEditor(tab: ArtifactTab) {
 	window.open(href, '_blank', 'noopener');
 }
 
+type HoverTarget = { tabId: string; reference: HTMLElement };
+
+const {
+	getSummary,
+	displayName: tabName,
+	refresh: refreshSummaries,
+} = useArtifactTabSummaries(() => props.tabs);
+const hoverTarget = shallowRef<HoverTarget | null>(null);
+// Read the tab from the current props, so a rename shows at once while the card is open.
+const hoveredTab = computed(() => {
+	const target = hoverTarget.value;
+	const tab = target && props.tabs.find(({ id }) => id === target.tabId);
+	return tab ? { tab, reference: target.reference } : null;
+});
+const hoveredSummary = computed(() =>
+	hoveredTab.value ? getSummary(hoveredTab.value.tab) : undefined,
+);
+const isHoveredSummaryLoading = computed(
+	() =>
+		!!hoveredTab.value && hasTabSummary(hoveredTab.value.tab) && hoveredSummary.value === undefined,
+);
+const hoveredStatus = computed(() => {
+	const summary = hoveredSummary.value;
+	if (!summary) return undefined;
+	if (summary.type === 'workflow') {
+		return {
+			label: i18n.baseText(
+				summary.published ? 'workflows.published' : 'instanceAi.previewTabBar.draft',
+			),
+			published: summary.published,
+		};
+	}
+	return {
+		label: i18n.baseText('dataTable.card.column.count', {
+			adjustToNumber: summary.columnCount,
+			interpolate: { count: summary.columnCount },
+		}),
+		published: false,
+	};
+});
+
+function setHoveredTab(target: HoverTarget) {
+	hoverTarget.value = target;
+	// The tab can close while the open delay runs.
+	if (!hoveredTab.value) {
+		hoverTarget.value = null;
+		return;
+	}
+	// Keep the stored details on screen while this refresh runs.
+	void refreshSummaries([hoveredTab.value.tab]);
+}
+
+const { start: startOpenTimer, stop: stopOpenTimer } = useTimeoutFn(
+	setHoveredTab,
+	HOVER_DELAY.SHOW,
+	{ immediate: false },
+);
+
+const { start: startCloseTimer, stop: stopCloseTimer } = useTimeoutFn(
+	() => {
+		hoverTarget.value = null;
+	},
+	// The grace lets the pointer cross the gap between tabs, so the open card
+	// moves to the next tab instead of closing and waiting to open again.
+	HOVER_DELAY.LEAVE,
+	{ immediate: false },
+);
+
+function showTabHoverCard(tab: ArtifactTab, event: MouseEvent) {
+	if (!(event.currentTarget instanceof HTMLElement)) return;
+	if (tabDrag.draggedTabId.value !== undefined) return;
+	const target = { tabId: tab.id, reference: event.currentTarget };
+	stopCloseTimer();
+
+	if (hoveredTab.value) {
+		setHoveredTab(target);
+	} else {
+		startOpenTimer(target);
+	}
+}
+
+function scheduleHideTabHoverCard() {
+	stopOpenTimer();
+	if (hoveredTab.value) startCloseTimer();
+}
+
+function hideTabHoverCard() {
+	stopOpenTimer();
+	stopCloseTimer();
+	hoverTarget.value = null;
+}
+
+// A removed tab fires no mouseleave, so close the card when its tab is gone.
+watch(hoveredTab, (tab) => {
+	if (!tab && hoverTarget.value) hideTabHoverCard();
+});
+
+function handleHoverCardOpenChange(open: boolean) {
+	if (!open) hideTabHoverCard();
+}
+
+// --- Reordering ---
+
+const tabDrag = useTabDragReorder({
+	getTabElements: () => {
+		const tabList = getTabListElement();
+		return tabList ? Array.from(tabList.querySelectorAll<HTMLElement>('[data-tab-item-id]')) : [];
+	},
+	onReorder: (tabId, toIndex) => emit('reorderTab', tabId, toIndex),
+	onDragStart: () => hideTabHoverCard(),
+});
+
+// --- New tab picker ---
+
+const isPickerOpen = ref(false);
+const resourceSearch = useProjectResourceSearch({
+	projectId: () => props.projectId,
+	excludedTabs: () => props.tabs,
+});
+const pickerItems = computed(
+	(): Array<DropdownMenuItemProps<string>> =>
+		resourceSearch.results.value.map((resource) => ({
+			id: `${resource.type}:${resource.id}`,
+			label: resource.name,
+			icon: { type: 'icon', value: resource.icon },
+		})),
+);
+
+function handlePickerOpenChange(open: boolean) {
+	isPickerOpen.value = open;
+	if (open) void resourceSearch.search();
+}
+
+function handlePickerSelect(itemId: string) {
+	const resource = resourceSearch.results.value.find(
+		(result) => `${result.type}:${result.id}` === itemId,
+	);
+	if (resource) emit('openTab', resource);
+}
+
 async function handleCopyLink(tab: ArtifactTab) {
 	const href = tabHref(tab);
 	if (!href) return;
@@ -145,22 +305,59 @@ async function handleCopyLink(tab: ArtifactTab) {
 			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
 			:class="$style.tabList"
 		>
-			<TabsIndicator :class="$style.tabsIndicator">
-				<div :class="$style.tabsIndicatorBar" />
-			</TabsIndicator>
 			<ContextMenuRoot v-for="tab in tabs" :key="tab.id">
 				<ContextMenuTrigger as-child>
-					<TabsTrigger :value="tab.id" :data-tab-id="tab.id" :class="$style.tab">
-						<N8nIcon
-							v-if="tab.building"
-							icon="spinner"
-							size="large"
-							spin
-							data-test-id="instance-ai-tab-building-spinner"
-						/>
-						<N8nIcon v-else :icon="tab.icon" size="large" />
-						<span :class="$style.label">{{ tab.name }}</span>
-					</TabsTrigger>
+					<!-- The close button cannot sit inside the trigger button, so both share a wrapper. -->
+					<div
+						:class="[
+							$style.tab,
+							{
+								[$style.tabActive]: tab.id === activeTabId,
+								[$style.tabDragging]: tab.id === tabDrag.draggedTabId.value,
+							},
+						]"
+						:data-tab-item-id="tab.id"
+						@pointerdown="tabDrag.onPointerDown(tab.id, $event)"
+						@mouseenter="showTabHoverCard(tab, $event)"
+						@mouseleave="scheduleHideTabHoverCard"
+						@contextmenu="hideTabHoverCard"
+						@mousedown.middle.prevent
+						@auxclick.middle.prevent="emit('closeTab', tab.id)"
+					>
+						<TabsTrigger
+							:value="tab.id"
+							:data-tab-id="tab.id"
+							:class="$style.tabTrigger"
+							@keydown.delete.prevent="emit('closeTab', tab.id)"
+						>
+							<N8nIcon
+								v-if="tab.building"
+								icon="spinner"
+								size="large"
+								spin
+								:class="$style.icon"
+								data-test-id="instance-ai-tab-building-spinner"
+							/>
+							<N8nIcon v-else :icon="tab.icon" size="large" :class="$style.icon" />
+							<span :class="$style.label">{{ tabName(tab) }}</span>
+						</TabsTrigger>
+						<span :class="$style.closeSlot">
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="xsmall"
+								:class="$style.closeButton"
+								v-bind="{ [TAB_DRAG_IGNORE_ATTRIBUTE]: '' }"
+								:aria-label="
+									i18n.baseText('instanceAi.previewTabBar.closeTab', {
+										interpolate: { name: tabName(tab) },
+									})
+								"
+								data-test-id="instance-ai-tab-close"
+								@click.stop="emit('closeTab', tab.id)"
+							/>
+						</span>
+					</div>
 				</ContextMenuTrigger>
 				<ContextMenuPortal>
 					<ContextMenuContent :class="$style.contextMenu">
@@ -175,7 +372,85 @@ async function handleCopyLink(tab: ArtifactTab) {
 					</ContextMenuContent>
 				</ContextMenuPortal>
 			</ContextMenuRoot>
+			<N8nDropdownMenu
+				v-if="projectId"
+				:model-value="isPickerOpen"
+				:items="pickerItems"
+				:loading="resourceSearch.isLoading.value && pickerItems.length === 0"
+				:search-placeholder="i18n.baseText('instanceAi.previewTabBar.searchResources')"
+				:search-debounce="getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH)"
+				:empty-text="i18n.baseText('instanceAi.previewTabBar.noResources')"
+				:extra-popper-class="$style.picker"
+				max-height="320px"
+				placement="bottom-start"
+				content-test-id="instance-ai-tab-picker"
+				searchable
+				@update:model-value="handlePickerOpenChange"
+				@search="resourceSearch.search"
+				@select="handlePickerSelect"
+			>
+				<template #trigger>
+					<N8nIconButton
+						icon="plus"
+						variant="ghost"
+						size="small"
+						:class="[$style.newTabButton, { [$style.newTabButtonOpen]: isPickerOpen }]"
+						:aria-label="i18n.baseText('instanceAi.previewTabBar.newTab')"
+						data-test-id="instance-ai-new-tab-button"
+					/>
+				</template>
+			</N8nDropdownMenu>
 		</TabsList>
+		<!-- One shared card follows the hovered tab, so each tab does not mount its own. -->
+		<N8nHoverCard
+			:open="!!hoveredTab"
+			hide-trigger
+			:reference="hoveredTab?.reference"
+			side="bottom"
+			align="center"
+			:side-offset="4"
+			:open-delay="0"
+			:close-delay="0"
+			:content-class="$style.hoverCard"
+			@update:open="handleHoverCardOpenChange"
+		>
+			<template #content>
+				<div
+					v-if="hoveredTab"
+					:class="$style.hoverCardBody"
+					data-test-id="instance-ai-tab-hover-card"
+				>
+					<div :class="$style.hoverCardText">
+						<span :class="$style.hoverCardName">{{ tabName(hoveredTab.tab) }}</span>
+						<span v-if="hoveredSummary" :class="$style.hoverCardMeta">
+							{{ i18n.baseText('instanceAi.previewTabBar.edited') }}
+							<TimeAgo :date="hoveredSummary.updatedAt" />
+						</span>
+						<!-- Placeholders keep the card size stable until the first load ends. -->
+						<span
+							v-else-if="isHoveredSummaryLoading"
+							:class="[$style.hoverCardMeta, $style.placeholder, $style.placeholderMeta]"
+							data-test-id="instance-ai-tab-hover-card-placeholder"
+						>
+							<N8nLoading variant="custom" :class="$style.placeholderSkeleton" />
+						</span>
+					</div>
+					<span
+						v-if="isHoveredSummaryLoading"
+						:class="[$style.statusTag, $style.placeholder, $style.placeholderTag]"
+					>
+						<N8nLoading variant="custom" :class="$style.placeholderSkeleton" />
+					</span>
+					<span
+						v-else-if="hoveredStatus"
+						:class="[$style.statusTag, { [$style.statusTagPublished]: hoveredStatus.published }]"
+						data-test-id="instance-ai-tab-hover-card-status"
+					>
+						{{ hoveredStatus.label }}
+					</span>
+				</div>
+			</template>
+		</N8nHoverCard>
 		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
 		<ManualEditorButton :tabs="tabs" :active-tab-id="activeTabId" />
 		<N8nIconButton
@@ -198,6 +473,12 @@ async function handleCopyLink(tab: ArtifactTab) {
 	initial-value: 0;
 }
 
+@property --label--fade {
+	syntax: '<length>';
+	inherits: false;
+	initial-value: 0;
+}
+
 @keyframes scrollfade {
 	0%,
 	90% {
@@ -208,14 +489,23 @@ async function handleCopyLink(tab: ArtifactTab) {
 	}
 }
 
+// Only a label that overflows gets an active scroll timeline, so short labels stay unfaded.
+@keyframes labelfade {
+	from,
+	to {
+		--label--fade: var(--spacing--xl);
+	}
+}
+
 .header {
 	flex-shrink: 0;
-	height: 44px;
+	height: 49px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--3xs) 0 var(--spacing--4xs);
-	border-bottom: var(--border);
+	padding: 0 var(--spacing--3xs) 0 var(--spacing--2xs);
+	border-bottom: 1px solid var(--border-color--subtle);
+	background-color: var(--background--surface);
 }
 
 .tabList {
@@ -223,6 +513,10 @@ async function handleCopyLink(tab: ArtifactTab) {
 	min-width: 0;
 	height: 100%;
 	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	// With the header gap, this leaves 8px between the preview toggle and the first tab.
+	padding: 0 var(--spacing--xs) 0 var(--spacing--4xs);
 	overflow-x: auto;
 	scrollbar-width: none;
 	position: relative;
@@ -237,30 +531,62 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 .tab {
+	--tab--background: transparent;
+
+	position: relative;
 	flex: 0 1 auto;
 	min-width: 64px;
 	max-width: 270px;
+	height: var(--height--md);
+	display: flex;
+	border-radius: var(--radius--2xs);
+	background-color: var(--tab--background);
+
+	// The dark surface is neutral-900 already, so a fixed neutral would not show on hover.
+	&:hover {
+		--tab--background: var(--background--hover);
+	}
+
+	&.tabActive {
+		--tab--background: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+	}
+
+	// The drag composable moves the tabs through inline styles.
+	&.tabDragging {
+		z-index: 1;
+		cursor: grabbing;
+	}
+
+	// Show the close button on hover and while it has keyboard focus.
+	&:hover .closeSlot,
+	.closeSlot:focus-within {
+		opacity: 1;
+	}
+
+	// Only the button takes the pointer. A click on the rest of the cover reaches the trigger below.
+	&:hover .closeButton,
+	.closeSlot:focus-within .closeButton {
+		pointer-events: auto;
+	}
+}
+
+.tabTrigger {
+	flex: 1 1 auto;
+	min-width: 0;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
-	color: var(--text-color--subtle);
-	background-color: transparent;
-	border: none;
-	font-size: var(--font-size--2xs);
+	gap: var(--spacing--3xs);
 	padding: 0 var(--spacing--xs);
+	border: none;
+	border-radius: inherit;
+	background-color: transparent;
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--lg);
 	cursor: pointer;
 
-	&:hover {
-		background-color: light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
-	}
-
-	:global(.n8n-icon) {
-		flex-shrink: 0;
-	}
-
 	&[data-state='active'] {
-		/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
 		color: var(--text-color);
 	}
 
@@ -268,27 +594,146 @@ async function handleCopyLink(tab: ArtifactTab) {
 		flex: 1 1 auto;
 		min-width: 0;
 		overflow: hidden;
-		text-overflow: ellipsis;
 		white-space: nowrap;
+
+		@supports (animation-timeline: scroll()) {
+			mask: linear-gradient(to left, #0000 0, #ffff var(--label--fade));
+			animation: labelfade linear;
+			animation-timeline: --labelfade;
+			scroll-timeline: --labelfade x;
+		}
+
+		@supports not (animation-timeline: scroll()) {
+			text-overflow: ellipsis;
+		}
 	}
 }
 
-.tabsIndicator {
+// Covers the end of the label with the tab background, so the tab keeps its width.
+// The hover background is translucent, so it is layered on the surface to hide the label.
+.closeSlot {
+	--close-slot--background:
+		linear-gradient(var(--tab--background), var(--tab--background)), var(--background--surface);
+
 	position: absolute;
-	left: 0;
-	height: 2px;
+	top: 0;
+	right: 0;
 	bottom: 0;
-	width: var(--reka-tabs-indicator-size);
-	transform: translateX(var(--reka-tabs-indicator-position));
-	transition-property: width, transform;
-	transition-duration: 200ms;
+	display: flex;
+	align-items: center;
+	padding-right: var(--spacing--4xs);
+	border-radius: 0 var(--radius--2xs) var(--radius--2xs) 0;
+	background: var(--close-slot--background);
+	opacity: 0;
+	pointer-events: none;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 100%;
+		bottom: 0;
+		width: var(--spacing--sm);
+		background: var(--close-slot--background);
+		mask-image: linear-gradient(to left, #000, #0000);
+	}
 }
 
-.tabsIndicatorBar {
-	width: 100%;
-	height: 100%;
-	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
-	background: var(--text-color);
+.icon {
+	flex-shrink: 0;
+}
+
+.hoverCard {
+	pointer-events: none;
+	width: 238px;
+	padding: var(--spacing--2xs);
+	border: 1px solid var(--border-color--subtle);
+	border-radius: var(--radius--xl);
+	box-shadow: var(--shadow--sm);
+}
+
+.hoverCardBody {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
+}
+
+.hoverCardText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	padding: 0 var(--spacing--4xs);
+	line-height: var(--line-height--lg);
+	word-break: break-word;
+}
+
+.hoverCardName {
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+}
+
+.hoverCardMeta {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+}
+
+.placeholder {
+	position: relative;
+
+	// Keeps the line box of the text it replaces, so the card does not resize.
+	&::before {
+		content: '\00a0';
+	}
+
+	// The skeleton draws the shape, so hide the background of the tag it replaces.
+	&.statusTag {
+		background-color: transparent;
+	}
+}
+
+.placeholderSkeleton {
+	position: absolute;
+	inset: 0;
+}
+
+.placeholderMeta {
+	width: 60%;
+}
+
+.placeholderTag {
+	width: 4rem;
+}
+
+// N8nBadge always renders a medium-weight label, but the design uses regular weight.
+.statusTag {
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--radius);
+	background-color: light-dark(var(--color--neutral-100), var(--color--neutral-700));
+	color: light-dark(var(--color--neutral-800), var(--color--neutral-white));
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--lg);
+	white-space: nowrap;
+}
+
+.statusTagPublished {
+	background-color: light-dark(var(--color--green-100), var(--color--green-800));
+	color: light-dark(var(--color--green-800), var(--color--neutral-white));
+}
+
+.newTabButton {
+	flex-shrink: 0;
+}
+
+// Keep the hover background while the picker is open, as in the design.
+.newTabButtonOpen {
+	background-color: var(--background--hover);
+}
+
+.picker {
+	width: 200px;
 }
 
 .contextMenu {

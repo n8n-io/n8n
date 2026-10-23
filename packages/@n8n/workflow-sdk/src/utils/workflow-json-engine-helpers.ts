@@ -2,6 +2,7 @@ import {
 	dropInvalidWorkflowGroups,
 	isNodeConnectionType,
 	isSafeObjectProperty,
+	isUsableObjectKey,
 	type GetNodeTypeForGrouping,
 	type IConnections,
 	type INode,
@@ -38,7 +39,7 @@ export function toEngineConnections(connections: WorkflowJSON['connections']): I
 			nodeConnections[connectionType] = outputs.map(
 				(outputConnections) =>
 					outputConnections?.flatMap((connection) =>
-						isNodeConnectionType(connection.type) && isSafeObjectProperty(connection.node)
+						isNodeConnectionType(connection.type) && isUsableObjectKey(connection.node)
 							? [{ ...connection, type: connection.type }]
 							: [],
 					) ?? null,

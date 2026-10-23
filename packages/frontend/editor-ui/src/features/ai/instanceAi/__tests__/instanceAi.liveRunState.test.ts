@@ -72,7 +72,7 @@ describe('instanceAi.liveRunState', () => {
 						toolCalls: [
 							{
 								toolCallId: 'tc-1',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: {},
 								isLoading: true,
 								confirmation: { requestId: 'req-1', severity: 'info', message: 'Run?' },

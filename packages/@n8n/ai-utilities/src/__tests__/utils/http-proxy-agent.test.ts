@@ -13,6 +13,25 @@ import {
 	type EgressFilter,
 } from 'src/utils/http-proxy-agent';
 
+// The module reads `N8N_AI_MAX_RESPONSE_SIZE` at import time. Clear it before
+// the imports evaluate (vi.hoisted runs first) so the cap is the 100 MB
+// default here, whatever the runner shell has set. Capture the original value
+// and restore it after the file so the deletion does not leak to other test
+// files that share the worker.
+const originalMaxResponseSize = vi.hoisted(() => {
+	const value = process.env.N8N_AI_MAX_RESPONSE_SIZE;
+	delete process.env.N8N_AI_MAX_RESPONSE_SIZE;
+	return value;
+});
+
+afterAll(() => {
+	if (originalMaxResponseSize === undefined) {
+		delete process.env.N8N_AI_MAX_RESPONSE_SIZE;
+	} else {
+		process.env.N8N_AI_MAX_RESPONSE_SIZE = originalMaxResponseSize;
+	}
+});
+
 vi.mock('@n8n/backend-network/transport', () => ({
 	buildDispatcher: vi.fn((proxy: unknown, ssrf: unknown, options: unknown) => ({
 		type: 'Dispatcher',
@@ -38,6 +57,15 @@ const passthroughFilter: EgressFilter = passthroughEgressFilter;
 const DEFAULT_BUILD_OPTIONS = {
 	timeouts: { headersTimeout: 3600000, bodyTimeout: 3600000 },
 };
+
+// proxyFetch forwards the AI response-size limit to dispatchedFetch as the 4th
+// argument. The env var is cleared above, so the cap is the 100 MB default;
+// asserting the exact value also catches a regression that neutralizes the
+// limit (0 / negative / Infinity, which the transport treats as disabled).
+const EXPECTED_RESPONSE_SIZE_LIMIT = expect.objectContaining({
+	maxBytes: 100 * 1024 * 1024,
+	createError: expect.any(Function),
+});
 
 describe('getProxyAgent', () => {
 	// Store original environment variables
@@ -336,6 +364,7 @@ describe('proxyFetch', () => {
 				expect.objectContaining({ type: 'Dispatcher', proxy: false }),
 				url,
 				undefined,
+				EXPECTED_RESPONSE_SIZE_LIMIT,
 			);
 		});
 
@@ -356,6 +385,7 @@ describe('proxyFetch', () => {
 				expect.objectContaining({ ssrf: egressFilter }),
 				'https://api.openai.com/v1',
 				undefined,
+				EXPECTED_RESPONSE_SIZE_LIMIT,
 			);
 		});
 
@@ -374,6 +404,7 @@ describe('proxyFetch', () => {
 				expect.objectContaining({ type: 'Dispatcher' }),
 				url,
 				undefined,
+				EXPECTED_RESPONSE_SIZE_LIMIT,
 			);
 		});
 
@@ -387,14 +418,24 @@ describe('proxyFetch', () => {
 
 			await proxyFetch({ input: url, init, egressFilter: passthroughFilter });
 
-			expect(mockDispatchedFetch).toHaveBeenCalledWith(expect.anything(), url, init);
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(
+				expect.anything(),
+				url,
+				init,
+				EXPECTED_RESPONSE_SIZE_LIMIT,
+			);
 		});
 
 		it('should handle URL objects', async () => {
 			const url = new URL('https://api.openai.com/v1');
 			await proxyFetch({ input: url, egressFilter: passthroughFilter });
 
-			expect(mockDispatchedFetch).toHaveBeenCalledWith(expect.anything(), url, undefined);
+			expect(mockDispatchedFetch).toHaveBeenCalledWith(
+				expect.anything(),
+				url,
+				undefined,
+				EXPECTED_RESPONSE_SIZE_LIMIT,
+			);
 		});
 
 		it('should handle Request objects', async () => {
@@ -414,6 +455,7 @@ describe('proxyFetch', () => {
 					method: 'POST',
 					headers: [['content-type', 'application/json']],
 				}),
+				EXPECTED_RESPONSE_SIZE_LIMIT,
 			);
 		});
 	});
@@ -429,6 +471,7 @@ describe('proxyFetch', () => {
 				expect.objectContaining({ type: 'Dispatcher', proxy: 'env' }),
 				url,
 				undefined,
+				EXPECTED_RESPONSE_SIZE_LIMIT,
 			);
 		});
 
@@ -447,6 +490,7 @@ describe('proxyFetch', () => {
 				expect.objectContaining({ type: 'Dispatcher', proxy: 'env' }),
 				url,
 				init,
+				EXPECTED_RESPONSE_SIZE_LIMIT,
 			);
 		});
 
@@ -461,6 +505,7 @@ describe('proxyFetch', () => {
 				expect.objectContaining({ type: 'Dispatcher', proxy: false }),
 				url,
 				undefined,
+				EXPECTED_RESPONSE_SIZE_LIMIT,
 			);
 		});
 

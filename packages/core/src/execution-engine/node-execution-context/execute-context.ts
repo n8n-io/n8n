@@ -3,7 +3,6 @@ import type {
 	AINodeConnectionType,
 	CallbackManager,
 	CloseFunction,
-	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -24,7 +23,7 @@ import { BaseExecuteContext } from './base-execute-context';
 import {
 	assertBinaryData,
 	getBinaryDataBuffer,
-	copyBinaryFile,
+	getNodeBinaryHelperFunctions,
 	getBinaryHelperFunctions,
 	detectBinaryEncoding,
 } from './utils/binary-helper-functions';
@@ -109,16 +108,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 		};
 
-		this.nodeHelpers = {
-			copyBinaryFile: async (filePath, fileName, mimeType) =>
-				await copyBinaryFile(
-					this.workflow.id,
-					this.additionalData.executionId!,
-					filePath,
-					fileName,
-					mimeType,
-				),
-		};
+		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
 
 		this.getNodeParameter = ((
 			parameterName: string,
@@ -133,10 +123,6 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				fallbackValue,
 				options,
 			)) as IExecuteFunctions['getNodeParameter'];
-	}
-
-	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
-		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
 	}
 
 	async getInputConnectionData(

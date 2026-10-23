@@ -49,6 +49,20 @@ describe('components', function describeComponents() {
 				expect(screen.getByRole('button', { name: 'Clickable badge' })).toHaveClass('n8n-badge');
 				expect(wrapper.html()).toMatchSnapshot();
 			});
+
+			it('should apply the icon class when leading and trailing icons are present', function testIconClass() {
+				render(N8nBadge, {
+					props: {
+						leadingIcon: 'check',
+						trailingIcon: 'x',
+					},
+					slots: {
+						default: 'Badge with icons',
+					},
+				});
+
+				expect(screen.getByText('Badge with icons')).toHaveClass('hasIcon');
+			});
 		});
 	});
 });

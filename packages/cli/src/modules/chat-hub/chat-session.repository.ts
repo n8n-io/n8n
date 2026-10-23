@@ -2,7 +2,7 @@ import { BaseRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
 

@@ -1,10 +1,10 @@
+import type { SerializedWorkflow, SerializedWorkflowMetadata } from '@n8n/api-types';
+
 import { formatEntityFile } from './entity-file-format';
 import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
 import { PackageExportBlockedError } from '../entities/package-export.errors';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
-import type { SerializedWorkflowMetadata } from '../spec/serialized/workflow-metadata.schema';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
  * Derived from the manifest so a new collection cannot ship without a
@@ -24,6 +24,7 @@ export const PACKAGE_ENTITY_LAYOUT = {
 	projects: { directory: 'projects', fileName: 'project.json' },
 	folders: { directory: 'folders', fileName: 'folder.json' },
 	workflows: { directory: 'workflows', fileName: 'workflow.json' },
+	agents: { directory: 'agents', fileName: 'agent.json' },
 	credentials: { directory: 'credentials', fileName: 'credential.json' },
 	dataTables: { directory: 'data-tables', fileName: 'data-table.json' },
 	variables: { directory: 'variables', fileName: 'variable.json' },
@@ -41,6 +42,7 @@ const FALLBACK_SLUGS = {
 	projects: 'project',
 	folders: 'folder',
 	workflows: 'workflow',
+	agents: 'agent',
 	credentials: 'credential',
 	dataTables: 'data-table',
 	variables: 'variable',
@@ -77,6 +79,10 @@ export const WORKFLOW_METADATA_FILE_NAME = 'workflow-metadata.json';
 
 export function workflowMetadataFilePath(target: string): string {
 	return `${target}/${WORKFLOW_METADATA_FILE_NAME}`;
+}
+
+export function agentMetadataFilePath(target: string): string {
+	return `${target}/agent-metadata.json`;
 }
 
 export function createManifestEntry(

@@ -4,9 +4,9 @@ import type {
 	ContentImportContext,
 	CredentialDecryptContext,
 	CredentialSaveContext,
+	CredentialTransferContext,
 	PolicedWorkflow,
 	PolicyCheckResult,
-	PolicyViolation,
 	RegisteredPolicyCheck,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
@@ -14,48 +14,21 @@ import type {
 	WorkflowTransferContext,
 } from '@n8n/decorators';
 import { PolicyCheck } from '@n8n/decorators';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import { getActiveCredentialTypes } from 'n8n-workflow';
+
+import { NodeTypes } from '@/node-types';
 
 import { CREDENTIAL_TYPES_KIND } from './constants';
-import {
-	TypeAvailabilityPolicyService,
-	type ComposedTypeVerdict,
-} from './type-availability-policy.service';
+import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
+import { CREDENTIAL_TYPE_SUBJECT, toTypeViolation } from './type-violation';
 
 const NO_VIOLATIONS: PolicyCheckResult = { violations: [] };
 
 /** Nothing to grandfather, for the points that report the full list. */
 const NOTHING_GRANDFATHERED: ReadonlySet<string> = new Set();
 
-/**
- * The credential types a workflow's nodes ask for, which are the keys of each node's
- * `credentials` map. A node that names a type without selecting a credential still counts:
- * the workflow is built around a type the policy refuses.
- */
-function distinctCredentialTypes(nodes: PolicedWorkflow['nodes']): string[] {
-	// A Set keeps first-encounter order, so violations and audit lines stay deterministic.
-	const types = new Set<string>();
-
-	for (const node of nodes) {
-		for (const type of Object.keys(node.credentials ?? {})) types.add(type);
-	}
-
-	return [...types];
-}
-
-function toViolation(checkId: string, verdict: ComposedTypeVerdict): PolicyViolation {
-	const by = verdict.scope === 'instance' ? 'an instance policy' : "this project's policy";
-
-	return {
-		kind: 'credential-type-unavailable',
-		checkId,
-		message: `Credential type "${verdict.name}" is blocked by ${by}`,
-		subject: verdict.name,
-		subjectType: 'credentialType',
-		scope: verdict.scope,
-		// The scope's default action decided when no rule matched, and there is no id to report.
-		...(verdict.matchedRuleId !== null && { matchedRuleId: verdict.matchedRuleId }),
-	};
-}
+const CREDENTIAL_TYPE_PARAMETERS = ['nodeCredentialType', 'genericAuthType'] as const;
 
 /**
  * Enforces credential type availability policies, at every point that handles a workflow and
@@ -75,6 +48,7 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 	constructor(
 		private readonly service: TypeAvailabilityPolicyService,
 		private readonly licenseState: LicenseState,
+		private readonly nodeTypes: NodeTypes,
 	) {}
 
 	/**
@@ -89,7 +63,7 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		projectId,
 	}: WorkflowSaveContext): Promise<PolicyCheckResult> {
 		const grandfathered = storedWorkflow
-			? new Set(distinctCredentialTypes(storedWorkflow.nodes))
+			? new Set(this.distinctCredentialTypes(storedWorkflow.nodes))
 			: NOTHING_GRANDFATHERED;
 
 		return await this.checkWorkflow(workflow, projectId, grandfathered);
@@ -119,9 +93,15 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 	 * never vetted, so an import is judged on its whole content. `transport` is not read: an
 	 * unattended sync and a hand-run import are held to the same policy, and each host already
 	 * picks its own fail posture.
+	 *
+	 * A credential import is judged on its own type, with nothing to grandfather.
 	 */
-	async onContentImport({ workflow, projectId }: ContentImportContext): Promise<PolicyCheckResult> {
-		return await this.checkWorkflow(workflow, projectId, NOTHING_GRANDFATHERED);
+	async onContentImport(context: ContentImportContext): Promise<PolicyCheckResult> {
+		if ('credential' in context) {
+			return await this.checkTypes([context.credential.type], context.projectId);
+		}
+
+		return await this.checkWorkflow(context.workflow, context.projectId, NOTHING_GRANDFATHERED);
 	}
 
 	/**
@@ -141,6 +121,13 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		return await this.checkTypes([credential.type], projectId);
 	}
 
+	async onCredentialTransfer({
+		credential,
+		targetProjectId,
+	}: CredentialTransferContext): Promise<PolicyCheckResult> {
+		return await this.checkTypes([credential.type], targetProjectId);
+	}
+
 	/**
 	 * Locks on the credential's own type, never on the node asking, which is what closes the
 	 * gap a node policy alone leaves: a blocked `slackApi` is refused to the Slack node and to
@@ -156,12 +143,59 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		return await this.checkTypes([credentialType], projectId);
 	}
 
+	/**
+	 * The credential types a workflow's nodes ask for: the keys of each node's `credentials` map,
+	 * a type a node like HTTP Request names by parameter, and the type a credential-only node
+	 * extends. A node that names a type without selecting a credential still counts: the workflow
+	 * is built around a type the policy refuses.
+	 *
+	 * `extendsCredential` is read on its own because it needs no node description. It is how a
+	 * credential-only node (the VirusTotal node, say) is stored, so a rule on `virusTotalApi`
+	 * reaches that node even when HTTP Request's description is not installed here.
+	 */
+	private distinctCredentialTypes(nodes: PolicedWorkflow['nodes']): string[] {
+		// A Set keeps first-encounter order, so violations and audit lines stay deterministic.
+		const types = new Set<string>();
+
+		for (const node of nodes) {
+			for (const type of Object.keys(node.credentials ?? {})) types.add(type);
+			for (const type of this.parameterCredentialTypes(node)) types.add(type);
+			if (node.extendsCredential) types.add(node.extendsCredential);
+		}
+
+		return [...types];
+	}
+
+	/**
+	 * The `nodeCredentialType` / `genericAuthType` values the node actually uses. A value the
+	 * node's display options hide is left over from an earlier choice and does not count. An
+	 * expression, or a node type that isn't installed, can't be resolved here, so it adds nothing.
+	 */
+	private parameterCredentialTypes(node: INode): string[] {
+		const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters?.[name]).filter(
+			(value): value is string => typeof value === 'string' && value !== '',
+		);
+		if (named.length === 0) return [];
+
+		let description: INodeTypeDescription | null = null;
+		try {
+			description = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			// An uninstalled node type has no description; the helper treats that as unresolvable.
+		}
+
+		const active = getActiveCredentialTypes(node, description);
+		if (!active) return [];
+
+		return named.filter((type) => active.has(type));
+	}
+
 	private async checkWorkflow(
 		workflow: PolicedWorkflow,
 		projectId: string | null,
 		grandfathered: ReadonlySet<string>,
 	): Promise<PolicyCheckResult> {
-		const types = distinctCredentialTypes(workflow.nodes).filter(
+		const types = this.distinctCredentialTypes(workflow.nodes).filter(
 			(type) => !grandfathered.has(type),
 		);
 
@@ -189,7 +223,7 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		return {
 			violations: verdicts
 				.filter((verdict) => verdict.action === 'deny')
-				.map((verdict) => toViolation(this.id, verdict)),
+				.map((verdict) => toTypeViolation(this.id, CREDENTIAL_TYPE_SUBJECT, verdict, projectId)),
 			// Reported even when nothing is denied: the audit line records what a partial run read.
 			policyVersions: versions,
 		};

@@ -14,7 +14,6 @@ import {
 	N8nMarkdownEditor,
 	N8nOption,
 	N8nSelect,
-	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -51,7 +50,6 @@ export type AgentTaskModalData = {
 	taskState?: {
 		enabled: boolean;
 	};
-	onToggle?: (payload: { id: string; enabled: boolean }) => void;
 	onPreview?: (instructions: string) => void;
 	onSaved: () => void;
 };
@@ -75,7 +73,7 @@ const scheduleTouched = ref(isEditing.value);
 // Editing a task on a published agent only changes the live schedule on the
 // next publish (see AgentTaskService), so warn before the edit silently no-ops.
 const showRepublishHint = computed(() => isEditing.value && props.data.isPublished);
-const enabled = ref(props.data.taskState?.enabled ?? true);
+const enabled = props.data.taskState?.enabled ?? true;
 const deleting = ref(false);
 
 const name = ref('');
@@ -269,8 +267,8 @@ const scheduleDescription = computed(() => {
 });
 
 const executionSummary = computed(() => {
-	if (!enabled.value && isEditing.value) {
-		return i18n.baseText('agents.builder.tasks.schedule.executionPaused');
+	if (!enabled && isEditing.value) {
+		return i18n.baseText('agents.builder.capabilities.deactivated');
 	}
 	if (!nextOccurrenceText.value) return '';
 	return i18n.baseText('agents.builder.tasks.schedule.nextOccurrence', {
@@ -340,17 +338,6 @@ function onTimezoneChange(value: unknown) {
 
 function closeModal() {
 	uiStore.closeModal(props.modalName);
-}
-
-function onToggleEnabled(value: boolean) {
-	const current = task.value;
-	if (!current) return;
-	enabled.value = value;
-	props.data.onToggle?.({ id: current.id, enabled: value });
-}
-
-function onPauseToggle(paused: boolean) {
-	onToggleEnabled(!paused);
 }
 
 function onPreview() {
@@ -610,18 +597,6 @@ async function onSave() {
 				</div>
 			</div>
 
-			<div v-if="isEditing" :class="$style.pauseControl" data-testid="agent-task-pause-control">
-				<N8nText size="small" bold>
-					{{ i18n.baseText('agents.builder.tasks.pause') }}
-				</N8nText>
-				<N8nSwitch2
-					:model-value="!enabled"
-					:aria-label="i18n.baseText('agents.builder.tasks.pause')"
-					data-testid="agent-task-toggle"
-					@update:model-value="(paused) => onPauseToggle(Boolean(paused))"
-				/>
-			</div>
-
 			<N8nText v-if="errorMessage" :class="$style.error" size="small">
 				{{ errorMessage }}
 			</N8nText>
@@ -728,11 +703,5 @@ async function onSave() {
 
 .error {
 	color: var(--color--danger);
-}
-
-.pauseControl {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 }
 </style>

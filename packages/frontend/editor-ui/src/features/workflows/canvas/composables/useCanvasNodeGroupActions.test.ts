@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { computed } from 'vue';
+import { NO_OP_NODE_TYPE } from '@/app/constants';
 
 import { useCanvasNodeGroupActions } from './useCanvasNodeGroupActions';
 import {
@@ -405,6 +406,26 @@ describe('useCanvasNodeGroupActions', () => {
 				computed(() => [createCanvasGraphGroupNode({ id: group.id })]),
 			);
 			expect(selectedGroupIds.value).toEqual([group.id]);
+		});
+
+		it('does not include an empty group in ungroup actions', () => {
+			const anchor = {
+				id: 'anchor',
+				name: 'Empty group anchor',
+				parameters: { emptyGroupAnchor: true },
+				position: [0, 0] as [number, number],
+				type: NO_OP_NODE_TYPE,
+				typeVersion: 1,
+			};
+			workflowDocumentStore.setNodes([anchor]);
+			const group = workflowDocumentStore.createGroup([anchor.id], 'Empty group');
+
+			const { canUngroup, selectedGroupIds } = useCanvasNodeGroupActions(
+				computed(() => [createCanvasGraphGroupNode({ id: group.id, nodeIds: group.nodeIds })]),
+			);
+
+			expect(selectedGroupIds.value).toEqual([]);
+			expect(canUngroup.value).toBe(false);
 		});
 
 		it('is empty when no selected node belongs to a group', () => {

@@ -49,6 +49,11 @@ export type {
 	DropdownMenuPlacement,
 } from './N8nDropdownMenu/DropdownMenu.types';
 export { default as N8nAlert } from './N8nAlert';
+export {
+	default as N8nApprovalCard,
+	type ApprovalCardLabels,
+	type ApprovalOption,
+} from './N8nApprovalCard';
 export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
 export { BADGE_SIZE, BADGE_VARIANT } from './N8nBadge/Badge.type';
@@ -60,7 +65,7 @@ export type { SetupPanelItem, SetupPanelProps } from './N8nSetupPanel/SetupPanel
 export { default as N8nSetupConnection } from './N8nSetupConnection/SetupConnection.vue';
 export type { SetupConnectionProps } from './N8nSetupConnection/SetupConnection.types';
 export { default as N8nButtonList } from './N8nButtonList';
-export type { ButtonListOrientation, ButtonListProps } from './N8nButtonList';
+export type { ButtonListOrientation, ButtonListProps, ButtonListVariant } from './N8nButtonList';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
 export { default as N8nCanvasPill } from './CanvasPill';
@@ -71,7 +76,7 @@ export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nCopyInput } from './N8nCopyInput';
 export { default as N8nDatatable } from './N8nDatatable';
-export { default as N8nEmptyState } from './N8nEmptyState';
+export { default as N8nEmptyState, N8nEmptyStateIconCards } from './N8nEmptyState';
 export type { EmptyStateCardIcon, EmptyStateIconCards } from './N8nEmptyState';
 export { default as N8nExternalLink } from './N8nExternalLink';
 export { default as N8nFloatingWindow } from './N8nFloatingWindow';
@@ -109,7 +114,7 @@ export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';
 export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
-export { default as N8nPagination } from './N8nPagination';
+export { default as N8nPagination, PAGINATION_ALL_ITEMS_PER_PAGE } from './N8nPagination';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nSelectedItemsInfo } from './N8nSelectedItemsInfo';
@@ -120,6 +125,8 @@ export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
 export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
 export { default as N8nSettingsRow } from './N8nSettingsRow';
 export type { SettingsRowProps, SettingsRowLayout } from './N8nSettingsRow';
+export { default as N8nSettingsRowButton } from './N8nSettingsRowButton';
+export type { SettingsRowButtonProps } from './N8nSettingsRowButton';
 export { default as N8nSettingsRowConfigure } from './N8nSettingsRowConfigure';
 export type { SettingsRowConfigureProps } from './N8nSettingsRowConfigure';
 export { default as N8nSettingsRowGroup } from './N8nSettingsRowGroup';
@@ -129,6 +136,8 @@ export type { SettingsSaveBarProps } from './N8nSettingsSaveBar';
 export { default as N8nSettingsSection } from './N8nSettingsSection';
 export type { SettingsSectionProps } from './N8nSettingsSection';
 export { default as N8nPreviewBadge } from './PreviewBadge/PreviewBadge.vue';
+export { default as N8nEnterpriseReadinessBadge } from './EnterpriseReadinessBadge/EnterpriseReadinessBadge.vue';
+export { default as N8nNewBadge } from './NewBadge/NewBadge.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
 export {
@@ -149,11 +158,7 @@ export type {
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nSegmentControl } from './N8nSegmentControl';
-export type {
-	SegmentControlProps,
-	SegmentControlSize,
-	SegmentOption,
-} from './N8nSegmentControl';
+export type { SegmentControlProps, SegmentControlSize, SegmentOption } from './N8nSegmentControl';
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
@@ -166,6 +171,8 @@ export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
 export { default as N8nSuggestedActions } from './N8nSuggestedActions';
 export { default as N8nSwitch } from './N8nSwitch';
+export { default as N8nSlider } from './N8nSlider';
+export type * from './N8nSlider/Slider.types';
 export { default as N8nTabs } from './N8nTabs';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
@@ -202,7 +209,13 @@ export { default as N8nInlineTextEdit } from './N8nInlineTextEdit';
 export { default as N8nScrollArea } from './N8nScrollArea';
 export * from './DateRangePicker';
 export { default as N8nCommandBar } from './N8nCommandBar';
-export type { CommandBarItem } from './N8nCommandBar/types';
+export type {
+	CommandBarItem,
+	CommandBarItemIcon,
+	CommandBarSection,
+	CommandBarSelectOptions,
+	CommandBarTab,
+} from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';
 export { default as N8nVisuallyHidden } from './N8nVisuallyHidden';

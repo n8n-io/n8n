@@ -98,7 +98,7 @@ export class InstanceSettings {
 		private readonly logger: Logger,
 	) {
 		const command = process.argv[2] as InstanceType;
-		this.instanceType = ['webhook', 'worker'].includes(command) ? command : 'main';
+		this.instanceType = ['webhook', 'worker', 'engine'].includes(command) ? command : 'main';
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
@@ -331,7 +331,7 @@ export class InstanceSettings {
 
 			if (encryptionKeyFromEnv && encryptionKey !== encryptionKeyFromEnv) {
 				throw new UserError(
-					`Mismatching encryption keys. The encryption key in the settings file ${this.settingsFile} does not match the N8N_ENCRYPTION_KEY env var. Please make sure both keys match. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key`,
+					`Mismatching encryption keys. The encryption key in the settings file ${this.settingsFile} does not match the N8N_ENCRYPTION_KEY env var. Please make sure both keys match. More information: https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/configuration-examples/set-a-custom-encryption-key`,
 				);
 			}
 

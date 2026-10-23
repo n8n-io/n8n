@@ -2,6 +2,7 @@ export { default as N8nDialog } from './Dialog.vue';
 export { default as N8nDialogClose } from './DialogClose.vue';
 export { default as N8nDialogContent } from './DialogContent.vue';
 export { default as N8nDialogDescription } from './DialogDescription.vue';
+export { default as N8nDialogBody } from './DialogBody.vue';
 export { default as N8nDialogFooter } from './DialogFooter.vue';
 export { default as N8nDialogHeader } from './DialogHeader.vue';
 export { default as N8nDialogOverlay } from './DialogOverlay.vue';

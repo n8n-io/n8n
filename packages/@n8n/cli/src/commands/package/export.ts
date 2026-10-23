@@ -74,18 +74,18 @@ export default class PackageExport extends BaseCommand {
 			default: 'true',
 			aliases: ['include-tags'],
 		}),
-		missingWorkflowDependencyPolicy: Flags.string({
+		dependencyPolicy: Flags.string({
 			options: ['fail', 'reference-only', 'include-in-package'],
 			default: 'fail',
 			description:
-				'What to do when a dependency workflow (sub-workflow) is not explicitly included in the package target',
-			aliases: ['missing-workflow-dependency-policy'],
+				'How to handle workflow and agent dependencies outside the selected package contents',
+			aliases: ['dependency-policy'],
 		}),
-		workflowVersionPolicy: Flags.string({
+		versionPolicy: Flags.string({
 			options: ['published-strict', 'prefer-published', 'ignore-unpublished', 'latest'],
 			default: 'latest',
-			description: 'Which version of each workflow travels in the package',
-			aliases: ['workflow-version-policy'],
+			description: 'Which version of each workflow and agent to export',
+			aliases: ['version-policy'],
 		}),
 		// No default: the key is only sent when set, so older servers that reject unknown fields keep working.
 		credentialExportPolicy: Flags.string({
@@ -110,8 +110,8 @@ export default class PackageExport extends BaseCommand {
 		const projectIds = flags.projectId ?? [];
 		const includeVariableValues = flags.includeVariableValues !== 'false';
 		const includeTags = flags.includeTags !== 'false';
-		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
-		const workflowVersionPolicy = flags.workflowVersionPolicy;
+		const dependencyPolicy = flags.dependencyPolicy;
+		const versionPolicy = flags.versionPolicy;
 		const credentialExportPolicy = flags.credentialExportPolicy;
 		const includeArchivedWorkflows = flags.includeArchivedWorkflows === 'true';
 
@@ -133,8 +133,8 @@ export default class PackageExport extends BaseCommand {
 								projectIds,
 								includeVariableValues,
 								includeTags,
-								missingWorkflowDependencyPolicy,
-								workflowVersionPolicy,
+								dependencyPolicy,
+								versionPolicy,
 								credentialExportPolicy,
 								...(includeArchivedWorkflows ? { includeArchivedWorkflows } : {}),
 							}
@@ -143,8 +143,8 @@ export default class PackageExport extends BaseCommand {
 								folderIds,
 								includeVariableValues,
 								includeTags,
-								missingWorkflowDependencyPolicy,
-								workflowVersionPolicy,
+								dependencyPolicy,
+								versionPolicy,
 								credentialExportPolicy,
 								...(includeArchivedWorkflows ? { includeArchivedWorkflows } : {}),
 							},

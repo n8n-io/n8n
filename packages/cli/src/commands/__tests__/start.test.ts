@@ -12,6 +12,7 @@ import https from 'node:https';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
 import { WaitTracker } from '@/wait-tracker';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -32,8 +33,7 @@ import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { JwtService } from '@/services/jwt.service';
-import { RoleCacheService } from '@/services/role-cache.service';
+import { JwtService, RoleCacheService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -86,6 +86,19 @@ taskRunnerModule.start.mockResolvedValue(undefined);
 const pollJobProvider = mockInstance(PollJobProvider);
 
 const instanceSettings = Container.get(InstanceSettings);
+
+const { FakeRunDataTracker, FakeMemoryGuardService } = vi.hoisted(() => ({
+	FakeRunDataTracker: class {},
+	FakeMemoryGuardService: class {
+		init = vi.fn();
+	},
+}));
+vi.mock('@/memory-guard/run-data-tracker', () => ({
+	RunDataTracker: FakeRunDataTracker,
+}));
+vi.mock('@/memory-guard/memory-guard.service', () => ({
+	MemoryGuardService: FakeMemoryGuardService,
+}));
 
 describe('Start - AuthRolesService initialization', () => {
 	let start: Start;
@@ -170,6 +183,7 @@ describe('Start - AuthRolesService initialization', () => {
 			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
+			memoryGuard: { enabled: false },
 		};
 		// @ts-expect-error - Accessing protected method for testing
 		start.initCrashJournal = vi.fn().mockResolvedValue(undefined);
@@ -179,7 +193,6 @@ describe('Start - AuthRolesService initialization', () => {
 		// @ts-expect-error - Accessing protected method for testing
 		start.initDataDeduplicationService = vi.fn().mockResolvedValue(undefined);
 		start.initExternalHooks = vi.fn().mockResolvedValue(undefined);
-		start.initWorkflowHistory = vi.fn();
 		// @ts-expect-error - Accessing private method for testing
 		start.initInstanceSettingsLoader = vi.fn().mockResolvedValue(undefined);
 		start.cleanupTestRunner = vi.fn().mockResolvedValue(undefined);
@@ -232,6 +245,7 @@ describe('Start - AuthRolesService initialization', () => {
 				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
+				memoryGuard: { enabled: false },
 			};
 
 			await start.init();
@@ -270,6 +284,7 @@ describe('Start - AuthRolesService initialization', () => {
 				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
+				memoryGuard: { enabled: false },
 			};
 
 			await start.init();
@@ -318,6 +333,7 @@ describe('Start - AuthRolesService initialization', () => {
 			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
+			memoryGuard: { enabled: false },
 		};
 
 		beforeEach(() => {
@@ -387,6 +403,54 @@ describe('Start - AuthRolesService initialization', () => {
 
 			// Followers only retry via reload; leaders should fail immediately
 			expect(license.reload).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('init - memory guard', () => {
+		// The tracker module stays cached after its first import, so check that it is
+		// resolved, not that it is imported.
+		let containerGet: MockInstance<typeof Container.get>;
+
+		beforeEach(() => {
+			setupInstanceSettings('main', false, false);
+			Container.set(FakeRunDataTracker, new FakeRunDataTracker());
+			containerGet = vi.spyOn(Container, 'get');
+		});
+
+		afterEach(() => {
+			containerGet.mockRestore();
+		});
+
+		it('should start the run data tracker and the guard when the guard is enabled in regular mode', async () => {
+			const guard = new FakeMemoryGuardService();
+			Container.set(FakeMemoryGuardService, guard);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.memoryGuard = { enabled: true };
+
+			await start.init();
+
+			expect(containerGet).toHaveBeenCalledWith(FakeRunDataTracker);
+			expect(guard.init).toHaveBeenCalled();
+		});
+
+		it('should not start the run data tracker when the guard is disabled', async () => {
+			await start.init();
+
+			expect(containerGet).not.toHaveBeenCalledWith(FakeRunDataTracker);
+		});
+
+		it('should not start the run data tracker in queue mode, and should warn', async () => {
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.memoryGuard = { enabled: true };
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.executions = { mode: 'queue' };
+			// @ts-expect-error - Accessing protected property for testing
+			const warn = vi.spyOn(start.logger, 'warn');
+
+			await start.init();
+
+			expect(containerGet).not.toHaveBeenCalledWith(FakeRunDataTracker);
+			expect(warn).toHaveBeenCalledWith('Memory guard supports only regular mode, so it stays off');
 		});
 	});
 

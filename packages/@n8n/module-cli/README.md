@@ -5,6 +5,7 @@ Interactive scaffolder for n8n modules.
 ```bash
 pnpm n8n-module-sdk create                    # prompts for name and stack
 pnpm n8n-module-sdk create my-feature --stack=frontend
+pnpm n8n-module-sdk create my-feature --stack=backend
 ```
 
 `create` writes `packages/modules/<name>/<frontend|backend>`.
@@ -28,11 +29,11 @@ the next `format:check` in CI fails on a module nobody touched by hand.
 
 ## Backend
 
-**A placeholder. Nothing loads it.** The backend runtime discovers modules
-under `packages/cli/src/modules/<name>`, which is where every real backend
-module lives; `packages/modules/<name>/backend` reserves the path for the day
-the two halves sit together and gets a README saying so. To create a backend
-module that runs, use `pnpm setup-backend-module`.
+The scaffolder creates a built workspace package at `packages/modules/<name>/backend`. It also
+adds the runtime dependency to `packages/cli/package.json`, adds a lazy import to
+`packages/cli/src/modules/modules.manifest.ts`, and adds the module id to the validated list in
+`@n8n/backend-common`. The generated entrypoint is empty. Add only the lifecycle methods that the
+module needs. Read `scripts/backend-module/backend-module-guide.md` for backend patterns.
 
 ## No build step
 

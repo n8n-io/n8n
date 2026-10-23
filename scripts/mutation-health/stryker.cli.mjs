@@ -8,10 +8,10 @@
  * the import graph of the mutated file and finds hundreds of test files in this
  * package — the dry run alone then outlives any usable timeout.
  *
- * With `related: false` the run tests exactly the files `--test-files` names, so
- * `mutate.mjs` requires that flag for cli targets (see `cliScopeError`). Stryker
- * also uses the resolved `testFiles` as its global test filter, thus a mutant
- * with no per-test coverage stays inside the same set.
+ * With `related: false` the run tests exactly the files `--test-files` names.
+ * Named targets require that flag; diff mode uses the CLI tests changed in the
+ * patch. Stryker also uses the resolved `testFiles` as its global test filter,
+ * thus a mutant with no per-test coverage stays inside the same set.
  */
 import defaultConfig from './stryker.default.mjs';
 

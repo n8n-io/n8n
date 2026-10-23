@@ -1,11 +1,11 @@
+import {
+	type SerializedCredential,
+	type SerializedCredentialData,
+	serializedCredentialSchema,
+} from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import {
-	serializedCredentialSchema,
-	type SerializedCredential,
-	type SerializedCredentialData,
-} from '../../spec/serialized/credential.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 
 type CredentialPackageKeyHandling = {
@@ -23,6 +23,7 @@ type CredentialPackageKeyHandling = {
 	resolvableAllowFallback: 'exclude';
 	resolverId: 'exclude';
 	usageScope: 'exclude';
+	pendingAuthorizationExpiresAt: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<
@@ -35,7 +36,7 @@ const serializePayload = definePackageSerializationPayload<
 export class CredentialSerializer {
 	serialize(
 		credential: CredentialsEntity,
-		{ data }: { data?: SerializedCredentialData } = {},
+		{ data, dataIsComplete }: { data?: SerializedCredentialData; dataIsComplete?: boolean } = {},
 	): SerializedCredential {
 		return serializedCredentialSchema.parse(
 			serializePayload({
@@ -43,6 +44,7 @@ export class CredentialSerializer {
 				name: credential.name,
 				type: credential.type,
 				...(data !== undefined ? { data } : {}),
+				...(dataIsComplete !== undefined ? { dataIsComplete } : {}),
 			}),
 		);
 	}

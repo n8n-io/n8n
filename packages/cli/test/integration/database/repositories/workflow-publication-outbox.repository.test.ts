@@ -122,10 +122,16 @@ describe('WorkflowPublicationOutboxRepository', () => {
 	});
 
 	it('enqueues within a provided transaction and is visible once it commits', async () => {
-		await repository.manager.transaction(async (trx) => {
+		await repository.runInTransaction({}, async (trx, ctx) => {
 			await repository.enqueue('wf-1', 'v-1', 'publish', trx);
+			expect(await repository.findInFlightByWorkflowId('wf-1', ctx)).toMatchObject({
+				publishedVersionId: 'v-1',
+			});
 		});
 
+		expect(await repository.findInFlightByWorkflowId('wf-1')).toMatchObject({
+			publishedVersionId: 'v-1',
+		});
 		const claimed = await repository.claimNextPendingRecord();
 		expect(claimed?.workflowId).toBe('wf-1');
 		expect(claimed?.publishedVersionId).toBe('v-1');
@@ -133,12 +139,16 @@ describe('WorkflowPublicationOutboxRepository', () => {
 
 	it('discards the enqueued record when the surrounding transaction rolls back', async () => {
 		await expect(
-			repository.manager.transaction(async (trx) => {
+			repository.runInTransaction({}, async (trx, ctx) => {
 				await repository.enqueue('wf-1', 'v-1', 'publish', trx);
+				expect(await repository.findInFlightByWorkflowId('wf-1', ctx)).toMatchObject({
+					publishedVersionId: 'v-1',
+				});
 				throw new Error('rollback');
 			}),
 		).rejects.toThrow('rollback');
 
+		expect(await repository.findInFlightByWorkflowId('wf-1')).toBeNull();
 		expect(await repository.claimNextPendingRecord()).toBeNull();
 	});
 

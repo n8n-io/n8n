@@ -1,5 +1,5 @@
 import type { INode } from '../interfaces';
-import { OperationalError, type OperationalErrorOptions } from './base/operational.error';
+import { OperationalError, type OperationalErrorOptions } from '@n8n/errors';
 
 interface TriggerCloseErrorOptions extends ErrorOptions {
 	level: OperationalErrorOptions['level'];

@@ -41,7 +41,7 @@ const handleClearSelection = () => {
 		<!-- Custom bulk actions; defaults to the delete button for existing consumers -->
 		<slot name="actions">
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				data-test-id="delete-selected-button"
 				:label="t('generic.delete')"
 				:class="$style.button"
@@ -49,7 +49,7 @@ const handleClearSelection = () => {
 			/>
 		</slot>
 		<N8nButton
-			variant="subtle"
+			variant="outline"
 			data-test-id="clear-selection-button"
 			:label="t('selectedItemsInfo.clearSelection')"
 			:class="$style.button"

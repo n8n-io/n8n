@@ -36,6 +36,7 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 	}),
 	z.object({ type: z.literal('execution:completed'), ...executionFields }),
 	z.object({ type: z.literal('execution:failed'), ...executionFields }),
+	z.object({ type: z.literal('execution:cancelled'), ...executionFields }),
 	z.object({ type: z.literal('step:started'), ...stepFields }),
 	z.object({
 		type: z.literal('step:completed'),

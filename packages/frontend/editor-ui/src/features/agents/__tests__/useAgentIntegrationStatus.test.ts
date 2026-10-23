@@ -50,6 +50,25 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.hasRuntimeError('slack')).toBe(serverStatus === 'error');
 	});
 
+	it.each([
+		{ draftEnabled: true, configured: true },
+		{ draftEnabled: false, configured: false },
+	])(
+		'follows the draft for n8n Chat while the published version still has it (draftEnabled $draftEnabled)',
+		async ({ draftEnabled, configured }) => {
+			apiMocks.getIntegrationStatus.mockResolvedValue({
+				status: 'connected',
+				integrations: [{ type: 'n8n_chat', status: 'connected' }],
+				n8nChat: { draftEnabled, publishedEnabled: true },
+			});
+			const status = useAgentIntegrationStatus(projectId, agentId);
+
+			await status.fetchStatus(['n8n_chat']);
+
+			expect(status.isConfigured('n8n_chat')).toBe(configured);
+		},
+	);
+
 	it('takes each channel from its own status, not the rollup', async () => {
 		apiMocks.getIntegrationStatus.mockResolvedValue({
 			status: 'partial',

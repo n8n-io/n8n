@@ -1,37 +1,53 @@
-import { LockAcquisitionTimeoutError, LockNamespace, LockService } from '@n8n/backend-common';
+import { LockNamespace, LockService } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentMessageSteeringService } from './agent-message-steering.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import { PARENT_TASK_CANCELLED_REASON } from './background/sub-agent-background-state';
+import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import {
-	draftChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
+	userIdFromSystemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
-import { canContinueThreadInPreview, threadBelongsTo } from './utils/agent-thread-access';
+import {
+	canContinueThreadOnSurface,
+	chatSurfaceMemoryResourceId,
+	N8N_CHAT_PRODUCTION_SOURCE,
+	threadBelongsTo,
+	type AgentChatSurface,
+} from './utils/agent-thread-access';
 import { getDelegatedChildCheckpoints } from './utils/delegated-child-checkpoints';
 
-type ExecutionContext = PubSubCommandMap['cancel-agent-chat-execution'];
+type CancelExecutionPayload = PubSubCommandMap['cancel-agent-chat-execution'];
+// In-process callers already know which chat surface a run is on. The wire
+// payload also keeps the older `productionN8nChat` flag for rolling-deploy
+// compatibility with mains still running the previous version.
+type ExecutionContext = Omit<CancelExecutionPayload, 'productionN8nChat' | 'surface'> & {
+	surface: AgentChatSurface;
+	scope?: 'foreground' | 'all';
+};
 
 export interface CancelSuspendedRunParams {
 	agentId: string;
 	runId: string;
 	resourceId: string;
+	/** Foreground Stop leaves detached children running. */
+	cancelBackgroundJobs?: boolean;
 }
 
-export class AgentTurnAlreadyRunningError extends UserError {
-	constructor() {
-		super('A turn is already running in this conversation.');
-	}
-}
+export { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 
 @Service()
 export class AgentChatExecutionService {
@@ -48,50 +64,18 @@ export class AgentChatExecutionService {
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionUpdates: AgentExecutionUpdateBroadcaster,
+		private readonly steering: AgentMessageSteeringService,
+		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
-	async admit<T>(threadId: string, create: () => Promise<T>): Promise<T> {
-		return await this.withAdmissionLease(`agent-preview-turn:${threadId}`, async (signal) => {
-			if (await this.executionRepository.existsRunningByThread(threadId)) {
-				throw new AgentTurnAlreadyRunningError();
-			}
-			signal.throwIfAborted();
-			return await create();
-		});
-	}
-
-	async admitAutomaticContinuation<T>(
-		threadId: string,
-		agentId: string,
-		runId: string,
-		createAndClaim: () => Promise<T>,
-	): Promise<T> {
-		return await this.withAdmissionLease(`agent-preview-turn:${threadId}`, async (signal) => {
-			const checkpoint = await this.checkpointStorage.getStatus(runId, agentId);
-			if (
-				checkpoint.status !== 'active' ||
-				checkpoint.checkpoint.status !== 'suspended' ||
-				checkpoint.checkpoint.persistence?.threadId !== threadId
-			) {
-				throw new AgentTurnAlreadyRunningError();
-			}
-			signal.throwIfAborted();
-			return await createAndClaim();
-		});
-	}
-
-	private async withAdmissionLease<T>(
-		key: string,
-		admit: (signal: AbortSignal) => Promise<T>,
-	): Promise<T> {
-		try {
-			return await this.lockService.withLease(LockNamespace.KNOWN_LOCKS, key, admit, {
-				waitTimeoutMs: 0,
-			});
-		} catch (error) {
-			if (error instanceof LockAcquisitionTimeoutError) throw new AgentTurnAlreadyRunningError();
-			throw error;
-		}
+	/** Register each execution under this lock before Stop can inspect its database row. */
+	async withTurnLock<T>(threadId: string, action: (signal: AbortSignal) => Promise<T>): Promise<T> {
+		return await this.lockService.withLease(
+			LockNamespace.KNOWN_LOCKS,
+			`agent-preview-turn:${threadId}`,
+			action,
+		);
 	}
 
 	register(context: ExecutionContext, controller: AbortController): void {
@@ -115,56 +99,121 @@ export class AgentChatExecutionService {
 		try {
 			if (!execution?.controller.signal.aborted || !suspendedRunId) return;
 			const { context } = execution;
-			await this.lockService.withLease(
-				LockNamespace.KNOWN_LOCKS,
-				`agent-preview-turn:${context.threadId}`,
-				async () => {
-					const latest = await this.executionRepository.findLatestByThreadId(context.threadId);
-					if (latest?.id !== executionId) return;
-					await this.cancelSuspended({
-						agentId: context.agentId,
-						runId: suspendedRunId,
-						resourceId: draftChatMemoryResourceId(context.userId),
-					});
-				},
-			);
+			await this.withTurnLock(context.threadId, async () => {
+				const latest = await this.executionRepository.findLatestByThreadId(context.threadId);
+				if (latest?.id !== executionId) return;
+				await this.cancelSuspended({
+					agentId: context.agentId,
+					runId: suspendedRunId,
+					resourceId: chatSurfaceMemoryResourceId(context.surface, context.userId),
+					cancelBackgroundJobs: execution.controller.signal.reason === PARENT_TASK_CANCELLED_REASON,
+				});
+			});
 		} finally {
 			this.executions.delete(executionId);
 		}
 	}
 
 	async requestCancel(context: ExecutionContext): Promise<boolean> {
-		return await this.lockService.withLease(
-			LockNamespace.KNOWN_LOCKS,
-			`agent-preview-turn:${context.threadId}`,
-			async () => {
-				const execution = await this.getOwnedExecution(context);
-				if (!execution) throw new NotFoundError('Execution not found');
+		return await this.withTurnLock(context.threadId, async () => {
+			const execution = await this.getOwnedExecution(context);
+			if (!execution) throw new NotFoundError('Execution not found');
+
+			if (execution.status !== 'running') {
+				const latest = await this.executionRepository.findLatestByThreadId(context.threadId);
+				if (latest?.id !== context.executionId) return false;
+			}
+
+			try {
+				await this.steering.close(context.threadId, context.executionId);
 				if (this.cancelLocal(context)) return true;
-				if (execution.status !== 'running') return await this.cancelRecordedSuspension(context);
-				if (!this.instanceSettings.isMultiMain) return false;
-				await this.publisher.publishCommand({
-					command: 'cancel-agent-chat-execution',
-					payload: context,
-				});
-				return true;
-			},
-		);
+
+				const running = execution.status === 'running';
+				// Relay full cancellation even after the response ends.
+				// Another main can still be saving a new background job.
+				if (this.instanceSettings.isMultiMain && (running || context.scope !== 'foreground')) {
+					const { surface, scope, ...rest } = context;
+					await this.publisher.publishCommand({
+						command:
+							scope === 'foreground'
+								? 'cancel-agent-chat-foreground'
+								: 'cancel-agent-chat-execution',
+						payload: { ...rest, surface, productionN8nChat: surface === 'n8n-chat' },
+					});
+				}
+
+				return running || (await this.cancelRecordedSuspension(context));
+			} finally {
+				if (context.scope !== 'foreground')
+					await this.backgroundJobService.cancelForParent(
+						context.agentId,
+						context.threadId,
+						chatSurfaceMemoryResourceId(context.surface, context.userId),
+					);
+			}
+		});
 	}
 
 	@OnPubSubEvent('cancel-agent-chat-execution', { instanceType: 'main' })
-	async handleCancel(context: ExecutionContext): Promise<void> {
-		if (this.cancelLocal(context)) return;
-		await this.lockService.withLease(
-			LockNamespace.KNOWN_LOCKS,
-			`agent-preview-turn:${context.threadId}`,
-			async () => {
-				if (this.cancelLocal(context)) return;
-				if (await this.getOwnedExecution(context)) await this.cancelRecordedSuspension(context);
-			},
-		);
+	async onCancelExecution(payload: CancelExecutionPayload): Promise<void> {
+		await this.cancelExecution(payload, 'all');
 	}
 
+	@OnPubSubEvent('cancel-agent-chat-foreground', { instanceType: 'main' })
+	async onCancelForegroundExecution(payload: CancelExecutionPayload): Promise<void> {
+		await this.cancelExecution(payload, 'foreground');
+	}
+
+	private async cancelExecution(
+		payload: CancelExecutionPayload,
+		scope: NonNullable<ExecutionContext['scope']>,
+	): Promise<void> {
+		const { productionN8nChat, surface, ...rest } = payload;
+		const context: ExecutionContext = {
+			...rest,
+			scope,
+			surface: surface ?? (productionN8nChat ? 'n8n-chat' : 'preview'),
+		};
+
+		if (await this.cancelLocalWithChildren(context)) return;
+
+		await this.withTurnLock(context.threadId, async () => {
+			if (await this.cancelLocalWithChildren(context)) return;
+
+			const execution = await this.getOwnedExecution(context);
+			if (!execution) return;
+
+			if (execution.status !== 'running') {
+				const latest = await this.executionRepository.findLatestByThreadId(context.threadId);
+				if (latest?.id !== context.executionId) return;
+			}
+
+			if (context.scope !== 'foreground') {
+				await this.backgroundJobService.cancelForParent(
+					context.agentId,
+					context.threadId,
+					chatSurfaceMemoryResourceId(context.surface, context.userId),
+				);
+			}
+
+			await this.cancelRecordedSuspension(context);
+		});
+	}
+
+	private async cancelLocalWithChildren(context: ExecutionContext): Promise<boolean> {
+		if (!this.cancelLocal(context)) return false;
+		if (context.scope === 'foreground') return true;
+
+		await this.backgroundJobService.cancelForParent(
+			context.agentId,
+			context.threadId,
+			chatSurfaceMemoryResourceId(context.surface, context.userId),
+		);
+
+		return true;
+	}
+
+	/** Abort an execution registered on this main instance. */
 	private cancelLocal(context: ExecutionContext): boolean {
 		const execution = this.executions.get(context.executionId);
 		if (
@@ -175,7 +224,13 @@ export class AgentChatExecutionService {
 			execution.context.userId !== context.userId
 		)
 			return false;
-		execution.controller.abort();
+
+		execution.controller.abort(
+			context.scope === 'foreground'
+				? new DOMException('Response stopped', 'AbortError')
+				: PARENT_TASK_CANCELLED_REASON,
+		);
+
 		return true;
 	}
 
@@ -183,14 +238,40 @@ export class AgentChatExecutionService {
 		const { threadId, projectId, agentId, userId, executionId } = context;
 		const thread = await this.executionService.findThreadById(threadId);
 		if (!thread || !threadBelongsTo(thread, projectId, agentId, userId)) return null;
+
 		const execution = await this.executionRepository.findOneBy({ id: executionId, threadId });
-		if (!execution || !canContinueThreadInPreview(thread, userId, execution.source)) return null;
+		if (!execution || !this.canAccessExecution(context, thread, execution.source)) return null;
 		return execution;
+	}
+
+	private canAccessExecution(
+		context: ExecutionContext,
+		thread: AgentExecutionThread,
+		source: string | null,
+	): boolean {
+		const isSystemAgent = this.systemAgents.has(thread.agentId);
+		// n8n Chat keeps its own cancel rule. The other surfaces use their continue rule.
+		if (context.surface === 'n8n-chat') {
+			return (
+				!isSystemAgent &&
+				thread.accessScope === 'user' &&
+				thread.ownerId === context.userId &&
+				source === N8N_CHAT_PRODUCTION_SOURCE
+			);
+		}
+		return canContinueThreadOnSurface(
+			context.surface,
+			thread,
+			context.userId,
+			source,
+			isSystemAgent,
+		);
 	}
 
 	private async cancelRecordedSuspension(context: ExecutionContext): Promise<boolean> {
 		const latest = await this.executionRepository.findLatestByThreadId(context.threadId);
 		if (latest?.id !== context.executionId || latest.hitlStatus !== 'suspended') return false;
+
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(
 			context.agentId,
 			context.threadId,
@@ -199,10 +280,12 @@ export class AgentChatExecutionService {
 			(toolCall) => toolCall.suspended,
 		);
 		if (!pending?.suspended) return false;
+
 		return await this.cancelSuspended({
 			agentId: context.agentId,
 			runId: pending.runId,
-			resourceId: draftChatMemoryResourceId(context.userId),
+			cancelBackgroundJobs: context.scope !== 'foreground',
+			resourceId: chatSurfaceMemoryResourceId(context.surface, context.userId),
 		});
 	}
 
@@ -210,6 +293,7 @@ export class AgentChatExecutionService {
 		const checkpointStatus = await this.checkpointStorage.getStatus(params.runId, params.agentId);
 		if (checkpointStatus.status === 'not-found' || checkpointStatus.checkpoint === undefined)
 			return false;
+
 		const { checkpoint } = checkpointStatus;
 		if (
 			checkpoint.status !== 'suspended' ||
@@ -217,10 +301,29 @@ export class AgentChatExecutionService {
 			checkpoint.persistence?.resourceId !== params.resourceId
 		)
 			return false;
+
 		const thread = await this.executionService.findThreadById(checkpoint.persistence.threadId);
-		const userId = userIdFromDraftChatMemoryResourceId(params.resourceId);
+		const productionUserId = userIdFromProductionChatMemoryResourceId(params.resourceId);
+		const userId =
+			userIdFromDraftChatMemoryResourceId(params.resourceId) ??
+			userIdFromSystemChatMemoryResourceId(params.resourceId) ??
+			productionUserId;
+		if (
+			productionUserId &&
+			(!thread ||
+				!(await this.executionService.canUseProductionChatThread(
+					thread.id,
+					thread.projectId,
+					params.agentId,
+					productionUserId,
+					'existing',
+				)))
+		)
+			return false;
+
 		if (thread && (!userId || !threadBelongsTo(thread, thread.projectId, params.agentId, userId)))
 			return false;
+
 		const childCheckpoints = getDelegatedChildCheckpoints(checkpoint, params.agentId);
 		if (checkpointStatus.status === 'active') {
 			const cancelled = await this.checkpointStorage.cancelSuspended(
@@ -230,12 +333,22 @@ export class AgentChatExecutionService {
 			);
 			if (!cancelled) return false;
 		}
+
+		if (params.cancelBackgroundJobs !== false) {
+			await this.backgroundJobService.cancelForParent(
+				params.agentId,
+				checkpoint.persistence.threadId,
+				params.resourceId,
+			);
+		}
+
 		await Promise.all(
 			childCheckpoints.map(
 				async ({ runId, agentId }) => await this.checkpointStorage.delete(runId, agentId),
 			),
 		);
 		await this.checkpointStorage.delete(params.runId, params.agentId);
+
 		const execution = thread && (await this.executionRepository.findLatestByThreadId(thread.id));
 		if (thread && execution) {
 			this.executionUpdates.notify({
@@ -245,6 +358,7 @@ export class AgentChatExecutionService {
 				executionId: execution.id,
 			});
 		}
+
 		return true;
 	}
 }

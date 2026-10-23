@@ -1,4 +1,5 @@
 import type {
+	AgentActor,
 	AgentIntegrationConfig,
 	SlackAgentAppManifest,
 	SlackApiErrorMeta,
@@ -12,9 +13,8 @@ import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { BadRequestError } from '@n8n/errors';
+import { CacheService, UrlService } from '@n8n/backend-services';
 
 import { getAgentOrThrow } from '../../../utils/get-agent-or-throw';
 import {
@@ -27,7 +27,7 @@ import {
 	slackSetupCacheKey,
 } from './slack-setup.types';
 import { AgentIntegrationManagementService } from '../../../agent-integration-management.service';
-import type { Agent } from '../../../entities/agent.entity';
+import type { ProjectAgent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { stringProperty } from '../../integration-helpers';
 
@@ -104,7 +104,7 @@ export class SlackMethodsService {
 		return new SlackApiError(action, stringProperty(response, 'error') ?? 'unknown_error');
 	}
 
-	async getAgent(agentId: string, projectId: string): Promise<Agent> {
+	async getAgent(agentId: string, projectId: string): Promise<ProjectAgent> {
 		return await getAgentOrThrow(this.agentRepository, agentId, projectId);
 	}
 
@@ -200,10 +200,11 @@ export class SlackMethodsService {
 	}
 
 	async connectBotCredential(
-		agent: Agent,
+		agent: ProjectAgent,
 		user: User,
 		accessToken: string,
 		session: SlackAppSetupSession,
+		modifiedBy?: AgentActor,
 	): Promise<string> {
 		const credentialData = {
 			name: this.credentialName(session.teamName, agent.name),
@@ -211,6 +212,7 @@ export class SlackMethodsService {
 			data: {
 				accessToken,
 				signatureSecret: session.signingSecret,
+				agentId: session.agentId,
 				...(session.managerCredentialId
 					? {
 							managedAppId: session.appId,
@@ -234,6 +236,7 @@ export class SlackMethodsService {
 				agent,
 				user,
 				integration,
+				...(modifiedBy ? { modifiedBy } : {}),
 			});
 		} catch (error) {
 			await this.deleteUnreferencedCredential(agent.id, credential.id, user);
@@ -295,7 +298,7 @@ export class SlackMethodsService {
 		}
 	}
 
-	private webhookUrl(projectId: string, agentId: string): string {
+	webhookUrl(projectId: string, agentId: string): string {
 		return `${this.urlService.getWebhookBaseUrl()}rest/projects/${projectId}/agents/v2/${agentId}/webhooks/slack`;
 	}
 

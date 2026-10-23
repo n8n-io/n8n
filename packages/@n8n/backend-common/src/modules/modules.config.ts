@@ -3,6 +3,7 @@ import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { UnknownModuleError } from './errors/unknown-module.error';
 
 export const MODULE_NAMES = [
+	'inbox',
 	'agents',
 	'agent-evals',
 	'insights',
@@ -11,6 +12,9 @@ export const MODULE_NAMES = [
 	'data-table',
 	'oauth-server',
 	'mcp',
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	'mcp-discovery',
+	// EOF Experiment cleanup
 	'provisioning',
 	'breaking-changes',
 	'source-control',
@@ -40,6 +44,11 @@ export const MODULE_NAMES = [
 	'policy-infrastructure',
 	'type-availability-policies',
 	'instance-reporting',
+	'inbound-auth-core',
+	'scim',
+	'skills',
+	'apps',
+	'knowledge',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

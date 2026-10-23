@@ -45,7 +45,7 @@ defineEmits<{ forget: [host: string] }>();
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	border: var(--border);
 	border-radius: var(--radius);
 }
 
@@ -56,7 +56,7 @@ defineEmits<{ forget: [host: string] }>();
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-size: var(--font-size--xs);
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 }
 
 .host-remove {
@@ -72,8 +72,8 @@ defineEmits<{ forget: [host: string] }>();
 	color: var(--text-color--subtler);
 
 	&:hover {
-		background: var(--color--background);
-		color: var(--color--text--shade-1);
+		background: var(--background--hover);
+		color: var(--text-color);
 	}
 }
 </style>

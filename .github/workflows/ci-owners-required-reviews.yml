@@ -19,11 +19,11 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 # success status.
 #
 # Triggers
-#   - pull_request_target (opened/synchronize/reopened/ready_for_review, and
-#     edited when the base branch changes): re-evaluates whenever the
-#     changeset can change, for same-repo and fork heads alike. A retargeted
-#     PR keeps its head SHA, so a verdict computed against the old base must
-#     not survive the retarget.
+#   - pull_request_target (opened/synchronize/reopened/ready_for_review,
+#     labeled/unlabeled, and edited when the base branch changes): re-evaluates
+#     whenever the changeset or large-scale exemption can change, for same-repo
+#     and fork heads alike. A retargeted PR keeps its head SHA, so a verdict
+#     computed against the old base must not survive the retarget.
 #   - pull_request_review (submitted/dismissed): re-evaluates when approvals
 #     change on a same-repo PR. A fork PR's review event runs without secrets
 #     and with a read-only token, so this path skips fork heads.
@@ -43,9 +43,11 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 # The checkout below always pins master, never the base branch or the PR
 # merge ref: the scripts, the OWNERS file and the exemption routes are trusted
 # input, so a PR cannot lift its own review requirement or reach the
-# status-writing token. Any branch can be a base, and anyone with push access
-# can edit a branch, so only master is trusted. This is also what makes
-# pull_request_target safe here: no step checks out or runs PR code.
+# status-writing token. The large-scale-change label is trusted only when its
+# actor belongs to the large-scale-changes team. Any branch can be a base, and
+# anyone with push access can edit a branch, so only master is trusted. This is
+# also what makes pull_request_target safe here: no step checks out or runs PR
+# code.
 #
 # Output
 #   - A commit status named "Required Reviews" on the PR head SHA (or
@@ -58,7 +60,7 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review, edited]
+    types: [opened, synchronize, reopened, ready_for_review, edited, labeled, unlabeled]
   pull_request_review:
     types: [submitted, dismissed]
   workflow_run:
@@ -111,13 +113,17 @@ jobs:
   required-reviews:
     name: Check required reviews
     # Of the edited events only a base change matters; title and body edits
-    # do not change the verdict. Review events split by head: same-repo
-    # heads come in through pull_request_review, fork heads through the
-    # workflow_run of the review workflow.
+    # do not change the verdict. Of the label events only large-scale-change
+    # can change the exemption. Review events split by head: same-repo heads
+    # come in through pull_request_review, fork heads through the workflow_run
+    # of the review workflow.
     if: >-
       github.event_name != 'merge_group' &&
       (github.event_name != 'pull_request_target' ||
        github.event.action != 'edited' || github.event.changes.base) &&
+      (github.event_name != 'pull_request_target' ||
+       (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
+       github.event.label.name == 'large-scale-change') &&
       (github.event_name != 'pull_request_review' ||
        (github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.review.state != 'commented')) &&
@@ -173,7 +179,7 @@ jobs:
       # the OWNERS file, the scripts and the exemption routes must be trusted
       # input, and any writable branch can be a base. The script reads only
       # `.github/` and the root files, which cone mode always includes.
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: master
           persist-credentials: false

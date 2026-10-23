@@ -2,6 +2,7 @@ export const AGENT_MODEL_PROVIDERS = [
 	'openai',
 	'anthropic',
 	'google',
+	'google-vertex',
 	'azure-openai',
 	'aws-bedrock',
 	'xai',
@@ -18,7 +19,7 @@ export const AGENT_MODEL_PROVIDERS = [
 ] as const;
 
 /** Canonical `provider/model-name` validation shared by API schemas and editor parsing. */
-export const AGENT_MODEL_STRING_REGEX = /^[a-z0-9-]+\/(?:[a-z0-9._:-]+\/)*[a-z0-9._:-]+$/i;
+export const AGENT_MODEL_STRING_REGEX = /^[a-z0-9-]+\/(?:[a-z0-9._:@-]+\/)*[a-z0-9._:@-]+$/i;
 
 export type AgentModelProvider = (typeof AGENT_MODEL_PROVIDERS)[number];
 
@@ -39,6 +40,7 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	openai: ['openAiApi'],
 	anthropic: ['anthropicApi'],
 	google: ['googlePalmApi'],
+	'google-vertex': ['googleVertexAiApi'],
 	'azure-openai': ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'],
 	'aws-bedrock': ['aws'],
 	xai: ['xAiApi'],
@@ -68,7 +70,21 @@ export interface AgentCatalogModel {
 	toolCall: boolean;
 	cost?: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
 	limits?: { context?: number; output?: number };
+	/** Pickers list models with a priority first, highest first. Reported by the models API. */
+	priority?: number;
 }
+
+/**
+ * Why a provider's model list is unavailable, when the user can fix it:
+ * - `endpoint_type_unsupported`: the credential uses an endpoint type that
+ *   agents do not support (a Classic Azure OpenAI credential).
+ * - `project_missing`: the credential has no project to list deployments from.
+ * - `project_not_found`: the provider does not know the credential's project.
+ */
+export type AgentModelsUnavailableReason =
+	| 'endpoint_type_unsupported'
+	| 'project_missing'
+	| 'project_not_found';
 
 /** Response of `GET /agents/v2/catalog/models/:provider`. */
 export interface AgentProviderModelsResponse {
@@ -87,5 +103,7 @@ export interface AgentProviderModelsResponse {
 	 * empty. Lets the picker say "couldn't load" instead of "no models available".
 	 */
 	unavailable?: boolean;
+	/** Set with `unavailable` when the user can fix the cause. */
+	unavailableReason?: AgentModelsUnavailableReason;
 	models: AgentCatalogModel[];
 }

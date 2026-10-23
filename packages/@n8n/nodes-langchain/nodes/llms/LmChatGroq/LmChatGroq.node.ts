@@ -1,6 +1,6 @@
 import { ChatGroq } from '@langchain/groq';
 import {
-	getNodeProxyAgent,
+	proxyFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -145,13 +145,15 @@ export class LmChatGroq implements INodeType {
 			temperature: number;
 		};
 
+		const egressFilter = this.helpers.getSecureEgressFilter();
 		const model = new ChatGroq({
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
 			callbacks: [new N8nLlmTracing(this)],
-			httpAgent: getNodeProxyAgent('https://api.groq.com/openai/v1'),
+			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
+				await proxyFetch({ input, init, egressFilter }),
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

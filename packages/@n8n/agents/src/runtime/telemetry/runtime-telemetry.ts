@@ -14,7 +14,7 @@ import type { ExecutionOptions } from '../../types/sdk/agent';
 import type { OpaqueSpanLink } from '../../types/telemetry';
 import type { JSONValue } from '../../types/utils/json';
 import { isZodSchema } from '../../utils/zod';
-import type { AgentRuntimeConfig } from '../loop/agent-runtime';
+import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 
 interface TelemetrySpan {
 	end(): void;

@@ -151,7 +151,7 @@
 			"status": "covered",
 			"nodeOperation": "workflow:update"
 		},
-		"GET /workflows/{id}/{versionId}": {
+		"GET /workflows/{workflowId}/{workflowVersionId}": {
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},
@@ -199,7 +199,7 @@
 		"GET /workflows/{workflowId}/test-runs/{runId}": {
 			"status": "gap"
 		},
-		"POST /workflows/{id}/test-runs/{runId}/cancel": {
+		"POST /workflows/{workflowId}/test-runs/{runId}/cancel": {
 			"status": "gap"
 		},
 		"GET /workflows/{workflowId}/test-runs/{runId}/test-cases": {
@@ -244,52 +244,58 @@
 		"DELETE /promotions/providers/{promotionProviderId}": {
 			"status": "gap"
 		},
-		"GET /promotions/connections": {
+		"GET /promotions/providers/{promotionProviderId}/repositories": {
 			"status": "gap"
 		},
-		"POST /promotions/connections": {
+		"GET /promotions/providers/{promotionProviderId}/repositories/{repositoryId}/branches": {
 			"status": "gap"
 		},
-		"GET /promotions/connections/{promotionConnectionId}": {
+		"GET /promotions/environments": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{promotionConnectionId}": {
+		"POST /promotions/environments": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{promotionConnectionId}": {
+		"GET /promotions/environments/{promotionEnvironmentId}": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{promotionConnectionId}/configs/apply": {
+		"PUT /promotions/environments/{promotionEnvironmentId}": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{promotionConnectionId}/configs/promote": {
+		"DELETE /promotions/environments/{promotionEnvironmentId}": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{promotionConnectionId}/configs/{direction}": {
+		"POST /promotions/environments/{promotionEnvironmentId}/connect": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/{direction}/clone": {
+		"POST /promotions/environments/{promotionEnvironmentId}/disconnect": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/{direction}/disconnect": {
+		"GET /promotions/environments/{promotionEnvironmentId}/projects": {
 			"status": "gap"
 		},
-		"GET /promotions/connections/{promotionConnectionId}/projects": {
+		"POST /promotions/environments/{promotionEnvironmentId}/projects/{projectId}": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/projects/{projectId}": {
+		"DELETE /promotions/environments/{promotionEnvironmentId}/projects/{projectId}": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{promotionConnectionId}/projects/{projectId}": {
+		"POST /promotions/environments/{promotionEnvironmentId}/promote": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/promote": {
+		"POST /promotions/projects/{projectId}/promote": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
+		"POST /promotions/projects/{projectId}/apply": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{promotionConnectionId}/apply": {
+		"POST /promotions/projects/{projectId}/apply/continue": {
+			"status": "gap"
+		},
+		"POST /promotions/environments/{promotionEnvironmentId}/apply/continue": {
+			"status": "gap"
+		},
+		"POST /promotions/environments/{promotionEnvironmentId}/apply": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {
@@ -313,16 +319,16 @@
 		"POST /settings/log-streaming/destinations": {
 			"status": "gap"
 		},
-		"GET /settings/log-streaming/destinations/{id}": {
+		"GET /settings/log-streaming/destinations/{destinationId}": {
 			"status": "gap"
 		},
-		"PUT /settings/log-streaming/destinations/{id}": {
+		"PUT /settings/log-streaming/destinations/{destinationId}": {
 			"status": "gap"
 		},
-		"DELETE /settings/log-streaming/destinations/{id}": {
+		"DELETE /settings/log-streaming/destinations/{destinationId}": {
 			"status": "gap"
 		},
-		"POST /settings/log-streaming/destinations/{id}/test": {
+		"POST /settings/log-streaming/destinations/{destinationId}/test": {
 			"status": "gap"
 		},
 		"GET /settings/sso/oidc": {
@@ -413,7 +419,8 @@
 			"status": "gap"
 		},
 		"POST /projects/{projectId}/users": {
-			"status": "gap"
+			"status": "covered",
+			"nodeOperation": "project:addUser"
 		},
 		"DELETE /projects/{projectId}/users/{userId}": {
 			"status": "gap"
@@ -469,6 +476,9 @@
 		"DELETE /node-type-policies/policies/{policyId}": {
 			"status": "gap"
 		},
+		"GET /node-type-policies/scopes/{scopeId}/attachments": {
+			"status": "gap"
+		},
 		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		},
@@ -497,6 +507,9 @@
 			"status": "gap"
 		},
 		"DELETE /credential-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		},
 		"PUT /credential-type-policies/scopes/{scopeId}/attachments": {

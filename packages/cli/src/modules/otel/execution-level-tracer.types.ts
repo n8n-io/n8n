@@ -2,11 +2,13 @@ import type { ExecutionStatus, WorkflowExecuteMode, INode } from 'n8n-workflow';
 
 import type { CrashDetector } from '@/events/maps/relay.event-map';
 
+import type { ExecutionIdentity } from './execution-identity';
 import type { TracingContext } from './tracing-context';
 
 export type CustomAttributes = Record<string, string>;
 export type ProjectContext = {
 	id: string;
+	name?: string;
 	customAttributes?: CustomAttributes;
 };
 type WorkflowContext = {
@@ -23,8 +25,10 @@ export type StartWorkflowParams = {
 	tracingContext?: TracingContext;
 	/** Adds a `n8n.continuation.reason` link. Set alongside `tracingContext` on a resume. */
 	linkTo?: TracingContext;
+	savedIdentity?: ExecutionIdentity;
 	workflow: WorkflowContext;
 	project?: ProjectContext;
+	emitStartSpan?: boolean;
 };
 
 export type EndWorkflowParams = {
@@ -56,6 +60,7 @@ type NodeTracingParams = Pick<INode, 'id' | 'name' | 'type' | 'typeVersion'>;
 export type StartNodeParams = {
 	executionId: string;
 	node: NodeTracingParams;
+	emitStartSpan?: boolean;
 };
 
 type EndNodeError = {

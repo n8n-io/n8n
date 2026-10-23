@@ -5,7 +5,9 @@ import { defineComponent, ref, computed } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton';
 import N8nDialog from '@n8n/design-system/components/N8nDialog/Dialog.vue';
+import N8nDialogBody from '@n8n/design-system/components/N8nDialog/DialogBody.vue';
 import N8nDialogClose from '@n8n/design-system/components/N8nDialog/DialogClose.vue';
+import N8nDialogDescription from '@n8n/design-system/components/N8nDialog/DialogDescription.vue';
 import N8nDialogFooter from '@n8n/design-system/components/N8nDialog/DialogFooter.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
 import N8nInputLabel from '@n8n/design-system/components/N8nInputLabel';
@@ -53,6 +55,12 @@ const meta = {
 		clearable: {
 			control: 'boolean',
 			description: 'Shows a clear button when a value is selected. Hidden when disabled or empty.',
+		},
+		align: {
+			control: 'select',
+			options: ['start', 'center', 'end'],
+			description:
+				'Alignment of the dropdown against the trigger. Use end to line a wider menu up with the trigger end edge.',
 		},
 	},
 } satisfies SelectMeta;
@@ -768,6 +776,46 @@ export const MixedItemLengths = {
 	},
 } satisfies Story;
 
+export const Align = {
+	render: (args) => ({
+		components: { Select, N8nText },
+		setup() {
+			const startValue = ref(args.modelValue);
+			const centerValue = ref(args.modelValue);
+			const endValue = ref(args.modelValue);
+			return { args, startValue, centerValue, endValue };
+		},
+		template: `
+		<div style="padding: 40px; display: flex; justify-content: space-between; align-items: flex-start;">
+			<div style="width: 180px;">
+				<N8nText size="small" color="text-light" tag="p" style="margin: 0 0 var(--spacing--2xs);">Start</N8nText>
+				<Select v-bind="args" v-model="startValue" align="start" />
+			</div>
+			<div style="width: 180px;">
+				<N8nText size="small" color="text-light" tag="p" style="margin: 0 0 var(--spacing--2xs);">Center</N8nText>
+				<Select v-bind="args" v-model="centerValue" align="center" />
+			</div>
+			<div style="width: 180px;">
+				<N8nText size="small" color="text-light" tag="p" style="margin: 0 0 var(--spacing--2xs);">End</N8nText>
+				<Select v-bind="args" v-model="endValue" align="end" />
+			</div>
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{ label: 'OK', value: 'ok' },
+			{
+				label: 'Quarterly automation rollout for customer onboarding',
+				value: 'long-1',
+			},
+			{ label: 'Archive', value: 'archive' },
+		],
+		modelValue: undefined,
+		placeholder: 'Pick one',
+	},
+} satisfies Story;
+
 export const ShortItems = {
 	render: (args) => ({
 		components: { Select, N8nText },
@@ -863,6 +911,8 @@ const SelectFooterDemo = defineComponent({
 			onUpdate: action('update:modelValue'),
 			Select,
 			N8nDialog,
+			N8nDialogBody,
+			N8nDialogDescription,
 			N8nDialogFooter,
 			N8nDialogClose,
 			N8nButton,
@@ -890,9 +940,13 @@ const SelectFooterDemo = defineComponent({
 				:is="N8nDialog"
 				v-model:open="createOpen"
 				header="Add custom role"
-				description="This action item uses onSelect with preventDefault so it never becomes the Select value."
 				size="small"
 			>
+				<component :is="N8nDialogBody">
+					<component :is="N8nDialogDescription">
+						This action item uses onSelect with preventDefault so it never becomes the Select value.
+					</component>
+				</component>
 				<component :is="N8nDialogFooter">
 					<component :is="N8nDialogClose" as-child>
 						<component :is="N8nButton" label="Cancel" variant="outline" />

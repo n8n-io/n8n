@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, watchEffect } from 'vue';
+import { defineComponent, nextTick, onMounted, watchEffect } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
+import { AI_GATEWAY_MANAGED_TAG, type McpRegistryServerResponse } from '@n8n/api-types';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { getWorkflow } from '@/app/api/workflows';
@@ -17,14 +21,18 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
+import type {
+	ToolConnectionItem,
+	WorkflowConnectionItem,
+} from '@/features/shared/toolsConnection/types';
 import type { IWorkflowDb } from '@/Interface';
 
 import type { ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import AgentToolsConnectionModalWrapper from '../components/AgentToolsConnectionModalWrapper.vue';
-import type { AgentToolConfigModalData } from '../components/AgentToolConfigForm.vue';
+import type { AgentToolConfigData } from '../components/AgentToolConfigContent.vue';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const showMessageMock = vi.fn();
@@ -46,6 +54,15 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('@/app/api/workflows', () => ({
 	getWorkflow: vi.fn(),
+}));
+
+const { discoverMcpConnectionMock, fetchMcpRegistryCatalogMock } = vi.hoisted(() => ({
+	discoverMcpConnectionMock: vi.fn(),
+	fetchMcpRegistryCatalogMock: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('@/features/shared/toolsConnection/mcpRegistry.api', () => ({
+	discoverMcpConnection: discoverMcpConnectionMock,
+	fetchMcpRegistryCatalog: fetchMcpRegistryCatalogMock,
 }));
 
 const getWorkflowMock = vi.mocked(getWorkflow);
@@ -130,8 +147,10 @@ const MCP_TOOL: INodeTypeDescription = {
 
 let modalAttrs: Record<string, unknown> = {};
 let multiStepAttrs: Record<string, unknown> = {};
-let configFormData: AgentToolConfigModalData | null = null;
+let configFormData: AgentToolConfigData | null = null;
 let configuredResult: AgentJsonToolRef | AgentJsonMcpServerConfig | null = null;
+/** Node types for which the form stub reports `update:restricted`. Other forms emit nothing, like the registry form. */
+const restrictedFormNodeTypes = new Set<string>();
 
 const AgentModalMultiStepStub = defineComponent({
 	name: 'AgentModalMultiStep',
@@ -154,6 +173,7 @@ const AgentModalMultiStepStub = defineComponent({
 		<section v-if="open" data-test-id="agent-modal-multi-step" :data-step="step">
 			<header>
 				<button v-if="showBack" data-test-id="agent-modal-back" @click="$emit('back')" />
+				<slot name="titlePrefix" />
 				<span>{{ title }}</span>
 			</header>
 			<slot />
@@ -169,24 +189,41 @@ const AgentModalMultiStepStub = defineComponent({
 const AgentToolConfigFormStub = defineComponent({
 	name: 'AgentToolConfigForm',
 	props: ['data'],
-	setup(props, { expose }) {
+	emits: ['update:restricted'],
+	setup(props, { emit, expose }) {
 		watchEffect(() => {
-			configFormData = props.data as AgentToolConfigModalData;
+			configFormData = props.data as AgentToolConfigData;
+		});
+		onMounted(() => {
+			const data = props.data as AgentToolConfigData;
+			if (
+				data.kind !== 'mcpServer' &&
+				data.kind !== 'registryMcpServer' &&
+				data.toolRef.type === 'node' &&
+				restrictedFormNodeTypes.has(data.toolRef.node.nodeType)
+			) {
+				emit('update:restricted', true);
+			}
 		});
 		expose({
 			confirm: () => {
-				const data = props.data as AgentToolConfigModalData;
+				const data = props.data as AgentToolConfigData;
 				const result =
-					configuredResult ?? (data.kind === 'mcpServer' ? data.mcpServer : data.toolRef);
-				if (data.kind === 'mcpServer') {
+					configuredResult ??
+					(data.kind === 'mcpServer' || data.kind === 'registryMcpServer'
+						? data.mcpServer
+						: data.toolRef);
+				if (data.kind === 'mcpServer' || data.kind === 'registryMcpServer') {
 					data.onConfirm(result as AgentJsonMcpServerConfig);
 				} else {
 					data.onConfirm(result as AgentJsonToolRef);
 				}
 				return true;
 			},
-			remove: () => (props.data as AgentToolConfigModalData).onRemove?.(),
+			remove: () => (props.data as AgentToolConfigData).onRemove?.(),
 			changeTitle: vi.fn(),
+			saveDisabled: false,
+			titleError: '',
 		});
 		return {};
 	},
@@ -225,6 +262,16 @@ function emitConnect(item: ToolConnectionItem) {
 	(listener as (item: ToolConnectionItem) => void)(item);
 }
 
+function emitSelectCredential(item: ToolConnectionItem, authType: string, credentialId: string) {
+	const listener = modalAttrs.onSelectCredential;
+	if (typeof listener !== 'function') throw new Error('Missing onSelectCredential');
+	(listener as (item: ToolConnectionItem, authType: string, credentialId: string) => void)(
+		item,
+		authType,
+		credentialId,
+	);
+}
+
 function emitOpenDetail(item: ToolConnectionItem) {
 	const listener = modalAttrs.onOpenDetail;
 	if (typeof listener !== 'function') throw new Error('Missing onOpenDetail');
@@ -250,6 +297,7 @@ const renderComponent = createComponentRenderer(AgentToolsConnectionModalWrapper
 	global: {
 		stubs: {
 			AgentModalMultiStep: AgentModalMultiStepStub,
+			AgentRegistryMcpConfigForm: AgentToolConfigFormStub,
 			AgentToolConfigForm: AgentToolConfigFormStub,
 			ToolsConnectionModal: ToolsConnectionModalStub,
 			McpRegistrySuggestionFooter: McpRegistrySuggestionFooterStub,
@@ -273,6 +321,8 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		multiStepAttrs = {};
 		configFormData = null;
 		configuredResult = null;
+		restrictedFormNodeTypes.clear();
+		fetchMcpRegistryCatalogMock.mockResolvedValue([]);
 		createTestingPinia({ stubActions: false });
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -288,6 +338,10 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		aiGatewayStore.isNodeTypeVersionSupported = vi.fn().mockReturnValue(true);
 		aiGatewayStore.isCredentialTypeSupported = vi.fn().mockReturnValue(false);
 		nodeTypesStore.getNodeVersions = vi.fn().mockReturnValue([1]);
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
+		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockResolvedValue([]);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		mockedStore(useProjectsStore).myProjects = [
@@ -324,6 +378,23 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		filterAndSearchNodesMock.mockReset().mockReturnValue([]);
 	});
 
+	/** The previews catalog lists the community tool; `installed` says whether its package is on the instance. */
+	function mockCommunityPreviewCatalog({ installed = true } = {}) {
+		nodeTypesStore.getNodeType = vi
+			.fn()
+			.mockImplementation((name: string) =>
+				installed && name === COMMUNITY_INSTALLED.name ? COMMUNITY_INSTALLED : null,
+			);
+		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+			nodeDescription: COMMUNITY_PREVIEW,
+			packageName: 'n8n-nodes-firecrawl',
+			isOfficialNode: true,
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
+		};
+	}
+
 	function toolRef(nodeType: string): Extract<AgentJsonToolRef, { type: 'node' }> {
 		return {
 			type: 'node',
@@ -341,7 +412,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		tools: AgentJsonToolRef[] = [],
 		onConfirm = vi.fn(),
 		mcpServers: AgentJsonMcpServerConfig[] = [],
-		projectId?: string,
+		projectId = PROJECT_ID,
 		mode: ToolPickerMode = 'tools',
 	) {
 		return renderComponent({
@@ -352,7 +423,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		});
 	}
 
-	function getConfigData(): AgentToolConfigModalData {
+	function getConfigData(): AgentToolConfigData {
 		if (!configFormData) throw new Error('The configure step is not open');
 		return configFormData;
 	}
@@ -380,6 +451,58 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(getByText('Need another capability?')).toBeInTheDocument();
 		expect(getByText('Suggest a tool')).toBeInTheDocument();
 		expect(modalAttrs.persistentScrollbar ?? modalAttrs['persistent-scrollbar']).toBe(true);
+		expect(modalAttrs.groupSearchResults ?? modalAttrs['group-search-results']).toBe(true);
+	});
+
+	it('shows the loading screen until the project credentials are fetched', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		let resolveFetch: (value: []) => void = () => {};
+		credentialsStore.fetchUsableCredentials = vi.fn().mockReturnValue(
+			new Promise((resolve) => {
+				resolveFetch = resolve;
+			}),
+		);
+		render();
+		await nextTick();
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({ projectId: PROJECT_ID });
+		expect(modalAttrs.loading).toBe(true);
+
+		resolveFetch([]);
+		await flushPromises();
+
+		expect(modalAttrs.loading).toBe(false);
+	});
+
+	it('stops loading when the project credentials fetch fails', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		mockedStore(useCredentialsStore).fetchUsableCredentials = vi
+			.fn()
+			.mockRejectedValue(new Error('Network error'));
+		render();
+
+		await flushPromises();
+
+		expect(modalAttrs.loading).toBe(false);
+	});
+
+	it('refreshes credentials already fetched for the project without the loading screen', () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockReturnValue(new Promise(() => {}));
+		render();
+
+		expect(credentialsStore.hasUsableCredentialsForScope).toHaveBeenCalledWith({
+			projectId: PROJECT_ID,
+		});
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(1);
+		expect(modalAttrs.loading).toBe(false);
+	});
+
+	it('does not wait for credentials in workflow mode', () => {
+		render([], vi.fn(), [], PROJECT_ID, 'workflows');
+
+		expect(modalAttrs.loading).toBe(false);
 	});
 
 	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the
@@ -390,7 +513,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
-				data: { mode: 'tools', tools: [], onConfirm: vi.fn() },
+				data: { mode: 'tools', tools: [], projectId: PROJECT_ID, onConfirm: vi.fn() },
 			},
 			attrs: { open: true, active: true, mode: '', activeId: '' },
 		});
@@ -401,15 +524,17 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	});
 
 	it('opens configuration as the next step and returns with Back', async () => {
-		render();
+		const { container } = render();
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
+		expect(container.querySelector('[data-testid="agent-tool-config-title-icon"]')).toBeNull();
 
 		const slack = getItems().find((item) => item.id === `nodeType:${SLACK.name}`);
 		emitConnect(slack!);
 		await flushPromises();
 
 		expect(multiStepAttrs.step).toBe('configure');
+		expect(container.querySelector('[data-testid="agent-tool-config-title-icon"]')).toBeVisible();
 		expect(getConfigData()).toMatchObject({
 			toolRef: { type: 'node', node: { nodeType: SLACK.name } },
 		});
@@ -471,25 +596,16 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(modalAttrs.searchPlaceholder ?? modalAttrs['search-placeholder']).toBe(
 			'Search workflows',
 		);
-		expect(modalAttrs.createAction ?? modalAttrs['create-action']).toMatchObject({
+		const createAction = modalAttrs.createAction ?? modalAttrs['create-action'];
+		expect(createAction).toMatchObject({
 			category: 'workflows',
 			label: 'Create workflow',
 		});
+		expect(createAction).not.toHaveProperty('description');
 	});
 
 	it('installs an uninstalled community tool before adding it, and adds the installed type', async () => {
-		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
-			if (name === COMMUNITY_INSTALLED.name) return COMMUNITY_INSTALLED;
-			return null;
-		});
-		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
-			nodeDescription: COMMUNITY_PREVIEW,
-			packageName: 'n8n-nodes-firecrawl',
-			isOfficialNode: true,
-		});
-		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
-			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
-		};
+		mockCommunityPreviewCatalog();
 
 		const onConfirm = vi.fn();
 		render([], onConfirm);
@@ -800,7 +916,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			return getItems().find((item) => item.id === `workflow:${WORKFLOW.id}`)!;
 		}
 
-		it('surfaces incompatible workflows as disabled items with a reason', async () => {
+		it('hides incompatible workflows instead of listing them as disabled items', async () => {
 			workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([
 				WORKFLOW,
 				{
@@ -823,33 +939,16 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			await flushPromises();
 
 			const items = getItems();
-			const compatible = items.find((i) => i.id === 'workflow:wf-1');
-			const formDisabled = items.find((i) => i.id === 'workflow-disabled:wf-form');
-			const noTriggerDisabled = items.find((i) => i.id === 'workflow-disabled:wf-no-trigger');
-
-			// Compatible workflow remains selectable.
-			expect(compatible?.disabled).toBeFalsy();
-
-			// Incompatible workflows are visible but disabled, with a reason.
-			expect(formDisabled).toBeTruthy();
-			expect(formDisabled?.disabled).toBe(true);
-			expect(formDisabled?.disabledReason).toContain("aren't supported as agent tools");
-
-			expect(noTriggerDisabled).toBeTruthy();
-			expect(noTriggerDisabled?.disabled).toBe(true);
-			expect(noTriggerDisabled?.disabledReason).toContain(
-				"Needs a 'When Executed by Another Workflow' trigger",
+			// Only the compatible workflow is listed; incompatible ones are
+			// filtered out rather than shown as disabled rows (AGENT-1001).
+			expect(items.filter((i) => i.kind === 'workflow').map((i) => i.id)).toEqual([
+				'workflow:wf-1',
+			]);
+			// The compatible row carries no "Not published" warning.
+			const workflowItem = items.find(
+				(i): i is WorkflowConnectionItem => i.kind === 'workflow' && i.id === 'workflow:wf-1',
 			);
-
-			// Disabled items appear after compatible ones within the category.
-			const workflowItems = items.filter((i) => i.kind === 'workflow');
-			const compatibleIdx = workflowItems.findIndex((i) => i.id === 'workflow:wf-1');
-			const formIdx = workflowItems.findIndex((i) => i.id === 'workflow-disabled:wf-form');
-			const noTriggerIdx = workflowItems.findIndex(
-				(i) => i.id === 'workflow-disabled:wf-no-trigger',
-			);
-			expect(compatibleIdx).toBeLessThan(formIdx);
-			expect(compatibleIdx).toBeLessThan(noTriggerIdx);
+			expect(workflowItem?.warning).toBeUndefined();
 		});
 
 		it('creates a compatible workflow and attaches it after configuration is saved', async () => {
@@ -892,7 +991,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 					allOutputs: false,
 				},
 			});
-			if (data.kind === 'mcpServer' || data.toolRef.type !== 'workflow') {
+			if (
+				data.kind === 'mcpServer' ||
+				data.kind === 'registryMcpServer' ||
+				data.toolRef.type !== 'workflow'
+			) {
 				throw new Error('Expected a workflow tool');
 			}
 
@@ -968,18 +1071,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	});
 
 	it('does not add a community tool when the install fails', async () => {
-		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
-			if (name === COMMUNITY_INSTALLED.name) return COMMUNITY_INSTALLED;
-			return null;
-		});
-		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
-			nodeDescription: COMMUNITY_PREVIEW,
-			packageName: 'n8n-nodes-firecrawl',
-			isOfficialNode: true,
-		});
-		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
-			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
-		};
+		mockCommunityPreviewCatalog();
 		installNodeMock.mockResolvedValue({ success: false });
 
 		const onConfirm = vi.fn();
@@ -995,15 +1087,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	});
 
 	it('does not add a community tool when the installed node type cannot be resolved', async () => {
-		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
-		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
-			nodeDescription: COMMUNITY_PREVIEW,
-			packageName: 'n8n-nodes-firecrawl',
-			isOfficialNode: true,
-		});
-		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
-			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
-		};
+		mockCommunityPreviewCatalog({ installed: false });
 
 		const onConfirm = vi.fn();
 		render([], onConfirm);
@@ -1024,6 +1108,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			url: 'https://mcp.example.com',
 			transport: 'streamableHttp',
 			authentication: 'none',
+			toolPermissions: {
+				categories: { read: 'always_allow', write: 'require_approval' },
+			},
 		};
 
 		beforeEach(() => {
@@ -1033,6 +1120,141 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
 				[NodeConnectionTypes.AiTool]: [MCP_TOOL.name],
 			};
+		});
+
+		it('puts the MCP Client after existing connections in the Connectors category', async () => {
+			render([], vi.fn(), [SERVER]);
+			await flushPromises();
+
+			const connectorItems = getItems().filter((item) => item.category === 'mcp');
+
+			expect(connectorItems[0]?.id).toMatch(/^mcp:/);
+			expect(connectorItems[1]?.id).toBe(`nodeType:${AI_MCP_TOOL_NODE_TYPE}`);
+		});
+
+		it('adds a registry server after credential selection and configuration', async () => {
+			const registryServer: McpRegistryServerResponse = {
+				slug: 'github',
+				nodeTypeName: '@n8n/mcp-registry.github',
+				name: 'io.github',
+				title: 'GitHub',
+				description: 'Manage GitHub repositories',
+				tagline: 'GitHub tools',
+				version: '1.0.0',
+				updatedAt: '2026-09-25T00:00:00.000Z',
+				icons: [],
+				credentials: [
+					{
+						credentialType: 'githubMcpOAuth2Api',
+						name: 'GitHub OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				tools: [{ name: 'list_repositories' }],
+				isTemplated: false,
+				isOfficial: true,
+				status: 'active',
+			};
+			fetchMcpRegistryCatalogMock.mockResolvedValue([registryServer]);
+			const onConfirm = vi.fn();
+			render([], onConfirm);
+			await flushPromises();
+
+			const item = getItems().find((candidate) => candidate.id === 'registry:github');
+			expect(item).toBeDefined();
+			expect(item?.title).toBe('GitHub');
+			emitSelectCredential(item!, 'githubMcpOAuth2Api', 'credential-1');
+			await flushPromises();
+
+			expect(getConfigData()).toMatchObject({
+				kind: 'registryMcpServer',
+				isNew: true,
+				mcpServer: {
+					name: 'GitHub',
+					authentication: 'githubMcpOAuth2Api',
+					credential: 'credential-1',
+					metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+					connectionTimeoutMs: 60_000,
+				},
+			});
+
+			const configured: AgentJsonMcpServerConfig = {
+				name: 'GitHub',
+				description: registryServer.description,
+				url: 'https://mcp.github.test',
+				transport: 'streamableHttp',
+				authentication: 'githubMcpOAuth2Api',
+				credential: 'credential-1',
+				metadata: { nodeTypeName: registryServer.nodeTypeName },
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
+				connectionTimeoutMs: 60_000,
+			};
+			await saveConfiguration(configured);
+
+			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [configured] });
+		});
+
+		describe('Gateway credits', () => {
+			const firecrawl: McpRegistryServerResponse = {
+				slug: 'firecrawl',
+				nodeTypeName: '@n8n/mcp-registry.firecrawl',
+				name: 'dev.firecrawl/mcp',
+				title: 'Firecrawl',
+				description: 'Scrape the web',
+				tagline: 'Firecrawl tools',
+				version: '1.0.0',
+				updatedAt: '2026-09-25T00:00:00.000Z',
+				icons: [],
+				credentials: [
+					{ credentialType: 'firecrawlMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+					{
+						credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+						name: 'Gateway credits',
+						value: 'aiGateway',
+					},
+				],
+				tools: [{ name: 'firecrawl_scrape' }],
+				isTemplated: false,
+				isOfficial: true,
+				status: 'active',
+			};
+
+			it('drafts a Gateway credits entry with the Gateway credits marker', async () => {
+				fetchMcpRegistryCatalogMock.mockResolvedValue([firecrawl]);
+				render([], vi.fn());
+				await flushPromises();
+
+				const item = getItems().find((candidate) => candidate.id === 'registry:firecrawl');
+				emitSelectCredential(item!, 'n8nConnectFirecrawlMcpAiGatewayApi', AI_GATEWAY_MANAGED_TAG);
+				await flushPromises();
+
+				const { mcpServer } = getConfigData() as { mcpServer: AgentJsonMcpServerConfig };
+				expect(mcpServer).toMatchObject({
+					authentication: 'none',
+					credential: AI_GATEWAY_MANAGED_TAG,
+					metadata: { nodeTypeName: firecrawl.nodeTypeName },
+				});
+			});
+
+			it('shows a saved Gateway credits entry as connected', async () => {
+				fetchMcpRegistryCatalogMock.mockResolvedValue([firecrawl]);
+				render([], vi.fn(), [
+					{
+						name: 'Firecrawl',
+						url: 'https://mcp.firecrawl.dev/mcp',
+						transport: 'streamableHttp',
+						authentication: 'none',
+						credential: AI_GATEWAY_MANAGED_TAG,
+						metadata: { nodeTypeName: firecrawl.nodeTypeName },
+					},
+				]);
+				await flushPromises();
+
+				const connected = getItems().find((item) => item.id.startsWith('mcp:'));
+				expect(connected).toMatchObject({ status: 'connected', freeCredits: true });
+			});
 		});
 
 		it('commits an added MCP server to the host once its configure step saves', async () => {
@@ -1133,7 +1355,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 
 			const data = getConfigData();
-			if (data.kind === 'mcpServer' || data.toolRef.type !== 'node') {
+			if (
+				data.kind === 'mcpServer' ||
+				data.kind === 'registryMcpServer' ||
+				data.toolRef.type !== 'node'
+			) {
 				throw new Error('Expected a node tool');
 			}
 			expect(data.toolRef.node.credentials).toEqual({
@@ -1182,13 +1408,177 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			// Activating a connected managed tool routes through the managed add
 			// path, so the new instance keeps the __aiGatewayManaged credential.
 			const data = getConfigData();
-			if (data.kind === 'mcpServer' || data.toolRef.type !== 'node') {
+			if (
+				data.kind === 'mcpServer' ||
+				data.kind === 'registryMcpServer' ||
+				data.toolRef.type !== 'node'
+			) {
 				throw new Error('Expected a node tool');
 			}
 			expect(data.toolRef.node.credentials).toEqual({
 				slackApi: { id: null, name: '', __aiGatewayManaged: true },
 			});
 			expect(data.existingToolNames).toContain(existing.name);
+		});
+	});
+
+	describe('restricted node types', () => {
+		function restrictedSlackItem() {
+			const item = getItems().find((candidate) => candidate.id === `nodeType:${SLACK.name}`);
+			if (!item) throw new Error('Missing Slack item');
+			return item;
+		}
+
+		it('loads the policy for the agent project on mount', async () => {
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+
+			render([], vi.fn(), [], PROJECT_ID);
+			await flushPromises();
+
+			expect(fetchForProject).toHaveBeenCalledWith(PROJECT_ID);
+		});
+
+		it('flags a restricted tool so the modal can lock it and list it last', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+
+			render();
+			await flushPromises();
+
+			expect(restrictedSlackItem()).toMatchObject({
+				restriction: { available: false, scope: 'instance' },
+			});
+			const wikipedia = getItems().find((item) => item.id === `nodeType:${WIKIPEDIA.name}`);
+			expect(wikipedia).toBeDefined();
+			expect('restriction' in wikipedia! && wikipedia.restriction).toBeFalsy();
+		});
+
+		it('adds nothing when a restricted tool is activated', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const onConfirm = vi.fn();
+
+			render([], onConfirm);
+			await flushPromises();
+
+			emitConnect(restrictedSlackItem());
+			emitOpenDetail(restrictedSlackItem());
+			await flushPromises();
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(onConfirm).not.toHaveBeenCalled();
+		});
+
+		it('warns and adds nothing when the tool becomes restricted while its configure step is open', async () => {
+			mockRestrictedNodeTypes();
+			const onConfirm = vi.fn();
+			render([], onConfirm);
+			await flushPromises();
+
+			const slack = getItems().find((item) => item.id === `nodeType:${SLACK.name}`);
+			emitConnect(slack!);
+			await flushPromises();
+
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			await saveConfiguration(toolRef(SLACK.name));
+
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning', message: expect.stringContaining('Slack') }),
+			);
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('flags a connected tool that a policy now restricts', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+
+			render([toolRef(SLACK.name)]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			expect(connected).toMatchObject({
+				restriction: { available: false, scope: 'instance' },
+			});
+		});
+
+		it('opens the existing configuration of a connected restricted tool', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const ref = toolRef(SLACK.name);
+
+			render([ref]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const data = getConfigData();
+			expect(
+				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer' && data.toolRef,
+			).toEqual(ref);
+			expect(data.onRemove).toBeDefined();
+		});
+
+		it('does not keep Save and the title locked after leaving a restricted tool', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			restrictedFormNodeTypes.add(SLACK.name);
+
+			render([toolRef(SLACK.name)]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const saveButton = () => document.querySelector('[data-testid="agent-tool-config-save"]');
+			expect(saveButton()).toBeDisabled();
+			expect(multiStepAttrs['editable-title']).toBe(false);
+
+			const back = document.querySelector('[data-test-id="agent-modal-back"]');
+			if (!(back instanceof HTMLButtonElement)) throw new Error('Missing Back button');
+			back.click();
+			await flushPromises();
+
+			// This form never reports a restriction, as with registry MCP servers.
+			const wikipedia = getItems().find((item) => item.id === `nodeType:${WIKIPEDIA.name}`);
+			emitConnect(wikipedia!);
+			await flushPromises();
+
+			expect(saveButton()).not.toBeDisabled();
+			expect(multiStepAttrs['editable-title']).toBe(true);
+		});
+
+		it('adds nothing when the install reports the selected tool as restricted', async () => {
+			mockCommunityPreviewCatalog();
+			mockRestrictedNodeTypes();
+			installNodeMock.mockResolvedValue({ success: true, restricted: true });
+			render();
+			await flushPromises();
+
+			const preview = getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`);
+			emitConnect(preview!);
+			await flushPromises();
+
+			expect(installNodeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ selectedNodeType: COMMUNITY_PREVIEW.name }),
+			);
+			expect(configFormData).toBeNull();
+			// The install toast names the restricted tool, so no second warning appears.
+			expect(showMessageMock).not.toHaveBeenCalled();
+		});
+
+		it('leaves the list untouched when nothing is restricted', async () => {
+			mockRestrictedNodeTypes();
+
+			render();
+			await flushPromises();
+
+			const nodeItems = getItems().filter((item) => item.id.startsWith('nodeType:'));
+			expect(nodeItems.map((item) => item.id)).toEqual([
+				`nodeType:${SLACK.name}`,
+				`nodeType:${WIKIPEDIA.name}`,
+			]);
+			expect(nodeItems.every((item) => !('restriction' in item && item.restriction))).toBe(true);
 		});
 	});
 });

@@ -1,7 +1,7 @@
-import type { AiPreferenceTarget } from '@n8n/api-types';
+import type { AiPreferenceSortOption, AiPreferenceTarget } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
-import type { FindOptionsWhere } from '@n8n/typeorm';
+import type { FindOptionsOrder, FindOptionsWhere } from '@n8n/typeorm';
 
 import { AiPreference } from '../entities';
 import { BaseRepository } from './base-repository';
@@ -25,6 +25,7 @@ export type AiPreferencePageQuery = VisibleAiPreferencesQuery & {
 	take: number;
 	/** Only these rows. Never widens what the caller may see. */
 	ids?: string[];
+	sortBy?: AiPreferenceSortOption;
 };
 
 @Service()
@@ -46,7 +47,7 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 			// The id filter narrows each visibility branch, so it cannot reach past them.
 			where: ids ? visible.map((where) => ({ ...where, id: In(ids) })) : visible,
 			relations: RELATIONS,
-			order: ORDER,
+			order: query.sortBy ? SORT_ORDERS[query.sortBy] : ORDER,
 			skip: query.skip,
 			take: query.take,
 		});
@@ -102,7 +103,12 @@ function whereTarget(target: AiPreferenceTarget): FindOptionsWhere<AiPreference>
 
 const ORDER = { createdAt: 'ASC', id: 'ASC' } as const;
 
-const RELATIONS = { project: true, user: true } as const;
+const SORT_ORDERS = {
+	'updatedAt:asc': { updatedAt: 'ASC', id: 'ASC' },
+	'updatedAt:desc': { updatedAt: 'DESC', id: 'DESC' },
+} satisfies Record<AiPreferenceSortOption, FindOptionsOrder<AiPreference>>;
+
+const RELATIONS = { project: true, user: true, createdBy: true } as const;
 
 function visibleTo(
 	query: ApplicableAiPreferencesQuery,

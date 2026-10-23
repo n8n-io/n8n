@@ -114,8 +114,9 @@ export function resolveBuildIdentifiers(input: {
 	const owner = plannedTaskId
 		? { type: 'planned' as const, taskId: plannedTaskId }
 		: { type: 'direct' as const };
+	// A blank id counts as omitted: OpenAI strict tool calls send "" for optional fields.
 	const resolvedWorkItemId =
-		inputWorkItemId ??
+		(inputWorkItemId?.trim() ? inputWorkItemId : undefined) ??
 		(isAuxiliarySupportingWorkflow ? undefined : buildContext?.workItemId) ??
 		filePath;
 	const resolvedTaskId = isAuxiliarySupportingWorkflow
