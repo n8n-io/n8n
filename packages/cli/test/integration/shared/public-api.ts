@@ -1,12 +1,13 @@
+import type request from 'supertest';
+
 import type { SuperAgentTest } from './types';
 
-export const testWithAPIKey = async (
+export const requestWithAPIKey = async (
 	agent: SuperAgentTest,
 	method: 'get' | 'post' | 'put' | 'patch' | 'delete',
 	url: string,
 	apiKey: string | null,
-) => {
+): Promise<request.Response> => {
 	void agent.set({ 'X-N8N-API-KEY': apiKey });
-	const response = await agent[method](url);
-	expect(response.statusCode).toBe(401);
+	return await agent[method](url);
 };

@@ -17,7 +17,7 @@ import { Telemetry } from '@/telemetry';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { getVariableByKey } from '../shared/db/variables';
-import { testWithAPIKey } from '../shared/public-api';
+import { requestWithAPIKey } from '../shared/public-api';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -124,11 +124,22 @@ async function buildImportPackage(
 }
 
 describe('POST /n8n-packages/import', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/n8n-packages/import', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/n8n-packages/import', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/n8n-packages/import', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'post',
+			'/n8n-packages/import',
+			'abcXYZ',
+		);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('rejects unsupported Content-Type', async () => {
 		const response = await authOwnerAgent

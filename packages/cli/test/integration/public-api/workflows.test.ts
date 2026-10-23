@@ -48,7 +48,7 @@ import {
 	createManyWorkflowHistoryItems,
 	createWorkflowHistoryItem,
 } from '../shared/db/workflow-history';
-import { testWithAPIKey } from '../shared/public-api';
+import { requestWithAPIKey } from '../shared/public-api';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -179,11 +179,17 @@ const makeGlobalRoleUserAgent = async (scopeSlugs: string[]) => {
 };
 
 describe('GET /workflows', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/workflows', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/workflows', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/workflows', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/workflows', 'abcXYZ');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return all owned workflows', async () => {
 		await Promise.all([
@@ -877,11 +883,17 @@ describe('GET /workflows', () => {
 });
 
 describe('GET /workflows/:id', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/workflows/2', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/workflows/2', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/workflows/2', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/workflows/2', 'abcXYZ');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/2');
@@ -1151,11 +1163,27 @@ describe('GET /workflows/:id', () => {
 });
 
 describe('GET /workflows/:id/:versionId', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/workflows/123/version-123', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'get',
+			'/workflows/123/version-123',
+			null,
+		);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/workflows/123/version-123', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'get',
+			'/workflows/123/version-123',
+			'abcXYZ',
+		);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
@@ -1344,11 +1372,22 @@ describe('GET /workflows/:workflowId/versions/:workflowVersionId', () => {
 });
 
 describe('GET /workflows/:id/history', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/workflows/123/history', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/workflows/123/history', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/workflows/123/history', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'get',
+			'/workflows/123/history',
+			'abcXYZ',
+		);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/history');
@@ -1436,11 +1475,17 @@ describe('GET /workflows/:id/history', () => {
 });
 
 describe('DELETE /workflows/:id', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'delete', '/workflows/2', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'delete', '/workflows/2', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'delete', '/workflows/2', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'delete', '/workflows/2', 'abcXYZ');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.delete('/workflows/2');
@@ -1589,11 +1634,27 @@ describe('DELETE /workflows/:id', () => {
 
 // `/publish` is a canonical alias of `/activate` sharing the exact same handler
 describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', `/workflows/2/${action}`, null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'post',
+			`/workflows/2/${action}`,
+			null,
+		);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', `/workflows/2/${action}`, 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'post',
+			`/workflows/2/${action}`,
+			'abcXYZ',
+		);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.post(`/workflows/2/${action}`);
@@ -1782,11 +1843,27 @@ describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
 
 // `/unpublish` is a canonical alias of `/deactivate` sharing the exact same handler
 describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', `/workflows/2/${action}`, null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'post',
+			`/workflows/2/${action}`,
+			null,
+		);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', `/workflows/2/${action}`, 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'post',
+			`/workflows/2/${action}`,
+			'abcXYZ',
+		);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.post(`/workflows/2/${action}`);
@@ -2031,11 +2108,22 @@ describe('Deprecation header on legacy paths', () => {
 });
 
 describe('POST /workflows/:id/archive', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/workflows/2/archive', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/workflows/2/archive', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/workflows/2/archive', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'post',
+			'/workflows/2/archive',
+			'abcXYZ',
+		);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 404 when workflow does not exist', async () => {
 		const response = await authOwnerAgent.post(
@@ -2089,11 +2177,27 @@ describe('POST /workflows/:id/archive', () => {
 });
 
 describe('POST /workflows/:id/unarchive', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/workflows/2/unarchive', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'post',
+			'/workflows/2/unarchive',
+			null,
+		);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/workflows/2/unarchive', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'post',
+			'/workflows/2/unarchive',
+			'abcXYZ',
+		);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 404 when workflow does not exist', async () => {
 		const response = await authOwnerAgent.post(
@@ -2163,11 +2267,17 @@ describe('POST /workflows', () => {
 		settings: { executionOrder: 'v1' },
 	});
 
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/workflows', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/workflows', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'post', '/workflows', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'post', '/workflows', 'abcXYZ');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to invalid body', async () => {
 		const response = await authOwnerAgent.post('/workflows').send({});
@@ -2925,11 +3035,17 @@ describe('PUT /workflows/:id redaction floor enforcement', () => {
 });
 
 describe('PUT /workflows/:id', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'put', '/workflows/1', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'put', '/workflows/1', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'put', '/workflows/1', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'put', '/workflows/1', 'abcXYZ');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.put('/workflows/1').send({
@@ -3863,11 +3979,17 @@ describe('PUT /workflows/:id', () => {
 });
 
 describe('GET /workflows/:id/tags', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/workflows/2/tags', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/workflows/2/tags', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'get', '/workflows/2/tags', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'get', '/workflows/2/tags', 'abcXYZ');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
 		globalConfig.tags.disabled = true;
@@ -3921,11 +4043,17 @@ describe('GET /workflows/:id/tags', () => {
 });
 
 describe('PUT /workflows/:id/tags', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'put', '/workflows/2/tags', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'put', '/workflows/2/tags', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'put', '/workflows/2/tags', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'put', '/workflows/2/tags', 'abcXYZ');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
 		globalConfig.tags.disabled = true;
@@ -4179,11 +4307,22 @@ describe('PUT /workflows/:id/tags', () => {
 });
 
 describe('PUT /workflows/:id/transfer', () => {
-	test('should fail due to missing API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'put', '/workflows/2/transfer', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await requestWithAPIKey(authOwnerAgent, 'put', '/workflows/2/transfer', null);
 
-	test('should fail due to invalid API Key', async () =>
-		await testWithAPIKey(authOwnerAgent, 'put', '/workflows/2/transfer', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await requestWithAPIKey(
+			authOwnerAgent,
+			'put',
+			'/workflows/2/transfer',
+			'abcXYZ',
+		);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 404 when workflow does not exist', async () => {
 		const destinationProject = await createTeamProject('destination-project-404', member);
