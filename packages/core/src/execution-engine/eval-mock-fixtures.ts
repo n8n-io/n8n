@@ -241,11 +241,10 @@ let canvasPngCache: Buffer | undefined;
 
 /**
  * 512×512 opaque white PNG (8-bit grayscale), built programmatically so it is
- * always structurally valid. It is the `image/png` download fixture and gives
- * image-PROCESSING nodes (Edit Image text overlay, resize, composite via
- * GraphicsMagick) a real canvas to operate on — a 1×1 or truncated placeholder
- * makes them fail with "Insufficient image data", and a PNG with a bad chunk
- * CRC makes GraphicsMagick write nothing ("Stream yields empty buffer").
+ * always structurally valid. Unlike `PNG_1X1`, this gives image-PROCESSING
+ * nodes (Edit Image text overlay, resize, and composite operations) a real
+ * canvas to operate on — a 1×1 or truncated placeholder makes them fail with
+ * "Insufficient image data".
  */
 export function evalCanvasPng(): Buffer {
 	if (canvasPngCache) return canvasPngCache;
