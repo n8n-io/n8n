@@ -139,7 +139,7 @@ describe('InstanceAiAgentContextAdapterService', () => {
 				useNodeToolWhen: ['The agent creates Linear tickets'],
 			},
 		];
-		agentIntegrationService.listChatIntegrations.mockReturnValue(channels);
+		agentIntegrationService.listBuilderChatIntegrations.mockResolvedValue(channels);
 		mcpRegistryService.search.mockResolvedValue([]);
 		agentsToolsService.searchAgentToolNodes.mockResolvedValue({
 			results: '',
@@ -148,6 +148,7 @@ describe('InstanceAiAgentContextAdapterService', () => {
 		const reader = service.createReader(user, 'project-1');
 
 		expect(await reader.lookup({ type: 'integrations' })).toEqual({ channels });
+		expect(agentIntegrationService.listBuilderChatIntegrations).toHaveBeenCalledWith(user);
 		expect(await reader.lookup({ type: 'integrations', queries: ['linear'] })).toEqual({
 			kind: 'node',
 			results: '',
