@@ -104,6 +104,7 @@ describe('IsolatedVmBridge', () => {
 			await bridge.dispose();
 			data = undefined;
 
+			// A WeakRef keeps its target alive until the current job ends.
 			await new Promise((resolve) => setTimeout(resolve, 10));
 			gc();
 

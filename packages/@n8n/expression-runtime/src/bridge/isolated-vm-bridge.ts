@@ -313,7 +313,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * for navigation and guard semantics); errors are caught and returned
 	 * as sentinels instead of crossing the isolate boundary.
 	 *
-	 * @param holder - Workflow data of the current call
 	 * @private
 	 */
 	private createGetValueAtPathRef(holder: DataHolder): ivm.Callback {
@@ -333,7 +332,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * for navigation and guard semantics); errors are caught and returned
 	 * as sentinels instead of crossing the isolate boundary.
 	 *
-	 * @param holder - Workflow data of the current call
 	 * @private
 	 */
 	private createGetArrayElementRef(holder: DataHolder): ivm.Callback {
@@ -360,7 +358,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * not isolated-vm objects (`Reference`/`ExternalCopy`) or other
 	 * non-cloneable values.
 	 *
-	 * @param holder - Workflow data of the current call
 	 * @private
 	 */
 	private createCallHostRef(holder: DataHolder): ivm.Callback {
@@ -419,8 +416,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// arrive as plain functions with structured-clone marshaling, so the
 		// runtime invokes them directly. isolated-vm frees a callback only at the
 		// next isolated-vm call in the process, even after the isolate is disposed.
-		// So the callbacks read the data from a holder that `finally` clears, else
-		// the data of a finished execution stays in memory until that next call.
+		// So the callbacks read the data from a holder that `finally` clears.
 		const holder: DataHolder = { data };
 		const getValueAtPath = this.createGetValueAtPathRef(holder);
 		const getArrayElement = this.createGetArrayElementRef(holder);
