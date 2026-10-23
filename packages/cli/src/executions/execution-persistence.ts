@@ -43,6 +43,8 @@ import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
+type TerminalExecutionOutcome = Pick<IExecutionResponse, 'status'> &
+	Partial<Pick<IExecutionResponse, 'finished' | 'stoppedAt'>>;
 
 type FoundExecution = IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 
@@ -636,11 +638,15 @@ export class ExecutionPersistence {
 	 * - When pruning is disabled, hard-deletes immediately so the execution
 	 * is not persisted indefinitely.
 	 */
-	async deleteInFlightExecution(target: DeletionTarget) {
+	async deleteInFlightExecution(target: DeletionTarget, outcome: TerminalExecutionOutcome) {
 		if (this.executionsConfig.pruneData) {
 			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 			const deletedAt = new Date(Date.now() - bufferMs);
-			await this.executionRepository.update(target.executionId, { deletedAt });
+			await this.executionRepository.update(target.executionId, {
+				...outcome,
+				stoppedAt: outcome.stoppedAt ?? new Date(),
+				deletedAt,
+			});
 		} else {
 			await this.hardDelete(target);
 		}

@@ -684,11 +684,14 @@ function hookFunctionsSave(
 					);
 				}
 
-				await executionPersistence.deleteInFlightExecution({
-					workflowId: this.workflowData.id,
-					executionId: this.executionId,
-					storedAt: fullRunData.storedAt,
-				});
+				await executionPersistence.deleteInFlightExecution(
+					{
+						workflowId: this.workflowData.id,
+						executionId: this.executionId,
+						storedAt: fullRunData.storedAt,
+					},
+					fullRunData,
+				);
 
 				return;
 			}
@@ -993,11 +996,14 @@ export function getLifecycleHooksForScalingMain(
 			(fullRunData.status !== 'success' && !saveSettings.error);
 
 		if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-			await executionPersistence.deleteInFlightExecution({
-				workflowId: this.workflowData.id,
-				executionId: this.executionId,
-				storedAt: fullRunData.storedAt,
-			});
+			await executionPersistence.deleteInFlightExecution(
+				{
+					workflowId: this.workflowData.id,
+					executionId: this.executionId,
+					storedAt: fullRunData.storedAt,
+				},
+				fullRunData,
+			);
 		} else {
 			// Only save metadata if execution is being kept
 			await updateExistingExecutionMetadata(
