@@ -1,0 +1,22 @@
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/Chat.node.test.ts
+  s_a0e0ed99533024::t_0baf665b9a449c 41-61,63,65-67
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  s_a0e0ed99533024::t_b26b6939e2434a 840-845
+  s_a0e0ed99533024::t_e9c68f349bceda 855
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3cf6c003de16840248b5ccebf2846edc5b825e4e",
+  "prompts": {},
+  "sessions": {
+    "s_a0e0ed99533024": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2ada714-6ace-4cf1-8068-d8eee780b49c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
