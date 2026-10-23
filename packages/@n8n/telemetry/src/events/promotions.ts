@@ -6,7 +6,7 @@ const failureKind = z
 	.enum(['user', 'git_remote', 'unexpected'])
 	.optional()
 	.describe(
-		"Set only when the outcome is 'failed'. 'user' = the request or state was wrong (4xx or promotion conflict); 'git_remote' = the clone, push or fetch failed against the remote; 'unexpected' = anything else",
+		"Set only when the outcome is 'failed'. 'user' = the request or state was wrong (4xx or promotion conflict); 'git_remote' = a call to the Git remote or its host failed, such as a clone, push, fetch or merge request call; 'unexpected' = anything else",
 	);
 
 const scope = z
@@ -77,7 +77,7 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			changed_fields: z
 				.array(z.enum(['name', 'remote', 'provider', 'settings']))
 				.describe(
-					'The fields the request sent, never their values. `provider` means a move to another provider',
+					'Never the values. `name`, `remote` and `settings` are listed when the request sent them, even with an unchanged value. `provider` is listed only when the request names another provider',
 				),
 		}),
 	},
