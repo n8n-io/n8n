@@ -387,8 +387,6 @@ function createAuthFetch({
 		await proxyFetch({ input, init, egressFilter: secureEgressFilter });
 
 	return createRefreshingAuthFetch({
-		// Wrapped here, so the trace headers are written after the auth merge and go
-		// with every redirect hop and every 401 retry
 		baseFetch: getTraceHeaders ? withTraceHeaders(proxied, getTraceHeaders) : proxied,
 		initialHeaders,
 		...(onUnauthorized

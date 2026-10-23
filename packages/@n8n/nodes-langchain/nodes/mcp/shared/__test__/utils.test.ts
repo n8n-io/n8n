@@ -1075,8 +1075,6 @@ describe('utils', () => {
 						.mockReturnValueOnce({ traceparent: 'span-b' });
 
 					const opts = await connectTraced(getTraceHeaders);
-					// A client stays open across tool calls, so a value read at connect would
-					// pin every later call to the first span
 					expect(getTraceHeaders).not.toHaveBeenCalled();
 
 					await opts.fetch('https://example.com/mcp', {});
@@ -1144,7 +1142,6 @@ describe('utils', () => {
 					await opts.fetch('https://example.com/mcp', {});
 
 					expect(mockedProxyFetch).toHaveBeenCalledTimes(2);
-					// A trace id is not a credential, so unlike the auth header it follows the hop
 					expect(sentHeaders(1).get('traceparent')).toBe('span-a');
 					expect(sentHeaders(1).get('authorization')).toBeNull();
 				});
@@ -1165,8 +1162,6 @@ describe('utils', () => {
 
 					await opts.fetch('https://example.com/mcp', { method: 'POST' });
 
-					// The wrapper sits on the transport fetch, so a throw here would fail the
-					// handshake and every tool call after it
 					expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 					expect(sentHeaders(0).get('traceparent')).toBeNull();
 				});
@@ -1252,7 +1247,6 @@ describe('utils', () => {
 					typeVersion: 1.4,
 				} as unknown as INode);
 				ctx.helpers.getSecureEgressFilter.mockReturnValue(createTestEgressFilter());
-				// What the core helper returns without an execution id
 				ctx.helpers.getTraceHeaders.mockReturnValue({});
 
 				await connectMcpClientForCredential(ctx, {
