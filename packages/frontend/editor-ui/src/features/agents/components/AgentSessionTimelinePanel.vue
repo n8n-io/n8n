@@ -393,7 +393,7 @@ useKeybindings({
 
 <template>
 	<div :class="$style.panel">
-		<AgentSessionMockControls />
+		<AgentSessionMockControls v-if="stubStore.active" />
 		<div v-if="!showLoading" :class="$style.subHeader">
 			<N8nInput
 				ref="searchInput"

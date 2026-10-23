@@ -23,6 +23,7 @@ import {
 	type ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
+import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import {
@@ -264,9 +265,10 @@ function formatDate(fullDate: string): string {
 	return `${date} ${time}`;
 }
 
-function onEditAgent() {
-	void router.push(agentRoute.value);
-}
+const closeTimeline = useBackOrFallback(() => ({
+	name: AGENT_SESSIONS_LIST_VIEW,
+	params: { projectId: projectId.value, agentId: agentId.value },
+}));
 
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id === projectId.value) {
@@ -326,7 +328,7 @@ async function onIncreaseBudget(payload: {
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
-			@edit="onEditAgent"
+			@close="closeTimeline"
 		/>
 
 		<div :class="$style.content">
