@@ -39,14 +39,14 @@ describe('SplitSelfHealingInvestigationBaseline migration', () => {
 
 	async function insertInvestigation(
 		id: string,
-		baseline: Record<string, string>,
+		baselineColumns: Record<string, string>,
 		resultId: string | null = null,
 	) {
 		await withContext(async ({ escape: { tableName: t, columnName: c }, runQuery }) => {
-			const columns = Object.keys(baseline)
+			const columns = Object.keys(baselineColumns)
 				.map((column) => `, ${c(column)}`)
 				.join('');
-			const values = Object.keys(baseline)
+			const values = Object.keys(baselineColumns)
 				.map((column) => `, :${column}`)
 				.join('');
 			await runQuery(
@@ -62,7 +62,7 @@ describe('SplitSelfHealingInvestigationBaseline migration', () => {
 					runId: randomUUID(),
 					resultId,
 					finishedAt: resultId ? new Date() : null,
-					...baseline,
+					...baselineColumns,
 				},
 			);
 		});

@@ -140,7 +140,7 @@ A Needs attention report without a suggestion stays Open until dismissed, even a
 A Could not fix result blocks investigations for 24 hours after its completion. The block applies
 to the workflow, its owning project, and the investigated published version. Admission checks
 the workflow's current published version before it captures a baseline. A saved draft does not
-change that version, so the failure is skipped without an error. The claim transaction checks
+change that version, so admission skips the failure without an error. The claim transaction checks
 again after it confirms that the captured version is still published. Skipped failures do not
 extend the cooldown.
 Another accepted Could not fix result starts a new cooldown. A different successfully published

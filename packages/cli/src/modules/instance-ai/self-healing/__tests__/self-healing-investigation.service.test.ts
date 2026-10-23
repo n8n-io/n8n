@@ -38,16 +38,7 @@ const input = {
 	backgroundUserId: user.id,
 	executionId: '123',
 };
-const baseline = mock<WorkflowSuggestionBaseline>({
-	...input,
-	expectedBaseline: {
-		savedVersionId: 'version',
-		publishedVersionId: 'version',
-		checksum: 'checksum',
-		versionCounter: 1,
-		latestPublishHistoryEventId: 1,
-	},
-});
+const baseline = mock<WorkflowSuggestionBaseline>({ ...input });
 
 describe('SelfHealingInvestigationService', () => {
 	const investigations = mock<SelfHealingInvestigationRepository>();
@@ -87,20 +78,7 @@ describe('SelfHealingInvestigationService', () => {
 		configurations,
 		configurationService,
 	);
-	const investigationFields = {
-		...input,
-		id: 'investigation',
-		configurationId: configuration.id,
-		baseline,
-		threadId: 'private-thread',
-		runId: 'run',
-		resultId: null,
-		finishedAt: null,
-	};
-	const investigation = mock<SelfHealingInvestigation>({
-		...investigationFields,
-		createdAt: new Date(Date.now() - 300_000),
-	});
+	let investigation: SelfHealingInvestigation;
 	let run: SelfHealingRunResult;
 	let execution: Promise<SelfHealingRunResult> | undefined;
 	let controller: AbortController;
@@ -113,6 +91,17 @@ describe('SelfHealingInvestigationService', () => {
 		configurationService.resolveActorOrPause.mockResolvedValue(user);
 		execution = undefined;
 		controller = new AbortController();
+		investigation = mock<SelfHealingInvestigation>({
+			...input,
+			id: 'investigation',
+			configurationId: configuration.id,
+			baseline,
+			threadId: 'private-thread',
+			runId: 'run',
+			resultId: null,
+			finishedAt: null,
+			createdAt: new Date(Date.now() - 300_000),
+		});
 		run = {
 			threadId: investigation.threadId,
 			runId: investigation.runId,
@@ -553,11 +542,8 @@ describe('SelfHealingInvestigationService', () => {
 	});
 
 	it('does not reap a claim while another main can still be starting it', async () => {
-		const startingInvestigation = mock<SelfHealingInvestigation>({
-			...investigationFields,
-			createdAt: new Date(),
-		});
-		investigations.listUnfinished.mockResolvedValue([startingInvestigation]);
+		investigation.createdAt = new Date();
+		investigations.listUnfinished.mockResolvedValue([investigation]);
 		await service.reconcile();
 		expect(sweeper.sweepRun).not.toHaveBeenCalled();
 		expect(investigations.finishWithoutResult).not.toHaveBeenCalled();

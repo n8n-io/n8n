@@ -300,6 +300,33 @@ describe('investigation eligibility after a result', () => {
 		return { ...input, executionId: execution.id };
 	}
 
+	async function createHistoryVersion(workflow: WorkflowEntity) {
+		const versionId = randomUUID();
+		await Container.get(WorkflowHistoryRepository).insert({
+			workflowId: workflow.id,
+			versionId,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			authors: 'Test',
+		});
+		return versionId;
+	}
+
+	async function markTriggerActivated(workflow: WorkflowEntity, versionId: string) {
+		await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(
+			workflow.id,
+			[
+				{
+					nodeId: workflow.nodes[0].id,
+					versionId,
+					status: 'activated',
+					triggerKind: 'persisted',
+					errorMessage: null,
+				},
+			],
+		);
+	}
+
 	it.each([
 		['needs_you', false],
 		['needs_you', true],
@@ -390,27 +417,9 @@ describe('investigation eligibility after a result', () => {
 			vi.spyOn(Date, 'now').mockReturnValue(result.completedAt.getTime() + elapsed);
 
 			if (scenario === 'new publication') {
-				const versionId = randomUUID();
-				await Container.get(WorkflowHistoryRepository).insert({
-					workflowId: original.id,
-					versionId,
-					nodes: original.nodes,
-					connections: original.connections,
-					authors: 'Test',
-				});
+				const versionId = await createHistoryVersion(original);
 				await workflows.update(original.id, { versionId, activeVersionId: versionId, pinData: {} });
-				await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(
-					original.id,
-					[
-						{
-							nodeId: original.nodes[0].id,
-							versionId,
-							status: 'activated',
-							triggerKind: 'persisted',
-							errorMessage: null,
-						},
-					],
-				);
+				await markTriggerActivated(original, versionId);
 			}
 
 			const response = await Container.get(SelfHealingInvestigationService).start(
@@ -456,19 +465,7 @@ describe('investigation eligibility after a result', () => {
 			{ workflowId: original.id },
 			{ status: 'completed' },
 		);
-
-		await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(
-			original.id,
-			[
-				{
-					nodeId: original.nodes[0].id,
-					versionId: original.versionId,
-					status: 'activated',
-					triggerKind: 'persisted',
-					errorMessage: null,
-				},
-			],
-		);
+		await markTriggerActivated(original, original.versionId);
 
 		await expect(
 			Container.get(SelfHealingInvestigationService).start(await nextFailure(input)),
@@ -479,14 +476,7 @@ describe('investigation eligibility after a result', () => {
 
 	it('skips a cooldown failure with a saved draft before capturing a baseline', async () => {
 		const { input, original } = await fixture('could_not_fix');
-		const versionId = randomUUID();
-		await Container.get(WorkflowHistoryRepository).insert({
-			workflowId: original.id,
-			versionId,
-			nodes: original.nodes,
-			connections: original.connections,
-			authors: 'Test',
-		});
+		const versionId = await createHistoryVersion(original);
 		await workflows.update(original.id, { versionId });
 		const captureBaseline = vi.spyOn(suggestionService, 'captureBaseline');
 
@@ -501,34 +491,16 @@ describe('investigation eligibility after a result', () => {
 		'admits a new failure after a different version is published: %s',
 		async (outcome) => {
 			const { input, result, original } = await fixture(outcome, outcome === 'fix_ready');
-			const versionId = randomUUID();
-			await Container.get(WorkflowHistoryRepository).insert({
-				workflowId: original.id,
-				versionId,
-				nodes: original.nodes,
-				connections: original.connections,
-				authors: 'Test',
-			});
+			const versionId = await createHistoryVersion(original);
 			await workflows.update(original.id, { versionId, activeVersionId: versionId });
 			const producer = Container.get(SelfHealingInvestigationService);
 			await expect(producer.start(await nextFailure(input))).rejects.toThrow('fully published');
 			expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 
-			await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(
-				original.id,
-				[
-					{
-						nodeId: original.nodes[0].id,
-						versionId,
-						status: 'activated',
-						triggerKind: 'persisted',
-						errorMessage: null,
-					},
-				],
-			);
+			await markTriggerActivated(original, versionId);
 
 			const failure = await nextFailure(input);
-			const response = await Container.get(SelfHealingInvestigationService).start(failure);
+			const response = await producer.start(failure);
 
 			expect(response?.kind).toBe('investigation');
 			expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
