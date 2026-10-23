@@ -12,6 +12,9 @@ dependencies = [
 [project.optional-dependencies]
 sentry = ["sentry-sdk>=2.35.2"]
 
+[tool.uv]
+constraint-dependencies = ["certifi>=2026.10.23"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.12.8",
