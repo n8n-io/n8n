@@ -177,6 +177,29 @@ describe('AgentMemoryEntriesPanel', () => {
 		});
 	});
 
+	it('ignores a slow Load more response after the user went back', async () => {
+		let resolveLoadMore: (value: AgentMemoryEntriesPageDto) => void = () => {};
+		const slowLoadMore = new Promise<AgentMemoryEntriesPageDto>((resolve) => {
+			resolveLoadMore = resolve;
+		});
+		listAgentMemoryEntries
+			.mockResolvedValueOnce(page([makeEntry('e1')], { total: 14 }))
+			.mockResolvedValueOnce(page([makeEntry('e1')], { total: 14, nextCursor: 'cursor-1' }))
+			.mockReturnValueOnce(slowLoadMore)
+			.mockResolvedValueOnce(page([makeEntry('e1')], { total: 14 }));
+		const wrapper = await mountPanel();
+		await wrapper.find('[data-testid="agent-memory-entries-view-all"]').trigger('click');
+		await flushPromises();
+
+		await wrapper.find('[data-testid="agent-memory-entries-load-more"]').trigger('click');
+		await wrapper.find('[data-testid="agent-memory-entries-back"]').trigger('click');
+		await flushPromises();
+		resolveLoadMore(page([makeEntry('e2'), makeEntry('e3')], { total: 14 }));
+		await flushPromises();
+
+		expect(wrapper.findAll('[data-testid="agent-memory-entry"]')).toHaveLength(1);
+	});
+
 	it('removes an entry after the delete is confirmed', async () => {
 		openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
 		listAgentMemoryEntries

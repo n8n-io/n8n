@@ -59,26 +59,31 @@ function isStale(projectId: string, agentId: string) {
 	return projectId !== props.projectId || agentId !== props.agentId;
 }
 
+// Only the newest request may write state, so a slow Load more cannot land on a newer list.
+let latestRequestId = 0;
+
 async function loadEntries({ append, limit }: { append: boolean; limit: number }) {
 	const { projectId, agentId } = props;
+	const requestId = ++latestRequestId;
+	const isOutdated = () => requestId !== latestRequestId || isStale(projectId, agentId);
 	loading.value = true;
 	try {
 		const page = await listAgentMemoryEntries(rootStore.restApiContext, projectId, agentId, {
 			limit,
 			cursor: append ? (nextCursor.value ?? undefined) : undefined,
 		});
-		if (isStale(projectId, agentId)) return;
+		if (isOutdated()) return;
 		loadFailed.value = false;
 		entries.value = append ? [...entries.value, ...page.items] : page.items;
 		total.value = page.total;
 		nextCursor.value = page.nextCursor;
 	} catch (error) {
-		if (!isStale(projectId, agentId)) {
+		if (!isOutdated()) {
 			loadFailed.value = true;
 			showError(error, i18n.baseText('agents.builder.memory.entries.loadError' as BaseTextKey));
 		}
 	} finally {
-		if (!isStale(projectId, agentId)) loading.value = false;
+		if (!isOutdated()) loading.value = false;
 	}
 }
 

@@ -50,8 +50,9 @@ function groupByEntry(
 	return grouped;
 }
 
-function displayName(user: Pick<User, 'firstName' | 'lastName' | 'email'>): string {
-	return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+/** A user without a name has no label. The email is not shown to other users. */
+function displayName(user: Pick<User, 'firstName' | 'lastName'>): string | undefined {
+	return [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined;
 }
 
 @Service()
@@ -126,6 +127,11 @@ export class AgentMemoryEntriesService {
 		);
 		if (userIds.size === 0) return new Map();
 		const users = await this.userRepository.findManyByIds([...userIds]);
-		return new Map(users.map((user) => [user.id, displayName(user)]));
+		return new Map(
+			users.flatMap((user) => {
+				const name = displayName(user);
+				return name ? [[user.id, name] as const] : [];
+			}),
+		);
 	}
 }

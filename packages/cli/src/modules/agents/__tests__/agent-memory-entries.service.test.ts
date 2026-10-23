@@ -90,6 +90,22 @@ describe('AgentMemoryEntriesService', () => {
 			expect(page.items[0].source).toEqual({ kind: 'build', userName: 'Robin B', isViewer: true });
 		});
 
+		it('shows no name for a chat owner without a first or last name', async () => {
+			const { service, memoryEntryRepository, memory, userRepository } = makeService();
+			memoryEntryRepository.listActiveByAgent.mockResolvedValue([
+				makeEntry('e1', 'n8n-chat-production:other', '2026-10-01T10:00:00.000Z'),
+			]);
+			memoryEntryRepository.countActiveByAgent.mockResolvedValue(1);
+			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
+			userRepository.findManyByIds.mockResolvedValue([
+				{ id: 'other', firstName: null, lastName: null, email: 'private@example.com' } as User,
+			]);
+
+			const page = await service.list('agent-1', 'project-1', 'viewer-1', {});
+
+			expect(page.items[0].source).toEqual({ kind: 'n8n-chat' });
+		});
+
 		it('rejects a malformed cursor', async () => {
 			const { service } = makeService();
 
