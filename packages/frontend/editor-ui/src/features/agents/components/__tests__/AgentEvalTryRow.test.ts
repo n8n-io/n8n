@@ -243,18 +243,18 @@ describe('AgentEvalTryRow', () => {
 			expect(emitted()['apply-suggestion']).toHaveLength(1);
 		});
 
-		it('hides the card on "Keep as is" and brings back a new suggestion', async () => {
+		it('keeps the suggestion inline with no "Keep as is", and shows a new one', async () => {
 			const user = userEvent.setup();
-			const { getByTestId, queryByTestId, rerender } = renderComponent({
+			const { getByTestId, getByText, queryByTestId, rerender } = renderComponent({
 				props: suggestionProps,
 			});
 			await user.click(getByTestId('row-1-toggle'));
 
-			await user.click(getByTestId('row-1-suggestion-card-dismiss'));
-			expect(queryByTestId('row-1-suggestion-card')).not.toBeInTheDocument();
+			expect(queryByTestId('row-1-suggestion-card-dismiss')).not.toBeInTheDocument();
 
 			await rerender({ ...suggestionProps, fixSuggestion: 'Always cite the invoice number.' });
 			expect(getByTestId('row-1-suggestion-card')).toBeInTheDocument();
+			expect(getByText('Always cite the invoice number.')).toBeInTheDocument();
 		});
 
 		it('disables the card actions while the row is disabled', async () => {
