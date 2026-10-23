@@ -1,0 +1,14 @@
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  h_7555c3ee6524cf 170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30ca5ee7b80a4067618c34bf85c180e3a878e7c1",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+package.json
+  s_04f54b60c7726a::t_85daaff73e6c8f 200-201
+patches/@n8n__typeorm@0.3.20-15.patch
+  s_04f54b60c7726a::t_a056b5309df57c 1-35
+pnpm-lock.yaml
+  s_04f54b60c7726a::t_1b9d02229a5381 297-299,595,758,1293,1659,22809
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "efee0329f0946153541e386ad75f3665d16562aa",
+  "prompts": {},
+  "sessions": {
+    "s_04f54b60c7726a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "001c64e2-1c3d-45bc-b8bc-352f5f9c0daf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
