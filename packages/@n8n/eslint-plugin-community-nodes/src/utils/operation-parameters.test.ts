@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { repeatsResource } from './operation-parameters.js';
+import { operationAction, repeatsResource } from './operation-parameters.js';
+
+describe('operationAction', () => {
+	it('keeps the standard names of several words together', () => {
+		expect(operationAction('Get Many Contacts')).toBe('Get Many');
+		expect(operationAction('Create or Update Contact')).toBe('Create or Update');
+		expect(operationAction('insert or append row')).toBe('insert or append');
+	});
+
+	it('uses the first word otherwise', () => {
+		expect(operationAction('Delete Contact')).toBe('Delete');
+		expect(operationAction('Get Contact')).toBe('Get');
+		expect(operationAction('Search')).toBe('Search');
+	});
+});
 
 describe('repeatsResource', () => {
 	it('matches a verb with the resource, or the resource alone', () => {
@@ -21,6 +35,13 @@ describe('repeatsResource', () => {
 		expect(repeatsResource('Get Statuses', 'status')).toBe(true);
 		expect(repeatsResource('Get Status', 'status')).toBe(true);
 		expect(repeatsResource('List People', 'person')).toBe(true);
+	});
+
+	it('matches the standard names of several words with the resource', () => {
+		expect(repeatsResource('Get Many Contacts', 'contact')).toBe(true);
+		expect(repeatsResource('Create or Update a Contact', 'contact')).toBe(true);
+		expect(repeatsResource('Insert or Append Rows', 'row')).toBe(true);
+		expect(repeatsResource('Create or Update', 'contact')).toBe(false);
 	});
 
 	it('allows operations that name another object', () => {

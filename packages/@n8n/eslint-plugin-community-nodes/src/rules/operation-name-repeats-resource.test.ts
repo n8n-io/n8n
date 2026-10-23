@@ -80,6 +80,26 @@ ruleTester.run('operation-name-repeats-resource', OperationNameRepeatsResourceRu
 			],
 		},
 		{
+			name: 'standard name of several words with the resource',
+			code: createOperations("'contact'", "{ name: 'Create or Update Contact', value: 'upsert' }"),
+			errors: [
+				{
+					messageId: 'repeatsResource',
+					data: { name: 'Create or Update Contact', resource: 'contact', verb: 'Create or Update' },
+				},
+			],
+		},
+		{
+			name: 'list operation suggests "Get Many" whatever its name says',
+			code: createOperations("'contact'", "{ name: 'List Contacts', value: 'getAll' }"),
+			errors: [
+				{
+					messageId: 'repeatsResource',
+					data: { name: 'List Contacts', resource: 'contact', verb: 'Get Many' },
+				},
+			],
+		},
+		{
 			name: 'operation name that is the resource',
 			code: createOperations("'search'", "{ name: 'Search', value: 'search' }"),
 			errors: [

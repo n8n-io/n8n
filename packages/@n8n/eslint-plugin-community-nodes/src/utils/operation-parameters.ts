@@ -45,6 +45,9 @@ export function getShownResources(node: TSESTree.ObjectExpression): string[] {
 
 const ARTICLES = new Set(['a', 'an', 'the']);
 
+/** Standard operation names from the UX guidelines that have more than one word. */
+const MULTI_WORD_ACTIONS = ['Get Many', 'Create or Update', 'Insert or Append'];
+
 /** A note in brackets, like "(Account View)", is not part of the name. */
 const BRACKETED_TEXT = /\([^)]*\)/g;
 
@@ -59,6 +62,18 @@ function normalizedWords(text: string): string[] {
 		.filter((word) => !ARTICLES.has(word));
 }
 
+/** The action at the start of an operation name: "Get Many" in "Get Many Contacts", "Delete" in "Delete Contact". */
+export function operationAction(operationName: string): string {
+	const words = operationName.trim().split(/\s+/);
+	const standard = MULTI_WORD_ACTIONS.find((action) => {
+		const actionWords = action.split(' ');
+		return words.slice(0, actionWords.length).join(' ').toLowerCase() === action.toLowerCase();
+	});
+	return standard
+		? words.slice(0, standard.split(' ').length).join(' ')
+		: (words[0] ?? operationName);
+}
+
 /**
  * Whether an operation name is only a verb plus the resource ("Get Contact"
  * for the contact resource) or the resource itself. A name for an object that
@@ -67,8 +82,9 @@ function normalizedWords(text: string): string[] {
 export function repeatsResource(operationName: string, resource: string): boolean {
 	const name = normalizedWords(operationName);
 	const resourceWords = normalizedWords(resource).join(' ');
+	const actionLength = normalizedWords(operationAction(operationName)).length;
 	return (
 		resourceWords !== '' &&
-		(name.join(' ') === resourceWords || name.slice(1).join(' ') === resourceWords)
+		(name.join(' ') === resourceWords || name.slice(actionLength).join(' ') === resourceWords)
 	);
 }

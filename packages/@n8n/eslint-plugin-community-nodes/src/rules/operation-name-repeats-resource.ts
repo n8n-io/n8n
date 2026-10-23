@@ -5,6 +5,7 @@ import {
 	getShownResources,
 	getStringLiteralValue,
 	isOperationParameter,
+	operationAction,
 	repeatsResource,
 } from '../utils/index.js';
 
@@ -40,10 +41,16 @@ export const OperationNameRepeatsResourceRule = createRule({
 					const nameProperty = findObjectProperty(option, 'name');
 					const name = getStringLiteralValue(nameProperty?.value ?? null);
 					if (nameProperty && name !== null && repeatsResource(name, resource)) {
+						// The UX guidelines call the list operation "Get Many", whatever its name says now.
+						const value = getStringLiteralValue(findObjectProperty(option, 'value')?.value ?? null);
 						context.report({
 							node: nameProperty.value,
 							messageId: 'repeatsResource',
-							data: { name, resource, verb: name.split(/\s+/)[0] ?? name },
+							data: {
+								name,
+								resource,
+								verb: value === 'getAll' ? 'Get Many' : operationAction(name),
+							},
 						});
 					}
 				}

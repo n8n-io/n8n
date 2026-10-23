@@ -1,6 +1,6 @@
 # Disallow operation names that only repeat the resource selected above them, like "Get Contact" for the Contact resource (`@n8n/community-nodes/operation-name-repeats-resource`)
 
-💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
+⚠️ This rule _warns_ in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 
 <!-- end auto-generated rule header -->
 
@@ -11,6 +11,12 @@ The editor shows the resource above the operation. The [UX guidelines for commun
 When the operation works on an object inside the resource, name that object. "Get Columns" for the Table resource and "Create Payment Link" for the Payment resource are correct.
 
 The rule compares the operation name with the resource value in `displayOptions.show.resource`. It ignores articles, plurals and the case of the value, so `directoryContext` matches "Get Directory Context". It skips operation lists that are shown for more than one resource.
+
+The standard names "Get Many", "Create or Update" and "Insert or Append" count as one action, so "Get Many Contacts" also repeats the Contact resource. For the operation with the value `getAll`, the rule suggests "Get Many".
+
+Change only `name`. Keep `value` as it is: saved workflows store it, so changing it breaks them.
+
+The rule is a warning, because the standard names assume an API with REST-like operations on resources. Not every API a node calls works like that.
 
 ## Examples
 
