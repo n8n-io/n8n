@@ -24,6 +24,7 @@ import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { N8nMemory } from '../integrations/n8n-memory';
 import {
 	AgentExecutionRepository,
 	type AgentExecutionUsageRow,
@@ -41,6 +42,7 @@ import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
 	SystemAgentProvider,
+	SystemAgentStartTurn,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
@@ -144,6 +146,7 @@ export class SystemAgentExecutionService {
 		private readonly txRunner: TransactionRunner,
 		private readonly attachmentService: AgentChatAttachmentService,
 		private readonly conversationState: AgentConversationStateService,
+		private readonly n8nMemory: N8nMemory,
 	) {}
 
 	/** Register a provider and make sure its instance agent row exists. */
@@ -597,6 +600,7 @@ export class SystemAgentExecutionService {
 						resourceId,
 						abortSignal: controller.signal,
 						...(workspace ? { workspace: workspace.lease } : {}),
+						...this.persistenceOf(thread),
 						emitHostEvent: hostEvents.emit,
 						executionId: admission.executionId,
 						message: payload.message,
@@ -687,6 +691,7 @@ export class SystemAgentExecutionService {
 					resourceId,
 					abortSignal: controller.signal,
 					...(workspace ? { workspace: workspace.lease } : {}),
+					...this.persistenceOf(thread),
 					emitHostEvent: hostEvents.emit,
 					runId,
 					toolCallId: pending.toolCallId,
@@ -834,6 +839,16 @@ export class SystemAgentExecutionService {
 			userId: user.id,
 			surface: 'system',
 		});
+	}
+
+	/** The memory and checkpoint store of the thread's agent, for the provider to build with. */
+	private persistenceOf(
+		thread: AgentExecutionThread,
+	): Pick<SystemAgentStartTurn, 'memory' | 'checkpointStore'> {
+		return {
+			memory: this.n8nMemory.getImplementation(thread.agentId),
+			checkpointStore: this.checkpointStorage.getStorage(thread.agentId),
+		};
 	}
 
 	/**
