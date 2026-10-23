@@ -36,6 +36,10 @@ export class BatchedLeaseRenewer {
 
 	private beating = false;
 
+	private lastBeatAt = performance.now();
+
+	private nextBeatAt = Number.POSITIVE_INFINITY;
+
 	constructor(
 		private readonly host: string,
 		private readonly renewLeases: (host: string, renewals: LeaseRenewal[]) => Promise<Set<string>>,
@@ -56,8 +60,9 @@ export class BatchedLeaseRenewer {
 		};
 		this.entries.set(claim.id, entry);
 		this.armFence(entry);
-		if (!this.beatAlarm.isSet() && !this.beating) {
-			this.scheduleBeat(performance.now());
+		if (!this.beating) {
+			const from = this.beatAlarm.isSet() ? this.lastBeatAt : performance.now();
+			if (from + this.intervalMs() < this.nextBeatAt) this.scheduleBeat(from);
 		}
 		return () => this.remove(claim.id, entry);
 	}
@@ -76,7 +81,10 @@ export class BatchedLeaseRenewer {
 	private remove(id: string, entry: Entry): void {
 		entry.fence.cancel();
 		if (this.entries.get(id) === entry) this.entries.delete(id);
-		if (this.entries.size === 0) this.beatAlarm.cancel();
+		if (this.entries.size === 0) {
+			this.beatAlarm.cancel();
+			this.nextBeatAt = Number.POSITIVE_INFINITY;
+		}
 	}
 
 	private armFence(entry: Entry): void {
@@ -93,7 +101,10 @@ export class BatchedLeaseRenewer {
 
 	private scheduleBeat(from: number): void {
 		if (this.stopped || this.entries.size === 0) return;
-		this.beatAlarm.set(from + this.intervalMs(), () => {
+		this.lastBeatAt = from;
+		this.nextBeatAt = from + this.intervalMs();
+		this.beatAlarm.set(this.nextBeatAt, () => {
+			this.nextBeatAt = Number.POSITIVE_INFINITY;
 			void this.beat();
 		});
 	}

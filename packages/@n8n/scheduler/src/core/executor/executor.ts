@@ -115,6 +115,9 @@ export interface ExecutorHooks {
 	/** A held task went back to `pending`. `reason` names why the holder let go. */
 	onHoldReleased?: (task: ClaimedTask, reason: string) => void;
 
+	/** A batched renewal write failed; the next beat tries again. */
+	onBatchRenewalError?: (error: unknown) => void;
+
 	/** One batched renewal write finished. */
 	onBatchRenewal?: (size: number, durationMs: number) => void;
 }
@@ -653,7 +656,7 @@ export class Executor {
 				async (owner, renewals) => await renewLeases.call(this.store, owner, renewals),
 				{
 					onBatch: (size, durationMs) => this.hooks.onBatchRenewal?.(size, durationMs),
-					onRenewalError: (error) => this.hooks.onReleaseError?.('batched-renewal', error),
+					onRenewalError: (error) => this.hooks.onBatchRenewalError?.(error),
 				},
 			);
 			this.renewers.set(host, renewer);
