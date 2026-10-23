@@ -41,7 +41,10 @@ const defaultRuleSettings: RuleSettingsMap = {
 	'adr-conventions': {
 		enabled: true,
 		severity: 'error',
-		options: { allowedOwners: ['API & OEM', 'Assistant', 'Catalysts'] },
+		options: {
+			// Catalysts stays for the ADRs written before it split into Core Application and Core Execution.
+			allowedOwners: ['API & OEM', 'Assistant', 'Catalysts', 'Core Application', 'Core Execution'],
+		},
 	},
 	'catalog-violations': {
 		enabled: true,
