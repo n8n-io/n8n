@@ -323,6 +323,7 @@ export const IDisplayOptionsSchema: z.ZodType<IDisplayOptions> = z.object({
 export const NodeConnectionTypeSchema: z.ZodType<NodeConnectionType> = z.enum([
 	'ai_agent',
 	'ai_chain',
+	'ai_decisionModel',
 	'ai_document',
 	'ai_embedding',
 	'ai_languageModel',
