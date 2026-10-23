@@ -64,6 +64,7 @@ import { AgentExecutionThreadRepository } from './repositories/agent-execution-t
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
 import {
 	AgentExecutionRepository,
+	type AgentExecutionLinks,
 	type RunningAgentExecution,
 } from './repositories/agent-execution.repository';
 import {
@@ -111,6 +112,8 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	acceptsSteering?: boolean;
 	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
+	/** Links a delegated run to the execution that started it. Absent for a top-level turn. */
+	executionLinks?: AgentExecutionLinks;
 	/** Internal admission data. These fields are not stored on the execution. */
 	queueItemId?: string;
 	resumeRunId?: string;
@@ -239,9 +242,12 @@ export class AgentExecutionService {
 			author: null,
 			model: null,
 			promptTokens: null,
+			cacheReadTokens: null,
+			cacheWriteTokens: null,
 			completionTokens: null,
 			totalTokens: null,
 			cost: null,
+			parentExecutionId: params.executionLinks?.parentExecutionId ?? null,
 			// Save the background job signal before notifying clients that the execution started.
 			timeline: params.initialTimeline?.length ? params.initialTimeline : null,
 			storedAt: 'db',
@@ -1067,6 +1073,8 @@ export class AgentExecutionService {
 			promptTokens: record.usage?.promptTokens ?? null,
 			completionTokens: record.usage?.completionTokens ?? null,
 			totalTokens: record.usage?.totalTokens ?? null,
+			cacheReadTokens: record.cacheReadTokens,
+			cacheWriteTokens: record.cacheWriteTokens,
 			timeline: record.timeline.length > 0 ? record.timeline : null,
 			storedAt: 'db' as const,
 			error: record.error,

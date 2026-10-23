@@ -1,5 +1,10 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import type { AgentSseEvent } from '@n8n/api-types';
+import type {
+	AgentExecutionUsage,
+	AgentExecutionUsageEntry,
+	AgentSseEvent,
+	AgentThreadUsageResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -18,7 +23,10 @@ import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import {
+	AgentExecutionRepository,
+	type AgentExecutionUsageRow,
+} from '../repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
@@ -339,6 +347,31 @@ export class SystemAgentExecutionService {
 		if (suspendedCheckpoint) return { status: 'suspended', checkpoint: suspendedCheckpoint };
 		const queued = await this.messageQueue.hasQueuedMessages(thread.id, ctx);
 		return { status: queued ? 'running' : 'idle', checkpoint: null };
+	}
+
+	/**
+	 * Token usage of every turn in the thread, for usage and cost readers. Each
+	 * turn lists its delegated runs (they record their own executions in child
+	 * threads) and the sum of its own and their usage.
+	 */
+	async getUsage(thread: AgentExecutionThread): Promise<AgentThreadUsageResponse> {
+		const turns = await this.executionRepository.findUsageByThreadId(thread.id);
+		const children = await this.executionRepository.findChildUsageByParentIds(
+			turns.map((turn) => turn.id),
+		);
+		const childrenByParent = new Map<string, AgentExecutionUsageEntry[]>();
+		for (const row of children) {
+			if (row.parentExecutionId === null) continue;
+			const entries = childrenByParent.get(row.parentExecutionId) ?? [];
+			entries.push(toUsageEntry(row));
+			childrenByParent.set(row.parentExecutionId, entries);
+		}
+		const executions = turns.map((turn) => {
+			const own = toUsageEntry(turn);
+			const children = childrenByParent.get(turn.id) ?? [];
+			return { ...own, descendants: children, total: sumUsage([own, ...children]) };
+		});
+		return { executions, total: sumUsage(executions.map((turn) => turn.total)) };
 	}
 
 	// ── Messages ─────────────────────────────────────────────────────────────
@@ -904,4 +937,51 @@ export class SystemAgentExecutionService {
 			return undefined;
 		}
 	}
+}
+
+function toUsageEntry(row: AgentExecutionUsageRow): AgentExecutionUsageEntry {
+	return {
+		executionId: row.id,
+		threadId: row.threadId,
+		parentExecutionId: row.parentExecutionId,
+		status: row.status,
+		model: row.model,
+		startedAt: row.startedAt?.toISOString() ?? null,
+		stoppedAt: row.stoppedAt?.toISOString() ?? null,
+		duration: row.duration,
+		promptTokens: row.promptTokens,
+		completionTokens: row.completionTokens,
+		totalTokens: row.totalTokens,
+		cacheReadTokens: row.cacheReadTokens,
+		cacheWriteTokens: row.cacheWriteTokens,
+		cost: row.cost,
+	};
+}
+
+const USAGE_FIELDS = [
+	'promptTokens',
+	'completionTokens',
+	'totalTokens',
+	'cacheReadTokens',
+	'cacheWriteTokens',
+	'cost',
+] as const satisfies ReadonlyArray<keyof AgentExecutionUsage>;
+
+/** Sums each field. A field stays null when no entry reported it, so zero and missing differ. */
+function sumUsage(entries: AgentExecutionUsage[]): AgentExecutionUsage {
+	const total: AgentExecutionUsage = {
+		promptTokens: null,
+		completionTokens: null,
+		totalTokens: null,
+		cacheReadTokens: null,
+		cacheWriteTokens: null,
+		cost: null,
+	};
+	for (const entry of entries) {
+		for (const field of USAGE_FIELDS) {
+			const value = entry[field];
+			if (value !== null) total[field] = (total[field] ?? 0) + value;
+		}
+	}
+	return total;
 }
