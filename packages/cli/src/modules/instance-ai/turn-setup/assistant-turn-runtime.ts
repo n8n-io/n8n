@@ -65,8 +65,11 @@ export interface AssistantTurnRuntime
 	onDomainAccessTracker(tracker: DomainAccessTracker): void;
 	/** The thread's persisted setup-panel snapshots, oldest first. */
 	readSetupItemsSnapshots(): Promise<Array<{ workflowId: string; items: InstanceAiSetupItem[] }>>;
-	/** Shows the thread's workflow tasks again after the workflow loop changed. */
-	syncWorkflowTasks(): Promise<void>;
+	/**
+	 * Shows the thread's workflow tasks again after the workflow loop changed.
+	 * Without it, the workflow loop state is stored but the checklist is not updated.
+	 */
+	syncWorkflowTasks?(): Promise<void>;
 	sandbox: {
 		resolveConfig(): Promise<SandboxConfig>;
 		getOrCreateWorkspace(context: InstanceAiContext): Promise<Workspace | undefined>;

@@ -6,6 +6,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	isQuotaExhaustedError,
+	WorkflowTaskCoordinator,
 	type InstanceAiContext,
 	type SandboxConfig,
 } from '@n8n/instance-ai';
@@ -168,6 +169,29 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(orchestrationContext.cancelBackgroundTask).toBeUndefined();
 			expect(orchestrationContext.schedulePlannedTasks).toBeUndefined();
 			expect(orchestrationContext.sendCorrectionToTask).toBeUndefined();
+		});
+
+		it('uses the workflow task coordinator directly when the runtime does not sync tasks', async () => {
+			const { factory } = createSetupFactory();
+
+			const { workflowTasks, orchestrationContext } = await factory.create(
+				params,
+				createRuntime({ syncWorkflowTasks: undefined }),
+			);
+
+			expect(workflowTasks).toBeInstanceOf(WorkflowTaskCoordinator);
+			expect(orchestrationContext.workflowTaskService).toBe(workflowTasks);
+		});
+
+		it('syncs the workflow tasks after a workflow loop write', async () => {
+			const { factory } = createSetupFactory();
+			const runtime = createRuntime();
+
+			const { workflowTasks } = await factory.create(params, runtime);
+			await workflowTasks.updateBuildOutcome('work-item-1', {});
+
+			expect(workflowTasks).not.toBeInstanceOf(WorkflowTaskCoordinator);
+			expect(runtime.syncWorkflowTasks).toHaveBeenCalledTimes(1);
 		});
 
 		it('refuses a thread that another user owns', async () => {

@@ -434,10 +434,10 @@ export class AssistantTurnEnvironmentFactory {
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
 		const workflowLoopStorage = new WorkflowLoopStorage(memory);
-		const workflowTasks = this.createWorkflowTaskServiceWithUiSync(
-			new WorkflowTaskCoordinator(threadId, workflowLoopStorage),
-			runtime.syncWorkflowTasks,
-		);
+		const workflowTaskCoordinator = new WorkflowTaskCoordinator(threadId, workflowLoopStorage);
+		const workflowTasks = runtime.syncWorkflowTasks
+			? this.createWorkflowTaskServiceWithUiSync(workflowTaskCoordinator, runtime.syncWorkflowTasks)
+			: workflowTaskCoordinator;
 		const plannedTaskStorage = new PlannedTaskStorage(memory);
 		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
 
