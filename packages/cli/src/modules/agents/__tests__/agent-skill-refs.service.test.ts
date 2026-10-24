@@ -113,6 +113,14 @@ describe('AgentSkillRefsService', () => {
 		});
 	});
 
+	it('keeps a saved ref when its pin is missing', async () => {
+		agentSkillRepository.findPinnedSkillIds.mockResolvedValue([]);
+		const schema = { skills: [{ type: 'skill', id: 'missing' }] } as unknown as StoredAgentConfig;
+		await expect(
+			service.refsForVersion({ versionId: 'v1', schema, skills: {} }, ctx),
+		).resolves.toEqual([{ type: 'skill', id: 'missing' }]);
+	});
+
 	describe('readVersion', () => {
 		it('returns the pins of the version in order and the pinned bodies', async () => {
 			agentSkillRepository.findPinned.mockResolvedValue(
@@ -539,7 +547,7 @@ describe('AgentSkillRefsService', () => {
 				['zeta', 'zeta-v2'],
 				['alpha', pinId],
 			]);
-			skillService.snapshotForPublish.mockResolvedValue({
+			skillService.snapshotForSave.mockResolvedValue({
 				skills: { zeta: notes, alpha: notes },
 				versionByRef,
 			});
@@ -547,7 +555,7 @@ describe('AgentSkillRefsService', () => {
 			const snapshot = await service.versionSnapshot(agent, ctx);
 			await service.pinVersion('version-1', snapshot, ctx);
 
-			expect(skillService.snapshotForPublish).toHaveBeenCalledWith(
+			expect(skillService.snapshotForSave).toHaveBeenCalledWith(
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
 				ctx,
 			);
@@ -564,7 +572,7 @@ describe('AgentSkillRefsService', () => {
 			agentSkillRepository.findDependencies.mockResolvedValue(
 				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
 			);
-			skillService.snapshotForPublish.mockResolvedValue({ skills: {}, versionByRef: new Map() });
+			skillService.snapshotForSave.mockResolvedValue({ skills: {}, versionByRef: new Map() });
 
 			await expect(service.versionSnapshot(agent, ctx)).resolves.toEqual({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'zeta' }] },
@@ -579,7 +587,7 @@ describe('AgentSkillRefsService', () => {
 
 			expect(snapshot.schema?.skills).toEqual([]);
 			expect(snapshot.skills).toEqual({});
-			expect(skillService.snapshotForPublish).not.toHaveBeenCalled();
+			expect(skillService.snapshotForSave).not.toHaveBeenCalled();
 			expect(agentSkillUsage.pinForPublish).not.toHaveBeenCalled();
 		});
 	});
