@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 // Bring the app up with one command. This script installs missing dependencies,
-// builds if you ask, starts the backend, waits for health, and prints the URL.
+// builds if you ask, starts the backend and editor, waits for both, and prints their URLs.
 //
-//   pnpm dev:up            install if needed, start dev:be, print the URL
+//   pnpm dev:up            install if needed, start dev:be and dev:fe:editor
 //   pnpm dev:up --build    also run `pnpm build` first
 //
-// dev:be serves the editor from the `dist` build. A frontend change appears only
-// after `--build` and this restart. For live frontend hot reload, use
-// `pnpm dev:fe:editor` on 8080. That path needs `pnpm session tunnel 5678 8080`.
+// Open the editor on port 8080 for frontend hot reload. In a Codespace, run
+// `pnpm session tunnel 5678 8080` from your laptop before opening it.
 //
 // For a PR preview instead of your own session, use `pnpm preview up <pr>`.
 import { execFileSync, spawn } from 'node:child_process';
@@ -23,8 +22,10 @@ import {
 
 const build = process.argv.includes('--build');
 const port = servePort();
+const editorPort = process.env.N8N_EDITOR_PORT || '8080';
 const healthPath = serveHealthPath();
 const LOG = '/tmp/n8n-dev-be.log';
+const EDITOR_LOG = '/tmp/n8n-dev-fe.log';
 const BUILD_LOG = '/tmp/dev-up-build.log';
 
 if (!existsSync('node_modules') || !existsSync('packages/cli/node_modules')) {
@@ -47,10 +48,25 @@ if (build) {
 console.log(`Starting backend (pnpm dev:be; log: ${LOG})…`);
 const fd = openSync(LOG, 'a');
 spawn('pnpm', ['dev:be'], { detached: true, stdio: ['ignore', fd, fd] }).unref();
+console.log(`Starting editor (pnpm dev:fe:editor; log: ${EDITOR_LOG})…`);
+const editorFd = openSync(EDITOR_LOG, 'a');
+spawn('pnpm', ['dev:fe:editor'], {
+	detached: true,
+	stdio: ['ignore', editorFd, editorFd],
+}).unref();
 
 if (!(await waitForHealth(port, healthPath))) {
 	console.error(`\nBackend did not answer ${healthPath} within 2 min — check ${LOG}`);
 	process.exit(1);
 }
 
-reportUp(port, shareWithOrg(port));
+if (!(await waitForHealth(editorPort, '/'))) {
+	console.error(`\nEditor did not answer / within 2 min — check ${EDITOR_LOG}`);
+	process.exit(1);
+}
+
+const shared = shareWithOrg(port);
+reportUp(port, shared);
+console.log(`Editor (hot reload): http://localhost:${editorPort}`);
+if (shared.name)
+	console.log(`Open it from your laptop with \`pnpm session tunnel ${port} ${editorPort}\`.`);
