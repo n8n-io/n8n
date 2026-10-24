@@ -2,6 +2,8 @@ import type { INodeListSearchResult } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -36,6 +38,9 @@ vi.mock('vue-router', async () => {
 		...actual,
 		useRouter: () => ({
 			push: vi.fn(),
+			resolve: vi.fn(({ params }: { params: { projectId: string; id: string } }) => ({
+				href: `/projects/${params.projectId}/datatables/${params.id}`,
+			})),
 		}),
 		useRoute: () => ({
 			params,
@@ -1391,6 +1396,201 @@ describe('ResourceLocator', () => {
 			await flushPromises();
 
 			expect(mockResolveExpression).not.toHaveBeenCalled();
+			expect(queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('data table link resolution', () => {
+		const TABLE_ID = 'table-123';
+		const TABLE_URL = `/projects/project-1/datatables/${TABLE_ID}`;
+
+		const DATA_TABLE_PARAMETER = {
+			displayName: 'Data table',
+			name: 'dataTableId',
+			type: 'resourceLocator' as const,
+			default: { mode: 'list', value: '' },
+			modes: [
+				{
+					displayName: 'From List',
+					name: 'list',
+					type: 'list' as const,
+					typeOptions: { searchListMethod: 'dataTableSearch', searchable: true },
+				},
+				{ displayName: 'ID', name: 'id', type: 'string' as const },
+			],
+		};
+
+		const EVALUATION_TRIGGER_NODE = {
+			id: 'eval-trigger',
+			name: 'When fetching a dataset row',
+			type: 'n8n-nodes-base.evaluationTrigger',
+			typeVersion: 4.7,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+
+		let dataTableStore: ReturnType<typeof mockedStore<typeof useDataTableStore>>;
+
+		const DATA_TABLE_NODE = {
+			...EVALUATION_TRIGGER_NODE,
+			id: 'data-table',
+			name: 'Data table',
+			type: 'n8n-nodes-base.dataTable',
+			typeVersion: 1.1,
+		};
+
+		const renderDataTableLocator = (
+			modelValue: Record<string, unknown>,
+			{
+				parameter = DATA_TABLE_PARAMETER,
+				node = EVALUATION_TRIGGER_NODE,
+				...props
+			}: {
+				parameter?: typeof DATA_TABLE_PARAMETER;
+				node?: typeof EVALUATION_TRIGGER_NODE;
+				isValueExpression?: boolean;
+				expressionComputedValue?: string;
+			} = {},
+		) =>
+			renderComponent({
+				props: {
+					modelValue: { __rl: true, ...modelValue },
+					parameter,
+					path: `parameters.${parameter.name}`,
+					node,
+					displayTitle: 'Data table',
+					expressionComputedValue: '',
+					isValueExpression: false,
+					...props,
+				},
+			});
+
+		beforeEach(() => {
+			dataTableStore = mockedStore(useDataTableStore);
+			dataTableStore.fetchDataTableById.mockResolvedValue({
+				id: TABLE_ID,
+				projectId: 'project-1',
+			} as DataTable);
+		});
+
+		it('links a list value without a cached url by looking the table up by id', async () => {
+			const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+			const { getByTestId } = renderDataTableLocator({
+				mode: 'list',
+				value: TABLE_ID,
+				cachedResultName: 'h1_asset_eval',
+			});
+
+			const link = await waitFor(() => getByTestId('rlc-open-resource-link'));
+			expect(dataTableStore.fetchDataTableById).toHaveBeenCalledWith(TABLE_ID);
+
+			await userEvent.click(link);
+			expect(windowOpenSpy).toHaveBeenCalledWith(TABLE_URL, '_blank', 'noopener,noreferrer');
+		});
+
+		it('uses the cached url of a list value without a lookup', async () => {
+			// Differs from the url a lookup would build, so the test shows which one is used.
+			const cachedUrl = `/projects/cached-project/datatables/${TABLE_ID}`;
+			const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+			const { getByTestId } = renderDataTableLocator({
+				mode: 'list',
+				value: TABLE_ID,
+				cachedResultName: 'h1_asset_eval',
+				cachedResultUrl: cachedUrl,
+			});
+
+			const link = await waitFor(() => getByTestId('rlc-open-resource-link'));
+			await userEvent.click(link);
+
+			expect(windowOpenSpy).toHaveBeenCalledWith(cachedUrl, '_blank', 'noopener,noreferrer');
+			expect(dataTableStore.fetchDataTableById).not.toHaveBeenCalled();
+		});
+
+		it('links an id value on an Evaluation node', async () => {
+			const { getByTestId } = renderDataTableLocator({ mode: 'id', value: TABLE_ID });
+
+			expect(await waitFor(() => getByTestId('rlc-open-resource-link'))).toBeInTheDocument();
+			expect(dataTableStore.fetchDataTableById).toHaveBeenCalledWith(TABLE_ID);
+		});
+
+		it('does not show a link when the table is not found', async () => {
+			dataTableStore.fetchDataTableById.mockResolvedValue(null);
+			const { queryByTestId } = renderDataTableLocator({
+				mode: 'list',
+				value: 'missing-table',
+				cachedResultName: 'Missing table',
+			});
+
+			await flushPromises();
+
+			expect(dataTableStore.fetchDataTableById).toHaveBeenCalledWith('missing-table');
+			expect(queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+		});
+
+		it('does not show a link when no table is selected', async () => {
+			const { queryByTestId } = renderDataTableLocator({ mode: 'list', value: '' });
+
+			await flushPromises();
+
+			expect(dataTableStore.fetchDataTableById).not.toHaveBeenCalled();
+			expect(queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+		});
+
+		it('does not look up other resource locators on the same node', async () => {
+			const { queryByTestId } = renderDataTableLocator(
+				{ mode: 'list', value: 'sheet-1', cachedResultName: 'Sheet 1' },
+				{ parameter: { ...DATA_TABLE_PARAMETER, name: 'documentId' } },
+			);
+
+			await flushPromises();
+
+			expect(dataTableStore.fetchDataTableById).not.toHaveBeenCalled();
+			expect(queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+		});
+
+		it('links a list value without a cached url on the Data table node', async () => {
+			const { getByTestId } = renderDataTableLocator(
+				{ mode: 'list', value: TABLE_ID, cachedResultName: 'h1_asset_eval' },
+				{ node: DATA_TABLE_NODE },
+			);
+
+			expect(await waitFor(() => getByTestId('rlc-open-resource-link'))).toBeInTheDocument();
+			expect(dataTableStore.fetchDataTableById).toHaveBeenCalledWith(TABLE_ID);
+		});
+
+		it('looks up the resolved id of a list-mode expression', async () => {
+			const { getByTestId } = renderDataTableLocator(
+				{ mode: 'list', value: '={{ $json.tableId }}' },
+				{ isValueExpression: true, expressionComputedValue: TABLE_ID },
+			);
+
+			expect(await waitFor(() => getByTestId('rlc-open-resource-link'))).toBeInTheDocument();
+			expect(dataTableStore.fetchDataTableById).toHaveBeenCalledWith(TABLE_ID);
+		});
+
+		it('uses a table the store already holds without a request', async () => {
+			dataTableStore.dataTables = [{ id: TABLE_ID, projectId: 'project-1' } as DataTable];
+			const { getByTestId } = renderDataTableLocator({
+				mode: 'list',
+				value: TABLE_ID,
+				cachedResultName: 'h1_asset_eval',
+			});
+
+			expect(await waitFor(() => getByTestId('rlc-open-resource-link'))).toBeInTheDocument();
+			expect(dataTableStore.fetchDataTableById).not.toHaveBeenCalled();
+		});
+
+		it('does not show a link when the lookup fails', async () => {
+			dataTableStore.fetchDataTableById.mockRejectedValue(new Error('Network error'));
+			const { queryByTestId } = renderDataTableLocator({
+				mode: 'list',
+				value: TABLE_ID,
+				cachedResultName: 'h1_asset_eval',
+			});
+
+			await flushPromises();
+
+			expect(dataTableStore.fetchDataTableById).toHaveBeenCalledWith(TABLE_ID);
 			expect(queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
 		});
 	});
