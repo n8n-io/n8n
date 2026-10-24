@@ -2858,6 +2858,9 @@ importers:
       '@typescript-eslint/utils':
         specifier: 'catalog:'
         version: 8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+      change-case:
+        specifier: 'catalog:'
+        version: 5.4.4
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)

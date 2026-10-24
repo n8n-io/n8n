@@ -14,6 +14,14 @@ ruleTester.run('no-hardcoded-secrets', NoHardcodedSecretsRule, {
 		// Non-secret variable names are never inspected.
 		{ name: 'non-secret variable name', code: `const label = '${HEX_SECRET}';` },
 		{ name: 'unrelated name with long value', code: `const description = '${TOKEN_SECRET}';` },
+		{
+			name: 'snake_case client ID with a hex-shaped value',
+			code: `const client_id = '${HEX_SECRET}';`,
+		},
+		{
+			name: 'snake_case token URL with an endpoint value',
+			code: "const token_url = 'https://example.com/oauth/token';",
+		},
 
 		// Secret-named variables with short values are ignored (< 16 chars).
 		{ name: 'short secret value', code: "const apiKey = 'short';" },
@@ -58,6 +66,12 @@ ruleTester.run('no-hardcoded-secrets', NoHardcodedSecretsRule, {
 		{ name: 'computed member assignment', code: `obj[key] = '${HEX_SECRET}';` },
 	],
 	invalid: [
+		// CE-3604: Keep coverage for the rule that already matches key fragments.
+		...['access_key', 'private-key'].map((fieldName) => ({
+			name: `reports a hardcoded value on ${fieldName}`,
+			code: `const config = { '${fieldName}': '${HEX_SECRET}' };`,
+			errors: [{ messageId: 'hardcodedSecret' as const, data: { name: fieldName } }],
+		})),
 		{
 			name: 'SECURITY: exactly 16 chars is flagged (minimum length)',
 			code: "const token = 'abcdef0123456789';",
