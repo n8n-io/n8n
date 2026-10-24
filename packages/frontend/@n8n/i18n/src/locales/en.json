@@ -9324,6 +9324,8 @@
 	"agents.builder.header.switcher.ariaLabel": "Switch agent",
 	"agents.builder.header.saving": "Saving…",
 	"agents.builder.header.saved": "Saved",
+	"agents.builder.header.documentation": "Agent documentation",
+	"agents.builder.header.documentation.description": "Learn how to build agents",
 	"agents.builder.header.editWithAi": "n8n Assistant",
 	"agents.builder.preview.button": "Test agent",
 	"agents.builder.preview.showChat": "Show chat",

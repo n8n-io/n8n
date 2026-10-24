@@ -57,6 +57,7 @@ const props = defineProps<{
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	isPreviewOpen?: boolean;
 	preventScroll?: boolean;
 	embeddedAiBuilding?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
@@ -115,7 +116,8 @@ const emit = defineEmits<{
 	'preview-task': [instructions: string];
 	'agent-changed': [];
 	'generate-eval-cases': [];
-	'open-preview': [source: 'icon'];
+	'open-preview': [source: 'primary' | 'icon'];
+	'close-preview': [];
 	'publish-agent': [];
 	'setup-task-action': [task: SetupTask];
 }>();
@@ -173,12 +175,21 @@ defineExpose({ onSetupTaskAction });
 	>
 		<div :class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]">
 			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
-				<AgentIdentityHeader
-					:config="localConfig"
-					:disabled="childrenDisabled"
-					:class="$style.identityHeader"
-					@update:config="emit('update:config', $event)"
-				/>
+				<div :class="$style.identityHeader">
+					<AgentIdentityHeader
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						@update:config="emit('update:config', $event)"
+					/>
+					<AgentPreviewButton
+						:is-runnable="props.agent?.isRunnable === true"
+						:is-preview-open="props.isPreviewOpen"
+						:validation-issues="props.configValidationIssues ?? []"
+						test-id="agent-header-preview-btn"
+						@open-preview="emit('open-preview', 'primary')"
+						@close-preview="emit('close-preview')"
+					/>
+				</div>
 			</div>
 			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
 				<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
@@ -534,6 +545,10 @@ defineExpose({ onSetupTaskAction });
 }
 
 .identityHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	flex-wrap: wrap;
 	box-sizing: border-box;
 	width: 100%;
 	max-width: var(--agent-builder-content-max-width);
