@@ -126,8 +126,8 @@ describe('MemoryLakebaseChat', () => {
 			});
 		});
 
-		it('should stay out of the node picker until Lakebase ships', () => {
-			expect(description.hidden).toBe(true);
+		it('should be listed in the node picker', () => {
+			expect(description.hidden).toBeUndefined();
 		});
 
 		it('should pin the authentication to OAuth2 through a hidden parameter', () => {
