@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, READ_ONLY_ANNOTATIONS, resolveNodeAnnotations } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeParameters,
@@ -139,6 +139,29 @@ describe('HttpRequestV3', () => {
 			for (const method of webdavMethods) {
 				expect(visible.filter((value) => value === method)).toEqual([method]);
 			}
+		});
+	});
+
+	describe('Annotations', () => {
+		it.each([
+			['GET', {}, READ_ONLY_ANNOTATIONS],
+			['PROPFIND', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
+			['PUT', {}, { effect: 'write', destructive: true, idempotent: true }],
+			['DELETE', {}, { effect: 'write', destructive: true, idempotent: false }],
+			[
+				'MKCOL',
+				{ webdavMethods: true },
+				{ effect: 'write', destructive: false, idempotent: false },
+			],
+			['POST', {}, { effect: 'write', destructive: true, idempotent: false }],
+			['={{ $json.method }}', {}, { effect: 'write', destructive: true, idempotent: false }],
+		])('should resolve method %s', (method, methodOptions, expected) => {
+			expect(
+				resolveNodeAnnotations(node.description, {
+					parameters: { method, options: methodOptions },
+					typeVersion: 4.5,
+				}),
+			).toEqual(expected);
 		});
 	});
 

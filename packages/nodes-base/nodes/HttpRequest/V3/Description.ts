@@ -1,34 +1,45 @@
-import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import {
+	READ_ONLY_ANNOTATIONS,
+	type INodeProperties,
+	type INodePropertyOptions,
+	type NodeOperationAnnotations,
+} from 'n8n-workflow';
 
 import { optimizeResponseProperties } from '../shared/optimizeResponse';
 
-const webdavMethodOptions: INodePropertyOptions[] = [
-	'COPY',
-	'MKCOL',
-	'MOVE',
-	'PROPFIND',
-	'REPORT',
-].flatMap((method) => [
-	{
-		name: method,
-		value: method,
-		displayOptions: {
-			show: {
-				'options.webdavMethods': [true],
+const webdavMethodAnnotations: Record<string, NodeOperationAnnotations> = {
+	COPY: { effect: 'write', destructive: true, idempotent: false },
+	MKCOL: { effect: 'write', destructive: false, idempotent: false },
+	MOVE: { effect: 'write', destructive: true, idempotent: false },
+	PROPFIND: READ_ONLY_ANNOTATIONS,
+	REPORT: READ_ONLY_ANNOTATIONS,
+};
+
+const webdavMethodOptions: INodePropertyOptions[] = Object.entries(webdavMethodAnnotations).flatMap(
+	([method, annotations]) => [
+		{
+			name: method,
+			value: method,
+			annotations,
+			displayOptions: {
+				show: {
+					'options.webdavMethods': [true],
+				},
 			},
 		},
-	},
-	{
-		name: method,
-		value: method,
-		displayOptions: {
-			hide: {
-				method: [{ _cnd: { not: method } }],
-				'options.webdavMethods': [true],
+		{
+			name: method,
+			value: method,
+			annotations,
+			displayOptions: {
+				hide: {
+					method: [{ _cnd: { not: method } }],
+					'options.webdavMethods': [true],
+				},
 			},
 		},
-	},
-]);
+	],
+);
 
 export const mainProperties: INodeProperties[] = [
 	{
@@ -45,22 +56,27 @@ export const mainProperties: INodeProperties[] = [
 			{
 				name: 'DELETE',
 				value: 'DELETE',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'GET',
 				value: 'GET',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'HEAD',
 				value: 'HEAD',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'OPTIONS',
 				value: 'OPTIONS',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'PATCH',
 				value: 'PATCH',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'POST',
@@ -69,6 +85,7 @@ export const mainProperties: INodeProperties[] = [
 			{
 				name: 'PUT',
 				value: 'PUT',
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 			...webdavMethodOptions,
 		],

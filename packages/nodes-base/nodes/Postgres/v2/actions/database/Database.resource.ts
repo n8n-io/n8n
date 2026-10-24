@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS, type INodeProperties } from 'n8n-workflow';
 
 import * as deleteTable from './deleteTable.operation';
 import * as executeQuery from './executeQuery.operation';
@@ -22,6 +22,7 @@ export const description: INodeProperties[] = [
 				value: 'deleteTable',
 				description: 'Delete an entire table or rows in a table',
 				action: 'Delete table or rows',
+				annotations: { effect: 'write', destructive: true },
 			},
 			{
 				name: 'Execute Query',
@@ -34,6 +35,7 @@ export const description: INodeProperties[] = [
 				value: 'insert',
 				description: 'Insert rows in a table',
 				action: 'Insert rows in a table',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
@@ -42,18 +44,21 @@ export const description: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-upsert
 				description: 'Insert or update rows in a table',
 				action: 'Insert or update rows in a table',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'Select',
 				value: 'select',
 				description: 'Select rows from a table',
 				action: 'Select rows from a table',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update rows in a table',
 				action: 'Update rows in a table',
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 		],
 		displayOptions: {
