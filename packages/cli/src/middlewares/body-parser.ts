@@ -1,4 +1,4 @@
-import { parseIncomingMessage } from '@n8n/backend-network';
+import { bufferToString, parseIncomingMessage } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
@@ -32,6 +32,19 @@ const payloadSizeMax = Container.get(GlobalConfig).endpoints.payloadSizeMax;
  * decoded character covers every declared charset.
  */
 const stripBom = (text: string) => (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+
+const isUnicodeCharset = (charset: string) => /^(utf|ucs)/i.test(charset);
+
+const decodeFormComponent = (charset: string) => (component: string) =>
+	component.replace(/(?:%[\da-f]{2})+/gi, (escaped) =>
+		bufferToString(Buffer.from(escaped.replaceAll('%', ''), 'hex'), charset),
+	);
+
+const parseForm = (body: Buffer, charset: string) =>
+	parseQueryString(stripBom(bufferToString(body, charset)), undefined, undefined, {
+		maxKeys: 1000,
+		decodeURIComponent: isUnicodeCharset(charset) ? undefined : decodeFormComponent(charset),
+	});
 
 const isClientAbortError = (error: unknown): boolean =>
 	error instanceof Error &&
@@ -97,16 +110,14 @@ export const parseBody = async (req: Request) => {
 		try {
 			if (contentType === 'application/json') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = jsonParse(stripBom(rawBody.toString(encoding)));
+				req.body = jsonParse(stripBom(bufferToString(rawBody, encoding)));
 			} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = await createXmlParser().parseStringPromise(rawBody.toString(encoding));
+				req.body = await createXmlParser().parseStringPromise(bufferToString(rawBody, encoding));
 			} else if (contentType === 'application/x-www-form-urlencoded') {
-				req.body = parseQueryString(stripBom(rawBody.toString(encoding)), undefined, undefined, {
-					maxKeys: 1000,
-				});
+				req.body = parseForm(rawBody, encoding);
 			} else if (contentType === 'text/plain') {
-				req.body = rawBody.toString(encoding);
+				req.body = bufferToString(rawBody, encoding);
 			}
 		} catch (error) {
 			throw new UnprocessableRequestError('Failed to parse request body', (error as Error).message);
