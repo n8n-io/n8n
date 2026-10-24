@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
+import { FileNotFoundError } from 'n8n-core';
 import { Readable } from 'node:stream';
 import { UserError } from 'n8n-workflow';
 
@@ -710,6 +711,29 @@ describe('SystemAgentExecutionService', () => {
 
 				await expect(turn.readAttachment(ref)).resolves.toBeUndefined();
 				expect(attachmentService.getStream).not.toHaveBeenCalled();
+			});
+
+			it('gives no content when the attachment bytes no longer exist', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-1',
+				} as never);
+				attachmentService.getStream.mockRejectedValue(new FileNotFoundError('file-1'));
+
+				await expect(turn.readAttachment(ref)).resolves.toBeUndefined();
+			});
+
+			it('rethrows other storage errors', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-1',
+				} as never);
+				const error = new Error('storage unavailable');
+				attachmentService.getStream.mockRejectedValue(error);
+
+				await expect(turn.readAttachment(ref)).rejects.toBe(error);
 			});
 		});
 
