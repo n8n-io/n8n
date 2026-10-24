@@ -77,7 +77,7 @@ export type SkillListResponse = {
 };
 
 /** The agents that use a skill, limited to the agents the caller may read. */
-export type SkillUsage = {
+export type SkillUsedBy = {
 	/** Agents whose draft references the skill. */
 	drafts: Array<{ agentId: string; agentName: string; projectId: string }>;
 	/** Agents with a published version that pins the skill, one row each. */
@@ -97,7 +97,7 @@ export type SkillDetail = SkillListItem & {
 	skill: AgentSkill;
 	/** Hash of `skill`. Send it back as `baseSkillHash` so a save cannot overwrite a newer version. */
 	skillHash: string;
-	usedBy: SkillUsage;
+	usedBy: SkillUsedBy;
 };
 
 export type SkillSaveResponse = {

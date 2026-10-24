@@ -12,7 +12,7 @@ import {
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
-	type SkillUsage,
+	type SkillUsedBy,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -100,7 +100,7 @@ export type AgentSkillModalData = {
 	/** Locks the scope field and explains why in a tooltip. */
 	scopeLockedReason?: string;
 	/** Settings only: the agents that use the skill, to warn about a scope that drops them. */
-	usedBy?: SkillUsage;
+	usedBy?: SkillUsedBy;
 	/** Shows the skill without edit controls, for a user who can use but not change it. */
 	readOnly?: boolean;
 	/**
@@ -337,7 +337,7 @@ const availabilityOptions = computed(() => [
 ]);
 /** Where a changed scope or "available to" field moves the skill, with its label and users. */
 const pendingMove = computed<
-	{ target: SkillMoveTarget; destination: string; usage: SkillUsage } | undefined
+	{ target: SkillMoveTarget; destination: string; usage: SkillUsedBy } | undefined
 >(() => {
 	if (showScope.value) {
 		if (!canChangeScope.value || scope.value === props.data.initialScope) return undefined;

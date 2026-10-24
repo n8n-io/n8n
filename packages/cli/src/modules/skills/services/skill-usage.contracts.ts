@@ -1,4 +1,4 @@
-import type { SkillUsage as SkillUsedBy } from '@n8n/api-types';
+import type { SkillUsedBy } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 
 /** An agent as the skills module sees it: an agent skill takes its project from its agent. */

@@ -1,4 +1,4 @@
-import type { SkillUsage as SkillUsedBy } from '@n8n/api-types';
+import type { SkillUsedBy } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 
