@@ -53,6 +53,7 @@ import {
 
 export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
+import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
 import { withModelName } from './model-config-name';
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
@@ -244,6 +245,7 @@ interface PersistedAdminSettings {
 	searchDisabled?: boolean;
 	n8nSandboxServiceUrl?: string | null;
 	browserUseEnabled?: boolean;
+	cloudBrowserEnabled?: boolean;
 }
 
 interface PreparedConnection {
@@ -309,6 +311,7 @@ export class InstanceAiSettingsService {
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly sandboxSettingsService: SandboxSettingsService,
 		private readonly eventService: EventService,
+		private readonly cloudBrowserService: InstanceAiCloudBrowserService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -476,6 +479,7 @@ export class InstanceAiSettingsService {
 				},
 			},
 			browserUseEnabled: this.isBrowserUseEnabled(),
+			cloudBrowserEnabled: this.isCloudBrowserEnabled(),
 		};
 	}
 
@@ -523,6 +527,9 @@ export class InstanceAiSettingsService {
 			if (update.sandboxConnection?.type === 'daytonaApi') {
 				this.rejectManagedFields(update, ['sandboxConnection'], this.deploymentLabel());
 			}
+		}
+		if (update.cloudBrowserEnabled === true && !(await this.cloudBrowserService.isAvailable())) {
+			throw new UnprocessableRequestError('The cloud browser is not available on this instance');
 		}
 		const {
 			modelCredentialId: initialModelCredentialId,
@@ -1246,6 +1253,11 @@ export class InstanceAiSettingsService {
 		return this.config.browserUseEnabled;
 	}
 
+	/** Whether the cloud browser is turned on by the admin. */
+	isCloudBrowserEnabled(): boolean {
+		return this.config.cloudBrowserEnabled;
+	}
+
 	/** Whether workflow building can use the required sandbox workspace. */
 	getSandboxStatus(): InstanceAiSandboxStatus {
 		const provider = this.sandboxSettingsService.getProvider();
@@ -1722,6 +1734,8 @@ export class InstanceAiSettingsService {
 		}
 		if (persisted.browserUseEnabled !== undefined)
 			c.browserUseEnabled = persisted.browserUseEnabled;
+		if (persisted.cloudBrowserEnabled !== undefined)
+			c.cloudBrowserEnabled = persisted.cloudBrowserEnabled;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -1743,6 +1757,7 @@ export class InstanceAiSettingsService {
 			searchDisabled: this.searchDisabled,
 			n8nSandboxServiceUrl: this.adminN8nSandboxServiceUrl,
 			browserUseEnabled: c.browserUseEnabled,
+			cloudBrowserEnabled: c.cloudBrowserEnabled,
 		};
 	}
 

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -48,17 +49,25 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { contextPreferencesEnabledMock, contextSkillsEnabledMock, routerPushMock } = vi.hoisted(
-	() => ({
-		contextPreferencesEnabledMock: vi.fn(() => true),
-		contextSkillsEnabledMock: vi.fn(() => true),
-		routerPushMock: vi.fn(),
-	}),
-);
+const {
+	cloudBrowserExperimentMock,
+	contextPreferencesEnabledMock,
+	contextSkillsEnabledMock,
+	routerPushMock,
+} = vi.hoisted(() => ({
+	cloudBrowserExperimentMock: vi.fn(),
+	contextPreferencesEnabledMock: vi.fn(() => true),
+	contextSkillsEnabledMock: vi.fn(() => true),
+	routerPushMock: vi.fn(),
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRouter: () => ({ push: routerPushMock }),
+}));
+
+vi.mock('@/experiments/instanceAiCloudBrowser', () => ({
+	useInstanceAiCloudBrowserExperiment: cloudBrowserExperimentMock,
 }));
 
 vi.mock('@/features/settings/context/context.utils', () => ({
@@ -103,6 +112,7 @@ describe('SettingsInstanceAiView', () => {
 		vi.clearAllMocks();
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
+		cloudBrowserExperimentMock.mockReturnValue({ isEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		fetchCredentialTypesSpy = vi
@@ -613,6 +623,50 @@ describe('SettingsInstanceAiView', () => {
 		it('shows the browser use toggle', () => {
 			const { getByTestId } = renderComponent();
 			expect(getByTestId('n8n-agent-browser-use-toggle')).toBeVisible();
+		});
+	});
+
+	describe('Cloud browser settings', () => {
+		const enableGatewayCredits = () => {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				aiGateway: { enabled: true, budget: 0, cloudUbbEnabled: false },
+			};
+		};
+
+		it('shows the cloud browser toggle when the flag is on and Gateway credits are enabled', () => {
+			enableGatewayCredits();
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-cloud-browser-toggle')).toBeVisible();
+		});
+
+		it('hides the cloud browser toggle when the flag is off', () => {
+			enableGatewayCredits();
+			cloudBrowserExperimentMock.mockReturnValue({ isEnabled: ref(false) });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
+		});
+
+		it('hides the cloud browser toggle when Gateway credits are not enabled', () => {
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
+		});
+
+		it('persists turning off the cloud browser, which is on by default', async () => {
+			enableGatewayCredits();
+			const setField = vi.spyOn(store, 'setField');
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-cloud-browser-toggle'));
+
+			expect(setField).toHaveBeenCalledWith('cloudBrowserEnabled', false);
+			expect(save).toHaveBeenCalled();
 		});
 	});
 

@@ -1,3 +1,4 @@
+import { INSTANCE_AI_CLOUD_BROWSER_FLAG } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User, UserRepository } from '@n8n/db';
 import type { DomainAccessTracker } from '@n8n/instance-ai';
@@ -6,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { PostHogClient } from '@/posthog';
 import type { AiGatewayBrowserUseService } from '@/services/ai-gateway-browser-use.service';
 
 import type { BrowserDomainGate } from '../browser/browser.helpers';
@@ -18,6 +20,7 @@ describe('InstanceAiCloudBrowserService', () => {
 	let service: InstanceAiCloudBrowserService;
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
+	const postHogClient = mock<PostHogClient>();
 	const domainGate: BrowserDomainGate = { tracker: mock<DomainAccessTracker>(), runId: 'run-1' };
 	let release: ReturnType<typeof vi.spyOn>;
 	let aiGatewayBrowserUseService: ReturnType<typeof mock<AiGatewayBrowserUseService>>;
@@ -27,11 +30,14 @@ describe('InstanceAiCloudBrowserService', () => {
 		logger.scoped.mockReturnValue(logger);
 		aiGatewayBrowserUseService = mock<AiGatewayBrowserUseService>();
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(true);
+		postHogClient.getFeatureFlagForInstance.mockReset();
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		service = new InstanceAiCloudBrowserService(
 			logger,
 			aiGatewayBrowserUseService,
 			userRepository,
 			credentialsService,
+			postHogClient,
 		);
 		release = vi.spyOn(CloudBrowserLocalMcpServer.prototype, 'release').mockResolvedValue();
 	});
@@ -162,19 +168,51 @@ describe('InstanceAiCloudBrowserService', () => {
 		expect(mkdir).not.toHaveBeenCalled();
 	});
 
-	it('is available only when the gateway can create browser sessions', () => {
-		expect(service.isAvailable()).toBe(true);
+	describe('isAvailable', () => {
+		beforeEach(() => {
+			postHogClient.getFeatureFlagForInstance.mockReset();
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+		});
 
-		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(false);
+		it('is available when the gateway can create browser sessions and the flag is on', async () => {
+			expect(await service.isAvailable()).toBe(true);
+			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledWith(
+				INSTANCE_AI_CLOUD_BROWSER_FLAG,
+			);
+		});
 
-		expect(service.isAvailable()).toBe(false);
+		it('is not available when the gateway cannot create browser sessions, and does not read the flag', async () => {
+			aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(false);
+
+			expect(await service.isAvailable()).toBe(false);
+			expect(postHogClient.getFeatureFlagForInstance).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['off', false],
+			['missing', undefined],
+			['a variant string', 'variant'],
+		])('is not available when the flag is %s', async (_label, value) => {
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(value);
+
+			expect(await service.isAvailable()).toBe(false);
+		});
 	});
 
 	it('refuses to create a server when the gateway cannot create browser sessions', async () => {
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(false);
 
 		await expect(service.createServer('user-1', 'thread-1', 'task-1', domainGate)).rejects.toThrow(
-			'Cloud browser use is not enabled',
+			'The cloud browser is not available on this instance',
+		);
+		expect(service.findServer('task-1')).toBeUndefined();
+	});
+
+	it('refuses to create a server when the rollout flag is off', async () => {
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+
+		await expect(service.createServer('user-1', 'thread-1', 'task-1', domainGate)).rejects.toThrow(
+			'The cloud browser is not available on this instance',
 		);
 		expect(service.findServer('task-1')).toBeUndefined();
 	});

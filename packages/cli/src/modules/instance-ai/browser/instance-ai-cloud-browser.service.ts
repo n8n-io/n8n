@@ -1,11 +1,13 @@
+import { INSTANCE_AI_CLOUD_BROWSER_FLAG } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { tmpdir } from 'node:os';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { PostHogClient } from '@/posthog';
 import { AiGatewayBrowserUseService } from '@/services/ai-gateway-browser-use.service';
 
 import {
@@ -31,16 +33,24 @@ export class InstanceAiCloudBrowserService {
 		private readonly aiGatewayBrowserUseService: AiGatewayBrowserUseService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
+		private readonly postHogClient: PostHogClient,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
 
 	/**
-	 * Whether this instance can get browser sessions. For now, only cloud instances with the
-	 * AI Gateway enabled can get browser sessions. Local instances cannot.
+	 * Whether the cloud browser is available to this instance. The admin setting decides whether
+	 * it is used. Checks the following:
+	 * - AI gateway browser use is enabled
+	 * - the PostHog rollout flag is on for the instance
 	 */
-	isAvailable(): boolean {
-		return this.aiGatewayBrowserUseService.isGatewayBrowserUseEnabled();
+	async isAvailable(): Promise<boolean> {
+		if (!this.aiGatewayBrowserUseService.isGatewayBrowserUseEnabled()) return false;
+
+		const featureFlag = await this.postHogClient.getFeatureFlagForInstance(
+			INSTANCE_AI_CLOUD_BROWSER_FLAG,
+		);
+		return featureFlag === true;
 	}
 
 	/**
@@ -54,6 +64,9 @@ export class InstanceAiCloudBrowserService {
 		taskId: string,
 		domainGate: BrowserDomainGate,
 	): Promise<CloudBrowserLocalMcpServer> {
+		const isAvailable = await this.isAvailable();
+		if (!isAvailable) throw new UserError('The cloud browser is not available on this instance');
+
 		const { createBrowserTools } = await import('@n8n/mcp-browser');
 
 		const existing = this.serversByTaskId.get(taskId);

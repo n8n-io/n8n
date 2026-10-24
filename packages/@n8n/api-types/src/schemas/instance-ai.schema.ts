@@ -2468,6 +2468,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxServiceUrl: string | null;
 	envManaged: InstanceAiEnvManagedFields;
 	browserUseEnabled: boolean;
+	cloudBrowserEnabled: boolean;
 }
 
 export type InstanceAiComponentSource = 'ui' | 'env' | 'none';
@@ -2579,6 +2580,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	searchDisabled: z.boolean().optional(),
 	n8nSandboxServiceUrl: z.string().url().nullable().optional(),
 	browserUseEnabled: z.boolean().optional(),
+	cloudBrowserEnabled: z.boolean().optional(),
 }) {}
 
 export const instanceAiVerificationFailureSchema = z.enum([
@@ -2826,6 +2828,9 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
 
 /** Instance rollout gate for shared activity recording and retrieval. */
 export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
+
+/** Rollout gate for cloud browser use in the n8n Assistant. */
+export const INSTANCE_AI_CLOUD_BROWSER_FLAG = '129_instance_ai_cloud_browser';
 
 /**
  * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
