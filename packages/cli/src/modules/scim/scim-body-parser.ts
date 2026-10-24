@@ -1,3 +1,4 @@
+import { bufferToString } from '@n8n/backend-network';
 import { UnprocessableRequestError } from '@n8n/errors';
 import type { RequestHandler } from 'express';
 import { jsonParse } from 'n8n-workflow';
@@ -13,7 +14,7 @@ export const scimBodyParser: RequestHandler = (req, _res, next) => {
 	if (req.contentType !== 'application/scim+json' || !req.rawBody?.length) return next();
 
 	try {
-		const text = req.rawBody.toString(req.encoding);
+		const text = bufferToString(req.rawBody, req.encoding);
 		// A leading BOM is not valid JSON, but RFC 8259 section 8.1 lets us ignore it.
 		req.body = jsonParse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
 	} catch (error) {

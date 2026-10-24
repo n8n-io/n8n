@@ -89,4 +89,70 @@ describe('parseBody', () => {
 			UnprocessableRequestError,
 		);
 	});
+
+	describe('charsets', () => {
+		const parse = async (contentType: string, encoding: string, rawBody: Buffer | string) => {
+			const req = {
+				contentType,
+				encoding,
+				rawBody: Buffer.from(rawBody),
+				readRawBody: async () => {},
+			} as unknown as Request;
+			await parseBody(req);
+			return req.body;
+		};
+
+		const form = 'application/x-www-form-urlencoded';
+		const latin1 = (text: string) => Buffer.from(text, 'latin1');
+
+		it.each([
+			['iso-8859-1', 'text=Gr%FC%DFe', { text: 'Grüße' }],
+			['latin1', 'text=Gr%fc%dfe', { text: 'Grüße' }],
+			['windows-1252', 'price=5%80&k%E9y=a+%26+b', { price: '5€', kéy: 'a & b' }],
+			['shift_jis', 'a=%82%B1%82%F1%82%C9%82%BF%82%CD', { a: 'こんにちは' }],
+			['utf-7', 'text=%2BAOk-', { text: 'é' }],
+			['iso-8859-1', 'pct=100%&bad=%zz&end=%F', { pct: '100%', bad: '%zz', end: '%F' }],
+		])('percent-decodes a %s form body in that charset', async (charset, body, expected) => {
+			expect(await parse(form, charset, body)).toEqual(expected);
+		});
+
+		it('decodes raw bytes in a legacy charset form body', async () => {
+			expect(await parse(form, 'iso-8859-1', latin1('text=Grüße+%FC'))).toEqual({
+				text: 'Grüße ü',
+			});
+		});
+
+		it('decodes a character split across a raw byte and an escape', async () => {
+			const body = Buffer.concat([Buffer.from('a='), Buffer.from([0x82]), Buffer.from('%B1')]);
+
+			expect(await parse(form, 'shift_jis', body)).toEqual({ a: 'こ' });
+		});
+
+		it('percent-decodes a utf-8 form body as before', async () => {
+			expect(await parse(form, 'utf-8', 'text=Gr%C3%BC%C3%9Fe&bad=%FC')).toEqual({
+				text: 'Grüße',
+				bad: '\ufffd',
+			});
+		});
+
+		it('percent-decodes a utf-16 form body as utf-8', async () => {
+			expect(await parse(form, 'utf-16le', Buffer.from('text=%C3%BC', 'utf16le'))).toEqual({
+				text: 'ü',
+			});
+		});
+
+		it('decodes json, xml and text bodies in a legacy charset', async () => {
+			expect(await parse('application/json', 'iso-8859-1', latin1('{"text":"Grüße"}'))).toEqual({
+				text: 'Grüße',
+			});
+			expect(await parse('application/xml', 'windows-1252', latin1('<a>Grüße</a>'))).toEqual({
+				a: 'Grüße',
+			});
+			expect(await parse('text/plain', 'iso-8859-15', Buffer.from([0x47, 0xfc, 0xa4]))).toBe('Gü€');
+		});
+
+		it('rejects a body in an unknown charset', async () => {
+			await expect(parse(form, 'not-a-charset', 'a=1')).rejects.toThrow(UnprocessableRequestError);
+		});
+	});
 });

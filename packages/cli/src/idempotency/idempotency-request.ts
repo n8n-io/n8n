@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
+import { bufferToString } from '@n8n/backend-network';
 import { isRecord } from '@n8n/utils/is-record';
 
 const VISIBLE_ASCII = /^[\x21-\x7E]+$/;
@@ -36,7 +37,7 @@ export type ParsedIdempotencyKey =
 	| { kind: 'present'; value: string };
 
 export function rememberRawBody(req: IncomingMessage, body: Buffer): void {
-	rawBodies.set(req, body.toString(req.encoding || 'utf8'));
+	rawBodies.set(req, bufferToString(body, req.encoding || 'utf8'));
 }
 
 export function parseIdempotencyKey(header: string | string[] | undefined): ParsedIdempotencyKey {
@@ -140,7 +141,7 @@ function requestBodyText(req: FingerprintRequest): string {
 	if (remembered !== undefined) return remembered;
 
 	if (Buffer.isBuffer(req.rawBody) && req.rawBody.length > 0) {
-		return req.rawBody.toString(req.encoding || 'utf8');
+		return bufferToString(req.rawBody, req.encoding || 'utf8');
 	}
 
 	const text = parsedBodyText(req.body);
