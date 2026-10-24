@@ -69,7 +69,7 @@ describe('package import-selection command', () => {
 			selectedProjectId: 'sp-1',
 			selectedWorkflowIds: ['w-1', 'w-2'],
 			deletedWorkflowIds: ['w-3'],
-			workflowConflictPolicy: 'skip',
+			conflictPolicy: 'skip',
 			workflowIdPolicy: 'new',
 			overwriteDeletionPolicy: 'hard-delete',
 		});
@@ -88,7 +88,7 @@ describe('package import-selection command', () => {
 			selectedProjectId: 'sp-1',
 			selectedWorkflowIds: [],
 			deletedWorkflowIds: undefined,
-			workflowConflictPolicy: 'new-version',
+			conflictPolicy: 'new-version',
 			workflowIdPolicy: undefined,
 			overwriteDeletionPolicy: undefined,
 		});
@@ -172,7 +172,7 @@ describe('package import-selection command', () => {
 				expect.objectContaining({
 					selectedProjectId: 'sp-1',
 					selectedWorkflowIds: [],
-					workflowConflictPolicy: 'new-version',
+					conflictPolicy: 'new-version',
 				}),
 			);
 		});

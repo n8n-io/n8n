@@ -35,7 +35,7 @@ let sourceDir: string;
 
 const importPolicy: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: 'overwrite',
-	workflowConflictPolicy: 'new-version',
+	conflictPolicy: 'new-version',
 	workflowIdPolicy: 'source',
 	workflowPublishingPolicy: 'match-source',
 	missingNodeTypeMode: 'fail',

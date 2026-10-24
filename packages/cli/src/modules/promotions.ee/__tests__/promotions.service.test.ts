@@ -1375,7 +1375,7 @@ describe('PromotionsService', () => {
 				{
 					user: actor,
 					projectConflictPolicy: 'overwrite',
-					workflowConflictPolicy: 'new-version',
+					conflictPolicy: 'new-version',
 					workflowIdPolicy: 'source',
 					workflowPublishingPolicy: 'match-source',
 					missingNodeTypeMode: 'fail',

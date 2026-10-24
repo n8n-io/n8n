@@ -82,6 +82,7 @@ import type {
 	ImportContext,
 	ImportedFolderSummary,
 	ImportWorkflowProperties,
+	ImportAgentProperties,
 	MissingNodeTypeMode,
 	PackageImportBindings,
 	PackageImportSource,
@@ -117,7 +118,9 @@ export interface ImportOrchestrationInput {
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
 	tagRequest: TagImportRequest;
-	options: ImportWorkflowProperties & ResolvedImportFolderProperties;
+	options: ImportWorkflowProperties &
+		Partial<ImportAgentProperties> &
+		ResolvedImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
 	/** Sub-workflow dependency graph from the manifest, used to order the import. */
@@ -357,7 +360,11 @@ export class ImportOrchestrator {
 		return await Container.get(AgentImporter).plan(
 			{ ...input.context, projectPendingCreation: input.projectPendingCreation },
 			input.agents,
-			input.options,
+			{
+				conflictPolicy: input.options.conflictPolicy,
+				agentIdPolicy: input.options.agentIdPolicy ?? 'source',
+				agentPublishingPolicy: input.options.agentPublishingPolicy ?? 'preserve-published-state',
+			},
 		);
 	}
 
@@ -532,6 +539,9 @@ export class ImportOrchestrator {
 		if (plan.agentPlan) {
 			const { AgentImporter } = await import('../entities/agent/agent-importer.js');
 			agentOutcomes = await Container.get(AgentImporter).apply(context, plan.agentPlan);
+		}
+		for (const { sourceAgentId, agent } of agentOutcomes) {
+			bindings.agents.set(sourceAgentId, agent.id);
 		}
 
 		// Last of the writes: an overwrite is the only step that rewrites pre-existing data, and no

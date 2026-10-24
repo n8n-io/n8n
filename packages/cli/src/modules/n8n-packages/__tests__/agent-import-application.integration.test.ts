@@ -227,7 +227,7 @@ function request(overrides: Partial<ResolvedImportRequest> = {}): ResolvedImport
 			user: owner,
 			packageBuffer: Buffer.alloc(0),
 			projectId: project.id,
-			workflowConflictPolicy: 'new-version',
+			conflictPolicy: 'new-version',
 			folderConflictPolicy: 'merge',
 		}),
 		folderConflictPolicy: 'merge',
@@ -466,8 +466,8 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	const before = await agents.findById(initial.id);
 	const completion = vi.spyOn(Container.get(AgentSaveCompletionService), 'definitionSaved');
 	first.config!.instructions = 'Ignored';
-	const skipped = (await importSelected(input, { workflowConflictPolicy: 'skip' })).scopes[0]
-		.imported.agentOutcomes;
+	const skipped = (await importSelected(input, { conflictPolicy: 'skip' })).scopes[0].imported
+		.agentOutcomes;
 	expect(skipped).toMatchObject([{ status: 'skipped', agent: { id: initial.id } }]);
 	expect(await agents.findById(initial.id)).toEqual(before);
 	expect(completion).not.toHaveBeenCalled();
@@ -513,7 +513,12 @@ it('applies and publishes a project package after authorized project creation', 
 	const role = await createCustomRoleWithScopeSlugs(['project:create'], { roleType: 'global' });
 	const user = await createUser({ role });
 	const result = await Container.get(ProjectPackageImporter).import(
-		request({ user, projectId: undefined, workflowPublishingPolicy: 'match-source' }),
+		request({
+			user,
+			projectId: undefined,
+			agentPublishingPolicy: 'match-source',
+			workflowPublishingPolicy: 'match-source',
+		}),
 		await readerFor(input),
 		input.manifest,
 		'package-import',
@@ -556,7 +561,10 @@ it('publishes workflows before an Agent cycle and snapshots the committed defini
 			published.map(({ taskId }) => taskId),
 		);
 	});
-	const imported = await importSelected(input, { workflowPublishingPolicy: 'publish-all' });
+	const imported = await importSelected(input, {
+		agentPublishingPolicy: 'publish-all',
+		workflowPublishingPolicy: 'publish-all',
+	});
 	expect(imported.result.workflows[0].publishing).toEqual({ state: 'published' });
 	for (const [index, outcome] of imported.agentOutcomes.entries()) {
 		const applied = imported.scopes[0].imported.agentOutcomes[index].agent;
@@ -592,7 +600,10 @@ it('publishes workflows before an Agent cycle and snapshots the committed defini
 	vi.spyOn(Container.get(WorkflowService), 'activateWorkflow').mockRejectedValueOnce(
 		new Error('Workflow publication failed'),
 	);
-	const updated = await importSelected(input, { workflowPublishingPolicy: 'publish-all' });
+	const updated = await importSelected(input, {
+		agentPublishingPolicy: 'publish-all',
+		workflowPublishingPolicy: 'publish-all',
+	});
 	expect(updated.result.workflows[0].publishing.state).toBe('failed');
 	expect(updated.agentOutcomes.map(({ publishing }) => publishing)).toEqual([
 		{ state: 'published' },
@@ -605,7 +616,10 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 	input.manifest.agents.splice(1);
 	const initial = await importSelected(input);
 	expect(initial.agentOutcomes[0].publishing).toEqual({ state: 'unchanged' });
-	const matched = await importSelected(input, { workflowPublishingPolicy: 'match-source' });
+	const matched = await importSelected(input, {
+		agentPublishingPolicy: 'match-source',
+		workflowPublishingPolicy: 'match-source',
+	});
 	expect(matched.agentOutcomes[0].publishing).toEqual({ state: 'published' });
 	const republished = await importSelected(input);
 	expect(republished.agentOutcomes[0].publishing).toEqual({ state: 'published' });
@@ -615,7 +629,10 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 		publishedVersionId: 'absent-published-version',
 	};
 	for (const policy of ['preserve-published-state', 'match-source'] as const) {
-		const result = await importSelected(input, { workflowPublishingPolicy: policy });
+		const result = await importSelected(input, {
+			agentPublishingPolicy: policy,
+			workflowPublishingPolicy: policy,
+		});
 		expect(result.agentOutcomes[0]).toMatchObject({
 			status: 'updated',
 			agent: { activeVersionId: published.activeVersionId },
@@ -624,7 +641,8 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 	}
 	const before = await agents.findById(published.id);
 	const skipped = await importSelected(input, {
-		workflowConflictPolicy: 'skip',
+		conflictPolicy: 'skip',
+		agentPublishingPolicy: 'unpublish-all',
 		workflowPublishingPolicy: 'unpublish-all',
 	});
 	expect(skipped.agentOutcomes[0]).toMatchObject({
@@ -638,7 +656,10 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 		versionId: 'draft-version',
 		publishedVersionId: null,
 	};
-	const unpublished = await importSelected(input, { workflowPublishingPolicy: 'match-source' });
+	const unpublished = await importSelected(input, {
+		agentPublishingPolicy: 'match-source',
+		workflowPublishingPolicy: 'match-source',
+	});
 	expect(unpublished.agentOutcomes[0]).toMatchObject({
 		agent: { activeVersionId: null },
 		publishing: { state: 'unpublished' },
@@ -657,7 +678,10 @@ it.each([
 		addWorkflowTool(input);
 		let activeVersionId: string | null = null;
 		if (published) {
-			const initial = await importSelected(input, { workflowPublishingPolicy: 'publish-all' });
+			const initial = await importSelected(input, {
+				agentPublishingPolicy: 'publish-all',
+				workflowPublishingPolicy: 'publish-all',
+			});
 			activeVersionId = initial.agentOutcomes[0].agent.activeVersionId;
 			expect(activeVersionId).not.toBeNull();
 		}
@@ -685,6 +709,7 @@ it.each([
 		} as const;
 		const imported = await importSelected(input, {
 			...options,
+			agentPublishingPolicy: 'publish-all',
 			workflowPublishingPolicy: 'publish-all',
 		});
 		expect(imported.agentOutcomes[0].publishing).toEqual(
@@ -701,6 +726,7 @@ it.each([
 			input.manifest.requirements.credentials![0].id = 'unpublish-model';
 			const unpublished = await importSelected(input, {
 				...options,
+				agentPublishingPolicy: 'unpublish-all',
 				workflowPublishingPolicy: 'unpublish-all',
 			});
 			expect(unpublished.scopes[0].imported.agentOutcomes[0]).toMatchObject({
@@ -719,16 +745,30 @@ it.each(['publish', 'unpublish'] as const)(
 	async (action) => {
 		const input = publishableFixture();
 		if (action === 'unpublish')
-			await importSelected(input, { workflowPublishingPolicy: 'publish-all' });
+			await importSelected(input, {
+				agentPublishingPolicy: 'publish-all',
+				workflowPublishingPolicy: 'publish-all',
+			});
 		const member = await createMember();
 		const allowed = await createCustomRoleWithScopeSlugs(
-			['agent:read', 'agent:create', 'agent:update', 'agent:publish', 'agent:unpublish'],
+			[
+				'agent:import',
+				'agent:read',
+				'agent:create',
+				'agent:update',
+				'agent:publish',
+				'agent:unpublish',
+			],
 			{ roleType: 'project' },
 		);
 		await linkUserToProject(member, project, allowed.slug);
 		const policy = action === 'publish' ? 'publish-all' : 'unpublish-all';
 		const content = await orchestrator.apply(
-			await planFor(input, { user: member, workflowPublishingPolicy: policy }),
+			await planFor(input, {
+				user: member,
+				agentPublishingPolicy: policy,
+				workflowPublishingPolicy: policy,
+			}),
 		);
 		const denied = await createCustomRoleWithScopeSlugs(['agent:read'], { roleType: 'project' });
 		await linkUserToProject(member, project, denied.slug);
@@ -752,10 +792,13 @@ it.each(['publish', 'unpublish'] as const)(
 	async (action) => {
 		const input = publishableFixture();
 		if (action === 'unpublish')
-			await importSelected(input, { workflowPublishingPolicy: 'publish-all' });
+			await importSelected(input, {
+				agentPublishingPolicy: 'publish-all',
+				workflowPublishingPolicy: 'publish-all',
+			});
 		const policy = action === 'publish' ? 'publish-all' : 'unpublish-all';
 		const content = await orchestrator.apply(
-			await planFor(input, { workflowPublishingPolicy: policy }),
+			await planFor(input, { agentPublishingPolicy: policy, workflowPublishingPolicy: policy }),
 		);
 		const current = (await agents.findById(content.agentOutcomes[0].agent.id))!;
 		current.name = 'Concurrent edit';
@@ -789,7 +832,10 @@ it.each(['validation', 'policy', 'post-commit'] as const)(
 		const input = publishableFixture();
 		if (failure === 'validation') source(input).config!.instructions = '';
 		const content = await orchestrator.apply(
-			await planFor(input, { workflowPublishingPolicy: 'publish-all' }),
+			await planFor(input, {
+				agentPublishingPolicy: 'publish-all',
+				workflowPublishingPolicy: 'publish-all',
+			}),
 		);
 		const saved = content.agentOutcomes[0].agent;
 		if (failure === 'policy') deniedPublishName = saved.name;
@@ -825,7 +871,7 @@ it.each(['create', 'update'] as const)(
 	'rolls back the current %s after a task write fails, and keeps earlier saves',
 	async (action) => {
 		const input = fixture();
-		const options = { workflowIdPolicy: 'source' } as const;
+		const options = { agentIdPolicy: 'source' } as const;
 		if (action === 'update') await importSelected(input, options);
 		const first = source(input);
 		const second = source(input, 1);
@@ -909,14 +955,17 @@ it.each(['create', 'update'] as const)(
 		if (action === 'update') await importSelected(input);
 		const member = await createMember();
 		const allowed = await createCustomRoleWithScopeSlugs(
-			['agent:read', 'agent:create', 'agent:update', 'workflow:import'],
+			['agent:import', 'agent:read', 'agent:create', 'agent:update', 'workflow:import'],
 			{ roleType: 'project' },
 		);
 		await linkUserToProject(member, project, allowed.slug);
 		const plan = await planFor(input, { user: member });
-		const denied = await createCustomRoleWithScopeSlugs(['agent:read', 'workflow:import'], {
-			roleType: 'project',
-		});
+		const denied = await createCustomRoleWithScopeSlugs(
+			['agent:import', 'agent:read', 'workflow:import'],
+			{
+				roleType: 'project',
+			},
+		);
 		await linkUserToProject(member, project, denied.slug);
 		const before = await agents.findByProjectId(project.id);
 		await expect(orchestrator.apply(plan)).rejects.toBeInstanceOf(ForbiddenError);

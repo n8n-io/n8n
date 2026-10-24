@@ -3168,6 +3168,8 @@
 	"projectRoles.agent:read.tooltip": "View agents within the project",
 	"projectRoles.agent:export": "Export",
 	"projectRoles.agent:export.tooltip": "Include agents in a package export",
+	"projectRoles.agent:import": "Import",
+	"projectRoles.agent:import.tooltip": "Import agents from a portable package into the project",
 	"projectRoles.agent:execute": "Execute",
 	"projectRoles.agent:execute.tooltip": "Execute agents within the project",
 	"projectRoles.agent:update": "Edit",

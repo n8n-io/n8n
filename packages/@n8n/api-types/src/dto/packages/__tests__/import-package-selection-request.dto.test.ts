@@ -19,7 +19,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 					selectedProjectId: 'P1',
 					selectedWorkflowIds: ['WFA', 'WFB'],
 					deletedWorkflowIds: undefined,
-					workflowConflictPolicy: 'new-version',
+					conflictPolicy: 'new-version',
 					workflowIdPolicy: 'source',
 					overwriteDeletionPolicy: 'archive',
 				}),
@@ -39,7 +39,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 					selectedProjectId: 'P1',
 					selectedWorkflowIds: ['WFA', 'WFB'],
 					deletedWorkflowIds: ['WFC'],
-					workflowConflictPolicy: 'new-version',
+					conflictPolicy: 'new-version',
 					workflowIdPolicy: 'source',
 					overwriteDeletionPolicy: 'archive',
 				}),
@@ -125,13 +125,13 @@ describe('ImportPackageSelectionRequestDto', () => {
 		it('defaults blank policy fields', () => {
 			const result = ImportPackageSelectionRequestDto.safeParse({
 				...base,
-				workflowConflictPolicy: '',
+				conflictPolicy: '',
 				workflowIdPolicy: '   ',
 				overwriteDeletionPolicy: '',
 			});
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.workflowConflictPolicy).toBe('new-version');
+				expect(result.data.conflictPolicy).toBe('new-version');
 				expect(result.data.workflowIdPolicy).toBe('source');
 				expect(result.data.overwriteDeletionPolicy).toBe('archive');
 			}
@@ -140,20 +140,23 @@ describe('ImportPackageSelectionRequestDto', () => {
 		it('accepts explicit values', () => {
 			const result = ImportPackageSelectionRequestDto.safeParse({
 				...base,
-				workflowConflictPolicy: 'skip',
+				conflictPolicy: 'skip',
 				workflowIdPolicy: 'new',
 				overwriteDeletionPolicy: 'hard-delete',
 			});
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.workflowConflictPolicy).toBe('skip');
+				expect(result.data.conflictPolicy).toBe('skip');
 				expect(result.data.workflowIdPolicy).toBe('new');
 				expect(result.data.overwriteDeletionPolicy).toBe('hard-delete');
 			}
 		});
 
 		it.each([
-			{ field: 'workflowConflictPolicy', value: 'overwrite' },
+			{ field: 'conflictPolicy', value: 'overwrite' },
+			{ field: 'workflowConflictPolicy', value: 'new-version' },
+			{ field: 'agentIdPolicy', value: 'source' },
+			{ field: 'agentPublishingPolicy', value: 'publish-all' },
 			{ field: 'workflowIdPolicy', value: 'reuse' },
 			{ field: 'overwriteDeletionPolicy', value: 'purge' },
 		])('rejects an unsupported $field value', ({ field, value }) => {
@@ -182,7 +185,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 			'selectedProjectId',
 			'selectedWorkflowIds',
 			'deletedWorkflowIds',
-			'workflowConflictPolicy',
+			'conflictPolicy',
 			'workflowIdPolicy',
 			'overwriteDeletionPolicy',
 		]);
