@@ -131,7 +131,7 @@ describe('AgentSkillsService', () => {
 			);
 		});
 
-		it('creates hub skills in the agent project and attaches them in one transaction, in input order', async () => {
+		it('creates skills in the agent project and attaches them in one transaction, in input order', async () => {
 			skillRefs.bodies.existing = { ...skill, name: 'Existing' };
 			const agent = givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'existing' }] },
@@ -673,7 +673,7 @@ describe('AgentSkillsService', () => {
 	});
 
 	describe('deleteSkill', () => {
-		it('detaches the skill and keeps the hub skill', async () => {
+		it('detaches the skill and keeps the skill', async () => {
 			const agent = givenAgent({
 				schema: {
 					...baseConfig,

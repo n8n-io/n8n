@@ -36,7 +36,7 @@ export interface AgentSkillsSnapshot {
  *
  * The refs of a draft are the `agent_skill_dependency` rows. The refs of a
  * published version are the `agent_version_skill_dependency` pins, in attach
- * order. The skill bodies come from the skills hub.
+ * order. The skill bodies come from the skills module.
  */
 @Service()
 export class AgentSkillRefsService {
@@ -207,9 +207,9 @@ export class AgentSkillRefsService {
 	}
 
 	/**
-	 * Create with a config (duplicate, import, eval seeding). A ref to a hub
+	 * Create with a config (duplicate, import, eval seeding). A ref to a
 	 * skill stays a ref. A ref to an agent skill of another agent in the same
-	 * project gets a copy. A ref with a body but no hub skill gets a new agent
+	 * project gets a copy. A ref with a body but no stored skill gets a new agent
 	 * skill. Both new skills belong to this agent only, so deleting the agent
 	 * deletes them. A new skill gets a new id, and the ref points to it. A ref
 	 * with neither is dropped, and so is a ref with only a body when no user
@@ -305,7 +305,7 @@ export class AgentSkillRefsService {
 	}
 
 	/**
-	 * The hub version id of each draft ref, keyed by skill id, in draft order. Pin
+	 * The skill version id of each draft ref, keyed by skill id, in draft order. Pin
 	 * the versions once the `agent_history` row exists (see `pinVersion`). Call it in
 	 * the publish transaction: it takes the publish lock on the skills.
 	 */

@@ -127,8 +127,8 @@ describe('Assistant reads of user skills', () => {
 	it('reads nothing while Assistant skills are off', async () => {
 		gate.isEnabled.mockResolvedValue(false);
 
-		expect(await service.listHubSkills(context)).toEqual([]);
-		expect(await service.readHubSkill(context, summary.id)).toBeNull();
+		expect(await service.listUserSkills(context)).toEqual([]);
+		expect(await service.readUserSkill(context, summary.id)).toBeNull();
 		expect(skillRuntime.listForAssistant).not.toHaveBeenCalled();
 		expect(skillRuntime.readForAssistant).not.toHaveBeenCalled();
 		expect((await service.loadSkills(openScope)).source.registry.skills.length).toBeGreaterThan(0);
@@ -137,8 +137,8 @@ describe('Assistant reads of user skills', () => {
 	it('reads the skills of the user while Assistant skills are on', async () => {
 		gate.isEnabled.mockResolvedValue(true);
 
-		expect(await service.listHubSkills(context)).toEqual([summary]);
-		expect(await service.readHubSkill(context, summary.id)).toEqual(content);
+		expect(await service.listUserSkills(context)).toEqual([summary]);
+		expect(await service.readUserSkill(context, summary.id)).toEqual(content);
 		expect(skillRuntime.listForAssistant).toHaveBeenCalledWith(context);
 		expect(skillRuntime.readForAssistant).toHaveBeenCalledWith(context, summary.id);
 	});

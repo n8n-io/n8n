@@ -63,7 +63,7 @@ export class Agent extends WithTimestampsAndStringId {
 	>;
 
 	/**
-	 * @deprecated Agents keep their skills in the skills hub. Read and write them through
+	 * @deprecated Agents keep their skills in the skills module. Read and write them through
 	 * `AgentSkillRefsService`. Only the data migration reads this column, and a later
 	 * release drops it.
 	 */

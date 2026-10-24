@@ -203,7 +203,7 @@ The following operations remain available:
 - Inserting, updating, and deleting data table rows
 - Publishing/unpublishing (activating/deactivating) workflows
 - Setting up, editing, and deleting credentials
-- Creating, editing, and deleting skills in the skills hub
+- Creating, editing, and deleting skills
 - Restoring workflow versions
 - Browsing the filesystem, fetching URLs, and searching the web
 

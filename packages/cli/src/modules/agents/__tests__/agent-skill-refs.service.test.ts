@@ -115,6 +115,22 @@ describe('AgentSkillRefsService', () => {
 			});
 			expect(agentSkillRepository.findPins).toHaveBeenCalledWith('version-1', ctx);
 		});
+
+		it('leaves out a pin whose version is gone', async () => {
+			agentSkillRepository.findPins.mockResolvedValue([
+				{ skillId: 'zeta', skillVersionId: 'zeta-v1' },
+				{ skillId: 'gone', skillVersionId: 'gone-v1' },
+			]);
+			skillRuntime.resolveVersions.mockResolvedValue(
+				new Map([['zeta-v1', { skillId: 'zeta', skill: skillBody('Zeta') }]]),
+			);
+
+			const result = await service.readVersion({ versionId: 'version-1' }, ctx);
+
+			expect(skillRuntime.resolveVersions).toHaveBeenCalledWith(['zeta-v1', 'gone-v1'], ctx);
+			expect(result.skillRefs).toEqual([{ type: 'skill', id: 'zeta' }]);
+			expect(Object.keys(result.skills)).toEqual(['zeta']);
+		});
 	});
 
 	describe('skillsForRefs', () => {
@@ -316,7 +332,7 @@ describe('AgentSkillRefsService', () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
-		it('keeps refs to hub skills and creates agent skills for refs with only a body', async () => {
+		it('keeps refs to skills and creates agent skills for refs with only a body', async () => {
 			skillRuntime.findTargets.mockResolvedValueOnce(
 				new Map([['shared', { projectId: null, agentId: null }]]),
 			);
@@ -372,7 +388,7 @@ describe('AgentSkillRefsService', () => {
 			expect(userHasScopes).not.toHaveBeenCalled();
 		});
 
-		it('needs no skill permission for refs to hub skills', async () => {
+		it('needs no skill permission for refs to skills', async () => {
 			skillRuntime.findTargets.mockResolvedValueOnce(
 				new Map([['shared', { projectId: null, agentId: null }]]),
 			);
@@ -454,7 +470,7 @@ describe('AgentSkillRefsService', () => {
 			['project', { projectId: 'project-1', agentId: null }],
 			['agent', { projectId: null, agentId: 'agent-1' }],
 			['instance', { projectId: null, agentId: null }],
-		] as const)('creates a hub skill available to %s', async (availableTo, target) => {
+		] as const)('creates a skill available to %s', async (availableTo, target) => {
 			const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
 			skillService.createTrusted.mockResolvedValue('skill_created');
 

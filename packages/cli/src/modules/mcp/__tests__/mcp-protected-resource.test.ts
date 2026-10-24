@@ -84,7 +84,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:read']).toBeUndefined();
 		});
 
-		it('withholds skill scopes and tools without an agents provider', async () => {
+		it('withholds skill scopes and tools while the skills gate is off', async () => {
 			Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: false }));
 
 			expect(resource.scopes).toContain('agent:read');

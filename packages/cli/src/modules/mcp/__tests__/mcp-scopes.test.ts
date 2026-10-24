@@ -283,7 +283,7 @@ describe('McpService scope enforcement', () => {
 	});
 
 	it.each([true, false])(
-		'registers the skill tools only with an agents provider: %s',
+		'registers the skill tools only while the skills gate is on: %s',
 		async (skillsEnabled) => {
 			mockInstance(SkillService);
 			mockInstance(SkillsGate, { isEnabled: skillsEnabled });

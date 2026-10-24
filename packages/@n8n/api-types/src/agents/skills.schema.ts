@@ -30,7 +30,7 @@ export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
 /**
- * How a skill was created: `ui` in the skills hub, `agent` from the agent builder or the
+ * How a skill was created: `ui` on the skills settings page, `agent` from the agent builder or the
  * migration, `mcp` from an MCP client, `assistant` from n8n Assistant.
  */
 export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
@@ -125,7 +125,7 @@ export class ListSkillsQueryDto extends Z.class({
 }) {}
 
 /**
- * A skills hub name, trimmed first. A name of only spaces is refused, and padding is not
+ * A skill name, trimmed first. A name of only spaces is refused, and padding is not
  * stored, so it cannot make a name look free or show as an untitled row.
  */
 const skillNameSchema = z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH);
@@ -154,7 +154,7 @@ export class CreateSkillDto extends Z.class({
 	projectId: z.string().max(36).optional(),
 	/** Required for an agent skill, absent otherwise. */
 	agentId: z.string().max(36).optional(),
-	/** Hub skills ignore `allowedTools`, so a create that sends it is refused. */
+	/** Skills ignore `allowedTools`, so a create that sends it is refused. */
 	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
 	/** For telemetry only. Absent counts as `manual`. */
 	method: skillCreateMethodSchema.optional(),

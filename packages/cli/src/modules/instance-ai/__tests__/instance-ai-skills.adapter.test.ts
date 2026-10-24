@@ -41,7 +41,7 @@ describe('InstanceAiSkillsAdapterService', () => {
 		);
 	});
 
-	it('refuses a skill with fields that hub skills do not have', async () => {
+	it('refuses a skill with fields that skills do not have', async () => {
 		await expect(
 			service.create({
 				scope: 'instance',

@@ -381,7 +381,7 @@ describe('AgentRepository', () => {
 				updatedAt: agent.updatedAt,
 			});
 			expect(stored?.schema).not.toHaveProperty('skills');
-			// The skill refs live in the dependency rows. The skill body stays in the hub.
+			// The skill refs live in the dependency rows. The skill body stays in the skills module.
 			const agentSkillRefs = Container.get(AgentSkillRefsService);
 			await expect(agentSkillRefs.refsForDraft(agent, {})).resolves.toEqual(skillRefs);
 			const tasks = await taskRepo.findByAgentId(agent.id);

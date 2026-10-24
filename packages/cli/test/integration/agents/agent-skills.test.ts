@@ -1,5 +1,5 @@
 /**
- * Agents read and write their skills through the skills hub (CONTEXT-225).
+ * Agents read and write their skills through the skills module (CONTEXT-225).
  * A draft keeps its skill refs in `agent_skill_dependency`, a published
  * version keeps its pins in `agent_version_skill_dependency`, and the skill text lives in
  * `skill_version`. These tests run the agent services against real rows.
@@ -57,7 +57,7 @@ function body(name: string, instructions = `${name} instructions.`): AgentSkill 
 	return { name, description: `${name} description`, instructions };
 }
 
-describe('Agent skills in the skills hub', () => {
+describe('Agent skills in the skills module', () => {
 	let owner: User;
 	let editor: User;
 	let project: Project;
@@ -228,7 +228,7 @@ describe('Agent skills in the skills hub', () => {
 		);
 	});
 
-	it('reverts to the pinned versions without changing the hub', async () => {
+	it('reverts to the pinned versions without changing the skills', async () => {
 		const skill = await createSkill(body('Skill', 'Published text.'));
 		const agent = (await publish(await createAgent([skill])))!;
 		await saveInstructions(skill, 'Newer text.');
@@ -324,8 +324,8 @@ describe('Agent skills in the skills hub', () => {
 			body('Triage'),
 			context,
 		);
-		const hubSkill = await findSkill(created.id);
-		expect(hubSkill).toMatchObject({ projectId: project.id, agentId: null, source: 'agent' });
+		const detail = await findSkill(created.id);
+		expect(detail).toMatchObject({ projectId: project.id, agentId: null, source: 'agent' });
 		expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: created.id }]);
 
 		const updated = await agentSkillsService.updateSkill(
@@ -412,8 +412,8 @@ describe('Agent skills in the skills hub', () => {
 			context,
 			'agent',
 		);
-		const hubSkill = await findSkill(created.id);
-		expect(hubSkill).toMatchObject({ projectId: null, agentId: agent.id });
+		const detail = await findSkill(created.id);
+		expect(detail).toMatchObject({ projectId: null, agentId: agent.id });
 
 		const other = await createAgent([]);
 		await expect(
@@ -654,8 +654,8 @@ describe('Agent skills in the skills hub', () => {
 		expect(refs).toHaveLength(1);
 		expect(refs?.[0].id).not.toBe('seed_skill');
 		expect(Object.values(skills)).toEqual([body('Seeded skill')]);
-		const hubSkill = await findSkill(refs![0].id);
-		expect(hubSkill).toMatchObject({ projectId: null, agentId: agent.id, source: 'agent' });
+		const detail = await findSkill(refs![0].id);
+		expect(detail).toMatchObject({ projectId: null, agentId: agent.id, source: 'agent' });
 
 		await agentsService.delete(agent.id, project.id);
 		expect(await findSkill(refs![0].id)).toBeNull();

@@ -59,7 +59,7 @@ async function readSourceRecords() {
 		historyRepository.find({ order: { versionId: 'ASC' } }),
 		taskRepository.find({ order: { id: 'ASC' } }),
 		taskSnapshotRepository.find({ order: { versionId: 'ASC', taskId: 'ASC' } }),
-		// The skills hub rows of the agents, so an export that changes them fails too.
+		// The skill rows of the agents, so an export that changes them fails too.
 		readSkillTables(),
 		manager.find(AgentSkillDependency, { order: { agentId: 'ASC', skillId: 'ASC' } }),
 		manager.find(AgentVersionSkillDependency, {
@@ -81,7 +81,7 @@ beforeAll(async () => {
 	const fixture = looseAgentsFixture();
 	for (const entry of fixture.manifest.agents) {
 		const draft = serializedAgentSchema.parse(fixture.files[`${entry.target}/agent.json`]);
-		// A skill of a saved agent is a skills hub skill: it has its own id, no
+		// A skill of a saved agent is a skill of the skills module: it has its own id, no
 		// `enabled` flag on the ref, and no `allowedTools`.
 		const skillId = `${draft.id}_skill`;
 		const { allowedTools: _dropped, ...draftSkill } = draft.skills['shared-skill'];

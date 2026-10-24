@@ -47,9 +47,9 @@ import {
 
 /**
  * Skill writes from one agent: the builder, the agent builder tools and MCP.
- * The skills live in the skills hub. Create makes a hub skill in the agent's
- * project and attaches it. Update saves the next version of the hub skill.
- * Delete detaches the skill from the agent and keeps the hub skill.
+ * The skills live in the skills module. Create makes a skill in the agent's
+ * project and attaches it. Update saves the next version of the skill.
+ * Delete detaches the skill from the agent and keeps the skill.
  */
 @Service()
 export class AgentSkillsService {
@@ -84,7 +84,7 @@ export class AgentSkillsService {
 	}
 
 	/**
-	 * Create skills in the skills hub and attach them to the agent, in one
+	 * Create skills in the skills module and attach them to the agent, in one
 	 * transaction. All-or-nothing: every skill is validated, and its name is
 	 * checked against the agent's skills and the rest of the batch, before any
 	 * write.
@@ -146,7 +146,7 @@ export class AgentSkillsService {
 		);
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
-		// Skills ignore `allowedTools`, and get the trimmed name the hub stores, so the
+		// Skills ignore `allowedTools`, and get the trimmed name the skills module stores, so the
 		// answer and its hash match the saved skill.
 		const bodies = skills.map((skill) => withTrimmedName(toStoredSkill(this.validateSkill(skill))));
 		await this.assertCanCreateSkills(context.user, entity.projectId, availableTo);
@@ -358,7 +358,7 @@ export class AgentSkillsService {
 		};
 	}
 
-	/** Detach a skill from the agent. The skill stays in the skills hub. */
+	/** Detach a skill from the agent. The skill stays in the skills module. */
 	async deleteSkill(
 		agentId: string,
 		projectId: string,

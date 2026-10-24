@@ -77,12 +77,12 @@ export class InstanceAiSkillsService {
 		private readonly skillRuntime: SkillRuntimeService,
 	) {}
 
-	async listHubSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
+	async listUserSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
 		if (!(await this.assistantSkillsGate.isEnabled())) return [];
 		return await this.skillRuntime.listForAssistant(context);
 	}
 
-	async readHubSkill(
+	async readUserSkill(
 		context: AssistantSkillContext,
 		skillId: string,
 	): Promise<AssistantSkillContent | null> {

@@ -759,7 +759,7 @@ export const listAttachableSkills = async (
 	return data.sort(byTargetThenName);
 };
 
-export const getHubSkill = async (
+export const getSkillDetail = async (
 	context: IRestApiContext,
 	skillId: string,
 ): Promise<SkillDetail> => {
