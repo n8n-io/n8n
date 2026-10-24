@@ -1,7 +1,7 @@
 import { IncomingMessage } from 'http';
 import { Readable } from 'stream';
 
-import { binaryToString, bufferToString } from '../binary-string';
+import { binaryToString, bufferToString, isCharsetSupported } from '../binary-string';
 import { Socket } from 'net';
 
 const bufferToIncomingMessage = (buffer: Buffer, encoding = 'utf-8') => {
@@ -157,5 +157,18 @@ describe('bufferToString', () => {
 		expect(() => bufferToString(Buffer.from('a'), 'not-a-charset')).toThrow(
 			"Encoding not recognized: 'not-a-charset'",
 		);
+	});
+});
+
+describe('isCharsetSupported', () => {
+	it.each(['utf-8', 'latin1', 'base64url', 'ISO-8859-1', 'windows-1252', 'utf-7', 'Shift_JIS'])(
+		'accepts %s',
+		(charset) => {
+			expect(isCharsetSupported(charset)).toBe(true);
+		},
+	);
+
+	it.each(['not-a-charset', ''])('rejects %p', (charset) => {
+		expect(isCharsetSupported(charset)).toBe(false);
 	});
 });
