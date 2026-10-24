@@ -100,5 +100,7 @@ function fireOutcomeAttribute(outcome: FireResult['outcome']): string {
 			return SCHEDULER_FIRE_OUTCOME.skippedNoHandler;
 		case 'skipped-not-owned':
 			return SCHEDULER_FIRE_OUTCOME.skippedNotOwned;
+		case 'released':
+			return SCHEDULER_FIRE_OUTCOME.released;
 	}
 }

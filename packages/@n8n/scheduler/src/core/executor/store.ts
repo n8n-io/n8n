@@ -25,6 +25,8 @@ export interface ClaimDueTasksBatch {
 	leaseMs: number;
 	/** The most tasks one claim takes. */
 	batchSize: number;
+	/** Also take held tasks whose lease expired after their holder reported ready. */
+	takeExpiredHeld?: boolean;
 }
 
 /**
@@ -83,6 +85,16 @@ export interface ExecutorTaskStore {
 	 */
 	rescheduleTask(claim: ClaimedTaskRef, backoffMs: number, errorMessage: string): Promise<number>;
 
-	/** Return a claimed-but-unfired task to `pending` without counting an attempt. */
+	/** Return a claimed task to `pending` without counting an attempt. */
 	releaseClaim(claim: ClaimedTaskRef): Promise<number>;
+
+	/** Held tasks only: stamp `heldSince` and reset the attempts. */
+	markHeld?(claim: ClaimedTaskRef): Promise<number>;
+
+	/** Held tasks only: back to `pending`, due after `delayMs`, no attempt counted. */
+	releaseHeld?(
+		claim: ClaimedTaskRef,
+		delayMs: number,
+		errorMessage: string | null,
+	): Promise<number>;
 }

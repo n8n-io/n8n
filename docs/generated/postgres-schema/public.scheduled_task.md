@@ -10,12 +10,15 @@
 | dispatchedAt | timestamp(3) with time zone |  | true |  |  | When the current attempt handed off its effect; NULL until then. Splits dispatch-attempted (startedAt) from effect-happened, so the reaper completes a dispatched occurrence rather than redelivering it. |
 | errorMessage | text |  | true |  |  | Failure detail from the last attempt. |
 | finishedAt | timestamp(3) with time zone |  | true |  |  | When the occurrence reached a terminal state; drives retention pruning. |
+| heldSince | timestamp(3) with time zone |  | true |  |  |  |
 | id | bigint |  | false |  |  |  |
 | jobId | integer |  | false |  | [public.scheduled_job](public.scheduled_job.md) | The scheduled_job this occurrence belongs to. |
 | leaseEpoch | integer | 0 | false |  |  | Fencing token bumped on each claim; lets a reaped worker detect it lost ownership and not overwrite the new owner's results. |
 | leaseExpiresAt | timestamp(3) with time zone |  | true |  |  | When the current lease expires; the reaper reclaims running occurrences past this. |
+| leaseSeconds | integer |  | true |  |  |  |
 | maxAttempts | integer | 1 | false |  |  | Attempt ceiling; once attempts reaches it, a failure is final rather than retried. |
 | missedAfter | timestamp(3) with time zone |  | true |  |  | When this occurrence stops being worth running (runAt plus the job's misfire grace). NULL means no deadline. |
+| mode | varchar(16) | 'once'::character varying | false |  |  |  |
 | payload | json | '{}'::json | false |  |  | Handler input copied from the job. A snapshot, so editing the job later doesn't change runs already queued. |
 | runAt | timestamp(3) with time zone |  | false |  |  | Earliest time the executor may pick this up; starts at scheduledFor and is pushed out by retry backoff. |
 | scheduledFor | timestamp(3) with time zone |  | false |  |  | The logical fire time this occurrence represents; unique per job, so the same instant cannot be queued twice. |
@@ -28,6 +31,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_scheduled_task_leaseSeconds | CHECK | CHECK (("leaseSeconds" > 0)) NOT VALID |
+| CHK_scheduled_task_mode | CHECK | CHECK (((mode)::text = ANY ((ARRAY['once'::character varying, 'hold'::character varying])::text[]))) NOT VALID |
 | CHK_scheduled_task_running_lease | CHECK | CHECK ((((status)::text <> 'running'::text) OR ("leaseExpiresAt" IS NOT NULL))) |
 | CHK_scheduled_task_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying, 'succeeded'::character varying, 'failed'::character varying, 'missed'::character varying, 'cancelled'::character varying])::text[]))) |
 | CHK_scheduled_task_timeoutSeconds | CHECK | CHECK ((("timeoutSeconds" > 0) AND ("timeoutSeconds" <= 2147483))) NOT VALID |
@@ -39,6 +44,7 @@
 | scheduled_task_jobId_not_null | n | NOT NULL "jobId" |
 | scheduled_task_leaseEpoch_not_null | n | NOT NULL "leaseEpoch" |
 | scheduled_task_maxAttempts_not_null | n | NOT NULL "maxAttempts" |
+| scheduled_task_mode_not_null | n | NOT NULL mode |
 | scheduled_task_payload_not_null | n | NOT NULL payload |
 | scheduled_task_runAt_not_null | n | NOT NULL "runAt" |
 | scheduled_task_scheduledFor_not_null | n | NOT NULL "scheduledFor" |
@@ -71,12 +77,15 @@ erDiagram
   timestamp_3__with_time_zone dispatchedAt
   text errorMessage
   timestamp_3__with_time_zone finishedAt
+  timestamp_3__with_time_zone heldSince
   bigint id
   integer jobId FK
   integer leaseEpoch
   timestamp_3__with_time_zone leaseExpiresAt
+  integer leaseSeconds
   integer maxAttempts
   timestamp_3__with_time_zone missedAfter
+  varchar_16_ mode
   json payload
   timestamp_3__with_time_zone runAt
   timestamp_3__with_time_zone scheduledFor
@@ -95,6 +104,7 @@ erDiagram
   integer intervalSeconds
   varchar_16_ kind
   timestamp_3__with_time_zone lastFiredAt
+  integer leaseSeconds
   integer maxAttempts
   integer misfireGraceSeconds
   varchar_16_ misfirePolicy
