@@ -49,7 +49,7 @@ const router = useRouter();
 const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 const { next: nextLoad } = useLatestFetch();
-const { connectErrors, canClone, connect } = usePromotionCheckout();
+const { connectErrors, canConnect, connect } = usePromotionCheckout();
 const sourceControlStore = useSourceControlStore();
 
 const environments = ref<Partial<Record<PromotionDirection, PromotionEnvironment>>>({});
@@ -211,7 +211,7 @@ async function remove(environment: PromotionEnvironment) {
 							:environment="environments[direction]"
 							:busy="busy.get(environments[direction].id)"
 							:connect-error="connectErrors.get(environments[direction].id)"
-							:can-clone="canClone"
+							:can-connect="canConnect"
 							:data-test-id="`promotion-environment-card-${direction}`"
 							@retry="retry(environments[direction])"
 							@edit="

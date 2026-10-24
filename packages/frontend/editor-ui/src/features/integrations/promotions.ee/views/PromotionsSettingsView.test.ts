@@ -105,7 +105,7 @@ describe('PromotionsSettingsView', () => {
 	});
 
 	it('keeps each card busy until its own retry finishes', async () => {
-		mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['gitConnection:clone'] });
+		mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['promotions:connect'] });
 		const notConnected = { hasCheckout: false, matchesEnvironment: false };
 		const promoteEnvironment = {
 			...applyEnvironment,
