@@ -17,11 +17,9 @@ import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { findIntroducedNameClashes, findNameClashGroups } from '@/modules/skills/utils/skill-names';
-import {
-	SkillService,
-	withTrimmedName,
-	type SkillMoveOptions,
-} from '@/modules/skills/services/skill.service';
+import { SkillAccessService } from '@/modules/skills/services/skill-access.service';
+import { SkillService } from '@/modules/skills/services/skill.service';
+import { withTrimmedName, type SkillMoveOptions } from '@/modules/skills/utils/skill-content';
 import {
 	SkillsTelemetry,
 	type SkillTelemetryMethod,
@@ -60,6 +58,7 @@ export class AgentSkillsService {
 		private readonly saveCompletion: AgentSaveCompletionService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly skillService: SkillService,
+		private readonly skillAccess: SkillAccessService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly skillsTelemetry: SkillsTelemetry,
 		private readonly projectScopeService: ProjectScopeService,
@@ -249,8 +248,8 @@ export class AgentSkillsService {
 		const nextAvailability = await this.availabilityChange(skillId, availableTo);
 		let moveOptions: SkillMoveOptions = {};
 		if (nextAvailability) {
-			await this.skillService.assertCanEdit(context.user, [skillId]);
-			const checkedSource = await this.skillService.assertCanMove(context.user, skillId);
+			await this.skillAccess.assertCanEdit(context.user, [skillId]);
+			const checkedSource = await this.skillAccess.assertCanMove(context.user, skillId);
 			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
 			// A refused move names only the agents the user may read.
 			const agentProjectIds = await this.projectScopeService.getProjectIds(context.user, [
@@ -288,7 +287,7 @@ export class AgentSkillsService {
 				);
 			}
 		}
-		await this.skillService.assertCanEdit(context.user, [skillId]);
+		await this.skillAccess.assertCanEdit(context.user, [skillId]);
 
 		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
@@ -303,7 +302,7 @@ export class AgentSkillsService {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 				await this.agentSkillRefs.unpinDraftRef(entity, skillId, ctx);
 			}
-			return await this.skillService.save(
+			return await this.skillService.saveTrusted(
 				skillId,
 				{
 					name: updated.name,

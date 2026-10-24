@@ -580,7 +580,7 @@ describe('SkillsController', () => {
 		it('allows a rename that only changes case, even when another skill shares the name', async () => {
 			// The data migration can leave two skills with one name key in a scope.
 			const { id, skillHash } = await create(owner, { scope: 'instance', skill: body });
-			await Container.get(SkillService).create({
+			await Container.get(SkillService).createTrusted({
 				target: { projectId: null, agentId: null },
 				skill: { ...body, name: 'brand voice' },
 				source: 'ui',

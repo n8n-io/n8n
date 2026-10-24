@@ -21,6 +21,7 @@ import {
 	SkillRepository,
 	type SkillVisibility,
 } from '@/modules/skills/database/repositories/skill.repository';
+import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
 import { SkillService } from '@/modules/skills/services/skill.service';
 import { PostHogClient } from '@/posthog';
 
@@ -41,7 +42,7 @@ const content = (overrides: Partial<SkillContent> = {}): SkillContent => ({
 describe('SkillRepository', () => {
 	const postHog = mockInstance(PostHogClient);
 	let skills: SkillRepository;
-	let skillService: SkillService;
+	let skillRuntime: SkillRuntimeService;
 	let owner: User;
 	let agentSkills: AgentSkillRepository;
 	let agents: AgentRepository;
@@ -60,7 +61,7 @@ describe('SkillRepository', () => {
 		histories = Container.get(AgentHistoryRepository);
 		txRunner = Container.get(TransactionRunner);
 		registerSkillUsage();
-		skillService = Container.get(SkillService);
+		skillRuntime = Container.get(SkillRuntimeService);
 		owner = await createOwner();
 		user = await createUser();
 		project = await createTeamProject('Team');
@@ -100,10 +101,10 @@ describe('SkillRepository', () => {
 			}),
 			null,
 		);
-		expect((await skillService.listForAssistant({ user: owner })).map(({ id }) => id)).toEqual([
+		expect((await skillRuntime.listForAssistant({ user: owner })).map(({ id }) => id)).toEqual([
 			instance,
 		]);
-		const result = await skillService.listForAssistant({ user: owner, projectId: project.id });
+		const result = await skillRuntime.listForAssistant({ user: owner, projectId: project.id });
 		expect(result.map(({ id }) => id).sort()).toEqual([instance, scoped].sort());
 		expect(result.find(({ id }) => id === scoped)).toEqual({
 			id: scoped,
@@ -142,7 +143,7 @@ describe('SkillRepository', () => {
 			expect(await skills.findAssistantSkillSummaries(project.id)).toEqual([]);
 			expect(await skills.findAssistantSkill(id, project.id)).toBeNull();
 			expect(
-				await skillService.readForAssistant({ user: owner, projectId: project.id }, id),
+				await skillRuntime.readForAssistant({ user: owner, projectId: project.id }, id),
 			).toBeNull();
 		},
 	);
@@ -223,7 +224,7 @@ describe('SkillRepository', () => {
 		return versionId;
 	}
 
-	/** What `SkillsApiService` passes: the projects, and the agents in them. */
+	/** What `SkillService` passes: the projects, and the agents in them. */
 	async function visibleTo(projectIds: string[] | 'all'): Promise<SkillVisibility> {
 		return {
 			projectIds,

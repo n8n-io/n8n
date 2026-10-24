@@ -17,23 +17,14 @@ import {
 	skillContentHash,
 	type SkillContent,
 } from '../../utils/skill-content-hash';
-import type { AssistantSkillSummary } from '../../utils/skill-content';
+import type {
+	AssistantSkillSummary,
+	ResolvedSkillRow,
+	SkillTarget,
+} from '../../utils/skill-content';
 import { SkillFile } from '../entities/skill-file.entity';
 import { SkillVersion } from '../entities/skill-version.entity';
 import { Skill, type SkillSource } from '../entities/skill.entity';
-
-/**
- * Where a skill lives: a project, one agent, or the instance (both null). An agent skill
- * has no projectId: its project is the agent's.
- */
-export type SkillTarget = { projectId: string | null; agentId: string | null };
-
-/** One skill with one of its version rows and that row's files, sorted by path. */
-export type ResolvedSkillRow = {
-	skill: Skill;
-	version: SkillVersion;
-	files: SkillFile[];
-};
 
 /**
  * Which skills one user may list: instance skills always, plus the skills of these

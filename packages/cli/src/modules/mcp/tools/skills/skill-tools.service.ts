@@ -16,7 +16,7 @@ import {
 	SkillNameTakenError,
 	skillNameTakenToolMessage,
 } from '@/modules/skills/errors/skill-name-taken.error';
-import { SkillsApiService } from '@/modules/skills/services/skills-api.service';
+import { SkillService } from '@/modules/skills/services/skill.service';
 import { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
 import { Telemetry } from '@/telemetry';
 
@@ -100,7 +100,7 @@ function details(detail: SkillDetail, assistantSkillsEnabled: boolean) {
 export class McpSkillToolsService {
 	constructor(
 		private readonly telemetry: Telemetry,
-		private readonly skillsApi: SkillsApiService,
+		private readonly skillService: SkillService,
 		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 	) {}
 
@@ -122,7 +122,7 @@ export class McpSkillToolsService {
 			},
 			handler: async (input: SearchSkillsInput) =>
 				await this.run(user, 'search_n8n_skills', { scope: input.scope }, async () => {
-					const { count, data } = await this.skillsApi.list(
+					const { count, data } = await this.skillService.list(
 						user,
 						ListSkillsQueryDto.parse({
 							search: input.query,
@@ -153,7 +153,7 @@ export class McpSkillToolsService {
 			},
 			handler: async ({ skillId }) =>
 				await this.run(user, 'get_skill', { skillId }, async () =>
-					details(await this.skillsApi.get(user, skillId), assistantSkillsEnabled),
+					details(await this.skillService.get(user, skillId), assistantSkillsEnabled),
 				),
 		});
 
@@ -173,7 +173,7 @@ export class McpSkillToolsService {
 			handler: async (input: CreateSkillInput) =>
 				await this.run(user, 'create_skill', { scope: input.scope }, async () => {
 					try {
-						const detail = await this.skillsApi.create(
+						const detail = await this.skillService.create(
 							user,
 							CreateSkillDto.parse({
 								scope: input.scope,
@@ -211,7 +211,7 @@ export class McpSkillToolsService {
 			handler: async ({ skillId, ...update }: UpdateSkillInput) =>
 				await this.run(user, 'update_skill', { skillId, scope: update.scope }, async () => {
 					try {
-						const { skill: _skill, ...saved } = await this.skillsApi.update(
+						const { skill: _skill, ...saved } = await this.skillService.update(
 							user,
 							skillId,
 							SaveSkillDto.parse(update),
@@ -228,7 +228,7 @@ export class McpSkillToolsService {
 							};
 						}
 						if (!(error instanceof ConflictError)) throw error;
-						const { skillHash } = await this.skillsApi.get(user, skillId);
+						const { skillHash } = await this.skillService.get(user, skillId);
 						if (skillHash === update.baseSkillHash) throw error;
 						return {
 							ok: false,
@@ -257,7 +257,7 @@ export class McpSkillToolsService {
 			},
 			handler: async ({ skillId }) =>
 				await this.run(user, 'delete_skill', { skillId }, async () => {
-					await this.skillsApi.delete(user, skillId, 'mcp');
+					await this.skillService.delete(user, skillId, 'mcp');
 					return { deleted: true, skillId };
 				}),
 		});

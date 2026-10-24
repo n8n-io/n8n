@@ -34,7 +34,8 @@ import {
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { SkillService, toAgentSkill } from '@/modules/skills/services/skill.service';
+import { SkillService } from '@/modules/skills/services/skill.service';
+import { toAgentSkill } from '@/modules/skills/utils/skill-content';
 import {
 	markAgentDraftDirty,
 	saveAgentDraftFenced,
@@ -103,7 +104,7 @@ describe('Agent skills in the skills hub', () => {
 		skill: AgentSkill,
 		target: { projectId: string | null } = { projectId: project.id },
 	) {
-		return await skillService.create({
+		return await skillService.createTrusted({
 			target: { projectId: target.projectId, agentId: null },
 			skill,
 			source: 'ui',
@@ -116,7 +117,7 @@ describe('Agent skills in the skills hub', () => {
 		const latest = (await Container.get(SkillRepository).findLatestSaved([skillId])).get(skillId);
 		if (!latest) throw new Error(`Skill ${skillId} not found`);
 		const baseSkillHash = getAgentSkillHash(toAgentSkill(latest));
-		return await skillService.save(skillId, { instructions, baseSkillHash }, owner.id);
+		return await skillService.saveTrusted(skillId, { instructions, baseSkillHash }, owner.id);
 	}
 
 	async function createAgent(skillIds: string[], projectId = project.id) {
@@ -590,7 +591,7 @@ describe('Agent skills in the skills hub', () => {
 	it('refuses an agent skill of another project and does not copy it', async () => {
 		const otherProject = await createTeamProject();
 		const source = await createAgent([], otherProject.id);
-		const secret = await skillService.create({
+		const secret = await skillService.createTrusted({
 			target: { projectId: null, agentId: source.id },
 			skill: body('Secret skill'),
 			source: 'agent',

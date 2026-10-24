@@ -3,10 +3,8 @@ import { BaseRepository, TransactionRunner, chunkIds, type OperationContext } fr
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
 
-import {
-	SkillRepository,
-	type ResolvedSkillRow,
-} from '@/modules/skills/database/repositories/skill.repository';
+import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
+import type { ResolvedSkillRow } from '@/modules/skills/utils/skill-content';
 
 import { AgentHistory } from '../entities/agent-history.entity';
 import { AgentSkillDependency } from '../entities/agent-skill-dependency.entity';

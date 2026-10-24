@@ -12,6 +12,7 @@ import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflo
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
+import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
 import { SkillService } from '@/modules/skills/services/skill.service';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -922,6 +923,7 @@ describe('AgentWorkflowExecutionService', () => {
 
 		it('runs the embedded skills and never calls the skill service', async () => {
 			const skillService = mockInstance(SkillService);
+			const skillRuntime = mockInstance(SkillRuntimeService);
 			const { service, reconstructionService, skillRefs } = makeService();
 			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(
 				makeRuntime([{ type: 'finish', finishReason: 'stop' }]),
@@ -954,9 +956,9 @@ describe('AgentWorkflowExecutionService', () => {
 				skillRefs.readDraft,
 				skillRefs.readVersion,
 				skillRefs.skillsForRefs,
-				skillService.resolveForAgentDraft,
+				skillRuntime.resolveForAgentDraft,
 				skillRefs.checkRefs,
-				skillService.create,
+				skillService.createTrusted,
 			]) {
 				expect(read).not.toHaveBeenCalled();
 			}

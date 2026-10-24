@@ -8,7 +8,7 @@ import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai
 import { UnexpectedError } from 'n8n-workflow';
 
 import { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
-import { SkillService } from '@/modules/skills/services/skill.service';
+import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
 import type {
 	AssistantSkillContent,
 	AssistantSkillContext,
@@ -74,12 +74,12 @@ const SKILL_GATES: ReadonlyArray<{
 export class InstanceAiSkillsService {
 	constructor(
 		private readonly assistantSkillsGate: AssistantSkillsFlagGate,
-		private readonly skillService: SkillService,
+		private readonly skillRuntime: SkillRuntimeService,
 	) {}
 
 	async listHubSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
 		if (!(await this.assistantSkillsGate.isEnabled())) return [];
-		return await this.skillService.listForAssistant(context);
+		return await this.skillRuntime.listForAssistant(context);
 	}
 
 	async readHubSkill(
@@ -87,7 +87,7 @@ export class InstanceAiSkillsService {
 		skillId: string,
 	): Promise<AssistantSkillContent | null> {
 		if (!(await this.assistantSkillsGate.isEnabled())) return null;
-		return await this.skillService.readForAssistant(context, skillId);
+		return await this.skillRuntime.readForAssistant(context, skillId);
 	}
 
 	/** The active skills, and the tools that the prompt profile turns off. */

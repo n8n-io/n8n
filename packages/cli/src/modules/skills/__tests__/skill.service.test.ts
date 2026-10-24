@@ -1,22 +1,20 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
-import type { ProjectScopeService } from '@n8n/backend-services';
-import type { OperationContext, TransactionRunner, User } from '@n8n/db';
-import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
-import { hasGlobalScope } from '@n8n/permissions';
+import type { User } from '@n8n/db';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
-import type { AssistantSkillContext, AssistantSkillSummary } from '../utils/skill-content';
-
-import type { SkillUsageProxy } from '../services/skill-usage-proxy.service';
-import { skillContentHash } from '../utils/skill-content-hash';
-import type { SkillFile } from '../database/entities/skill-file.entity';
-import { getSkillHash } from '../utils/skill-hash';
-import type { SkillVersion } from '../database/entities/skill-version.entity';
+import {
+	createSkillServices,
+	PROJECT,
+	TX_CTX,
+	expectError,
+	skillRow,
+	versionRow,
+	resetSkillMocks,
+} from './test-utils/skill-services';
 import type { Skill } from '../database/entities/skill.entity';
-import type { ResolvedSkillRow, SkillRepository } from '../database/repositories/skill.repository';
-import { SkillService, toAgentSkill, toSkillContent } from '../services/skill.service';
+import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
+import { getSkillHash } from '../utils/skill-hash';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
@@ -24,287 +22,15 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 	hasGlobalScope: vi.fn(),
 }));
 
-const PROJECT = 'project-1';
-
-async function expectError(
-	promise: Promise<unknown>,
-	errorClass: new (...args: never[]) => Error,
-	message: string,
-) {
-	const error: unknown = await promise.then(
-		() => undefined,
-		(caught: unknown) => caught,
-	);
-	expect(error).toBeInstanceOf(errorClass);
-	expect(error).toHaveProperty('message', message);
-}
-const TX_CTX = { trx: {} } as OperationContext;
-
-function skillRow(id: string, target: Partial<Pick<Skill, 'projectId' | 'agentId'>> = {}): Skill {
-	return mock<Skill>({ id, projectId: target.projectId ?? null, agentId: target.agentId ?? null });
-}
-
-function versionRow(
-	skill: Skill,
-	version: number,
-	overrides: Partial<SkillVersion> = {},
-	files: Array<{ path: string; content: string }> = [],
-): ResolvedSkillRow {
-	const base = {
-		name: 'Brand voice',
-		description: 'Write in our voice',
-		instructions: 'Use short sentences.',
-		frontmatter: null,
-		...overrides,
-	};
-	const contentHash =
-		overrides.contentHash ??
-		skillContentHash({
-			name: base.name,
-			description: base.description,
-			instructions: base.instructions,
-			frontmatter: base.frontmatter,
-			files,
-		});
-	return {
-		skill,
-		version: mock<SkillVersion>({
-			id: `${skill.id}-v${version}`,
-			skillId: skill.id,
-			version,
-			...base,
-			contentHash,
-		}),
-		files: files.map((file) => mock<SkillFile>(file)),
-	};
-}
-
 describe('SkillService', () => {
-	const skills = mock<SkillRepository>();
-	const skillUsage = mock<SkillUsageProxy>();
-	const txRunner = mock<TransactionRunner>();
-	const projectScope = mock<ProjectScopeService>();
-	const service = new SkillService(mock(), skills, txRunner, projectScope, skillUsage);
+	const { skills, skillUsage, txRunner, projectScope, access, service } = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
-	beforeEach(() => {
-		vi.resetAllMocks();
-		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
-		skills.findLatestSaved.mockResolvedValue(new Map());
-		skills.findLatestNamesInTarget.mockResolvedValue([]);
-		skills.findLatestSummaries.mockResolvedValue(new Map());
-		skills.findVersionsByIds.mockResolvedValue(new Map());
-		skills.findByIds.mockResolvedValue([]);
-		skillUsage.markFollowersChanged.mockResolvedValue([]);
-		skillUsage.findUsingAgentIds.mockResolvedValue([]);
-	});
+	beforeEach(() => resetSkillMocks({ skills, skillUsage, txRunner }));
 
-	describe('conversions', () => {
-		it('ignores allowed tools on write', () => {
-			expect(
-				toSkillContent({
-					name: 'n',
-					description: 'd',
-					instructions: 'i',
-					allowedTools: ['Read', 'Grep'],
-					references: [{ path: 'references/a.md', content: 'a' }],
-				}),
-			).toEqual({
-				name: 'n',
-				description: 'd',
-				instructions: 'i',
-				frontmatter: null,
-				files: [{ path: 'references/a.md', content: 'a' }],
-			});
-		});
-
-		it('keeps the frontmatter as given and reads no allowed tools from it', () => {
-			const row = versionRow(skillRow('skill_a'), 1, {
-				frontmatter: { 'allowed-tools': 'Read Grep', license: 'MIT' },
-			});
-
-			expect(toSkillContent(toAgentSkill(row), row.version.frontmatter).frontmatter).toEqual({
-				'allowed-tools': 'Read Grep',
-				license: 'MIT',
-			});
-			expect(toAgentSkill(row)).toEqual({
-				name: 'Brand voice',
-				description: 'Write in our voice',
-				instructions: 'Use short sentences.',
-			});
-		});
-	});
-
-	describe('Assistant reads', () => {
-		const context: AssistantSkillContext = { user, projectId: 'project-1' };
-		const summary: AssistantSkillSummary = {
-			id: 'skill-1',
-			projectId: null,
-			name: 'Tone',
-			description: 'Writing style',
-			versionId: 'version-1',
-			version: 1,
-		};
-		let row: ResolvedSkillRow;
-
-		beforeEach(() => {
-			projectScope.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
-			skills.findAssistantSkillSummaries.mockResolvedValue([]);
-			row = versionRow(skillRow('skill-1'), 1, {
-				id: 'version-1',
-				name: 'Tone',
-				description: 'Writing style',
-				instructions: 'Be brief.',
-			});
-			row.skill.availableToAssistant = true;
-			skills.findAssistantSkill.mockImplementation(async (id) =>
-				id === row.skill.id ? row : null,
-			);
-			vi.mocked(userHasScopes).mockResolvedValue(true);
-		});
-
-		it.each([
-			['project-1', ['project-1', 'project-2'], 'project-1'],
-			['project-1', null, 'project-1'],
-			['project-1', [], null],
-			[undefined, null, null],
-		] as const)(
-			'limits catalog reads to the authorized session project (%s, %s)',
-			async (projectId, allowed, expected) => {
-				projectScope.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
-				const summaries = [{ ...summary, projectId: expected }];
-				skills.findAssistantSkillSummaries.mockResolvedValue(summaries);
-				expect(await service.listForAssistant({ ...context, projectId })).toEqual(summaries);
-				expect(skills.findAssistantSkillSummaries).toHaveBeenCalledWith(expected);
-			},
-		);
-
-		it('requires both list and read permissions for project skills', async () => {
-			await service.listForAssistant(context);
-			await service.readForAssistant(context, 'skill-1');
-			expect(projectScope.getProjectIds).toHaveBeenCalledTimes(2);
-			expect(projectScope.getProjectIds).toHaveBeenNthCalledWith(1, context.user, [
-				'projectSkill:list',
-				'projectSkill:read',
-			]);
-			expect(projectScope.getProjectIds).toHaveBeenNthCalledWith(2, context.user, [
-				'projectSkill:list',
-				'projectSkill:read',
-			]);
-		});
-
-		it('refuses disabled content even when its ID is supplied', async () => {
-			row.skill.availableToAssistant = false;
-			expect(await service.readForAssistant(context, 'skill-1')).toBeNull();
-		});
-
-		it('uses the existing skill permission check for content reads', async () => {
-			row.skill.projectId = 'project-1';
-			vi.mocked(userHasScopes).mockResolvedValue(false);
-			expect(await service.readForAssistant(context, 'skill-1')).toBeNull();
-			expect(userHasScopes).toHaveBeenCalledWith(context.user, ['projectSkill:read'], false, {
-				projectId: 'project-1',
-			});
-		});
-
-		it.each([
-			['project-1', ['project-1'], true, 'project-1'],
-			['project-2', ['project-1', 'project-2'], false, 'project-1'],
-			['project-1', [], false, null],
-			['project-1', null, true, 'project-1'],
-		] as const)(
-			'limits content reads to the authorized session project (%s, %s)',
-			async (projectId, allowed, eligible, authorizedProjectId) => {
-				row.skill.projectId = projectId;
-				projectScope.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
-				const result = await service.readForAssistant(context, 'skill-1');
-				expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', authorizedProjectId);
-				expect(skills.findLatestSaved).not.toHaveBeenCalled();
-				if (eligible) expect(result).toMatchObject({ id: 'skill-1', projectId });
-				else expect(result).toBeNull();
-			},
-		);
-
-		it('returns no project content without a session project, including for global roles', async () => {
-			row.skill.projectId = 'project-1';
-			projectScope.getProjectIds.mockResolvedValue(null);
-			expect(await service.readForAssistant({ user: context.user }, 'skill-1')).toBeNull();
-			expect(skills.findAssistantSkill).toHaveBeenCalledWith('skill-1', null);
-		});
-
-		it('reads enabled content with its saved version', async () => {
-			expect(await service.readForAssistant(context, 'skill-1')).toEqual({
-				id: 'skill-1',
-				projectId: null,
-				versionId: 'version-1',
-				version: 1,
-				name: 'Tone',
-				description: 'Writing style',
-				instructions: 'Be brief.',
-				frontmatter: null,
-				files: [],
-			});
-		});
-
-		it('allows instance skills without project access', async () => {
-			projectScope.getProjectIds.mockResolvedValue([]);
-			expect(await service.readForAssistant(context, 'skill-1')).not.toBeNull();
-		});
-
-		it('returns null for a missing skill', async () => {
-			expect(await service.readForAssistant(context, 'missing')).toBeNull();
-		});
-	});
-
-	describe('resolveForAgentDraft', () => {
-		it('runs the latest saved version for a following ref', async () => {
-			const skill = skillRow('skill_a');
-			skills.findLatestSaved.mockResolvedValue(
-				new Map([['skill_a', versionRow(skill, 2, { instructions: 'v2' })]]),
-			);
-
-			const resolved = await service.resolveForAgentDraft([{ id: 'skill_a' }]);
-
-			expect(resolved.skill_a.instructions).toBe('v2');
-		});
-
-		it('runs the pinned version for a ref with versionId', async () => {
-			const skill = skillRow('skill_a');
-			const v1 = versionRow(skill, 1, { instructions: 'v1' });
-			skills.findLatestSaved.mockResolvedValue(
-				new Map([['skill_a', versionRow(skill, 2, { instructions: 'v2' })]]),
-			);
-			skills.findVersionsByIds.mockResolvedValue(new Map([[v1.version.id, v1]]));
-
-			const resolved = await service.resolveForAgentDraft([
-				{ id: 'skill_a', versionId: v1.version.id },
-			]);
-
-			expect(resolved.skill_a.instructions).toBe('v1');
-		});
-
-		it('falls back to the latest version when the pin belongs to another skill', async () => {
-			const foreign = versionRow(skillRow('skill_b'), 1, { instructions: 'other skill' });
-			skills.findLatestSaved.mockResolvedValue(
-				new Map([['skill_a', versionRow(skillRow('skill_a'), 2, { instructions: 'v2' })]]),
-			);
-			skills.findVersionsByIds.mockResolvedValue(new Map([[foreign.version.id, foreign]]));
-
-			const resolved = await service.resolveForAgentDraft([
-				{ id: 'skill_a', versionId: foreign.version.id },
-			]);
-
-			expect(resolved.skill_a.instructions).toBe('v2');
-		});
-
-		it('leaves out a ref to a missing skill', async () => {
-			expect(await service.resolveForAgentDraft([{ id: 'skill_gone' }])).toEqual({});
-		});
-	});
-
-	describe('create', () => {
+	describe('createTrusted', () => {
 		it('creates the skill with an id in the agent skill format', async () => {
-			const id = await service.create({
+			const id = await service.createTrusted({
 				target: { projectId: PROJECT, agentId: null },
 				skill: { name: 'n', description: 'd', instructions: 'i' },
 				source: 'ui',
@@ -321,7 +47,7 @@ describe('SkillService', () => {
 
 		it('refuses blank instructions', async () => {
 			await expect(
-				service.create({
+				service.createTrusted({
 					target: { projectId: PROJECT, agentId: null },
 					skill: { name: 'n', description: 'd', instructions: '  ' },
 					source: 'ui',
@@ -339,7 +65,7 @@ describe('SkillService', () => {
 				]);
 
 				await expect(
-					service.create({
+					service.createTrusted({
 						target: { projectId: PROJECT, agentId: null },
 						skill: { name, description: 'd', instructions: 'i' },
 						source: 'ui',
@@ -360,7 +86,7 @@ describe('SkillService', () => {
 				{ skillId: 'skill_x', name: 'Brand voice' },
 			]);
 
-			await service.create({
+			await service.createTrusted({
 				target: { projectId: null, agentId: 'agent-2' },
 				skill: { name: 'Brand voice', description: 'd', instructions: 'i' },
 				source: 'agent',
@@ -372,11 +98,18 @@ describe('SkillService', () => {
 		});
 	});
 
-	describe('freeName', () => {
+	describe('newName', () => {
 		const target = { projectId: PROJECT, agentId: null };
 
+		beforeEach(() => {
+			vi.spyOn(access, 'resolveCreateTarget').mockResolvedValue(target);
+		});
+
 		it('keeps a name that the scope does not hold', async () => {
-			expect(await service.freeName('New skill', target)).toBe('New skill');
+			expect(
+				(await service.newName(user, { name: 'New skill', scope: 'project', projectId: PROJECT }))
+					.name,
+			).toBe('New skill');
 			expect(skills.findLatestNamesInTarget).toHaveBeenCalledWith(target, {});
 		});
 
@@ -387,21 +120,26 @@ describe('SkillService', () => {
 				{ skillId: 'c', name: 'New skill 4' },
 			]);
 
-			expect(await service.freeName('New skill', target)).toBe('New skill 3');
+			expect(
+				(await service.newName(user, { name: 'New skill', scope: 'project', projectId: PROJECT }))
+					.name,
+			).toBe('New skill 3');
 		});
 
 		it('shortens a long name so the number fits the length limit', async () => {
 			const long = 'x'.repeat(128);
 			skills.findLatestNamesInTarget.mockResolvedValue([{ skillId: 'a', name: long }]);
 
-			const name = await service.freeName(long, target);
+			const name = (
+				await service.newName(user, { name: long, scope: 'project', projectId: PROJECT })
+			).name;
 
 			expect(name).toHaveLength(128);
 			expect(name.endsWith(' 2')).toBe(true);
 		});
 	});
 
-	describe('save', () => {
+	describe('saveTrusted', () => {
 		const skill = skillRow('skill_a', { projectId: PROJECT });
 
 		/** Mocks the latest version and returns its hash, the base an editor sends back. */
@@ -419,7 +157,7 @@ describe('SkillService', () => {
 		it('creates nothing when the content matches the latest version', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
-			const result = await service.save(
+			const result = await service.saveTrusted(
 				'skill_a',
 				{ baseSkillHash, instructions: 'Use short sentences.' },
 				user.id,
@@ -433,7 +171,7 @@ describe('SkillService', () => {
 		it('saves changed content as the next version under an edit lock', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
-			const result = await service.save(
+			const result = await service.saveTrusted(
 				'skill_a',
 				{
 					baseSkillHash,
@@ -467,7 +205,7 @@ describe('SkillService', () => {
 			]);
 
 			await expect(
-				service.save('skill_a', { baseSkillHash, name: 'code-review' }, user.id),
+				service.saveTrusted('skill_a', { baseSkillHash, name: 'code-review' }, user.id),
 			).rejects.toThrow('That name is taken, choose another');
 			expect(skills.findLatestNamesInTarget).toHaveBeenCalledWith(
 				{ projectId: PROJECT, agentId: null },
@@ -479,7 +217,11 @@ describe('SkillService', () => {
 		it('trims a new name before it checks and stores it', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
-			const result = await service.save('skill_a', { baseSkillHash, name: '  Renamed  ' }, user.id);
+			const result = await service.saveTrusted(
+				'skill_a',
+				{ baseSkillHash, name: '  Renamed  ' },
+				user.id,
+			);
 
 			expect(result.skill.name).toBe('Renamed');
 			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
@@ -495,7 +237,7 @@ describe('SkillService', () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
 			await expect(
-				service.save('skill_a', { baseSkillHash, name: '   ' }, user.id),
+				service.saveTrusted('skill_a', { baseSkillHash, name: '   ' }, user.id),
 			).rejects.toThrow('Skill name is required.');
 			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
 		});
@@ -503,7 +245,7 @@ describe('SkillService', () => {
 		it('does not check the name when the save keeps it', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
-			await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
+			await service.saveTrusted('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
 
 			expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
 		});
@@ -513,7 +255,11 @@ describe('SkillService', () => {
 				versionRow(skill, 2, {}, [{ path: 'references/a.md', content: 'a' }]),
 			);
 
-			const result = await service.save('skill_a', { baseSkillHash, references: [] }, user.id);
+			const result = await service.saveTrusted(
+				'skill_a',
+				{ baseSkillHash, references: [] },
+				user.id,
+			);
 
 			expect(result.skill).not.toHaveProperty('references');
 		});
@@ -523,7 +269,7 @@ describe('SkillService', () => {
 				versionRow(skill, 2, { frontmatter: { 'allowed-tools': 'Read' } }),
 			);
 
-			const result = await service.save(
+			const result = await service.saveTrusted(
 				'skill_a',
 				{ baseSkillHash, instructions: 'new', allowedTools: ['Bash'] },
 				user.id,
@@ -544,7 +290,7 @@ describe('SkillService', () => {
 				versionRow(skill, 2, { frontmatter: { license: 'MIT', 'allowed-tools': 'Read' } }),
 			);
 
-			await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
+			await service.saveTrusted('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
 
 			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
 				'skill_a',
@@ -559,7 +305,11 @@ describe('SkillService', () => {
 			const latest = versionRow(skill, 2);
 			const baseSkillHash = givenLatest(latest);
 
-			const result = await service.save('skill_a', { instructions: 'new', baseSkillHash }, user.id);
+			const result = await service.saveTrusted(
+				'skill_a',
+				{ instructions: 'new', baseSkillHash },
+				user.id,
+			);
 
 			expect(result.created).toBe(true);
 		});
@@ -569,7 +319,7 @@ describe('SkillService', () => {
 			givenLatest(versionRow(skill, 2));
 
 			await expect(
-				service.save('skill_a', { instructions: 'new', baseSkillHash: 'stale' }, user.id),
+				service.saveTrusted('skill_a', { instructions: 'new', baseSkillHash: 'stale' }, user.id),
 			).rejects.toThrow(ConflictError);
 			expect(skills.lockForEdit.mock.invocationCallOrder[0]).toBeLessThan(
 				skills.findLatestSaved.mock.invocationCallOrder[0],
@@ -581,7 +331,7 @@ describe('SkillService', () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
 			await expect(
-				service.save('skill_a', { baseSkillHash, instructions: ' ' }, user.id),
+				service.saveTrusted('skill_a', { baseSkillHash, instructions: ' ' }, user.id),
 			).rejects.toThrow(UserError);
 		});
 
@@ -589,7 +339,11 @@ describe('SkillService', () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 			skillUsage.markFollowersChanged.mockResolvedValue(['agent-1', 'agent-2']);
 
-			const result = await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
+			const result = await service.saveTrusted(
+				'skill_a',
+				{ baseSkillHash, instructions: 'new' },
+				user.id,
+			);
 
 			expect(skillUsage.markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
@@ -599,7 +353,7 @@ describe('SkillService', () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 			skillUsage.markFollowersChanged.mockResolvedValue(['agent-1', 'agent-2']);
 
-			await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
+			await service.saveTrusted('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
 
 			expect(skillUsage.refreshAgents).toHaveBeenCalledWith(['agent-1', 'agent-2'], undefined);
 		});
@@ -608,7 +362,7 @@ describe('SkillService', () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 			skillUsage.markFollowersChanged.mockResolvedValue(['agent-1']);
 
-			await service.save(
+			await service.saveTrusted(
 				'skill_a',
 				{ baseSkillHash, instructions: 'new' },
 				user.id,
@@ -623,7 +377,7 @@ describe('SkillService', () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 			skillUsage.markFollowersChanged.mockResolvedValue(['agent-1']);
 
-			const result = await service.save(
+			const result = await service.saveTrusted(
 				'skill_a',
 				{ baseSkillHash, instructions: 'new' },
 				user.id,
@@ -641,7 +395,7 @@ describe('SkillService', () => {
 			);
 
 			await expect(
-				service.save('skill_a', { baseSkillHash, name: 'Pricing' }, user.id),
+				service.saveTrusted('skill_a', { baseSkillHash, name: 'Pricing' }, user.id),
 			).rejects.toThrow('Cannot rename to "Pricing"');
 			expect(skillUsage.assertRenameKeepsNamesApart).toHaveBeenCalledWith(
 				'skill_a',
@@ -656,7 +410,7 @@ describe('SkillService', () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
 			await expect(
-				service.save('skill_a', { baseSkillHash, name: 'Tone' }, user.id),
+				service.saveTrusted('skill_a', { baseSkillHash, name: 'Tone' }, user.id),
 			).resolves.toMatchObject({
 				created: true,
 			});
@@ -664,16 +418,16 @@ describe('SkillService', () => {
 
 		it('throws NotFoundError for a missing skill', async () => {
 			await expect(
-				service.save('skill_gone', { name: 'x', baseSkillHash: 'any' }, user.id),
+				service.saveTrusted('skill_gone', { name: 'x', baseSkillHash: 'any' }, user.id),
 			).rejects.toThrow(NotFoundError);
 		});
 	});
 
-	describe('changeTarget', () => {
+	describe('moveTrusted', () => {
 		it('moves a skill that only the given agent uses, under the edit lock', async () => {
 			skillUsage.findUsingAgentIds.mockResolvedValue(['agent-1']);
 
-			await service.changeTarget('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1');
+			await service.moveTrusted('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1');
 
 			expect(skills.lockForEdit).toHaveBeenCalledWith(['skill_a'], TX_CTX);
 			expect(skills.lockForEdit.mock.invocationCallOrder[0]).toBeLessThan(
@@ -708,7 +462,7 @@ describe('SkillService', () => {
 			it('moves a skill to the instance, which every agent can add', async () => {
 				skillUsage.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-3']);
 
-				await service.changeTarget('skill_a', { projectId: null, agentId: null }, undefined);
+				await service.moveTrusted('skill_a', { projectId: null, agentId: null }, undefined);
 
 				expect(skills.updateTarget).toHaveBeenCalledWith(
 					'skill_a',
@@ -720,7 +474,7 @@ describe('SkillService', () => {
 			it('moves a skill to the project of every agent that uses it', async () => {
 				skillUsage.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
 
-				await service.changeTarget('skill_a', { projectId: 'p1', agentId: null }, undefined);
+				await service.moveTrusted('skill_a', { projectId: 'p1', agentId: null }, undefined);
 
 				expect(skillUsage.findAgents).toHaveBeenCalledWith(['agent-1', 'agent-2'], TX_CTX);
 				expect(skills.updateTarget).toHaveBeenCalledWith(
@@ -734,7 +488,7 @@ describe('SkillService', () => {
 				skillUsage.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2', 'agent-3']);
 
 				await expectError(
-					service.changeTarget('skill_a', { projectId: 'p2', agentId: null }, undefined),
+					service.moveTrusted('skill_a', { projectId: 'p2', agentId: null }, undefined),
 					ConflictError,
 					'"Support bot", "Sales bot" would lose access to this skill. Choose a scope that includes those agents, or detach the skill from them first.',
 				);
@@ -745,7 +499,7 @@ describe('SkillService', () => {
 				skillUsage.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-3']);
 
 				await expectError(
-					service.changeTarget(
+					service.moveTrusted(
 						'skill_a',
 						{ projectId: 'p9', agentId: null },
 						undefined,
@@ -760,7 +514,7 @@ describe('SkillService', () => {
 			it('lets the agent that asks for the move narrow the skill to itself', async () => {
 				skillUsage.findUsingAgentIds.mockResolvedValue(['agent-1']);
 
-				await service.changeTarget('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1');
+				await service.moveTrusted('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1');
 
 				expect(skills.updateTarget).toHaveBeenCalled();
 			});
@@ -769,7 +523,7 @@ describe('SkillService', () => {
 				skillUsage.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
 
 				await expectError(
-					service.changeTarget('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1'),
+					service.moveTrusted('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1'),
 					ConflictError,
 					'"Sales bot" would lose access to this skill. Choose a scope that includes that agent, or detach the skill from it first.',
 				);
@@ -779,7 +533,7 @@ describe('SkillService', () => {
 			it('does not let the agent that asks for the move block it', async () => {
 				skillUsage.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-3']);
 
-				await service.changeTarget('skill_a', { projectId: 'p2', agentId: null }, 'agent-1');
+				await service.moveTrusted('skill_a', { projectId: 'p2', agentId: null }, 'agent-1');
 
 				expect(skills.updateTarget).toHaveBeenCalled();
 			});
@@ -795,7 +549,7 @@ describe('SkillService', () => {
 			]);
 
 			await expect(
-				service.changeTarget('skill_a', { projectId: null, agentId: null }, undefined),
+				service.moveTrusted('skill_a', { projectId: null, agentId: null }, undefined),
 			).rejects.toThrow('That name is taken, choose another');
 			expect(skills.findLatestNamesInTarget).toHaveBeenCalledWith(
 				{ projectId: null, agentId: null },
@@ -807,7 +561,7 @@ describe('SkillService', () => {
 		it('checks the name that a rename in the same request gives the skill', async () => {
 			skillUsage.findUsingAgentIds.mockResolvedValue([]);
 
-			await service.changeTarget(
+			await service.moveTrusted(
 				'skill_a',
 				{ projectId: null, agentId: null },
 				undefined,
@@ -829,7 +583,7 @@ describe('SkillService', () => {
 			skills.findByIds.mockResolvedValue([mock<Skill>({ projectId: 'p2', agentId: null })]);
 
 			await expect(
-				service.changeTarget(
+				service.moveTrusted(
 					'skill_a',
 					{ projectId: null, agentId: 'agent-1' },
 					'agent-1',
@@ -847,7 +601,7 @@ describe('SkillService', () => {
 			skillUsage.findUsingAgentIds.mockResolvedValue([]);
 			skills.findByIds.mockResolvedValue([mock<Skill>({ projectId: null, agentId: null })]);
 
-			await service.changeTarget(
+			await service.moveTrusted(
 				'skill_a',
 				{ projectId: 'p1', agentId: null },
 				undefined,
@@ -863,7 +617,7 @@ describe('SkillService', () => {
 		it('moves an unused skill when no agent is kept', async () => {
 			skillUsage.findUsingAgentIds.mockResolvedValue([]);
 
-			await service.changeTarget('skill_a', { projectId: 'p1', agentId: null }, undefined);
+			await service.moveTrusted('skill_a', { projectId: 'p1', agentId: null }, undefined);
 
 			expect(skills.updateTarget).toHaveBeenCalledWith(
 				'skill_a',
@@ -873,178 +627,17 @@ describe('SkillService', () => {
 		});
 	});
 
-	describe('snapshotForPublish', () => {
-		it('locks the skills and resolves the version each ref runs', async () => {
-			skills.findLatestVersionIds.mockResolvedValue(
-				new Map([
-					['skill_a', 'skill_a-v3'],
-					['skill_b', 'skill_b-v2'],
-					['skill_c', 'skill_c-v2'],
-				]),
-			);
-			// A pin of another skill falls back to the latest version, as at runtime.
-			skills.findSkillIdsOfVersions.mockResolvedValue(
-				new Map([
-					['skill_b-v1', 'skill_b'],
-					['skill_a-v1', 'skill_a'],
-				]),
-			);
-
-			const versionByRef = await service.snapshotForPublish(
-				[
-					{ id: 'skill_a' },
-					{ id: 'skill_b', versionId: 'skill_b-v1' },
-					{ id: 'skill_c', versionId: 'skill_a-v1' },
-				],
-				TX_CTX,
-			);
-
-			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_a', 'skill_b', 'skill_c'], TX_CTX);
-			expect([...versionByRef]).toEqual([
-				['skill_a', 'skill_a-v3'],
-				['skill_b', 'skill_b-v1'],
-				['skill_c', 'skill_c-v2'],
-			]);
-			expect(skills.findLatestSaved).not.toHaveBeenCalled();
-			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('canEdit', () => {
-		it('checks projectSkill:update on the project of a project skill', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
-
-			expect(await service.canEdit(user, skillRow('skill_a', { projectId: PROJECT }))).toBe(true);
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:update'], false, {
-				projectId: PROJECT,
-			});
-		});
-
-		it('checks projectSkill:update on the project of the agent of an agent skill', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
-			skillUsage.findAgents.mockResolvedValue(
-				new Map([['agent-1', { name: 'Support bot', projectId: PROJECT }]]),
-			);
-
-			expect(await service.canEdit(user, skillRow('skill_a', { agentId: 'agent-1' }))).toBe(true);
-			expect(skillUsage.findAgents).toHaveBeenCalledWith(['agent-1'], {});
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:update'], false, {
-				projectId: PROJECT,
-			});
-		});
-
-		it('needs skill:update for an instance skill', async () => {
-			vi.mocked(hasGlobalScope).mockReturnValue(true);
-
-			expect(await service.canEdit(user, skillRow('skill_a'))).toBe(true);
-			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:update');
-		});
-
-		it('refuses an instance skill without skill:update', async () => {
-			vi.mocked(hasGlobalScope).mockReturnValue(false);
-
-			expect(await service.canEdit(user, skillRow('skill_a'))).toBe(false);
-		});
-	});
-
-	describe('canAccess', () => {
-		it('lets every user read an instance skill', async () => {
-			vi.mocked(hasGlobalScope).mockReturnValue(false);
-
-			expect(await service.canAccess(user, skillRow('skill_a'), 'read')).toBe(true);
-		});
-
-		it('needs skill:read for an agent skill whose agent is gone', async () => {
-			vi.mocked(hasGlobalScope).mockReturnValue(false);
-			skillUsage.findAgents.mockResolvedValue(new Map());
-
-			expect(await service.canAccess(user, skillRow('skill_a', { agentId: 'gone' }), 'read')).toBe(
-				false,
-			);
-			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:read');
-		});
-
-		it('checks the scope of the operation on the project of a project skill', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(false);
-
-			expect(
-				await service.canAccess(user, skillRow('skill_a', { projectId: PROJECT }), 'delete'),
-			).toBe(false);
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:delete'], false, {
-				projectId: PROJECT,
-			});
-		});
-
-		it('needs skill:delete to delete an instance skill', async () => {
-			vi.mocked(hasGlobalScope).mockReturnValue(true);
-
-			expect(await service.canAccess(user, skillRow('skill_a'), 'delete')).toBe(true);
-			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:delete');
-		});
-	});
-
-	describe('accessCheck', () => {
-		it('reads the projects of the operation once and checks project skills against them', async () => {
-			projectScope.getProjectIds.mockResolvedValue([PROJECT]);
-			vi.mocked(hasGlobalScope).mockReturnValue(false);
-
-			const canUpdate = await service.accessCheck(user, 'update');
-
-			expect(canUpdate(skillRow('skill_a', { projectId: PROJECT }), PROJECT)).toBe(true);
-			expect(canUpdate(skillRow('skill_b', { projectId: 'other-project' }), 'other-project')).toBe(
-				false,
-			);
-			// An agent skill is checked against the project of its agent.
-			expect(canUpdate(skillRow('skill_c', { agentId: 'agent-1' }), PROJECT)).toBe(true);
-			expect(projectScope.getProjectIds).toHaveBeenCalledTimes(1);
-			expect(projectScope.getProjectIds).toHaveBeenCalledWith(user, ['projectSkill:update']);
-			expect(userHasScopes).not.toHaveBeenCalled();
-		});
-
-		it('allows every project skill when the global role grants the scope', async () => {
+	describe('delete', () => {
+		beforeEach(() => {
+			vi.spyOn(access, 'requireAccess').mockResolvedValue(skillRow('skill_a'));
 			projectScope.getProjectIds.mockResolvedValue(null);
-
-			const canDelete = await service.accessCheck(user, 'delete');
-
-			expect(canDelete(skillRow('skill_a', { projectId: 'any-project' }), 'any-project')).toBe(
-				true,
-			);
 		});
 
-		it('applies the canAccess rules to instance skills', async () => {
-			projectScope.getProjectIds.mockResolvedValue([]);
-			vi.mocked(hasGlobalScope).mockReturnValue(false);
-
-			const canUpdate = await service.accessCheck(user, 'update');
-			const canRead = await service.accessCheck(user, 'read');
-
-			expect(canUpdate(skillRow('skill_c'), null)).toBe(false);
-			expect(canRead(skillRow('skill_c'), null)).toBe(true);
-		});
-	});
-
-	describe('assertCanEdit', () => {
-		it('names the skills the user cannot edit', async () => {
-			vi.mocked(hasGlobalScope).mockReturnValue(false);
-			skills.findByIds.mockResolvedValue([skillRow('skill_a')]);
-			skills.findLatestSaved.mockResolvedValue(
-				new Map([['skill_a', versionRow(skillRow('skill_a'), 1, { name: 'Tone' })]]),
-			);
-
-			await expectError(
-				service.assertCanEdit(user, ['skill_a']),
-				ForbiddenError,
-				'You can use but not edit "Tone" (skill_a). Ask someone who can edit this skill, or detach it from this agent.',
-			);
-		});
-	});
-
-	describe('deleteSkill', () => {
 		it('deletes a skill nobody uses, under an edit lock', async () => {
 			skills.findByIds.mockResolvedValue([skillRow('skill_a')]);
 			skillUsage.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
 
-			await service.deleteSkill('skill_a');
+			await service.delete(user, 'skill_a');
 
 			expect(skillUsage.findUsage).toHaveBeenCalledWith('skill_a', 'all', TX_CTX);
 			expect(skills.lockForEdit).toHaveBeenCalledWith(['skill_a'], TX_CTX);
@@ -1066,7 +659,7 @@ describe('SkillService', () => {
 			});
 
 			await expectError(
-				service.deleteSkill('skill_a'),
+				service.delete(user, 'skill_a'),
 				ConflictError,
 				'Skill "Brand voice" is used by Support bot (draft), Sales bot (published v2), Old bot (older published version) and cannot be deleted.',
 			);
@@ -1084,8 +677,10 @@ describe('SkillService', () => {
 				hiddenAgents: 2,
 			});
 
+			projectScope.getProjectIds.mockResolvedValue([PROJECT]);
+
 			await expectError(
-				service.deleteSkill('skill_a', [PROJECT]),
+				service.delete(user, 'skill_a'),
 				ConflictError,
 				'Skill "Brand voice" is used by Support bot (draft), 2 agents in other projects and cannot be deleted.',
 			);
@@ -1100,8 +695,10 @@ describe('SkillService', () => {
 			);
 			skillUsage.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 1 });
 
+			projectScope.getProjectIds.mockResolvedValue([]);
+
 			await expectError(
-				service.deleteSkill('skill_a', []),
+				service.delete(user, 'skill_a'),
 				ConflictError,
 				'Skill "Brand voice" is used by 1 agent in other projects and cannot be deleted.',
 			);
@@ -1109,7 +706,7 @@ describe('SkillService', () => {
 		});
 
 		it('throws NotFoundError for a missing skill', async () => {
-			await expect(service.deleteSkill('skill_gone')).rejects.toThrow(NotFoundError);
+			await expect(service.delete(user, 'skill_gone')).rejects.toThrow(NotFoundError);
 		});
 	});
 });

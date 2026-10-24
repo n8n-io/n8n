@@ -18,17 +18,17 @@ import {
 } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { SkillsApiService } from '../services/skills-api.service';
+import { SkillService } from '../services/skill.service';
 import { SkillsGate } from '../services/skills-gate';
 
 /**
  * Skills for the settings page. No route scope: the scope of each skill decides who may
- * see or change it, so `SkillsApiService` checks every row.
+ * see or change it, so `SkillService` checks every row.
  */
 @RestController('/skills')
 export class SkillsController {
 	constructor(
-		private readonly skillsApi: SkillsApiService,
+		private readonly skillService: SkillService,
 		private readonly skillsGate: SkillsGate,
 	) {}
 
@@ -44,23 +44,23 @@ export class SkillsController {
 
 	@Get('/')
 	async list(req: AuthenticatedRequest, _res: Response, @Query query: ListSkillsQueryDto) {
-		return await this.skillsApi.list(req.user, query);
+		return await this.skillService.list(req.user, query);
 	}
 
 	/** Registered before `/:skillId`, which would take `new-name` as an id. */
 	@Get('/new-name')
 	async newName(req: AuthenticatedRequest, _res: Response, @Query query: SkillNewNameQueryDto) {
-		return await this.skillsApi.newName(req.user, query);
+		return await this.skillService.newName(req.user, query);
 	}
 
 	@Get('/:skillId')
 	async get(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
-		return await this.skillsApi.get(req.user, skillId);
+		return await this.skillService.get(req.user, skillId);
 	}
 
 	@Post('/')
 	async create(req: AuthenticatedRequest, _res: Response, @Body payload: CreateSkillDto) {
-		return await this.skillsApi.create(req.user, payload);
+		return await this.skillService.create(req.user, payload);
 	}
 
 	/** Saves the changes as the next version. There is no draft: the editor keeps them until here. */
@@ -71,12 +71,12 @@ export class SkillsController {
 		@Param('skillId') skillId: string,
 		@Body payload: SaveSkillDto,
 	) {
-		return await this.skillsApi.update(req.user, skillId, payload);
+		return await this.skillService.update(req.user, skillId, payload);
 	}
 
 	@Delete('/:skillId')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
-		await this.skillsApi.delete(req.user, skillId);
+		await this.skillService.delete(req.user, skillId);
 		return { ok: true };
 	}
 }

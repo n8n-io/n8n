@@ -41,7 +41,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { SkillsApiService } from '@/modules/skills/services/skills-api.service';
+import { SkillService } from '@/modules/skills/services/skill.service';
 import { SkillsGate } from '@/modules/skills/services/skills-gate';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
@@ -286,7 +286,7 @@ describe('McpService scope enforcement', () => {
 	it.each([true, false])(
 		'registers the skill tools only with an agents provider: %s',
 		async (skillsEnabled) => {
-			mockInstance(SkillsApiService);
+			mockInstance(SkillService);
 			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
 			const server = await buildService({
 				builderEnabled: false,

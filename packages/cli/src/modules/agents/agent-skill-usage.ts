@@ -5,7 +5,7 @@ import { UserError } from '@n8n/errors';
 
 import { SkillUsage } from '@/modules/skills/services/skill-usage.contracts';
 import { renameIntroducesClash } from '@/modules/skills/utils/skill-names';
-import { SkillService } from '@/modules/skills/services/skill.service';
+import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
 
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentRepository } from './repositories/agent.repository';
@@ -20,7 +20,7 @@ export class AgentSkillUsage extends SkillUsage {
 	constructor(
 		private readonly agentSkillRepository: AgentSkillRepository,
 		private readonly agentRepository: AgentRepository,
-		private readonly skillService: SkillService,
+		private readonly skillRuntime: SkillRuntimeService,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {
 		super();
@@ -65,7 +65,7 @@ export class AgentSkillUsage extends SkillUsage {
 			(refs.get(agent.id) ?? [])
 				.filter((ref) => ref.skillId !== skillId)
 				.map((ref) => ({ id: ref.skillId, versionId: ref.versionId }));
-		const nameOf = await this.skillService.runtimeNames(agents.flatMap(otherRefs), ctx);
+		const nameOf = await this.skillRuntime.runtimeNames(agents.flatMap(otherRefs), ctx);
 		const clashing = agents.filter((agent) =>
 			renameIntroducesClash(
 				otherRefs(agent).flatMap((ref) => nameOf(ref) ?? []),

@@ -38,7 +38,7 @@ import { setupTestServer } from '@test-integration/utils';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { toSkillContent } from '@/modules/skills/services/skill.service';
+import { toSkillContent } from '@/modules/skills/utils/skill-content';
 
 beforeAll(async () => await testModules.loadModules(['n8n-packages', 'skills', 'agents']));
 const server = setupTestServer({ endpointGroups: ['publicApi'] });

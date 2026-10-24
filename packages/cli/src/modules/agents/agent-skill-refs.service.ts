@@ -11,12 +11,13 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import type { Skill } from '@/modules/skills/database/entities/skill.entity';
 import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 import { findIntroducedNameClashes } from '@/modules/skills/utils/skill-names';
+import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
+import { SkillService } from '@/modules/skills/services/skill.service';
 import {
-	SkillService,
 	toAgentSkill,
 	type SkillMoveOptions,
 	type SkillRef,
-} from '@/modules/skills/services/skill.service';
+} from '@/modules/skills/utils/skill-content';
 
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
@@ -45,6 +46,7 @@ export class AgentSkillRefsService {
 		private readonly skillRepository: SkillRepository,
 		private readonly agentSkillRepository: AgentSkillRepository,
 		private readonly skillService: SkillService,
+		private readonly skillRuntime: SkillRuntimeService,
 	) {}
 
 	/** Skill refs of the agent draft, in attach order. A pinned ref has `versionId`. */
@@ -99,7 +101,7 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 	): Promise<Record<string, AgentSkill>> {
 		if (!skillRefs?.length) return {};
-		return await this.skillService.resolveForAgentDraft(toServiceRefs(skillRefs), ctx);
+		return await this.skillRuntime.resolveForAgentDraft(toServiceRefs(skillRefs), ctx);
 	}
 
 	async findOutdatedSkillIds(
@@ -242,7 +244,7 @@ export class AgentSkillRefsService {
 		});
 		const otherAgentBodies =
 			otherAgentSkillIds.length > 0
-				? await this.skillService.resolveForAgentDraft(
+				? await this.skillRuntime.resolveForAgentDraft(
 						otherAgentSkillIds.map((id) => ({ id })),
 						ctx,
 					)
@@ -259,7 +261,7 @@ export class AgentSkillRefsService {
 			const body = Object.hasOwn(source, ref.id) ? source[ref.id] : undefined;
 			// The new skill belongs to this agent only, so creating the agent is enough.
 			if (!body || creator === null) continue;
-			const id = await this.skillService.create(
+			const id = await this.skillService.createTrusted(
 				{
 					// An inline body or a copy becomes a skill of this agent only, as the data
 					// migration does. It takes its project from the agent, and goes with the agent.
@@ -287,7 +289,7 @@ export class AgentSkillRefsService {
 		const ids: string[] = [];
 		for (const skill of skills) {
 			ids.push(
-				await this.skillService.create(
+				await this.skillService.createTrusted(
 					{
 						target: targetFor(agent, availableTo),
 						skill,
@@ -314,7 +316,7 @@ export class AgentSkillRefsService {
 		if (!agent.schema) return new Map();
 		const refs = await this.refsForDraft(agent, ctx);
 		if (refs.length === 0) return new Map();
-		const versionByRef = await this.skillService.snapshotForPublish(toServiceRefs(refs), ctx);
+		const versionByRef = await this.skillRuntime.snapshotForPublish(toServiceRefs(refs), ctx);
 		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
 		if (missing.length > 0) {
 			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
@@ -353,7 +355,7 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 		options: SkillMoveOptions = {},
 	): Promise<void> {
-		await this.skillService.changeTarget(
+		await this.skillService.moveTrusted(
 			skillId,
 			targetFor(agent, availableTo),
 			agent.id,
@@ -405,12 +407,12 @@ export class AgentSkillRefsService {
 			(id) => !existingIds.has(id) && found.has(id),
 		);
 		if (newIds.length === 0) return kept;
-		// Shared lock until the attach commits, so `changeTarget` cannot narrow a skill in between.
+		// Shared lock until the attach commits, so `moveTrusted` cannot narrow a skill in between.
 		if (ctx.trx) await this.skillRepository.lockForPublish(newIds, ctx);
 
 		const keptExisting = kept.filter((ref) => existingIds.has(ref.id));
 		const newRefs = newIds.map((id) => ({ id }));
-		const nameOf = await this.skillService.runtimeNames([...keptExisting, ...newRefs], ctx);
+		const nameOf = await this.skillRuntime.runtimeNames([...keptExisting, ...newRefs], ctx);
 		for (const id of newIds) {
 			const skill = found.get(id);
 			if (skill && !this.isAttachable(skill, agent)) {

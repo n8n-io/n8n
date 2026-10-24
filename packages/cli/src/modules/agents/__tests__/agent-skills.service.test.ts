@@ -18,7 +18,9 @@ import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { ProjectAgent } from '../entities/agent.entity';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { SkillSaveResult, SkillService } from '@/modules/skills/services/skill.service';
+import type { SkillAccessService } from '@/modules/skills/services/skill-access.service';
+import type { SkillService } from '@/modules/skills/services/skill.service';
+import type { SkillSaveResult } from '@/modules/skills/utils/skill-content';
 import type { SkillsTelemetry } from '@/modules/skills/services/skills-telemetry.service';
 import { getAgentConfigHash, getAgentSkillHash } from '../utils/agent-config-hash';
 import {
@@ -76,6 +78,7 @@ describe('AgentSkillsService', () => {
 	let service: AgentSkillsService;
 	let agentRepository: Mocked<AgentRepository>;
 	let skillService: Mocked<SkillService>;
+	let skillAccess: Mocked<SkillAccessService>;
 	let skillRefs: FakeAgentSkillRefsService;
 	let transactionRunner: Mocked<TransactionRunner>;
 	let runtimeCacheService: Mocked<AgentRuntimeCacheService>;
@@ -96,6 +99,7 @@ describe('AgentSkillsService', () => {
 
 		agentRepository = mock<AgentRepository>();
 		skillService = mock<SkillService>();
+		skillAccess = mock<SkillAccessService>();
 		skillRefs = createAgentSkillRefsService();
 		runtimeCacheService = mock<AgentRuntimeCacheService>();
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
@@ -118,6 +122,7 @@ describe('AgentSkillsService', () => {
 			),
 			skillRefs,
 			skillService,
+			skillAccess,
 			transactionRunner,
 			skillsTelemetry,
 			projectScopeService,
@@ -356,7 +361,7 @@ describe('AgentSkillsService', () => {
 	describe('updateSkill', () => {
 		beforeEach(() => {
 			skillRefs.bodies.skill_a = skill;
-			skillService.save.mockResolvedValue(saveResult());
+			skillService.saveTrusted.mockResolvedValue(saveResult());
 		});
 
 		it('changes where the skill can be added without saving a new version', async () => {
@@ -365,7 +370,7 @@ describe('AgentSkillsService', () => {
 				skills: { skill_a: skill },
 			});
 			skillRefs.availabilityOf.mockResolvedValue('project');
-			skillService.assertCanMove.mockResolvedValue({ projectId, agentId: null });
+			skillAccess.assertCanMove.mockResolvedValue({ projectId, agentId: null });
 
 			await service.updateSkill(
 				agentId,
@@ -378,8 +383,8 @@ describe('AgentSkillsService', () => {
 				'agent',
 			);
 
-			expect(skillService.assertCanEdit).toHaveBeenCalledWith(user, ['skill_a']);
-			expect(skillService.assertCanMove).toHaveBeenCalledWith(user, 'skill_a');
+			expect(skillAccess.assertCanEdit).toHaveBeenCalledWith(user, ['skill_a']);
+			expect(skillAccess.assertCanMove).toHaveBeenCalledWith(user, 'skill_a');
 			expect(skillRefs.setAvailability).toHaveBeenCalledWith(
 				agent,
 				'skill_a',
@@ -388,7 +393,7 @@ describe('AgentSkillsService', () => {
 				// A refused move names only the agents in projects the user may read.
 				{ checkedSource: { projectId, agentId: null }, agentProjectIds: [projectId] },
 			);
-			expect(skillService.save).not.toHaveBeenCalled();
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 
 		it('refuses to change where the skill can be added without the delete permission', async () => {
@@ -397,7 +402,7 @@ describe('AgentSkillsService', () => {
 				skills: { skill_a: skill },
 			});
 			skillRefs.availabilityOf.mockResolvedValue('project');
-			skillService.assertCanMove.mockRejectedValue(
+			skillAccess.assertCanMove.mockRejectedValue(
 				new ForbiddenError('You are not allowed to move this skill out of its scope.'),
 			);
 
@@ -414,7 +419,7 @@ describe('AgentSkillsService', () => {
 				),
 			).rejects.toThrow('You are not allowed to move this skill out of its scope.');
 			expect(skillRefs.setAvailability).not.toHaveBeenCalled();
-			expect(skillService.save).not.toHaveBeenCalled();
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 
 		it('writes nothing when the skill keeps where it can be added', async () => {
@@ -433,7 +438,7 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(skillRefs.setAvailability).not.toHaveBeenCalled();
-			expect(skillService.save).not.toHaveBeenCalled();
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 
 		it('saves the next version with the skill edit permission, then refreshes the agents that follow it', async () => {
@@ -449,7 +454,9 @@ describe('AgentSkillsService', () => {
 			agentRepository.findByIdAndProjectId
 				.mockResolvedValueOnce(agent)
 				.mockResolvedValueOnce(fresh);
-			skillService.save.mockResolvedValue(saveResult({ followingAgentIds: [agentId, 'agent-2'] }));
+			skillService.saveTrusted.mockResolvedValue(
+				saveResult({ followingAgentIds: [agentId, 'agent-2'] }),
+			);
 
 			const result = await service.updateSkill(
 				agentId,
@@ -460,9 +467,9 @@ describe('AgentSkillsService', () => {
 				getAgentSkillHash(skill),
 			);
 
-			expect(skillService.assertCanEdit).toHaveBeenCalledWith(user, ['skill_a']);
+			expect(skillAccess.assertCanEdit).toHaveBeenCalledWith(user, ['skill_a']);
 			expect(skillsTelemetry.updated).toHaveBeenCalledWith('user-1', 'skill_a', 'agent', 2, false);
-			expect(skillService.save).toHaveBeenCalledWith(
+			expect(skillService.saveTrusted).toHaveBeenCalledWith(
 				'skill_a',
 				{
 					name: skill.name,
@@ -502,7 +509,7 @@ describe('AgentSkillsService', () => {
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
 				skills: { skill_a: skill },
 			});
-			skillService.save.mockResolvedValue(saveResult({ created: false }));
+			skillService.saveTrusted.mockResolvedValue(saveResult({ created: false }));
 
 			await service.updateSkill(
 				agentId,
@@ -534,7 +541,7 @@ describe('AgentSkillsService', () => {
 			await expect(skillRefs.refsForDraft(agent, {})).resolves.toEqual([
 				{ type: 'skill', id: 'skill_a' },
 			]);
-			expect(skillService.save).toHaveBeenCalledWith(
+			expect(skillService.saveTrusted).toHaveBeenCalledWith(
 				'skill_a',
 				expect.objectContaining({ baseSkillHash: getAgentSkillHash(skill) }),
 				'user-1',
@@ -562,7 +569,7 @@ describe('AgentSkillsService', () => {
 				'This agent uses an older version of this skill. Use the latest version first, then edit the skill. To use the latest version, remove versionId from the skill ref in the agent config.',
 			);
 			expect(skillRefs.unpinDraftRef).not.toHaveBeenCalled();
-			expect(skillService.save).not.toHaveBeenCalled();
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 
 		it('rejects a stale base hash without saving', async () => {
@@ -578,17 +585,17 @@ describe('AgentSkillsService', () => {
 					'stale',
 				),
 			).rejects.toThrow(ConflictError);
-			expect(skillService.save).not.toHaveBeenCalled();
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 
 		it('rejects a user who may use but not edit the skill', async () => {
 			givenAgent({ schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] } });
-			skillService.assertCanEdit.mockRejectedValue(new ForbiddenError('You can use but not edit'));
+			skillAccess.assertCanEdit.mockRejectedValue(new ForbiddenError('You can use but not edit'));
 
 			await expect(
 				service.updateSkill(agentId, projectId, 'skill_a', { instructions: 'New.' }, context),
 			).rejects.toThrow(ForbiddenError);
-			expect(skillService.save).not.toHaveBeenCalled();
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 
 		it('rejects a skill that is not attached to the agent', async () => {
@@ -616,8 +623,8 @@ describe('AgentSkillsService', () => {
 				skillHash: getAgentSkillHash(skill),
 				versionId,
 			});
-			expect(skillService.assertCanEdit).not.toHaveBeenCalled();
-			expect(skillService.save).not.toHaveBeenCalled();
+			expect(skillAccess.assertCanEdit).not.toHaveBeenCalled();
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 			expect(modificationTelemetry.record).not.toHaveBeenCalled();
 		});
 
@@ -634,7 +641,7 @@ describe('AgentSkillsService', () => {
 				[{ oldText: 'action items', newText: 'owners' }],
 			);
 
-			expect(skillService.save).toHaveBeenCalledWith(
+			expect(skillService.saveTrusted).toHaveBeenCalledWith(
 				'skill_a',
 				expect.objectContaining({ instructions: 'Extract decisions and owners.' }),
 				'user-1',
@@ -651,7 +658,7 @@ describe('AgentSkillsService', () => {
 
 			await service.updateSkill(agentId, projectId, 'skill_a', { references: [] }, context);
 
-			expect(skillService.save).toHaveBeenCalledWith(
+			expect(skillService.saveTrusted).toHaveBeenCalledWith(
 				'skill_a',
 				expect.objectContaining({ references: [] }),
 				'user-1',
@@ -680,7 +687,7 @@ describe('AgentSkillsService', () => {
 				{},
 			);
 			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
-			expect(skillService.deleteSkill).not.toHaveBeenCalled();
+			expect(skillService.delete).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 

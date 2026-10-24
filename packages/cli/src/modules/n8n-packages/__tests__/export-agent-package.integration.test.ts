@@ -22,7 +22,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { fromAgentDocument } from '@/modules/agents/json-config/agent-document';
-import { toSkillContent } from '@/modules/skills/services/skill.service';
+import { toSkillContent } from '@/modules/skills/utils/skill-content';
 import type { NodeTypes } from '@/node-types';
 
 import { N8nPackageParser } from '../engine/n8n-package-parser';

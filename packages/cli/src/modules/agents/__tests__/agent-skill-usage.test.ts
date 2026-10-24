@@ -6,11 +6,9 @@ import { mock } from 'vitest-mock-extended';
 import type { SkillFile } from '@/modules/skills/database/entities/skill-file.entity';
 import type { SkillVersion } from '@/modules/skills/database/entities/skill-version.entity';
 import type { Skill } from '@/modules/skills/database/entities/skill.entity';
-import type {
-	ResolvedSkillRow,
-	SkillRepository,
-} from '@/modules/skills/database/repositories/skill.repository';
-import { SkillService } from '@/modules/skills/services/skill.service';
+import type { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
+import type { ResolvedSkillRow } from '@/modules/skills/utils/skill-content';
+import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
 
 import { AgentSkillUsage } from '../agent-skill-usage';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
@@ -73,9 +71,9 @@ describe('AgentSkillUsage', () => {
 	const agentSkills = mock<AgentSkillRepository>();
 	const agents = mock<AgentRepository>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
-	// A real SkillService, so the names that agents see come from the mocked rows.
-	const skillService = new SkillService(mock(), skills, mock(), mock(), mock());
-	const service = new AgentSkillUsage(agentSkills, agents, skillService, broadcaster);
+	// A real SkillRuntimeService, so the names that agents see come from the mocked rows.
+	const skillRuntime = new SkillRuntimeService(skills, mock(), mock());
+	const service = new AgentSkillUsage(agentSkills, agents, skillRuntime, broadcaster);
 
 	beforeEach(() => {
 		vi.resetAllMocks();

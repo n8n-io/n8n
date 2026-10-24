@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import { loadInstanceAiSkills, resolvePromptProfile } from '@n8n/instance-ai';
 
 import type { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
-import type { SkillService } from '@/modules/skills/services/skill.service';
+import type { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
 
 import {
 	InstanceAiSkillsService,
@@ -116,13 +116,13 @@ describe('Assistant reads of user skills', () => {
 	};
 	const content = { ...summary, instructions: 'Be brief.', frontmatter: null, files: [] };
 	const gate = mock<AssistantSkillsFlagGate>();
-	const skillService = mock<SkillService>();
-	const service = new InstanceAiSkillsService(gate, skillService);
+	const skillRuntime = mock<SkillRuntimeService>();
+	const service = new InstanceAiSkillsService(gate, skillRuntime);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		skillService.listForAssistant.mockResolvedValue([summary]);
-		skillService.readForAssistant.mockResolvedValue(content);
+		skillRuntime.listForAssistant.mockResolvedValue([summary]);
+		skillRuntime.readForAssistant.mockResolvedValue(content);
 	});
 
 	it('reads nothing while Assistant skills are off', async () => {
@@ -130,8 +130,8 @@ describe('Assistant reads of user skills', () => {
 
 		expect(await service.listHubSkills(context)).toEqual([]);
 		expect(await service.readHubSkill(context, summary.id)).toBeNull();
-		expect(skillService.listForAssistant).not.toHaveBeenCalled();
-		expect(skillService.readForAssistant).not.toHaveBeenCalled();
+		expect(skillRuntime.listForAssistant).not.toHaveBeenCalled();
+		expect(skillRuntime.readForAssistant).not.toHaveBeenCalled();
 		expect((await service.loadSkills(openScope)).source.registry.skills.length).toBeGreaterThan(0);
 	});
 
@@ -140,7 +140,7 @@ describe('Assistant reads of user skills', () => {
 
 		expect(await service.listHubSkills(context)).toEqual([summary]);
 		expect(await service.readHubSkill(context, summary.id)).toEqual(content);
-		expect(skillService.listForAssistant).toHaveBeenCalledWith(context);
-		expect(skillService.readForAssistant).toHaveBeenCalledWith(context, summary.id);
+		expect(skillRuntime.listForAssistant).toHaveBeenCalledWith(context);
+		expect(skillRuntime.readForAssistant).toHaveBeenCalledWith(context, summary.id);
 	});
 });
