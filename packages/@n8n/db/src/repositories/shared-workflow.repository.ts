@@ -22,6 +22,7 @@ import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
+import { loadWorkflowCollections } from '../utils/workflow-collections';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
@@ -372,6 +373,9 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			em = this.managerFor(ctx),
 		} = options;
 
+		// Only single-row relations are joined, so the workflow and its active version come
+		// from one row. Shares and tags are loaded separately: joining them would repeat that
+		// row, with its nodes JSON, once per share and tag.
 		const sharedWorkflow = await em.findOne(SharedWorkflow, {
 			where: {
 				workflowId,
@@ -379,15 +383,22 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			},
 			relations: {
 				workflow: {
-					shared: { project: true },
-					tags: includeTags,
 					parentFolder: includeParentFolder,
 					activeVersion: includeActiveVersion,
 				},
 			},
 		});
+		if (!sharedWorkflow?.workflow) return null;
 
-		const activeVersion = sharedWorkflow?.workflow.activeVersion;
+		await loadWorkflowCollections(em, [sharedWorkflow.workflow], {
+			shared: { project: true },
+			tags: includeTags,
+		});
+		// A workflow always has an owner share, so no shares means it was deleted after the
+		// read above. Report it as not found, as a single joined read would have.
+		if (sharedWorkflow.workflow.shared.length === 0) return null;
+
+		const activeVersion = sharedWorkflow.workflow.activeVersion;
 		if (activeVersion && publishHistory !== 'none') {
 			activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(

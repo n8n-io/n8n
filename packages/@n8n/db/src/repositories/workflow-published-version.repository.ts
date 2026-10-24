@@ -5,6 +5,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersion } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { loadWorkflowCollections } from '../utils/workflow-collections';
 
 export type PublishedWorkflowDataForExecution = Pick<
 	IWorkflowBase,
@@ -82,13 +83,22 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 	async getPublishedVersionWithRelations(
 		workflowId: string,
 	): Promise<WorkflowPublishedVersion | null> {
-		return await this.findOne({
+		// `find` rather than `findOne`: `workflowId` is the primary key and both joined relations
+		// have one row, so TypeORM's extra DISTINCT query for `findOne` with joins is not needed.
+		const [record] = await this.find({
 			where: { workflowId },
-			relations: {
-				workflow: { shared: { project: true } },
-				publishedVersion: true,
-			},
+			relations: { workflow: true, publishedVersion: true },
 		});
+		if (!record) return null;
+
+		// Shares are loaded separately: joining them would repeat the workflow and published
+		// version JSON once per share.
+		if (record.workflow) {
+			await loadWorkflowCollections(this.manager, [record.workflow], {
+				shared: { project: true },
+			});
+		}
+		return record;
 	}
 
 	async getPublishedVersionForExecution(

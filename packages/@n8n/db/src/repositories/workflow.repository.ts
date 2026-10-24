@@ -43,6 +43,11 @@ import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
+import {
+	loadWorkflowCollections,
+	splitWorkflowRelations,
+	type WorkflowCollections,
+} from '../utils/workflow-collections';
 
 export type WorkflowIdsQuery = { query: string; parameters: Record<string, unknown> };
 
@@ -215,15 +220,33 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return availability;
 	}
 
+	/**
+	 * `tags` and `shared` are loaded with separate queries, not joined: a join would repeat
+	 * the workflow row, with its nodes JSON, once per tag and share.
+	 */
 	async get(
 		where: FindOptionsWhere<WorkflowEntity>,
 		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
 		ctx: OperationContext = {},
 	) {
-		return await this.managerFor(ctx).findOne(WorkflowEntity, {
-			where,
-			relations: options?.relations,
-		});
+		const manager = this.managerFor(ctx);
+		const { relations, collections } = splitWorkflowRelations(options?.relations, where);
+		const workflow = await manager.findOne(WorkflowEntity, { where, relations });
+		if (workflow) await loadWorkflowCollections(manager, [workflow], collections);
+		return workflow;
+	}
+
+	/**
+	 * Loads tags and shares onto already-loaded workflows, one query per relation. Use this
+	 * instead of joining them: a join repeats each workflow row, with its nodes JSON, once
+	 * per tag and share.
+	 */
+	async loadCollections(
+		workflows: WorkflowEntity[],
+		collections: WorkflowCollections,
+		ctx: OperationContext = {},
+	) {
+		await loadWorkflowCollections(this.managerFor(ctx), workflows, collections);
 	}
 
 	/**
@@ -591,10 +614,16 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	async findById(workflowId: string) {
-		return await this.findOne({
+		// `find` rather than `findOne`: the id is unique and the only joined relation has one
+		// row, so TypeORM's extra DISTINCT query for `findOne` with joins is not needed.
+		const [workflow] = await this.find({
 			where: { id: workflowId },
-			relations: { shared: { project: true }, activeVersion: true },
+			relations: { activeVersion: true },
 		});
+		if (!workflow) return null;
+
+		await loadWorkflowCollections(this.manager, [workflow], { shared: { project: true } });
+		return workflow;
 	}
 
 	async findByIdInContext(workflowId: string, ctx: OperationContext) {

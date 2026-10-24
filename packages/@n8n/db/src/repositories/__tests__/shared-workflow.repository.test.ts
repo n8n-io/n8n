@@ -373,12 +373,65 @@ describe('SharedWorkflowRepository', () => {
 
 	describe('findWorkflowWithOptions', () => {
 		const sharedWorkflowWith = (activeVersion: WorkflowHistory | null) =>
-			mock<SharedWorkflow>({ workflow: mock<WorkflowEntity>({ activeVersion }) });
+			mock<SharedWorkflow>({ workflow: mock<WorkflowEntity>({ id: 'workflow-1', activeVersion }) });
+		const ownerShares = () => [
+			mock<SharedWorkflow>({ workflowId: 'workflow-1', role: 'workflow:owner' }),
+		];
+
+		it('joins only single-row relations and loads shares separately', async () => {
+			entityManager.findOne.mockResolvedValueOnce(sharedWorkflowWith(null));
+			const shares = ownerShares();
+			entityManager.find.mockResolvedValueOnce(shares);
+
+			const result = await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1', {
+				includeParentFolder: true,
+				includeActiveVersion: true,
+			});
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(SharedWorkflow, {
+				where: { workflowId: 'workflow-1' },
+				relations: { workflow: { parentFolder: true, activeVersion: true } },
+			});
+			expect(entityManager.find).toHaveBeenCalledWith(
+				SharedWorkflow,
+				expect.objectContaining({
+					where: { workflowId: In(['workflow-1']) },
+					relations: { project: true },
+				}),
+			);
+			expect(result?.workflow.shared).toEqual(shares);
+		});
+
+		it('returns null without further queries when no share row matches', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			const result = await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1', {
+				includeActiveVersion: true,
+			});
+
+			expect(result).toBeNull();
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('returns null when the workflow is deleted after the first read', async () => {
+			entityManager.findOne.mockResolvedValueOnce(
+				sharedWorkflowWith(mock<WorkflowHistory>({ versionId: 'version-1' })),
+			);
+			entityManager.find.mockResolvedValueOnce([]);
+
+			const result = await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1', {
+				includeActiveVersion: true,
+			});
+
+			expect(result).toBeNull();
+			expect(workflowPublishHistoryRepository.findByVersion).not.toHaveBeenCalled();
+		});
 
 		it('loads the publish history of the active version in a separate query', async () => {
 			const activeVersion = mock<WorkflowHistory>({ versionId: 'version-1' });
 			const events = [mock<WorkflowPublishHistory>({ id: 1 })];
 			entityManager.findOne.mockResolvedValueOnce(sharedWorkflowWith(activeVersion));
+			entityManager.find.mockResolvedValueOnce(ownerShares());
 			workflowPublishHistoryRepository.findByVersion.mockResolvedValueOnce(events);
 
 			const result = await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1', {
@@ -406,6 +459,7 @@ describe('SharedWorkflowRepository', () => {
 			entityManager.findOne.mockResolvedValueOnce(
 				sharedWorkflowWith(mock<WorkflowHistory>({ versionId: 'version-1' })),
 			);
+			entityManager.find.mockResolvedValueOnce(ownerShares());
 			workflowPublishHistoryRepository.findByVersion.mockResolvedValueOnce([]);
 
 			await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1', {
@@ -425,6 +479,7 @@ describe('SharedWorkflowRepository', () => {
 			entityManager.findOne.mockResolvedValueOnce(
 				sharedWorkflowWith(mock<WorkflowHistory>({ versionId: 'version-1' })),
 			);
+			entityManager.find.mockResolvedValueOnce(ownerShares());
 
 			await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1', {
 				includeActiveVersion: true,
@@ -439,6 +494,7 @@ describe('SharedWorkflowRepository', () => {
 			trx.findOne.mockResolvedValueOnce(
 				sharedWorkflowWith(mock<WorkflowHistory>({ versionId: 'version-1' })),
 			);
+			trx.find.mockResolvedValueOnce(ownerShares());
 			workflowPublishHistoryRepository.findByVersion.mockResolvedValueOnce([]);
 
 			await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1', {
@@ -456,6 +512,7 @@ describe('SharedWorkflowRepository', () => {
 
 		it('does not load publish history when the workflow has no active version', async () => {
 			entityManager.findOne.mockResolvedValueOnce(sharedWorkflowWith(null));
+			entityManager.find.mockResolvedValueOnce(ownerShares());
 
 			await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1', {
 				includeActiveVersion: true,

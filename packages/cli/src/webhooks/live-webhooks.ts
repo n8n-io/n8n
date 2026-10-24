@@ -269,10 +269,9 @@ export class LiveWebhooks implements IWebhookManager {
 	private async loadFromActiveVersion(
 		workflowId: string,
 	): Promise<{ workflow: WorkflowEntity; publishedVersion: WorkflowHistory }> {
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			relations: { activeVersion: true, shared: true },
-		});
+		// Loads shares separately: joining them would repeat the workflow and active version
+		// JSON once per share.
+		const workflowData = await this.workflowRepository.findById(workflowId);
 		if (workflowData === null) {
 			throw new NotFoundError(`Could not find workflow with id "${workflowId}"`);
 		}

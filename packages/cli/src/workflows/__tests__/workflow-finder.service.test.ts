@@ -301,7 +301,6 @@ describe('WorkflowFinderService', () => {
 					skip: 20,
 					take: 5,
 					select: expect.objectContaining({
-						tags: true,
 						nodes: true,
 						activeVersion: true,
 					}),
@@ -310,21 +309,59 @@ describe('WorkflowFinderService', () => {
 			const [, , options] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls[0];
 			assert(options);
 			expect(options.select).not.toHaveProperty('pinData');
+			expect(workflowRepository.loadCollections).toHaveBeenCalledWith([{ id: 'wf-1' }], {
+				shared: true,
+				tags: true,
+			});
 			expect(result.count).toBe(1);
 		});
 
-		it('selects bare share rows by default and the home project on request', async () => {
+		it('loads shares and tags after the list query instead of joining them', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.findWorkflowsForUser(user, ['workflow:read'], { includeTags: true });
+
+			const [, , options] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls[0];
+			assert(options);
+			// Joining them would repeat each workflow's nodes JSON once per share and tag.
+			expect(options.select).not.toHaveProperty('tags');
+			expect(options.select).not.toHaveProperty('shared');
+			expect(options.select).not.toHaveProperty('ownedBy');
+		});
+
+		it('loads bare share rows by default and the home project on request', async () => {
 			const { service, workflowRepository } = setup();
 
 			await service.findWorkflowsForUser(user, ['workflow:read']);
 			await service.findWorkflowsForUser(user, ['workflow:read'], { includeProjects: true });
 
-			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
-			assert(first?.[2] && second?.[2]);
-			expect(first[2].select).toMatchObject({ shared: true });
-			expect(first[2].select).not.toHaveProperty('ownedBy');
-			expect(second[2].select).toMatchObject({ ownedBy: true });
-			expect(second[2].select).not.toHaveProperty('shared');
+			expect(workflowRepository.loadCollections).toHaveBeenNthCalledWith(1, [], {
+				shared: true,
+				tags: false,
+			});
+			expect(workflowRepository.loadCollections).toHaveBeenNthCalledWith(2, [], {
+				shared: { project: true },
+				tags: false,
+			});
+		});
+
+		it('keeps only the filtered project share when filtering by project', async () => {
+			const { service, workflowRepository } = setup();
+			workflowRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+				workflows: [{ id: 'wf-1' }] as never,
+				count: 1,
+			});
+			workflowRepository.loadCollections.mockImplementation(async (workflows) => {
+				for (const workflow of workflows) {
+					workflow.shared = [{ projectId: 'project-a' }, { projectId: 'project-b' }] as never;
+				}
+			});
+
+			const { workflows } = await service.findWorkflowsForUser(user, ['workflow:read'], {
+				filters: { projectId: 'project-b' },
+			});
+
+			expect(workflows[0].shared).toEqual([{ projectId: 'project-b' }]);
 		});
 
 		it('sorts by id by default for public-list compatibility', async () => {
