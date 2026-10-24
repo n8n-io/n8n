@@ -1,0 +1,99 @@
+{
+	"type": "object",
+	"properties": {
+		"inference": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "string",
+					"description": "ID of the inference"
+				},
+				"job": {
+					"type": "object",
+					"description": "Job the inference belongs to",
+					"properties": {
+						"id": {
+							"type": "string",
+							"description": "UUID of the Job"
+						}
+					}
+				},
+				"model": {
+					"type": "object",
+					"description": "Model info for the inference",
+					"properties": {
+						"id": {
+							"type": "string",
+							"description": "ID of the model"
+						}
+					}
+				},
+				"file": {
+					"type": "object",
+					"description": "File info for the inference",
+					"properties": {
+						"name": {
+							"type": "string",
+							"description": "Name of the file"
+						},
+						"alias": {
+							"type": "string",
+							"description": "Optional alias for the file"
+						},
+						"page_count": {
+							"type": "integer",
+							"description": "Page count"
+						},
+						"mime_type": {
+							"type": "string",
+							"description": "MIME type"
+						}
+					}
+				},
+				"result": {
+					"type": "object",
+					"description": "Result of a crop utility inference",
+					"properties": {
+						"crops": {
+							"type": "array",
+							"description": "Fields contained in the inference",
+							"items": {
+								"type": "object",
+								"properties": {
+									"object_type": {
+										"type": "string",
+										"description": "Type or classification of the detected object"
+									},
+									"location": {
+										"type": "object",
+										"description": "Location that includes cropping coordinates for the detected object, within the source document",
+										"properties": {
+											"polygon": {
+												"type": "array",
+												"description": "Position information as a list of points in clockwise order",
+												"items": {
+													"type": "array",
+													"items": {
+														"type": "number"
+													}
+												}
+											},
+											"page": {
+												"type": "integer",
+												"description": "0-based page index of where the polygon is located"
+											}
+										}
+									},
+									"extraction_response": {
+										"type": "object",
+										"description": "The extraction response associated with the crop"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
