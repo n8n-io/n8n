@@ -110,6 +110,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'logStreaming:manage', // Log Streaming
 			'ldap:manage', // LDAP
 			'otel:manage', // OpenTelemetry
+			'workflowSettings:manage', // Workflow settings
 			'eventBusDestination:create', // Log Streaming
 			'eventBusDestination:read',
 			'eventBusDestination:update',

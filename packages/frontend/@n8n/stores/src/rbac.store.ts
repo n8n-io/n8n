@@ -67,6 +67,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		securitySettings: {},
 		roleMappingRule: {},
 		otel: {},
+		workflowSettings: {},
 		scim: {},
 		trustedSource: {},
 	});
