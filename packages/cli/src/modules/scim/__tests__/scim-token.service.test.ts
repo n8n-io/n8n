@@ -4,7 +4,11 @@ import { mock } from 'vitest-mock-extended';
 
 import type { UrlService } from '@n8n/backend-services';
 
-import type { ScimTokenRepository, StoredScimToken } from '../database/scim-token.repository';
+import type {
+	ScimTokenRepository,
+	ScimTokenState,
+	StoredScimToken,
+} from '../database/scim-token.repository';
 import { hashScimToken, ScimTokenService } from '../scim-token.service';
 import { ScimTokenConflictError } from '../scim.errors';
 
@@ -24,8 +28,14 @@ describe('ScimTokenService', () => {
 		tokenHint: 'wxyz',
 		createdById: 'user-1',
 		createdAt: new Date(),
+		lastUsedAt: null,
 		...overrides,
 	});
+
+	const tokenState = (
+		current: StoredScimToken | null,
+		previousTokenHashes: string[] = [],
+	): ScimTokenState => ({ current, previousTokenHashes });
 
 	beforeEach(() => {
 		scimTokenRepository = mock<ScimTokenRepository>();
@@ -33,32 +43,56 @@ describe('ScimTokenService', () => {
 		service = new ScimTokenService(scimTokenRepository, urlService);
 	});
 
-	describe('verifyApiKey', () => {
+	describe('verifyToken', () => {
 		it('accepts the stored instance token', async () => {
-			scimTokenRepository.findInstanceToken.mockResolvedValue(createToken());
+			const stored = createToken();
+			scimTokenRepository.findTokenState.mockResolvedValue(tokenState(stored));
 
-			await expect(service.verifyApiKey(validToken)).resolves.toBe(true);
-			expect(scimTokenRepository.findInstanceToken).toHaveBeenCalledWith({});
+			await expect(service.verifyToken(validToken)).resolves.toEqual({
+				valid: true,
+				token: stored,
+			});
+			expect(scimTokenRepository.findTokenState).toHaveBeenCalledWith({});
 		});
 
 		it('accepts the token after its creator was deleted', async () => {
-			scimTokenRepository.findInstanceToken.mockResolvedValue(
-				createToken({ createdById: 'deleted-user' }),
+			scimTokenRepository.findTokenState.mockResolvedValue(
+				tokenState(createToken({ createdById: 'deleted-user' })),
 			);
 
-			await expect(service.verifyApiKey(validToken)).resolves.toBe(true);
+			await expect(service.verifyToken(validToken)).resolves.toMatchObject({ valid: true });
 		});
 
-		it('rejects a well-formed token that is not the stored instance token', async () => {
-			scimTokenRepository.findInstanceToken.mockResolvedValue(createToken());
+		it('rejects a well-formed token that the instance did not issue as invalid', async () => {
+			scimTokenRepository.findTokenState.mockResolvedValue(tokenState(createToken()));
 
-			await expect(service.verifyApiKey(otherToken)).resolves.toBe(false);
+			await expect(service.verifyToken(otherToken)).resolves.toEqual({
+				valid: false,
+				reason: 'invalid_token',
+			});
 		});
 
-		it('rejects a token when the instance has none', async () => {
-			scimTokenRepository.findInstanceToken.mockResolvedValue(null);
+		it.each([
+			['a rotation replaced', createToken({ tokenHash: hashScimToken(otherToken) })],
+			['a revoke removed', null],
+		])('rejects a token that %s as superseded', async (_, current) => {
+			scimTokenRepository.findTokenState.mockResolvedValue(
+				tokenState(current, [hashScimToken('older'), hashScimToken(validToken)]),
+			);
 
-			await expect(service.verifyApiKey(validToken)).resolves.toBe(false);
+			await expect(service.verifyToken(validToken)).resolves.toEqual({
+				valid: false,
+				reason: 'superseded_token',
+			});
+		});
+
+		it('rejects a token as invalid when the instance has none', async () => {
+			scimTokenRepository.findTokenState.mockResolvedValue(tokenState(null));
+
+			await expect(service.verifyToken(validToken)).resolves.toEqual({
+				valid: false,
+				reason: 'invalid_token',
+			});
 		});
 
 		it.each([
@@ -67,34 +101,76 @@ describe('ScimTokenService', () => {
 			['a token that is too short', `n8n_scim_${'a'.repeat(42)}`],
 			['a token with a character outside base64url', `n8n_scim_${'a'.repeat(42)}+`],
 			['an empty value', ''],
-		])('rejects %s without a database read', async (_, value) => {
-			await expect(service.verifyApiKey(value)).resolves.toBe(false);
-			expect(scimTokenRepository.findInstanceToken).not.toHaveBeenCalled();
+		])('rejects %s as invalid without a database read', async (_, value) => {
+			await expect(service.verifyToken(value)).resolves.toEqual({
+				valid: false,
+				reason: 'invalid_token',
+			});
+			expect(scimTokenRepository.findTokenState).not.toHaveBeenCalled();
 		});
 
 		it('propagates a repository failure instead of reporting an invalid token', async () => {
-			scimTokenRepository.findInstanceToken.mockRejectedValue(new Error('db down'));
+			scimTokenRepository.findTokenState.mockRejectedValue(new Error('db down'));
 
-			await expect(service.verifyApiKey(validToken)).rejects.toThrow('db down');
+			await expect(service.verifyToken(validToken)).rejects.toThrow('db down');
 		});
 	});
 
 	describe('getTokenInfo', () => {
-		it('returns the last four characters of the instance token', async () => {
-			scimTokenRepository.findInstanceToken.mockResolvedValue(createToken());
+		it('returns the hint, the dates and the creator of the instance token', async () => {
+			scimTokenRepository.findInstanceTokenWithCreator.mockResolvedValue({
+				...createToken({
+					createdAt: new Date('2026-10-05T10:00:00.000Z'),
+					lastUsedAt: new Date('2026-10-06T11:00:00.000Z'),
+				}),
+				createdBy: mock<User>({ id: 'user-1', firstName: 'Ada', lastName: 'Admin' }),
+			});
 
 			await expect(service.getTokenInfo()).resolves.toEqual({
 				hasToken: true,
 				lastFour: 'wxyz',
+				details: {
+					createdAt: '2026-10-05T10:00:00.000Z',
+					createdBy: { id: 'user-1', firstName: 'Ada', lastName: 'Admin' },
+					lastUsedAt: '2026-10-06T11:00:00.000Z',
+				},
+			});
+		});
+
+		it('returns no creator after the creator was deleted and no last use', async () => {
+			scimTokenRepository.findInstanceTokenWithCreator.mockResolvedValue({
+				...createToken(),
+				createdBy: null,
+			});
+
+			await expect(service.getTokenInfo()).resolves.toMatchObject({
+				details: { createdBy: null, lastUsedAt: null },
 			});
 		});
 
 		it('reports no token when the instance has none', async () => {
-			scimTokenRepository.findInstanceToken.mockResolvedValue(null);
+			scimTokenRepository.findInstanceTokenWithCreator.mockResolvedValue(null);
 
-			await expect(service.getTokenInfo()).resolves.toEqual({ hasToken: false, lastFour: null });
+			await expect(service.getTokenInfo()).resolves.toEqual({
+				hasToken: false,
+				lastFour: null,
+				details: null,
+			});
 		});
 	});
+
+	it.each([
+		['a token', createToken(), true],
+		['no token', null, false],
+	])(
+		'reports hasToken from the current token when the instance has %s',
+		async (_, current, exists) => {
+			scimTokenRepository.findInstanceToken.mockResolvedValue(current);
+
+			await expect(service.hasToken()).resolves.toBe(exists);
+			expect(scimTokenRepository.findInstanceToken).toHaveBeenCalledWith({});
+		},
+	);
 
 	it('stores no token value, only a hex SHA-256 hash', () => {
 		// The SHA-256 digest of 'token', from `printf token | shasum -a 256`.

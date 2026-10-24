@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { NextFunction, RequestHandler, Response } from 'express';
 
+import { ScimConnectionService } from './scim-connection.service';
 import { ScimSettingsService } from './scim-settings.service';
 import { ScimSsoService } from './scim-sso.service';
 import { ScimTokenService } from './scim-token.service';
@@ -16,6 +17,7 @@ export class ScimAuthMiddleware {
 		private readonly logger: Logger,
 		private readonly scimTokenService: ScimTokenService,
 		private readonly scimSettingsService: ScimSettingsService,
+		private readonly scimConnectionService: ScimConnectionService,
 		private readonly scimSsoService: ScimSsoService,
 	) {}
 
@@ -24,7 +26,12 @@ export class ScimAuthMiddleware {
 	}
 
 	/**
-	 * Express middleware function to validate SCIM Bearer tokens
+	 * Express middleware function to validate SCIM Bearer tokens.
+	 *
+	 * Only the bearer check records a failure for the connection status. A
+	 * request while SCIM is disabled or single sign-on is off, and a SCIM
+	 * operation error after this check, do not tell if the identity provider
+	 * has the current token.
 	 */
 	async authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		try {
@@ -44,17 +51,19 @@ export class ScimAuthMiddleware {
 
 			if (!bearer) {
 				this.logger.warn('SCIM: Missing or invalid Authorization header');
+				await this.scimConnectionService.recordAuthFailure('missing_header');
 				return this.unauthorized(res, 'Authorization header with Bearer token required');
 			}
 
-			const token = bearer[1].trim();
+			const check = await this.scimTokenService.verifyToken(bearer[1].trim());
 
-			const isValid = await this.scimTokenService.verifyApiKey(token);
-
-			if (!isValid) {
-				this.logger.warn('SCIM: Invalid API key provided');
+			if (!check.valid) {
+				this.logger.warn('SCIM: Invalid API key provided', { reason: check.reason });
+				await this.scimConnectionService.recordAuthFailure(check.reason);
 				return this.unauthorized(res, 'Invalid SCIM API key');
 			}
+
+			await this.scimConnectionService.recordAuthSuccess(check.token);
 
 			return next();
 		} catch (error) {

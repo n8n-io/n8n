@@ -115,6 +115,18 @@ describe('ScimService', () => {
 		});
 	});
 
+	describe('getProvisioningCounts', () => {
+		it('returns the counts of SCIM-managed users from the repository', async () => {
+			scimUserRepository.countProvisioned.mockResolvedValue({ provisioned: 5, deactivated: 2 });
+
+			await expect(service.getProvisioningCounts()).resolves.toEqual({
+				provisioned: 5,
+				deactivated: 2,
+			});
+			expect(scimUserRepository.countProvisioned).toHaveBeenCalledWith({});
+		});
+	});
+
 	describe('getUsers', () => {
 		const pageOf = (users: User[], total = users.length) =>
 			scimUserRepository.findPage.mockResolvedValue([users, total]);
@@ -649,6 +661,229 @@ describe('ScimService', () => {
 			expect(owner.email).toBe('owner@example.com');
 			expect(owner.disabled).toBe(false);
 			expect(userRepository.save).toHaveBeenCalledWith(owner);
+		});
+	});
+
+	// The identity provider can find a user that SCIM did not create with a
+	// `userName` filter, and then manage that user.
+	describe('SCIM-managed marker', () => {
+		const ownerRole = { slug: 'global:owner', roleType: 'global' } as Role;
+		const patchRequest = (operations: Array<{ op: string; path?: string; value?: unknown }>) =>
+			({
+				schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+				Operations: operations,
+			}) as Parameters<ScimService['patchUser']>[1];
+		const putBody = (over: Partial<ScimUserCreateDto> = {}): ScimUserCreateDto => ({
+			schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+			userName: 'user@example.com',
+			...over,
+		});
+
+		const savingWrites = [
+			[
+				'a PATCH',
+				async () =>
+					await service.patchUser(
+						'user-1',
+						patchRequest([{ op: 'replace', path: 'active', value: false }]),
+					),
+			],
+			['a PUT', async () => await service.updateUser('user-1', putBody({ active: false }))],
+			['a DELETE', async () => await service.deleteUser('user-1')],
+		] as const;
+		const noFieldWrites = [
+			[
+				'a PATCH that changes no field',
+				async () =>
+					await service.patchUser(
+						'user-1',
+						patchRequest([{ op: 'replace', path: 'active', value: true }]),
+					),
+			],
+			['a PUT that changes no field', async () => await service.updateUser('user-1', putBody())],
+		] as const;
+		const writes = [...savingWrites, ...noFieldWrites] as const;
+
+		it.each(writes)('marks a user that SCIM did not create on %s', async (_, write) => {
+			const user = createTestUser({ isScimManaged: false });
+			userRepository.findOne.mockImplementation(async () => user);
+
+			await write();
+
+			expect(user.isScimManaged).toBe(true);
+		});
+
+		// One statement writes the marker and the changed fields, or writes neither.
+		it.each(savingWrites)('stores the marker in the save on %s', async (_, write) => {
+			const user = createTestUser({ isScimManaged: false });
+			userRepository.findOne.mockImplementation(async (options) =>
+				'email' in (options.where as object) ? null : user,
+			);
+			const markedAtSave: boolean[] = [];
+			userRepository.save.mockImplementation(async (entity) => {
+				markedAtSave.push((entity as User).isScimManaged);
+				return entity as User;
+			});
+
+			await write();
+
+			expect(markedAtSave).toEqual([true]);
+			expect(scimUserRepository.markManaged).not.toHaveBeenCalled();
+		});
+
+		it.each(noFieldWrites)('stores only the marker on %s', async (_, write) => {
+			userRepository.findOne.mockResolvedValue(createTestUser({ isScimManaged: false }));
+
+			await write();
+
+			expect(scimUserRepository.markManaged).toHaveBeenCalledExactlyOnceWith('user-1', {});
+			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+
+		const otherUser = createTestUser({ id: 'user-2', email: 'taken@example.com' });
+		it.each([
+			[
+				'a PATCH with the userName of another user',
+				'user-1',
+				async () =>
+					await service.patchUser(
+						'user-1',
+						patchRequest([{ op: 'replace', path: 'userName', value: 'taken@example.com' }]),
+					),
+				ScimConflictError,
+			],
+			[
+				'a PUT with the userName of another user',
+				'user-1',
+				async () => await service.updateUser('user-1', putBody({ userName: 'taken@example.com' })),
+				ScimConflictError,
+			],
+			[
+				'a PATCH of the owner email',
+				'owner-1',
+				async () =>
+					await service.patchUser(
+						'owner-1',
+						patchRequest([{ op: 'replace', path: 'userName', value: 'new@example.com' }]),
+					),
+				ScimForbiddenError,
+			],
+			[
+				'a PUT that deactivates the owner',
+				'owner-1',
+				async () => await service.updateUser('owner-1', putBody({ active: false })),
+				ScimForbiddenError,
+			],
+			[
+				'a PUT without an email address',
+				'user-1',
+				async () => await service.updateUser('user-1', putBody({ userName: 'login-name' })),
+				ScimInvalidValueError,
+			],
+		])('stores no marker on %s', async (_, id, write, error) => {
+			const user = createTestUser({
+				id,
+				role: id === 'owner-1' ? ownerRole : undefined,
+				isScimManaged: false,
+			});
+			userRepository.findOne.mockImplementation(async (options) =>
+				'email' in (options.where as object) ? otherUser : user,
+			);
+
+			await expect(write()).rejects.toThrow(error);
+
+			expect(scimUserRepository.markManaged).not.toHaveBeenCalled();
+			expect(userRepository.save).not.toHaveBeenCalled();
+			expect(user.isScimManaged).toBe(false);
+		});
+
+		it('stores no marker on its own when the save fails', async () => {
+			userRepository.findOne.mockImplementation(async (options) =>
+				'email' in (options.where as object) ? null : createTestUser({ isScimManaged: false }),
+			);
+			userRepository.save.mockRejectedValue(new Error('unique constraint'));
+
+			await expect(
+				service.patchUser(
+					'user-1',
+					patchRequest([{ op: 'replace', path: 'active', value: false }]),
+				),
+			).rejects.toThrow('unique constraint');
+
+			expect(scimUserRepository.markManaged).not.toHaveBeenCalled();
+		});
+
+		it('emits no event for the marker on a PATCH that changes no field', async () => {
+			userRepository.findOne.mockResolvedValue(createTestUser({ isScimManaged: false }));
+
+			await service.patchUser(
+				'user-1',
+				patchRequest([{ op: 'replace', path: 'active', value: true }]),
+			);
+
+			expect(userRepository.save).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('keeps the marker out of the changed fields', async () => {
+			const user = createTestUser({ isScimManaged: false });
+			userRepository.findOne.mockResolvedValue(user);
+
+			await service.deleteUser('user-1');
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('user-updated', {
+				user,
+				fieldsChanged: ['disabled'],
+			});
+		});
+
+		it.each(writes)('does not write the marker again on %s', async (_, write) => {
+			userRepository.findOne.mockResolvedValue(createTestUser({ isScimManaged: true }));
+
+			await write();
+
+			expect(scimUserRepository.markManaged).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			[
+				'a PATCH',
+				async () =>
+					await service.patchUser(
+						'owner-1',
+						patchRequest([{ op: 'replace', path: 'name.givenName', value: 'Renamed' }]),
+					),
+			],
+			['a PUT', async () => await service.updateUser('owner-1', putBody())],
+		])('does not mark the owner on %s', async (_, write) => {
+			const owner = createTestUser({ id: 'owner-1', role: ownerRole, isScimManaged: false });
+			userRepository.findOne.mockResolvedValue(owner);
+
+			await write();
+
+			expect(scimUserRepository.markManaged).not.toHaveBeenCalled();
+			// The PATCH saves the owner, so the marker must also stay out of the save.
+			expect(owner.isScimManaged).toBe(false);
+		});
+
+		it('does not mark the owner on a rejected DELETE', async () => {
+			userRepository.findOne.mockResolvedValue(
+				createTestUser({ id: 'owner-1', role: ownerRole, isScimManaged: false }),
+			);
+
+			await expect(service.deleteUser('owner-1')).rejects.toThrow(ScimForbiddenError);
+
+			expect(scimUserRepository.markManaged).not.toHaveBeenCalled();
+		});
+
+		it('does not mark a user that SCIM reads', async () => {
+			userRepository.findOne.mockResolvedValue(createTestUser({ isScimManaged: false }));
+			scimUserRepository.findPage.mockResolvedValue([[createTestUser()], 1]);
+
+			await service.getUserById('user-1');
+			await service.getUsers({ filter: 'userName eq "user@example.com"' });
+
+			expect(scimUserRepository.markManaged).not.toHaveBeenCalled();
 		});
 	});
 

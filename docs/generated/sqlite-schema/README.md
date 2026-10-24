@@ -155,7 +155,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [type_availability_policy](type_availability_policy.md) | 7 |  | table |
 | [type_availability_policy_attachment](type_availability_policy_attachment.md) | 6 |  | table |
 | [type_availability_policy_scope](type_availability_policy_scope.md) | 8 |  | table |
-| [user](user.md) | 16 |  | table |
+| [user](user.md) | 17 |  | table |
 | [user_api_keys](user_api_keys.md) | 9 |  | table |
 | [user_favorites](user_favorites.md) | 4 |  | table |
 | [variables](variables.md) | 5 |  | table |
@@ -1947,6 +1947,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  BOOLEAN isScimManaged
   VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName

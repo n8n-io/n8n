@@ -1,13 +1,15 @@
-import { ScimConfigPatchDto } from '@n8n/api-types';
+import { ScimConfigPatchDto, type ScimConfigResponse } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, GlobalScope, Patch, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { deriveScimConnectionStatus, ScimConnectionService } from './scim-connection.service';
 import { ScimSettingsService } from './scim-settings.service';
 import { ScimSsoService } from './scim-sso.service';
 import { ScimTokenService } from './scim-token.service';
 import { ScimSsoRequiredError, ScimTokenConflictError } from './scim.errors';
+import { ScimService } from './scim.service';
 
 /**
  * REST Controller for SCIM configuration and token management.
@@ -27,20 +29,25 @@ export class ScimTokenController {
 		private readonly scimTokenService: ScimTokenService,
 		private readonly scimSettingsService: ScimSettingsService,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly scimConnectionService: ScimConnectionService,
 		private readonly scimSsoService: ScimSsoService,
+		private readonly scimService: ScimService,
 	) {}
 
 	/**
 	 * GET /rest/scim/config
-	 * Current provisioning state for the settings screen.
+	 * Current provisioning state, connection status and the number of
+	 * provisioned users for the settings screen.
 	 */
 	@Get('/config')
 	@GlobalScope('scim:manage')
 	async getConfig(_req: AuthenticatedRequest, res: Response) {
 		try {
-			const [enabled, tokenInfo] = await Promise.all([
+			const [enabled, tokenInfo, lastAuthFailure, counts] = await Promise.all([
 				this.scimSettingsService.isEnabled(),
 				this.scimTokenService.getTokenInfo(),
+				this.scimSettingsService.getLastAuthFailure(),
+				this.scimService.getProvisioningCounts(),
 			]);
 
 			return res.status(200).json({
@@ -49,7 +56,12 @@ export class ScimTokenController {
 					hasToken: tokenInfo.hasToken,
 					tokenHint: tokenInfo.lastFour,
 					baseUrl: this.scimTokenService.getScimBaseUrl(),
-				},
+					token: tokenInfo.details,
+					lastAuthFailure,
+					status: deriveScimConnectionStatus(tokenInfo.details, lastAuthFailure),
+					provisionedCount: counts.provisioned,
+					deactivatedCount: counts.deactivated,
+				} satisfies ScimConfigResponse,
 			});
 		} catch (error) {
 			this.logger.error('Error getting SCIM config', { error });
@@ -85,6 +97,9 @@ export class ScimTokenController {
 				},
 			});
 
+			// A failure that is stored when SCIM turns on is from before SCIM
+			// turned off, because a disabled SCIM records no failures.
+			if (saved.enabled && !saved.wasEnabled) await this.resetAuthFailure();
 			// `/rest/module-settings` serves a cached snapshot, so refresh it or
 			// clients keep reading the previous value.
 			await this.moduleRegistry.refreshModuleSettings('scim');
@@ -112,6 +127,7 @@ export class ScimTokenController {
 		try {
 			const token = await this.scimTokenService.rotateToken(req.user);
 			const baseUrl = this.scimTokenService.getScimBaseUrl();
+			await this.resetAuthFailure();
 			await this.refreshModuleSettings();
 
 			return res.status(201).json({ data: { token, baseUrl } });
@@ -146,6 +162,19 @@ export class ScimTokenController {
 	/** SCIM users can sign in only through the identity provider. */
 	private assertSsoEnabled() {
 		if (!this.scimSsoService.isSsoEnabled()) throw new ScimSsoRequiredError();
+	}
+
+	/**
+	 * The connection status starts again for a new token or a new enable. A
+	 * failure must not fail the request, because the change is already saved.
+	 * The status rule ignores a failure from before the token was created.
+	 */
+	private async resetAuthFailure() {
+		try {
+			await this.scimConnectionService.resetAuthFailure();
+		} catch (error) {
+			this.logger.warn('SCIM: Failed to reset the authentication failure', { error });
+		}
 	}
 
 	/**
