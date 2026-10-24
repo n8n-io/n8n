@@ -49,6 +49,10 @@ export class SourceControlPreferences {
 	@IsString()
 	httpsPassword?: string;
 
+	@IsOptional()
+	@IsIn(['v1', 'v2'])
+	environmentsVersion?: 'v1' | 'v2';
+
 	static fromJSON(json: Partial<SourceControlPreferences>): SourceControlPreferences {
 		return new SourceControlPreferences(json);
 	}
@@ -67,6 +71,8 @@ export class SourceControlPreferences {
 			connectionType: preferences.connectionType ?? defaultPreferences.connectionType,
 			httpsUsername: preferences.httpsUsername ?? defaultPreferences.httpsUsername,
 			httpsPassword: preferences.httpsPassword ?? defaultPreferences.httpsPassword,
+			environmentsVersion:
+				preferences.environmentsVersion ?? defaultPreferences.environmentsVersion,
 		});
 	}
 }

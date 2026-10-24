@@ -10,6 +10,7 @@ import { PromotionReviewRepository } from '@/modules/promotions.ee/database/repo
 import { PromotionRunRepository } from '@/modules/promotions.ee/database/repositories/promotion-run.repository';
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
 import { PromotionReviewsService } from '@/modules/promotions.ee/promotion-reviews.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import {
 	createAdmin,
 	createMember,
@@ -196,6 +197,9 @@ describe('Promotion reviews in the Inbox', () => {
 
 	beforeAll(async () => {
 		process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+		Container.get(SourceControlPreferencesService).sourceControlPreferences = {
+			environmentsVersion: 'v2',
+		};
 		reviewRepository = Container.get(PromotionReviewRepository);
 	});
 
@@ -412,7 +416,7 @@ describe('Promotion reviews in the Inbox', () => {
 		expect(calls.slice(callsForFirstPage)).toEqual([1]);
 	});
 
-	it('hides promotion reviews from a member and while the rollout flag is off', async () => {
+	it('hides promotion reviews from a member, while the rollout flag is off, and on environments v1', async () => {
 		await insertReview(1);
 		gitlab({ 1: { state: 'opened' } });
 		const member = await createMemberWithApiKey();
@@ -431,6 +435,16 @@ describe('Promotion reviews in the Inbox', () => {
 			expect(flagOff.body.data.disabledSources).toContain('promotion_review');
 		} finally {
 			process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+		}
+
+		const preferences = Container.get(SourceControlPreferencesService);
+		preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
+		try {
+			const onV1 = await inbox(owner, { state: 'open', category: 'waiting' });
+			expect(onV1.body.data.data).toEqual([]);
+			expect(onV1.body.data.disabledSources).toContain('promotion_review');
+		} finally {
+			preferences.sourceControlPreferences = { environmentsVersion: 'v2' };
 		}
 	});
 

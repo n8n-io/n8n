@@ -12,6 +12,7 @@ import { VIEWS } from '@/app/constants';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 import { billingPreview } from '../__tests__/preview.fixtures';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
@@ -57,6 +58,7 @@ describe('PromotionPreviewBadges', () => {
 			...settingsStore.settings,
 			envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: 'true' },
 		};
+		mockedStore(useSourceControlStore).preferences.environmentsVersion = 'v2';
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.currentProject = createTestProject({ id: 'p1', scopes: ['project:export'] });
 		projectsStore.currentProjectId = 'p1';

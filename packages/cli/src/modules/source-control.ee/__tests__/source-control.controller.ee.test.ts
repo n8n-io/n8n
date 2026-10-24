@@ -42,6 +42,8 @@ describe('SourceControlController', () => {
 			pushWorkfolder: vi.fn().mockResolvedValue({ statusCode: 200 }),
 			pullWorkfolder: vi.fn().mockResolvedValue({ statusCode: 200 }),
 			getStatus: vi.fn().mockResolvedValue([]),
+			initializeRepository: vi.fn(),
+			start: vi.fn(),
 		} as unknown as SourceControlService;
 
 		sourceControlPreferencesService = mock<SourceControlPreferencesService>();
@@ -229,6 +231,57 @@ describe('SourceControlController', () => {
 			(sourceControlService.getStatus as Mock).mockRejectedValueOnce(error);
 
 			await expect(controller.status(req)).rejects.toBe(error);
+		});
+	});
+
+	describe('setPreferences', () => {
+		it('marks the instance as v1 when a repository connects', async () => {
+			(sourceControlPreferencesService.setPreferences as Mock).mockResolvedValue({
+				branchName: 'main',
+			});
+			(sourceControlPreferencesService.getPreferences as Mock).mockReturnValue({
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:acme/repo.git',
+			});
+			const req = mock<SourceControlRequest.UpdatePreferences>({
+				user: mock<User>({ id: 'user-1' }),
+				body: { repositoryUrl: 'git@github.com:acme/repo.git', initRepo: true },
+			});
+
+			await controller.setPreferences(req);
+
+			expect(sourceControlPreferencesService.setPreferences).toHaveBeenLastCalledWith({
+				connected: true,
+				environmentsVersion: 'v1',
+			});
+		});
+	});
+
+	describe('updatePreferences', () => {
+		const buildReq = (body: SourceControlRequest.UpdatePreferences['body']) =>
+			mock<SourceControlRequest.UpdatePreferences>({ user: mock<User>({ id: 'user-1' }), body });
+
+		beforeEach(() => {
+			(sourceControlPreferencesService.getPreferences as Mock).mockReturnValue({
+				environmentsVersion: 'v1',
+				repositoryUrl: 'git@github.com:acme/repo.git',
+			});
+		});
+
+		it('emits the switch event only when the environments version changes', async () => {
+			await controller.updatePreferences(buildReq({ environmentsVersion: 'v1' }));
+
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'source-control-environments-version-switched',
+				expect.anything(),
+			);
+
+			await controller.updatePreferences(buildReq({ environmentsVersion: 'v2' }));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-environments-version-switched',
+				{ userId: 'user-1', version: 'v2' },
+			);
 		});
 	});
 
