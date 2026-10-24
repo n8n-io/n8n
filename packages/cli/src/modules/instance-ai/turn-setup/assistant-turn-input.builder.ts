@@ -150,6 +150,12 @@ export interface AssistantTurnInputParams {
 	threadArtifacts?: InstanceAiThreadArtifactsContext;
 	/** Receives the instance-context summary as soon as the block is built. */
 	onInstanceContextInjection?: (injection: InstanceContextInjection) => void;
+	/**
+	 * The agent runtime titles the thread after the turn. The opening turn then
+	 * keeps only the final titles of a hand-off or an onboarding thread, and
+	 * leaves an ordinary thread without a title for the runtime.
+	 */
+	titledByRuntime?: boolean;
 }
 
 export interface AssistantTurnInput {
@@ -268,6 +274,7 @@ export class AssistantTurnInputBuilder {
 			resumeReason,
 			threadArtifacts,
 			onInstanceContextInjection,
+			titledByRuntime = false,
 		} = params;
 		let turnHadFileAttachments = false;
 
@@ -338,11 +345,11 @@ export class AssistantTurnInputBuilder {
 			? (await this.skillsService.loadSkill(SKILLS.suggestAutomations, skillScope)).instructions
 			: undefined;
 
-		if (isOpeningTurn) {
-			const handoffTitle = unopenedOnboarding
-				? ONBOARDING_OPENING.title
-				: (contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback);
+		const handoffTitle = unopenedOnboarding
+			? ONBOARDING_OPENING.title
+			: (contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback);
 
+		if (isOpeningTurn && (handoffTitle || !titledByRuntime)) {
 			await patchThread(memory, {
 				threadId,
 				update: ({ metadata }) =>

@@ -12,6 +12,7 @@ import {
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
 	type InstanceAiContext,
+	type InstanceAiMemoryConfig,
 	type McpServerConfig,
 	type ModelConfig,
 	type InstanceAiTraceContext,
@@ -38,6 +39,22 @@ import { InstanceAiMcpRegistryService } from '../mcp';
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
 import type { AssistantTurnRuntime, AssistantTurnState } from './assistant-turn-runtime';
 
+/**
+ * Instructions for the title call of the agents runtime. The runtime titles the
+ * first user message, which can carry context blocks ahead of the user's text.
+ */
+const TITLE_INSTRUCTIONS = [
+	'You write a short title for a conversation from its first user message.',
+	'The message can start with context blocks in XML tags, such as <thread-context>. Ignore them and title only what the user asks for.',
+	'The title names the topic. It does not answer the message.',
+	'Rules:',
+	'- A noun phrase of 2 to 6 words, at most 60 characters, in sentence case.',
+	'- Do not start with a verb such as "Build", "Create" or "Set up".',
+	'- No quotes, colons, emoji or markdown.',
+	'- Respond with the title text only.',
+	'Example: "build me a workflow that posts new GitHub issues to Slack" becomes: GitHub issues to Slack',
+].join('\n');
+
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
 export type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
 
@@ -52,6 +69,11 @@ export interface AssistantAgentParams {
 	threadId: string;
 	runId: string;
 	tracing?: InstanceAiTraceContext;
+	/**
+	 * Lets the agent runtime title a thread that has none. The caller bills the
+	 * title call from the run's side-call usage reports.
+	 */
+	generateTitle?: boolean;
 }
 
 /**
@@ -105,7 +127,7 @@ export class AssistantAgentFactory {
 		runtime: AssistantAgentRuntime,
 		params: AssistantAgentParams,
 	): Promise<InstanceAgent> {
-		const { user, threadId, runId, tracing } = params;
+		const { user, threadId, runId, tracing, generateTitle } = params;
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
@@ -130,6 +152,7 @@ export class AssistantAgentFactory {
 				runId,
 				environment.memoryModelId,
 				runtime.turnState.getObserverThresholdTokens(),
+				generateTitle,
 			),
 			memory: environment.memory,
 			checkpointStore: runtime.checkpointStore,
@@ -260,8 +283,18 @@ export class AssistantAgentFactory {
 		runId: string,
 		memoryModelId: ModelConfig | undefined,
 		observerThresholdTokens: number | undefined,
-	) {
+		generateTitle = false,
+	): InstanceAiMemoryConfig {
 		return {
+			// Titles run on the memory model, like the observer and the reflector.
+			...(generateTitle
+				? {
+						titleGeneration: {
+							instructions: TITLE_INSTRUCTIONS,
+							...(memoryModelId ? { model: memoryModelId } : {}),
+						},
+					}
+				: {}),
 			observationalMemory: {
 				model: memoryModelId,
 				observerThresholdTokens:

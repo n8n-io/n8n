@@ -1943,6 +1943,16 @@ export interface InstanceAiMemoryConfig {
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};
+	/**
+	 * Generate a title for a thread that has none, after the first turn. The
+	 * runtime reports the usage of the title call through `onSideCallUsage`.
+	 */
+	titleGeneration?: {
+		/** Model for the title call. Defaults to the agent's model. */
+		model?: ModelConfig;
+		/** Replaces the default instructions of the title call. */
+		instructions?: string;
+	};
 }
 
 // ── Model configuration ─────────────────────────────────────────────────────
