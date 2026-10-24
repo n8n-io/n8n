@@ -42,7 +42,10 @@ import {
 	isMaskedStreamFailure,
 } from '../user-facing-errors';
 import { AssistantAgentFactory } from '../turn-setup/assistant-agent.factory';
-import { AssistantTurnEnvironmentFactory } from '../turn-setup/assistant-turn-environment.factory';
+import {
+	AssistantTurnEnvironmentFactory,
+	type AssistantTurnEnvironment,
+} from '../turn-setup/assistant-turn-environment.factory';
 import {
 	AssistantTurnInputBuilder,
 	type AssistantTurnInput,
@@ -237,6 +240,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			},
 			onSettled: async (outcome) => {
 				await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
+				// A suspended turn can still be building the workflows it marked.
+				if (outcome.status !== 'suspended') {
+					await this.archiveTemporaryWorkflows(environment, runtime, thread.id);
+				}
 			},
 			formatError: async (error) => await this.formatTurnError(user, error),
 		};
@@ -323,6 +330,39 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		}
 		const code = getUserFacingErrorCode(shown);
 		return { message: getUserFacingErrorMessage(shown), ...(code ? { code } : {}) };
+	}
+
+	/**
+	 * Archives the workflows that the thread still marks as temporary: failed
+	 * attempts and scratch workflows that no build promoted. Best effort.
+	 */
+	private async archiveTemporaryWorkflows(
+		environment: AssistantTurnEnvironment,
+		runtime: AssistantTurnRuntime,
+		threadId: string,
+	): Promise<void> {
+		const markers = runtime.temporaryWorkflowMarkers;
+		if (!markers) return;
+		let workflowIds: string[] = [];
+		try {
+			workflowIds = await markers.list();
+		} catch (error) {
+			this.logger.warn('Failed to read the temporary workflows of an n8n Assistant thread', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+		for (const workflowId of workflowIds) {
+			try {
+				await environment.context.workflowService.archiveIfAiTemporary(workflowId);
+			} catch (error) {
+				this.logger.warn('Failed to archive a temporary n8n Assistant workflow', {
+					threadId,
+					workflowId,
+					error: getErrorMessage(error),
+				});
+			}
+		}
 	}
 
 	/** Claims the turn's model usage against the Assistant credits. Best effort. */
