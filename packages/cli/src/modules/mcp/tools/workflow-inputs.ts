@@ -44,11 +44,19 @@ export const webhookWorkflowInputSchema = z
 	})
 	.strict();
 
-export const workflowInputsSchema = z.union([
-	chatWorkflowInputSchema,
-	formWorkflowInputSchema,
-	webhookWorkflowInputSchema,
-]);
+export const workflowInputsSchema = z
+	.object({
+		chatInput: chatWorkflowInputSchema.shape.chatInput.optional(),
+		formData: formWorkflowInputSchema.shape.formData.optional(),
+		webhookData: webhookWorkflowInputSchema.shape.webhookData.optional(),
+	})
+	.strict()
+	.refine(
+		(inputs) =>
+			[inputs.chatInput, inputs.formData, inputs.webhookData].filter((value) => value !== undefined)
+				.length === 1,
+		{ message: 'Provide exactly one of chatInput, formData, or webhookData' },
+	);
 
 export type WorkflowInputs = z.infer<typeof workflowInputsSchema>;
 
