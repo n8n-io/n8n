@@ -73,6 +73,7 @@ import { EvalTimings } from './eval-timings';
 import { snapshotLedgerBody } from './ledger-snapshot';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
+import { createNodeRunMockHandler } from './node-run-mock';
 import {
 	extractResponsesRequestModel,
 	isOpenAiResponsesUrl,
@@ -91,6 +92,7 @@ import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	identifyNodesForRunMock,
 	type MockHints,
 	partitionAiRoots,
 	type TriggerBinaryRequirement,
@@ -572,6 +574,25 @@ export class EvalExecutionService {
 			signal: mockAbort.signal,
 		});
 
+		const runMockNodeNames = new Set(identifyNodesForRunMock(workflowEntity).map((n) => n.name));
+		const nodeRunMockHandler = createNodeRunMockHandler({
+			nodeNames: runMockNodeNames,
+			scenarioHints,
+			globalContext: hints.globalContext,
+			nodeHints: hints.nodeHints,
+			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
+			signal: mockAbort.signal,
+			onRun: (node, request, response) => {
+				this.mockedEntry(nodeResults, node.name).interceptedRequests.push({
+					url: '(no HTTP: node run mocked)',
+					method: 'RUN',
+					nodeType: node.type,
+					requestBody: request,
+					mockResponse: response,
+				});
+			},
+		});
+
 		const binaryRequirement = detectBinaryDependencies(workflowEntity);
 		const triggerPinData = this.buildTriggerPinData(
 			startNode,
@@ -589,7 +610,8 @@ export class EvalExecutionService {
 		// pre-patch state failed runs the harness had already made executable.
 		// Genuinely unresolved misconfigurations are still recorded and still fail.
 		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
-		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+		// Run-mocked nodes send no real request, so their filled fields are not config issues, as for pinned nodes.
+		this.checkNodeConfig(workflow, nodeResults, [...pinDataNodeNames, ...runMockNodeNames]);
 
 		// The engine drops a refused execution before the runner can await it, so report the refusal first.
 		const blockingIssues = this.issuesBlockingRun(workflow, startNode, pinDataNodeNames);
@@ -667,6 +689,15 @@ export class EvalExecutionService {
 						nodeResults,
 						timings,
 					);
+					additionalData.evalNodeMockHandler = async (context) => {
+						const nodeName = context.getNode().name;
+						if (!runMockNodeNames.has(nodeName)) return undefined;
+						return await timings.time(
+							'node-mock',
+							nodeName,
+							async () => await nodeRunMockHandler(context),
+						);
+					};
 					additionalData.executeAgent = this.createEvalExecuteAgent({
 						mockHandler,
 						nodeResults,
@@ -860,7 +891,7 @@ export class EvalExecutionService {
 		pinDataNodeNames: string[],
 	): void {
 		for (const node of Object.values(workflow.nodes)) {
-			if (node.disabled) continue;
+			if (node.disabled || pinDataNodeNames.includes(node.name)) continue;
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			if (!nodeType) continue;
 
@@ -868,7 +899,6 @@ export class EvalExecutionService {
 				nodeType.description.properties,
 				node,
 				nodeType.description,
-				pinDataNodeNames,
 			);
 
 			const parameterIssues = { ...(issues?.parameters ?? {}) };
