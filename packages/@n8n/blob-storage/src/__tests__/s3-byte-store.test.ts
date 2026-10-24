@@ -180,3 +180,57 @@ describe('delete', () => {
 		expect(objectStoreService.deleteByKeys).not.toHaveBeenCalled();
 	});
 });
+
+describe('deletePrefix', () => {
+	const page = (keys: string[], nextContinuationToken?: string) => ({
+		contents: keys.map((key) => ({
+			key,
+			lastModified: '',
+			eTag: '',
+			size: 0,
+			storageClass: '',
+		})),
+		isTruncated: nextContinuationToken !== undefined,
+		nextContinuationToken,
+	});
+
+	it('should delete each listed page before reading the next', async () => {
+		const order: string[] = [];
+		const pages = [
+			page(['w/1/binary_data/a', 'w/1/binary_data/b'], 'token'),
+			page(['w/1/binary_data/c']),
+		];
+		objectStoreService.getListPage.mockImplementation(async () => {
+			order.push('list');
+			const next = pages.shift();
+			if (!next) throw new Error('Unexpected list page');
+			return next;
+		});
+		// Record the delete after it settles, so the next list cannot hide a missing await.
+		objectStoreService.deleteByKeys.mockImplementation(async () => {
+			await new Promise((resolve) => setImmediate(resolve));
+			order.push('delete');
+		});
+
+		await store.deletePrefix('w/1/binary_data');
+
+		expect(order).toEqual(['list', 'delete', 'list', 'delete']);
+		expect(objectStoreService.getListPage).toHaveBeenNthCalledWith(
+			1,
+			'w/1/binary_data/',
+			undefined,
+		);
+		expect(objectStoreService.getListPage).toHaveBeenNthCalledWith(2, 'w/1/binary_data/', 'token');
+		expect(objectStoreService.deleteByKeys).toHaveBeenNthCalledWith(1, [
+			'w/1/binary_data/a',
+			'w/1/binary_data/b',
+		]);
+		expect(objectStoreService.deleteByKeys).toHaveBeenNthCalledWith(2, ['w/1/binary_data/c']);
+	});
+
+	it.each(['', '.', '/', './', '..', 'a/../b'])('should reject prefix %j', async (prefix) => {
+		await expect(store.deletePrefix(prefix)).rejects.toThrow();
+
+		expect(objectStoreService.getListPage).not.toHaveBeenCalled();
+	});
+});

@@ -149,4 +149,44 @@ describe('AzureBlobService', () => {
 			expect(metadata).toEqual({ fileSize: 42, mimeType: 'image/png', fileName: 'a b.png' });
 		});
 	});
+
+	describe('listPages', () => {
+		it('should yield blob names for each page under the prefix', async () => {
+			mockContainerClient.listBlobsFlat.mockReturnValue({
+				byPage: () =>
+					(async function* () {
+						yield { segment: { blobItems: [{ name: 'w/1/a' }, { name: 'w/1/b' }] } };
+						yield { segment: { blobItems: [{ name: 'w/1/c' }] } };
+					})(),
+			});
+
+			const pages: string[][] = [];
+			for await (const names of service.listPages('w/1/')) {
+				pages.push(names);
+			}
+
+			expect(mockContainerClient.listBlobsFlat).toHaveBeenCalledWith({ prefix: 'w/1/' });
+			expect(pages).toEqual([['w/1/a', 'w/1/b'], ['w/1/c']]);
+		});
+
+		it('should wrap a list failure as UnexpectedError', async () => {
+			mockContainerClient.listBlobsFlat.mockReturnValue({
+				byPage: () =>
+					(async function* () {
+						yield { segment: { blobItems: [{ name: 'w/1/a' }] } };
+						throw new Error('throttled');
+					})(),
+			});
+
+			const pages: string[][] = [];
+			const listing = async () => {
+				for await (const names of service.listPages('w/1/')) {
+					pages.push(names);
+				}
+			};
+
+			await expect(listing()).rejects.toThrow('Request to Azure Blob storage failed: throttled');
+			expect(pages).toEqual([['w/1/a']]);
+		});
+	});
 });

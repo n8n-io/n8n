@@ -3,6 +3,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { Readable } from 'node:stream';
 
 import type { ObjectStoreService } from './object-store/object-store.service.ee';
+import { toDirectoryPrefix } from './assert-delete-prefix';
 import { assertChunkSize } from './stream-utils';
 import type { BlobMetadata, ByteStore, ByteStoreKey, PreWriteBlobMetadata } from './types';
 
@@ -51,6 +52,18 @@ export class S3ByteStore implements ByteStore {
 	async delete(keys: ByteStoreKey[]): Promise<void> {
 		if (keys.length === 0) return;
 		await this.objectStore.deleteByKeys(keys);
+	}
+
+	async deletePrefix(prefix: string): Promise<void> {
+		const directoryPrefix = toDirectoryPrefix(prefix);
+		let continuationToken: string | undefined;
+
+		// Delete each page before listing the next, to bound memory and to resume after a crash.
+		do {
+			const page = await this.objectStore.getListPage(directoryPrefix, continuationToken);
+			await this.delete(page.contents.map(({ key }) => key));
+			continuationToken = page.isTruncated ? page.nextContinuationToken : undefined;
+		} while (continuationToken);
 	}
 
 	async getMetadata(key: ByteStoreKey): Promise<BlobMetadata | null> {
