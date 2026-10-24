@@ -614,6 +614,22 @@ describe('ExecutionRecorder', () => {
 			expect(recorder.getMessageRecord().timeline).toEqual([recorded]);
 		});
 
+		it('records a copy, so a later change to the payload does not change the record', () => {
+			const recorder = new ExecutionRecorder();
+			const payload = { items: [{ id: 'a' }] };
+
+			recorder.recordHostEvent('test.progress', payload, 'build');
+			payload.items.push({ id: 'b' });
+			recorder.recordHostEvent('test.other', payload);
+			payload.items.push({ id: 'c' });
+
+			expect(
+				recorder
+					.getMessageRecord()
+					.timeline.map((event) => (event.type === 'host-event' ? event.payload : event.type)),
+			).toEqual([{ items: [{ id: 'a' }] }, { items: [{ id: 'a' }, { id: 'b' }] }]);
+		});
+
 		it('replaces a keyed event in its position and keeps its timestamp', () => {
 			const recorder = new ExecutionRecorder();
 

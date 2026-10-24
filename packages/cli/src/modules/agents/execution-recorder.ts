@@ -406,13 +406,15 @@ export class ExecutionRecorder {
 		payload: unknown,
 		key?: string,
 	): Extract<TimelineEvent, { type: 'host-event' }> {
+		// Copy, so a host that changes the object later does not change the record.
+		const recorded = structuredClone(payload);
 		if (key !== undefined) {
 			const index = this.timeline.findIndex(
 				(item) => item.type === 'host-event' && item.name === name && item.key === key,
 			);
 			const existing = this.timeline[index];
 			if (existing?.type === 'host-event') {
-				const replaced = { ...existing, payload };
+				const replaced = { ...existing, payload: recorded };
 				this.timeline[index] = replaced;
 				// Text or reasoning can still stream here, so keep it in the snapshot.
 				this.emitTimelineSnapshot(this.activeBlock());
@@ -425,7 +427,7 @@ export class ExecutionRecorder {
 			type: 'host-event',
 			name,
 			...(key !== undefined ? { key } : {}),
-			payload,
+			payload: recorded,
 			timestamp: Date.now(),
 		};
 		this.appendCompletedEvent(event);
