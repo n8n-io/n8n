@@ -18,11 +18,15 @@ import {
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { ErrorReporter } from 'n8n-core';
-import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
+
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
+
+import { canAccessAgentPreviewHandoff } from '../agent-preview-handoff';
 import { getAgentContextService, isAgentsAccessEnabled } from '../agents-access';
+import { formatPreviewSessionContext } from '../format-agent-session-context';
+import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import {
 	getAgentErrorSeverity,
@@ -30,10 +34,8 @@ import {
 } from '../instance-ai-error-reporter.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiMcpRegistryService } from '../mcp';
-import { formatPreviewSessionContext } from '../format-agent-session-context';
-import type { AssistantTurnRuntime, AssistantTurnState } from './assistant-turn-runtime';
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
-import { canAccessAgentPreviewHandoff } from '../agent-preview-handoff';
+import type { AssistantTurnRuntime, AssistantTurnState } from './assistant-turn-runtime';
 
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
 export type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
