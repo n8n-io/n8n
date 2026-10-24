@@ -15,7 +15,11 @@ import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { sleep } from '@n8n/utils/sleep';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import {
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	OperationalError,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';
@@ -52,7 +56,7 @@ Each request is mocked independently. Even when the same node makes multiple sim
 
 Response SHAPE comes from your knowledge of the real API; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
 
-**Hints carry data, not layout.** The Data, Hint and Scenario lines were written before the run, without seeing this request. Take facts from them: names, IDs, values, counts, dates, statuses, and which entity fails. Take the response LAYOUT only from the real API: the endpoint quirks and your own knowledge of this endpoint. When a hint describes a layout (JSON, field paths, "return {...}") or what the n8n node outputs after its own processing (simplified records, rows keyed by column header, parsed JSON, json.data), use its values and ignore its layout. A node can send several requests, and its hint can describe another one of them (for example the append when this request reads metadata): use only the facts that fit THIS request. Decide what kind of call this is from the request itself: the HTTP method, the URL path and, when one path serves many kinds of call (for example GraphQL), the operation in the body (a GraphQL \`query\` reads, a \`mutation\` writes). Do not decide from the node's name, the node's operation setting or the hint. Return that call's own response. For example, when a node that appends a row first reads the sheet, that read returns the sheet as it is now, not the append result.
+**Hints carry data, not layout.** The Data, Hint and Scenario lines were written before the run, without seeing this request. Take facts from them: names, IDs, values, counts, dates, statuses, and which entity fails. Take the response LAYOUT only from the real API: the endpoint quirks and your own knowledge of this endpoint. When a hint describes a layout (JSON, field paths, "return {...}") or what the n8n node outputs after its own processing (simplified records, rows keyed by column header, parsed JSON, json.data), use its values and ignore its layout. A node can send several requests, and its hint can describe another one of them (for example the append when this request reads metadata): use only the facts that fit THIS request. Decide what kind of call this is from the request itself: the HTTP method, the URL path and, when one path serves many kinds of call (for example GraphQL), the operation in the body (a GraphQL \`query\` reads, a \`mutation\` writes). Do not decide from the node's name, the node's operation setting or the hint. Return that call's own response. For example, when a node that appends a row first reads the sheet, that read returns the sheet as it is now, not the append result. Exception: when the user message has a Placeholder API section, that section decides the layout.
 
 **Honor explicit values from the scenario and hints.** When the scenarioHints, nodeHint, or globalContext state a specific value — a quantity with a unit, a percentage, a monetary amount ("$1,200"), a count ("3 rows"), a threshold, an ID, or a name — reproduce that EXACT value in the response. Do NOT round it, soften it toward a "more typical" reading, or substitute your own estimate: the stated value is the test's intent, and downstream nodes (IF/Switch gates, filters, sums) compare against it. Emit the exact number of enumerated items the context describes. This extends to per-item constraints: when the scenario says EVERY/ALL items share a property (a literal substring every title must contain, a minimum every row must exceed), EVERY item you generate must satisfy it — check each item against the constraint character-by-character before responding (near-miss variants of a required literal fail the test). Only invent a value when the context gives none for that field. If a nodeHint and the scenario disagree, the scenario wins. When the context assigns an error or missing-data condition to a specific entity (one channel, one user, one record), compare THIS request's parameters (URL, query, body) against that entity: return the error response ONLY when this request targets it, and a normal success response for every other entity — an error scenario is only tested if the matching request actually fails.
 
@@ -60,7 +64,7 @@ Response SHAPE comes from your knowledge of the real API; DATA VALUES come from 
 
 **Node response-handling options are not part of the body.** The node config may include options that control how n8n post-processes the response — \`fullResponse\`, \`responseFormat\`, \`outputPropertyName\`, pagination. These are applied AFTER you return and must NOT change the body you produce: always return the raw body the real API sends over the wire. Never reshape the body to mimic them — a body shaped like \`{ statusCode, headers, body }\` (mimicking \`fullResponse\`) or \`{ <outputPropertyName>: ... }\` is wrong.
 
-**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...] }\`, \`{ "results": [...] }\`, \`{ "items": [...] }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
+**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...] }\`, \`{ "results": [...] }\`, \`{ "items": [...] }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses. Exception: when the user message has a Placeholder API section, that section decides the layout.
 
 Node-config patterns to know:
   - "__rl" object: "value" is the selected resource id
@@ -97,6 +101,38 @@ const ERROR_DETAIL_MAX = 300;
 // No docs are fetched: the LLM's own knowledge of the API is the source, the same on every run.
 const API_DOCS_NOTE =
 	'No API documentation is attached. Generate the response based on your knowledge of this API. Follow standard REST conventions for the HTTP method: GET returns resource data, POST returns the created resource, PUT/PATCH returns the updated resource, DELETE returns 204 or confirmation.';
+
+// Reserved example names (RFC 2606, RFC 6761) never host a real API, so the model has no layout
+// to recall. The scenario's stated layout wins; otherwise one fixed default keeps runs stable.
+const PLACEHOLDER_API_NOTE =
+	'This host is a reserved placeholder domain. No real API exists here, so you have no layout to recall. The Scenario, Data and Hint lines are this API\'s specification. If they state a body or layout for THIS request (a JSON literal, a top-level array, named wrapper keys), return that layout exactly, with its values. If they state none, return a list as a bare top-level JSON array of records, with no wrapper object and no pagination or count fields, and return a single record or a write result as a bare JSON object. When the user message also has a GraphQL format requirement section, keep the GraphQL envelope: with no stated layout, that list or record goes under the operation\'s field inside "data". For an error scenario in a request that is not GraphQL, still use type "error"; a GraphQL request uses the GraphQL error format.';
+
+/**
+ * Nodes that send whatever request the workflow author writes. Only for these is a
+ * placeholder host an invented API; a service node (e.g. WordPress, which the eval
+ * credential seeder points at `blog.example.com`) still calls its real API's layout.
+ */
+const GENERIC_HTTP_CLIENT_NODE_TYPES = new Set([
+	HTTP_REQUEST_NODE_TYPE,
+	'n8n-nodes-base.httpRequestTool',
+	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	'n8n-nodes-base.graphql',
+]);
+
+const PLACEHOLDER_DOMAINS = ['example.com', 'example.net', 'example.org'];
+const PLACEHOLDER_TLDS = ['example', 'test', 'invalid', 'localhost'];
+
+/** True for a reserved example hostname (RFC 2606, RFC 6761), which never hosts a real API. */
+export function isPlaceholderHost(hostname: string | undefined): boolean {
+	if (!hostname) return false;
+	// A fully qualified name may end in one dot (`api.example.com.`).
+	const host = hostname.toLowerCase().replace(/\.$/, '');
+	if (PLACEHOLDER_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`))) {
+		return true;
+	}
+	const lastDot = host.lastIndexOf('.');
+	return lastDot > 0 && PLACEHOLDER_TLDS.includes(host.slice(lastDot + 1));
+}
 
 /**
  * Hang guard for a single mock-generation LLM call (including tool turns).
@@ -337,6 +373,7 @@ async function generateMockResponse(
 
 	const serviceName = extractServiceName(request.url);
 	const endpoint = extractEndpoint(request.url);
+	const requestHostname = extractHostname(request.url);
 
 	const dateAnchors = buildDateAnchors(new Date());
 
@@ -375,7 +412,11 @@ async function generateMockResponse(
 		);
 	}
 
-	sections.push('', '## API documentation', API_DOCS_NOTE);
+	if (GENERIC_HTTP_CLIENT_NODE_TYPES.has(node.type) && isPlaceholderHost(requestHostname)) {
+		sections.push('', '## Placeholder API', PLACEHOLDER_API_NOTE);
+	} else {
+		sections.push('', '## API documentation', API_DOCS_NOTE);
+	}
 
 	if (context.nodeConfig) {
 		sections.push('', '## Node Configuration', context.nodeConfig);
@@ -414,7 +455,6 @@ async function generateMockResponse(
 
 	const requestPath = extractEndpointPath(request.url);
 	const requestMethod = request.method ?? 'GET';
-	const requestHostname = extractHostname(request.url);
 	const dateConstraints = extractDateFilterConstraints(request.body, request.qs);
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
@@ -623,7 +663,7 @@ const submitResponseSchema = z.object({
 		.union([z.record(z.unknown()), z.array(z.unknown()), z.null()])
 		.optional()
 		.describe(
-			'The decoded JSON response body. Must be an object — the API\'s real response envelope (most list endpoints wrap items in e.g. `data` / `results` / `items`); use a bare array only if the real API returns a top-level array; or null for empty 204-style responses. Required for type="json" and for JSON-style type="error". Omit for type="text" and type="binary".',
+			'The decoded JSON response body. Must be an object — the API\'s real response envelope (most list endpoints wrap items in e.g. `data` / `results` / `items`); use a bare array only if the real API returns a top-level array or the Placeholder API section says so; or null for empty 204-style responses. Required for type="json" and for JSON-style type="error". Omit for type="text" and type="binary".',
 		),
 	textBody: z
 		.string()
