@@ -349,16 +349,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 		});
 	}
 
-	/** Whether a skill with this id exists. */
-	async existsById(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
-		return await this.managerFor(ctx).exists(Skill, { where: { id: skillId } });
-	}
-
-	/** Whether the agent owns a skill (an agent skill). */
-	async existsForAgent(agentId: string, ctx: OperationContext = {}): Promise<boolean> {
-		return await this.managerFor(ctx).exists(Skill, { where: { agentId } });
-	}
-
 	/** The number of each version, keyed by version id. */
 	async findVersionNumbers(
 		versionIds: string[],
@@ -374,59 +364,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 				}),
 		);
 		return new Map(versions.map((version) => [version.id, version.version]));
-	}
-
-	/** The content hash of each version, keyed by version id. */
-	async findContentHashes(
-		versionIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, string>> {
-		const manager = this.managerFor(ctx);
-		const versions = await inChunks(
-			versionIds,
-			async (chunk) =>
-				await manager.find(SkillVersion, {
-					select: ['id', 'contentHash'],
-					where: { id: In(chunk) },
-				}),
-		);
-		return new Map(versions.map((version) => [version.id, version.contentHash]));
-	}
-
-	/** The content hash of the latest version of each skill, keyed by skill id. */
-	async findLatestContentHashes(
-		skillIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, string>> {
-		const manager = this.managerFor(ctx);
-		const versions = await inChunks(
-			skillIds,
-			async (chunk) =>
-				await latestVersionsQuery(manager, chunk)
-					.select(['version.skillId', 'version.contentHash'])
-					.getMany(),
-		);
-		return new Map(versions.map((version) => [version.skillId, version.contentHash]));
-	}
-
-	/**
-	 * Every version of the skills that one agent owns, and of `refSkillIds`, the skills its
-	 * draft refers to. The startup copy reuses a version with the same content.
-	 */
-	async findVersionsOfAgentSkills(
-		agentId: string,
-		refSkillIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Array<Pick<SkillVersion, 'id' | 'skillId' | 'version' | 'contentHash'>>> {
-		const query = this.managerFor(ctx)
-			.createQueryBuilder(SkillVersion, 'version')
-			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
-			.select(['version.id', 'version.skillId', 'version.version', 'version.contentHash'])
-			.where('skill.agentId = :agentId', { agentId });
-		if (refSkillIds.length > 0) {
-			query.orWhere('skill.id IN (:...refSkillIds)', { refSkillIds: unique(refSkillIds) });
-		}
-		return await query.orderBy('version.version', 'ASC').getMany();
 	}
 
 	/** Moves a skill to a project, one agent or the instance. */

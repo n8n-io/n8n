@@ -1507,7 +1507,7 @@ data before it returns it to the model.
 ### `skills` *(domain tool — requires the `agents` backend module and the skills hub)*
 
 Manages skills in the skills hub without an Agent. The host wires the tool only
-when the `agents` module is active and `N8N_AGENTS_SKILLS_HUB_ENABLED` is on.
+when the `agents` and `skills` modules are active.
 The tool calls the same service as the Skills settings page, so the same
 permission checks and name rules apply. It reports telemetry with the
 `assistant` source.
