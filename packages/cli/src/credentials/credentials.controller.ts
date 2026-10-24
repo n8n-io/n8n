@@ -119,6 +119,7 @@ export class CredentialsController {
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
 			...scope,
 			excludePersonalRoute: forAgent === 'true',
+			excludeResolvable: forAgent === 'true',
 		});
 	}
 

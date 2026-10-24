@@ -456,6 +456,7 @@ export class AgentRuntimeReconstructionService {
 		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 			projectId,
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 		return new Set(usable.map((credential) => credential.id));
 	}
@@ -492,7 +493,7 @@ export class AgentRuntimeReconstructionService {
 			}
 			const usableIds = credentialIds.length > 0 ? await loadUsableIds() : undefined;
 			if (usableIds && !credentialIds.every((id) => usableIds.has(id))) {
-				return denied('The tool uses a personal credential that agents cannot use yet');
+				return denied('The tool uses a credential that agents cannot use yet');
 			}
 			return { credentialIds, workflowIds: [] };
 		}

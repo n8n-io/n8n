@@ -777,6 +777,7 @@ describe('AgentConfigService', () => {
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 				projectId,
 				excludePersonalRoute: true,
+				excludeResolvable: true,
 			});
 			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;

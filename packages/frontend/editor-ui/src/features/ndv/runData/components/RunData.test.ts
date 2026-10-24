@@ -92,6 +92,11 @@ describe('RunData', () => {
 	let schemaPreviewStore: MockedStore<typeof useSchemaPreviewStore>;
 	let ndvStore: MockedStore<typeof useNDVStore>;
 
+	afterEach(async () => {
+		// Finish lazy component imports before the test environment closes.
+		await vi.dynamicImportSettled();
+	});
+
 	beforeAll(() => {
 		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
 	});
