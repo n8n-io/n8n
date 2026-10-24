@@ -1,0 +1,126 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "upsert",
+				"docId": {
+					"__rl": true,
+					"value": "doc1",
+					"mode": "list"
+				},
+				"tableId": {
+					"__rl": true,
+					"value": "People",
+					"mode": "list"
+				},
+				"onMany": "all",
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"Email": "ada@example.com",
+						"First": "Ada",
+						"Sizes": ["M"]
+					},
+					"matchingColumns": ["Email"]
+				}
+			},
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Upsert",
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Grist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "upsert",
+				"docId": {
+					"__rl": true,
+					"value": "doc1",
+					"mode": "list"
+				},
+				"tableId": {
+					"__rl": true,
+					"value": "People",
+					"mode": "list"
+				},
+				"onMany": "first",
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"First": "Nobody"
+					},
+					"matchingColumns": ["Email"]
+				}
+			},
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Upsert Without Value",
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Grist account"
+				}
+			},
+			"onError": "continueRegularOutput"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Upsert",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upsert": {
+			"main": [
+				[
+					{
+						"node": "Upsert Without Value",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Upsert": [
+			{
+				"json": {
+					"id": 3,
+					"Email": "ada@example.com",
+					"First": "Ada",
+					"Sizes": ["M"]
+				}
+			}
+		],
+		"Upsert Without Value": [
+			{
+				"json": {
+					"error": "No value for the column to match on"
+				}
+			}
+		]
+	}
+}

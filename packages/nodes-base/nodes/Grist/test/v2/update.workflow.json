@@ -1,0 +1,123 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"docId": {
+					"__rl": true,
+					"value": "https://grist.example.com/o/acme/doc/doc1/p/2",
+					"mode": "url"
+				},
+				"tableId": {
+					"__rl": true,
+					"value": "People",
+					"mode": "list"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"id": 1,
+						"Sizes": ["S"],
+						"FullName": ""
+					},
+					"matchingColumns": ["id"]
+				}
+			},
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Update by Row ID",
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Grist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"docId": {
+					"__rl": true,
+					"value": "doc1",
+					"mode": "list"
+				},
+				"tableId": {
+					"__rl": true,
+					"value": "People",
+					"mode": "list"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"Email": "nobody@example.com",
+						"First": "Nobody"
+					},
+					"matchingColumns": ["Email"]
+				}
+			},
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Update Without Match",
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Grist account"
+				}
+			},
+			"onError": "continueRegularOutput"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Update by Row ID",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update by Row ID": {
+			"main": [
+				[
+					{
+						"node": "Update Without Match",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Update by Row ID": [
+			{
+				"json": {
+					"id": 1,
+					"Sizes": ["S"]
+				}
+			}
+		],
+		"Update Without Match": [
+			{
+				"json": {
+					"error": "No row matches the columns to match on"
+				}
+			}
+		]
+	}
+}
