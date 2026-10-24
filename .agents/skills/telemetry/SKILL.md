@@ -65,6 +65,8 @@ Do not retype event-name literals in tests:
 - In frontend transport tests, expect `window.rudderanalytics.track` to receive `entry.name` and the augmented payload.
 - In backend transport tests, expect the RudderStack payload's `event` field to equal `entry.name` and its `properties` to include the event payload.
 
+To check by hand that an event arrives, run `pnpm telemetry:sink` (add `--grep <event name>` to filter) and start the backend with `pnpm dev:be:telemetry`. Backend and editor events appear on screen and in `telemetry.ndjson`, one per line.
+
 ## Related
 
 Experiment exposure and metric events follow `n8n:experiments` (`.agents/skills/experiments/SKILL.md`).
