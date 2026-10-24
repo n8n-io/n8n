@@ -10,8 +10,14 @@ import type { ProjectListItem } from '@/features/collaboration/projects/projects
 import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import { useI18n } from '@n8n/i18n';
 
-import { ElRadio } from 'element-plus';
-import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInput,
+	N8nInputLabel,
+	N8nRadioGroup,
+	N8nRadioGroupItem,
+	N8nText,
+} from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -128,46 +134,48 @@ async function onSubmit() {
 							i18n.baseText('settings.users.confirmDataHandlingAfterDeletion')
 						}}</N8nText>
 					</div>
-					<ElRadio
-						v-model="operation"
-						label="transfer"
-						@update:model-value="operation = 'transfer'"
-					>
-						<N8nText color="text-dark">{{
-							i18n.baseText('settings.users.transferWorkflowsAndCredentials')
-						}}</N8nText>
-					</ElRadio>
-					<div v-if="operation === 'transfer'" :class="$style.optionInput">
-						<N8nText color="text-dark">{{
-							i18n.baseText('settings.users.transferWorkflowsAndCredentials.user')
-						}}</N8nText>
-						<ProjectSharing
-							v-model="selectedProject"
-							class="pt-2xs"
-							:search-fn="searchFn"
-							:filter-fn="filterFn"
-							:placeholder="
-								i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
-							"
-						/>
-					</div>
-					<ElRadio v-model="operation" label="delete" @update:model-value="operation = 'delete'">
-						<N8nText color="text-dark">{{
-							i18n.baseText('settings.users.deleteWorkflowsAndCredentials')
-						}}</N8nText>
-					</ElRadio>
-					<div
-						v-if="operation === 'delete'"
-						:class="$style.optionInput"
-						data-test-id="delete-data-input"
-					>
-						<N8nInputLabel :label="i18n.baseText('settings.users.deleteConfirmationMessage')">
-							<N8nInput
-								v-model="deleteConfirmText"
-								:placeholder="i18n.baseText('settings.users.deleteConfirmationText')"
+					<N8nRadioGroup v-model="operation">
+						<N8nRadioGroupItem value="transfer">
+							<template #label>
+								<N8nText color="text-dark">{{
+									i18n.baseText('settings.users.transferWorkflowsAndCredentials')
+								}}</N8nText>
+							</template>
+						</N8nRadioGroupItem>
+						<div v-if="operation === 'transfer'" :class="$style.optionInput">
+							<N8nText color="text-dark">{{
+								i18n.baseText('settings.users.transferWorkflowsAndCredentials.user')
+							}}</N8nText>
+							<ProjectSharing
+								v-model="selectedProject"
+								class="pt-2xs"
+								:search-fn="searchFn"
+								:filter-fn="filterFn"
+								:placeholder="
+									i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
+								"
 							/>
-						</N8nInputLabel>
-					</div>
+						</div>
+						<N8nRadioGroupItem value="delete">
+							<template #label>
+								<N8nText color="text-dark">{{
+									i18n.baseText('settings.users.deleteWorkflowsAndCredentials')
+								}}</N8nText>
+							</template>
+						</N8nRadioGroupItem>
+						<div
+							v-if="operation === 'delete'"
+							:class="$style.optionInput"
+							data-test-id="delete-data-input"
+						>
+							<N8nInputLabel :label="i18n.baseText('settings.users.deleteConfirmationMessage')">
+								<N8nInput
+									v-model="deleteConfirmText"
+									:placeholder="i18n.baseText('settings.users.deleteConfirmationText')"
+								/>
+							</N8nInputLabel>
+						</div>
+					</N8nRadioGroup>
 				</div>
 			</div>
 		</template>

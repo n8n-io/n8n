@@ -8,8 +8,16 @@ import { useI18n } from '@n8n/i18n';
 import type { ResourceCounts } from '../projects.store';
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 
-import { ElDialog, ElRadio } from 'element-plus';
-import { N8nButton, N8nDialogFooter, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import { ElDialog } from 'element-plus';
+import {
+	N8nButton,
+	N8nDialogFooter,
+	N8nInput,
+	N8nInputLabel,
+	N8nRadioGroup,
+	N8nRadioGroupItem,
+	N8nText,
+} from '@n8n/design-system';
 type Props = {
 	currentProject: Project | null;
 	searchFn?: ProjectSearchFn;
@@ -60,6 +68,12 @@ const onDelete = () => {
 
 	emit('confirmDelete', selectedProject.value?.id);
 };
+
+function onOperation(value: string) {
+	if (value === 'transfer' || value === 'wipe') {
+		operation.value = value;
+	}
+}
 </script>
 <template>
 	<ElDialog
@@ -78,48 +92,44 @@ const onDelete = () => {
 		<div v-else-if="hasMovableResources">
 			<N8nText color="text-base">{{ locale.baseText('projects.settings.delete.message') }}</N8nText>
 			<div class="pt-l">
-				<ElRadio
-					:model-value="operation ?? ''"
-					label="transfer"
-					class="mb-s"
-					@update:model-value="operation = 'transfer'"
-				>
-					<N8nText color="text-dark">{{
-						locale.baseText('projects.settings.delete.question.transfer.label')
-					}}</N8nText>
-				</ElRadio>
-				<div v-if="operation === 'transfer'" :class="$style.operation">
-					<N8nText color="text-dark">{{
-						locale.baseText('projects.settings.delete.question.transfer.title')
-					}}</N8nText>
-					<ProjectSharing
-						v-model="selectedProject"
-						class="pt-2xs"
-						:search-fn="resolvedSearchFn"
-						:filter-fn="filterFn"
-						:empty-options-text="locale.baseText('projects.sharing.noMatchingProjects')"
-					/>
-				</div>
-
-				<ElRadio
-					:model-value="operation ?? ''"
-					label="wipe"
-					class="mb-s"
-					@update:model-value="operation = 'wipe'"
-				>
-					<N8nText color="text-dark">{{
-						locale.baseText('projects.settings.delete.question.wipe.label')
-					}}</N8nText>
-				</ElRadio>
-				<div v-if="operation === 'wipe'" :class="$style.operation">
-					<N8nInputLabel :label="locale.baseText('projects.settings.delete.question.wipe.title')">
-						<N8nInput
-							v-model="wipeConfirmText"
-							data-test-id="project-delete-confirm-input"
-							:placeholder="locale.baseText('projects.settings.delete.question.wipe.placeholder')"
+				<N8nRadioGroup :model-value="operation ?? undefined" @update:model-value="onOperation">
+					<N8nRadioGroupItem value="transfer">
+						<template #label>
+							<N8nText color="text-dark">{{
+								locale.baseText('projects.settings.delete.question.transfer.label')
+							}}</N8nText>
+						</template>
+					</N8nRadioGroupItem>
+					<div v-if="operation === 'transfer'" :class="$style.operation">
+						<N8nText color="text-dark">{{
+							locale.baseText('projects.settings.delete.question.transfer.title')
+						}}</N8nText>
+						<ProjectSharing
+							v-model="selectedProject"
+							class="pt-2xs"
+							:search-fn="resolvedSearchFn"
+							:filter-fn="filterFn"
+							:empty-options-text="locale.baseText('projects.sharing.noMatchingProjects')"
 						/>
-					</N8nInputLabel>
-				</div>
+					</div>
+
+					<N8nRadioGroupItem value="wipe">
+						<template #label>
+							<N8nText color="text-dark">{{
+								locale.baseText('projects.settings.delete.question.wipe.label')
+							}}</N8nText>
+						</template>
+					</N8nRadioGroupItem>
+					<div v-if="operation === 'wipe'" :class="$style.operation">
+						<N8nInputLabel :label="locale.baseText('projects.settings.delete.question.wipe.title')">
+							<N8nInput
+								v-model="wipeConfirmText"
+								data-test-id="project-delete-confirm-input"
+								:placeholder="locale.baseText('projects.settings.delete.question.wipe.placeholder')"
+							/>
+						</N8nInputLabel>
+					</div>
+				</N8nRadioGroup>
 			</div>
 		</div>
 		<template #footer>
