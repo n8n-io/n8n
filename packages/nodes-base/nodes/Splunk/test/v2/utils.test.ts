@@ -234,7 +234,7 @@ describe('Splunk, setCount', () => {
 		const qs: IDataObject = {};
 		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(true);
 
-		setReturnAllOrLimit.call(executeFunctionsMock, qs);
+		setReturnAllOrLimit.call(executeFunctionsMock, qs, 0);
 
 		expect(qs.count).toBe(0);
 	});
@@ -245,7 +245,7 @@ describe('Splunk, setCount', () => {
 		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(false);
 		executeFunctionsMock.getNodeParameter.calledWith('limit', 0).mockReturnValue(10);
 
-		setReturnAllOrLimit.call(executeFunctionsMock, qs);
+		setReturnAllOrLimit.call(executeFunctionsMock, qs, 0);
 
 		expect(qs.count).toBe(10);
 	});

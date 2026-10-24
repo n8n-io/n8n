@@ -93,8 +93,10 @@ export function formatFeed(responseData: SplunkFeedResponse) {
 		: [formatEntry(entries)];
 }
 
-export function setReturnAllOrLimit(this: IExecuteFunctions, qs: IDataObject) {
-	qs.count = this.getNodeParameter('returnAll', 0) ? 0 : this.getNodeParameter('limit', 0);
+export function setReturnAllOrLimit(this: IExecuteFunctions, qs: IDataObject, itemIndex: number) {
+	qs.count = this.getNodeParameter('returnAll', itemIndex)
+		? 0
+		: this.getNodeParameter('limit', itemIndex);
 }
 
 export function populate(source: IDataObject, destination: IDataObject) {
