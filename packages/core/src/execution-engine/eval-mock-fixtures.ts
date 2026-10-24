@@ -240,11 +240,8 @@ const CANVAS_PNG_SIZE = 512;
 let canvasPngCache: Buffer | undefined;
 
 /**
- * 512×512 opaque white PNG (8-bit grayscale), built programmatically so it is
- * always structurally valid. Unlike `PNG_1X1`, this gives image-PROCESSING
- * nodes (Edit Image text overlay, resize, and composite operations) a real
- * canvas to operate on — a 1×1 or truncated placeholder makes them fail with
- * "Insufficient image data".
+ * Build a 512×512 opaque white PNG (8-bit grayscale) for `image/png` downloads.
+ * Valid chunk CRCs and a full canvas let image nodes decode and process it.
  */
 export function evalCanvasPng(): Buffer {
 	if (canvasPngCache) return canvasPngCache;
