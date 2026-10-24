@@ -1,5 +1,9 @@
 import { mockDeep } from 'vitest-mock-extended';
-import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Jenkins } from '../Jenkins.node';
@@ -118,6 +122,63 @@ describe('Jenkins node', () => {
 				{ name: 'AAA - (StringParameterDefinition)', value: 'AAA' },
 				{ name: 'ZZZ - (StringParameterDefinition)', value: 'ZZZ' },
 			]);
+		});
+	});
+
+	describe('execute', () => {
+		it('triggers a job with parameters successfully when jenkinsApiRequest returns queue redirect', async () => {
+			const executeFunctions = mockDeep<IExecuteFunctions>();
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			executeFunctions.helpers.returnJsonArray.mockImplementation((data: any) =>
+				data.map((item: any) => ({ json: item })),
+			);
+			executeFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'resource') return 'job';
+				if (name === 'operation') return 'triggerParams';
+				if (name === 'job') return 'demo-job';
+				if (name === 'param.params') return [{ name: 'BRANCH', value: 'main' }];
+				return undefined;
+			});
+			jenkinsApiRequestSpy.mockResolvedValue({
+				success: true,
+				queueUrl: 'https://jenkins.example.com/queue/item/42/',
+			});
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(jenkinsApiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/job/demo-job/buildWithParameters',
+				{},
+				{},
+				{
+					form: { BRANCH: 'main' },
+					headers: {
+						'content-type': 'application/x-www-form-urlencoded',
+					},
+				},
+			);
+			expect(result).toEqual([[{ json: { success: true } }]]);
+		});
+
+		it('triggers a parameterless job successfully', async () => {
+			const executeFunctions = mockDeep<IExecuteFunctions>();
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			executeFunctions.helpers.returnJsonArray.mockImplementation((data: any) =>
+				data.map((item: any) => ({ json: item })),
+			);
+			executeFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'resource') return 'job';
+				if (name === 'operation') return 'trigger';
+				if (name === 'job') return 'demo-job';
+				return undefined;
+			});
+			jenkinsApiRequestSpy.mockResolvedValue({ success: true });
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(jenkinsApiRequestSpy).toHaveBeenCalledWith('POST', '/job/demo-job/build');
+			expect(result).toEqual([[{ json: { success: true } }]]);
 		});
 	});
 });
