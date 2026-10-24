@@ -197,13 +197,14 @@ describe('InstanceAiModule.init', () => {
 		},
 	);
 
-	it('registers the Assistant agent only when it is enabled and the agents module is active', async () => {
+	it('registers the Assistant agent only when it is enabled and the agents module starts', async () => {
 		const { config, investigations } = setup();
 		const systemAgents = mockInstance(SystemAgentRegistrationService);
 		systemAgents.register.mockResolvedValue();
 		const provider = mockInstance(AssistantAgentProvider);
 		const modules = mockInstance(ModuleRegistry);
-		modules.isActive.mockReturnValue(true);
+		let eligibleModules = ['instance-ai', 'agents'];
+		Object.defineProperty(modules, 'eligibleModules', { get: () => eligibleModules });
 
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
@@ -213,9 +214,8 @@ describe('InstanceAiModule.init', () => {
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
 		expect(systemAgents.register).toHaveBeenCalledWith(provider);
-		expect(modules.isActive).toHaveBeenCalledWith('agents');
 
-		modules.isActive.mockReturnValue(false);
+		eligibleModules = ['instance-ai'];
 		systemAgents.register.mockClear();
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(3));

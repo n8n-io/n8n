@@ -99,7 +99,9 @@ export class InstanceAiModule implements ModuleInterface {
 	/** Run the n8n Assistant as a system agent on the Agents runtime, next to its own runtime. */
 	private async registerAssistantAgent(): Promise<void> {
 		const { ModuleRegistry } = await import('@n8n/backend-common');
-		if (!Container.get(ModuleRegistry).isActive('agents')) {
+		// This module starts before the agents module, so check that agents will start, not
+		// that it is active. Registration needs only the agents tables.
+		if (!Container.get(ModuleRegistry).eligibleModules.includes('agents')) {
 			Container.get(Logger)
 				.scoped('instance-ai')
 				.warn('The n8n Assistant agent needs the agents module, so it is not registered');
