@@ -250,7 +250,16 @@ export async function execute(
 	const endpoint = '/services/search/jobs';
 	const responseData = await splunkApiRequest.call(this, 'POST', endpoint, body);
 
-	const getEndpoint = `/services/search/jobs/${responseData.response.sid}`;
+	// `oneshot` runs the search synchronously and answers with the search output
+	// itself — there is no job, so there is no sid to look up afterwards. Reading
+	// it unconditionally threw `Cannot read properties of undefined (reading
+	// 'sid')` and made an offered Exec Mode unusable (#38527).
+	const sid = (responseData?.response as IDataObject | undefined)?.sid;
+	if (sid === undefined) {
+		return responseData as IDataObject;
+	}
+
+	const getEndpoint = `/services/search/jobs/${sid}`;
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', getEndpoint);
 	return returnData;
 }
