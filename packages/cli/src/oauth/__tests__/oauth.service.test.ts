@@ -4024,7 +4024,7 @@ describe('OauthService', () => {
 			});
 
 			it('should register with the second discovery URL when the first one fails', async () => {
-				const oauthCredentials = makeDcrCredentials();
+				const oauthCredentials = makeDcrCredentials({ scope: '' });
 				const toUpdate = {};
 
 				vi.mocked(httpClientMock.get)
@@ -4068,7 +4068,7 @@ describe('OauthService', () => {
 					}),
 				);
 				expect(toUpdate).not.toHaveProperty('clientSecret');
-				expect(toUpdate).not.toHaveProperty('scope');
+				expect(toUpdate).toHaveProperty('scope', '');
 			});
 
 			it.each([
@@ -5064,8 +5064,7 @@ describe('OauthService', () => {
 				await mockClientOAuth2UriFromOptions();
 				vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(
-					// Under DCR the `scope` field is hidden and defaults to '' — the user
-					// cannot supply scopes, so the flow depends entirely on discovery.
+					// An empty scope uses discovery; an explicit scope takes precedence.
 					makeDcrCredentials({
 						serverUrl: ATLASSIAN_SERVER_URL,
 						scope: '',
@@ -5142,6 +5141,61 @@ describe('OauthService', () => {
 					data: { client_id: 'registered-client-id' },
 				});
 			};
+
+			it.each(['read:jira-work', '  read:jira-work  '])(
+				'uses the configured scope %j for registration and authorization',
+				async (scope) => {
+					mockProtectedResourceDiscovery(RESOURCE_SCOPES);
+					mockAuthServerWithScopes([...RESOURCE_SCOPES, 'profile']);
+
+					const { registerPayload, clientOptions, persisted } = await runAtlassianFlow({ scope });
+
+					expect(registerPayload.scope).toBe('read:jira-work');
+					expect(persisted.scope).toBe('read:jira-work');
+					expect(clientOptions.scopes?.join(clientOptions.scopesSeparator)).toBe('read:jira-work');
+					expect(persisted.grantType).toBe('pkce');
+					expect(registerPayload.token_endpoint_auth_method).toBe('none');
+				},
+			);
+
+			it('uses configured scopes when neither discovery document lists scopes', async () => {
+				mockProtectedResourceDiscovery();
+				mockAuthServerWithoutScopes();
+
+				const { registerPayload, clientOptions, persisted } = await runAtlassianFlow({
+					scope: 'read:jira-work search:confluence',
+				});
+
+				expect(registerPayload.scope).toBe('read:jira-work search:confluence');
+				expect(persisted.scope).toBe(registerPayload.scope);
+				expect(clientOptions.scopes?.join(clientOptions.scopesSeparator)).toBe(
+					registerPayload.scope,
+				);
+			});
+
+			it('uses discovered scopes when the configured scope is whitespace', async () => {
+				mockProtectedResourceDiscovery(['mcp']);
+				mockAuthServerWithScopes(['mcp', 'offline_access']);
+
+				const { registerPayload, persisted } = await runAtlassianFlow({ scope: ' \t ' });
+
+				expect(registerPayload.scope).toBe('mcp offline_access');
+				expect(persisted.scope).toBe('mcp offline_access');
+			});
+
+			it.each(['', ' \t ', undefined])(
+				'omits blank scope %j when neither discovery document lists scopes',
+				async (scope) => {
+					mockProtectedResourceDiscovery();
+					mockAuthServerWithoutScopes();
+
+					const { registerPayload, clientOptions, persisted } = await runAtlassianFlow({ scope });
+
+					expect(registerPayload.scope).toBeUndefined();
+					expect(clientOptions.scopes?.join(clientOptions.scopesSeparator)).toBe('');
+					expect(persisted.scope).toBe('');
+				},
+			);
 
 			it('adds offline_access when the auth server offers it and the resource omits it', async () => {
 				mockProtectedResourceDiscovery(['mcp']);

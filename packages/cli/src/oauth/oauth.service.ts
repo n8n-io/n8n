@@ -1226,11 +1226,11 @@ export class OauthService {
 		const effectiveScopes = discoveredResourceScopes?.length
 			? withOfflineAccess(discoveredResourceScopes, scopes_supported)
 			: scopes_supported;
-		const scope = effectiveScopes?.length ? effectiveScopes.join(' ') : undefined;
-		if (scope) {
-			oauthCredentials.scope = scope;
-			toUpdate.scope = scope;
-		}
+		const scope =
+			oauthCredentials.scope?.trim() ||
+			(effectiveScopes?.length ? effectiveScopes.join(' ') : undefined);
+		oauthCredentials.scope = scope ?? '';
+		toUpdate.scope = scope ?? '';
 
 		const { grantType, authentication, usePkce } = this.selectGrantTypeAndAuthenticationMethod(
 			metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],

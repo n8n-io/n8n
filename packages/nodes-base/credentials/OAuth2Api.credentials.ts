@@ -134,12 +134,9 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'string',
-			displayOptions: {
-				show: {
-					useDynamicClientRegistration: [false],
-				},
-			},
 			default: '',
+			description:
+				'With Dynamic Client Registration, leave empty to use discovered scopes. Set a value to request only those scopes.',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
