@@ -1,15 +1,17 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { GLOBAL_MEMBER_ROLE, UserRepository, type User } from '@n8n/db';
+import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
-import { ScimApiKeyRepository } from '../database/scim-api-key.repository';
+import { SCIM_TOKEN_SETTINGS_KEY, ScimTokenRepository } from '../database/scim-token.repository';
+import { hashScimToken } from '../scim-token.service';
 import { ScimSettingsService } from '../scim-settings.service';
 
 const testServer = utils.setupTestServer({
-	// `users` serves the role change that must revoke a SCIM token.
+	// `users` serves the role change and the deletion of the token creator.
 	endpointGroups: ['users'],
 	enabledFeatures: ['feat:scim', 'feat:advancedPermissions'],
 	modules: ['scim'],
@@ -46,8 +48,11 @@ const patchOps = (...Operations: Array<{ op: string; path?: string; value?: unkn
 const reload = async (id: string) =>
 	await Container.get(UserRepository).findOneOrFail({ where: { id }, relations: ['role'] });
 
+const scimTokenRepository = () => Container.get(ScimTokenRepository);
+
 beforeEach(async () => {
 	await testDb.truncate(['ApiKey', 'AuthIdentity', 'ProjectRelation', 'Project', 'User']);
+	await Container.get(SettingsRepository).delete({ key: SCIM_TOKEN_SETTINGS_KEY });
 
 	owner = await createOwner();
 	admin = await createAdmin();
@@ -92,27 +97,130 @@ describe('SCIM /scim/v2 authentication', () => {
 		expect(response.status).toBe(403);
 		expect(response.body).toMatchObject({ schemas: [ERROR_SCHEMA], status: '403' });
 	});
+});
 
-	it('returns 401 once the token user lost scim:manage through any role change', async () => {
-		// A direct write emits no event, so only the request-time check can catch it.
-		await Container.get(UserRepository).update({ id: admin.id }, { role: GLOBAL_MEMBER_ROLE });
+describe('SCIM instance token', () => {
+	const tokenRequest = (user: User) => testServer.authAgentFor(user).post('/scim/token');
 
-		const response = await scimRequest('get', '/Users');
-
-		expect(response.status).toBe(401);
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
-	it('deletes the token when an admin removes scim:manage from its user', async () => {
+	it('shows every user with scim:manage the same token', async () => {
+		const otherAdmin = await createAdmin();
+
+		for (const user of [otherAdmin, owner]) {
+			const response = await testServer.authAgentFor(user).get('/scim/config').expect(200);
+
+			expect(response.body.data).toMatchObject({ hasToken: true, tokenHint: token.slice(-4) });
+			expect(response.body.data).not.toHaveProperty('token');
+		}
+	});
+
+	it('returns 403 to a member on every token route', async () => {
+		const member = await createMember();
+		const agent = testServer.authAgentFor(member);
+
+		await agent.get('/scim/config').expect(403);
+		await agent.post('/scim/token').expect(403);
+		await agent.delete('/scim/token').expect(403);
+		expect((await scimRequest('get', '/Users')).status).toBe(200);
+	});
+
+	it('keeps the token working after its creator is disabled', async () => {
+		await Container.get(UserRepository).update({ id: admin.id }, { disabled: true });
+
+		expect((await scimRequest('get', '/Users')).status).toBe(200);
+	});
+
+	it('keeps the token working after its creator loses scim:manage', async () => {
 		await testServer
 			.authAgentFor(owner)
 			.patch(`/users/${admin.id}/role`)
 			.send({ newRoleName: 'global:member' })
 			.expect(200);
 
-		await vi.waitFor(async () => {
-			expect(await Container.get(ScimApiKeyRepository).findByUserId(admin.id, {})).toBeNull();
+		expect((await scimRequest('get', '/Users')).status).toBe(200);
+	});
+
+	it('keeps the token working after its creator is deleted', async () => {
+		await testServer.authAgentFor(owner).delete(`/users/${admin.id}`).expect(200);
+
+		expect((await scimRequest('get', '/Users')).status).toBe(200);
+		// The token keeps the ID of its deleted creator.
+		expect(await scimTokenRepository().findInstanceToken({})).toMatchObject({
+			tokenHash: hashScimToken(token),
+			createdById: admin.id,
 		});
+	});
+
+	it('lets another admin rotate the token', async () => {
+		const otherAdmin = await createAdmin();
+
+		const response = await tokenRequest(otherAdmin).expect(201);
+		const newToken: string = response.body.data.token;
+
+		expect(newToken).not.toBe(token);
 		expect((await scimRequest('get', '/Users')).status).toBe(401);
+		expect((await scimRequest('get', '/Users', { bearer: newToken })).status).toBe(200);
+		expect(await scimTokenRepository().findInstanceToken({})).toMatchObject({
+			tokenHash: hashScimToken(newToken),
+			createdById: otherAdmin.id,
+		});
+	});
+
+	it('lets another admin revoke the token', async () => {
+		await testServer.authAgentFor(owner).delete('/scim/token').expect(200);
+
+		expect((await scimRequest('get', '/Users')).status).toBe(401);
+		const response = await testServer.authAgentFor(admin).get('/scim/config').expect(200);
+		expect(response.body.data).toMatchObject({ hasToken: false, tokenHint: null });
+	});
+
+	it.each([
+		['replace the same token', 'token'],
+		['create the first token after a revoke', 'revoked'],
+		['create the first token on an instance that never had one', 'none'],
+	])('accepts one of two rotations that %s and returns 409 to the other', async (_, start) => {
+		if (start === 'revoked') await testServer.authAgentFor(admin).delete('/scim/token').expect(200);
+		if (start === 'none') {
+			await Container.get(SettingsRepository).delete({ key: SCIM_TOKEN_SETTINGS_KEY });
+		}
+		// Both requests read the token state before either one writes it.
+		const seen = await scimTokenRepository().findInstanceToken({});
+		const staleRead = vi.spyOn(scimTokenRepository(), 'findInstanceToken').mockResolvedValue(seen);
+
+		const responses = await Promise.all([tokenRequest(admin), tokenRequest(owner)]);
+		staleRead.mockRestore();
+
+		expect(responses.map(({ status }) => status).sort()).toEqual([201, 409]);
+		const winner = responses.find(({ status }) => status === 201);
+		const bearer: string = winner?.body.data.token;
+		expect(await scimTokenRepository().findInstanceToken({})).toMatchObject({
+			tokenHash: hashScimToken(bearer),
+		});
+		expect((await scimRequest('get', '/Users', { bearer })).status).toBe(200);
+	});
+
+	it('returns 401 for a token in the right format that the instance did not issue', async () => {
+		const otherToken = `n8n_scim_${'A'.repeat(39)}${token.slice(-4)}`;
+
+		expect((await scimRequest('get', '/Users', { bearer: otherToken })).status).toBe(401);
+	});
+
+	it('issues a random token with a recognizable prefix', () => {
+		expect(token).toMatch(/^n8n_scim_[\w-]{43}$/);
+	});
+
+	// Show-once: no code path needs the value, so a database read must not give a working token.
+	it('stores only a hash and the last four characters of the token', async () => {
+		const row = await Container.get(SettingsRepository).findByKey(SCIM_TOKEN_SETTINGS_KEY);
+
+		expect(row).toMatchObject({ loadOnStartup: false });
+		expect(row?.value).not.toContain(token);
+		expect(jsonParse(row?.value ?? '')).toMatchObject({
+			current: { tokenHash: hashScimToken(token), tokenHint: token.slice(-4) },
+		});
 	});
 });
 
