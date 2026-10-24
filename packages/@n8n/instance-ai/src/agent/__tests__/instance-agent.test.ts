@@ -13,6 +13,7 @@ const mockAgentInstances: Array<{
 	workspace: Mock;
 	thinking: Mock;
 	mcpConnectionFailures: Mock;
+	modelFetch: Mock;
 }> = [];
 
 const mockMemoryBuilder = {
@@ -38,6 +39,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.workspace = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
 		this.mcpConnectionFailures = vi.fn().mockReturnThis();
+		this.modelFetch = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Memory: vi.fn().mockImplementation(function Memory() {
@@ -423,6 +425,35 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.workspace).not.toHaveBeenCalled();
+	});
+
+	it('sends model calls through the given transport', async () => {
+		const modelFetch = vi.fn();
+		const context = {
+			runLabel: 'fetch-test',
+			browserUseState: undefined,
+			licenseHints: undefined,
+			localMcpServer: undefined,
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context,
+			orchestrationContext: { runId: 'fetch-test' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+			modelFetch,
+		} as never);
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context,
+			orchestrationContext: { runId: 'fetch-test' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
+		expect(mockAgentInstances[1]?.modelFetch).not.toHaveBeenCalled();
 	});
 
 	it('attaches native telemetry from the trace context when present', async () => {

@@ -2809,6 +2809,7 @@ export class InstanceAiService {
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
+			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
 		});
 
@@ -3004,6 +3005,7 @@ export class InstanceAiService {
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			modelFetch: this.modelService.getModelFetch(),
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: this.eventBus,
 			logger: this.logger,
@@ -5376,6 +5378,7 @@ export class InstanceAiService {
 			checkpointStore: this.checkpointStore,
 			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
+			modelFetch: this.modelService.getModelFetch(),
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both
@@ -7473,6 +7476,7 @@ export class InstanceAiService {
 					llmTitle = await titleTracing.withActiveSpan(titleTracing.rootRun, async () => {
 						const title = await generateTitleForRun(modelId, userText, {
 							...(titleTelemetry ? { telemetry: titleTelemetry } : {}),
+							modelFetch: this.modelService.getModelFetch(),
 						});
 						if (title) {
 							await titleTracing.finishRun(titleTracing.rootRun, {
@@ -7491,7 +7495,9 @@ export class InstanceAiService {
 					releaseTraceClient(titleTracing.rootRun.traceId);
 				}
 			} else {
-				llmTitle = await generateTitleForRun(modelId, userText);
+				llmTitle = await generateTitleForRun(modelId, userText, {
+					modelFetch: this.modelService.getModelFetch(),
+				});
 			}
 			if (!llmTitle) return;
 

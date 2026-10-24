@@ -1559,6 +1559,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							workflowId: saved.id,
 							outputSchemaLookup: context.outputSchemaLookup,
 							fallbackModelConfig: context.modelId,
+							modelFetch: context.modelFetch,
 							logger: context.logger,
 						});
 					trackWaitGateVerificationPlan(context, {
