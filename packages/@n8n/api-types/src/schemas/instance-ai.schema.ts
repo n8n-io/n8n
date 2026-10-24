@@ -1249,9 +1249,10 @@ const appliedPreferencesBase = {
 };
 
 /**
- * `injectedThisTurn: false` means the block text was unchanged, so the turn sent no new
- * block and an earlier block in the same conversation still carries it. Older stored
- * events can also hold a `carriedFromRunId` key. The schema strips it, so they still parse.
+ * `injectedThisTurn: false` means the turn sent no new block. This happens when the block
+ * text was unchanged (an earlier block in the conversation still carries it), when no
+ * preferences apply, or when the preference read failed. Older stored events can also hold
+ * a `carriedFromRunId` key. The schema strips it, so they still parse.
  */
 export const aiPreferencesAppliedPayloadSchema = z.object({
 	...appliedPreferencesBase,

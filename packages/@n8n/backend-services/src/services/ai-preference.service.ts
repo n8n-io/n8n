@@ -703,7 +703,7 @@ export function flattenAiPreferences(preferences: ApplicableAiPreferences): AiPr
 	];
 }
 
-/** Whether this turn sent the block, or an earlier block in the conversation still carries it. */
+/** Whether this turn sent a new block. `false` also covers a turn with no block to send. */
 export type AppliedPreferencesInjection = { injectedThisTurn: boolean };
 
 /**

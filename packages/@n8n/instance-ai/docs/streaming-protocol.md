@@ -418,9 +418,12 @@ menu read this frame instead of deriving an answer of their own.
 An empty `preferences` array says that the turn applied none. No frame at all says that
 the code path did not run.
 
-`injectedThisTurn` is false when the block text has not changed, so the turn sent no new
-block. The thread history travels with every request, so an earlier block still reaches
-the model.
+`injectedThisTurn` is false when the turn sent no new block. This happens in three cases:
+
+- The block text has not changed. The thread history travels with every request, so an
+  earlier block still reaches the model.
+- No preferences apply, and no earlier block needs to be cleared.
+- The preference read failed. The payload is then empty.
 
 The schema defines this event. CONTEXT-139 publishes it.
 
