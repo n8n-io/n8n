@@ -172,6 +172,25 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(orchestrationContext.sendCorrectionToTask).toBeUndefined();
 		});
 
+		it('leaves out the planned-task tools when the runtime cannot schedule a plan', async () => {
+			const { factory } = createSetupFactory();
+
+			const { orchestrationContext } = await factory.create(params, createRuntime());
+
+			expect(orchestrationContext.disabledToolNames).toEqual(
+				new Set(['workflow_builder_create_tasks', 'workflow_builder_complete_checkpoint']),
+			);
+		});
+
+		it('keeps the planned-task tools when the runtime schedules plans', async () => {
+			const { factory } = createSetupFactory();
+			const runtime = createRuntime({ schedulePlannedTasks: vi.fn(async () => {}) });
+
+			const { orchestrationContext } = await factory.create(params, runtime);
+
+			expect(orchestrationContext.disabledToolNames).toEqual(new Set());
+		});
+
 		it('refuses a thread that another user owns', async () => {
 			const { factory, fields } = createSetupFactory();
 			const runtime = createRuntime({
