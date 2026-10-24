@@ -308,6 +308,7 @@ import IconLucideNetwork from '~icons/lucide/network';
 import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
 import IconLucidePanelLeftClose from '~icons/lucide/panel-left-close';
 import IconLucidePause from '~icons/lucide/pause';
+import IconLucidePinOff from '~icons/lucide/pin-off';
 import IconLucidePictureInPicture2 from '~icons/lucide/picture-in-picture-2';
 import IconLucidePlugZap from '~icons/lucide/plug-zap';
 import IconLucidePocketKnife from '~icons/lucide/pocket-knife';
@@ -814,6 +815,7 @@ export const updatedIconSet = {
 	'pencil-off': BrandPencilOff,
 	'picture-in-picture-2': IconLucidePictureInPicture2,
 	pin: BrandPin,
+	'pin-off': IconLucidePinOff,
 	play: BrandPlay,
 	plug: BrandPlug,
 	'plug-zap': IconLucidePlugZap,
