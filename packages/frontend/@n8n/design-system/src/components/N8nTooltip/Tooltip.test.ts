@@ -235,6 +235,28 @@ describe('components/N8nTooltip', () => {
 				expect(tooltipContent).toBeInTheDocument();
 			});
 		});
+
+		it('should emit before-show and hide when visible prop changes', async () => {
+			const wrapper = render(Tooltip, {
+				props: {
+					content: 'Test tooltip',
+					visible: false,
+				},
+				slots: {
+					default: '<button>Click me</button>',
+				},
+			});
+
+			expect(wrapper.emitted('before-show')).toBeUndefined();
+
+			await wrapper.rerender({ visible: true });
+			await waitFor(() => expect(wrapper.emitted('before-show')).toHaveLength(1));
+			expect(wrapper.emitted('hide')).toBeUndefined();
+
+			await wrapper.rerender({ visible: false });
+			await waitFor(() => expect(wrapper.emitted('hide')).toHaveLength(1));
+			expect(wrapper.emitted('before-show')).toHaveLength(1);
+		});
 	});
 
 	describe('default class', () => {
@@ -546,6 +568,7 @@ describe('components/N8nTooltip', () => {
 				expect(document.querySelector('[data-dismissable-layer]')).toBeInTheDocument();
 			});
 			expect(document.querySelector('[data-dismissable-layer]')).toHaveTextContent('Test tooltip');
+			expect(wrapper.emitted('before-show')).toHaveLength(1);
 		});
 
 		it('should not show tooltip on hover when disabled', async () => {

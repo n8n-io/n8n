@@ -32,6 +32,13 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	avoidCollisions: true,
 });
 
+const emit = defineEmits<{
+	/** Emitted when the tooltip starts to open */
+	'before-show': [];
+	/** Emitted when the tooltip closes */
+	hide: [];
+}>();
+
 // Get append-to target from composable, defaulting to body for proper z-index stacking
 const injectedAppendTo = useInjectTooltipAppendTo();
 const appendTo = computed(() => injectedAppendTo.value ?? 'body');
@@ -71,6 +78,17 @@ watch(
 
 // Determine if we're in controlled mode
 const isControlled = computed(() => props.visible !== undefined);
+
+// Emit on every open state change, from user interaction or from the `visible` prop.
+// Consumers use these events to lazy-load the tooltip content.
+watch(isOpen, (open, wasOpen) => {
+	if (open === wasOpen) return;
+	if (open) {
+		emit('before-show');
+	} else {
+		emit('hide');
+	}
+});
 
 const handleOpenChange = (open: boolean) => {
 	isOpen.value = open;
