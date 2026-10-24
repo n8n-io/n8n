@@ -1,0 +1,10 @@
+{
+	"extends": "../../nodes-base/tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"composite": false,
+		"incremental": false,
+		"types": ["node", "vitest/globals"]
+	},
+	"include": ["src/**/*.ts"]
+}

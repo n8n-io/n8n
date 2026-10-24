@@ -1,0 +1,214 @@
+{
+	"operations": {
+		"audit:generate": {
+			"api": "generateAudit",
+			"params": { "additionalOptions": { "api": "body:additionalOptions", "placement": "additionalFields", "shape": "string", "default": "{}" } }
+		},
+		"credential:create": {
+			"api": "createCredential",
+			"params": {
+				"id": { "api": "body:id", "placement": "additionalFields", "shape": "string", "default": "" },
+				"name": { "api": "body:name", "placement": "root", "shape": "string", "default": "" },
+				"description": { "api": "body:description", "placement": "additionalFields", "shape": "string", "default": "" },
+				"type": { "api": "body:type", "placement": "root", "shape": "string", "default": "" },
+				"data": { "api": "body:data", "placement": "root", "shape": "string", "default": "{}" },
+				"isResolvable": { "api": "body:isResolvable", "placement": "additionalFields", "shape": "boolean", "default": false },
+				"projectId": { "api": "body:projectId", "placement": "additionalFields", "shape": "string", "default": "" }
+			}
+		},
+		"credential:delete": {
+			"api": "deleteCredential",
+			"params": { "credentialId": { "api": "path:credentialId", "placement": "root", "shape": "string", "default": "" } }
+		},
+		"credential:getType": {
+			"api": "getCredentialType",
+			"params": { "credentialTypeName": { "api": "path:credentialTypeName", "placement": "root", "shape": "string", "default": "" } }
+		},
+		"execution:delete": {
+			"api": "deleteExecution",
+			"params": { "executionId": { "api": "path:executionId", "placement": "root", "shape": "number", "default": 0 } }
+		},
+		"execution:get": {
+			"api": "getExecution",
+			"params": {
+				"executionId": { "api": "path:executionId", "placement": "root", "shape": "number", "default": 0 },
+				"includeData": { "api": "query:includeData", "placement": "options", "shape": "boolean", "default": false },
+				"ignoreDataSizeLimit": { "api": "query:ignoreDataSizeLimit", "placement": "options", "shape": "boolean", "default": false },
+				"redactExecutionData": { "api": "query:redactExecutionData", "placement": "options", "shape": "boolean", "default": false }
+			}
+		},
+		"execution:getAll": {
+			"api": "getExecutions",
+			"params": {
+				"includeData": { "api": "query:includeData", "placement": "options", "shape": "boolean", "default": false },
+				"ignoreDataSizeLimit": { "api": "query:ignoreDataSizeLimit", "placement": "options", "shape": "boolean", "default": false },
+				"redactExecutionData": { "api": "query:redactExecutionData", "placement": "options", "shape": "boolean", "default": false },
+				"status": { "api": "query:status", "placement": "options", "shape": "string", "default": "canceled" },
+				"workflowId": { "api": "query:workflowId", "placement": "options", "shape": "rl", "default": { "mode": "list", "value": "" } },
+				"projectId": { "api": "query:projectId", "placement": "options", "shape": "string", "default": "" },
+				"startedAfter": { "api": "query:startedAfter", "placement": "options", "shape": "string", "default": "" },
+				"startedBefore": { "api": "query:startedBefore", "placement": "options", "shape": "string", "default": "" }
+			}
+		},
+		"project:addUser": {
+			"api": "addUsersToProject",
+			"params": {
+				"projectId": { "api": "path:projectId", "placement": "root", "shape": "string", "default": "" },
+				"userId": { "api": "body:relations[].userId", "placement": "root", "shape": "string", "default": "" },
+				"role": { "api": "body:relations[].role", "placement": "root", "shape": "string", "default": "project:viewer" }
+			}
+		},
+		"project:changeUserRole": {
+			"api": "changeUserRoleInProject",
+			"params": {
+				"projectId": { "api": "path:projectId", "placement": "root", "shape": "string", "default": "" },
+				"userId": { "api": "path:userId", "placement": "root", "shape": "string", "default": "" },
+				"role": { "api": "body:role", "placement": "root", "shape": "string", "default": "project:viewer" }
+			}
+		},
+		"project:create": {
+			"api": "createProject",
+			"params": {
+				"name": { "api": "body:name", "placement": "root", "shape": "string", "default": "" },
+				"id": { "api": "body:id", "placement": "additionalFields", "shape": "string", "default": "" },
+				"icon": { "api": "body:icon", "placement": "additionalFields", "shape": "string", "default": "{}" },
+				"description": { "api": "body:description", "placement": "additionalFields", "shape": "string", "default": "" },
+				"customTelemetryTags": { "api": "body:customTelemetryTags", "placement": "additionalFields", "shape": "object", "default": {} }
+			}
+		},
+		"project:delete": { "api": "deleteProject", "params": { "projectId": { "api": "path:projectId", "placement": "root", "shape": "string", "default": "" } } },
+		"project:deleteUser": {
+			"api": "deleteUserFromProject",
+			"params": {
+				"projectId": { "api": "path:projectId", "placement": "root", "shape": "string", "default": "" },
+				"userId": { "api": "path:userId", "placement": "root", "shape": "string", "default": "" }
+			}
+		},
+		"project:getAll": { "api": "getProjects", "params": {} },
+		"project:getUsers": {
+			"api": "getProjectUsers",
+			"params": { "projectId": { "api": "path:projectId", "placement": "root", "shape": "string", "default": "" } }
+		},
+		"project:update": {
+			"api": "updateProject",
+			"params": {
+				"projectId": { "api": "path:projectId", "placement": "root", "shape": "string", "default": "" },
+				"name": { "api": "body:name", "placement": "root", "shape": "string", "default": "" }
+			}
+		},
+		"user:changeRole": {
+			"api": "changeRole",
+			"params": {
+				"userId": { "api": "path:userId", "placement": "root", "shape": "string", "default": "" },
+				"newRoleName": { "api": "body:newRoleName", "placement": "root", "shape": "string", "default": "{}" }
+			}
+		},
+		"user:create": { "api": "createUser", "params": { "body": { "api": "body:$", "placement": "root", "shape": "string", "default": "[]" } } },
+		"user:delete": {
+			"api": "deleteUser",
+			"params": {
+				"userId": { "api": "path:userId", "placement": "root", "shape": "string", "default": "" },
+				"transferId": { "api": "query:transferId", "placement": "options", "shape": "string", "default": "" }
+			}
+		},
+		"user:get": {
+			"api": "getUser",
+			"params": {
+				"userId": { "api": "path:userId", "placement": "root", "shape": "string", "default": "" },
+				"includeRole": { "api": "query:includeRole", "placement": "options", "shape": "boolean", "default": false }
+			}
+		},
+		"user:getAll": {
+			"api": "getUsers",
+			"params": {
+				"includeRole": { "api": "query:includeRole", "placement": "options", "shape": "boolean", "default": false },
+				"projectId": { "api": "query:projectId", "placement": "options", "shape": "string", "default": "" }
+			}
+		},
+		"workflow:create": {
+			"api": "createWorkflow",
+			"params": {
+				"name": { "api": "body:name", "placement": "root", "shape": "string", "default": "" },
+				"nodes": { "api": "body:nodes", "placement": "root", "shape": "string", "default": "[]" },
+				"connections": { "api": "body:connections", "placement": "root", "shape": "string", "default": "{}" },
+				"settings": { "api": "body:settings", "placement": "root", "shape": "string", "default": "{}" },
+				"nodeGroups": { "api": "body:nodeGroups", "placement": "additionalFields", "shape": "string", "default": "[]" },
+				"staticData": { "api": "body:staticData", "placement": "additionalFields", "shape": "string", "default": "{}" },
+				"pinData": { "api": "body:pinData", "placement": "additionalFields", "shape": "string", "default": "{}" },
+				"projectId": { "api": "body:projectId", "placement": "additionalFields", "shape": "string", "default": "" },
+				"parentFolderId": { "api": "body:parentFolderId", "placement": "additionalFields", "shape": "string", "default": "" },
+				"shared": { "api": "body:shared", "placement": "additionalFields", "shape": "string", "default": "[]" },
+				"description": { "api": "body:description", "placement": "additionalFields", "shape": "string", "default": "" }
+			}
+		},
+		"workflow:delete": {
+			"api": "deleteWorkflow",
+			"params": { "workflowId": { "api": "path:workflowId", "placement": "root", "shape": "rl", "default": { "mode": "list", "value": "" } } }
+		},
+		"workflow:get": {
+			"api": "getWorkflow",
+			"params": {
+				"workflowId": { "api": "path:workflowId", "placement": "root", "shape": "rl", "default": { "mode": "list", "value": "" } },
+				"excludePinnedData": { "api": "query:excludePinnedData", "placement": "options", "shape": "boolean", "default": false }
+			}
+		},
+		"workflow:getAll": {
+			"api": "getWorkflows",
+			"params": {
+				"offset": { "api": "query:offset", "placement": "options", "shape": "number", "default": 0 },
+				"active": { "api": "query:active", "placement": "options", "shape": "boolean", "default": false },
+				"tags": { "api": "query:tags", "placement": "options", "shape": "string", "default": "" },
+				"name": { "api": "query:name", "placement": "options", "shape": "string", "default": "" },
+				"projectId": { "api": "query:projectId", "placement": "options", "shape": "string", "default": "" },
+				"excludePinnedData": { "api": "query:excludePinnedData", "placement": "options", "shape": "boolean", "default": false },
+				"includeParentFolder": { "api": "query:includeParentFolder", "placement": "options", "shape": "boolean", "default": false }
+			}
+		},
+		"workflow:getVersion": {
+			"api": "getWorkflowVersion",
+			"params": {
+				"workflowId": { "api": "path:workflowId", "placement": "root", "shape": "rl", "default": { "mode": "list", "value": "" } },
+				"workflowVersionId": { "api": "path:workflowVersionId", "placement": "root", "shape": "string", "default": "" }
+			}
+		},
+		"workflow:publish": {
+			"api": "publishWorkflow",
+			"params": {
+				"workflowId": { "api": "path:workflowId", "placement": "root", "shape": "rl", "default": { "mode": "list", "value": "" } },
+				"versionId": { "api": "body:versionId", "placement": "additionalFields", "shape": "string", "default": "" },
+				"name": { "api": "body:name", "placement": "additionalFields", "shape": "string", "default": "" },
+				"description": { "api": "body:description", "placement": "additionalFields", "shape": "string", "default": "" }
+			}
+		},
+		"workflow:unpublish": {
+			"api": "unpublishWorkflow",
+			"params": { "workflowId": { "api": "path:workflowId", "placement": "root", "shape": "rl", "default": { "mode": "list", "value": "" } } }
+		},
+		"workflow:update": {
+			"api": "updateWorkflow",
+			"params": {
+				"workflowId": { "api": "path:workflowId", "placement": "root", "shape": "rl", "default": { "mode": "list", "value": "" } },
+				"publishIfActive": { "api": "query:publishIfActive", "placement": "options", "shape": "boolean", "default": true },
+				"name": { "api": "body:name", "placement": "root", "shape": "string", "default": "" },
+				"nodes": { "api": "body:nodes", "placement": "root", "shape": "string", "default": "[]" },
+				"connections": { "api": "body:connections", "placement": "root", "shape": "string", "default": "{}" },
+				"settings": { "api": "body:settings", "placement": "root", "shape": "string", "default": "{}" },
+				"nodeGroups": { "api": "body:nodeGroups", "placement": "additionalFields", "shape": "string", "default": "[]" },
+				"staticData": { "api": "body:staticData", "placement": "additionalFields", "shape": "string", "default": "{}" },
+				"pinData": { "api": "body:pinData", "placement": "additionalFields", "shape": "string", "default": "{}" },
+				"parentFolderId": { "api": "body:parentFolderId", "placement": "additionalFields", "shape": "string", "default": "" },
+				"shared": { "api": "body:shared", "placement": "additionalFields", "shape": "string", "default": "[]" },
+				"description": { "api": "body:description", "placement": "additionalFields", "shape": "string", "default": "" }
+			}
+		}
+	},
+	"excluded": {
+		"activateWorkflow": "generator: the API marks this operation as deprecated",
+		"deactivateWorkflow": "generator: the API marks this operation as deprecated",
+		"exportPackage": "generator: application/gzip responses are not supported",
+		"getDeprecatedWorkflowVersion": "generator: the API marks this operation as deprecated",
+		"getDiscover": "Describes the API for API clients. Not useful as a workflow step.",
+		"importPackage": "generator: multipart/form-data request bodies are not supported",
+		"importPackageSelection": "generator: multipart/form-data request bodies are not supported"
+	}
+}
