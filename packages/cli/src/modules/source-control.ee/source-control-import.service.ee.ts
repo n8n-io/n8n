@@ -235,6 +235,7 @@ export class SourceControlImportService {
 					versionId: remote.versionId ?? '',
 					name: remote.name,
 					description: remote.description,
+					settings: remote.settings,
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
@@ -304,6 +305,8 @@ export class SourceControlImportService {
 				versionId: true,
 				name: true,
 				description: true,
+				// TypeORM selects this JSON column as a whole.
+				settings: {},
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -341,6 +344,7 @@ export class SourceControlImportService {
 				versionId: local.versionId,
 				name: local.name,
 				description: local.description ?? null,
+				settings: local.settings,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
@@ -800,7 +804,16 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived', 'nodes'],
+			fields: [
+				'id',
+				'name',
+				'versionId',
+				'active',
+				'activeVersionId',
+				'isArchived',
+				'nodes',
+				'settings',
+			],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
@@ -873,6 +886,16 @@ export class SourceControlImportService {
 			return;
 		}
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
+
+		// Resolver IDs are local to each instance and have no source-control mapping.
+		if (importedWorkflow.settings !== undefined) {
+			importedWorkflow.settings ??= {};
+			delete importedWorkflow.settings.credentialResolverId;
+			const localResolverId = existingWorkflow?.settings?.credentialResolverId;
+			if (localResolverId !== undefined) {
+				importedWorkflow.settings.credentialResolverId = localResolverId;
+			}
+		}
 
 		// Apply the same deprecated-node enforcement as the REST/public API
 		// endpoints. A re-sync that leaves the deprecated nodes untouched is
