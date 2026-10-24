@@ -463,7 +463,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_AGENT: {
 		name: 'User created agent',
 		description:
-			'A user persisted a new Agent from the editor, a template, or duplication. Emitted after the Agent and its initial configuration commit, regardless of its default model or setup readiness. Union the user, builder, and MCP creation events to count all new Agents. User clicked new agent joins through agent_id. User duplicated agent retains the source Agent context. Version 3 reports the committed insert instead of the first configuring update.',
+			'A user persisted a new Agent from the editor, a template, duplication, or a package import. Emitted after the Agent and its initial configuration commit, regardless of its default model or setup readiness. Package imports have no matching click event. Union the user, builder, and MCP creation events to count all new Agents. User clicked new agent joins through agent_id. User duplicated agent retains the source Agent context. Version 3 reports the committed insert instead of the first configuring update.',
 		properties: z.object({
 			...agentWrite,
 			event_version: z.literal('3'),
@@ -481,7 +481,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_MODIFIED_AGENT: {
 		name: 'User modified agent',
 		description:
-			'A user saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits User created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
+			'A user saved a tracked configuration or resource change to an existing Agent through the editor or a package import. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits User created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
 			...agentKnowledgeModification,
