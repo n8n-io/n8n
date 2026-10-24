@@ -196,6 +196,25 @@ describe('BrowserLocalMcpServer domain gating', () => {
 			expect(tracker.approveDomain).not.toHaveBeenCalled();
 			expect(tracker.approveOnce).not.toHaveBeenCalled();
 		});
+
+		it.each(['allowOnce', 'allowForSession'])(
+			'stays blocked on %s when the permission mode is blocked',
+			async (confirmation) => {
+				const tool = makeTool();
+				const server = makeServer(tool);
+				server.setDomainGate(gate(tracker, 'blocked'));
+
+				const result = await call(server, {
+					url: 'https://example.com',
+					_confirmation: confirmation,
+				});
+
+				expect((result.content[0] as { text: string }).text).toContain('blocked by admin');
+				expect(tool.execute).not.toHaveBeenCalled();
+				expect(tracker.approveDomain).not.toHaveBeenCalled();
+				expect(tracker.approveOnce).not.toHaveBeenCalled();
+			},
+		);
 	});
 });
 
@@ -298,6 +317,17 @@ describe('BrowserLocalMcpServer credential-creation gating', () => {
 		const result = await callCreate(server);
 
 		expect(result.isError).toBe(true);
+		expect((result.content[0] as { text: string }).text).toContain('blocked by admin');
+		expect(tool.execute).not.toHaveBeenCalled();
+	});
+
+	it('stays blocked on allowOnce when the credential permission is blocked', async () => {
+		const tool = makeCredentialTool();
+		const server = makeCredentialServer(tool);
+		server.setDomainGate(gate(tracker, 'always_allow', 'blocked'));
+
+		const result = await callCreate(server, { _confirmation: 'allowOnce' });
+
 		expect((result.content[0] as { text: string }).text).toContain('blocked by admin');
 		expect(tool.execute).not.toHaveBeenCalled();
 	});

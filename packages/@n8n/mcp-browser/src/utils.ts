@@ -49,6 +49,23 @@ export function toError(value: unknown): Error {
 	return new Error(String(value));
 }
 
+/**
+ * Removes the parts of a URL that commonly carry credentials (query, hash, userinfo),
+ * so the URL can be logged. Same approach as Playwright's own connection logs.
+ */
+export function stripUrlCredentials(endpoint: string): string {
+	try {
+		const url = new URL(endpoint);
+		url.search = '';
+		url.hash = '';
+		url.username = '';
+		url.password = '';
+		return url.toString();
+	} catch {
+		return '(unparseable endpoint)';
+	}
+}
+
 /** Wrap an error as a structured MCP error response. */
 export function formatErrorResponse(error: McpBrowserError): CallToolResult {
 	const data: Record<string, string> = { error: error.message };

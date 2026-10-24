@@ -30,7 +30,10 @@ export interface BrowserConnectionOptions {
 	 * lifecycle - the embedder is responsible for stopping it.
 	 */
 	relay?: CDPRelayServer;
-	/** Explicit CDP endpoint for remote mode; overrides `relay.cdpEndpoint()`. */
+	/**
+	 * Explicit CDP endpoint. In remote mode with a relay it overrides `relay.cdpEndpoint()`.
+	 * In remote mode without a relay it is the browser to connect to, and is required.
+	 */
 	cdpEndpoint?: string;
 	/** Headers sent when connecting to {@link cdpEndpoint} (e.g. an auth token). */
 	cdpConnectHeaders?: Record<string, string>;
@@ -100,7 +103,7 @@ export class BrowserConnection {
 		}
 
 		const browser = overrideBrowser ?? this.config.defaultBrowser;
-		if (this.config.mode !== 'remote') {
+		if (this.config.mode === 'local') {
 			this.requireBrowserAvailable(browser);
 		}
 
@@ -256,7 +259,8 @@ export class BrowserConnection {
 
 	private async createAdapter(): Promise<Adapter> {
 		if (this.config.mode === 'remote') {
-			// Remote mode is only supported by the Playwright adapter
+			// Remote mode is only supported by the Playwright adapter. Without a relay it
+			// connects straight to the CDP endpoint.
 			const { PlaywrightAdapter } = await import('./adapters/playwright.js');
 			return new PlaywrightAdapter(this.config, {
 				relay: this.externalRelay,

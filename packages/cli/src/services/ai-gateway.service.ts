@@ -14,7 +14,12 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
-import { isMcpAiGatewayAuthentication, OperationalError, UserError } from 'n8n-workflow';
+import {
+	isMcpAiGatewayAuthentication,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -36,6 +41,29 @@ import { UrlService } from '@n8n/backend-services';
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
+}
+
+/** Who a request made on a user's behalf is for. The gateway bills and attributes it by this. */
+export interface AiGatewayRequestAttribution {
+	/** The Instance AI thread that owns the task. */
+	instanceAiThreadId: string;
+	/** An Instance AI background task. The gateway bills these requests to Assistant credits. */
+	instanceAiTaskId: string;
+}
+
+/** A gateway response with a status that is not 2xx. */
+export interface AiGatewayErrorResponse {
+	statusCode: number;
+	body: unknown;
+}
+
+interface GatewayUrlContext {
+	executionId?: string;
+	workflowId?: string;
+	projectId?: string;
+	agentId?: string;
+	instanceAiThreadId?: string;
+	instanceAiTaskId?: string;
 }
 
 /**
@@ -106,6 +134,9 @@ export class AiGatewayService {
 
 	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
 
+	/** A provider name is one URL segment, so it cannot change the structure of the URL. */
+	private static readonly PROVIDER_NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
@@ -137,6 +168,9 @@ export class AiGatewayService {
 
 	/**
 	 * Performs a request against the AI Gateway and returns the parsed body.
+	 *
+	 * For a status that is not 2xx, it throws the error from `options.mapErrorResponse` if it is
+	 * given. Otherwise it throws a `UserError` with `errorMessage` and the status code.
 	 */
 	private async gatewayRequest<T>(
 		options: {
@@ -144,9 +178,12 @@ export class AiGatewayService {
 			url: string;
 			headers?: Record<string, string>;
 			body?: unknown;
+			disableFollowRedirect?: boolean;
+			/** Returns the error to throw for a response with a status that is not 2xx. */
+			mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
 			signal?: AbortSignal;
 		},
-		errorMessage: string,
+		errorMessage = 'Gateway credits request failed',
 	): Promise<T> {
 		const response = await this.outboundHttp
 			.requests({
@@ -157,12 +194,15 @@ export class AiGatewayService {
 				url: options.url,
 				...(options.headers ? { headers: options.headers } : {}),
 				...(options.body !== undefined ? { body: options.body, json: true } : {}),
+				...(options.disableFollowRedirect ? { disableFollowRedirect: true } : {}),
 				...(options.signal ? { abortSignal: options.signal } : {}),
 				returnFullResponse: true,
-				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as a `UserError` carrying the status code
+				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as an error below
 			});
 		if (response.statusCode < 200 || response.statusCode >= 300) {
-			throw new UserError(`${errorMessage}: HTTP ${response.statusCode}`);
+			throw options.mapErrorResponse
+				? options.mapErrorResponse({ statusCode: response.statusCode, body: response.body })
+				: new UserError(`${errorMessage}: HTTP ${response.statusCode}`);
 		}
 		return response.body as T;
 	}
@@ -300,6 +340,51 @@ export class AiGatewayService {
 	}
 
 	/**
+	 * Sends a request to a gateway provider on behalf of a signed-in user, with the user's
+	 * gateway token in the `authHeaderKey` header. The URL is built here from `provider`
+	 * and `path`, and redirects are not followed, so the token cannot reach another host.
+	 * The URL carries the attribution as an exec context.
+	 */
+	async sendProviderRequest<T>({
+		provider,
+		authHeaderKey,
+		method,
+		path,
+		body,
+		userId,
+		attribution,
+		mapErrorResponse,
+	}: {
+		/** The gateway provider name, for example `browserbaseBrowserUse`. */
+		provider: string;
+		authHeaderKey: string;
+		method: IHttpRequestMethods;
+		/** The provider's own route, added after the provider's gateway URL, for example `/v1/sessions`. */
+		path: string;
+		body?: unknown;
+		userId: string;
+		attribution: AiGatewayRequestAttribution;
+		mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
+	}): Promise<T> {
+		if (!AiGatewayService.PROVIDER_NAME_PATTERN.test(provider)) {
+			throw new UnexpectedError('Invalid gateway provider name', { extra: { provider } });
+		}
+		this.assertEnabled();
+		const baseUrl = this.requireBaseUrl();
+		const token = await this.getOrFetchToken(userId);
+		const gatewayPath = `${AiGatewayService.GATEWAY_PATH_PREFIX}/${provider}`;
+		const url = this.buildGatewayUrl(baseUrl, gatewayPath, attribution);
+		return await this.gatewayRequest<T>({
+			method,
+			url: `${url}${path}`,
+			headers: { [authHeaderKey]: token },
+			body,
+			disableFollowRedirect: true,
+			mapErrorResponse,
+		});
+	}
+
+	/**
 	 * Builds the credential URL field(s) pointing at the gateway.
 	 *
 	 * When `routing` is present, each `<credential field> → <gateway path>` entry is
@@ -409,25 +494,54 @@ export class AiGatewayService {
 	 *   with context    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/openai/v1`
 	 *   with project    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/openai/v1`
 	 *   agent           → `<base>/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/openai/v1`
+	 *
+	 * Instance AI background tasks work the same way with the literal `instance-ai`,
+	 * which also tells the gateway to bill Assistant credits. The thread and task take
+	 * the workflow segment as `:threadId|:taskId`:
+	 *   instance AI     → `<base>/v1/gateway/exec/instance-ai/THR123%7CTASK123/browserbaseBrowserUse`
 	 */
 	private buildGatewayUrl(
 		baseUrl: string,
 		gatewayPath: string,
-		context: { executionId?: string; workflowId?: string; projectId?: string; agentId?: string },
+		context: GatewayUrlContext,
 	): string {
-		const execId = context.workflowId ? context.executionId : context.agentId && 'agent';
-		const attributionId = context.workflowId ?? context.agentId;
-		if (execId && attributionId) {
-			if (!gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
-				return `${baseUrl}${gatewayPath}`;
-			}
-			const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
-			const contextSegment = encodeURIComponent(
-				[attributionId, context.projectId].filter(Boolean).join('|'),
-			);
-			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(execId)}/${contextSegment}${providerSuffix}`;
+		const { execId, contextIds = [] } = this.resolveExecContext(context);
+		if (!execId || !gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
+			return `${baseUrl}${gatewayPath}`;
 		}
-		return `${baseUrl}${gatewayPath}`;
+		const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
+		const execSegment = encodeURIComponent(execId);
+		const contextSegment = encodeURIComponent(contextIds.filter(Boolean).join('|'));
+		return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${execSegment}/${contextSegment}${providerSuffix}`;
+	}
+
+	/**
+	 * Returns the `execId` and `contextIds` when the request can be attributed.
+	 * Otherwise returns an empty object.
+	 */
+	private resolveExecContext(context: GatewayUrlContext): {
+		execId?: string;
+		contextIds?: Array<string | undefined>;
+	} {
+		if (context.instanceAiThreadId) {
+			return {
+				execId: 'instance-ai',
+				contextIds: [context.instanceAiThreadId, context.instanceAiTaskId],
+			};
+		}
+		if (context.workflowId) {
+			return {
+				execId: context.executionId,
+				contextIds: [context.workflowId, context.projectId],
+			};
+		}
+		if (context.agentId) {
+			return {
+				execId: 'agent',
+				contextIds: [context.agentId, context.projectId],
+			};
+		}
+		return {};
 	}
 
 	private requireBaseUrl(): string {

@@ -15,6 +15,7 @@ import { CDPRelayServer } from '../cdp-relay';
 import {
 	BrowserExecutableNotFoundError,
 	ElementNotActionableError,
+	McpBrowserError,
 	PageNotFoundError,
 	StaleRefError,
 	type ConnectionLostReason,
@@ -43,7 +44,7 @@ import type {
 	WaitOptions,
 	DisconnectDetails,
 } from '../types';
-import { generateId, toError } from '../utils';
+import { generateId, stripUrlCredentials, toError } from '../utils';
 
 const log = createLogger('playwright');
 
@@ -101,7 +102,10 @@ export interface PlaywrightAdapterOptions {
 	 * is owned by the embedder.
 	 */
 	relay?: CDPRelayServer;
-	/** Explicit CDP endpoint to connect to in remote mode. Overrides `relay.cdpEndpoint()`. */
+	/**
+	 * Explicit CDP endpoint. In remote mode with a relay it overrides `relay.cdpEndpoint()`.
+	 * In remote mode without a relay it is the browser to connect to, and is required.
+	 */
 	cdpEndpoint?: string;
 	/** Headers sent when connecting to the CDP endpoint (e.g. an auth token). */
 	cdpConnectHeaders?: Record<string, string>;
@@ -135,12 +139,22 @@ export class PlaywrightAdapter {
 		this.cdpConnectHeaders = options?.cdpConnectHeaders;
 	}
 
+	/** Remote mode without a relay connects straight to `cdpEndpoint`, for example a cloud browser. */
+	private get isDirectCdp(): boolean {
+		return this.resolvedConfig.mode === 'remote' && !this.externalRelay;
+	}
+
 	// =========================================================================
 	// Lifecycle
 	// =========================================================================
 
 	async launch(config: ConnectConfig): Promise<void> {
 		log.debug('launch: browser =', config.browser);
+
+		if (this.isDirectCdp) {
+			await this.launchDirectCdpConnection();
+			return;
+		}
 
 		if (this.externalRelay) {
 			// Remote mode - the extension connects to an externally managed relay
@@ -194,10 +208,38 @@ export class PlaywrightAdapter {
 		await this.connectPlaywright(this.relay.cdpEndpoint(port));
 	}
 
+	/**
+	 * Remote mode without a relay - the endpoint is a browser of its own (e.g. a
+	 * hosted browser session), with no extension.
+	 */
+	private async launchDirectCdpConnection(): Promise<void> {
+		if (!this.externalCdpEndpoint) {
+			throw new McpBrowserError('Remote mode without a relay requires a CDP endpoint');
+		}
+
+		log.debug('direct CDP connection: connecting to CDP endpoint');
+		await this.connectPlaywright(this.externalCdpEndpoint);
+
+		// With no relay there is no lazy activation, and pages that were open before
+		// we connected emit no 'page' event, so they are tracked now.
+		const context = this.requireContext();
+		for (const page of context.pages()) {
+			this.trackPage(page);
+		}
+		// Tools act on the first page, and with no relay nothing else can create one.
+		if (this.pageStates.size === 0) {
+			log.debug('direct CDP connection: no open page, creating one');
+			const page = await context.newPage();
+			// The 'page' event listener may have tracked it already.
+			if (!this.findPageState(page)) this.trackPage(page);
+		}
+		log.debug('launch complete, direct CDP connection');
+	}
+
 	/** Connect Playwright over CDP through the relay and wire up handlers. */
 	private async connectPlaywright(cdpEndpoint: string): Promise<void> {
 		const relay = this.relay!;
-		log.debug('connecting Playwright over CDP:', cdpEndpoint);
+		log.debug('connecting Playwright over CDP:', stripUrlCredentials(cdpEndpoint));
 		this.browser = await chromium.connectOverCDP(cdpEndpoint, {
 			headers: this.cdpConnectHeaders,
 			noDefaults: true,
@@ -232,6 +274,9 @@ export class PlaywrightAdapter {
 			log.debug('browser disconnected event');
 			this.onDisconnect?.('browser_closed');
 		});
+
+		// A direct CDP connection has no relay to chain onto.
+		if (this.isDirectCdp) return;
 
 		// In remote mode the relay outlives us, so chain onto the embedder's handlers
 		// and restore them on close. One closure so neither can be forgotten.
@@ -304,6 +349,14 @@ export class PlaywrightAdapter {
 	}
 
 	async closePage(pageId: string): Promise<void> {
+		if (this.isDirectCdp) {
+			// Every page is tracked on a direct CDP connection, so Playwright closes it.
+			const state = this.pageStates.get(pageId);
+			this.pageStates.delete(pageId);
+			await state?.page.close();
+			return;
+		}
+
 		// Clean up local Playwright state if tracked (may not be if never activated)
 		this.pageStates.delete(pageId);
 
