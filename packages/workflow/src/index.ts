@@ -64,7 +64,7 @@ export type {
 declare module 'http' {
 	export interface IncomingMessage {
 		contentType?: string;
-		encoding: BufferEncoding;
+		encoding: string;
 		contentDisposition?: { type: string; filename?: string };
 		rawBody: Buffer;
 		readRawBody(): Promise<void>;

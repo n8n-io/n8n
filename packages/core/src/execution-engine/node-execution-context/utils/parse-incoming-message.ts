@@ -85,7 +85,7 @@ export function parseIncomingMessage(message: IncomingMessage) {
 	if (contentType) {
 		const { type, parameters } = contentType;
 		message.contentType = type;
-		message.encoding = parameters.charset.toLowerCase() as BufferEncoding;
+		message.encoding = parameters.charset.toLowerCase();
 	}
 
 	const contentDisposition = parseContentDisposition(message.headers['content-disposition']);

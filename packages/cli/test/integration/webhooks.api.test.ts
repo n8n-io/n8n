@@ -147,6 +147,19 @@ describe('Webhook API', () => {
 			});
 		});
 
+		test('should handle form-urlencoded with charset=ISO-8859-1', async () => {
+			const iso88591Buffer = Buffer.from([116, 101, 120, 116, 61, 71, 114, 0xfc, 0xdf, 101]); // text=Grüße
+			const response = await agent
+				.post('/webhook/abcd')
+				.set('content-type', 'application/x-www-form-urlencoded; charset=ISO-8859-1')
+				.send(iso88591Buffer);
+			expect(response.statusCode).toEqual(200);
+			expect(response.body).toEqual({
+				contentType: 'application/x-www-form-urlencoded',
+				body: { text: 'Grüße' },
+			});
+		});
+
 		test('should handle plain text', async () => {
 			const response = await agent
 				.post('/webhook/abcd')

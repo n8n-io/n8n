@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
+import iconv from 'iconv-lite';
 import { parseIncomingMessage } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { parse as parseQueryString } from 'querystring';
@@ -17,6 +18,13 @@ const xmlParser = new XmlParser({
 	normalizeTags: true, // Transform tags to lowercase
 	explicitArray: false, // Only put properties in array if length > 1
 });
+
+const decodeRawBody = (rawBody: Buffer, encoding?: string) => {
+	if (encoding && !iconv.encodingExists(encoding)) {
+		throw new Error(`Unknown encoding: ${encoding}`);
+	}
+	return iconv.decode(rawBody, encoding ?? 'utf-8');
+};
 
 const payloadSizeMax = Container.get(GlobalConfig).endpoints.payloadSizeMax;
 export const rawBodyReader: RequestHandler = async (req, _res, next) => {
@@ -55,16 +63,16 @@ export const parseBody = async (req: Request) => {
 		try {
 			if (contentType === 'application/json') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = jsonParse(rawBody.toString(encoding));
+				req.body = jsonParse(decodeRawBody(rawBody, encoding));
 			} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
+				req.body = await xmlParser.parseStringPromise(decodeRawBody(rawBody, encoding));
 			} else if (contentType === 'application/x-www-form-urlencoded') {
-				req.body = parseQueryString(rawBody.toString(encoding), undefined, undefined, {
+				req.body = parseQueryString(decodeRawBody(rawBody, encoding), undefined, undefined, {
 					maxKeys: 1000,
 				});
 			} else if (contentType === 'text/plain') {
-				req.body = rawBody.toString(encoding);
+				req.body = decodeRawBody(rawBody, encoding);
 			}
 		} catch (error) {
 			throw new UnprocessableRequestError('Failed to parse request body', (error as Error).message);

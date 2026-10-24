@@ -20,9 +20,17 @@ export const createMultiFormDataParser = (maxFormDataSizeInMb: number) => {
 	}> {
 		const { encoding } = req;
 
+		const formEncoding = (
+			encoding && Buffer.isEncoding(encoding)
+				? encoding
+				: encoding === 'iso-8859-1'
+					? 'latin1'
+					: 'utf-8'
+		) as formidable.BufferEncoding;
+
 		const form = formidable({
 			multiples: true,
-			encoding: encoding as formidable.BufferEncoding,
+			encoding: formEncoding,
 			maxFileSize: maxFormDataSizeInMb * 1024 * 1024,
 			// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 		});
