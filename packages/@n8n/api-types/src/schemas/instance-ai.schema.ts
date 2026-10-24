@@ -3046,6 +3046,21 @@ const instanceAiEvalSeedWorkflowSchema = z.object({
 	/** The seed folder (`folders[].id`) the workflow is created in. Omit for the
 	 *  project root. Must name a declared folder; see `findSeedFolderIssues`. */
 	parentFolderId: instanceAiEvalSeedArtifactIdSchema.optional(),
+	/** Canvas node groups, validated against `nodes` on restore. Restored in the same
+	 *  write, so seeding them costs no extra workflow version. */
+	nodeGroups: z
+		.array(
+			z
+				.object({
+					id: z.string().min(1),
+					name: z.string().min(1),
+					nodeIds: z.array(z.string()),
+					description: z.string().max(155).optional(),
+				})
+				.strict(),
+		)
+		.max(100)
+		.optional(),
 });
 
 export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkflowSchema>;
@@ -3164,6 +3179,34 @@ export const instanceAiEvalSeedDataTableSchema = z.object({
 
 export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataTableSchema>;
 
+/** A custom tool descriptor as the agent row stores it beside the tool's code. */
+const instanceAiEvalAgentToolDescriptorSchema = z
+	.object({
+		name: z.string().min(1).max(128),
+		description: z.string().max(16_384),
+		systemInstruction: z.string().max(16_384).nullable(),
+		inputSchema: z.record(z.string(), z.unknown()).nullable(),
+		outputSchema: z.record(z.string(), z.unknown()).nullable(),
+		hasSuspend: z.boolean(),
+		hasResume: z.boolean(),
+		hasToMessage: z.boolean(),
+		requireApproval: z.boolean(),
+		outputTrust: z.literal('untrusted').nullable().optional(),
+		providerOptions: z.record(z.string(), z.unknown()).nullable(),
+	})
+	.strict();
+
+/** Custom tool bodies keyed by tool id, in the shape of the agent row's `tools` column. */
+export const instanceAiEvalAgentToolBodiesSchema = z.record(
+	z.string().min(1).max(128),
+	z
+		.object({
+			code: z.string().max(262_144),
+			descriptor: instanceAiEvalAgentToolDescriptorSchema,
+		})
+		.strict(),
+);
+
 /** An agent a conversation seed references, recreated at its given id in the
  *  thread's project. `config`/`skills` are the shapes the agent's own config and
  *  skills routes return, so a seed can be authored from a fetched agent verbatim.
@@ -3175,6 +3218,9 @@ export const instanceAiEvalSeedAgentSchema = z
 		config: AgentJsonConfigSchema,
 		/** Skill bodies keyed by the ids `config.skills[].id` references. */
 		skills: z.record(agentSkillSchema).optional(),
+		/** Custom tool bodies keyed by the ids `config.tools[]` custom refs use, as the
+		 *  agent row stores them: the key is the tool's descriptor name. */
+		tools: instanceAiEvalAgentToolBodiesSchema.optional(),
 	})
 	// A reference the seed can't back restores an agent that is missing the
 	// capability the case grades, which reads as a build failure rather than a
@@ -3192,11 +3238,20 @@ export const instanceAiEvalSeedAgentSchema = z
 			}
 		}
 		for (const [index, tool] of (agent.config.tools ?? []).entries()) {
-			if (tool.type === 'custom') {
+			if (tool.type === 'custom' && !Object.hasOwn(agent.tools ?? {}, tool.id)) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					path: ['config', 'tools', index],
-					message: `Seed agent references custom tool "${tool.id}", which a seed cannot carry a body for — remove it or use a node/workflow tool`,
+					path: ['config', 'tools', index, 'id'],
+					message: `Seed agent references custom tool "${tool.id}" but carries no body for it under \`tools\``,
+				});
+			}
+		}
+		for (const [id, body] of Object.entries(agent.tools ?? {})) {
+			if (body.descriptor.name !== id) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['tools', id, 'descriptor', 'name'],
+					message: `Seed agent custom tool "${id}" is named "${body.descriptor.name}"; a tool is stored under its own name`,
 				});
 			}
 		}

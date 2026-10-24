@@ -949,12 +949,62 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(errorOf(result)).toContain('carries no body');
 	});
 
-	it('rejects a custom tool, which a seed cannot carry a body for', () => {
+	const toolBody = (name: string) => ({
+		code: `export default new Tool("${name}");`,
+		descriptor: {
+			name,
+			description: 'Look up an order',
+			systemInstruction: null,
+			inputSchema: null,
+			outputSchema: null,
+			hasSuspend: false,
+			hasResume: false,
+			hasToMessage: false,
+			requireApproval: false,
+			providerOptions: null,
+		},
+	});
+
+	it('accepts a custom tool reference backed by its body', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] },
+				tools: { my_tool: toolBody('my_tool') },
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('keeps the untrusted-output marker of a custom tool body', () => {
+		const body = toolBody('my_tool');
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] },
+				tools: {
+					my_tool: { ...body, descriptor: { ...body.descriptor, outputTrust: 'untrusted' } },
+				},
+			}),
+		);
+		expect(result.success && result.data.tools?.my_tool.descriptor.outputTrust).toBe('untrusted');
+	});
+
+	it('rejects a custom tool reference with no body', () => {
 		const result = instanceAiEvalSeedAgentSchema.safeParse(
 			agent({ config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] } }),
 		);
 		expect(result.success).toBe(false);
-		expect(errorOf(result)).toContain('custom tool');
+		expect(errorOf(result)).toContain('references custom tool');
+	});
+
+	it('rejects a custom tool body stored under a different name', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] },
+				tools: { my_tool: toolBody('other_tool') },
+			}),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('stored under its own name');
 	});
 
 	it('rejects declared tasks, which a seed cannot carry bodies for', () => {
@@ -1496,6 +1546,33 @@ describe('findSeedFolderIssues', () => {
 		expect(issues).toEqual([
 			expect.stringContaining('Seed workflow "odwSignal1Wf" is placed in folder "nopeFolder001"'),
 		]);
+	});
+});
+
+describe('InstanceAiEvalRestoreThreadRequest workflow node groups', () => {
+	const request = (nodeGroups: unknown) => ({
+		threadId: '11111111-1111-4111-8111-111111111111',
+		messages: [],
+		workflows: [{ id: 'wf-1', name: 'Grouped', nodes: [], connections: {}, nodeGroups }],
+	});
+
+	it('accepts seed workflow node groups', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse(
+			request([{ id: 'group-1', name: 'Notify', nodeIds: ['node-1'] }]),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a malformed node group', () => {
+		expect(
+			InstanceAiEvalRestoreThreadRequest.safeParse(request([{ id: 'group-1', nodeIds: 'node-1' }]))
+				.success,
+		).toBe(false);
+		expect(
+			InstanceAiEvalRestoreThreadRequest.safeParse(
+				request([{ id: 'group-1', name: '', nodeIds: ['node-1'] }]),
+			).success,
+		).toBe(false);
 	});
 });
 
