@@ -21,7 +21,7 @@ export class ZendeskTrigger implements INodeType {
 		name: 'zendeskTrigger',
 		icon: 'file:zendesk.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Handle Zendesk events via webhooks',
 		defaults: {
 			name: 'Zendesk Trigger',
@@ -72,6 +72,32 @@ export class ZendeskTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
 			},
 			{
 				displayName: 'Service',
