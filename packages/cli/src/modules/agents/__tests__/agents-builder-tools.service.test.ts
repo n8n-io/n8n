@@ -2173,7 +2173,6 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			const updates = {
 				instructions: 'Create tickets with a concise reproduction and acceptance criteria.',
-				allowedTools: ['create_ticket'],
 			};
 			agentsService.updateSkill.mockResolvedValue({
 				id: 'skill_create_tickets',
