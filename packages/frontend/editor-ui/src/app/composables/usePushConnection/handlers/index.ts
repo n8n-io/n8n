@@ -3,6 +3,7 @@ export * from './builderCreditsUpdated';
 export * from './executionFinished';
 export * from './executionRecovered';
 export * from './executionStarted';
+export * from './executionWaiting';
 export * from './nodeDescriptionUpdated';
 export * from './nodeExecuteAfter';
 export * from './nodeExecuteAfterData';
