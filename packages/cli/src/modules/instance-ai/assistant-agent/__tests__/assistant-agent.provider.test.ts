@@ -53,8 +53,9 @@ function setup() {
 		nodeContextEnabled: false,
 	} as Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>);
 	const creditService = mock<InstanceAiCreditService>();
+	const archiveIfAiTemporary = vi.fn(async () => true);
 	const environment = {
-		context: {},
+		context: { workflowService: { archiveIfAiTemporary } },
 		orchestrationContext: {},
 		modelId: 'anthropic/claude-sonnet',
 		skillScope: { profile: { mode: 'default' } },
@@ -96,6 +97,7 @@ function setup() {
 		environment,
 		input,
 		agent,
+		archiveIfAiTemporary,
 	};
 }
 
@@ -295,6 +297,49 @@ describe('AssistantAgentProvider', () => {
 				expect.any(Array),
 				'completed',
 			);
+		});
+
+		describe('temporary workflows', () => {
+			function turnWithMarkedWorkflows() {
+				return startTurn({
+					memory: mock<SystemAgentStartTurn['memory']>({
+						getThread: vi.fn(async () => ({
+							id: 'thread-1',
+							resourceId: 'system-chat:user-1',
+							metadata: { assistantTemporaryWorkflowIds: ['wf-1', 'wf-2'] },
+						})) as never,
+					}),
+				});
+			}
+
+			it('archives the workflows that the thread still marks when the turn ends', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+
+				const handle = await provider.prepareTurn(turnWithMarkedWorkflows());
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-1');
+				expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-2');
+			});
+
+			it('keeps them while the turn waits for the user', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+
+				const handle = await provider.prepareTurn(turnWithMarkedWorkflows());
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'suspended' });
+
+				expect(archiveIfAiTemporary).not.toHaveBeenCalled();
+			});
+
+			it('continues with the next workflow when one archive fails', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+				archiveIfAiTemporary.mockRejectedValueOnce(new Error('gone'));
+
+				const handle = await provider.prepareTurn(turnWithMarkedWorkflows());
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'errored' });
+
+				expect(archiveIfAiTemporary).toHaveBeenCalledTimes(2);
+			});
 		});
 
 		describe('formatError', () => {
