@@ -19,6 +19,8 @@ import {
 	type TerminalTaskStatus,
 	TerminalTaskStatusList,
 } from '../entities/scheduled-task';
+import type { OperationContext } from '../services/transaction';
+import { TypeOrmTransaction } from '../services/typeorm-transaction';
 import {
 	columnOrNowPlusMsLiteral,
 	dbNowLiteral,
@@ -577,6 +579,36 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			leaseExpiresAt: () => dbNowPlusMsLiteral(this.isPostgres, expiresInMs),
 		});
 		return rowsAffected > 0;
+	}
+
+	/**
+	 * Whether `claim` still holds its task: the same lease epoch, still `running`,
+	 * claimed by `claim.host`, and the lease not expired on the database clock.
+	 * Must run inside the caller's transaction.
+	 *
+	 * On Postgres the row stays locked for share until the transaction ends, so a
+	 * reclaim or a new claim cannot commit before the caller's own writes. SQLite
+	 * runs every transaction on its one write connection, with the same effect.
+	 */
+	async isHeld(claim: HostedClaimedRef, ctx: OperationContext): Promise<boolean> {
+		if (!(ctx.trx instanceof TypeOrmTransaction)) {
+			throw new UnexpectedError('A held task fence must be checked inside a transaction');
+		}
+
+		const query = ctx.trx
+			.getEntityManager()
+			.createQueryBuilder(ScheduledTask, 'task')
+			.select('task.id')
+			.where({
+				id: claim.id,
+				status: ScheduledTaskStatus.Running,
+				claimedBy: claim.host,
+				leaseEpoch: claim.claimedEpoch,
+			})
+			.andWhere(`task.leaseExpiresAt > ${dbNowLiteral(this.isPostgres)}`);
+		if (this.isPostgres) query.setLock('pessimistic_read');
+
+		return (await query.getRawOne()) !== undefined;
 	}
 
 	/**
