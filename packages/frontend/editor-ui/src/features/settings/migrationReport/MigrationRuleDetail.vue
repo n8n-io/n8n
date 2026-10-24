@@ -222,9 +222,15 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 			width: 240,
 		},
 		{
+			title: i18n.baseText('settings.migrationReport.detail.table.project'),
+			key: 'homeProjectName',
+			value: projectLabel,
+			width: 160,
+		},
+		{
 			title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
 			key: 'issues',
-			width: 200,
+			width: 160,
 			disableSort: true,
 		},
 		{
@@ -713,6 +719,14 @@ const ownerFilterOptions = computed(() => {
 	);
 });
 
+// Personal projects show as one "Personal" label, the Owner column names the person.
+function projectLabel(workflow: AffectedWorkflow): string {
+	if (workflow.homeProjectType === 'personal') {
+		return i18n.baseText('settings.migrationReport.detail.filters.project.personal');
+	}
+	return workflow.homeProjectName ?? '';
+}
+
 // The projects of the listed workflows, for the project filter. Personal projects share one option.
 const projectFilterOptions = computed(() => {
 	const projects = new Map<string, string>();
@@ -750,11 +764,12 @@ watch(filteredWorkflows, (workflows) => {
 	if (kept.length !== selectedWorkflowIds.value.length) selectedWorkflowIds.value = kept;
 });
 
-// The owner cell shows a label, so it sorts by that label and not by the owner object.
+// The owner and project cells show a label, so they sort by that label.
 // Dates come from JSON as strings, and a workflow that never ran has no date.
 // A timestamp sorts them right, with a missing date as the oldest.
 const sortValues: Record<string, (workflow: AffectedWorkflow) => string | number> = {
 	owner: ownerLabel,
+	homeProjectName: (workflow) => projectLabel(workflow).toLowerCase(),
 	lastExecutedAt: (workflow) =>
 		workflow.lastExecutedAt ? new Date(workflow.lastExecutedAt).getTime() : 0,
 	lastUpdatedAt: (workflow) => new Date(workflow.lastUpdatedAt).getTime(),
@@ -931,6 +946,18 @@ const sortedWorkflows = computed(() => {
 						</N8nLink>
 						<template v-if="index < item.issues.length - 1">, </template>
 					</template>
+				</div>
+			</template>
+			<template #[`item.homeProjectName`]="{ item }">
+				<div :class="$style.cellStack">
+					<N8nText
+						color="text-dark"
+						:class="$style.truncate"
+						:title="projectLabel(item)"
+						data-test-id="migration-workflow-project"
+					>
+						{{ projectLabel(item) }}
+					</N8nText>
 				</div>
 			</template>
 			<template #[`item.numberOfExecutions`]="{ item }">

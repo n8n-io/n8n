@@ -219,7 +219,16 @@ describe('MigrationRuleDetail', () => {
 					.getAllByRole('columnheader')
 					.map((th) => th.textContent?.replace(/[↑↓]/g, '').trim());
 				// The first column holds the select-all checkbox.
-				expect(titles).toEqual(['', 'Name', 'Nodes affected', 'Usage', 'Owner', 'State', '']);
+				expect(titles).toEqual([
+					'',
+					'Name',
+					'Project',
+					'Nodes affected',
+					'Usage',
+					'Owner',
+					'State',
+					'',
+				]);
 			});
 		});
 	});
@@ -1547,6 +1556,20 @@ describe('MigrationRuleDetail', () => {
 				await userEvent.click(within(content).getByTestId('migration-rule-filter-project'));
 				return await screen.findAllByTestId('migration-rule-filter-project-item');
 			};
+
+			it('should show the project of each workflow, and Personal for a personal project', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({ affectedWorkflows: projectWorkflows }),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await waitFor(() => expect(screen.getByText('My draft')).toBeInTheDocument());
+
+				const rowOf = (name: string) => screen.getByText(name).closest('tr') as HTMLElement;
+				const projectIn = (name: string) =>
+					within(rowOf(name)).getByTestId('migration-workflow-project').textContent?.trim();
+				expect(projectIn('Lead import')).toBe('Finance');
+				expect(projectIn('My draft')).toBe('Personal');
+			});
 
 			it('should list Personal first and the team projects by name', async () => {
 				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
