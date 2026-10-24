@@ -274,7 +274,7 @@ export const issueFields: INodeProperties[] = [
 					},
 					{
 						name: 'Low',
-						value: 3,
+						value: 4,
 					},
 					{
 						name: 'No Priority',

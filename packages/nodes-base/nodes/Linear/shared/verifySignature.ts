@@ -1,15 +1,25 @@
 import { createHmac } from 'crypto';
 import type { IWebhookFunctions } from 'n8n-workflow';
 
-import { verifySignature as verifySignatureGeneric } from '../../utils/webhook-signature-verification';
+import { verifySignature as verifySignatureGeneric } from '../../../utils/webhook-signature-verification';
 
-export async function verifySignature(this: IWebhookFunctions): Promise<boolean> {
+/**
+ * Verifies Linear's `linear-signature` header (HMAC-SHA256 of the raw body).
+ *
+ * v1 relies on the signing secret pasted into the credential. v2 passes the secret
+ * returned by `webhookCreate`, so no manual setup is needed, and falls back to the
+ * credential when a webhook predates that.
+ */
+export async function verifySignature(
+	this: IWebhookFunctions,
+	secretOverride?: string,
+): Promise<boolean> {
 	const authenticationMethod = this.getNodeParameter('authentication', 'apiToken') as string;
 	const credentialType = authenticationMethod === 'apiToken' ? 'linearApi' : 'linearOAuth2Api';
 	const credential = await this.getCredentials(credentialType);
 	const req = this.getRequestObject();
 
-	const signingSecret = credential.signingSecret;
+	const signingSecret = secretOverride ?? credential.signingSecret;
 	try {
 		return verifySignatureGeneric({
 			getExpectedSignature: () => {
