@@ -145,10 +145,14 @@ export class AgentPublishService {
 		emitter: AgentPublishEmitter,
 		versionId?: string,
 		pushRef?: string,
+		expectedRevision?: number,
 	): Promise<PublishAgentResult> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
-		const expectedRevision = agent.revision;
+		expectedRevision ??= agent.revision;
+		if (agent.revision !== expectedRevision) {
+			throw new ConflictError('Agent was modified concurrently while publishing; please retry');
+		}
 
 		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
 			return { agent };
@@ -279,13 +283,14 @@ export class AgentPublishService {
 		user: User,
 		by: AgentActor,
 		pushRef?: string,
+		expectedRevision?: number,
 	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
-		// Same optimistic revision fence as publish: a concurrent edit that bumped
-		// `revision` after this load makes the unpublish lose the fence and surface
-		// a user-retryable conflict instead of rolling back a newer active version.
-		const expectedRevision = agent.revision;
+		expectedRevision ??= agent.revision;
+		if (agent.revision !== expectedRevision) {
+			throw new ConflictError('Agent was modified concurrently while unpublishing; please retry');
+		}
 
 		await this.commitUnpublication(agent, expectedRevision);
 		this.eventService.emit('agent-saved', { agentId });
