@@ -112,6 +112,8 @@ interface TurnSession {
 	/** The session that the turn runs in. A task-session binding can redirect it. */
 	memory: { threadId: InternalThread; resourceId: string };
 	sessionMode: AgentSessionMode;
+	/** Task messages to this recipient, for a new session split from a shared task. */
+	priorOutboundMessages?: string[];
 }
 
 /**
@@ -136,8 +138,14 @@ interface InboundOptions {
 function buildModelMessage(
 	labelledText: string,
 	bridgeExecutionContext: BridgeExecutionContext,
+	priorOutboundMessages: string[] = [],
 ): string {
 	const modelContext: string[] = [];
+	if (priorOutboundMessages.length > 0) {
+		modelContext.push(
+			`A task sent this user the following message(s) before they replied:\n${priorOutboundMessages.join('\n---\n')}`,
+		);
+	}
 	if (bridgeExecutionContext.historyContext) {
 		modelContext.push(bridgeExecutionContext.historyContext);
 	}
@@ -880,21 +888,36 @@ export class AgentChatBridge {
 		// written by an outbound send that has no notion of session rotation —
 		// so it has to be looked up the same way, not by whatever generation is
 		// currently active.
-		const sessionOrigin = await this.messageContextBridge.resolveSession(this.baseThreadId(thread));
-		if (sessionOrigin) {
+		const replyScope = await this.messageContextBridge.resolveSessionReplyScope(
+			this.baseThreadId(thread),
+		);
+		// A task that messaged several recipients keeps one memory for all of them.
+		// A reply then runs in its own session, so it cannot see what the task sent
+		// to the others. Only the message sent to this recipient is carried over.
+		if (replyScope && !replyScope.sharedWithOtherRecipients) {
 			return {
 				activeThreadId,
 				memory: {
-					threadId: toInternalThreadId(sessionOrigin.threadId),
-					resourceId: sessionOrigin.resourceId,
+					threadId: toInternalThreadId(replyScope.binding.threadId),
+					resourceId: replyScope.binding.resourceId,
 				},
 				sessionMode: 'existing',
+			};
+		}
+		const sessionMode = (await this.agentService.getSessionMode?.(activeThreadId.id)) ?? 'new';
+		if (replyScope) {
+			return {
+				activeThreadId,
+				memory: { threadId: activeThreadId, resourceId },
+				sessionMode,
+				// Later replies already have this in the session history.
+				priorOutboundMessages: sessionMode === 'new' ? replyScope.outboundMessages : [],
 			};
 		}
 		return {
 			activeThreadId,
 			memory: { threadId: activeThreadId, resourceId },
-			sessionMode: (await this.agentService.getSessionMode?.(activeThreadId.id)) ?? 'new',
+			sessionMode,
 		};
 	}
 
@@ -981,6 +1004,7 @@ export class AgentChatBridge {
 					modelMessage: buildModelMessage(
 						`[${author.name} (${author.id})]: ${textWithNotes}`,
 						context,
+						session.priorOutboundMessages,
 					),
 					author,
 					integrationOrigin,

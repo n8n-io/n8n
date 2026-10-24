@@ -642,6 +642,12 @@ export abstract class AgentChatIntegration {
 	}): Promise<Attachment[]>;
 
 	/**
+	 * Puts a user ID given to `send_dm` into the form the platform uses for
+	 * inbound messages, so one person always maps to one thread and session.
+	 */
+	normalizeUserId?(userId: string): string;
+
+	/**
 	 * Optional per-message reply policy (see `ReplyExpectation`).
 	 * Default (no implementation): 'required'.
 	 */

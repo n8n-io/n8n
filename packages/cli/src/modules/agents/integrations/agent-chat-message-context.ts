@@ -11,6 +11,7 @@ import {
 	type IntegrationPlatformMessageContext,
 	type ReplyExpectation,
 	type SessionBinding,
+	type SessionReplyScope,
 } from './integration-tools';
 
 interface CaptureMessageContextOptions {
@@ -80,6 +81,21 @@ export class AgentChatMessageContextBridge {
 		if (!this.messageContextStore) return null;
 		try {
 			return await this.messageContextStore.resolveSession(threadId);
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to resolve session binding', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
+	/** Like {@link resolveSession}, with what the reply may see of the task. */
+	async resolveSessionReplyScope(threadId: string): Promise<SessionReplyScope | null> {
+		if (!this.messageContextStore) return null;
+		try {
+			return await this.messageContextStore.resolveSessionReplyScope(threadId);
 		} catch (error) {
 			this.logger.warn('[AgentChatBridge] Failed to resolve session binding', {
 				agentId: this.agentId,

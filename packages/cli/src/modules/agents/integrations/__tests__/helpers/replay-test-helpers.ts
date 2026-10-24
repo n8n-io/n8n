@@ -16,6 +16,7 @@ import type { IntegrationMessageContextService } from '../../integration-message
 import type {
 	IntegrationMessageContext,
 	IntegrationMessageContextStore,
+	SessionReplyScope,
 } from '../../integration-tools';
 import { getIntegrationToolConnectionDescriptors } from '../../integration-tools';
 import { AgentResourceRepository } from '../../../repositories/agent-resource.repository';
@@ -40,6 +41,7 @@ export interface ReplayApiCall {
 export class MemoryMessageContextStore implements IntegrationMessageContextStore {
 	private readonly contexts = new Map<string, IntegrationMessageContext>();
 	private readonly bindings = new Map<string, { threadId: string; resourceId: string }>();
+	private readonly outbound = new Map<string, string[]>();
 
 	async getLatest(threadId: string): Promise<IntegrationMessageContext | null> {
 		return await Promise.resolve(this.contexts.get(threadId) ?? null);
@@ -58,10 +60,17 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 	async bindSession(
 		derivedThreadId: string,
 		origin: { threadId: string; resourceId: string },
+		outboundText?: string,
 	): Promise<void> {
 		if (derivedThreadId === origin.threadId) return;
-		if (this.bindings.has(derivedThreadId)) return; // first write wins
-		this.bindings.set(derivedThreadId, origin);
+		// First write wins: a later bind keeps the binding and only records text.
+		if (!this.bindings.has(derivedThreadId)) this.bindings.set(derivedThreadId, origin);
+		if (outboundText) {
+			this.outbound.set(derivedThreadId, [
+				...(this.outbound.get(derivedThreadId) ?? []),
+				outboundText,
+			]);
+		}
 		await Promise.resolve();
 	}
 
@@ -69,6 +78,19 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 		derivedThreadId: string,
 	): Promise<{ threadId: string; resourceId: string } | null> {
 		return await Promise.resolve(this.bindings.get(derivedThreadId) ?? null);
+	}
+
+	async resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null> {
+		const binding = await this.resolveSession(derivedThreadId);
+		if (!binding) return null;
+		const sharedWithOtherRecipients = [...this.bindings.entries()].some(
+			([id, origin]) => id !== derivedThreadId && origin.threadId === binding.threadId,
+		);
+		return {
+			binding,
+			sharedWithOtherRecipients,
+			outboundMessages: this.outbound.get(derivedThreadId) ?? [],
+		};
 	}
 
 	async unbindSession(derivedThreadId: string): Promise<void> {
