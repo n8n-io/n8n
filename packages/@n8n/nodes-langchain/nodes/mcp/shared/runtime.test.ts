@@ -541,6 +541,27 @@ describe('runtime', () => {
 			expect(manager.size).toBe(1);
 		});
 
+		it('keys the client cache per execution, so a cached client never serves another execution', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+			const getOrConnect = vi.spyOn(manager, 'getOrConnect');
+
+			await executeMcpTool(createCachedCtx('exec-1'), () => baseConfig, {
+				enableSessionCache: true,
+			});
+			await executeMcpTool(createCachedCtx('exec-2'), () => baseConfig, {
+				enableSessionCache: true,
+			});
+
+			const [firstKey, secondKey] = getOrConnect.mock.calls.map(([key]) => key);
+			expect(firstKey).toContain('exec-1');
+			expect(secondKey).toContain('exec-2');
+			expect(firstKey).not.toBe(secondKey);
+			expect(manager.size).toBe(2);
+		});
+
 		it('opens a fresh client per call when the cache is disabled', async () => {
 			const connect = vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
