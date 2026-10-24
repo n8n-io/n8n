@@ -50,6 +50,7 @@ export type PubSubCommandMap = {
 	'reload-mcp-registry': never;
 
 	'reload-otel-config': never;
+	'reload-public-api-rate-limit-settings': never;
 	'reload-instance-ai-settings': never;
 	'self-healing-failure': {
 		workflowId: string;
