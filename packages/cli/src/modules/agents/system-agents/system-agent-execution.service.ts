@@ -10,6 +10,7 @@ import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { sleep } from '@n8n/utils/sleep';
+import { FileNotFoundError } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { buffer as streamToBuffer } from 'node:stream/consumers';
@@ -867,7 +868,13 @@ export class SystemAgentExecutionService {
 			source: SYSTEM_CHAT_SOURCE,
 		});
 		if (attachment?.threadId !== thread.id) return undefined;
-		return await streamToBuffer(await this.attachmentService.getStream(attachment));
+		try {
+			return await streamToBuffer(await this.attachmentService.getStream(attachment));
+		} catch (error) {
+			// Storage can prune the bytes while the attachment row stays.
+			if (error instanceof FileNotFoundError) return undefined;
+			throw error;
+		}
 	}
 
 	/**
