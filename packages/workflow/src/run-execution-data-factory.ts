@@ -35,6 +35,7 @@ export interface CreateFullRunExecutionDataOptions {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
+		failedBeforeStart?: true;
 	};
 	executionData?: {
 		contextData?: IExecuteContextData;
@@ -64,6 +65,7 @@ function buildResultData(
 		pinData: resultData?.pinData,
 		lastNodeExecuted: resultData?.lastNodeExecuted,
 		metadata: resultData?.metadata,
+		...(resultData?.failedBeforeStart && { failedBeforeStart: true }),
 	};
 }
 

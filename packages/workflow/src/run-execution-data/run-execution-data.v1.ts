@@ -55,6 +55,7 @@ export interface IRunExecutionDataV1 {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
+		failedBeforeStart?: true;
 	};
 	executionData?: {
 		contextData: IExecuteContextData;

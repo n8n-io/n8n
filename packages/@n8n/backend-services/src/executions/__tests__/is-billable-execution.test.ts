@@ -39,4 +39,19 @@ describe('isBillableExecution', () => {
 		const source: WorkflowExecutionSource = 'instance_ai';
 		expect(isBillableExecution(run('webhook', 'success'), source)).toBe(false);
 	});
+
+	test('returns false for a production run that failed before its first node started', () => {
+		expect(
+			isBillableExecution({
+				...run('webhook', 'error'),
+				data: { resultData: { failedBeforeStart: true } },
+			}),
+		).toBe(false);
+	});
+
+	test('returns true for a failed production run without the failedBeforeStart flag', () => {
+		expect(isBillableExecution({ ...run('trigger', 'error'), data: { resultData: {} } })).toBe(
+			true,
+		);
+	});
 });
