@@ -1,4 +1,4 @@
-import type { AgentDbMessage, Message } from '@n8n/agents';
+import { loadReplayedMessages, type AgentDbMessage, type Message } from '@n8n/agents';
 import type {
 	AiPreferencesAppliedPayload,
 	InstanceAiAgentAttachment,
@@ -44,7 +44,7 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
-import type { AssistantTurnMemory, AssistantTurnRuntime } from './assistant-turn-runtime';
+import type { AssistantTurnRuntime } from './assistant-turn-runtime';
 import {
 	assertAgentPreviewHandoffScopes,
 	resolveAgentPreviewHandoff,
@@ -139,7 +139,7 @@ export interface AssistantTurnScopeParams {
 /** What the turn input build needs from the runtime that runs the turn. */
 export type AssistantTurnInputRuntime = Pick<
 	AssistantTurnRuntime,
-	'eventBus' | 'getRunningBackgroundTasks'
+	'eventBus' | 'resourceId' | 'getRunningBackgroundTasks'
 >;
 
 export interface AssistantTurnInputParams {
@@ -433,9 +433,14 @@ export class AssistantTurnInputBuilder {
 		// Keep setup handoffs first and the user's message last.
 		// Group ambient context in the thread-context wrapper.
 		// One read of the replayed history serves every section sent only when it changed.
+		// The Assistant agent always runs with observational memory, so read the same window.
 		let replayedHistory: Promise<AgentDbMessage[]> | undefined;
 		const loadReplayedHistory = async () =>
-			await (replayedHistory ??= this.getReplayedMessages(memory, threadId));
+			await (replayedHistory ??= loadReplayedMessages(
+				memory,
+				{ threadId, resourceId: runtime.resourceId },
+				{ observationalMemory: true },
+			));
 		const threadArtifactsBlock =
 			resumeReason === undefined
 				? await this.resolveThreadArtifactsTurn(
@@ -758,37 +763,6 @@ export class AssistantTurnInputBuilder {
 			if (block !== undefined) return block;
 		}
 		return undefined;
-	}
-
-	/**
-	 * The persisted messages the runtime replays to the model on the next turn. Mirrors
-	 * `MemoryOrchestrator.loadHistoryMessages`, including its desync guard: the post-cursor
-	 * window applies only when the cursor AND at least one active observation exist,
-	 * otherwise the runtime falls back to the full history. Diverging in the other
-	 * direction is safe — a needless re-injection costs one duplicate block, while
-	 * trusting a compacted copy silently drops the preferences.
-	 */
-	private async getReplayedMessages(
-		memory: AssistantTurnMemory,
-		threadId: string,
-	): Promise<AgentDbMessage[]> {
-		const cursor = await memory.getCursor(threadId);
-		if (cursor) {
-			const observations = await memory.getActiveObservationLog({
-				observationScopeId: threadId,
-				limit: 1,
-				order: 'desc',
-			});
-			if (observations.length > 0) {
-				return await memory.getMessagesForObservationScope(threadId, {
-					since: {
-						sinceCreatedAt: cursor.lastObservedAt,
-						sinceMessageId: cursor.lastObservedMessageId,
-					},
-				});
-			}
-		}
-		return await memory.getMessages(threadId);
 	}
 
 	private async bestEffort<T>(

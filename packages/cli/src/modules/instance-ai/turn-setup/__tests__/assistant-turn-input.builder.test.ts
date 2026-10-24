@@ -1,4 +1,4 @@
-import type { AgentDbMessage } from '@n8n/agents';
+import { loadReplayedMessages, type AgentDbMessage, type BuiltMemory } from '@n8n/agents';
 import type { AiPreferencesAppliedPayload } from '@n8n/api-types';
 import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
@@ -6,6 +6,41 @@ import type { Mock } from 'vitest';
 import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../../internal-messages';
 import type { AssistantTurnEnvironment } from '../assistant-turn-environment.factory';
 import { AssistantTurnInputBuilder } from '../assistant-turn-input.builder';
+
+type ThreadMemoryMock = {
+	getMessages: Mock;
+	getCursor: Mock;
+	getActiveObservationLog: Mock;
+	getMessagesForObservationScope: Mock;
+};
+
+/** A thread memory with an observation log, so the replay reads the post-cursor window. */
+function createThreadMemory(): ThreadMemoryMock {
+	return {
+		getMessages: vi.fn().mockResolvedValue([]),
+		getCursor: vi.fn().mockResolvedValue(null),
+		getActiveObservationLog: vi.fn().mockResolvedValue([]),
+		getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
+		...Object.fromEntries(
+			[
+				'commitObservationLogBatch',
+				'appendObservationLogEntries',
+				'getObservationLog',
+				'dropObservationLogEntries',
+				'supersedeObservationLogEntries',
+				'applyObservationLogReflection',
+			].map((method) => [method, vi.fn()]),
+		),
+	};
+}
+
+async function loadHistory(memory: ThreadMemoryMock): Promise<AgentDbMessage[]> {
+	return await loadReplayedMessages(
+		memory as unknown as BuiltMemory,
+		{ threadId: 'thread-1', resourceId: 'user-1' },
+		{ observationalMemory: true },
+	);
+}
 
 describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 	type Context = {
@@ -19,24 +54,13 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 			attachments: Array<{ type: 'workflow'; id: string; name: string }>,
 			loadHistory: () => Promise<unknown[]>,
 		) => Promise<string>;
-		getReplayedMessages: (memory: unknown, threadId: string) => Promise<unknown[]>;
-		agentMemory: {
-			getMessages: Mock;
-			getCursor: Mock;
-			getActiveObservationLog: Mock;
-			getMessagesForObservationScope: Mock;
-		};
+		agentMemory: ThreadMemoryMock;
 		logger: { warn: Mock };
 	};
 
 	function createService(): Internals {
 		const service = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals;
-		service.agentMemory = {
-			getMessages: vi.fn().mockResolvedValue([]),
-			getCursor: vi.fn().mockResolvedValue(null),
-			getActiveObservationLog: vi.fn().mockResolvedValue([]),
-			getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
-		};
+		service.agentMemory = createThreadMemory();
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
@@ -57,7 +81,7 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 			'thread-1',
 			context,
 			attachments,
-			async () => await service.getReplayedMessages(service.agentMemory, 'thread-1'),
+			async () => await loadHistory(service.agentMemory),
 		);
 	}
 
@@ -175,26 +199,15 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			threadId: string,
 			loadHistory: () => Promise<unknown[]>,
 		) => Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }>;
-		getReplayedMessages: (memory: unknown, threadId: string) => Promise<unknown[]>;
 		aiPreferenceService: { getApplicable: Mock };
-		agentMemory: {
-			getMessages: Mock;
-			getCursor: Mock;
-			getActiveObservationLog: Mock;
-			getMessagesForObservationScope: Mock;
-		};
+		agentMemory: ThreadMemoryMock;
 		logger: { warn: Mock };
 	};
 
 	function createService(): Internals {
 		const service = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals;
 		service.aiPreferenceService = { getApplicable: vi.fn() };
-		service.agentMemory = {
-			getMessages: vi.fn().mockResolvedValue([]),
-			getCursor: vi.fn().mockResolvedValue(null),
-			getActiveObservationLog: vi.fn().mockResolvedValue([]),
-			getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
-		};
+		service.agentMemory = createThreadMemory();
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
@@ -207,7 +220,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			'user-1',
 			project,
 			'thread-1',
-			async () => await service.getReplayedMessages(service.agentMemory, 'thread-1'),
+			async () => await loadHistory(service.agentMemory),
 		);
 	}
 

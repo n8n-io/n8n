@@ -1,4 +1,4 @@
-import type { BuiltMemory, Workspace } from '@n8n/agents';
+import type { ObservationLogObserverMemory, Workspace } from '@n8n/agents';
 import type {
 	InstanceAiBuildMode,
 	InstanceAiPromptConfiguration,
@@ -16,15 +16,8 @@ import type {
 import type { TypeORMAgentMemory } from '../storage/typeorm-agent-memory';
 
 /** The thread memory reads that the turn setup needs. */
-export type AssistantTurnMemory = BuiltMemory &
-	Pick<
-		TypeORMAgentMemory,
-		| 'getThread'
-		| 'getThreadProjectId'
-		| 'getCursor'
-		| 'getActiveObservationLog'
-		| 'getMessagesForObservationScope'
-	>;
+export type AssistantTurnMemory = ObservationLogObserverMemory &
+	Pick<TypeORMAgentMemory, 'getThread' | 'getThreadProjectId'>;
 
 /** Turn settings that the runtime keeps for one thread between turns. */
 export interface AssistantTurnState {
@@ -61,6 +54,8 @@ export interface AssistantTurnRuntime
 			| 'markWorkflowSetupHandled'
 		> {
 	memory: AssistantTurnMemory;
+	/** The memory resource that owns the thread. */
+	resourceId: string;
 	eventBus: InstanceAiEventBus;
 	turnState: AssistantTurnState;
 	/** Per-user "always allow" grants on the thread. */

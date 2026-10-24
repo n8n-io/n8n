@@ -2462,6 +2462,7 @@ export class InstanceAiService {
 	private createTurnRuntime(user: User, threadId: string, runId: string): AssistantTurnRuntime {
 		return {
 			memory: this.agentMemory,
+			resourceId: user.id,
 			eventBus: this.eventBus,
 			turnState: {
 				getBuildMode: () => this.runState.getBuildMode(threadId),
@@ -3660,6 +3661,7 @@ export class InstanceAiService {
 				checkpoint?.isCheckpointFollowUp === true || plannedBuild?.isPlannedBuildFollowUp === true;
 			const turnInputRuntime: AssistantTurnInputRuntime = {
 				eventBus: this.eventBus,
+				resourceId: user.id,
 				getRunningBackgroundTasks: () => this.backgroundTasks.getRunningTasks(threadId),
 			};
 			const turnInput = await this.turnInput.buildInput(environment, turnInputRuntime, {
