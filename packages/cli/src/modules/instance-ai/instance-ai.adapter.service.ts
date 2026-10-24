@@ -217,6 +217,7 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
 import { Telemetry } from '@/telemetry';
+import { createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -996,6 +997,7 @@ export class InstanceAiAdapterService {
 				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
 				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
 				logger: this.logger,
+				fetch: createAiProxyFetch(this.outboundHttp),
 			});
 		}
 		return this.templatesService;
@@ -3857,6 +3859,7 @@ export class InstanceAiAdapterService {
 			const { abortSignal: _abortSignal, ...cacheable } = options ?? {};
 			return `${keyPrefix}${JSON.stringify([query, cacheable])}`;
 		};
+		const searchFetch = createWebSearchFetch(this.outboundHttp);
 
 		// When the AI service proxy is enabled (licensed instance), search always goes
 		// through the proxy which provides managed Brave Search with credit tracking.
@@ -3882,7 +3885,7 @@ export class InstanceAiAdapterService {
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
-				const result = await braveSearch(apiKey, query, options ?? {});
+				const result = await braveSearch(apiKey, query, options ?? {}, searchFetch);
 				cache.set(cacheKey, result);
 				return result;
 			};
@@ -3894,7 +3897,7 @@ export class InstanceAiAdapterService {
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
-				const result = await searxngSearch(searxngUrl, query, options ?? {});
+				const result = await searxngSearch(searxngUrl, query, options ?? {}, searchFetch);
 				cache.set(cacheKey, result);
 				return result;
 			};

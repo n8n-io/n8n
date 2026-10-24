@@ -406,7 +406,7 @@ function buildFallbackWebSearchTool(
 				if (typeof credential.apiKey !== 'string') {
 					throw new Error('Brave Search credential is missing an API key.');
 				}
-				return await braveSearch(credential.apiKey, args.query, searchOptions);
+				return await braveSearch(credential.apiKey, args.query, searchOptions, webSearchFetch);
 			}
 
 			// SearXNG is self-hosted, so it has no gateway-served managed path.

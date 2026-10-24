@@ -1,6 +1,8 @@
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { z } from 'zod';
 
+import { getProxyFetch } from '../utils/proxy-fetch';
+
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 
 const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
@@ -182,7 +184,7 @@ function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
 export async function fetchProviderCatalog(options?: {
 	signal?: AbortSignal;
 }): Promise<ProviderCatalog> {
-	const response = await fetch(MODELS_DEV_URL, { signal: options?.signal });
+	const response = await (getProxyFetch() ?? fetch)(MODELS_DEV_URL, { signal: options?.signal });
 	if (!response.ok) {
 		throw new Error(`Failed to fetch provider catalog: ${response.statusText}`);
 	}

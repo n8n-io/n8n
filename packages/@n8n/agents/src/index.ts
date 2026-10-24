@@ -305,6 +305,7 @@ export {
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
+export { getProxyFetch } from './utils/proxy-fetch';
 export type {
 	ProviderCatalog,
 	ProviderInfo,
