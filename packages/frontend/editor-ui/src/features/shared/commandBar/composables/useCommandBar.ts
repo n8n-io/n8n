@@ -123,7 +123,14 @@ export function useCommandBar() {
 		return projectsStore.myProjects.find((p) => p.id === projectId)?.name ?? 'Personal';
 	});
 
-	const nodeCommandGroup = useNodeCommands();
+	const isOpen = ref(false);
+	const query = ref('');
+	const routeName = computed(() => String(router.currentRoute.value.name ?? ''));
+	const isCanvasView = computed(() => CANVAS_VIEWS.includes(routeName.value));
+
+	const nodeCommandGroup = useNodeCommands({
+		query: computed(() => (isOpen.value && isCanvasView.value ? query.value : '')),
+	});
 	const workflowCommandGroup = useWorkflowCommands();
 	const executionCommandGroup = useExecutionCommands();
 	const workflowNavigationGroup = useWorkflowNavigationCommands({ currentProjectName });
@@ -137,8 +144,6 @@ export function useCommandBar() {
 	const chatHubCommandGroup = useChatHubCommands();
 	const instanceAiCommandGroup = useInstanceAiCommands();
 
-	const isOpen = ref(false);
-	const query = ref('');
 	const remoteQuery = ref('');
 	const activeTab = ref(ALL_TAB);
 	const scopeStack = shallowRef<CommandBarScope[]>([]);
@@ -146,9 +151,6 @@ export function useCommandBar() {
 	const localLimits = shallowRef<Record<string, number>>({});
 	const latestRequestIds = new Map<string, number>();
 	const tabTargets = new WeakMap<CommandBarItem, string>();
-
-	const routeName = computed(() => String(router.currentRoute.value.name ?? ''));
-	const isCanvasView = computed(() => CANVAS_VIEWS.includes(routeName.value));
 
 	const contextualGroups = computed<CommandGroup[]>(() => {
 		if (isCanvasView.value) return [nodeCommandGroup, workflowCommandGroup];

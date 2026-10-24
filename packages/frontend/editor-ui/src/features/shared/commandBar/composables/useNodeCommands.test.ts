@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { nextTick, ref } from 'vue';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useNodeCommands } from './useNodeCommands';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -93,7 +95,7 @@ describe('useNodeCommands', () => {
 	};
 
 	const getNodesSource = (): CommandBarLocalSource => {
-		const { source } = useNodeCommands();
+		const { source } = useNodeCommands({ query: ref('') });
 		if (source?.isRemote === false) {
 			return source;
 		}
@@ -161,7 +163,7 @@ describe('useNodeCommands', () => {
 
 	describe('add sticky note command', () => {
 		it('should return only the add sticky note command with the Shift+S shortcut', () => {
-			const { commands } = useNodeCommands();
+			const { commands } = useNodeCommands({ query: ref('') });
 
 			expect(commands.value).toEqual([
 				expect.objectContaining({
@@ -176,7 +178,7 @@ describe('useNodeCommands', () => {
 		it('should not include add sticky note command when the sticky note type is unavailable', () => {
 			vi.mocked(mockNodeTypesStore.isNodeTypeUnavailable).mockReturnValue(true);
 
-			const { commands } = useNodeCommands();
+			const { commands } = useNodeCommands({ query: ref('') });
 
 			expect(commands.value).toEqual([]);
 		});
@@ -184,7 +186,7 @@ describe('useNodeCommands', () => {
 		it('should not include add sticky note command when user lacks update permission', () => {
 			denyUpdatePermission();
 
-			const { commands } = useNodeCommands();
+			const { commands } = useNodeCommands({ query: ref('') });
 
 			expect(commands.value).toEqual([]);
 		});
@@ -194,7 +196,7 @@ describe('useNodeCommands', () => {
 				value: { branchReadOnly: true },
 			});
 
-			const { commands } = useNodeCommands();
+			const { commands } = useNodeCommands({ query: ref('') });
 
 			expect(commands.value).toEqual([]);
 		});
@@ -202,7 +204,7 @@ describe('useNodeCommands', () => {
 		it('should not include add sticky note command when workflow is archived', () => {
 			useWorkflowDocumentStore(createWorkflowDocumentId('123')).setIsArchived(true);
 
-			const { commands } = useNodeCommands();
+			const { commands } = useNodeCommands({ query: ref('') });
 
 			expect(commands.value).toEqual([]);
 		});
@@ -216,13 +218,13 @@ describe('useNodeCommands', () => {
 				writable: true,
 			});
 
-			const { commands } = useNodeCommands();
+			const { commands } = useNodeCommands({ query: ref('') });
 
 			expect(commands.value.map((command) => command.id)).toEqual(['add-sticky']);
 		});
 
 		it('should emit create:sticky event when sticky note command is executed', () => {
-			const { commands } = useNodeCommands();
+			const { commands } = useNodeCommands({ query: ref('') });
 
 			void commands.value[0].handler?.();
 
@@ -290,6 +292,61 @@ describe('useNodeCommands', () => {
 			denyUpdatePermission();
 
 			expect(searchNodeIds()).toEqual(['node-1', 'node-2']);
+		});
+	});
+
+	describe('workflow parameter search', () => {
+		beforeEach(() => {
+			useWorkflowDocumentStore(createWorkflowDocumentId('123')).setNodes([
+				createTestNode({
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: {
+						url: 'https://example.com/api',
+						options: { timeout: 5000 },
+						headers: [{ value: 'custom-header' }],
+					},
+				}),
+				createTestNode({
+					id: 'node-2',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			]);
+		});
+
+		it.each(['example.com', '5000', 'custom-header'])(
+			'should find workflow nodes by parameter value %s',
+			(query) => {
+				expect(searchNodeIds(query)).toEqual(['node-1']);
+			},
+		);
+
+		it('should highlight parameter matches and clear them when the query resets', async () => {
+			const setupPanelStore = useSetupPanelStore();
+			const query = ref('');
+			useNodeCommands({ query });
+
+			query.value = 'EXAMPLE.COM';
+			await nextTick();
+			expect(setupPanelStore.setHighlightedNodes).toHaveBeenCalledWith(['node-1']);
+
+			query.value = '';
+			await nextTick();
+			expect(setupPanelStore.clearHighlightedNodes).toHaveBeenCalledOnce();
+		});
+
+		it.each(['ex', 'no-match-here'])('should clear highlights for query %s', async (value) => {
+			const setupPanelStore = useSetupPanelStore();
+			const query = ref('');
+			useNodeCommands({ query });
+
+			query.value = value;
+			await nextTick();
+
+			expect(setupPanelStore.setHighlightedNodes).not.toHaveBeenCalled();
+			expect(setupPanelStore.clearHighlightedNodes).toHaveBeenCalledOnce();
 		});
 	});
 

@@ -1,4 +1,4 @@
-import { type Component, computed } from 'vue';
+import { type Component, type Ref, computed, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -13,6 +13,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import type { INodeUi, SimplifiedNodeType } from '@/Interface';
@@ -22,7 +23,16 @@ const ITEM_ID = {
 	ADD_STICKY: 'add-sticky',
 } as const;
 
-export function useNodeCommands(): CommandGroup {
+// Include nested string and number values in node searches.
+function collectParameterValues(value: unknown): string[] {
+	if (typeof value === 'string' || typeof value === 'number') return [String(value)];
+	if (value && typeof value === 'object') {
+		return Object.values(value).flatMap(collectParameterValues);
+	}
+	return [];
+}
+
+export function useNodeCommands({ query }: { query: Ref<string> }): CommandGroup {
 	const i18n = useI18n();
 
 	const { addNodes, setNodeActive } = useCanvasOperations();
@@ -31,6 +41,7 @@ export function useNodeCommands(): CommandGroup {
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
 	const collaborationStore = useCollaborationStore();
+	const setupPanelStore = useSetupPanelStore();
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -86,7 +97,11 @@ export function useNodeCommands(): CommandGroup {
 			title: node.name,
 			description: nodeType?.displayName,
 			section: i18n.baseText('commandBar.nodes.inWorkflow'),
-			keywords: [node.type, ...(nodeType ? [nodeType.displayName] : [])],
+			keywords: [
+				node.type,
+				...(nodeType ? [nodeType.displayName] : []),
+				...collectParameterValues(node.parameters),
+			],
 			icon: {
 				component: NodeIcon,
 				props: {
@@ -103,6 +118,25 @@ export function useNodeCommands(): CommandGroup {
 	const openNodeItems = computed(() =>
 		workflowDocumentStore.value.allNodes.map((node) => buildOpenNodeItem(node)),
 	);
+
+	watch(query, (value) => {
+		const lowerQuery = value.trim().toLowerCase();
+		const matchingIds =
+			lowerQuery.length > 2
+				? workflowDocumentStore.value.allNodes
+						.filter((node) =>
+							collectParameterValues(node.parameters).some((parameter) =>
+								parameter.toLowerCase().includes(lowerQuery),
+							),
+						)
+						.map((node) => node.id)
+				: [];
+		if (matchingIds.length > 0) {
+			setupPanelStore.setHighlightedNodes(matchingIds);
+		} else {
+			setupPanelStore.clearHighlightedNodes();
+		}
+	});
 
 	const addNodeItems = computed(() =>
 		hasPermission('update') ? mergedNodes.value.map((node) => buildAddNodeItem(node)) : [],
