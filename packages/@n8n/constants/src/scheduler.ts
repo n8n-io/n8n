@@ -8,6 +8,8 @@
  * system task contract).
  */
 
+import { NODE_ID_MAX_LENGTH } from './nodes';
+
 /**
  * How a scheduled job decides when to fire:
  * - on a cron expression
@@ -178,5 +180,8 @@ export const SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH = 32;
 /** Longest accepted `ownerId`. */
 export const SCHEDULED_JOB_OWNER_ID_MAX_LENGTH = 255;
 
-/** Longest accepted `ownerMemberId`. */
-export const SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH = 36;
+/** Longest accepted `ownerMemberId`:
+ * - a workflow node id (64 characters - see NODE_ID_MAX_LENGTH),
+ * - or an agent task id (32 characters - see AGENT_TASK_ID_MAX_LENGTH).
+ */
+export const SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH = NODE_ID_MAX_LENGTH;

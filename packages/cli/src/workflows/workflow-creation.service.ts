@@ -11,6 +11,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -446,7 +447,7 @@ export class WorkflowCreationService {
 			return await this.mcpSettingsService.getAutoExposeNewWorkflows();
 		} catch (error) {
 			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
-				cause: error instanceof Error ? error.message : String(error),
+				cause: getErrorMessage(error),
 			});
 			return false;
 		}
@@ -515,7 +516,7 @@ export class WorkflowCreationService {
 			if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows(transactionManager))) return;
 		} catch (error) {
 			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
-				cause: error instanceof Error ? error.message : String(error),
+				cause: getErrorMessage(error),
 			});
 			return;
 		}

@@ -654,7 +654,7 @@ export class EvalThreadRestoreService {
 	}
 
 	/**
-	 * The caller holds `instanceAi:eval`, but the nodes come from an exported
+	 * The caller holds `instanceAi:manage`, but the nodes come from an exported
 	 * conversation, so they are policed like any authored save into the thread's
 	 * project. A refusal is rethrown naming the seed, so a multi-workflow restore
 	 * says which one policy blocked.

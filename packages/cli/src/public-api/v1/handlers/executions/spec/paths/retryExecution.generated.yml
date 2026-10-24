@@ -84,7 +84,7 @@ responses:
               description: The time at which a waiting execution resumes.
             data:
               type: object
-              description: Run data of the new execution.
+              description: Run data of the new execution. Absent when the API key's user cannot read the executions of the workflow.
               additionalProperties: true
               properties:
                 redactionInfo:
@@ -103,11 +103,11 @@ responses:
                       description: Whether the current user has permission to reveal the redacted data.
             workflowData:
               type: object
-              description: The workflow as it was saved when the original execution ran. `loadWorkflow` changes which workflow the retry runs, not what this field reports.
+              description: The workflow as it was saved when the original execution ran. `loadWorkflow` changes which workflow the retry runs, not what this field reports. Absent when the API key's user cannot read the executions of the workflow.
               additionalProperties: true
             customData:
               type: object
-              description: Execution metadata carried over from the original execution.
+              description: Execution metadata carried over from the original execution. Absent when the API key's user cannot read the executions of the workflow.
               additionalProperties:
                 type: string
             annotation:
@@ -138,7 +138,7 @@ responses:
                 - id
                 - vote
                 - tags
-              description: Annotation on the original execution. Absent when it carries none.
+              description: Annotation on the original execution. Absent when it carries none, or when the API key's user cannot read the executions of the workflow.
             storedAt:
               type: string
               description: Where the execution data is stored.
@@ -155,9 +155,6 @@ responses:
             - finished
             - retryOf
             - status
-            - data
-            - workflowData
-            - customData
             - storedAt
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml

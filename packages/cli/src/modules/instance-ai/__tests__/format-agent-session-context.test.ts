@@ -214,6 +214,28 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).not.toContain('x'.repeat(3_000));
 	});
 
+	it('renders host events with their name and truncated payload', () => {
+		const executions = [
+			makeExecution({
+				timeline: [
+					{ type: 'host-event', name: 'test.notice', payload: { level: 'info' }, timestamp: 5 },
+					{
+						type: 'host-event',
+						name: 'test.blob',
+						payload: { blob: 'x'.repeat(5_000) },
+						timestamp: 6,
+					},
+				],
+			}),
+		];
+
+		const block = formatPreviewSessionContext(makeThread(), executions);
+
+		expect(block).toContain('Host event test.notice: {"level":"info"}');
+		expect(block).toContain('Host event test.blob:');
+		expect(block).not.toContain('x'.repeat(3_000));
+	});
+
 	it('renders suspension events and execution errors', () => {
 		const executions = [
 			makeExecution({

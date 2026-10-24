@@ -162,10 +162,23 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCES_APPLIED_TO_TURN: {
 		name: 'Preferences applied to a turn',
 		description:
-			'A turn was built with the saved preferences available to it. Fires once for each turn that ran the preferences path, including a turn that applied none, so the share of turns with preferences is computable. CONTEXT-139 fires it.',
+			'An n8n Assistant turn put saved preferences into the conversation. Fires on the first turn of a thread that has preferences, and again on each turn that injects a new or changed preference. A turn that applies none, or whose block an earlier turn still carries, sends nothing. Rows before CONTEXT-363 fired on every turn, also with `count` 0, so filter on `injected_this_turn` and `count` > 0 when you compare across that change.',
 		properties: z.object({
 			user_id: userId,
-			count: z.number().describe('Preferences the request carried. 0 when none applied'),
+			thread_id: z
+				.string()
+				.optional()
+				.describe('The n8n Assistant thread. Joins the event to a build in the same thread'),
+			run_id: z.string().optional().describe('The n8n Assistant run of this turn'),
+			count: z
+				.number()
+				.describe('Preferences the request carried. Rows before CONTEXT-363 can report 0'),
+			preference_ids: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'Ids of the injected preferences, so reuse of one preference is countable. The text is never reported',
+				),
 			scope_types: z.array(scopeType).describe('Distinct scopes the applied preferences covered'),
 			rendered_length: z
 				.number()
@@ -178,7 +191,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			injected_this_turn: z
 				.boolean()
 				.describe(
-					'False when the text was unchanged and an earlier block in the same conversation still carries it. Shows how often re-injecting on every turn actually costs anything',
+					'Always true since CONTEXT-363. False on older rows, where the text was unchanged and an earlier block in the same conversation still carried it',
 				),
 			turn_latency_ms: z
 				.number()

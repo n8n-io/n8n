@@ -1,21 +1,23 @@
-import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
-import {
-	DateTimeColumn,
-	JsonColumn,
-	Project,
-	User,
-	WorkflowEntity,
-	WithTimestampsAndStringId,
-} from '@n8n/db';
+import { DateTimeColumn, Project, User, WorkflowEntity, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { SelfHealingResult } from './self-healing-result.entity';
+
+import { SelfHealingConfiguration } from './self-healing-configuration.entity';
 
 @Entity('self_healing_investigation')
 @Index(['workflowId', 'executionId'], { unique: true })
 @Index(['workflowId'], { unique: true, where: '"finishedAt" IS NULL' })
 @Index(['resultId'], { unique: true, where: '"resultId" IS NOT NULL' })
 export class SelfHealingInvestigation extends WithTimestampsAndStringId {
+	@Index()
+	@Column({ type: 'int' })
+	configurationId: number;
+
+	@ManyToOne(() => SelfHealingConfiguration, { nullable: false, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'configurationId' })
+	configuration: Relation<SelfHealingConfiguration>;
+
 	@Column({ type: 'varchar', length: 36 })
 	workflowId: string;
 
@@ -48,8 +50,8 @@ export class SelfHealingInvestigation extends WithTimestampsAndStringId {
 	@Column({ type: 'uuid' })
 	runId: string;
 
-	@JsonColumn()
-	baseline: WorkflowSuggestionBaseline;
+	@Column({ type: 'varchar', length: 36 })
+	publishedVersionId: string;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	resultId: string | null;
