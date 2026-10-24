@@ -79,7 +79,28 @@ function randomItem(value: unknown[]): unknown {
 	return len ? value[randomInt(len)] : undefined;
 }
 
+const isPrimitive = (item: unknown) =>
+	item === null || (typeof item !== 'object' && typeof item !== 'function');
+
+/**
+ * Deep-equality membership check against `haystack`. When both sides hold only primitives,
+ * `isEqual` agrees with `Set` (SameValueZero), so a `Set` replaces the linear scan.
+ */
+function createIncludes(haystack: unknown[], needles: unknown[]): (item: unknown) => boolean {
+	if (haystack.every(isPrimitive) && needles.every(isPrimitive)) {
+		const set = new Set(haystack);
+		return (item) => set.has(item);
+	}
+	return (item) => haystack.findIndex((other) => isEqual(other, item)) !== -1;
+}
+
 function unique(value: unknown[], extraArgs: string[]): unknown[] {
+	// primitives are compared as they are, and `isEqual` on them matches `Set` semantics
+	if (value.every(isPrimitive)) {
+		// filter instead of spreading the Set, which would turn -0 into 0
+		const seen = new Set<unknown>();
+		return value.filter((item) => !seen.has(item) && seen.add(item));
+	}
 	const mapForEqualityCheck = (item: unknown): unknown => {
 		if (extraArgs.length > 0 && item && typeof item === 'object') {
 			return extraArgs.reduce<Record<string, unknown>>((acc, key) => {
@@ -321,13 +342,8 @@ function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError('union(): expected array arg, e.g. .union([1, 2, 3, 4])');
 	}
-	const newArr: unknown[] = Array.from(value);
-	for (const v of others) {
-		if (newArr.findIndex((w) => isEqual(w, v)) === -1) {
-			newArr.push(v);
-		}
-	}
-	return unique(newArr, []);
+	// `unique` keeps the first occurrence, so items of `value` come first, then new items of `others`
+	return unique([...value, ...others], []);
 }
 
 function difference(value: unknown[], extraArgs: unknown[][]): unknown[] {
@@ -337,13 +353,11 @@ function difference(value: unknown[], extraArgs: unknown[][]): unknown[] {
 			'difference(): expected array arg, e.g. .difference([1, 2, 3, 4])',
 		);
 	}
-	const newArr: unknown[] = [];
-	for (const v of value) {
-		if (others.findIndex((w) => isEqual(w, v)) === -1) {
-			newArr.push(v);
-		}
-	}
-	return unique(newArr, []);
+	const inOthers = createIncludes(others, value);
+	return unique(
+		value.filter((v) => !inOthers(v)),
+		[],
+	);
 }
 
 function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
@@ -353,18 +367,9 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 			'intersection(): expected array arg, e.g. .intersection([1, 2, 3, 4])',
 		);
 	}
-	const newArr: unknown[] = [];
-	for (const v of value) {
-		if (others.findIndex((w) => isEqual(w, v)) !== -1) {
-			newArr.push(v);
-		}
-	}
-	for (const v of others) {
-		if (value.findIndex((w) => isEqual(w, v)) !== -1) {
-			newArr.push(v);
-		}
-	}
-	return unique(newArr, []);
+	const inOthers = createIncludes(others, value);
+	const inValue = createIncludes(value, others);
+	return unique([...value.filter((v) => inOthers(v)), ...others.filter((v) => inValue(v))], []);
 }
 
 function append(value: unknown[], extraArgs: unknown[][]): unknown[] {
