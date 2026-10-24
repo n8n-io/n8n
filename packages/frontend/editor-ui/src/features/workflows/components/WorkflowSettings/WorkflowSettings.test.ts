@@ -21,6 +21,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
+import type { Scope } from '@n8n/permissions';
 import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
