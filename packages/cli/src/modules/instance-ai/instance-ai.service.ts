@@ -266,7 +266,6 @@ import {
 	type SelfHealingRunLifecycle,
 	type SelfHealingRunResult,
 } from './self-healing/self-healing-agent.service';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import { isStreamTransportError } from './stream-transport-error';
@@ -864,7 +863,6 @@ export class InstanceAiService {
 		private readonly observationCursorRepo: InstanceAiObservationCursorRepository,
 		private readonly urlService: UrlService,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
-		private readonly dbIterationLogStorage: DbIterationLogStorage,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly telemetry: Telemetry,
 		private readonly mcpRegistryService: InstanceAiMcpRegistryService,
@@ -2921,7 +2919,6 @@ export class InstanceAiService {
 		});
 
 		const taskStorage = new ThreadTaskStorage(memory);
-		const iterationLog = this.dbIterationLogStorage;
 		const workflowLoopStorage = new WorkflowLoopStorage(memory);
 		const workflowTasks = this.createWorkflowTaskServiceWithUiSync(
 			threadId,
@@ -3050,7 +3047,6 @@ export class InstanceAiService {
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
 			plannedTaskService,
 			schedulePlannedTasks: async () => await this.schedulePlannedTasks(user, threadId),
-			iterationLog,
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
 			workflowTaskService: workflowTasks,
@@ -3064,7 +3060,6 @@ export class InstanceAiService {
 			context,
 			memory,
 			taskStorage,
-			iterationLog,
 			workflowTasks,
 			plannedTaskService,
 			modelId,

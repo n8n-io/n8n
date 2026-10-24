@@ -60,9 +60,6 @@ vi.mock('../utils/stream-helpers', () => ({
 	asResumable: (agent: unknown) => agent,
 }));
 vi.mock('../storage', () => ({
-	iterationEntrySchema: { safeParse: () => ({ success: true }) },
-	formatPreviousAttempts: () => 'previous attempts',
-	ThreadIterationLogStorage: class ThreadIterationLogStorage {},
 	ThreadTaskStorage: class ThreadTaskStorage {},
 	PlannedTaskStorage: class PlannedTaskStorage {},
 	getThread: () => ({ id: 'thread-1' }),
@@ -215,10 +212,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 
 		expect(call(entrypoint.loadInstanceAiSkills)).toBe('skills');
 
-		expect(call(entrypoint.formatPreviousAttempts)).toBe('previous attempts');
-		expect(construct(entrypoint.ThreadIterationLogStorage)).toBeInstanceOf(
-			entrypoint.ThreadIterationLogStorage,
-		);
 		expect(construct(entrypoint.ThreadTaskStorage)).toBeInstanceOf(entrypoint.ThreadTaskStorage);
 		expect(construct(entrypoint.PlannedTaskStorage)).toBeInstanceOf(entrypoint.PlannedTaskStorage);
 		expect(call(entrypoint.getThread)).toEqual({ id: 'thread-1' });
@@ -229,7 +222,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.WorkflowLoopStorage)).toBeInstanceOf(
 			entrypoint.WorkflowLoopStorage,
 		);
-		expect(entrypoint.iterationEntrySchema.safeParse({}).success).toBe(true);
 
 		expect(call(entrypoint.truncateToTitle)).toBeUndefined();
 		expect(call(entrypoint.generateTitleForRun)).toBe('generated-title');
