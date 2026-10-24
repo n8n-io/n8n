@@ -68,7 +68,7 @@ const formTriggerNode = ({
 	},
 });
 
-/** Mirrors what `TestWebhooks.needsWebhook` registers when the user tests a form trigger. */
+/** Mirrors what `TestWebhooks.registerWebhooks` registers when the user tests a form trigger. */
 const registerTestWebhook = async (
 	webhookPath: string,
 	node: INode,

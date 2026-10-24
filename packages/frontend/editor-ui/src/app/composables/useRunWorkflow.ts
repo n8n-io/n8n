@@ -450,8 +450,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			) {
 				chatEventBus.emit('setupWebsocket', runWorkflowApiResponse.executionId);
 			}
-			const pinData = workflowData.pinData ?? {};
-
 			const getTestUrl = (() => {
 				return (node: INode) => {
 					const path =
@@ -462,18 +460,12 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				};
 			})();
 
-			try {
-				await displayForm({
-					nodes: workflowData.nodes,
-					runData: workflowExecutionState.value.activeExecution?.data?.resultData?.runData,
-					destinationNode: options.destinationNode?.nodeName,
-					triggerNode: options.triggerNode,
-					pinData,
-					directParentNodes,
-					source: options.source,
-					getTestUrl,
-				});
-			} catch (error) {}
+			displayForm({
+				nodes: workflowData.nodes,
+				registeredTriggerNodes: runWorkflowApiResponse.registeredTriggerNodes ?? [],
+				source: options.source,
+				getTestUrl,
+			});
 
 			await externalHooks.run('workflowRun.runWorkflow', {
 				nodeName: options.destinationNode?.nodeName,

@@ -114,13 +114,14 @@ describe('WorkflowExecutionService', () => {
 	const executionCrashService = mock<ExecutionCrashService>();
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
+	const defaultTestWebhooks = mock<TestWebhooks>();
 	const workflowExecutionService = new WorkflowExecutionService(
 		logger,
 		errorReporter,
 		mock(),
 		mock(),
 		nodeTypes,
-		mock(),
+		defaultTestWebhooks,
 		workflowRunner,
 		mock(),
 		mock(),
@@ -139,6 +140,8 @@ describe('WorkflowExecutionService', () => {
 
 	beforeEach(() => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+		defaultTestWebhooks.registerWebhooks.mockReset();
+		defaultTestWebhooks.registerWebhooks.mockResolvedValue([]);
 	});
 
 	describe('runWorkflow()', () => {
@@ -959,7 +962,159 @@ describe('WorkflowExecutionService', () => {
 			expect(result).toEqual({ executionId });
 		});
 
-		test('should pass workflowIsActive to testWebhooks.needsWebhook', async () => {
+		describe('registered trigger nodes', () => {
+			const user = mock<User>({ id: 'user-id' });
+			const formTriggerNode: INode = {
+				id: '333f1db0-e7be-44c5-9ce9-3e35362490f2',
+				name: 'Form Trigger',
+				type: 'n8n-nodes-base.formTrigger',
+				typeVersion: 2,
+				position: [0, 0],
+				parameters: {},
+				webhookId: 'a9f6a2c1-0d0a-4f43-8f7e-3f0a2a6f8b11',
+			};
+
+			/** Builds a workflow where every trigger connects to the Hacker News node. */
+			const toWorkflowData = (
+				triggers: INode[],
+				overrides: Partial<IWorkflowBase> = {},
+			): IWorkflowBase => ({
+				id: 'workflow-id',
+				name: 'Test Workflow',
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				nodes: [...triggers, hackerNewsNode],
+				connections: triggers.reduce<IConnections>(
+					(acc, trigger) => ({
+						...acc,
+						...createMainConnection(hackerNewsNode.name, trigger.name),
+					}),
+					{},
+				),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				...overrides,
+			});
+
+			test('returns the registered trigger nodes when a known trigger waits for a webhook', async () => {
+				const workflowData = toWorkflowData([formTriggerNode]);
+				const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
+					triggerToStartFrom: { name: formTriggerNode.name },
+				};
+				defaultTestWebhooks.registerWebhooks.mockResolvedValue([formTriggerNode.name]);
+
+				const result = await workflowExecutionService.executeManually(
+					workflowData,
+					runPayload,
+					user,
+				);
+
+				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledWith(
+					expect.objectContaining({ triggerToStartFrom: runPayload.triggerToStartFrom }),
+				);
+				expect(result).toEqual({
+					waitingForWebhook: true,
+					registeredTriggerNodes: [formTriggerNode.name],
+				});
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			test('returns the registered trigger nodes when an unknown trigger waits for a webhook', async () => {
+				const workflowData = toWorkflowData([webhookNode, formTriggerNode]);
+				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
+					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+				};
+				defaultTestWebhooks.registerWebhooks.mockResolvedValue([
+					webhookNode.name,
+					formTriggerNode.name,
+				]);
+
+				const result = await workflowExecutionService.executeManually(
+					workflowData,
+					runPayload,
+					user,
+				);
+
+				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledWith(
+					expect.objectContaining({ destinationNode: runPayload.destinationNode }),
+				);
+				expect(result).toEqual({
+					waitingForWebhook: true,
+					registeredTriggerNodes: [webhookNode.name, formTriggerNode.name],
+				});
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			test('starts the run when no test webhook was registered', async () => {
+				const workflowData = toWorkflowData([formTriggerNode]);
+				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
+					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+				};
+				defaultTestWebhooks.registerWebhooks.mockResolvedValue([]);
+				workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+				const result = await workflowExecutionService.executeManually(
+					workflowData,
+					runPayload,
+					user,
+				);
+
+				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledTimes(1);
+				expect(result).toEqual({ executionId: 'fake-execution-id' });
+			});
+
+			test('starts the run from a pinned trigger without registering the unpinned form trigger', async () => {
+				const workflowData = toWorkflowData([webhookNode, formTriggerNode], {
+					pinData: {
+						[webhookNode.name]: [{ json: {} }],
+					},
+				});
+				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
+					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+				};
+				workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+				const result = await workflowExecutionService.executeManually(
+					workflowData,
+					runPayload,
+					user,
+				);
+
+				expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+				const [runData] = workflowRunner.run.mock.calls[0];
+				expect(runData.triggerToStartFrom?.name).toEqual(webhookNode.name);
+				expect(result).toEqual({ executionId: 'fake-execution-id' });
+			});
+
+			test('starts the run from the pinned trigger without registering it when the destination is that trigger', async () => {
+				const workflowData = toWorkflowData([formTriggerNode], {
+					pinData: { [formTriggerNode.name]: [{ json: {} }] },
+				});
+				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
+					destinationNode: { nodeName: formTriggerNode.name, mode: 'inclusive' },
+				};
+				workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+				const result = await workflowExecutionService.executeManually(
+					workflowData,
+					runPayload,
+					user,
+				);
+
+				expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
+				expect(workflowRunner.run).toHaveBeenCalledWith(
+					expect.objectContaining({
+						triggerToStartFrom: { name: formTriggerNode.name },
+						destinationNode: runPayload.destinationNode,
+					}),
+				);
+				expect(result).toEqual({ executionId: 'fake-execution-id' });
+			});
+		});
+
+		test('should pass workflowIsActive to testWebhooks.registerWebhooks', async () => {
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
 			const testWebhooks = mock<TestWebhooks>();
@@ -1009,7 +1164,7 @@ describe('WorkflowExecutionService', () => {
 				triggerToStartFrom: { name: telegramTrigger.name },
 			};
 
-			testWebhooks.needsWebhook.mockRejectedValue(
+			testWebhooks.registerWebhooks.mockRejectedValue(
 				new Error(
 					'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
 				),
@@ -1019,7 +1174,7 @@ describe('WorkflowExecutionService', () => {
 				'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
 			);
 
-			expect(testWebhooks.needsWebhook).toHaveBeenCalledWith(
+			expect(testWebhooks.registerWebhooks).toHaveBeenCalledWith(
 				expect.objectContaining({
 					workflowIsActive: true,
 				}),
@@ -1057,7 +1212,7 @@ describe('WorkflowExecutionService', () => {
 				chatSessionId: 'test-session-123',
 			};
 
-			testWebhooks.needsWebhook.mockResolvedValue(true);
+			testWebhooks.registerWebhooks.mockResolvedValue([chatTrigger.name]);
 
 			const service = new WorkflowExecutionService(
 				mock(),
@@ -1082,10 +1237,13 @@ describe('WorkflowExecutionService', () => {
 
 			const result = await service.executeManually(workflowData, runPayload, user);
 
-			expect(testWebhooks.needsWebhook).toHaveBeenCalledWith(
+			expect(testWebhooks.registerWebhooks).toHaveBeenCalledWith(
 				expect.objectContaining({ chatSessionId: 'test-session-123' }),
 			);
-			expect(result).toEqual({ waitingForWebhook: true });
+			expect(result).toEqual({
+				waitingForWebhook: true,
+				registeredTriggerNodes: [chatTrigger.name],
+			});
 		});
 	});
 
@@ -1123,6 +1281,21 @@ describe('WorkflowExecutionService', () => {
 			const node = workflowExecutionService.selectPinnedTrigger(
 				workflow,
 				hackerNewsNode.name,
+				pinData,
+			);
+
+			expect(node).toEqual(webhookNode);
+		});
+
+		it('should select the destination node when it is a pinned trigger', () => {
+			workflow.nodes.push(webhookNode, hackerNewsNode);
+			workflow.connections = {
+				...createMainConnection(hackerNewsNode.name, webhookNode.name),
+			};
+
+			const node = workflowExecutionService.selectPinnedTrigger(
+				workflow,
+				webhookNode.name,
 				pinData,
 			);
 
@@ -1239,7 +1412,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				nodeTypes,
-				mock(),
+				defaultTestWebhooks,
 				workflowRunnerMock,
 				globalConfigMock,
 				mock(),

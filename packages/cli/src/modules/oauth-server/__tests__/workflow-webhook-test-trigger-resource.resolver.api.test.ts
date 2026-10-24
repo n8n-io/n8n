@@ -72,7 +72,7 @@ const webhookNode = ({
 });
 
 /**
- * Mirrors what `TestWebhooks.needsWebhook` registers — one row per method — when
+ * Mirrors what `TestWebhooks.registerWebhooks` registers — one row per method — when
  * the user tests a webhook trigger in the editor. The workflow does not need to
  * exist in the DB: the registration is self-contained.
  */
