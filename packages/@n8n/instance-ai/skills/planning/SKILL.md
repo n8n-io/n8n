@@ -15,7 +15,8 @@ recommended_tools:
   - workflow_builder_workflows
   - search_nodes
   - get_node_types
-  - workflow_builder_credentials
+  - list_credentials
+  - search_credential_types
   - data_tables
   - parse-file
   - research
@@ -78,7 +79,7 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
 1. Decide whether the request is plan-worthy by coordination need, not by
    whether a workflow is new.
 2. Discover what materially affects the plan with normal tools:
-   `search_nodes`, `workflow_builder_credentials(action="list")`,
+   `search_nodes`, `list_credentials`,
    `data_tables(action="list")`, `parse-file`, `workflow_builder_workflows`, and `research`
    when relevant.
 

@@ -15,7 +15,9 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.agent-context.sessions': 'Checking agent sessions',
 				'instanceAi.tools.get_node_types': 'Reading node schema',
 				'instanceAi.tools.agent_builder_get_node_types': 'Reading node schema',
-				'instanceAi.tools.agent_builder_list_credentials': 'Inspecting credentials',
+				'instanceAi.tools.list_credentials': 'Inspecting credentials',
+				'instanceAi.tools.setup_credentials': 'Setting up credentials',
+				'instanceAi.tools.delete_credential': 'Deleting credential',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
 				'instanceAi.tools.workflow_builder_nodes': 'Search nodes',
 				'instanceAi.tools.workflow_builder_executions': 'Run workflow',
@@ -109,7 +111,19 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns key-round for credential tools', () => {
+		expect(getToolIcon('credentials')).toBe('key-round');
 		expect(getToolIcon('workflow_builder_credentials')).toBe('key-round');
+		expect(getToolIcon('setup_credentials')).toBe('key-round');
+	});
+
+	test.each([
+		['credentials', 'list', 'Inspecting credentials'],
+		['credentials', 'get', 'Inspecting credentials'],
+		['workflow_builder_credentials', 'setup', 'Setting up credentials'],
+		['workflow_builder_credentials', 'delete', 'Deleting credential'],
+	])('labels a former %s call with action %s as the shared tool', (toolName, action, label) => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel(toolName, { action })).toBe(label);
 	});
 
 	test('returns file-text for filesystem tools', () => {

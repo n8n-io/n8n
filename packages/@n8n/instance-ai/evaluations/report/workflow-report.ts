@@ -394,7 +394,7 @@ function plannerReview(result: WorkflowTestCaseResult): StageReview {
 
 function summarizeToolCalls(result: WorkflowTestCaseResult): string[] {
 	const toolNames = (result.buildTrace?.toolCalls ?? []).map((call) =>
-		resolveBuilderToolName(call.toolName),
+		resolveBuilderToolName(call.toolName, call.args.action),
 	);
 	const count = (toolName: string): number => toolNames.filter((name) => name === toolName).length;
 	const submitCalls = toolNames.filter(
@@ -409,12 +409,12 @@ function summarizeToolCalls(result: WorkflowTestCaseResult): string[] {
 		count(DOMAIN_TOOL_IDS.SEARCH_NODES) +
 		count(DOMAIN_TOOL_IDS.GET_NODE_TYPES) +
 		count(DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS);
+	const credentialLookupCount =
+		count(DOMAIN_TOOL_IDS.LIST_CREDENTIALS) + count(DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES);
 
 	const summaries = [
 		nodeResearchCount > 0 ? `${String(nodeResearchCount)} node-research call(s)` : '',
-		count(DOMAIN_TOOL_IDS.CREDENTIALS) > 0
-			? `${String(count(DOMAIN_TOOL_IDS.CREDENTIALS))} credential lookup call(s)`
-			: '',
+		credentialLookupCount > 0 ? `${String(credentialLookupCount)} credential lookup call(s)` : '',
 		submitCalls.length > 0 ? `${String(submitCalls.length)} workflow submission call(s)` : '',
 		verifyCalls.length > 0 ? `${String(verifyCalls.length)} builder verification call(s)` : '',
 	];
@@ -1329,7 +1329,7 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 	if (result.buildTrace) {
 		const callsNamed = (...toolNames: string[]) =>
 			result.buildTrace?.toolCalls.filter((call) =>
-				toolNames.includes(resolveBuilderToolName(call.toolName)),
+				toolNames.includes(resolveBuilderToolName(call.toolName, call.args.action)),
 			) ?? [];
 		const nodeResearchCalls = callsNamed(
 			DOMAIN_TOOL_IDS.NODES,
@@ -1343,7 +1343,13 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 			REMOVED_BUILDER_TOOL_NAMES.BUILD_WORKFLOW_WITH_AGENT,
 		);
 		const validationCalls = callsNamed(REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW);
-		const credentialCalls = callsNamed(DOMAIN_TOOL_IDS.CREDENTIALS);
+		const credentialCalls = callsNamed(
+			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
+			DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
+			DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
+			DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
+			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
+		);
 		const verificationCalls = callsNamed(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW);
 		const completionActivity = [...result.buildTrace.agentActivities]
 			.reverse()

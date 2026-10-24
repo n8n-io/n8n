@@ -337,7 +337,7 @@ Emitted only while the setup panel flag is on, through the host-wired
 snapshot on every successful save (open credential slots fanned out to their
 nodes, slots already bound to a stored credential, and nodes with unresolved
 parameters); `workflow_builder_workflows(action="setup")` publishes the same whole-workflow
-snapshot for normal setup calls; `workflow_builder_credentials(action="setup")` re-analyses
+snapshot for normal setup calls; `setup_credentials` re-analyses
 the saved workflow and merges the result, with the announced `reason`/`setupHint`
 applied, into the last snapshot. The emitter is seeded with the thread's
 persisted snapshots at run start and drops a snapshot whose content did not
@@ -349,7 +349,7 @@ existing setup cards keep their selection and resume flows. A new-account reques
 for an unconnected service stays in the panel. Choices saved during the current
 build satisfy repeated new-account flags at the final handoff.
 
-Before generating source, the agent can call `workflow_builder_credentials(action="setup")`
+Before generating source, the agent can call `setup_credentials`
 with `filePath`, `workflowName`, and known service credential types. This creates
 a temporary workflow in the bound project and persists its source-file binding.
 The tool confirms the stored checklist and returns `preBuild: true` without
@@ -637,7 +637,7 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 ```
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
-├── 🔧 workflow_builder_credentials → [slack-bot, weather-api]
+├── 🔧 credentials → [slack-bot, weather-api]
 ├── 📋 workflow_builder_create_tasks: build → verify
 ├── 🔧 agent_builder_build_agent → agent-123
 │

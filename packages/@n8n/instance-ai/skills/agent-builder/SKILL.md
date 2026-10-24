@@ -225,8 +225,8 @@ During an initial build:
   config write. Do not rename an Agent whose name already describes the
   starter draft.
 - NEVER suspend mid-build on an interactive tool (`agent_builder_ask_questions`,
-  `agent_builder_ask_credential`, `agent_builder_ask_embedding_credential`,
-  `agent_builder_configure_channel`, `workflow_builder_ask_user`). Build
+  `setup_credentials(target: "agent")`, `agent_builder_configure_channel`,
+  `workflow_builder_ask_user`). Build
   everything as a draft first. The only allowed suspend is the single trailing
   `agent_builder_finish_setup` call. Exception: when the Agent already has a
   starter draft, one `agent_builder_ask_questions` call is allowed before
@@ -337,7 +337,7 @@ earlier tool results.
 Call `agent-context({ type: "config" })` before you touch the config:
 
 - At the start of each user request.
-- After you resume from `agent_builder_ask_credential`,
+- After you resume from `setup_credentials(target: "agent")`,
   `agent_builder_ask_questions`, or an approval.
 - Before you answer any question about the current config.
 - After `agent_builder_publish_agent` or `agent_builder_unpublish_agent`,
@@ -378,7 +378,7 @@ responds. The resume value is the user's choice. Persist it exactly as
 returned. Do not relay the question yourself in prose.
 
 Once you are building, ask for each decision, choice, value, or clarification
-through one of these tools. Use `agent_builder_ask_credential` for node-tool,
+through one of these tools. Use `setup_credentials(target: "agent")` for node-tool,
 MCP-server, and fallback web-search credentials,
 `agent_builder_configure_channel` for chat-channel setup, and
 `agent_builder_ask_questions` for everything else, including the model and
@@ -390,8 +390,10 @@ overall goal.
   initial build when only pending setup remains. It shows the setup cards one
   after the other: questions, then credentials, then channels. Never call it
   together with another interactive tool.
-- `agent_builder_ask_credential`: use once per required node-tool, MCP-server,
-  or fallback web-search credential slot. Never call it during an initial
+- `setup_credentials(target: "agent")`: make one call for all required
+  node-tool, MCP-server, and fallback web-search credential slots. Pass every
+  type in one `credentials` array to show them on one card. The result `credentials` maps
+  each type to `{ id, name }`. Never call it during an initial
   build. For an addition to an existing Agent, call it before the related config
   mutation. For MCP servers, call it before verification. NEVER use it for a
   chat-channel credential.
@@ -484,9 +486,11 @@ Rules:
 - For "Anthropic via OpenRouter", pass `provider: "openrouter"`. If the user
   names a routed model, pass the routed id without another provider prefix.
 - Use `agent_builder_resolve_llm` only for the main model credential. Never
-  copy main LLM credential ids from `agent_builder_list_credentials`.
-- For Episodic Memory, load `agent-builder-memory` and use
-  `agent_builder_ask_embedding_credential`.
+  copy main LLM credential ids from a `credentials` list.
+- For Episodic Memory, load `agent-builder-memory`. Outside an initial build,
+  call `setup_credentials(target: "agent")` with `allowManaged: true` on the
+  `openAiApi` entry. During an initial build, leave Episodic Memory disabled and
+  add the credential to the `agent_builder_finish_setup` `credentialRequests`.
 - The web-search rules are in the `agent-builder-config` skill.
 
 Verify:
@@ -639,7 +643,7 @@ Verify:
 
 1. Load `agent-builder-node-tools`, then call `agent_builder_search_nodes` and
    `agent_builder_get_node_types`.
-2. `agent_builder_ask_credential` for every required slot.
+2. `setup_credentials(target: "agent")` for every required slot.
 3. `agent-context({ type: "config" })`.
 4. `agent_builder_patch_config(...)` adding the node tool to `/tools/-`. If the
    user skipped a credential, omit only that slot, keep the tool, and end with
@@ -658,9 +662,10 @@ include the credential in the trailing `agent_builder_finish_setup` call.
 3. Select one entry from `results[]`. If more than one candidate remains, ask
    with `agent_builder_ask_questions` using their titles and descriptions.
    Never choose by array order. If the user dismisses the question, stop.
-4. `agent_builder_ask_credential({ purpose: "Connect Notion MCP", credentialType: "<selected.credentialType>" })`.
+4. `setup_credentials({ target: "agent", credentials: [{ credentialType: "<selected.credentialType>", reason: "Connect Notion MCP" }] })`.
 5. Call `agent_builder_verify_mcp_server` with the connection fields from the
-   selected entry and the returned `credentialId` as `credential`.
+   selected entry and the returned `credentials["<selected.credentialType>"].id`
+   as `credential`.
 6. Confirm the verified tools cover the requested capability.
 7. `agent-context({ type: "config" })`.
 8. `agent_builder_patch_config(...)` adding a new `/mcpServers/-` entry,

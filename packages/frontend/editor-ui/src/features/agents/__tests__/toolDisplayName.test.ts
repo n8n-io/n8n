@@ -41,7 +41,7 @@ describe('formatToolNameForDisplay', () => {
 		);
 		expect(getToolNameTranslationKey('get_node_types')).toBe('instanceAi.tools.get_node_types');
 		expect(getToolNameTranslationKey('agent_builder_list_credentials')).toBe(
-			'instanceAi.tools.agent_builder_list_credentials',
+			'instanceAi.tools.list_credentials',
 		);
 		expect(getToolNameTranslationKey('list_workflows')).toBe('instanceAi.tools.list_workflows');
 		expect(getToolNameTranslationKey('list_skills')).toBe('instanceAi.tools.list_skills');

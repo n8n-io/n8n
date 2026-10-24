@@ -41,7 +41,6 @@ import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
-import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
@@ -96,7 +95,6 @@ function makeService() {
 		versionId: 'v2',
 	}));
 	const secureRuntime = mock<AgentSecureRuntime>();
-	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLiveLookupService = mock<BuilderModelLiveLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
 	const mcpRegistryService = mock<McpRegistryService>();
@@ -107,9 +105,7 @@ function makeService() {
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const nodeTypes = mock<NodeTypes>();
-	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
-	agentsToolsService.getSharedTools.mockReturnValue([]);
 	mcpRegistryService.getAll.mockResolvedValue([]);
 
 	const transport = mock<HttpTransport>();
@@ -125,7 +121,6 @@ function makeService() {
 		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
 		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
-		agentsToolsService,
 		builderModelLiveLookupService,
 		mcpRegistryService,
 		mock(),

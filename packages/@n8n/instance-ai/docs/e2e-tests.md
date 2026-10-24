@@ -136,7 +136,7 @@ real. The `IdRemapper` translates IDs in both directions.
 | `workflow_builder_workflows(action="setup")` | Configures workflow nodes |
 | `workflow_builder_nodes(action="type-definition")` | Reads the local node catalog |
 | `workflow_builder_executions(action="get")` | Reads execution results |
-| `workflow_builder_credentials` | Reads or changes credential metadata through the local n8n services |
+| Credential tools | Read or change credential metadata through the local n8n services |
 | `data_tables` | Creates real data tables |
 | `workflow_builder_ask_user` | May contain IDs in response |
 
@@ -165,10 +165,10 @@ These names skip real execution and return the recorded output with ID remapping
 | `test-credential` | Legacy standalone credential-test tool name |
 
 The current registry exposes these operations through the consolidated
-`research` and `workflow_builder_credentials` tools. Replay compares the complete registered
+`research` and credential tools. Replay compares the complete registered
 tool name, not the action. Therefore, current calls to
 `research(action="web-search")`, `research(action="fetch-url")`, and
-`workflow_builder_credentials(action="test")` use Tier 1 real execution. This is the current
+`test_credential` use Tier 1 real execution. This is the current
 implementation, even though these operations can require external services.
 
 The wrapping flow:

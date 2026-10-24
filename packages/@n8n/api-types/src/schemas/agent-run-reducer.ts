@@ -395,6 +395,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const announced = state.toolCallsById[event.payload.toolCallId];
 			if (announced) {
 				announced.args = event.payload.args;
+				announced.toolName = resolveBuilderToolName(
+					event.payload.toolName,
+					event.payload.args.action,
+				);
 				break;
 			}
 			const agent = ensureAgent(state, event.agentId);
@@ -402,7 +406,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				const tc: InstanceAiToolCallState = {
 					runId: event.runId,
 					toolCallId: event.payload.toolCallId,
-					toolName: resolveBuilderToolName(event.payload.toolName),
+					toolName: resolveBuilderToolName(event.payload.toolName, event.payload.args.action),
 					args: event.payload.args,
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),

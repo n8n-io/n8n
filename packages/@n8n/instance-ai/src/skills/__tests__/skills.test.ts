@@ -351,7 +351,8 @@ describe('Instance AI skills', () => {
 			name: 'n8n-docs-assistant',
 			recommendedTools: [
 				'n8n-docs',
-				'workflow_builder_credentials',
+				'list_credentials',
+				'search_credential_types',
 				'search_nodes',
 				'get_node_types',
 			],
@@ -392,7 +393,10 @@ describe('Instance AI skills', () => {
 			'get_node_parameter_options',
 			'execute_node',
 			'data_tables',
-			'workflow_builder_credentials',
+			'list_credentials',
+			'search_credential_types',
+			'setup_credentials',
+			'test_credential',
 			'workflow_builder_verify_built_workflow',
 			'workflow_builder_executions',
 		]);
@@ -478,7 +482,8 @@ describe('Instance AI skills', () => {
 			'workflow_builder_workflows',
 			'search_nodes',
 			'get_node_types',
-			'workflow_builder_credentials',
+			'list_credentials',
+			'search_credential_types',
 			'data_tables',
 			'parse-file',
 			'research',
@@ -649,7 +654,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('unreconstructable-context');
 		expect(loaded?.instructions).toContain('do this unprompted');
 		expect(loaded?.instructions).toContain('## Before you name a cause');
-		expect(loaded?.instructions).toContain('credentials(action="test")');
+		expect(loaded?.instructions).toContain('test_credential');
 		expect(skill?.description).toContain('a live run you started');
 	});
 });

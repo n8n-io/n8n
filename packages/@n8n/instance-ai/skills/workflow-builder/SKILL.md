@@ -29,7 +29,10 @@ recommended_tools:
   - get_node_parameter_options
   - execute_node
   - data_tables
-  - workflow_builder_credentials
+  - list_credentials
+  - search_credential_types
+  - setup_credentials
+  - test_credential
   - workflow_builder_verify_built_workflow
   - workflow_builder_executions
 ---
@@ -69,7 +72,7 @@ process below.
 
 ## Early service connections
 
-When the `workflow_builder_credentials(action="setup")` schema offers `filePath`, announce
+When the `setup_credentials` schema offers `filePath`, announce
 known service credentials immediately after the first node definitions or
 credential type search. Do this before detailed planning, SDK research, or
 source generation. Do not wait for every service to be resolved.
@@ -385,7 +388,7 @@ decision after testing.
 
 ## Credential Rules
 
-- Call `workflow_builder_credentials(action="list")` early when the task touches external
+- Call `list_credentials` early when the task touches external
   services; note each credential's `id`, `name`, and `type` (the credential
   key, e.g. `slackApi`, comes from the node type definition).
 - Use `newCredential('Credential Name', 'credential-id')` only when the user
@@ -399,7 +402,7 @@ decision after testing.
   setup would preselect their most recent one. Pass the credential type in
   `preferNewCredentials` on `workflow_builder_build_workflow` **and** on
   `workflow_builder_workflows(action="setup")` (or `preferNew: true` on the entry of
-  `workflow_builder_credentials(action="setup")`). The slot then stays unresolved through the build
+  `setup_credentials`). The slot then stays unresolved through the build
   and the card opens on credential creation, with existing credentials still
   listed in case the user changes their mind. Pass it only on an explicit request,
   never by default — reuse is the right behavior everywhere else.
@@ -411,9 +414,9 @@ decision after testing.
   that the credential (or Gateway credits) is being used.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
-- `workflow_builder_credentials(action="list")` returns connected credential instances, not all
+- `list_credentials` returns connected credential instances, not all
   supported credential types. If it has no suitable instance for a named
-  service, call `workflow_builder_credentials(action="search-types")` with the service name
+  service, call `search_credential_types` with the service name
   before choosing generic authentication. Pick in this order:
   1. A **dedicated credential type** whenever search finds one.
      For an HTTP Request node, use the most specific type for the target service
@@ -443,7 +446,7 @@ decision after testing.
      only for what a template cannot express: basic auth's base64-encoded
      pair, digest's challenge-response, OAuth flows — or when the user
      explicitly asks for a specific plain type.
-- `workflow_builder_credentials(action="list", type=...)` may include a Gateway credits entry
+- `list_credentials(type=...)` may include a Gateway credits entry
   `{ id: "__AI_GATEWAY_MANAGED__", name: "Gateway credits", type, __aiGatewayManaged: true }`
   when the type is covered by Gateway credits (see Gateway credits Preference). Treat its
   `id` like any credential id: to use Gateway credits, write
@@ -527,14 +530,14 @@ Respect the constraints it reports:
     result carries the full `aiGateway` field (minVersion, operations,
     hiddenProperties).
   - All supported credential types:
-    `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.
+    `search_credential_types(gatewayCreditsOnly=true)`.
   - Operations for a specific supported node: `get_node_types`
     → `aiGateway.operations`.
 
 **Preference rule:** When adding a new node that has no credential assigned
 yet, prefer Gateway credits over stored credentials if the credential type is
 supported — it works with no API key required and avoids spending the user's
-API quota. The synthetic entry in `workflow_builder_credentials(action="list", type=...)` (see
+API quota. The synthetic entry in `list_credentials(type=...)` (see
 Credential Rules) is your signal that a type is covered. Do not change
 credentials on nodes that already have one assigned (editing an existing
 workflow, or after the user has made a credential choice).

@@ -139,7 +139,7 @@ const suggestedAction = z.object({
 			'Get curated node recommendations by category. Call first when the workflow fits a known category. ' +
 				'The curated list is a starting point, not the full set: also add any n8n Connect covered services ' +
 				'relevant to the category (they run on Gateway credits, no API key needed). Check coverage with ' +
-				'`search_nodes(gatewayCreditsOnly=true)` or `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.',
+				'`search_nodes(gatewayCreditsOnly=true)` or `search_credential_types(gatewayCreditsOnly=true)`.',
 		),
 	categories: z
 		.array(z.string())
@@ -950,7 +950,7 @@ const getNodeParameterOptionsInputSchema = z.object({
 		.record(z.object({ id: z.string(), name: z.string() }))
 		.optional()
 		.describe(
-			'Node credentials map (e.g. returned by agent_builder_ask_credential), as an alternative to credentialType + credentialId.',
+			'Node credentials map (e.g. built from a credentials setup result), as an alternative to credentialType + credentialId.',
 		),
 	currentNodeParameters: z
 		.record(z.unknown())

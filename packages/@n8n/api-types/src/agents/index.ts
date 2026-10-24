@@ -47,9 +47,7 @@ export {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
-	askCredentialInputSchema,
 	cancellationResumeSchema,
-	type AskCredentialInput,
 	type CancellationResumeData,
 } from '../agent-builder-interactive';
 export * from './agent-interaction.schema';

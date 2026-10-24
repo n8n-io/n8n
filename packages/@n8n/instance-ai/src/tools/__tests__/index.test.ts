@@ -18,8 +18,11 @@ vi.mock('../attachments/parse-file.tool', () => ({
 }));
 
 vi.mock('../credentials.tool', () => ({
-	CREDENTIALS_TOOL_ID: 'workflow_builder_credentials',
-	createCredentialsTool: vi.fn(() => ({ id: 'workflow_builder_credentials' })),
+	createListCredentialsTool: vi.fn(() => ({ id: 'list_credentials' })),
+	createSearchCredentialTypesTool: vi.fn(() => ({ id: 'search_credential_types' })),
+	createSetupCredentialsTool: vi.fn(() => ({ id: 'setup_credentials' })),
+	createTestCredentialTool: vi.fn(() => ({ id: 'test_credential' })),
+	createDeleteCredentialTool: vi.fn(() => ({ id: 'delete_credential' })),
 }));
 
 vi.mock('../data-tables.tool', () => ({
@@ -147,7 +150,11 @@ describe('domain tool construction', () => {
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
 			workflow_builder_workflows: { id: 'workflow_builder_workflows' },
 			workflow_builder_executions: { id: 'workflow_builder_executions' },
-			workflow_builder_credentials: { id: 'workflow_builder_credentials' },
+			list_credentials: { id: 'list_credentials' },
+			search_credential_types: { id: 'search_credential_types' },
+			setup_credentials: { id: 'setup_credentials' },
+			test_credential: { id: 'test_credential' },
+			delete_credential: { id: 'delete_credential' },
 			data_tables: { id: 'data_tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },

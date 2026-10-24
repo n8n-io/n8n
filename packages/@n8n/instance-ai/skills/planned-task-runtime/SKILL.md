@@ -138,7 +138,7 @@ tell the user to open the editor, use the canvas, or click a Setup button. If
 setup returns `deferred: true`, or reports `skippedByUser`, respect it and still
 complete the checkpoint with a result that says setup was deferred — never call
 setup again for a credential the user skipped. Do not call
-`workflow_builder_credentials(action="setup")` or `workflow_builder_apply_workflow_credentials` for workflow
+`setup_credentials` or `workflow_builder_apply_workflow_credentials` for workflow
 setup. Then call `workflow_builder_complete_checkpoint(taskId, status, result)` **exactly once**
 to report the outcome (`status: "succeeded"` on pass, `"failed"` on a verification
 failure). Do not create a new plan, do not write a user-facing message — the
