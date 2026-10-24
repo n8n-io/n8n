@@ -2,12 +2,8 @@ import type { InstanceAiCredits } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { isQuotaExhaustedError } from '@n8n/instance-ai';
 
-import {
-	getUserFacingErrorMessage,
-	isMaskedStreamFailure,
-	InstanceAiService,
-	QuotaExhaustedStreamError,
-} from '../instance-ai.service';
+import { InstanceAiService, QuotaExhaustedStreamError } from '../instance-ai.service';
+import { getUserFacingErrorMessage, isMaskedStreamFailure } from '../user-facing-errors';
 
 describe('getUserFacingErrorMessage', () => {
 	it('maps a sandbox "Endpoint not allowed" failure to a clear, retryable message', () => {
