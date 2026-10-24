@@ -108,6 +108,8 @@ function startTurn(
 		emitHostEvent: vi.fn(),
 		memory: mock<SystemAgentStartTurn['memory']>(),
 		checkpointStore: mock<SystemAgentStartTurn['checkpointStore']>(),
+		sessionGrants: mock<SystemAgentStartTurn['sessionGrants']>(),
+		readAttachment: vi.fn(async () => undefined),
 		executionId: 'exec-1',
 		message: 'Build a digest',
 		attachments: [],
@@ -198,6 +200,7 @@ describe('AssistantAgentProvider', () => {
 			expect(runtime.checkpointStore).toBe(turn.checkpointStore);
 			expect(runtime.resourceId).toBe('system-chat:user-1');
 			await expect(runtime.getProjectId()).resolves.toBe('project-1');
+			expect(runtime.sessionGrants).toBe(turn.sessionGrants);
 			expect(runtime.cancelBackgroundTask).toBeUndefined();
 			expect(runtime.schedulePlannedTasks).toBeUndefined();
 
@@ -222,6 +225,36 @@ describe('AssistantAgentProvider', () => {
 				assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
 				buildMode: 'default',
 			});
+		});
+
+		it('gives the file tools the content of the turn files, and keeps the input as text', async () => {
+			const { provider, turnInput } = setup();
+			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
+			const turn = startTurn({
+				attachments: [ref, { ...ref, id: 'att-gone' }],
+				readAttachment: vi.fn(async (attachment) =>
+					attachment.id === 'att-1' ? Buffer.from('a,b') : undefined,
+				),
+			});
+
+			const handle = await provider.prepareTurn(turn);
+
+			const file = {
+				type: 'file',
+				data: Buffer.from('a,b').toString('base64'),
+				mimeType: 'text/csv',
+				fileName: 'notes.csv',
+			};
+			expect(turnInput.applyTurnScope).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ fileAttachments: [file] }),
+			);
+			expect(turnInput.buildInput).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ fileAttachments: [file] }),
+			);
+			expect(handle.input).toBe('Build a digest');
 		});
 
 		it('records the accepted input once, on the first chunk', async () => {
@@ -273,6 +306,7 @@ describe('AssistantAgentProvider', () => {
 				emitHostEvent: start.emitHostEvent,
 				memory: start.memory,
 				checkpointStore: start.checkpointStore,
+				sessionGrants: start.sessionGrants,
 				runId: 'agent-run-1',
 				toolCallId: 'tool-call-1',
 				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },

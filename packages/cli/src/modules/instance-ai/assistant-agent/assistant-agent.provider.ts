@@ -3,6 +3,7 @@ import {
 	InstanceAiConfirmRequestDto,
 	type InstanceAiAgentAttachment,
 	type InstanceAiAttachment,
+	type InstanceAiFileAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -24,6 +25,7 @@ import { nanoid } from 'nanoid';
 
 import type {
 	SystemAgentProvider,
+	SystemAgentStartTurn,
 	SystemAgentTurn,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
@@ -38,7 +40,6 @@ import { AssistantAgentFactory } from '../turn-setup/assistant-agent.factory';
 import { AssistantTurnEnvironmentFactory } from '../turn-setup/assistant-turn-environment.factory';
 import {
 	AssistantTurnInputBuilder,
-	buildTurnStreamInput,
 	type AssistantTurnInput,
 } from '../turn-setup/assistant-turn-input.builder';
 import type { AssistantTurnRuntime } from '../turn-setup/assistant-turn-runtime';
@@ -153,12 +154,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			},
 			runtime,
 		);
+		const fileAttachments = turn.type === 'start' ? await this.readFileAttachments(turn) : [];
 		this.turnInput.applyTurnScope(environment, {
 			threadId: thread.id,
 			runId,
 			message: turn.type === 'start' ? turn.message : '',
 			timeZone: request.timeZone,
-			fileAttachments: [],
+			fileAttachments,
 			isReplanFollowUp: false,
 			isPostPlanFollowUp: false,
 		});
@@ -170,7 +172,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				threadId: thread.id,
 				runId,
 				message: turn.message,
-				fileAttachments: [],
+				fileAttachments,
 				contextAttachments: contextAttachmentsOf(
 					request.attachments,
 					experimentGates.nodeContextEnabled,
@@ -192,7 +194,9 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		let inputAccepted = turnInput === undefined;
 		return {
 			agent,
-			...(turnInput ? { input: buildTurnStreamInput(turnInput) } : {}),
+			// The runtime adds the files to the model input as stored references, so the
+			// input keeps only the text. The file content is for the file tools.
+			...(turnInput ? { input: turnInput.fullMessage } : {}),
 			hostMetadata: this.hostMetadataOf(options, environment.skillScope.profile.mode),
 			runOptions: {
 				maxIterations: MAX_STEPS.ORCHESTRATOR,
@@ -234,8 +238,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	): AssistantTurnRuntime {
 		const { request } = options;
 		const lease = turn.workspace;
-		// Grants last for this turn only until the Agents grant store is reachable.
-		const sessionGrants = new Set<string>();
 		return {
 			memory: turn.memory,
 			resourceId: turn.resourceId,
@@ -251,15 +253,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				getBrowserUseAvailable: () => request.browserUseAvailable,
 				getObserverThresholdTokens: () => request.observerThresholdTokens,
 			},
-			sessionGrants: {
-				load: async () => new Set(sessionGrants),
-				grant: async (key) => {
-					sessionGrants.add(key);
-				},
-				revoke: async (key) => {
-					sessionGrants.delete(key);
-				},
-			},
+			sessionGrants: turn.sessionGrants,
 			onDomainAccessTracker: () => {},
 			readSetupItemsSnapshots: async () => [],
 			syncWorkflowTasks: async () => {},
@@ -273,6 +267,24 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					lease ? await this.workspace.getWorkspace(lease, context) : undefined,
 			},
 		};
+	}
+
+	/** The content of the turn's files, for the file tools of the turn. */
+	private async readFileAttachments(
+		turn: SystemAgentStartTurn<AssistantSandboxLease>,
+	): Promise<InstanceAiFileAttachment[]> {
+		const files: InstanceAiFileAttachment[] = [];
+		for (const ref of turn.attachments) {
+			const content = await turn.readAttachment(ref);
+			if (!content) continue;
+			files.push({
+				type: 'file',
+				data: content.toString('base64'),
+				mimeType: ref.mimeType,
+				fileName: ref.fileName,
+			});
+		}
+		return files;
 	}
 
 	private hostMetadataOf(options: AssistantTurnOptions, buildMode: string | undefined): JSONObject {
