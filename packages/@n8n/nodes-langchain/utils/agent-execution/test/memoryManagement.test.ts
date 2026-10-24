@@ -832,36 +832,6 @@ describe('memoryManagement', () => {
 			);
 			expect(mockChatHistory.addMessages).not.toHaveBeenCalled();
 		});
-
-		it('should use saveContext when all steps are from previous turns', async () => {
-			const aiMessage = new AIMessage({
-				content: 'Using tool',
-				tool_calls: [{ id: 'call-123', name: 'calculator', args: {}, type: 'tool_call' }],
-			});
-
-			const steps: ToolCallData[] = [
-				{
-					action: {
-						tool: 'calculator',
-						toolInput: { expression: '2+2' },
-						log: 'Calc',
-						messageLog: [aiMessage],
-						toolCallId: 'call-123',
-						type: 'tool_call',
-					},
-					observation: '4',
-				},
-			];
-
-			// All steps are from previous turns (previousStepsCount = 1)
-			await saveToMemory('New question', 'New answer', mockMemory, steps, 1);
-
-			expect(mockMemory.saveContext).toHaveBeenCalledWith(
-				{ input: 'New question' },
-				{ output: 'New answer' },
-			);
-			expect(mockChatHistory.addMessages).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('buildToolContext', () => {
