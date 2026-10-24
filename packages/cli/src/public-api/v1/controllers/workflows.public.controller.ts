@@ -870,9 +870,11 @@ export class WorkflowsPublicController {
 		@Query query: ListDependenciesQueryDto,
 	): Promise<DependencyListPublicDto> {
 		const pagination = resolveOffsetPagination(query);
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:read',
-		]);
+		const workflow = await this.workflowFinderService.findWorkflowHeadForUser(
+			workflowId,
+			req.user,
+			['workflow:read'],
+		);
 		if (!workflow) {
 			throw new NotFoundError('Not Found');
 		}
