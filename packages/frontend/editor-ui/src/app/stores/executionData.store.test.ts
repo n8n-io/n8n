@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
-import { nextTick } from 'vue';
-import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { isProxy, nextTick, watch } from 'vue';
+import {
+	NodeConnectionTypes,
+	SEND_AND_WAIT_OPERATION,
+	WAIT_INDEFINITELY,
+	createRunExecutionData,
+} from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import {
 	useExecutionDataStore,
@@ -16,10 +21,19 @@ import {
 } from '@/app/constants';
 import {
 	createTestNode,
+	createTestTaskData,
 	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+
+function deepFreeze<T>(value: T): T {
+	if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+		Object.freeze(value);
+		for (const child of Object.values(value)) deepFreeze(child);
+	}
+	return value;
+}
 
 function createTestExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
 	return createTestWorkflowExecutionResponse({
@@ -616,9 +630,9 @@ describe('executionData.store', () => {
 	});
 
 	describe('mutation commit channels', () => {
-		// Every in-place runData mutation must commit through three channels
-		// (timestamp bump, top-level identity replacement, change event) —
-		// see commitExecutionMutation in the store. Fake timers make Date.now()
+		// Every mutation must commit through three channels (new identities
+		// along the changed path, timestamp bump, change event) — see
+		// commitExecutionMutation in the store. Fake timers make Date.now()
 		// deterministic so a bump is distinguishable from a same-millisecond
 		// no-op.
 		beforeEach(() => {
@@ -638,6 +652,7 @@ describe('executionData.store', () => {
 						resultData: {
 							runData: {
 								NodeA: [{ executionIndex: 0, executionStatus: 'running', source: [] } as never],
+								NodeB: [{ executionIndex: 1, executionStatus: 'success', source: [] } as never],
 							},
 						},
 					} as never,
@@ -666,18 +681,22 @@ describe('executionData.store', () => {
 			mutate: (store: ExecutionDataStore) => void;
 			action: 'update' | 'delete';
 			nodeName?: string;
+			// The node whose task array the mutation replaces.
+			changedNode?: string;
 		}> = [
 			{
 				name: 'updateNodeExecutionStatus',
 				mutate: (store) => store.updateNodeExecutionStatus(createNodeExecuteAfterDataPayload()),
 				action: 'update',
 				nodeName: 'NodeA',
+				changedNode: 'NodeA',
 			},
 			{
 				name: 'updateNodeExecutionRunData',
 				mutate: (store) => store.updateNodeExecutionRunData(createNodeExecuteAfterDataPayload()),
 				action: 'update',
 				nodeName: 'NodeA',
+				changedNode: 'NodeA',
 			},
 			{
 				name: 'clearNodeExecutionData',
@@ -687,7 +706,7 @@ describe('executionData.store', () => {
 			},
 			{
 				name: 'renameExecutionDataNode',
-				mutate: (store) => store.renameExecutionDataNode('NodeA', 'NodeB'),
+				mutate: (store) => store.renameExecutionDataNode('NodeA', 'NodeC'),
 				action: 'update',
 			},
 			{
@@ -699,6 +718,7 @@ describe('executionData.store', () => {
 						stoppedAt: new Date(1),
 					}),
 				action: 'update',
+				changedNode: 'NodeA',
 			},
 		];
 
@@ -723,6 +743,29 @@ describe('executionData.store', () => {
 			expect(store.execution).not.toBeNull();
 			expect(store.execution).not.toBe(before);
 		});
+
+		it.each(mutations)(
+			'$name replaces the changed path and keeps the identity of untouched nodes',
+			({ mutate, changedNode }) => {
+				const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+				seedExecution(store);
+				const before = store.execution;
+				const beforeRunData = before?.data?.resultData.runData;
+
+				mutate(store);
+
+				const after = store.execution;
+				expect(after?.data).not.toBe(before?.data);
+				expect(after?.data?.resultData).not.toBe(before?.data?.resultData);
+				expect(after?.data?.resultData.runData).not.toBe(beforeRunData);
+				if (changedNode) {
+					expect(after?.data?.resultData.runData[changedNode]).not.toBe(
+						beforeRunData?.[changedNode],
+					);
+				}
+				expect(after?.data?.resultData.runData.NodeB).toBe(beforeRunData?.NodeB);
+			},
+		);
 
 		it.each(mutations)('$name fires exactly one change event', ({ mutate, action, nodeName }) => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
@@ -775,6 +818,327 @@ describe('executionData.store', () => {
 			expect(spy).not.toHaveBeenCalled();
 			expect(store.executionResultDataLastUpdate).toBe(beforeTimestamp);
 			expect(store.execution).toBe(beforeExecution);
+		});
+	});
+
+	describe('copy-on-write', () => {
+		type ExecutionDataStore = ReturnType<typeof useExecutionDataStore>;
+
+		const nodeA = createTestNode({ id: 'node-a', name: 'NodeA' });
+		const nodeB = createTestNode({ id: 'node-b', name: 'NodeB' });
+
+		function createSeedExecution(overrides: Partial<IExecutionResponse> = {}) {
+			return createTestExecution({
+				executedNode: 'NodeA',
+				workflowData: createTestWorkflow({
+					nodes: [nodeA, nodeB],
+					connections: {
+						NodeA: { main: [[{ node: 'NodeB', type: 'main', index: 0 }]] },
+						NodeB: { main: [[{ node: 'NodeA', type: 'main', index: 0 }]] },
+					},
+					pinData: { NodeA: [{ json: { pinned: true } }] },
+				}),
+				data: createRunExecutionData({
+					resultData: {
+						lastNodeExecuted: 'NodeA',
+						runData: {
+							NodeA: [
+								createTestTaskData({ executionIndex: 0, executionStatus: 'success' }),
+								createTestTaskData({ executionIndex: 1, executionStatus: 'running' }),
+							],
+							NodeB: [
+								createTestTaskData({
+									executionIndex: 2,
+									executionStatus: 'success',
+									source: [{ previousNode: 'NodeA' }],
+								}),
+							],
+						},
+						pinData: {
+							NodeA: [
+								{
+									json: {},
+									pairedItem: { item: 0, sourceOverwrite: { previousNode: 'NodeA' } },
+								},
+							],
+						},
+					},
+				}),
+				...overrides,
+			});
+		}
+
+		function createPayload(
+			nodeName: string,
+			data: Partial<ReturnType<typeof createTestTaskData>> = {},
+		) {
+			return {
+				executionId: 'exec-1',
+				nodeName,
+				data: createTestTaskData({ executionIndex: 1, executionStatus: 'success', ...data }),
+				itemCountByConnectionType: {},
+			} as never;
+		}
+
+		const cases: Array<{
+			name: string;
+			execution?: () => IExecutionResponse;
+			mutate: (store: ExecutionDataStore) => void;
+			verify: (store: ExecutionDataStore) => void;
+		}> = [
+			{
+				name: 'updateNodeExecutionStatus adds a new node',
+				mutate: (store) => store.updateNodeExecutionStatus(deepFreeze(createPayload('NodeD'))),
+				verify: (store) => {
+					expect(store.executionRunData?.NodeD).toHaveLength(1);
+					expect(store.execution?.data?.resultData.lastNodeExecuted).toBe('NodeD');
+				},
+			},
+			{
+				name: 'updateNodeExecutionStatus replaces a running task',
+				mutate: (store) => store.updateNodeExecutionStatus(deepFreeze(createPayload('NodeA'))),
+				verify: (store) => {
+					expect(store.executionRunData?.NodeA).toHaveLength(2);
+					expect(store.executionRunData?.NodeA[1].executionStatus).toBe('success');
+				},
+			},
+			{
+				name: 'updateNodeExecutionStatus appends a task',
+				mutate: (store) =>
+					store.updateNodeExecutionStatus(
+						deepFreeze(createPayload('NodeB', { executionIndex: 3 })),
+					),
+				verify: (store) => {
+					expect(store.executionRunData?.NodeB).toHaveLength(2);
+					expect(store.executionRunData?.NodeB[1].executionIndex).toBe(3);
+				},
+			},
+			{
+				name: 'updateNodeExecutionStatus appends a waiting task',
+				mutate: (store) =>
+					store.updateNodeExecutionStatus(
+						deepFreeze(createPayload('NodeA', { executionIndex: 4, executionStatus: 'waiting' })),
+					),
+				verify: (store) => {
+					expect(store.executionRunData?.NodeA).toHaveLength(3);
+					expect(store.executionRunData?.NodeA[2].executionStatus).toBe('waiting');
+				},
+			},
+			{
+				name: 'updateNodeExecutionStatus synthesizes provisional redaction',
+				mutate: (store) =>
+					store.updateNodeExecutionStatus(
+						deepFreeze(
+							createPayload('NodeA', {
+								data: {
+									main: [
+										[{ json: {}, redaction: { redacted: true, reason: 'dynamic_credentials' } }],
+									],
+								} as never,
+							}),
+						),
+					),
+				verify: (store) => {
+					expect(store.execution?.data?.redactionInfo).toEqual({
+						isRedacted: true,
+						reason: 'dynamic_credentials',
+						canReveal: false,
+						provisional: true,
+					});
+				},
+			},
+			{
+				name: 'updateNodeExecutionRunData',
+				mutate: (store) =>
+					store.updateNodeExecutionRunData(
+						deepFreeze(createPayload('NodeA', { executionStatus: 'error' })),
+					),
+				verify: (store) => {
+					expect(store.executionRunData?.NodeA[1].executionStatus).toBe('error');
+				},
+			},
+			{
+				name: 'clearNodeExecutionData',
+				mutate: (store) => store.clearNodeExecutionData('NodeA'),
+				verify: (store) => {
+					expect(store.executionRunData?.NodeA).toBeUndefined();
+					expect(store.executionRunData?.NodeB).toHaveLength(1);
+				},
+			},
+			{
+				name: 'renameExecutionDataNode',
+				mutate: (store) => store.renameExecutionDataNode('NodeA', 'NodeC'),
+				verify: (store) => {
+					const execution = store.execution;
+					const resultData = execution?.data?.resultData;
+					expect(Object.keys(resultData?.runData ?? {}).sort()).toEqual(['NodeB', 'NodeC']);
+					expect(resultData?.runData.NodeB[0].source[0]?.previousNode).toBe('NodeC');
+					expect(Object.keys(resultData?.pinData ?? {})).toEqual(['NodeC']);
+					expect(resultData?.pinData?.NodeC[0].pairedItem).toEqual({
+						item: 0,
+						sourceOverwrite: { previousNode: 'NodeC' },
+					});
+					expect(execution?.workflowData.nodes.map((node) => node.name)).toEqual([
+						'NodeC',
+						'NodeB',
+					]);
+					expect(Object.keys(execution?.workflowData.connections ?? {}).sort()).toEqual([
+						'NodeB',
+						'NodeC',
+					]);
+					expect(execution?.workflowData.connections.NodeB.main[0]?.[0].node).toBe('NodeC');
+					expect(Object.keys(execution?.workflowData.pinData ?? {})).toEqual(['NodeC']);
+					expect(execution?.executedNode).toBe('NodeC');
+				},
+			},
+			{
+				name: 'markAsStopped',
+				mutate: (store) =>
+					store.markAsStopped({
+						status: 'canceled',
+						startedAt: new Date(0),
+						stoppedAt: new Date(1),
+					}),
+				verify: (store) => {
+					expect(store.executionRunData?.NodeA).toHaveLength(1);
+					expect(store.executionRunData?.NodeA[0].executionStatus).toBe('success');
+					expect(store.execution?.status).toBe('canceled');
+					expect(store.execution?.stoppedAt).toEqual(new Date(1));
+				},
+			},
+		];
+
+		it.each(cases)('$name never writes into a frozen execution', ({ mutate, verify }) => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			store.setExecution(deepFreeze(createSeedExecution()));
+
+			expect(() => mutate(store)).not.toThrow();
+			verify(store);
+		});
+
+		it.each(cases)('$name leaves no Vue proxy in the payload', ({ mutate }) => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			store.setExecution(createSeedExecution());
+
+			mutate(store);
+
+			expect(isProxy(store.execution)).toBe(false);
+			expect(isProxy(store.execution?.data?.resultData.runData)).toBe(false);
+			expect(isProxy(store.executionRunData)).toBe(false);
+			expect(isProxy(store.executionRunData?.NodeB)).toBe(false);
+		});
+
+		it('setExecution leaves no Vue proxy in the payload', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const execution = createSeedExecution();
+
+			store.setExecution(execution);
+
+			expect(store.execution).toBe(execution);
+			expect(isProxy(store.execution)).toBe(false);
+			expect(isProxy(store.execution?.data?.resultData.runData)).toBe(false);
+			expect(isProxy(store.executionRunData)).toBe(false);
+			expect(isProxy(store.executionRunData?.NodeA)).toBe(false);
+		});
+
+		it('setExecution strips the waiting task without changing the frozen input', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			const execution = createSeedExecution();
+			execution.data = createRunExecutionData({
+				...execution.data,
+				waitTill: new Date(),
+			});
+			deepFreeze(execution);
+
+			expect(() => store.setExecution(execution)).not.toThrow();
+
+			expect(store.executionRunData?.NodeA).toBeUndefined();
+			expect(store.executionRunData?.NodeB).toHaveLength(1);
+			expect(execution.data?.resultData.runData.NodeA).toHaveLength(2);
+		});
+
+		describe('notifies consumers during a live run', () => {
+			const pushes: Array<{
+				name: string;
+				mutate: (store: ExecutionDataStore, payload: never) => void;
+			}> = [
+				{
+					name: 'updateNodeExecutionStatus',
+					mutate: (store, payload) => store.updateNodeExecutionStatus(payload),
+				},
+				{
+					name: 'updateNodeExecutionRunData',
+					mutate: (store, payload) => store.updateNodeExecutionRunData(payload),
+				},
+			];
+
+			it.each(pushes)('$name fires sync watchers with the new value', ({ mutate }) => {
+				const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+				store.setExecution(createSeedExecution());
+
+				const runDataSpy = vi.fn();
+				const nodeARunDataSpy = vi.fn();
+				const nodeBRunDataSpy = vi.fn();
+				const statusSpy = vi.fn();
+				const issuesSpy = vi.fn();
+				watch(() => store.executionRunData, runDataSpy, { flush: 'sync' });
+				watch(() => store.executionRunDataByNodeId.get('node-a')?.value, nodeARunDataSpy, {
+					flush: 'sync',
+				});
+				watch(() => store.executionRunDataByNodeId.get('node-b')?.value, nodeBRunDataSpy, {
+					flush: 'sync',
+				});
+				watch(() => store.executionStatusByNodeId.get('node-a')?.value, statusSpy, {
+					flush: 'sync',
+				});
+				watch(() => store.executionIssuesByNodeName.get('NodeA')?.value, issuesSpy, {
+					flush: 'sync',
+				});
+
+				// A different status and error, so the structural gates see a change.
+				mutate(
+					store,
+					createPayload('NodeA', { executionStatus: 'error', error: { message: 'boom' } as never }),
+				);
+
+				expect(runDataSpy).toHaveBeenCalledTimes(1);
+				expect(runDataSpy.mock.calls[0][0]).toBe(store.executionRunData);
+				expect(nodeARunDataSpy).toHaveBeenCalledTimes(1);
+				expect(nodeARunDataSpy.mock.calls[0][0]).toBe(store.executionRunData?.NodeA);
+				expect(statusSpy).toHaveBeenCalledTimes(1);
+				expect(statusSpy.mock.calls[0][0]).toBe('error');
+				expect(issuesSpy).toHaveBeenCalledTimes(1);
+				expect(issuesSpy.mock.calls[0][0]).toEqual(['boom']);
+				expect(nodeBRunDataSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		it('does not write into run data that a previous execution shares', () => {
+			const previous = useExecutionDataStore(createExecutionDataId('exec-previous'));
+			previous.setExecution(createSeedExecution({ id: 'exec-previous' }));
+			const sharedRunData = previous.execution?.data?.resultData.runData;
+			const sharedNodeA = sharedRunData?.NodeA;
+			const sharedNodeB = sharedRunData?.NodeB;
+			const expected = structuredClone(sharedRunData);
+
+			// A partial run starts with the previous execution's runData object.
+			const next = useExecutionDataStore(createExecutionDataId('exec-1'));
+			next.setExecution(
+				createSeedExecution({
+					data: createRunExecutionData({ resultData: { runData: sharedRunData } }),
+				}),
+			);
+
+			next.markAsStopped({ status: 'canceled', startedAt: new Date(0), stoppedAt: new Date(1) });
+			next.renameExecutionDataNode('NodeA', 'NodeC');
+
+			expect(next.executionRunData?.NodeC).toHaveLength(1);
+			const runData = previous.execution?.data?.resultData.runData;
+			expect(runData).toBe(sharedRunData);
+			expect(Object.keys(runData ?? {})).toEqual(['NodeA', 'NodeB']);
+			expect(runData?.NodeA).toBe(sharedNodeA);
+			expect(runData?.NodeB).toBe(sharedNodeB);
+			expect(runData).toEqual(expected);
 		});
 	});
 

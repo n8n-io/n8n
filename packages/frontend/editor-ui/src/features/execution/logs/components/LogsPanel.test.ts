@@ -389,9 +389,13 @@ describe('LogsPanel', () => {
 		expect(rendered.getByText(/Running/)).toBeInTheDocument();
 		expect(rendered.queryByText('AI Agent')).not.toBeInTheDocument();
 
-		useExecutionDataStore(
-			createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
-		).addNodeExecutionStartedData({
+		// The run gets its id before node pushes arrive, as in the executionStarted handler.
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		executionStateStore.promotePendingExecution('567');
+
+		useExecutionDataStore(createExecutionDataId('567')).addNodeExecutionStartedData({
 			nodeName: 'AI Agent',
 			sequenceNumber: 0,
 			executionId: '567',
@@ -410,9 +414,7 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('AI Agent')).toBeInTheDocument();
 		expect(lastTreeItem.getByText(/Running/)).toBeInTheDocument();
 
-		useExecutionDataStore(
-			createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
-		).updateNodeExecutionStatus({
+		useExecutionDataStore(createExecutionDataId('567')).updateNodeExecutionStatus({
 			nodeName: 'AI Agent',
 			executionId: '567',
 			itemCountByConnectionType: { ai_agent: [1] },
@@ -431,10 +433,9 @@ describe('LogsPanel', () => {
 		expect(await lastTreeItem.findByText('Success')).toBeInTheDocument();
 		expect(lastTreeItem.getByText('in 33ms')).toBeInTheDocument();
 
+		executionStateStore.setActiveExecutionId(undefined);
 		setExecutionData({
-			...useExecutionDataStore(
-				createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
-			).getExecutionSnapshot()!,
+			...useExecutionDataStore(createExecutionDataId('567')).getExecutionSnapshot()!,
 			id: '1234',
 			status: 'success',
 			finished: true,
