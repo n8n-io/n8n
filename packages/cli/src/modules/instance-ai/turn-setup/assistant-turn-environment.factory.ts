@@ -54,7 +54,6 @@ import {
 	InstanceAiAdapterService,
 	type InstanceAiFeatureFlags,
 } from '../instance-ai.adapter.service';
-import { DbIterationLogStorage } from '../storage/db-iteration-log-storage';
 import type { AssistantTurnMemory, AssistantTurnRuntime } from './assistant-turn-runtime';
 import {
 	assistantCreditsExhaustedError,
@@ -85,7 +84,6 @@ export interface AssistantTurnEnvironment {
 	context: InstanceAiContext;
 	memory: AssistantTurnMemory;
 	taskStorage: ThreadTaskStorage;
-	iterationLog: DbIterationLogStorage;
 	workflowTasks: WorkflowTaskService;
 	modelId: ModelConfig;
 	memoryModelId: ModelConfig | undefined;
@@ -146,7 +144,6 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly aiService: AiService,
-		private readonly dbIterationLogStorage: DbIterationLogStorage,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly telemetry: Telemetry,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
@@ -430,7 +427,6 @@ export class AssistantTurnEnvironmentFactory {
 		});
 
 		const taskStorage = new ThreadTaskStorage(memory);
-		const iterationLog = this.dbIterationLogStorage;
 		const workflowLoopStorage = new WorkflowLoopStorage(memory);
 		const workflowTaskCoordinator = new WorkflowTaskCoordinator(threadId, workflowLoopStorage);
 		const workflowTasks = runtime.syncWorkflowTasks
@@ -553,7 +549,6 @@ export class AssistantTurnEnvironmentFactory {
 			cancelBackgroundTask: runtime.cancelBackgroundTask,
 			touchRun: runtime.touchRun,
 			touchBackgroundTask: runtime.touchBackgroundTask,
-			iterationLog,
 			sendCorrectionToTask: runtime.sendCorrectionToTask,
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
@@ -566,7 +561,6 @@ export class AssistantTurnEnvironmentFactory {
 			context,
 			memory,
 			taskStorage,
-			iterationLog,
 			workflowTasks,
 			modelId,
 			memoryModelId,

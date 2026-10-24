@@ -153,9 +153,6 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity.js');
 		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity.js');
 		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity.js');
-		const { InstanceAiIterationLog } = await import(
-			'./entities/instance-ai-iteration-log.entity.js'
-		);
 		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity.js');
 		const { InstanceAiPendingConfirmation } = await import(
 			'./entities/instance-ai-pending-confirmation.entity.js'
@@ -204,7 +201,6 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiThread,
 			InstanceAiMessage,
 			InstanceAiResource,
-			InstanceAiIterationLog,
 			InstanceAiCheckpoint,
 			InstanceAiPendingConfirmation,
 			InstanceAiObservation,
