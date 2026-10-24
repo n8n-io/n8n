@@ -1354,6 +1354,7 @@ describe('CredentialsService', () => {
 				storedCredential.id,
 				ownerUser,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
@@ -2415,7 +2416,7 @@ describe('CredentialsService', () => {
 				payload.id,
 				ownerUser,
 				['credential:read'],
-				{ includeInstanceCredentials: true },
+				{ includeInstanceCredentials: true, excludeSeeOnlyRoles: true },
 			);
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 			expect(service.unredact).toHaveBeenCalledWith(payload.data, decryptedData, []);
@@ -5273,6 +5274,7 @@ describe('CredentialsService', () => {
 				'cred-id',
 				memberUser,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 
