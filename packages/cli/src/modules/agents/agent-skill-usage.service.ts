@@ -1,4 +1,4 @@
-import type { SkillUsage } from '@n8n/api-types';
+import type { SkillAgentOption, SkillUsage } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
@@ -162,6 +162,21 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 
 	async findUsingAgentIds(skillId: string, ctx: OperationContext) {
 		return await this.agentSkillRepository.findUsingAgentIds(skillId, ctx);
+	}
+
+	async findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext) {
+		return await this.agentSkillRepository.findSkillIdsUsedByAgent(agentId, ctx);
+	}
+
+	async findAgentSummaries(
+		projectIds: string[] | null,
+		filter: { search?: string; limit: number },
+	): Promise<SkillAgentOption[]> {
+		const agents = await this.agentRepository.findSummariesByProjectIds(projectIds, {
+			query: filter.search,
+			limit: filter.limit,
+		});
+		return agents.map(({ id, name }) => ({ id, name }));
 	}
 
 	async assertRenameKeepsNamesApart(

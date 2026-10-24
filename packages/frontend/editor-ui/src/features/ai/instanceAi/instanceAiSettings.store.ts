@@ -114,6 +114,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				? (prev?.sandboxUnavailableReason ?? null)
 				: null,
 			runDebugEnabled: prev?.runDebugEnabled ?? false,
+			workflowSuggestionsEnabled: prev?.workflowSuggestionsEnabled ?? false,
 		};
 		settingsStore.moduleSettings = {
 			...ms,

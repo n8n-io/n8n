@@ -133,8 +133,11 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.scheduled_task](public.scheduled_task.md) | 19 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
-| [public.self_healing_investigation](public.self_healing_investigation.md) | 12 |  | BASE TABLE |
-| [public.self_healing_result](public.self_healing_result.md) | 15 |  | BASE TABLE |
+| [public.self_healing_configuration](public.self_healing_configuration.md) | 7 |  | BASE TABLE |
+| [public.self_healing_configuration_reviewer](public.self_healing_configuration_reviewer.md) | 2 |  | BASE TABLE |
+| [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) | 3 |  | BASE TABLE |
+| [public.self_healing_investigation](public.self_healing_investigation.md) | 13 |  | BASE TABLE |
+| [public.self_healing_result](public.self_healing_result.md) | 16 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
@@ -152,7 +155,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.type_availability_policy](public.type_availability_policy.md) | 7 |  | BASE TABLE |
 | [public.type_availability_policy_attachment](public.type_availability_policy_attachment.md) | 6 |  | BASE TABLE |
 | [public.type_availability_policy_scope](public.type_availability_policy_scope.md) | 8 |  | BASE TABLE |
-| [public.user](public.user.md) | 15 |  | BASE TABLE |
+| [public.user](public.user.md) | 16 |  | BASE TABLE |
 | [public.user_api_keys](public.user_api_keys.md) | 9 |  | BASE TABLE |
 | [public.user_favorites](public.user_favorites.md) | 4 |  | BASE TABLE |
 | [public.variables](public.variables.md) | 5 |  | BASE TABLE |
@@ -390,15 +393,24 @@ erDiagram
 "public.role_scope" }o--|| "public.scope" : "FOREIGN KEY (#quot;scopeSlug#quot;) REFERENCES scope(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.role_scope" }o--|| "public.role" : "FOREIGN KEY (#quot;roleSlug#quot;) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
+"public.self_healing_configuration" }o--o| "public.user" : "FOREIGN KEY (#quot;enabledById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.self_healing_configuration" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.self_healing_configuration_reviewer" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.self_healing_configuration_reviewer" }o--|| "public.self_healing_configuration" : "FOREIGN KEY (#quot;configurationId#quot;) REFERENCES self_healing_configuration(id) ON DELETE CASCADE"
+"public.self_healing_configuration_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.self_healing_configuration_workflow" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.self_healing_configuration_workflow" }o--|| "public.self_healing_configuration" : "FOREIGN KEY (#quot;configurationId#quot;) REFERENCES self_healing_configuration(id) ON DELETE CASCADE"
 "public.self_healing_investigation" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.self_healing_investigation" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.self_healing_investigation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.self_healing_investigation" }o--o| "public.self_healing_result" : "FOREIGN KEY (#quot;resultId#quot;) REFERENCES self_healing_result(id) ON DELETE CASCADE"
+"public.self_healing_investigation" }o--|| "public.self_healing_configuration" : "FOREIGN KEY (#quot;configurationId#quot;) REFERENCES self_healing_configuration(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--o| "public.user" : "FOREIGN KEY (#quot;dismissedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.self_healing_result" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.self_healing_result" }o--o| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
+"public.self_healing_result" }o--|| "public.self_healing_configuration" : "FOREIGN KEY (#quot;configurationId#quot;) REFERENCES self_healing_configuration(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialsId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -1546,7 +1558,7 @@ erDiagram
   integer consecutiveErrors
   timestamp_3__with_time_zone createdAt
   json cursor
-  varchar_36_ nodeId
+  varchar_64_ nodeId
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
 }
@@ -1681,7 +1693,7 @@ erDiagram
   timestamp_3__with_time_zone nextRunAt
   timestamp_3__with_time_zone orphanedAt
   varchar_255_ ownerId
-  varchar_36_ ownerMemberId
+  varchar_64_ ownerMemberId
   varchar_32_ ownerType
   json payload
   integer recurrenceSize
@@ -1726,14 +1738,33 @@ erDiagram
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
+"public.self_healing_configuration" {
+  timestamp_3__with_time_zone createdAt
+  boolean enabled
+  uuid enabledById FK
+  integer id
+  varchar_36_ projectId FK
+  varchar_16_ scope
+  timestamp_3__with_time_zone updatedAt
+}
+"public.self_healing_configuration_reviewer" {
+  integer configurationId FK
+  uuid userId FK
+}
+"public.self_healing_configuration_workflow" {
+  integer configurationId FK
+  varchar_36_ projectId FK
+  varchar_36_ workflowId FK
+}
 "public.self_healing_investigation" {
   uuid backgroundUserId FK
-  json baseline
+  integer configurationId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   uuid runId
   uuid threadId
@@ -1743,6 +1774,7 @@ erDiagram
 "public.self_healing_result" {
   uuid backgroundUserId FK
   timestamp_3__with_time_zone completedAt
+  integer configurationId FK
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone dismissedAt
   uuid dismissedById FK
@@ -1927,6 +1959,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -2046,7 +2079,7 @@ erDiagram
 "public.workflow_publication_trigger_status" {
   timestamp_3__with_time_zone createdAt
   text errorMessage
-  varchar_36_ nodeId
+  varchar_64_ nodeId
   varchar_20_ status
   varchar_20_ triggerKind
   timestamp_3__with_time_zone updatedAt

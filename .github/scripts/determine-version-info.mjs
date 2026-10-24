@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import {
 	RELEASE_TRACKS,
+	RELEASE_PREFIX,
+	listRemoteTagsWithCommits,
 	resolveReleaseTagForTrack,
 	tagVersionInfoToReleaseCandidateBranchName,
 	writeGithubOutput,
@@ -9,10 +11,44 @@ import semver from 'semver';
 
 /**
  * @param {any} packageVersion
+ * @param {{ prerelease?: boolean }} [options]
  */
-export function determineTrack(packageVersion) {
+export function determineTrack(packageVersion, { prerelease = false } = {}) {
 	if (!semver.valid(packageVersion)) {
 		throw new Error(`Package semver not valid. Got ${packageVersion}`);
+	}
+
+	let bump = determineBump(packageVersion);
+	const releaseType = determineReleaseType(packageVersion);
+
+	if (prerelease) {
+		if (semver.major(packageVersion) !== 3 || semver.prerelease(packageVersion) !== null) {
+			throw new Error(`Standalone prereleases require a bare v3 version. Got ${packageVersion}`);
+		}
+
+		const previousVersion = determinePreviousRelease(packageVersion);
+		const output = {
+			previous_version: previousVersion,
+			version: packageVersion,
+			track: 'rc',
+			bump,
+			new_stable_version: null,
+			release_type: 'rc',
+			rc_branch: tagVersionInfoToReleaseCandidateBranchName({
+				version: packageVersion,
+				tag: /** @type {import('./github-helpers.mjs').ReleaseVersion} */ (`n8n@${packageVersion}`),
+			}),
+			prerelease: true,
+		};
+
+		writeGithubOutput(output);
+		console.log(
+			`Determined prerelease info: ${Object.entries(output)
+				.map(([key, val]) => `${key}=${val}`)
+				.join(', ')}`,
+		);
+
+		return output;
 	}
 
 	/** @type { Partial<Record<import('./github-helpers.mjs').ReleaseTrack, import('./github-helpers.mjs').TagVersionInfo>> } */
@@ -25,8 +61,6 @@ export function determineTrack(packageVersion) {
 
 	let track = null;
 	let newStable = null;
-	let bump = determineBump(packageVersion);
-	const releaseType = determineReleaseType(packageVersion);
 
 	// Check through our current release versions, if semver matches,
 	// we inherit the track pointer from them
@@ -70,6 +104,7 @@ export function determineTrack(packageVersion) {
 		new_stable_version: newStable,
 		release_type: releaseType,
 		rc_branch,
+		prerelease: false,
 	};
 
 	writeGithubOutput(output);
@@ -80,6 +115,20 @@ export function determineTrack(packageVersion) {
 	);
 
 	return output;
+}
+
+function determinePreviousRelease(packageVersion) {
+	const versions = [...listRemoteTagsWithCommits().keys()]
+		.filter((tag) => tag.startsWith(RELEASE_PREFIX))
+		.map((tag) => tag.slice(RELEASE_PREFIX.length))
+		.filter((version) => semver.valid(version) && semver.lt(version, packageVersion))
+		.sort(semver.rcompare);
+
+	if (!versions[0]) {
+		throw new Error(`Could not find a release before ${packageVersion}`);
+	}
+
+	return versions[0];
 }
 
 /**
@@ -137,5 +186,5 @@ function determineBump(currentVersion) {
 // only run when executed directly, not when imported by tests
 if (import.meta.url === `file://${process.argv[1]}`) {
 	const packageJson = JSON.parse(readFileSync('./package.json', 'utf8'));
-	determineTrack(packageJson.version);
+	determineTrack(packageJson.version, { prerelease: process.env.PRERELEASE === 'true' });
 }
