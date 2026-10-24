@@ -72,7 +72,7 @@ describe('TriggerPanel.vue', () => {
 	}
 
 	it('renders default state', () => {
-		const { getByTestId } = renderComponent(TriggerPanel, {
+		const { getByTestId, getByRole } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
 			global: {
 				provide: {
@@ -80,8 +80,7 @@ describe('TriggerPanel.vue', () => {
 				},
 			},
 		});
-		expect(getByTestId('trigger-header')).toBeInTheDocument();
-		expect(getByTestId('trigger-header')).toHaveTextContent('Pull in events from Webhook');
+		expect(getByRole('heading', { name: 'Pull in events from Webhook' })).toBeInTheDocument();
 		expect(getByTestId('trigger-execute-button')).toBeInTheDocument();
 	});
 

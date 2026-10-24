@@ -24,7 +24,7 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nSegmentControl, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
-import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import { WEBHOOK_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 // Types
@@ -130,6 +130,8 @@ const {
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
 });
+
+const isWebhookNode = computed(() => node.value?.type === WEBHOOK_NODE_TYPE);
 
 const noOutputActionLabel = computed(() =>
 	i18n.baseText(
@@ -372,6 +374,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							: 'ndv.output.noOutputData.notRun.title',
 					)
 				"
+				:align-action="isWebhookNode"
 				has-compact-action
 			>
 				<template v-if="isTriggerNode" #icon>
@@ -419,12 +422,20 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							telemetry-source="inputs"
 							@execute="emit('execute')"
 						/>
-						<br />
-						{{ i18n.baseText('generic.or') }}
-						<N8nText tag="a" size="medium" color="primary" @click="insertTestData">
-							{{ i18n.baseText('ndv.output.insertTestData') }}
-						</N8nText>
+						<br v-if="!isWebhookNode" />
+						<template v-if="!isWebhookNode">
+							{{ i18n.baseText('generic.or') }}
+							<N8nText tag="a" size="medium" color="primary" @click="insertTestData">
+								{{ i18n.baseText('ndv.output.insertTestData') }}
+							</N8nText>
+						</template>
 					</template>
+				</template>
+				<template v-if="isWebhookNode && canPinData" #footer>
+					{{ i18n.baseText('generic.or') }}
+					<N8nText tag="a" size="medium" color="primary" @click="insertTestData">
+						{{ i18n.baseText('ndv.output.insertTestData') }}
+					</N8nText>
 				</template>
 				<template #actions>
 					<NodeExecuteButton
