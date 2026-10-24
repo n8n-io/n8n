@@ -442,6 +442,97 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
 	});
 
+	describe('simple: false with a full response (pagination)', () => {
+		const paginatedRequest = () => ({
+			method: 'GET' as const,
+			uri: 'https://api.example.com/items',
+			simple: false,
+			resolveWithFullResponse: true,
+		});
+		const unauthorized = { statusCode: 401, body: { error: 'expired' }, headers: {} };
+		const ok = { statusCode: 200, body: { value: [] }, headers: {} };
+
+		// Drop queued once-values, so a failed test does not leak responses into the next one
+		beforeEach(() => proxyRequestToAxiosMock.mockReset());
+
+		test('refreshes and resends when a 401 is resolved instead of thrown', async () => {
+			proxyRequestToAxiosMock.mockResolvedValueOnce(unauthorized).mockResolvedValueOnce(ok);
+
+			const result = await requestWithAuthentication.call(
+				mockThis,
+				'testPreAuth',
+				paginatedRequest(),
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual(ok);
+			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
+				expect.anything(),
+				expect.objectContaining({ accessToken: 'fresh' }),
+				'testPreAuth',
+				mockNode,
+				true,
+			);
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+		});
+
+		test('resolves the original 401 response when the credential returns nothing to refresh', async () => {
+			mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue(undefined);
+			proxyRequestToAxiosMock.mockResolvedValueOnce(unauthorized);
+
+			const result = await requestWithAuthentication.call(
+				mockThis,
+				'testPreAuth',
+				paginatedRequest(),
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toBe(unauthorized);
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+		});
+
+		test('resolves the second 401 response without a further refresh', async () => {
+			const secondUnauthorized = { ...unauthorized };
+			proxyRequestToAxiosMock
+				.mockResolvedValueOnce(unauthorized)
+				.mockResolvedValueOnce(secondUnauthorized);
+
+			const result = await requestWithAuthentication.call(
+				mockThis,
+				'testPreAuth',
+				paginatedRequest(),
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toBe(secondUnauthorized);
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+		});
+
+		test('does not refresh on other resolved statuses', async () => {
+			const notFound = { statusCode: 404, body: {}, headers: {} };
+			proxyRequestToAxiosMock.mockResolvedValueOnce(notFound);
+
+			const result = await requestWithAuthentication.call(
+				mockThis,
+				'testPreAuth',
+				paginatedRequest(),
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toBe(notFound);
+			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	test('refreshes but does NOT resend a drained stream body; the original error surfaces', async () => {
 		const requestError = Object.assign(new Error('401 - token expired'), {
 			response: { status: 401 },

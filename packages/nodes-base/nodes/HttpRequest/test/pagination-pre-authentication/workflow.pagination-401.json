@@ -1,0 +1,98 @@
+{
+	"name": "HTTP Request pagination with preAuthentication credential and 401",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1a1a1a1-0000-4000-8000-000000000001",
+			"name": "Manual",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [160, 300]
+		},
+		{
+			"parameters": {
+				"url": "https://graph.microsoft.com/v1.0/users/test-user/mailFolders/inbox/messages",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "microsoftEntraServicePrincipalApi",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Prefer",
+							"value": "outlook.body-content-type=\"text\""
+						}
+					]
+				},
+				"options": {
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.body['@odata.nextLink'] }}",
+							"paginationCompleteWhen": "other",
+							"completeExpression": "={{ !$response.body['@odata.nextLink'] }}",
+							"limitPagesFetched": true,
+							"maxRequests": 10
+						}
+					}
+				}
+			},
+			"id": "b1b1b1b1-0000-4000-8000-000000000002",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [460, 300],
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "1",
+					"name": "Entra SP (test)"
+				}
+			},
+			"retryOnFail": true,
+			"maxTries": 3,
+			"waitBetweenTries": 0
+		}
+	],
+	"pinData": {
+		"HTTP Request": [
+			{
+				"json": {
+					"value": [
+						{
+							"id": "msg-1"
+						}
+					],
+					"@odata.nextLink": "https://graph.microsoft.com/v1.0/users/test-user/mailFolders/inbox/messages?%24skip=1"
+				}
+			},
+			{
+				"json": {
+					"value": [
+						{
+							"id": "msg-2"
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"Manual": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "",
+	"meta": {},
+	"tags": []
+}

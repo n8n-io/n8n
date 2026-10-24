@@ -3,6 +3,7 @@
 
 import { OutboundHttp, removeEmptyBody } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -55,6 +56,26 @@ function shouldRetryAfterPreAuthentication(
 	}
 	if (status === 401 || options?.skipPreAuthenticationRetryWhileTokenIsFresh !== true) return true;
 	return !isTokenExpiryInFuture(credentials.n8n_expires_at);
+}
+
+/**
+ * Carries a 401 full response that `simple: false` resolved instead of throwing (pagination
+ * sets it on every page). It sends the legacy request into the `preAuthentication`
+ * refresh-and-resend path, the same way `requestOAuth2` treats this case.
+ */
+class UnauthorizedFullResponse extends Error {
+	constructor(readonly response: unknown) {
+		super('Request resolved with a 401 response');
+	}
+}
+
+function isUnauthorizedFullResponse(requestOptions: IRequestOptions, response: unknown): boolean {
+	return (
+		requestOptions.simple === false &&
+		requestOptions.resolveWithFullResponse === true &&
+		isRecord(response) &&
+		response.statusCode === 401
+	);
 }
 
 export async function httpRequestWithAuthentication(
@@ -292,7 +313,11 @@ export async function requestWithAuthentication(
 		);
 		requestSent = true;
 		// oxlint-disable-next-line typescript/no-deprecated
-		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+		const response = await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+		if (isUnauthorizedFullResponse(requestOptions, response)) {
+			throw new UnauthorizedFullResponse(response);
+		}
+		return response;
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -328,6 +353,8 @@ export async function requestWithAuthentication(
 			}
 			throw error;
 		} catch (error) {
+			// No refresh happened, or the body cannot be sent again: resolve as `simple: false` expects
+			if (error instanceof UnauthorizedFullResponse) return error.response;
 			if (error instanceof ExecutionBaseError || hasPolicyRefusalMarker(error)) throw error;
 
 			throw new NodeApiError(this.getNode(), error);
