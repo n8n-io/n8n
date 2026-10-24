@@ -619,6 +619,30 @@ describe('POST /mcp-oauth/token', () => {
 		expect(response.body.error).toBe('invalid_request');
 	});
 
+	test('should accept extra whitespace after the Basic scheme', async () => {
+		const registration = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Spaced Basic Client',
+			redirect_uris: ['https://example.com/callback'],
+		});
+		expect(registration.statusCode).toBe(201);
+
+		const credentials = Buffer.from(
+			`${registration.body.client_id}:${registration.body.client_secret}`,
+		).toString('base64');
+		const response = await testServer.restlessAgent
+			.post('/mcp-oauth/token')
+			.set('Authorization', `Basic   ${credentials}`)
+			.type('form')
+			.send({
+				grant_type: 'authorization_code',
+				code: 'invalid-code',
+				code_verifier: 'test-verifier',
+			});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.error).toBe('invalid_grant');
+	});
+
 	test('should serve token requests even when MCP access is disabled', async () => {
 		// The token service stays available for other OAuth-protected resources
 		// regardless of the instance MCP toggle (IAM-798): an invalid code yields

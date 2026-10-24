@@ -130,7 +130,7 @@ const basicClientAuth: RequestHandler = (req, res, next) => {
 		return;
 	}
 
-	const encoded = /^Basic (\S+)$/i.exec(authorization)?.[1];
+	const encoded = /^Basic[ \t]+(\S+)$/i.exec(authorization)?.[1];
 	const credentials = encoded ? Buffer.from(encoded, 'base64').toString('utf8') : '';
 	const separator = credentials.indexOf(':');
 	const body = isRecord(req.body) ? req.body : {};
