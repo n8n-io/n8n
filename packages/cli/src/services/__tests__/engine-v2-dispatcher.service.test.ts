@@ -683,6 +683,47 @@ describe('EngineV2Dispatcher', () => {
 				]);
 			});
 
+			it('hands the planner the payload the named trigger produced', async () => {
+				const data = runData({
+					destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' },
+					triggerToStartFrom: {
+						name: MANUAL_TRIGGER.name,
+						data: taskData([[{ json: { from: 'trigger' } }], null]),
+					},
+				});
+
+				await dispatcher.start(data);
+
+				expect(manualRunPlanner.plan).toHaveBeenCalledExactlyOnceWith(data, {
+					triggerName: MANUAL_TRIGGER.name,
+					outputs: [[{ json: { from: 'trigger' } }], []],
+				});
+			});
+
+			it('hands the planner the payload a test webhook produced', async () => {
+				// The webhook ran before the run existed; its output sits on the
+				// execution stack, and a pinned node makes the run a planned one.
+				const data = webhookRunData(undefined, {
+					executionMode: 'manual',
+					pinData: { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData,
+				});
+
+				await dispatcher.start(data);
+
+				expect(manualRunPlanner.plan).toHaveBeenCalledExactlyOnceWith(data, {
+					triggerName: WEBHOOK_TRIGGER.name,
+					outputs: [[{ json: { body: 'hi' } }]],
+				});
+			});
+
+			it('hands the planner no payload when the trigger produced none', async () => {
+				const data = runData({ destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' } });
+
+				await dispatcher.start(data);
+
+				expect(manualRunPlanner.plan).toHaveBeenCalledExactlyOnceWith(data, undefined);
+			});
+
 			it('sends no seeded steps for an unplanned run', async () => {
 				manualRunPlanner.applies.mockReturnValue(false);
 
@@ -909,9 +950,8 @@ describe('EngineV2Dispatcher', () => {
 
 				await expect(dispatcher.start(data)).rejects.toThrow('disk gone');
 
-				// Only the run's own payload, which a manual run without a trigger
-				// payload defaults to.
-				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith([[{ json: {} }]]);
+				// The trigger produced nothing, so the run owns no files.
+				expect(payloadFiles.discard).not.toHaveBeenCalled();
 			});
 		});
 	});

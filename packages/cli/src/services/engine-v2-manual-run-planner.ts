@@ -32,16 +32,27 @@ export interface SeededNode {
 	outputs: INodeExecutionData[][];
 }
 
-/**
- * What a manual run sends to the data plane beyond a plain run from the
- * trigger: the workflow trimmed to the nodes the run needs, the node the graph
- * is rooted at, that node's outputs, and the nodes recorded as done at start.
- */
-export interface ManualRunPlan {
-	workflow: IWorkflowBase;
+/** The payload a trigger produced before the run existed. */
+export interface ProducedPayload {
 	triggerName: string;
+	outputs: INodeExecutionData[][];
+}
+
+/**
+ * What the data plane is told to start: the workflow, the node the graph is
+ * rooted at, that node's outputs, and the nodes recorded as done at start.
+ */
+export interface RunStart {
+	workflow: IWorkflowBase;
+	/** Absent when no trigger is named; the converter then takes the sole one. */
+	triggerName?: string;
 	triggerOutputs: INodeExecutionData[][];
 	seeded: SeededNode[];
+}
+
+/** A manual run's start, with the workflow trimmed to the nodes the run needs. */
+export interface ManualRunPlan extends RunStart {
+	triggerName: string;
 }
 
 /** v1's payload for a manual run with no trigger data: one slot, one empty item. */
@@ -79,7 +90,7 @@ export class EngineV2ManualRunPlanner {
 		return Object.keys(data.pinData ?? {}).some((name) => name !== triggerName);
 	}
 
-	plan(data: IWorkflowExecutionDataProcess): ManualRunPlan {
+	plan(data: IWorkflowExecutionDataProcess, produced?: ProducedPayload): ManualRunPlan {
 		const workflow = this.toWorkflow(data);
 		const pinData = data.pinData ?? {};
 		const destination = this.resolveDestination(workflow, data.destinationNode);
@@ -123,7 +134,7 @@ export class EngineV2ManualRunPlanner {
 				connections: toConnections(graph),
 			},
 			triggerName: root.name,
-			triggerOutputs: this.triggerOutputs(root, data, runData, pinData),
+			triggerOutputs: this.triggerOutputs(root, produced, runData, pinData),
 			seeded,
 		};
 	}
@@ -301,15 +312,14 @@ export class EngineV2ManualRunPlanner {
 		return { nodeId: node.id, iteration, outputs };
 	}
 
-	/** A payload the trigger just produced wins; else its pin, its run data, or v1's default. */
+	/** A payload the root just produced wins; else its pin, its run data, or v1's default. */
 	private triggerOutputs(
 		root: INode,
-		data: IWorkflowExecutionDataProcess,
+		produced: ProducedPayload | undefined,
 		runData: IRunData,
 		pinData: IPinData,
 	): INodeExecutionData[][] {
-		const fired = data.triggerToStartFrom?.data?.data?.main;
-		if (fired) return withoutNullSlots(fired);
+		if (produced?.triggerName === root.name) return produced.outputs;
 
 		const pinned = pinData[root.name];
 		if (pinned) return [pinned];
