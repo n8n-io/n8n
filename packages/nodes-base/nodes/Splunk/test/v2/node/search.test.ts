@@ -42,6 +42,30 @@ describe('Splunk, search resource', () => {
 		expect(responseData).toEqual([{ test: 'test' }]);
 	});
 
+	test('create operation returns the response directly for exec_mode "oneshot"', async () => {
+		// Regression for https://github.com/n8n-io/n8n/issues/38527: oneshot mode returns the
+		// results inline, with no `response.sid` (or `response` key at all) to poll, so the node
+		// used to throw "Cannot read properties of undefined (reading 'sid')".
+		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getNodeParameter
+			.calledWith('search', 0)
+			.mockReturnValue('search index=_internal | head 3');
+		executeFunctions.getNodeParameter
+			.calledWith('additionalFields', 0)
+			.mockReturnValue({ exec_mode: 'oneshot' });
+		const oneshotResponse = { fields: ['host'], results: [{ host: 'localhost' }] };
+		(transport.splunkApiRequest as Mock).mockReturnValue(oneshotResponse);
+
+		const responseData = await search.create.execute.call(executeFunctions, 0);
+
+		expect(transport.splunkApiRequest).toHaveBeenCalledWith('POST', '/services/search/jobs', {
+			search: 'search index=_internal | head 3',
+			exec_mode: 'oneshot',
+		});
+		expect(transport.splunkApiJsonRequest).not.toHaveBeenCalled();
+		expect(responseData).toEqual(oneshotResponse);
+	});
+
 	test('deleteJob operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
 		executeFunctions.getNodeParameter.mockReturnValue('12345');
