@@ -193,13 +193,27 @@ export type AgentSseEvent =
 			type: 'error';
 			message: string;
 			/**
-			 * Optional discriminator for distinct error classes.
+			 * Optional discriminator for distinct error classes. Either an
+			 * `AGENT_CHAT_ERROR_CODES` value or a code that a system agent host formats.
 			 */
 			errorCode?: string;
 			/** Backend-emitted ids of the missing config slots; only set when `errorCode` is `agent_misconfigured`. */
 			missing?: string[];
 	  }
 	| { type: 'done'; sessionId?: string; executionId?: string };
+
+/** Stable `errorCode` values of the agent chat `error` event. The client reacts to each one. */
+export const AGENT_CHAT_ERROR_CODES = {
+	/** Another turn runs in the session. The client waits and recovers the running turn. */
+	turnAlreadyRunning: 'turn_already_running',
+	/** The agent is not available in n8n Chat. */
+	agentUnavailable: 'agent_unavailable',
+	/** The agent misses required config. `missing` lists the config slots. */
+	agentMisconfigured: 'agent_misconfigured',
+} as const;
+
+export type AgentChatErrorCode =
+	(typeof AGENT_CHAT_ERROR_CODES)[keyof typeof AGENT_CHAT_ERROR_CODES];
 
 export type AgentBudgetNoticeCode = 'budget.alert' | 'budget.session' | 'budget.monthly';
 
