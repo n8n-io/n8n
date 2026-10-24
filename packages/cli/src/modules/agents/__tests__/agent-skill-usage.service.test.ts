@@ -3,11 +3,14 @@ import type { OperationContext } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { SkillFile } from '@/modules/skills/skill-file.entity';
-import type { SkillVersion } from '@/modules/skills/skill-version.entity';
-import type { Skill } from '@/modules/skills/skill.entity';
-import type { ResolvedSkillRow, SkillRepository } from '@/modules/skills/skill.repository';
-import { SkillService } from '@/modules/skills/skill.service';
+import type { SkillFile } from '@/modules/skills/database/entities/skill-file.entity';
+import type { SkillVersion } from '@/modules/skills/database/entities/skill-version.entity';
+import type { Skill } from '@/modules/skills/database/entities/skill.entity';
+import type {
+	ResolvedSkillRow,
+	SkillRepository,
+} from '@/modules/skills/database/repositories/skill.repository';
+import { SkillService } from '@/modules/skills/services/skill.service';
 
 import { AgentSkillUsageService } from '../agent-skill-usage.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';

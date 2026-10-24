@@ -15,9 +15,9 @@ import { z } from 'zod';
 import {
 	SkillNameTakenError,
 	skillNameTakenToolMessage,
-} from '@/modules/skills/skill-name-taken.error';
-import { SkillsApiService } from '@/modules/skills/skills-api.service';
-import { AssistantSkillsRollout } from '@/modules/skills/assistant-skills-rollout';
+} from '@/modules/skills/errors/skill-name-taken.error';
+import { SkillsApiService } from '@/modules/skills/services/skills-api.service';
+import { AssistantSkillsRollout } from '@/modules/skills/services/assistant-skills-rollout';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';

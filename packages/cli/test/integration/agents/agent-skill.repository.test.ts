@@ -6,8 +6,8 @@ import { randomUUID } from 'node:crypto';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import type { SkillContent } from '@/modules/skills/skill-content-hash';
-import { SkillRepository } from '@/modules/skills/skill.repository';
+import type { SkillContent } from '@/modules/skills/utils/skill-content-hash';
+import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 
 /** More ids than SQLite binds in one query (32,766). */
 const manyUnknownIds = () => Array.from({ length: 33_000 }, (_, i) => `skill_unknown${i}`);

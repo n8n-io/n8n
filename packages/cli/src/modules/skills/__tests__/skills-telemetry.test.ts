@@ -4,10 +4,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
-import type { SkillAgentsProxy } from '../skill-agents-proxy.service';
-import type { Skill } from '../skill.entity';
-import type { SkillRepository } from '../skill.repository';
-import { SkillsTelemetry } from '../skills-telemetry';
+import type { SkillAgentsProxy } from '../services/skill-agents-proxy.service';
+import type { Skill } from '../database/entities/skill.entity';
+import type { SkillRepository } from '../database/repositories/skill.repository';
+import { SkillsTelemetry } from '../services/skills-telemetry.service';
 
 function skill(id: string, target: Partial<Pick<Skill, 'projectId' | 'agentId'>> = {}): Skill {
 	return mock<Skill>({ id, projectId: target.projectId ?? null, agentId: target.agentId ?? null });

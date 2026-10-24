@@ -5,13 +5,13 @@ import { mock } from 'vitest-mock-extended';
 
 import { PostHogClient } from '@/posthog';
 
-import { HubAssistantSkillProvider } from '../hub-assistant-skill-provider.service';
-import { SkillAgentsProxy, type SkillAgentsProvider } from '../skill-agents-proxy.service';
-import type { SkillService } from '../skill.service';
+import { HubAssistantSkillProvider } from '../services/hub-assistant-skill-provider.service';
+import { SkillAgentsProxy, type SkillAgentsProvider } from '../services/skill-agents-proxy.service';
+import type { SkillService } from '../services/skill.service';
 import { SkillsModule } from '../skills.module';
-import { AssistantSkillsRollout } from '../assistant-skills-rollout';
+import { AssistantSkillsRollout } from '../services/assistant-skills-rollout';
 
-vi.mock('../skills.controller', () => ({}));
+vi.mock('../controllers/skills.controller', () => ({}));
 
 describe('SkillsModule', () => {
 	beforeEach(() => Container.reset());

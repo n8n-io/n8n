@@ -13,16 +13,16 @@ import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-age
 import { AgentSkillDependency } from '@/modules/agents/entities/agent-skill-dependency.entity';
 import { AgentVersionSkillDependency } from '@/modules/agents/entities/agent-version-skill-dependency.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { SkillFile } from '@/modules/skills/skill-file.entity';
-import { SkillVersion } from '@/modules/skills/skill-version.entity';
+import { SkillFile } from '@/modules/skills/database/entities/skill-file.entity';
+import { SkillVersion } from '@/modules/skills/database/entities/skill-version.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/skills/skill.repository';
+import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { fromAgentDocument } from '@/modules/agents/json-config/agent-document';
-import { toSkillContent } from '@/modules/skills/skill.service';
+import { toSkillContent } from '@/modules/skills/services/skill.service';
 import type { NodeTypes } from '@/node-types';
 
 import { N8nPackageParser } from '../engine/n8n-package-parser';

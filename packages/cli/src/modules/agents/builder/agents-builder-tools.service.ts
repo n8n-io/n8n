@@ -106,7 +106,7 @@ import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-has
 import {
 	SkillNameTakenError,
 	skillNameTakenToolMessage,
-} from '@/modules/skills/skill-name-taken.error';
+} from '@/modules/skills/errors/skill-name-taken.error';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',

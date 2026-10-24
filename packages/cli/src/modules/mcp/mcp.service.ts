@@ -39,7 +39,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillAgentsProxy } from '@/modules/skills/services/skill-agents-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';

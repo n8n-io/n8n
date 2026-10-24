@@ -3,11 +3,14 @@ import type { OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 
-import type { SkillAgentsProvider } from '@/modules/skills/skill-agents-proxy.service';
-import type { Skill } from '@/modules/skills/skill.entity';
-import { findIntroducedNameClashes, renameIntroducesClash } from '@/modules/skills/skill-names';
-import { SkillRepository } from '@/modules/skills/skill.repository';
-import { SkillService, type SkillRef } from '@/modules/skills/skill.service';
+import type { SkillAgentsProvider } from '@/modules/skills/services/skill-agents-proxy.service';
+import type { Skill } from '@/modules/skills/database/entities/skill.entity';
+import {
+	findIntroducedNameClashes,
+	renameIntroducesClash,
+} from '@/modules/skills/utils/skill-names';
+import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
+import { SkillService, type SkillRef } from '@/modules/skills/services/skill.service';
 
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentRepository } from './repositories/agent.repository';

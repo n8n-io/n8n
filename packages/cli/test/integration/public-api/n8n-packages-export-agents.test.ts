@@ -36,9 +36,9 @@ import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration
 import { createProjectVariable } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
-import { SkillRepository } from '@/modules/skills/skill.repository';
+import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { toSkillContent } from '@/modules/skills/skill.service';
+import { toSkillContent } from '@/modules/skills/services/skill.service';
 
 beforeAll(async () => await testModules.loadModules(['n8n-packages', 'skills', 'agents']));
 const server = setupTestServer({ endpointGroups: ['publicApi'] });

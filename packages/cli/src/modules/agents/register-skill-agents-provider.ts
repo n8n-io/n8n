@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillAgentsProxy } from '@/modules/skills/services/skill-agents-proxy.service';
 
 import { AgentSkillUsageService } from './agent-skill-usage.service';
 

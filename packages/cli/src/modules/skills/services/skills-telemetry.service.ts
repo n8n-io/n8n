@@ -7,8 +7,8 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Telemetry } from '@/telemetry';
 
 import { SkillAgentsProxy } from './skill-agents-proxy.service';
-import type { Skill, SkillSource } from './skill.entity';
-import { SkillRepository } from './skill.repository';
+import type { Skill, SkillSource } from '../database/entities/skill.entity';
+import { SkillRepository } from '../database/repositories/skill.repository';
 
 export type SkillTelemetrySource = SkillSource;
 

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { SkillFrontmatter } from './skill-version.entity';
+import type { SkillFrontmatter } from '../database/entities/skill-version.entity';
 
 /** Everything one `skill_version` row holds, the name included. */
 export type SkillContent = {

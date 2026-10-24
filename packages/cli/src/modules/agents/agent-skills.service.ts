@@ -16,17 +16,17 @@ import { UserError } from 'n8n-workflow';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { findIntroducedNameClashes, findNameClashGroups } from '@/modules/skills/skill-names';
+import { findIntroducedNameClashes, findNameClashGroups } from '@/modules/skills/utils/skill-names';
 import {
 	SkillService,
 	withTrimmedName,
 	type SkillMoveOptions,
-} from '@/modules/skills/skill.service';
+} from '@/modules/skills/services/skill.service';
 import {
 	SkillsTelemetry,
 	type SkillTelemetryMethod,
 	type SkillTelemetrySource,
-} from '@/modules/skills/skills-telemetry';
+} from '@/modules/skills/services/skills-telemetry.service';
 
 import {
 	type AgentMutationTelemetryContext,

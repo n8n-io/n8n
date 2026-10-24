@@ -11,7 +11,7 @@ import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService } from '@n8n/backend-services';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillAgentsProxy } from '@/modules/skills/services/skill-agents-proxy.service';
 import { PostHogClient } from '@/posthog';
 
 import {

@@ -15,12 +15,16 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { SkillAgentsProxy } from './skill-agents-proxy.service';
-import { skillContentHash, type SkillContent } from './skill-content-hash';
-import { getSkillHash } from './skill-hash';
-import { SkillNameTakenError } from './skill-name-taken.error';
-import type { SkillFrontmatter } from './skill-version.entity';
-import type { Skill, SkillSource } from './skill.entity';
-import { SkillRepository, type ResolvedSkillRow, type SkillTarget } from './skill.repository';
+import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
+import { getSkillHash } from '../utils/skill-hash';
+import { SkillNameTakenError } from '../errors/skill-name-taken.error';
+import type { SkillFrontmatter } from '../database/entities/skill-version.entity';
+import type { Skill, SkillSource } from '../database/entities/skill.entity';
+import {
+	SkillRepository,
+	type ResolvedSkillRow,
+	type SkillTarget,
+} from '../database/repositories/skill.repository';
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };

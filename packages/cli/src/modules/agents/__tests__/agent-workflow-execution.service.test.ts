@@ -12,7 +12,7 @@ import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflo
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
-import { SkillService } from '@/modules/skills/skill.service';
+import { SkillService } from '@/modules/skills/services/skill.service';
 import { AgentSkillUsageService } from '../agent-skill-usage.service';
 
 import type { CredentialsService } from '@/credentials/credentials.service';

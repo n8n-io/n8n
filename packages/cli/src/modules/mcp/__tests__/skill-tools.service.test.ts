@@ -3,9 +3,9 @@ import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { SkillNameTakenError } from '@/modules/skills/skill-name-taken.error';
-import type { SkillsApiService } from '@/modules/skills/skills-api.service';
-import type { AssistantSkillsRollout } from '@/modules/skills/assistant-skills-rollout';
+import { SkillNameTakenError } from '@/modules/skills/errors/skill-name-taken.error';
+import type { SkillsApiService } from '@/modules/skills/services/skills-api.service';
+import type { AssistantSkillsRollout } from '@/modules/skills/services/assistant-skills-rollout';
 import type { Telemetry } from '@/telemetry';
 
 import { SKILL_TOOLS } from '../mcp-scopes';

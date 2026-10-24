@@ -18,8 +18,8 @@ import {
 } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { SkillsApiService } from './skills-api.service';
-import { SkillAgentsProxy } from './skill-agents-proxy.service';
+import { SkillsApiService } from '../services/skills-api.service';
+import { SkillAgentsProxy } from '../services/skill-agents-proxy.service';
 
 /**
  * Skills for the settings page. No route scope: the scope of each skill decides who may

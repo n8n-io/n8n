@@ -8,16 +8,16 @@ import { mock } from 'vitest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import type { SkillAgentsProxy } from '../skill-agents-proxy.service';
-import type { SkillFile } from '../skill-file.entity';
-import { getSkillHash } from '../skill-hash';
-import type { SkillVersion } from '../skill-version.entity';
-import type { Skill } from '../skill.entity';
-import type { ResolvedSkillRow, SkillRepository } from '../skill.repository';
-import type { SkillService } from '../skill.service';
-import { SkillsApiService } from '../skills-api.service';
-import type { SkillsTelemetry } from '../skills-telemetry';
-import type { AssistantSkillsRollout } from '../assistant-skills-rollout';
+import type { SkillAgentsProxy } from '../services/skill-agents-proxy.service';
+import type { SkillFile } from '../database/entities/skill-file.entity';
+import { getSkillHash } from '../utils/skill-hash';
+import type { SkillVersion } from '../database/entities/skill-version.entity';
+import type { Skill } from '../database/entities/skill.entity';
+import type { ResolvedSkillRow, SkillRepository } from '../database/repositories/skill.repository';
+import type { SkillService } from '../services/skill.service';
+import { SkillsApiService } from '../services/skills-api.service';
+import type { SkillsTelemetry } from '../services/skills-telemetry.service';
+import type { AssistantSkillsRollout } from '../services/assistant-skills-rollout';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({

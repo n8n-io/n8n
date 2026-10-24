@@ -41,8 +41,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { SkillsApiService } from '@/modules/skills/skills-api.service';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillsApiService } from '@/modules/skills/services/skills-api.service';
+import { SkillAgentsProxy } from '@/modules/skills/services/skill-agents-proxy.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {

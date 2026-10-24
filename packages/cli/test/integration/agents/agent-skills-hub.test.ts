@@ -32,9 +32,9 @@ import {
 	type ProjectAgent,
 } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/skills/skill.repository';
+import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { SkillService, toAgentSkill } from '@/modules/skills/skill.service';
+import { SkillService, toAgentSkill } from '@/modules/skills/services/skill.service';
 import {
 	markAgentDraftDirty,
 	saveAgentDraftFenced,

@@ -13,10 +13,14 @@ import { Brackets, DataSource, In, type EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { compareSkillFilePaths, skillContentHash, type SkillContent } from './skill-content-hash';
-import { SkillFile } from './skill-file.entity';
-import { SkillVersion } from './skill-version.entity';
-import { Skill, type SkillSource } from './skill.entity';
+import {
+	compareSkillFilePaths,
+	skillContentHash,
+	type SkillContent,
+} from '../../utils/skill-content-hash';
+import { SkillFile } from '../entities/skill-file.entity';
+import { SkillVersion } from '../entities/skill-version.entity';
+import { Skill, type SkillSource } from '../entities/skill.entity';
 
 /**
  * Where a skill lives: a project, one agent, or the instance (both null). An agent skill

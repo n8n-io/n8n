@@ -8,13 +8,13 @@ import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { SkillRepository } from '@/modules/skills/skill.repository';
+import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 import {
 	SkillService,
 	toAgentSkill,
 	type SkillMoveOptions,
 	type SkillRef,
-} from '@/modules/skills/skill.service';
+} from '@/modules/skills/services/skill.service';
 
 import { AgentSkillUsageService } from './agent-skill-usage.service';
 import type { AgentHistory } from './entities/agent-history.entity';

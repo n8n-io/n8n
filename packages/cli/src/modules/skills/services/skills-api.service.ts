@@ -20,11 +20,11 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { SkillAgentsProxy } from './skill-agents-proxy.service';
-import { getSkillHash } from './skill-hash';
-import type { Skill } from './skill.entity';
-import { SkillRepository, type SkillTarget } from './skill.repository';
+import { getSkillHash } from '../utils/skill-hash';
+import type { Skill } from '../database/entities/skill.entity';
+import { SkillRepository, type SkillTarget } from '../database/repositories/skill.repository';
 import { SkillService, toAgentSkill } from './skill.service';
-import { SkillsTelemetry, type SkillTelemetrySource } from './skills-telemetry';
+import { SkillsTelemetry, type SkillTelemetrySource } from './skills-telemetry.service';
 import { AssistantSkillsRollout } from './assistant-skills-rollout';
 
 function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {

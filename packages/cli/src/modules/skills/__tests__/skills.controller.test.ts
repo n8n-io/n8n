@@ -1,7 +1,7 @@
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { SkillsController } from '../skills.controller';
+import { SkillsController } from '../controllers/skills.controller';
 
 /**
  * The skills routes carry no scope decorator: `SkillsApiService` checks each skill row,
