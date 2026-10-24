@@ -702,7 +702,6 @@ describe('useRunWorkflow({ router })', () => {
 			};
 
 			beforeEach(() => {
-				useSettingsStore().settings.granularCredentialSharing = true;
 				mockDocumentStore.serialize.mockReturnValue({
 					id: 'workflowId',
 					nodes: [],
