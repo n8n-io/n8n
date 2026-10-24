@@ -14,7 +14,6 @@ import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-regi
 import type { OauthService } from '@/oauth/oauth.service';
 
 import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
-import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import type { InstanceAiMcpRegistryConnectionRepository } from '../../repositories/instance-ai-mcp-registry-connection.repository';
 import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service';
 
@@ -109,11 +108,6 @@ describe('InstanceAiMcpRegistryService', () => {
 		transport.asCustomFetch.mockReturnValue(proxyFetch);
 		const outboundHttp = mock<OutboundHttp>();
 		outboundHttp.transport.mockReturnValue(transport);
-		const instanceAiSettingsService = mock<InstanceAiSettingsService>();
-		instanceAiSettingsService.getMcpToolPermissions.mockReturnValue({
-			categories: { read: 'always_allow', write: 'require_approval' },
-		});
-
 		const service = new InstanceAiMcpRegistryService(
 			logger,
 			connectionRepository,
@@ -124,7 +118,6 @@ describe('InstanceAiMcpRegistryService', () => {
 			oauthService,
 			eventService,
 			outboundHttp,
-			instanceAiSettingsService,
 		);
 
 		return {
@@ -135,7 +128,6 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsFinderService,
 			credentialsService,
 			credentialTypes,
-			instanceAiSettingsService,
 			oauthService,
 			eventService,
 			outboundHttp,
@@ -893,19 +885,12 @@ describe('InstanceAiMcpRegistryService', () => {
 	});
 
 	describe('createConnection', () => {
-		it('copies the current instance defaults into a new connection', async () => {
-			const {
-				service,
-				connectionRepository,
-				mcpRegistryService,
-				credentialsFinderService,
-				instanceAiSettingsService,
-			} = createService();
+		it('gives a new connection the default tool permissions', async () => {
+			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } =
+				createService();
 			const defaults = {
-				categories: { read: 'blocked' as const, write: 'always_allow' as const },
-				tools: { search: 'require_approval' as const },
+				categories: { read: 'always_allow' as const, write: 'require_approval' as const },
 			};
-			instanceAiSettingsService.getMcpToolPermissions.mockReturnValue(defaults);
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			connectionRepository.create.mockImplementation((entity) => entity as never);
@@ -922,13 +907,8 @@ describe('InstanceAiMcpRegistryService', () => {
 		});
 
 		it('uses submitted tool permissions for a new connection', async () => {
-			const {
-				service,
-				connectionRepository,
-				mcpRegistryService,
-				credentialsFinderService,
-				instanceAiSettingsService,
-			} = createService();
+			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } =
+				createService();
 			const toolPermissions = {
 				categories: { read: 'always_allow' as const, write: 'blocked' as const },
 				tools: { delete: 'require_approval' as const },
@@ -947,7 +927,6 @@ describe('InstanceAiMcpRegistryService', () => {
 			expect(connectionRepository.create).toHaveBeenCalledWith(
 				expect.objectContaining({ toolPermissions }),
 			);
-			expect(instanceAiSettingsService.getMcpToolPermissions).not.toHaveBeenCalled();
 		});
 
 		it('creates a connection and returns it with the resolved credential and server', async () => {

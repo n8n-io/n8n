@@ -6,11 +6,7 @@ import {
 	type McpServerConfig as NativeMcpServerConfig,
 } from '@n8n/agents';
 import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
-import {
-	DEFAULT_INSTANCE_AI_PERMISSIONS,
-	type InstanceAiPermissions,
-	type McpToolPermissions,
-} from '@n8n/api-types';
+import { DEFAULT_MCP_TOOL_PERMISSIONS } from '@n8n/api-types';
 import type { Result } from '@n8n/utils/result';
 import { UserError } from 'n8n-workflow';
 
@@ -29,13 +25,8 @@ import type { InstanceAiToolRegistry, McpServerConfig } from '../types';
 
 type McpToolRegistry = InstanceAiToolRegistry;
 
-function mcpConfigCacheKey(
-	configs: McpServerConfig[],
-	defaultToolPermissions: McpToolPermissions,
-): string {
-	return createHash('sha256')
-		.update(JSON.stringify({ configs, defaultToolPermissions }))
-		.digest('hex');
+function mcpConfigCacheKey(configs: McpServerConfig[]): string {
+	return createHash('sha256').update(JSON.stringify(configs)).digest('hex');
 }
 
 /** Per-server connection failures recorded while listing tools for one config. */
@@ -77,12 +68,11 @@ export interface SsrfUrlValidator {
 
 function buildNativeMcpConfigs(
 	configs: McpServerConfig[],
-	defaultToolPermissions: McpToolPermissions,
 	onToolCallSettled?: McpClientManagerOptions['onToolCallSettled'],
 ): NativeMcpServerConfig[] {
 	const servers: NativeMcpServerConfig[] = [];
 	for (const server of configs) {
-		const toolPermissions = server.toolPermissions ?? defaultToolPermissions;
+		const toolPermissions = server.toolPermissions ?? DEFAULT_MCP_TOOL_PERMISSIONS;
 		const baseConfig: NativeMcpServerConfig = {
 			name: server.name,
 			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
@@ -190,18 +180,11 @@ export class McpClientManager {
 	async getRegularTools(
 		configs: McpServerConfig[],
 		logger: Logger,
-		{
-			mcpRead,
-			mcpWrite,
-		}: Pick<InstanceAiPermissions, 'mcpRead' | 'mcpWrite'> = DEFAULT_INSTANCE_AI_PERMISSIONS,
 	): Promise<McpRegularToolsResult> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
 		if (safeConfigs.length === 0) return { tools: createToolRegistry(), connectionFailures: [] };
 
-		const defaultToolPermissions: McpToolPermissions = {
-			categories: { read: mcpRead, write: mcpWrite },
-		};
-		const key = mcpConfigCacheKey(safeConfigs, defaultToolPermissions);
+		const key = mcpConfigCacheKey(safeConfigs);
 		// FIXME: changing mcp settings leaves the old client connected, we need to disconnect it
 		return await this.getOrLoad(
 			this.regularToolsByKey,
@@ -209,13 +192,7 @@ export class McpClientManager {
 			key,
 			async () => {
 				await this.validateConfigs(safeConfigs);
-				return await this.connectAndListTools(
-					safeConfigs,
-					defaultToolPermissions,
-					key,
-					logger,
-					'external MCP',
-				);
+				return await this.connectAndListTools(safeConfigs, key, logger, 'external MCP');
 			},
 		);
 	}
@@ -284,14 +261,11 @@ export class McpClientManager {
 
 	private async connectAndListTools(
 		configs: McpServerConfig[],
-		defaultToolPermissions: McpToolPermissions,
 		clientKey: string,
 		logger: Logger,
 		source: string,
 	): Promise<McpRegularToolsResult> {
-		const client = new McpClient(
-			buildNativeMcpConfigs(configs, defaultToolPermissions, this.options.onToolCallSettled),
-		);
+		const client = new McpClient(buildNativeMcpConfigs(configs, this.options.onToolCallSettled));
 		this.clientsByKey.set(clientKey, client);
 
 		const registry = toolsToRegistry(await client.listTools());

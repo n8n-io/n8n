@@ -5,7 +5,6 @@
 // ---------------------------------------------------------------------------
 
 import { sanitizeToolName, wrapToolForApproval, type BuiltTool } from '@n8n/agents';
-import { DEFAULT_INSTANCE_AI_PERMISSIONS, type InstanceAiPermissions } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { ApprovalResponder } from './confirmation-policy';
@@ -178,16 +177,9 @@ export class StubMcpClientManager extends McpClientManager {
 		super();
 	}
 
-	override async getRegularTools(
-		_configs: McpServerConfig[],
-		_logger?: Logger,
-		{
-			mcpRead,
-			mcpWrite,
-		}: Pick<InstanceAiPermissions, 'mcpRead' | 'mcpWrite'> = DEFAULT_INSTANCE_AI_PERMISSIONS,
-	) {
-		const requireApproval = mcpRead !== 'always_allow' || mcpWrite !== 'always_allow';
-		const tools = requireApproval ? withApprovalGate(this.stubTools) : this.stubTools;
+	override async getRegularTools(_configs: McpServerConfig[], _logger?: Logger) {
+		// The default MCP permissions ask for approval on write tools.
+		const tools = withApprovalGate(this.stubTools);
 		return await Promise.resolve({ tools, connectionFailures: [] });
 	}
 
