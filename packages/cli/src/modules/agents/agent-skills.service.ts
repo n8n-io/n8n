@@ -456,6 +456,11 @@ export class AgentSkillsService {
 		};
 	}
 
+	validateSkills(skills: AgentSkill[], existing: Record<string, AgentSkill> = {}): void {
+		const validated = skills.map((skill) => this.validateSkill(skill));
+		this.assertNoNameClashes(existing, validated);
+	}
+
 	private validateSkill(skill: AgentSkill): AgentSkill {
 		const result = agentSkillSchema.safeParse(skill);
 		if (!result.success) {

@@ -137,7 +137,7 @@ export class ProjectPackageImporter {
 
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
 		// any project leaves nothing behind — not folders, workflows, nor the project shells.
-		const planned: Array<{ project: ManifestEntry; plan: ImportPlan }> = [];
+		const inputs: ImportOrchestrationInput[] = [];
 		for (const project of selectedProjects) {
 			const input = await this.buildImportContextForProject(
 				request,
@@ -148,9 +148,10 @@ export class ProjectPackageImporter {
 				{ bundledVariables, packageCredentials, credentialUpdateScope: updateScope },
 				importSource,
 			);
-			const plan = await this.importOrchestrator.plan(input);
-			planned.push({ project, plan });
+			inputs.push(input);
 		}
+		const plans = await this.importOrchestrator.planPackage(inputs);
+		const planned = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
 
 		const missingCredentialIds = new Set(
 			planned.flatMap(({ plan }) =>
@@ -322,6 +323,10 @@ export class ProjectPackageImporter {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
 		const allWorkflows = await this.packageParser.getWorkflows(reader, basePrefix);
+		const agents =
+			!request.selection && manifest.agents?.length
+				? await this.packageParser.getAgents(reader, basePrefix)
+				: [];
 
 		// Do not expand the selection to include referenced sub-workflows.
 		const workflows = request.selection
@@ -332,7 +337,11 @@ export class ProjectPackageImporter {
 
 		// Requirements and bindings are both scoped to this project's workflows so another project's
 		// binding is not seen as an orphan here (which would block the whole multi-project import).
-		const requirements = identifyRequirements(manifest.requirements?.credentials, workflows);
+		const requirements = identifyRequirements(
+			manifest.requirements?.credentials,
+			workflows,
+			agents,
+		);
 		const credentialRequest: CredentialBindingRequest = {
 			requirements,
 			matchingMode: request.credentialMatchingMode,
@@ -347,7 +356,7 @@ export class ProjectPackageImporter {
 		};
 
 		const dataTableRequest: DataTableImportRequest = {
-			requirements: identifyRequirements(manifest.requirements?.dataTables, workflows),
+			requirements: identifyRequirements(manifest.requirements?.dataTables, workflows, agents),
 			packageDataTables: await this.packageParser.getDataTables(reader),
 			matchingMode: request.dataTableMatchingMode,
 			missingMode: request.dataTableMissingMode,
@@ -356,7 +365,7 @@ export class ProjectPackageImporter {
 
 		const variableRequest: VariableImportRequest = {
 			requirements: placeByLayout({
-				requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+				requirements: identifyRequirements(manifest.requirements?.variables, workflows, agents),
 				manifestVariables: manifest.variables,
 				scopePrefix: basePrefix,
 				bundledVariables: importWide.bundledVariables,
@@ -381,6 +390,8 @@ export class ProjectPackageImporter {
 			},
 			folders,
 			workflows,
+			agents,
+			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
@@ -390,7 +401,11 @@ export class ProjectPackageImporter {
 			importSource,
 			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
-			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			subWorkflowRequirements: identifyRequirements(
+				manifest.requirements?.workflows,
+				workflows,
+				agents,
+			),
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
 			checkRootPlacement: true,
 		};

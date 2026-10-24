@@ -1,3 +1,4 @@
+import type { AgentImportIssue } from './entities/agent/agent-import.types';
 import type { PolicyViolation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
@@ -567,6 +568,7 @@ export interface ImportedProjectSummary {
  * The import aborts when any are present.
  */
 export type BlockingIssue =
+	| AgentImportIssue
 	| ({ type: 'workflow-conflict' } & WorkflowConflict)
 	| ({ type: 'workflow-lineage-conflict' } & WorkflowLineageConflict)
 	| ({ type: 'workflow-id-conflict' } & WorkflowIdConflict)

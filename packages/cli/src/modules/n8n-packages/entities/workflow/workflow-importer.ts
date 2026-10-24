@@ -14,7 +14,6 @@ import {
 	decideWorkflowArchiveTransition,
 	type WorkflowArchiveTransition,
 } from './workflow-archive-transition';
-import { decideWorkflowConflictAction } from './workflow-conflict-policy';
 import {
 	WorkflowImportMatchService,
 	type WorkflowIdConflict,
@@ -29,7 +28,6 @@ import type {
 	WorkflowImportContext,
 	WorkflowImportPlan,
 	WorkflowPlanItem,
-	WorkflowPlannedAction,
 } from './workflow-import.types';
 import type {
 	ImportBindingMap,
@@ -39,6 +37,7 @@ import type {
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { decideImportConflictAction, type ImportDecision } from '../import-conflict-policy';
 import { decideImportId } from '../import-id-policy';
 
 export interface WorkflowImportResult {
@@ -90,9 +89,9 @@ export class WorkflowImporter {
 				items.push({ action: 'skip', ...workflow, existing });
 				continue;
 			}
-			const { action, blocked } = decideWorkflowConflictAction(
+			const { action, blocked } = decideImportConflictAction(
 				options.workflowConflictPolicy,
-				existing,
+				existing !== null,
 			);
 
 			const item = toPlanItem(workflow, existing, action, options.workflowIdPolicy);
@@ -382,7 +381,7 @@ function applyCredentialBindingsInPlace(
 function toPlanItem(
 	prepared: PreparedWorkflow,
 	existing: WorkflowEntity | null,
-	action: WorkflowPlannedAction,
+	action: ImportDecision['action'],
 	idPolicy: WorkflowIdPolicy,
 ): WorkflowPlanItem {
 	if (existing === null) {

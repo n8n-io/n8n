@@ -273,9 +273,17 @@ describe('N8nPackageParser.getAgents', () => {
 		async (collection) => {
 			const missingId = Object.keys(agent[collection])[0];
 			agent[collection] = {};
-			await expect(parser.getAgents(memoryReader(fixture))).rejects.toThrow(
-				`${collection} asset "${missingId}" without a body`,
-			);
+			await expect(parser.getAgents(memoryReader(fixture))).rejects.toMatchObject({
+				meta: {
+					issues: [
+						{
+							type: 'agent-invalid',
+							sourceAgentId: agent.id,
+							path: `${agentPath}#${collection}.${missingId}`,
+						},
+					],
+				},
+			});
 		},
 	);
 
