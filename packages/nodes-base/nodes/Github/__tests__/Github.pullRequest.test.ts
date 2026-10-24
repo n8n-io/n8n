@@ -21,6 +21,7 @@ function createMockExecuteFunction(params: Record<string, any>) {
 			return paramName in merged ? merged[paramName] : fallback;
 		}),
 		getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+		getWorkflowStaticData: vi.fn().mockReturnValue({}),
 		getNode: vi.fn().mockReturnValue({
 			id: 'test-node-id',
 			name: 'Github',
@@ -601,17 +602,32 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'get',
 				pullRequestNumber: 1,
 			});
-			mock.helpers.requestWithAuthentication.mockResolvedValue(pr);
+			// pullRequest:get uses a conditional request, so the transport returns
+			// the full response and the body is unwrapped by githubApiRequest.
+			mock.helpers.requestWithAuthentication.mockResolvedValue({
+				statusCode: 200,
+				headers: { etag: '"abc123"' },
+				body: pr,
+			});
 
 			const result = await github.execute.call(mock);
 
+			const getCallArgs = mock.helpers.requestWithAuthentication.mock.calls[0][1] as {
+				resolveWithFullResponse?: boolean;
+				simple?: boolean;
+				conditionalRequest?: boolean;
+			};
 			expect(mock.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'githubApi',
 				expect.objectContaining({
 					method: 'GET',
 					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/1',
+					resolveWithFullResponse: true,
+					simple: false,
 				}),
 			);
+			// The internal opt-in flag must not be forwarded as an HTTP option.
+			expect(getCallArgs.conditionalRequest).toBeUndefined();
 			expect(result[0][0].json).toEqual(pr);
 		});
 
@@ -620,7 +636,11 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'get',
 				pullRequestNumber: 9999,
 			});
-			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
+			mock.helpers.requestWithAuthentication.mockResolvedValue({
+				statusCode: 404,
+				headers: {},
+				body: { message: 'Not Found' },
+			});
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
@@ -1058,7 +1078,13 @@ describe('Github Node - Pull Request Operations', () => {
 			const [, op] = fullOp.split(':');
 			const mock = createMockExecuteFunction({ operation: op });
 			mock.helpers.requestWithAuthentication.mockResolvedValue(
-				op === 'getDiff' ? 'diff' : op === 'getPatch' ? 'patch' : { ok: true },
+				op === 'getDiff'
+					? 'diff'
+					: op === 'getPatch'
+						? 'patch'
+						: op === 'get'
+							? { statusCode: 200, headers: {}, body: { ok: true } }
+							: { ok: true },
 			);
 
 			const result = await github.execute.call(mock);
