@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { renderComponent } from '@/__tests__/render';
@@ -70,4 +71,45 @@ describe('NodeWebhooks', () => {
 			}
 		},
 	);
+
+	it('should hide the webhook URL when the headline is closed', async () => {
+		const url = 'https://example.com/webhook/test';
+		const pinia = createTestingPinia();
+		vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+			...useWorkflowHelpers(),
+			getWebhookUrl: async () => url,
+			getWebhookExpressionValue: async () => 'GET',
+		}));
+
+		const { findByText, queryByText } = renderComponent(NodeWebhooks, {
+			pinia,
+			props: {
+				node: mockNode({ name: 'Webhook', type: WEBHOOK_NODE_TYPE }),
+				nodeTypeDescription: mockNodeTypeDescription({
+					name: WEBHOOK_NODE_TYPE,
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'GET',
+							responseMode: 'onReceived',
+							path: 'test',
+							ndvHideUrl: false,
+							restartWebhook: false,
+							ndvHideMethod: false,
+						},
+					],
+				}),
+			},
+		});
+
+		await flushPromises();
+		expect(await findByText(url)).toBeInTheDocument();
+
+		const user = userEvent.setup();
+		await user.click(await findByText('Webhook URLs'));
+		expect(queryByText(url)).not.toBeInTheDocument();
+
+		await user.click(await findByText('Webhook URLs'));
+		expect(await findByText(url)).toBeInTheDocument();
+	});
 });

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { CollapsibleRoot } from 'reka-ui';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -11,6 +10,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { CHANGE_PASSWORD_MODAL_KEY } from '../auth.constants';
 
 import {
+	CollapsibleRoot,
 	N8nAnimatedCollapsibleContent,
 	N8nButton,
 	N8nDialog,
