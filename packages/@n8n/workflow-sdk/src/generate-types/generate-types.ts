@@ -679,11 +679,7 @@ function indexedSchemaDirectory(
 
 	const key = baseName.toLowerCase();
 	for (const index of rootIndexes) {
-		const found = index.flat.get(key);
-		if (found) return found;
-	}
-	for (const index of rootIndexes) {
-		const found = index.nested.get(key);
+		const found = index.flat.get(key) ?? index.nested.get(key);
 		if (found) return found;
 	}
 	return undefined;
@@ -732,9 +728,10 @@ export function findSchemaDirectory(baseName: string, schemaPath?: string): stri
 		baseName.toUpperCase(), // GMAIL
 	];
 
-	// Try flat paths first (most common case). Match folder names
-	// case-insensitively — fs.existsSync with a guessed casing only works on
-	// case-insensitive filesystems (macOS), not on Linux CI.
+	// Search each root fully before the next one, so a package's own node wins
+	// over a same-named nodes-base node (langchain `vendors/OpenAi` vs the legacy `OpenAi`).
+	// Match folder names case-insensitively — fs.existsSync with a guessed casing
+	// only works on case-insensitive filesystems (macOS), not on Linux CI.
 	const namesLower = possibleNames.map((n) => n.toLowerCase());
 	for (const root of roots) {
 		let entries: fs.Dirent[];
@@ -743,6 +740,7 @@ export function findSchemaDirectory(baseName: string, schemaPath?: string): stri
 		} catch {
 			continue;
 		}
+		// Flat paths first (most common case)
 		for (const entry of entries) {
 			if (!entry.isDirectory() || !namesLower.includes(entry.name.toLowerCase())) continue;
 			const flatPath = path.join(root, entry.name, '__schema__');
@@ -750,10 +748,7 @@ export function findSchemaDirectory(baseName: string, schemaPath?: string): stri
 				return flatPath;
 			}
 		}
-	}
-
-	// Search recursively for nested paths (e.g., Google/Gmail/__schema__)
-	for (const root of roots) {
+		// Then nested paths (e.g., Google/Gmail/__schema__)
 		const found = findNestedSchemaDir(root, possibleNames);
 		if (found) return found;
 	}

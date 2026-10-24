@@ -85,6 +85,21 @@ describe('schema directory index', () => {
 		expect(result).toBe(explicit);
 	});
 
+	// nodes-base has a flat `OpenAi/__schema__` for its legacy node. Needs a nodes-base build.
+	const nodesBaseOpenAi = path.resolve(__dirname, '../../../../nodes-base/dist/nodes/OpenAi');
+	it.skipIf(!fs.existsSync(path.join(nodesBaseOpenAi, '__schema__')))(
+		'prefers a nested match in the package root over a flat nodes-base match',
+		async () => {
+			const own = addSchemaDir(nodesRoot, 'vendors/OpenAi');
+
+			expect(findSchemaDirectory('openAi')).toBe(own);
+			const indexed = await withSchemaDirIndex(
+				async () => await Promise.resolve(findSchemaDirectory('openAi')),
+			);
+			expect(indexed).toBe(own);
+		},
+	);
+
 	it('does not keep the index after the run ends', async () => {
 		await withSchemaDirIndex(async () => await Promise.resolve(findSchemaDirectory('__IdxLate__')));
 		const late = addSchemaDir(nodesRoot, '__IdxLate__');

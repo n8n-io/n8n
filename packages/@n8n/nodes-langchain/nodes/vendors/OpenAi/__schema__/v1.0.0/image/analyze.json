@@ -1,0 +1,11 @@
+{
+	"type": "object",
+	"required": ["content"],
+	"properties": {
+		"content": {
+			"type": "string",
+			"description": "The model's answer as a plain STRING"
+		}
+	},
+	"version": 1
+}
