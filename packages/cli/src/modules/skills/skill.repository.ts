@@ -31,6 +31,12 @@ export type ResolvedSkillRow = {
 	files: SkillFile[];
 };
 
+/** The scope fields checked by Assistant reads. */
+export type AssistantSkillAccess = Pick<
+	Skill,
+	'id' | 'projectId' | 'agentId' | 'availableToAssistant'
+>;
+
 /**
  * Which skills one user may list: instance skills always, plus the skills of these
  * projects and of `agentIds`, the agents in these projects.
@@ -207,16 +213,68 @@ export class SkillRepository extends BaseRepository<Skill> {
 			.getRawMany<AssistantSkillSummary>();
 	}
 
+	/** Reads instructions and reference names without reference bodies. */
 	async findAssistantSkill(
 		skillId: string,
 		projectId: string | null,
-	): Promise<ResolvedSkillRow | null> {
-		const version = await assistantVersionsQuery(this.manager, projectId)
+		versionId?: string,
+	): Promise<{
+		skill: AssistantSkillAccess;
+		version: SkillVersion;
+		files: Array<{ path: string }>;
+	} | null> {
+		const {
+			entities: [version],
+			raw: [scope],
+		} = await assistantVersionsQuery(this.manager, projectId, versionId)
 			.andWhere('skill.id = :skillId', { skillId })
-			.getOne();
-		if (!version) return null;
-		const [row] = await this.resolve([version], {});
-		return row ?? null;
+			.addSelect('skill.projectId', 'assistantProjectId')
+			.getRawAndEntities<{ assistantProjectId: string | null }>();
+		if (!version || !scope) return null;
+		const skill: AssistantSkillAccess = {
+			id: skillId,
+			projectId: scope.assistantProjectId,
+			agentId: null,
+			availableToAssistant: true,
+		};
+		const files = await this.manager.find(SkillFile, {
+			where: { skillVersionId: version.id },
+			select: { path: true },
+		});
+		files.sort((left, right) => compareSkillFilePaths(left.path, right.path));
+		return { skill, version, files: files.map(({ path }) => ({ path })) };
+	}
+
+	async findAssistantSkillFile(
+		skillId: string,
+		projectId: string | null,
+		versionId: string,
+		path: string,
+	): Promise<{ skill: AssistantSkillAccess; file: SkillFile } | null> {
+		const {
+			entities: [file],
+			raw: [scope],
+		} = await this.manager
+			.createQueryBuilder(SkillFile, 'file')
+			.innerJoin(SkillVersion, 'version', 'version.id = file.skillVersionId')
+			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
+			.where('version.id = :versionId AND skill.id = :skillId', { versionId, skillId })
+			.andWhere('file.path = :path', { path })
+			.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
+			.andWhere('skill.agentId IS NULL')
+			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
+			.addSelect('skill.projectId', 'assistantProjectId')
+			.getRawAndEntities<{ assistantProjectId: string | null }>();
+		if (!file || !scope) return null;
+		return {
+			skill: {
+				id: skillId,
+				projectId: scope.assistantProjectId,
+				agentId: null,
+				availableToAssistant: true,
+			},
+			file,
+		};
 	}
 
 	async setAssistantAvailability(
@@ -567,8 +625,18 @@ function latestVersionsQuery(manager: EntityManager, skillIds: string[]) {
 	});
 }
 
-function assistantVersionsQuery(manager: EntityManager, projectId: string | null) {
-	return highestVersionsQuery(manager)
+function assistantVersionsQuery(
+	manager: EntityManager,
+	projectId: string | null,
+	versionId?: string,
+) {
+	const versions =
+		versionId !== undefined
+			? manager
+					.createQueryBuilder(SkillVersion, 'version')
+					.where('version.id = :versionId', { versionId })
+			: highestVersionsQuery(manager);
+	return versions
 		.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
 		.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
 		.andWhere('skill.agentId IS NULL')

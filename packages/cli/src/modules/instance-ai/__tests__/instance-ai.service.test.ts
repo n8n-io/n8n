@@ -1065,6 +1065,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		// The agent-building skills follow whether the context has a builder delegate.
 		expect(loadSkills).toHaveBeenCalledWith(
 			expect.objectContaining({ agentBuildingEnabled: agentBuildingAvailable }),
+			expect.objectContaining({ user: fakeUser }),
 		);
 		const expectedGates = boundGates ?? {
 			instanceContextEnabled,

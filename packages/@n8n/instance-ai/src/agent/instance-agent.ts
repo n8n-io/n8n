@@ -194,7 +194,7 @@ export async function createInstanceAgent(
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
-	const systemPrompt = getVersionedSystemPrompt(
+	const baseSystemPrompt = getVersionedSystemPrompt(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
@@ -216,6 +216,10 @@ export async function createInstanceAgent(
 					: undefined,
 		},
 	);
+
+	const systemPrompt = orchestrationContext?.skillAvailabilityNotice
+		? `${baseSystemPrompt}\n\n## Hub skill availability\n${orchestrationContext.skillAvailabilityNotice}`
+		: baseSystemPrompt;
 
 	setTracePromptVersion(
 		orchestrationContext?.tracing,

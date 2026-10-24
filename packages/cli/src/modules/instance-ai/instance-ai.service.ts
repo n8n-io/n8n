@@ -2942,7 +2942,10 @@ export class InstanceAiService {
 			// The agent-building skills need the build-agent tool, which needs a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
 		};
-		const skills = await this.skillsService.loadSkills(skillScope);
+		const skills = await this.skillsService.loadSkills(skillScope, {
+			user,
+			projectId: boundProjectId,
+		});
 		const promptMetadata = describePromptProfile(selectedPrompt, skills.source);
 		this.runState.setPromptConfiguration(threadId, promptMetadata);
 		let runtimeWorkspace: Workspace | undefined;
@@ -3044,6 +3047,7 @@ export class InstanceAiService {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			skills: skills.source,
+			skillAvailabilityNotice: skills.availabilityNotice,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			touchRun: () => this.runState.touchActiveRun(threadId),
