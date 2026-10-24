@@ -352,6 +352,17 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 	}),
 }));
 
+const aiGatewayIsEnabledMock = ref(false);
+const aiGatewayBalanceMock = ref<number | undefined>(undefined);
+const aiGatewayFetchWalletMock = vi.fn();
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: aiGatewayIsEnabledMock,
+		balance: aiGatewayBalanceMock,
+		fetchWallet: aiGatewayFetchWalletMock,
+	}),
+}));
+
 vi.mock('../composables/agentTelemetry.utils', () => ({
 	deriveAgentStatus: vi.fn(() => 'draft'),
 	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({
@@ -388,6 +399,9 @@ describe('AgentChatPanel', () => {
 		onHistoryLoaded = undefined;
 		onAgentUnavailable = undefined;
 		streamInteractionExtensions = undefined;
+		aiGatewayIsEnabledMock.value = false;
+		aiGatewayBalanceMock.value = undefined;
+		aiGatewayFetchWalletMock.mockReset().mockResolvedValue(undefined);
 	});
 
 	function mountPanel(
@@ -3096,6 +3110,116 @@ describe('AgentChatPanel', () => {
 		await nextTick();
 
 		expect(chatInput.props('canSubmit')).toBe(true);
+	});
+
+	it('blocks sending on a credits stop and keeps the wallet check off when the gateway is disabled', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.credits' }],
+			},
+		];
+		const wrapper = mountPanel();
+		await flushPromises();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+
+		expect(chatInput.props('canSubmit')).toBe(false);
+		expect(aiGatewayFetchWalletMock).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('clears a credits stop once a wallet re-check finds a balance', async () => {
+		aiGatewayIsEnabledMock.value = true;
+		aiGatewayFetchWalletMock.mockImplementation(async () => {
+			aiGatewayBalanceMock.value = 5;
+		});
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.credits' }],
+			},
+		];
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		expect(aiGatewayFetchWalletMock).toHaveBeenCalledWith({ force: true });
+		expect(clearBudgetNoticesMock).toHaveBeenCalledExactlyOnceWith(new Set(['budget.credits']));
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([]);
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+		expect(chatInput.props('canSubmit')).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('keeps the credits stop while the wallet stays empty', async () => {
+		aiGatewayIsEnabledMock.value = true;
+		aiGatewayFetchWalletMock.mockImplementation(async () => {
+			aiGatewayBalanceMock.value = 0;
+		});
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.credits' }],
+			},
+		];
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		expect(aiGatewayFetchWalletMock).toHaveBeenCalledWith({ force: true });
+		expect(clearBudgetNoticesMock).not.toHaveBeenCalled();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+		expect(chatInput.props('canSubmit')).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('re-checks the wallet when the tab becomes visible again with a credits stop showing', async () => {
+		const visibilitySpy = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+		try {
+			aiGatewayIsEnabledMock.value = true;
+			aiGatewayBalanceMock.value = 0;
+			aiGatewayFetchWalletMock.mockResolvedValue(undefined);
+			messagesMock.value = [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'success',
+					budgetNotices: [{ id: 'notice-1', code: 'budget.credits' }],
+				},
+			];
+			const wrapper = mountPanel();
+			await flushPromises();
+			expect(clearBudgetNoticesMock).not.toHaveBeenCalled();
+			aiGatewayFetchWalletMock.mockClear();
+
+			// The user topped up in another tab and comes back.
+			aiGatewayFetchWalletMock.mockImplementation(async () => {
+				aiGatewayBalanceMock.value = 5;
+			});
+			visibilitySpy.mockReturnValue('visible');
+			document.dispatchEvent(new Event('visibilitychange'));
+			await flushPromises();
+
+			expect(aiGatewayFetchWalletMock).toHaveBeenCalledWith({ force: true });
+			expect(clearBudgetNoticesMock).toHaveBeenCalledWith(new Set(['budget.credits']));
+			wrapper.unmount();
+		} finally {
+			visibilitySpy.mockRestore();
+		}
 	});
 
 	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {

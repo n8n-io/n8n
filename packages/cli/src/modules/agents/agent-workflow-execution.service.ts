@@ -89,6 +89,8 @@ interface WorkflowAgentStreamParams {
 	 * saved agent. Inline runs leave it unset.
 	 */
 	savedAgentId?: string;
+	/** See `ReconstructedAgentRuntime.modelCredentialGatewayManaged`. */
+	modelCredentialGatewayManaged?: boolean;
 	telemetryUserId?: string;
 	runType: AgentRunTelemetryType;
 	outputSchema?: JSONSchema7;
@@ -258,7 +260,13 @@ export class AgentWorkflowExecutionService {
 		extraTools?: BuiltTool[],
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 		instrumentation?: AgentRuntimeInstrumentation,
-	): Promise<{ ok: boolean; agent?: BuiltAgent; budget?: BudgetGuardrailConfig; error?: string }> {
+	): Promise<{
+		ok: boolean;
+		agent?: BuiltAgent;
+		budget?: BudgetGuardrailConfig;
+		modelCredentialGatewayManaged?: boolean;
+		error?: string;
+	}> {
 		if (!runSource.agent.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
 		}
@@ -286,7 +294,11 @@ export class AgentWorkflowExecutionService {
 			);
 			const applied = this.applyPerCallAgentExtras(reconstructed.agent, outputSchema, extraTools);
 			if (!applied.ok) return applied;
-			return { ...applied, budget: reconstructed.budget };
+			return {
+				...applied,
+				budget: reconstructed.budget,
+				modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
+			};
 		} catch (e) {
 			return {
 				ok: false,
@@ -313,7 +325,13 @@ export class AgentWorkflowExecutionService {
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
 		instrumentation?: AgentRuntimeInstrumentation,
-	): Promise<{ ok: boolean; agent?: BuiltAgent; budget?: BudgetGuardrailConfig; error?: string }> {
+	): Promise<{
+		ok: boolean;
+		agent?: BuiltAgent;
+		budget?: BudgetGuardrailConfig;
+		modelCredentialGatewayManaged?: boolean;
+		error?: string;
+	}> {
 		try {
 			const reconstructed =
 				await this.agentRuntimeReconstructionService.reconstructFromResolvedSource({
@@ -330,7 +348,11 @@ export class AgentWorkflowExecutionService {
 				});
 			const applied = this.applyPerCallAgentExtras(reconstructed.agent, outputSchema, extraTools);
 			if (!applied.ok) return applied;
-			return { ...applied, budget: reconstructed.budget };
+			return {
+				...applied,
+				budget: reconstructed.budget,
+				modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
+			};
 		} catch (e) {
 			return {
 				ok: false,
@@ -480,6 +502,7 @@ export class AgentWorkflowExecutionService {
 				// month bucket. The email uses the saved agent the node targets.
 				agentId: telemetryAgentId,
 				...(savedAgentId ? { alertAgentId: savedAgentId } : {}),
+				...(params.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
 			},
 		);
 	}
@@ -695,7 +718,7 @@ export class AgentWorkflowExecutionService {
 		params: StoredWorkflowExecutionContext,
 	): Promise<ExecuteAgentData> {
 		const { agentId, projectId, threadId, outputSchema, sandboxScope } = params;
-		const { agentInstance, recordingParams, runType, budget } =
+		const { agentInstance, recordingParams, runType, budget, modelCredentialGatewayManaged } =
 			await this.prepareStoredWorkflowRun(params);
 		try {
 			const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
@@ -703,6 +726,7 @@ export class AgentWorkflowExecutionService {
 				savedAgentId: agentId,
 				runType,
 				budget,
+				modelCredentialGatewayManaged,
 				recordingParams: { ...recordingParams, agentName: agentInstance.name },
 				...(sandboxScope
 					? { sandboxScope: { projectId, principalHash: sandboxScope.principalHash } }
@@ -775,7 +799,13 @@ export class AgentWorkflowExecutionService {
 			await this.turnExecutionService.recordFailedStart(recordingParams, error);
 			throw error;
 		}
-		return { agentInstance: compiled.agent, recordingParams, runType, budget: compiled.budget };
+		return {
+			agentInstance: compiled.agent,
+			recordingParams,
+			runType,
+			budget: compiled.budget,
+			modelCredentialGatewayManaged: compiled.modelCredentialGatewayManaged,
+		};
 	}
 
 	private async loadWorkflowAgent(params: StoredWorkflowExecutionContext) {
@@ -829,6 +859,7 @@ export class AgentWorkflowExecutionService {
 			| 'recordingParams'
 			| 'sandboxScope'
 			| 'budget'
+			| 'modelCredentialGatewayManaged'
 		>,
 	): Promise<WorkflowAgentRunOutcome> {
 		const {
@@ -924,6 +955,7 @@ export class AgentWorkflowExecutionService {
 				telemetryAgentId: syntheticAgentId,
 				runType,
 				budget: compiled.budget,
+				modelCredentialGatewayManaged: compiled.modelCredentialGatewayManaged,
 			});
 			this.trackInlineRun(params, syntheticAgentId, runType, runtimeConfig, run);
 			return this.buildWorkflowResult({ run, session: null, outputSchema });

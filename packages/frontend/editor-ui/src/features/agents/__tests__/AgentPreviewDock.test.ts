@@ -24,7 +24,8 @@ vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	}),
 }));
 
-vi.mock('@n8n/i18n', () => ({
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/i18n')>()),
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 

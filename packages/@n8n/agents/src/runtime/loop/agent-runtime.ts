@@ -1115,7 +1115,22 @@ export class AgentRuntime {
 					return undefined;
 				}
 			}
-			const turn = await sink.callModel(modelCallContext);
+			let turn: ModelTurnResult;
+			try {
+				turn = await sink.callModel(modelCallContext);
+			} catch (error) {
+				// A cancellation wins over error classification: an aborted run
+				// must end on the existing cancelled path, not as a guardrail stop.
+				this.assertNotAborted(ctx.abortScope);
+				// A host-mapped failure (e.g. a gateway 402) ends the run like a
+				// guardrail stop instead of a generic error finish.
+				const stop = ctx.options?.classifyModelError?.(error);
+				if (stop) {
+					state.guardrailStop = stop;
+					return undefined;
+				}
+				throw error;
+			}
 			// Price the turn before guardrails see it. The finish chunk prices
 			// the summed tokens later; mergeUsage drops per-turn cost.
 			turn.usage = this.applyCost(turn.usage);

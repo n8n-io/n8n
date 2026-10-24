@@ -4,6 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import AgentBudgetNoticeCard from '../components/AgentBudgetNoticeCard.vue';
 
+const openTopUpMock = vi.fn();
+vi.mock('@/app/composables/useAiGatewayTopUp', () => ({
+	useAiGatewayTopUp: () => ({ openTopUp: openTopUpMock }),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
@@ -21,6 +26,12 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.chat.budget.alert.title': "You're getting close to your monthly budget.",
 				'agents.chat.budget.alert.message':
 					'This agent is approaching its monthly budget. It can keep running for now.',
+				'agents.chat.budget.credits.title': 'Your Gateway credits are empty.',
+				'agents.chat.budget.credits.message':
+					'This agent stopped because the shared Gateway credits balance is empty. Top up to keep it running.',
+				'agents.chat.budget.credits.dismissed':
+					'The chat resumes once the new balance is detected.',
+				'agents.chat.budget.credits.topUp': 'Top up',
 			})[key] ?? key,
 	}),
 }));
@@ -34,7 +45,7 @@ const N8nInputNumber = defineComponent({
 
 describe('AgentBudgetNoticeCard', () => {
 	function mountCard(
-		code: 'budget.monthly' | 'budget.session' | 'budget.alert',
+		code: 'budget.monthly' | 'budget.session' | 'budget.alert' | 'budget.credits',
 		props: { canIncrease?: boolean; pending?: boolean } = {},
 	) {
 		return mount(AgentBudgetNoticeCard, {
@@ -99,6 +110,29 @@ describe('AgentBudgetNoticeCard', () => {
 		const wrapper = mountCard('budget.session', { pending: true });
 		wrapper.getComponent({ name: 'N8nInputNumber' }).vm.$emit('update:modelValue', 12);
 		await wrapper.get('[data-testid="agent-budget-notice-increase"]').trigger('click');
+		expect(wrapper.emitted('increase')).toBeUndefined();
+	});
+
+	it('renders the credits stop with a top-up action and no cap input', () => {
+		const wrapper = mountCard('budget.credits');
+		expect(wrapper.text()).toContain('Your Gateway credits are empty.');
+		expect(wrapper.text()).toContain(
+			'This agent stopped because the shared Gateway credits balance is empty. Top up to keep it running.',
+		);
+		expect(wrapper.find('[data-testid="agent-budget-notice-amount"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-budget-notice-increase"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-budget-notice-top-up"]').exists()).toBe(true);
+	});
+
+	it('opens the top-up flow from the credits card and stays actionable', async () => {
+		openTopUpMock.mockResolvedValue(undefined);
+		const wrapper = mountCard('budget.credits');
+		await wrapper.get('[data-testid="agent-budget-notice-top-up"]').trigger('click');
+		expect(openTopUpMock).toHaveBeenCalledWith({ source: 'agent_budget_card' });
+		// The click only requests the top-up — the card keeps its action until
+		// the wallet refresh confirms the balance changed.
+		expect(wrapper.find('[data-testid="agent-budget-notice-top-up"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-budget-notice-dismissed"]').exists()).toBe(false);
 		expect(wrapper.emitted('increase')).toBeUndefined();
 	});
 });
