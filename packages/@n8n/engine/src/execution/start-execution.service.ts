@@ -7,10 +7,12 @@ import {
 	validateExecutableGraph,
 	type StoredWorkflowGraph,
 	type WorkflowGraph,
+	type WorkflowLoop,
 } from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
 import type { ExecutionStore } from './execution-store';
+import { LOOP_SLOT } from './loop-ledger';
 import type {
 	CallerContext,
 	ExecutionMode,
@@ -105,25 +107,32 @@ function toStoredGraph(graph: WorkflowGraph, seededSteps: SeededSteps): StoredWo
 }
 
 /**
- * Rejects seeded steps that a settlement could not record correctly.
+ * Rejects seeded steps the run could not use.
  *
- * When the run reaches a seeded node, the settlement that would have queued it
- * records it as completed with the seeded outputs for that pass instead. That
- * only works for a node that:
+ * A seeded node does not run. When the run reaches it, settlement records it
+ * as completed with the seeded outputs for that pass, and the run goes on from
+ * there. Settlement throws if it reaches a seeded node and finds no outputs
+ * for that pass, so this check makes sure that cannot happen:
  *
- * - is not the trigger: its outputs arrive as `triggerOutputs`.
- * - the trigger can reach: no settlement ever reaches any other node, so its
- *   outputs would never be used.
- * - is not in a loop, and so has exactly one pass. TODO(CAT-4875): accept a
- *   loop's passes.
+ * - The trigger cannot be seeded. Its outputs arrive as `triggerOutputs`.
+ * - Every seeded node must be downstream of the trigger. The run never
+ *   reaches any other node, so its seeded outputs would never be used.
+ * - A node outside any loop runs once, so it must have exactly one pass.
+ * - A loop is seeded whole or not at all. The caller must seed the batch node
+ *   with t + 1 passes, where every pass but the last fills the loop slot and
+ *   the last one does not, and every other node in the loop with exactly t
+ *   passes. The batch node's outputs decide how many times the loop runs, and
+ *   the loop ends when a batch pass does not fill the loop slot. So fewer
+ *   member passes would leave a pass without outputs, and a batch node whose
+ *   last pass still fills the loop slot would leave the loop unfinished.
  */
 function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): void {
 	// The graph was validated first, so the trigger exists.
 	const trigger = findTriggerNode(graph);
 	const reachable = new Set(trigger ? getDescendantNodeIds(graph, trigger.id) : []);
-	const loopByMember = new Map(
-		deriveLoops(graph).flatMap((loop) => [...loop.memberIds].map((id) => [id, loop] as const)),
-	);
+	const loops = deriveLoops(graph);
+	const loopMemberIds = new Set(loops.flatMap((loop) => [...loop.memberIds]));
+
 	for (const [nodeId, passes] of Object.entries(seededSteps)) {
 		if (nodeId === trigger?.id) {
 			throw new GraphValidationError(
@@ -131,19 +140,54 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 			);
 		}
 		if (!reachable.has(nodeId)) {
+			throw new GraphValidationError(`Node ${nodeId} is seeded, but the trigger does not reach it`);
+		}
+		if (passes.length === 0) {
+			throw new GraphValidationError(`Node ${nodeId} is seeded with no passes`);
+		}
+		if (!loopMemberIds.has(nodeId) && passes.length > 1) {
 			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which the trigger does not reach`,
+				`Node ${nodeId} is outside any loop and has one pass, so it cannot be seeded with ${passes.length}`,
 			);
 		}
-		const loop = loopByMember.get(nodeId);
-		if (loop) {
+	}
+	for (const loop of loops) validateSeededLoop(loop, seededSteps);
+}
+
+/** Checks that a loop is seeded whole or not at all. See `validateSeededSteps` for why. */
+function validateSeededLoop(loop: WorkflowLoop, seededSteps: SeededSteps): void {
+	const seeded = new Set(Object.keys(seededSteps));
+	const seededMemberIds = [...loop.memberIds].filter((id) => seeded.has(id));
+	if (seededMemberIds.length === 0) return;
+
+	if (!seeded.has(loop.batchNodeId)) {
+		throw new GraphValidationError(
+			`Node ${seededMemberIds[0]} is seeded but ${loop.batchNodeId}, the batch node of its loop, is not; a loop is seeded whole or not at all`,
+		);
+	}
+
+	const batchPasses = seededSteps[loop.batchNodeId];
+	const passes = batchPasses.length - 1;
+	batchPasses.forEach((outputs, iteration) => {
+		const fillsLoopSlot = outputs[LOOP_SLOT] !== null && outputs[LOOP_SLOT] !== undefined;
+		if (iteration < passes && !fillsLoopSlot) {
 			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which is inside the loop of ${loop.batchNodeId}; a loop member runs once per pass and cannot be seeded`,
+				`Batch node ${loop.batchNodeId} is seeded past iteration ${iteration}, but that pass does not fill its loop slot, so the loop ended there`,
 			);
 		}
-		if (passes.length !== 1) {
+		if (iteration === passes && fillsLoopSlot) {
 			throw new GraphValidationError(
-				`Node ${nodeId} is seeded with ${passes.length} passes, and a node outside a loop has one`,
+				`Batch node ${loop.batchNodeId} fills its loop slot on its last seeded pass, iteration ${iteration}, so the loop has not ended; a loop is seeded whole or not at all`,
+			);
+		}
+	});
+
+	for (const memberId of loop.memberIds) {
+		if (memberId === loop.batchNodeId) continue;
+		const count = seeded.has(memberId) ? seededSteps[memberId].length : 0;
+		if (count !== passes) {
+			throw new GraphValidationError(
+				`Node ${memberId} is seeded for ${count} passes of the loop of ${loop.batchNodeId}, which has ${passes}; a loop is seeded whole or not at all`,
 			);
 		}
 	}

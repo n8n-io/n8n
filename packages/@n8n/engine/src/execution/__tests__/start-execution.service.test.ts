@@ -4,7 +4,7 @@ import { AdmittanceRejectedError, type AdmittanceService } from '../../admittanc
 import { GraphValidationError, type WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionStore } from '../execution-store';
-import type { WorkflowDocument } from '../execution.types';
+import type { SeededSteps, WorkflowDocument } from '../execution.types';
 import { StartExecutionService } from '../start-execution.service';
 
 const sampleGraph: WorkflowGraph = {
@@ -246,16 +246,6 @@ describe('StartExecutionService', () => {
 			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ seededSteps }));
 		});
 
-		it('rejects a node outside any loop seeded with more than one pass', async () => {
-			const store = makeStore();
-			const service = new StartExecutionService(admittance, store, makeQueue());
-
-			await expect(service.start({ ...base, seededSteps: { a: [[], []] } })).rejects.toThrow(
-				/seeded with 2 passes/,
-			);
-			expect(store.createExecution).not.toHaveBeenCalled();
-		});
-
 		it.each([
 			{ name: 'a node that is not in the graph', nodeId: 'ghost' },
 			{ name: 'a node the trigger does not reach', nodeId: 'island' },
@@ -273,9 +263,17 @@ describe('StartExecutionService', () => {
 		});
 
 		it.each([
-			{ name: 'a loop member', nodeId: 'x' },
-			{ name: 'the batch node of a loop', nodeId: 'loop' },
-		])('rejects seeding $name', async ({ nodeId }) => {
+			{ name: 'no passes', passes: [], reason: /no passes/ },
+			{ name: 'two passes', passes: [[], []], reason: /outside any loop/ },
+		])('rejects a node outside any loop seeded with $name', async ({ passes, reason }) => {
+			const store = makeStore();
+			const service = new StartExecutionService(admittance, store, makeQueue());
+
+			await expect(service.start({ ...base, seededSteps: { a: passes } })).rejects.toThrow(reason);
+			expect(store.createExecution).not.toHaveBeenCalled();
+		});
+
+		describe('inside a loop', () => {
 			// trigger -> loop(batch) -> x -> loop (back-edge); loop's done slot -> d
 			const loopGraph: WorkflowGraph = {
 				nodes: [
@@ -291,13 +289,61 @@ describe('StartExecutionService', () => {
 					{ from: 'loop', to: 'd', outputIndex: 0, inputIndex: 0 },
 				],
 			};
-			const store = makeStore();
-			const service = new StartExecutionService(admittance, store, makeQueue());
+			/** A batch node pass that fills its loop slot. */
+			const looping = (pass: number) => [null, [{ json: { pass } }]];
+			/** The batch node's last pass: the done slot fires instead. */
+			const done = [[{ json: { done: true } }], null];
+			const member = (pass: number) => [[{ json: { pass } }]];
 
-			await expect(
-				service.start({ ...base, graph: loopGraph, seededSteps: { [nodeId]: [[]] } }),
-			).rejects.toThrow(/inside the loop of loop/);
-			expect(store.createExecution).not.toHaveBeenCalled();
+			it('accepts a loop seeded whole: the batch node on every pass and the members on all but the last', async () => {
+				const store = makeStore();
+				const service = new StartExecutionService(admittance, store, makeQueue());
+				const seededSteps = { loop: [looping(0), looping(1), done], x: [member(0), member(1)] };
+
+				await service.start({ ...base, graph: loopGraph, seededSteps });
+
+				expect(store.createExecution).toHaveBeenCalledWith(
+					expect.objectContaining({ seededSteps }),
+				);
+			});
+
+			const rejected: Array<{ name: string; seededSteps: SeededSteps; reason: RegExp }> = [
+				{
+					name: 'a member without its batch node',
+					seededSteps: { x: [member(0)] },
+					reason: /batch node of its loop, is not/,
+				},
+				{
+					name: 'a member with fewer passes than the batch node',
+					seededSteps: { loop: [looping(0), looping(1), done], x: [member(0)] },
+					reason: /seeded for 1 passes .* which has 2/,
+				},
+				{
+					name: 'a member with a pass for the last iteration',
+					seededSteps: { loop: [looping(0), done], x: [member(0), member(1)] },
+					reason: /seeded for 2 passes .* which has 1/,
+				},
+				{
+					name: 'a batch node whose last pass still fills its loop slot',
+					seededSteps: { loop: [looping(0), looping(1)], x: [member(0), member(1)] },
+					reason: /has not ended/,
+				},
+				{
+					name: 'a batch node that ended the loop before its last seeded pass',
+					seededSteps: { loop: [done, done], x: [member(0)] },
+					reason: /the loop ended there/,
+				},
+			];
+
+			it.each(rejected)('rejects $name', async ({ seededSteps, reason }) => {
+				const store = makeStore();
+				const service = new StartExecutionService(admittance, store, makeQueue());
+
+				await expect(service.start({ ...base, graph: loopGraph, seededSteps })).rejects.toThrow(
+					reason,
+				);
+				expect(store.createExecution).not.toHaveBeenCalled();
+			});
 		});
 	});
 });
