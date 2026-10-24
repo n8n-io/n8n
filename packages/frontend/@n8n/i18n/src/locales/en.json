@@ -3698,6 +3698,7 @@
 	"settings.communityNodes.uninstallAction.label": "Uninstall package",
 	"settings.communityNodes.upToDate.tooltip": "You are up to date",
 	"settings.communityNodes.failedToLoad.tooltip": "This package failed to load. It may be corrupted, or it may need a newer version of n8n. Try uninstalling and reinstalling it, or upgrade n8n.",
+	"settings.communityNodes.failedToLoad.tooltipWithReason": "This package failed to load. {reason}",
 	"settings.communityNodes.restricted.badge.label": "Restricted",
 	"settings.communityNodes.restricted.tooltip.heading": "Blocked by an instance policy",
 	"settings.communityNodes.managedByEnv": "Community packages are managed via environment variables and cannot be modified from the UI.",

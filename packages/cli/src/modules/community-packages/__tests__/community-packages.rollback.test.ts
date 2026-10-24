@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
+import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -187,6 +188,23 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 			// The restored directory is loaded again, so its nodes stay available.
 			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(2);
 			// The download got as far as writing 2.0.0 to the ledger, so it has to be rolled back.
+			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '1.0.0' });
+		});
+
+		test('keeps the existing package and reports the clashing credential types', async () => {
+			const conflictError = new CredentialTypeConflictError(PACKAGE_NAME, {
+				awsAssumeRole: 'n8n-nodes-base',
+			});
+			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(conflictError);
+
+			// Unwrapped, so the caller sees which credential types clash.
+			await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toBe(
+				conflictError,
+			);
+
+			expect(logger.error).toHaveBeenCalledWith(conflictError.message);
+			expect(existsSync(markerPath())).toBe(true);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(2);
 			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '1.0.0' });
 		});
 

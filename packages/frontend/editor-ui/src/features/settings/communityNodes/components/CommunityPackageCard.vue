@@ -176,7 +176,13 @@ watch(
 				<N8nTooltip v-if="communityPackage.failedLoading === true" placement="top">
 					<template #content>
 						<div>
-							{{ i18n.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+							{{
+								communityPackage.failedLoadingReason
+									? i18n.baseText('settings.communityNodes.failedToLoad.tooltipWithReason', {
+											interpolate: { reason: communityPackage.failedLoadingReason },
+										})
+									: i18n.baseText('settings.communityNodes.failedToLoad.tooltip')
+							}}
 						</div>
 					</template>
 					<N8nIcon icon="triangle-alert" color="danger" size="large" />
