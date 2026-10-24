@@ -16,6 +16,8 @@ import {
 	promotionProviderTypeCapabilities,
 	supportsPromotionAuthType,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -47,9 +49,13 @@ export class PromotionProvidersService {
 		private readonly gitService: PromotionsGitService,
 		private readonly cipher: Cipher,
 		private readonly gitHosts: GitHostClients,
+		private readonly eventService: EventService,
 	) {}
 
-	async create(input: CreatePromotionProviderDto): Promise<PromotionProviderCreatedPublicDto> {
+	async create(
+		input: CreatePromotionProviderDto,
+		actor: User,
+	): Promise<PromotionProviderCreatedPublicDto> {
 		const hostConfig = this.resolveHostConfig(input.type, input.auth.authType, input.config);
 		const { config, credentials } = await this.buildAuthentication(
 			input.type,
@@ -64,6 +70,12 @@ export class PromotionProvidersService {
 			authType: input.auth.authType,
 			config,
 			auth,
+		});
+		this.eventService.emit('promotion-provider-created', {
+			user: actor,
+			providerId: provider.id,
+			providerType: provider.type,
+			authType: provider.authType,
 		});
 		return { provider: this.toPublic(provider), publicKey: this.publicKeyOf(provider) };
 	}
@@ -115,7 +127,11 @@ export class PromotionProvidersService {
 	 * Type and auth type are immutable. Leaving `auth` out keeps the stored
 	 * credentials; sending it replaces them for every environment on this provider.
 	 */
-	async update(id: string, input: UpdatePromotionProviderDto): Promise<PromotionProviderPublicDto> {
+	async update(
+		id: string,
+		input: UpdatePromotionProviderDto,
+		actor: User,
+	): Promise<PromotionProviderPublicDto> {
 		if (Object.keys(input).length === 0) {
 			throw new BadRequestError('At least one field is required');
 		}
@@ -144,19 +160,39 @@ export class PromotionProvidersService {
 		} else {
 			await this.providerRepository.updateProvider(id, changes);
 		}
-		return this.toPublic(await this.getEntity(id));
+		// Read the row back first. A provider deleted in between must not count as updated.
+		const updatedProvider = await this.getEntity(id);
+		this.eventService.emit('promotion-provider-updated', {
+			user: actor,
+			providerId: id,
+			providerType: current.type,
+			changedFields: [
+				...(input.name !== undefined ? ['name' as const] : []),
+				...(input.auth !== undefined ? ['auth' as const] : []),
+				...(input.config !== undefined ? ['config' as const] : []),
+			],
+		});
+		return this.toPublic(updatedProvider);
 	}
 
 	/**
 	 * A provider in use cannot be deleted. The pre-check answers 409 for the normal
 	 * case; the foreign key is the final guard when an environment appears in between.
 	 */
-	async delete(id: string): Promise<void> {
-		await this.getEntity(id);
+	async delete(id: string, actor: User): Promise<void> {
+		const provider = await this.getEntity(id);
 		if ((await this.environmentRepository.countByProviderId(id)) > 0) {
 			throw new ConflictError('This provider is used by a promotion environment');
 		}
-		await mapPromotionConflicts(async () => await this.providerRepository.deleteProvider(id));
+		const deleted = await mapPromotionConflicts(
+			async () => await this.providerRepository.deleteProvider(id),
+		);
+		if (!deleted) return;
+		this.eventService.emit('promotion-provider-deleted', {
+			user: actor,
+			providerId: id,
+			providerType: provider.type,
+		});
 	}
 
 	async getEntity(id: string): Promise<PromotionProvider> {

@@ -6,6 +6,7 @@ import {
 	type PromotionProviderType,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -186,6 +187,7 @@ beforeEach(async () => {
 			gitService,
 			cipher,
 			mock<GitHostClients>(),
+			mock<EventService>(),
 		),
 		workingDirectory,
 		new WorkingCopyUpdater(instanceSettings, logger),
@@ -199,6 +201,7 @@ beforeEach(async () => {
 		Container.get(PackageImportConfig),
 		Container.get(PromotionRunRepository),
 		Container.get(PromotionReviewsService),
+		mock<EventService>(),
 		logger,
 	);
 	Container.set(PromotionsService, service);
@@ -321,8 +324,8 @@ async function snapshotApplyState() {
 async function prepareBindingApply(unselectedVariableName?: string) {
 	const remote = await createRemote();
 	const environments = await createInstanceEnvironments(remote.bareDir);
-	await service.clone(environments.promote.id);
-	await service.clone(environments.apply.id);
+	await service.clone(environments.promote.id, owner);
+	await service.clone(environments.apply.id, owner);
 	const project = await projectService.createTeamProject(
 		owner,
 		{
@@ -506,8 +509,8 @@ function dataTableNode(table: { id: string; name: string }): INode {
 async function promoteDataTableWorkflows() {
 	const remote = await createRemote();
 	const environments = await createInstanceEnvironments(remote.bareDir);
-	await service.clone(environments.promote.id);
-	await service.clone(environments.apply.id);
+	await service.clone(environments.promote.id, owner);
+	await service.clone(environments.apply.id, owner);
 	const project = await createTeamProject('Sales', owner);
 	const dataTableService = Container.get(DataTableService);
 	const orders = await dataTableService.createDataTable(project.id, {
@@ -604,7 +607,7 @@ describe('Promote and Apply', () => {
 		await simpleGit(remote.bareDir).raw(['update-ref', '-d', 'refs/heads/main']);
 		const environments = await createInstanceEnvironments(remote.bareDir);
 
-		await expect(service.clone(environments.promote.id)).rejects.toThrow(
+		await expect(service.clone(environments.promote.id, owner)).rejects.toThrow(
 			'Remote branch does not exist: main',
 		);
 	});
@@ -614,7 +617,7 @@ describe('Promote and Apply', () => {
 		async (canExportVariableValues) => {
 			const remote = await createRemote();
 			const environments = await createInstanceEnvironments(remote.bareDir);
-			await service.clone(environments.promote.id);
+			await service.clone(environments.promote.id, owner);
 			const originalHead = (await simpleGit(remote.bareDir).revparse(['main'])).trim();
 			const project = await createTeamProject('Orders', owner);
 			await createVariable('API_URL', 'https://api.example.com');
@@ -642,7 +645,7 @@ describe('Promote and Apply', () => {
 	it('exports all team projects and pushes to the base branch', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const project = await createTeamProject('Orders', owner);
 		await Container.get(AgentRepository).save({
@@ -718,7 +721,7 @@ describe('Promote and Apply', () => {
 				true,
 				providerType,
 			);
-			await service.clone(environments.promote.id);
+			await service.clone(environments.promote.id, owner);
 
 			const project = await createTeamProject('Orders', owner);
 			const workflow = await createWorkflow(
@@ -768,7 +771,7 @@ describe('Promote and Apply', () => {
 			{ apply: 'main', promote: 'main' },
 			true,
 		);
-		const { environmentId } = await service.clone(environments.promote.id);
+		const { environmentId } = await service.clone(environments.promote.id, owner);
 		const { repositoryFolder, descriptorFile } = workingDirectory.paths(environmentId);
 		const checkoutGit = simpleGit(repositoryFolder);
 		const baseCommit = (await checkoutGit.revparse(['HEAD'])).trim();
@@ -809,7 +812,7 @@ describe('Promote and Apply', () => {
 				'not connected',
 			);
 			expect(exportSpy).not.toHaveBeenCalled();
-			await service.clone(environments.promote.id);
+			await service.clone(environments.promote.id, owner);
 			await expect(service.promote(environments.promote.id, owner, request)).resolves.toMatchObject(
 				{
 					git: { branchName: 'main' },
@@ -830,7 +833,7 @@ describe('Promote and Apply', () => {
 			{ apply: 'main', promote: 'main' },
 			true,
 		);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		await expect(
 			service.promote(environments.promote.id, owner, {
@@ -844,7 +847,7 @@ describe('Promote and Apply', () => {
 	it('applies the package and matches the managed target scope', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.apply.id, owner);
 
 		const sourceProject = await createTeamProject('Orders', owner);
 		const sourceWorkflow = await createWorkflow(
@@ -917,7 +920,7 @@ describe('Promote and Apply', () => {
 	it('keeps a project whose folder is on the branch but missing from the manifest', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.apply.id, owner);
 		const listed = await createTeamProject('Orders', owner);
 		const unlisted = await createTeamProject('Unlisted', owner);
 		const exportDir = path.join(remote.workingDir, 'n8n');
@@ -951,7 +954,7 @@ describe('Promote and Apply', () => {
 	it('applies a package whose workflow sits two folders deep', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.apply.id, owner);
 
 		const sourceProject = await createTeamProject('Orders', owner);
 		const parentFolder = await createFolder(sourceProject, { name: 'Operations' });
@@ -1202,7 +1205,7 @@ describe('Promote and Apply', () => {
 	it('keeps the missing-manifest import error after a clear preflight', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.apply.id, owner);
 		await writeRemoteFile(remote, 'n8n/.gitkeep', '');
 		await commitAndPushRemote(remote, 'Add package directory');
 		const before = await snapshotApplyState();
@@ -1213,8 +1216,8 @@ describe('Promote and Apply', () => {
 	it('promotes an archived workflow and archives it on apply instead of removing it', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 
 		const project = await createTeamProject('Orders', owner);
 		const workflow = await createWorkflow(
@@ -1258,8 +1261,8 @@ describe('Promote and Apply', () => {
 			apply: 'dev',
 			promote: 'staging',
 		});
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 
 		// Seed `dev` with a package from somewhere else, then take that project away
 		// so the Apply has to bring it back.
@@ -1296,8 +1299,8 @@ describe('Apply a project selection', () => {
 	it('imports only the selected workflow and preserves unselected instance content', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', [
 			'Selected',
 			'Sibling',
@@ -1359,8 +1362,8 @@ describe('Apply a project selection', () => {
 	it('deletes a selected workflow absent from the branch and keeps its sibling', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Sibling']);
 		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
@@ -1396,8 +1399,8 @@ describe('Apply a project selection', () => {
 	it('deletes a selected workflow that is already archived on the target', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const { project } = await setupProjectWithWorkflows('Orders', ['Sibling']);
 		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
@@ -1424,8 +1427,8 @@ describe('Apply a project selection', () => {
 	it('applies a name change to the same workflow in the same folder', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Renamed order']);
 		const folder = await createFolder(project, { name: 'Operations' });
 		const repository = Container.get(WorkflowRepository);
@@ -1460,8 +1463,8 @@ describe('Apply a project selection', () => {
 	it('rejects a selected workflow with a different folder placement before writes', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
 		const repository = Container.get(WorkflowRepository);
 		// Promote the workflow from inside `branchFolder` so the branch carries a folder placement.
@@ -1504,8 +1507,8 @@ describe('Apply a project selection', () => {
 	it('rejects a selected workflow at the branch project root that is in a folder on the instance', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
 		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
@@ -1631,8 +1634,8 @@ describe('Apply a project selection', () => {
 	it('returns source-changed for a stale commit without importing workflows', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		const checkout = await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		const checkout = await service.clone(environments.apply.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Branch name']);
 		const promoted = await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
@@ -1674,8 +1677,8 @@ describe('Apply a project selection', () => {
 		async ({ changeLocalTag }) => {
 			const remote = await createRemote();
 			const environments = await createInstanceEnvironments(remote.bareDir);
-			await service.clone(environments.promote.id);
-			await service.clone(environments.apply.id);
+			await service.clone(environments.promote.id, owner);
+			await service.clone(environments.apply.id, owner);
 			const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Tagged']);
 			const tag = await createTag({ name: 'release' }, workflows[0]);
 			await service.promote(environments.promote.id, owner, {
@@ -1728,8 +1731,8 @@ describe('Check Apply blockers', () => {
 	it('reports a workflow that moved to another project, next to the blockers of other workflows', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const {
 			project: orders,
 			workflows: [moved],
@@ -1802,8 +1805,8 @@ describe('Check Apply blockers', () => {
 	it('reports a global variable that a project variable overrides as a warning, not a blocker', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const project = await createTeamProject('Orders', owner);
 		const variable = await createVariable('API_URL', 'global value');
 		const workflow = await buildWorkflowReferencingVariables({
@@ -1843,8 +1846,8 @@ describe('Apply a project selection over the public API', () => {
 	it('applies a selected workflow over the wire and preserves unselected content', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', [
 			'Selected',
 			'Sibling',
@@ -1930,8 +1933,8 @@ describe('Apply a project selection over the public API', () => {
 	it('returns source-changed for a stale commit without importing', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		const checkout = await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		const checkout = await service.clone(environments.apply.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Branch name']);
 		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
@@ -1963,8 +1966,8 @@ describe('Apply a project selection over the public API', () => {
 	it('rejects an empty, duplicate, or unknown selection with 400', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
 		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
@@ -1994,8 +1997,8 @@ describe('Apply a project selection over the public API', () => {
 	it('maps a folder-placement clash to 409 without importing', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
 		const repository = Container.get(WorkflowRepository);
 		const branchFolder = await createFolder(project, { name: 'Branch folder' });
@@ -2218,7 +2221,7 @@ describe('Promote a project selection — branch effects', () => {
 	it('promotes a first selection to a branch without a package, then adds to it', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
 		await setupProjectWithWorkflows('Billing', ['b1']);
 		const promoteWorkflow = async (workflowId: string) =>
@@ -2256,7 +2259,7 @@ describe('Promote a project selection — branch effects', () => {
 		async (lostPath) => {
 			const remote = await createRemote();
 			const environments = await createInstanceEnvironments(remote.bareDir);
-			const { environmentId } = await service.clone(environments.promote.id);
+			const { environmentId } = await service.clone(environments.promote.id, owner);
 			const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
 			const promoteWorkflow = async (workflowId: string) =>
 				await service.promoteProjectSelection(project.id, owner, {
@@ -2276,7 +2279,7 @@ describe('Promote a project selection — branch effects', () => {
 			);
 			expect((await remoteGit.revparse(['main'])).trim()).toBe(promotedCommit);
 
-			await service.clone(environments.promote.id);
+			await service.clone(environments.promote.id, owner);
 			await promoteWorkflow(workflows[1].id);
 
 			const { dir } = await inspectBranch(remote.bareDir);
@@ -2290,7 +2293,7 @@ describe('Promote a project selection — branch effects', () => {
 		const bareDir = path.join(testRoot, 'empty-remote.git');
 		await simpleGit().raw(['init', '--bare', bareDir]);
 		const environments = await createInstanceEnvironments(bareDir);
-		const { environmentId } = await service.clone(environments.promote.id);
+		const { environmentId } = await service.clone(environments.promote.id, owner);
 		const { repositoryFolder } = workingDirectory.paths(environmentId);
 		const checkoutGit = simpleGit(repositoryFolder);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1']);
@@ -2329,7 +2332,7 @@ describe('Promote a project selection — branch effects', () => {
 			{ apply: 'main', promote: 'main' },
 			true,
 		);
-		const { environmentId } = await service.clone(environments.promote.id);
+		const { environmentId } = await service.clone(environments.promote.id, owner);
 		const baseCommit = (await remote.git.revparse(['main'])).trim();
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1']);
 
@@ -2354,7 +2357,7 @@ describe('Promote a project selection — branch effects', () => {
 	it('adds only the selected workflow, leaving existing workflows untouched', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
 		await service.promote(environments.promote.id, owner, {
@@ -2397,7 +2400,7 @@ describe('Promote a project selection — branch effects', () => {
 			{ apply: 'main', promote: 'main' },
 			true,
 		);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
 		// A full promote seeds a branch. Merge it into the base, so a later selection
@@ -2439,7 +2442,7 @@ describe('Promote a project selection — branch effects', () => {
 	it('updates only the selected workflow, leaving others untouched', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
 		await service.promote(environments.promote.id, owner, {
@@ -2493,7 +2496,7 @@ describe('Promote a project selection — branch effects', () => {
 	it('deletes the selected workflow from the branch', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
 		await service.promote(environments.promote.id, owner, {
@@ -2522,7 +2525,7 @@ describe('Promote a project selection — branch effects', () => {
 	it('handles add and delete in the same promote atomically', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
 		await service.promote(environments.promote.id, owner, {
@@ -2555,7 +2558,7 @@ describe('Promote a project selection — branch effects', () => {
 	it('preserves workflows from other projects during a selective promote', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project: p1, workflows: p1Workflows } = await setupProjectWithWorkflows('Orders', [
 			'p1-w1',
@@ -2585,7 +2588,7 @@ describe('Promote a project selection — branch effects', () => {
 	it('moves a renamed workflow to its new directory and removes the old one', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
 		await service.promote(environments.promote.id, owner, {
@@ -2620,8 +2623,8 @@ describe('Promote a project selection — branch effects', () => {
 	it('moves a renamed folder, so unselected workflows ride along unchanged', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 
 		const project = await createTeamProject('Orders', owner);
 		const folder = await createFolder(project, { name: 'Sales' });
@@ -2680,7 +2683,7 @@ describe('Promote a project selection', () => {
 	it('promotes a selected live workflow and returns the pushed branch and commit', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
 		await service.promote(environments.promote.id, owner, {
@@ -2706,7 +2709,7 @@ describe('Promote a project selection', () => {
 	it('keeps an archived selected workflow on the branch, archived', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
 		await service.promote(environments.promote.id, owner, {
@@ -2734,7 +2737,7 @@ describe('Promote a project selection', () => {
 	it('promotes a workflow archived since the last promote as an archived write', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
 		await service.promote(environments.promote.id, owner, {
@@ -2764,7 +2767,7 @@ describe('Promote a project selection', () => {
 	it('drops a workflow that moved to another project from the branch as a deletion', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project: orders, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
 		const { project: billing } = await setupProjectWithWorkflows('Billing', []);
@@ -2794,7 +2797,7 @@ describe('Promote a project selection', () => {
 	it('rejects a selection with a workflow that belongs to another project on the branch and pushes nothing', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const { project: orders } = await setupProjectWithWorkflows('Orders', ['w1']);
 		const { workflows: billingWorkflows } = await setupProjectWithWorkflows('Billing', ['b1']);
@@ -2829,7 +2832,7 @@ describe('Promotion base branch listing', () => {
 	it('lists the exported project and its top-level dependencies', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const projectB = await createTeamProject('Marketing', owner);
 		const parentFolder = await createFolder(project, { name: 'Operations' });
@@ -2942,7 +2945,7 @@ describe('Promotion base branch listing', () => {
 			apply: 'production',
 			promote: 'main',
 		});
-		await service.clone(instance.promote.id);
+		await service.clone(instance.promote.id, owner);
 		expect(await listBaseBranchFiles(project.id)).toEqual([
 			{
 				entityId: project.id,
@@ -2964,7 +2967,7 @@ describe('Promotion base branch listing', () => {
 			settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
 		});
 		await linkRepository.linkProject(project.id, projectPromote.id, 'promote');
-		await service.clone(projectPromote.id);
+		await service.clone(projectPromote.id, owner);
 
 		expect(await listBaseBranchFiles(project.id)).toEqual([
 			{
@@ -2988,7 +2991,7 @@ describe('Promotion base branch listing', () => {
 		await commitAndPushRemote(remote, 'Initial export');
 
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const checkout = workingDirectory.paths(environments.promote.id).repositoryFolder;
 		const checkoutGit = simpleGit(checkout);
@@ -3034,7 +3037,7 @@ describe('Promotion base branch listing', () => {
 		const bareDir = path.join(testRoot, 'empty-remote.git');
 		await simpleGit().raw(['init', '--bare', bareDir]);
 		const environments = await createInstanceEnvironments(bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const branch = await service.readBranchPackage(project.id, 'promote');
 
@@ -3048,7 +3051,7 @@ describe('Promotion base branch listing', () => {
 		await writeRemoteFile(remote, 'n8n/manifest.json', '{"packageFormatVersion":"1"}');
 		await commitAndPushRemote(remote, 'Export');
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.apply.id, owner);
 
 		const branch = await service.readBranchPackage(project.id, 'apply');
 
@@ -3126,7 +3129,7 @@ describe('Promotion base branch listing', () => {
 		await writeRemoteFile(remote, `${projectRoot}/workflows/order-42/README.md`, 'Notes');
 		await commitAndPushRemote(remote, 'Export scoped entities');
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const files = await listBaseBranchFiles(project.id);
 
@@ -3138,7 +3141,7 @@ describe('Promotion base branch listing', () => {
 		const bareDir = path.join(testRoot, 'empty-remote.git');
 		await simpleGit().raw(['init', '--bare', bareDir]);
 		const environments = await createInstanceEnvironments(bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 		await rename(bareDir, `${bareDir}.offline`);
 
 		await expect(listBaseBranchFiles(project.id)).rejects.toThrow(BadRequestError);
@@ -3147,7 +3150,7 @@ describe('Promotion base branch listing', () => {
 	it('requires a fresh clone after a base-branch change and reports a deleted branch', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 		await remote.git.checkoutLocalBranch('production');
 		const projectPath = `n8n/projects/orders-${project.id}/project.json`;
 		await writeRemoteFile(remote, projectPath, '{}');
@@ -3158,7 +3161,7 @@ describe('Promotion base branch listing', () => {
 			settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
 		});
 		await expect(listBaseBranchFiles(project.id)).rejects.toThrow('not connected');
-		await service.clone(environments.promote.id);
+		await service.clone(environments.promote.id, owner);
 
 		const files = await listBaseBranchFiles(project.id);
 

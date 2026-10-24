@@ -122,7 +122,7 @@ beforeEach(async () => {
 		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 	});
 	environmentId = environment.id;
-	await Container.get(PromotionsService).clone(environmentId);
+	await Container.get(PromotionsService).clone(environmentId, owner);
 });
 
 afterEach(async () => {
