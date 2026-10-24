@@ -91,6 +91,11 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'projectAiPreference:create',
 	'projectAiPreference:update',
 	'projectAiPreference:delete',
+	'projectSkill:list',
+	'projectSkill:read',
+	'projectSkill:create',
+	'projectSkill:update',
+	'projectSkill:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -231,6 +236,11 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'projectAiPreference:create',
 	'projectAiPreference:update',
 	'projectAiPreference:delete',
+	'projectSkill:list',
+	'projectSkill:read',
+	'projectSkill:create',
+	'projectSkill:update',
+	'projectSkill:delete',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
