@@ -64,7 +64,7 @@
         "description": "View and update CLI configuration"
       },
       "promotion-provider": {
-        "description": "Create and manage the providers that hold promotion credentials"
+        "description": "Create and manage the providers that hold promotion credentials, and list their repositories and branches"
       },
       "promotion-environment": {
         "description": "Create and manage promotion environments, and promote or apply packages"
