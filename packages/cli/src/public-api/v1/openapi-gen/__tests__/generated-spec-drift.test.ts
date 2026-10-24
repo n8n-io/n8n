@@ -32,6 +32,39 @@ describe('generated OpenAPI spec is up to date', () => {
 	);
 });
 
+describe('Rate-limit response documentation', () => {
+	it.each(getGeneratedArtifacts().filter(({ outputPath }) => outputPath.startsWith('handlers/')))(
+		'$outputPath documents the shared 429 response',
+		({ content }) => {
+			const operation = parse(content) as OpenAPIV3.OperationObject;
+
+			expect(operation.responses['429']).toEqual({
+				$ref: '../../../../shared/spec/responses/tooManyRequests.yml',
+			});
+		},
+	);
+
+	it('documents the retry delay, rate-limit headers, and error body', () => {
+		const response = parse(
+			fs.readFileSync(path.join(V1_DIR, 'shared/spec/responses/tooManyRequests.yml'), 'utf8'),
+		) as OpenAPIV3.ResponseObject;
+
+		expect(response.headers).toEqual({
+			'Retry-After': expect.objectContaining({ schema: { type: 'integer', minimum: 0 } }),
+			'X-RateLimit-Limit': expect.objectContaining({ schema: { type: 'integer', minimum: 0 } }),
+			'X-RateLimit-Remaining': expect.objectContaining({ schema: { type: 'integer', minimum: 0 } }),
+			'X-RateLimit-Reset': expect.objectContaining({
+				schema: { type: 'integer', format: 'int64', minimum: 0 },
+			}),
+		});
+		expect(response.content?.['application/json'].schema).toMatchObject({
+			type: 'object',
+			required: ['message'],
+			properties: { message: { type: 'string', example: 'Too many requests' } },
+		});
+	});
+});
+
 describe('Apply response documentation', () => {
 	it.each(['applyPackage', 'continueApplyPackage'])(
 		'%s exposes all outcomes and the required gates',

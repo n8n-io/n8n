@@ -99,3 +99,5 @@ responses:
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
     $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
