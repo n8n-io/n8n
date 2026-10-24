@@ -1,5 +1,5 @@
 import { UUID_V7_PATTERN } from '@n8n/constants';
-import { NotImplementedError } from '@n8n/errors';
+import { ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -911,6 +911,144 @@ describe('EngineV2Dispatcher', () => {
 				// payload defaults to.
 				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith([[{ json: {} }]]);
 			});
+		});
+	});
+
+	describe('resume', () => {
+		const executionId = createExecutionIdV2();
+		const engineResume = { stepId: 'step-1', token: 'token' };
+		const existing: ResumableExecution = { executionId, expectedStatus: 'waiting', engineResume };
+
+		/**
+		 * What `prepareExecutionData` leaves on the stack after the node's `webhook()`
+		 * ran. A plain object, not `mock()`: the items are compared by value.
+		 */
+		const resumeData = (main: Array<INodeExecutionData[] | null>) =>
+			({
+				workflowData: workflow(),
+				userId: 'user-1',
+				executionData: createRunExecutionData({
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [
+							{
+								node: node('wait-id', 'Wait', 'n8n-nodes-base.wait'),
+								data: { main },
+								source: null,
+							},
+						],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: null,
+					},
+				}),
+			}) as unknown as IWorkflowExecutionDataProcess;
+
+		beforeEach(() => {
+			proxy.resolveStep.mockResolvedValue({ ok: true, value: { executionId, stepId: 'step-1' } });
+		});
+
+		it('ends the wait with the items the resume method produced, under the located step and token', async () => {
+			await expect(
+				dispatcher.resume(existing, resumeData([[{ json: { approved: true } }]])),
+			).resolves.toBe(executionId);
+
+			expect(proxy.resolveStep).toHaveBeenCalledWith('step-1', {
+				token: 'token',
+				outputs: [[{ json: { approved: true } }]],
+			});
+			expect(proxy.startExecution).not.toHaveBeenCalled();
+		});
+
+		it('checks the credential permissions before it reaches the data plane', async () => {
+			credentialsPermissionChecker.check.mockRejectedValueOnce(new UserError('no access'));
+
+			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow('no access');
+
+			expect(proxy.resolveStep).not.toHaveBeenCalled();
+		});
+
+		it('answers a wait that is over with a conflict, as v1 does', async () => {
+			proxy.resolveStep.mockResolvedValue({ ok: false, status: 409, error: 'not_waiting' });
+
+			const resumed = dispatcher.resume(existing, resumeData([[]]));
+
+			await expect(resumed).rejects.toThrow(ConflictError);
+			await expect(resumed).rejects.toThrow(`The execution "${executionId}" is not waiting.`);
+		});
+
+		it('answers any other refusal of the data plane with a user error', async () => {
+			proxy.resolveStep.mockResolvedValue({ ok: false, status: 501, error: 'unimplemented' });
+
+			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow(UserError);
+		});
+
+		it('sends an empty slot of the resume payload as a dead edge', async () => {
+			await dispatcher.resume(existing, resumeData([null, [{ json: {} }]]));
+
+			expect(proxy.resolveStep).toHaveBeenCalledWith('step-1', {
+				token: 'token',
+				outputs: [null, [{ json: {} }]],
+			});
+		});
+
+		it('fails when the stack carries no payload for the waiting node', async () => {
+			const data = {
+				workflowData: workflow(),
+				userId: 'user-1',
+			} as unknown as IWorkflowExecutionDataProcess;
+
+			await expect(dispatcher.resume(existing, data)).rejects.toThrow('carries no payload');
+		});
+
+		describe('the files the resume method stored', () => {
+			const main = [
+				[
+					{
+						json: {},
+						binary: { data: { data: '', mimeType: 'text/plain', id: 'filesystem-v2:file-1' } },
+					},
+				],
+			];
+
+			it('deletes them when the data plane refuses the resume', async () => {
+				proxy.resolveStep.mockResolvedValue({ ok: false, status: 409, error: 'not_waiting' });
+
+				await expect(dispatcher.resume(existing, resumeData(main))).rejects.toThrow(ConflictError);
+
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(main);
+			});
+
+			it('deletes them when the credential check refuses the resume', async () => {
+				credentialsPermissionChecker.check.mockRejectedValueOnce(new UserError('no access'));
+
+				await expect(dispatcher.resume(existing, resumeData(main))).rejects.toThrow('no access');
+
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(main);
+			});
+
+			it('keeps them when the data plane fails, since it may have accepted the step', async () => {
+				proxy.resolveStep.mockRejectedValueOnce(new Error('engine down'));
+
+				await expect(dispatcher.resume(existing, resumeData(main))).rejects.toThrow('engine down');
+
+				expect(payloadFiles.discard).not.toHaveBeenCalled();
+			});
+		});
+
+		it('answers a step that went away with its execution as a missing execution', async () => {
+			proxy.resolveStep.mockResolvedValue({ ok: false, status: 401, error: 'invalid_token' });
+
+			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow(NotFoundError);
+		});
+
+		it('refuses a resume that names no wait on the data plane', async () => {
+			await expect(
+				dispatcher.resume({ executionId, expectedStatus: 'waiting' }, resumeData([[]])),
+			).rejects.toThrow('A v2 resume needs the step');
+
+			expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			expect(proxy.resolveStep).not.toHaveBeenCalled();
 		});
 	});
 });

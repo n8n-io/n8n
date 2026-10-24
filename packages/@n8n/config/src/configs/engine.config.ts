@@ -4,10 +4,10 @@ import { Config, Env } from '../decorators';
 import { positiveIntSchema } from '../schemas';
 
 /**
- * Floor for the CP → DP shared secret. Kept in step with the engine's identity
- * verifier, which rejects anything shorter.
+ * Floor for the CP → DP shared secret and the resume secret. Kept in step with
+ * the engine, which rejects anything shorter.
  */
-const AUTH_SECRET_MIN_LENGTH = 32;
+const SECRET_MIN_LENGTH = 32;
 
 const engineModeSchema = z.enum(['in-process', 'remote']);
 
@@ -64,8 +64,19 @@ export class EngineConfig {
 	 *
 	 * This is in development and not ready for use.
 	 */
-	@Env('N8N_ENGINE_AUTH_SECRET', z.string().min(AUTH_SECRET_MIN_LENGTH))
+	@Env('N8N_ENGINE_AUTH_SECRET', z.string().min(SECRET_MIN_LENGTH))
 	authSecret: string = '';
+
+	/**
+	 * Secret the data plane derives resume tokens from. A control plane in remote
+	 * mode refuses to start with it set. Unset, the engine accepts no resume
+	 * request. A value shorter than 32 characters counts as unset. A change
+	 * invalidates every open resume URL.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_RESUME_SECRET', z.string().min(SECRET_MIN_LENGTH))
+	resumeSecret: string = '';
 
 	/** Port the control plane server listens on. Its own, so it can be firewalled off from the editor API. */
 	@Env('N8N_ENGINE_CONTROL_PLANE_PORT')

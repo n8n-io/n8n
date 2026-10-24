@@ -6,10 +6,11 @@ import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
+	mintResumeToken,
 	noopExecutionResponseSender,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
-import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
+import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
@@ -110,6 +111,7 @@ export class EngineV2Runtime {
 			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
 			logger: this.logger,
 			responseSender,
+			resumeSecret: this.engineConfig.resumeSecret,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: async (events, signal) =>
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
@@ -122,12 +124,20 @@ export class EngineV2Runtime {
 					nodeTypes: this.nodeTypes,
 					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
 					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+					resumeToken: this.resumeTokenMinter(),
 				}),
 			}),
 		});
 		engine.start();
 
 		this.engine = engine;
+	}
+
+	private resumeTokenMinter(): V1StepExecutorDeps['resumeToken'] {
+		const { resumeSecret } = this.engineConfig;
+		if (!resumeSecret) return undefined;
+
+		return ({ executionId }) => mintResumeToken(resumeSecret, executionId);
 	}
 
 	private buildAdditionalData(

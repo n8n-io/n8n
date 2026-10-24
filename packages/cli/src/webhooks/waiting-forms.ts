@@ -1,10 +1,14 @@
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { ExecutionSnapshot, ResumeTargetResponse } from '@n8n/engine';
 import type express from 'express';
-import type { IRunData } from 'n8n-workflow';
+import type { INode, IRunData } from 'n8n-workflow';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, Workflow } from 'n8n-workflow';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
+import { asWorkflowSnapshot } from '@/executions/engine-v2-execution-reader.service';
+import { toV1Status } from '@/executions/engine-v2-mapping';
+import { isExecutionIdV2 } from '@/executions/execution-id';
 import { applyCors } from '@/utils/cors.util';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
@@ -25,6 +29,76 @@ export class WaitingForms extends WaitingWebhooks {
 		if (method === 'POST') {
 			execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
 		}
+	}
+
+	protected override respondInvalidToken(res: express.Response): IWebhookResponseCallbackData {
+		applyFormSandboxCSP(res);
+		res.status(401).render('form-invalid-token');
+		return { noWebhookResponse: true };
+	}
+
+	/**
+	 * The status poll of the form page, from the data plane's snapshot. The page
+	 * acts on the v1 status words, so the v2 status is mapped to them; `waiting`
+	 * on a form node is `form-waiting`, the word that tells the page to render.
+	 */
+	protected override answerEngineV2Status({
+		snapshot,
+		target,
+		suffix,
+		req,
+		res,
+	}: {
+		snapshot: ExecutionSnapshot;
+		target: ResumeTargetResponse['target'];
+		suffix: string | undefined;
+		req: WaitingWebhookRequest;
+		res: express.Response;
+	}): IWebhookResponseCallbackData | undefined {
+		if (suffix !== WAITING_FORMS_EXECUTION_STATUS) return undefined;
+
+		const status = toV1Status(snapshot.status);
+		const node = target && this.findWorkflowNode(snapshot, target.nodeId);
+		const waitsForForm = node && status === 'waiting' && this.isFormResumeNode(node);
+
+		applyCors(req, res);
+		res.send(waitsForForm ? 'form-waiting' : status);
+		return { noWebhookResponse: true };
+	}
+
+	/**
+	 * A queued or running execution gets no body, because the page polls, as in
+	 * v1. A completed execution gets the generic completion page, not a Form
+	 * node's own.
+	 */
+	protected override answerEngineV2WithoutTarget(
+		executionId: string,
+		snapshot: ExecutionSnapshot,
+		res: express.Response,
+	): IWebhookResponseCallbackData {
+		if (snapshot.status === 'completed') {
+			applyFormSandboxCSP(res);
+			res.render('form-trigger-completion', {
+				title: 'Form Submitted',
+				message: 'Your response has been recorded',
+				formTitle: 'Form Submitted',
+			});
+			return { noWebhookResponse: true };
+		}
+
+		if (snapshot.status === 'queued' || snapshot.status === 'running') {
+			return { noWebhookResponse: true };
+		}
+
+		return super.answerEngineV2WithoutTarget(executionId, snapshot, res);
+	}
+
+	protected override sanitizeEngineV2Request(req: WaitingWebhookRequest, resumeNode: INode): void {
+		if (!authAllowlistedNodes.has(resumeNode.type)) sanitizeWebhookRequest(req);
+	}
+
+	private findWorkflowNode(snapshot: ExecutionSnapshot, nodeId: string): INode | undefined {
+		return asWorkflowSnapshot(snapshot.workflow)?.nodes.find((node) => node.id === nodeId);
 	}
 
 	findCompletionPage(workflow: Workflow, runData: IRunData, lastNodeExecuted: string) {
@@ -57,6 +131,12 @@ export class WaitingForms extends WaitingWebhooks {
 		const { path: executionId, suffix: routeSuffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
+
+		// On a v2 execution, a GET renders the form and resumes nothing. A POST
+		// resumes.
+		if (isExecutionIdV2(executionId)) {
+			return await this.resumeEngineV2Execution(req, res, executionId, routeSuffix);
+		}
 
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];

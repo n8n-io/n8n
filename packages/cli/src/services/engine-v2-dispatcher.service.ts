@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { SeededSteps, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
-import { NotImplementedError } from '@n8n/errors';
+import { ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -8,7 +8,12 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { classifyTriggerIdentity, isTriggerNodeType, UserError } from 'n8n-workflow';
+import {
+	classifyTriggerIdentity,
+	isTriggerNodeType,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { toWorkflowDocument } from '@/executions/execution-data/types';
@@ -57,10 +62,22 @@ const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecut
 	main.map((slot) => slot ?? []);
 
 /**
- * Routes a run to the engine v2 data plane and starts it there.
+ * Maps the refusal of phase two. A 409 means that the wait ended after phase
+ * one. v1 also answers 409 for a wait that is over. Phase one verified the
+ * token, so a 401 means that the step went away with its execution.
+ */
+function toResumeRefusal(executionId: string, status: number, reason: string): Error {
+	if (status === 401) return new NotFoundError(`The execution "${executionId}" does not exist.`);
+	if (status === 409) return new ConflictError(`The execution "${executionId}" is not waiting.`);
+	return new UserError(`Engine v2 refused to resume the execution "${executionId}": ${reason}`);
+}
+
+/**
+ * Routes a run to the engine v2 data plane, and starts or resumes it there.
  *
  * The single dispatch point for the v2 path: {@link routesToEngineV2} decides,
- * {@link start} runs. A workflow that opts into engine v2 never falls back to
+ * {@link start} runs, and {@link resume} ends a wait that the waiting-webhook
+ * route located. A workflow that opts into engine v2 never falls back to
  * v1 — anything the v2 path cannot do fails with a user-facing reason instead,
  * because a silent fallback would run the workflow on an engine the user did
  * not pick.
@@ -100,6 +117,57 @@ export class EngineV2Dispatcher {
 	 */
 	handlesWorkflow(workflowData: IWorkflowBase, executionMode: WorkflowExecuteMode): boolean {
 		return workflowData.settings?.engineType === 'v2' && ROUTED_MODES.has(executionMode);
+	}
+
+	/**
+	 * Ends the wait of a data-plane execution with the items that the node's
+	 * `webhook()` produced. `prepareExecutionData` put them on the stack entry of
+	 * the resuming node, as v1 does. The engine emits them as the step's outputs
+	 * and runs no node code (ADR-20260902-steps-declare-waits, decision 3).
+	 *
+	 * Of the v1 pre-run gates, only the credential check applies. There is no
+	 * control-plane row to take over, and the trigger identity was set when the
+	 * run started.
+	 */
+	async resume(
+		existingExecution: ResumableExecution,
+		data: IWorkflowExecutionDataProcess,
+	): Promise<string> {
+		const { executionId, engineResume } = existingExecution;
+		assert(engineResume, 'A v2 resume needs the step and the token the route located');
+
+		const items = data.executionData?.executionData?.nodeExecutionStack[0]?.data.main;
+		if (!items) {
+			throw new UnexpectedError('The resume request carries no payload for the waiting node');
+		}
+
+		// The files the node stored belong to the run only once the data plane takes
+		// the outputs. A refusal deletes them. A failed call keeps them, because the
+		// data plane may have taken the outputs before the answer was lost. After a
+		// crash, the files stay until the execution is pruned.
+		const { workflowData } = data;
+		try {
+			await this.credentialsPermissionChecker.check(
+				workflowData.id,
+				workflowData.nodes,
+				data.userId,
+			);
+		} catch (error) {
+			await this.payloadFiles.discard(items);
+			throw error;
+		}
+
+		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
+		const outcome = await this.proxy.resolveStep(engineResume.stepId, {
+			token: engineResume.token,
+			outputs: toStepOutputs(withoutNullSlots(items)),
+		});
+		if (!outcome.ok) {
+			await this.payloadFiles.discard(items);
+			throw toResumeRefusal(executionId, outcome.status, outcome.error);
+		}
+
+		return executionId;
 	}
 
 	/**

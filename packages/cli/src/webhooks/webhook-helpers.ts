@@ -73,7 +73,12 @@ import {
 	NotFoundError,
 	UnsupportedMediaTypeError,
 } from '@n8n/errors';
-import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
+import {
+	createExecutionIdV2,
+	isExecutionIdV2,
+	type ExecutionIdV2,
+} from '@/executions/execution-id';
+import type { EngineV2ResumeRequest } from '@/interfaces';
 import { parseBody } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
@@ -1027,6 +1032,8 @@ export async function executeWebhook(
 		storedAt?: ExecutionStorageLocation;
 		/** Called before WorkflowRunner.run for an existing execution. */
 		onResume?: () => void;
+		/** For an engine v2 execution: the wait that the resume ends on the data plane. */
+		engineResume?: EngineV2ResumeRequest;
 	},
 ): Promise<string | undefined> {
 	const responder = new WebhookResponder(responseCallback);
@@ -1090,7 +1097,7 @@ export async function executeWebhook(
 
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
-	/** The id of the v2 run, created before the webhook node runs. */
+	/** The id of the v2 run, set before the webhook node runs. */
 	let engineV2ExecutionId: ExecutionIdV2 | undefined;
 	/** What the webhook node produced for a v2 run, until the dispatcher takes it. */
 	let engineV2Payload: INodeExecutionData[][] | undefined;
@@ -1107,8 +1114,12 @@ export async function executeWebhook(
 		if (routesToEngineV2) {
 			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
 			// Created before the node runs, so a file the node stores is written under
-			// the path of its run from the start, and no rename is needed later.
-			engineV2ExecutionId = createExecutionIdV2();
+			// the path of its run from the start, and no rename is needed later. A
+			// resume reuses the id of the waiting execution.
+			engineV2ExecutionId =
+				executionId !== undefined && isExecutionIdV2(executionId)
+					? executionId
+					: createExecutionIdV2();
 			additionalData.executionId = engineV2ExecutionId;
 		}
 
@@ -1350,7 +1361,12 @@ export async function executeWebhook(
 			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
 			executionId
-				? { executionId, expectedStatus: 'waiting', storedAt: options?.storedAt }
+				? {
+						executionId,
+						expectedStatus: 'waiting',
+						storedAt: options?.storedAt,
+						engineResume: options?.engineResume,
+					}
 				: undefined,
 			responsePromise,
 		);
@@ -1633,8 +1649,8 @@ export async function executeWebhook(
 		return;
 	} finally {
 		await cleanupMultipartFiles?.();
-		// The run never reached the dispatcher, so the files the webhook node stored
-		// belong to no execution and the control plane deletes them.
+		// The run never reached the dispatcher, so no run uses the files that the
+		// webhook node stored.
 		if (engineV2Payload !== undefined) {
 			await Container.get(EngineV2PayloadFiles).discard(engineV2Payload);
 		}

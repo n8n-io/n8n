@@ -351,4 +351,77 @@ describe('EngineDataPlaneClient', () => {
 			await expect(client.cancelExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
 		});
 	});
+
+	describe('resume requests', () => {
+		it('posts phase one to the execution and relays the answer', async () => {
+			const value = {
+				execution: { id: EXECUTION_ID },
+				target: { stepId: 'step-1', nodeId: 'wait' },
+			};
+			respondWith(200, value);
+
+			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+				ok: true,
+				value,
+			});
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: `/api/workflow-executions/${EXECUTION_ID}/resume-target`,
+					method: 'POST',
+					body: { token: 't' },
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true,
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('posts phase two to the step', async () => {
+			respondWith(200, { executionId: EXECUTION_ID, stepId: 'step-1' });
+
+			await expect(client.resolveStep('step-1', { token: 't', outputs: [[]] })).resolves.toEqual({
+				ok: true,
+				value: { executionId: EXECUTION_ID, stepId: 'step-1' },
+			});
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: '/api/step-executions/step-1/resolve',
+					body: { token: 't', outputs: [[]] },
+				}),
+			);
+		});
+
+		it.each([
+			[401, 'invalid_token'],
+			[404, 'not_found'],
+			[409, 'not_waiting'],
+			[501, 'unimplemented'],
+		])("relays a %s refusal with the engine's reason", async (status, error) => {
+			respondWith(status, { error });
+
+			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+				ok: false,
+				status,
+				error,
+			});
+		});
+
+		it('relays a 300 without a reason as an engine error', async () => {
+			respondWith(300, {});
+
+			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+				ok: false,
+				status: 300,
+				error: 'engine_error',
+			});
+		});
+
+		it('throws on a 500, which is a failure and not a refusal', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.resolveStep('step-1', { token: 't', outputs: [[]] })).rejects.toThrow(
+				'Engine responded with 500',
+			);
+		});
+	});
 });
