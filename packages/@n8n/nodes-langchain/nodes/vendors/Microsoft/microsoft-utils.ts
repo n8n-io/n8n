@@ -16,13 +16,7 @@ import {
 	type NodeEgressFilter,
 } from 'n8n-workflow';
 
-import {
-	InvokeAgentScope,
-	BaggageBuilder,
-	ObservabilityManager,
-	type Builder,
-	defaultObservabilityConfigurationProvider,
-} from '@microsoft/agents-a365-observability';
+import { InvokeAgentScope, BaggageBuilder } from '@microsoft/agents-a365-observability';
 import { type Activity, ActivityTypes } from '@microsoft/agents-activity';
 import { invokeAgent } from './langchain-utils';
 import {
@@ -335,13 +329,6 @@ function getMcpServerHeaders(
 	return headers;
 }
 
-function isMicrosoftObservabilityEnabled(): boolean {
-	return (
-		process.env.ENABLE_OBSERVABILITY === 'true' &&
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === 'true'
-	);
-}
-
 export function createMicrosoftAgentApplication(credentials: MicrosoftAgent365Credentials) {
 	const authConfig: AuthConfiguration = createAuthConfig(credentials);
 
@@ -637,28 +624,6 @@ export function configureAdapterProcessCallback(
 	activityCapture: ActivityCapture,
 ) {
 	return async (turnContext: TurnContext) => {
-		let observability: ReturnType<typeof ObservabilityManager.configure> | undefined;
-
-		if (isMicrosoftObservabilityEnabled()) {
-			const observabilityScopes = [
-				...defaultObservabilityConfigurationProvider.getConfiguration()
-					.observabilityAuthenticationScopes,
-			];
-			const { token: aauToken } = await agent.authorization.exchangeToken(
-				turnContext,
-				observabilityScopes,
-				'agentic',
-			);
-
-			observability = ObservabilityManager.configure((builder: Builder) =>
-				builder
-					.withService('n8n-microsoft-agent-365')
-					.withTokenResolver((_agentId: string, _tenantId: string) => aauToken || ''),
-			);
-
-			observability.start();
-		}
-
 		const mcpTokenRef = { token: undefined as string | undefined };
 
 		try {
@@ -713,24 +678,6 @@ export function configureAdapterProcessCallback(
 			await agent.run(turnContext);
 		} catch (error) {
 			throw new NodeOperationError(nodeContext.getNode(), error);
-		} finally {
-			if (observability) {
-				try {
-					const OBSERVABILITY_SHUTDOWN_TIMEOUT_MS = 5000;
-					await Promise.race([
-						observability.shutdown(),
-						new Promise<never>((_, reject) =>
-							setTimeout(
-								() => reject(new Error('Observability shutdown timed out')),
-								OBSERVABILITY_SHUTDOWN_TIMEOUT_MS,
-							),
-						),
-					]);
-				} catch (error) {
-					// Backend unreachable or export timed out — not a code error
-					console.warn('Failed to shut down observability:', error);
-				}
-			}
 		}
 	};
 }

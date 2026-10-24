@@ -120,8 +120,8 @@ export abstract class AbstractServer {
 	private async setupErrorHandlers() {
 		const { app } = this;
 
-		// Augment errors sent to Sentry
 		const { setupExpressErrorHandler } = await import('@sentry/node');
+		// oxlint-disable-next-line typescript/no-deprecated
 		setupExpressErrorHandler(app);
 	}
 
