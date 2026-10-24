@@ -1410,35 +1410,22 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const callerPolicy = this.settingsTextValue('cpw.settings', 'callerPolicy');
 		const callerIds = this.settingsTextValue('cpw.settings', 'callerIds');
 
-		const conditions: string[] = [];
-		const params: Record<string, string> = {
-			cpParentWorkflowId: parentWorkflowId,
-			cpCallerIdMembership: `%,${escapeLike(parentWorkflowId)},%`,
-		};
-
-		// Branch 1: callerPolicy = 'any'
-		conditions.push(`${callerPolicy} = 'any'`);
-
-		// Branch 2: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
-		conditions.push(
+		const conditions = [
+			`${callerPolicy} = 'any'`,
+			// The allowlist must contain parentWorkflowId as a whole ID.
 			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ${LIKE_ESCAPE_CLAUSE})`,
-		);
-
-		// Branch 3: callerPolicy = 'workflowsFromSameOwner' (or NULL when default is 'workflowsFromSameOwner').
-		const sameOwnerPolicyClauses = [`${callerPolicy} = 'workflowsFromSameOwner'`];
-		if (defaultPolicy === 'workflowsFromSameOwner') {
-			sameOwnerPolicyClauses.push(`${callerPolicy} IS NULL`);
-		}
-		conditions.push(
-			`((${sameOwnerPolicyClauses.join(' OR ')}) AND sw_sub.projectId = sw_par.projectId AND sw_par.projectId IS NOT NULL)`,
-		);
-
-		// Handle NULL callerPolicy when default is 'any'
+		];
 		if (defaultPolicy === 'any') {
 			conditions.push(`${callerPolicy} IS NULL`);
 		}
 
-		return { conditions, params };
+		return this.manager
+			.createQueryBuilder()
+			.select('cpw.id')
+			.from(WorkflowEntity, 'cpw')
+			.where(`(${conditions.join(' OR ')})`, {
+				cpCallerIdMembership: `%,${escapeLike(parentWorkflowId)},%`,
+			});
 	}
 
 	private settingsTextValue(field: string, key: string): string {

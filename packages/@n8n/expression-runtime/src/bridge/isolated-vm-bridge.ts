@@ -363,7 +363,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createCallHostRef(holder: DataHolder): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
-				return dispatchHostCall(rawMsg, data);
+				return dispatchHostCall(rawMsg, heldData(holder));
 			} catch (err) {
 				return serializeError(err);
 			}

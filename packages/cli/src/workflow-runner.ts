@@ -472,7 +472,7 @@ export class WorkflowRunner {
 					executionId,
 					workflowId,
 					data,
-					shouldReloadStaticData,
+					loadStaticData,
 					realtime,
 					existingExecution?.executionId,
 				);
@@ -481,14 +481,14 @@ export class WorkflowRunner {
 					executionId,
 					data,
 					shouldReloadStaticData,
-					existingExecution?.executionId,
+					existingExecution,
 					executionWorkflow,
 				);
 			}
 		} catch (error) {
 			// A failed start means the post-execute promise that normally clears the
 			// heartbeat never settles, so clear it here.
-			if (heartbeatInterval) clearInterval(heartbeatInterval);
+			heartbeat?.stop();
 			throw error;
 		}
 

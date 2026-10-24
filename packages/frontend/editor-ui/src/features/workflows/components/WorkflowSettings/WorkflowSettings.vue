@@ -1216,8 +1216,8 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
-					<ElRow>
+				<template v-if="isSharingEnabled">
+					<ElRow data-test-id="workflow-caller-policy">
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.callerPolicy') }}
 							<N8nTooltip placement="top">
