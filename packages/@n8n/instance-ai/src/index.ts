@@ -257,6 +257,7 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { RESOURCE_EXPLORATION_UNAVAILABLE } from './constants/resource-exploration';
 export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
@@ -734,6 +735,7 @@ export type {
 	LocalMcpServer,
 	McpServerConfig,
 	ModelConfig,
+	EndpointModelConfig,
 	VertexAnthropicModelConfig,
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,

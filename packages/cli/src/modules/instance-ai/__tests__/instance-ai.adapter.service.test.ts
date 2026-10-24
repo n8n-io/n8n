@@ -8367,6 +8367,7 @@ describe('createContext — run model wiring', () => {
 	it('copies the host-resolved modelId onto the context', () => {
 		const service = createAdapterWithGatewayMock(vi.fn());
 		const modelId = {
+			kind: 'endpoint' as const,
 			id: 'anthropic/claude-opus-4-8' as const,
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',

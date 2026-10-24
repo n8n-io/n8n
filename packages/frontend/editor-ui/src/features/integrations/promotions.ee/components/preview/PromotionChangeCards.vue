@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import type { PromotionDirection } from '@n8n/api-types';
+import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import { computed, nextTick, ref, watch } from 'vue';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
 import { blockersOf, type BlockerIndex } from '../../promotionOperation';
-import type { Inclusion, ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
+import {
+	selectionCheck,
+	type DisabledKeys,
+	type Inclusion,
+	type ResourceKey,
+	type SelectionGraph,
+} from '../../promotionPreview.selection';
+import { isContainer } from '../../promotionPreview.tree';
 import PromotionChangeCard from './PromotionChangeCard.vue';
 
 const props = withDefaults(
@@ -12,10 +19,15 @@ const props = withDefaults(
 		order: ResourceKey[];
 		graph: SelectionGraph;
 		direction: PromotionDirection;
+		selected: ReadonlySet<ResourceKey>;
 		inclusion: Inclusion;
+		/** Blocked workflows, which users cannot add. */
+		disabled: DisabledKeys;
+		locked: boolean;
 		entries: ReadonlyMap<ResourceKey, DetailEntry>;
 		inspectedKey?: ResourceKey;
 		blockers: BlockerIndex;
+		/** False for a list that users only read. */
 		selectable?: boolean;
 	}>(),
 	{ selectable: true },
@@ -27,7 +39,22 @@ const emit = defineEmits<{
 	retry: [key: ResourceKey];
 	refresh: [];
 	inspect: [key: ResourceKey];
+	toggle: [key: ResourceKey];
+	toggleContainer: [key: ResourceKey];
 }>();
+
+const check = (resource: PromotionResource) =>
+	selectionCheck(props.graph, resource, {
+		selected: props.selected,
+		inclusion: props.inclusion,
+		disabled: props.disabled,
+		locked: props.locked,
+	});
+
+function onToggle(resource: PromotionResource) {
+	if (isContainer(resource)) emit('toggleContainer', resource.key);
+	else emit('toggle', resource.key);
+}
 
 const list = ref<HTMLElement | null>(null);
 const resources = computed(() =>
@@ -59,7 +86,7 @@ defineExpose({ scrollToCard });
 			:resource="resource"
 			:graph="graph"
 			:direction="direction"
-			:included="inclusion.included.has(resource.key)"
+			:selection="check(resource)"
 			:entry="entries.get(resource.key)"
 			:inspected="inspectedKey === resource.key"
 			:blockers="blockersOf(blockers, resource)"
@@ -68,6 +95,7 @@ defineExpose({ scrollToCard });
 			@activate-diff="activeWorkflow = resource.key"
 			@deactivate-diff="activeWorkflow = undefined"
 			@inspect="emit('inspect', $event)"
+			@toggle="onToggle(resource)"
 			@retry="emit('retry', resource.key)"
 			@refresh="emit('refresh')"
 		/>
