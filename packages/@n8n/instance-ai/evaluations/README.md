@@ -167,7 +167,7 @@ Set the mock settings on the n8n server process and the judge settings on the CL
 
 | Env var | Default | Description |
 |---------|---------|-------------|
-| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-4-6` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI |
+| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-5-5` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI. `eval:discovery` reads it as the orchestrator model under test and falls back to `anthropic/claude-sonnet-4-6` |
 | `N8N_INSTANCE_AI_EVAL_EFFORT` | `medium` | Effort of the same agents |
 | `N8N_INSTANCE_AI_EVAL_JUDGE_MODEL` | `anthropic/claude-sonnet-5-5` | Model of the judges: checklist verifier, expectations judge, binary LLM checks, computer-use grader. The user proxy and the mocks keep their model |
 | `N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT` | `high` | Effort of the judges |

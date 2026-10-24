@@ -89,7 +89,7 @@ describe('eval agent model config', () => {
 
 		const config = resolveEvalModelConfig();
 
-		expect(config.modelId).toBe('anthropic/claude-sonnet-4-6');
+		expect(config.modelId).toBe('anthropic/claude-sonnet-5-5');
 		expect(config.apiKey).toBe('legacy-anthropic-key');
 	});
 
@@ -150,7 +150,7 @@ describe('eval agent model config', () => {
 		});
 
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-6',
+			id: 'anthropic/claude-sonnet-5-5',
 			apiKey: 'env-key',
 			url: undefined,
 		});
@@ -346,7 +346,7 @@ describe('eval agent judge and effort settings', () => {
 		expect(modelId()).toBe('anthropic/claude-sonnet-5');
 
 		createEvalAgent('proxy', { instructions: 'x' });
-		expect(modelId()).toBe('anthropic/claude-sonnet-4-6');
+		expect(modelId()).toBe('anthropic/claude-sonnet-5-5');
 	});
 
 	it('routes the eval effort to agents without a pinned model only', () => {
