@@ -11,6 +11,7 @@ import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature, EXECUTE_WORKFLOW_NODE_TYPE } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import WorkflowSettingsVue from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -871,11 +872,70 @@ describe('WorkflowSettingsVue', () => {
 			);
 
 			expect(dropdownItems.length).toBeGreaterThanOrEqual(2);
+			expect(dropdownItems[0]).toHaveTextContent('v1.0 (legacy)');
 			expect(dropdownItems[0]).toHaveTextContent(
 				'Executes the first node of each branch, then the second node of each branch, and so on.',
 			);
+			expect(dropdownItems[1]).toHaveTextContent('v1.1 (recommended)');
 			expect(dropdownItems[1]).toHaveTextContent(
 				'Executes each branch in turn, from topmost to bottommost, completing one branch before starting another.',
+			);
+		});
+
+		it('should list the v1.2 option when the execution logic experiment is enabled', async () => {
+			vi.spyOn(usePostHog(), 'isVariantEnabled').mockReturnValue(true);
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+
+			expect(dropdownItems).toHaveLength(3);
+			expect(dropdownItems[2]).toHaveTextContent('v1.2 (experimental)');
+		});
+
+		it.each([
+			['v0', 'separate', 'v1.0 (legacy)'],
+			['v1', 'separate', 'v1.1 (recommended)'],
+			['v1', BINARY_MODE_COMBINED, 'v1.2 (experimental)'],
+		] as const)(
+			'should show the label for executionOrder %s with binaryMode %s',
+			async (executionOrder, binaryMode, label) => {
+				workflowDocumentStore.setSettings({ executionOrder, binaryMode });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(
+					within(getByTestId('workflow-settings-execution-order')).getByRole('combobox'),
+				).toHaveValue(label);
+			},
+		);
+
+		it('should set binaryMode to combined when selecting v1.2', async () => {
+			vi.spyOn(usePostHog(), 'isVariantEnabled').mockReturnValue(true);
+			workflowDocumentStore.setSettings({ executionOrder: 'v0', binaryMode: 'separate' });
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+			await userEvent.click(dropdownItems[2]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						executionOrder: 'v1',
+						binaryMode: BINARY_MODE_COMBINED,
+					}),
+				}),
 			);
 		});
 
@@ -981,7 +1041,7 @@ describe('WorkflowSettingsVue', () => {
 				getByTestId('workflow-settings-execution-order'),
 			);
 
-			expect(dropdownItems[1]).toHaveTextContent('v1');
+			expect(dropdownItems[1]).toHaveTextContent('v1.1 (recommended)');
 		});
 
 		it('should disable execution order dropdown when environment is read-only', async () => {
