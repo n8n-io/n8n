@@ -340,6 +340,7 @@ export class AssistantTurnEnvironmentFactory {
 			modelId,
 			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
+			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
 		});
 
 		const browserMcpServer = browserUseEnabledGlobally

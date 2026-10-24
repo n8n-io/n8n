@@ -50,6 +50,7 @@ import {
 } from '../turn-setup/assistant-turn-input.builder';
 import type { AssistantTurnRuntime } from '../turn-setup/assistant-turn-runtime';
 import { AssistantEventSink } from './assistant-event-sink';
+import { createThreadTemporaryWorkflowMarkers } from './assistant-temporary-workflow-markers';
 import {
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_NAME,
@@ -253,6 +254,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		return {
 			memory: turn.memory,
 			resourceId: turn.resourceId,
+			temporaryWorkflowMarkers: createThreadTemporaryWorkflowMarkers(turn.memory, turn.thread.id),
 			getProjectId: async () => turn.thread.projectId,
 			eventBus: new AssistantEventSink(turn.emitHostEvent, this.logger),
 			checkpointStore: turn.checkpointStore,

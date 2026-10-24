@@ -1980,6 +1980,7 @@ import type {
 	OrchestrationContext,
 } from '@n8n/instance-ai';
 
+import type { TemporaryWorkflowMarkers } from '../turn-setup/assistant-turn-runtime';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
@@ -2847,6 +2848,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	runAllowSendingParameterValues?: boolean;
 	// Mirrors `EXECUTIONS_TIMEOUT_MAX`, in seconds.
 	maxExecutionTimeout?: number;
+	temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -3029,6 +3031,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
 		setupPanelVariant: overrides?.setupPanelVariant,
 		allowSendingParameterValues: overrides?.runAllowSendingParameterValues,
+		temporaryWorkflowMarkers: overrides?.temporaryWorkflowMarkers,
 	});
 	const adapter = context.workflowService;
 
@@ -4796,6 +4799,60 @@ describe('createWorkflowAdapter', () => {
 
 		expect(mockWorkflowService.archive).not.toHaveBeenCalled();
 		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-archived');
+	});
+
+	describe('with a temporary workflow marker store', () => {
+		function createMarkers(marked: string[] = []) {
+			const ids = new Set(marked);
+			return {
+				mark: vi.fn(async (id: string) => {
+					ids.add(id);
+				}),
+				unmark: vi.fn(async (id: string) => {
+					ids.delete(id);
+				}),
+				has: vi.fn(async (id: string) => ids.has(id)),
+				list: vi.fn(async () => [...ids]),
+			} satisfies TemporaryWorkflowMarkers;
+		}
+
+		it('marks a new temporary workflow in the store, not in the table', async () => {
+			const markers = createMarkers();
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository } = createWorkflowAdapterForTests({
+				temporaryWorkflowMarkers: markers,
+			});
+
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON, { markAsAiTemporary: true });
+
+			expect(markers.mark).toHaveBeenCalledWith('wf-new');
+			expect(mockAiBuilderTemporaryWorkflowRepository.mark).not.toHaveBeenCalled();
+		});
+
+		it('clears the marker in the store when promoting the main workflow', async () => {
+			const markers = createMarkers(['wf-new']);
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository } = createWorkflowAdapterForTests({
+				temporaryWorkflowMarkers: markers,
+			});
+
+			await adapter.clearAiTemporary('wf-new');
+
+			expect(markers.unmark).toHaveBeenCalledWith('wf-new');
+			expect(mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('archives a workflow that the store still marks, and leaves an unmarked one', async () => {
+			const markers = createMarkers(['wf-new']);
+			const { adapter, mockWorkflowService } = createWorkflowAdapterForTests({
+				temporaryWorkflowMarkers: markers,
+			});
+
+			await expect(adapter.archiveIfAiTemporary('wf-new')).resolves.toBe(true);
+			expect(markers.unmark).toHaveBeenCalledWith('wf-new');
+			expect(mockWorkflowService.archive).toHaveBeenCalledTimes(1);
+
+			await expect(adapter.archiveIfAiTemporary('wf-new')).resolves.toBe(false);
+			expect(mockWorkflowService.archive).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	it('unarchives a workflow', async () => {
