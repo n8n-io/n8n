@@ -1,4 +1,4 @@
-import type { CredentialConnectionStatus } from '@n8n/api-types';
+import type { CredentialConnectionStatus, CredentialTransferPreview } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
@@ -16,7 +16,7 @@ import { NotFoundError } from '@n8n/errors';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { hasCheckErrors, PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService, CredentialsFinderService } from '@n8n/backend-services';
@@ -191,6 +191,40 @@ export class EnterpriseCredentialsService {
 		}
 
 		return { ...enriched };
+	}
+
+	/** What a move into `destinationProjectId` would restrict. Refuses nothing. */
+	async previewTransfer(
+		user: User,
+		credentialId: string,
+		destinationProjectId: string,
+	): Promise<CredentialTransferPreview> {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:move'],
+		);
+		NotFoundError.isDefinedAndNotNull(
+			credential,
+			`Could not find the credential with the id "${credentialId}". Make sure you have the permission to move it.`,
+		);
+
+		const destinationProject = await this.projectService.getProjectWithScope(
+			user,
+			destinationProjectId,
+			['credential:create'],
+		);
+		NotFoundError.isDefinedAndNotNull(
+			destinationProject,
+			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create credentials in it.`,
+		);
+
+		const decision = await this.policyEnforcementService.evaluateCredentialTransfer({
+			credential: { id: credential.id, type: credential.type },
+			targetProjectId: destinationProject.id,
+		});
+
+		return { restricted: decision.violations, checkFailed: hasCheckErrors(decision) };
 	}
 
 	async transferOne(user: User, credentialId: string, destinationProjectId: string) {

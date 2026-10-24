@@ -1149,7 +1149,7 @@ describe('EnterpriseWorkflowService', () => {
 
 		beforeEach(() => {
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
-			workflowRepository.find.mockResolvedValue(workflows);
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue(workflows);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
 			policyEnforcementService.hasChecksFor.mockReturnValue(true);
 			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
@@ -1170,9 +1170,9 @@ describe('EnterpriseWorkflowService', () => {
 		it('loads the fields the policy check reads', async () => {
 			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
 
-			expect(workflowRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({ select: expect.arrayContaining(['name', 'nodes']) }),
-			);
+			expect(workflowRepository.findInFoldersForTransfer).toHaveBeenCalledWith(['folder-1'], {
+				withNodes: true,
+			});
 		});
 
 		it('skips the nodes and the check when no check is registered', async () => {
@@ -1180,9 +1180,9 @@ describe('EnterpriseWorkflowService', () => {
 
 			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
 
-			expect(workflowRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({ select: expect.not.arrayContaining(['nodes']) }),
-			);
+			expect(workflowRepository.findInFoldersForTransfer).toHaveBeenCalledWith(['folder-1'], {
+				withNodes: false,
+			});
 			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
 			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
 		});
