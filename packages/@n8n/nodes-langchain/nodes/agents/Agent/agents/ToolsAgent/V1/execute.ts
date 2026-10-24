@@ -1,10 +1,11 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from '@langchain/classic/agents';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import assert from 'node:assert';
 
+import { loadMemory, saveToMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -43,7 +44,8 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			const model = (await getChatModel(this)) as BaseLanguageModel;
+			const model = await getChatModel(this);
+			assert(model, 'Please connect a model to the Chat Model input');
 			const memory = await getOptionalMemory(this);
 
 			const input = getPromptInputByType({
@@ -90,9 +92,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			]);
 			const executor = AgentExecutor.fromAgentAndTools({
 				agent: runnableAgent,
-				memory,
+				// No memory here: AgentExecutor would save only input and output and drop the tool
+				// messages. Memory is saved below with saveToMemory, which needs the steps.
 				tools,
-				returnIntermediateSteps: options.returnIntermediateSteps === true,
+				returnIntermediateSteps: true,
 				maxIterations: options.maxIterations ?? 10,
 			});
 			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
@@ -103,16 +106,26 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				getTracingConfig(this, { additionalMetadata }),
 			);
 
+			const chatHistory = memory ? await loadMemory(memory, model) : undefined;
+
 			// Invoke the executor with the given input and system message.
 			const response = await executorWithTracing.invoke(
 				{
 					input,
+					chat_history: chatHistory ?? undefined,
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
 					formatting_instructions:
 						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 				},
 				{ signal: this.getExecutionCancelSignal() },
 			);
+
+			if (memory) {
+				await saveToMemory(input, response.output as string, memory, response.intermediateSteps, 0);
+			}
+			if (options.returnIntermediateSteps !== true) {
+				delete response.intermediateSteps;
+			}
 
 			// If memory and outputParser are connected, parse the output.
 			if (memory && outputParser) {

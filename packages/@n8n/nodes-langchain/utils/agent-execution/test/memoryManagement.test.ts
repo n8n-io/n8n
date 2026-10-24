@@ -669,6 +669,51 @@ describe('memoryManagement', () => {
 			});
 		});
 
+		it('should emit a shared AIMessage once and use each step tool call id', () => {
+			// Streaming mode puts the same AIMessage in the messageLog of every parallel step
+			const sharedAIMessage = new AIMessage({
+				content: 'Let me do both',
+				tool_calls: [
+					{ id: 'call-1', name: 'weather', args: { location: 'NYC' }, type: 'tool_call' },
+					{ id: 'call-2', name: 'time', args: { timezone: 'EST' }, type: 'tool_call' },
+				],
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'weather',
+						toolInput: { location: 'NYC' },
+						log: 'Weather',
+						messageLog: [sharedAIMessage],
+						toolCallId: 'call-1',
+						type: 'tool_call',
+					},
+					observation: 'Sunny, 72°F',
+				},
+				{
+					action: {
+						tool: 'time',
+						toolInput: { timezone: 'EST' },
+						log: 'Time',
+						messageLog: [sharedAIMessage],
+						toolCallId: 'call-2',
+						type: 'tool_call',
+					},
+					observation: '14:30',
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			expect(result).toHaveLength(3);
+			expect(result[0]).toBe(sharedAIMessage);
+			expect(result[1]).toBeInstanceOf(ToolMessage);
+			expect((result[1] as ToolMessage).tool_call_id).toBe('call-1');
+			expect(result[2]).toBeInstanceOf(ToolMessage);
+			expect((result[2] as ToolMessage).tool_call_id).toBe('call-2');
+		});
+
 		it('should return empty array for empty steps', () => {
 			const result = buildMessagesFromSteps([]);
 			expect(result).toHaveLength(0);

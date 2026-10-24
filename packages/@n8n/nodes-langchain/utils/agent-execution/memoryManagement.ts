@@ -80,25 +80,24 @@ export function extractToolCallId(
  */
 export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 	const messages: BaseMessage[] = [];
+	const emittedAIMessages = new Set<BaseMessage>();
 
 	for (let i = 0; i < steps.length; i++) {
 		const step = steps[i];
-
-		// Try to extract existing AIMessage and its tool_call ID
 		const existingAIMessage = step.action.messageLog?.[0];
-		const existingToolCallId = existingAIMessage?.tool_calls?.[0]?.id;
 
-		// Use existing ID if available, otherwise extract from step data
-		const toolCallId =
-			existingToolCallId ?? extractToolCallId(step.action.toolCallId, step.action.tool);
+		// The step has its own id. tool_calls[0] is only correct for the first call in a batch.
+		const toolCallId = extractToolCallId(step.action.toolCallId, step.action.tool);
 
-		// Parallel tool calls share one AIMessage on the first step (with all tool_calls)
-		// and leave an empty messageLog on the rest. Emit the AIMessage when present;
-		// continuation steps (empty messageLog, i > 0) get only a ToolMessage to avoid
-		// splitting one model turn into several consecutive AI messages. Synthesize an
-		// AIMessage only for a first step lacking one, so its ToolMessage isn't orphaned.
+		// Parallel tool calls share one AIMessage. Depending on the source, it sits in the
+		// messageLog of every step or only of the first one. Emit it once, so a single model
+		// turn is not split into several AI messages. Add a synthetic AIMessage only when the
+		// first step has none, so its ToolMessage is not orphaned.
 		if (existingAIMessage) {
-			messages.push(existingAIMessage);
+			if (!emittedAIMessages.has(existingAIMessage)) {
+				emittedAIMessages.add(existingAIMessage);
+				messages.push(existingAIMessage);
+			}
 		} else if (i === 0) {
 			messages.push(
 				new AIMessage({
