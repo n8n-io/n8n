@@ -1,0 +1,21 @@
+packages/cli/src/modules/promotions.ee/git-hosts/README.md
+  s_a515c777728c06::t_0af020e7218769 70
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a515c777728c06::t_0af020e7218769 4221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a96cc68578903a8446be4983e2f4567e04891c53",
+  "prompts": {},
+  "sessions": {
+    "s_a515c777728c06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90134359-49e0-49f9-827e-8e3923067177",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
