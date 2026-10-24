@@ -499,6 +499,39 @@ describe('WorkflowProductionChecklist', () => {
 			expect(mockN8nSuggestedActionsProps.open).toBe(false);
 		});
 
+		it('should not open popover automatically on reload if settings arrive after activation', async () => {
+			let resolveSettings: (val: unknown) => void;
+			const settingsPromise = new Promise((resolve) => {
+				resolveSettings = resolve;
+			});
+
+			workflowsCache.getWorkflowSettings = vi.fn().mockImplementation(() => settingsPromise);
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			renderComponent({ pinia: createTestingPinia() });
+
+			// Simulate activation arriving on page load before onMounted settings load completes
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+
+			resolveSettings!({
+				suggestedActions: {},
+				firstActivatedAt: '2024-01-01',
+			});
+
+			await vi.waitFor(() => {
+				expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+			});
+
+			expect(mockN8nSuggestedActionsProps.open).toBe(false);
+		});
+
 		it('should not open popover when activation modal is active', async () => {
 			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
 				suggestedActions: {},
