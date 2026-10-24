@@ -1,4 +1,5 @@
 import {
+	InvalidClientMetadataError,
 	InvalidGrantError,
 	InvalidTargetError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
@@ -501,6 +502,35 @@ describe('OAuthServerService', () => {
 				});
 			});
 
+			it('should apply defaults to optional registration metadata', async () => {
+				const clientInfo = {
+					client_id: 'new-client-123',
+					client_name: 'New Client',
+					redirect_uris: ['https://example.com/callback'],
+					client_secret: 'secret-123',
+				};
+
+				oauthClientRepository.insert.mockResolvedValue({} as any);
+
+				const result = await service.clientsStore.registerClient!(clientInfo);
+
+				expect(oauthClientRepository.insert).toHaveBeenCalledWith({
+					id: 'new-client-123',
+					name: 'New Client',
+					redirectUris: ['https://example.com/callback'],
+					grantTypes: ['authorization_code'],
+					clientSecret: 'secret-123',
+					clientSecretExpiresAt: null,
+					tokenEndpointAuthMethod: 'client_secret_basic',
+					isFirstParty: false,
+				});
+				expect(result).toEqual({
+					...clientInfo,
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'client_secret_basic',
+				});
+			});
+
 			it('should handle save errors gracefully', async () => {
 				const clientInfo = {
 					client_id: 'new-client-123',
@@ -573,6 +603,15 @@ describe('OAuthServerService', () => {
 					);
 				});
 
+				it('rejects an empty grant_types list', async () => {
+					const clientInfo = { ...baseClientInfo, grant_types: [] };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						InvalidClientMetadataError,
+					);
+					expect(oauthClientRepository.insert).not.toHaveBeenCalled();
+				});
+
 				it('rejects grant_types containing an oversized entry', async () => {
 					const clientInfo = { ...baseClientInfo, grant_types: ['a'.repeat(10_000)] };
 
@@ -629,7 +668,10 @@ describe('OAuthServerService', () => {
 					const clientInfo = { ...baseClientInfo, token_endpoint_auth_method: undefined };
 
 					await expect(service.clientsStore.registerClient!(clientInfo)).resolves.toEqual(
-						clientInfo,
+						{ ...clientInfo, token_endpoint_auth_method: 'client_secret_basic' },
+					);
+					expect(oauthClientRepository.insert).toHaveBeenCalledWith(
+						expect.objectContaining({ tokenEndpointAuthMethod: 'client_secret_basic' }),
 					);
 				});
 

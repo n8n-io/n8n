@@ -15,7 +15,7 @@ import {
 import { Container } from '@n8n/di';
 import { AuthenticationService, type SurfaceId } from '@n8n/inbound-auth';
 import { isRecord } from '@n8n/utils/is-record';
-import type { Response, Request, RequestHandler, Router } from 'express';
+import { urlencoded, type Response, type Request, type RequestHandler, type Router } from 'express';
 
 import { UrlService } from '@n8n/backend-services';
 import { type ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
@@ -122,6 +122,35 @@ const logTokenFailures: RequestHandler = (req, res, next) => {
 	next();
 };
 
+/** Pass HTTP Basic credentials to the SDK's form-body client authentication. */
+const basicClientAuth: RequestHandler = (req, res, next) => {
+	const authorization = req.headers.authorization;
+	if (!authorization || !/^Basic\b/i.test(authorization)) {
+		next();
+		return;
+	}
+
+	const encoded = /^Basic (\S+)$/i.exec(authorization)?.[1];
+	const credentials = encoded ? Buffer.from(encoded, 'base64').toString('utf8') : '';
+	const separator = credentials.indexOf(':');
+	const body = isRecord(req.body) ? req.body : {};
+	if (separator <= 0 || 'client_id' in body || 'client_secret' in body) {
+		res.status(400).json({ error: 'invalid_request' });
+		return;
+	}
+
+	try {
+		body.client_id = decodeURIComponent(credentials.slice(0, separator).replace(/\+/g, ' '));
+		body.client_secret = decodeURIComponent(credentials.slice(separator + 1).replace(/\+/g, ' '));
+	} catch {
+		res.status(400).json({ error: 'invalid_request' });
+		return;
+	}
+
+	req.body = body;
+	next();
+};
+
 // Built once and mounted under both the legacy `/mcp-oauth/*` paths (existing
 // DCR clients hold them in their stored discovery metadata) and the neutral
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
@@ -164,7 +193,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
-		middlewares: [logTokenFailures],
+		middlewares: [logTokenFailures, urlencoded({ extended: false }), basicClientAuth],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitToken,
 			5 * Time.minutes.toMilliseconds,
