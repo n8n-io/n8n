@@ -11,7 +11,13 @@ import { executeTool } from '../../__tests__/tool-test-utils';
 import { RESOURCE_EXPLORATION_UNAVAILABLE } from '../../constants/resource-exploration';
 import type { InstanceAiContext } from '../../types';
 import { addSetupPreference } from '../nodes/setup-preference';
-import { createNodesTool } from '../nodes.tool';
+import {
+	createExecuteNodeTool,
+	createGetNodeParameterOptionsTool,
+	createGetNodeTypesTool,
+	createNodesTool,
+	createSearchNodesTool,
+} from '../nodes.tool';
 
 vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/workflow-sdk')>()),
@@ -1130,6 +1136,28 @@ describe('nodes tool', () => {
 			expect(result).toEqual(serviceResult);
 		});
 
+		it('resumes an approval saved under the former combined nodes tool through execute_node', async () => {
+			const serviceResult = { status: 'success', output: [[{ json: {} }]] };
+			const executeNodeService = { execute: vi.fn().mockResolvedValue(serviceResult) };
+			const tool = createExecuteNodeTool(createMockContext({ executeNodeService }));
+
+			expect(tool.legacyNames).toEqual(expect.arrayContaining(['workflow_builder_nodes', 'nodes']));
+
+			const result = await executeTool(
+				tool,
+				{
+					action: 'execute',
+					type: 'n8n-nodes-base.slack',
+					version: 2.7,
+					config: { parameters: { resource: 'message', operation: 'post', text: 'hi' } },
+				},
+				{ resumeData: { approved: true } } as never,
+			);
+
+			expect(executeNodeService.execute).toHaveBeenCalled();
+			expect(result).toEqual(serviceResult);
+		});
+
 		it('should persist a session grant split by type, resource, and operation on "always allow"', async () => {
 			const executeNodeService = { execute: vi.fn().mockResolvedValue({ status: 'success' }) };
 			const grantSessionToolApproval = vi.fn();
@@ -1258,6 +1286,332 @@ describe('nodes tool', () => {
 			);
 
 			expect(result).toMatchObject({ status: 'error' });
+		});
+	});
+
+	describe('unified independent tools', () => {
+		describe('createSearchNodesTool', () => {
+			it('searches across batched queries and filters to agent_tool scope when requested', async () => {
+				const context = createMockContext();
+				(context.nodeService.listSearchable as Mock).mockResolvedValue([
+					{
+						name: 'n8n-nodes-base.slack',
+						displayName: 'Slack',
+						description: 'Slack node',
+						version: 2.2,
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{
+						name: 'n8n-nodes-base.slackTool',
+						displayName: 'Slack Tool',
+						description: 'Slack tool node',
+						version: 2.2,
+						inputs: [],
+						outputs: ['ai_tool'],
+					},
+				]);
+				const tool = createSearchNodesTool(context);
+
+				const agentScoped = await executeTool(tool, {
+					queries: ['slack'],
+					scope: 'agent_tool',
+					limit: 10,
+				});
+				expect((agentScoped.results as Array<{ name: string }>).map((r) => r.name)).toEqual([
+					'n8n-nodes-base.slackTool',
+				]);
+
+				const allScoped = await executeTool(tool, {
+					queries: ['slack'],
+					scope: 'all',
+					limit: 10,
+				});
+				expect((allScoped.results as Array<{ name: string }>).map((r) => r.name)).toEqual(
+					expect.arrayContaining(['n8n-nodes-base.slack', 'n8n-nodes-base.slackTool']),
+				);
+			});
+
+			it('supports category recommendations and gatewayCreditsOnly lookups', async () => {
+				const context = createMockContext();
+				const firstCategory = Object.keys(suggestedNodesData)[0]!;
+				const tool = createSearchNodesTool(context);
+
+				const catResult = await executeTool(tool, {
+					categories: [firstCategory],
+					scope: 'all',
+					limit: 10,
+				});
+				const catEntries = catResult.results as Array<{ category: string }>;
+				expect(catEntries).toHaveLength(1);
+				expect(catEntries[0]?.category).toBe(firstCategory);
+
+				(context.nodeService.listAvailable as Mock).mockResolvedValue([
+					{
+						name: 'n8n-nodes-base.openAi',
+						displayName: 'OpenAI',
+						description: 'OpenAI',
+						group: ['transform'],
+						version: 1,
+						aiGateway: { supported: true },
+					},
+				]);
+				const gwResult = await executeTool(tool, {
+					gatewayCreditsOnly: true,
+					scope: 'all',
+					limit: 10,
+				});
+				expect(gwResult.nodes).toHaveLength(1);
+				expect(gwResult.results).toHaveLength(1);
+				expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+					query: undefined,
+					gatewayCreditsOnly: true,
+				});
+			});
+
+			it('maps category recommendations to executable tool nodes for agent_tool scope', async () => {
+				const context = createMockContext();
+				(context.nodeService.listSearchable as Mock).mockResolvedValue(
+					['webhook', 'scheduleTrigger', 'gmail', 'gmailTool', 'slack', 'slackTool'].map(
+						(name) => ({
+							name: `n8n-nodes-base.${name}`,
+							displayName: name,
+							description: '',
+							version: 1,
+							inputs: [],
+							outputs: [],
+						}),
+					),
+				);
+				const tool = createSearchNodesTool(context);
+				const toNames = (result: Record<string, unknown>) =>
+					(
+						result.results as Array<{ suggestedNodes: Array<{ name: string }> }>
+					)[0]!.suggestedNodes.map((n) => n.name);
+
+				const categoryOnly = await executeTool(tool, {
+					categories: ['notification'],
+					scope: 'agent_tool',
+				});
+				expect(toNames(categoryOnly)).toEqual([
+					'n8n-nodes-base.gmailTool',
+					'n8n-nodes-base.slackTool',
+				]);
+
+				const mixed = await executeTool(tool, {
+					categories: ['notification'],
+					queries: ['slack'],
+					scope: 'agent_tool',
+				});
+				const mixedCategoryNames = (
+					mixed.categoryResults as Array<{ suggestedNodes: Array<{ name: string }> }>
+				)[0]!.suggestedNodes.map((n) => n.name);
+				expect(mixedCategoryNames).toEqual([
+					'n8n-nodes-base.gmailTool',
+					'n8n-nodes-base.slackTool',
+				]);
+			});
+
+			it('sends every batched query to the Gateway credits lookup and merges the results', async () => {
+				const context = createMockContext();
+				(context.nodeService.listAvailable as Mock).mockImplementation(
+					async ({ query }: { query?: string }) =>
+						await Promise.resolve([
+							{ name: `n8n-nodes-base.${query}`, displayName: query, description: '' },
+							{ name: 'n8n-nodes-base.shared', displayName: 'Shared', description: '' },
+						]),
+				);
+				const tool = createSearchNodesTool(context);
+
+				const result = await executeTool(tool, {
+					queries: ['gmail', 'slack'],
+					gatewayCreditsOnly: true,
+				});
+
+				expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+					query: 'gmail',
+					gatewayCreditsOnly: true,
+				});
+				expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+					query: 'slack',
+					gatewayCreditsOnly: true,
+				});
+				expect((result.nodes as Array<{ name: string }>).map((n) => n.name)).toEqual([
+					'n8n-nodes-base.gmail',
+					'n8n-nodes-base.shared',
+					'n8n-nodes-base.slack',
+				]);
+			});
+
+			describe('with connectionType', () => {
+				const toolNode = (name: string, extra: Partial<SearchableNodeType> = {}) => ({
+					name,
+					displayName: name,
+					description: '',
+					version: 1,
+					inputs: [],
+					outputs: ['ai_tool'],
+					...extra,
+				});
+
+				it('applies gatewayCreditsOnly to the results', async () => {
+					const context = createMockContext();
+					(context.nodeService.listSearchable as Mock).mockResolvedValue([
+						toolNode('n8n-nodes-base.plainTool'),
+						toolNode('n8n-nodes-base.firecrawlTool', {
+							aiGateway: { supported: true, minVersion: 1 },
+						}),
+					]);
+					const tool = createSearchNodesTool(context);
+
+					const result = await executeTool(tool, {
+						connectionType: 'ai_tool',
+						gatewayCreditsOnly: true,
+					});
+
+					expect(context.nodeService.listAvailable).not.toHaveBeenCalled();
+					expect((result.results as Array<{ name: string }>).map((r) => r.name)).toEqual([
+						'n8n-nodes-base.firecrawlTool',
+					]);
+				});
+
+				it('applies the agent_tool scope before the limit', async () => {
+					const context = createMockContext();
+					(context.nodeService.listSearchable as Mock).mockResolvedValue([
+						toolNode('@n8n/n8n-nodes-langchain.toolCalculator'),
+						toolNode('@n8n/n8n-nodes-langchain.toolThink'),
+						toolNode('n8n-nodes-base.slackTool'),
+					]);
+					const tool = createSearchNodesTool(context);
+
+					const result = await executeTool(tool, {
+						connectionType: 'ai_tool',
+						scope: 'agent_tool',
+						limit: 1,
+					});
+
+					expect((result.results as Array<{ name: string }>).map((r) => r.name)).toEqual([
+						'n8n-nodes-base.slackTool',
+					]);
+				});
+			});
+		});
+
+		describe('createGetNodeTypesTool', () => {
+			it('accepts both nodeTypes and nodeIds and rejects unsupported ephemeral operations on *Tool nodes', async () => {
+				const context = createMockContext();
+				context.nodeService.getNodeTypeDefinition = vi.fn().mockResolvedValue({
+					content: 'interface SlackParams {}',
+					version: '2.2',
+					aiGateway: { supported: true },
+				});
+				const tool = createGetNodeTypesTool(context);
+
+				const okResult = await executeTool(tool, {
+					nodeIds: [{ nodeId: 'n8n-nodes-base.slack', version: 2.2, operation: 'sendAndWait' }],
+				});
+				const okDefs = okResult.definitions as Array<Record<string, unknown>>;
+				expect(okDefs[0]).toMatchObject({
+					nodeType: 'n8n-nodes-base.slack',
+					content: 'interface SlackParams {}',
+					aiGateway: { supported: true },
+				});
+
+				const blockedToolResult = await executeTool(tool, {
+					nodeIds: [{ nodeId: 'n8n-nodes-base.slackTool', version: 2.2, operation: 'sendAndWait' }],
+				});
+				const blockedDefs = blockedToolResult.definitions as Array<{ error?: string }>;
+				expect(blockedDefs[0]?.error).toContain('sendAndWait');
+				expect(blockedDefs[0]?.error).toContain('requireApproval: true');
+
+				const nodeTypesResult = await executeTool(tool, {
+					nodeTypes: [{ nodeType: 'n8n-nodes-base.gmail', version: '2.1' }],
+				});
+				const nodeTypesDefs = nodeTypesResult.definitions as Array<Record<string, unknown>>;
+				expect(nodeTypesDefs[0]).toMatchObject({
+					nodeType: 'n8n-nodes-base.gmail',
+					content: 'interface SlackParams {}',
+				});
+				expect(context.nodeService.getNodeTypeDefinition).toHaveBeenLastCalledWith(
+					'n8n-nodes-base.gmail',
+					{ version: '2.1' },
+				);
+			});
+		});
+
+		describe('createGetNodeParameterOptionsTool', () => {
+			it('delegates parameterPath lookups to resolveParameterOptions when available', async () => {
+				const resolveParameterOptions = vi.fn().mockResolvedValue({
+					ok: true,
+					kind: 'resourceLocator',
+					parameterPath: 'channelId',
+					methodName: 'getChannels',
+					mode: 'list',
+					results: [
+						{
+							name: '#general',
+							value: 'C123',
+							parameterValue: { __rl: true, mode: 'list', value: 'C123' },
+						},
+					],
+				});
+				const context = createMockContext();
+				context.nodeService.resolveParameterOptions = resolveParameterOptions;
+				const tool = createGetNodeParameterOptionsTool(context);
+
+				const result = await executeTool(tool, {
+					nodeType: 'n8n-nodes-base.slack',
+					version: 2.2,
+					parameterPath: 'channelId',
+					credentialType: 'slackApi',
+					credentialId: 'cred-1',
+				});
+				expect(resolveParameterOptions).toHaveBeenCalledWith(
+					expect.objectContaining({
+						nodeType: 'n8n-nodes-base.slack',
+						version: 2.2,
+						parameterPath: 'channelId',
+						credentialType: 'slackApi',
+						credentialId: 'cred-1',
+					}),
+				);
+				expect(result).toMatchObject({ ok: true, parameterPath: 'channelId' });
+			});
+
+			it('requires methodType when querying by methodName', async () => {
+				const context = createMockContext();
+				const tool = createGetNodeParameterOptionsTool(context);
+
+				const result = await executeTool(tool, {
+					nodeType: 'n8n-nodes-base.slack',
+					version: 2.2,
+					methodName: 'getChannels',
+					credentialType: 'slackApi',
+					credentialId: 'cred-1',
+				});
+
+				expect(result.error).toContain('methodType');
+				expect(context.nodeService.exploreResources).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('createExecuteNodeTool', () => {
+			it('executes a standalone node after approval', async () => {
+				const serviceResult = { status: 'success', output: [[{ json: { ok: true } }]] };
+				const executeNodeService = { execute: vi.fn().mockResolvedValue(serviceResult) };
+				const tool = createExecuteNodeTool(createMockContext({ executeNodeService }));
+
+				const result = await executeTool(
+					tool,
+					{
+						type: 'n8n-nodes-base.set',
+						version: 3.4,
+						config: { parameters: { mode: 'manual' } },
+					},
+					{ resumeData: { approved: true } } as never,
+				);
+				expect(result).toEqual(serviceResult);
+			});
 		});
 	});
 });

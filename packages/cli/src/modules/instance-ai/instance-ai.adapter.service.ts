@@ -85,6 +85,8 @@ import type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	ResolveParameterOptionsParams,
+	ResolveParameterOptionsResult,
 	UnavailableLocatorValue,
 	ProjectSummary,
 	FolderSummary,
@@ -641,7 +643,7 @@ export class InstanceAiAdapterService {
 				projectId,
 			),
 			credentialService,
-			nodeService: this.createNodeAdapter(user, shouldBypassCredentialTest),
+			nodeService: this.createNodeAdapter(user, projectId, shouldBypassCredentialTest),
 			dataTableService,
 			...(configEvalsEnabled && this.evaluationConfigService
 				? {
@@ -3924,6 +3926,7 @@ export class InstanceAiAdapterService {
 	 *  connected; its live resource lookups are answered as unavailable. */
 	private createNodeAdapter(
 		user: User,
+		boundProjectId?: string,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
@@ -4140,12 +4143,37 @@ export class InstanceAiAdapterService {
 						...(mode ? { mode } : {}),
 					});
 
-				const result = await getDefinition(nodeType);
-				const unavailable = getUnavailableNotice(nodeType);
-				if (unavailable && !result.error) return { ...result, unavailable };
-				if (!result.error || nodeType.includes('.')) return result;
+				const enrichDefinition = async (
+					nodeId: string,
+					defResult: Awaited<ReturnType<typeof getDefinition>>,
+				) => {
+					if (defResult.error) return defResult;
+					const [nodes, gatewayConfig] = await Promise.all([getAllNodes(), getGatewayConfig()]);
+					const parsedVersion = version ? Number.parseFloat(version.replace(/^v/i, '')) : undefined;
+					const desc = findNodeByVersion(
+						nodes,
+						nodeId,
+						Number.isFinite(parsedVersion) ? parsedVersion : undefined,
+					);
+					const meta = buildMeta(gatewayConfig, desc?.name ?? nodeId);
+					const unavailable = getUnavailableNotice(nodeId);
+					return {
+						...defResult,
+						...(unavailable ? { unavailable } : {}),
+						...(meta ? { aiGateway: meta } : {}),
+						...(desc?.webhooks ? { webhooks: desc.webhooks } : {}),
+						...(desc?.polling ? { polling: desc.polling } : {}),
+						...(desc?.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
+					};
+				};
 
-				return await getDefinition(`${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`);
+				const result = await getDefinition(nodeType);
+				if (!result.error || nodeType.includes('.')) {
+					return await enrichDefinition(nodeType, result);
+				}
+
+				const registryId = `${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`;
+				return await enrichDefinition(registryId, await getDefinition(registryId));
 			},
 
 			listDiscriminators: async (nodeType) => {
@@ -4319,6 +4347,14 @@ export class InstanceAiAdapterService {
 				}
 				return await this.nodeResourceExplorerService.exploreResources(user, params);
 			},
+
+			resolveParameterOptions: async (
+				params: ResolveParameterOptionsParams,
+			): Promise<ResolveParameterOptionsResult> =>
+				await this.nodeResourceExplorerService.resolveParameterOptions(user, {
+					...params,
+					...(boundProjectId ? { projectId: boundProjectId } : {}),
+				}),
 
 			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
 				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),

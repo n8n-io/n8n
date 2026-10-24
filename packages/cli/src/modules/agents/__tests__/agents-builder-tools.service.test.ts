@@ -31,7 +31,6 @@ import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -107,7 +106,6 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
-	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const nodeTypes = mock<NodeTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
@@ -138,7 +136,6 @@ function makeService() {
 		aiService,
 		mock<AiGatewayService>(),
 		outboundHttp,
-		dynamicNodeParametersService,
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
@@ -1167,7 +1164,7 @@ describe('AgentsBuilderToolsService', () => {
 				errors: [
 					expect.objectContaining({
 						path: '/tools/0/node/nodeParameters/teamId',
-						message: expect.stringContaining('agent_builder_get_resource_locator_options'),
+						message: expect.stringContaining('get_node_parameter_options'),
 					}),
 				],
 			});

@@ -54,12 +54,18 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 /** Orchestrator tools that both builders use. These names have no builder prefix. */
 export const SHARED_BUILDER_TOOL_NAMES = {
 	DATA_TABLES: 'data_tables',
+	SEARCH_NODES: 'search_nodes',
+	GET_NODE_TYPES: 'get_node_types',
+	GET_NODE_PARAMETER_OPTIONS: 'get_node_parameter_options',
+	EXECUTE_NODE: 'execute_node',
 } as const;
 
 export type WorkflowBuilderToolName =
 	(typeof WORKFLOW_BUILDER_TOOL_NAMES)[keyof typeof WORKFLOW_BUILDER_TOOL_NAMES];
 export type AgentBuilderToolName =
 	(typeof AGENT_BUILDER_TOOL_NAMES)[keyof typeof AGENT_BUILDER_TOOL_NAMES];
+export type SharedBuilderToolName =
+	(typeof SHARED_BUILDER_TOOL_NAMES)[keyof typeof SHARED_BUILDER_TOOL_NAMES];
 
 /**
  * Names of removed tools that have no current replacement. Older traces and
@@ -98,14 +104,15 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	create_tasks: AGENT_BUILDER_TOOL_NAMES.CREATE_TASKS,
 	update_task: AGENT_BUILDER_TOOL_NAMES.UPDATE_TASK,
 	finish_setup: AGENT_BUILDER_TOOL_NAMES.FINISH_SETUP,
-	get_resource_locator_options: AGENT_BUILDER_TOOL_NAMES.GET_RESOURCE_LOCATOR_OPTIONS,
+	get_resource_locator_options: SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS,
+	agent_builder_get_resource_locator_options: SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS,
 	call_agent: AGENT_BUILDER_TOOL_NAMES.CALL_AGENT,
 	publish_agent: AGENT_BUILDER_TOOL_NAMES.PUBLISH_AGENT,
 	unpublish_agent: AGENT_BUILDER_TOOL_NAMES.UNPUBLISH_AGENT,
 	resolve_llm: AGENT_BUILDER_TOOL_NAMES.RESOLVE_LLM,
 	verify_mcp_server: AGENT_BUILDER_TOOL_NAMES.VERIFY_MCP_SERVER,
-	search_nodes: AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES,
-	get_node_types: AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
+	agent_builder_search_nodes: SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES,
+	agent_builder_get_node_types: SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
 	list_credentials: AGENT_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 	ask_credential: AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL,
 	ask_embedding_credential: AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL,

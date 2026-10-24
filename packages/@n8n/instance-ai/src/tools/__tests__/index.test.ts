@@ -41,6 +41,10 @@ vi.mock('../nodes.tool', () => ({
 	createNodesTool: vi.fn((_context: unknown, scope?: string) => ({
 		id: scope ? `workflow_builder_nodes-${scope}` : 'workflow_builder_nodes',
 	})),
+	createSearchNodesTool: vi.fn(() => ({ id: 'search_nodes' })),
+	createGetNodeTypesTool: vi.fn(() => ({ id: 'get_node_types' })),
+	createGetNodeParameterOptionsTool: vi.fn(() => ({ id: 'get_node_parameter_options' })),
+	createExecuteNodeTool: vi.fn(() => ({ id: 'execute_node' })),
 }));
 
 vi.mock('../search-models.tool', () => ({
@@ -148,20 +152,32 @@ describe('domain tool construction', () => {
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
-			workflow_builder_nodes: { id: 'workflow_builder_nodes' },
+			search_nodes: { id: 'search_nodes' },
+			get_node_types: { id: 'get_node_types' },
+			get_node_parameter_options: { id: 'get_node_parameter_options' },
+			execute_node: { id: 'execute_node' },
 			workflow_builder_search_models: { id: 'workflow_builder_search_models' },
 			workflow_builder_ask_user: { id: 'workflow_builder_ask_user' },
 			workflow_builder_build_workflow: { id: 'workflow_builder_build_workflow' },
 		});
+		expect(orchestratorTools.has('workflow_builder_nodes')).toBe(false);
 		expect(orchestratorTools.has('templates')).toBe(false);
 		expect(orchestratorTools.has('evals')).toBe(false);
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
-		const { createNodesTool } = await import('../nodes.tool.js');
+		const {
+			createSearchNodesTool,
+			createGetNodeTypesTool,
+			createGetNodeParameterOptionsTool,
+			createExecuteNodeTool,
+		} = await import('../nodes.tool.js');
 		const { createSearchModelsTool } = await import('../search-models.tool.js');
 		const { createDataTablesTool } = await import('../data-tables.tool.js');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
-		expect(createNodesTool).toHaveBeenCalledWith(context);
+		expect(createSearchNodesTool).toHaveBeenCalledWith(context);
+		expect(createGetNodeTypesTool).toHaveBeenCalledWith(context);
+		expect(createGetNodeParameterOptionsTool).toHaveBeenCalledWith(context);
+		expect(createExecuteNodeTool).toHaveBeenCalledWith(context);
 		expect(createSearchModelsTool).toHaveBeenCalledOnce();
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});

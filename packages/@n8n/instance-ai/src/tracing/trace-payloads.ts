@@ -1121,7 +1121,15 @@ function unprefixedToolName(name: string): string {
 
 function classifyToolCategory(name: string): string {
 	if (name === DOMAIN_TOOL_IDS.DATA_TABLES) return 'data-table';
-	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
+	if (
+		name === DOMAIN_TOOL_IDS.NODES ||
+		name === DOMAIN_TOOL_IDS.SEARCH_NODES ||
+		name === DOMAIN_TOOL_IDS.GET_NODE_TYPES ||
+		name === DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS ||
+		name === DOMAIN_TOOL_IDS.EXECUTE_NODE ||
+		name === 'materialize-node-type'
+	)
+		return 'node';
 	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
 	if (name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) return 'planning';
 	const baseName = unprefixedToolName(name);
