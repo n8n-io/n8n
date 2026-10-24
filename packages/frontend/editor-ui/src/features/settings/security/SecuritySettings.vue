@@ -17,7 +17,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { RedactionFloor } from '@n8n/api-types';
+import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG, type RedactionFloor } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { EnterpriseEditionFeature, SECURITY_POLICIES_DOCS_URL } from '@/app/constants';
@@ -27,6 +27,8 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import DataRedactionSection from './DataRedactionSection.vue';
 import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
+import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 const rootStore = useRootStore();
@@ -36,6 +38,11 @@ const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
+const posthogStore = usePostHog();
+
+const isRateLimitSettingsEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG),
+);
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
@@ -396,6 +403,8 @@ const sharingCountText = computed(() => {
 				/>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
+
+		<ApiKeyRateLimitsSection v-if="isRateLimitSettingsEnabled" />
 
 		<N8nAlertDialog
 			:open="showPublishingDialog"
