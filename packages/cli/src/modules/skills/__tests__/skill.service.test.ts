@@ -1,15 +1,13 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
-import type {
-	AssistantSkillContext,
-	AssistantSkillSummary,
-	ProjectScopeService,
-} from '@n8n/backend-services';
+import type { ProjectScopeService } from '@n8n/backend-services';
 import type { OperationContext, TransactionRunner, User } from '@n8n/db';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
+
+import type { AssistantSkillContext, AssistantSkillSummary } from '../utils/skill-content';
 
 import type { SkillUsageProxy } from '../services/skill-usage-proxy.service';
 import { skillContentHash } from '../utils/skill-content-hash';

@@ -1,4 +1,3 @@
-import type { AssistantSkillSummary } from '@n8n/backend-services';
 import {
 	BaseRepository,
 	LIKE_ESCAPE_CLAUSE,
@@ -18,6 +17,7 @@ import {
 	skillContentHash,
 	type SkillContent,
 } from '../../utils/skill-content-hash';
+import type { AssistantSkillSummary } from '../../utils/skill-content';
 import { SkillFile } from '../entities/skill-file.entity';
 import { SkillVersion } from '../entities/skill-version.entity';
 import { Skill, type SkillSource } from '../entities/skill.entity';

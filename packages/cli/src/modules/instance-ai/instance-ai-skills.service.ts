@@ -3,10 +3,17 @@ import {
 	type RuntimeSkillContent,
 	type RuntimeSkillSource,
 } from '@n8n/agents';
-import { AssistantSkillProviderProxy, type AssistantSkillContext } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
 import { UnexpectedError } from 'n8n-workflow';
+
+import { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
+import { SkillService } from '@/modules/skills/services/skill.service';
+import type {
+	AssistantSkillContent,
+	AssistantSkillContext,
+	AssistantSkillSummary,
+} from '@/modules/skills/utils/skill-content';
 
 import type { InstanceAiFeatureFlags } from './instance-ai.adapter.service';
 
@@ -65,14 +72,22 @@ const SKILL_GATES: ReadonlyArray<{
 /** Loads the active skills of Instance AI: the prompt-profile skills that the gates leave on. */
 @Service()
 export class InstanceAiSkillsService {
-	constructor(private readonly hubSkills: AssistantSkillProviderProxy) {}
+	constructor(
+		private readonly assistantSkillsGate: AssistantSkillsFlagGate,
+		private readonly skillService: SkillService,
+	) {}
 
-	async listHubSkills(context: AssistantSkillContext) {
-		return await this.hubSkills.listSkills(context);
+	async listHubSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
+		if (!(await this.assistantSkillsGate.isEnabled())) return [];
+		return await this.skillService.listForAssistant(context);
 	}
 
-	async readHubSkill(context: AssistantSkillContext, skillId: string) {
-		return await this.hubSkills.readSkill(context, skillId);
+	async readHubSkill(
+		context: AssistantSkillContext,
+		skillId: string,
+	): Promise<AssistantSkillContent | null> {
+		if (!(await this.assistantSkillsGate.isEnabled())) return null;
+		return await this.skillService.readForAssistant(context, skillId);
 	}
 
 	/** The active skills, and the tools that the prompt profile turns off. */

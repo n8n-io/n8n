@@ -189,6 +189,7 @@ import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-d
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { SkillsGate } from '@/modules/skills';
 import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	getMcpRegistryCredentialOptions,
@@ -726,8 +727,7 @@ export class InstanceAiAdapterService {
 
 	private getSkillService(user: User): InstanceAiSkillService | undefined {
 		try {
-			const moduleRegistry = Container.get(ModuleRegistry);
-			if (!moduleRegistry.isActive('agents')) return undefined;
+			if (!Container.get(SkillsGate).isEnabled) return undefined;
 			return Container.get(InstanceAiSkillsAdapterService).createService(user);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {

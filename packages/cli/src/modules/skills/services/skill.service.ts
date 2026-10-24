@@ -1,11 +1,6 @@
 import { AGENT_SKILL_NAME_MAX_LENGTH, skillNameKey, type AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import {
-	ProjectScopeService,
-	type AssistantSkillContext,
-	type AssistantSkillContent,
-	type AssistantSkillSummary,
-} from '@n8n/backend-services';
+import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
@@ -14,6 +9,11 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import type {
+	AssistantSkillContext,
+	AssistantSkillContent,
+	AssistantSkillSummary,
+} from '../utils/skill-content';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
 import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 import { getSkillHash } from '../utils/skill-hash';

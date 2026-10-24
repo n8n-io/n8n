@@ -16,7 +16,6 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
-import { HubAssistantSkillProvider } from '@/modules/skills/services/hub-assistant-skill-provider.service';
 import { skillContentHash, type SkillContent } from '@/modules/skills/utils/skill-content-hash';
 import {
 	SkillRepository,
@@ -42,7 +41,7 @@ const content = (overrides: Partial<SkillContent> = {}): SkillContent => ({
 describe('SkillRepository', () => {
 	const postHog = mockInstance(PostHogClient);
 	let skills: SkillRepository;
-	let assistantSkills: HubAssistantSkillProvider;
+	let skillService: SkillService;
 	let owner: User;
 	let agentSkills: AgentSkillRepository;
 	let agents: AgentRepository;
@@ -61,7 +60,7 @@ describe('SkillRepository', () => {
 		histories = Container.get(AgentHistoryRepository);
 		txRunner = Container.get(TransactionRunner);
 		registerSkillUsage();
-		assistantSkills = Container.get(HubAssistantSkillProvider);
+		skillService = Container.get(SkillService);
 		owner = await createOwner();
 		user = await createUser();
 		project = await createTeamProject('Team');
@@ -101,10 +100,10 @@ describe('SkillRepository', () => {
 			}),
 			null,
 		);
-		expect((await assistantSkills.listSkills({ user: owner })).map(({ id }) => id)).toEqual([
+		expect((await skillService.listForAssistant({ user: owner })).map(({ id }) => id)).toEqual([
 			instance,
 		]);
-		const result = await assistantSkills.listSkills({ user: owner, projectId: project.id });
+		const result = await skillService.listForAssistant({ user: owner, projectId: project.id });
 		expect(result.map(({ id }) => id).sort()).toEqual([instance, scoped].sort());
 		expect(result.find(({ id }) => id === scoped)).toEqual({
 			id: scoped,
@@ -143,7 +142,7 @@ describe('SkillRepository', () => {
 			expect(await skills.findAssistantSkillSummaries(project.id)).toEqual([]);
 			expect(await skills.findAssistantSkill(id, project.id)).toBeNull();
 			expect(
-				await assistantSkills.readSkill({ user: owner, projectId: project.id }, id),
+				await skillService.readForAssistant({ user: owner, projectId: project.id }, id),
 			).toBeNull();
 		},
 	);

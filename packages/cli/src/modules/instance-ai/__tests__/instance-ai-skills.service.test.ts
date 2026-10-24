@@ -1,7 +1,9 @@
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import { AssistantSkillProviderProxy } from '@n8n/backend-services';
 import { loadInstanceAiSkills, resolvePromptProfile } from '@n8n/instance-ai';
+
+import type { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
+import type { SkillService } from '@/modules/skills/services/skill.service';
 
 import {
 	InstanceAiSkillsService,
@@ -35,7 +37,7 @@ const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [
 ];
 
 describe('InstanceAiSkillsService', () => {
-	const service = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+	const service = new InstanceAiSkillsService(mock(), mock());
 
 	it('refers only to skills that exist', () => {
 		const bundled = loadInstanceAiSkills().registry.skills.map(({ id }) => id);
@@ -102,13 +104,43 @@ describe('InstanceAiSkillsService', () => {
 	});
 });
 
-describe('Assistant Hub provider boundary', () => {
+describe('Assistant reads of user skills', () => {
 	const context = { user: mock<User>(), projectId: 'project-1' };
+	const summary = {
+		id: 'skill-1',
+		projectId: null,
+		name: 'Tone',
+		description: 'Writing style',
+		versionId: 'version-1',
+		version: 1,
+	};
+	const content = { ...summary, instructions: 'Be brief.', frontmatter: null, files: [] };
+	const gate = mock<AssistantSkillsFlagGate>();
+	const skillService = mock<SkillService>();
+	const service = new InstanceAiSkillsService(gate, skillService);
 
-	it('supplies no Hub skills without a registered provider', async () => {
-		const service = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+	beforeEach(() => {
+		vi.resetAllMocks();
+		skillService.listForAssistant.mockResolvedValue([summary]);
+		skillService.readForAssistant.mockResolvedValue(content);
+	});
+
+	it('reads nothing while Assistant skills are off', async () => {
+		gate.isEnabled.mockResolvedValue(false);
+
 		expect(await service.listHubSkills(context)).toEqual([]);
-		expect(await service.readHubSkill(context, 'unknown')).toBeNull();
+		expect(await service.readHubSkill(context, summary.id)).toBeNull();
+		expect(skillService.listForAssistant).not.toHaveBeenCalled();
+		expect(skillService.readForAssistant).not.toHaveBeenCalled();
 		expect((await service.loadSkills(openScope)).source.registry.skills.length).toBeGreaterThan(0);
+	});
+
+	it('reads the skills of the user while Assistant skills are on', async () => {
+		gate.isEnabled.mockResolvedValue(true);
+
+		expect(await service.listHubSkills(context)).toEqual([summary]);
+		expect(await service.readHubSkill(context, summary.id)).toEqual(content);
+		expect(skillService.listForAssistant).toHaveBeenCalledWith(context);
+		expect(skillService.readForAssistant).toHaveBeenCalledWith(context, summary.id);
 	});
 });
