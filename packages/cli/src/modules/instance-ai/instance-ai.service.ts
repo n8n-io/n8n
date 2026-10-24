@@ -2757,6 +2757,7 @@ export class InstanceAiService {
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 		} = gates;
 		this.runState.setSetupPanelEnabled(threadId, setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
@@ -2808,6 +2809,7 @@ export class InstanceAiService {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 			modelId,
 			allowSendingParameterValues,
 		});
