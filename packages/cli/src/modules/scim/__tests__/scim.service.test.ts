@@ -2,6 +2,7 @@ import type { ScimUserCreateDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Mocked } from 'vitest';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Role, User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -17,6 +18,8 @@ import {
 	ScimResourceNotFoundError,
 } from '../scim.errors';
 import type { ScimUserRepository } from '../database/scim-user.repository';
+import type { ScimDeprovisioningService } from '../scim-deprovisioning.service';
+import { DEFAULT_SCIM_DEPROVISIONING_POLICY } from '../scim-settings.service';
 import { ScimService } from '../scim.service';
 
 const createTestUser = (overrides: Partial<User> = {}): User =>
@@ -33,15 +36,18 @@ const createTestUser = (overrides: Partial<User> = {}): User =>
 	}) as User;
 
 describe('ScimService', () => {
+	let logger: Mocked<Logger>;
 	let userRepository: Mocked<UserRepository>;
 	let urlService: Mocked<UrlService>;
 	let eventService: Mocked<EventService>;
 	let passwordUtility: Mocked<PasswordUtility>;
 	let globalConfig: GlobalConfig;
 	let scimUserRepository: Mocked<ScimUserRepository>;
+	let scimDeprovisioningService: Mocked<ScimDeprovisioningService>;
 	let service: ScimService;
 
 	beforeEach(() => {
+		logger = mock<Logger>();
 		userRepository = mock<UserRepository>();
 		scimUserRepository = mock<ScimUserRepository>();
 		urlService = mock<UrlService>();
@@ -53,15 +59,20 @@ describe('ScimService', () => {
 
 		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 		passwordUtility.hash.mockResolvedValue('hashed-password');
+		scimDeprovisioningService = mock<ScimDeprovisioningService>();
+		scimDeprovisioningService.getPolicy.mockResolvedValue({
+			...DEFAULT_SCIM_DEPROVISIONING_POLICY,
+		});
 
 		service = new ScimService(
-			mock<Logger>(),
+			logger,
 			userRepository,
 			scimUserRepository,
 			urlService,
 			globalConfig,
 			passwordUtility,
 			eventService,
+			scimDeprovisioningService,
 		);
 	});
 
@@ -906,6 +917,132 @@ describe('ScimService', () => {
 			userRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.deleteUser('missing')).rejects.toThrow(ScimResourceNotFoundError);
+		});
+
+		describe('with onDelete delete', () => {
+			const policy = {
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferProjectId: 'team-1',
+			} as const;
+
+			const createMember = (overrides: Partial<User> = {}) =>
+				createTestUser({ role: GLOBAL_MEMBER_ROLE, ...overrides });
+
+			beforeEach(() => {
+				scimDeprovisioningService.getPolicy.mockResolvedValue(policy);
+			});
+
+			it('should delete a member under the stored policy', async () => {
+				const user = createMember();
+				userRepository.findOne.mockResolvedValue(user);
+
+				await service.deleteUser('user-1');
+
+				expect(scimDeprovisioningService.deleteUser).toHaveBeenCalledWith(user, policy);
+			});
+
+			it('should only deactivate an admin', async () => {
+				const admin = createTestUser({ role: GLOBAL_ADMIN_ROLE, isScimManaged: false });
+				userRepository.findOne.mockResolvedValue(admin);
+
+				await service.deleteUser('user-1');
+
+				expect(admin.disabled).toBe(true);
+				expect(admin.isScimManaged).toBe(true);
+				expect(userRepository.save).toHaveBeenCalledExactlyOnceWith(admin);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('user-updated', {
+					user: admin,
+					fieldsChanged: ['disabled'],
+				});
+				expect(scimDeprovisioningService.deleteUser).not.toHaveBeenCalled();
+				expect(logger.warn).toHaveBeenCalledWith(
+					'SCIM: Skipped the policy delete for an admin. The admin is only deactivated.',
+					{ userId: admin.id },
+				);
+			});
+
+			it('should deactivate the user before the delete starts', async () => {
+				const user = createMember({ isScimManaged: false });
+				userRepository.findOne.mockResolvedValue(user);
+				const atDelete: Array<{ saves: number; events: number; disabled: boolean }> = [];
+				scimDeprovisioningService.deleteUser.mockImplementation(async (deleted) => {
+					atDelete.push({
+						saves: userRepository.save.mock.calls.length,
+						events: eventService.emit.mock.calls.length,
+						disabled: deleted.disabled,
+					});
+				});
+
+				await service.deleteUser('user-1');
+
+				expect(atDelete).toEqual([{ saves: 1, events: 1, disabled: true }]);
+				expect(userRepository.save).toHaveBeenCalledExactlyOnceWith(user);
+				expect(user.isScimManaged).toBe(true);
+				// The delete emits its own `user-deleted` event. This is the only other one.
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('user-updated', {
+					user,
+					fieldsChanged: ['disabled'],
+				});
+			});
+
+			it.each([
+				['a policy blocks the transfer', new ScimForbiddenError('Blocked by policy')],
+				['the delete fails part-way', new Error('connection lost')],
+			])('should keep the user deactivated when %s', async (_, error) => {
+				const user = createMember();
+				userRepository.findOne.mockResolvedValue(user);
+				scimDeprovisioningService.deleteUser.mockRejectedValue(error);
+
+				await expect(service.deleteUser('user-1')).rejects.toThrow(error);
+
+				expect(user.disabled).toBe(true);
+				expect(userRepository.save).toHaveBeenCalledWith(user);
+				expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
+					user,
+					fieldsChanged: ['disabled'],
+				});
+			});
+
+			it('should delete a user that an earlier DELETE deactivated', async () => {
+				const user = createMember({ disabled: true, isScimManaged: true });
+				userRepository.findOne.mockResolvedValue(user);
+
+				await service.deleteUser('user-1');
+
+				expect(scimDeprovisioningService.deleteUser).toHaveBeenCalledWith(user, policy);
+			});
+
+			// Only DELETE runs the policy. The identity provider sends active
+			// false to suspend a user, and a suspension must keep the work.
+			it('should only disable the user on PATCH active false', async () => {
+				const user = createTestUser();
+				userRepository.findOne.mockResolvedValue(user);
+
+				await service.patchUser('user-1', {
+					schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+					Operations: [{ op: 'replace', path: 'active', value: false }],
+				});
+
+				expect(user.disabled).toBe(true);
+				expect(scimDeprovisioningService.getPolicy).not.toHaveBeenCalled();
+				expect(scimDeprovisioningService.deleteUser).not.toHaveBeenCalled();
+			});
+
+			it('should throw not-found for unknown users', async () => {
+				userRepository.findOne.mockResolvedValue(null);
+
+				await expect(service.deleteUser('missing')).rejects.toThrow(ScimResourceNotFoundError);
+				expect(scimDeprovisioningService.deleteUser).not.toHaveBeenCalled();
+			});
+
+			it('should reject a DELETE of the owner before it applies the policy', async () => {
+				const ownerRole = { slug: 'global:owner', roleType: 'global' } as Role;
+				userRepository.findOne.mockResolvedValue(createTestUser({ role: ownerRole }));
+
+				await expect(service.deleteUser('user-1')).rejects.toThrow(ScimForbiddenError);
+				expect(scimDeprovisioningService.deleteUser).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

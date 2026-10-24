@@ -42,6 +42,7 @@ import { validateUser } from './shared/utils/users';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { OwnershipService } from '@/services/ownership.service';
 import { CHANGE_ROLE_ERROR_MESSAGES } from '@/services/user.service';
 import { Telemetry } from '@/telemetry';
@@ -1752,12 +1753,16 @@ describe('PATCH /users/:id/role', () => {
 			await provisioningService.getConfig();
 			// @ts-expect-error - provisioningConfig is private
 			savedConfig = { ...provisioningService.provisioningConfig };
+			// The lock applies only while SAML or OIDC sign-in is on.
+			testServer.license.enable('feat:saml');
+			await setSamlLoginEnabled(true);
 		});
 
 		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
 			await Container.get(RoleMappingRuleRepository).delete({});
+			await setSamlLoginEnabled(false);
 		});
 
 		test('should return 403 when SSO provider controls instance roles', async () => {

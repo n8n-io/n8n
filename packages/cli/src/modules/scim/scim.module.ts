@@ -8,7 +8,9 @@ import { Container } from '@n8n/di';
  * Implements System for Cross-domain Identity Management (RFC 7644) for
  * automated user lifecycle management.
  *
- * SCIM provisioning works only while SAML or OIDC single sign-on is on
+ * `feat:scim` activates the module. Before GA, its routes answer only while
+ * the `N8N_SCIM_OPT_IN` config switch is on (`scim-opt-in.ts`). SCIM
+ * provisioning works only while SAML or OIDC single sign-on is on
  * (`ScimSsoService`).
  */
 @BackendModule({ name: 'scim', licenseFlag: 'feat:scim', instanceTypes: ['main'] })
@@ -27,12 +29,14 @@ export class ScimModule implements ModuleInterface {
 
 	/**
 	 * Settings exposed to the frontend under `/rest/module-settings`.
+	 * `available` tells the frontend if the SCIM routes answer.
 	 * The Users page shows SCIM indicators only while SCIM is enabled and a
 	 * token exists, so the token routes refresh these settings.
 	 */
 	async settings() {
 		const { ScimSettingsService } = await import('./scim-settings.service.js');
 		const { ScimTokenService } = await import('./scim-token.service.js');
+		const { isScimAvailable } = await import('./scim-opt-in.js');
 
 		const [scimEnabled, hasToken] = await Promise.all([
 			Container.get(ScimSettingsService).isEnabled(),
@@ -42,6 +46,7 @@ export class ScimModule implements ModuleInterface {
 		return {
 			scimEnabled,
 			hasToken,
+			available: isScimAvailable(),
 		} satisfies FrontendModuleSettings['scim'];
 	}
 

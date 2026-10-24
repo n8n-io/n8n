@@ -13,7 +13,14 @@ import type { OidcConfigDto, ProvisioningConfigDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, getProjectRoleForUser, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
+import {
+	AuthIdentityRepository,
+	GLOBAL_MEMBER_ROLE,
+	type User,
+	UserRepository,
+	RoleRepository,
+	RoleMappingRuleRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import type * as mocked_oidc_client from 'openid-client';
@@ -30,7 +37,7 @@ import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants'
 import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 import { JwtService } from '@n8n/backend-services';
 import { createCustomRoleWithScopes, createScope } from '@test-integration/db/roles';
-import { createUser } from '@test-integration/db/users';
+import { createUser, createUserShell } from '@test-integration/db/users';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -727,6 +734,49 @@ describe('OIDC service', () => {
 			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user1@example.com');
+		});
+
+		// Admins can invite under OIDC while SCIM is on. The invitee then signs in through OIDC.
+		it('should link the OIDC identity to an invited user by email and complete the invite', async () => {
+			const invitee = await createUserShell(GLOBAL_MEMBER_ROLE);
+			const state = oidcService.generateState();
+			const nonce = oidcService.generateNonce();
+			const callbackUrl = new URL(
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+			);
+			authorizationCodeGrantMock.mockResolvedValueOnce({
+				access_token: 'mock-access-token-invitee',
+				id_token: 'mock-id-token-invitee',
+				token_type: 'bearer',
+				claims: () =>
+					({
+						sub: 'mock-subject-invitee',
+						iss: 'https://example.com/auth/realms/n8n',
+						aud: 'test-client-id',
+						iat: Math.floor(Date.now() / 1000) - 1000,
+						exp: Math.floor(Date.now() / 1000) + 3600,
+					}) as mocked_oidc_client.IDToken,
+				expiresIn: () => 3600,
+			} as mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers);
+			fetchUserInfoMock.mockResolvedValueOnce({ email_verified: true, email: invitee.email });
+
+			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+
+			expect(user.id).toBe(invitee.id);
+			expect(
+				await Container.get(AuthIdentityRepository).findOneBy({
+					providerId: 'mock-subject-invitee',
+					providerType: 'oidc',
+				}),
+			).toMatchObject({ userId: invitee.id });
+			expect(
+				await userRepository.findOneOrFail({
+					where: { id: invitee.id },
+					relations: ['authIdentities', 'role'],
+				}),
+			).toMatchObject({ isPending: false, role: { slug: GLOBAL_MEMBER_ROLE.slug } });
+			expect(await userRepository.countBy({ email: invitee.email })).toBe(1);
 		});
 
 		it('should sign in user if OIDC Idp does not have email verified', async () => {

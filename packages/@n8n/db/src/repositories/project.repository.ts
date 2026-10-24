@@ -331,6 +331,7 @@ export class ProjectRepository extends BaseRepository<Project> {
 			.leftJoin('project.creator', 'creator')
 			.where(`project.id IN (${idsQuery.getQuery()})`);
 		query.setParameters(idsQuery.getParameters());
+		this.applyExcludeDeactivatedUsers(query, options);
 
 		// Sort: team projects first, then activated personal projects, then pending ones
 		this.applyActivationOrder(query);
@@ -359,6 +360,27 @@ export class ProjectRepository extends BaseRepository<Project> {
 				}),
 			);
 		}
+
+		this.applyExcludeDeactivatedUsers(query, options);
+	}
+
+	/**
+	 * Leaves out the personal projects of deactivated users. The `creator`
+	 * relation must already be joined on the `project` query.
+	 */
+	private applyExcludeDeactivatedUsers(
+		query: SelectQueryBuilder<Project>,
+		options: ProjectListOptions,
+	): void {
+		if (!options.excludeDeactivatedUsers) return;
+
+		query.andWhere(
+			new Brackets((qb) => {
+				qb.where('project.type != :personalTypeDeactivatedFilter', {
+					personalTypeDeactivatedFilter: 'personal',
+				}).orWhere('creator.disabled = :creatorDisabled', { creatorDisabled: false });
+			}),
+		);
 	}
 
 	/**
@@ -420,4 +442,6 @@ export interface ProjectListOptions {
 	search?: string;
 	type?: 'personal' | 'team';
 	activated?: boolean;
+	/** Leaves out the personal projects of deactivated users. */
+	excludeDeactivatedUsers?: boolean;
 }

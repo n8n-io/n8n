@@ -1018,10 +1018,17 @@ export {
 export {
 	scimAuthFailureReasonSchema,
 	scimAuthFailureSchema,
+	scimDeprovisioningPolicySchema,
 	type ScimAuthFailureReason,
 	type ScimAuthFailure,
 	type ScimConnectionStatus,
 	type ScimTokenCreator,
 	type ScimTokenDetails,
 	type ScimConfigResponse,
+	type ScimConfigPatchResponse,
+	type ScimDeprovisioningPolicy,
+	type ScimTransferTarget,
+	type ScimTransferTargetPerson,
+	type ScimTransferTargetProject,
+	type ScimTransferTargetsResponse,
 } from './schemas/scim-config.schema';

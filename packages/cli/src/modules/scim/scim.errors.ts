@@ -46,6 +46,16 @@ export class ScimTokenConflictError extends UserError {
 }
 
 /**
+ * The transfer target in `PATCH /rest/scim/config` does not exist, or it is
+ * the personal project of a deactivated user. Maps to HTTP 400.
+ */
+export class ScimInvalidTransferTargetError extends UserError {
+	constructor(detail: string) {
+		super(detail);
+	}
+}
+
+/**
  * SCIM provisioning cannot turn on while SAML or OIDC single sign-on is off.
  * Maps to HTTP 400 on `PATCH /rest/scim/config`.
  */

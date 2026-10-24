@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { booleanFromString } from '../../schemas/boolean-from-string';
 import { Z } from '../../zod-class';
 import { MAX_ITEMS_PER_PAGE } from '../pagination/pagination.dto';
 
@@ -46,4 +47,7 @@ export class ListProjectsQueryDto extends Z.class({
 	search: searchValidator,
 	type: typeValidator,
 	activated: activatedValidator,
+	// `true` leaves out the personal projects of deactivated users, so that a
+	// transfer picker does not offer them. Without it, the list keeps them.
+	excludeDeactivatedUsers: booleanFromString.optional(),
 }) {}

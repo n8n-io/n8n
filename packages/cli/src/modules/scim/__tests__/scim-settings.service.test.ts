@@ -15,6 +15,12 @@ describe('ScimSettingsService', () => {
 	/** The context that the transaction gives to the repository calls. */
 	const trxCtx = mock<OperationContext>();
 
+	/** The stored rows of a policy, one for each field. */
+	const policyRows = (policy: Record<string, string>) =>
+		Object.entries(policy).map(([field, value]) =>
+			mock<Settings>({ key: `scim.provisioning.${field}`, value }),
+		);
+
 	beforeEach(() => {
 		settingsRepository = mock<SettingsRepository>();
 		cacheService = mock<CacheService>();
@@ -254,34 +260,97 @@ describe('ScimSettingsService', () => {
 		});
 	});
 
-	describe('update', () => {
-		const ENABLED_KEY = 'scim.provisioning.enabled';
+	describe('deprovisioning policy', () => {
+		// Instances that never saved a policy keep deactivating users.
+		it('returns the default policy, which disables, when no policy is stored', async () => {
+			settingsRepository.findByKeys.mockResolvedValue([]);
 
-		const savedSwitch = (value: string) =>
-			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(
-				mock<Settings>({ key: ENABLED_KEY, value }),
-			);
-
-		beforeEach(() => {
-			savedSwitch('true');
+			await expect(service.getDeprovisioningPolicy()).resolves.toEqual({
+				onDelete: 'disable',
+				dataAction: 'transfer',
+				transferProjectId: null,
+			});
+			expect(settingsRepository.findByKeys).toHaveBeenCalledWith([
+				'scim.provisioning.onDelete',
+				'scim.provisioning.dataAction',
+				'scim.provisioning.transferProjectId',
+			]);
 		});
 
-		it('saves the switch that it reads with a write lock', async () => {
-			const result = await service.update({ enabled: false });
+		it('returns the stored policy', async () => {
+			settingsRepository.findByKeys.mockResolvedValue(
+				policyRows({ onDelete: 'delete', dataAction: 'delete', transferProjectId: 'team-1' }),
+			);
 
-			expect(settingsRepository.getOrCreateWithWriteLock).toHaveBeenCalledExactlyOnceWith(
+			await expect(service.getDeprovisioningPolicy()).resolves.toEqual({
+				onDelete: 'delete',
+				dataAction: 'delete',
+				transferProjectId: 'team-1',
+			});
+		});
+
+		it('returns the default for a field that does not parse, and no target for an empty one', async () => {
+			settingsRepository.findByKeys.mockResolvedValue(
+				policyRows({ onDelete: 'archive', dataAction: 'delete', transferProjectId: '' }),
+			);
+
+			await expect(service.getDeprovisioningPolicy()).resolves.toEqual({
+				onDelete: 'disable',
+				dataAction: 'delete',
+				transferProjectId: null,
+			});
+		});
+	});
+
+	describe('update', () => {
+		const ENABLED_KEY = 'scim.provisioning.enabled';
+		const stored = {
+			onDelete: 'disable',
+			dataAction: 'delete',
+			transferProjectId: 'team-1',
+		} as const;
+
+		/** The saved switch, as the repository reads it with or without a lock. */
+		const savedRows = (enabledValue: string) => {
+			const read = async () => mock<Settings>({ key: ENABLED_KEY, value: enabledValue });
+			settingsRepository.getOrCreateWithWriteLock.mockImplementation(read);
+			settingsRepository.findByKeyInContext.mockImplementation(read);
+		};
+
+		beforeEach(() => {
+			savedRows('true');
+			settingsRepository.findByKeys.mockResolvedValue(policyRows(stored));
+		});
+
+		// `undefined` keeps a field, and `null` clears the target.
+		it('saves each field that the change sets in its own row and returns the stored policy', async () => {
+			const result = await service.update({
+				policy: { onDelete: 'delete', dataAction: undefined, transferProjectId: null },
+			});
+
+			expect(settingsRepository.upsertByKey.mock.calls).toEqual([
+				['scim.provisioning.onDelete', 'delete', false, trxCtx],
+				['scim.provisioning.transferProjectId', '', false, trxCtx],
+			]);
+			expect(result).toEqual({ wasEnabled: true, enabled: true, policy: stored });
+		});
+
+		it('saves the switch and the policy in one transaction', async () => {
+			await service.update({ enabled: false, policy: { dataAction: 'transfer' } });
+
+			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
 				ENABLED_KEY,
 				'false',
 				true,
 				trxCtx,
 			);
-			expect(settingsRepository.upsertByKey).toHaveBeenCalledExactlyOnceWith(
-				ENABLED_KEY,
-				'false',
-				true,
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
+				'scim.provisioning.dataAction',
+				'transfer',
+				false,
 				trxCtx,
 			);
-			expect(result).toEqual({ wasEnabled: true, enabled: false });
 		});
 
 		it('caches the switch only after the transaction', async () => {
@@ -303,9 +372,20 @@ describe('ScimSettingsService', () => {
 			expect(cacheService.set).not.toHaveBeenCalled();
 		});
 
+		it('does not lock the switch when the change has no enabled field', async () => {
+			await service.update({ policy: { onDelete: 'delete' } });
+
+			expect(settingsRepository.getOrCreateWithWriteLock).not.toHaveBeenCalledWith(
+				ENABLED_KEY,
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
 		// The lock creates a missing switch as off.
 		it('reports SCIM as off before the change when no switch is stored', async () => {
-			savedSwitch('false');
+			savedRows('false');
 
 			const result = await service.update({ enabled: true });
 
@@ -319,7 +399,7 @@ describe('ScimSettingsService', () => {
 		});
 
 		it('checks an enable under the switch lock, before it saves the switch', async () => {
-			savedSwitch('false');
+			savedRows('false');
 			const assertCanEnable = vi.fn();
 
 			await service.update({ enabled: true, assertCanEnable });
@@ -335,15 +415,20 @@ describe('ScimSettingsService', () => {
 		});
 
 		it('saves and caches nothing when the enable check fails', async () => {
-			savedSwitch('false');
+			savedRows('false');
 			const assertCanEnable = vi.fn(() => {
 				throw new Error('single sign-on is off');
 			});
 
-			await expect(service.update({ enabled: true, assertCanEnable })).rejects.toThrow(
-				'single sign-on is off',
+			await expect(
+				service.update({ enabled: true, policy: { onDelete: 'delete' }, assertCanEnable }),
+			).rejects.toThrow('single sign-on is off');
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalledWith(
+				ENABLED_KEY,
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
 			);
-			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 			expect(cacheService.set).not.toHaveBeenCalled();
 		});
 

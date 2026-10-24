@@ -10,7 +10,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import {
 	FolderRepository,
 	GLOBAL_ADMIN_ROLE,
@@ -20,6 +20,7 @@ import {
 	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -34,6 +35,7 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -292,6 +294,101 @@ describe('GET /projects/sharing-candidates', () => {
 			.query({ take: 50, skip: 0 });
 		expect(resp.status).toBe(403);
 	});
+
+	describe('excludeDeactivatedUsers', () => {
+		const candidateIds = async (caller: User, query: Record<string, string | number>) => {
+			const resp = await testServer
+				.authAgentFor(caller)
+				.get('/projects/sharing-candidates')
+				.query({ take: 50, skip: 0, ...query })
+				.expect(200);
+			return (resp.body.data as Project[]).map(({ id }) => id);
+		};
+
+		const setUp = async (createCaller: () => Promise<User>) => {
+			const caller = await createCaller();
+			const [active, deactivated] = await Promise.all([createMember(), createMember()]);
+			await Container.get(UserRepository).update({ id: deactivated.id }, { disabled: true });
+			const team = await createTeamProject(undefined, caller);
+			const [activeProject, deactivatedProject] = await Promise.all([
+				getPersonalProject(active),
+				getPersonalProject(deactivated),
+			]);
+			return { caller, team, activeProject, deactivatedProject };
+		};
+
+		describe.each([
+			['owner', createOwner],
+			['admin', createAdmin],
+		])('for the %s', (_, createCaller) => {
+			test('leaves out the personal project of a deactivated user with the flag', async () => {
+				const { caller, team, activeProject, deactivatedProject } = await setUp(createCaller);
+
+				const ids = await candidateIds(caller, { excludeDeactivatedUsers: 'true' });
+
+				expect(ids).toEqual(expect.arrayContaining([team.id, activeProject.id]));
+				expect(ids).not.toContain(deactivatedProject.id);
+			});
+
+			test('combines the flag with activated', async () => {
+				const { caller, team, activeProject, deactivatedProject } = await setUp(createCaller);
+
+				const ids = await candidateIds(caller, {
+					excludeDeactivatedUsers: 'true',
+					activated: 'true',
+				});
+
+				expect(ids).toEqual(expect.arrayContaining([team.id, activeProject.id]));
+				expect(ids).not.toContain(deactivatedProject.id);
+			});
+
+			test.each<Record<string, string>>([{}, { excludeDeactivatedUsers: 'false' }])(
+				'keeps the personal project of a deactivated user for %j',
+				async (query) => {
+					const { caller, deactivatedProject } = await setUp(createCaller);
+
+					expect(await candidateIds(caller, query)).toContain(deactivatedProject.id);
+				},
+			);
+		});
+
+		// A member cannot see the account status of other users, so the flag
+		// must not tell it which users are deactivated.
+		describe('for a member', () => {
+			test('returns 403 with the flag', async () => {
+				const { caller } = await setUp(createMember);
+
+				await testServer
+					.authAgentFor(caller)
+					.get('/projects/sharing-candidates')
+					.query({ take: 50, skip: 0, excludeDeactivatedUsers: 'true' })
+					.expect(403);
+			});
+
+			test.each<Record<string, string>>([{}, { excludeDeactivatedUsers: 'false' }])(
+				'keeps the personal project of a deactivated user for %j',
+				async (query) => {
+					const { caller, deactivatedProject } = await setUp(createMember);
+
+					expect(await candidateIds(caller, query)).toContain(deactivatedProject.id);
+				},
+			);
+
+			// Callers without `project:read` read through the relation query.
+			test('leaves out the personal project of a deactivated user in the relation query', async () => {
+				const { caller, team, activeProject, deactivatedProject } = await setUp(createMember);
+
+				const [projects] = await Container.get(ProjectRepository).getShareableProjectsAndCount(
+					caller.id,
+					{ skip: 0, take: 50, excludeDeactivatedUsers: true },
+				);
+				const ids = projects.map(({ id }) => id);
+
+				expect(ids).toEqual(expect.arrayContaining([team.id, activeProject.id]));
+				expect(ids).not.toContain(deactivatedProject.id);
+			});
+		});
+	});
 });
 
 describe('Project members endpoints', () => {
@@ -379,12 +476,16 @@ describe('Project members endpoints', () => {
 			await provisioningService.getConfig();
 			// @ts-expect-error - provisioningConfig is private
 			savedConfig = { ...provisioningService.provisioningConfig };
+			// The lock applies only while SAML or OIDC sign-in is on.
+			testServer.license.enable('feat:saml');
+			await setSamlLoginEnabled(true);
 		});
 
 		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
 			await Container.get(RoleMappingRuleRepository).delete({});
+			await setSamlLoginEnabled(false);
 		});
 
 		test('should return 403 when SSO provider controls project roles', async () => {
