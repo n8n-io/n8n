@@ -742,7 +742,10 @@ export class CommunityPackagesService {
 
 			accepted = true;
 
-			await this.removeNpmPackage(parsed.packageName, { requireNoRecord: true });
+			await this.removeNpmPackage(parsed.packageName, {
+				requireNoRecord: true,
+				skipDiskChangesIfMissing: true,
+			});
 		} catch (error) {
 			const details = { packageName, reason: ensureError(error).message };
 
@@ -764,10 +767,21 @@ export class CommunityPackagesService {
 			}
 
 			const onDiskVersion = await this.readInstalledPackageVersion(packageName);
-			if (onDiskVersion === packageVersion && this.loadNodesAndCredentials.loaders[packageName]) {
-				this.logger.debug(
-					`Community package ${packageName} already at ${packageVersion}, skipping`,
-				);
+			if (onDiskVersion === packageVersion) {
+				const loadedVersion = this.loadNodesAndCredentials.loaders[packageName]?.packageJson.version;
+				if (loadedVersion === packageVersion) {
+					this.logger.debug(
+						`Community package ${packageName} already loaded at ${packageVersion}, skipping`,
+					);
+					return;
+				}
+
+				// A peer can finish the shared-volume write before this event arrives. Load those
+				// files instead of downloading the same package into the same directory again. Only
+				// replace an absent or stale loader, so a redundant event cannot remove a working one.
+				await this.assertPackageApiVersionSupported(packageName);
+				await this.reloadPackage(packageName);
+				this.logger.info(`Community package loaded from disk: ${packageName}`);
 				return;
 			}
 
@@ -789,10 +803,7 @@ export class CommunityPackagesService {
 			// A failed load keeps the new directory: rolling back to a working older version
 			// would leave this instance silently behind the leader's record.
 			try {
-				await this.loadNodesAndCredentials.unloadPackage(packageName);
-				await this.loadNodesAndCredentials.loadPackage(packageName);
-				await this.loadNodesAndCredentials.postProcessLoaders();
-				this.loadNodesAndCredentials.releaseTypes();
+				await this.reloadPackage(packageName);
 			} finally {
 				await this.discardBackupDirectory(packageName, backupDirectory);
 			}
@@ -801,7 +812,17 @@ export class CommunityPackagesService {
 		});
 	}
 
-	private async removeNpmPackage(packageName: string, options: { requireNoRecord?: boolean } = {}) {
+	private async reloadPackage(packageName: string) {
+		await this.loadNodesAndCredentials.unloadPackage(packageName);
+		await this.loadNodesAndCredentials.loadPackage(packageName);
+		await this.loadNodesAndCredentials.postProcessLoaders();
+		this.loadNodesAndCredentials.releaseTypes();
+	}
+
+	private async removeNpmPackage(
+		packageName: string,
+		options: { requireNoRecord?: boolean; skipDiskChangesIfMissing?: boolean } = {},
+	) {
 		return await this.packageMutex(async () => {
 			// Same reason as in `installOrUpdateNpmPackage`: on the receiving path the absent
 			// record is the precondition, and a concurrent install command can restore it.
@@ -811,18 +832,26 @@ export class CommunityPackagesService {
 				});
 			}
 
-			await this.deletePackageDirectory(packageName);
+			const packageDirectoryExists = await this.packageDirectoryExists(packageName);
+			const ledgerHasPackage =
+				(await this.readPackageJson())?.dependencies[packageName] !== undefined;
+			const shouldChangeDisk =
+				packageDirectoryExists || ledgerHasPackage || !options.skipDiskChangesIfMissing;
+
+			if (shouldChangeDisk) await this.deletePackageDirectory(packageName);
 
 			// Housekeeping: the ledger is a projection of the database, so a dangling entry
 			// must not fail the uninstall, but leaving it gives `npm prune` a reason to put
 			// the package back on disk.
-			try {
-				await this.removePackageJsonDependency(packageName);
-			} catch (error) {
-				this.logger.warn('Failed to remove community package from the ledger', {
-					error: ensureError(error),
-					packageName,
-				});
+			if (shouldChangeDisk) {
+				try {
+					await this.removePackageJsonDependency(packageName);
+				} catch (error) {
+					this.logger.warn('Failed to remove community package from the ledger', {
+						error: ensureError(error),
+						packageName,
+					});
+				}
 			}
 
 			await this.loadNodesAndCredentials.unloadPackage(packageName);

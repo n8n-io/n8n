@@ -3,7 +3,7 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import { execFile } from 'node:child_process';
-import { readFile, rm, writeFile } from 'node:fs/promises';
+import { access, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
@@ -37,6 +37,7 @@ type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
 describe('CommunityPackagesService pubsub handlers', () => {
 	const PACKAGE_NAME = 'n8n-nodes-test';
 	const PACKAGE_VERSION = '1.0.0';
+	const PREVIOUS_PACKAGE_VERSION = '0.9.0';
 	const REGISTRY = 'https://registry.npmjs.org';
 	const TARBALL_NAME = `${PACKAGE_NAME}-1.0.0.tgz`;
 
@@ -103,10 +104,11 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		vi.mocked(readFile).mockResolvedValue(
 			JSON.stringify({
 				name: PACKAGE_NAME,
-				version: PACKAGE_VERSION,
+				version: PREVIOUS_PACKAGE_VERSION,
 				dependencies: {},
 			}),
 		);
+		vi.mocked(access).mockResolvedValue(undefined);
 		vi.mocked(writeFile).mockResolvedValue(undefined);
 		vi.mocked(rm).mockResolvedValue(undefined);
 
@@ -152,6 +154,12 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		);
 		expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(packageName);
 		expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
+	};
+
+	const arrangeOnDiskVersion = (version: string) => {
+		vi.mocked(readFile).mockResolvedValue(
+			JSON.stringify({ name: PACKAGE_NAME, version, dependencies: {} }),
+		);
 	};
 
 	test.each([PACKAGE_NAME, `@scope/${PACKAGE_NAME}`])(
@@ -425,17 +433,73 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		expectNoRemoval();
 	});
 
-	test('should skip the download when the version on disk is already loaded', async () => {
+	test('should load matching files from a shared volume without downloading them again', async () => {
 		const service = createService();
 		arrangeInstalledPackage();
-		loadNodesAndCredentials.loaders = { [PACKAGE_NAME]: mock<PackageDirectoryLoader>() };
+		arrangeOnDiskVersion(PACKAGE_VERSION);
 
 		await service.handleInstallEvent({
 			packageName: PACKAGE_NAME,
 			packageVersion: PACKAGE_VERSION,
 		});
 
-		expectNoDownloadOrLoad();
+		expect(executeNpmCommand).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+		expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+		expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
+	});
+
+	test('should preserve a matching package that is already loaded in memory', async () => {
+		const service = createService();
+		arrangeInstalledPackage();
+		arrangeOnDiskVersion(PACKAGE_VERSION);
+		const currentLoader = mock<PackageDirectoryLoader>({
+			packageJson: { name: PACKAGE_NAME, version: PACKAGE_VERSION },
+		});
+		loadNodesAndCredentials.loaders = { [PACKAGE_NAME]: currentLoader };
+		loadNodesAndCredentials.loadPackage.mockRejectedValue(new Error('broken package'));
+
+		await service.handleInstallEvent({
+			packageName: PACKAGE_NAME,
+			packageVersion: PACKAGE_VERSION,
+		});
+
+		expect(executeNpmCommand).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.unloadPackage).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.loaders[PACKAGE_NAME]).toBe(currentLoader);
+	});
+
+	test('should reload matching files when an older version is loaded in memory', async () => {
+		const service = createService();
+		arrangeInstalledPackage();
+		arrangeOnDiskVersion(PACKAGE_VERSION);
+		loadNodesAndCredentials.loaders = {
+			[PACKAGE_NAME]: mock<PackageDirectoryLoader>({
+				packageJson: { name: PACKAGE_NAME, version: PREVIOUS_PACKAGE_VERSION },
+			}),
+		};
+
+		await service.handleInstallEvent({
+			packageName: PACKAGE_NAME,
+			packageVersion: PACKAGE_VERSION,
+		});
+
+		expect(executeNpmCommand).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+		expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+	});
+
+	test('should only unload when a peer already removed shared package files', async () => {
+		const service = createService();
+		vi.mocked(access).mockRejectedValue(new Error('Package directory does not exist'));
+
+		await service.handleUninstallEvent({ packageName: PACKAGE_NAME });
+
+		expect(rm).not.toHaveBeenCalled();
+		expect(writeFile).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+		expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
 	});
 
 	describe('logging', () => {
