@@ -228,6 +228,7 @@ export class RuntimeContextBuilder {
 						},
 					}
 				: undefined,
+			splitModelId(this.modelId).provider,
 		);
 		const preparedMessages =
 			this.nativeToolDeferral?.prepareMessages?.(messages, tools.aiTools, tools.searchToolName) ??
