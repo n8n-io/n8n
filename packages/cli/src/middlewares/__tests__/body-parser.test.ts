@@ -110,7 +110,8 @@ describe('parseBody', () => {
 			['latin1', 'text=Gr%fc%dfe', { text: 'Grüße' }],
 			['windows-1252', 'price=5%80&k%E9y=a+%26+b', { price: '5€', kéy: 'a & b' }],
 			['shift_jis', 'a=%82%B1%82%F1%82%C9%82%BF%82%CD', { a: 'こんにちは' }],
-			['iso-8859-1', 'pct=100%&bad=%zz', { pct: '100%', bad: '%zz' }],
+			['utf-7', 'text=%2BAOk-', { text: 'é' }],
+			['iso-8859-1', 'pct=100%&bad=%zz&end=%F', { pct: '100%', bad: '%zz', end: '%F' }],
 		])('percent-decodes a %s form body in that charset', async (charset, body, expected) => {
 			expect(await parse(form, charset, body)).toEqual(expected);
 		});
@@ -121,10 +122,16 @@ describe('parseBody', () => {
 			});
 		});
 
+		it('decodes a character split across a raw byte and an escape', async () => {
+			const body = Buffer.concat([Buffer.from('a='), Buffer.from([0x82]), Buffer.from('%B1')]);
+
+			expect(await parse(form, 'shift_jis', body)).toEqual({ a: 'こ' });
+		});
+
 		it('percent-decodes a utf-8 form body as before', async () => {
 			expect(await parse(form, 'utf-8', 'text=Gr%C3%BC%C3%9Fe&bad=%FC')).toEqual({
 				text: 'Grüße',
-				bad: '�',
+				bad: '\ufffd',
 			});
 		});
 
