@@ -89,7 +89,7 @@ function isNamedResourceAttachment(
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
-	if (!context || context.source !== 'credential-modal') return '';
+	if (context?.source !== 'credential-modal') return '';
 
 	const { credential } = context;
 	const placeholderTitles = credential.placeholderTitles ?? [];
@@ -296,7 +296,7 @@ export class AssistantTurnInputBuilder {
 			const projectId = context.projectId;
 			if (!projectId) {
 				throw new UnexpectedError(
-					`Instance AI thread "${threadId}" has no bound project; agent-preview handoff requires a project`,
+					`Assistant thread "${threadId}" has no bound project; agent-preview handoff requires a project`,
 				);
 			}
 			await assertAgentPreviewHandoffScopes(user, projectId);
@@ -590,13 +590,13 @@ export class AssistantTurnInputBuilder {
 			const project = await context.workspaceService?.getProject?.(projectId);
 			if (project) return project;
 
-			this.logger.warn('Instance AI could not name the bound project for this turn', {
+			this.logger.warn('Assistant could not name the bound project for this turn', {
 				projectId,
 				reason: context.workspaceService?.getProject ? 'not-readable' : 'no-workspace-adapter',
 			});
 			return undefined;
 		} catch (error) {
-			this.logger.warn('Instance AI failed to resolve the bound project for this turn', {
+			this.logger.warn('Assistant failed to resolve the bound project for this turn', {
 				projectId,
 				error: error instanceof Error ? error.message : String(error),
 			});
@@ -627,7 +627,7 @@ export class AssistantTurnInputBuilder {
 		loadHistory: () => Promise<AgentDbMessage[]>,
 	): Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }> {
 		const resolved = await this.bestEffort(
-			'Instance AI failed to read the AI preferences for this turn',
+			'Assistant failed to read the AI preferences for this turn',
 			{ userId },
 			async () => {
 				const preferences = await this.aiPreferenceService.getApplicable(
@@ -645,7 +645,7 @@ export class AssistantTurnInputBuilder {
 		}
 
 		const history = await this.bestEffort(
-			'Instance AI failed to read the last AI preferences block of this thread',
+			'Assistant failed to read the last AI preferences block of this thread',
 			{ threadId },
 			async () => await this.findAiPreferencesHistory(loadHistory),
 		);
@@ -740,7 +740,7 @@ export class AssistantTurnInputBuilder {
 		if (attachments.length > 0) return freshBlock;
 
 		const history = await this.bestEffort(
-			'Instance AI failed to read the last thread artifacts block of this thread',
+			'Assistant failed to read the last thread artifacts block of this thread',
 			{ threadId },
 			async () => ({ block: await this.findLastThreadArtifactsBlock(loadHistory) }),
 		);

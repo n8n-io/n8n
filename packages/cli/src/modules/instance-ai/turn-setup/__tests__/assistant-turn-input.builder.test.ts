@@ -404,7 +404,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
 		expect(service.agentMemory.getMessages).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Instance AI failed to read the AI preferences for this turn',
+			'Assistant failed to read the AI preferences for this turn',
 			{ userId: 'user-1', error: 'db down' },
 		);
 	});
@@ -456,7 +456,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		expect(turn.block).toContain('<ai-preferences>');
 		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Instance AI failed to read the last AI preferences block of this thread',
+			'Assistant failed to read the last AI preferences block of this thread',
 			{ threadId: 'thread-1', error: 'history down' },
 		);
 	});
