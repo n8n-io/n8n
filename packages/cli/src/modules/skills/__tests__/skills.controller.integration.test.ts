@@ -13,15 +13,15 @@ import { randomUUID } from 'node:crypto';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { SkillsGate } from '@/modules/skills/services/skills-gate';
-import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
-import { SkillService } from '@/modules/skills/services/skill.service';
+import { SkillsGate } from '../services/skills-gate';
+import { SkillRepository } from '../database/repositories/skill.repository';
+import { SkillService } from '../services/skill.service';
 import { PostHogClient } from '@/posthog';
 
-import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
-import { createMember, createOwner, createUser } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import { createMember, createOwner, createUser } from '@test-integration/db/users';
+import type { SuperAgentTest } from '@test-integration/types';
+import { setupTestServer } from '@test-integration/utils';
 
 const body = { name: 'Brand voice', description: 'How we write', instructions: 'Be brief.' };
 

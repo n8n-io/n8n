@@ -16,16 +16,13 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
-import { skillContentHash, type SkillContent } from '@/modules/skills/utils/skill-content-hash';
-import {
-	SkillRepository,
-	type SkillVisibility,
-} from '@/modules/skills/database/repositories/skill.repository';
-import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
-import { SkillService } from '@/modules/skills/services/skill.service';
+import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
+import { SkillRepository, type SkillVisibility } from '../database/repositories/skill.repository';
+import { SkillRuntimeService } from '../services/skill-runtime.service';
+import { SkillService } from '../services/skill.service';
 import { PostHogClient } from '@/posthog';
 
-import { createOwner, createUser } from '../shared/db/users';
+import { createOwner, createUser } from '@test-integration/db/users';
 
 /** More ids than SQLite binds in one query (32,766). */
 const manyUnknownIds = () => Array.from({ length: 33_000 }, (_, i) => `skill_unknown${i}`);

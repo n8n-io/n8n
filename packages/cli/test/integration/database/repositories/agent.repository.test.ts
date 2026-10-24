@@ -20,7 +20,7 @@ import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
-import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
+import { createSkill } from '@/modules/skills/testing';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -35,6 +35,12 @@ import {
 	storedSkillRefs,
 	type AgentFixtureOverrides,
 } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
+
+const writingSkill = {
+	name: 'Writing',
+	description: 'Write notes',
+	instructions: 'Use short sentences',
+};
 
 describe('AgentRepository', () => {
 	let agentRepo: AgentRepository;
@@ -163,19 +169,9 @@ describe('AgentRepository', () => {
 		};
 
 		it('rolls back Agent creation with its skill references, then commits one creation on retry', async () => {
-			const skillRepo = Container.get(SkillRepository);
 			const skillRefs = Container.get(AgentSkillRefsService);
 			const skillId = uuid();
-			await skillRepo.createSkill(
-				{ id: skillId, target: { projectId, agentId: null }, source: 'ui', createdById: null },
-				{
-					name: 'Writing',
-					description: 'Write notes',
-					instructions: 'Use short sentences',
-					frontmatter: null,
-					files: [],
-				},
-			);
+			await createSkill({ id: skillId, projectId, content: writingSkill });
 			const credentials = mock<CredentialsService>();
 			credentials.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 			const policy = mock<AgentPolicyService>();
@@ -328,21 +324,7 @@ describe('AgentRepository', () => {
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
 			const agent = await createAgent();
-			await Container.get(SkillRepository).createSkill(
-				{
-					id: 'writing',
-					target: { projectId, agentId: null },
-					source: 'ui',
-					createdById: null,
-				},
-				{
-					name: 'Writing',
-					description: 'Write notes',
-					instructions: 'Use short sentences',
-					frontmatter: null,
-					files: [],
-				},
-			);
+			await createSkill({ id: 'writing', projectId, content: writingSkill });
 			const createdAt = new Date('2025-01-01T00:00:00.000Z');
 			await taskRepo.insert([
 				{ id: 'task-keep', agentId: agent.id, ...taskBody, createdAt },

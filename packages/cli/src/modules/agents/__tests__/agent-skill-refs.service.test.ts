@@ -5,13 +5,9 @@ import { UserError } from '@n8n/errors';
 import type { MockInstance, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { SkillFile } from '@/modules/skills/database/entities/skill-file.entity';
-import type { SkillVersion } from '@/modules/skills/database/entities/skill-version.entity';
-import type { Skill } from '@/modules/skills/database/entities/skill.entity';
-import type { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
-import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
-import type { ResolvedSkillRow } from '@/modules/skills/utils/skill-content';
+import type { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
 import type { SkillService } from '@/modules/skills/services/skill.service';
+import type { SkillTarget } from '@/modules/skills/utils/skill-content';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
@@ -575,17 +571,11 @@ describe('AgentSkillRefsService', () => {
 describe('AgentSkillRefsService attach check', () => {
 	const PROJECT = 'project-1';
 	const TX_CTX = { trx: {} } as OperationContext;
-	const skills = mock<SkillRepository>();
 	const agentSkills = mock<AgentSkillRepository>();
-	// A real SkillRuntimeService, so the names that agents see come from the mocked rows.
-	const skillRuntime = new SkillRuntimeService(skills, mock(), mock());
+	const skillService = mock<SkillService>();
+	const skillRuntime = mock<SkillRuntimeService>();
 	const txRunner = mock<TransactionRunner>();
-	const service = new AgentSkillRefsService(
-		agentSkills,
-		mock<SkillService>(),
-		skillRuntime,
-		txRunner,
-	);
+	const service = new AgentSkillRefsService(agentSkills, skillService, skillRuntime, txRunner);
 
 	async function expectError(
 		promise: Promise<unknown>,
@@ -600,47 +590,44 @@ describe('AgentSkillRefsService attach check', () => {
 		expect(error).toHaveProperty('message', message);
 	}
 
-	function skillRow(id: string, target: Partial<Pick<Skill, 'projectId' | 'agentId'>> = {}): Skill {
-		return mock<Skill>({
-			id,
-			projectId: target.projectId ?? null,
-			agentId: target.agentId ?? null,
-		});
-	}
+	const target = (where: Partial<SkillTarget> = {}): SkillTarget => ({
+		projectId: where.projectId ?? null,
+		agentId: where.agentId ?? null,
+	});
 
-	function versionRow(
-		skill: Skill,
-		version: number,
-		overrides: Partial<SkillVersion> = {},
-	): ResolvedSkillRow {
-		return {
-			skill,
-			version: mock<SkillVersion>({
-				id: `${skill.id}-v${version}`,
-				skillId: skill.id,
-				version,
-				name: 'Brand voice',
-				description: 'Write in our voice',
-				instructions: 'Use short sentences.',
-				frontmatter: null,
-				...overrides,
-			}),
-			files: [] as SkillFile[],
-		};
+	/** The skills that exist, with the name of the latest version and of pinned versions. */
+	function givenSkills(
+		skills: Array<{ id: string; where?: Partial<SkillTarget>; name: string }>,
+		pinnedNames: Record<string, string> = {},
+	) {
+		skillRuntime.findTargets.mockImplementation(
+			async (ids) =>
+				new Map(
+					skills
+						.filter((skill) => ids.includes(skill.id))
+						.map((skill) => [skill.id, target(skill.where)]),
+				),
+		);
+		skillRuntime.runtimeNames.mockResolvedValue(
+			(ref) =>
+				(ref.versionId ? pinnedNames[ref.versionId] : undefined) ??
+				skills.find((skill) => skill.id === ref.id)?.name,
+		);
 	}
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 		txRunner.run.mockImplementation(async (runCtx, fn) => await fn(runCtx));
-		skills.findLatestSaved.mockResolvedValue(new Map());
-		skills.findVersionsByIds.mockResolvedValue(new Map());
-		skills.findByIds.mockResolvedValue([]);
 		agentSkills.findDependencies.mockResolvedValue(new Map());
+		givenSkills([]);
 	});
 
 	it('restores the pin of each ref that the agent version used and writes no skill', async () => {
 		agentSkills.findPins.mockResolvedValue([{ skillId: 'skill_a', skillVersionId: 'skill_a-v1' }]);
-		skills.findByIds.mockResolvedValue([skillRow('skill_a'), skillRow('skill_unpinned')]);
+		givenSkills([
+			{ id: 'skill_a', name: 'Pricing' },
+			{ id: 'skill_unpinned', name: 'Tone' },
+		]);
 
 		await service.restoreDraftRefs(
 			{ id: 'agent-1' },
@@ -660,7 +647,7 @@ describe('AgentSkillRefsService attach check', () => {
 			],
 			TX_CTX,
 		);
-		expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+		expect(skillService.saveTrusted).not.toHaveBeenCalled();
 	});
 
 	it('drops a restored ref whose skill is gone', async () => {
@@ -697,8 +684,8 @@ describe('AgentSkillRefsService attach check', () => {
 			['a skill of another project', { projectId: 'project-2' }, false],
 			['a skill of this agent', { agentId: 'agent-1' }, true],
 			['a skill of another agent', { agentId: 'agent-2' }, false],
-		])('is %s attachable: %s', (_label, target, expected) => {
-			expect(service.isAttachable(skillRow('skill_a', target), agent)).toBe(expected);
+		])('is %s attachable: %s', (_label, where, expected) => {
+			expect(service.isAttachable(target(where), agent)).toBe(expected);
 		});
 	});
 
@@ -713,18 +700,6 @@ describe('AgentSkillRefsService attach check', () => {
 
 		beforeEach(() => givenAgentRefs([{ skillId: 'skill_old' }]));
 
-		function givenSkills(rows: Array<{ skill: Skill; name: string }>) {
-			skills.findByIds.mockResolvedValue(rows.map((row) => row.skill));
-			skills.findLatestSaved.mockImplementation(
-				async (ids) =>
-					new Map(
-						rows
-							.filter((row) => ids.includes(row.skill.id))
-							.map((row) => [row.skill.id, versionRow(row.skill, 1, { name: row.name })]),
-					),
-			);
-		}
-
 		it("reads the agent's current refs from its dependency rows", async () => {
 			await service.checkRefs(agent, []);
 
@@ -733,8 +708,8 @@ describe('AgentSkillRefsService attach check', () => {
 
 		it('keeps a new ref to an attachable skill', async () => {
 			givenSkills([
-				{ skill: skillRow('skill_old', { projectId: PROJECT }), name: 'Pricing' },
-				{ skill: skillRow('skill_new'), name: 'Tone' },
+				{ id: 'skill_old', where: { projectId: PROJECT }, name: 'Pricing' },
+				{ id: 'skill_new', name: 'Tone' },
 			]);
 
 			const refs = await service.checkRefs(agent, [{ id: 'skill_old' }, { id: 'skill_new' }]);
@@ -744,25 +719,24 @@ describe('AgentSkillRefsService attach check', () => {
 
 		it('holds a shared lock on newly attached skills in the caller transaction', async () => {
 			givenSkills([
-				{ skill: skillRow('skill_old', { projectId: PROJECT }), name: 'Pricing' },
-				{ skill: skillRow('skill_new'), name: 'Tone' },
+				{ id: 'skill_old', where: { projectId: PROJECT }, name: 'Pricing' },
+				{ id: 'skill_new', name: 'Tone' },
 			]);
 
 			await service.checkRefs(agent, [{ id: 'skill_old' }, { id: 'skill_new' }], TX_CTX);
 
-			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_new'], TX_CTX);
+			expect(skillRuntime.lockForAttach).toHaveBeenCalledWith(['skill_new'], TX_CTX);
 		});
 
 		it('compares the name of the version a pinned ref runs, not the latest name', async () => {
-			const old = skillRow('skill_old', { projectId: PROJECT });
 			givenAgentRefs([{ skillId: 'skill_old', versionId: 'skill_old-v1' }]);
-			givenSkills([
-				{ skill: old, name: 'Tone' },
-				{ skill: skillRow('skill_new'), name: 'tone' },
-			]);
 			// The agent runs v1, which is still called "Pricing".
-			skills.findVersionsByIds.mockResolvedValue(
-				new Map([['skill_old-v1', versionRow(old, 1, { name: 'Pricing' })]]),
+			givenSkills(
+				[
+					{ id: 'skill_old', where: { projectId: PROJECT }, name: 'Tone' },
+					{ id: 'skill_new', name: 'tone' },
+				],
+				{ 'skill_old-v1': 'Pricing' },
 			);
 
 			await expect(
@@ -774,7 +748,7 @@ describe('AgentSkillRefsService attach check', () => {
 		});
 
 		it('drops a new ref to a missing skill', async () => {
-			givenSkills([{ skill: skillRow('skill_old', { projectId: PROJECT }), name: 'Pricing' }]);
+			givenSkills([{ id: 'skill_old', where: { projectId: PROJECT }, name: 'Pricing' }]);
 
 			const refs = await service.checkRefs(agent, [{ id: 'skill_old' }, { id: 'skill_gone' }]);
 
@@ -790,8 +764,8 @@ describe('AgentSkillRefsService attach check', () => {
 		it.each([
 			['a skill of another agent', { agentId: 'agent-2' }],
 			['a skill of another project', { projectId: 'project-2' }],
-		])('rejects a new ref to %s', async (_label, target) => {
-			givenSkills([{ skill: skillRow('skill_new', target), name: 'Tone' }]);
+		])('rejects a new ref to %s', async (_label, where) => {
+			givenSkills([{ id: 'skill_new', where, name: 'Tone' }]);
 
 			await expectError(
 				service.checkRefs(agent, [{ id: 'skill_new' }]),
@@ -802,8 +776,8 @@ describe('AgentSkillRefsService attach check', () => {
 
 		it('rejects a new ref whose name clashes with a skill of the agent', async () => {
 			givenSkills([
-				{ skill: skillRow('skill_old', { projectId: PROJECT }), name: 'Brand voice' },
-				{ skill: skillRow('skill_new'), name: 'brand-voice' },
+				{ id: 'skill_old', where: { projectId: PROJECT }, name: 'Brand voice' },
+				{ id: 'skill_new', name: 'brand-voice' },
 			]);
 
 			await expectError(
@@ -816,8 +790,8 @@ describe('AgentSkillRefsService attach check', () => {
 		it('keeps a clash the agent already had', async () => {
 			givenAgentRefs([{ skillId: 'skill_a' }, { skillId: 'skill_b' }]);
 			givenSkills([
-				{ skill: skillRow('skill_a', { projectId: PROJECT }), name: 'Pricing' },
-				{ skill: skillRow('skill_b', { projectId: PROJECT }), name: 'pricing' },
+				{ id: 'skill_a', where: { projectId: PROJECT }, name: 'Pricing' },
+				{ id: 'skill_b', where: { projectId: PROJECT }, name: 'pricing' },
 			]);
 
 			const refs = await service.checkRefs(agent, [{ id: 'skill_a' }, { id: 'skill_b' }]);
@@ -828,8 +802,8 @@ describe('AgentSkillRefsService attach check', () => {
 		it('keeps a pin the agent already had and drops a pin it did not have', async () => {
 			givenAgentRefs([{ skillId: 'skill_a', versionId: 'v1' }, { skillId: 'skill_b' }]);
 			givenSkills([
-				{ skill: skillRow('skill_a', { projectId: PROJECT }), name: 'Pricing' },
-				{ skill: skillRow('skill_b', { projectId: PROJECT }), name: 'Tone' },
+				{ id: 'skill_a', where: { projectId: PROJECT }, name: 'Pricing' },
+				{ id: 'skill_b', where: { projectId: PROJECT }, name: 'Tone' },
 			]);
 
 			const refs = await service.checkRefs(agent, [
@@ -842,7 +816,7 @@ describe('AgentSkillRefsService attach check', () => {
 
 		it('lets a save clear a pin', async () => {
 			givenAgentRefs([{ skillId: 'skill_a', versionId: 'v1' }]);
-			givenSkills([{ skill: skillRow('skill_a', { projectId: PROJECT }), name: 'Pricing' }]);
+			givenSkills([{ id: 'skill_a', where: { projectId: PROJECT }, name: 'Pricing' }]);
 
 			expect(await service.checkRefs(agent, [{ id: 'skill_a' }])).toEqual([{ id: 'skill_a' }]);
 		});

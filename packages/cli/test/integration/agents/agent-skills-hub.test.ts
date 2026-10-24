@@ -32,10 +32,15 @@ import {
 	type ProjectAgent,
 } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { SkillService } from '@/modules/skills/services/skill.service';
-import { toAgentSkill } from '@/modules/skills/utils/skill-content';
+import {
+	deleteAllSkills,
+	deleteSkill,
+	findLatestSkillVersion,
+	findSkill,
+	findSkillIds,
+} from '@/modules/skills/testing';
 import {
 	markAgentDraftDirty,
 	saveAgentDraftFenced,
@@ -91,7 +96,7 @@ describe('Agent skills in the skills hub', () => {
 
 	afterEach(async () => {
 		await agentRepository.delete({});
-		await Container.get(SkillRepository).delete({});
+		await deleteAllSkills();
 	});
 
 	afterAll(async () => {
@@ -114,9 +119,16 @@ describe('Agent skills in the skills hub', () => {
 
 	/** Saves new instructions on top of the latest version, as an editor does. */
 	async function saveInstructions(skillId: string, instructions: string) {
-		const latest = (await Container.get(SkillRepository).findLatestSaved([skillId])).get(skillId);
+		const latest = await findLatestSkillVersion(skillId);
 		if (!latest) throw new Error(`Skill ${skillId} not found`);
-		const baseSkillHash = getAgentSkillHash(toAgentSkill(latest));
+		const { name, description, files } = latest;
+		const references = files.length > 0 ? { references: files } : {};
+		const baseSkillHash = getAgentSkillHash({
+			name,
+			description,
+			instructions: latest.instructions,
+			...references,
+		});
 		return await skillService.saveTrusted(skillId, { instructions, baseSkillHash }, owner.id);
 	}
 
@@ -220,7 +232,7 @@ describe('Agent skills in the skills hub', () => {
 		const skill = await createSkill(body('Skill', 'Published text.'));
 		const agent = (await publish(await createAgent([skill])))!;
 		await saveInstructions(skill, 'Newer text.');
-		const latestBefore = (await Container.get(SkillRepository).findLatestSaved([skill])).get(skill);
+		const latestBefore = await findLatestSkillVersion(skill);
 
 		await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
 
@@ -229,8 +241,31 @@ describe('Agent skills in the skills hub', () => {
 		expect(refs).toEqual([{ type: 'skill', id: skill, versionId: pin?.skillVersionId }]);
 		const draft = await skillRefs.readDraft(agent, {});
 		expect(await instructionsOf(draft.skills)).toEqual({ [skill]: 'Published text.' });
-		const latestAfter = (await Container.get(SkillRepository).findLatestSaved([skill])).get(skill);
-		expect(latestAfter?.version.id).toBe(latestBefore?.version.id);
+		const latestAfter = await findLatestSkillVersion(skill);
+		expect(latestAfter?.id).toBe(latestBefore?.id);
+	});
+
+	it('drops a restored ref whose skill is gone instead of failing on the foreign key', async () => {
+		const kept = await createSkill(body('Kept'));
+		const gone = await createSkill(body('Gone'));
+		const agent = (await publish(await createAgent([gone, kept])))!;
+		// A delete between the read of the version and the write, as a concurrent request can do.
+		await deleteSkill(gone);
+
+		await Container.get(TransactionRunner).run({}, async (ctx) => {
+			await skillRefs.restoreDraftRefs(
+				agent,
+				{ versionId: agent.activeVersionId! },
+				[
+					{ type: 'skill', id: gone },
+					{ type: 'skill', id: kept },
+				],
+				ctx,
+			);
+		});
+
+		const refs = await skillRefs.refsForDraft(agent, {});
+		expect(refs).toEqual([{ type: 'skill', id: kept, versionId: expect.any(String) }]);
 	});
 
 	it('reverts an agent that pins an instance skill the user cannot edit', async () => {
@@ -289,7 +324,7 @@ describe('Agent skills in the skills hub', () => {
 			body('Triage'),
 			context,
 		);
-		const [hubSkill] = await Container.get(SkillRepository).findByIds([created.id]);
+		const hubSkill = await findSkill(created.id);
 		expect(hubSkill).toMatchObject({ projectId: project.id, agentId: null, source: 'agent' });
 		expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: created.id }]);
 
@@ -315,7 +350,7 @@ describe('Agent skills in the skills hub', () => {
 
 		await agentSkillsService.deleteSkill(agent.id, project.id, created.id, context);
 		expect(await skillRefs.refsForDraft(agent, {})).toEqual([]);
-		expect(await Container.get(SkillRepository).findByIds([created.id])).toHaveLength(1);
+		expect(await findSkill(created.id)).not.toBeNull();
 	});
 
 	it('publishes the skills as pins and writes no agent_history.skills', async () => {
@@ -377,7 +412,7 @@ describe('Agent skills in the skills hub', () => {
 			context,
 			'agent',
 		);
-		const [hubSkill] = await Container.get(SkillRepository).findByIds([created.id]);
+		const hubSkill = await findSkill(created.id);
 		expect(hubSkill).toMatchObject({ projectId: null, agentId: agent.id });
 
 		const other = await createAgent([]);
@@ -392,7 +427,7 @@ describe('Agent skills in the skills hub', () => {
 		});
 		const [copyRef] = await skillRefs.refsForDraft(duplicate, {});
 		expect(copyRef.id).not.toBe(created.id);
-		const [copy] = await Container.get(SkillRepository).findByIds([copyRef.id]);
+		const copy = await findSkill(copyRef.id);
 		expect(copy).toMatchObject({ projectId: null, agentId: duplicate.id });
 		const { skills } = await skillRefs.readDraft(duplicate, {});
 		expect(Object.values(skills)).toEqual([body('Private')]);
@@ -423,7 +458,7 @@ describe('Agent skills in the skills hub', () => {
 				'agent',
 			),
 		).rejects.toThrow('You are not allowed to move this skill out of its scope.');
-		expect((await Container.get(SkillRepository).findByIds([instanceSkill]))[0]).toMatchObject({
+		expect(await findSkill(instanceSkill)).toMatchObject({
 			projectId: null,
 			agentId: null,
 		});
@@ -451,7 +486,7 @@ describe('Agent skills in the skills hub', () => {
 				'agent',
 			),
 		).rejects.toThrow('You are not allowed to move this skill out of its scope.');
-		expect((await Container.get(SkillRepository).findByIds([projectSkill]))[0]).toMatchObject({
+		expect(await findSkill(projectSkill)).toMatchObject({
 			projectId: project.id,
 			agentId: null,
 		});
@@ -501,14 +536,14 @@ describe('Agent skills in the skills hub', () => {
 			);
 
 		await update('agent');
-		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
+		expect(await findSkill(created.id)).toMatchObject({
 			projectId: null,
 			agentId: agent.id,
 		});
 		await update('project');
 		const other = await createAgent([created.id]);
 		await expect(update('agent')).rejects.toThrow('would lose access to this skill.');
-		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
+		expect(await findSkill(created.id)).toMatchObject({
 			agentId: null,
 		});
 
@@ -544,7 +579,7 @@ describe('Agent skills in the skills hub', () => {
 
 		await update({ name: 'Condense' }, 'project');
 
-		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
+		expect(await findSkill(created.id)).toMatchObject({
 			projectId: project.id,
 			agentId: null,
 		});
@@ -565,7 +600,7 @@ describe('Agent skills in the skills hub', () => {
 		});
 
 		expect(await skillRefs.refsForDraft(duplicate, {})).toEqual([{ type: 'skill', id: skill }]);
-		expect(await Container.get(SkillRepository).findByIds([skill])).toHaveLength(1);
+		expect(await findSkill(skill)).not.toBeNull();
 	});
 
 	it('refuses a duplicate into another project', async () => {
@@ -604,8 +639,7 @@ describe('Agent skills in the skills hub', () => {
 		});
 
 		await expect(attempt).rejects.toThrow('is not available to this agent');
-		const agentSkills = await Container.get(SkillRepository).findBy({ source: 'agent' });
-		expect(agentSkills.map((skill) => skill.id)).toEqual([secret]);
+		expect(await findSkillIds({ source: 'agent' })).toEqual([secret]);
 	});
 
 	it('creates an agent skill for a seeded ref that has only a body, and deletes it with the agent', async () => {
@@ -620,10 +654,10 @@ describe('Agent skills in the skills hub', () => {
 		expect(refs).toHaveLength(1);
 		expect(refs?.[0].id).not.toBe('seed_skill');
 		expect(Object.values(skills)).toEqual([body('Seeded skill')]);
-		const [hubSkill] = await Container.get(SkillRepository).findByIds([refs![0].id]);
+		const hubSkill = await findSkill(refs![0].id);
 		expect(hubSkill).toMatchObject({ projectId: null, agentId: agent.id, source: 'agent' });
 
 		await agentsService.delete(agent.id, project.id);
-		expect(await Container.get(SkillRepository).findByIds([refs![0].id])).toEqual([]);
+		expect(await findSkill(refs![0].id)).toBeNull();
 	});
 });

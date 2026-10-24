@@ -6,23 +6,17 @@ import { randomUUID } from 'node:crypto';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import type { SkillContent } from '@/modules/skills/utils/skill-content-hash';
-import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
+import {
+	createSkill as createSkillFixture,
+	createSkillVersion,
+	deleteAllSkills,
+	findLatestSkillVersion,
+} from '@/modules/skills/testing';
 
 /** More ids than SQLite binds in one query (32,766). */
 const manyUnknownIds = () => Array.from({ length: 33_000 }, (_, i) => `skill_unknown${i}`);
 
-const content = (overrides: Partial<SkillContent> = {}): SkillContent => ({
-	name: 'Brand voice',
-	description: 'Write in our voice',
-	instructions: 'Use short sentences.',
-	frontmatter: null,
-	files: [],
-	...overrides,
-});
-
 describe('AgentSkillRepository', () => {
-	let skills: SkillRepository;
 	let agentSkills: AgentSkillRepository;
 	let agents: AgentRepository;
 	let histories: AgentHistoryRepository;
@@ -32,7 +26,6 @@ describe('AgentSkillRepository', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
-		skills = Container.get(SkillRepository);
 		agentSkills = Container.get(AgentSkillRepository);
 		agents = Container.get(AgentRepository);
 		histories = Container.get(AgentHistoryRepository);
@@ -43,7 +36,7 @@ describe('AgentSkillRepository', () => {
 	afterEach(async () => {
 		// Agent rows cascade to their history, pins and dependency rows.
 		await agents.delete({});
-		await skills.delete({});
+		await deleteAllSkills();
 	});
 
 	afterAll(async () => {
@@ -51,20 +44,8 @@ describe('AgentSkillRepository', () => {
 	});
 
 	let counter = 0;
-	async function createSkill(
-		target: { projectId?: string; agentId?: string } = {},
-		body: SkillContent = content(),
-	): Promise<string> {
-		const id = `skill_test${++counter}`;
-		await skills.createSkill(
-			{
-				id,
-				target: { projectId: target.projectId ?? null, agentId: target.agentId ?? null },
-				source: 'ui',
-				createdById: null,
-			},
-			body,
-		);
+	async function createSkill(target: { projectId?: string; agentId?: string } = {}) {
+		const { id } = await createSkillFixture({ id: `skill_test${++counter}`, ...target });
 		return id;
 	}
 
@@ -94,16 +75,16 @@ describe('AgentSkillRepository', () => {
 	}
 
 	async function latestVersionId(skillId: string): Promise<string> {
-		const row = (await skills.findLatestSaved([skillId])).get(skillId);
-		if (!row) throw new Error(`no saved version for ${skillId}`);
-		return row.version.id;
+		const latest = await findLatestSkillVersion(skillId);
+		if (!latest) throw new Error(`no saved version for ${skillId}`);
+		return latest.id;
 	}
 
 	describe('pins', () => {
 		it('finds the pinned version of each skill of one published agent version', async () => {
 			const id = await createSkill();
 			const v1 = await latestVersionId(id);
-			await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
+			await createSkillVersion(id, { instructions: 'v2' });
 			const agent = await createAgent('Support');
 			const agentVersionId = await publish(agent.id);
 
@@ -240,7 +221,7 @@ describe('AgentSkillRepository', () => {
 		it('lists each agent once, with the skill version its current published version pins', async () => {
 			const id = await createSkill();
 			const v1 = await latestVersionId(id);
-			const v2 = await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
+			const { versionId: v2 } = await createSkillVersion(id, { instructions: 'v2' });
 			const drafting = await createAgent('Drafting');
 			await agentSkills.replaceDependencies(drafting.id, [{ skillId: id }]);
 			const published = await createAgent('Published');

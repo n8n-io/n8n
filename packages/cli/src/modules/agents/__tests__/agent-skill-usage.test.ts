@@ -3,12 +3,7 @@ import type { OperationContext } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { SkillFile } from '@/modules/skills/database/entities/skill-file.entity';
-import type { SkillVersion } from '@/modules/skills/database/entities/skill-version.entity';
-import type { Skill } from '@/modules/skills/database/entities/skill.entity';
-import type { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
-import type { ResolvedSkillRow } from '@/modules/skills/utils/skill-content';
-import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
+import type { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
 
 import { AgentSkillUsage } from '../agent-skill-usage';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
@@ -41,45 +36,15 @@ async function expectError(
 	expect(error).toHaveProperty('message', message);
 }
 
-function skillRow(id: string, target: Partial<Pick<Skill, 'projectId' | 'agentId'>> = {}): Skill {
-	return mock<Skill>({ id, projectId: target.projectId ?? null, agentId: target.agentId ?? null });
-}
-
-function versionRow(
-	skill: Skill,
-	version: number,
-	overrides: Partial<SkillVersion> = {},
-): ResolvedSkillRow {
-	return {
-		skill,
-		version: mock<SkillVersion>({
-			id: `${skill.id}-v${version}`,
-			skillId: skill.id,
-			version,
-			name: 'Brand voice',
-			description: 'Write in our voice',
-			instructions: 'Use short sentences.',
-			frontmatter: null,
-			...overrides,
-		}),
-		files: [] as SkillFile[],
-	};
-}
-
 describe('AgentSkillUsage', () => {
-	const skills = mock<SkillRepository>();
 	const agentSkills = mock<AgentSkillRepository>();
 	const agents = mock<AgentRepository>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
-	// A real SkillRuntimeService, so the names that agents see come from the mocked rows.
-	const skillRuntime = new SkillRuntimeService(skills, mock(), mock());
+	const skillRuntime = mock<SkillRuntimeService>();
 	const service = new AgentSkillUsage(agentSkills, agents, skillRuntime, broadcaster);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		skills.findLatestSaved.mockResolvedValue(new Map());
-		skills.findVersionsByIds.mockResolvedValue(new Map());
-		skills.findByIds.mockResolvedValue([]);
 		agentSkills.findDependencies.mockResolvedValue(new Map());
 		agentSkills.findFollowingAgents.mockResolvedValue([]);
 		agentSkills.findFollowingAgentIds.mockResolvedValue([]);
@@ -98,7 +63,7 @@ describe('AgentSkillUsage', () => {
 				],
 				hiddenAgents: 1,
 			});
-			skills.findVersionNumbers.mockResolvedValue(new Map([['skill_a-v2', 2]]));
+			skillRuntime.findVersionNumbers.mockResolvedValue(new Map([['skill_a-v2', 2]]));
 
 			expect(await service.findUsage('skill_a', [PROJECT], TX_CTX)).toEqual({
 				drafts: [],
@@ -108,7 +73,7 @@ describe('AgentSkillUsage', () => {
 				],
 				hiddenAgents: 1,
 			});
-			expect(skills.findVersionNumbers).toHaveBeenCalledWith(['skill_a-v2'], TX_CTX);
+			expect(skillRuntime.findVersionNumbers).toHaveBeenCalledWith(['skill_a-v2'], TX_CTX);
 		});
 	});
 
@@ -126,14 +91,8 @@ describe('AgentSkillUsage', () => {
 					],
 				]),
 			);
-			skills.findLatestSaved.mockImplementation(
-				async (ids) =>
-					new Map(
-						ids.map((id) => [
-							id,
-							versionRow(skillRow(id), 2, { name: id === 'skill_b' ? otherName : 'Brand voice' }),
-						]),
-					),
+			skillRuntime.runtimeNames.mockResolvedValue((ref) =>
+				ref.id === 'skill_b' ? otherName : 'Brand voice',
 			);
 		}
 
