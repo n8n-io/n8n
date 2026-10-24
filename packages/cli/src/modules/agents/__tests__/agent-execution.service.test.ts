@@ -168,6 +168,28 @@ describe('AgentExecutionService', () => {
 		return await service.finalizeExecution(executionId, params);
 	}
 
+	it('broadcasts public usage fields without changing saved totals', () => {
+		const context = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			executionId: 'execution-1',
+		};
+		const usage = {
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			cost: 0.01,
+			inputTokenDetails: { cacheRead: 4 },
+		};
+		service.reportUsage(context, usage);
+		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
+			...context,
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+		});
+		expect(agentExecutionThreadRepository.incrementUsage).not.toHaveBeenCalled();
+	});
+
 	describe('recordSideCallUsage', () => {
 		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
 			await service.recordSideCallUsage('execution-1', 'thread-1', {

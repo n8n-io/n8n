@@ -6,6 +6,7 @@ import type {
 	AgentSessionPreviewAccess,
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
+	AgentTokenUsage,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
@@ -380,6 +381,21 @@ export class AgentExecutionService {
 
 	getAbortSignal(executionId: string): AbortSignal {
 		return this.executionControllers.get(executionId)?.signal ?? AbortSignal.abort();
+	}
+
+	reportUsage(context: AgentExecutionLogRef & { projectId: string }, usage: AgentTokenUsage): void {
+		this.executionUpdateBroadcaster.notify({
+			projectId: context.projectId,
+			agentId: context.agentId,
+			threadId: context.threadId,
+			executionId: context.executionId,
+			usage: {
+				promptTokens: usage.promptTokens,
+				completionTokens: usage.completionTokens,
+				totalTokens: usage.totalTokens,
+				...(usage.cost !== undefined && { cost: usage.cost }),
+			},
+		});
 	}
 
 	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {

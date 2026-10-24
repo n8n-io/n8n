@@ -36,6 +36,7 @@ import { Workspace, getToolResultRunDirectory } from '../../workspace';
 import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
 import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
+import { StreamSink } from '../loop/stream-sink';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
@@ -1074,6 +1075,67 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
 	});
 
+	it.each([true, false])(
+		'streams cumulative usage before tools finish (priced: %s)',
+		async (priced) => {
+			vi.mocked(getModelCost).mockResolvedValueOnce(priced ? { input: 1, output: 2 } : undefined);
+			const started = createDeferredPromise();
+			const release = createDeferredPromise();
+			const tool = makeMockTool('search', async () => {
+				started.resolve();
+				await release.promise;
+				return 'found';
+			});
+			streamText
+				.mockReturnValueOnce(
+					makeStreamWithToolCalls([{ toolCallId: 'search-1', toolName: 'search', args: {} }]),
+				)
+				.mockReturnValueOnce(makeStreamSuccess('done'));
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Test',
+				tools: [tool],
+				eventBus: new AgentEventBus(),
+			});
+			const result = await runtime.stream('search');
+			const chunks: StreamChunk[] = [];
+			const reading = (async () => {
+				const reader = result.stream.getReader();
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) return;
+					chunks.push(value);
+					if (value.type === 'input-boundary') value.acknowledge();
+				}
+			})();
+			await started.promise;
+			try {
+				expect(chunks.filter((chunk) => chunk.type === 'usage')).toEqual([
+					expect.objectContaining({
+						usage: expect.objectContaining({
+							promptTokens: 10,
+							completionTokens: 5,
+							totalTokens: 15,
+						}),
+					}),
+				]);
+				expect(chunks.some((chunk) => chunk.type === 'finish')).toBe(false);
+			} finally {
+				release.resolve();
+				await reading;
+			}
+			const updates = chunks.filter((chunk) => chunk.type === 'usage');
+			expect(updates.map((chunk) => chunk.usage.totalTokens)).toEqual([15, 30]);
+			if (priced) {
+				expect(updates[0].usage.cost).toBeCloseTo(0.00002);
+				expect(updates[1].usage.cost).toBeCloseTo(0.00004);
+			} else {
+				expect(updates.every((chunk) => chunk.usage.cost === undefined)).toBe(true);
+			}
+		},
+	);
+
 	it('forwards onStepStart and onStepEnd to generateText and streamText', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		streamText.mockReturnValue(makeStreamSuccess());
@@ -1553,6 +1615,46 @@ describe('AgentRuntime — empty stop turn retry', () => {
 
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(10);
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
+	});
+
+	it('starts an empty-turn retry while usage reporting is pending', async () => {
+		const reporting = createDeferredPromise();
+		const release = createDeferredPromise();
+		const reportUsage = StreamSink.prototype.reportUsage;
+		const reportSpy = vi
+			.spyOn(StreamSink.prototype, 'reportUsage')
+			.mockImplementationOnce(async function (this: StreamSink, usage) {
+				const reported = reportUsage.call(this, usage);
+				reporting.resolve();
+				await reported;
+				await release.promise;
+			});
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('stop'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
+				response: Promise.resolve({ messages: [] }),
+				toolCalls: Promise.resolve([]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
+		const counter = makeExecutionCounter();
+		const { runtime } = createRuntime();
+		const { stream } = await runtime.stream('hi', { executionCounter: counter });
+		const reading = collectChunks(stream);
+		try {
+			await reporting.promise;
+			await vi.waitFor(() => expect(streamText).toHaveBeenCalledTimes(2));
+			expect(counter.incrementTokenCount).toHaveBeenCalledWith(10);
+		} finally {
+			release.resolve();
+			await reading;
+			reportSpy.mockRestore();
+		}
+		const chunks = await reading;
+		expect(chunks.find((chunk) => chunk.type === 'finish')).toMatchObject({
+			usage: { promptTokens: 20, completionTokens: 5, totalTokens: 25 },
+		});
 	});
 
 	it('accepts the empty turn once the retry budget is exhausted', async () => {

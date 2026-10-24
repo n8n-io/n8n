@@ -10,6 +10,7 @@ import type {
 	AgentChatQueueItem,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
+	AgentTokenUsage,
 	CancellationResumeData,
 } from '@n8n/api-types';
 import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
@@ -52,6 +53,7 @@ import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolP
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
+import type { AgentUsageUpdate } from '../types';
 
 export interface FatalAgentError {
 	message: string;
@@ -82,6 +84,7 @@ export interface UseAgentChatStreamParams {
 	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
+	onUsageUpdated?: (update: AgentUsageUpdate) => void;
 	/** The agent is no longer available in n8n Chat (unpublished before send, or mid-run/resume). */
 	onAgentUnavailable?: () => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
@@ -603,6 +606,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		queueId?: string;
 		userMessage?: ChatMessage;
 		executionId?: string;
+		sessionId?: string;
+		startedAt?: number;
+		stoppedAt?: number;
 		needsStartValidation?: boolean;
 		busy?: boolean;
 		/** Gets the queue item id when the message was queued rather than started. */
@@ -1055,6 +1061,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				void refreshQueue();
 				clearTimeout(stopAcceptanceTimer);
 				session.executionId = event.executionId;
+				session.sessionId = event.sessionId;
+				session.startedAt = Date.now();
+				notifyUsage(session);
 				activeExecutionId.value = event.executionId;
 				acceptedSessionId.value = event.sessionId;
 				session.onAccepted?.();
@@ -1267,7 +1276,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
+			case 'usage':
+				notifyUsage(session, event.usage);
+				break;
 			case 'finish': {
+				if (event.usage) notifyUsage(session, event.usage);
 				if (!params.budgetCards || event.finishReason !== 'guardrail') break;
 				const code = event.guardrail?.code;
 				if (code !== undefined && isBudgetStopCode(code)) attachBudgetNotice(session, code);
@@ -1322,9 +1335,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					);
 				}
 				session.terminalEventReceived = true;
+				notifyUsage(session, undefined, true);
 				break;
 			}
 			case 'done':
+				notifyUsage(session, undefined, true);
 				if (event.executionId === activeExecutionId.value) activeExecutionId.value = null;
 				settleOpenReasoning(session);
 				if (event.executionId) {
@@ -1349,6 +1364,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 		}
 		return undefined;
+	}
+
+	function notifyUsage(session: StreamSession, usage?: AgentTokenUsage, complete = false): void {
+		const sessionId = session.sessionId;
+		if (!sessionId || !session.executionId) return;
+		if (complete) session.stoppedAt ??= Date.now();
+		params.onUsageUpdated?.({
+			sessionId,
+			executionId: session.executionId,
+			usage,
+			startedAt: session.startedAt,
+			...(session.stoppedAt !== undefined && { stoppedAt: session.stoppedAt }),
+			complete: session.stoppedAt !== undefined,
+		});
 	}
 
 	function detachExcessWaitingStreams(): void {

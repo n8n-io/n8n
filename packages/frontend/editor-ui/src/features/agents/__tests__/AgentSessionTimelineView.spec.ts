@@ -170,6 +170,132 @@ describe('AgentSessionTimelineView', () => {
 		expect(wrapper.findComponent(AgentPreviewDock).props('canDeleteSession')).toBe(false);
 	});
 
+	it('shows live turn usage in the header and replaces it with saved totals', async () => {
+		const wrapper = await renderPrivateTimeline();
+		const panel = wrapper.findComponent(AgentSessionTimelinePanel);
+		const header = wrapper.findComponent(AgentSessionTimelineHeader);
+		const thread = {
+			...privateThread('thread-a'),
+			totalPromptTokens: 0,
+			totalCompletionTokens: 0,
+			totalCost: 0,
+		};
+		panel.vm.$emit('loaded', { thread, executions: [] });
+		await nextTick();
+		const dock = wrapper.findComponent(AgentPreviewDock);
+		const update = {
+			sessionId: 'thread-a',
+			executionId: 'execution-1',
+			complete: false,
+			usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+		};
+		dock.vm.$emit('usage-updated', update);
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 30, totalCost: 0.05 });
+		dock.vm.$emit('usage-updated', { ...update, sessionId: 'thread-c', executionId: 'other' });
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 30, totalCost: 0.05 });
+		const next = {
+			...update,
+			usage: { promptTokens: 40, completionTokens: 20, totalTokens: 60, cost: 0.1 },
+		};
+		dock.vm.$emit('usage-updated', next);
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 60, totalCost: 0.1 });
+		dock.vm.$emit('usage-updated', { ...update, usage: undefined, complete: true });
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 60, totalCost: 0.1 });
+		panel.vm.$emit('loaded', {
+			thread: { ...thread, totalPromptTokens: 40, totalCompletionTokens: 20, totalCost: 0.11 },
+			executions: [{ id: 'execution-1', status: 'success', totalTokens: 60, cost: 0.11 }],
+		});
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 60, totalCost: 0.11 });
+		wrapper.unmount();
+	});
+
+	it('updates the closed preview trace through push and stops its elapsed timer', async () => {
+		vi.useFakeTimers();
+		const start = Date.parse('2026-10-23T12:00:00Z');
+		vi.setSystemTime(start);
+		const wrapper = shallowMount(AgentSessionTimelineView);
+		try {
+			await flushPromises();
+			const panel = wrapper.findComponent(AgentSessionTimelinePanel);
+			const thread = {
+				...privateThread('thread-a'),
+				totalPromptTokens: 0,
+				totalCompletionTokens: 0,
+				totalCost: 0,
+				totalDuration: 0,
+			};
+			panel.vm.$emit('loaded', {
+				thread,
+				executions: [
+					{ id: 'execution-1', status: 'running', startedAt: new Date(start).toISOString() },
+				],
+			});
+			await nextTick();
+			const header = wrapper.findComponent(AgentSessionTimelineHeader);
+			expect(header.props('isPreviewOpen')).toBeFalsy();
+			for (const listener of pushListeners)
+				listener({
+					type: 'agentExecutionUpdated',
+					data: {
+						projectId: 'p1',
+						agentId: 'a1',
+						threadId: 'thread-a',
+						executionId: 'execution-1',
+						usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+					},
+				});
+			for (const listener of pushListeners)
+				listener({
+					type: 'agentExecutionUpdated',
+					data: {
+						projectId: 'p1',
+						agentId: 'a1',
+						threadId: 'thread-a',
+						executionId: 'execution-1',
+						usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+					},
+				});
+			wrapper.findComponent(AgentPreviewDock).vm.$emit('usage-updated', {
+				sessionId: 'thread-a',
+				executionId: 'execution-1',
+				startedAt: start,
+				complete: false,
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+			});
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(header.props()).toMatchObject({
+				totalTokens: 30,
+				totalCost: 0.05,
+				durationLabel: '2.0s',
+			});
+			panel.vm.$emit('loaded', {
+				thread: {
+					...thread,
+					totalPromptTokens: 20,
+					totalCompletionTokens: 10,
+					totalCost: 0.06,
+					totalDuration: 2300,
+				},
+				executions: [{ id: 'execution-1', status: 'success', totalTokens: 30, cost: 0.06 }],
+			});
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(header.props()).toMatchObject({
+				totalTokens: 30,
+				totalCost: 0.06,
+				durationLabel: '2.3s',
+			});
+		} finally {
+			wrapper.unmount();
+			vi.useRealTimers();
+		}
+	});
+
 	it.each([
 		{ kind: 'current', sessionId: 'thread-a', shouldRedirect: true },
 		{ kind: 'non-current', sessionId: 'thread-c', shouldRedirect: false },
