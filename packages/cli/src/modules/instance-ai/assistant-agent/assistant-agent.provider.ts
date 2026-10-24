@@ -36,6 +36,11 @@ import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import {
+	getUserFacingErrorCode,
+	getUserFacingErrorMessage,
+	isMaskedStreamFailure,
+} from '../user-facing-errors';
 import { AssistantAgentFactory } from '../turn-setup/assistant-agent.factory';
 import { AssistantTurnEnvironmentFactory } from '../turn-setup/assistant-turn-environment.factory';
 import {
@@ -59,6 +64,10 @@ import {
 } from './assistant-workspace-source';
 
 /** The resource attachments that reach the agent. Node attachments need their gate. */
+type FormattedTurnError = NonNullable<
+	Awaited<ReturnType<NonNullable<SystemAgentTurnHandle['formatError']>>>
+>;
+
 function contextAttachmentsOf(
 	attachments: InstanceAiAttachment[] | undefined,
 	nodeContextEnabled: boolean,
@@ -229,6 +238,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			onSettled: async (outcome) => {
 				await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
 			},
+			formatError: async (error) => await this.formatTurnError(user, error),
 		};
 	}
 
@@ -293,6 +303,24 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			buildMode: buildMode ?? null,
 			promptVersion: options.request.promptVersion ?? null,
 		};
+	}
+
+	/**
+	 * The text and code that the chat shows for a turn error. A masked stream
+	 * failure is shown as a credit error when the balance is used up, because a
+	 * credit stop at the model call can arrive in that form.
+	 */
+	private async formatTurnError(user: User, error: unknown): Promise<FormattedTurnError> {
+		let shown = error;
+		if (isMaskedStreamFailure(error)) {
+			try {
+				await this.turnEnvironment.assertAssistantCreditsAvailable(user);
+			} catch (creditsError) {
+				shown = creditsError;
+			}
+		}
+		const code = getUserFacingErrorCode(shown);
+		return { message: getUserFacingErrorMessage(shown), ...(code ? { code } : {}) };
 	}
 
 	/** Claims the turn's model usage against the Assistant credits. Best effort. */
