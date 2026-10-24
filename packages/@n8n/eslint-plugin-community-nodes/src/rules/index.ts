@@ -37,6 +37,7 @@ import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireHomepageRule } from './require-homepage.js';
 import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
+import { RequireReturnAllWithLimitRule } from './require-return-all-with-limit.js';
 import { RequireVersionRule } from './require-version.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 import { TriggerNodeConventionsRule } from './trigger-node-conventions.js';
@@ -87,6 +88,7 @@ export const rules = {
 	'require-homepage': RequireHomepageRule,
 	'require-node-api-error': RequireNodeApiErrorRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
+	'require-return-all-with-limit': RequireReturnAllWithLimitRule,
 	'require-version': RequireVersionRule,
 	'valid-author': ValidAuthorRule,
 	'valid-credential-references': ValidCredentialReferencesRule,
