@@ -35,6 +35,8 @@ interface AgentChatHitlResumeHandlerOptions {
 	agentService: ResumeExecutor;
 	logger: Logger;
 	callbackStore?: CallbackStore;
+	/** Lets the platform claim a tap that is not a resume, such as WhatsApp's "More…" row. */
+	claimAction?: (event: ActionEvent) => Promise<boolean>;
 	deleteActionMessageBeforeResume: boolean;
 	formatActionDecisionMessage?: ActionDecisionMessageFormatter;
 	settleActionMessage?: SettleActionMessage;
@@ -69,6 +71,8 @@ export class AgentChatHitlResumeHandler {
 			});
 			return;
 		}
+
+		if (await this.options.claimAction?.(event)) return;
 
 		const callbackData = await this.resolveCallbackData(
 			event.actionId,

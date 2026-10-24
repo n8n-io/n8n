@@ -7,7 +7,13 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
-import type { AdapterPostableMessage, ChatInstance, Logger as ChatLogger, RawMessage } from 'chat';
+import type {
+	ActionEvent,
+	AdapterPostableMessage,
+	ChatInstance,
+	Logger as ChatLogger,
+	RawMessage,
+} from 'chat';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 
@@ -41,6 +47,15 @@ import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../../in
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../../integration-tool-factory';
 import { startTypingIndicator } from '../typing-indicator';
+import {
+	WHATSAPP_MAX_LIST_ROWS,
+	WHATSAPP_MAX_PAGED_OPTIONS,
+	WhatsAppOptionPagesStore,
+	encodePageValue,
+	getOptionPage,
+	parsePageValue,
+	type PagedOption,
+} from './whatsapp-option-pages.store';
 import { WhatsAppWebhookVerificationStore } from './whatsapp-webhook-verification.store';
 import { buildWhatsAppOriginDraft } from './whatsapp-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
@@ -64,6 +79,9 @@ const WHATSAPP_CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000;
  * usage data or explicit product input.
  */
 const WHATSAPP_DEFAULT_SESSION_IDLE_TIMEOUT_MINUTES = 30;
+
+/** Posted when the user taps "More…" after the stored options are gone. */
+const OPTIONS_EXPIRED_NOTICE = 'These options are no longer available. Ask again to see the list.';
 
 /** WhatsApp Cloud API's own limit on interactive reply buttons per message. */
 const WHATSAPP_MAX_REPLY_BUTTONS = 3;
@@ -196,6 +214,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 		private readonly webhookVerification: WhatsAppWebhookVerificationStore,
+		private readonly optionPages: WhatsAppOptionPagesStore,
 	) {
 		super();
 	}
@@ -382,7 +401,14 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	 * through unchanged. Only reply buttons need handling here: the Cloud API
 	 * caps interactive messages at 3 buttons and otherwise rejects the send.
 	 */
-	normalizeComponents(
+	async normalizeComponents(
+		components: SuspendComponent[],
+		context: NormalizeComponentsContext,
+	): Promise<SuspendComponent[]> {
+		return await this.paginateSelect(this.foldButtonsIntoSelect(components, context));
+	}
+
+	private foldButtonsIntoSelect(
 		components: SuspendComponent[],
 		context: NormalizeComponentsContext,
 	): SuspendComponent[] {
@@ -426,6 +452,96 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			})),
 		});
 		return normalized;
+	}
+
+	/**
+	 * A WhatsApp list holds at most 10 rows. For a longer list, the first page
+	 * shows 9 options and a "More…" row. The full list is kept in the option
+	 * store, and {@link claimAction} sends the next page when the user taps it.
+	 */
+	private async paginateSelect(components: SuspendComponent[]): Promise<SuspendComponent[]> {
+		const select = components.find((c) => c.type === 'select' || c.type === 'radio_select');
+		if (!select?.options || select.options.length <= WHATSAPP_MAX_LIST_ROWS) return components;
+
+		let options: PagedOption[] = select.options;
+		if (options.length > WHATSAPP_MAX_PAGED_OPTIONS) {
+			this.logger.warn(
+				`[WhatsAppIntegration] Dropping ${options.length - WHATSAPP_MAX_PAGED_OPTIONS} list options — a list shows at most ${WHATSAPP_MAX_PAGED_OPTIONS}.`,
+			);
+			options = options.slice(0, WHATSAPP_MAX_PAGED_OPTIONS);
+		}
+
+		const key = await this.optionPages.save({ options, label: select.label });
+		if (!key) {
+			// Without the stored list, a "More…" row cannot open the next page.
+			// Show the first 10 options and no "More…" row.
+			return components.map((c) =>
+				c === select ? { ...c, options: options.slice(0, WHATSAPP_MAX_LIST_ROWS) } : c,
+			);
+		}
+		const page = getOptionPage(options, 0);
+		const rows = [...page.options, this.buildMoreOption(options, key, page.nextPage)];
+		return components.map((c) => (c === select ? { ...c, options: rows } : c));
+	}
+
+	private buildMoreOption(
+		options: PagedOption[],
+		key: string,
+		nextPage: number | undefined,
+	): PagedOption {
+		const next = getOptionPage(options, nextPage ?? 0);
+		const first = next.start + 1;
+		const last = next.start + next.options.length;
+		return {
+			label: 'More…',
+			value: encodePageValue(key, nextPage ?? 0),
+			description: `Options ${first}–${last} of ${options.length}`,
+		};
+	}
+
+	/**
+	 * A tap on a "More…" row is not a resume. It sends the next page of options
+	 * as a new message, because WhatsApp cannot edit or delete a message.
+	 */
+	async claimAction(event: ActionEvent): Promise<boolean> {
+		const target = parsePageValue(event.value);
+		if (!target) return false;
+
+		const { thread } = event;
+		if (!thread) return true;
+
+		const stored = await this.optionPages.get(target.key);
+		const page = stored && getOptionPage(stored.options, target.pageIndex);
+		if (!stored || !page || page.options.length === 0) {
+			await thread.post(OPTIONS_EXPIRED_NOTICE);
+			return true;
+		}
+
+		const rows =
+			page.nextPage === undefined
+				? page.options
+				: [...page.options, this.buildMoreOption(stored.options, target.key, page.nextPage)];
+		const first = page.start + 1;
+		const last = page.start + page.options.length;
+		const sdk = await loadChatSdk();
+		const card = sdk.Card({
+			children: [
+				sdk.Section([
+					sdk.CardText(`Options ${first}–${last} of ${stored.options.length}`),
+				] as never),
+				// The tapped row's id carries the id of the original select, so a pick
+				// on this page resumes the same way as a pick on the first page.
+				sdk.Actions([
+					sdk.Select({
+						id: event.actionId,
+						label: stored.label ?? 'Choose an option',
+						options: rows,
+					}),
+				] as never),
+			] as never,
+		});
+		await thread.post({ card });
+		return true;
 	}
 
 	private createAdapterLogger(): ChatLogger {
