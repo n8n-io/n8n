@@ -413,8 +413,8 @@ describe('WorkflowImporter.plan', () => {
 			],
 			{
 				conflictPolicy: 'new-version',
-				workflowIdPolicy: 'source',
-				workflowPublishingPolicy: 'preserve-published-state',
+				idPolicy: 'source',
+				publishingPolicy: 'preserve-published-state',
 				missingNodeTypeMode: 'fail',
 			},
 			{ checkRootPlacement: false },
@@ -455,8 +455,8 @@ describe('WorkflowImporter.plan', () => {
 			],
 			{
 				conflictPolicy: 'new-version',
-				workflowIdPolicy: 'source',
-				workflowPublishingPolicy: 'preserve-published-state',
+				idPolicy: 'source',
+				publishingPolicy: 'preserve-published-state',
 				missingNodeTypeMode: 'fail',
 			},
 			{ checkRootPlacement: false },

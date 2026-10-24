@@ -191,7 +191,7 @@ export class WorkflowPackageImporter {
 		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
 			content: [content],
-			policy: request.workflowPublishingPolicy,
+			policy: request.publishingPolicy,
 			subWorkflowRequirements: plan.input.subWorkflowRequirements,
 		});
 

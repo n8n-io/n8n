@@ -280,20 +280,6 @@ describe('importPackageSelectionFromDirectory', () => {
 		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 	});
 
-	it('honours an overridden workflowIdPolicy', async () => {
-		const result = await importSelection(
-			await packageDir(twoWorkflowPackage),
-			{ selectedProjectId: 'P1', selectedWorkflowIds: ['WFA'] },
-			{ workflowIdPolicy: 'new' },
-		);
-
-		const summary = result.workflows[0];
-		expect(summary.sourceWorkflowId).toBe('WFA');
-		expect(summary.localId).not.toBe('WFA');
-		expect(await findWorkflow(summary.localId)).not.toBeNull();
-		expect(await findWorkflow('WFA')).toBeNull();
-	});
-
 	it('honours an overridden conflictPolicy', async () => {
 		await importSelection(await packageDir(twoWorkflowPackage), {
 			selectedProjectId: 'P1',
@@ -444,21 +430,19 @@ describe('importPackageSelectionFromDirectory', () => {
 		});
 
 		it.each([
-			{ isArchived: false, conflictPolicy: 'new-version', workflowIdPolicy: 'source' },
-			{ isArchived: true, conflictPolicy: 'new-version', workflowIdPolicy: 'source' },
-			{ isArchived: false, conflictPolicy: 'skip', workflowIdPolicy: 'source' },
-			{ isArchived: false, conflictPolicy: 'new-version', workflowIdPolicy: 'new' },
+			{ isArchived: false, conflictPolicy: 'new-version', idPolicy: 'source' },
+			{ isArchived: true, conflictPolicy: 'new-version', idPolicy: 'source' },
+			{ isArchived: false, conflictPolicy: 'skip', idPolicy: 'source' },
 		] as const)(
-			'rejects an overlap with archived=$isArchived, conflict=$conflictPolicy, ids=$workflowIdPolicy',
-			async ({ isArchived, conflictPolicy, workflowIdPolicy }) => {
+			'rejects an overlap with archived=$isArchived, conflict=$conflictPolicy, ids=$idPolicy',
+			async ({ isArchived, conflictPolicy, idPolicy }) => {
 				const sourceDir = await packageDir(twoWorkflowPackage);
 				const seeded = await importSelection(
 					sourceDir,
 					{ selectedProjectId: 'P1', selectedWorkflowIds: ['WFA'] },
-					{ workflowIdPolicy },
+					{ idPolicy },
 				);
 				const workflowId = seeded.workflows[0].localId;
-				if (workflowIdPolicy === 'new') expect(workflowId).not.toBe('WFA');
 				await Container.get(WorkflowRepository).update(workflowId, { isArchived });
 				const before = await findWorkflow(workflowId);
 				const historyBefore = await Container.get(WorkflowHistoryRepository).countBy({

@@ -314,7 +314,7 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 	const [a, b] = plan.agentPlan!.items;
 	const workflowId =
 		plan.workflowPlan.items[0].action === 'create' ? plan.workflowPlan.items[0].decidedId : '';
-	expect(a.targetAgentId).not.toBe(workflowId);
+	expect(a.targetAgentId).toBe(workflowId);
 	expect(a.config?.subAgents?.agents?.[0].agentId).toBe(b.targetAgentId);
 	expect(b.config?.subAgents?.agents?.[0].agentId).toBe(a.targetAgentId);
 	expect(a.config?.tools?.[0]).toMatchObject({
@@ -556,7 +556,7 @@ it.each<ImportConflictPolicy>(['new-version', 'skip'])(
 		const requests = [input([agent('first')]), input([agent('second')], otherProject.id)];
 		requests[0].options.conflictPolicy = policy;
 		for (const request of requests) {
-			request.options.agentIdPolicy = 'source';
+			request.options.idPolicy = 'source';
 			request.agents![0].tasks.task_shared = {
 				name: 'Summary',
 				objective: 'Summarize.',
@@ -681,7 +681,7 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 			publish: 'publish-all',
 			unpublish: 'unpublish-all',
 		};
-		request.options.agentPublishingPolicy = policies[action];
+		request.options.publishingPolicy = policies[action];
 		const before = await records();
 		await expect(planner.plan(request)).rejects.toBeInstanceOf(ForbiddenError);
 		const permittedRole = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });

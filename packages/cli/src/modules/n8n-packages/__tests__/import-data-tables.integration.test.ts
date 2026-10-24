@@ -1024,7 +1024,15 @@ describe('workflow package import — with data tables', () => {
 					{ id: 'packagedate1', name: 'signed_up_at', type: 'date', index: 1 },
 				],
 			});
-			const { packageBuffer } = await buildDataTablePackage([packageTable]);
+			const { packageBuffer } = await buildDataTablePackage([packageTable], {
+				workflows: [
+					serializedWorkflowWithDataTable({
+						id: 'workflow0',
+						name: 'Workflow 0',
+						dataTableId: table.id,
+					}),
+				],
+			});
 
 			const result = await importWithOverwrite({ user: owner, packageBuffer });
 

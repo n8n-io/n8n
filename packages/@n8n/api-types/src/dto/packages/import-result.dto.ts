@@ -49,9 +49,8 @@ const importedWorkflowSummarySchema = z.object({
 		.openapi({ description: 'Workflow id as it appeared in the package.' }),
 	localId: z.string().openapi({
 		description:
-			'Workflow id on the target instance: newly assigned for `created` (fresh under ' +
-			"`workflowIdPolicy=new`, the package id under `source`), the existing workflow's id for " +
-			'`updated`/`skipped`.',
+			'Workflow ID on the target instance. New workflows use the package ID. ' +
+			'Updated and skipped workflows keep their destination ID.',
 	}),
 	name: z.string(),
 	projectId: z.string(),
