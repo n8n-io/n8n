@@ -25,6 +25,7 @@ import type { UserManagementMailer } from '@/user-management/email/user-manageme
 import type { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 
 import { HOLD_LIMIT_MS } from '../memory-guard.constants';
+import type { MemoryGuardJournal } from '../memory-guard-journal';
 import { MemoryGuardService } from '../memory-guard.service';
 import { readMemoryUsage } from '../memory-usage';
 import { ProductionHold } from '../production-hold';
@@ -67,6 +68,8 @@ describe('MemoryGuardService', () => {
 	const logger = mock<Logger>();
 	const guardLogger = mock<Logger>();
 	logger.scoped.mockReturnValue(guardLogger);
+	const eventService = mock<EventService>();
+	const journal = mock<MemoryGuardJournal>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const executionRecoveryService = mock<ExecutionRecoveryService>();
 	const mailer = mock<UserManagementMailer>();
@@ -189,6 +192,8 @@ describe('MemoryGuardService', () => {
 			productionHold,
 			tracker,
 			memoryStoppedExecutions,
+			eventService,
+			journal,
 			workflowRepository,
 			executionRecoveryService,
 			mailer,
@@ -704,6 +709,99 @@ describe('MemoryGuardService', () => {
 		});
 	});
 
+	describe('events', () => {
+		it('should report when a hold starts and ends', async () => {
+			utilization = 0.82;
+			await sample(2);
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-hold-started', {
+				memoryUsedBytes: 820 * MB,
+				memoryLimitBytes: 1_000 * MB,
+			});
+
+			utilization = 0.7;
+			await sample();
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-hold-ended', {
+				heldMs: expect.any(Number),
+			});
+		});
+
+		it('should report the stop with node types and whether it freed memory', async () => {
+			addExecution('large', { megabytes: 300 });
+			utilization = 0.96;
+			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.96);
+			readMemoryUsageOnce(0.6);
+
+			await sample();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-execution-stopped', {
+				executionId: 'large',
+				workflowId: 'workflow-large',
+				mode: 'webhook',
+				trigger: 'critical',
+				runningNodeType: 'n8n-nodes-base.httpRequest',
+				largestDataNodeType: 'n8n-nodes-base.code',
+				estimatedBytes: 300 * MB,
+				memoryUsedBytes: 960 * MB,
+				memoryLimitBytes: 1_000 * MB,
+				freedMemory: true,
+				workflowDeactivated: false,
+			});
+		});
+	});
+
+	describe('journal', () => {
+		it('should record a hold when it starts', async () => {
+			utilization = 0.82;
+			await sample(2);
+
+			expect(journal.record).toHaveBeenCalledWith('hold');
+		});
+
+		it('should record a stop before it stops the execution', async () => {
+			addExecution('large', { megabytes: 300 });
+			utilization = 0.96;
+
+			await sample();
+
+			const stopIndex = journal.record.mock.calls.findIndex(([action]) => action === 'stop');
+			expect(stopIndex).not.toBe(-1);
+			expect(journal.record.mock.invocationCallOrder[stopIndex]).toBeLessThan(
+				activeExecutions.stopExecution.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should report the crash totals once, after the metrics listen', async () => {
+			Object.assign(journal, { crashes: { none: 3, hold: 1, stop: 2 } });
+			await sample();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'memory-guard-crashes-counted',
+				expect.anything(),
+			);
+
+			eventService.listenerCount.mockReturnValue(1);
+			await sample(2);
+
+			const reports = eventService.emit.mock.calls.filter(
+				([event]) => event === 'memory-guard-crashes-counted',
+			);
+			expect(reports).toEqual([
+				['memory-guard-crashes-counted', { crashes: { none: 3, hold: 1, stop: 2 } }],
+			]);
+		});
+
+		it('should reset the journal only when memory falls below the fast sampling level', async () => {
+			utilization = 0.72;
+			await sample();
+			expect(journal.reset).not.toHaveBeenCalled();
+
+			utilization = 0.69;
+			await sample();
+			expect(journal.reset).toHaveBeenCalled();
+		});
+	});
+
 	describe('deactivation', () => {
 		const stopOnce = async (
 			id: string,
@@ -754,6 +852,10 @@ describe('MemoryGuardService', () => {
 				type: 'workflowAutoDeactivated',
 				data: { workflowId: 'repeat' },
 			});
+			expect(eventService.emit).toHaveBeenLastCalledWith(
+				'memory-guard-execution-stopped',
+				expect.objectContaining({ workflowDeactivated: true }),
+			);
 		});
 
 		it.each([

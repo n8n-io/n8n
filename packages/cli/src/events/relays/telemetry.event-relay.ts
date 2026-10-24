@@ -360,6 +360,7 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
+			'memory-guard-execution-stopped': (event) => this.memoryGuardExecutionStopped(event),
 		});
 	}
 
@@ -2108,6 +2109,21 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private runnerDisconnected({ reason, mode }: RelayEventMap['runner-disconnected']) {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
+	}
+
+	private memoryGuardExecutionStopped(event: RelayEventMap['memory-guard-execution-stopped']) {
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION, {
+			workflow_id: event.workflowId,
+			execution_mode: event.mode,
+			trigger: event.trigger,
+			running_node_type: event.runningNodeType,
+			largest_data_node_type: event.largestDataNodeType,
+			estimated_bytes: event.estimatedBytes,
+			memory_used_bytes: event.memoryUsedBytes,
+			memory_limit_bytes: event.memoryLimitBytes,
+			freed_memory: event.freedMemory,
+			workflow_deactivated: event.workflowDeactivated,
+		});
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {
