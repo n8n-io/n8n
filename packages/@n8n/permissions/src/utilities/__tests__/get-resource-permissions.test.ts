@@ -36,6 +36,7 @@ describe('permissions', () => {
 			provisioning: {},
 			securityAudit: {},
 			securitySettings: {},
+			publicApiRateLimit: {},
 			sourceControl: {},
 			gitConnection: {},
 			tag: {},
@@ -147,6 +148,7 @@ describe('permissions', () => {
 			mcpApiKey: {},
 			securityAudit: {},
 			securitySettings: {},
+			publicApiRateLimit: {},
 			sourceControl: {},
 			gitConnection: {},
 			tag: {

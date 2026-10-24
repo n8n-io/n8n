@@ -1,0 +1,19 @@
+operationId: getRateLimitSettings
+tags:
+  - SettingsRateLimits
+summary: Retrieve the Public API rate-limit settings
+description: Retrieve the configured Public API rate limits and windows, including fields controlled by environment variables. Stored changes take effect after restart. Requires the `publicApiRateLimit:manage` scope. API-key requests to this route count against the rate limits. Session requests are not limited.
+x-required-scope: publicApiRateLimit:manage
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/rateLimitSettingsPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

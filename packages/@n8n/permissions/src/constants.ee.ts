@@ -49,6 +49,7 @@ export const RESOURCES = {
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
+	publicApiRateLimit: ['manage'] as const,
 	sourceControl: ['pull', 'push', 'manage', 'read'] as const,
 	gitConnection: [
 		...DEFAULT_OPERATIONS,
@@ -125,6 +126,7 @@ export const API_KEY_RESOURCES = {
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
+	publicApiRateLimit: ['manage'] as const,
 	saml: ['manage'] as const,
 	oidc: ['manage'] as const,
 	otel: ['manage'] as const,

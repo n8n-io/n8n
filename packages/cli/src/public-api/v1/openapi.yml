@@ -83,6 +83,8 @@ tags:
   - name: SettingsOtel
     x-displayName: Settings OTel
     description: Operations about OpenTelemetry settings
+  - name: SettingsRateLimits
+    description: Operations about Public API rate-limit settings
   - name: SettingsSsoOidc
     x-displayName: Settings SSO OIDC
     description: Operations about OIDC SSO settings
