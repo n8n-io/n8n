@@ -17,7 +17,7 @@ describe('DropInstanceAiIterationLogs Migration', () => {
 
 	const tableName = () => `${context.tablePrefix}instance_ai_iteration_logs`;
 
-	beforeAll(async () => {
+	beforeEach(async () => {
 		const dbConnection = Container.get(DbConnection);
 		await dbConnection.init();
 		dataSource = Container.get(DataSource);
@@ -27,17 +27,11 @@ describe('DropInstanceAiIterationLogs Migration', () => {
 		await setup.queryRunner.release();
 
 		await initDbUpToMigration(MIGRATION_NAME);
-	});
-
-	beforeEach(() => {
 		context = createTestMigrationContext(dataSource);
 	});
 
 	afterEach(async () => {
 		await context.queryRunner.release();
-	});
-
-	afterAll(async () => {
 		await Container.get(DbConnection).close();
 	});
 
@@ -53,8 +47,10 @@ describe('DropInstanceAiIterationLogs Migration', () => {
 	});
 
 	it('recreates the table with its columns, index and thread foreign key on revert', async () => {
+		// Release the connection: on SQLite the migration waits for its write lock.
 		await context.queryRunner.release();
 
+		await runSingleMigration(MIGRATION_NAME);
 		await undoLastSingleMigration();
 
 		context = createTestMigrationContext(dataSource);
