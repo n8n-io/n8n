@@ -1,7 +1,14 @@
 import { computed, defineComponent, h, nextTick, provide } from 'vue';
 import { mount } from '@vue/test-utils';
 import { useUIStore } from '@/app/stores/ui.store';
-import { AutoSaveState, DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import {
+	AGENT_NODE_TYPE,
+	AutoSaveState,
+	DEBOUNCE_TIME,
+	MODAL_CANCEL,
+	MODAL_CONFIRM,
+	VIEWS,
+} from '@/app/constants';
 import {
 	EditorEnabledFeaturesKey,
 	WorkflowIdKey,
@@ -614,6 +621,63 @@ describe('useWorkflowSaving', () => {
 			expect(workflow.nodes![1].parameters.path).not.toBe(staticPath);
 			expect(workflow.nodes![1].parameters.path).toBe(workflow.nodes![1].webhookId);
 		});
+
+		it.each([true, false])(
+			'keeps Tool Availability sources valid when duplicating with resetNodeIds: %s',
+			async (resetNodeIds) => {
+				const agent = createTestNode({
+					id: 'agent-id',
+					name: 'AI Agent',
+					type: AGENT_NODE_TYPE,
+					typeVersion: 3.1,
+					parameters: {
+						toolAvailability: {
+							rules: [{ sourceNodeId: 'calculator-id', available: false }],
+						},
+					},
+				});
+				const tool = createTestNode({
+					id: 'calculator-id',
+					name: 'Calculator',
+					type: '@n8n/n8n-nodes-langchain.toolCalculator',
+				});
+				const workflow = createTestWorkflow({
+					nodes: [agent, tool],
+					connections: {
+						Calculator: {
+							ai_tool: [[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }]],
+						},
+					},
+				});
+				const createNewWorkflowSpy = vi
+					.spyOn(workflowsStore, 'createNewWorkflow')
+					.mockResolvedValue(createTestWorkflow({ id: 'new-wf-id' }));
+				const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+
+				await saveAsNewWorkflow({ data: workflow, resetNodeIds }, false);
+
+				if (resetNodeIds) {
+					expect(tool.id).not.toBe('calculator-id');
+				} else {
+					expect(tool.id).toBe('calculator-id');
+				}
+				expect(createNewWorkflowSpy).toHaveBeenCalledWith(
+					expect.objectContaining({
+						nodes: expect.arrayContaining([
+							expect.objectContaining({
+								name: 'AI Agent',
+								parameters: {
+									toolAvailability: {
+										rules: [{ sourceNodeId: tool.id, available: false }],
+									},
+								},
+							}),
+						]),
+						connections: workflow.connections,
+					}),
+				);
+			},
+		);
 
 		it('should remap nodeGroups nodeIds when resetNodeIds is true', async () => {
 			const oldId1 = 'old-id-1';

@@ -364,7 +364,19 @@ const hasRemoteMethod = computed<boolean>(() => {
 });
 
 const parameterOptions = computed(() => {
-	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
+	const connectionType = props.parameter.typeOptions?.loadOptionsFromConnectedNodes;
+	const connectedNodeOptions =
+		connectionType && node.value
+			? workflowDocumentStore.value
+					.getParentNodes(node.value.name, connectionType, 1)
+					.flatMap((name) => {
+						const source = workflowDocumentStore.value.getNodeByName(name);
+						return source ? [{ name: source.name, value: source.id }] : [];
+					})
+			: undefined;
+	const options =
+		connectedNodeOptions ??
+		(hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options);
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
 	const displayableOptions = getParameterDisplayableOptions(
