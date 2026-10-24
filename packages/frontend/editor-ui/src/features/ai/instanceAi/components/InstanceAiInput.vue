@@ -415,7 +415,7 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 		);
 	}
 	emit('mention-workflow-open', selection.item.workflowId);
-	await mentions.replaceActiveRange(selection.item.label);
+	await mentions.clearActiveRange();
 }
 
 const canSubmit = computed(() =>
