@@ -1771,10 +1771,18 @@ describe('WorkflowExecute', () => {
 	});
 
 	describe('continueErrorOutput pairedItem', () => {
+		const twoOutputNode: INodeType = {
+			...passThroughNode,
+			description: { ...passThroughNode.description, outputs: ['main', 'main'] },
+		};
+
 		// Runs a node with the error output enabled on two input items. The node
 		// returns `output` without pairing it, like a declarative node or a
 		// programmatic node on its continue-on-fail path.
-		const runWithErrorOutput = async (output: INodeExecutionData[]) => {
+		const runWithErrorOutput = async (
+			output: INodeExecutionData[][],
+			{ alwaysOutputData = false, nodeType = passThroughNode } = {},
+		) => {
 			// A modified node returns its predetermined output once, so build it per run.
 			const nodeTypes = Helpers.NodeTypes({
 				...nodeTypeArguments,
@@ -1784,12 +1792,13 @@ describe('WorkflowExecute', () => {
 						.done(),
 					sourcePath: '',
 				},
-				unpaired: { type: modifyNode(passThroughNode).return([output]).done(), sourcePath: '' },
+				unpaired: { type: modifyNode(nodeType).return(output).done(), sourcePath: '' },
 			});
 			const trigger = createNodeData({ name: 'trigger', type: 'twoItems' });
 			const node = {
 				...createNodeData({ name: 'node', type: 'unpaired' }),
 				onError: 'continueErrorOutput' as const,
+				alwaysOutputData,
 			};
 			const workflow = new DirectedGraph()
 				.addNodes(trigger, node)
@@ -1807,8 +1816,7 @@ describe('WorkflowExecute', () => {
 
 		test('should pair success and error items with their input items', async () => {
 			const [successOutput, errorOutput] = await runWithErrorOutput([
-				{ json: { ok: true } },
-				{ json: { error: 'boom' } },
+				[{ json: { ok: true } }, { json: { error: 'boom' } }],
 			]);
 
 			expect(successOutput).toEqual([{ json: { ok: true }, pairedItem: { item: 0 } }]);
@@ -1820,7 +1828,7 @@ describe('WorkflowExecute', () => {
 		test('should pair a single error item for several inputs with the first input', async () => {
 			// Same rule as on the regular output: N inputs and one output item pair to item 0.
 			const [successOutput, errorOutput] = await runWithErrorOutput([
-				{ json: { error: 'whole batch failed' } },
+				[{ json: { error: 'whole batch failed' } }],
 			]);
 
 			expect(successOutput).toEqual([]);
@@ -1828,6 +1836,51 @@ describe('WorkflowExecute', () => {
 				{ json: { city: 'a', error: 'whole batch failed' }, pairedItem: { item: 0 } },
 			]);
 		});
+
+		test('should route an error item to the error output when its input item cannot be resolved', async () => {
+			const [successOutput, errorOutput] = await runWithErrorOutput([
+				[{ json: { error: 'boom' }, pairedItem: { item: 5 } }],
+			]);
+
+			expect(successOutput).toEqual([]);
+			expect(errorOutput).toEqual([{ json: { error: 'boom' }, pairedItem: { item: 5 } }]);
+		});
+
+		const errorItem = { json: { error: 'boom' }, pairedItem: { item: 0 } };
+
+		test.each([
+			{ name: 'one-output', nodeType: passThroughNode, output: [[errorItem]] },
+			{ name: 'two-output', nodeType: twoOutputNode, output: [[errorItem], []] },
+		])(
+			'should not add an empty item to the success output of a $name node with alwaysOutputData when all items went to the error output',
+			async ({ nodeType, output }) => {
+				const main = await runWithErrorOutput(output, { alwaysOutputData: true, nodeType });
+
+				expect(main.slice(0, -1).flat()).toEqual([]);
+				expect(main.at(-1)).toEqual([
+					{ json: { city: 'a', error: 'boom' }, pairedItem: { item: 0 } },
+				]);
+			},
+		);
+
+		test.each([
+			{ name: 'returns nothing', nodeType: passThroughNode, output: [[]], laterOutputs: [] },
+			{
+				name: 'only has data on a later output',
+				nodeType: twoOutputNode,
+				output: [[], [{ json: { x: 1 } }]],
+				laterOutputs: [[expect.objectContaining({ json: { x: 1 } })]],
+			},
+		])(
+			'should still add an empty item to the first output with alwaysOutputData when the node $name',
+			async ({ nodeType, output, laterOutputs }) => {
+				const main = await runWithErrorOutput(output, { alwaysOutputData: true, nodeType });
+
+				expect(main[0]).toEqual([expect.objectContaining({ json: {} })]);
+				expect(main.slice(1, -1)).toEqual(laterOutputs);
+				expect(main.at(-1)).toEqual([]);
+			},
+		);
 	});
 
 	describe('handleNodeErrorOutput', () => {
@@ -2111,6 +2164,27 @@ describe('WorkflowExecute', () => {
 						{ item: 1, input: 1 },
 					],
 				},
+			]);
+		});
+
+		test('should route an error item undecorated when its source points at a missing output', () => {
+			const mismatchedSource = {
+				...executionData,
+				source: {
+					[NodeConnectionTypes.Main]: [
+						{ previousNode: 'previousNode', previousNodeOutput: 1, previousNodeRun: 0 },
+					],
+				},
+			};
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[{ json: { error: 'Test error' }, pairedItem: { item: 0, input: 0 } }],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, mismatchedSource, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{ json: { error: 'Test error' }, pairedItem: { item: 0, input: 0 } },
 			]);
 		});
 

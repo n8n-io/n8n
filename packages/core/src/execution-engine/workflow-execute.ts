@@ -2023,6 +2023,9 @@ export class WorkflowExecute {
 	): INodeExecutionData[][] | null | undefined {
 		if (nodeSuccessData?.[0]?.[0]) return nodeSuccessData;
 		if (executionData.node.alwaysOutputData !== true) return nodeSuccessData;
+		if (executionData.node.onError === 'continueErrorOutput' && nodeSuccessData?.at(-1)?.length) {
+			return nodeSuccessData;
+		}
 
 		// Get pairedItem from all input items
 		const pairedItem: IPairedItemData[] = [];
@@ -3111,23 +3114,24 @@ export class WorkflowExecute {
 
 						const sourceData = executionData.source[NodeConnectionTypes.Main][pairedItemInputIndex];
 
-						const constPairedItem = dataProxy.$getPairedItem(
-							sourceData!.previousNode,
-							sourceData,
-							pairedItemData,
-						);
-
-						if (constPairedItem === null) {
-							errorItems.push(item);
-						} else {
-							errorItems.push({
-								...item,
-								json: {
-									...constPairedItem.json,
-									...item.json,
-								},
+						let pairedInputItem: INodeExecutionData | null = null;
+						try {
+							pairedInputItem = dataProxy.$getPairedItem(
+								sourceData!.previousNode,
+								sourceData,
+								pairedItemData,
+							);
+						} catch (error) {
+							// The input item only adds context, so the error item goes to the error output without it.
+							Logger.debug('Could not resolve the input item of an error item', {
+								node: executionData.node.name,
+								error: error instanceof Error ? error.message : String(error),
 							});
 						}
+
+						errorItems.push(
+							pairedInputItem ? { ...item, json: { ...pairedInputItem.json, ...item.json } } : item,
+						);
 					}
 				} else {
 					successItems.push(item);
