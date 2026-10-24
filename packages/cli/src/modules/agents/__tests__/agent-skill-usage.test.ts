@@ -3,7 +3,7 @@ import type { OperationContext } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
+import type { SkillRuntimeService } from '@/modules/skills';
 
 import { AgentSkillUsage } from '../agent-skill-usage';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
@@ -105,6 +105,40 @@ describe('AgentSkillUsage', () => {
 				'Cannot rename to "pricing": Sales bot already uses a skill with a name like that.',
 			);
 			expect(agentSkills.findFollowingAgents).toHaveBeenCalledWith('skill_a', TX_CTX);
+		});
+
+		it('names every clashing agent, and skips an agent without dependency rows', async () => {
+			agentSkills.findFollowingAgents.mockResolvedValue([
+				{ id: 'agent-1', name: 'Sales bot' },
+				{ id: 'agent-2', name: 'Support bot' },
+				{ id: 'agent-3', name: 'New bot' },
+			]);
+			const refs = [
+				{ skillId: 'skill_a', versionId: null },
+				{ skillId: 'skill_b', versionId: 'skill_b-v1' },
+			];
+			agentSkills.findDependencies.mockResolvedValue(
+				new Map([
+					['agent-1', refs],
+					['agent-2', refs],
+				]),
+			);
+			skillRuntime.runtimeNames.mockResolvedValue((ref) =>
+				ref.id === 'skill_b' ? 'Pricing' : undefined,
+			);
+
+			await expectError(
+				service.assertRenameKeepsNamesApart('skill_a', 'Brand voice', 'pricing', TX_CTX),
+				UserError,
+				'Cannot rename to "pricing": Sales bot, Support bot already use a skill with a name like that.',
+			);
+			expect(skillRuntime.runtimeNames).toHaveBeenCalledWith(
+				[
+					{ id: 'skill_b', versionId: 'skill_b-v1' },
+					{ id: 'skill_b', versionId: 'skill_b-v1' },
+				],
+				TX_CTX,
+			);
 		});
 
 		it('allows a rename that clashes on no agent', async () => {

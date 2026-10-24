@@ -13,11 +13,11 @@ import { ConflictError } from '@n8n/errors';
 import { z } from 'zod';
 
 import {
+	AssistantSkillsFlagGate,
 	SkillNameTakenError,
 	skillNameTakenToolMessage,
-} from '@/modules/skills/errors/skill-name-taken.error';
-import { SkillService } from '@/modules/skills/services/skill.service';
-import { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
+	SkillService,
+} from '@/modules/skills';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';

@@ -3,9 +3,11 @@ import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { SkillNameTakenError } from '@/modules/skills/errors/skill-name-taken.error';
-import type { SkillService } from '@/modules/skills/services/skill.service';
-import type { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
+import {
+	type AssistantSkillsFlagGate,
+	SkillNameTakenError,
+	type SkillService,
+} from '@/modules/skills';
 import type { Telemetry } from '@/telemetry';
 
 import { SKILL_TOOLS } from '../mcp-scopes';

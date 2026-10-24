@@ -5,9 +5,7 @@ import { UserError } from '@n8n/errors';
 import type { MockInstance, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
-import type { SkillService } from '@/modules/skills/services/skill.service';
-import type { SkillTarget } from '@/modules/skills/utils/skill-content';
+import type { SkillRuntimeService, SkillService, SkillTarget } from '@/modules/skills';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentSkillRefsService } from '../agent-skill-refs.service';

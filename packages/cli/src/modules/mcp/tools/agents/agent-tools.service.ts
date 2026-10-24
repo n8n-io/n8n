@@ -37,10 +37,7 @@ import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.s
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
-import {
-	SkillNameTakenError,
-	skillNameTakenToolMessage,
-} from '@/modules/skills/errors/skill-name-taken.error';
+import { SkillNameTakenError, skillNameTakenToolMessage } from '@/modules/skills';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
 	AgentTestRunService,

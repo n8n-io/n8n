@@ -8,10 +8,14 @@ import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { findIntroducedNameClashes } from '@/modules/skills/utils/skill-names';
-import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
-import { SkillService } from '@/modules/skills/services/skill.service';
-import type { SkillMoveOptions, SkillRef, SkillTarget } from '@/modules/skills/utils/skill-content';
+import {
+	findIntroducedNameClashes,
+	type SkillMoveOptions,
+	type SkillRef,
+	SkillRuntimeService,
+	SkillService,
+	type SkillTarget,
+} from '@/modules/skills';
 
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';

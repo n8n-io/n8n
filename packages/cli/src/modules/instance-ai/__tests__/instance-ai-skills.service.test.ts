@@ -2,8 +2,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import { loadInstanceAiSkills, resolvePromptProfile } from '@n8n/instance-ai';
 
-import type { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
-import type { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
+import type { AssistantSkillsFlagGate, SkillRuntimeService } from '@/modules/skills';
 
 import {
 	InstanceAiSkillsService,

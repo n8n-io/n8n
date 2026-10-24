@@ -3,9 +3,7 @@ import type { OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 
-import { SkillUsage } from '@/modules/skills/services/skill-usage.contracts';
-import { renameIntroducesClash } from '@/modules/skills/utils/skill-names';
-import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
+import { renameIntroducesClash, SkillRuntimeService, SkillUsage } from '@/modules/skills';
 
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentRepository } from './repositories/agent.repository';

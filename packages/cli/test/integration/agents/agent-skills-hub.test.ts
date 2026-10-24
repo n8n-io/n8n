@@ -33,7 +33,7 @@ import {
 } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { SkillService } from '@/modules/skills/services/skill.service';
+import { SkillService } from '@/modules/skills';
 import {
 	deleteAllSkills,
 	deleteSkill,

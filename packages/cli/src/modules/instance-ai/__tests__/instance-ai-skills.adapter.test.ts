@@ -4,8 +4,7 @@ import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
-import { SkillNameTakenError } from '@/modules/skills/errors/skill-name-taken.error';
-import type { SkillService } from '@/modules/skills/services/skill.service';
+import { SkillNameTakenError, type SkillService } from '@/modules/skills';
 
 describe('InstanceAiSkillsAdapterService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

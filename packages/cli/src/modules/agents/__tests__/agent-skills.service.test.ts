@@ -18,9 +18,7 @@ import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { ProjectAgent } from '../entities/agent.entity';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { SkillAccessService } from '@/modules/skills/services/skill-access.service';
-import type { SkillService } from '@/modules/skills/services/skill.service';
-import type { SkillSaveResult } from '@/modules/skills/utils/skill-content';
+import type { SkillAccessService, SkillSaveResult, SkillService } from '@/modules/skills';
 import { getAgentConfigHash, getAgentSkillHash } from '../utils/agent-config-hash';
 import {
 	type AgentFixtureOverrides,

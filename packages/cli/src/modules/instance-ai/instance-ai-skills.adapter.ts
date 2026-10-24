@@ -5,11 +5,7 @@ import { ConflictError } from '@n8n/errors';
 import type { InstanceAiSkillService } from '@n8n/instance-ai';
 import { UserError } from 'n8n-workflow';
 
-import {
-	SkillNameTakenError,
-	skillNameTakenToolMessage,
-} from '@/modules/skills/errors/skill-name-taken.error';
-import { SkillService } from '@/modules/skills/services/skill.service';
+import { SkillNameTakenError, skillNameTakenToolMessage, SkillService } from '@/modules/skills';
 
 const STALE_SKILL_TOOL_MESSAGE =
 	'The skill changed since you read it, so nothing was saved. Read it again with the get action and retry with its new skillHash.';

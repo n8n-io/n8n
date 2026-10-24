@@ -11,7 +11,7 @@ import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService } from '@n8n/backend-services';
-import { SkillsGate } from '@/modules/skills/services/skills-gate';
+import { SkillsGate } from '@/modules/skills';
 import { PostHogClient } from '@/posthog';
 
 import {

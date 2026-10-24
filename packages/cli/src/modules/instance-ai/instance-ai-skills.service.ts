@@ -7,13 +7,13 @@ import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
-import { SkillRuntimeService } from '@/modules/skills/services/skill-runtime.service';
-import type {
-	AssistantSkillContent,
-	AssistantSkillContext,
-	AssistantSkillSummary,
-} from '@/modules/skills/utils/skill-content';
+import {
+	type AssistantSkillContent,
+	type AssistantSkillContext,
+	AssistantSkillsFlagGate,
+	type AssistantSkillSummary,
+	SkillRuntimeService,
+} from '@/modules/skills';
 
 import type { InstanceAiFeatureFlags } from './instance-ai.adapter.service';
 

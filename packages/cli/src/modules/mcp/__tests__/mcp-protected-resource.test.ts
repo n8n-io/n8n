@@ -25,7 +25,7 @@ import type { UrlService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { SkillsGate } from '@/modules/skills/services/skills-gate';
+import { SkillsGate } from '@/modules/skills';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
