@@ -2349,6 +2349,8 @@ export class InstanceAiService {
 	private createTurnRuntime(user: User, threadId: string, runId: string): AssistantTurnRuntime {
 		return {
 			memory: this.agentMemory,
+			resourceId: user.id,
+			getProjectId: async () => (await this.agentMemory.getThreadProjectId(threadId)) ?? undefined,
 			eventBus: this.eventBus,
 			checkpointStore: this.checkpointStore,
 			turnState: {
