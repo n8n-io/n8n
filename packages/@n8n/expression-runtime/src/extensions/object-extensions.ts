@@ -86,8 +86,10 @@ export function compact(value: object): object {
 // V8 isolate. encodeURIComponent is an ECMAScript built-in available in all
 // V8 contexts, but it doesn't encode !'()~ which WHATWG requires. The extra
 // replace step covers those characters to match URLSearchParams output.
+// toWellFormed covers the other difference: URLSearchParams replaces a lone
+// surrogate with U+FFFD, where encodeURIComponent throws a URIError.
 function whatwgEncode(str: string): string {
-	return encodeURIComponent(str)
+	return encodeURIComponent(str.toWellFormed())
 		.replace(/%20/g, '+')
 		.replace(/[!'()~]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 }
