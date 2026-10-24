@@ -717,6 +717,23 @@ describe('AgentEvalCaseGenerationService', () => {
 					expect(result).not.toHaveProperty('verdict.suggestion');
 				});
 
+				it('does not suggest when the judge gives no readable verdict', async () => {
+					criteriaRunMock.mockResolvedValue({
+						pass: false,
+						reasoning: '{"pass": tr',
+						inconclusive: true,
+					});
+
+					const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+					expect(generateMock).toHaveBeenCalledTimes(1);
+					expect(result).toMatchObject({
+						status: 'completed',
+						verdict: { status: 'error', outcome: null },
+					});
+					expect(result).not.toHaveProperty('verdict.suggestion');
+				});
+
 				it('does not suggest when the case has no rule to grade against', async () => {
 					generateMock.mockReset();
 
