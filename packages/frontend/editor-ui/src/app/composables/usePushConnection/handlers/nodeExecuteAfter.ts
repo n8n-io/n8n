@@ -65,7 +65,10 @@ export async function nodeExecuteAfter(
 		pushDataWithPlaceholderOutputData,
 	);
 
-	workflowExecutionStateStore.executingNode.removeExecutingNode(pushData.nodeName);
+	workflowExecutionStateStore.executingNode.removeExecutingNode(
+		pushData.nodeName,
+		pushData.data.executionIndex,
+	);
 	workflowExecutionStateStore.clearAgentNodeProgress(pushData.nodeName);
 
 	// Side effects
