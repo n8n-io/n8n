@@ -5,16 +5,17 @@ import { mock } from 'vitest-mock-extended';
 import type { AppArtifact } from '../app-artifact.entity';
 import { AppArtifactService } from '../app-artifact.service';
 import { appStorageLockSubKey } from '../app-storage-lock';
-import type { AppVersion } from '../app-version.entity';
-import { AppVersionRepository } from '../app-version.repository';
-import type { App } from '../app.entity';
-import { AppRepository } from '../app.repository';
-import { AppArchive } from '../storage/app-archive';
-import type { NewSourceVersion } from '../storage/app-version-stores';
+import type { AppVersion } from '../../versions/app-version.entity';
+import { AppVersionRepository } from '../../versions/app-version.repository';
+import type { App } from '../../app.entity';
+import { AppRepository } from '../../app.repository';
+import { AppArchive } from '../../app-archive';
+import { AppsConfig } from '../../apps.config';
+import type { NewSourceVersion } from '../app-version-stores';
 import {
 	SnapshotAppSourceVersionStore,
 	SnapshotAppBuildResultStore,
-} from '../storage/snapshot-app-version-stores';
+} from '../snapshot-app-version-stores';
 
 const version: NewSourceVersion = {
 	id: 'version',
@@ -23,8 +24,10 @@ const version: NewSourceVersion = {
 	label: 'Snapshot',
 };
 const files = new Map([['index.html', Buffer.from('<html/>')]]);
+const attempt = { attemptNumber: 1, startedAt: new Date() };
 
 function createStores() {
+	const config = new AppsConfig();
 	const archives = mock<AppArchive>();
 	const artifacts = mock<AppArtifactService>();
 	const versions = mock<AppVersionRepository>();
@@ -43,7 +46,8 @@ function createStores() {
 	versions.attachBundle.mockResolvedValue(true);
 	return {
 		source: new SnapshotAppSourceVersionStore(archives, artifacts, versions, apps, locks),
-		builds: new SnapshotAppBuildResultStore(archives, artifacts, versions, locks),
+		builds: new SnapshotAppBuildResultStore(archives, artifacts, versions, locks, config),
+		config,
 		archives,
 		artifacts,
 		versions,
@@ -161,10 +165,56 @@ describe('SnapshotAppSourceVersionStore', () => {
 });
 
 describe('SnapshotAppBuildResultStore', () => {
+	afterEach(() => vi.useRealTimers());
+
+	it('discards output when the configured deadline expires during upload', async () => {
+		const { builds, config, artifacts, artifact, versions } = createStores();
+		const startedAt = new Date();
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(startedAt);
+		config.buildTimeoutMs = 1000;
+		artifacts.upload.mockImplementation(async () => {
+			vi.setSystemTime(startedAt.getTime() + config.buildTimeoutMs);
+			return artifact;
+		});
+		await expect(
+			builds.recordSuccess(version.appId, version.id, files, { attemptNumber: 1, startedAt }),
+		).rejects.toThrow('The app build timed out.');
+		expect(versions.attachBundle).not.toHaveBeenCalled();
+		expect(artifacts.discard).toHaveBeenCalledWith(artifact);
+	});
+
+	it.each([0, 1])(
+		'rejects the transaction when attachment finishes %i ms after the deadline',
+		async (overrunMs) => {
+			const { builds, config, artifacts, artifact, versions, ctx, locks } = createStores();
+			const startedAt = new Date();
+			vi.useFakeTimers({ toFake: ['Date'] });
+			vi.setSystemTime(startedAt);
+			config.buildTimeoutMs = 1000;
+			versions.attachBundle.mockImplementation(async () => {
+				vi.setSystemTime(startedAt.getTime() + config.buildTimeoutMs + overrunMs);
+				return true;
+			});
+
+			await expect(
+				builds.recordSuccess(version.appId, version.id, files, { attemptNumber: 1, startedAt }),
+			).rejects.toThrow('The app build timed out.');
+			await expect(locks.withLockContext.mock.results[0].value).rejects.toThrow(ConflictError);
+			expect(versions.attachBundle).toHaveBeenCalledExactlyOnceWith(
+				version.id,
+				artifact.id,
+				1,
+				ctx,
+			);
+			expect(artifacts.discard).toHaveBeenCalledWith(artifact);
+		},
+	);
+
 	it('attaches the uploaded bundle in the upload-completion transaction', async () => {
 		const { builds, archives, artifacts, versions, artifact, ctx, locks } = createStores();
 
-		await builds.recordSuccess(version.appId, version.id, files);
+		await builds.recordSuccess(version.appId, version.id, files, attempt);
 
 		expect(archives.pack).toHaveBeenCalledWith(files, true);
 		expect(artifacts.upload).toHaveBeenCalledWith(version.appId, Buffer.from('archive'));
@@ -172,7 +222,12 @@ describe('SnapshotAppBuildResultStore', () => {
 			subKey: appStorageLockSubKey(version.appId),
 		});
 		expect(artifacts.completeUpload).toHaveBeenCalledWith(artifact, ctx);
-		expect(versions.attachBundle).toHaveBeenCalledWith(version.id, artifact.id, ctx);
+		expect(versions.attachBundle).toHaveBeenCalledWith(
+			version.id,
+			artifact.id,
+			attempt.attemptNumber,
+			ctx,
+		);
 		expect(artifacts.discard).not.toHaveBeenCalled();
 	});
 
@@ -183,7 +238,7 @@ describe('SnapshotAppBuildResultStore', () => {
 		const { builds, artifacts, versions, artifact } = createStores();
 		versions.findVersionById.mockResolvedValue(target);
 
-		await expect(builds.recordSuccess(version.appId, version.id, files)).rejects.toThrow(
+		await expect(builds.recordSuccess(version.appId, version.id, files, attempt)).rejects.toThrow(
 			NotFoundError,
 		);
 
@@ -195,7 +250,7 @@ describe('SnapshotAppBuildResultStore', () => {
 		const { builds, artifacts, versions, artifact } = createStores();
 		versions.attachBundle.mockResolvedValue(false);
 
-		await expect(builds.recordSuccess(version.appId, version.id, files)).rejects.toThrow(
+		await expect(builds.recordSuccess(version.appId, version.id, files, attempt)).rejects.toThrow(
 			ConflictError,
 		);
 
@@ -207,7 +262,9 @@ describe('SnapshotAppBuildResultStore', () => {
 		const error = new ConflictError('Upload expired.');
 		artifacts.completeUpload.mockRejectedValue(error);
 
-		await expect(builds.recordSuccess(version.appId, version.id, files)).rejects.toBe(error);
+		await expect(builds.recordSuccess(version.appId, version.id, files, attempt)).rejects.toBe(
+			error,
+		);
 
 		expect(versions.attachBundle).not.toHaveBeenCalled();
 		expect(artifacts.discard).toHaveBeenCalledWith(artifact);

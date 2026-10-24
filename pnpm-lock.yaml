@@ -6950,6 +6950,9 @@ importers:
 
   packages/modules/apps/backend:
     dependencies:
+      '@n8n/agents':
+        specifier: workspace:*
+        version: link:../../../@n8n/agents
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
@@ -6980,6 +6983,9 @@ importers:
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
       n8n-core:
         specifier: workspace:*
         version: link:../../../core

@@ -4,8 +4,8 @@ import { ConflictError } from '@n8n/errors';
 import { DataSource, MoreThanOrEqual } from '@n8n/typeorm';
 
 import { AppArtifact, type AppArtifactRef } from './app-artifact.entity';
-import { AppVersion } from './app-version.entity';
-import type { AppBlob } from './storage/app-blob-store';
+import { AppVersion } from '../versions/app-version.entity';
+import type { AppBlob } from './app-blob-store';
 
 @Service()
 export class AppArtifactRepository extends BaseRepository<AppArtifact> {

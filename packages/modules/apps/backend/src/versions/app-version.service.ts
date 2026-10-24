@@ -5,15 +5,16 @@ import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { v7 as uuidv7 } from 'uuid';
 
-import { AppRetentionService } from './app-retention.service';
+import { AppRetentionService } from '../storage/app-retention.service';
+import type { AppBuildAttempt } from '../build/app-build.types';
 import type { AppVersion } from './app-version.entity';
 import { AppVersionRepository } from './app-version.repository';
-import { AppRepository } from './app.repository';
+import { AppRepository } from '../app.repository';
 import {
 	AppSourceVersionStore,
 	AppBuildResultStore,
 	type AppFiles,
-} from './storage/app-version-stores';
+} from '../storage/app-version-stores';
 
 @Service()
 export class AppVersionService {
@@ -26,6 +27,7 @@ export class AppVersionService {
 		private readonly logger: Logger,
 	) {}
 
+	/** Stores source metadata. Use AppChangeService for changes that must also build. */
 	async saveSource(
 		projectId: string,
 		appId: string,
@@ -42,6 +44,13 @@ export class AppVersionService {
 			files,
 		);
 		const version = await this.requireVersion(versionId);
+		this.logger.debug('Stored app source version.', {
+			projectId,
+			appId,
+			versionId,
+			artifactId: version.sourceArtifactId,
+			fileCount: files.size,
+		});
 		await this.prune(appId);
 		return version;
 	}
@@ -51,13 +60,22 @@ export class AppVersionService {
 		appId: string,
 		versionId: string,
 		files: AppFiles,
+		attempt: AppBuildAttempt,
 	): Promise<AppVersion> {
 		const target = await this.getVersion(projectId, appId, versionId);
-		if (target.buildStatus !== 'queued' && target.buildStatus !== 'running') {
+		if (target.buildStatus !== 'running') {
 			throw new ConflictError('This app version cannot accept a bundle. Check its build status.');
 		}
-		await this.buildResults.recordSuccess(appId, versionId, files);
+		await this.buildResults.recordSuccess(appId, versionId, files, attempt);
 		const version = await this.requireVersion(versionId);
+		this.logger.debug('Stored app bundle.', {
+			projectId,
+			appId,
+			versionId,
+			artifactId: version.bundleArtifactId,
+			attempt: attempt.attemptNumber,
+			fileCount: files.size,
+		});
 		await this.prune(appId);
 		return version;
 	}
@@ -110,6 +128,7 @@ export class AppVersionService {
 		await this.getVersion(projectId, appId, versionId);
 		const version = await this.versions.setLabel(versionId, label);
 		if (!version) throw new NotFoundError('App version not found.');
+		this.logger.debug('Updated app version label.', { projectId, appId, versionId });
 		return version;
 	}
 
