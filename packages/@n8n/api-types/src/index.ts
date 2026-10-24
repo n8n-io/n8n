@@ -20,6 +20,7 @@ export type * from './worker-pools';
 export * from './node-type-availability';
 export type * from './credential-type-availability';
 export type * from './transfer-preview';
+export type * from './transfer-result';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
