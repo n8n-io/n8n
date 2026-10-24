@@ -2,6 +2,8 @@ import FormData from 'form-data';
 import type { Agent } from 'https';
 import { mock } from 'jest-mock-extended';
 import type {
+	IAllExecuteFunctions,
+	ICredentialsHelper,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INode,
@@ -24,6 +26,7 @@ import {
 	parseRequestObject,
 	proxyRequestToAxios,
 	removeEmptyBody,
+	requestWithAuthentication,
 } from '../request-helper-functions';
 
 describe('Request Helper Functions', () => {
@@ -860,6 +863,221 @@ describe('Request Helper Functions', () => {
 
 			expect(response).toEqual({ success: true });
 			scope.done();
+		});
+	});
+
+	describe('requestWithAuthentication', () => {
+		const baseUrl = 'http://example.de';
+		const mockNode = mock<INode>({ name: 'HTTP Request' });
+		const mockWorkflow = mock<Workflow>({ id: '1' });
+		const mockHooks = mock<ExecutionLifecycleHooks>();
+
+		const createMockThis = (credentials: Record<string, unknown> = { accessToken: 'old_token' }) =>
+			mock<IAllExecuteFunctions>({
+				getNode: jest.fn().mockReturnValue(mockNode),
+				getCredentials: jest.fn().mockResolvedValue(credentials),
+				helpers: mock<IAllExecuteFunctions['helpers']>(),
+			});
+
+		describe('simple: false with a full response (pagination)', () => {
+			const paginatedRequest = (): IRequestOptions => ({
+				method: 'GET',
+				url: `${baseUrl}/items`,
+				simple: false,
+				resolveWithFullResponse: true,
+				json: true,
+			});
+
+			beforeEach(() => {
+				nock.cleanAll();
+				jest.clearAllMocks();
+			});
+
+			test('refreshes and resends when a 401 is resolved instead of thrown', async () => {
+				const mockThis = createMockThis();
+				const preAuthenticationMock = jest
+					.fn()
+					.mockResolvedValueOnce(undefined) // first call (credentialsExpired = false)
+					.mockResolvedValueOnce({ accessToken: 'fresh_token' }); // second call (credentialsExpired = true)
+
+				const authenticateMock = jest
+					.fn()
+					.mockImplementation(async (credentials, _type, reqOptions) => ({
+						...reqOptions,
+						headers: { Authorization: `Bearer ${credentials.accessToken}` },
+					}));
+
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					hooks: mockHooks,
+					credentialsHelper: mock<ICredentialsHelper>({
+						getParentTypes: jest.fn().mockReturnValue([]),
+						preAuthentication: preAuthenticationMock,
+						authenticate: authenticateMock,
+					}),
+				});
+
+				// First call with old token returns 401
+				nock(baseUrl)
+					.get('/items')
+					.matchHeader('authorization', 'Bearer old_token')
+					.reply(401, { error: 'expired' });
+
+				// Second call with fresh token returns 200
+				nock(baseUrl)
+					.get('/items')
+					.matchHeader('authorization', 'Bearer fresh_token')
+					.reply(200, { value: ['item1', 'item2'] });
+
+				const result = await requestWithAuthentication.call(
+					mockThis,
+					'testPreAuth',
+					paginatedRequest(),
+					mockWorkflow,
+					mockNode,
+					additionalData,
+				);
+
+				expect(result.statusCode).toBe(200);
+				expect(result.body).toEqual({ value: ['item1', 'item2'] });
+				expect(preAuthenticationMock).toHaveBeenCalledTimes(2);
+				expect(preAuthenticationMock).toHaveBeenLastCalledWith(
+					expect.anything(),
+					expect.objectContaining({ accessToken: 'fresh_token' }),
+					'testPreAuth',
+					mockNode,
+					true,
+				);
+			});
+
+			test('resolves the original 401 response when the credential returns nothing to refresh', async () => {
+				const mockThis = createMockThis();
+				const preAuthenticationMock = jest
+					.fn()
+					.mockResolvedValue(undefined); // cannot refresh
+
+				const authenticateMock = jest
+					.fn()
+					.mockImplementation(async (credentials, _type, reqOptions) => ({
+						...reqOptions,
+						headers: { Authorization: `Bearer ${credentials.accessToken}` },
+					}));
+
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					hooks: mockHooks,
+					credentialsHelper: mock<ICredentialsHelper>({
+						getParentTypes: jest.fn().mockReturnValue([]),
+						preAuthentication: preAuthenticationMock,
+						authenticate: authenticateMock,
+					}),
+				});
+
+				nock(baseUrl)
+					.get('/items')
+					.matchHeader('authorization', 'Bearer old_token')
+					.reply(401, { error: 'expired' });
+
+				const result = await requestWithAuthentication.call(
+					mockThis,
+					'testPreAuth',
+					paginatedRequest(),
+					mockWorkflow,
+					mockNode,
+					additionalData,
+				);
+
+				expect(result.statusCode).toBe(401);
+				expect(result.body).toEqual({ error: 'expired' });
+				expect(preAuthenticationMock).toHaveBeenCalledTimes(2);
+			});
+
+			test('resolves the second 401 response without a further refresh', async () => {
+				const mockThis = createMockThis();
+				const preAuthenticationMock = jest
+					.fn()
+					.mockResolvedValueOnce(undefined) // credentialsExpired = false
+					.mockResolvedValueOnce({ accessToken: 'fresh_token' }); // credentialsExpired = true
+
+				const authenticateMock = jest
+					.fn()
+					.mockImplementation(async (credentials, _type, reqOptions) => ({
+						...reqOptions,
+						headers: { Authorization: `Bearer ${credentials.accessToken}` },
+					}));
+
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					hooks: mockHooks,
+					credentialsHelper: mock<ICredentialsHelper>({
+						getParentTypes: jest.fn().mockReturnValue([]),
+						preAuthentication: preAuthenticationMock,
+						authenticate: authenticateMock,
+					}),
+				});
+
+				// First call returns 401
+				nock(baseUrl)
+					.get('/items')
+					.matchHeader('authorization', 'Bearer old_token')
+					.reply(401, { error: 'expired' });
+
+				// Second call also returns 401
+				nock(baseUrl)
+					.get('/items')
+					.matchHeader('authorization', 'Bearer fresh_token')
+					.reply(401, { error: 'still unauthorized' });
+
+				const result = await requestWithAuthentication.call(
+					mockThis,
+					'testPreAuth',
+					paginatedRequest(),
+					mockWorkflow,
+					mockNode,
+					additionalData,
+				);
+
+				expect(result.statusCode).toBe(401);
+				expect(result.body).toEqual({ error: 'still unauthorized' });
+				expect(preAuthenticationMock).toHaveBeenCalledTimes(2);
+			});
+
+			test('does not refresh on other resolved statuses', async () => {
+				const mockThis = createMockThis();
+				const preAuthenticationMock = jest.fn().mockResolvedValue(undefined);
+
+				const authenticateMock = jest
+					.fn()
+					.mockImplementation(async (credentials, _type, reqOptions) => ({
+						...reqOptions,
+						headers: { Authorization: `Bearer ${credentials.accessToken}` },
+					}));
+
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					hooks: mockHooks,
+					credentialsHelper: mock<ICredentialsHelper>({
+						getParentTypes: jest.fn().mockReturnValue([]),
+						preAuthentication: preAuthenticationMock,
+						authenticate: authenticateMock,
+					}),
+				});
+
+				nock(baseUrl)
+					.get('/items')
+					.matchHeader('authorization', 'Bearer old_token')
+					.reply(404, { error: 'not found' });
+
+				const result = await requestWithAuthentication.call(
+					mockThis,
+					'testPreAuth',
+					paginatedRequest(),
+					mockWorkflow,
+					mockNode,
+					additionalData,
+				);
+
+				expect(result.statusCode).toBe(404);
+				expect(result.body).toEqual({ error: 'not found' });
+				// preAuthentication called only once (credentialsExpired = false)
+				expect(preAuthenticationMock).toHaveBeenCalledTimes(1);
+			});
 		});
 	});
 });

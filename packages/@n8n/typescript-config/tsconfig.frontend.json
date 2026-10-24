@@ -9,5 +9,6 @@
 		"allowSyntheticDefaultImports": true,
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"]
 	},
+	"files": [],
 	"include": ["src/**/*.ts", "src/**/*.vue"]
 }
