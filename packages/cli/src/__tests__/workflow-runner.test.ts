@@ -237,11 +237,10 @@ describe('processError', () => {
 			expect.objectContaining({ status: 'success', finished: true, data: successData }),
 		);
 		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
-		expect(deleteInFlightSpy).toHaveBeenCalledWith({
-			workflowId: workflow.id,
-			executionId: execution.id,
-			storedAt: 'db',
-		});
+		expect(deleteInFlightSpy).toHaveBeenCalledWith(
+			{ workflowId: workflow.id, executionId: execution.id, storedAt: 'db' },
+			expect.objectContaining({ status: 'success', finished: true }),
+		);
 		expect(activeExecutions.has(execution.id)).toBe(false);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
@@ -350,11 +349,10 @@ describe('processError', () => {
 		const run = await postExecutePromise;
 		expect(run).toEqual(expect.objectContaining({ status: 'error', finished: false }));
 		// ...but the retention decision ran anyway, off the row that was found.
-		expect(deleteInFlightSpy).toHaveBeenCalledWith({
-			workflowId: workflow.id,
-			executionId: execution.id,
-			storedAt: 'db',
-		});
+		expect(deleteInFlightSpy).toHaveBeenCalledWith(
+			{ workflowId: workflow.id, executionId: execution.id, storedAt: 'db' },
+			expect.objectContaining({ status: 'success', finished: true }),
+		);
 		expect(activeExecutions.has(execution.id)).toBe(false);
 	});
 

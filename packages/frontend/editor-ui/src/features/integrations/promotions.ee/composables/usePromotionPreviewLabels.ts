@@ -2,6 +2,7 @@ import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
 import { isBlocking, type Blocker } from '../promotionOperation';
+import { isContainer } from '../promotionPreview.tree';
 
 /** Apply keeps these resources as they are on the instance. It does not create them. */
 const KEPT_BY_APPLY = new Set<PromotionResource['type']>(['credential', 'variable']);
@@ -70,5 +71,13 @@ export function usePromotionPreviewLabels() {
 		return i18n.baseText('promotions.preview.marker.conflict', options);
 	}
 
-	return { changeLabel, blockerMessage };
+	/** The checkbox of a project or folder selects the workflows inside it. */
+	function selectLabel(resource: PromotionResource): string {
+		const interpolate = { name: resource.name };
+		return isContainer(resource)
+			? i18n.baseText('promotions.preview.selectContainer', { interpolate })
+			: i18n.baseText('promotions.preview.select', { interpolate });
+	}
+
+	return { changeLabel, blockerMessage, selectLabel };
 }

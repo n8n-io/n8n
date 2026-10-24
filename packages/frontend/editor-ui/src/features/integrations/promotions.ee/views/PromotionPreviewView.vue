@@ -15,6 +15,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, toRef, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -27,10 +28,12 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
+import PromotionReviewBlocker from '../components/preview/PromotionReviewBlocker.vue';
 import { usePromotionOperation } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
 import { usePromotionSelection } from '../composables/usePromotionSelection';
+import { getPromotionResourceDetails } from '../promotions.api';
 import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
 	indexBlockers,
@@ -57,6 +60,7 @@ const route = useRoute();
 const router = useRouter();
 const projectsStore = useProjectsStore();
 const rbacStore = useRBACStore();
+const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 
 const projectId = toRef(props, 'projectId');
@@ -95,8 +99,11 @@ const selection = usePromotionSelection(graph, {
 });
 const activeWorkflowKey = ref<ResourceKey>();
 const details = usePromotionResourceDetails(
-	projectId,
-	direction,
+	async (keys) =>
+		await getPromotionResourceDetails(rootStore.restApiContext, props.projectId, props.direction, {
+			commitSha: preview.value?.commitSha ?? null,
+			keys,
+		}),
 	preview,
 	graph,
 	activeWorkflowKey,
@@ -359,6 +366,7 @@ const treeResizer = useResizablePanel({
 			data-test-id="promotion-preview-error"
 			@click:button="refresh"
 		/>
+		<PromotionReviewBlocker v-else-if="state === 'blocked'" :class="$style.state" />
 		<N8nEmptyState
 			v-else-if="state === 'empty'"
 			:class="$style.state"
@@ -446,14 +454,18 @@ const treeResizer = useResizablePanel({
 						:order="order"
 						:graph="graph"
 						:direction="direction"
+						:selected="selection.selected.value"
 						:inclusion="selection.inclusion.value"
+						:disabled="blockers.blocked"
+						:locked="operation.isBusy.value"
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
 						:blockers="blockers"
-						:branch-name="preview?.source.branchName"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"
+						@toggle="selection.toggle"
+						@toggle-container="selection.toggleAllInside"
 					/>
 				</section>
 			</div>

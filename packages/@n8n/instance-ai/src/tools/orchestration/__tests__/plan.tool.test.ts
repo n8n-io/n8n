@@ -1,7 +1,14 @@
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+
 import { executeTool, parseToolInput } from '../../../__tests__/tool-test-utils';
 import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { PlanValidationError } from '../../../planned-tasks/planned-task-service';
-import type { OrchestrationContext, PlannedTaskService, TaskStorage } from '../../../types';
+import type {
+	InstanceAiContext,
+	OrchestrationContext,
+	PlannedTaskService,
+	TaskStorage,
+} from '../../../types';
 import { createPlanTool } from '../plan.tool';
 
 function makePlannedTaskService(overrides: Partial<PlannedTaskService> = {}): PlannedTaskService {
@@ -432,6 +439,70 @@ describe('createPlanTool — approval and revision flow', () => {
 		await executeTool(tool, planInput(), { suspend });
 
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
+	});
+});
+
+describe('createPlanTool — admin-blocked workflow saves', () => {
+	function contextWithPermissions(permissions: InstanceAiContext['permissions']) {
+		const trackTelemetry = vi.fn();
+		const context = createMockContext({
+			currentUserMessage: 'plan after discovery',
+			domainContext: { permissions } as InstanceAiContext,
+			trackTelemetry,
+		});
+		return { context, trackTelemetry };
+	}
+
+	it('rejects a plan whose build task needs a blocked createWorkflow permission', async () => {
+		const { context, trackTelemetry } = contextWithPermissions({
+			...DEFAULT_INSTANCE_AI_PERMISSIONS,
+			createWorkflow: 'blocked',
+		});
+		const suspend = vi.fn();
+
+		const out = await executeTool(createPlanTool(context), planInput(), { suspend });
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('An admin blocked creating workflows');
+		expect(out.result).toContain('"Build Slack notifier"');
+		expect(out.result).toContain('Tell the user');
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+		expect(suspend).not.toHaveBeenCalled();
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_planning_route',
+			expect.objectContaining({ route: 'permission_blocked', source: 'planning-skill' }),
+		);
+	});
+
+	it('rejects a plan that edits an existing workflow when updateWorkflow is blocked', async () => {
+		const { context } = contextWithPermissions({
+			...DEFAULT_INSTANCE_AI_PERMISSIONS,
+			updateWorkflow: 'blocked',
+		});
+		const input = {
+			...planInput(),
+			tasks: validTasks().map((task) => ({ ...task, workflowId: 'wf-1' })),
+		};
+
+		const out = await executeTool(createPlanTool(context), input, { suspend: vi.fn() });
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('An admin blocked updating workflows');
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+	});
+
+	it('asks for approval when only non-save permissions are blocked', async () => {
+		const { context } = contextWithPermissions({
+			...DEFAULT_INSTANCE_AI_PERMISSIONS,
+			updateWorkflow: 'blocked',
+			publishWorkflow: 'blocked',
+		});
+		const suspend = vi.fn().mockResolvedValue(undefined);
+
+		await executeTool(createPlanTool(context), planInput(), { suspend });
+
+		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledWith(expect.objectContaining({ inputType: 'plan-review' }));
 	});
 });
 

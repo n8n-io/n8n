@@ -1,4 +1,4 @@
-import type { EpisodicScopeDecision, SerializableAgentState } from '@n8n/agents';
+import type { EpisodicScopeDecision, JSONObject, SerializableAgentState } from '@n8n/agents';
 import type { AgentMessageAuthor, AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import type { Author } from 'chat';
 import type { BridgeExecutionContext } from '../integrations/agent-chat-integration';
@@ -85,6 +85,12 @@ export interface AgentExecutionAdmission {
 }
 
 export const EXECUTION_METADATA_KEY = 'n8nExecutionId';
+
+/** Execution id that a host stored in a persistence scope's metadata. */
+export function hostMetadataExecutionId(metadata: JSONObject | undefined): string | undefined {
+	const id = metadata?.[EXECUTION_METADATA_KEY];
+	return typeof id === 'string' ? id : undefined;
+}
 
 export function checkpointExecutionId(state: SerializableAgentState): string | undefined {
 	if (state.persistence?.delegated) return undefined;

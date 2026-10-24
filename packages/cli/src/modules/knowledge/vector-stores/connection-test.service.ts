@@ -1,13 +1,13 @@
-import { createEmbeddingModel, type BuiltVectorStoreBackend } from '@n8n/agents';
+import {
+	createEmbeddingModel,
+	type BuiltVectorStoreBackend,
+	type CredentialProvider,
+} from '@n8n/agents';
 import type { AgentJsonVectorStoreConfig, VectorStoreTestResult } from '@n8n/api-types';
-import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { resolveEmbeddingProviderOptionsFromCredential } from './json-config/embedding-credential';
-import { buildVectorStoreBackend } from './json-config/vector-store-factory';
+import { resolveEmbeddingProviderOptionsFromCredential } from './embedding-credential';
+import { buildVectorStoreBackend } from './factory';
 
 const TEST_QUERY = 'n8n connection test';
 const TEST_TIMEOUT_MS = 15_000;
@@ -111,9 +111,7 @@ async function checkQdrantDimension(
 }
 
 @Service()
-export class AgentVectorStoresService {
-	constructor(private readonly credentialsService: CredentialsService) {}
-
+export class VectorStoreConnectionTestService {
 	/**
 	 * Validates a vector store connection end to end: resolves the credential,
 	 * embeds a test query with the chosen embedding model/credential, and runs
@@ -122,16 +120,9 @@ export class AgentVectorStoresService {
 	 * don't record which model produced their vectors.
 	 */
 	async testConnection(
-		projectId: string,
-		user: User,
 		vectorStore: AgentJsonVectorStoreConfig,
+		credentialProvider: CredentialProvider,
 	): Promise<VectorStoreTestResult> {
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			projectId,
-			user,
-		);
-
 		// Hoisted so cleanup can reach a backend that finishes building *after*
 		// the timeout below has already won the race — `settled` distinguishes
 		// that late-arriving case from a backend built in time (closed by the
@@ -192,7 +183,7 @@ export class AgentVectorStoresService {
 	}
 	private async embedTestQuery(
 		vectorStore: AgentJsonVectorStoreConfig,
-		credentialProvider: AgentsCredentialProvider,
+		credentialProvider: CredentialProvider,
 	): Promise<number[]> {
 		const embeddingOptions = await resolveEmbeddingProviderOptionsFromCredential(
 			vectorStore.embedding.credential,
@@ -207,7 +198,7 @@ export class AgentVectorStoresService {
 
 	private async probeBackend(
 		vectorStore: AgentJsonVectorStoreConfig,
-		credentialProvider: AgentsCredentialProvider,
+		credentialProvider: CredentialProvider,
 		rawCredential: Record<string, unknown>,
 		backend: BuiltVectorStoreBackend,
 	): Promise<VectorStoreTestResult> {
