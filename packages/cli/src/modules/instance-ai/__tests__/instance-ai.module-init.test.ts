@@ -7,7 +7,7 @@ import { InstanceSettings } from 'n8n-core';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
-import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
 import { InboxSourceRegistry } from '../../inbox/inbox-source.registry';
@@ -65,8 +65,8 @@ vi.mock('../self-healing/self-healing-result.service', () => ({
 }));
 vi.mock('../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
 vi.mock('../assistant-agent/assistant-agent.provider', () => ({ AssistantAgentProvider: vi.fn() }));
-vi.mock('@/modules/agents/system-agents/system-agent-execution.service', () => ({
-	SystemAgentExecutionService: vi.fn(),
+vi.mock('@/modules/agents/system-agents/system-agent-registration.service', () => ({
+	SystemAgentRegistrationService: vi.fn(),
 }));
 vi.mock('../self-healing/self-healing-investigation.service', () => ({
 	SelfHealingInvestigationService: vi.fn(),
@@ -199,7 +199,7 @@ describe('InstanceAiModule.init', () => {
 
 	it('registers the Assistant agent only when it is enabled and the agents module is active', async () => {
 		const { config, investigations } = setup();
-		const systemAgents = mockInstance(SystemAgentExecutionService);
+		const systemAgents = mockInstance(SystemAgentRegistrationService);
 		systemAgents.register.mockResolvedValue();
 		const provider = mockInstance(AssistantAgentProvider);
 		const modules = mockInstance(ModuleRegistry);

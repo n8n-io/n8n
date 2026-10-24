@@ -105,13 +105,13 @@ export class InstanceAiModule implements ModuleInterface {
 				.warn('The n8n Assistant agent needs the agents module, so it is not registered');
 			return;
 		}
-		const { SystemAgentExecutionService } = await import(
-			'@/modules/agents/system-agents/system-agent-execution.service.js'
+		const { SystemAgentRegistrationService } = await import(
+			'@/modules/agents/system-agents/system-agent-registration.service.js'
 		);
 		const { AssistantAgentProvider } = await import(
 			'./assistant-agent/assistant-agent.provider.js'
 		);
-		await Container.get(SystemAgentExecutionService).register(
+		await Container.get(SystemAgentRegistrationService).register(
 			Container.get(AssistantAgentProvider),
 		);
 	}
