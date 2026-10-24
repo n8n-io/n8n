@@ -284,6 +284,10 @@ export async function createInstanceAgent(
 			});
 		}
 
+		if (memoryConfig.titleGeneration) {
+			mem.titleGeneration({ ...memoryConfig.titleGeneration });
+		}
+
 		agent.memory(mem);
 	}
 	if (options.onMemoryTaskEvent) {

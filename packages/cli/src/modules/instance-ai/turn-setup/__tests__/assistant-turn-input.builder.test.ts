@@ -566,3 +566,84 @@ describe('AssistantTurnInputBuilder — applyTurnScope', () => {
 		expect(environment.orchestrationContext.timeZone).toBe('Europe/Helsinki');
 	});
 });
+
+describe('AssistantTurnInputBuilder — opening-turn title', () => {
+	function createMemory(thread: { title?: string; metadata?: Record<string, unknown> }) {
+		return {
+			getThread: vi.fn(async () => ({ id: 'thread-1', resourceId: 'user-1', ...thread })),
+			patchThread: vi.fn(
+				async (args: {
+					update: (current: { title?: string; metadata?: Record<string, unknown> }) => unknown;
+				}) => args.update({ metadata: {}, ...thread }),
+			),
+			getMessages: vi.fn(async () => []),
+		};
+	}
+
+	function createBuilder() {
+		return Object.assign(Object.create(AssistantTurnInputBuilder.prototype) as object, {
+			defaultTimeZone: 'UTC',
+			webhookBaseUrl: 'https://acme.example.com/webhook',
+			formBaseUrl: 'https://acme.example.com/form',
+			logger: { warn: vi.fn(), debug: vi.fn() },
+			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			instanceContext: {
+				buildBlock: vi.fn(async () => ({ state: 'absent', reason: 'disabled' })),
+			},
+			resolveBoundProject: vi.fn(async () => undefined),
+		}) as unknown as AssistantTurnInputBuilder;
+	}
+
+	async function buildOpeningTurn(
+		memory: ReturnType<typeof createMemory>,
+		params: { titledByRuntime?: boolean; contextAttachments?: unknown[] } = {},
+	) {
+		const environment = {
+			context: {},
+			memory,
+			taskStorage: { get: vi.fn(async () => undefined) },
+			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
+			skillScope: {},
+		} as unknown as AssistantTurnEnvironment;
+		await createBuilder().buildInput(environment, { eventBus: { publish: vi.fn() } } as never, {
+			user: { id: 'user-1' } as never,
+			threadId: 'thread-1',
+			runId: 'run-1',
+			message: 'Send me a daily digest of new GitHub issues',
+			fileAttachments: [],
+			contextAttachments: (params.contextAttachments ?? []) as never,
+			isMachineFollowUp: false,
+			...(params.titledByRuntime !== undefined ? { titledByRuntime: params.titledByRuntime } : {}),
+		});
+		const update = memory.patchThread.mock.results[0]?.value as Promise<unknown> | undefined;
+		return update ? await update : undefined;
+	}
+
+	it('titles an untitled thread from the first message', async () => {
+		const memory = createMemory({});
+
+		await expect(buildOpeningTurn(memory)).resolves.toEqual({
+			title: 'Send me a daily digest of new GitHub issues',
+		});
+	});
+
+	it('leaves an ordinary thread untitled when the agent runtime titles it', async () => {
+		const memory = createMemory({});
+
+		await buildOpeningTurn(memory, { titledByRuntime: true });
+
+		expect(memory.patchThread).not.toHaveBeenCalled();
+	});
+
+	it('keeps the final title of a hand-off when the agent runtime titles the thread', async () => {
+		const memory = createMemory({});
+
+		await expect(
+			buildOpeningTurn(memory, {
+				titledByRuntime: true,
+				contextAttachments: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+			}),
+		).resolves.toEqual({ title: 'Digest', metadata: { titleRefined: true } });
+	});
+});
