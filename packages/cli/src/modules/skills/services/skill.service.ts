@@ -40,7 +40,12 @@ import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
-import { SkillsTelemetry, type SkillTelemetrySource } from './skills-telemetry.service';
+import {
+	SkillsTelemetry,
+	type SkillTelemetryMethod,
+	type SkillTelemetryRef,
+	type SkillTelemetrySource,
+} from './skills-telemetry.service';
 
 function assertHasInstructions(skill: AgentSkill): void {
 	if (!skill.instructions.trim()) throw new UserError('Skill instructions are required.');
@@ -395,6 +400,25 @@ export class SkillService {
 	 */
 	async refreshFollowingAgents(agentIds: string[], excludePushRef?: string): Promise<void> {
 		await this.skillUsage.refreshAgents(agentIds, excludePushRef);
+	}
+
+	async trackCreated(
+		userId: string,
+		refs: SkillTelemetryRef[],
+		source: SkillTelemetrySource,
+		method: SkillTelemetryMethod,
+	): Promise<void> {
+		await this.skillsTelemetry.created(userId, refs, source, method);
+	}
+
+	async trackUpdated(
+		userId: string,
+		ref: SkillTelemetryRef,
+		source: SkillTelemetrySource,
+		version: number,
+		scopeChanged: boolean,
+	): Promise<void> {
+		await this.skillsTelemetry.updated(userId, ref, source, version, scopeChanged);
 	}
 
 	// ---------------------------------------------------------------- rules

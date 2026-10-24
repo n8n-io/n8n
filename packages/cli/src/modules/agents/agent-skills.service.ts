@@ -20,10 +20,9 @@ import { findIntroducedNameClashes, findNameClashGroups } from '@/modules/skills
 import { SkillAccessService } from '@/modules/skills/services/skill-access.service';
 import { SkillService } from '@/modules/skills/services/skill.service';
 import { withTrimmedName, type SkillMoveOptions } from '@/modules/skills/utils/skill-content';
-import {
-	SkillsTelemetry,
-	type SkillTelemetryMethod,
-	type SkillTelemetrySource,
+import type {
+	SkillTelemetryMethod,
+	SkillTelemetrySource,
 } from '@/modules/skills/services/skills-telemetry.service';
 
 import {
@@ -60,7 +59,6 @@ export class AgentSkillsService {
 		private readonly skillService: SkillService,
 		private readonly skillAccess: SkillAccessService,
 		private readonly transactionRunner: TransactionRunner,
-		private readonly skillsTelemetry: SkillsTelemetry,
 		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
@@ -182,7 +180,7 @@ export class AgentSkillsService {
 		);
 
 		this.logger.debug('Created and attached agent skills', { agentId, projectId, skillIds: ids });
-		await this.skillsTelemetry.created(
+		await this.skillService.trackCreated(
 			context.user.id,
 			ids,
 			telemetrySourceOf(context),
@@ -333,7 +331,7 @@ export class AgentSkillsService {
 		);
 
 		if (saved.created) {
-			await this.skillsTelemetry.updated(
+			await this.skillService.trackUpdated(
 				context.user.id,
 				skillId,
 				telemetrySourceOf(context),

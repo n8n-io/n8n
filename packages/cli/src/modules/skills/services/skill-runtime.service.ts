@@ -11,6 +11,7 @@ import {
 	type AssistantSkillSummary,
 	type ResolvedSkillRow,
 	type SkillRef,
+	type SkillTarget,
 } from '../utils/skill-content';
 import { SkillAccessService } from './skill-access.service';
 
@@ -72,6 +73,31 @@ export class SkillRuntimeService {
 	): Promise<Record<string, AgentSkill>> {
 		const rows = await this.resolveRows(refs, ctx);
 		return Object.fromEntries([...rows].map(([refId, row]) => [refId, toAgentSkill(row)]));
+	}
+
+	async findTargets(skillIds: string[], ctx: OperationContext = {}) {
+		const skills = await this.skillRepository.findByIds(skillIds, ctx);
+		return new Map<string, SkillTarget>(
+			skills.map(({ id, projectId, agentId }) => [id, { projectId, agentId }]),
+		);
+	}
+
+	async lockForAttach(skillIds: string[], ctx: OperationContext): Promise<void> {
+		await this.skillRepository.lockForPublish(skillIds, ctx);
+	}
+
+	async resolveVersions(versionIds: string[], ctx: OperationContext = {}) {
+		const rows = await this.skillRepository.findVersionsByIds(versionIds, ctx);
+		return new Map(
+			[...rows].map(([versionId, row]) => [
+				versionId,
+				{ skillId: row.skill.id, skill: toAgentSkill(row) },
+			]),
+		);
+	}
+
+	async findVersionNumbers(versionIds: string[], ctx: OperationContext = {}) {
+		return await this.skillRepository.findVersionNumbers(versionIds, ctx);
 	}
 
 	/** The names agents see: those of the latest versions. */

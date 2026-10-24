@@ -696,7 +696,7 @@ describe('SkillRepository', () => {
 
 			await skills.deleteSkill(id);
 
-			expect(await agentSkills.findPinned(agentVersionId)).toEqual(new Map());
+			expect(await agentSkills.findPins(agentVersionId)).toEqual([]);
 		});
 	});
 

@@ -21,7 +21,6 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { SkillAccessService } from '@/modules/skills/services/skill-access.service';
 import type { SkillService } from '@/modules/skills/services/skill.service';
 import type { SkillSaveResult } from '@/modules/skills/utils/skill-content';
-import type { SkillsTelemetry } from '@/modules/skills/services/skills-telemetry.service';
 import { getAgentConfigHash, getAgentSkillHash } from '../utils/agent-config-hash';
 import {
 	type AgentFixtureOverrides,
@@ -84,7 +83,6 @@ describe('AgentSkillsService', () => {
 	let runtimeCacheService: Mocked<AgentRuntimeCacheService>;
 	let modificationTelemetry: Mocked<AgentModificationTelemetryService>;
 	let agentUpdateBroadcaster: Mocked<AgentUpdateBroadcaster>;
-	let skillsTelemetry: Mocked<SkillsTelemetry>;
 	let projectScopeService: Mocked<ProjectScopeService>;
 
 	function givenAgent(overrides: AgentFixtureOverrides = {}) {
@@ -109,7 +107,6 @@ describe('AgentSkillsService', () => {
 		transactionRunner = mock<TransactionRunner>();
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		vi.mocked(userHasScopes).mockResolvedValue(true);
-		skillsTelemetry = mock<SkillsTelemetry>();
 		projectScopeService = mock<ProjectScopeService>();
 		projectScopeService.getProjectIds.mockResolvedValue([projectId]);
 		service = new AgentSkillsService(
@@ -124,7 +121,6 @@ describe('AgentSkillsService', () => {
 			skillService,
 			skillAccess,
 			transactionRunner,
-			skillsTelemetry,
 			projectScopeService,
 		);
 	});
@@ -183,7 +179,7 @@ describe('AgentSkillsService', () => {
 
 			await service.createAndAttachSkill(agentId, projectId, skill, context, 'project', 'upload');
 
-			expect(skillsTelemetry.created).toHaveBeenCalledWith(
+			expect(skillService.trackCreated).toHaveBeenCalledWith(
 				'user-1',
 				['skill_new1'],
 				'agent',
@@ -199,7 +195,12 @@ describe('AgentSkillsService', () => {
 
 			await service.createAndAttachSkills(agentId, projectId, [skill], { user, modifiedBy });
 
-			expect(skillsTelemetry.created).toHaveBeenCalledWith('user-1', ['skill_new1'], source, 'ai');
+			expect(skillService.trackCreated).toHaveBeenCalledWith(
+				'user-1',
+				['skill_new1'],
+				source,
+				'ai',
+			);
 		});
 
 		it.each([
@@ -468,7 +469,13 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(skillAccess.assertCanEdit).toHaveBeenCalledWith(user, ['skill_a']);
-			expect(skillsTelemetry.updated).toHaveBeenCalledWith('user-1', 'skill_a', 'agent', 2, false);
+			expect(skillService.trackUpdated).toHaveBeenCalledWith(
+				'user-1',
+				'skill_a',
+				'agent',
+				2,
+				false,
+			);
 			expect(skillService.saveTrusted).toHaveBeenCalledWith(
 				'skill_a',
 				{
@@ -519,7 +526,7 @@ describe('AgentSkillsService', () => {
 				{ user, modifiedBy: 'mcp' },
 			);
 
-			expect(skillsTelemetry.updated).not.toHaveBeenCalled();
+			expect(skillService.trackUpdated).not.toHaveBeenCalled();
 		});
 
 		it('clears the pin of this agent when the pin is the latest version', async () => {

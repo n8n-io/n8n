@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
 import type { AgentJsonSkillConfig } from '@n8n/api-types';
-import type { OperationContext, User } from '@n8n/db';
+import type { OperationContext, TransactionRunner, User } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 import type { MockInstance, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -25,22 +25,11 @@ const pinId = '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f';
 const baseConfig = { name: 'Agent', model: 'anthropic/claude-sonnet-4-5', instructions: 'Help.' };
 const agent = { id: 'agent-1', projectId: 'project-1', schema: baseConfig } as unknown as Agent;
 
-function row(skillId: string, versionId: string, name: string): ResolvedSkillRow {
-	return {
-		skill: mock<Skill>({ id: skillId, agentId: null }),
-		version: mock<SkillVersion>({
-			id: versionId,
-			skillId,
-			name,
-			description: `${name} description`,
-			instructions: `${name} instructions`,
-		}),
-		files: [] as SkillFile[],
-	};
+function skillBody(name: string) {
+	return { name, description: `${name} description`, instructions: `${name} instructions` };
 }
 
 describe('AgentSkillRefsService', () => {
-	let skillRepository: Mocked<SkillRepository>;
 	let agentSkillRepository: Mocked<AgentSkillRepository>;
 	let skillService: Mocked<SkillService>;
 	let skillRuntime: Mocked<SkillRuntimeService>;
@@ -50,19 +39,19 @@ describe('AgentSkillRefsService', () => {
 	beforeEach(() => {
 		// The module mock outlives each test, so clear the calls of earlier ones.
 		vi.mocked(userHasScopes).mockClear();
-		skillRepository = mock<SkillRepository>();
 		agentSkillRepository = mock<AgentSkillRepository>();
 		skillService = mock<SkillService>();
 		skillRuntime = mock<SkillRuntimeService>();
-		service = new AgentSkillRefsService(
-			skillRepository,
-			agentSkillRepository,
-			skillService,
-			skillRuntime,
-		);
+		const txRunner = mock<TransactionRunner>();
+		txRunner.run.mockImplementation(async (runCtx, fn) => await fn(runCtx));
+		service = new AgentSkillRefsService(agentSkillRepository, skillService, skillRuntime, txRunner);
 		checkRefs = vi.spyOn(service, 'checkRefs');
 		agentSkillRepository.findDependencies.mockResolvedValue(new Map());
-		agentSkillRepository.findPinned.mockResolvedValue(new Map());
+		agentSkillRepository.findPins.mockResolvedValue([]);
+		skillRuntime.resolveVersions.mockResolvedValue(new Map());
+		skillRuntime.findTargets.mockImplementation(
+			async (ids) => new Map(ids.map((id) => [id, { projectId: null, agentId: null }])),
+		);
 	});
 
 	describe('refsForDraft', () => {
@@ -101,16 +90,20 @@ describe('AgentSkillRefsService', () => {
 				{ type: 'skill', id: 'zeta' },
 				{ type: 'skill', id: 'alpha' },
 			]);
-			expect(agentSkillRepository.findPinned).not.toHaveBeenCalled();
+			expect(agentSkillRepository.findPins).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('readVersion', () => {
 		it('returns the pins of the version in order and the pinned bodies', async () => {
-			agentSkillRepository.findPinned.mockResolvedValue(
+			agentSkillRepository.findPins.mockResolvedValue([
+				{ skillId: 'zeta', skillVersionId: 'zeta-v1' },
+				{ skillId: 'alpha', skillVersionId: 'alpha-v3' },
+			]);
+			skillRuntime.resolveVersions.mockResolvedValue(
 				new Map([
-					['zeta', row('zeta', 'zeta-v1', 'Zeta')],
-					['alpha', row('alpha', 'alpha-v3', 'Alpha')],
+					['zeta-v1', { skillId: 'zeta', skill: skillBody('Zeta') }],
+					['alpha-v3', { skillId: 'alpha', skill: skillBody('Alpha') }],
 				]),
 			);
 
@@ -126,7 +119,7 @@ describe('AgentSkillRefsService', () => {
 				description: 'Alpha description',
 				instructions: 'Alpha instructions',
 			});
-			expect(agentSkillRepository.findPinned).toHaveBeenCalledWith('version-1', ctx);
+			expect(agentSkillRepository.findPins).toHaveBeenCalledWith('version-1', ctx);
 		});
 	});
 
@@ -198,6 +191,21 @@ describe('AgentSkillRefsService', () => {
 			);
 		});
 
+		it('drops the refs to skills that are gone', async () => {
+			checkRefs.mockResolvedValue([{ id: 'zeta' }, { id: 'gone' }]);
+			skillRuntime.findTargets.mockResolvedValue(
+				new Map([['zeta', { projectId: null, agentId: null }]]),
+			);
+
+			await service.replaceDraftRefs(agent, [{ type: 'skill', id: 'zeta' }], ctx);
+
+			expect(agentSkillRepository.replaceDependencies).toHaveBeenCalledWith(
+				'agent-1',
+				[{ skillId: 'zeta', versionId: null }],
+				ctx,
+			);
+		});
+
 		it('removes every row when the refs are undefined', async () => {
 			checkRefs.mockResolvedValue([]);
 
@@ -219,9 +227,7 @@ describe('AgentSkillRefsService', () => {
 	});
 
 	it('restores the pins of a published version without the attach check', async () => {
-		agentSkillRepository.findPinned.mockResolvedValue(
-			new Map([['zeta', mock<ResolvedSkillRow>({ version: mock<SkillVersion>({ id: pinId }) })]]),
-		);
+		agentSkillRepository.findPins.mockResolvedValue([{ skillId: 'zeta', skillVersionId: pinId }]);
 
 		await service.restoreDraftRefs(
 			agent,
@@ -230,7 +236,7 @@ describe('AgentSkillRefsService', () => {
 			ctx,
 		);
 
-		expect(agentSkillRepository.findPinned).toHaveBeenCalledWith('version-1', ctx);
+		expect(agentSkillRepository.findPins).toHaveBeenCalledWith('version-1', ctx);
 		expect(checkRefs).not.toHaveBeenCalled();
 		expect(agentSkillRepository.replaceDependencies).toHaveBeenCalledWith(
 			'agent-1',
@@ -317,7 +323,9 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('keeps refs to hub skills and creates agent skills for refs with only a body', async () => {
-			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared', agentId: null })]);
+			skillRuntime.findTargets.mockResolvedValueOnce(
+				new Map([['shared', { projectId: null, agentId: null }]]),
+			);
 
 			const refs = await service.createDraftRefs(
 				agent,
@@ -354,7 +362,7 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('creates an agent skill without a project skill scope', async () => {
-			skillRepository.findByIds.mockResolvedValue([]);
+			skillRuntime.findTargets.mockResolvedValueOnce(new Map());
 			vi.mocked(userHasScopes).mockResolvedValue(false);
 
 			await expect(
@@ -371,7 +379,9 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('needs no skill permission for refs to hub skills', async () => {
-			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared', agentId: null })]);
+			skillRuntime.findTargets.mockResolvedValueOnce(
+				new Map([['shared', { projectId: null, agentId: null }]]),
+			);
 			vi.mocked(userHasScopes).mockResolvedValue(false);
 
 			await expect(
@@ -381,9 +391,9 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('copies a skill of another agent only for the new agent', async () => {
-			skillRepository.findByIds.mockResolvedValue([
-				mock<Skill>({ id: 'private', agentId: 'agent-source' }),
-			]);
+			skillRuntime.findTargets.mockResolvedValueOnce(
+				new Map([['private', { projectId: null, agentId: 'agent-source' }]]),
+			);
 			agentSkillRepository.findAgents.mockResolvedValue(
 				new Map([['agent-source', { name: 'Source', projectId: 'project-1' }]]),
 			);
@@ -410,9 +420,9 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('does not read or copy an agent skill of another project', async () => {
-			skillRepository.findByIds.mockResolvedValue([
-				mock<Skill>({ id: 'private', agentId: 'agent-elsewhere' }),
-			]);
+			skillRuntime.findTargets.mockResolvedValueOnce(
+				new Map([['private', { projectId: null, agentId: 'agent-elsewhere' }]]),
+			);
 			agentSkillRepository.findAgents.mockResolvedValue(
 				new Map([['agent-elsewhere', { name: 'Elsewhere', projectId: 'project-2' }]]),
 			);
@@ -430,7 +440,7 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('creates no skill without a user', async () => {
-			skillRepository.findByIds.mockResolvedValue([]);
+			skillRuntime.findTargets.mockResolvedValueOnce(new Map());
 
 			await expect(
 				service.createDraftRefs(
@@ -569,11 +579,12 @@ describe('AgentSkillRefsService attach check', () => {
 	const agentSkills = mock<AgentSkillRepository>();
 	// A real SkillRuntimeService, so the names that agents see come from the mocked rows.
 	const skillRuntime = new SkillRuntimeService(skills, mock(), mock());
+	const txRunner = mock<TransactionRunner>();
 	const service = new AgentSkillRefsService(
-		skills,
 		agentSkills,
 		mock<SkillService>(),
 		skillRuntime,
+		txRunner,
 	);
 
 	async function expectError(
@@ -620,6 +631,7 @@ describe('AgentSkillRefsService attach check', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		txRunner.run.mockImplementation(async (runCtx, fn) => await fn(runCtx));
 		skills.findLatestSaved.mockResolvedValue(new Map());
 		skills.findVersionsByIds.mockResolvedValue(new Map());
 		skills.findByIds.mockResolvedValue([]);
@@ -627,8 +639,8 @@ describe('AgentSkillRefsService attach check', () => {
 	});
 
 	it('restores the pin of each ref that the agent version used and writes no skill', async () => {
-		const v1 = versionRow(skillRow('skill_a'), 1);
-		agentSkills.findPinned.mockResolvedValue(new Map([['skill_a', v1]]));
+		agentSkills.findPins.mockResolvedValue([{ skillId: 'skill_a', skillVersionId: 'skill_a-v1' }]);
+		skills.findByIds.mockResolvedValue([skillRow('skill_a'), skillRow('skill_unpinned')]);
 
 		await service.restoreDraftRefs(
 			{ id: 'agent-1' },
@@ -649,6 +661,31 @@ describe('AgentSkillRefsService attach check', () => {
 			TX_CTX,
 		);
 		expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+	});
+
+	it('drops a restored ref whose skill is gone', async () => {
+		agentSkills.findPins.mockResolvedValue([
+			{ skillId: 'skill_a', skillVersionId: 'skill_a-v1' },
+			{ skillId: 'skill_gone', skillVersionId: 'skill_gone-v1' },
+		]);
+		givenSkills([{ id: 'skill_a', name: 'Pricing' }]);
+
+		await service.restoreDraftRefs(
+			{ id: 'agent-1' },
+			{ versionId: 'agent-version-1' },
+			[
+				{ type: 'skill', id: 'skill_gone' },
+				{ type: 'skill', id: 'skill_a' },
+			],
+			TX_CTX,
+		);
+
+		expect(skillRuntime.findTargets).toHaveBeenCalledWith(['skill_gone', 'skill_a'], TX_CTX);
+		expect(agentSkills.replaceDependencies).toHaveBeenCalledWith(
+			'agent-1',
+			[{ skillId: 'skill_a', versionId: 'skill_a-v1' }],
+			TX_CTX,
+		);
 	});
 
 	describe('isAttachable', () => {

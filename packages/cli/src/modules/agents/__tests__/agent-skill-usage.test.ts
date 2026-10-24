@@ -87,6 +87,31 @@ describe('AgentSkillUsage', () => {
 		agents.findProjectIdsByIds.mockResolvedValue([]);
 	});
 
+	describe('findUsage', () => {
+		it('names the skill version number that each published agent pins', async () => {
+			const agent = { agentName: 'Support bot', projectId: PROJECT };
+			agentSkills.findUsage.mockResolvedValue({
+				drafts: [],
+				pins: [
+					{ ...agent, agentId: 'agent-1', skillVersionId: 'skill_a-v2' },
+					{ ...agent, agentId: 'agent-2', skillVersionId: null },
+				],
+				hiddenAgents: 1,
+			});
+			skills.findVersionNumbers.mockResolvedValue(new Map([['skill_a-v2', 2]]));
+
+			expect(await service.findUsage('skill_a', [PROJECT], TX_CTX)).toEqual({
+				drafts: [],
+				pins: [
+					{ ...agent, agentId: 'agent-1', version: 2 },
+					{ ...agent, agentId: 'agent-2', version: null },
+				],
+				hiddenAgents: 1,
+			});
+			expect(skills.findVersionNumbers).toHaveBeenCalledWith(['skill_a-v2'], TX_CTX);
+		});
+	});
+
 	describe('assertRenameKeepsNamesApart', () => {
 		function givenFollower(otherName: string) {
 			agentSkills.findFollowingAgents.mockResolvedValue([{ id: 'agent-1', name: 'Sales bot' }]);

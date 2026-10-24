@@ -39,7 +39,18 @@ export class AgentSkillUsage extends SkillUsage {
 		projectIds: string[] | 'all',
 		ctx: OperationContext,
 	): Promise<SkillUsedBy> {
-		return await this.agentSkillRepository.findUsage(skillId, projectIds, ctx);
+		const usage = await this.agentSkillRepository.findUsage(skillId, projectIds, ctx);
+		const numbers = await this.skillRuntime.findVersionNumbers(
+			usage.pins.flatMap((pin) => pin.skillVersionId ?? []),
+			ctx,
+		);
+		return {
+			...usage,
+			pins: usage.pins.map(({ skillVersionId, ...pin }) => ({
+				...pin,
+				version: skillVersionId ? (numbers.get(skillVersionId) ?? null) : null,
+			})),
+		};
 	}
 
 	async countUsingAgents(skillIds: string[], ctx: OperationContext) {

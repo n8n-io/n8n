@@ -23,7 +23,8 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 }));
 
 describe('SkillService', () => {
-	const { skills, skillUsage, txRunner, projectScope, access, service } = createSkillServices();
+	const { skills, skillUsage, txRunner, projectScope, access, telemetry, service } =
+		createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => resetSkillMocks({ skills, skillUsage, txRunner }));
@@ -440,6 +441,19 @@ describe('SkillService', () => {
 			);
 		});
 
+		it('throws NotFoundError when the checked skill is gone under the lock', async () => {
+			await expect(
+				service.moveTrusted(
+					'skill_gone',
+					{ projectId: null, agentId: null },
+					undefined,
+					{},
+					{ checkedSource: { projectId: PROJECT, agentId: null } },
+				),
+			).rejects.toThrow(NotFoundError);
+			expect(skills.updateTarget).not.toHaveBeenCalled();
+		});
+
 		describe('agents that use the skill', () => {
 			const AGENTS = new Map([
 				['agent-1', { name: 'Support bot', projectId: 'p1' }],
@@ -707,6 +721,42 @@ describe('SkillService', () => {
 
 		it('throws NotFoundError for a missing skill', async () => {
 			await expect(service.delete(user, 'skill_gone')).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('setAssistantAvailability', () => {
+		it('throws NotFoundError for a skill that is gone under the lock', async () => {
+			await expect(
+				service.setAssistantAvailability('skill_gone', true, { projectId: PROJECT, agentId: null }),
+			).rejects.toThrow(NotFoundError);
+			expect(skills.setAssistantAvailability).not.toHaveBeenCalled();
+		});
+
+		it('refuses when the scope changed after the check', async () => {
+			skills.findByIds.mockResolvedValue([skillRow('skill_a', { projectId: 'project-2' })]);
+
+			await expect(
+				service.setAssistantAvailability('skill_a', true, { projectId: PROJECT, agentId: null }),
+			).rejects.toThrow(ConflictError);
+			expect(skills.setAssistantAvailability).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('telemetry', () => {
+		it('trackCreated passes its arguments to SkillsTelemetry.created in order', async () => {
+			const refs = [{ id: 'skill_a', projectId: PROJECT, agentId: null }, 'skill_b'];
+
+			await service.trackCreated('user-1', refs, 'agent', 'upload');
+
+			expect(telemetry.created).toHaveBeenCalledWith('user-1', refs, 'agent', 'upload');
+		});
+
+		it('trackUpdated passes its arguments to SkillsTelemetry.updated in order', async () => {
+			const ref = { id: 'skill_a', projectId: PROJECT, agentId: null };
+
+			await service.trackUpdated('user-1', ref, 'agent', 4, true);
+
+			expect(telemetry.updated).toHaveBeenCalledWith('user-1', ref, 'agent', 4, true);
 		});
 	});
 });

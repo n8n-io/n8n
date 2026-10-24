@@ -109,9 +109,9 @@ describe('AgentSkillRepository', () => {
 
 			await agentSkills.insertPins([{ agentVersionId, skillId: id, skillVersionId: v1 }]);
 
-			const pinned = await agentSkills.findPinned(agentVersionId);
-			expect([...pinned.keys()]).toEqual([id]);
-			expect(pinned.get(id)?.version).toMatchObject({ id: v1, version: 1 });
+			expect(await agentSkills.findPins(agentVersionId)).toEqual([
+				{ skillId: id, skillVersionId: v1 },
+			]);
 		});
 
 		it('keeps the pins of one publish in the order they were given', async () => {
@@ -124,22 +124,22 @@ describe('AgentSkillRepository', () => {
 				{ agentVersionId, skillId: alpha, skillVersionId: await latestVersionId(alpha) },
 			]);
 
-			expect([...(await agentSkills.findPinned(agentVersionId)).keys()]).toEqual([zeta, alpha]);
+			expect((await agentSkills.findPins(agentVersionId)).map((pin) => pin.skillId)).toEqual([
+				zeta,
+				alpha,
+			]);
 			expect(await agentSkills.findPinnedSkillIds(agentVersionId)).toEqual([zeta, alpha]);
 		});
 	});
 
 	describe('dependencies', () => {
-		it('replaces the rows of one agent and skips unknown skills', async () => {
+		it('replaces the rows of one agent', async () => {
 			const a = await createSkill();
 			const b = await createSkill();
 			const agent = await createAgent('Support');
 			await agentSkills.replaceDependencies(agent.id, [{ skillId: a }]);
 
-			await agentSkills.replaceDependencies(agent.id, [
-				{ skillId: b },
-				{ skillId: 'skill_unknown' },
-			]);
+			await agentSkills.replaceDependencies(agent.id, [{ skillId: b }]);
 
 			expect(await agentSkills.findFollowingAgentIds([a])).toEqual([]);
 			expect(await agentSkills.findFollowingAgentIds([b])).toEqual([agent.id]);
@@ -237,7 +237,7 @@ describe('AgentSkillRepository', () => {
 	});
 
 	describe('usage', () => {
-		it('lists each agent once, with the version its current published version runs', async () => {
+		it('lists each agent once, with the skill version its current published version pins', async () => {
 			const id = await createSkill();
 			const v1 = await latestVersionId(id);
 			const v2 = await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
@@ -262,8 +262,18 @@ describe('AgentSkillRepository', () => {
 			expect(usage.pins).toHaveLength(2);
 			expect(usage.pins).toEqual(
 				expect.arrayContaining([
-					{ agentId: published.id, agentName: 'Published', projectId: project.id, version: 2 },
-					{ agentId: retired.id, agentName: 'Retired', projectId: project.id, version: null },
+					{
+						agentId: published.id,
+						agentName: 'Published',
+						projectId: project.id,
+						skillVersionId: v2,
+					},
+					{
+						agentId: retired.id,
+						agentName: 'Retired',
+						projectId: project.id,
+						skillVersionId: null,
+					},
 				]),
 			);
 			expect(usage.hiddenAgents).toBe(0);

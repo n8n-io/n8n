@@ -225,10 +225,8 @@ describe('Agent skills in the skills hub', () => {
 		await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
 
 		const refs = await skillRefs.refsForDraft(agent, {});
-		const pinned = (
-			await Container.get(AgentSkillRepository).findPinned(agent.activeVersionId!)
-		).get(skill);
-		expect(refs).toEqual([{ type: 'skill', id: skill, versionId: pinned?.version.id }]);
+		const [pin] = await Container.get(AgentSkillRepository).findPins(agent.activeVersionId!);
+		expect(refs).toEqual([{ type: 'skill', id: skill, versionId: pin?.skillVersionId }]);
 		const draft = await skillRefs.readDraft(agent, {});
 		expect(await instructionsOf(draft.skills)).toEqual({ [skill]: 'Published text.' });
 		const latestAfter = (await Container.get(SkillRepository).findLatestSaved([skill])).get(skill);
