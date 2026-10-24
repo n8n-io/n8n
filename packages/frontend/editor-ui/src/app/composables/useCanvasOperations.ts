@@ -1833,6 +1833,16 @@ export function useCanvasOperations() {
 					(output) => output === NodeConnectionTypes.Main,
 				);
 
+				let pushOffset = HORIZONTAL_NODE_STEP;
+				if (isAgentNodeV2(lastInteractedWithNodeObject)) {
+					// Keep the standard gap after the wider agent card.
+					pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+				} else if (
+					lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
+				) {
+					pushOffset += 140;
+				}
+
 				let yOffset = 0;
 				if (lastInteractedWithNodeConnection) {
 					// When clicking the plus button of a node edge / connection
@@ -1866,6 +1876,7 @@ export function useCanvasOperations() {
 					shiftDownstreamNodesPosition(lastInteractedWithNode.value.name, shiftMargin, {
 						trackHistory: true,
 						nodeSize: newNodeSize,
+						insertOffset: pushOffset,
 					});
 				}
 
@@ -1932,17 +1943,6 @@ export function useCanvasOperations() {
 					// When the node has only main outputs, mixed outputs, or no outputs at all
 					// We want to place the new node directly to the right of the last interacted with node.
 
-					let pushOffset = HORIZONTAL_NODE_STEP;
-					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
-						// The agent card is wider than a default node, so offset by its width
-						// to keep the standard gap to its right edge
-						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
-					} else if (
-						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
-					) {
-						// If the node has scoped inputs, push it down a bit more
-						pushOffset += 140;
-					}
 					// Line up the main handles of the two nodes
 					const sourceHandleY = isAgentNodeV2(lastInteractedWithNodeObject)
 						? getAgentNodeHandleOffset(
@@ -2339,18 +2339,13 @@ export function useCanvasOperations() {
 		{
 			trackHistory = false,
 			nodeSize = DEFAULT_NODE_SIZE,
-		}: { trackHistory?: boolean; nodeSize?: [number, number] },
+			insertOffset,
+		}: { trackHistory?: boolean; nodeSize?: [number, number]; insertOffset: number },
 	) {
 		const sourceNode = workflowDocumentStore.value.getNodeByName(sourceNodeName);
 		if (!sourceNode) return;
 
-		// Calculate insertion position (to the right of source node)
-		// Use HORIZONTAL_NODE_STEP to match the actual position where nodes are placed,
-		// including the wider agent card offset applied in resolveNodePosition
-		let insertOffset = HORIZONTAL_NODE_STEP;
-		if (isAgentNodeV2(sourceNode)) {
-			insertOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
-		}
+		// Use the same horizontal offset for the space check and node placement.
 		const insertPosition: XYPosition = [
 			sourceNode.position[0] + insertOffset,
 			sourceNode.position[1],
