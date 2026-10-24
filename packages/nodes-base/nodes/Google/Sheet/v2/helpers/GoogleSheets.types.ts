@@ -75,6 +75,8 @@ type SpreadSheetResponseSheet = {
 	properties: {
 		title: string;
 		sheetId: number;
+		// 'GRID' for regular sheets, 'OBJECT' for chart-only sheets
+		sheetType?: string;
 	};
 };
 
