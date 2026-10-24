@@ -33,15 +33,17 @@ vi.mock('vue-router', () => ({
 const renderModal = createComponentRenderer(PersonalizationModal, {
 	global: {
 		stubs: {
-			Modal: {
+			Dialog: {
+				props: ['header'],
 				template: `
-					<div>
-						<slot name="header" />
-						<slot name="title" />
-						<slot name="content" />
-						<slot name="footer" />
+					<div role="dialog">
+						<h2>{{ header }}</h2>
+						<slot />
 					</div>
 				`,
+			},
+			DialogDescription: {
+				template: '<p><slot /></p>',
 			},
 		},
 	},
@@ -49,8 +51,9 @@ const renderModal = createComponentRenderer(PersonalizationModal, {
 
 describe('PersonalizationModal', () => {
 	it('mounts', () => {
-		const { getByTitle } = renderModal({ pinia: createTestingPinia() });
-		expect(getByTitle('Customize n8n to you')).toBeInTheDocument();
+		const { getByRole, getByText } = renderModal({ pinia: createTestingPinia() });
+		expect(getByRole('heading', { name: 'Customize n8n to you' })).toBeInTheDocument();
+		expect(getByText('These questions help us tailor n8n to you')).toBeInTheDocument();
 	});
 
 	describe('Company field', () => {
