@@ -1,10 +1,18 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
+import { TarPackageReader } from '@/modules/n8n-packages/io/tar/tar-package-reader';
+import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { createFolder } from '@test-integration/db/folders';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
@@ -213,6 +221,53 @@ describe('POST /n8n-packages/export', () => {
 		// Gzip magic number
 		const body: Buffer = response.body;
 		expect([body[0], body[1]]).toEqual([0x1f, 0x8b]);
+	});
+
+	test.each([
+		['Equipo AI6401486', 'equipo-ai-Equipo.20AI6401486'],
+		['Ventas & Marketing', 'equipo-ai-Ventas.20.26.20Marketing'],
+		['Operación', 'equipo-ai-Operaci.C3.B3n'],
+	])('exports a project whose id is %s', async (id, segment) => {
+		const projectRepository = Container.get(ProjectRepository);
+		const project = await projectRepository.save(
+			projectRepository.create({ id, name: 'Equipo AI', type: 'team', creatorId: owner.id }),
+		);
+		await linkUserToProject(owner, project, 'project:admin');
+		const workflow = await createWorkflow({ name: 'Daily Report' }, project);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/export')
+			.buffer(true)
+			.parse((res, callback) => {
+				const chunks: Buffer[] = [];
+				res.on('data', (chunk: Buffer) => chunks.push(chunk));
+				res.on('end', () => callback(null, Buffer.concat(chunks)));
+			})
+			.send({
+				projectIds: [id],
+				includeArchivedWorkflows: true,
+				credentialExportPolicy: 'no-values',
+				includeVariableValues: false,
+				dependencyPolicy: 'reference-only',
+			});
+
+		expect(response.statusCode).toBe(200);
+		const reader = new TarPackageReader(response.body, new PackageImportConfig());
+		const manifest = await reader.readManifest();
+		expect(manifest.projects).toEqual([{ id, name: 'Equipo AI', target: `projects/${segment}` }]);
+		expect(manifest.workflows).toEqual([
+			{
+				id: workflow.id,
+				name: 'Daily Report',
+				target: `projects/${segment}/workflows/daily-report-${workflow.id}`,
+			},
+		]);
+		expect(await reader.listEntries()).toEqual(
+			expect.arrayContaining([
+				`projects/${segment}/project.json`,
+				`projects/${segment}/workflows/daily-report-${workflow.id}/workflow.json`,
+			]),
+		);
 	});
 
 	// The request DTO is strict, so acceptance proves `includeTags` is a declared field.

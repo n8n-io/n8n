@@ -32,7 +32,8 @@ export const PACKAGE_ENTITY_LAYOUT = {
 } as const satisfies Record<ManifestEntityCollection, { directory: string; fileName: string }>;
 
 // Hyphens delimit the slug and ID in exported directory names.
-const SAFE_ID = /^[A-Za-z0-9_]+$/;
+const UNSAFE_ID_CHARACTER = /[^A-Za-z0-9_]/gu;
+const ESCAPED_ID_BYTES = /(?:\.[0-9A-F]{2})+/g;
 
 // Keep generated entity directory names within the common 255-character filesystem limit.
 const MAX_PATH_SEGMENT_LENGTH = 255;
@@ -85,22 +86,27 @@ export function agentMetadataFilePath(target: string): string {
 	return `${target}/agent-metadata.json`;
 }
 
+function encodeIdSegment(id: string): string {
+	return id.replace(UNSAFE_ID_CHARACTER, (character) =>
+		Buffer.from(character).toString('hex').toUpperCase().replace(/../g, '.$&'),
+	);
+}
+
+export function entityIdOfSegment(segment: string): string {
+	return segment
+		.slice(segment.lastIndexOf('-') + 1)
+		.replace(ESCAPED_ID_BYTES, (escaped) =>
+			Buffer.from(escaped.replace(/\./g, ''), 'hex').toString(),
+		);
+}
+
 export function createManifestEntry(
 	collection: ManifestEntityCollection,
 	baseDir: string,
 	entity: { id: string; name: string },
 ): ManifestEntry {
-	if (!SAFE_ID.test(entity.id)) {
-		throw new PackageExportBlockedError(
-			`${collection} entry "${entity.name}" has an id that cannot be used as a path segment. Export aborted.`,
-			{
-				description: `Id "${entity.id}" may contain only letters, digits, and underscores.`,
-			},
-		);
-	}
-
 	const slug = generateSlug(entity.name, FALLBACK_SLUGS[collection]);
-	const pathSegment = `${slug}-${entity.id}`;
+	const pathSegment = `${slug}-${encodeIdSegment(entity.id)}`;
 	if (pathSegment.length > MAX_PATH_SEGMENT_LENGTH) {
 		throw new PackageExportBlockedError(
 			`${collection} entry "${entity.name}" creates a path segment longer than ${MAX_PATH_SEGMENT_LENGTH} characters. Shorten the entity name and retry the export.`,
