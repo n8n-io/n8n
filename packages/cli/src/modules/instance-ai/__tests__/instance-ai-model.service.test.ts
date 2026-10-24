@@ -271,10 +271,16 @@ describe('InstanceAiModelService', () => {
 			await expect(
 				service.resolveMemoryModelConfig(
 					fakeUser,
-					{ id: 'anthropic/claude-opus-5-5', url: 'https://anthropic.example', apiKey: 'main-key' },
+					{
+						kind: 'endpoint',
+						id: 'anthropic/claude-opus-5-5',
+						url: 'https://anthropic.example',
+						apiKey: 'main-key',
+					},
 					{},
 				),
 			).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'anthropic/claude-haiku-4-5',
 				url: 'https://anthropic.example',
 				apiKey: 'main-key',

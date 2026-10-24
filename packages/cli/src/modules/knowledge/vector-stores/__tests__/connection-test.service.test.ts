@@ -1,31 +1,18 @@
-import type { BuiltVectorStoreBackend } from '@n8n/agents';
+import type { BuiltVectorStoreBackend, CredentialProvider } from '@n8n/agents';
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
-import { mockInstance } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, User } from '@n8n/db';
-import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { CredentialsHelper } from '@/credentials-helper';
+import { VectorStoreConnectionTestService } from '../connection-test.service';
+import { resolveEmbeddingProviderOptionsFromCredential } from '../embedding-credential';
+import { buildVectorStoreBackend } from '../factory';
 
-import { AgentVectorStoresService } from '../agent-vector-stores.service';
-import { resolveEmbeddingProviderOptionsFromCredential } from '../json-config/embedding-credential';
-import { buildVectorStoreBackend } from '../json-config/vector-store-factory';
-
-vi.mock('../json-config/vector-store-factory', () => ({
+vi.mock('../factory', () => ({
 	buildVectorStoreBackend: vi.fn(),
 }));
 
-vi.mock('../json-config/embedding-credential', () => ({
+vi.mock('../embedding-credential', () => ({
 	resolveEmbeddingProviderOptionsFromCredential: vi.fn().mockResolvedValue({}),
 }));
-
-// `AgentsCredentialProvider.resolve()` decrypts through `CredentialsHelper`; both are stubbed — this suite tests the service.
-vi.mock('@/workflow-execute-additional-data', () => ({
-	getBase: vi.fn().mockResolvedValue(mock<IWorkflowExecuteAdditionalData>()),
-}));
-
-const credentialsHelper = mockInstance(CredentialsHelper);
 
 vi.mock('@n8n/agents', () => ({
 	createEmbeddingModel: vi.fn().mockReturnValue({ modelId: 'text-embedding-3-small' }),
@@ -35,9 +22,6 @@ vi.mock('ai', () => ({
 	embed: vi.fn().mockResolvedValue({ embedding: [0, 0] }),
 }));
 
-const projectId = 'project-1';
-const user = {} as User;
-
 const postgresConfig: AgentJsonVectorStoreConfig = {
 	provider: 'postgres',
 	name: 'docs',
@@ -46,40 +30,6 @@ const postgresConfig: AgentJsonVectorStoreConfig = {
 	embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
 	tableName: 'documents',
 };
-
-function makeService(
-	credentialId: string,
-	rawCredential: ICredentialDataDecryptedObject = { apiKey: 'store-key' },
-) {
-	const credentialsService = mock<CredentialsService>();
-	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
-		{ id: credentialId } as CredentialsEntity,
-	]);
-	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
-	// `AgentsCredentialProvider.resolve()` intersects against this when a
-	// request user is set (it always is here), so the tested credential must
-	// be listed as user-accessible too, not just project-accessible.
-	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-		{
-			id: credentialId,
-			name: 'Store credential',
-			type: 'httpBasicAuth',
-			description: null,
-			createdAt: '2024-01-01T00:00:00.000Z',
-			updatedAt: '2024-01-01T00:00:00.000Z',
-			scopes: [],
-			isManaged: false,
-			isGlobal: false,
-			isResolvable: true,
-			currentUserHasAccess: true,
-			homeProject: null,
-			sharedWithProjects: [],
-			sharedRoute: 'project',
-		},
-	]);
-	credentialsHelper.getDecrypted.mockResolvedValue(rawCredential);
-	return new AgentVectorStoresService(credentialsService);
-}
 
 // Built manually instead of `mock<BuiltVectorStoreBackend>()`: `close` being an
 // optional method makes vitest-mock-extended's deep proxy fall back to the
@@ -95,11 +45,12 @@ function makeBackend() {
 	} satisfies BuiltVectorStoreBackend;
 }
 
-describe('AgentVectorStoresService.testConnection', () => {
+describe('VectorStoreConnectionTestService.testConnection', () => {
+	const credentialProvider = mock<CredentialProvider>();
+	const service = new VectorStoreConnectionTestService();
 	beforeEach(() => {
-		// `credentialsHelper` is module-scoped, so its call counts would otherwise
-		// accumulate across tests (`restoreMocks` only restores spies).
 		vi.clearAllMocks();
+		credentialProvider.resolve.mockReset().mockResolvedValue({ apiKey: 'store-key' });
 		vi.mocked(buildVectorStoreBackend).mockReset();
 		vi.mocked(resolveEmbeddingProviderOptionsFromCredential).mockReset().mockResolvedValue({});
 	});
@@ -108,13 +59,13 @@ describe('AgentVectorStoresService.testConnection', () => {
 		const backend = makeBackend();
 		backend.query.mockResolvedValue([]);
 		vi.mocked(buildVectorStoreBackend).mockResolvedValue(backend);
-		const service = makeService(postgresConfig.credential);
 
-		const result = await service.testConnection(projectId, user, postgresConfig);
+		const result = await service.testConnection(postgresConfig, credentialProvider);
 
 		expect(result).toEqual({ success: true });
-		expect(credentialsHelper.getDecrypted).toHaveBeenCalledTimes(1);
-		expect(buildVectorStoreBackend).toHaveBeenCalledWith(postgresConfig, expect.anything(), {
+		expect(credentialProvider.resolve).toHaveBeenCalledTimes(1);
+		expect(credentialProvider.resolve).toHaveBeenCalledWith(postgresConfig.credential);
+		expect(buildVectorStoreBackend).toHaveBeenCalledWith(postgresConfig, credentialProvider, {
 			apiKey: 'store-key',
 		});
 		expect(backend.query).toHaveBeenCalledWith([0, 0], { topK: 1 });
@@ -127,9 +78,8 @@ describe('AgentVectorStoresService.testConnection', () => {
 			const backend = makeBackend();
 			backend.query.mockImplementation(async () => await new Promise<never>(() => {}));
 			vi.mocked(buildVectorStoreBackend).mockResolvedValue(backend);
-			const service = makeService(postgresConfig.credential);
 
-			const resultPromise = service.testConnection(projectId, user, postgresConfig);
+			const resultPromise = service.testConnection(postgresConfig, credentialProvider);
 			await vi.advanceTimersByTimeAsync(15_000);
 			const result = await resultPromise;
 
@@ -151,9 +101,8 @@ describe('AgentVectorStoresService.testConnection', () => {
 						resolveBackend = resolve;
 					}),
 			);
-			const service = makeService(postgresConfig.credential);
 
-			const resultPromise = service.testConnection(projectId, user, postgresConfig);
+			const resultPromise = service.testConnection(postgresConfig, credentialProvider);
 			await vi.advanceTimersByTimeAsync(15_000);
 			const result = await resultPromise;
 
@@ -174,9 +123,8 @@ describe('AgentVectorStoresService.testConnection', () => {
 		const backend = makeBackend();
 		backend.query.mockRejectedValue(new Error('connection refused'));
 		vi.mocked(buildVectorStoreBackend).mockResolvedValue(backend);
-		const service = makeService(postgresConfig.credential);
 
-		const result = await service.testConnection(projectId, user, postgresConfig);
+		const result = await service.testConnection(postgresConfig, credentialProvider);
 
 		expect(result).toEqual({ success: false, message: 'connection refused' });
 		expect(backend.close).toHaveBeenCalledTimes(1);
@@ -197,7 +145,7 @@ describe('AgentVectorStoresService.testConnection', () => {
 		const backend = makeBackend();
 		backend.query.mockResolvedValue([]);
 		vi.mocked(buildVectorStoreBackend).mockResolvedValue(backend);
-		const service = makeService('pinecone-cred', { apiKey: 'pc-key' });
+		credentialProvider.resolve.mockResolvedValue({ apiKey: 'pc-key' });
 		const pineconeConfig: AgentJsonVectorStoreConfig = {
 			provider: 'pinecone',
 			name: 'docs',
@@ -208,7 +156,7 @@ describe('AgentVectorStoresService.testConnection', () => {
 			namespace: 'staging',
 		};
 
-		const result = await service.testConnection(projectId, user, pineconeConfig);
+		const result = await service.testConnection(pineconeConfig, credentialProvider);
 
 		expect(result).toEqual({
 			success: true,
@@ -236,7 +184,7 @@ describe('AgentVectorStoresService.testConnection', () => {
 		const backend = makeBackend();
 		backend.query.mockResolvedValue([]);
 		vi.mocked(buildVectorStoreBackend).mockResolvedValue(backend);
-		const service = makeService('pinecone-cred', { apiKey: 'pc-key' });
+		credentialProvider.resolve.mockResolvedValue({ apiKey: 'pc-key' });
 		const pineconeConfig: AgentJsonVectorStoreConfig = {
 			provider: 'pinecone',
 			name: 'docs',
@@ -246,7 +194,7 @@ describe('AgentVectorStoresService.testConnection', () => {
 			indexName: 'product-docs',
 		};
 
-		const result = await service.testConnection(projectId, user, pineconeConfig);
+		const result = await service.testConnection(pineconeConfig, credentialProvider);
 
 		expect(result).toEqual({
 			success: false,

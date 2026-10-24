@@ -240,11 +240,31 @@ export async function initializeAuthenticatedFeatures(
 		void versionsStore.checkForNewVersions();
 	}
 
+	const loadTypes = async () => {
+		// The node types store reads from the data worker, so the worker must be initialized first.
+		if (isDataWorkerEnabled()) {
+			const coordinator = await import('@/app/workers');
+			await coordinator.initialize({ version: settingsStore.settings.versionCli });
+			await coordinator.loadNodeTypes(rootStore.baseUrl);
+		}
+
+		const results = await Promise.allSettled([
+			nodeTypesStore.loadNodeTypesIfNotLoaded(),
+			credentialsStore.fetchCredentialTypes(false),
+		]);
+		results.forEach((result) => {
+			if (result.status === 'rejected') {
+				console.error('Failed to initialize n8n types', result.reason);
+			}
+		});
+	};
+
 	await Promise.all([
 		projectsStore.getMyProjects(),
 		projectsStore.getPersonalProject(),
 		projectsStore.getProjectsCount(),
 		rolesStore.fetchRoles(),
+		loadTypes(),
 	]);
 
 	await projectsStore.refreshCurrentProject();
@@ -261,17 +281,10 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleCommands();
 	registerModuleParameterInputs();
 
-	// Initialize run data worker and load node types
-	if (isDataWorkerEnabled()) {
-		const coordinator = await import('@/app/workers');
-		await coordinator.initialize({ version: settingsStore.settings.versionCli });
-		await coordinator.loadNodeTypes(rootStore.baseUrl);
-	}
-	await Promise.all([
-		nodeTypesStore.loadNodeTypesIfNotLoaded(),
-		credentialsStore.fetchAllCredentials(),
-		credentialsStore.fetchCredentialTypes(false),
-	]);
+	void credentialsStore.fetchAllCredentials().catch((error) => {
+		// fail silently: this is a pre-fetch, app will call this again later
+		console.error('Failed to fetch credentials', error);
+	});
 
 	authenticatedFeaturesInitialized = true;
 }

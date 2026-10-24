@@ -8,6 +8,7 @@ import type { AgentExecutionOrchestratorService } from '../../agent-execution-or
 import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentMessageQueue } from '../../entities/agent-message-queue.entity';
+import { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { QueuedIntegrationMessage } from '../../types/agent-queued-message';
 import { mock } from 'vitest-mock-extended';
 import { deepCopy, UserError, type Logger } from 'n8n-workflow';
@@ -3566,50 +3567,90 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
-		it('queues the typed platform context of the incoming message', async () => {
-			const { bot, handlers } = makeBot();
-			const queue = mock<AgentMessageQueueService>();
-			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				makeAgentExecutor([finishChunk]) as never,
-				componentMapper,
-				logger,
-				'project-1',
-				{ type: 'slack', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
-				undefined,
-				undefined,
-				undefined,
-				queue,
-			);
-			const thread = {
-				...makeThread('slack:C1:1.2', {
-					decodeThreadId: vi.fn().mockReturnValue({ channel: 'C1', threadTs: '1.2' }),
-				} as unknown as FakeThread['adapter']),
-				isDM: false,
-				channel: { fetchMetadata: vi.fn().mockResolvedValue({ name: 'general' }) },
+		describe('typed platform context', () => {
+			const slackOrigin = {
+				type: 'slack',
+				workspaceId: 'T1',
+				conversationKind: 'channel',
+				channelId: 'C1',
 			};
 
-			await handlers.subscribed!(thread, {
-				text: 'hi',
-				author: { userId: 'u1', userName: 'user1' },
-				raw: { n8nWorkspaceId: 'T1', channel_type: 'channel' },
+			function slackTurn(fetchMetadata: Mock, status: 'accepted' | 'duplicate' = 'accepted') {
+				const { bot, handlers } = makeBot();
+				const queue = mock<AgentMessageQueueService>();
+				queue.enqueue.mockResolvedValue(
+					status === 'accepted'
+						? { status, item: mock<AgentMessageQueue>({ messageId: 'message-1' }) }
+						: { status },
+				);
+				const messages = mock<AgentMessageRepository>();
+				Container.set(AgentMessageRepository, messages);
+				new AgentChatBridge(
+					bot as unknown as ChatBotLike,
+					'agent-1',
+					makeAgentExecutor([finishChunk]) as never,
+					componentMapper,
+					logger,
+					'project-1',
+					{ type: 'slack', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+					undefined,
+					undefined,
+					undefined,
+					queue,
+				);
+				const thread = {
+					...makeThread('slack:C1:1.2', {
+						decodeThreadId: vi.fn().mockReturnValue({ channel: 'C1', threadTs: '1.2' }),
+					} as unknown as FakeThread['adapter']),
+					isDM: false,
+					channel: { fetchMetadata },
+				};
+				const turn = handlers.subscribed!(thread, {
+					text: 'hi',
+					author: { userId: 'u1', userName: 'user1' },
+					raw: { n8nWorkspaceId: 'T1', channel_type: 'channel' },
+				});
+				return { turn, queue, messages };
+			}
+
+			it('queues the origin IDs and stores the channel name after enqueue', async () => {
+				const { turn, queue, messages } = slackTurn(vi.fn().mockResolvedValue({ name: 'general' }));
+				await turn;
+
+				expect(queue.enqueue).toHaveBeenCalledWith(
+					expect.objectContaining({
+						payload: expect.objectContaining({ integrationOrigin: slackOrigin }),
+					}),
+				);
+				await vi.waitFor(() =>
+					expect(messages.updateIntegrationOrigin).toHaveBeenCalledWith('message-1', {
+						...slackOrigin,
+						channelName: 'general',
+					}),
+				);
 			});
 
-			expect(queue.enqueue).toHaveBeenCalledWith(
-				expect.objectContaining({
-					payload: expect.objectContaining({
-						integrationOrigin: {
-							type: 'slack',
-							workspaceId: 'T1',
-							conversationKind: 'channel',
-							channelId: 'C1',
-							channelName: 'general',
-						},
-					}),
-				}),
-			);
+			it('starts the channel name lookup only after the turn is enqueued', async () => {
+				const fetchMetadata = vi.fn().mockReturnValue(new Promise(() => {}));
+				const { turn, queue, messages } = slackTurn(fetchMetadata);
+
+				await turn;
+
+				expect(fetchMetadata).toHaveBeenCalledTimes(1);
+				expect(queue.enqueue.mock.invocationCallOrder[0]).toBeLessThan(
+					fetchMetadata.mock.invocationCallOrder[0],
+				);
+				expect(messages.updateIntegrationOrigin).not.toHaveBeenCalled();
+			});
+
+			it('does not look up the channel name for a duplicate message', async () => {
+				const fetchMetadata = vi.fn().mockResolvedValue({ name: 'general' });
+				const { turn } = slackTurn(fetchMetadata, 'duplicate');
+
+				await turn;
+
+				expect(fetchMetadata).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -3925,6 +3966,119 @@ describe('AgentChatBridge — Slack thread history', () => {
 		expect(call.modelMessage).toBe('[alice (u1)]: thanks');
 	});
 
+	it.each(['mention', 'subscribed'] as const)(
+		'requires a mention in group DMs delivered through the %s handler',
+		async (route) => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
+			const thread = makeThread('thread-1');
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: true },
+				},
+			);
+			const author = { userId: 'u1', userName: 'alice' };
+			const raw = { channel: 'G_GROUP', channel_type: 'mpim' };
+
+			await handlers[route]!(thread, {
+				id: 'untagged',
+				text: 'hello',
+				isMention: false,
+				author,
+				raw,
+			});
+			expect(agentExecutor.captured).toHaveLength(0);
+			expect(thread.startTyping).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+
+			await handlers[route]!(thread, {
+				id: 'tagged',
+				text: '<@U_BOT> hello',
+				isMention: true,
+				author,
+				raw,
+			});
+			expect(agentExecutor.captured).toHaveLength(1);
+		},
+	);
+
+	it.each(['assistant', 'agent'] as const)(
+		'includes skipped thread messages when tagged again in mention-only mode with %s messaging',
+		async (messagingExperience) => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
+			const author = { userId: 'u1', userName: 'alice' };
+			const thread = makeThread(
+				'thread-1',
+				undefined,
+				asyncIterableOf([
+					{ id: 'trigger', text: '<@U_BOT> When is the deadline?', author },
+					{ id: 'skipped', text: 'The deadline is Friday', author },
+					{
+						id: 'other-bot',
+						text: 'Updated the project calendar',
+						author: { userId: 'U_OTHER_BOT', userName: 'calendar-bot', isBot: true, isMe: false },
+					},
+					{
+						id: 'agent-reply',
+						text: 'The old deadline was Monday',
+						author: { userId: 'U_BOT', userName: 'agent-bot' },
+					},
+					{ id: 'answered-mention', text: '<@U_BOT> What was the old deadline?', author },
+				]),
+			);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience, onlyRespondWhenMentioned: true },
+				},
+			);
+			const raw = { channel: 'C123', channel_type: 'channel', thread_ts: '1779466577.518139' };
+
+			await handlers.subscribed!(thread, {
+				id: 'skipped',
+				text: 'The deadline is Friday',
+				author,
+				raw,
+			});
+			expect(agentExecutor.captured).toHaveLength(0);
+
+			await handlers.subscribed!(thread, {
+				id: 'trigger',
+				text: '<@U_BOT> When is the deadline?',
+				isMention: true,
+				author,
+				raw,
+			});
+
+			expect(agentExecutor.captured).toHaveLength(1);
+			expect(agentExecutor.captured[0].modelMessage).toContain('[alice]: The deadline is Friday');
+			expect(agentExecutor.captured[0].modelMessage).toContain(
+				'[calendar-bot]: Updated the project calendar',
+			);
+			expect(agentExecutor.captured[0].modelMessage).not.toContain('The old deadline was Monday');
+			expect(agentExecutor.captured[0].modelMessage).not.toContain('What was the old deadline?');
+			expect(agentExecutor.captured[0].message).toBe('When is the deadline?');
+		},
+	);
+
 	it('logs a warning and runs the agent with the plain message when history fetch throws', async () => {
 		const { bot, handlers } = makeBot();
 		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
@@ -3965,49 +4119,70 @@ describe('AgentChatBridge — Slack thread history', () => {
 		expect(call.modelMessage).toBe('[alice (u1)]: help');
 	});
 
-	it('labels the agent\'s own prior messages as "you (the agent)"', async () => {
-		const { bot, handlers } = makeBot();
-		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
-		const thread = makeThread('thread-1', undefined, {
-			[Symbol.asyncIterator]: () => {
-				return (async function* () {
-					yield { id: 'trigger', text: '@U_BOT help', author: { userId: 'u1', userName: 'alice' } };
-					yield {
-						id: 'prev-bot',
-						text: 'I can do that',
-						author: { userId: 'U_BOT', userName: 'agent-bot' },
-					};
-				})();
-			},
-		});
-		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+	it.each([
+		{
+			identity: 'bot user ID',
+			botUserId: 'U_BOT',
+			author: { userId: 'U_BOT', userName: 'agent-bot' },
+			text: 'I can do that',
+		},
+		{
+			identity: 'adapter self marker on an empty message',
+			botUserId: undefined,
+			author: { userId: 'U_BOT', userName: 'agent-bot', isMe: true },
+			text: '',
+		},
+	])(
+		'stops history at the agent message identified by $identity',
+		async ({ botUserId, author, text }) => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId });
+			const thread = makeThread('thread-1', undefined, {
+				[Symbol.asyncIterator]: () => {
+					return (async function* () {
+						yield {
+							id: 'trigger',
+							text: '@U_BOT help',
+							author: { userId: 'u1', userName: 'alice' },
+						};
+						yield {
+							id: 'prev-bot',
+							text,
+							author,
+						};
+						yield { id: 'older', text: 'Already answered', author: { userId: 'u1' } };
+					})();
+				},
+			});
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		makeQueuedBridge(
-			bot as unknown as ChatBotLike,
-			'agent-1',
-			agentExecutor as never,
-			componentMapper,
-			logger,
-			'project-1',
-			slackIntegration,
-		);
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
 
-		await handlers.mention!(thread, {
-			id: 'trigger',
-			text: '@U_BOT help',
-			author: { userId: 'u1', userName: 'alice' },
-			raw: {
-				channel: 'C123',
-				channel_type: 'channel',
-				thread_ts: '1779466577.518139',
-				ts: '1779466588.518139',
-			},
-		});
+			await handlers.mention!(thread, {
+				id: 'trigger',
+				text: '@U_BOT help',
+				author: { userId: 'u1', userName: 'alice' },
+				raw: {
+					channel: 'C123',
+					channel_type: 'channel',
+					thread_ts: '1779466577.518139',
+					ts: '1779466588.518139',
+				},
+			});
 
-		const call = agentExecutor.captured[0];
-		expect(call.modelMessage).toContain('[you (the agent)]: I can do that');
-		expect(call.modelMessage).not.toContain('[agent-bot]');
-	});
+			const call = agentExecutor.captured[0];
+			expect(call.modelMessage).not.toContain('<slack_thread_history>');
+			expect(call.modelMessage).not.toContain('Already answered');
+		},
+	);
 
 	it('neutralizes framing tags in prior messages so history cannot break out of the context block', async () => {
 		const { bot, handlers } = makeBot();
@@ -4089,7 +4264,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 			.filter((line) => line.startsWith('['));
 	}
 
-	it('caps the number of prior messages at the message-count limit', async () => {
+	it('reads to the start of the thread when more than 30 messages have no agent reply', async () => {
 		const { bot, handlers } = makeBot();
 		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
 		// thread.messages is newest-first: trigger, then hist-1 (newest prior) … hist-35.
@@ -4127,11 +4302,11 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 		const call = agentExecutor.captured[0];
 		const lines = historyLines(call.modelMessage);
-		expect(lines).toHaveLength(30);
-		// The 30 newest priors are kept (hist-1..hist-30); the oldest 5 are dropped.
+		expect(lines).toHaveLength(35);
 		expect(call.modelMessage).toContain('[alice]: hist-1');
-		expect(call.modelMessage).toContain('[alice]: hist-30');
-		expect(call.modelMessage).not.toContain('hist-31');
+		expect(call.modelMessage).toContain('[alice]: hist-35');
+		expect(lines[0]).toBe('[alice]: hist-35');
+		expect(lines.at(-1)).toBe('[alice]: hist-1');
 	});
 
 	it('caps the total history size at the character limit', async () => {

@@ -133,8 +133,11 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [scheduled_task](scheduled_task.md) | 19 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
-| [self_healing_investigation](self_healing_investigation.md) | 12 |  | table |
-| [self_healing_result](self_healing_result.md) | 15 |  | table |
+| [self_healing_configuration](self_healing_configuration.md) | 7 |  | table |
+| [self_healing_configuration_reviewer](self_healing_configuration_reviewer.md) | 2 |  | table |
+| [self_healing_configuration_workflow](self_healing_configuration_workflow.md) | 3 |  | table |
+| [self_healing_investigation](self_healing_investigation.md) | 13 |  | table |
+| [self_healing_result](self_healing_result.md) | 16 |  | table |
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
@@ -152,7 +155,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [type_availability_policy](type_availability_policy.md) | 7 |  | table |
 | [type_availability_policy_attachment](type_availability_policy_attachment.md) | 6 |  | table |
 | [type_availability_policy_scope](type_availability_policy_scope.md) | 8 |  | table |
-| [user](user.md) | 15 |  | table |
+| [user](user.md) | 16 |  | table |
 | [user_api_keys](user_api_keys.md) | 9 |  | table |
 | [user_favorites](user_favorites.md) | 4 |  | table |
 | [variables](variables.md) | 5 |  | table |
@@ -372,15 +375,24 @@ erDiagram
 "role_scope" |o--|| "scope" : "FOREIGN KEY (scopeSlug) REFERENCES scope (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "role_scope" |o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "scheduled_task" }o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_investigation" }o--o| "self_healing_result" : "FOREIGN KEY (resultId) REFERENCES self_healing_result (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_investigation" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_investigation" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration" }o--o| "user" : "FOREIGN KEY (enabledById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"self_healing_configuration" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration_reviewer" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration_reviewer" |o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration_workflow" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_configuration_workflow" |o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_investigation" }o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_investigation" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_result" }o--o| "user" : "FOREIGN KEY (dismissedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"self_healing_result" }o--o| "workflow_suggestion" : "FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_result" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_investigation" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_investigation" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_investigation" }o--o| "self_healing_result" : "FOREIGN KEY (resultId) REFERENCES self_healing_result (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--o| "workflow_suggestion" : "FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--o| "user" : "FOREIGN KEY (dismissedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1712,14 +1724,33 @@ erDiagram
   varchar_36_ type
   datetime_3_ updatedAt
 }
+"self_healing_configuration" {
+  datetime_3_ createdAt
+  boolean enabled
+  varchar enabledById FK
+  INTEGER id
+  varchar_36_ projectId FK
+  varchar_16_ scope
+  datetime_3_ updatedAt
+}
+"self_healing_configuration_reviewer" {
+  INTEGER configurationId PK
+  varchar userId PK
+}
+"self_healing_configuration_workflow" {
+  INTEGER configurationId PK
+  varchar_36_ projectId FK
+  varchar_36_ workflowId PK
+}
 "self_healing_investigation" {
   varchar backgroundUserId FK
-  TEXT baseline
+  INTEGER configurationId FK
   datetime_3_ createdAt
   varchar_36_ executionId
   datetime_3_ finishedAt
   varchar_36_ id PK
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   varchar runId
   varchar threadId
@@ -1729,6 +1760,7 @@ erDiagram
 "self_healing_result" {
   varchar backgroundUserId FK
   datetime_3_ completedAt
+  INTEGER configurationId FK
   datetime_3_ createdAt
   datetime_3_ dismissedAt
   varchar dismissedById FK
@@ -1915,6 +1947,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
