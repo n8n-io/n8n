@@ -3658,16 +3658,6 @@ export class InstanceAiService {
 			// nobody is reading the user's intent, so ambient context would be paid for unread.
 			const isMachineFollowUp =
 				checkpoint?.isCheckpointFollowUp === true || plannedBuild?.isPlannedBuildFollowUp === true;
-			const bindContextTurn = (
-				injection: InstanceContextInjection,
-			): InstanceContextTurnBinding => ({
-				userId: user.id,
-				threadId,
-				runId,
-				injection,
-				instanceContextEnabled,
-				nodeUsageEnabled,
-			});
 			const turnInputRuntime: AssistantTurnInputRuntime = {
 				eventBus: this.eventBus,
 				getRunningBackgroundTasks: () => this.backgroundTasks.getRunningTasks(threadId),
@@ -3684,14 +3674,20 @@ export class InstanceAiService {
 				resumeReason,
 				isMachineFollowUp,
 				threadArtifacts,
+				// Bound before the input build ends, so a later failure still reports the segment.
 				onInstanceContextInjection: (injection) => {
-					contextTurn = bindContextTurn(injection);
+					contextTurn = {
+						userId: user.id,
+						threadId,
+						runId,
+						injection,
+						instanceContextEnabled,
+						nodeUsageEnabled,
+					};
 				},
 			});
 			const { fullMessage, nonStructuredAttachments, contextInjection, aiPreferencesTurn } =
 				turnInput;
-			// The callback above already bound it. Binding it here again types it as set below.
-			contextTurn = bindContextTurn(contextInjection);
 			turnHadFileAttachments = turnInput.turnHadFileAttachments;
 			if (
 				aiPreferencesTurn &&
@@ -6256,7 +6252,7 @@ export class InstanceAiService {
 	}
 
 	private emitInstanceContextTurn(
-		turn: InstanceContextTurnBinding,
+		turn: InstanceContextTurnBinding | undefined,
 		input: {
 			/** A turn can suspend more than once. Aggregate segments by run ID. */
 			segment: 'whole' | 'suspended' | 'resumed';
@@ -6267,6 +6263,7 @@ export class InstanceAiService {
 			usage?: RunTokenUsage;
 		},
 	): void {
+		if (!turn) return;
 		const { injection } = turn;
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN, {
 			user_id: turn.userId,
