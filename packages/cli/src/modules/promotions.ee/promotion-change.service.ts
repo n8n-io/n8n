@@ -46,6 +46,7 @@ import { gitBlobSha, HashingPackageWriter } from '@/modules/n8n-packages/io/hash
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
+	entityIdOfSegment,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
 import { generateSlug } from '@/modules/n8n-packages/io/slug.utils';
@@ -632,8 +633,7 @@ function blobsByPath(files: readonly PackageFile[]): Map<string, string> {
 /** Entity directories end with `-<id>`, and the entity file sits inside that directory. */
 function entityIdOfPath(path: string): string {
 	const segments = path.split('/');
-	const directory = segments[segments.length - 2] ?? '';
-	return directory.slice(directory.lastIndexOf('-') + 1);
+	return entityIdOfSegment(segments[segments.length - 2] ?? '');
 }
 
 function toChanges(

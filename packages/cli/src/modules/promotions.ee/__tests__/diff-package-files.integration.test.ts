@@ -5,6 +5,7 @@ import { simpleGit } from 'simple-git';
 
 import { DirectoryPackageWriter } from '@/modules/n8n-packages/io/directory/directory-package-writer';
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
+import { createManifestEntry, entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
 
 import { parseBaseBranchFiles, parsePackageFiles } from '../base-branch-files';
 import { diffPackageFiles } from '../diff-package-files';
@@ -95,6 +96,40 @@ it('compares Git and writer output without losing scoped identities, and ignores
 			expect.stringContaining('workflow-metadata.json'),
 		);
 		expect(diffPackageFiles(baseFiles, baseFiles)).toEqual([]);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+it('reads escaped ids back from Git paths', async () => {
+	const root = await mkdtemp(path.join(tmpdir(), 'promotion-diff-'));
+	try {
+		const projectId = 'Equipo AI6401486';
+		const project = createManifestEntry('projects', 'n8n/projects', {
+			id: projectId,
+			name: 'Equipo AI',
+		});
+		const workflow = createManifestEntry('workflows', `${project.target}/workflows`, {
+			id: 'Ventas & Operación',
+			name: 'Daily Report',
+		});
+		const directoryWriter = new DirectoryPackageWriter(root);
+		await directoryWriter.writeFile(entityFilePath('projects', project.target), 'project');
+		await directoryWriter.writeFile(entityFilePath('workflows', workflow.target), 'workflow');
+		const git = simpleGit(root);
+		await git.init(['--object-format=sha1']);
+		await git.add('.');
+		const tree = (await git.raw(['write-tree'])).trim();
+
+		const files = parseBaseBranchFiles(await git.raw(['ls-tree', '-r', '-z', tree]), {
+			exportRoot: 'n8n',
+			projectId,
+		});
+
+		expect(files.map(({ entityId, slug, type }) => ({ entityId, slug, type }))).toEqual([
+			{ entityId: projectId, slug: 'equipo-ai', type: 'project' },
+			{ entityId: 'Ventas & Operación', slug: 'daily-report', type: 'workflow' },
+		]);
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}
