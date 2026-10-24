@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { SkillNameTakenError } from '@/modules/skills/errors/skill-name-taken.error';
 import type { SkillsApiService } from '@/modules/skills/services/skills-api.service';
-import type { AssistantSkillsRollout } from '@/modules/skills/services/assistant-skills-rollout';
+import type { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
 import type { Telemetry } from '@/telemetry';
 
 import { SKILL_TOOLS } from '../mcp-scopes';
@@ -48,7 +48,7 @@ describe('McpSkillToolsService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const telemetry = mock<Telemetry>();
 	const skillsApi = mock<SkillsApiService>();
-	const rollout = mock<AssistantSkillsRollout>();
+	const rollout = mock<AssistantSkillsFlagGate>();
 	const service = new McpSkillToolsService(telemetry, skillsApi, rollout);
 	let tools: Map<string, Handler>;
 

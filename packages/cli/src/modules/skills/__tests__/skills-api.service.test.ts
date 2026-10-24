@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import type { SkillAgentsProxy } from '../services/skill-agents-proxy.service';
+import type { SkillUsageProxy } from '../services/skill-usage-proxy.service';
 import type { SkillFile } from '../database/entities/skill-file.entity';
 import { getSkillHash } from '../utils/skill-hash';
 import type { SkillVersion } from '../database/entities/skill-version.entity';
@@ -17,7 +17,7 @@ import type { ResolvedSkillRow, SkillRepository } from '../database/repositories
 import type { SkillService } from '../services/skill.service';
 import { SkillsApiService } from '../services/skills-api.service';
 import type { SkillsTelemetry } from '../services/skills-telemetry.service';
-import type { AssistantSkillsRollout } from '../services/assistant-skills-rollout';
+import type { AssistantSkillsFlagGate } from '../services/assistant-skills-flag-gate';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
@@ -82,8 +82,8 @@ describe('SkillsApiService', () => {
 	const txRunner = mock<TransactionRunner>();
 	const userRepository = mock<UserRepository>();
 	const skillsTelemetry = mock<SkillsTelemetry>();
-	const skillAgents = mock<SkillAgentsProxy>();
-	const rollout = mock<AssistantSkillsRollout>();
+	const skillUsage = mock<SkillUsageProxy>();
+	const rollout = mock<AssistantSkillsFlagGate>();
 	const service = new SkillsApiService(
 		skillService,
 		repository,
@@ -91,7 +91,7 @@ describe('SkillsApiService', () => {
 		txRunner,
 		userRepository,
 		skillsTelemetry,
-		skillAgents,
+		skillUsage,
 		rollout,
 	);
 	const TX_CTX = { trx: {} } as OperationContext;
@@ -126,15 +126,15 @@ describe('SkillsApiService', () => {
 			async (ids) =>
 				new Map(visible.filter((s) => ids.includes(s.id)).map((s) => [s.id, row(s, 2)] as const)),
 		);
-		skillAgents.countUsingAgents.mockResolvedValue(new Map());
-		skillAgents.findAgentIdsInProjects.mockImplementation(async (projectIds) =>
+		skillUsage.countUsingAgents.mockResolvedValue(new Map());
+		skillUsage.findAgentIdsInProjects.mockImplementation(async (projectIds) =>
 			projectIds.includes('project-1') ? ['agent-1'] : [],
 		);
 		repository.findProjects.mockImplementation(
 			async (ids) => new Map(ids.map((id) => [id, { name: 'Team', type: 'team' as const }])),
 		);
-		skillAgents.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
-		skillAgents.findAgents.mockImplementation(
+		skillUsage.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
+		skillUsage.findAgents.mockImplementation(
 			async (ids) =>
 				new Map(
 					ids
@@ -255,12 +255,12 @@ describe('SkillsApiService', () => {
 				{ projectIds: 'all', agentIds: 'all' },
 				expect.anything(),
 			);
-			expect(skillAgents.findAgentIdsInProjects).not.toHaveBeenCalled();
+			expect(skillUsage.findAgentIdsInProjects).not.toHaveBeenCalled();
 		});
 
 		it('describes each skill', async () => {
 			visible = [skill('skill_a', { projectId: 'project-1' })];
-			skillAgents.countUsingAgents.mockResolvedValue(new Map([['skill_a', 2]]));
+			skillUsage.countUsingAgents.mockResolvedValue(new Map([['skill_a', 2]]));
 			repository.findProjects.mockResolvedValue(
 				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
 			);
@@ -328,7 +328,7 @@ describe('SkillsApiService', () => {
 				pins: [],
 				hiddenAgents: 1,
 			};
-			skillAgents.findUsage.mockResolvedValue(usage);
+			skillUsage.findUsage.mockResolvedValue(usage);
 			const latest = row(visible[0], 3, { instructions: 'saved' });
 			repository.findLatestSaved.mockResolvedValue(new Map([['skill_a', latest]]));
 			repository.findLatestSummaries.mockResolvedValue(
@@ -352,7 +352,7 @@ describe('SkillsApiService', () => {
 			await service.get(user, 'skill_a');
 
 			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
-			expect(skillAgents.findUsage).toHaveBeenCalledWith('skill_a', ['project-1']);
+			expect(skillUsage.findUsage).toHaveBeenCalledWith('skill_a', ['project-1']);
 		});
 
 		it('shows the agents of every project to a user with the global agent scope', async () => {
@@ -360,7 +360,7 @@ describe('SkillsApiService', () => {
 
 			await service.get(user, 'skill_a');
 
-			expect(skillAgents.findUsage).toHaveBeenCalledWith('skill_a', 'all');
+			expect(skillUsage.findUsage).toHaveBeenCalledWith('skill_a', 'all');
 		});
 
 		it('answers a skill the user cannot see like a missing one', async () => {

@@ -3,13 +3,15 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { PostHogClient } from '@/posthog';
+import type { PostHogClient } from '@/posthog';
 
 import { HubAssistantSkillProvider } from '../services/hub-assistant-skill-provider.service';
-import { SkillAgentsProxy, type SkillAgentsProvider } from '../services/skill-agents-proxy.service';
+import { SkillUsageProxy } from '../services/skill-usage-proxy.service';
+import type { SkillUsage } from '../services/skill-usage.contracts';
+import { SkillsGate } from '../services/skills-gate';
 import type { SkillService } from '../services/skill.service';
 import { SkillsModule } from '../skills.module';
-import { AssistantSkillsRollout } from '../services/assistant-skills-rollout';
+import { AssistantSkillsFlagGate } from '../services/assistant-skills-flag-gate';
 
 vi.mock('../controllers/skills.controller', () => ({}));
 
@@ -23,10 +25,10 @@ describe('SkillsModule', () => {
 	])(
 		'gates Assistant reads across module startup (Assistant: %s)',
 		async (assistantEnabled, expected) => {
-			const agents = new SkillAgentsProxy();
+			const agents = new SkillUsageProxy();
 			const postHog = mock<PostHogClient>();
 			postHog.getFeatureFlagForInstance.mockResolvedValue(assistantEnabled);
-			const assistantRollout = new AssistantSkillsRollout(agents, postHog);
+			const assistantRollout = new AssistantSkillsFlagGate(new SkillsGate(agents), postHog);
 			const service = mock<SkillService>();
 			const proxy = new AssistantSkillProviderProxy();
 			const context = { user: mock<User>() };
@@ -41,7 +43,7 @@ describe('SkillsModule', () => {
 			const content = { ...summary, instructions: 'Be brief.', frontmatter: null, files: [] };
 			service.listForAssistant.mockResolvedValue([summary]);
 			service.readForAssistant.mockResolvedValue(content);
-			Container.set(SkillAgentsProxy, agents);
+			Container.set(SkillUsageProxy, agents);
 			Container.set(AssistantSkillProviderProxy, proxy);
 			Container.set(
 				HubAssistantSkillProvider,
@@ -54,7 +56,7 @@ describe('SkillsModule', () => {
 			expect(service.listForAssistant).not.toHaveBeenCalled();
 			expect(service.readForAssistant).not.toHaveBeenCalled();
 
-			agents.registerProvider(mock<SkillAgentsProvider>());
+			agents.register(mock<SkillUsage>());
 			expect(await proxy.listSkills(context)).toEqual(expected ? [summary] : []);
 			expect(await proxy.readSkill(context, summary.id)).toEqual(expected ? content : null);
 			expect(service.listForAssistant).toHaveBeenCalledTimes(expected ? 1 : 0);

@@ -19,7 +19,7 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 
 import { SkillsApiService } from '../services/skills-api.service';
-import { SkillAgentsProxy } from '../services/skill-agents-proxy.service';
+import { SkillsGate } from '../services/skills-gate';
 
 /**
  * Skills for the settings page. No route scope: the scope of each skill decides who may
@@ -29,13 +29,13 @@ import { SkillAgentsProxy } from '../services/skill-agents-proxy.service';
 export class SkillsController {
 	constructor(
 		private readonly skillsApi: SkillsApiService,
-		private readonly skillAgents: SkillAgentsProxy,
+		private readonly skillsGate: SkillsGate,
 	) {}
 
 	/** Runs before the request is validated, so every request answers 404 while the agents module is off. */
 	@Middleware()
-	requireSkillProvider(_req: Request, res: Response, next: NextFunction) {
-		if (!this.skillAgents.hasProvider) {
+	requireSkillsEnabled(_req: Request, res: Response, next: NextFunction) {
+		if (!this.skillsGate.isEnabled) {
 			res.status(404).send('Not found');
 			return;
 		}

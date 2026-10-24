@@ -15,7 +15,7 @@ import type { AgentScope } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { HubAssistantSkillProvider } from '@/modules/skills/services/hub-assistant-skill-provider.service';
 import { skillContentHash, type SkillContent } from '@/modules/skills/utils/skill-content-hash';
 import {
@@ -60,7 +60,7 @@ describe('SkillRepository', () => {
 		agents = Container.get(AgentRepository);
 		histories = Container.get(AgentHistoryRepository);
 		txRunner = Container.get(TransactionRunner);
-		registerSkillAgentsProvider();
+		registerSkillUsage();
 		assistantSkills = Container.get(HubAssistantSkillProvider);
 		owner = await createOwner();
 		user = await createUser();

@@ -7,7 +7,7 @@ import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
@@ -72,7 +72,7 @@ describe('AgentRepository', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
-		registerSkillAgentsProvider();
+		registerSkillUsage();
 		agentRepo = Container.get(AgentRepository);
 		agentHistoryRepo = Container.get(AgentHistoryRepository);
 		taskRepo = Container.get(AgentTaskRepository);

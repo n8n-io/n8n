@@ -13,7 +13,7 @@ import { randomUUID } from 'node:crypto';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { SkillAgentsProxy } from '@/modules/skills/services/skill-agents-proxy.service';
+import { SkillsGate } from '@/modules/skills/services/skills-gate';
 import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
 import { SkillService } from '@/modules/skills/services/skill.service';
 import { PostHogClient } from '@/posthog';
@@ -178,7 +178,7 @@ describe('SkillsController', () => {
 
 	it('hides the skills API while the agents module is off', async () => {
 		// As when the agents module never registered its provider.
-		vi.spyOn(Container.get(SkillAgentsProxy), 'hasProvider', 'get').mockReturnValue(false);
+		vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(false);
 
 		await owner.get('/skills').expect(404);
 		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);

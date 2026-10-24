@@ -14,7 +14,7 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { SkillAgentsProxy } from './skill-agents-proxy.service';
+import { SkillUsageProxy } from './skill-usage-proxy.service';
 import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 import { getSkillHash } from '../utils/skill-hash';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
@@ -117,7 +117,7 @@ export type SkillMoveOptions = {
  * The rules of skills: which version a skill ref runs, save, edit permission, moves and
  * the delete guard. The agent runtime loads skills by id with no permission check. What
  * depends on agents (who uses a skill, the project of an agent skill) comes from
- * `SkillAgentsProxy`.
+ * `SkillUsageProxy`.
  */
 @Service()
 export class SkillService {
@@ -126,7 +126,7 @@ export class SkillService {
 		private readonly skillRepository: SkillRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly projectScopeService: ProjectScopeService,
-		private readonly skillAgents: SkillAgentsProxy,
+		private readonly skillUsage: SkillUsageProxy,
 	) {}
 
 	// ---------------------------------------------------------------- reads
@@ -333,7 +333,7 @@ export class SkillService {
 			// clash with nothing new. The legacy rule skipped it too.
 			if (skillNameKey(skill.name) !== skillNameKey(latest.version.name)) {
 				await this.assertNameFree(skill.name, latest.skill, skillId, txCtx);
-				await this.skillAgents.assertRenameKeepsNamesApart(
+				await this.skillUsage.assertRenameKeepsNamesApart(
 					skillId,
 					latest.version.name,
 					skill.name,
@@ -348,7 +348,7 @@ export class SkillService {
 				userId,
 				txCtx,
 			);
-			const followingIds = await this.skillAgents.markFollowersChanged(skillId, txCtx);
+			const followingIds = await this.skillUsage.markFollowersChanged(skillId, txCtx);
 			const result = { versionId, version, created: true, skill, followingAgentIds: followingIds };
 			return { saved: result, following: followingIds };
 		});
@@ -367,7 +367,7 @@ export class SkillService {
 	 * reload, except the tab of `excludePushRef`.
 	 */
 	async refreshFollowingAgents(agentIds: string[], excludePushRef?: string): Promise<void> {
-		await this.skillAgents.refreshAgents(agentIds, excludePushRef);
+		await this.skillUsage.refreshAgents(agentIds, excludePushRef);
 	}
 
 	/**
@@ -471,7 +471,7 @@ export class SkillService {
 					);
 				}
 			}
-			const others = (await this.skillAgents.findUsingAgentIds(skillId, txCtx)).filter(
+			const others = (await this.skillUsage.findUsingAgentIds(skillId, txCtx)).filter(
 				(id) => id !== keepAgentId,
 			);
 			await this.assertAgentsKeepAccess(others, target, agentProjectIds, txCtx);
@@ -495,7 +495,7 @@ export class SkillService {
 		ctx: OperationContext,
 	): Promise<void> {
 		if (agentIds.length === 0 || (target.projectId === null && target.agentId === null)) return;
-		const agents = await this.skillAgents.findAgents(agentIds, ctx);
+		const agents = await this.skillUsage.findAgents(agentIds, ctx);
 		const losing = agentIds.filter((id) =>
 			target.agentId ? id !== target.agentId : agents.get(id)?.projectId !== target.projectId,
 		);
@@ -532,7 +532,7 @@ export class SkillService {
 	): Promise<string | null> {
 		if (skill.projectId) return skill.projectId;
 		if (!skill.agentId) return null;
-		const agent = (await this.skillAgents.findAgents([skill.agentId], ctx)).get(skill.agentId);
+		const agent = (await this.skillUsage.findAgents([skill.agentId], ctx)).get(skill.agentId);
 		return agent?.projectId ?? null;
 	}
 
@@ -635,7 +635,7 @@ export class SkillService {
 			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 			if (!skill) throw new NotFoundError('Skill not found');
 			await this.skillRepository.lockForEdit([skillId], txCtx);
-			const usage = await this.skillAgents.findUsage(skillId, agentProjectIds, txCtx);
+			const usage = await this.skillUsage.findUsage(skillId, agentProjectIds, txCtx);
 			if (usage.drafts.length > 0 || usage.pins.length > 0 || usage.hiddenAgents > 0) {
 				const name = (await this.latestNames([skillId], txCtx)).get(skillId) ?? skillId;
 				const users = [

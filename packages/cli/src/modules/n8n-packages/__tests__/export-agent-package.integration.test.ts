@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentSkillDependency } from '@/modules/agents/entities/agent-skill-dependency.entity';
 import { AgentVersionSkillDependency } from '@/modules/agents/entities/agent-version-skill-dependency.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
@@ -72,7 +72,7 @@ async function readSourceRecords() {
 beforeAll(async () => {
 	await testModules.loadModules(['skills', 'agents']);
 	await testDb.init();
-	registerSkillAgentsProvider();
+	registerSkillUsage();
 	agentRepository = Container.get(AgentRepository);
 	historyRepository = Container.get(AgentHistoryRepository);
 	skillRepository = Container.get(SkillRepository);

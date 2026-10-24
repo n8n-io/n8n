@@ -8,7 +8,9 @@ import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
+import type { Skill } from '@/modules/skills/database/entities/skill.entity';
 import { SkillRepository } from '@/modules/skills/database/repositories/skill.repository';
+import { findIntroducedNameClashes } from '@/modules/skills/utils/skill-names';
 import {
 	SkillService,
 	toAgentSkill,
@@ -16,7 +18,6 @@ import {
 	type SkillRef,
 } from '@/modules/skills/services/skill.service';
 
-import { AgentSkillUsageService } from './agent-skill-usage.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
 import type { AgentSkillRefs } from './json-config/agent-document';
@@ -44,7 +45,6 @@ export class AgentSkillRefsService {
 		private readonly skillRepository: SkillRepository,
 		private readonly agentSkillRepository: AgentSkillRepository,
 		private readonly skillService: SkillService,
-		private readonly agentSkillUsage: AgentSkillUsageService,
 	) {}
 
 	/** Skill refs of the agent draft, in attach order. A pinned ref has `versionId`. */
@@ -133,7 +133,7 @@ export class AgentSkillRefsService {
 		refs: AgentJsonSkillConfig[],
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
-		const checked = await this.agentSkillUsage.checkRefs(
+		const checked = await this.checkRefs(
 			{ id: agent.id, projectId: agent.projectId },
 			toServiceRefs(refs),
 			ctx,
@@ -155,7 +155,7 @@ export class AgentSkillRefsService {
 		if (!agent.schema && refs?.length) {
 			throw new UnexpectedError('Cannot set skill refs on an agent without a config');
 		}
-		const checked = await this.agentSkillUsage.checkRefs(
+		const checked = await this.checkRefs(
 			{ id: agent.id, projectId: agent.projectId },
 			toServiceRefs(refs ?? []),
 			ctx,
@@ -174,11 +174,12 @@ export class AgentSkillRefsService {
 		refs: AgentSkillRefs,
 		ctx: OperationContext,
 	): Promise<void> {
-		const restored = await this.agentSkillUsage.restoreFromVersion(
-			version.versionId,
-			toServiceRefs(refs ?? []),
-			ctx,
-		);
+		// A ref with no pin follows the latest version.
+		const pinned = await this.agentSkillRepository.findPinned(version.versionId, ctx);
+		const restored = toServiceRefs(refs ?? []).map(({ versionId: _dropped, ...ref }) => {
+			const row = pinned.get(ref.id);
+			return row ? { ...ref, versionId: row.version.id } : ref;
+		});
 		await this.writeDependencies(agent.id, restored, ctx);
 	}
 
@@ -328,7 +329,11 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 	): Promise<void> {
 		if (pins.size === 0) return;
-		await this.agentSkillUsage.pinForPublish(agentVersionId, pins, ctx);
+		// The pins keep the order of `pins`, which is the order of the draft refs.
+		await this.agentSkillRepository.insertPins(
+			[...pins].map(([skillId, skillVersionId]) => ({ agentVersionId, skillId, skillVersionId })),
+			ctx,
+		);
 	}
 
 	async availabilityOf(
@@ -355,6 +360,76 @@ export class AgentSkillRefsService {
 			ctx,
 			options,
 		);
+	}
+
+	/** An agent can attach instance skills, the skills of its own project and its own agent skills. */
+	isAttachable(
+		skill: Pick<Skill, 'projectId' | 'agentId'>,
+		agent: { id: string; projectId: string | null },
+	): boolean {
+		if (skill.agentId !== null) return skill.agentId === agent.id;
+		return skill.projectId === null || skill.projectId === agent.projectId;
+	}
+
+	/**
+	 * The check an agent config save runs on the skill refs it gets. The agent's current
+	 * refs come from its dependency rows. Unknown ids are dropped unless already
+	 * attached. A ref keeps a pin only when the agent already had it. A new ref
+	 * must be attachable and must not clash by name.
+	 */
+	async checkRefs(
+		agent: { id: string; projectId: string | null },
+		refs: SkillRef[],
+		ctx: OperationContext = {},
+	): Promise<SkillRef[]> {
+		const current =
+			(await this.agentSkillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
+		const existingIds = new Set(current.map((ref) => ref.skillId));
+		const existingPins = new Map(current.map((ref) => [ref.skillId, ref.versionId]));
+		const found = new Map(
+			(
+				await this.skillRepository.findByIds(
+					refs.map((ref) => ref.id),
+					ctx,
+				)
+			).map((skill) => [skill.id, skill]),
+		);
+		const kept = refs
+			.filter((ref) => existingIds.has(ref.id) || found.has(ref.id))
+			.map(({ versionId, ...ref }) =>
+				versionId !== undefined && existingPins.get(ref.id) === versionId
+					? { ...ref, versionId }
+					: ref,
+			);
+		const newIds = [...new Set(kept.map((ref) => ref.id))].filter(
+			(id) => !existingIds.has(id) && found.has(id),
+		);
+		if (newIds.length === 0) return kept;
+		// Shared lock until the attach commits, so `changeTarget` cannot narrow a skill in between.
+		if (ctx.trx) await this.skillRepository.lockForPublish(newIds, ctx);
+
+		const keptExisting = kept.filter((ref) => existingIds.has(ref.id));
+		const newRefs = newIds.map((id) => ({ id }));
+		const nameOf = await this.skillService.runtimeNames([...keptExisting, ...newRefs], ctx);
+		for (const id of newIds) {
+			const skill = found.get(id);
+			if (skill && !this.isAttachable(skill, agent)) {
+				throw new UserError(
+					`Skill "${nameOf({ id }) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.`,
+				);
+			}
+		}
+		// A kept ref runs its pinned version, so compare the name of that version.
+		const clashes = findIntroducedNameClashes(
+			keptExisting.flatMap((ref) => nameOf(ref) ?? []),
+			newRefs.flatMap((ref) => nameOf(ref) ?? []),
+		);
+		if (clashes.length > 0) {
+			throw new UserError(
+				`This agent already has a skill with a name like "${clashes.join('", "')}". Rename one of them, or detach the other skill first.`,
+			);
+		}
+		return kept;
 	}
 
 	private async writeDependencies(

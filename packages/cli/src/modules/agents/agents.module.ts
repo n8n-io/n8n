@@ -12,8 +12,8 @@ export class AgentsModule implements ModuleInterface {
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
 		// The skills module starts before this module. Tell it which agents use skills.
-		const { registerSkillAgentsProvider } = await import('./register-skill-agents-provider.js');
-		registerSkillAgentsProvider();
+		const { registerSkillUsage } = await import('./register-skill-usage.js');
+		registerSkillUsage();
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.

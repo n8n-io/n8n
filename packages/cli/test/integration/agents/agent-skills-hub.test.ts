@@ -16,7 +16,7 @@ import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
@@ -71,7 +71,7 @@ describe('Agent skills in the skills hub', () => {
 		validation.validateAgentEntityConfiguration.mockResolvedValue({ status: 'valid', issues: [] });
 		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
-		registerSkillAgentsProvider();
+		registerSkillUsage();
 		await Container.get(AgentsSettingsService).setEnabled(true);
 		owner = await createOwner();
 		editor = await createMember();

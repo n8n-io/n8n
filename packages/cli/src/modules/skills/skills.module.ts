@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 /**
  * Skills with their saved versions, the REST API of the settings page, and the services
  * that agents, MCP and n8n Assistant use to read and write skills. It does not import the
- * agents module: agents registers a `SkillAgentsProvider` on init.
+ * agents module: agents registers its `SkillUsage` on init.
  */
 @BackendModule({ name: 'skills' })
 export class SkillsModule implements ModuleInterface {

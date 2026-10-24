@@ -7,12 +7,12 @@ import type {
 import { Service } from '@n8n/di';
 
 import { SkillService } from './skill.service';
-import { AssistantSkillsRollout } from './assistant-skills-rollout';
+import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 
 @Service()
 export class HubAssistantSkillProvider implements AssistantSkillProvider {
 	constructor(
-		private readonly rollout: AssistantSkillsRollout,
+		private readonly rollout: AssistantSkillsFlagGate,
 		private readonly skillService: SkillService,
 	) {}
 

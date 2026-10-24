@@ -17,7 +17,7 @@ import {
 	skillNameTakenToolMessage,
 } from '@/modules/skills/errors/skill-name-taken.error';
 import { SkillsApiService } from '@/modules/skills/services/skills-api.service';
-import { AssistantSkillsRollout } from '@/modules/skills/services/assistant-skills-rollout';
+import { AssistantSkillsFlagGate } from '@/modules/skills/services/assistant-skills-flag-gate';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -101,11 +101,11 @@ export class McpSkillToolsService {
 	constructor(
 		private readonly telemetry: Telemetry,
 		private readonly skillsApi: SkillsApiService,
-		private readonly assistantSkillsRollout: AssistantSkillsRollout,
+		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 	) {}
 
 	async registerTools(registerTool: RegisterToolFn, user: User): Promise<void> {
-		const assistantSkillsEnabled = await this.assistantSkillsRollout.isEnabled();
+		const assistantSkillsEnabled = await this.assistantSkillsFlagGate.isEnabled();
 		const { availableToAssistant: _availability, ...updateWithoutAssistant } = updateSkillInput;
 		registerTool({
 			name: 'search_n8n_skills',
