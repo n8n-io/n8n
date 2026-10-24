@@ -2,6 +2,7 @@ import type { StorybookConfig } from '@storybook/vue3-vite';
 import { dirname } from 'path';
 import remarkGfm from 'remark-gfm';
 import { fileURLToPath } from 'url';
+import { mergeConfig } from 'vite';
 
 function getAbsolutePath(value: string): string {
 	return dirname(fileURLToPath(import.meta.resolve(`${value}/package.json`)));
@@ -44,6 +45,23 @@ const config: StorybookConfig = {
 	},
 	features: {
 		sidebarOnboardingChecklist: false,
+	},
+	async viteFinal(config, { configType }) {
+		if (configType !== 'PRODUCTION') {
+			return config;
+		}
+
+		return mergeConfig(config, {
+			mode: 'development',
+			define: {
+				'process.env.NODE_ENV': '"development"',
+				__VUE_PROD_DEVTOOLS__: 'true',
+				__VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'true',
+			},
+			build: {
+				minify: false,
+			},
+		});
 	},
 };
 export default config;

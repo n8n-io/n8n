@@ -1,4 +1,5 @@
 import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import AsyncLoadingCacheDemo from './AsyncLoadingCacheDemo.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
@@ -55,6 +56,81 @@ const defaultTemplate: StoryFn = (args, { argTypes }) => ({
 export const Default = defaultTemplate.bind({});
 Default.args = {
 	items,
+};
+
+const playgroundItemCounts = [2, 3, 4, 5, 6] as const;
+type PlaygroundItemCount = (typeof playgroundItemCounts)[number];
+
+const playgroundItemsByCount: Record<PlaygroundItemCount, PathItem[]> = {
+	2: [
+		{ id: '1', label: 'Item 1', href: '/item-1' },
+		{ id: '2', label: 'Item 2' },
+	],
+	3: [
+		{ id: '1', label: 'Item 1', href: '/item-1' },
+		{ id: '2', label: 'Item 2', href: '/item-2' },
+		{ id: '3', label: 'Item 3' },
+	],
+	4: [
+		{ id: '1', label: 'Item 1', href: '/item-1' },
+		{ id: '2', label: 'Item 2', href: '/item-2' },
+		{ id: '3', label: 'Item 3', href: '/item-3' },
+		{ id: '4', label: 'Item 4' },
+	],
+	5: [
+		{ id: '1', label: 'Item 1', href: '/item-1' },
+		{ id: '2', label: 'Item 2', href: '/item-2' },
+		{ id: '3', label: 'Item 3', href: '/item-3' },
+		{ id: '4', label: 'Item 4', href: '/item-4' },
+		{ id: '5', label: 'Item 5' },
+	],
+	6: [
+		{ id: '1', label: 'Item 1', href: '/item-1' },
+		{ id: '2', label: 'Item 2', href: '/item-2' },
+		{ id: '3', label: 'Item 3', href: '/item-3' },
+		{ id: '4', label: 'Item 4', href: '/item-4' },
+		{ id: '5', label: 'Item 5', href: '/item-5' },
+		{ id: '6', label: 'Item 6' },
+	],
+};
+
+type PlaygroundArgs = {
+	itemCount: PlaygroundItemCount;
+	theme: 'small' | 'medium';
+	showBorder: boolean;
+};
+
+export const Playground: StoryFn<PlaygroundArgs> = (args) => ({
+	components: { Breadcrumbs },
+	setup() {
+		return {
+			args,
+			playgroundItemsByCount,
+			onItemSelected: action('itemSelected'),
+		};
+	},
+	template: `
+		<Breadcrumbs
+			:items="playgroundItemsByCount[args.itemCount]"
+			:theme="args.theme"
+			:show-border="args.showBorder"
+			@item-selected="onItemSelected"
+		/>
+	`,
+});
+Playground.args = {
+	itemCount: 3,
+	theme: 'medium',
+	showBorder: false,
+};
+Playground.argTypes = {
+	itemCount: {
+		control: 'radio',
+		options: [...playgroundItemCounts],
+		description: 'Number of breadcrumb items. Map to the Figma "number of items" property.',
+	},
+	items: { table: { disable: true } },
+	hiddenItemsSource: { table: { disable: true } },
 };
 
 export const Sizes: StoryFn = () => ({
