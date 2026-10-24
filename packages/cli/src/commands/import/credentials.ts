@@ -5,8 +5,6 @@ import {
 	DbLock,
 	DbLockService,
 	Project,
-	User,
-	SharedCredentials,
 	SharedCredentialsRepository,
 	ProjectRepository,
 	UserRepository,
@@ -15,8 +13,6 @@ import {
 } from '@n8n/db';
 import { Command, type PolicyCleared } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import type { EntityManager } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import fs from 'fs';
 import omit from 'lodash/omit';
@@ -159,25 +155,22 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			else skipped.push(outcome);
 		}
 
-		await Container.get(DbLockService).withLock(
-			DbLock.INSTANCE_AI_SETTINGS,
-			async (transactionManager, ctx) => {
-				const result = await this.checkRelations(
-					transactionManager,
-					admitted.map(({ credential }) => credential),
-					project.id,
-					flags,
-				);
+		await Container.get(DbLockService).withLockContext(DbLock.INSTANCE_AI_SETTINGS, async (ctx) => {
+			const result = await this.checkRelations(
+				admitted.map(({ credential }) => credential),
+				project.id,
+				flags,
+				ctx,
+			);
 
-				if (!result.success) {
-					throw new UserError(result.message);
-				}
+			if (!result.success) {
+				throw new UserError(result.message);
+			}
 
-				for (const entry of admitted) {
-					await this.storeCredential(transactionManager, entry, project, ctx);
-				}
-			},
-		);
+			for (const entry of admitted) {
+				await this.storeCredential(entry, project, ctx);
+			}
+		});
 
 		this.reportSuccess(credentials.length - skipped.length);
 		this.reportSkipped(skipped);
@@ -299,7 +292,6 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async storeCredential(
-		transactionManager: EntityManager,
 		{ credential, existing, cleared }: AdmittedCredential,
 		project: Project,
 		ctx: OperationContext,
@@ -325,7 +317,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				resolvableAllowFallback: false,
 				resolverId: null,
 			});
-			await this.validateInstanceCredentialData(transactionManager, credential, existing, ctx);
+			await this.validateInstanceCredentialData(credential, existing, ctx);
 		}
 
 		const credentialsId = await Container.get(CredentialsRepository).upsertImportedContent(
@@ -335,42 +327,21 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 
 		if (credential.usageScope === 'instance') {
 			// Instance credentials are instance-owned and must not retain project sharing rows.
-			await transactionManager.delete(SharedCredentials, { credentialsId });
+			await Container.get(SharedCredentialsRepository).removeAllForCredential(credentialsId, ctx);
 			return;
 		}
 
-		const sharingExists = await transactionManager.existsBy(SharedCredentials, {
-			credentialsId,
-			role: 'credential:owner',
-		});
-
-		if (!sharingExists) {
-			await transactionManager.upsert(
-				SharedCredentials,
-				{
-					credentialsId,
-					role: 'credential:owner',
-					projectId: project.id,
-				},
-				['credentialsId', 'projectId'],
-			);
-		}
+		await Container.get(SharedCredentialsRepository).ensureOwner(credentialsId, project.id, ctx);
 	}
 
 	private async validateInstanceCredentialData(
-		transactionManager: EntityManager,
 		credential: Partial<CredentialsEntity>,
 		existing: ExistingCredential | null,
 		ctx: OperationContext,
 	) {
 		let data: unknown = credential.data;
 		if (data === undefined && credential.id) {
-			data = (
-				await transactionManager.findOne(CredentialsEntity, {
-					where: { id: credential.id },
-					select: { data: true },
-				})
-			)?.data;
+			data = (await Container.get(CredentialsRepository).findStoredData(credential.id, ctx))?.data;
 		}
 		if (data === undefined) return;
 		if (data === null || data === '') {
@@ -398,10 +369,10 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async checkRelations(
-		transactionManager: EntityManager,
 		credentials: Array<Pick<Partial<CredentialsEntity>, 'id'>>,
 		targetProjectId: string,
 		{ userId, projectId }: { userId?: string; projectId?: string },
+		ctx: OperationContext,
 	) {
 		// The credential is not supposed to be re-owned.
 		if (!projectId && !userId) {
@@ -416,24 +387,20 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				continue;
 			}
 
-			if (!(await this.credentialExists(transactionManager, credential.id))) {
+			if (!(await Container.get(CredentialsRepository).existsById(credential.id, ctx))) {
 				continue;
 			}
 
-			const { user, project: ownerProject } = await this.getCredentialOwner(
-				transactionManager,
-				credential.id,
-			);
+			const { user, project: ownerProject } = await this.getCredentialOwner(credential.id, ctx);
 
 			if (!ownerProject) {
 				continue;
 			}
 
 			if (ownerProject.id !== targetProjectId) {
-				const currentOwner =
-					ownerProject.type === 'personal'
-						? `the user with the ID "${user.id}"`
-						: `the project with the ID "${ownerProject.id}"`;
+				const currentOwner = user
+					? `the user with the ID "${user.id}"`
+					: `the project with the ID "${ownerProject.id}"`;
 				const newOwner = userId
 					? // The user passed in `--userId`, so let's use the user ID in the error
 						// message as opposed to the project ID.
@@ -586,28 +553,15 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		return property in importableProperties;
 	}
 
-	private async getCredentialOwner(transactionManager: EntityManager, credentialsId: string) {
-		const sharedCredential = await transactionManager.findOne(SharedCredentials, {
-			where: { credentialsId, role: 'credential:owner' },
-			relations: { project: true },
-		});
+	private async getCredentialOwner(credentialsId: string, ctx: OperationContext) {
+		const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
+			credentialsId,
+			ctx,
+		);
+		if (project?.type !== 'personal') return {};
 
-		if (sharedCredential && sharedCredential.project.type === 'personal') {
-			const user = await transactionManager.findOneByOrFail(User, {
-				projectRelations: {
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-					projectId: sharedCredential.projectId,
-				},
-			});
-
-			return { user, project: sharedCredential.project };
-		}
-
-		return {};
-	}
-
-	private async credentialExists(transactionManager: EntityManager, credentialId: string) {
-		return await transactionManager.existsBy(CredentialsEntity, { id: credentialId });
+		const user = await Container.get(UserRepository).findPersonalOwnerForProject(project.id, ctx);
+		return { user, project };
 	}
 
 	private async getProject(userId?: string, projectId?: string) {

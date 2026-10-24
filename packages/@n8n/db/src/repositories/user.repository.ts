@@ -362,8 +362,11 @@ export class UserRepository extends BaseRepository<User> {
 	 *
 	 * Returns null if the project does not exist or is not a personal project.
 	 */
-	async findPersonalOwnerForProject(projectId: string): Promise<User | null> {
-		return await this.findOne({
+	async findPersonalOwnerForProject(
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<User | null> {
+		return await this.managerFor(ctx).findOne(User, {
 			where: {
 				projectRelations: {
 					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG]) },

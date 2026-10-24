@@ -206,6 +206,18 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return count > 0;
 	}
 
+	async existsById(id: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).existsBy(CredentialsEntity, { id });
+	}
+
+	/** The stored (encrypted) data only, or null when the credential does not exist. */
+	async findStoredData(id: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOne(CredentialsEntity, {
+			where: { id },
+			select: { data: true },
+		});
+	}
+
 	async findDanglingProjectCredentials(): Promise<CredentialsEntity[]> {
 		return await this.createQueryBuilder('credentials')
 			.leftJoinAndSelect('credentials.shared', 'shared')
