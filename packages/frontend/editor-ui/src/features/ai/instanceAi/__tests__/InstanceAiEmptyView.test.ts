@@ -1607,6 +1607,7 @@ describe('InstanceAiEmptyView', () => {
 			await flushPromises();
 
 			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
+			expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
 		});
 	});
 

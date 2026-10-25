@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
@@ -120,11 +121,41 @@ describe('InstanceAiThreadRouteView', () => {
 
 	it('opens an unknown thread that the agents runtime does not have in the current Assistant', async () => {
 		setAssistantAgentEnabled(true);
-		vi.mocked(getSystemAgentThread).mockRejectedValue(new Error('Session not found'));
+		vi.mocked(getSystemAgentThread).mockRejectedValue(
+			Object.assign(new Error('Session not found'), { httpStatusCode: 404 }),
+		);
 
 		const { getByTestId } = renderView({ props: { threadId: 'old-thread' } });
 		await flushPromises();
 
 		expect(getByTestId('assistant-thread-view')).toHaveTextContent('old-thread');
+	});
+
+	it('shows an error with a retry when the lookup fails for another reason', async () => {
+		setAssistantAgentEnabled(true);
+		vi.mocked(getSystemAgentThread).mockRejectedValueOnce(
+			Object.assign(new Error('Bad gateway'), { httpStatusCode: 502 }),
+		);
+
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'unreachable-thread' },
+		});
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-thread-route-error')).toBeInTheDocument();
+		expect(queryByTestId('assistant-thread-view')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-thread-view')).not.toBeInTheDocument();
+
+		vi.mocked(getSystemAgentThread).mockResolvedValueOnce({
+			id: 'unreachable-thread',
+			title: null,
+			updatedAt: '2026-10-25T10:00:00.000Z',
+			projectId: 'project-2',
+		});
+		await fireEvent.click(getByTestId('instance-ai-thread-route-retry'));
+		await flushPromises();
+
+		expect(getByTestId('agent-thread-view')).toHaveTextContent('unreachable-thread:project-2');
+		expect(queryByTestId('instance-ai-thread-route-error')).not.toBeInTheDocument();
 	});
 });

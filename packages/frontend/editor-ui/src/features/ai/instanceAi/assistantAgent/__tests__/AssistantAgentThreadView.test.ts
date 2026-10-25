@@ -49,7 +49,7 @@ describe('AssistantAgentThreadView', () => {
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
 	});
 
-	it('sends the first message of a new thread, with its references in the first client context', async () => {
+	it('sends the first message of a new thread, with its references until the message is accepted', async () => {
 		const file = new File(['data'], 'report.pdf', { type: 'application/pdf' });
 		const reference = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
 		stashPendingAssistantAgentMessage({
@@ -70,6 +70,11 @@ describe('AssistantAgentThreadView', () => {
 			timeZone: expect.any(String),
 			attachments: [reference],
 		});
+		// A send that the server refuses can be sent again, with the same references.
+		expect(clientContext()).toMatchObject({ attachments: [reference] });
+
+		const onMessageAccepted = panelProps.current.onMessageAccepted as () => void;
+		onMessageAccepted();
 		expect(clientContext()).not.toHaveProperty('attachments');
 	});
 });

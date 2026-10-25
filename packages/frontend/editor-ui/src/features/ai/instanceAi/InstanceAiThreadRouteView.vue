@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { N8nSpinner } from '@n8n/design-system';
+import { N8nButton, N8nSpinner, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { onMounted, ref } from 'vue';
 
@@ -23,6 +24,7 @@ import InstanceAiThreadView from './InstanceAiThreadView.vue';
  */
 const props = defineProps<{ threadId: string }>();
 
+const i18n = useI18n();
 const rootStore = useRootStore();
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -33,14 +35,25 @@ const runtime = ref<AssistantThreadRuntime | undefined>(
 		isAssistantThread: (threadId) => store.threads.some((thread) => thread.id === threadId),
 	}),
 );
+const lookupFailed = ref(false);
+
+async function lookUpRuntime(): Promise<void> {
+	lookupFailed.value = false;
+	try {
+		runtime.value = await lookUpAssistantThreadRuntime(
+			props.threadId,
+			async (threadId) =>
+				await getSystemAgentThread(rootStore.restApiContext, ASSISTANT_AGENT_ID, threadId),
+		);
+	} catch {
+		// The thread can still be an Assistant agent thread, so do not guess a runtime.
+		lookupFailed.value = true;
+	}
+}
 
 onMounted(async () => {
 	if (runtime.value) return;
-	runtime.value = await lookUpAssistantThreadRuntime(
-		props.threadId,
-		async (threadId) =>
-			await getSystemAgentThread(rootStore.restApiContext, ASSISTANT_AGENT_ID, threadId),
-	);
+	await lookUpRuntime();
 });
 </script>
 
@@ -51,15 +64,33 @@ onMounted(async () => {
 		:thread-id="props.threadId"
 		:project-id="runtime.projectId"
 	/>
-	<div v-else :class="$style.loading" data-test-id="instance-ai-thread-route-loading">
+	<div
+		v-else-if="lookupFailed"
+		:class="$style.status"
+		role="alert"
+		data-test-id="instance-ai-thread-route-error"
+	>
+		<N8nText>{{ i18n.baseText('instanceAi.thread.loadError') }}</N8nText>
+		<N8nButton
+			variant="outline"
+			size="small"
+			data-test-id="instance-ai-thread-route-retry"
+			@click="lookUpRuntime"
+		>
+			{{ i18n.baseText('generic.retry') }}
+		</N8nButton>
+	</div>
+	<div v-else :class="$style.status" data-test-id="instance-ai-thread-route-loading">
 		<N8nSpinner size="large" />
 	</div>
 </template>
 
 <style lang="scss" module>
-.loading {
+.status {
 	display: flex;
 	flex: 1;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 	align-items: center;
 	justify-content: center;
 }

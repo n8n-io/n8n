@@ -54,12 +54,23 @@ describe('assistantAgentThreads', () => {
 
 		it('opens a thread that the agents runtime does not find in the current Assistant', async () => {
 			const fetchAgentThread = vi.fn(async () => {
-				throw new Error('Session not found');
+				throw Object.assign(new Error('Session not found'), { httpStatusCode: 404 });
 			});
 
 			await expect(
 				lookUpAssistantThreadRuntime('missing-thread', fetchAgentThread),
 			).resolves.toEqual({ kind: 'assistant' });
+		});
+
+		it('rejects when the lookup fails for another reason', async () => {
+			const failure = Object.assign(new Error('Bad gateway'), { httpStatusCode: 502 });
+			const fetchAgentThread = vi.fn(async () => {
+				throw failure;
+			});
+
+			await expect(lookUpAssistantThreadRuntime('thread-1', fetchAgentThread)).rejects.toBe(
+				failure,
+			);
 		});
 	});
 

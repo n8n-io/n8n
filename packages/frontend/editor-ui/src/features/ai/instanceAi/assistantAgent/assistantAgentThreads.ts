@@ -1,4 +1,5 @@
 import type { InstanceAiAttachment } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 /** Id of the n8n Assistant system agent on the agents runtime. */
 export const ASSISTANT_AGENT_ID = 'assistant';
@@ -38,7 +39,8 @@ export function knownAssistantThreadRuntime(
 /**
  * Asks the agents runtime for a thread that is not known yet. A thread that it
  * does not find opens in the current Assistant view, which handles a missing
- * thread.
+ * thread. Any other failure rejects, because the thread can still be an
+ * Assistant agent thread.
  */
 export async function lookUpAssistantThreadRuntime(
 	threadId: string,
@@ -48,8 +50,9 @@ export async function lookUpAssistantThreadRuntime(
 		const { projectId } = await fetchAgentThread(threadId);
 		rememberAssistantAgentThread(threadId, projectId);
 		return { kind: 'assistant-agent', projectId };
-	} catch {
-		return { kind: 'assistant' };
+	} catch (error) {
+		if (isRecord(error) && error.httpStatusCode === 404) return { kind: 'assistant' };
+		throw error;
 	}
 }
 

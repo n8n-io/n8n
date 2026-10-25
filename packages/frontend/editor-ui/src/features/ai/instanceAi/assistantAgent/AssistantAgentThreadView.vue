@@ -30,14 +30,17 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 
 /** The Assistant reads the same request fields as from its current runtime. */
 function clientContext(): Record<string, unknown> {
-	const references = pendingReferences;
-	pendingReferences = [];
 	return {
 		timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		...(rootStore.pushRef ? { pushRef: rootStore.pushRef } : {}),
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
-		...(references.length > 0 ? { attachments: references } : {}),
+		...(pendingReferences.length > 0 ? { attachments: pendingReferences } : {}),
 	};
+}
+
+/** The references go with the first message, so a retry of a refused send keeps them. */
+function onMessageAccepted(): void {
+	pendingReferences = [];
 }
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
@@ -67,6 +70,7 @@ function onSessionCreated(): void {
 			channel="system"
 			:client-context="clientContext"
 			@session-created="onSessionCreated"
+			@message-accepted="onMessageAccepted"
 		/>
 	</div>
 </template>
