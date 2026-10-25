@@ -186,7 +186,9 @@ function onToggle(resource: PromotionResource) {
 							</N8nText>
 						</span>
 					</button>
-					<N8nTooltip v-if="marker.blocked" :content="marker.blocked" placement="right">
+					<N8nTooltip v-if="marker.blocked" placement="right">
+						<!-- Plain text: a personal project name such as `Name <email>` is not HTML. -->
+						<template #content>{{ marker.blocked }}</template>
 						<!-- Only Apply has a Blockers tab to open, so Promote shows a plain marker. -->
 						<N8nButton
 							v-if="direction === 'apply'"

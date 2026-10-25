@@ -299,16 +299,20 @@ describe('PromotionsService', () => {
 					]),
 				);
 
-				await expect(
-					service.promote(ENVIRONMENT_ID, actor, {
-						canExportVariableValues: true,
-						commitMessage: 'sync projects',
-					}),
-				).rejects.toMatchObject({
+				const refusal = service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'sync projects',
+				});
+
+				await expect(refusal).rejects.toMatchObject({
 					httpStatusCode: 400,
 					message: expect.stringContaining(
-						'"Reminders" (w2) is in personal project "Ada Lovelace" here and in team project "Billing" on the branch',
+						'"Reminders" (w2) is in a personal project here and in team project "Billing" on the branch',
 					),
+				});
+				// A personal project's name holds its owner's email.
+				await expect(refusal).rejects.not.toMatchObject({
+					message: expect.stringContaining('Ada Lovelace'),
 				});
 				// The check reads the manifest at the remote head, not the checkout on disk.
 				expect(gitService.readFilesAtCommit).toHaveBeenCalledWith(

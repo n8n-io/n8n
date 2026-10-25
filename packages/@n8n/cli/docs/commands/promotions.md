@@ -204,7 +204,9 @@ n8n-cli promotion-environment promote env-1 -m "Promote team projects" --force
 | `-m, --message` | Commit message. Required. |
 | `--force` | Overwrite the remote branch when it has diverged. |
 
-Personal projects are not included. Connect the environment first. This command
+Personal projects are not included. A workflow on the branch that moved to a
+personal project is refused, because Apply would delete it on the destination.
+Move it back to its team project first. Connect the environment first. This command
 works on an `instance` Promote environment only. The API key also needs
 `variable:list` when the workflows reference variables.
 
@@ -290,6 +292,13 @@ each team project that the package does not hold, with all its workflows,
 credentials, and data tables. Preflight reports each such project as a
 `project-deletion` conflict.
 
+Workflows and folders move within their project to match the branch, and folders
+take the name on the branch. `counts.workflows.moved` is part of
+`counts.workflows.updated`. `counts.folders.moved` and `counts.folders.renamed` are
+parts of `counts.folders.updated`. A workflow or folder that the branch and this
+instance hold in different projects is refused before any write, and nothing is
+imported.
+
 Connect the environment first. This command works on an `instance` Apply
 environment only. The API key needs `gitConnection:pull`.
 
@@ -361,7 +370,11 @@ n8n-cli promotion-environment apply-selection proj-abc -w wf-1 \
 
 Selected IDs on the branch are imported. Instance workflows this project owns
 whose IDs are absent from the branch are removed. Unselected content stays
-unchanged. Without the `--expected-*` flags, the command applies the branch tip;
+unchanged. A selected workflow moves within the project to match the branch,
+together with the folders that hold it, and those folders take the name on the
+branch. Other folders stay as they are. A selected workflow, or a folder that the
+branch holds in this project, that the branch and this instance hold in different
+projects is refused before any write. Without the `--expected-*` flags, the command applies the branch tip;
 with them, it applies only the source that you reviewed. Pass all three flags or
 none.
 

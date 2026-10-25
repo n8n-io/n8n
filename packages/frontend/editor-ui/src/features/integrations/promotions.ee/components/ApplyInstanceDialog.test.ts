@@ -1,3 +1,4 @@
+import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -283,6 +284,23 @@ describe('ApplyInstanceDialog', () => {
 		);
 		expect(mockShowMessage).not.toHaveBeenCalled();
 		expect(emitted('update:open')).toBeUndefined();
+	});
+
+	it('says that nothing was applied when the server refuses the apply with a 409', async () => {
+		const refusal = new ResponseError(
+			'Apply can\'t move workflows or folders between projects: workflow "Invoices" (w1) is in project "Alpha" here and in project "Beta" on the branch.',
+			{ httpStatusCode: 409 },
+		);
+		api.applyPromotion.mockRejectedValueOnce(refusal);
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowError).toHaveBeenCalledWith(refusal, "Couldn't apply to the instance", {
+				message: 'Nothing was applied. Resolve the issue in the message, then try again.',
+			}),
+		);
 	});
 
 	it('reloads the project list when the apply fails', async () => {

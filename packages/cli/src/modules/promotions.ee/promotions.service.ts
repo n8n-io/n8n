@@ -1215,11 +1215,13 @@ export class PromotionsService {
 		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
 			workflows.map(({ id }) => id),
 		);
+		// The message leaves out the personal project's name: it holds the owner's email, and error
+		// messages reach the UI and telemetry.
 		const moved = workflows.flatMap(({ id, name, projectName }) => {
 			const owner = owners.get(id);
 			return owner !== undefined && owner.type !== 'team'
 				? [
-						`"${name}" (${id}) is in personal project "${owner.name}" here and in team project "${projectName}" on the branch`,
+						`"${name}" (${id}) is in a personal project here and in team project "${projectName}" on the branch`,
 					]
 				: [];
 		});

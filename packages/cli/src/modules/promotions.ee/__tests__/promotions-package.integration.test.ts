@@ -1912,6 +1912,32 @@ describe('Apply moves and renames within a project', () => {
 		expect((await placeOf(inside.id)).parentFolder?.id).toBe(b.id);
 	});
 
+	it('swaps two folders back on project Apply, moving the parent of the selected folder too', async () => {
+		const { promote } = await connect();
+		const {
+			project,
+			workflows: [inside],
+		} = await setupProjectWithWorkflows('Orders', ['Inside']);
+		// The branch holds A at the root, B under A, and the workflow in B.
+		const a = await createFolder(project, { name: 'A' });
+		const b = await createFolder(project, { name: 'B', parentFolder: a });
+		await Container.get(WorkflowRepository).update(inside.id, { parentFolder: b });
+		await promote();
+		// Here B is at the root and A is under B. B can only move under A once A leaves B.
+		const folders = Container.get(FolderRepository);
+		await folders.update(b.id, { parentFolder: null });
+		await folders.update(a.id, { parentFolder: b });
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [inside.id],
+		});
+
+		assert(result.status === 'applied');
+		expect(result.counts.folders).toMatchObject({ updated: 2, moved: 2 });
+		expect((await folderOf(a.id)).parentFolder ?? null).toBeNull();
+		expect((await folderOf(b.id)).parentFolder?.id).toBe(a.id);
+	});
+
 	it('renames only the folders that hold a selected workflow on project Apply', async () => {
 		const { promote } = await connect();
 		const {

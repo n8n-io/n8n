@@ -537,7 +537,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
 		expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
-			'Apply is disabled. The folder "Payments" is in a different project on the branch',
+			'Apply is disabled. The branch and this instance hold the folder "Payments" in different projects',
 		);
 	});
 

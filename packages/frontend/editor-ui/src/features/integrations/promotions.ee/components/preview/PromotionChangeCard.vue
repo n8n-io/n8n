@@ -172,7 +172,9 @@ const tagNote = computed(() => {
 					</N8nText>
 				</span>
 				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-				<N8nTooltip v-if="status" :content="status.label" as-child>
+				<N8nTooltip v-if="status" as-child>
+					<!-- Plain text: a personal project name such as `Name <email>` is not HTML. -->
+					<template #content>{{ status.label }}</template>
 					<span
 						role="img"
 						:aria-label="status.label"
