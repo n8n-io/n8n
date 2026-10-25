@@ -1,14 +1,22 @@
 // Fixtures for tests outside the skills module. They write and read the skill tables here,
-// so those tests never import the repository or the entities.
+// so those tests never import the repository or the entities. The `SkillUsage` fake and its
+// contract cases let both sides of the agents boundary test against the same rules.
 import { Container } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
-import type { SkillSource } from './database/entities/skill.entity';
-import { SkillRepository } from './database/repositories/skill.repository';
-import type { SkillContent } from './utils/skill-content-hash';
+import type { SkillSource } from '../database/entities/skill.entity';
+import { SkillRepository } from '../database/repositories/skill.repository';
+import type { SkillContent } from '../utils/skill-content-hash';
 
-export { skillContentHash, type SkillContent } from './utils/skill-content-hash';
-export { toSkillContent } from './utils/skill-content';
+export { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
+export { toSkillContent } from '../utils/skill-content';
+export { FakeSkillUsage } from './skill-usage.fake';
+export {
+	describeSkillUsageContract,
+	type SeededSkillUsageWorld,
+	type SkillUsageSubject,
+	type SkillUsageWorld,
+} from './skill-usage.contract';
 
 export type SkillFixture = {
 	id?: string;

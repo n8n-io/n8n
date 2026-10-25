@@ -17,7 +17,7 @@ Agent refs and publish pins (`agent_skill_dependency` and `agent_version_skill_d
 ```
 skills/
   index.ts             public API: the only import path for other modules
-  testing.ts           fixtures for tests outside the module
+  testing/             fixtures, the SkillUsage fake and its contract cases, for tests
   skills.module.ts     entrypoint: entities and controller import
   controllers/         REST routes
   services/            services, gates, the SkillUsage contract and its proxy
@@ -123,4 +123,5 @@ Add a contract only where the implementation varies or a caller cannot import th
 
 - Unit tests mock the repository and the `SkillUsageProxy`. They need no agents code. `__tests__/test-utils/skill-services.ts` builds the three services over mocks.
 - Integration tests of this module are `*.integration.test.ts` files in `__tests__/integration/`.
-- Tests outside the module use the fixtures in `testing.ts` to create skills and versions, read them back, and clear the tables. They never import the repository or the entities.
+- Tests outside the module use the fixtures in `testing/` to create skills and versions, read them back, and clear the tables. They never import the repository or the entities.
+- `FakeSkillUsage` in `testing/` is the in-memory `SkillUsage`. `describeSkillUsageContract` holds the cases that the fake and `AgentSkillUsage` both pass: `__tests__/skill-usage.fake.test.ts` runs them on the fake, and `agents/__tests__/agent-skill-usage.integration.test.ts` runs them on the database. When the contract changes, change the cases first.
