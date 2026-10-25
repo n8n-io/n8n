@@ -1,12 +1,6 @@
 <script lang="ts" setup>
-import {
-	N8nCallout,
-	N8nAnimatedCollapsibleContent as AnimatedCollapsibleContent,
-	N8nAiActivityStepChevron as TimelineStepChevron,
-	N8nAiActivityStepButton as TimelineStepButton,
-} from '@n8n/design-system';
+import { N8nCallout, N8nAiActivityStepGroup } from '@n8n/design-system';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
 import { getAgentSectionTitle } from '../builderAgents';
@@ -56,7 +50,7 @@ const peekEntries = computed(() => {
 	return [];
 });
 
-// Auto-collapse when agent completes so the peek preview returns to the resting state.
+/** Collapse completed agents to restore the resting state. */
 watch(
 	() => props.agentNode.status,
 	(status) => {
@@ -69,31 +63,31 @@ watch(
 
 <template>
 	<!-- eslint-disable vue/no-multiple-template-root -->
-	<!-- Collapsible timeline -->
-	<CollapsibleRoot v-slot="{ open: isOpen }" v-model:open="isExpanded">
-		<CollapsibleTrigger as-child>
-			<TimelineStepButton :loading="isActive" size="medium">
-				<template #icon>
-					<TimelineStepChevron :open="isOpen" />
-				</template>
-				{{ sectionTitle }}
-			</TimelineStepButton>
-		</CollapsibleTrigger>
-		<div v-if="!isOpen && isActive && peekEntries.length" :class="$style.content">
-			<SubagentStepTimeline
-				:agent-node="props.agentNode"
-				:agent-preview-target="agentPreviewTarget"
-				:visible-entries="peekEntries"
-				peek
-			/>
-		</div>
-		<AnimatedCollapsibleContent :class="$style.content">
-			<SubagentStepTimeline
-				:agent-node="props.agentNode"
-				:agent-preview-target="agentPreviewTarget"
-			/>
-		</AnimatedCollapsibleContent>
-	</CollapsibleRoot>
+	<N8nAiActivityStepGroup
+		v-model:open="isExpanded"
+		:label="sectionTitle"
+		:loading="isActive"
+		:nested="false"
+	>
+		<template #collapsed-preview>
+			<div v-if="isActive && peekEntries.length" :class="$style.content">
+				<SubagentStepTimeline
+					:agent-node="props.agentNode"
+					:agent-preview-target="agentPreviewTarget"
+					:visible-entries="peekEntries"
+					peek
+				/>
+			</div>
+		</template>
+		<template #default>
+			<div :class="$style.content">
+				<SubagentStepTimeline
+					:agent-node="props.agentNode"
+					:agent-preview-target="agentPreviewTarget"
+				/>
+			</div>
+		</template>
+	</N8nAiActivityStepGroup>
 	<!-- Error display -->
 	<N8nCallout v-if="isError && props.agentNode.error" theme="danger">
 		{{ props.agentNode.error }}

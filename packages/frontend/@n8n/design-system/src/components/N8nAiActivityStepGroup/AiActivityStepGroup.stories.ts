@@ -1,5 +1,5 @@
 import type { StoryFn } from '@storybook/vue3-vite';
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 
 import './AiActivityStepGroup.stories.scss';
 
@@ -7,6 +7,7 @@ import N8nAiActivityStep from '../N8nAiActivityStep';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
 import N8nAiActivityStepResultSection from '../N8nAiActivityStepResultSection';
+import N8nButton from '../N8nButton';
 import N8nChatInput from '../N8nChatInput';
 import N8nIcon from '../N8nIcon';
 import N8nAiActivityStepGroup from './AiActivityStepGroup.vue';
@@ -169,6 +170,45 @@ export const Default: StoryFn = () => ({
 		</div>
 	`,
 });
+
+export const ControlledGroup: StoryFn = function ControlledGroup() {
+	return {
+		components: { N8nAiActivityStepGroup, N8nAiActivityStep, N8nButton },
+		setup() {
+			const open = ref(false);
+			return { open };
+		},
+		template: `
+			<div style="${wrapperStyle}">
+				<n8n-button variant="subtle" @click="open = !open">Toggle activity</n8n-button>
+				<n8n-ai-activity-step-group v-model:open="open" label="Activity" :nested="false">
+					<template #label="{ open }">{{ open ? 'All activity' : 'Recent activity' }}</template>
+					<template #header-trailing="{ open }"><span>{{ open ? '3 steps' : '1 recent step' }}</span></template>
+					<template #collapsed-preview>
+						<n8n-ai-activity-step label="Checked settings" :has-content="false" />
+					</template>
+					<n8n-ai-activity-step label="Read request" :has-content="false" />
+					<n8n-ai-activity-step label="Found available actions" :has-content="false" />
+					<n8n-ai-activity-step label="Checked settings" :has-content="false" />
+				</n8n-ai-activity-step-group>
+			</div>
+		`,
+	};
+};
+
+export const InitiallyOpenGroup: StoryFn = function InitiallyOpenGroup() {
+	return {
+		components: { N8nAiActivityStepGroup, N8nAiActivityStep },
+		template: `
+			<div style="${wrapperStyle}">
+				<n8n-ai-activity-step-group label="2 activity steps" default-open>
+					<n8n-ai-activity-step label="Read request" :has-content="false" />
+					<n8n-ai-activity-step label="Checked settings" :has-content="false" />
+				</n8n-ai-activity-step-group>
+			</div>
+		`,
+	};
+};
 
 export const BackgroundJobs: StoryFn = (args) => ({
 	components: { N8nAiActivityStepGroup, N8nChatInput, N8nIcon },

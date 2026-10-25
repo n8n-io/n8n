@@ -1,19 +1,15 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mount } from '@vue/test-utils';
+import { waitFor } from '@testing-library/vue';
 import type { InstanceAiAgentNode, InstanceAiTargetResource } from '@n8n/api-types';
 import { defineComponent, h, type PropType } from 'vue';
 import { beforeEach, describe, expect, it } from 'vitest';
 import AgentSection from '../components/AgentSection.vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const SlotStub = defineComponent({
 	setup(_, { slots }) {
 		return () => h('div', slots.default?.());
-	},
-});
-
-const CollapsibleRootStub = defineComponent({
-	setup(_, { slots }) {
-		return () => h('div', slots.default?.({ open: false }));
 	},
 });
 
@@ -59,13 +55,8 @@ function mountSection(
 		props: { agentNode: makeAgentNode(targetResource, overrides) },
 		global: {
 			stubs: {
-				AnimatedCollapsibleContent: SlotStub,
-				CollapsibleRoot: CollapsibleRootStub,
-				CollapsibleTrigger: SlotStub,
 				N8nCallout: SlotStub,
 				SubagentStepTimeline: SubagentStepTimelineStub,
-				TimelineStepButton: SlotStub,
-				TimelineStepChevron: true,
 			},
 		},
 	});
@@ -105,15 +96,49 @@ describe('AgentSection', () => {
 			} satisfies InstanceAiTargetResource,
 			expected: undefined,
 		},
-	])('passes the $label to both timelines', ({ targetResource, expected }) => {
+	])('passes the $label to both timelines', async ({ targetResource, expected }) => {
 		const wrapper = mountSection(targetResource);
-		const timelines = wrapper.findAllComponents(SubagentStepTimelineStub);
+		const peek = wrapper.getComponent(SubagentStepTimelineStub);
+		expect(peek.props('peek')).toBe(true);
+		expect(peek.props('agentPreviewTarget')).toEqual(expected);
 
-		expect(timelines).toHaveLength(2);
-		expect(timelines.map((timeline) => timeline.props('peek'))).toEqual([true, false]);
-		for (const timeline of timelines) {
-			expect(timeline.props('agentPreviewTarget')).toEqual(expected);
-		}
+		await wrapper.get('button').trigger('click');
+		const timeline = wrapper.getComponent(SubagentStepTimelineStub);
+		expect(timeline.props('peek')).toBe(false);
+		expect(timeline.props('agentPreviewTarget')).toEqual(expected);
+	});
+
+	it('starts open on cloud and collapses when the agent completes', async () => {
+		useSettingsStore().settings.deployment = { type: 'cloud' };
+		const wrapper = mountSection();
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+		expect(wrapper.getComponent(SubagentStepTimelineStub).props('peek')).toBe(false);
+
+		await wrapper.setProps({ agentNode: makeAgentNode(undefined, { status: 'completed' }) });
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
+		await waitFor(() => {
+			expect(wrapper.findComponent(SubagentStepTimelineStub).exists()).toBe(false);
+		});
+	});
+
+	it('shows only the latest renderable entry in the active preview', async () => {
+		const latestEntry = { type: 'text', content: 'Latest update' } as const;
+		const wrapper = mountSection(undefined, {
+			timeline: [
+				{ type: 'text', content: 'Earlier update' },
+				latestEntry,
+				{ type: 'child', agentId: 'child-1' },
+			],
+		});
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
+		expect(wrapper.getComponent(SubagentStepTimelineStub).props('visibleEntries')).toEqual([
+			latestEntry,
+		]);
+
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.getComponent(SubagentStepTimelineStub).props('peek')).toBe(false);
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.getComponent(SubagentStepTimelineStub).props('peek')).toBe(true);
 	});
 
 	it('renders the localized activity title', () => {

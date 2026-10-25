@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 import {
-	N8nButton,
 	N8nIcon,
 	type IconName,
-	N8nAnimatedCollapsibleContent as AnimatedCollapsibleContent,
+	N8nAiActivityStepGroup,
 	N8nAiActivityStep as ToolCallStep,
 	N8nAiActivityStepResultSection,
 } from '@n8n/design-system';
@@ -13,7 +12,6 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
 import type { AgentPreviewTarget } from '@/features/agents/utils/agentPreviewUrl';
 import { HIDDEN_TOOLS, isStreamingTimelineEntry } from '../agentTimeline.utils';
@@ -144,30 +142,22 @@ const steps = computed((): TimelineStep[] => {
 			</ToolCallStep>
 
 			<template v-else-if="step.type === 'text'">
-				<CollapsibleRoot v-if="step.isLongText" v-slot="{ open }">
-					<CollapsibleTrigger as-child>
-						<N8nButton ref="triggerRef" variant="ghost" size="small" :class="$style.toggleTrigger">
-							<template #icon>
-								<template v-if="step.isLoading">
-									<N8nIcon icon="spinner" size="small" color="primary" spin />
-								</template>
-								<N8nIcon v-else :icon="step.icon" size="small" />
-							</template>
-							<template v-if="open">
-								{{ i18n.baseText('instanceAi.statusBar.thinking') }}
-							</template>
-							<template v-else>{{ step.label }}</template>
-						</N8nButton>
-					</CollapsibleTrigger>
-					<AnimatedCollapsibleContent :class="$style.toggleContent">
+				<N8nAiActivityStepGroup v-if="step.isLongText" :nested="false" size="small">
+					<template #prefix>
+						<N8nIcon :icon="step.icon" size="small" />
+					</template>
+					<template #label="{ open }">
+						{{ open ? i18n.baseText('instanceAi.statusBar.thinking') : step.label }}
+					</template>
+					<div :class="$style.toggleContent">
 						<N8nAiActivityStepResultSection>
 							<InstanceAiMarkdown
 								:content="step.textContent!"
 								:agent-preview-target="props.agentPreviewTarget"
 							/>
 						</N8nAiActivityStepResultSection>
-					</AnimatedCollapsibleContent>
-				</CollapsibleRoot>
+					</div>
+				</N8nAiActivityStepGroup>
 				<ButtonLike v-else>
 					<!-- Peek mode only: column-reverse + overflow-y pins the scroll
 						 to the bottom so the latest streamed tokens stay visible. -->
@@ -204,14 +194,6 @@ const steps = computed((): TimelineStep[] => {
 .toggleContent {
 	max-height: 300px;
 	overflow-y: auto;
-}
-
-.toggleTrigger {
-	--button--padding: 0;
-	--button--font-size: var(--font-size--sm);
-
-	padding-inline: 0;
-	font-size: var(--font-size--sm);
 }
 
 .streamingMarkdown {
