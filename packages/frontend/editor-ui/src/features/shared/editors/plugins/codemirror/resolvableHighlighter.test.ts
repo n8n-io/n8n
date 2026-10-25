@@ -1,9 +1,11 @@
-import { Decoration } from '@codemirror/view';
+import { Decoration, EditorView } from '@codemirror/view';
 import { EditorState, StateEffect } from '@codemirror/state';
+import { defaultHighlightStyle, LanguageSupport, syntaxHighlighting } from '@codemirror/language';
+import { htmlLanguage } from '@n8n/codemirror-lang-html';
 import type { DecorationSet } from '@codemirror/view';
 import { captureException } from '@sentry/vue';
 import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
-import type { ResolvableState } from '@/app/types/expressions';
+import type { Plaintext, Resolvable, ResolvableState } from '@/app/types/expressions';
 
 import { coloringStateEffects, coloringStateField, highlighter } from './resolvableHighlighter';
 
@@ -35,6 +37,143 @@ const createState = (doc = 'hello world') =>
 	EditorState.create({ doc, extensions: [coloringStateField] });
 
 describe('resolvableHighlighter', () => {
+	it.each([
+		{
+			description: 'an expression before the cursor',
+			doc: 'THIS IS "{{ $json.weather }}" TEST',
+			cursor: 'end' as const,
+			state: 'valid' as const,
+		},
+		{
+			description: 'multiple expressions before the cursor',
+			doc: '{{ $json.one }} TEST {{ $json.two }} END',
+			cursor: 'end' as const,
+			state: 'valid' as const,
+		},
+		{
+			description: 'an expression that changes state during composition',
+			doc: 'THIS IS "{{ $json.weather }}" TEST',
+			cursor: 20,
+			state: 'invalid' as const,
+		},
+	])('preserves $description when IME highlighting updates', async ({ doc, cursor, state }) => {
+		const position = cursor === 'end' ? doc.length : cursor;
+		const parent = document.createElement('div');
+		document.body.appendChild(parent);
+		const view = new EditorView({
+			parent,
+			state: EditorState.create({ doc, selection: { anchor: position } }),
+		});
+		const segments = (text: string, resolvableState: ResolvableState = 'valid') =>
+			Array.from(text.matchAll(/\{\{.*?\}\}/g), (match) => ({
+				kind: 'resolvable' as const,
+				from: match.index,
+				to: match.index + match[0].length,
+				resolvable: match[0],
+				resolved: 'Sunny',
+				state: resolvableState,
+				error: null,
+			}));
+
+		try {
+			highlighter.addColor(view, segments(doc));
+			view.focus();
+			const { node: compositionText, offset } = view.domAtPos(position);
+			if (!(compositionText instanceof Text)) throw new Error('Expected a text node');
+			view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+
+			// The browser changes the same text node while the input method composes text.
+			compositionText.insertData(offset, 'あ');
+			document.getSelection()?.collapse(compositionText, offset + 1);
+			const firstInput = doc.slice(0, position) + 'あ' + doc.slice(position);
+			await vi.waitFor(() => expect(view.state.doc.toString()).toBe(firstInput));
+
+			// Expression evaluation refreshes the colors before composition ends.
+			highlighter.addColor(view, segments(firstInput, state));
+			compositionText.insertData(offset + 1, 'ん');
+			document.getSelection()?.collapse(compositionText, offset + 2);
+			view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+			const secondInput = doc.slice(0, position) + 'あん' + doc.slice(position);
+			await vi.waitFor(() => expect(view.state.doc.toString()).toBe(secondInput));
+			expect(view.composing).toBe(false);
+			expect(view.contentDOM.textContent).toBe(secondInput);
+		} finally {
+			view.destroy();
+			parent.remove();
+		}
+	});
+
+	it('preserves HTML expressions when parent segments refresh during composition', async () => {
+		const doc = '<p>Before {{ $json.weather }} after</p>';
+		const position = doc.indexOf('</p>');
+		const parent = document.createElement('div');
+		document.body.appendChild(parent);
+		const view = new EditorView({
+			parent,
+			state: EditorState.create({
+				doc,
+				selection: { anchor: position },
+				extensions: [new LanguageSupport(htmlLanguage), syntaxHighlighting(defaultHighlightStyle)],
+			}),
+		});
+		const refreshColors = () => {
+			const text = view.state.doc.toString();
+			const plaintext: Plaintext[] = [];
+			const resolvable: Resolvable[] = [];
+			htmlLanguage.parser
+				.parse(text)
+				.cursor()
+				.iterate((node) => {
+					if (['Program', 'Script', 'Document'].includes(node.name)) return;
+					if (node.name === 'Resolvable') {
+						resolvable.push({
+							kind: 'resolvable',
+							from: node.from,
+							to: node.to,
+							resolvable: text.slice(node.from, node.to),
+							resolved: 'Sunny',
+							state: 'valid',
+							error: null,
+						});
+					} else {
+						plaintext.push({
+							kind: 'plaintext',
+							from: node.from,
+							to: node.to,
+							plaintext: text.slice(node.from, node.to),
+						});
+					}
+				});
+
+			// HTML parent nodes cover both plaintext and expression children.
+			highlighter.updateColors(view, plaintext, resolvable);
+		};
+
+		try {
+			refreshColors();
+			view.focus();
+			const { node: compositionText, offset } = view.domAtPos(position);
+			if (!(compositionText instanceof Text)) throw new Error('Expected a text node');
+			view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+			compositionText.insertData(offset, 'あ');
+			document.getSelection()?.collapse(compositionText, offset + 1);
+			const firstInput = doc.slice(0, position) + 'あ' + doc.slice(position);
+			await vi.waitFor(() => expect(view.state.doc.toString()).toBe(firstInput));
+
+			refreshColors();
+			compositionText.insertData(offset + 1, 'ん');
+			document.getSelection()?.collapse(compositionText, offset + 2);
+			view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+			const secondInput = doc.slice(0, position) + 'あん' + doc.slice(position);
+			await vi.waitFor(() => expect(view.state.doc.toString()).toBe(secondInput));
+			expect(view.composing).toBe(false);
+			expect(view.contentDOM.textContent).toBe(secondInput);
+		} finally {
+			view.destroy();
+			parent.remove();
+		}
+	});
+
 	describe('coloringStateField', () => {
 		describe('create', () => {
 			it('starts with no decorations', () => {
@@ -267,6 +406,48 @@ describe('resolvableHighlighter', () => {
 				}).state;
 				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([
 					{ from: 0, to: 5, className: cssClasses.validResolvable },
+				]);
+			});
+
+			it('removes a composed expression mark when its delimiters become plaintext', () => {
+				const doc = 'before {{ $json.weather }} after';
+				const from = doc.indexOf('{{');
+				const to = doc.indexOf('}}') + 2;
+				let state = createState(doc);
+				state = state.update({
+					effects: coloringStateEffects.addColorEffect.of({ from, to, state: 'valid' }),
+				}).state;
+				state = state.update({
+					changes: { from: to - 2, to, insert: '' },
+					userEvent: 'input.type.compose',
+				}).state;
+
+				// The parser now treats the whole line as plaintext.
+				state = state.update({
+					effects: coloringStateEffects.removeColorEffect.of({ from: 0, to: state.doc.length }),
+				}).state;
+
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([]);
+			});
+
+			it.each([
+				{ from: 5, to: 6 },
+				{ from: 2, to: 2 },
+			])('keeps marks for adjacent or empty plaintext ranges ($from, $to)', ({ from, to }) => {
+				let state = createState('hello world');
+				state = state.update({
+					effects: [
+						coloringStateEffects.addColorEffect.of({ from: 0, to: 5, state: 'valid' }),
+						coloringStateEffects.addColorEffect.of({ from: 6, to: 11, state: 'invalid' }),
+					],
+				}).state;
+				state = state.update({
+					effects: coloringStateEffects.removeColorEffect.of({ from, to }),
+				}).state;
+
+				expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual([
+					{ from: 0, to: 5, className: cssClasses.validResolvable },
+					{ from: 6, to: 11, className: cssClasses.invalidResolvable },
 				]);
 			});
 
