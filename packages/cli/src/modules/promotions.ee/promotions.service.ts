@@ -13,6 +13,7 @@ import {
 	type PromotionBindingConflict,
 	type PromotionCheckoutPublicDto,
 	type PromotionDirection,
+	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
@@ -76,6 +77,7 @@ import {
 } from './promotions-git.utils';
 import type {
 	BranchPackage,
+	PackageCommit,
 	PromotionCacheDescriptor,
 	PromotionGitCredentials,
 	PromotionOperationInput,
@@ -255,6 +257,7 @@ export class PromotionsService {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
 				title: request.commitMessage,
+				promotionRunContents: { projectIds },
 			})),
 		};
 	}
@@ -263,11 +266,18 @@ export class PromotionsService {
 	private async openReview(
 		input: PromotionOperationInput,
 		actor: User,
-		push: { promotionBranchName: string | undefined; commitSha: string; title: string },
+		push: {
+			promotionBranchName: string | undefined;
+			commitSha: string;
+			title: string;
+			promotionRunContents: PromotionRunContents;
+		},
 	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
 		const recorded = await this.recordPromoteRun(input, actor, {
 			branchName: push.promotionBranchName ?? checkoutBranchName(input.config),
 			commitSha: push.commitSha,
+			// Only a promotion branch has a review, and the review gate reads the project list.
+			...(push.promotionBranchName && { promotionRunContents: push.promotionRunContents }),
 		});
 		// A review without a run cannot be rendered: the branch and commit live on the run.
 		if (!recorded.runId) {
@@ -316,7 +326,7 @@ export class PromotionsService {
 	private async recordPromoteRun(
 		input: PromotionOperationInput,
 		actor: User,
-		git: { branchName: string; commitSha: string },
+		git: { branchName: string; commitSha: string; promotionRunContents?: PromotionRunContents },
 	): Promise<{ runId?: string }> {
 		try {
 			const type = promotionRunTypeSchema.parse('git');
@@ -329,6 +339,7 @@ export class PromotionsService {
 					schemaVersion: 1,
 					branchName: git.branchName,
 					commitSha: git.commitSha,
+					...(git.promotionRunContents && { contents: git.promotionRunContents }),
 				}),
 				reviewId: null,
 			});
@@ -494,6 +505,7 @@ export class PromotionsService {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
 				title: request.commitMessage,
+				promotionRunContents: { projectIds: [selection.projectId] },
 			})),
 		};
 	}
@@ -1004,12 +1016,60 @@ export class PromotionsService {
 	): Promise<Map<string, string>> {
 		const input = await this.resolver.resolveForProject(projectId, direction);
 		await this.assertCheckoutReady(input, 'reading branch files');
+		return await this.readExistingFiles(
+			{
+				paths: this.workingDirectory.paths(input.environmentId),
+				branchName: checkoutBranchName(input.config),
+				environmentId: input.environmentId,
+				commitSha,
+			},
+			filePaths,
+		);
+	}
+
+	/**
+	 * Fetches the head and the baseline of a promotion review into the checkout of its
+	 * environment, and returns the package at each. The Git service chooses the baseline.
+	 */
+	async readReviewCommits(
+		environmentId: string,
+		request: {
+			headRef: string;
+			headCommitSha: string;
+			baseline: { targetBranchName: string } | { commitSha: string; targetBranchName?: string };
+		},
+	): Promise<{ baseline: PackageCommit; head: PackageCommit }> {
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
+		await this.assertCheckoutReady(input, 'reading a review');
 		const operation = {
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName: checkoutBranchName(input.config),
 			environmentId: input.environmentId,
-			commitSha,
 		};
+		const { baselineCommitSha } = await this.gitService.fetchReviewCommits({
+			...operation,
+			...request,
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+		});
+		const atCommit = (commitSha: string): PackageCommit => ({
+			commitSha,
+			listFiles: async () =>
+				await this.gitService.listFilesAtCommit({
+					...operation,
+					commitSha,
+					directory: PACKAGE_SUBFOLDER,
+				}),
+			readFiles: async (filePaths) =>
+				await this.readExistingFiles({ ...operation, commitSha }, filePaths),
+		});
+		return { baseline: atCommit(baselineCommitSha), head: atCommit(request.headCommitSha) };
+	}
+
+	private async readExistingFiles(
+		operation: Omit<Parameters<PromotionsGitService['readFilesAtCommit']>[0], 'filePaths'>,
+		filePaths: readonly string[],
+	): Promise<Map<string, string>> {
 		const existing = await this.gitService.findPathsAtCommit({ ...operation, filePaths });
 		return await this.gitService.readFilesAtCommit({
 			...operation,

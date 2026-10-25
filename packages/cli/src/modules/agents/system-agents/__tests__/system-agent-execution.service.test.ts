@@ -1,3 +1,4 @@
+import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -22,12 +23,17 @@ import type {
 	AgentTurnRequest,
 } from '../../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
+import { ExecutionRecorder, type TimelineEvent } from '../../execution-recorder';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
-import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
+import type {
+	AgentExecutionRepository,
+	AgentExecutionUsageRow,
+} from '../../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
 import type { AgentTurnFinalizeOutcome } from '../../types/agent-turn-outcome';
+import { executionToMessagesDto } from '../../utils/execution-to-message-mapper';
 import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
 import type {
@@ -274,6 +280,216 @@ describe('SystemAgentExecutionService', () => {
 		});
 	});
 
+	describe('host events', () => {
+		/**
+		 * Run the turn with a real recorder, the way the Agents runtime records
+		 * it. Like the runtime, call the finalize hook before the record is
+		 * stored, and keep the stored timeline.
+		 */
+		function setupWithRecorder(chunks: AgentExecutionStreamChunk[] = [textChunk]) {
+			const context = setup(chunks);
+			const recorders: ExecutionRecorder[] = [];
+			const stored: TimelineEvent[][] = [];
+			context.turnExecutionService.execute.mockImplementation(async function* (config) {
+				const recorder = new ExecutionRecorder();
+				recorders.push(recorder);
+				config.onRecorderCreated?.(recorder);
+				context.prepared.push(await config.prepare());
+				try {
+					for (const chunk of chunks) {
+						if (chunk.type !== 'message-steered') recorder.record(chunk);
+						yield chunk;
+					}
+				} finally {
+					await config.onBeforeFinalize?.({ executionId: 'exec-1', status: 'completed' });
+					stored.push(structuredClone(recorder.getMessageRecord().timeline));
+				}
+			});
+			return { ...context, recorders, stored };
+		}
+
+		function historyOf(timeline: TimelineEvent[]) {
+			return executionToMessagesDto({
+				id: 'exec-1',
+				userMessage: 'Build me a workflow',
+				author: null,
+				timeline,
+				attachments: null,
+				status: 'success',
+				error: null,
+				createdAt: new Date(),
+			} as Parameters<typeof executionToMessagesDto>[0]).find(({ role }) => role === 'assistant')
+				?.content;
+		}
+
+		it('streams events from prepareTurn and from the turn, and records them in order', async () => {
+			const { service, provider, handle, onChunk, recorders } = setupWithRecorder();
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				turn.emitHostEvent('test.prepared', { step: 1 });
+				onChunk.mockImplementation(() => turn.emitHostEvent('test.after-text', { step: 2 }));
+				return handle;
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			const events = send.mock.calls.map(([event]: [AgentSseEvent]) => event);
+			expect(events.map((event) => event.type)).toEqual([
+				'host-event',
+				'text-delta',
+				'host-event',
+				'done',
+			]);
+			expect(events[0]).toEqual({
+				type: 'host-event',
+				name: 'test.prepared',
+				payload: { step: 1 },
+			});
+			expect(events[2]).toEqual({
+				type: 'host-event',
+				name: 'test.after-text',
+				payload: { step: 2 },
+			});
+
+			const { timeline } = recorders[0].getMessageRecord();
+			expect(timeline.map((event) => event.type)).toEqual(['host-event', 'text', 'host-event']);
+
+			// The same events come back from history after a reload.
+			expect(historyOf(timeline)).toEqual([
+				{ type: 'host-event', name: 'test.prepared', payload: { step: 1 } },
+				{ type: 'text', text: 'Hello' },
+				{ type: 'host-event', name: 'test.after-text', payload: { step: 2 } },
+			]);
+		});
+
+		it('streams events of a resume turn to the resume stream', async () => {
+			const { service, provider, handle, checkpointStorage } = setupWithRecorder();
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				turn.emitHostEvent('test.resumed');
+				return handle;
+			});
+			const send = vi.fn();
+
+			const { done } = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				resumeData: { approved: true },
+				send,
+			});
+			await done;
+
+			expect(send).toHaveBeenCalledWith({
+				type: 'host-event',
+				name: 'test.resumed',
+				payload: null,
+			});
+		});
+
+		it('replaces a keyed event in place, in the stream and in the record', async () => {
+			const { service, provider, handle, onChunk, stored } = setupWithRecorder();
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				turn.emitHostEvent('test.progress', { done: 0 }, { key: 'build' });
+				onChunk.mockImplementation(() =>
+					turn.emitHostEvent('test.progress', { done: 1 }, { key: 'build' }),
+				);
+				return handle;
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			const events = send.mock.calls.map(([event]: [AgentSseEvent]) => event);
+			expect(events.filter((event) => event.type === 'host-event')).toEqual([
+				{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 0 } },
+				{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+			]);
+			expect(historyOf(stored[0])).toEqual([
+				{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+				{ type: 'text', text: 'Hello' },
+			]);
+		});
+
+		it('sends and stores an event from onSettled before done', async () => {
+			const { service, provider, handle, onSettled, stored } = setupWithRecorder();
+			let emit: SystemAgentTurn['emitHostEvent'] | undefined;
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				emit = turn.emitHostEvent;
+				return handle;
+			});
+			onSettled.mockImplementation(async () => emit?.('test.summary', { ok: true }));
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(onSettled).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'completed' });
+			const events = send.mock.calls.map(([event]: [AgentSseEvent]) => event);
+			expect(events.map((event) => event.type)).toEqual(['text-delta', 'host-event', 'done']);
+			expect(historyOf(stored[0])).toEqual([
+				{ type: 'text', text: 'Hello' },
+				{ type: 'host-event', name: 'test.summary', payload: { ok: true } },
+			]);
+		});
+
+		it('calls onSettled once and uses its outcome for the workspace and done', async () => {
+			const { source } = workspaceSource();
+			const context = setup([textChunk], { status: 'cancelled' }, source);
+			const send = vi.fn();
+
+			await context.service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(context.onSettled).toHaveBeenCalledTimes(1);
+			expect(source.release).toHaveBeenCalledWith(
+				workspaceScope,
+				expect.anything(),
+				expect.objectContaining({ status: 'cancelled' }),
+			);
+			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+			expect(context.executionRepository.findExecution).not.toHaveBeenCalled();
+		});
+
+		it('drops an event that comes after onSettled returned', async () => {
+			const { service, provider, handle, logger, stored } = setupWithRecorder();
+			let emit: SystemAgentTurn['emitHostEvent'] | undefined;
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				emit = turn.emitHostEvent;
+				return handle;
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+			emit?.('test.late');
+
+			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'host-event' }));
+			expect(stored[0]).not.toContainEqual(expect.objectContaining({ type: 'host-event' }));
+			expect(logger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('dropped'),
+				expect.objectContaining({ name: 'test.late' }),
+			);
+		});
+
+		it('drops an event from onSettled when the turn has no execution record', async () => {
+			const { service, provider, handle, onSettled, logger } = setup([textChunk], null);
+			let emit: SystemAgentTurn['emitHostEvent'] | undefined;
+			provider.prepareTurn.mockImplementation(async (turn) => {
+				emit = turn.emitHostEvent;
+				return handle;
+			});
+			onSettled.mockImplementation(async () => emit?.('test.late'));
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(onSettled).toHaveBeenCalledTimes(1);
+			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'host-event' }));
+			expect(logger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('dropped'),
+				expect.objectContaining({ name: 'test.late' }),
+			);
+		});
+	});
+
 	describe('consume', () => {
 		it('prepares the turn and runs the provider handle on the Agents runtime', async () => {
 			const { service, provider, handle, turnExecutionService, prepared } = setup([textChunk]);
@@ -430,6 +646,15 @@ describe('SystemAgentExecutionService', () => {
 			expect(prepared[0].options).toMatchObject({
 				persistence: { threadId: 'thread-1', resourceId: 'system-chat:user-1' },
 			});
+		});
+
+		it("passes the handle's side-call usage callback to the turn", async () => {
+			const { service, handle, prepared } = setup([textChunk]);
+			handle.onSideCallUsage = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(prepared[0].options.onSideCallUsage).toBe(handle.onSideCallUsage);
 		});
 
 		it('aborts the provider setup when the claim stops during setup', async () => {
@@ -896,6 +1121,27 @@ describe('SystemAgentExecutionService', () => {
 			});
 		});
 
+		it("passes the handle's side-call usage callback to the resumed turn", async () => {
+			const { service, handle, checkpointStorage, prepared } = setup([textChunk]);
+			handle.onSideCallUsage = vi.fn();
+			checkpointStorage.load.mockResolvedValue({
+				persistence: { threadId: 'thread-1' },
+			} as never);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+
+			await service.resumeRun({
+				agentId: AGENT_ID,
+				user,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: {},
+				send: vi.fn(),
+			});
+
+			expect(prepared[0].type).toBe('resume');
+			expect(prepared[0].options.onSideCallUsage).toBe(handle.onSideCallUsage);
+		});
+
 		it('rejects when the resumed turn fails, so the route can report it', async () => {
 			const { service, checkpointStorage, turnExecutionService } = setup();
 			checkpointStorage.load.mockResolvedValue({
@@ -964,6 +1210,116 @@ describe('SystemAgentExecutionService', () => {
 			messageQueue.hasQueuedMessages.mockResolvedValue(false);
 
 			expect((await service.getStatus(thread)).status).toBe('idle');
+		});
+	});
+
+	describe('getUsage', () => {
+		function usageRow(
+			overrides: Partial<AgentExecutionUsageRow> & Pick<AgentExecutionUsageRow, 'id'>,
+		): AgentExecutionUsageRow {
+			return {
+				threadId: thread.id,
+				parentExecutionId: null,
+				status: 'success',
+				model: 'anthropic/claude-sonnet-4-5',
+				startedAt: new Date('2026-10-08T10:00:00.000Z'),
+				stoppedAt: new Date('2026-10-08T10:00:02.000Z'),
+				duration: 2000,
+				promptTokens: null,
+				completionTokens: null,
+				totalTokens: null,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+				cost: null,
+				...overrides,
+			};
+		}
+
+		it('returns each turn with its own usage, its delegated runs and their sum', async () => {
+			const { service, executionRepository } = setup();
+			executionRepository.findUsageByThreadId.mockResolvedValue([
+				usageRow({
+					id: 'turn-1',
+					promptTokens: 1000,
+					completionTokens: 40,
+					totalTokens: 1040,
+					cacheReadTokens: 800,
+					cacheWriteTokens: 100,
+					cost: 0.1,
+				}),
+				usageRow({ id: 'turn-2', promptTokens: 10, completionTokens: 1, totalTokens: 11 }),
+			]);
+			executionRepository.findChildUsageByParentIds.mockResolvedValue([
+				usageRow({
+					id: 'child-1',
+					threadId: 'child-thread-1',
+					parentExecutionId: 'turn-1',
+					promptTokens: 300,
+					completionTokens: 30,
+					totalTokens: 330,
+					cacheReadTokens: 200,
+					cost: 0.03,
+				}),
+				usageRow({
+					id: 'child-2',
+					threadId: 'child-thread-2',
+					parentExecutionId: 'turn-1',
+					promptTokens: 50,
+					completionTokens: 5,
+					totalTokens: 55,
+					cost: 0.005,
+				}),
+			]);
+
+			const usage = await service.getUsage(thread);
+
+			expect(executionRepository.findUsageByThreadId).toHaveBeenCalledWith(thread.id);
+			expect(executionRepository.findChildUsageByParentIds).toHaveBeenCalledWith([
+				'turn-1',
+				'turn-2',
+			]);
+			const [first, second] = usage.executions;
+			expect(first).toMatchObject({
+				executionId: 'turn-1',
+				threadId: thread.id,
+				parentExecutionId: null,
+				startedAt: '2026-10-08T10:00:00.000Z',
+				promptTokens: 1000,
+				cacheReadTokens: 800,
+				cacheWriteTokens: 100,
+				cost: 0.1,
+			});
+			expect(
+				first.descendants.map((entry) => [entry.executionId, entry.parentExecutionId]),
+			).toEqual([
+				['child-1', 'turn-1'],
+				['child-2', 'turn-1'],
+			]);
+			expect(first.total).toEqual({
+				promptTokens: 1350,
+				completionTokens: 75,
+				totalTokens: 1425,
+				cacheReadTokens: 1000,
+				cacheWriteTokens: 100,
+				cost: expect.closeTo(0.135, 10),
+			});
+			expect(second.descendants).toEqual([]);
+			expect(second.total).toEqual({
+				promptTokens: 10,
+				completionTokens: 1,
+				totalTokens: 11,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+				cost: null,
+			});
+			expect(usage.total).toEqual({
+				promptTokens: 1360,
+				completionTokens: 76,
+				totalTokens: 1436,
+				cacheReadTokens: 1000,
+				cacheWriteTokens: 100,
+				cost: expect.closeTo(0.135, 10),
+			});
 		});
 	});
 
@@ -1415,6 +1771,230 @@ describe('SystemAgentExecutionService', () => {
 
 			await expect(service.cancel(AGENT_ID, user, 'thread-1')).rejects.toThrow(NotFoundError);
 			expect(chatExecutionService.requestCancel).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deleteThreadsOfUser', () => {
+		const sessions = [
+			{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			{ id: 'thread-2', agentId: 'unregistered-agent', projectId: 'project-2' },
+		];
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const setupDeletion = (...args: Parameters<typeof setup>) => {
+			const result = setup(...args);
+			result.threadRepository.findByParentThreadId.mockResolvedValue([]);
+			return result;
+		};
+
+		it('deletes every session with its workspace, also without a provider', async () => {
+			const { source } = workspaceSource();
+			const { service, executionService, executionRepository, threadRepository } = setupDeletion(
+				[],
+				undefined,
+				source,
+			);
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue(sessions);
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await service.deleteThreadsOfUser('user-1');
+
+			expect(threadRepository.findOwnedSystemAgentSessions).toHaveBeenCalledWith('user-1');
+			// It does not load the thread through the ownership and provider checks.
+			expect(threadRepository.findOwnedById).not.toHaveBeenCalled();
+			expect(executionService.deleteThread.mock.calls).toEqual([
+				['project-1', AGENT_ID, 'thread-1', 'user-1'],
+				['project-2', 'unregistered-agent', 'thread-2', 'user-1'],
+			]);
+			expect(source.destroy).toHaveBeenCalledExactlyOnceWith({
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				userId: 'user-1',
+			});
+		});
+
+		it('logs a session that fails and deletes the others', async () => {
+			const { service, executionService, executionRepository, threadRepository, logger } =
+				setupDeletion();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue(sessions);
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			executionService.deleteThread
+				.mockRejectedValueOnce(new Error('db down'))
+				.mockResolvedValueOnce(true);
+
+			await expect(service.deleteThreadsOfUser('user-1')).resolves.toBeUndefined();
+
+			expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to delete a system agent session of a deleted user',
+				expect.objectContaining({ userId: 'user-1', threadId: 'thread-1', error: 'db down' }),
+			);
+		});
+
+		it('logs a failed lookup and does not throw', async () => {
+			const { service, executionService, threadRepository, logger } = setupDeletion();
+			threadRepository.findOwnedSystemAgentSessions.mockRejectedValue(new Error('db down'));
+
+			await expect(service.deleteThreadsOfUser('user-1')).resolves.toBeUndefined();
+
+			expect(executionService.deleteThread).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to find the system agent sessions of a deleted user',
+				expect.objectContaining({ userId: 'user-1' }),
+			);
+		});
+
+		it('stops a running turn and deletes the session when the turn has ended', async () => {
+			vi.useFakeTimers();
+			const {
+				service,
+				executionService,
+				executionRepository,
+				threadRepository,
+				chatExecutionService,
+			} = setupDeletion();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
+			executionRepository.existsRunningByThread.mockResolvedValue(true);
+			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-1' }));
+			chatExecutionService.requestCancel.mockResolvedValue(true);
+			executionService.deleteThread
+				.mockRejectedValueOnce(new ConflictError('busy'))
+				.mockResolvedValueOnce(true);
+
+			const done = service.deleteThreadsOfUser('user-1');
+			await vi.runAllTimersAsync();
+			await done;
+
+			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				executionId: 'exec-1',
+				userId: 'user-1',
+				surface: 'system',
+			});
+			expect(chatExecutionService.requestCancel.mock.invocationCallOrder[0]).toBeLessThan(
+				executionService.deleteThread.mock.invocationCallOrder[0],
+			);
+			expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
+		});
+
+		it('deletes the child sessions of delegated runs before their parent', async () => {
+			const { service, executionService, executionRepository, threadRepository } = setupDeletion();
+			const root = sessions[0];
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([root]);
+			threadRepository.findByParentThreadId.mockImplementation(async (parentThreadId) => {
+				const children: Record<string, string[]> = {
+					'thread-1': ['child-1', 'child-2'],
+					'child-1': ['grandchild-1'],
+				};
+				return (children[parentThreadId] ?? []).map((id) =>
+					mock<AgentExecutionThread>({ id, agentId: 'sub-agent', projectId: root.projectId }),
+				);
+			});
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await service.deleteThreadsOfUser('user-1');
+
+			expect(threadRepository.findByParentThreadId).toHaveBeenCalledWith('thread-1', 'project-1');
+			expect(executionService.deleteThread.mock.calls.map(([, , threadId]) => threadId)).toEqual([
+				'grandchild-1',
+				'child-2',
+				'child-1',
+				'thread-1',
+			]);
+		});
+
+		it('stops the root turn when only a child session runs', async () => {
+			const {
+				service,
+				executionService,
+				executionRepository,
+				threadRepository,
+				chatExecutionService,
+			} = setupDeletion();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
+			threadRepository.findByParentThreadId.mockImplementation(async (parentThreadId) =>
+				parentThreadId === 'thread-1'
+					? [
+							mock<AgentExecutionThread>({
+								id: 'child-1',
+								agentId: 'sub-agent',
+								projectId: 'project-1',
+							}),
+						]
+					: [],
+			);
+			executionRepository.existsRunningByThread.mockImplementation(
+				async (threadId) => threadId === 'child-1',
+			);
+			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-1' }));
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await service.deleteThreadsOfUser('user-1');
+
+			expect(chatExecutionService.requestCancel).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ threadId: 'thread-1', executionId: 'exec-1' }),
+			);
+			expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
+		});
+
+		it('deletes the parent when a child session fails', async () => {
+			const { service, executionService, executionRepository, threadRepository, logger } =
+				setupDeletion();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
+			threadRepository.findByParentThreadId.mockImplementation(async (parentThreadId) =>
+				parentThreadId === 'thread-1'
+					? [
+							mock<AgentExecutionThread>({
+								id: 'child-1',
+								agentId: 'sub-agent',
+								projectId: 'project-1',
+							}),
+						]
+					: [],
+			);
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			executionService.deleteThread
+				.mockRejectedValueOnce(new Error('db down'))
+				.mockResolvedValueOnce(true);
+
+			await service.deleteThreadsOfUser('user-1');
+
+			expect(executionService.deleteThread).toHaveBeenLastCalledWith(
+				'project-1',
+				AGENT_ID,
+				'thread-1',
+				'user-1',
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to delete a system agent session of a deleted user',
+				expect.objectContaining({ threadId: 'child-1', error: 'db down' }),
+			);
+		});
+
+		it('gives up on a session that stays busy and logs it', async () => {
+			vi.useFakeTimers();
+			const { service, executionService, executionRepository, threadRepository, logger } =
+				setupDeletion();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			executionService.deleteThread.mockRejectedValue(new ConflictError('busy'));
+
+			const done = service.deleteThreadsOfUser('user-1');
+			await vi.runAllTimersAsync();
+			await done;
+
+			expect(executionService.deleteThread).toHaveBeenCalledTimes(5);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to delete a system agent session of a deleted user',
+				expect.objectContaining({ threadId: 'thread-1', error: 'busy' }),
+			);
 		});
 	});
 

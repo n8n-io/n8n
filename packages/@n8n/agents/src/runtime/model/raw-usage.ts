@@ -1,7 +1,6 @@
-import { getProviderPrefix, isGoogleVertexAnthropicModel } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 
-import { type ProviderId } from './provider-credentials';
+import { isAnthropicMessagesProvider } from './prompt-cache';
 import type { TokenUsage } from '../../types';
 
 /**
@@ -69,21 +68,13 @@ export class AnthropicRawUsageReader implements RawUsageReader {
 }
 
 /**
- * Per-provider raw-usage readers, keyed by provider id. Partial because raw
- * abort-recovery is best-effort: a provider without an entry simply gets no
- * recovered usage (the AI SDK's normalized usage still covers the happy path).
- */
-const RAW_USAGE_READERS: Partial<Record<ProviderId, () => RawUsageReader>> = {
-	anthropic: () => new AnthropicRawUsageReader(),
-	'google-vertex-anthropic': () => new AnthropicRawUsageReader(),
-};
-
-/**
  * Create a fresh raw-usage reader for the run's model, or undefined when the
- * provider has no reader. Vertex Claude uses the Anthropic event format.
+ * provider has no reader. Raw abort-recovery is best-effort: a model without a
+ * reader gets no recovered usage (the AI SDK's normalized usage still covers
+ * the happy path). Every Anthropic Messages model, including Claude on Vertex
+ * and Foundry, uses the Anthropic event format.
  */
 export function createRawUsageReader(modelId: string): RawUsageReader | undefined {
-	if (isGoogleVertexAnthropicModel(modelId)) return new AnthropicRawUsageReader();
-	const provider = getProviderPrefix(modelId) as ProviderId;
-	return RAW_USAGE_READERS[provider]?.();
+	if (isAnthropicMessagesProvider(modelId)) return new AnthropicRawUsageReader();
+	return undefined;
 }
