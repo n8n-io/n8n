@@ -1391,6 +1391,98 @@ describe('HttpRequestV3', () => {
 				.mock.calls[0][5] as { headers: Record<string, unknown> };
 			expect(sanitizedRequest.headers[headerName]).toBe('**hidden**');
 		});
+
+		it('should pass undefined credentialsType for non-OAuth generic credentials and pass credentialsType for OAuth generic credentials when paginating', async () => {
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+
+			const runPaginatedWithGenericAuth = async (
+				genericAuthType: string,
+				credentialData: Record<string, unknown>,
+			) => {
+				(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockClear();
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation(
+					(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+						switch (paramName) {
+							case 'method':
+								return 'GET';
+							case 'url':
+								return baseUrl;
+							case 'authentication':
+								return 'genericCredentialType';
+							case 'genericAuthType':
+								return genericAuthType;
+							case 'options':
+								return paginationTestOptions;
+							case 'options.pagination.pagination':
+								return {
+									paginationMode: 'updateAParameterInEachRequest',
+									parameters: {
+										parameters: [
+											{
+												type: 'qs',
+												// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+												name: 'page',
+												value: '={{ $pageCount + 1 }}',
+											},
+										],
+									},
+									paginationCompleteWhen: 'responseIsEmpty',
+									statusCodesWhenComplete: '',
+									completeExpression: '',
+									limitPagesFetched: true,
+									maxRequests: 2,
+									requestInterval: 0,
+								};
+							default:
+								return defaultValue;
+						}
+					},
+				);
+				(executeFunctions.getCredentials as Mock).mockResolvedValue(credentialData);
+				(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+					{
+						headers: { 'content-type': 'application/json' },
+						body: { success: true },
+						statusCode: 200,
+					},
+				]);
+
+				await node.execute.call(executeFunctions);
+				return (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mock.calls[0];
+			};
+
+			// Non-OAuth generic credential (httpBearerAuth): applied directly to requestOptions,
+			// so credentialsType (4th arg) must be undefined (same as non-paginated path).
+			const bearerCall = await runPaginatedWithGenericAuth('httpBearerAuth', {
+				token: 'my-secret-bearer-token',
+			});
+			expect(bearerCall[0].headers).toMatchObject({
+				Authorization: 'Bearer my-secret-bearer-token',
+			});
+			expect(bearerCall[3]).toBeUndefined();
+			expect((bearerCall[5] as { headers: Record<string, unknown> }).headers.Authorization).toBe(
+				'**hidden**',
+			);
+
+			// OAuth2 generic credential (oAuth2Api): delegated via credentialsType (4th arg)
+			// with tokenType: 'Bearer' in additionalCredentialOptions (5th arg).
+			const oauth2Call = await runPaginatedWithGenericAuth('oAuth2Api', {
+				access_token: 'oauth2-token',
+			});
+			expect(oauth2Call[3]).toBe('oAuth2Api');
+			expect(oauth2Call[4]).toEqual({ oauth2: { tokenType: 'Bearer' } });
+		});
 	});
 
 	describe('Parallel item scoping fixes', () => {
