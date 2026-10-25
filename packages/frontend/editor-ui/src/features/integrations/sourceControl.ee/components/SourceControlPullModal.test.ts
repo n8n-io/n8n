@@ -175,6 +175,19 @@ describe('SourceControlPullModal', () => {
 		expect(getAllByTestId('pull-modal-item').length).toBe(1); // Only workflow tab items are shown initially
 	});
 
+	it.each(['created', 'modified'] as const)('shows the correct badge for %s', (status) => {
+		const { getByText } = renderModal({
+			pinia,
+			props: {
+				data: { eventBus, status: [{ ...sampleFiles[0], status }] },
+			},
+		});
+
+		const badge = getByText(status === 'created' ? 'New' : 'Modified').closest('.n8n-badge');
+		expect(badge).toBeInTheDocument();
+		expect(badge?.className.includes('newBadge')).toBe(status === 'created');
+	});
+
 	it('should force pull', async () => {
 		// Use the existing store instance from beforeEach
 		const { getByTestId } = renderModal({

@@ -23,6 +23,14 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 		});
 	}
 
+	async getUnfinishedThreadIdsForConfiguration(configurationId: number, ctx: OperationContext) {
+		const investigations = await this.managerFor(ctx).find(SelfHealingInvestigation, {
+			where: { configurationId, finishedAt: IsNull() },
+			select: { threadId: true },
+		});
+		return investigations.map(({ threadId }) => threadId);
+	}
+
 	async getForExecution(workflowId: string, executionId: string, ctx: OperationContext = {}) {
 		return await this.managerFor(ctx).findOne(SelfHealingInvestigation, {
 			where: { workflowId, executionId },
@@ -40,13 +48,15 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 		},
 		ctx: OperationContext,
 	) {
+		const { baseline, ...fields } = input;
 		const manager = this.managerFor(ctx);
 		return await manager.save(
 			manager.create(SelfHealingInvestigation, {
-				...input,
-				workflowId: input.baseline.workflowId,
-				projectId: input.baseline.projectId,
-				backgroundUserId: input.baseline.backgroundUserId,
+				...fields,
+				workflowId: baseline.workflowId,
+				projectId: baseline.projectId,
+				backgroundUserId: baseline.backgroundUserId,
+				publishedVersionId: baseline.expectedBaseline.publishedVersionId,
 				resultId: null,
 				finishedAt: null,
 			}),

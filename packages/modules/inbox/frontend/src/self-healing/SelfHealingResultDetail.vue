@@ -107,17 +107,15 @@ async function onAction(action: SelfHealingResultAction) {
 
 	if (action === 'approve-and-publish' && (!canPublish.value || before.outcome !== 'fix_ready'))
 		return;
-	if (action === 'editor' && before.outcome !== 'fix_ready') return;
-	if (action === 'chat' && (before.outcome === 'fix_ready' || !chat?.available.value)) return;
+	if (action === 'chat' && !chat?.available.value) return;
 
 	const target = { ...props.selection };
 	const isSelected = props.isSelected;
 	const onItemChange = props.onItemChange;
+	const isContinuation = action === 'chat' || action === 'editor';
 
 	let reviewAction: SelfHealingReviewAction;
-	if (action === 'editor') {
-		reviewAction = 'apply';
-	} else if (action === 'chat') {
+	if (isContinuation) {
 		reviewAction = before.suggestion ? 'apply' : 'dismiss';
 	} else {
 		reviewAction = action;
@@ -131,6 +129,9 @@ async function onAction(action: SelfHealingResultAction) {
 		notifyResultClosed(before, result, onItemChange);
 
 		if (!isSelected(target.id) || action === 'dismiss') return;
+		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
+		if (isContinuation && result.reviewState !== (before.suggestion ? 'applied' : 'dismissed'))
+			return;
 
 		if (action === 'chat') {
 			try {

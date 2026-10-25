@@ -27,7 +27,7 @@ describe('PromotePackageDto', () => {
 });
 
 describe('ContinueApplyPackageDto', () => {
-	const expectedSource = { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) };
+	const expectedSource = { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) };
 
 	it('accepts the reviewed source identity', () => {
 		expect(ContinueApplyPackageDto.parse({ expectedSource })).toEqual({ expectedSource });
@@ -51,7 +51,7 @@ describe('ContinueApplyPackageDto', () => {
 		{ expectedSource, force: true },
 		{ expectedSource, workflowIds: [] },
 		{ expectedSource: { ...expectedSource, resolved: true } },
-		{ expectedSource: { ...expectedSource, configId: '' } },
+		{ expectedSource: { ...expectedSource, environmentId: '' } },
 		{ expectedSource: { ...expectedSource, branchName: '' } },
 	])('rejects missing or unsupported fields: %j', (body) => {
 		expect(ContinueApplyPackageDto.safeParse(body).success).toBe(false);
@@ -76,7 +76,7 @@ describe('ContinueApplyPackageDto', () => {
 });
 
 describe('ApplyPackageDto', () => {
-	const expectedSource = { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) };
+	const expectedSource = { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) };
 
 	it('accepts a request without a source and one with the reviewed source', () => {
 		expect(ApplyPackageDto.parse({})).toEqual({});
@@ -98,7 +98,7 @@ describe.each([
 	{ name: 'ContinueApplySelectionDto', dto: ContinueApplySelectionDto },
 ])('$name', ({ dto }) => {
 	const workflowIds = ['workflow1', 'workflow2'];
-	const expectedSource = { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) };
+	const expectedSource = { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) };
 
 	it('rejects an empty workflow list', () => {
 		expect(dto.safeParse({ workflowIds: [], expectedSource }).success).toBe(false);
@@ -165,7 +165,7 @@ describe('ContinueApplySelectionDto', () => {
 	it('accepts a confirmation of destructive data table changes', () => {
 		const body = {
 			workflowIds: ['workflow1'],
-			expectedSource: { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) },
+			expectedSource: { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) },
 			confirmDestructiveChanges: true,
 		};
 		expect(ContinueApplySelectionDto.parse(body)).toEqual(body);
@@ -174,8 +174,7 @@ describe('ContinueApplySelectionDto', () => {
 
 describe('ApplyPackageResultDto', () => {
 	const identity = {
-		connectionId: 'connection1',
-		configId: 'config1',
+		environmentId: 'env1',
 		git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	};
 	const preflight = {

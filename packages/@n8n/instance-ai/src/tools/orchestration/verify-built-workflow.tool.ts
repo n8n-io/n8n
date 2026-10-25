@@ -7,6 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -38,6 +39,7 @@ import {
 	verificationClaimSchema,
 } from '../../workflow-loop/workflow-loop-state';
 import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
+import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -96,8 +98,8 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 			'Name of the trigger node to start verification from. REQUIRED when the workflow has ' +
 				'more than one trigger: without it a single trigger is auto-detected and the other ' +
 				"triggers' branches are never verified. To cover every branch, call verify once per " +
-				"trigger. Trigger names come from build-workflow's `triggerNodes` or " +
-				'workflows(action="get-as-code"). Never disable, delete, reorder, or re-save a workflow — ' +
+				"trigger. Trigger names come from workflow_builder_build_workflow's `triggerNodes` or " +
+				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, reorder, or re-save a workflow — ' +
 				'and never build a throwaway copy — to reach a branch; use this instead.',
 		),
 	timeout: z
@@ -193,6 +195,8 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	coverageNote: z.string().optional(),
 	/** Real nodes that returned only `{}` items. */
 	emptyOutputNote: z.string().optional(),
+	/** Set when n8n redacted the run's output for the user, so it was not inspected. */
+	redactionNote: z.string().optional(),
 	/**
 	 * Present only while the published version is older than the verified
 	 * draft. The claim carries the same fact as `liveState`; this is the
@@ -209,11 +213,12 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema>;
 
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
-	return new Tool('verify-built-workflow')
+	return new Tool(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW)
+		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW))
 		.description(
 			'Standard post-build verifier: runs a built workflow with sidecar verification context from the build outcome ' +
 				'(pin data, mocked credentials, trigger-shaped inputData; all trigger types supported). ' +
-				'Use `executions(action="run")` only for ad hoc runs outside build verification. ' +
+				'Use `workflow_builder_executions(action="run")` only for ad hoc runs outside build verification. ' +
 				'CRITICAL: `inputData` shape depends on the trigger type (see the field description) — a wrong shape produces ' +
 				'null downstream values that look like an expression bug; re-run verify with the correct shape instead of patching the workflow.',
 		)
@@ -224,6 +229,21 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			if (targetResult.kind === 'blocked') return targetResult.result;
 			const { target } = targetResult;
 			const { input: resolvedInput, workflowId, workflowTaskService } = target;
+
+			// Verification executes the workflow, so it follows the same admin policy as
+			// workflow_builder_executions(action="run"). Plan approval does not lift a block.
+			if (target.domainContext.permissions?.runWorkflow === 'blocked') {
+				return await handleBlockedVerification({
+					input: resolvedInput,
+					context,
+					workflowTaskService,
+					workflowId,
+					reason: 'permission_blocked',
+					guidance:
+						'Verification was not run because an admin blocked running workflows on this instance. ' +
+						'Tell the user the workflow is saved but untested, and that an instance admin can change this permission.',
+				});
+			}
 
 			// Credentials assigned after the build never rebuild the plan, so
 			// refresh stale mocked-credential verdicts before pinning.
@@ -460,6 +480,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					simulatedNames,
 					result.binaryOutputNodeNames,
 				),
+				redactionNote: analysis.redactionNote,
 				liveStateNote: formatLiveStateNote(claim),
 				...(resolvedInput.includeData ? { data: result.data } : {}),
 				error: analysis.errorMessage,

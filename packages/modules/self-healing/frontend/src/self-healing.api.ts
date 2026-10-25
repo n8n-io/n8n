@@ -2,6 +2,7 @@ import type {
 	SaveSelfHealingConfigurationDto,
 	SelfHealingConfigurationDto,
 	SelfHealingConfigurationOptions,
+	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
@@ -22,7 +23,7 @@ export const fetchConfigurationOptions = async (
 export const saveConfiguration = async (
 	context: IRestApiContext,
 	projectId: string,
-	input: SaveSelfHealingConfigurationDto,
+	input: SaveSelfHealingConfigurationDto | UpdateSelfHealingConfigurationDto,
 	id?: number,
 ): Promise<SelfHealingConfigurationDto> => {
 	if (id === undefined) {

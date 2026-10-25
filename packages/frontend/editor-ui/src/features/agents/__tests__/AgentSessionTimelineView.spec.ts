@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import { nextTick, reactive } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 import type { PushMessage } from '@n8n/api-types';
 import { N8nEmptyState } from '@n8n/design-system';
 import type * as AgentBuilderSessionModule from '@/features/agents/composables/useAgentBuilderSession';
@@ -147,6 +148,7 @@ async function renderPrivateTimeline() {
 
 describe('AgentSessionTimelineView', () => {
 	beforeEach(() => {
+		setActivePinia(createPinia());
 		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
 		agentPermissions.canUpdate.value = true;
 		deleteSession.mockClear();

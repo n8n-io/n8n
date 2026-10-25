@@ -7,10 +7,14 @@
 // Docker, no n8n server — the orchestrator runs in-process against
 // stubbed services.
 //
-// What's tested: the orchestrator's first dispatch decision. Tools are NOT
-// stubbed — when the orchestrator loads a skill or reaches for a
-// Computer Use browser tool, the tool-call event fires before any downstream
-// failure, so the discovery check still sees the dispatch intent. The wall-clock
+// What's tested: the orchestrator's first dispatch decision. Most tools are
+// NOT stubbed — when the orchestrator loads a skill or reaches for a
+// Browser Use tool, the tool-call event fires before any downstream
+// failure, so the discovery check still sees the dispatch intent. The Agent
+// Builder tools are the exception: they have the production names, descriptions,
+// input schemas, and reference skills, but they report success without doing
+// work, and `agent_builder_select_agent` runs against a stub builder delegate.
+// Only the routing to them is graded, not the Agent build itself. The wall-clock
 // timeout bounds the trial, not the run: at the budget the trial stops and fails,
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.
@@ -23,10 +27,14 @@
 // (see ./seeded-turn.ts).
 // ---------------------------------------------------------------------------
 
-import type { GuardrailsOptions } from '@n8n/agents';
-import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
+import { Tool, type BuiltTool, type GuardrailsOptions, type RuntimeSkill } from '@n8n/agents';
+import { AGENT_BUILDER_TOOL_NAMES, type InstanceAiEvent, type TaskList } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 
 import {
 	buildConfirmationPolicy,
@@ -37,7 +45,12 @@ import {
 import { credentialAutoSetupResponder } from './credential-approval';
 import { evaluateDiscoveryTrial } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
-import { buildTurnMessage, createSeededThread, type SeededThread } from './seeded-turn';
+import {
+	buildTurnMessage,
+	createSeededThread,
+	STUB_PROJECT_ID,
+	type SeededThread,
+} from './seeded-turn';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import {
 	createMcpConnectResponder,
@@ -63,11 +76,11 @@ import {
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiSkills } from '../../src/skills/skills';
+import { AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES } from '../../src/tools/tool-ids';
 import type {
-	BuilderTurnStream,
 	InstanceAiContext,
 	InstanceAiBuilderDelegate,
-	ComputerUseState,
+	BrowserUseState,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
@@ -110,7 +123,7 @@ export interface DiscoveryRunResult {
 export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
-	const turn = await runOrchestratorTurn(options);
+	const turn = await runOrchestratorTurn({ ...options, stopBeforeTool: stopAtAgentBuild });
 	const outcome = extractOutcomeFromEvents(turn.events);
 	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
 		streamStatus: turn.streamStatus,
@@ -212,8 +225,10 @@ export async function runOrchestratorTurn(
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
+			// Every production thread belongs to a project. Without one, adopting an existing Agent fails.
+			projectId: STUB_PROJECT_ID,
 			// The Agents module is a default module, so the eval runs with a builder.
-			builderDelegate: createStubBuilderDelegate(),
+			builderDelegate: createStubBuilderDelegate(options.scenario.seed),
 			workspace: createStubWorkspace(knowledgeBase.files),
 			workspaceRoot: stubWorkspaceRoot,
 		};
@@ -237,7 +252,7 @@ export async function runOrchestratorTurn(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `create-tasks` and skills. Discovery scenarios measure first-step
+		// `workflow_builder_create_tasks` and skills. Discovery scenarios measure first-step
 		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
@@ -352,27 +367,14 @@ function applyInstanceState(
 	const state = scenario.instanceState;
 	if (!state) return base;
 
-	const computerUse: ComputerUseState | undefined = state.computerUse;
-	// Both channels can serve tools, so the stub server gets the union.
-	const liveToolCategories = computerUse
-		? Object.values(computerUse).flatMap((channel) =>
-				channel.status === 'connected' ? channel.toolCategories : [],
-			)
-		: [];
+	const browserUse: BrowserUseState | undefined = state.browserUse;
 
 	const localMcpServer =
-		liveToolCategories.length > 0
-			? createStubLocalMcpServer({
-					capabilities: liveToolCategories.filter(
-						(c): c is 'browser' | 'filesystem' | 'shell' =>
-							c === 'browser' || c === 'filesystem' || c === 'shell',
-					),
-				})
-			: base.localMcpServer;
+		browserUse?.status === 'connected' ? createStubLocalMcpServer() : base.localMcpServer;
 
 	return {
 		...base,
-		...(computerUse ? { computerUseState: computerUse } : {}),
+		...(browserUse ? { browserUseState: browserUse } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
 		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
 		...(state.folderExploration !== undefined
@@ -385,35 +387,77 @@ function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 }
 
-function completedBuilderTurn(): BuilderTurnStream {
-	return {
-		fullStream: (async function* () {
-			await Promise.resolve();
-			yield {
-				type: 'tool-call',
-				toolCallId: 'discovery-write',
-				toolName: 'write_config',
-				input: {},
-			};
-			yield { type: 'tool-result', toolCallId: 'discovery-write', output: { ok: true } };
-		})(),
-		text: Promise.resolve('Agent configured for discovery evaluation.'),
-	};
+const STUB_BUILDER_TOOL_NAMES: readonly string[] = AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES.filter(
+	(name) => name !== AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+);
+
+/**
+ * Ends the trial at the first builder call after `agent_builder_select_agent`. The route is
+ * settled by then, and the stubs report success, so the model otherwise builds until the budget.
+ */
+async function stopAtAgentBuild(
+	call: PendingToolCall,
+	events: readonly InstanceAiEvent[],
+): Promise<boolean> {
+	const agentSelected = events.some(
+		(event) =>
+			event.type === 'tool-call' &&
+			event.payload.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+	);
+	return await Promise.resolve(agentSelected && STUB_BUILDER_TOOL_NAMES.includes(call.toolName));
 }
 
-function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+/**
+ * A copy of the builder tools and reference skills that the agents module in packages/cli
+ * supplies, which this package cannot import. Nothing updates the copy automatically.
+ */
+const agentBuilderFileSchema = z.object({
+	tools: z.array(
+		z.object({
+			name: z.string(),
+			description: z.string(),
+			inputSchema: z.custom<NonNullable<BuiltTool['inputSchema']>>(isRecord),
+		}),
+	),
+	skills: z.array(
+		z.custom<RuntimeSkill>(
+			(skill) =>
+				isRecord(skill) && typeof skill.id === 'string' && typeof skill.instructions === 'string',
+		),
+	),
+});
+
+type AgentBuilderFile = z.infer<typeof agentBuilderFileSchema>;
+
+/** Builder tools with the production names, descriptions, and input schemas that report success. */
+function createStubBuilderTools(tools: AgentBuilderFile['tools']): BuiltTool[] {
+	return STUB_BUILDER_TOOL_NAMES.map((name) => {
+		const tool = tools.find((candidate) => candidate.name === name);
+		if (!tool) throw new Error(`agent-builder.json has no "${name}" tool`);
+		return new Tool(name)
+			.description(tool.description)
+			.input(tool.inputSchema)
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build();
+	});
+}
+
+function createStubBuilderDelegate(seed: DiscoveryScenario['seed']): InstanceAiBuilderDelegate {
+	const agentBuilder = agentBuilderFileSchema.parse(
+		JSON.parse(readFileSync(path.join(__dirname, 'agent-builder.json'), 'utf8')),
+	);
 	return {
 		createAgent: async (name) =>
 			await Promise.resolve({
 				agentId: 'discovery-agent',
-				projectId: 'discovery-project',
+				projectId: STUB_PROJECT_ID,
 				name,
 			}),
-		streamBuild: async () => await Promise.resolve(completedBuilderTurn()),
-		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
-		findOpenSuspensions: async () => await Promise.resolve([]),
-		cancelOpenSuspension: async () => await Promise.resolve(),
-		resolveAgentName: async () => await Promise.resolve(undefined),
+		getBuilderTools: () => createStubBuilderTools(agentBuilder.tools),
+		getRuntimeSkills: () => agentBuilder.skills,
+		getBuilderSessionContext: async () => await Promise.resolve('## Session context'),
+		resolveAgentName: async (agentId) =>
+			await Promise.resolve(seed?.agents.find((agent) => agent.id === agentId)?.config.name),
 	};
 }
 
@@ -447,10 +491,10 @@ function createStubOrchestrationContext(
 		skills: loadInstanceAiSkills(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
-		// Surface the localMcpServer so Computer Use browser tools are available to the
+		// Surface the localMcpServer so Browser Use tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
-		// Registers the `workspace_*` file tools for build-workflow
+		// Registers the `workspace_*` file tools for workflow_builder_build_workflow
 		...(opts.context.workspace ? { workspace: opts.context.workspace } : {}),
 		...(opts.context.workspaceRoot ? { workspaceRoot: opts.context.workspaceRoot } : {}),
 		// Used for the orchestrator's untrusted-content doctrine and other domain references.

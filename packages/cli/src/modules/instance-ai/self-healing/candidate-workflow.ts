@@ -3,6 +3,8 @@ import { BadRequestError } from '@n8n/errors';
 import {
 	buildCredentialMap,
 	compileWorkflowSource,
+	computeChangedNodeNames,
+	computeChatModelValidationIssues,
 	downgradeUnchangedNodeBlockers,
 	partitionWarnings,
 	prepareWorkflowForSave,
@@ -14,6 +16,7 @@ import {
 	type ValidationWarning,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
 import { INodeSchema } from 'n8n-workflow';
@@ -108,8 +111,43 @@ export async function compileCandidateWorkflow({
 			preparationContext,
 			await buildCredentialMap(context.credentialService),
 		);
-		await stripStaleCredentialsFromWorkflow(preparationContext, compiled.workflow);
 		await prepareWorkflowForSave(compiled.workflow, baseline.workflowId, preparationContext);
+		const modelWarnings: ValidationWarning[] = [];
+		for (const node of compiled.workflow.nodes) {
+			if (!node.name || node.disabled) continue;
+			const issues = await computeChatModelValidationIssues(context, node);
+			for (const message of Object.values(issues).flat()) {
+				modelWarnings.push({
+					code: 'chat_model_validation',
+					message: `${node.name}: ${message}`,
+					nodeName: node.name,
+					severity: 'error',
+				});
+			}
+		}
+		warnings.push(...downgradeUnchangedNodeBlockers(modelWarnings, compiled.workflow, original));
+		const { blocking: modelErrors } = partitionWarnings(warnings);
+		if (modelErrors.length > 0) {
+			return {
+				success: false,
+				reason: 'chat_model_validation_failed',
+				errors: modelErrors.map(({ message }) => message),
+			};
+		}
+		await stripStaleCredentialsFromWorkflow(preparationContext, compiled.workflow);
+
+		const changedNodes = new Set(computeChangedNodeNames(compiled.workflow, original));
+		for (const node of compiled.workflow.nodes) {
+			if (!node.name || node.disabled || !changedNodes.has(node.name)) continue;
+			if (hasPlaceholderDeep(node.parameters)) {
+				warnings.push({
+					code: 'unresolved_placeholders',
+					message: `Fill in the placeholder values in "${node.name}" before using this repair.`,
+					nodeName: node.name,
+					severity: 'informational',
+				});
+			}
+		}
 
 		const { toEngineConnections } = await import('@n8n/workflow-sdk');
 		const connections = toEngineConnections(compiled.workflow.connections);

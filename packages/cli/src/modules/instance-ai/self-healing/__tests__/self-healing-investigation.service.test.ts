@@ -95,7 +95,6 @@ describe('SelfHealingInvestigationService', () => {
 			...input,
 			id: 'investigation',
 			configurationId: configuration.id,
-			baseline,
 			threadId: 'private-thread',
 			runId: 'run',
 			resultId: null,
@@ -111,6 +110,7 @@ describe('SelfHealingInvestigationService', () => {
 				outcome: 'could_not_fix',
 				summary: 'No fix found.',
 				report: 'The cause could not be determined.',
+				candidateFilePath: null,
 			},
 			usage: { credits: 2, turns: 3, durationSeconds: 10 },
 		};
@@ -122,6 +122,7 @@ describe('SelfHealingInvestigationService', () => {
 		investigations.getUnfinishedForWorkflow.mockResolvedValue(null);
 		investigations.createInvestigation.mockResolvedValue(investigation);
 		resultRepository.getOpenForWorkflow.mockResolvedValue(null);
+		resultRepository.isInCooldown.mockResolvedValue(false);
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
 			execution = (async () => {
@@ -166,6 +167,7 @@ describe('SelfHealingInvestigationService', () => {
 		expect(results.complete).toHaveBeenCalledWith(
 			expect.objectContaining({
 				investigationId: investigation.id,
+				baseline,
 				output: run.output,
 				usage: run.usage,
 			}),
@@ -178,6 +180,7 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you' as const,
 			summary: `The response contained ${value}.`,
 			report: `Check the HTTP Request node. Authorization: Bearer ${value}`,
+			candidateFilePath: null,
 		};
 		run.output = output;
 
@@ -187,6 +190,7 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you',
 			summary: 'The response contained [REDACTED].',
 			report: 'Check the HTTP Request node. Authorization: [REDACTED]',
+			candidateFilePath: null,
 		});
 		expect(output.report).toContain(value);
 	});
@@ -224,6 +228,7 @@ describe('SelfHealingInvestigationService', () => {
 				compile: vi.fn().mockResolvedValue({
 					success: true,
 					workflow: { nodes: [], connections: {} },
+					warnings: [],
 					credentialResolution: mock<CredentialResolutionResult>({ mockedCredentialTypes: [] }),
 				}),
 			};
@@ -235,11 +240,13 @@ describe('SelfHealingInvestigationService', () => {
 	);
 
 	it.each([
-		{ missing: true, outcome: 'needs_you' },
-		{ missing: false, outcome: 'fix_ready' },
+		{ missing: true, placeholders: false, outcome: 'needs_you' },
+		{ missing: false, placeholders: true, outcome: 'needs_you' },
+		{ missing: true, placeholders: true, outcome: 'needs_you' },
+		{ missing: false, placeholders: false, outcome: 'fix_ready' },
 	])(
-		'saves $outcome when simulated credentials are missing=$missing',
-		async ({ missing, outcome }) => {
+		'saves $outcome with missing credentials=$missing and placeholders=$placeholders',
+		async ({ missing, placeholders, outcome }) => {
 			const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');
 			const output = {
 				outcome: 'fix_ready' as const,
@@ -254,6 +261,14 @@ describe('SelfHealingInvestigationService', () => {
 				compile: vi.fn().mockResolvedValue({
 					success: true,
 					workflow: graph,
+					warnings: placeholders
+						? [
+								{
+									code: 'unresolved_placeholders',
+									message: 'Fill in the channel in "Send message".',
+								},
+							]
+						: [],
 					credentialResolution: mock<CredentialResolutionResult>({
 						mockedNodeNames: ['Fetch Order'],
 						mockedCredentialTypes: missing ? ['httpHeaderAuth'] : [],
@@ -272,13 +287,16 @@ describe('SelfHealingInvestigationService', () => {
 			const resultInput = results.complete.mock.calls[0]?.[0];
 			expect(resultInput?.output.outcome).toBe(outcome);
 			expect(resultInput?.candidate?.graph).toEqual(graph);
-			if (missing) {
-				expect(resultInput?.output.summary).toContain('credentials');
+			if (missing || placeholders) {
+				expect(resultInput?.output.summary).toContain('setup');
 				expect(resultInput?.output.summary).not.toBe(output.summary);
-				expect(resultInput?.output.report).toContain('Fetch Order');
-				expect(resultInput?.output.report).toContain('[REDACTED]');
+				if (missing) {
+					expect(resultInput?.output.report).toContain('Fetch Order');
+					expect(resultInput?.output.report).toContain('[REDACTED]');
+					expect(resultInput?.output.report).toContain('httpHeaderAuth');
+				}
+				if (placeholders) expect(resultInput?.output.report).toContain('Fill in the channel');
 				expect(resultInput?.output.report).not.toContain(value);
-				expect(resultInput?.output.report).toContain('httpHeaderAuth');
 				expect(resultInput?.output.report).not.toContain('credential was created');
 				expect(resultInput?.output.report?.match(/^\*\*.+\*\*$/gm)).toEqual([
 					'**What happened**',
@@ -300,6 +318,7 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you',
 			summary: 'Reconnect the credential.',
 			report: 'The credential needs to be reconnected.',
+			candidateFilePath: null,
 		};
 		await startAndFinish();
 		expect(results.complete.mock.calls[0]?.[0]?.output.outcome).toBe('needs_you');
@@ -343,7 +362,7 @@ describe('SelfHealingInvestigationService', () => {
 		expect(results.complete).not.toHaveBeenCalled();
 	});
 
-	it.each(['max-iterations', 'other'] as const)(
+	it.each(['error', 'max-iterations', 'other'] as const)(
 		'creates no result for termination reason %s',
 		async (finishReason) => {
 			run.finishReason = finishReason;
@@ -420,6 +439,55 @@ describe('SelfHealingInvestigationService', () => {
 		expect(resultRepository.getOpenForWorkflow).toHaveBeenLastCalledWith(
 			input.workflowId,
 			input.projectId,
+			ctx,
+		);
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('skips a cooldown before capturing a baseline or opening the claim', async () => {
+		resultRepository.isInCooldown.mockResolvedValue(true);
+
+		await expect(service.start(input)).resolves.toBeNull();
+
+		expect(resultRepository.isInCooldown).toHaveBeenCalledWith({
+			workflowId: input.workflowId,
+			projectId: input.projectId,
+			completedAfter: expect.any(Date),
+		});
+		expect(suggestions.captureBaseline).not.toHaveBeenCalled();
+		expect(executions.validateFailure).not.toHaveBeenCalled();
+		expect(suggestions.readWorkflowTargetForApply).not.toHaveBeenCalled();
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+	});
+
+	it('returns existing work for the same execution during a cooldown', async () => {
+		investigations.getForExecution.mockResolvedValue(investigation);
+		resultRepository.isInCooldown.mockResolvedValue(true);
+
+		await expect(service.start(input)).resolves.toEqual({
+			kind: 'investigation',
+			investigationId: investigation.id,
+		});
+		expect(resultRepository.isInCooldown).not.toHaveBeenCalled();
+	});
+
+	it('checks a newly completed cannot-fix result inside the locked claim transaction', async () => {
+		const ctx: OperationContext = { trx: mock<Transaction>() };
+		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
+		suggestions.readWorkflowTargetForApply.mockImplementationOnce(async () => {
+			resultRepository.isInCooldown.mockResolvedValue(true);
+			return mock<Awaited<ReturnType<WorkflowSuggestionService['readWorkflowTargetForApply']>>>();
+		});
+
+		await expect(service.start(input)).resolves.toBeNull();
+
+		expect(resultRepository.isInCooldown).toHaveBeenLastCalledWith(
+			{
+				workflowId: input.workflowId,
+				projectId: input.projectId,
+				completedAfter: expect.any(Date),
+			},
 			ctx,
 		);
 		expect(investigations.createInvestigation).not.toHaveBeenCalled();

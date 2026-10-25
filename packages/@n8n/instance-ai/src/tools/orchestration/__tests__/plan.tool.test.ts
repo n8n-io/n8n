@@ -1,6 +1,14 @@
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+
 import { executeTool, parseToolInput } from '../../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { PlanValidationError } from '../../../planned-tasks/planned-task-service';
-import type { OrchestrationContext, PlannedTaskService, TaskStorage } from '../../../types';
+import type {
+	InstanceAiContext,
+	OrchestrationContext,
+	PlannedTaskService,
+	TaskStorage,
+} from '../../../types';
 import { createPlanTool } from '../plan.tool';
 
 function makePlannedTaskService(overrides: Partial<PlannedTaskService> = {}): PlannedTaskService {
@@ -76,12 +84,12 @@ describe('createPlanTool — planning context guard', () => {
 		const out = await executeTool(tool, { tasks: validTasks() }, {});
 
 		expect(out.taskCount).toBe(0);
-		expect(out.result).toContain('`create-tasks` requires `planningContext`');
+		expect(out.result).toContain('`workflow_builder_create_tasks` requires `planningContext`');
 		expect(out.result).toContain('load the `planning` skill');
 		expect(out.result).not.toContain('`plan`');
 		expect(out.result).not.toContain('skipPlannerDiscovery');
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'create-tasks called with invalid planning context — rejecting',
+			'workflow_builder_create_tasks called with invalid planning context — rejecting',
 			expect.objectContaining({ threadId: 'test-thread', taskCount: 1 }),
 		);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
@@ -254,7 +262,7 @@ describe('createPlanTool — planning context guard', () => {
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toContain(
-			'must load `create-tasks` via `load_tool` if needed, then call `create-tasks`',
+			'must load `workflow_builder_create_tasks` via `load_tool` if needed, then call `workflow_builder_create_tasks`',
 		);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
 	});
@@ -434,6 +442,70 @@ describe('createPlanTool — approval and revision flow', () => {
 	});
 });
 
+describe('createPlanTool — admin-blocked workflow saves', () => {
+	function contextWithPermissions(permissions: InstanceAiContext['permissions']) {
+		const trackTelemetry = vi.fn();
+		const context = createMockContext({
+			currentUserMessage: 'plan after discovery',
+			domainContext: { permissions } as InstanceAiContext,
+			trackTelemetry,
+		});
+		return { context, trackTelemetry };
+	}
+
+	it('rejects a plan whose build task needs a blocked createWorkflow permission', async () => {
+		const { context, trackTelemetry } = contextWithPermissions({
+			...DEFAULT_INSTANCE_AI_PERMISSIONS,
+			createWorkflow: 'blocked',
+		});
+		const suspend = vi.fn();
+
+		const out = await executeTool(createPlanTool(context), planInput(), { suspend });
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('An admin blocked creating workflows');
+		expect(out.result).toContain('"Build Slack notifier"');
+		expect(out.result).toContain('Tell the user');
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+		expect(suspend).not.toHaveBeenCalled();
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_planning_route',
+			expect.objectContaining({ route: 'permission_blocked', source: 'planning-skill' }),
+		);
+	});
+
+	it('rejects a plan that edits an existing workflow when updateWorkflow is blocked', async () => {
+		const { context } = contextWithPermissions({
+			...DEFAULT_INSTANCE_AI_PERMISSIONS,
+			updateWorkflow: 'blocked',
+		});
+		const input = {
+			...planInput(),
+			tasks: validTasks().map((task) => ({ ...task, workflowId: 'wf-1' })),
+		};
+
+		const out = await executeTool(createPlanTool(context), input, { suspend: vi.fn() });
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('An admin blocked updating workflows');
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+	});
+
+	it('asks for approval when only non-save permissions are blocked', async () => {
+		const { context } = contextWithPermissions({
+			...DEFAULT_INSTANCE_AI_PERMISSIONS,
+			updateWorkflow: 'blocked',
+			publishWorkflow: 'blocked',
+		});
+		const suspend = vi.fn().mockResolvedValue(undefined);
+
+		await executeTool(createPlanTool(context), planInput(), { suspend });
+
+		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledWith(expect.objectContaining({ inputType: 'plan-review' }));
+	});
+});
+
 describe('createPlanTool — createPlan validation failures', () => {
 	it('returns a PlanValidationError as a tool result instead of throwing', async () => {
 		const validatorError = new PlanValidationError(
@@ -455,7 +527,7 @@ describe('createPlanTool — createPlan validation failures', () => {
 		expect(out.result).toContain('Revise the task graph and call this tool again');
 		expect(suspend).not.toHaveBeenCalled();
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'create-tasks rejected by planned task validator',
+			'workflow_builder_create_tasks rejected by planned task validator',
 			expect.objectContaining({ threadId: 'test-thread', error: validatorError.message }),
 		);
 	});
@@ -475,6 +547,27 @@ describe('createPlanTool — createPlan validation failures', () => {
 				suspend: vi.fn(),
 			}),
 		).rejects.toBe(storageError);
+	});
+
+	it('rejects a plan that edits a workflow outside the thread project before review', async () => {
+		const error = new OutsideThreadProjectError();
+		const assertInThreadProject = vi.fn().mockRejectedValue(error);
+		const context = createMockContext({
+			domainContext: { assertInThreadProject } as unknown as OrchestrationContext['domainContext'],
+		});
+		const suspend = vi.fn();
+
+		await expect(
+			executeTool(
+				createPlanTool(context),
+				{ ...planInput(), tasks: [{ ...validTasks()[0], workflowId: 'wf-other' }] },
+				{ suspend },
+			),
+		).rejects.toBe(error);
+
+		expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-other' });
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+		expect(suspend).not.toHaveBeenCalled();
 	});
 });
 

@@ -1,32 +1,19 @@
-import type { CredentialProvider, ModelConfig, ResolvedCredential } from '@n8n/agents';
+import { isAzureEntraCredential, type ModelConfig, type ResolvedCredential } from '@n8n/agents';
+import type { AgentCredentialProvider } from '../agent-credential-provider.contracts';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { mapCredentialForProvider } from './credential-field-mapping';
-
-/**
- * A `CredentialProvider` that can also mint the n8n Connect (AI Gateway)
- * synthetic credential for a model slot, keyed by the model's provider prefix
- * (e.g. `openai`). `AgentsCredentialProvider` implements this; keeping the
- * capability on the provider avoids threading a resolver through the build path.
- */
-export interface AiGatewayModelCredentialResolver {
-	resolveAiGatewayModelCredential(provider: string): Promise<ResolvedCredential>;
-}
+import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
+import { AzureFoundryDeploymentsService } from '../azure-foundry-deployments.service';
 
 export async function resolveCredentialAwareModelConfig(
 	model: string,
 	credential: string,
-	credentialProvider: CredentialProvider & Partial<AiGatewayModelCredentialResolver>,
-	/**
-	 * Azure OpenAI deployments are user-named in Azure and surfaced in the URL
-	 * path on both endpoint types. The catalog model id is not the deployment
-	 * id, so the agent flow must carry the user's deployment name separately.
-	 * Only meaningful for the `azure-openai` provider — on classic it is
-	 * required, on Foundry it is optional and overrides the model id.
-	 */
-	deploymentName?: string,
+	credentialProvider: AgentCredentialProvider,
 ): Promise<ModelConfig> {
 	const { provider, model: modelName } = splitModelId(model);
 	if (provider === 'google-vertex') {
@@ -64,9 +51,40 @@ export async function resolveCredentialAwareModelConfig(
 		const sdk = catalog?.[provider]?.models[modelName]?.sdk;
 		return { id: model, ...mapped, ...(sdk !== undefined && { sdk }) };
 	}
-	return {
-		id: model,
-		...mapped,
-		...(provider === 'azure-openai' && deploymentName ? { deploymentName } : {}),
-	};
+	if (provider === 'azure-openai') {
+		const catalogModelId = await findFoundryCatalogModelId(credential, raw, modelName);
+		return {
+			id: model,
+			...mapped,
+			...entraSsrfBridge(raw),
+			...(catalogModelId ? { catalogModelId } : {}),
+		};
+	}
+	return { id: model, ...mapped };
+}
+
+/** Entra ID token mints for Azure OpenAI must follow the instance's outbound policy. */
+function entraSsrfBridge(raw: ResolvedCredential) {
+	if (!isAzureEntraCredential(raw)) return {};
+	if (!Container.get(SsrfProtectionConfig).enabled) return {};
+	return { ssrfBridge: Container.get(SsrfProtectionService) };
+}
+
+/**
+ * A Foundry deployment name does not say which model it serves. Look the model
+ * up, so cost and capabilities come from its catalog entry. Undefined when the
+ * lookup fails or the credential is not a Foundry credential.
+ */
+async function findFoundryCatalogModelId(
+	credentialId: string,
+	credential: ResolvedCredential,
+	modelName: string,
+): Promise<string | undefined> {
+	if (credential.endpointType !== 'foundry') return undefined;
+	const underlying = await Container.get(AzureFoundryDeploymentsService).findUnderlyingModel(
+		credentialId,
+		credential,
+		modelName,
+	);
+	return underlying ? `azure-openai/${underlying}` : undefined;
 }

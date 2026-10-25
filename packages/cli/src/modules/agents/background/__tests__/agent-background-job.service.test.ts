@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mock } from 'vitest';
 import { WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -12,6 +13,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { AgentExecutionUpdateBroadcaster } from '../../agent-execution-update-broadcaster';
+import { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
@@ -648,6 +650,76 @@ describe('background task notifications', () => {
 });
 
 describe('registerSubAgentJob', () => {
+	it.each([false, true])(
+		'handles a delayed registration after foreground Stop (cancel all: %s)',
+		async (cancelAll) => {
+			const { service, jobRepository } = setup();
+			const chatExecutions = new AgentChatExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				service,
+				mock(),
+			);
+			const context = {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				executionId: 'execution-1',
+				userId: 'user-1',
+			};
+			const controller = new AbortController();
+			chatExecutions.register({ ...context, surface: 'preview' }, controller);
+			const inserted = createDeferredPromise<boolean>();
+			jobRepository.insertSubAgentJobIfCapacity.mockReturnValue(inserted.promise);
+			const registration = service.registerSubAgentJob(registerParams);
+
+			await chatExecutions.onCancelForegroundExecution(context);
+			const foregroundReason: unknown = controller.signal.reason;
+			expect(foregroundReason).toMatchObject({ name: 'AbortError', message: 'Response stopped' });
+			if (cancelAll) await chatExecutions.onCancelExecution(context);
+			expect(controller.signal.reason).toBe(foregroundReason);
+			expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
+
+			jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
+			inserted.resolve(true);
+			await registration;
+
+			if (cancelAll) {
+				expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+					'job-1',
+					{ status: 'cancelled' },
+					undefined,
+				);
+			} else expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
+
+			jobRepository.settleIfActive.mockClear();
+			await service.registerSubAgentJob({ ...registerParams, id: 'job-2' });
+			expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([
+		{ parentAgentId: 'other-agent' },
+		{ parentThreadId: 'other-thread' },
+		{ parentResourceId: 'draft-chat:other-user' },
+	])('keeps an unrelated pending registration: %s', async (other) => {
+		const { service, jobRepository } = setup();
+		const inserted = createDeferredPromise<boolean>();
+		jobRepository.insertSubAgentJobIfCapacity.mockReturnValue(inserted.promise);
+		const registration = service.registerSubAgentJob({ ...registerParams, ...other });
+		await service.cancelForParent('agent-1', 'thread-1', 'draft-chat:user-1');
+		jobRepository.findByParentThread.mockResolvedValue([makeJob(other)]);
+		inserted.resolve(true);
+		await registration;
+		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
+	});
+
 	it('returns started with the job id and a ~30min timeout', async () => {
 		const { service, jobRepository } = setup();
 

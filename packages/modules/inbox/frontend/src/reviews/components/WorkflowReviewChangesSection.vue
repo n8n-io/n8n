@@ -129,7 +129,7 @@ const targetLabel = computed(() =>
 	>
 		{{ noChangesText }}
 	</N8nCallout>
-	<div v-else :class="$style.diff" data-test-id="workflow-review-changes-diff">
+	<div v-else :class="$style.diff" data-review-diff data-test-id="workflow-review-changes-diff">
 		<component
 			:is="WorkflowDiffView"
 			:source-snapshot="workflow.baselineVersion ?? undefined"
@@ -138,7 +138,9 @@ const targetLabel = computed(() =>
 			:target-snapshot="workflow.pinnedVersion ?? undefined"
 			:source-label="sourceLabel"
 			:target-label="targetLabel"
+			:canvas-id-prefix="workflow.workflowId"
 			show-fullscreen-button
+			hide-title
 		>
 			<!-- Only when a baseline exists: with no prior published version there is
 				no publish status to represent. -->
@@ -164,7 +166,7 @@ const targetLabel = computed(() =>
 <style module lang="scss">
 .callout {
 	max-width: var(--review-callout--max-width, 34rem);
-	margin-top: var(--spacing--5xs);
+	margin: var(--spacing--xs);
 }
 
 .versionBadge {
@@ -209,11 +211,7 @@ const targetLabel = computed(() =>
 }
 
 .diff {
-	height: 100%;
+	flex: 1;
 	min-height: 0;
-	border: var(--border);
-	border-radius: var(--radius--2xs);
-	overflow: hidden;
-	margin-top: var(--spacing--5xs);
 }
 </style>

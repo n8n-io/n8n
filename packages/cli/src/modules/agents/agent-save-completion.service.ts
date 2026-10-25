@@ -4,6 +4,7 @@ import { Container, Service } from '@n8n/di';
 import {
 	AgentModificationTelemetryService,
 	type AgentModificationEvent,
+	type AgentCreationEvent,
 } from './agent-modification-telemetry.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 
@@ -15,6 +16,15 @@ export class AgentSaveCompletionService {
 		private readonly broadcaster: AgentUpdateBroadcaster,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
+
+	configurationCreated(event: AgentCreationEvent, pushRef?: string): void {
+		this.modificationTelemetry.recordCreation(event);
+		this.eventService.emit('agent-saved', { agentId: event.agent.id });
+		this.broadcaster.notify(
+			{ projectId: event.projectId, agentId: event.agent.id, source: event.by },
+			pushRef,
+		);
+	}
 
 	async configurationSaved(
 		event: AgentModificationEvent,

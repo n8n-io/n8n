@@ -16,7 +16,7 @@ import type {
 	getIntegrationToolConnectionDescriptors,
 	IntegrationMessageContext,
 } from '../../../integration-tools';
-import { TelegramIntegration } from '../../../platforms/telegram-integration';
+import { TelegramIntegration } from '../../../platforms/telegram/telegram-integration';
 import {
 	createReplayContextSetup,
 	installFetchStub,

@@ -77,9 +77,11 @@ afterEach(() => capabilityRegistry.clear());
 
 it.each([
 	{ outcome: 'fix_ready', destination: 'editor', withSuggestion: true },
+	{ outcome: 'fix_ready', destination: 'chat', withSuggestion: true },
 	{ outcome: 'needs_you', destination: 'chat', withSuggestion: true },
 	{ outcome: 'needs_you', destination: 'chat', withSuggestion: false },
-	{ outcome: 'could_not_fix', destination: 'chat', withSuggestion: false },
+	{ outcome: 'needs_you', destination: 'editor', withSuggestion: true },
+	{ outcome: 'needs_you', destination: 'editor', withSuggestion: false },
 ] as const)(
 	'closes $outcome with suggestion=$withSuggestion before opening $destination with one request',
 	async ({ outcome, destination, withSuggestion }) => {
@@ -135,22 +137,23 @@ it.each([
 	},
 );
 
-it.each([
-	{ outcome: 'fix_ready', destination: 'chat' },
-	{ outcome: 'needs_you', destination: 'editor' },
-	{ outcome: 'could_not_fix', destination: 'editor' },
-] as const)('ignores $destination for $outcome', async ({ outcome, destination }) => {
-	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome }));
-	const view = renderComponent();
-	await waitAllPromises();
-	view.getByTestId(destination).click();
-	await waitAllPromises();
-	expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
-	expect(startChat).not.toHaveBeenCalled();
-	expect(push).not.toHaveBeenCalled();
-});
+it.each(['editor', 'chat'] as const)(
+	'does not continue to %s when Apply finds an outdated suggestion',
+	async (destination) => {
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(result({ reviewState: 'outdated' }));
+		const view = renderComponent();
+		await waitAllPromises();
+		view.getByTestId(destination).click();
+		await waitAllPromises();
 
-it.each(['applied', 'outdated', 'discarded', 'dismissed'] as const)(
+		expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
+		expect(onItemChange).toHaveBeenCalledOnce();
+		expect(startChat).not.toHaveBeenCalled();
+		expect(push).not.toHaveBeenCalled();
+	},
+);
+
+it.each(['applied', 'outdated', 'discarded', 'dismissed', 'closed'] as const)(
 	'ignores every action on a %s result',
 	async (reviewState) => {
 		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ reviewState }));

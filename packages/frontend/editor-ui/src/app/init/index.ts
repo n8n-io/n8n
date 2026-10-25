@@ -43,6 +43,7 @@ import {
 	initializeQuickJsExpressionShadow,
 	stopQuickJsExpressionShadow,
 } from '@/experiments/quickjsExpressionShadow/init';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 export const state = {
 	initialized: false,
@@ -145,6 +146,7 @@ export async function initializeAuthenticatedFeatures(
 	const dataTableStore = useDataTableStore();
 	const favoritesStore = useFavoritesStore();
 	const uiStore = useUIStore();
+	const credentialsStore = useCredentialsStore();
 
 	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
 	// so they can open modals without importing it.
@@ -238,11 +240,31 @@ export async function initializeAuthenticatedFeatures(
 		void versionsStore.checkForNewVersions();
 	}
 
+	const loadTypes = async () => {
+		// The node types store reads from the data worker, so the worker must be initialized first.
+		if (isDataWorkerEnabled()) {
+			const coordinator = await import('@/app/workers');
+			await coordinator.initialize({ version: settingsStore.settings.versionCli });
+			await coordinator.loadNodeTypes(rootStore.baseUrl);
+		}
+
+		const results = await Promise.allSettled([
+			nodeTypesStore.loadNodeTypesIfNotLoaded(),
+			credentialsStore.fetchCredentialTypes(false),
+		]);
+		results.forEach((result) => {
+			if (result.status === 'rejected') {
+				console.error('Failed to initialize n8n types', result.reason);
+			}
+		});
+	};
+
 	await Promise.all([
 		projectsStore.getMyProjects(),
 		projectsStore.getPersonalProject(),
 		projectsStore.getProjectsCount(),
 		rolesStore.fetchRoles(),
+		loadTypes(),
 	]);
 
 	await projectsStore.refreshCurrentProject();
@@ -259,14 +281,10 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleCommands();
 	registerModuleParameterInputs();
 
-	// Initialize run data worker and load node types
-	if (isDataWorkerEnabled()) {
-		const coordinator = await import('@/app/workers');
-		await coordinator.initialize({ version: settingsStore.settings.versionCli });
-		await coordinator.loadNodeTypes(rootStore.baseUrl);
-	}
-
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	void credentialsStore.fetchAllCredentials().catch((error) => {
+		// fail silently: this is a pre-fetch, app will call this again later
+		console.error('Failed to fetch credentials', error);
+	});
 
 	authenticatedFeaturesInitialized = true;
 }

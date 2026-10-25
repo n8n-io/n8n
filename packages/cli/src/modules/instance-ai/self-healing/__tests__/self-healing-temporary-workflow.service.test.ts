@@ -103,7 +103,8 @@ it('creates an isolated candidate without changing the baseline or original work
 
 	expect(temporary).toMatchObject({
 		id: 'temporary',
-		name: baseline.original.name,
+		name: `[n8n Assistant test copy] ${baseline.original.name}`,
+		description: 'Temporary copy created by n8n Assistant to test a proposed fix.',
 		nodes: graph.nodes,
 		connections: graph.connections,
 		settings: baseline.original.settings,
@@ -124,6 +125,13 @@ it('creates an isolated candidate without changing the baseline or original work
 	expect(original.staticData).toEqual(staticDataBefore);
 	expect(baseline).toEqual(baselineBefore);
 	expect(graph).toEqual(graphBefore);
+});
+
+it('keeps the test-copy name within the workflow name limit', async () => {
+	const longNameBaseline = structuredClone(baseline);
+	longNameBaseline.original.name = 'a'.repeat(128);
+	const temporary = await service.create({ ...input, baseline: longNameBaseline });
+	expect(temporary.name).toBe(`[n8n Assistant test copy] ${'a'.repeat(128)}`.slice(0, 128));
 });
 
 it.each(['deleted', 'disabled'])('rejects an actor whose account was %s', async (state) => {

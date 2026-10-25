@@ -24,6 +24,8 @@ const discoverRequest = (protocolVersion: string) =>
 		headers: {
 			'content-type': 'application/json',
 			'mcp-method': MCP_DISCOVER_METHOD,
+			// The SDK rejects an envelope whose protocol version has no matching header.
+			'mcp-protocol-version': protocolVersion,
 		},
 		body: JSON.stringify({
 			jsonrpc: '2.0',

@@ -1,4 +1,4 @@
-import type { SelfHealingResultDetail, SelfHealingResultWorkflowMetadata } from '@n8n/api-types';
+import type { SelfHealingResultDetail } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -7,6 +7,7 @@ import {
 	fetchResultWorkflow,
 	fetchSelfHealingResult,
 	type SelfHealingResultAction,
+	type SelfHealingResultWorkflowMetadata,
 	type SelfHealingSelection,
 } from './selfHealingResults.api';
 

@@ -51,6 +51,13 @@ async function runTitle(
 		threadId: THREAD_ID,
 		resourceId: RESOURCE_ID,
 		titleConfig: { model: MODEL_ID },
+		telemetry: {
+			enabled: true,
+			recordInputs: false,
+			recordOutputs: false,
+			integrations: [],
+			functionId: 'helper-title',
+		},
 		agentModel: MODEL_ID,
 		turnDelta: [
 			{
@@ -83,6 +90,11 @@ describe('generateThreadTitle side-call cost', () => {
 
 		const reports = await runTitle(memory);
 
+		expect(mockGenerateText).toHaveBeenCalledWith(
+			expect.objectContaining({
+				telemetry: expect.objectContaining({ isEnabled: true, functionId: 'helper-title' }),
+			}),
+		);
 		expect(reports).toHaveLength(1);
 		const report = reports[0];
 		expect(report.task).toBe('title');
@@ -92,6 +104,46 @@ describe('generateThreadTitle side-call cost', () => {
 		// 100 input tokens at $5/M = $0.0005; 50 output at $15/M = $0.00075.
 		expect(report.cost).toBeCloseTo(0.00125, 7);
 		expect(report.reportId).toEqual(expect.any(String));
+	});
+
+	it('prices and reports a Foundry deployment by the model it serves', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '{"title":"Berlin rain alert","emoji":"rain"}',
+			usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+		});
+		mockGetModelCost.mockResolvedValue({ input: 5, output: 15 });
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		const reports: SideCallUsageReport[] = [];
+		const foundryModel = {
+			id: 'azure-openai/my-chat',
+			catalogModelId: 'azure-openai/gpt-4.1',
+			apiKey: 'az-key',
+			endpointType: 'foundry',
+			baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+		};
+
+		await generateThreadTitle({
+			memory,
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+			titleConfig: { model: foundryModel },
+			agentModel: foundryModel,
+			turnDelta: [
+				{
+					id: 'm1',
+					role: 'user',
+					content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
+					createdAt: new Date(),
+				} as never,
+			],
+			onSideCallUsage: (report) => {
+				reports.push(report);
+			},
+		});
+
+		expect(mockGetModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1');
+		expect(reports[0].model).toBe('azure-openai/gpt-4.1');
 	});
 
 	it('forwards a priced title usage report even when the model returns no usable title', async () => {
@@ -134,7 +186,7 @@ describe('generateThreadTitle side-call cost', () => {
 		expect(reports[0].task).toBe('title');
 	});
 
-	it('does not forward a report when the model has no catalog pricing', async () => {
+	it('forwards a report without cost when the model has no catalog pricing', async () => {
 		mockGenerateText.mockResolvedValue({
 			text: '{"title":"Berlin rain alert","emoji":"rain"}',
 			usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
@@ -145,7 +197,13 @@ describe('generateThreadTitle side-call cost', () => {
 		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
 
 		const reports = await runTitle(memory);
-		expect(reports).toHaveLength(0);
+		expect(reports).toHaveLength(1);
+		const report = reports[0];
+		expect(report.task).toBe('title');
+		expect(report.model).toBe(MODEL_ID);
+		expect(report.usage.promptTokens).toBe(100);
+		expect(report.usage.completionTokens).toBe(50);
+		expect(report).not.toHaveProperty('cost');
 	});
 
 	it('does not forward a report when the LLM reports no usage', async () => {

@@ -11,6 +11,8 @@ import {
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource, In } from '@n8n/typeorm';
+import groupBy from 'lodash/groupBy';
+import keyBy from 'lodash/keyBy';
 
 import { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
 
@@ -60,22 +62,22 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 				.getRawMany<{ configurationId: number; lastActivity: Date | string }>(),
 		]);
 
+		const workflowsByConfiguration = groupBy(workflows, 'configurationId');
+		const reviewersByConfiguration = groupBy(reviewers, 'configurationId');
+		const activityByConfiguration = keyBy(activity, 'configurationId');
+
 		return configurations.map((configuration) => {
-			const lastActivity = activity.find(
-				(row) => row.configurationId === configuration.id,
-			)?.lastActivity;
+			const lastActivity = activityByConfiguration[configuration.id]?.lastActivity;
 			return {
 				id: configuration.id,
 				projectId,
 				scope: configuration.scope,
 				enabled: configuration.enabled,
 				enabledById: configuration.enabledById,
-				workflowIds: workflows
-					.filter((row) => row.configurationId === configuration.id)
-					.map((row) => row.workflowId),
-				reviewerIds: reviewers
-					.filter((row) => row.configurationId === configuration.id)
-					.map((row) => row.userId),
+				workflowIds: (workflowsByConfiguration[configuration.id] ?? []).map(
+					(row) => row.workflowId,
+				),
+				reviewerIds: (reviewersByConfiguration[configuration.id] ?? []).map((row) => row.userId),
 				lastActivity: lastActivity ? parseDbTime(lastActivity).toISOString() : null,
 			};
 		});
@@ -102,16 +104,22 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		return await this.findOneBy({ projectId, scope: 'all' });
 	}
 
-	async listProjectWorkflows(projectId: string) {
-		return await this.manager
+	async listProjectWorkflows(projectId: string, workflowIds?: string[]) {
+		if (workflowIds?.length === 0) return [];
+
+		const query = this.manager
 			.createQueryBuilder(WorkflowEntity, 'workflow')
 			.innerJoin(SharedWorkflow, 'owner', 'owner.workflowId = workflow.id AND owner.role = :role', {
 				role: 'workflow:owner',
 			})
 			.where('owner.projectId = :projectId', { projectId })
+			.andWhere('workflow.isArchived = :archived', { archived: false })
 			.select(['workflow.id', 'workflow.name'])
-			.orderBy('workflow.name', 'ASC')
-			.getMany();
+			.orderBy('workflow.name', 'ASC');
+		if (workflowIds) {
+			query.andWhere('workflow.id IN (:...workflowIds)', { workflowIds });
+		}
+		return await query.getMany();
 	}
 
 	async saveConfiguration(configuration: SelfHealingConfiguration, ctx: OperationContext) {
@@ -126,9 +134,15 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		}
 	}
 
+	async hasReviewers(configurationId: number, ctx: OperationContext) {
+		return await this.managerFor(ctx).existsBy(SelfHealingConfigurationReviewer, {
+			configurationId,
+		});
+	}
+
 	async replaceSelections(
 		configuration: SelfHealingConfiguration,
-		input: SaveSelfHealingConfigurationDto,
+		input: Pick<SaveSelfHealingConfigurationDto, 'workflowIds' | 'reviewerIds'>,
 		ctx: OperationContext,
 	) {
 		const manager = this.managerFor(ctx);
@@ -162,7 +176,23 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 	}
 
 	async removeWorkflowSelections(workflowIds: string[]) {
-		await this.manager.delete(SelfHealingConfigurationWorkflow, { workflowId: In(workflowIds) });
+		if (workflowIds.length === 0) return;
+
+		const owners = this.manager
+			.createQueryBuilder(SharedWorkflow, 'owner')
+			.select(['owner.workflowId', 'owner.projectId'])
+			.where('owner.role = :role', { role: 'workflow:owner' })
+			.andWhere('owner.workflowId IN (:...workflowIds)', { workflowIds });
+
+		// A destination selection can be saved after ownership changes but before cleanup.
+		await this.manager
+			.createQueryBuilder()
+			.delete()
+			.from(SelfHealingConfigurationWorkflow)
+			.where('workflowId IN (:...workflowIds)')
+			.andWhere(`("workflowId", "projectId") NOT IN (${owners.getQuery()})`)
+			.setParameters(owners.getParameters())
+			.execute();
 	}
 
 	async deleteConfiguration(id: number, ctx: OperationContext) {

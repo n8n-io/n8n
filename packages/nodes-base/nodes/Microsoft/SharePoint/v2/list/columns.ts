@@ -6,7 +6,7 @@ import type {
 	ResourceMapperFields,
 } from 'n8n-workflow';
 
-import { assertPathSegment } from '../../helpers/utils';
+import { assertPathSegment, isForbiddenError, withColumnTypes } from '../../helpers/utils';
 import { resolveSiteId } from '../../site';
 import { microsoftApiRequest } from '../../transport';
 import { untilListSelected, untilSiteSelected } from '../../list/index';
@@ -23,6 +23,7 @@ export interface SharePointListColumn {
 }
 
 type ContentTypesReply = { value?: Array<{ columns?: SharePointListColumn[] }> };
+type ColumnsReply = { value?: SharePointListColumn[] };
 
 // No n8n field kind can hold these; omitted rather than shown as v1's disabled placeholders.
 const UNSUPPORTED_COLUMN_TYPES = new Set(['location', 'geolocation', 'term', 'multiterm']);
@@ -106,6 +107,36 @@ function toMapperFields(column: SharePointListColumn): ResourceMapperField[] {
 	return [field];
 }
 
+async function loadListColumns(
+	this: ILoadOptionsFunctions,
+	listPath: string,
+): Promise<SharePointListColumn[]> {
+	try {
+		// Only the contentTypes columns reply carries the `type` discriminator
+		// https://learn.microsoft.com/en-us/graph/api/resources/columndefinition
+		const response = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			`${listPath}/contentTypes`,
+			{},
+			{ expand: 'columns' },
+		)) as ContentTypesReply;
+		// The list's default content type comes first.
+		return response.value?.[0]?.columns ?? [];
+	} catch (error) {
+		if (!isForbiddenError(error)) {
+			throw error;
+		}
+	}
+
+	const response = (await microsoftApiRequest.call(
+		this,
+		'GET',
+		`${listPath}/columns`,
+	)) as ColumnsReply;
+	return withColumnTypes(response.value ?? []);
+}
+
 export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
@@ -116,18 +147,10 @@ export async function getMappingColumns(
 		'List',
 	);
 
-	// Only the contentTypes columns reply carries the `type` discriminator
-	// https://learn.microsoft.com/en-us/graph/api/resources/columndefinition
-	const response = (await microsoftApiRequest.call(
+	const columns = await loadListColumns.call(
 		this,
-		'GET',
-		`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/contentTypes`,
-		{},
-		{ expand: 'columns' },
-	)) as ContentTypesReply;
-
-	// The list's default content type comes first.
-	const columns = response.value?.[0]?.columns ?? [];
+		`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}`,
+	);
 	const fields = columns
 		.filter((column) => !column.hidden && !column.readOnly)
 		.flatMap(toMapperFields);

@@ -59,7 +59,8 @@ export class SelfHealingTemporaryWorkflowService {
 		}
 
 		const workflow = new WorkflowEntity();
-		workflow.name = baseline.original.name;
+		workflow.name = `[n8n Assistant test copy] ${baseline.original.name}`.slice(0, 128);
+		workflow.description = 'Temporary copy created by n8n Assistant to test a proposed fix.';
 		workflow.nodes = structuredClone(graph.nodes);
 		workflow.connections = structuredClone(graph.connections);
 		workflow.settings = structuredClone(baseline.original.settings);

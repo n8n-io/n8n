@@ -2315,6 +2315,7 @@ describe('POST /workflows', () => {
 
 	test.each([
 		{ key: 'binaryMode', value: 'combined' },
+		{ key: 'engineType', value: 'v2' },
 		{ key: 'credentialResolverId', value: 'some-resolver-id' },
 	] as const)('should ignore $key when creating a workflow', async ({ key, value }) => {
 		const payload = {
@@ -2833,6 +2834,15 @@ describe('POST /workflows redaction floor enforcement', () => {
 		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
 	});
 
+	test('persists and returns the setting that stops redacting calling executions', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'all', redactCallerExecutions: false });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.redactCallerExecutions).toBe(false);
+		const saved = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(saved?.settings?.redactCallerExecutions).toBe(false);
+	});
+
 	test('reports the floor violation even when the payload is also otherwise invalid', async () => {
 		const response = await authOwnerAgent.post('/workflows').send({
 			name: 'redaction-floor-precedence',
@@ -2914,6 +2924,20 @@ describe('PUT /workflows/:id redaction floor enforcement', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(await savedRedactionPolicy(workflow.id)).toBe('all');
+	});
+
+	test('persists and returns the setting that stops redacting calling executions', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, {
+			redactionPolicy: 'all',
+			redactCallerExecutions: false,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.redactCallerExecutions).toBe(false);
+		const saved = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(saved?.settings?.redactCallerExecutions).toBe(false);
 	});
 });
 
@@ -3297,8 +3321,32 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
+	test('should accept the settings that GET returned and keep the stored engine', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { executionOrder: 'v1', engineType: 'v2' } },
+			member,
+		);
+		const getResponse = await authMemberAgent.get(`/workflows/${workflow.id}`);
+		expect(getResponse.body.settings.engineType).toBe('v2');
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: getResponse.body.name,
+			nodes: getResponse.body.nodes,
+			connections: getResponse.body.connections,
+			settings: getResponse.body.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.engineType).toBe('v2');
+
+		const workflowAfter = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(workflowAfter?.settings?.engineType).toBe('v2');
+	});
+
 	test.each([
 		{ key: 'binaryMode', original: 'combined', attempted: 'separate' },
+		{ key: 'engineType', original: 'v2', attempted: 'v1' },
 		{
 			key: 'credentialResolverId',
 			original: 'original-resolver-id',

@@ -81,6 +81,18 @@ describe('MigrationOwnerAssignmentService', () => {
 			expect(ownerRepository.assign).not.toHaveBeenCalled();
 		});
 
+		it.each([
+			['pending', { isPending: true }],
+			['disabled', { disabled: true }],
+		])('rejects a %s user before writing', async (_, flags) => {
+			userRepository.findManyByIds.mockResolvedValue([{ ...alice, ...flags } as User]);
+
+			await expect(service.assign(WORKFLOW_ID, alice.id, admin)).rejects.toBeInstanceOf(
+				BadRequestError,
+			);
+			expect(ownerRepository.assign).not.toHaveBeenCalled();
+		});
+
 		it('rejects an unknown user before writing', async () => {
 			userRepository.findManyByIds.mockResolvedValue([]);
 
@@ -88,6 +100,39 @@ describe('MigrationOwnerAssignmentService', () => {
 				NotFoundError,
 			);
 			expect(ownerRepository.assign).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('candidates', () => {
+		it('returns the users who can open the workflow, without a source', async () => {
+			const candidates = await service.candidates(WORKFLOW_ID);
+
+			// `isPending` is only right with the role and the auth identities loaded.
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith([alice.id], {
+				includeRole: true,
+				includeAuthIdentities: true,
+			});
+			expect(candidates).toEqual([
+				{ id: alice.id, firstName: 'Alice', lastName: 'A', email: 'alice@example.com' },
+			]);
+		});
+
+		it('leaves out the users who cannot sign in', async () => {
+			userRepository.findManyByIds.mockResolvedValue([
+				alice,
+				{ ...alice, id: 'pending', isPending: true } as User,
+				{ ...alice, id: 'disabled', disabled: true } as User,
+			]);
+
+			const candidates = await service.candidates(WORKFLOW_ID);
+
+			expect(candidates.map(({ id }) => id)).toEqual([alice.id]);
+		});
+
+		it('rejects an unknown workflow', async () => {
+			workflowRepository.findExistingIds.mockResolvedValue([]);
+
+			await expect(service.candidates(WORKFLOW_ID)).rejects.toBeInstanceOf(NotFoundError);
 		});
 	});
 

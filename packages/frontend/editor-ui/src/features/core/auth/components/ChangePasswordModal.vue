@@ -14,6 +14,8 @@ import {
 	N8nAnimatedCollapsibleContent,
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nIcon,
 	N8nInput,
@@ -261,7 +263,6 @@ const onSubmit = async () => {
 	<N8nDialog
 		:open="true"
 		:header="copy.title"
-		:description="copy.description"
 		size="medium"
 		@update:open="onOpenChange"
 		@open-auto-focus="onOpenAutoFocus"
@@ -277,189 +278,194 @@ const onSubmit = async () => {
 				readonly
 			/>
 
-			<!-- Hidden rather than removed, so password managers still see the new password on submit. -->
-			<div v-show="step === 'newPassword'" :class="$style.body">
-				<div :class="[$style.field, { [$style.fieldInvalid]: isTooLong }]">
-					<N8nInputLabel
-						input-name="change-password-new"
-						:label="i18n.baseText('auth.newPassword')"
-					>
-						<N8nInput
-							id="change-password-new"
-							ref="newPasswordInput"
-							v-model="newPassword"
-							type="password"
-							name="new-password"
-							autocomplete="new-password"
-							size="medium"
-							:aria-invalid="isTooLong"
-							:aria-describedby="
-								isTooLong
-									? 'change-password-requirements change-password-too-long'
-									: 'change-password-requirements'
-							"
-							data-test-id="change-password-new-input"
-							@keydown.enter="onNewPasswordEnter"
-						/>
-					</N8nInputLabel>
-					<ul id="change-password-requirements" :class="$style.checklist">
-						<li
-							v-for="requirement in requirements"
-							:key="requirement.key"
-							:class="[$style.check, { [$style.checkMet]: requirement.met }]"
-							:data-test-id="`change-password-requirement-${requirement.key}`"
-							:data-met="requirement.met"
+			<N8nDialogBody>
+				<N8nDialogDescription>{{ copy.description }}</N8nDialogDescription>
+				<!-- Hidden rather than removed, so password managers still see the new password on submit. -->
+				<div v-show="step === 'newPassword'" :class="$style.body">
+					<div :class="[$style.field, { [$style.fieldInvalid]: isTooLong }]">
+						<N8nInputLabel
+							input-name="change-password-new"
+							:label="i18n.baseText('auth.newPassword')"
 						>
-							<Transition
-								:enter-active-class="$style.checkIconEnter"
-								:leave-active-class="$style.checkIconLeave"
-							>
-								<span v-if="requirement.met" :class="$style.checkIcon" aria-hidden="true">
-									<N8nIcon icon="circle-check" size="small" />
-								</span>
-							</Transition>
-							<span>{{ requirement.label }}</span>
-							<N8nVisuallyHidden v-if="requirement.met">
-								{{ i18n.baseText('auth.changePassword.requirements.met') }}
-							</N8nVisuallyHidden>
-						</li>
-					</ul>
-					<N8nText
-						v-if="isTooLong"
-						id="change-password-too-long"
-						size="small"
-						color="danger"
-						role="alert"
-					>
-						{{
-							i18n.baseText('auth.changePassword.error.tooLong', {
-								interpolate: { maximum: PASSWORD_MAX_LENGTH },
-							})
-						}}
-					</N8nText>
-				</div>
-
-				<CollapsibleRoot :open="isConfirmRevealed">
-					<N8nAnimatedCollapsibleContent :class="$style.reveal" blur>
-						<div :class="[$style.field, $style.confirm, { [$style.fieldInvalid]: showMismatch }]">
-							<N8nInputLabel
-								input-name="change-password-confirm"
-								:label="i18n.baseText('auth.changePassword.confirmNewPassword')"
-							>
-								<N8nInput
-									id="change-password-confirm"
-									ref="confirmPasswordInput"
-									v-model="confirmPassword"
-									type="password"
-									name="confirm-password"
-									autocomplete="new-password"
-									size="medium"
-									:aria-invalid="showMismatch"
-									aria-describedby="change-password-match"
-									data-test-id="change-password-confirm-input"
-									@blur="isConfirmTouched = true"
-								/>
-							</N8nInputLabel>
-							<N8nText
-								v-if="showMismatch"
-								id="change-password-match"
-								size="small"
-								color="danger"
-								role="alert"
-								data-test-id="change-password-match"
-							>
-								{{ i18n.baseText('auth.changePassword.error.mismatch') }}
-							</N8nText>
-							<p
-								v-else
-								id="change-password-match"
-								:class="[$style.check, { [$style.checkMet]: passwordsMatch }]"
-								data-test-id="change-password-match"
+							<N8nInput
+								id="change-password-new"
+								ref="newPasswordInput"
+								v-model="newPassword"
+								type="password"
+								name="new-password"
+								autocomplete="new-password"
+								size="medium"
+								:aria-invalid="isTooLong"
+								:aria-describedby="
+									isTooLong
+										? 'change-password-requirements change-password-too-long'
+										: 'change-password-requirements'
+								"
+								data-test-id="change-password-new-input"
+								@keydown.enter="onNewPasswordEnter"
+							/>
+						</N8nInputLabel>
+						<ul id="change-password-requirements" :class="$style.checklist">
+							<li
+								v-for="requirement in requirements"
+								:key="requirement.key"
+								:class="[$style.check, { [$style.checkMet]: requirement.met }]"
+								:data-test-id="`change-password-requirement-${requirement.key}`"
+								:data-met="requirement.met"
 							>
 								<Transition
 									:enter-active-class="$style.checkIconEnter"
 									:leave-active-class="$style.checkIconLeave"
 								>
-									<span v-if="passwordsMatch" :class="$style.checkIcon" aria-hidden="true">
+									<span v-if="requirement.met" :class="$style.checkIcon" aria-hidden="true">
 										<N8nIcon icon="circle-check" size="small" />
 									</span>
 								</Transition>
-								{{
-									passwordsMatch
-										? i18n.baseText('auth.changePassword.passwordsMatch')
-										: i18n.baseText('auth.changePassword.passwordsMustMatch')
-								}}
-							</p>
-						</div>
-					</N8nAnimatedCollapsibleContent>
-				</CollapsibleRoot>
-			</div>
+								<span>{{ requirement.label }}</span>
+								<N8nVisuallyHidden v-if="requirement.met">
+									{{ i18n.baseText('auth.changePassword.requirements.met') }}
+								</N8nVisuallyHidden>
+							</li>
+						</ul>
+						<N8nText
+							v-if="isTooLong"
+							id="change-password-too-long"
+							size="small"
+							color="danger"
+							role="alert"
+						>
+							{{
+								i18n.baseText('auth.changePassword.error.tooLong', {
+									interpolate: { maximum: PASSWORD_MAX_LENGTH },
+								})
+							}}
+						</N8nText>
+					</div>
 
-			<div v-if="step === 'verify'" :class="$style.body">
-				<div :class="[$style.field, { [$style.fieldInvalid]: currentPasswordError }]">
-					<N8nInputLabel
-						input-name="change-password-current"
-						:label="i18n.baseText('auth.changePassword.currentPassword')"
-					>
-						<N8nInput
-							id="change-password-current"
-							ref="currentPasswordInput"
-							v-model="currentPassword"
-							type="password"
-							name="current-password"
-							autocomplete="current-password"
-							size="medium"
-							:aria-invalid="Boolean(currentPasswordError)"
-							:aria-describedby="currentPasswordError ? 'change-password-current-error' : undefined"
-							data-test-id="change-password-current-input"
-							@keydown.enter="onCurrentPasswordEnter"
-						/>
-					</N8nInputLabel>
-					<N8nText
-						v-if="currentPasswordError"
-						id="change-password-current-error"
-						size="small"
-						color="danger"
-						role="alert"
-						data-test-id="change-password-current-error"
-					>
-						{{ currentPasswordError }}
-					</N8nText>
+					<CollapsibleRoot :open="isConfirmRevealed">
+						<N8nAnimatedCollapsibleContent :class="$style.reveal" blur>
+							<div :class="[$style.field, $style.confirm, { [$style.fieldInvalid]: showMismatch }]">
+								<N8nInputLabel
+									input-name="change-password-confirm"
+									:label="i18n.baseText('auth.changePassword.confirmNewPassword')"
+								>
+									<N8nInput
+										id="change-password-confirm"
+										ref="confirmPasswordInput"
+										v-model="confirmPassword"
+										type="password"
+										name="confirm-password"
+										autocomplete="new-password"
+										size="medium"
+										:aria-invalid="showMismatch"
+										aria-describedby="change-password-match"
+										data-test-id="change-password-confirm-input"
+										@blur="isConfirmTouched = true"
+									/>
+								</N8nInputLabel>
+								<N8nText
+									v-if="showMismatch"
+									id="change-password-match"
+									size="small"
+									color="danger"
+									role="alert"
+									data-test-id="change-password-match"
+								>
+									{{ i18n.baseText('auth.changePassword.error.mismatch') }}
+								</N8nText>
+								<p
+									v-else
+									id="change-password-match"
+									:class="[$style.check, { [$style.checkMet]: passwordsMatch }]"
+									data-test-id="change-password-match"
+								>
+									<Transition
+										:enter-active-class="$style.checkIconEnter"
+										:leave-active-class="$style.checkIconLeave"
+									>
+										<span v-if="passwordsMatch" :class="$style.checkIcon" aria-hidden="true">
+											<N8nIcon icon="circle-check" size="small" />
+										</span>
+									</Transition>
+									{{
+										passwordsMatch
+											? i18n.baseText('auth.changePassword.passwordsMatch')
+											: i18n.baseText('auth.changePassword.passwordsMustMatch')
+									}}
+								</p>
+							</div>
+						</N8nAnimatedCollapsibleContent>
+					</CollapsibleRoot>
 				</div>
 
-				<div v-if="isMfaEnabled" :class="[$style.field, { [$style.fieldInvalid]: mfaCodeError }]">
-					<N8nInputLabel
-						input-name="change-password-mfa-code"
-						:label="i18n.baseText('auth.changePassword.mfaCode')"
-					>
-						<N8nInput
-							id="change-password-mfa-code"
-							ref="mfaCodeInput"
-							v-model="mfaCode"
-							name="mfa-code"
-							inputmode="numeric"
-							autocomplete="one-time-code"
-							size="medium"
-							:maxlength="MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH"
-							:placeholder="i18n.baseText('auth.changePassword.mfaCode.placeholder')"
-							:aria-invalid="Boolean(mfaCodeError)"
-							:aria-describedby="mfaCodeError ? 'change-password-mfa-code-error' : undefined"
-							data-test-id="change-password-mfa-code-input"
-							@blur="isMfaCodeTouched = true"
-						/>
-					</N8nInputLabel>
-					<N8nText
-						v-if="mfaCodeError"
-						id="change-password-mfa-code-error"
-						size="small"
-						color="danger"
-						role="alert"
-						data-test-id="change-password-mfa-code-error"
-					>
-						{{ mfaCodeError }}
-					</N8nText>
+				<div v-if="step === 'verify'" :class="$style.body">
+					<div :class="[$style.field, { [$style.fieldInvalid]: currentPasswordError }]">
+						<N8nInputLabel
+							input-name="change-password-current"
+							:label="i18n.baseText('auth.changePassword.currentPassword')"
+						>
+							<N8nInput
+								id="change-password-current"
+								ref="currentPasswordInput"
+								v-model="currentPassword"
+								type="password"
+								name="current-password"
+								autocomplete="current-password"
+								size="medium"
+								:aria-invalid="Boolean(currentPasswordError)"
+								:aria-describedby="
+									currentPasswordError ? 'change-password-current-error' : undefined
+								"
+								data-test-id="change-password-current-input"
+								@keydown.enter="onCurrentPasswordEnter"
+							/>
+						</N8nInputLabel>
+						<N8nText
+							v-if="currentPasswordError"
+							id="change-password-current-error"
+							size="small"
+							color="danger"
+							role="alert"
+							data-test-id="change-password-current-error"
+						>
+							{{ currentPasswordError }}
+						</N8nText>
+					</div>
+
+					<div v-if="isMfaEnabled" :class="[$style.field, { [$style.fieldInvalid]: mfaCodeError }]">
+						<N8nInputLabel
+							input-name="change-password-mfa-code"
+							:label="i18n.baseText('auth.changePassword.mfaCode')"
+						>
+							<N8nInput
+								id="change-password-mfa-code"
+								ref="mfaCodeInput"
+								v-model="mfaCode"
+								name="mfa-code"
+								inputmode="numeric"
+								autocomplete="one-time-code"
+								size="medium"
+								:maxlength="MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH"
+								:placeholder="i18n.baseText('auth.changePassword.mfaCode.placeholder')"
+								:aria-invalid="Boolean(mfaCodeError)"
+								:aria-describedby="mfaCodeError ? 'change-password-mfa-code-error' : undefined"
+								data-test-id="change-password-mfa-code-input"
+								@blur="isMfaCodeTouched = true"
+							/>
+						</N8nInputLabel>
+						<N8nText
+							v-if="mfaCodeError"
+							id="change-password-mfa-code-error"
+							size="small"
+							color="danger"
+							role="alert"
+							data-test-id="change-password-mfa-code-error"
+						>
+							{{ mfaCodeError }}
+						</N8nText>
+					</div>
 				</div>
-			</div>
+			</N8nDialogBody>
 
 			<N8nDialogFooter>
 				<template v-if="step === 'newPassword'">

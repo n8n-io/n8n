@@ -8,7 +8,7 @@ import type { ZodType } from 'zod';
 
 import { domainGatingResumeSchema } from '../../domain-access';
 import { credentialsResumeSchema } from '../../tools/credentials.tool';
-import { gatewayConfirmationResumeSchema } from '../../tools/filesystem/create-tools-from-mcp-server';
+import { gatewayConfirmationResumeSchema } from '../../tools/create-tools-from-mcp-server';
 import { planResumeSchema } from '../../tools/orchestration/plan.tool';
 import { askUserResumeSchema } from '../../tools/shared/ask-user.tool';
 import { workflowsResumeSchema } from '../../tools/workflows.tool';
@@ -60,7 +60,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 	 *  (approve, deny, approve-with-comment, always-allow) can target them. */
 	const approvalEnvelopeSchemas: Array<[string, ZodType]> = [
 		[
-			'shared approval envelope (build-workflow, data-tables, workspace, executions)',
+			'shared approval envelope (workflow_builder_build_workflow, data_tables, workspace, executions)',
 			instanceAiApprovalResumeSchema,
 		],
 		['plan', planResumeSchema],
@@ -71,8 +71,8 @@ describe('confirmation payload → tool resume schema contract', () => {
 	const wizardSchemas: Array<[string, ZodType]> = [
 		['workflows (setup wizard)', workflowsResumeSchema],
 		['credentials', credentialsResumeSchema],
-		['ask-user', askUserResumeSchema],
-		['filesystem gateway', gatewayConfirmationResumeSchema],
+		['workflow_builder_ask_user', askUserResumeSchema],
+		['Browser Use MCP', gatewayConfirmationResumeSchema],
 		['domain gating', domainGatingResumeSchema],
 		['mcp-servers', mcpConnectResumeSchema],
 	];
@@ -112,7 +112,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 					{ questionId: 'q3', selectedOptions: [], skipped: true },
 				],
 			},
-			targets: [['ask-user', askUserResumeSchema]],
+			targets: [['workflow_builder_ask_user', askUserResumeSchema]],
 		},
 		{
 			label: 'credential selection',
@@ -146,7 +146,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 		{
 			label: 'gateway resource decision',
 			request: { kind: 'resourceDecision', resourceDecision: 'allowForSession' },
-			targets: [['filesystem gateway', gatewayConfirmationResumeSchema]],
+			targets: [['Browser Use MCP', gatewayConfirmationResumeSchema]],
 		},
 		{
 			label: 'setup wizard apply with a filled credential slot',

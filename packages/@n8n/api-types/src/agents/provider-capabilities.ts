@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 
 import type { PromptCachingConfigSchema } from './agent-json-config.schema';
+import { getProviderPrefix, splitModelId } from './model-id';
 
 /**
  * Static capability map for LLM providers the agent runtime can target.
@@ -181,6 +182,44 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		attachments: NO_ATTACHMENTS,
 	},
 };
+
+export function isGoogleVertexAnthropicModel(modelId: string): boolean {
+	const { provider, model } = splitModelId(modelId);
+	return provider === 'google-vertex' && model.startsWith('claude-');
+}
+
+export function isOpenRouterAnthropicModel(modelId: string): boolean {
+	const { provider, model } = splitModelId(modelId);
+	return provider === 'openrouter' && model.startsWith('anthropic/claude-');
+}
+
+/**
+ * Prefix of a Claude deployment on Microsoft Foundry, after the provider:
+ * `azure-openai/anthropic/<deployment>`. A deployment name is user-chosen, so
+ * the prefix records that the deployment answers on the Anthropic Messages API.
+ */
+export const AZURE_FOUNDRY_ANTHROPIC_PREFIX = 'anthropic/';
+
+export function isAzureFoundryAnthropicModel(modelId: string): boolean {
+	const { provider, model } = splitModelId(modelId);
+	return provider === 'azure-openai' && model.startsWith(AZURE_FOUNDRY_ANTHROPIC_PREFIX);
+}
+
+export function isRoutedAnthropicModel(modelId: string): boolean {
+	return (
+		isGoogleVertexAnthropicModel(modelId) ||
+		isOpenRouterAnthropicModel(modelId) ||
+		isAzureFoundryAnthropicModel(modelId)
+	);
+}
+
+/** Cache support depends on the model when the provider routes to several vendors. */
+export function getModelPromptCachingCapability(
+	modelId: string,
+): ProviderCapabilities['promptCaching'] {
+	if (isRoutedAnthropicModel(modelId)) return 'ttl';
+	return PROVIDER_CAPABILITIES[getProviderPrefix(modelId)]?.promptCaching ?? false;
+}
 
 /** Attachment support of a provider. Unknown providers support none. */
 export function getProviderAttachmentCapabilities(

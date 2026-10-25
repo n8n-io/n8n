@@ -22,6 +22,7 @@ import {
 	getProviderPrefix,
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
+	isRoutedAnthropicModel,
 } from '@n8n/ai-utilities/agent-config';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -42,14 +43,15 @@ import {
 	resolveEmbeddingProviderOptionsFromCredential,
 	type ManagedEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptionsResolver,
-} from './embedding-credential';
+} from '@/modules/knowledge/vector-stores/embedding-credential';
 import { resolveCredentialAwareModelConfig } from './model-config';
 import { resolveProviderToolName } from './provider-tool-aliases';
 import {
 	resolveWebSearchGatewayProxyConfig,
 	type AiGatewaySearchCredentialResolver,
 } from './web-search-credential';
-import { buildVectorStore } from './vector-store-factory';
+import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
+import type { FinishKnowledgeToolCall } from '../agent-knowledge-usage-tracker';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 
@@ -72,13 +74,15 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
 /**
- * Appended only for the in-app preview chat. The agent has no tool that edits
- * its own configuration, so without this it agrees to setup changes it cannot
- * make. The preview UI offers the AI Assistant hand-off beside this answer.
+ * Appended only for the in-app preview chat. Without this the agent agrees to
+ * setup changes it cannot make. The preview UI offers the n8n Assistant hand-off
+ * beside this answer.
  */
 const PREVIEW_SELF_MODIFICATION_POLICY =
 	'### Preview chat policy\n' +
-	'This conversation only runs you. You cannot change your own setup — instructions, model, tools, skills, knowledge, channels, integrations, schedules, name or any other configuration — and you have no tool that can. This holds whether or not the user names you as the owner of the thing: "add a tool" and "connect a Slack channel" are setup changes too. If the user asks for such a change, say plainly that you cannot make it here, and tell them to ask the AI Assistant, which edits the agent for them. Never claim a setup change was applied.';
+	'This conversation only runs you. You can change things in n8n, including your own setup, only through your tools. Your setup is your instructions, model, tools, skills, knowledge, channels, integrations, schedules, name and any other part of your configuration. A request that names no other owner, such as "add a tool" or "connect a Slack channel", is about your setup.\n' +
+	'If none of your tools can make a change that the user asks for, say plainly that you cannot make it here, and tell them to ask the n8n Assistant, which edits the agent for them.\n' +
+	'Never claim that a change was applied unless a tool result confirms it.';
 
 /** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
 export type ToolResolver = (
@@ -144,6 +148,38 @@ export interface BuildFromJsonOptions {
 	 * them on their own cache key.
 	 */
 	previewChat?: boolean;
+	/** Called when each vector store search starts. The returned function gets the size of the output that the model gets. */
+	onVectorStoreSearch?: (runId: string | undefined) => FinishKnowledgeToolCall;
+}
+
+function countVectorStoreSearches(
+	searchTool: BuiltTool,
+	onVectorStoreSearch: (runId: string | undefined) => FinishKnowledgeToolCall,
+): BuiltTool {
+	const searchHandler = searchTool.handler;
+	if (!searchHandler) {
+		return searchTool;
+	}
+
+	return {
+		...searchTool,
+		async handler(input, ctx) {
+			const finishSearch = onVectorStoreSearch(ctx.runId);
+			let output: unknown;
+			try {
+				output = await searchHandler.call(searchTool, input, ctx);
+			} catch (error) {
+				finishSearch({ failed: true });
+				throw error;
+			}
+
+			const modelOutput = searchTool.toModelOutput ? searchTool.toModelOutput(output) : output;
+			const json: string | undefined = JSON.stringify(modelOutput);
+			const contentChars = json?.length ?? 0;
+			finishSearch({ failed: false, contentChars });
+			return output;
+		},
+	};
 }
 
 /**
@@ -211,7 +247,12 @@ export async function buildFromJson(
 			// selected yet — skip them rather than failing the whole agent build.
 			if (!vectorStoreConfig.credential || !vectorStoreConfig.embedding.credential) continue;
 			const vectorStore = await buildVectorStore(vectorStoreConfig, options.credentialProvider);
-			agent.vectorStore(vectorStore, { description: vectorStoreConfig.useWhen });
+			const searchTool = vectorStore.asTool({ description: vectorStoreConfig.useWhen }).build();
+			agent.tool(
+				options.onVectorStoreSearch
+					? countVectorStoreSearches(searchTool, options.onVectorStoreSearch)
+					: searchTool,
+			);
 		}
 	}
 
@@ -251,15 +292,19 @@ export async function buildFromJson(
 		if (config.config.reasoning) {
 			agent.reasoning(config.config.reasoning);
 		}
-		if (config.config.promptCaching) {
-			agent.promptCaching(config.config.promptCaching);
-		}
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
 		}
 		if (config.config.maxIterations) {
 			agent.configuration({ maxIterations: config.config.maxIterations });
 		}
+	}
+
+	if (config.config?.promptCaching) {
+		agent.promptCaching(config.config.promptCaching);
+	} else if (isRoutedAnthropicModel(config.model)) {
+		// Existing agents receive the cache default without a config update.
+		agent.promptCaching({ enabled: true });
 	}
 
 	return agent;
@@ -632,7 +677,6 @@ async function resolveModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
-		config.modelDeploymentName,
 	);
 }
 

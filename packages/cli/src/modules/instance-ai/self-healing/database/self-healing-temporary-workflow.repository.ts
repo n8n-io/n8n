@@ -70,7 +70,11 @@ export class SelfHealingTemporaryWorkflowRepository extends BaseRepository<Insta
 			where: { id: workflowId },
 			select: ['id', 'isArchived', 'activeVersionId'],
 		});
-		if (workflow && (!workflow.isArchived || workflow.activeVersionId)) return undefined;
+		if (workflow && (!workflow.isArchived || workflow.activeVersionId)) {
+			// Stop retrying cleanup for a copy the user has kept.
+			await this.delete({ id: RESOURCE_PREFIX + workflowId });
+			return undefined;
+		}
 
 		return marker;
 	}

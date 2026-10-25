@@ -1,12 +1,10 @@
+import type { SerializedCredentialData, SerializedCredentialDataValue } from '@n8n/api-types';
+import { containsExpression } from '@n8n/utils/string/contains-expression';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { containsExpression, isObject } from '@/utils';
+import { isObject } from '@/utils';
 
 import type { CredentialExportPolicy } from '../../n8n-packages.types';
-import type {
-	SerializedCredentialData,
-	SerializedCredentialDataValue,
-} from '../../spec/serialized/credential.schema';
 
 // oauthTokenData never travels, at any depth — tokens are secrets and the target must reconnect.
 const NEVER_EXPORTED_KEYS = new Set(['oauthTokenData']);

@@ -959,6 +959,10 @@ onMounted(async () => {
 
 .membersTableContainer {
 	margin-top: var(--spacing--sm);
+
+	:global(.table-scroll) {
+		scrollbar-gutter: auto;
+	}
 }
 
 .search {

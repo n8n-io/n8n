@@ -9,6 +9,7 @@ import {
 	N8nIconButton,
 	N8nSegmentControl,
 	N8nText,
+	N8nUserInfo,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -20,8 +21,9 @@ import {
 	type SegmentOption,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, toRaw, watch } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 
 import { useSelfHealingStore } from '../self-healing.store';
@@ -38,7 +40,7 @@ const pageRef = ref<HTMLElement | null>(null);
 const loading = ref(true);
 const saving = ref(false);
 const loadError = ref(false);
-const savedForm = ref('');
+const savedForm = ref<SaveSelfHealingConfigurationDto>();
 const form = ref<SaveSelfHealingConfigurationDto>({
 	scope: 'all',
 	workflowIds: [],
@@ -104,9 +106,8 @@ function reviewerName(id: string) {
 
 const selectedReviewers = computed(() =>
 	form.value.reviewerIds.map((id) => ({
-		...reviewersById.value.get(id),
 		id,
-		name: reviewerName(id),
+		user: reviewersById.value.get(id),
 	})),
 );
 
@@ -134,7 +135,9 @@ function addReviewer(value: ComboboxValue | ComboboxValue[] | undefined) {
 
 onMounted(() => pageRef.value?.scrollIntoView({ block: 'start' }));
 
-const dirty = computed(() => !!savedForm.value && JSON.stringify(form.value) !== savedForm.value);
+const dirty = computed(
+	() => !!savedForm.value && JSON.stringify(form.value) !== JSON.stringify(savedForm.value),
+);
 const isFormValid = computed(() => {
 	if (form.value.reviewerIds.length === 0) {
 		return false;
@@ -154,13 +157,18 @@ const title = computed(() =>
 	i18n.baseText(isNew.value ? 'selfHealing.config.new' : 'selfHealing.config.edit'),
 );
 
+let pendingLoad: symbol | undefined;
+
 async function load() {
+	const request = Symbol();
+	pendingLoad = request;
 	loading.value = true;
 	loadError.value = false;
-	savedForm.value = '';
+	savedForm.value = undefined;
 
 	try {
 		await store.load(props.projectId);
+		if (pendingLoad !== request) return;
 
 		const configuration = store.configurations[props.projectId]?.find(
 			({ id }) => String(id) === props.configurationId,
@@ -185,40 +193,53 @@ async function load() {
 			};
 		}
 
-		savedForm.value = JSON.stringify(form.value);
+		savedForm.value = structuredClone(toRaw(form.value));
 	} catch (error) {
+		if (pendingLoad !== request) return;
+
 		loadError.value = true;
 		toast.showError(error, i18n.baseText('selfHealing.config.loadError'));
 	} finally {
-		loading.value = false;
+		if (pendingLoad === request) {
+			loading.value = false;
+		}
 	}
 }
 
 watch(() => [props.projectId, props.configurationId], load, { immediate: true });
-watch(
-	() => form.value.scope,
-	(scope) => {
-		if (scope === 'all') {
-			form.value.workflowIds = [];
-		}
-	},
-);
+
+function discard() {
+	if (savedForm.value) {
+		form.value = structuredClone(toRaw(savedForm.value));
+	}
+}
 
 function back() {
-	void router.push({ path: `/projects/${props.projectId}/settings`, hash: '#self-healing' });
+	void router.push({
+		name: VIEWS.PROJECT_SETTINGS,
+		params: { projectId: props.projectId },
+		hash: '#self-healing',
+	});
 }
 
 async function save() {
 	saving.value = true;
 
 	try {
+		const payload = structuredClone(toRaw(form.value));
+		if (payload.scope === 'all') {
+			payload.workflowIds = [];
+		}
+
+		const { scope, workflowIds, reviewerIds } = payload;
 		await store.save(
 			props.projectId,
-			form.value,
+			isNew.value ? payload : { scope, workflowIds, reviewerIds },
 			isNew.value ? undefined : Number(props.configurationId),
 		);
 
-		savedForm.value = JSON.stringify(form.value);
+		form.value = payload;
+		savedForm.value = structuredClone(payload);
 		toast.showMessage({ title: i18n.baseText('selfHealing.config.saved'), type: 'success' });
 
 		if (isNew.value) back();
@@ -385,31 +406,14 @@ onBeforeRouteUpdate(async (to, from) => {
 							data-test-id="self-healing-selected-reviewer"
 						>
 							<template #info>
-								<div :class="$style.person">
-									<N8nAvatar
-										:first-name="reviewer.firstName"
-										:last-name="reviewer.lastName"
-										size="small"
-									/>
-									<div :class="$style.personText">
-										<N8nText
-											bold
-											size="medium"
-											color="text-dark"
-											:class="$style.truncate"
-											:title="reviewer.name"
-											>{{ reviewer.name }}</N8nText
-										>
-										<N8nText
-											v-if="reviewer.email"
-											size="small"
-											color="text-light"
-											:class="$style.truncate"
-											:title="reviewer.email"
-											>{{ reviewer.email }}</N8nText
-										>
-									</div>
-								</div>
+								<N8nUserInfo
+									v-if="reviewer.user"
+									v-bind="reviewer.user"
+									:is-current-user="reviewer.id === users.currentUser?.id"
+								/>
+								<N8nText v-else>{{
+									i18n.baseText('selfHealing.config.unavailableReviewer')
+								}}</N8nText>
 							</template>
 							<template #action>
 								<N8nIconButton
@@ -429,7 +433,7 @@ onBeforeRouteUpdate(async (to, from) => {
 						type="button"
 						variant="outline"
 						:disabled="saving || (!isNew && !dirty)"
-						@click="isNew ? back() : load()"
+						@click="isNew ? back() : discard()"
 						>{{ i18n.baseText(isNew ? 'generic.cancel' : 'selfHealing.config.discard') }}</N8nButton
 					>
 					<N8nButton
@@ -482,26 +486,5 @@ onBeforeRouteUpdate(async (to, from) => {
 .hint {
 	display: block;
 	margin-top: var(--spacing--2xs);
-}
-
-.truncate {
-	display: block;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.person {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	min-width: 0;
-}
-
-.personText {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
 }
 </style>

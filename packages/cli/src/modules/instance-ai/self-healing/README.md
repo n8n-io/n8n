@@ -13,6 +13,9 @@ Wait/resume and existing crash recovery use the same hook and saved source metad
 The trigger respects workflow and instance settings for saving failed executions.
 Normal execution pruning still applies. It creates no snapshots or retention exceptions.
 Workers relay only the workflow and execution IDs through the existing pubsub channel.
+Worker and webhook processes wait for relay publication before the hook returns.
+Main processes start admission in the background after the execution save finishes.
+Admission does not delay execution completion and can be lost during shutdown.
 Main processes call the investigation service. Each workflow can have one unfinished investigation
 or open result. Different workflows can have investigations at the same time, subject to the
 existing Assistant concurrency limits. The database claim prevents duplicate investigations.
@@ -33,7 +36,10 @@ Supply `projectId`, `workflowId`, and the original failed `executionId`.
 The producer selects the project configuration and checks the enabling user’s current access.
 A selected-workflow configuration takes precedence over all-workflow coverage, even when paused.
 The call returns `null` when no enabled configuration authorizes the investigation.
+It also returns `null` for a new failure during a Could not fix cooldown. See [Investigate again](#investigate-again).
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
+The run keeps the captured baseline in memory. The investigation stores only the published version
+ID, which the cooldown reads.
 The workflow must be fully published. The failure must belong to its current published version.
 Manual and evaluation executions are ineligible.
 Credential and network failures can still need investigation.
@@ -50,10 +56,13 @@ A workflow can have one unfinished investigation or open result.
 An unfinished investigation blocks the workflow across projects and configurations.
 An open result blocks investigations only in the workflow's current project.
 Repeated starts for the same failed execution return the original investigation, including after completion.
-Automatic failure triggers remain the caller's responsibility.
+Automatic triggers and eligibility for a new failure remain the caller's responsibility.
 When an access check fails, the producer pauses the configuration. Another eligible user must
 explicitly enable it before new work can start.
-Re-enablement does not change the actor recorded on an existing investigation.
+User deletion also removes that user's investigations and results.
+Leaving the project does not delete those records or necessarily remove globally granted access.
+The user who re-enables self-healing becomes the background user for new investigations.
+Re-enablement does not change the background user recorded on an existing investigation.
 
 The producer calls `InstanceAiService.startSelfHealingRun()` with its stored thread and run IDs.
 This uses the existing Assistant run lifecycle. It does not create another job runner.
@@ -76,7 +85,8 @@ The agent has no save, publish, credential setup, MCP, browser, or delegation to
 It does not request user confirmation or start follow-up runs.
 
 The runtime returns technical `status`, finish information, `usage`, and validated `output`
-when available. Output has `outcome`, `summary`, `report`, and an optional `candidateFilePath`.
+when available. Output requires `outcome`, `summary`, `report`, and `candidateFilePath`.
+Set `candidateFilePath` to `null` when there is no candidate.
 `fix_ready` requires a candidate path. `could_not_fix` excludes one.
 The result includes a candidate compiler when validated output names a candidate file.
 If final compilation reports mocked credential types, the producer changes `fix_ready` to `needs_you`.
@@ -114,18 +124,29 @@ There is no public launch endpoint.
 
 ## Investigate again
 
-Admission uses the same Open and Closed states as Inbox. An undismissed result stays open
-when it has no suggestion or its suggestion is pending. This includes Fix ready,
-Needs attention, and Could not fix reports.
+Admission blocks new investigations while a Fix ready or Needs attention result is Open.
+An undismissed Fix ready or Needs attention result stays Open when it has no suggestion or its
+suggestion is pending. Could not fix results are Closed immediately and return the `closed`
+review state. Automatic closure leaves `dismissedAt` and `dismissedById` empty.
 
-Dismissal, report-only chat, discard, or outdated reconciliation permits another eligible
-production failure on the same published version. Apply saves a draft. Another investigation
-requires successful publication and a new eligible failure. Closing a result, opening the editor,
-changing a configuration, and publishing do not start an investigation.
+For a Fix ready or Needs attention result, dismissal, discard, or outdated reconciliation permits
+another eligible production failure on the same published version. Apply saves a draft.
+Another investigation requires successful publication and a new eligible failure. Closing a
+result, opening the editor, changing a configuration, and publishing do not start an investigation.
 
-A report without a suggestion stays open until closed through dismissal or chat,
-even after a new publication.
-Pause, resume, and configuration edits do not clear this block. Configuration deletion removes
+A Needs attention report without a suggestion stays Open until dismissed, even after a new publication.
+
+A Could not fix result blocks investigations for 24 hours after its completion. The block applies
+to the workflow, its owning project, and the investigated published version. Admission checks
+the workflow's current published version before it captures a baseline. A saved draft does not
+change that version, so admission skips the failure without an error. The claim transaction checks
+again after it confirms that the captured version is still published. Skipped failures do not
+extend the cooldown.
+Another accepted Could not fix result starts a new cooldown. A different successfully published
+version becomes eligible immediately. Both cases require another eligible production failure.
+Republishing the same version does not reset the cooldown. No background job clears it.
+
+Pause, resume, and configuration edits do not clear either block. Configuration deletion removes
 its history and resets the block. Results from a previous owning project do not block the new project.
 
 Crashes, interruptions, and turn limits without an accepted result release the running claim.
@@ -140,17 +161,24 @@ Each project can have one all-workflows configuration and multiple selected-work
 Explicit workflow selections cannot overlap, including when configurations are paused.
 Moving a workflow to another project removes its explicit selections. The destination project's
 configuration applies to later failures. Moving between folders in the same project keeps selections.
-New configurations start disabled. The form selects the creator as the initial reviewer.
+New configurations created in Project Settings start enabled.
+The form selects the creator as the initial reviewer.
 Enabling a configuration records the user whose access authorizes subsequent investigations.
 
 Pause stops new investigations and prevents results from being saved while paused.
-Running agents can finish. If the configuration resumes before completion, their results can be saved.
+After an explicit pause commits, the service requests cancellation of its unfinished investigations.
+The Assistant runtime routes cancellation to local runs and runs on other main processes.
+Re-enabling permits future investigations. It does not resume canceled agents.
 Saved results remain available to assigned reviewers while the configuration is paused.
 
 A result can reference one independent suggestion. Reports without changes have no suggestion.
 Removal deletes linked suggestions and the configuration in one transaction. Foreign keys
 cascade deletion to suggestion activity, selections, reviewers, investigations, and results.
-Running agents can finish, but their results are not saved.
+Removal collects unfinished thread IDs before deletion and requests cancellation after commit.
+Cancellation is best-effort. A failed request does not fail a committed pause or removal.
+A rolled-back pause or removal does not request cancellation.
+Cancellation can arrive late, so result acceptance still checks the configuration and abort signal.
+If cancellation misses a run and the configuration resumes before completion, its result can be saved.
 Late completion skips missing configurations and investigations.
 Already applied workflow changes remain saved.
 Admission and result acceptance coordinate with pause and removal through a short configuration
@@ -186,8 +214,9 @@ It keeps both fields within their output limits after replacement.
 It passes the report, runtime usage, and compiled graph directly to the result service.
 A credit-claim failure leaves unknown credits and does not discard valid output.
 
-`SelfHealingResultService.complete(...)` prepares the optional suggestion through
-`WorkflowSuggestionService`. It rechecks access and the captured baseline, then saves the result,
+`SelfHealingResultService.complete(...)` receives the captured baseline from the run and prepares
+the optional suggestion through `WorkflowSuggestionService`. It rejects a baseline from another
+investigation. It rechecks access and the captured baseline, then saves the result,
 suggestion, submission activity, and investigation completion in one transaction.
 Cancellation before acceptance rolls back the result and suggestion.
 Once the completion commits, a later cancellation does not change it to a canceled run.
@@ -208,11 +237,11 @@ The investigation instructions must keep sensitive values out of reports, summar
 suggestion explanations, and error context. The text filter handles recognized patterns.
 It does not remove arbitrary private information.
 
-| Outcome         | Suggestion | Actions                                                                    |
-| --------------- | ---------- | -------------------------------------------------------------------------- |
-| `fix_ready`     | Required   | Apply and publish, Apply and open in editor, Discard                       |
-| `needs_you`     | Optional   | Apply and open in chat when changes exist; otherwise Open in chat, Discard |
-| `could_not_fix` | None       | Open in chat, Discard                                                      |
+| Outcome         | Suggestion | Actions                                                    |
+| --------------- | ---------- | ---------------------------------------------------------- |
+| `fix_ready`     | Required   | Apply and publish, Continue in Assistant or editor, Discard |
+| `needs_you`     | Optional   | Continue in Assistant or editor, Discard                    |
+| `could_not_fix` | None       | None. The result closes automatically                       |
 
 The summary is a plain-language title with at most 80 characters.
 The agent writes the report as one Markdown string with two sections: **What happened**
@@ -250,51 +279,45 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 - `POST /:resultId/dismiss`
 
 Assigned reviewers with current workflow edit access can review results. Approval also requires
-publish access. Reviewer filtering applies to Inbox lists, counts, details, and actions.
+publish access. Approval accepts only Fix ready results. Apply accepts Fix ready and Needs attention
+results that have a suggestion. Reviewer filtering applies to Inbox lists, counts, details, and actions.
 Each action resolves its suggestion from the result and returns the updated review.
 Send the editor client ID in `push-ref` for Apply actions.
-The first successful action closes the result. Later actions return a conflict.
-Publish accepts only `fix_ready` suggestions. Apply accepts both `fix_ready` and `needs_you`
-suggestions. The UI opens ready fixes in the editor and other reports in chat.
+Read the returned review state before navigating. A competing action can close the suggestion first.
+Apply saves the proposed fix without publishing; the UI opens the editor when `reviewState` is `applied`.
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
 check the current workflow before writing. If Apply fails, keep the review open and show the error.
 
-The Discard button calls `POST /:resultId/dismiss` for all outcomes.
+Both Discard and Dismiss buttons call `POST /:resultId/dismiss`.
 Dismissal discards an attached pending suggestion. Fix-ready results derive their discarded state
-from the suggestion; informational results also record dismissal in the same transaction.
+from the suggestion. Needs attention results also record dismissal in the same transaction.
+Dismissal leaves automatically closed Could not fix results unchanged and returns `closed`.
+A dismissal recorded before automatic closure still returns `dismissed`.
+Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
 returns an error. `publishError` describes that request only. The response includes the workflow
 ID and the suggestion's recorded applied version. Open the normal editor for publication status
-and recovery.
+and recovery. Repeating a review action does not save or publish again.
 
-The editor uses Apply, then opens the workflow. Open in chat also uses Apply when the result has
-suggested changes. For a report without a suggestion, it uses Dismiss to close the result.
-Neither action publishes the workflow.
-
-After the action succeeds, the frontend uses the normal Assistant handoff. It creates a private
-chat in the result's project and sends the full report with the workflow attachment. The attachment
-includes the execution ID only when the reviewer can read it. The opening message starts an
-Assistant run. If changes were applied, the message states that they are already in the draft.
-
-Normal chat setup, ownership, project access, and tool permissions apply. The background
-conversation and grants stay separate. Chat creation or navigation errors use normal chat error
-handling. They do not undo the workflow changes or reopen the result. Closed results remain
-readable, but they have no action buttons.
+Continuation applies a suggestion to the workflow draft, or dismisses a result without one.
+It opens the destination only when the result becomes `applied` or `dismissed`.
+For the Assistant, pass `report` to the normal Assistant handoff. Build a workflow attachment
+from `workflowId`. Include `execution.id` only when `execution.status` is `available`.
+The normal handoff opens a new chat in the clicking user's personal project.
+Normal chat ownership and tool permissions apply. Do not copy the background conversation or grants.
 
 ## Availability
 
 Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to enable investigations
 and load review routes. The flag defaults to `false`. Restart n8n after changing it.
 The `instance-ai` module must be loaded. Entities and migrations do not depend on this rollout flag.
-Saved review services do not require an enabled configuration or Assistant model availability.
-The frontend enables Chat only when Assistant access, enablement, and setup are ready.
-Normal chat endpoints enforce their own access and model requirements.
-Recovery of existing investigations remains available when the flag is off.
+Saved review services do not require Assistant model availability. Recovery of existing
+investigations remains available when the flag is off.
 
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.
 It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership.
 The source selects rows before applying the shared pagination boundary and limit.
 The shared API uses `GET /inbox` and `GET /inbox/summary`.
-Open and Closed derive from result dismissal and suggestion closure.
-Inbox reads do not change these states.
-The review UI provides review screens and chat and editor navigation.
+Open and Closed derive from result outcome, dismissal, and suggestion closure.
+Could not fix results are Closed. Inbox reads do not change either state.
+The review UI will provide review screens and chat and editor navigation.

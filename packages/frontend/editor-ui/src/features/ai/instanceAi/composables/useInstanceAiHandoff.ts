@@ -731,6 +731,32 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
+	async function openThreadWithDraft(
+		projectId: string,
+		draft: PendingComposerDraft,
+		launch: InstanceAiThreadLaunch,
+	): Promise<boolean> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return false;
+		}
+		if (handoffInFlight) return false;
+		handoffInFlight = true;
+		try {
+			const threadId = uuidv4();
+			try {
+				await instanceAiStore.syncThread(threadId, projectId, launch);
+			} catch {
+				showOpenFailed();
+				return false;
+			}
+			stashPendingComposerDraft(threadId, draft);
+			return await navigateToNewThread(threadId);
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
 	async function openThreadForDraft(workflow?: {
 		id: string;
 		name?: string;
@@ -776,6 +802,7 @@ export function useInstanceAiHandoff() {
 	return {
 		startThread,
 		openWorkflowThread,
+		openThreadWithDraft,
 		openThreadWithContext,
 		openThreadForDraft,
 	};

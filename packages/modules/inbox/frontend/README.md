@@ -11,15 +11,15 @@ review opens the Closed tab, as before.
 
 Assistant details live in `src/self-healing`. They show saved reports, workflow
 changes, review activity, and usage. Result actions use the existing self-healing
-API. Editor actions use the apply endpoint. Chat actions use apply when a suggestion
-exists and dismiss otherwise. Apply saves pending suggestions, including partial
-changes, to the workflow draft. Both actions close the result. The frontend then
-updates the Inbox and opens the destination.
-Actions are available only while a result is open. The first successful action
-closes it. Closed results show the saved report, activity, and workflow changes.
-Fix ready offers Apply and publish or Apply and open in editor.
-Needs attention offers Apply and open in chat when it has suggested changes.
-Other informational results offer Open in chat. Every open result offers Discard.
+API. Actions are available only while a result is open.
+Fix ready shows Discard and close beside a Review menu: Apply and publish,
+Continue with Assistant, and Continue with editor.
+Needs attention shows Discard and close beside a Continue in… menu with Assistant
+and Editor. It has no publish action.
+Could not fix closes automatically and shows no actions.
+Continuation applies a suggestion to the workflow draft, or dismisses a result
+without one. It does not publish. The first successful action closes the result.
+The frontend then updates the Inbox and opens the destination.
 Chat uses the normal frontend Assistant handoff to create a private thread in the
 result's project. It sends the full report and workflow attachment to start an
 Assistant run. If changes were applied, the message says they are already in the draft.

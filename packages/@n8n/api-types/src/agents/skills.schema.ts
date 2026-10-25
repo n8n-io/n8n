@@ -12,6 +12,7 @@ import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
+export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
 const optionalTake = z
@@ -28,7 +29,11 @@ export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
-export type SkillSource = 'ui' | 'agent';
+/**
+ * How a skill was created: `ui` in the skills hub, `agent` from the agent builder or the
+ * migration, `mcp` from an MCP client, `assistant` from n8n Assistant.
+ */
+export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {
@@ -59,6 +64,7 @@ export type SkillListItem = {
 	latestVersion: number;
 	/** Distinct agents that use the skill: draft refs plus published pins. */
 	usedByAgents: number;
+	availableToAssistant: boolean;
 	canEdit: boolean;
 	canDelete: boolean;
 	createdAt: string;
@@ -105,6 +111,16 @@ export type SkillSaveResponse = {
 	skillHash: string;
 };
 
+/** Without `sortBy` the list shows the most recently changed skill first. */
+export const SKILLS_SORT_OPTIONS = [
+	'name:asc',
+	'name:desc',
+	'updatedAt:asc',
+	'updatedAt:desc',
+] as const;
+
+export type SkillSortOption = (typeof SKILLS_SORT_OPTIONS)[number];
+
 export class ListSkillsQueryDto extends Z.class({
 	skip: paginationSchema.skip,
 	take: optionalTake,
@@ -112,11 +128,43 @@ export class ListSkillsQueryDto extends Z.class({
 	scope: skillScopeSchema.optional(),
 	projectId: z.string().max(36).optional(),
 	/**
+	 * The id of an agent: the skills it uses (a draft ref or a published pin) and its own
+	 * agent skills. Not combined with `attachableTo`.
+	 */
+	agentId: z.string().max(36).optional(),
+	/** The id of the user who created the skill. User ids are UUIDs. */
+	createdById: z.string().uuid().optional(),
+	/**
 	 * The id of an agent: the skills it may attach, which are its project's skills, its own
-	 * agent skills and instance skills. Not combined with `scope` or `projectId`.
+	 * agent skills and instance skills. Not combined with `scope`, `projectId` or `agentId`.
 	 */
 	attachableTo: z.string().max(36).optional(),
+	sortBy: z
+		.enum(SKILLS_SORT_OPTIONS, {
+			message: `sortBy must be one of: ${SKILLS_SORT_OPTIONS.join(', ')}`,
+		})
+		.optional(),
 }) {}
+
+export const SKILL_AGENTS_MAX_PAGE_SIZE = 50;
+
+/** The agents for the agent filter of the skills list, searched by name. */
+export class ListSkillAgentsQueryDto extends Z.class({
+	search: z.string().trim().max(200).optional(),
+	take: z
+		.string()
+		.optional()
+		.transform((value) => (value === undefined || value === '' ? undefined : Number(value)))
+		.refine((value) => value === undefined || (Number.isInteger(value) && value > 0), {
+			message: 'Param `take` must be a positive integer',
+		})
+		.transform((value) =>
+			Math.min(value ?? SKILL_AGENTS_MAX_PAGE_SIZE, SKILL_AGENTS_MAX_PAGE_SIZE),
+		),
+}) {}
+
+/** An agent as the agent filter of the skills list names it. */
+export type SkillAgentOption = { id: string; name: string };
 
 /**
  * A skills hub name, trimmed first. A name of only spaces is refused, and padding is not
@@ -159,14 +207,16 @@ export class CreateSkillDto extends Z.class({
  * started from: a save based on an older version is refused with 409.
  */
 export class SaveSkillDto extends Z.class({
+	availableToAssistant: z.boolean().optional(),
 	name: skillNameSchema.optional(),
 	description: agentSkillShape.description.optional(),
 	instructions: agentSkillShape.instructions.optional(),
 	references: agentSkillShape.references.optional(),
 	baseSkillHash: z.string().min(1),
 	/**
-	 * Moves the skill to the instance or to a project. Refused with 409 while an agent
-	 * uses it. An agent skill is made from inside its agent, so `agent` is not a choice.
+	 * Moves the skill to the instance or to a project. Refused with 409 when an agent that
+	 * uses the skill cannot use it there. An agent skill is made from inside its agent, so
+	 * `agent` is not a choice.
 	 */
 	scope: z.enum(['project', 'instance']).optional(),
 	/** Required when `scope` is `project`, absent otherwise. */

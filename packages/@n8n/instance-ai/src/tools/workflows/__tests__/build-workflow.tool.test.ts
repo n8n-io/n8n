@@ -1,5 +1,6 @@
 import { isZodSchema } from '@n8n/agents';
 import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	instanceAiSetupCredentialAppliedKey,
 	instanceAiSetupCredentialSelectionKey,
 	type InstanceAiSetupCredentialSelection,
@@ -7,8 +8,10 @@ import {
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
+import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
+import { applyPlannedTaskPermissionOverrides } from '../../../planned-tasks/planned-task-permissions';
 import { loadInstanceAiSkills } from '../../../skills/skills';
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
@@ -43,6 +46,11 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 		emitTraceOnlyChildRun: vi.fn(actual.emitTraceOnlyChildRun as typeof emitTraceOnlyChildRun),
 	};
 });
+
+// Metric spans would change the trace child-run counts that these tests assert.
+vi.mock('../../../tracing/builder-metric-event', () => ({
+	emitBuilderMetric: vi.fn(async () => await Promise.resolve()),
+}));
 
 vi.mock('../workflow-validation-warnings', async () => {
 	const actual = await vi.importActual<typeof import('../workflow-validation-warnings')>(
@@ -296,7 +304,7 @@ describe('createBuildWorkflowTool', () => {
 	describe('publish state', () => {
 		it('warns that a save to a published workflow is not live', async () => {
 			// No verification runs here. Without this, a trigger-only workflow or a
-			// repair that skips verify-built-workflow has no deterministic signal
+			// repair that skips workflow_builder_verify_built_workflow has no deterministic signal
 			// that the fix is sitting in a draft.
 			const { context, filePath } = makeContext({});
 			vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
@@ -625,7 +633,7 @@ describe('createBuildWorkflowTool', () => {
 			'never offer publishing as an alternative to the live test',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
-			'A user-run execution counts only after `executions(action="list")`',
+			'A user-run execution counts only after `workflow_builder_executions(action="list")`',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
@@ -2178,6 +2186,65 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
+	// The create-tasks check before plan approval cannot see every save a build
+	// makes, so the save itself must deny the blocked action in a planned build.
+	it.each([
+		{
+			label: 'an update through a bound source file',
+			blocked: 'updateWorkflow' as const,
+			bindingWorkflowId: 'wf-bound',
+			isSupportingWorkflow: undefined,
+		},
+		{
+			label: 'a supporting workflow create',
+			blocked: 'createWorkflow' as const,
+			bindingWorkflowId: undefined,
+			isSupportingWorkflow: true,
+		},
+	])(
+		'denies $label in an approved planned build when admin blocks it',
+		async ({ blocked, bindingWorkflowId, isSupportingWorkflow }) => {
+			const { context, filePath } = makeContext({
+				source: 'workflow source',
+				overrides: {
+					permissions: applyPlannedTaskPermissionOverrides(
+						{ ...DEFAULT_INSTANCE_AI_PERMISSIONS, [blocked]: 'blocked' },
+						'build-workflow',
+					),
+					workflowBuildContext: {
+						threadId: 'thread-1',
+						runId: 'run-1',
+						taskId: 'task-1',
+						workItemId: 'wi-planned',
+						plannedTaskService: {} as NonNullable<
+							InstanceAiContext['workflowBuildContext']
+						>['plannedTaskService'],
+					},
+				},
+			});
+			if (bindingWorkflowId) {
+				await saveWorkflowSourceFileBinding(context, {
+					filePath,
+					workflowId: bindingWorkflowId,
+					workflowChecksum: 'checksum-current',
+				});
+			}
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				isSupportingWorkflow,
+			});
+
+			expect(result).toMatchObject({
+				success: false,
+				remediation: { category: 'blocked', reason: 'permission_blocked' },
+				errors: ['Action blocked by admin'],
+			});
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		},
+	);
+
 	it('returns conflict remediation when the workflow changed outside the conversation', async () => {
 		const { context, filePath, trackTelemetry } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
@@ -2868,7 +2935,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(result.errors?.[0]).toContain('Failed to bind source file');
 		expect(result.remediation?.guidance).toContain(
-			'Call build-workflow again with the same filePath and omit workflowId',
+			'Call workflow_builder_build_workflow again with the same filePath and omit workflowId',
 		);
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
@@ -2952,6 +3019,49 @@ describe('createBuildWorkflowTool', () => {
 				reason: 'workflow_save_permission_blocked',
 			},
 		});
+	});
+
+	it('blocks an edit outside the thread project before compile, approval, and save', async () => {
+		const { context, filePath, trackTelemetry } = makeContext({
+			overrides: {
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+				assertInThreadProject: vi.fn().mockRejectedValue(new OutsideThreadProjectError()),
+			},
+		});
+		const suspend = vi.fn();
+
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-other' },
+			{ suspend },
+		);
+
+		expect(context.assertInThreadProject).toHaveBeenCalledWith({
+			kind: 'workflow',
+			id: 'wf-other',
+		});
+		expect(result).toMatchObject({
+			success: false,
+			filePath,
+			workflowId: 'wf-other',
+			errors: [new OutsideThreadProjectError().message],
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'workflow_outside_thread_project',
+			},
+		});
+		expect(suspend).not.toHaveBeenCalled();
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toBeUndefined();
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_source_build',
+			expect.objectContaining({ result: 'blocked', stage: 'permission' }),
+		);
 	});
 
 	it.each([false, true])('tracks only enabled triggers (disabled=%s)', async (disabled) => {

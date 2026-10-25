@@ -7,6 +7,7 @@ import DataTableLoadingIndicator from '@/features/core/dataTable/components/data
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { getProtectedInstanceTooltip } from '@/features/integrations/sourceControl.ee/sourceControl.utils';
 import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 
 const props = withDefaults(
@@ -47,8 +48,10 @@ const isAgentWorking = useIsAgentWorking();
 
 // No client-side RBAC gate, mirroring DataTableDetailsView: the server
 // enforces write permissions and rejections surface as error toasts.
-const isReadOnly = computed(
-	() => isAgentWorking.value || sourceControlStore.preferences.branchReadOnly,
+// On a protected instance only the table structure is locked. Rows stay editable.
+const isSchemaReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+const schemaReadOnlyTooltip = computed(() =>
+	isSchemaReadOnly.value ? getProtectedInstanceTooltip() : undefined,
 );
 
 function showTable(key: number) {
@@ -111,7 +114,10 @@ watch(
 		<div
 			v-for="table in tables"
 			:key="table.key"
-			:class="{ [$style.pendingTable]: table.key !== tableSlots.displayed?.key }"
+			:class="[
+				$style.tableSlot,
+				{ [$style.pendingTable]: table.key !== tableSlots.displayed?.key },
+			]"
 			:aria-hidden="table.key !== tableSlots.displayed?.key"
 			:inert="isLoading || undefined"
 			:data-table-id="table.dataTable.id"
@@ -119,7 +125,9 @@ watch(
 		>
 			<DataTableTable
 				:data-table="table.dataTable"
-				:read-only="isReadOnly || (isLoading && table.key === tableSlots.displayed?.key)"
+				:read-only="isAgentWorking || (isLoading && table.key === tableSlots.displayed?.key)"
+				:schema-read-only="isSchemaReadOnly"
+				:schema-read-only-tooltip="schemaReadOnlyTooltip"
 				@ready="showTable(table.key)"
 				@load-error="onLoadError(table.key)"
 			/>
@@ -143,6 +151,12 @@ watch(
 	min-height: 0;
 	position: relative;
 	height: 100%;
+}
+
+.tableSlot {
+	// The grid sizes to its rows, so the slot scrolls when a page exceeds the panel height.
+	height: 100%;
+	overflow: auto;
 }
 
 .pendingTable {

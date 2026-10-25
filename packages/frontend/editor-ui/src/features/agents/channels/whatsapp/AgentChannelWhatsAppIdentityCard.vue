@@ -15,11 +15,22 @@ const props = withDefaults(
 		loading?: boolean;
 		/** Hidden in the settings, where the channel is already connected. */
 		showConnect?: boolean;
+		/** Only in the settings, where the profile can no longer be edited from here. */
+		showManagerLink?: boolean;
 	}>(),
-	{ personalisation: null, ready: false, loading: false, showConnect: false },
+	{
+		personalisation: null,
+		ready: false,
+		loading: false,
+		showConnect: false,
+		showManagerLink: false,
+	},
 );
 
 const emit = defineEmits<{ connect: [] }>();
+
+/** The profile is edited in Meta, not in n8n. */
+const WHATSAPP_MANAGER_URL = 'https://business.facebook.com/latest/whatsapp_manager/phone_numbers/';
 
 const i18n = useI18n();
 
@@ -76,6 +87,17 @@ const subtitle = computed(() => {
 				{{ subtitle }}
 			</N8nText>
 		</div>
+		<N8nButton
+			v-if="showManagerLink"
+			:href="WHATSAPP_MANAGER_URL"
+			target="_blank"
+			variant="outline"
+			size="medium"
+			data-testid="whatsapp-manager-link"
+		>
+			{{ i18n.baseText('agents.channels.whatsapp.settings.editInManager') }}
+			<N8nIcon icon="arrow-up-right" size="small" />
+		</N8nButton>
 		<N8nButton
 			v-if="showConnect"
 			:variant="ready ? 'solid' : 'outline'"
