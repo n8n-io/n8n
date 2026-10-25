@@ -26,7 +26,7 @@ vi.mock('../../sandbox', () => ({
 
 describe('AssistantSandboxWorkspaceSource', () => {
 	const user = { id: 'user-1' } as User;
-	const scope = { agentId: 'n8n-assistant', threadId: 'thread-1', projectId: 'project-1', user };
+	const scope = { agentId: 'assistant', threadId: 'thread-1', projectId: 'project-1', user };
 
 	function createSource(workflowBuilderAvailable = true) {
 		const settingsService = mock<InstanceAiSettingsService>();
@@ -91,7 +91,7 @@ describe('AssistantSandboxWorkspaceSource', () => {
 		await expect(source.getWorkspace(lease, context)).resolves.toBe(workspace);
 		expect(sandboxService.getOrCreateWorkspace).toHaveBeenCalledWith('thread-1', user, context);
 
-		await source.destroy({ agentId: 'n8n-assistant', threadId: 'thread-1', userId: 'user-1' });
+		await source.destroy({ agentId: 'assistant', threadId: 'thread-1', userId: 'user-1' });
 		expect(sandboxService.destroySandbox).toHaveBeenCalledWith(
 			'thread-1',
 			'thread_cleanup',

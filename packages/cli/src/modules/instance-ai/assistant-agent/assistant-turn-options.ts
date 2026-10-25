@@ -5,7 +5,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 
 /** Id of the n8n Assistant instance agent in the Agents tables. */
-export const ASSISTANT_AGENT_ID = 'n8n-assistant';
+export const ASSISTANT_AGENT_ID = 'assistant';
 
 export const ASSISTANT_AGENT_NAME = 'n8n Assistant';
 
