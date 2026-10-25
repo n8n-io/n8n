@@ -8,7 +8,7 @@ import {
 	formatErrorResponse,
 	formatImageResponse,
 	generateId,
-	stripUrlCredentials,
+	redactUrlForLogging,
 	toError,
 } from '../utils';
 
@@ -107,27 +107,33 @@ describe('toError', () => {
 	});
 });
 
-describe('stripUrlCredentials', () => {
-	it('should remove the query string', () => {
-		expect(stripUrlCredentials('wss://connect.example.com/?signingKey=abc')).toBe(
-			'wss://connect.example.com/',
+describe('redactUrlForLogging', () => {
+	it('should keep the query parameter names and mask their values', () => {
+		expect(redactUrlForLogging('wss://connect.example.com/?signingKey=abc&enableProxy=true')).toBe(
+			'wss://connect.example.com/?signingKey=REDACTED&enableProxy=REDACTED',
+		);
+	});
+
+	it('should mask every value of a repeated parameter', () => {
+		expect(redactUrlForLogging('wss://connect.example.com/?token=a&token=b')).toBe(
+			'wss://connect.example.com/?token=REDACTED',
 		);
 	});
 
 	it('should remove the hash and userinfo', () => {
-		expect(stripUrlCredentials('wss://user:pass@connect.example.com/path#frag')).toBe(
+		expect(redactUrlForLogging('wss://user:pass@connect.example.com/path#frag')).toBe(
 			'wss://connect.example.com/path',
 		);
 	});
 
 	it('should keep the host and path', () => {
-		expect(stripUrlCredentials('ws://127.0.0.1:9999/cdp/relay-default')).toBe(
+		expect(redactUrlForLogging('ws://127.0.0.1:9999/cdp/relay-default')).toBe(
 			'ws://127.0.0.1:9999/cdp/relay-default',
 		);
 	});
 
 	it('should not return an endpoint it cannot parse', () => {
-		expect(stripUrlCredentials('not a url?token=abc')).toBe('(unparseable endpoint)');
+		expect(redactUrlForLogging('not a url?token=abc')).toBe('(unparseable endpoint)');
 	});
 });
 

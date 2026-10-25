@@ -44,7 +44,7 @@ import type {
 	WaitOptions,
 	DisconnectDetails,
 } from '../types';
-import { generateId, stripUrlCredentials, toError } from '../utils';
+import { generateId, redactUrlForLogging, toError } from '../utils';
 
 const log = createLogger('playwright');
 
@@ -239,7 +239,7 @@ export class PlaywrightAdapter {
 	/** Connect Playwright over CDP through the relay and wire up handlers. */
 	private async connectPlaywright(cdpEndpoint: string): Promise<void> {
 		const relay = this.relay!;
-		log.debug('connecting Playwright over CDP:', stripUrlCredentials(cdpEndpoint));
+		log.debug('connecting Playwright over CDP:', redactUrlForLogging(cdpEndpoint));
 		this.browser = await chromium.connectOverCDP(cdpEndpoint, {
 			headers: this.cdpConnectHeaders,
 			noDefaults: true,

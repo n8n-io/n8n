@@ -50,13 +50,15 @@ export function toError(value: unknown): Error {
 }
 
 /**
- * Removes the parts of a URL that commonly carry credentials (query, hash, userinfo),
- * so the URL can be logged. Same approach as Playwright's own connection logs.
+ * Masks the parts of a URL that can carry credentials, so the URL can be logged. Masks each
+ * query parameter value, and removes the username, the password and the hash.
  */
-export function stripUrlCredentials(endpoint: string): string {
+export function redactUrlForLogging(endpoint: string): string {
 	try {
 		const url = new URL(endpoint);
-		url.search = '';
+		for (const name of new Set(url.searchParams.keys())) {
+			url.searchParams.set(name, 'REDACTED');
+		}
 		url.hash = '';
 		url.username = '';
 		url.password = '';

@@ -39,6 +39,19 @@ beforeEach(() => {
 	connectOverCDP.mockResolvedValue(fakeBrowser());
 });
 
+/** Runs `fn` with debug logging on and returns everything it logged. */
+async function captureDebugLogs(fn: () => Promise<void>): Promise<string> {
+	const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+	configureLogger({ level: 'debug' });
+	try {
+		await fn();
+		return consoleLog.mock.calls.flat().map(String).join('\n');
+	} finally {
+		configureLogger({ level: 'silent' });
+		consoleLog.mockRestore();
+	}
+}
+
 describe('PlaywrightAdapter remote mode', () => {
 	it('connects to the provided cdpEndpoint with the supplied headers', async () => {
 		const relay = fakeRelay();
@@ -67,6 +80,26 @@ describe('PlaywrightAdapter remote mode', () => {
 			headers: undefined,
 			noDefaults: true,
 		});
+	});
+
+	it('logs an explicit endpoint with its query values masked', async () => {
+		const adapter = new PlaywrightAdapter(config, {
+			relay: fakeRelay(),
+			cdpEndpoint: 'ws://127.0.0.1:5678/browser-use/cdp/sess?token=abc',
+		});
+
+		const logged = await captureDebugLogs(async () => await adapter.launch({ browser: 'chrome' }));
+
+		expect(logged).toContain('ws://127.0.0.1:5678/browser-use/cdp/sess?token=REDACTED');
+		expect(logged).not.toContain('abc');
+	});
+
+	it("logs the relay's own endpoint unchanged", async () => {
+		const adapter = new PlaywrightAdapter(config, { relay: fakeRelay() });
+
+		const logged = await captureDebugLogs(async () => await adapter.launch({ browser: 'chrome' }));
+
+		expect(logged).toContain('ws://127.0.0.1:9999/cdp/relay-default');
 	});
 
 	it('closes a page through the relay', async () => {
@@ -120,25 +153,16 @@ describe('PlaywrightAdapter remote mode without a relay', () => {
 		});
 	});
 
-	it('does not log the query string of the endpoint', async () => {
+	it('logs the endpoint with its query values masked', async () => {
 		connectOverCDP.mockResolvedValue(browserWithPages([]));
-		const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
-		configureLogger({ level: 'debug' });
 		const adapter = new PlaywrightAdapter(directConfig, {
 			cdpEndpoint: 'wss://connect.example.com/?signingKey=abc',
 		});
 
-		let logged: string;
-		try {
-			await adapter.launch({ browser: 'chrome' });
-		} finally {
-			logged = consoleLog.mock.calls.flat().map(String).join('\n');
-			configureLogger({ level: 'silent' });
-			consoleLog.mockRestore();
-		}
+		const logged = await captureDebugLogs(async () => await adapter.launch({ browser: 'chrome' }));
 
-		expect(logged).toContain('wss://connect.example.com/');
-		expect(logged).not.toContain('signingKey');
+		expect(logged).toContain('wss://connect.example.com/?signingKey=REDACTED');
+		expect(logged).not.toContain('abc');
 	});
 
 	it('throws when no endpoint is given', async () => {
