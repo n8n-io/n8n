@@ -1,8 +1,25 @@
 import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
+import type { RuleListener } from '@typescript-eslint/utils/ts-eslint';
 
 const ELEMENT_PLUS = 'element-plus';
 
 type TemplateElement = TSESTree.Node & { rawName?: string };
+
+type VueParserServices = {
+	defineTemplateBodyVisitor: (
+		templateBodyVisitor: { VElement(node: TemplateElement): void },
+		scriptVisitor: RuleListener,
+	) => RuleListener;
+};
+
+const isVueParserServices = (services: unknown): services is VueParserServices => {
+	if (typeof services !== 'object' || services === null) return false;
+
+	return (
+		'defineTemplateBodyVisitor' in services &&
+		typeof services.defineTemplateBodyVisitor === 'function'
+	);
+};
 
 type ElementPlusImportBanConfig<TMessageId extends string> = {
 	/** Named exports from `element-plus`, for example `ElDialog`. Match is exact. */
@@ -15,7 +32,7 @@ type ElementPlusImportBanConfig<TMessageId extends string> = {
 	/** Template tags, kebab-case and PascalCase. */
 	templateNames?: readonly string[];
 	/**
-	 * Files under this path may still import the component.
+	 * Files under this path may still use the component.
 	 * Set it when a design-system wrapper is the only allowed caller.
 	 */
 	allowedPath?: RegExp;
@@ -82,7 +99,7 @@ export function createElementPlusImportBanRule<const TMessageId extends string>(
 				});
 			};
 
-			return {
+			const scriptVisitor: RuleListener = {
 				ImportDeclaration(node) {
 					const source = node.source.value;
 					if (isBannedComponentModule(source)) {
@@ -111,12 +128,22 @@ export function createElementPlusImportBanRule<const TMessageId extends string>(
 						if (names.has(name)) report(specifier, name);
 					}
 				},
-				// vue-eslint-parser visits template elements.
-				VElement(node: TemplateElement) {
-					const name = node.rawName;
-					if (name !== undefined && templateNames.has(name)) report(node, name);
-				},
 			};
+
+			// ESLint traverses the script AST only.
+			// vue-eslint-parser reports template tags through defineTemplateBodyVisitor.
+			const services = context.sourceCode.parserServices;
+			if (templateNames.size === 0 || !isVueParserServices(services)) return scriptVisitor;
+
+			return services.defineTemplateBodyVisitor(
+				{
+					VElement(node) {
+						const name = node.rawName;
+						if (name !== undefined && templateNames.has(name)) report(node, name);
+					},
+				},
+				scriptVisitor,
+			);
 		},
 	});
 }
