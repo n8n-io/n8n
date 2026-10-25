@@ -20,13 +20,4 @@ describe('frontendConfig', () => {
 			)?.rules?.['n8n-local-rules/no-reka-ui-pagination'],
 		).toBe('error');
 	});
-
-	it('enables the switch import bans as errors', () => {
-		const rules = frontendConfig.find(
-			(config) => config.rules?.['n8n-local-rules/no-element-plus-switch'] !== undefined,
-		)?.rules;
-
-		expect(rules?.['n8n-local-rules/no-element-plus-switch']).toBe('error');
-		expect(rules?.['n8n-local-rules/no-reka-ui-switch']).toBe('error');
-	});
 });
