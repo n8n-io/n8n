@@ -2,12 +2,14 @@
 import { N8nButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem, DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiThreadSummary } from '@n8n/api-types';
+import type { InstanceAiThreadSummary, SystemAgentThreadSummary } from '@n8n/api-types';
 import { useEventListener } from '@vueuse/core';
 import { computed, nextTick, ref, useId, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_THREADS_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
 import { useToast } from '@n8n/composables/useToast';
 import ChatHistoryDropdown, {
@@ -69,6 +71,8 @@ const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 // n8n Chat threads existed.
 const isScoped = computed(() => Boolean(props.filter) || !props.navigate);
 const agentThreadsStore = useAgentN8nChatThreadsStore();
+const assistantAgentThreadsStore = useAssistantAgentThreadsStore();
+const instanceAiSettingsStore = useInstanceAiSettingsStore();
 const showChatIcons = computed(() => isAgentsN8nChatFlag.value && !isScoped.value);
 // Falls back to the route param when omitted (the page's own use).
 const activeThreadId = computed(
@@ -88,6 +92,14 @@ const isRecentOnly = computed(() => showChatIcons.value && !store.threadHistory.
 const searchesAgentThreads = computed(
 	() => showChatIcons.value && !isRecentOnly.value && activeThreadId.value === undefined,
 );
+// Assistant agent threads show next to the Assistant threads wherever this list is not
+// scoped by its host, with or without n8n Chat.
+const includesAssistantAgentThreads = computed(
+	() => instanceAiSettingsStore.isAssistantAgentEnabled && !isScoped.value,
+);
+const usesMergedHistory = computed(
+	() => searchesAgentThreads.value || includesAssistantAgentThreads.value,
+);
 
 const {
 	history,
@@ -98,7 +110,10 @@ const {
 	isLoading: mergedIsLoading,
 	error: mergedError,
 	loadMore,
-} = useMergedChatHistory({ enabled: () => searchesAgentThreads.value });
+} = useMergedChatHistory({
+	enabled: () => searchesAgentThreads.value,
+	assistantAgentEnabled: () => includesAssistantAgentThreads.value,
+});
 
 const menuOpen = ref(false);
 const menuContentId = useId();
@@ -126,9 +141,18 @@ const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 const agentActions = agentThreadActions(i18n);
 
 const AGENT_ITEM_ID_PREFIX = 'agent:';
+const ASSISTANT_AGENT_ITEM_ID_PREFIX = 'assistant-agent:';
 
 function itemRowId(item: RecentChatItem): string {
-	return item.kind === 'assistant' ? item.thread.id : `${AGENT_ITEM_ID_PREFIX}${item.thread.id}`;
+	if (item.kind === 'assistant') return item.thread.id;
+	const prefix = item.kind === 'agent' ? AGENT_ITEM_ID_PREFIX : ASSISTANT_AGENT_ITEM_ID_PREFIX;
+	return `${prefix}${item.thread.id}`;
+}
+
+function isPrefixedRowId(itemId: string): boolean {
+	return (
+		itemId.startsWith(AGENT_ITEM_ID_PREFIX) || itemId.startsWith(ASSISTANT_AGENT_ITEM_ID_PREFIX)
+	);
 }
 
 const scopedItems = computed<RecentChatItem[]>(() => {
@@ -137,11 +161,14 @@ const scopedItems = computed<RecentChatItem[]>(() => {
 		return mergeRecentChats(history.value.threads, agentThreadsStore.knownThreads, {
 			limit: RECENT_CHATS_LIMIT,
 			openThreadId: activeThreadId.value,
+			assistantAgentThreads: includesAssistantAgentThreads.value
+				? assistantAgentThreadsStore.knownThreads
+				: [],
 		});
 	}
-	// Agent threads merged in by the server search — `useMergedChatHistory` already folds
-	// both sources together, gated by the `enabled` option passed to it above.
-	if (searchesAgentThreads.value) return mergedItems.value;
+	// Agent threads merged in by the server search, and Assistant agent threads —
+	// `useMergedChatHistory` already folds the sources together, gated by the options above.
+	if (usesMergedHistory.value) return mergedItems.value;
 	// Scope the server-paged history to the embedding host's subject, such as one agent.
 	return history.value.threads
 		.filter((thread) => (props.filter ? props.filter(thread) : true))
@@ -151,15 +178,13 @@ const scopedItems = computed<RecentChatItem[]>(() => {
 // The recent-only list never pages; "View all" opens the full list.
 const hasMore = computed(() => {
 	if (isRecentOnly.value) return false;
-	if (searchesAgentThreads.value) return mergedHasMore.value;
+	if (usesMergedHistory.value) return mergedHasMore.value;
 	return history.value.hasMore;
 });
 const isLoading = computed(() =>
-	searchesAgentThreads.value ? mergedIsLoading.value : history.value.loading,
+	usesMergedHistory.value ? mergedIsLoading.value : history.value.loading,
 );
-const error = computed(() =>
-	searchesAgentThreads.value ? mergedError.value : history.value.error,
-);
+const error = computed(() => (usesMergedHistory.value ? mergedError.value : history.value.error));
 
 const menuItems = computed<Array<DropdownMenuItemProps<string, ChatHistoryItemData>>>(() =>
 	scopedItems.value.map((item) => {
@@ -179,7 +204,10 @@ const menuItems = computed<Array<DropdownMenuItemProps<string, ChatHistoryItemDa
 			id: itemRowId(item),
 			label: chatItemTitle(item, i18n),
 			disabled: props.disabled,
-			testId: 'instance-ai-agent-thread-item',
+			testId:
+				item.kind === 'agent'
+					? 'instance-ai-agent-thread-item'
+					: 'instance-ai-assistant-agent-thread-item',
 			data: { updatedAt: item.thread.updatedAt, actions: agentActions },
 		};
 	}),
@@ -211,6 +239,7 @@ function handleMenuOpenChange(open: boolean) {
 		// Same store and page size as the sidebar, so both lists agree.
 		if (showChatIcons.value)
 			void agentThreadsStore.fetchRecent(AGENT_N8N_CHAT_RECENT_THREADS_LIMIT);
+		if (includesAssistantAgentThreads.value) void assistantAgentThreadsStore.fetchRecent();
 		return;
 	}
 	if (!restoreTriggerFocus) return;
@@ -323,24 +352,32 @@ function handleThreadSelect(threadId: string) {
 
 function handleMenuSelect(itemId: string) {
 	if (props.disabled) return;
-	if (!itemId.startsWith(AGENT_ITEM_ID_PREFIX)) {
+	if (!isPrefixedRowId(itemId)) {
 		handleThreadSelect(itemId);
 		return;
 	}
-	const agentItem = itemsById.value.get(itemId);
-	if (agentItem?.kind !== 'agent') return;
+	const item = itemsById.value.get(itemId);
+	if (!item || item.kind === 'assistant') return;
 	restoreTriggerFocus = true;
-	void router.push(chatItemRoute(agentItem));
+	void router.push(chatItemRoute(item));
+}
+
+async function handleDeleteAssistantAgentThread(thread: SystemAgentThreadSummary) {
+	const wasActive = thread.id === activeThreadId.value;
+	if ((await assistantAgentThreadsStore.deleteThread(thread)) && wasActive) {
+		void router.push({ name: INSTANCE_AI_VIEW });
+	}
 }
 
 function handleThreadAction(action: string, itemId: string) {
 	if (props.disabled) return;
-	if (itemId.startsWith(AGENT_ITEM_ID_PREFIX)) {
-		// This dropdown is Assistant-only (never open on an agent's own chat page), so
-		// deleting here never needs to navigate away.
+	if (isPrefixedRowId(itemId)) {
 		const item = itemsById.value.get(itemId);
-		if (action === 'delete' && item?.kind === 'agent')
-			void agentThreadsStore.deleteThread(item.thread);
+		if (action !== 'delete') return;
+		// This dropdown is Assistant-only (never open on an agent's own chat page), so
+		// deleting an agent thread here never needs to navigate away.
+		if (item?.kind === 'agent') void agentThreadsStore.deleteThread(item.thread);
+		if (item?.kind === 'assistant-agent') void handleDeleteAssistantAgentThread(item.thread);
 		return;
 	}
 	if (action === 'delete') {
