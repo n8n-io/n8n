@@ -1,5 +1,4 @@
 import {
-	AGENT_SKILL_NAME_MAX_LENGTH,
 	skillNameKey,
 	type AgentSkill,
 	type CreateSkillDto,
@@ -39,6 +38,15 @@ import { getSkillHash } from '../utils/skill-hash';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
+import {
+	blocksDelete,
+	deleteRefusalMessage,
+	findLosingAgents,
+	isNameTaken,
+	losingAgentsMessage,
+	nextFreeName,
+	type VisibleProjects,
+} from './skill.policy';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
 import {
 	SkillsTelemetry,
@@ -49,11 +57,6 @@ import {
 
 function assertHasInstructions(skill: AgentSkill): void {
 	if (!skill.instructions.trim()) throw new UserError('Skill instructions are required.');
-}
-
-/** How a refusal counts the agents in projects the user may not read. */
-function agentsInOtherProjects(count: number): string {
-	return `${count} ${count === 1 ? 'agent' : 'agents'} in other projects`;
 }
 
 function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
@@ -423,26 +426,13 @@ export class SkillService {
 
 	// ---------------------------------------------------------------- rules
 
-	/**
-	 * The requested name if its scope has no name like it, else the name with the first
-	 * free number after it ("New skill 2"), as workflow names get.
-	 */
+	/** A free name in the scope of `target`. The rule is `nextFreeName`. */
 	private async freeName(requested: string, target: SkillTarget, ctx: OperationContext = {}) {
-		const taken = new Set(
-			(
-				await this.skillRepository.findLatestNamesInTarget(
-					{ projectId: target.projectId, agentId: target.agentId },
-					ctx,
-				)
-			).map(({ name }) => skillNameKey(name)),
+		const names = await this.skillRepository.findLatestNamesInTarget(
+			{ projectId: target.projectId, agentId: target.agentId },
+			ctx,
 		);
-		const base = requested.trim();
-		if (!taken.has(skillNameKey(base))) return base;
-		for (let n = 2; ; n++) {
-			const suffix = ` ${n}`;
-			const candidate = `${base.slice(0, AGENT_SKILL_NAME_MAX_LENGTH - suffix.length)}${suffix}`;
-			if (!taken.has(skillNameKey(candidate))) return candidate;
-		}
+		return nextFreeName(requested, new Set(names.map(({ name }) => skillNameKey(name))));
 	}
 
 	/**
@@ -455,51 +445,26 @@ export class SkillService {
 		exceptSkillId: string | undefined,
 		ctx: OperationContext,
 	): Promise<void> {
-		const key = skillNameKey(name);
 		const names = await this.skillRepository.findLatestNamesInTarget(
 			{ projectId: target.projectId, agentId: target.agentId },
 			ctx,
 		);
-		if (
-			names.some((other) => other.skillId !== exceptSkillId && skillNameKey(other.name) === key)
-		) {
-			throw new SkillNameTakenError(name);
-		}
+		if (isNameTaken(name, names, exceptSkillId)) throw new SkillNameTakenError(name);
 	}
 
-	/**
-	 * Refuses a move that takes the skill away from one of `agentIds`. An agent can add an
-	 * instance skill, a skill of its own project and its own agent skills.
-	 */
+	/** Refuses a move that takes the skill away from one of `agentIds`. The rule is `findLosingAgents`. */
 	private async assertAgentsKeepAccess(
 		agentIds: string[],
 		target: SkillTarget,
-		agentProjectIds: string[] | 'all',
+		agentProjectIds: VisibleProjects,
 		ctx: OperationContext,
 	): Promise<void> {
 		if (agentIds.length === 0 || (target.projectId === null && target.agentId === null)) return;
 		const agents = await this.skillUsage.findAgents(agentIds, ctx);
-		const losing = agentIds.filter((id) =>
-			target.agentId ? id !== target.agentId : agents.get(id)?.projectId !== target.projectId,
-		);
-		if (losing.length === 0) return;
-		const named: string[] = [];
-		let hidden = 0;
-		for (const id of losing) {
-			const agent = agents.get(id);
-			if (agent && (agentProjectIds === 'all' || agentProjectIds.includes(agent.projectId))) {
-				named.push(`"${agent.name}"`);
-			} else {
-				hidden++;
-			}
+		const losing = findLosingAgents(agentIds, target, agents);
+		if (losing.length > 0) {
+			throw new ConflictError(losingAgentsMessage(losing, agents, agentProjectIds));
 		}
-		if (hidden > 0) named.push(agentsInOtherProjects(hidden));
-		const one = losing.length === 1;
-		throw new ConflictError(
-			`${named.join(', ')} would lose access to this skill. Choose a scope that includes ${
-				one ? 'that agent' : 'those agents'
-			}, or detach the skill from ${one ? 'it' : 'them'} first.`,
-		);
 	}
 
 	/**
@@ -508,7 +473,7 @@ export class SkillService {
 	 */
 	private async deleteSkill(
 		skillId: string,
-		agentProjectIds: string[] | 'all',
+		agentProjectIds: VisibleProjects,
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
@@ -516,20 +481,10 @@ export class SkillService {
 			if (!skill) throw new NotFoundError('Skill not found');
 			await this.skillRepository.lockForEdit([skillId], txCtx);
 			const usage = await this.skillUsage.findUsage(skillId, agentProjectIds, txCtx);
-			if (usage.drafts.length > 0 || usage.pins.length > 0 || usage.hiddenAgents > 0) {
+			if (blocksDelete(usage)) {
 				const name =
 					(await this.skillRuntime.latestNames([skillId], txCtx)).get(skillId) ?? skillId;
-				const users = [
-					...usage.drafts.map((draft) => `${draft.agentName} (draft)`),
-					...usage.pins.map(
-						(pin) =>
-							`${pin.agentName} (${pin.version === null ? 'older published version' : `published v${pin.version}`})`,
-					),
-				];
-				if (usage.hiddenAgents > 0) users.push(agentsInOtherProjects(usage.hiddenAgents));
-				throw new ConflictError(
-					`Skill "${name}" is used by ${[...new Set(users)].join(', ')} and cannot be deleted.`,
-				);
+				throw new ConflictError(deleteRefusalMessage(name, usage));
 			}
 			await this.skillRepository.deleteSkill(skillId, txCtx);
 		});
