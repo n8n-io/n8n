@@ -7,9 +7,7 @@ export const frontendConfig = defineConfig({
 	env: { browser: true, node: true },
 	rules: {
 		'unicorn/filename-case': 'off',
-		'n8n-local-rules/no-element-plus-radio': 'error',
 		'n8n-local-rules/no-reka-ui-pagination': 'error',
-		'n8n-local-rules/no-reka-ui-radio': 'error',
 		'vue/define-emits-declaration': ['error', 'type-literal'],
 		'vue/no-reserved-component-names': [
 			'error',
