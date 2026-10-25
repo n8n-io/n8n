@@ -14,6 +14,7 @@ const openScope: InstanceAiSkillScope = {
 	profile: resolvePromptProfile({ mode: 'default' }).profile,
 	flags: { configEvalsEnabled: true, instanceContextEnabled: true },
 	agentBuildingEnabled: true,
+	plannedTasksEnabled: true,
 };
 
 const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [
@@ -31,6 +32,11 @@ const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [
 		'agentBuildingEnabled',
 		{ ...openScope, agentBuildingEnabled: false },
 		[SKILLS.agentBuilder, SKILLS.intentRecognition],
+	],
+	[
+		'plannedTasksEnabled',
+		{ ...openScope, plannedTasksEnabled: false },
+		[SKILLS.planning, SKILLS.plannedTaskRuntime],
 	],
 ];
 
@@ -61,6 +67,30 @@ describe('InstanceAiSkillsService', () => {
 			const onIds = on.source.registry.skills.map(({ id }) => id);
 			const offIds = off.source.registry.skills.map(({ id }) => id);
 			expect(onIds.filter((id) => !offIds.includes(id)).sort()).toEqual([...skillIds].sort());
+		});
+
+		it('turns off the planned-task tools when the runtime cannot schedule a plan', async () => {
+			const open = await service.loadSkills(openScope);
+			const closed = await service.loadSkills({ ...openScope, plannedTasksEnabled: false });
+
+			expect(open.disabledTools).toEqual([]);
+			expect(closed.disabledTools).toEqual([
+				'workflow_builder_complete_checkpoint',
+				'workflow_builder_create_tasks',
+			]);
+		});
+
+		it('lists a planned-task tool once when the profile also turns it off', async () => {
+			const skills = await service.loadSkills({
+				...openScope,
+				profile: resolvePromptProfile({ mode: 'progressive' }).profile,
+				plannedTasksEnabled: false,
+			});
+
+			expect(skills.disabledTools).toEqual([
+				'workflow_builder_complete_checkpoint',
+				'workflow_builder_create_tasks',
+			]);
 		});
 	});
 

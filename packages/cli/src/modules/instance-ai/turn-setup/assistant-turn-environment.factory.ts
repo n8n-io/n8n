@@ -1,11 +1,7 @@
 import { createScopedWorkspace } from '@n8n/agents';
 import type { Workspace } from '@n8n/agents';
 import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
-import {
-	applyBranchReadOnlyOverrides,
-	buildProxyHeaders,
-	WORKFLOW_BUILDER_TOOL_NAMES,
-} from '@n8n/api-types';
+import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
@@ -126,27 +122,6 @@ export type InstanceContextGates = {
 	instanceContextEnabled: boolean;
 	nodeUsageEnabled: boolean;
 };
-
-/** Tools that only work with a planned-task scheduler: the plan and its checkpoints. */
-const PLANNED_TASK_TOOL_NAMES = [
-	WORKFLOW_BUILDER_TOOL_NAMES.CREATE_TASKS,
-	WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT,
-];
-
-/**
- * The tools that the turn leaves out: the ones the prompt profile turns off,
- * and the planned-task tools when the runtime cannot schedule a plan.
- */
-function disabledToolNamesFor(
-	profileDisabledTools: string[],
-	runtime: AssistantTurnRuntime,
-): Set<string> {
-	const disabled = new Set(profileDisabledTools);
-	if (!runtime.schedulePlannedTasks) {
-		for (const name of PLANNED_TASK_TOOL_NAMES) disabled.add(name);
-	}
-	return disabled;
-}
 
 /**
  * Builds the execution environment of one Assistant turn: model and credits,
@@ -476,6 +451,8 @@ export class AssistantTurnEnvironmentFactory {
 			flags: { configEvalsEnabled, instanceContextEnabled },
 			// The agent-building skills need the build-agent tool, which needs a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
+			// Without a scheduler, the planned-task tools and skills are left out.
+			plannedTasksEnabled: runtime.schedulePlannedTasks !== undefined,
 		};
 		const skills = await this.skillsService.loadSkills(skillScope);
 		const promptMetadata = describePromptProfile(selectedPrompt, skills.source);
@@ -533,7 +510,7 @@ export class AssistantTurnEnvironmentFactory {
 			userId: user.id,
 			projectId: boundProjectId,
 			promptConfiguration: promptMetadata,
-			disabledToolNames: disabledToolNamesFor(skills.disabledTools, runtime),
+			disabledToolNames: new Set(skills.disabledTools),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,

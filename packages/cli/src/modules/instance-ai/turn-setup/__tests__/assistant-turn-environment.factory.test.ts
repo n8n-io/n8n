@@ -78,7 +78,7 @@ function createSetupFactory() {
 		skillsService: {
 			loadSkills: vi.fn(async () => ({
 				source: { registry: { skillsHash: 'hash', skills: [] }, loadSkill: vi.fn() },
-				disabledTools: [],
+				disabledTools: [] as string[],
 			})),
 		},
 		areMcpConnectionsAvailable: () => false,
@@ -196,23 +196,39 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(runtime.syncWorkflowTasks).toHaveBeenCalledTimes(1);
 		});
 
-		it('leaves out the planned-task tools when the runtime cannot schedule a plan', async () => {
-			const { factory } = createSetupFactory();
+		it('closes the planned-task gate when the runtime cannot schedule a plan', async () => {
+			const { factory, fields } = createSetupFactory();
+
+			await factory.create(params, createRuntime());
+
+			expect(fields.skillsService.loadSkills).toHaveBeenCalledWith(
+				expect.objectContaining({ plannedTasksEnabled: false }),
+			);
+		});
+
+		it('opens the planned-task gate when the runtime schedules plans', async () => {
+			const { factory, fields } = createSetupFactory();
+			const runtime = createRuntime({ schedulePlannedTasks: vi.fn(async () => {}) });
+
+			await factory.create(params, runtime);
+
+			expect(fields.skillsService.loadSkills).toHaveBeenCalledWith(
+				expect.objectContaining({ plannedTasksEnabled: true }),
+			);
+		});
+
+		it('leaves out the tools that the skills turn off', async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.skillsService.loadSkills.mockResolvedValue({
+				source: { registry: { skillsHash: 'hash', skills: [] }, loadSkill: vi.fn() },
+				disabledTools: ['workflow_builder_create_tasks'],
+			});
 
 			const { orchestrationContext } = await factory.create(params, createRuntime());
 
 			expect(orchestrationContext.disabledToolNames).toEqual(
-				new Set(['workflow_builder_create_tasks', 'workflow_builder_complete_checkpoint']),
+				new Set(['workflow_builder_create_tasks']),
 			);
-		});
-
-		it('keeps the planned-task tools when the runtime schedules plans', async () => {
-			const { factory } = createSetupFactory();
-			const runtime = createRuntime({ schedulePlannedTasks: vi.fn(async () => {}) });
-
-			const { orchestrationContext } = await factory.create(params, runtime);
-
-			expect(orchestrationContext.disabledToolNames).toEqual(new Set());
 		});
 
 		it('refuses a thread that another user owns', async () => {

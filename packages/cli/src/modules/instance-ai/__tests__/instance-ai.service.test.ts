@@ -1101,6 +1101,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(loadSkills).toHaveBeenCalledWith(
 			expect.objectContaining({ agentBuildingEnabled: agentBuildingAvailable }),
 		);
+		// The current runtime always schedules plans, so it keeps the planned-task skills.
+		expect(loadSkills).toHaveBeenCalledWith(expect.objectContaining({ plannedTasksEnabled: true }));
 		const expectedGates = boundGates ?? {
 			instanceContextEnabled,
 			nodeUsageEnabled: !instanceContextEnabled,

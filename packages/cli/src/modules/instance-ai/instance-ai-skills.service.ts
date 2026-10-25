@@ -4,6 +4,7 @@ import {
 	type RuntimeSkillSource,
 } from '@n8n/agents';
 import { AssistantSkillProviderProxy, type AssistantSkillContext } from '@n8n/backend-services';
+import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
 import { UnexpectedError } from 'n8n-workflow';
@@ -18,6 +19,8 @@ export const SKILLS = {
 	agentBuilder: 'agent-builder',
 	intentRecognition: 'intent-recognition',
 	suggestAutomations: 'suggest-automations',
+	planning: 'planning',
+	plannedTaskRuntime: 'planned-task-runtime',
 } as const;
 
 export type SkillId = (typeof SKILLS)[keyof typeof SKILLS];
@@ -31,12 +34,14 @@ export interface InstanceAiSkillScope {
 	 * agents. This needs the Agents module and the Settings > Agents switch.
 	 */
 	agentBuildingEnabled: boolean;
+	/** Whether the runtime can schedule a plan. Without a scheduler, the run knows nothing of plans. */
+	plannedTasksEnabled: boolean;
 }
 
 export interface InstanceAiRunSkills {
 	/** The active skills, which the run can load. */
 	source: RuntimeSkillSource;
-	/** Tools that the prompt profile turns off. */
+	/** Tools that the prompt profile or a closed gate turns off. */
 	disabledTools: string[];
 }
 
@@ -60,6 +65,16 @@ const SKILL_GATES: ReadonlyArray<{
 		skills: [SKILLS.agentBuilder, SKILLS.intentRecognition],
 		isOpen: ({ agentBuildingEnabled }) => agentBuildingEnabled,
 	},
+	{
+		skills: [SKILLS.planning, SKILLS.plannedTaskRuntime],
+		isOpen: ({ plannedTasksEnabled }) => plannedTasksEnabled,
+	},
+];
+
+/** Tools that only work with a planned-task scheduler: the plan and its checkpoints. */
+const PLANNED_TASK_TOOL_NAMES = [
+	WORKFLOW_BUILDER_TOOL_NAMES.CREATE_TASKS,
+	WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT,
 ];
 
 /** Loads the active skills of Instance AI: the prompt-profile skills that the gates leave on. */
@@ -75,14 +90,16 @@ export class InstanceAiSkillsService {
 		return await this.hubSkills.readSkill(context, skillId);
 	}
 
-	/** The active skills, and the tools that the prompt profile turns off. */
+	/** The active skills, and the tools that the prompt profile or a closed gate turns off. */
 	async loadSkills(scope: InstanceAiSkillScope): Promise<InstanceAiRunSkills> {
 		const { source, disabledTools } = await loadInstanceAiPromptSkills(scope.profile);
 		const inactive = inactiveSkillIds(scope);
 
 		return {
 			source: inactive.length > 0 ? filterRuntimeSkillSource(source, inactive) : source,
-			disabledTools,
+			disabledTools: scope.plannedTasksEnabled
+				? disabledTools
+				: [...new Set([...disabledTools, ...PLANNED_TASK_TOOL_NAMES])].sort(),
 		};
 	}
 
