@@ -1,3 +1,4 @@
+import type { ListSystemAgentThreadsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
@@ -61,6 +62,14 @@ function request<P extends object>(params: P, query: Record<string, string> = {}
 	return { user, params, query } as unknown as AuthenticatedRequest<P>;
 }
 
+async function listThreads(
+	controller: SystemAgentChatController,
+	agentId: string,
+	query: ListSystemAgentThreadsQueryDto = {},
+) {
+	return await controller.listThreads(request({ agentId }), mock<Response>(), agentId, query);
+}
+
 describe('SystemAgentChatController', () => {
 	it('prepares a chat message with the working project from the query', async () => {
 		const { controller, systemAgents, chatRelay } = setup();
@@ -69,10 +78,11 @@ describe('SystemAgentChatController', () => {
 		});
 
 		await controller.chat(
-			request({}, { projectId: 'project-1' }),
+			request({}),
 			mock<FlushableResponse>(),
 			AGENT_ID,
 			{ message: 'hi', sessionId: 'thread-1' } as never,
+			{ projectId: 'project-1' },
 		);
 
 		expect(systemAgents.prepareChatMessage).toHaveBeenCalledWith(
@@ -92,10 +102,11 @@ describe('SystemAgentChatController', () => {
 		});
 
 		await controller.chat(
-			request({}, { projectId: 'project-1' }),
+			request({}),
 			mock<FlushableResponse>(),
 			AGENT_ID,
 			{ message: 'hi', sessionId: 'thread-new', newSession: true } as never,
+			{ projectId: 'project-1' },
 		);
 
 		expect(systemAgents.prepareChatMessage).toHaveBeenCalledWith(
@@ -114,10 +125,11 @@ describe('SystemAgentChatController', () => {
 		});
 
 		await controller.chat(
-			request({}, { projectId: 'project-1' }),
+			request({}),
 			mock<FlushableResponse>(),
 			AGENT_ID,
 			{ message: 'hi', sessionId: 'thread-1' } as never,
+			{ projectId: 'project-1' },
 		);
 
 		expect(chatRelay.storeChatAttachments).toHaveBeenCalledWith(
@@ -238,7 +250,7 @@ describe('SystemAgentChatController', () => {
 				hasMore: false,
 			});
 
-			const result = await controller.listThreads(request({ agentId: AGENT_ID }, { limit: '5' }));
+			const result = await listThreads(controller, AGENT_ID, { limit: '5' });
 
 			expect(systemAgents.listThreads).toHaveBeenCalledWith(AGENT_ID, user, { limit: 5 });
 			expect(result).toEqual({
@@ -260,15 +272,15 @@ describe('SystemAgentChatController', () => {
 				threads: [listed('thread-2', '2026-10-19T10:00:00.000Z')],
 				hasMore: true,
 			});
-			const first = await controller.listThreads(
-				request({ agentId: AGENT_ID }, { limit: '1', search: 'chat' }),
-			);
+			const first = await listThreads(controller, AGENT_ID, { limit: '1', search: 'chat' });
 			expect(first.nextCursor).toEqual(expect.any(String));
 
 			systemAgents.listThreads.mockResolvedValueOnce({ threads: [], hasMore: false });
-			await controller.listThreads(
-				request({ agentId: AGENT_ID }, { limit: '1', search: 'chat', cursor: first.nextCursor! }),
-			);
+			await listThreads(controller, AGENT_ID, {
+				limit: '1',
+				search: 'chat',
+				cursor: first.nextCursor!,
+			});
 
 			expect(systemAgents.listThreads).toHaveBeenLastCalledWith(AGENT_ID, user, {
 				limit: 1,
@@ -281,7 +293,7 @@ describe('SystemAgentChatController', () => {
 			const { controller, systemAgents } = setup();
 			systemAgents.listThreads.mockResolvedValue({ threads: [], hasMore: false });
 
-			await controller.listThreads(request({ agentId: AGENT_ID }));
+			await listThreads(controller, AGENT_ID);
 
 			expect(systemAgents.listThreads).toHaveBeenCalledWith(AGENT_ID, user, { limit: 20 });
 		});
@@ -289,9 +301,9 @@ describe('SystemAgentChatController', () => {
 		it('refuses a cursor that it did not issue', async () => {
 			const { controller, systemAgents } = setup();
 
-			await expect(
-				controller.listThreads(request({ agentId: AGENT_ID }, { cursor: 'not-a-cursor' })),
-			).rejects.toThrow(BadRequestError);
+			await expect(listThreads(controller, AGENT_ID, { cursor: 'not-a-cursor' })).rejects.toThrow(
+				BadRequestError,
+			);
 			expect(systemAgents.listThreads).not.toHaveBeenCalled();
 		});
 
@@ -299,9 +311,7 @@ describe('SystemAgentChatController', () => {
 			const { controller, systemAgents } = setup();
 			systemAgents.listThreads.mockRejectedValue(new NotFoundError('Agent not found'));
 
-			await expect(controller.listThreads(request({ agentId: 'unknown' }))).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(listThreads(controller, 'unknown')).rejects.toThrow(NotFoundError);
 		});
 	});
 

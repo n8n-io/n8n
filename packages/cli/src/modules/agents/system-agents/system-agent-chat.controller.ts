@@ -9,6 +9,8 @@ import {
 	AgentChatQueueUpdateDto,
 	AgentChatResumeDto,
 	type AgentThreadUsageResponse,
+	ListSystemAgentThreadsQueryDto,
+	SystemAgentChatQueryDto,
 	type SystemAgentThreadSummary,
 	type SystemAgentThreadsResponse,
 } from '@n8n/api-types';
@@ -62,12 +64,12 @@ export class SystemAgentChatController {
 	 */
 	@Post('/:agentId/chat', { usesTemplates: true })
 	async chat(
-		req: AuthenticatedRequest<{}, {}, {}, { projectId?: string }>,
+		req: AuthenticatedRequest,
 		res: FlushableResponse,
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatMessageDto,
+		@Query { projectId }: SystemAgentChatQueryDto,
 	) {
-		const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : undefined;
 		const { message, sessionId, messageId, attachments, clientContext } = payload;
 		await this.chatRelay.relayQueuedMessage(
 			res,
@@ -102,18 +104,15 @@ export class SystemAgentChatController {
 	 */
 	@Get('/:agentId/threads')
 	async listThreads(
-		req: AuthenticatedRequest<
-			{ agentId: string },
-			{},
-			{},
-			{ limit?: string; cursor?: string; search?: string }
-		>,
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Query { limit, cursor, search }: ListSystemAgentThreadsQueryDto,
 	): Promise<SystemAgentThreadsResponse> {
-		const { limit, cursor, search } = req.query;
-		const page = await this.systemAgents.listThreads(req.params.agentId, req.user, {
-			limit: parseThreadListLimit(typeof limit === 'string' ? limit : undefined),
-			...(typeof search === 'string' && search.trim() ? { search } : {}),
-			...(typeof cursor === 'string' && cursor ? { before: decodeThreadCursor(cursor) } : {}),
+		const page = await this.systemAgents.listThreads(agentId, req.user, {
+			limit: parseThreadListLimit(limit),
+			...(search ? { search } : {}),
+			...(cursor ? { before: decodeThreadCursor(cursor) } : {}),
 		});
 		const last = page.threads.at(-1);
 		return {

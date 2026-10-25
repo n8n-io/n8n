@@ -153,6 +153,19 @@ export class ListN8nChatThreadsQueryDto extends Z.class({
 	search: threadTitleSearchSchema,
 }) {}
 
+/** The thread list of a system agent: one page, optionally filtered by title. */
+export class ListSystemAgentThreadsQueryDto extends Z.class({
+	// The `nextCursor` of the previous page. The route decodes it.
+	cursor: z.string().max(512).optional(),
+	limit: z.string().optional(),
+	search: threadTitleSearchSchema,
+}) {}
+
+/** A message to a system agent. `projectId` is the working project of a new session. */
+export class SystemAgentChatQueryDto extends Z.class({
+	projectId: z.string().min(1).max(128).optional(),
+}) {}
+
 export class AgentProviderModelsQueryDto extends Z.class({
 	credentialId: z.string().min(1).max(64).optional(),
 }) {}
