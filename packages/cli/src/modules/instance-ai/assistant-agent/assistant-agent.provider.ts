@@ -63,11 +63,11 @@ import {
 	type AssistantSandboxLease,
 } from './assistant-workspace-source';
 
-/** The resource attachments that reach the agent. Node attachments need their gate. */
 type FormattedTurnError = NonNullable<
 	Awaited<ReturnType<NonNullable<SystemAgentTurnHandle['formatError']>>>
 >;
 
+/** The resource attachments that reach the agent. Node attachments need their gate. */
 function contextAttachmentsOf(
 	attachments: InstanceAiAttachment[] | undefined,
 	nodeContextEnabled: boolean,
