@@ -123,10 +123,11 @@ describe('mergeRecentChats', () => {
 });
 
 describe('mergeChatHistoryPages', () => {
-	const item = (kind: RecentChatItem['kind'], id: string, updatedAt: string): RecentChatItem =>
-		kind === 'assistant'
-			? { kind, thread: assistantThread(id, updatedAt) }
-			: { kind, thread: agentThread(id, updatedAt) };
+	const item = (kind: RecentChatItem['kind'], id: string, updatedAt: string): RecentChatItem => {
+		if (kind === 'assistant') return { kind, thread: assistantThread(id, updatedAt) };
+		if (kind === 'assistant-agent') return { kind, thread: assistantAgentThread(id, updatedAt) };
+		return { kind, thread: agentThread(id, updatedAt) };
+	};
 
 	it('merges and sorts every loaded item when no source has more pages', () => {
 		const result = mergeChatHistoryPages([
