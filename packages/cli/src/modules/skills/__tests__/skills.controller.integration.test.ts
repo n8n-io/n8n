@@ -189,7 +189,7 @@ describe('SkillsController', () => {
 
 	afterEach(async () => {
 		await Container.get(AgentRepository).delete({});
-		await Container.get(SkillRepository).delete({});
+		await Container.get(SkillRepository).deleteAll();
 	});
 
 	async function newAgent(name: string, projectId: string) {

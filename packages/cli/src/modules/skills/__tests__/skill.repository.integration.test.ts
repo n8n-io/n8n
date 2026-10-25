@@ -74,7 +74,7 @@ describe('SkillRepository', () => {
 	afterEach(async () => {
 		// Agent rows cascade to their history, pins and dependency rows.
 		await agents.delete({});
-		await skills.delete({});
+		await skills.deleteAll();
 	});
 
 	afterAll(async () => {
@@ -86,8 +86,7 @@ describe('SkillRepository', () => {
 		const scoped = await createSkill({ projectId: project.id });
 		const other = await createSkill({ projectId: otherProject.id });
 		const disabled = await createSkill();
-		for (const id of [instance, scoped, other])
-			await skills.update(id, { availableToAssistant: true });
+		for (const id of [instance, scoped, other]) await skills.setAssistantAvailability(id, true, {});
 		const versionId = await skills.insertSavedVersion(
 			scoped,
 			2,
@@ -134,7 +133,7 @@ describe('SkillRepository', () => {
 				scope,
 			});
 			const id = await createSkill({ agentId: agent.id });
-			await skills.update(id, { availableToAssistant: true });
+			await skills.setAssistantAvailability(id, true, {});
 
 			expect(await skills.findAssistantSkillSummaries(null)).toEqual([]);
 			expect(await skills.findAssistantSkillSummaries(project.id)).toEqual([]);
@@ -165,7 +164,7 @@ describe('SkillRepository', () => {
 	it('clears Assistant availability only when a skill moves to an agent', async () => {
 		const id = await createSkill();
 		const agent = await createAgent('Private scope');
-		await skills.update(id, { availableToAssistant: true });
+		await skills.setAssistantAvailability(id, true, {});
 		await skills.updateTarget(id, { projectId: project.id, agentId: null });
 		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(true);
 		await skills.updateTarget(id, { projectId: null, agentId: agent.id });

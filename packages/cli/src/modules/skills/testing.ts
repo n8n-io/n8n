@@ -3,8 +3,6 @@
 import { Container } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
-import { SkillFile } from './database/entities/skill-file.entity';
-import { SkillVersion } from './database/entities/skill-version.entity';
 import type { SkillSource } from './database/entities/skill.entity';
 import { SkillRepository } from './database/repositories/skill.repository';
 import type { SkillContent } from './utils/skill-content-hash';
@@ -72,12 +70,7 @@ export async function findSkill(id: string) {
 }
 
 export async function findSkillIds(filter: { source?: SkillSource } = {}): Promise<string[]> {
-	const skills = await Container.get(SkillRepository).find({
-		select: ['id'],
-		where: filter,
-		order: { id: 'ASC' },
-	});
-	return skills.map((skill) => skill.id);
+	return await Container.get(SkillRepository).findAllIds(filter);
 }
 
 export async function findLatestSkillVersion(skillId: string) {
@@ -90,12 +83,7 @@ export async function findLatestSkillVersion(skillId: string) {
 
 /** Every row of the skill tables, in a fixed order, to compare before and after a run. */
 export async function readSkillTables(): Promise<unknown[]> {
-	const skills = Container.get(SkillRepository);
-	return await Promise.all([
-		skills.find({ order: { id: 'ASC' } }),
-		skills.manager.find(SkillVersion, { order: { id: 'ASC' } }),
-		skills.manager.find(SkillFile, { order: { skillVersionId: 'ASC', path: 'ASC' } }),
-	]);
+	return await Container.get(SkillRepository).findAllRows();
 }
 
 /** Deletes one skill. Its versions, files, agent refs and pins go by cascade. */
@@ -104,5 +92,5 @@ export async function deleteSkill(id: string): Promise<void> {
 }
 
 export async function deleteAllSkills(): Promise<void> {
-	await Container.get(SkillRepository).delete({});
+	await Container.get(SkillRepository).deleteAll();
 }
