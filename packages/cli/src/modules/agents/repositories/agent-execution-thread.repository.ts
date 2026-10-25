@@ -453,19 +453,6 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 	}
 
-	/** Top-level private sessions of one user with one agent, newest first. */
-	async findOwnedByAgent(
-		agentId: string,
-		ownerId: string,
-		options: { limit?: number } = {},
-	): Promise<AgentExecutionThread[]> {
-		return await this.find({
-			where: { agentId, ownerId, accessScope: 'user', parentThreadId: IsNull() },
-			order: { updatedAt: 'DESC', id: 'DESC' },
-			...(options.limit ? { take: options.limit } : {}),
-		});
-	}
-
 	/**
 	 * Top-level private sessions of one user with any instance (system) agent,
 	 * in every project, oldest first. It does not check that a provider is

@@ -650,9 +650,11 @@ export interface SystemAgentThreadSummary {
 	projectId: string;
 }
 
-/** The user's own threads with one system agent, newest first. */
+/** One page of the user's own threads with one system agent, newest first. */
 export interface SystemAgentThreadsResponse {
 	data: SystemAgentThreadSummary[];
+	/** Pass as `cursor` to read the next page. `null` on the last page. */
+	nextCursor: string | null;
 }
 
 export interface AgentSessionLangSmithExportResponse {

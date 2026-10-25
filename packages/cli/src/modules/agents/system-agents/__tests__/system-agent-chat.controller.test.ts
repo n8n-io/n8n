@@ -223,39 +223,76 @@ describe('SystemAgentChatController', () => {
 	});
 
 	describe('listThreads', () => {
-		it('lists the threads of the user with the agent as summaries', async () => {
+		const listed = (id: string, updatedAt: string) =>
+			({
+				...thread,
+				id,
+				title: `Chat ${id}`,
+				updatedAt: new Date(updatedAt),
+			}) as AgentExecutionThread;
+
+		it('lists a page of the threads of the user with the agent as summaries', async () => {
 			const { controller, systemAgents } = setup();
-			systemAgents.listThreads.mockResolvedValue([
-				{
-					...thread,
-					title: 'First chat',
-					updatedAt: new Date('2026-10-19T10:00:00.000Z'),
-					agentName: 'Assistant',
-				} as AgentExecutionThread,
-			]);
+			systemAgents.listThreads.mockResolvedValue({
+				threads: [listed('thread-1', '2026-10-19T10:00:00.000Z')],
+				hasMore: false,
+			});
 
 			const result = await controller.listThreads(request({ agentId: AGENT_ID }, { limit: '5' }));
 
-			expect(systemAgents.listThreads).toHaveBeenCalledWith(AGENT_ID, user, 5);
+			expect(systemAgents.listThreads).toHaveBeenCalledWith(AGENT_ID, user, { limit: 5 });
 			expect(result).toEqual({
 				data: [
 					{
 						id: 'thread-1',
-						title: 'First chat',
+						title: 'Chat thread-1',
 						updatedAt: '2026-10-19T10:00:00.000Z',
 						projectId: 'project-1',
 					},
 				],
+				nextCursor: null,
+			});
+		});
+
+		it('reads the next page from the cursor of the previous page, with the search', async () => {
+			const { controller, systemAgents } = setup();
+			systemAgents.listThreads.mockResolvedValueOnce({
+				threads: [listed('thread-2', '2026-10-19T10:00:00.000Z')],
+				hasMore: true,
+			});
+			const first = await controller.listThreads(
+				request({ agentId: AGENT_ID }, { limit: '1', search: 'chat' }),
+			);
+			expect(first.nextCursor).toEqual(expect.any(String));
+
+			systemAgents.listThreads.mockResolvedValueOnce({ threads: [], hasMore: false });
+			await controller.listThreads(
+				request({ agentId: AGENT_ID }, { limit: '1', search: 'chat', cursor: first.nextCursor! }),
+			);
+
+			expect(systemAgents.listThreads).toHaveBeenLastCalledWith(AGENT_ID, user, {
+				limit: 1,
+				search: 'chat',
+				before: { updatedAt: new Date('2026-10-19T10:00:00.000Z'), id: 'thread-2' },
 			});
 		});
 
 		it('uses the default page size without a limit', async () => {
 			const { controller, systemAgents } = setup();
-			systemAgents.listThreads.mockResolvedValue([]);
+			systemAgents.listThreads.mockResolvedValue({ threads: [], hasMore: false });
 
 			await controller.listThreads(request({ agentId: AGENT_ID }));
 
-			expect(systemAgents.listThreads).toHaveBeenCalledWith(AGENT_ID, user, 20);
+			expect(systemAgents.listThreads).toHaveBeenCalledWith(AGENT_ID, user, { limit: 20 });
+		});
+
+		it('refuses a cursor that it did not issue', async () => {
+			const { controller, systemAgents } = setup();
+
+			await expect(
+				controller.listThreads(request({ agentId: AGENT_ID }, { cursor: 'not-a-cursor' })),
+			).rejects.toThrow(BadRequestError);
+			expect(systemAgents.listThreads).not.toHaveBeenCalled();
 		});
 
 		it('refuses an agent id without a registered provider', async () => {

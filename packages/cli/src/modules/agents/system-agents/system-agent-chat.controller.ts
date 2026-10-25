@@ -15,6 +15,7 @@ import {
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Query, RestController } from '@n8n/decorators';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Response } from 'express';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -24,6 +25,7 @@ import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrat
 import { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentExecutionThreadKeyset } from '../repositories/agent-execution-thread.repository';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
 import { ownCheckpoint, threadMessagesResponse } from '../utils/messages-envelope';
@@ -93,19 +95,31 @@ export class SystemAgentChatController {
 	}
 
 	/**
-	 * The user's own threads with the agent, newest first. It checks thread
-	 * ownership only, like a stop: the list shows a thread in a project that the
-	 * user can no longer read, but opening it runs the floor.
+	 * One page of the user's own threads with the agent, newest first. `search`
+	 * matches the title, and `cursor` is the `nextCursor` of the previous page.
+	 * It checks thread ownership only, like a stop: the list shows a thread in a
+	 * project that the user can no longer read, but opening it runs the floor.
 	 */
 	@Get('/:agentId/threads')
 	async listThreads(
-		req: AuthenticatedRequest<{ agentId: string }, {}, {}, { limit?: string }>,
+		req: AuthenticatedRequest<
+			{ agentId: string },
+			{},
+			{},
+			{ limit?: string; cursor?: string; search?: string }
+		>,
 	): Promise<SystemAgentThreadsResponse> {
-		const limit = parseThreadListLimit(
-			typeof req.query.limit === 'string' ? req.query.limit : undefined,
-		);
-		const threads = await this.systemAgents.listThreads(req.params.agentId, req.user, limit);
-		return { data: threads.map(toThreadSummary) };
+		const { limit, cursor, search } = req.query;
+		const page = await this.systemAgents.listThreads(req.params.agentId, req.user, {
+			limit: parseThreadListLimit(typeof limit === 'string' ? limit : undefined),
+			...(typeof search === 'string' && search.trim() ? { search } : {}),
+			...(typeof cursor === 'string' && cursor ? { before: decodeThreadCursor(cursor) } : {}),
+		});
+		const last = page.threads.at(-1);
+		return {
+			data: page.threads.map(toThreadSummary),
+			nextCursor: page.hasMore && last ? encodeThreadCursor(last) : null,
+		};
 	}
 
 	/** One of the user's own threads with the agent. Opening it runs the access floor. */
@@ -365,4 +379,24 @@ function toThreadSummary(thread: AgentExecutionThread): SystemAgentThreadSummary
 		updatedAt: thread.updatedAt.toISOString(),
 		projectId: thread.projectId,
 	};
+}
+
+/** The position of the last thread on a page, as an opaque cursor. */
+function encodeThreadCursor({ updatedAt, id }: AgentExecutionThread): string {
+	return Buffer.from(JSON.stringify({ updatedAt: updatedAt.toISOString(), id })).toString(
+		'base64url',
+	);
+}
+
+function decodeThreadCursor(cursor: string): AgentExecutionThreadKeyset {
+	try {
+		const parsed: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+		if (isRecord(parsed) && typeof parsed.updatedAt === 'string' && typeof parsed.id === 'string') {
+			const updatedAt = new Date(parsed.updatedAt);
+			if (!Number.isNaN(updatedAt.getTime())) return { updatedAt, id: parsed.id };
+		}
+	} catch {
+		// Reported below as an invalid cursor.
+	}
+	throw new BadRequestError('Invalid cursor');
 }
