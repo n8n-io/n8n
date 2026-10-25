@@ -258,15 +258,17 @@ export class SystemAgentChatController {
 
 	// ── Queue ────────────────────────────────────────────────────────────────
 
+	/** The queue of a session. A new session has no thread before its first message, so its queue is empty. */
 	@Get('/:agentId/chat/:threadId/queue')
 	async getQueuedMessages(
 		req: AuthenticatedRequest<{ agentId: string; threadId: string }>,
 	): Promise<AgentChatQueueResponse> {
-		const thread = await this.systemAgents.getUsableThread(
+		const thread = await this.systemAgents.findUsableThread(
 			req.params.agentId,
 			req.user,
 			req.params.threadId,
 		);
+		if (!thread) return { items: [], steerableExecutionId: null };
 		return await this.messageQueue.listPending({
 			...this.queueScope(req, thread.projectId),
 			kind: 'system',
