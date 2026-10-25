@@ -251,3 +251,58 @@ describe('generateThreadTitle side-call cost', () => {
 		expect(mockGenerateText).not.toHaveBeenCalled();
 	});
 });
+
+describe('generateThreadTitle persistence', () => {
+	beforeEach(() => {
+		mockGenerateText.mockReset();
+		mockGetModelCost.mockReset();
+		mockGetModelCost.mockResolvedValue(undefined);
+	});
+
+	/** Changes the thread metadata while the title model call runs. */
+	function changeMetadataDuringTitleCall(
+		memory: InMemoryMemory,
+		text: string,
+		metadata: Record<string, unknown>,
+	) {
+		mockGenerateText.mockImplementation(async () => {
+			await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID, metadata });
+			return { text, usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } };
+		});
+	}
+
+	it('keeps metadata that changed during the title call when there is no emoji', async () => {
+		const memory = new InMemoryMemory();
+		await memory.saveThread({
+			id: THREAD_ID,
+			resourceId: RESOURCE_ID,
+			metadata: { markers: ['wf-1'] },
+		});
+		changeMetadataDuringTitleCall(memory, 'Berlin rain alert', { markers: [] });
+
+		await runTitle(memory, () => {});
+
+		const thread = await memory.getThread(THREAD_ID);
+		expect(thread?.title).toBe('Berlin rain alert');
+		expect(thread?.metadata).toEqual({ markers: [] });
+	});
+
+	it('adds the emoji to the metadata as it is after the title call', async () => {
+		const memory = new InMemoryMemory();
+		await memory.saveThread({
+			id: THREAD_ID,
+			resourceId: RESOURCE_ID,
+			metadata: { markers: ['wf-1'] },
+		});
+		changeMetadataDuringTitleCall(memory, '{"title":"Berlin rain alert","emoji":"🌧️"}', {
+			markers: [],
+			source: 'chat',
+		});
+
+		await runTitle(memory, () => {});
+
+		const thread = await memory.getThread(THREAD_ID);
+		expect(thread?.title).toBe('Berlin rain alert');
+		expect(thread?.metadata).toEqual({ markers: [], source: 'chat', emoji: '🌧️' });
+	});
+});

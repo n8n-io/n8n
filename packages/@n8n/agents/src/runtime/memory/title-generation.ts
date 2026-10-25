@@ -289,14 +289,18 @@ export async function generateThreadTitle(opts: {
 		// No usable title — the model call was still billed (reported above).
 		if (!title) return;
 
-		// Store emoji in thread metadata
-		const metadata = { ...(thread?.metadata ?? {}), ...(emoji && { emoji }) };
+		// The thread was read before the model call. Merge the emoji onto a fresh read, so
+		// metadata that changed in the meantime is not written back. Without an emoji, the
+		// metadata is left as it is.
+		const metadata = emoji
+			? { ...((await opts.memory.getThread(opts.threadId))?.metadata ?? {}), emoji }
+			: undefined;
 
 		await opts.memory.saveThread({
 			id: opts.threadId,
 			resourceId: opts.resourceId,
 			title,
-			metadata,
+			...(metadata ? { metadata } : {}),
 		});
 	} catch (error) {
 		logger.warn('Failed to generate thread title', { error });
