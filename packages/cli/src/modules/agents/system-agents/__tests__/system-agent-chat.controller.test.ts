@@ -257,6 +257,38 @@ describe('SystemAgentChatController', () => {
 		});
 	});
 
+	describe('getThread', () => {
+		it('returns a usable thread of the user as a summary', async () => {
+			const { controller, systemAgents } = setup();
+			systemAgents.getUsableThread.mockResolvedValue({
+				...thread,
+				title: 'First chat',
+				updatedAt: new Date('2026-10-19T10:00:00.000Z'),
+			} as AgentExecutionThread);
+
+			const result = await controller.getThread(
+				request({ agentId: AGENT_ID, threadId: 'thread-1' }),
+			);
+
+			expect(systemAgents.getUsableThread).toHaveBeenCalledWith(AGENT_ID, user, 'thread-1');
+			expect(result).toEqual({
+				id: 'thread-1',
+				title: 'First chat',
+				updatedAt: '2026-10-19T10:00:00.000Z',
+				projectId: 'project-1',
+			});
+		});
+
+		it('refuses a thread that the user cannot use', async () => {
+			const { controller, systemAgents } = setup();
+			systemAgents.getUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
+
+			await expect(
+				controller.getThread(request({ agentId: AGENT_ID, threadId: 'other' })),
+			).rejects.toThrow(NotFoundError);
+		});
+	});
+
 	it('deletes an owned thread through the execution service', async () => {
 		const { controller, systemAgents } = setup();
 

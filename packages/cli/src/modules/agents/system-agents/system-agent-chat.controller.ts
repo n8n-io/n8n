@@ -9,6 +9,7 @@ import {
 	AgentChatQueueUpdateDto,
 	AgentChatResumeDto,
 	type AgentThreadUsageResponse,
+	type SystemAgentThreadSummary,
 	type SystemAgentThreadsResponse,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -22,6 +23,7 @@ import { AgentChatRelayService } from '../agent-chat-relay.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { FlushableResponse } from '../agent-sse-stream';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
 import { ownCheckpoint, threadMessagesResponse } from '../utils/messages-envelope';
@@ -103,14 +105,16 @@ export class SystemAgentChatController {
 			typeof req.query.limit === 'string' ? req.query.limit : undefined,
 		);
 		const threads = await this.systemAgents.listThreads(req.params.agentId, req.user, limit);
-		return {
-			data: threads.map((thread) => ({
-				id: thread.id,
-				title: thread.title,
-				updatedAt: thread.updatedAt.toISOString(),
-				projectId: thread.projectId,
-			})),
-		};
+		return { data: threads.map(toThreadSummary) };
+	}
+
+	/** One of the user's own threads with the agent. Opening it runs the access floor. */
+	@Get('/:agentId/threads/:threadId')
+	async getThread(
+		req: AuthenticatedRequest<{ agentId: string; threadId: string }>,
+	): Promise<SystemAgentThreadSummary> {
+		const { agentId, threadId } = req.params;
+		return toThreadSummary(await this.systemAgents.getUsableThread(agentId, req.user, threadId));
 	}
 
 	@Post('/:agentId/chat/resume', { usesTemplates: true })
@@ -350,4 +354,13 @@ export class SystemAgentChatController {
 			userId: req.user.id,
 		};
 	}
+}
+
+function toThreadSummary(thread: AgentExecutionThread): SystemAgentThreadSummary {
+	return {
+		id: thread.id,
+		title: thread.title,
+		updatedAt: thread.updatedAt.toISOString(),
+		projectId: thread.projectId,
+	};
 }
