@@ -92,6 +92,7 @@ describe('toDate', () => {
 			try {
 				expect(toDate('2023-06-16')).toEqual(new Date(2023, 5, 16));
 				expect(toDate('2023-06')).toEqual(new Date(2023, 5, 1));
+				expect(toDate('2023')).toEqual(new Date(2023, 0, 1));
 				expect(toDate('June 16, 2023')).toEqual(new Date(2023, 5, 16));
 			} finally {
 				if (originalTimeZone === undefined) delete process.env.TZ;
