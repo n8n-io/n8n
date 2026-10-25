@@ -128,6 +128,10 @@ describe('PromotionsService', () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
 		folderService.getFoldersByIds.mockResolvedValue([]);
+		// Projects p1 and p2 exist on this instance.
+		projectRepository.findTypesByIds.mockImplementation(async (ids) =>
+			ids.filter((id) => ['p1', 'p2'].includes(id)).map((id) => ({ id, type: 'team' as const })),
+		);
 		// An empty remote by default, so the promote check for moved workflows has nothing to read.
 		gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-'));
@@ -382,6 +386,20 @@ describe('PromotionsService', () => {
 					message: expect.stringContaining(expected),
 				});
 				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			});
+
+			it('promotes when the branch package holds no workflows', async () => {
+				// The export leaves out an empty `workflows` list.
+				gitService.readFilesAtCommit.mockResolvedValue(
+					new Map([['n8n/manifest.json', JSON.stringify({ projects: manifest.projects })]]),
+				);
+
+				await service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'sync projects',
+				});
+
+				expect(gitService.commitAndPush).toHaveBeenCalled();
 			});
 
 			it('skips the check on an empty remote or a branch without a package', async () => {
@@ -1112,6 +1130,56 @@ describe('PromotionsService', () => {
 			expect(await readExported('projects/beta/workflows/w1/workflow.json')).toBe(
 				branchWorkflowFile('w1', 'W1'),
 			);
+		});
+
+		it('refuses the delete of a workflow that moved out to another project, and names it', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify(alpha),
+				'projects/alpha/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
+			});
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['w1', mock<Project>({ id: 'p2', name: 'Ops' })]]),
+			);
+
+			await expect(
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
+			).rejects.toMatchObject({
+				message: expect.stringContaining('w1 (now in project "Ops" here)'),
+				meta: { workflowIds: ['w1'] },
+			});
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+				branchWorkflowFile('w1', 'W1'),
+			);
+		});
+
+		it('still refuses a foreign id as not belonging to the project, not as a move', async () => {
+			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({
+					projects: [alpha, beta],
+					workflows: [{ id: 'w-other', name: 'WOther', target: 'projects/beta/workflows/w-other' }],
+				}),
+				'projects/alpha/project.json': JSON.stringify(alpha),
+				'projects/beta/project.json': JSON.stringify(beta),
+				'projects/beta/workflows/w-other/workflow.json': branchWorkflowFile('w-other', 'WOther'),
+			});
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['w-other', mock<Project>({ id: 'p2', name: 'Beta' })]]),
+			);
+
+			await expect(
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w-other'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
+			).rejects.toThrow('Deleted workflows do not belong to the selected project: w-other');
 		});
 
 		it('writes an import inventory that still lists unselected workflows', async () => {

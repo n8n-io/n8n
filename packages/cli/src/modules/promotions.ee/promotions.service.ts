@@ -21,6 +21,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
@@ -32,6 +33,7 @@ import {
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
+import { manifestEntrySchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import {
 	CredentialConflictPolicy,
 	DataTableMissingMode,
@@ -58,6 +60,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
+import { projectHolding } from './branch-placement';
 import {
 	GIT_DEFAULT_COMMIT_EMAIL,
 	GIT_DEFAULT_COMMIT_NAME,
@@ -71,6 +74,7 @@ import { PromotionRunRepository } from './database/repositories/promotion-run.re
 import { PromotionReviewsService } from './promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
+import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
 import {
 	buildCacheDescriptor,
 	buildPromotionBranchName,
@@ -356,7 +360,7 @@ export class PromotionsService {
 		actor: User,
 		request: { commitMessage: string; canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
-		movedOwnerNames: ReadonlyMap<string, string> = new Map(),
+		movedOwnerNames: ReadonlyMap<string, string>,
 	): Promise<PromotePackageResultDto> {
 		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
@@ -390,11 +394,14 @@ export class PromotionsService {
 			);
 		}
 
-		const branch = await this.workingCopy.assertSelectionFitsBranch(
-			packageFolder,
-			selection,
-			movedOwnerNames,
-		);
+		const branch = await this.workingCopy.assertSelectionFitsBranch(packageFolder, selection);
+		// After the branch checks, so an id the branch holds elsewhere gets its own error first. The
+		// destination can't tell a move from a removal and would delete the workflow.
+		if (movedOwnerNames.size > 0) {
+			throw new PromotionsWorkflowsMovedCrossProjectError(
+				[...movedOwnerNames].map(([id, name]) => ({ id, detail: `now in project "${name}" here` })),
+			);
+		}
 
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
 		const prePushBackup = `${packageFolder}.pre-selection`;
@@ -549,9 +556,8 @@ export class PromotionsService {
 	 * Splits selected ids into pushes and deletions, using the current instance
 	 * state. A live or archived workflow this project owns exports; an id it no
 	 * longer owns leaves the branch. An id that another project owns now is also
-	 * returned in `movedOwnerNames`: assertSelectionFitsBranch refuses it when the
-	 * branch holds it under this project (a move), and assertDeletionsOnBranch
-	 * rejects it when the branch holds it elsewhere (a foreign id).
+	 * returned in `movedOwnerNames`, with the name of that project, because promote
+	 * refuses it as a move.
 	 */
 	private async classifySelection(
 		projectId: string,
@@ -630,19 +636,18 @@ export class PromotionsService {
 		);
 	}
 
-	/** `moves` comes from findCrossProjectMoves, so a moved workflow is never planned as a deletion. */
+	/** `movedWorkflowIds` comes from findCrossProjectMoves, so a moved workflow is never planned as a deletion. */
 	private async classifyApplySelection(
 		inventory: PackageDirectoryInventory,
 		projectId: string,
 		workflowIds: string[],
-		moves: CrossProjectMoves,
-	): Promise<{ selection: ImportSelection }> {
+		movedWorkflowIds: ReadonlySet<string>,
+	): Promise<ImportSelection> {
 		const branchWorkflowIds = new Set(
 			inventory.workflows
 				.filter((workflow) => workflow.projectId === projectId)
 				.map(({ id }) => id),
 		);
-		const movedWorkflowIds = new Set(moves.workflows.map(({ id }) => id));
 		const ownerProjects =
 			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 
@@ -667,9 +672,7 @@ export class PromotionsService {
 			);
 		}
 
-		return {
-			selection: { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds },
-		};
+		return { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds };
 	}
 
 	/**
@@ -682,6 +685,20 @@ export class PromotionsService {
 		inventory: PackageDirectoryInventory,
 		projectId?: string,
 	): Promise<CrossProjectMoves> {
+		// The import of a project reads only the folders the package holds under it.
+		const folderEntries = inventory.folders.filter(
+			(entry) => projectId === undefined || entry.projectId === projectId,
+		);
+		const [owners, folders, existingProjects] = await Promise.all([
+			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+				inventory.workflows.map(({ id }) => id),
+			),
+			this.folderService.getFoldersByIds(folderEntries.map(({ folder }) => folder.id)),
+			// Instance-wide Apply creates missing projects, but only after this check refuses a move.
+			this.projectRepository.findTypesByIds(inventory.projects.map(({ id }) => id)),
+		]);
+		const homes = new Map(folders.map(({ id, homeProject }) => [id, homeProject]));
+		const existing = new Set(existingProjects.map(({ id }) => id));
 		const branchProjects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
 		const branchProjectOf = (id: string) => {
 			const project = branchProjects.get(id);
@@ -689,12 +706,11 @@ export class PromotionsService {
 			if (!project) throw new UnexpectedError(`Package inventory has no project "${id}"`);
 			return project;
 		};
-		type Move = Omit<CrossProjectMove, 'projectExists'>;
 		const toMove = (
 			{ id, name }: { id: string; name: string },
 			branchProjectId: string,
 			instanceProject: { id: string; name: string } | undefined,
-		): Move[] =>
+		): CrossProjectMove[] =>
 			instanceProject &&
 			instanceProject.id !== branchProjectId &&
 			(projectId === undefined || projectId === branchProjectId || projectId === instanceProject.id)
@@ -703,36 +719,23 @@ export class PromotionsService {
 							id,
 							name,
 							project: branchProjectOf(branchProjectId),
+							projectExists: existing.has(branchProjectId),
 							instanceProject: { id: instanceProject.id, name: instanceProject.name },
 						},
 					]
 				: [];
-		const byId = (a: Move, b: Move) => a.id.localeCompare(b.id);
+		const byId = (a: CrossProjectMove, b: CrossProjectMove) => a.id.localeCompare(b.id);
 
-		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
-			inventory.workflows.map(({ id }) => id),
-		);
-		const homes = new Map(
-			(
-				await this.folderService.getFoldersByIds(inventory.folders.map(({ folder }) => folder.id))
-			).map(({ id, homeProject }) => [id, homeProject]),
-		);
-
-		const workflows = inventory.workflows
-			.flatMap((workflow) => toMove(workflow, workflow.projectId, owners.get(workflow.id)))
-			.sort(byId);
-		const folders = inventory.folders
-			.filter((entry) => projectId === undefined || entry.projectId === projectId)
-			.flatMap(({ folder, projectId: branchProjectId }) =>
-				toMove(folder, branchProjectId, homes.get(folder.id)),
-			)
-			.sort(byId);
-		if (workflows.length === 0 && folders.length === 0) return { workflows: [], folders: [] };
-
-		// Instance-wide Apply creates missing projects, but only after this check refuses the move.
-		const existing = new Set(await this.projectRepository.findTeamProjectIds());
-		const withExists = (move: Move) => ({ ...move, projectExists: existing.has(move.project.id) });
-		return { workflows: workflows.map(withExists), folders: folders.map(withExists) };
+		return {
+			workflows: inventory.workflows
+				.flatMap((workflow) => toMove(workflow, workflow.projectId, owners.get(workflow.id)))
+				.sort(byId),
+			folders: folderEntries
+				.flatMap(({ folder, projectId: branchProjectId }) =>
+					toMove(folder, branchProjectId, homes.get(folder.id)),
+				)
+				.sort(byId),
+		};
 	}
 
 	/**
@@ -769,24 +772,15 @@ export class PromotionsService {
 			},
 		});
 
-		const branchWorkflowIds = inventory.workflows
-			.filter((workflow) => workflow.projectId === projectId)
-			.map(({ id }) => id);
-		const ownedWorkflowIds = await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([
-			projectId,
-		]);
 		const moves = await this.findCrossProjectMoves(inventory, projectId);
-		const { selection } = await this.classifyApplySelection(
-			inventory,
-			projectId,
-			[...new Set([...branchWorkflowIds, ...ownedWorkflowIds])],
-			moves,
-		);
+		// Only workflows on the branch import. Deletions and moves need no bindings.
 		const preflight = await this.bindingPreflight.checkInventory({
 			inventory,
 			selection: {
 				selectedProjectId: projectId,
-				selectedWorkflowIds: selection.selectedWorkflowIds,
+				selectedWorkflowIds: inventory.workflows
+					.filter((workflow) => workflow.projectId === projectId)
+					.map(({ id }) => id),
 			},
 		});
 
@@ -846,11 +840,11 @@ export class PromotionsService {
 		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.findCrossProjectMoves(inventory, projectId);
-		const { selection } = await this.classifyApplySelection(
+		const selection = await this.classifyApplySelection(
 			inventory,
 			projectId,
 			workflowIds,
-			moves,
+			new Set(moves.workflows.map(({ id }) => id)),
 		);
 		// A folder the package holds under this project but this instance holds elsewhere blocks
 		// every selection: the import would meet it whatever the user selected.
@@ -1426,56 +1420,46 @@ function describeCrossProjectMoves({ workflows, folders }: CrossProjectMoves): s
 	return `Apply can't move workflows or folders between projects: ${moved.join('; ')}. ${remedy}`;
 }
 
+/** The parts of `manifest.json` that promote checks. The export leaves out an empty list. */
+const branchPlacementsSchema = z.object({
+	projects: z.array(manifestEntrySchema).optional(),
+	workflows: z.array(manifestEntrySchema).optional(),
+});
+
 /**
- * The id, name and team project of every workflow that the branch manifest lists. It fails closed:
- * a manifest it cannot read could hide a workflow that Apply would delete.
+ * The id, name and team project of every workflow that the branch manifest lists. It fails closed
+ * and names the broken entry: skipping it could hide a workflow that Apply would delete.
  */
 function readBranchWorkflowPlacements(
 	raw: string | undefined,
 	manifestPath: string,
 ): Array<{ id: string; name: string; projectName: string }> {
-	let manifest: unknown;
+	let json: unknown;
 	try {
-		manifest = raw === undefined ? undefined : jsonParse(raw);
+		json = raw === undefined ? undefined : jsonParse(raw);
 	} catch {
-		manifest = undefined;
+		json = undefined;
 	}
-	if (!isRecord(manifest) || !Array.isArray(manifest.workflows)) {
-		throw new BadRequestError(
-			`"${manifestPath}" on the branch is not readable, so promote can't check it for workflows that moved to a personal project. Fix the file on the branch, then promote again.`,
-		);
-	}
-	const projects = readManifestRefs(manifest.projects ?? [], 'projects', manifestPath);
-
-	return readManifestRefs(manifest.workflows, 'workflows', manifestPath).map(
-		({ id, name, target }) => ({
-			id,
-			name,
-			projectName:
-				projects.find((project) => target.startsWith(`${project.target}/`))?.name ?? 'unknown',
-		}),
-	);
-}
-
-type ManifestRef = { id: string; name: string; target: string };
-
-/** Refuses the whole list on one broken entry, because skipping it could hide a workflow. */
-function readManifestRefs(list: unknown, key: string, manifestPath: string): ManifestRef[] {
-	const entries: unknown[] = Array.isArray(list) ? list : [list];
-	return entries.map((entry, index) => {
-		if (isManifestRef(entry)) return entry;
+	const parsed = branchPlacementsSchema.safeParse(json);
+	if (!parsed.success) {
+		const [key, index] = parsed.error.issues[0]?.path ?? [];
+		const list = typeof key === 'string' && isRecord(json) ? json[key] : undefined;
+		const entry: unknown =
+			Array.isArray(list) && typeof index === 'number' ? list[index] : undefined;
 		const id = isRecord(entry) && typeof entry.id === 'string' ? ` (id "${entry.id}")` : '';
+		const part =
+			typeof key === 'string' && typeof index === 'number'
+				? `Entry ${index + 1} of "${key}" in "${manifestPath}"`
+				: `"${manifestPath}"`;
 		throw new BadRequestError(
-			`Entry ${index + 1} of "${key}" in "${manifestPath}" on the branch is not readable${id}, so promote can't check it for workflows that moved to a personal project. Fix the file on the branch, then promote again.`,
+			`${part} on the branch is not readable${id}, so promote can't check it for workflows that moved to a personal project. Fix the file on the branch, then promote again.`,
 		);
-	});
-}
+	}
 
-function isManifestRef(value: unknown): value is ManifestRef {
-	return (
-		isRecord(value) &&
-		typeof value.id === 'string' &&
-		typeof value.name === 'string' &&
-		typeof value.target === 'string'
-	);
+	const { projects, workflows = [] } = parsed.data;
+	return workflows.map(({ id, name, target }) => ({
+		id,
+		name,
+		projectName: projectHolding(projects, target)?.name ?? 'unknown',
+	}));
 }

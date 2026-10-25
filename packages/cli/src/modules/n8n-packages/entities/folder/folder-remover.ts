@@ -153,7 +153,7 @@ function folderDepths(placements: FolderPlacement[]): Map<string, number> {
 function plannedFolderParents(items: FolderPlanItem[]): Map<string, string | null> {
 	return new Map(
 		items
-			.filter(({ action, moved }) => action === 'update' && moved)
+			.filter(({ moved }) => moved)
 			.map(({ sourceFolderId, targetParentFolderId }): [string, string | null] => [
 				sourceFolderId,
 				targetParentFolderId,

@@ -323,8 +323,7 @@ export type ImportSelectionRequest = {
 	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
 	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
 	tagConflictPolicy?: TagConflictPolicy;
-	placementPolicy?: PlacementPolicy;
-};
+} & PromotionPlacementProperties;
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
 	packageBuffer: Buffer;
@@ -370,7 +369,6 @@ export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImport
 /**
  * Whether a matched folder or workflow that sits somewhere else in the package moves to that place.
  * `strict` reports the difference as a conflict. `follow-package` moves it within its own project.
- * Only promotions set it: the public import keeps `strict`.
  */
 export const PlacementPolicy = {
 	Strict: 'strict',

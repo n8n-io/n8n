@@ -30,7 +30,7 @@ describe('rest-error-response', () => {
 
 	it('serializePublicApiError: exposes cross-project moved workflow ids for selective promote', () => {
 		const descriptor = classifyRestError(
-			new PromotionsWorkflowsMovedCrossProjectError(['wf-moved']),
+			new PromotionsWorkflowsMovedCrossProjectError([{ id: 'wf-moved' }]),
 		);
 
 		expect(serializePublicApiError(descriptor)).toEqual({

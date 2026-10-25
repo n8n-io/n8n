@@ -11,7 +11,7 @@ import { BadRequestError, InternalServerError } from '@n8n/errors';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { containerMoves, isUnder, staleWorkflowTargets } from './branch-placement';
+import { containerMoves, isUnder, projectHolding, staleWorkflowTargets } from './branch-placement';
 import type { BranchLayout, ContainerMove } from './branch-placement';
 import { writeImportManifest } from './import-manifest-bridge';
 import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
@@ -253,20 +253,14 @@ export class WorkingCopyUpdater {
 		return { id: (parsed as { id: string }).id, name: (parsed as { name: string }).name, target };
 	}
 
-	/**
-	 * `movedOwnerNames` maps a deleted workflow id to the project that owns it now on this instance.
-	 * Such a workflow moved out of the selected project, so it is refused, not deleted.
-	 */
 	async assertSelectionFitsBranch(
 		exportFolder: string,
 		selection: SelectivePushOptions,
-		movedOwnerNames: ReadonlyMap<string, string> = new Map(),
 	): Promise<ScannedBranch> {
 		try {
 			const branch = await this.scanBranch(exportFolder);
 			this.assertDeletionsOnBranch(branch.state, selection);
 			this.assertNoCrossProjectMoves(branch.state, selection);
-			this.assertNoMovedDeletions(selection, movedOwnerNames);
 			return branch;
 		} catch (error) {
 			if (error instanceof BadRequestError) throw error;
@@ -317,34 +311,11 @@ export class WorkingCopyUpdater {
 			(w) => selected.has(w.id) && (!projectTarget || !isUnder(w.target, projectTarget)),
 		);
 		if (moved.length > 0) {
-			const branchProjectOf = (target: string) =>
-				branch.projects?.find((project) => isUnder(target, project.target))?.name;
-			const details = new Map(
-				moved.flatMap(({ id, target }) => {
-					const name = branchProjectOf(target);
-					return name ? [[id, `in project "${name}" on the branch`] as const] : [];
+			throw new PromotionsWorkflowsMovedCrossProjectError(
+				moved.map(({ id, target }) => {
+					const project = projectHolding(branch.projects, target);
+					return { id, detail: project && `in project "${project.name}" on the branch` };
 				}),
-			);
-			throw new PromotionsWorkflowsMovedCrossProjectError(
-				moved.map((workflow) => workflow.id),
-				details,
-			);
-		}
-	}
-
-	/**
-	 * A deletion of a workflow that still exists in another project is a move. The destination
-	 * cannot tell a move from a removal and would delete the workflow, so refuse it.
-	 */
-	private assertNoMovedDeletions(
-		selection: SelectivePushOptions,
-		movedOwnerNames: ReadonlyMap<string, string>,
-	): void {
-		const moved = selection.deletedWorkflowIds.filter((id) => movedOwnerNames.has(id));
-		if (moved.length > 0) {
-			throw new PromotionsWorkflowsMovedCrossProjectError(
-				moved,
-				new Map(moved.map((id) => [id, `now in project "${movedOwnerNames.get(id)}" here`])),
 			);
 		}
 	}

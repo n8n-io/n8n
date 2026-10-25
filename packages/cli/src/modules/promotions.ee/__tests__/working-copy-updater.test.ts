@@ -380,50 +380,6 @@ describe('WorkingCopyUpdater', () => {
 			);
 		});
 
-		it('rejects the delete of a workflow that moved to another project, and names the project', async () => {
-			await writeTree(exportFolder, {
-				'manifest.json': manifestFile(makeManifest({ projects: [alpha], workflows: [wf('w1')] })),
-				'projects/alpha/project.json': projectFile,
-				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
-			});
-
-			await expect(
-				updater.assertSelectionFitsBranch(
-					exportFolder,
-					selection({ deletedWorkflowIds: ['w1'] }),
-					new Map([['w1', 'Ops']]),
-				),
-			).rejects.toMatchObject({
-				message: expect.stringContaining('w1 (now in project "Ops" here)'),
-				meta: { workflowIds: ['w1'] },
-			});
-			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
-				workflowFile('w1'),
-			);
-		});
-
-		it('still rejects a foreign id as not belonging to the project, not as a move', async () => {
-			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
-			const other = { id: 'w-other', name: 'WOther', target: 'projects/beta/workflows/w-other' };
-			await writeTree(exportFolder, {
-				'manifest.json': manifestFile(
-					makeManifest({ projects: [alpha, beta], workflows: [wf('w1'), other] }),
-				),
-				'projects/alpha/project.json': projectFile,
-				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
-				'projects/beta/project.json': JSON.stringify({ id: beta.id, name: beta.name }),
-				'projects/beta/workflows/w-other/workflow.json': workflowFile('w-other'),
-			});
-
-			await expect(
-				updater.assertSelectionFitsBranch(
-					exportFolder,
-					selection({ deletedWorkflowIds: ['w-other'] }),
-					new Map([['w-other', 'Beta']]),
-				),
-			).rejects.toThrow('Deleted workflows do not belong to the selected project: w-other');
-		});
-
 		it('rejects a delete when two workflows share an id', async () => {
 			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
 			await writeTree(exportFolder, {

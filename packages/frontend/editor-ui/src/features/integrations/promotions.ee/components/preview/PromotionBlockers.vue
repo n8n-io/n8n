@@ -118,6 +118,34 @@ const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
 	};
 };
 
+const MOVED_DETAIL = {
+	workflow: {
+		existing: 'promotions.preview.blockers.movedWorkflow',
+		newProject: 'promotions.preview.blockers.movedWorkflow.newProject',
+	},
+	folder: {
+		existing: 'promotions.preview.blockers.movedFolder',
+		newProject: 'promotions.preview.blockers.movedFolder.newProject',
+	},
+} as const;
+
+function movedRow(
+	type: keyof typeof MOVED_DETAIL,
+	move: ApplyCheckResult['movedWorkflows'][number],
+): BlockerRow {
+	return {
+		key: `moved:${type}:${move.id}`,
+		icon: resourceIcon(type),
+		name: move.name,
+		type,
+		usedBy: [],
+		status: status('moved'),
+		detail: i18n.baseText(MOVED_DETAIL[type][move.projectExists ? 'existing' : 'newProject'], {
+			interpolate: { project: move.project.name, instanceProject: move.instanceProject.name },
+		}),
+	};
+}
+
 const blockerRows = computed<BlockerRow[]>(() => {
 	const { preflight, movedWorkflows, movedFolders } = props.check;
 	return [
@@ -143,44 +171,8 @@ const blockerRows = computed<BlockerRow[]>(() => {
 			detail: i18n.baseText('promotions.preview.blockers.access'),
 		})),
 		...bindings.hardConflicts.value.map(conflictRow),
-		...movedWorkflows.map((workflow) => ({
-			key: `moved:${workflow.id}`,
-			icon: resourceIcon('workflow'),
-			name: workflow.name,
-			type: 'workflow' as const,
-			usedBy: [],
-			status: status('moved'),
-			detail: i18n.baseText(
-				workflow.projectExists
-					? 'promotions.preview.blockers.movedWorkflow'
-					: 'promotions.preview.blockers.movedWorkflow.newProject',
-				{
-					interpolate: {
-						project: workflow.project.name,
-						instanceProject: workflow.instanceProject.name,
-					},
-				},
-			),
-		})),
-		...movedFolders.map((folder) => ({
-			key: `moved:folder:${folder.id}`,
-			icon: resourceIcon('folder'),
-			name: folder.name,
-			type: 'folder' as const,
-			usedBy: [],
-			status: status('moved'),
-			detail: i18n.baseText(
-				folder.projectExists
-					? 'promotions.preview.blockers.movedFolder'
-					: 'promotions.preview.blockers.movedFolder.newProject',
-				{
-					interpolate: {
-						project: folder.project.name,
-						instanceProject: folder.instanceProject.name,
-					},
-				},
-			),
-		})),
+		...movedWorkflows.map((move) => movedRow('workflow', move)),
+		...movedFolders.map((move) => movedRow('folder', move)),
 	];
 });
 

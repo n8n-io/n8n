@@ -66,6 +66,7 @@ import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
+import { projectHolding } from './branch-placement';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { diffPackageFiles } from './diff-package-files';
 import {
@@ -178,9 +179,16 @@ export class PromotionChangeService {
 	): Promise<PromotionPreview> {
 		const comparison = await this.compareProject(user, projectId, direction);
 		const { branch, instance, archiveState } = comparison;
+		// Promote compares with the branch manifest to see renames and moves. A branch without
+		// package files has no manifest yet.
+		const promoteBase =
+			direction === 'promote' && branch.files.length > 0
+				? await this.readBranchManifest(branch)
+				: null;
 		const branchSide: PreviewSide = {
 			manifest:
-				comparison.branchManifest ?? (await this.readPromoteBaseManifest(branch, projectId)),
+				comparison.branchManifest ??
+				(promoteBase && scopeManifestToProject(promoteBase, projectId)),
 			blobByPath: blobsByPath(branch.files),
 		};
 		const instanceSide: PreviewSide = {
@@ -204,92 +212,50 @@ export class PromotionChangeService {
 		});
 		return {
 			...toChanges(comparison, query),
-			resources:
-				direction === 'promote'
-					? await this.markCrossProjectMoves(projectId, resources, branch)
-					: resources,
+			resources: promoteBase
+				? await this.markCrossProjectMoves(projectId, resources, promoteBase)
+				: resources,
 			dependencies,
 		};
 	}
 
 	/**
-	 * A project promote refuses a workflow that moved between projects (`assertSelectionFitsBranch`),
-	 * so the preview names the other project on both sides of the move:
+	 * A project promote refuses a workflow that moved between projects, so the preview names the
+	 * other project on both sides of the move:
 	 * - a deleted workflow that another project owns now on this instance moved out;
 	 * - an added workflow that the branch holds under another project moved in.
 	 */
 	private async markCrossProjectMoves(
 		projectId: string,
 		resources: PromotionResource[],
-		branch: BranchPackage,
+		branchManifest: PackageManifest,
 	): Promise<PromotionResource[]> {
-		const workflowsWith = (change: PromotionResource['change']) =>
-			resources.filter((resource) => resource.type === 'workflow' && resource.change === change);
-		const deleted = workflowsWith('deleted');
-		const added = workflowsWith('added');
-
+		const deletedIds = resources
+			.filter(({ type, change }) => type === 'workflow' && change === 'deleted')
+			.map(({ id }) => id);
 		const owners =
-			deleted.length > 0
-				? await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
-						deleted.map(({ id }) => id),
-					)
+			deletedIds.length > 0
+				? await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(deletedIds)
 				: new Map<string, { id: string; name: string }>();
-		const branchProjects =
-			added.length > 0 && branch.commitSha !== null
-				? await this.readBranchWorkflowProjects(branch)
-				: new Map<string, { id: string; name: string }>();
-
-		const movedOut = new Map(
-			deleted.flatMap(({ key, id }) => {
-				const owner = owners.get(id);
-				return owner && owner.id !== projectId
-					? [[key, { id: owner.id, name: owner.name }] as const]
-					: [];
-			}),
+		const branchTargets = new Map(
+			(branchManifest.workflows ?? []).map(({ id, target }) => [id, target]),
 		);
-		const movedIn = new Map(
-			added.flatMap(({ key, id }) => {
-				const project = branchProjects.get(id);
-				return project && project.id !== projectId ? [[key, project] as const] : [];
-			}),
-		);
-		if (movedOut.size === 0 && movedIn.size === 0) return resources;
+		const elsewhere = (project: { id: string; name: string } | undefined) =>
+			project && project.id !== projectId ? { id: project.id, name: project.name } : undefined;
+		const branchProjectOf = (id: string) => {
+			const target = branchTargets.get(id);
+			return target === undefined ? undefined : projectHolding(branchManifest.projects, target);
+		};
 
 		return resources.map((resource) => {
-			const movedToProject = movedOut.get(resource.key);
+			if (resource.type !== 'workflow') return resource;
+			const movedToProject =
+				resource.change === 'deleted' ? elsewhere(owners.get(resource.id)) : undefined;
 			if (movedToProject) return { ...resource, movedToProject };
-			const movedFromProject = movedIn.get(resource.key);
+			const movedFromProject =
+				resource.change === 'added' ? elsewhere(branchProjectOf(resource.id)) : undefined;
 			return movedFromProject ? { ...resource, movedFromProject } : resource;
 		});
-	}
-
-	/**
-	 * Workflow id -> the project that holds it on the branch, across every project of the package.
-	 * Empty when the branch has no readable manifest, for example before the first promote. The
-	 * marker only helps: promote refuses a moved workflow and names its project either way.
-	 */
-	private async readBranchWorkflowProjects(
-		branch: BranchPackage,
-	): Promise<Map<string, { id: string; name: string }>> {
-		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
-		let raw: string | undefined;
-		try {
-			raw = (await branch.readFiles([manifestPath])).get(manifestPath);
-		} catch (error) {
-			this.logger.debug('No branch manifest to mark workflows that moved into the project', {
-				error,
-			});
-			return new Map();
-		}
-		const manifest = parsePackageManifest(raw);
-		if (!manifest) return new Map();
-		const projects = manifest.projects ?? [];
-		return new Map(
-			(manifest.workflows ?? []).flatMap(({ id, target }) => {
-				const project = projects.find((p) => target.startsWith(`${p.target}/`));
-				return project ? [[id, { id: project.id, name: project.name }] as const] : [];
-			}),
-		);
 	}
 
 	/**
@@ -579,27 +545,20 @@ export class PromotionChangeService {
 		branch: BranchPackage,
 		projectId: string,
 	): Promise<DesiredPackage> {
+		const manifest = await this.readBranchManifest(branch);
+		return { files: branch.files, manifest: scopeManifestToProject(manifest, projectId) };
+	}
+
+	/** The whole branch manifest, across every project of the package. */
+	private async readBranchManifest(branch: BranchPackage): Promise<PackageManifest> {
 		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
-		const manifest = parseBranchManifest(
+		const manifest = parsePackageManifest(
 			(await branch.readFiles([manifestPath])).get(manifestPath),
-			projectId,
 		);
 		if (!manifest) {
 			throw new BadRequestError('The package manifest on the branch cannot be read');
 		}
-		return { files: branch.files, manifest };
-	}
-
-	/**
-	 * Promote compares with the branch manifest to see renames and moves.
-	 * A branch without package files has no manifest yet.
-	 */
-	private async readPromoteBaseManifest(
-		branch: BranchPackage,
-		projectId: string,
-	): Promise<PackageManifest | null> {
-		if (branch.files.length === 0) return null;
-		return (await this.readBranchDesired(branch, projectId)).manifest;
+		return manifest;
 	}
 
 	/**
