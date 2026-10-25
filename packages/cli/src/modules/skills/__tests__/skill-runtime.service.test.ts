@@ -141,6 +141,15 @@ describe('SkillRuntimeService', () => {
 			});
 		});
 
+		it('returns the path and content of each saved file', async () => {
+			row = versionRow(row.skill, 1, { id: 'version-1' }, [
+				{ path: 'ref.md', content: 'Reference' },
+			]);
+			expect((await runtime.readForAssistant(context, 'skill-1'))?.files).toEqual([
+				{ path: 'ref.md', content: 'Reference' },
+			]);
+		});
+
 		it('allows instance skills without project access', async () => {
 			projectScope.getProjectIds.mockResolvedValue([]);
 			expect(await runtime.readForAssistant(context, 'skill-1')).not.toBeNull();
@@ -231,6 +240,18 @@ describe('SkillRuntimeService', () => {
 			]);
 			expect(skills.findLatestSaved).not.toHaveBeenCalled();
 			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+		});
+
+		it('leaves out a ref to a missing skill', async () => {
+			skills.findLatestVersionIds.mockResolvedValue(new Map([['skill_a', 'skill_a-v1']]));
+			skills.findSkillIdsOfVersions.mockResolvedValue(new Map());
+
+			const versionByRef = await runtime.snapshotForPublish(
+				[{ id: 'skill_a' }, { id: 'skill_gone' }],
+				TX_CTX,
+			);
+
+			expect([...versionByRef]).toEqual([['skill_a', 'skill_a-v1']]);
 		});
 	});
 
@@ -347,6 +368,20 @@ describe('SkillRuntimeService', () => {
 
 			expect(await runtime.findVersionNumbers(['skill_a-v2'], TX_CTX)).toBe(numbers);
 			expect(skills.findVersionNumbers).toHaveBeenCalledWith(['skill_a-v2'], TX_CTX);
+		});
+
+		it('reads outside a transaction when the caller gives no context', async () => {
+			skills.findByIds.mockResolvedValue([]);
+			skills.findVersionsByIds.mockResolvedValue(new Map());
+			skills.findVersionNumbers.mockResolvedValue(new Map());
+
+			await runtime.findTargets(['skill_a']);
+			await runtime.resolveVersions(['skill_a-v1']);
+			await runtime.findVersionNumbers(['skill_a-v1']);
+
+			expect(skills.findByIds).toHaveBeenCalledWith(['skill_a'], {});
+			expect(skills.findVersionsByIds).toHaveBeenCalledWith(['skill_a-v1'], {});
+			expect(skills.findVersionNumbers).toHaveBeenCalledWith(['skill_a-v1'], {});
 		});
 	});
 });

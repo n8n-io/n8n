@@ -508,7 +508,7 @@ export class SkillService {
 	 */
 	private async deleteSkill(
 		skillId: string,
-		agentProjectIds: string[] | 'all' = 'all',
+		agentProjectIds: string[] | 'all',
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {

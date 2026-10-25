@@ -60,6 +60,7 @@ describe('AgentSkillUsage', () => {
 				pins: [
 					{ ...agent, agentId: 'agent-1', skillVersionId: 'skill_a-v2' },
 					{ ...agent, agentId: 'agent-2', skillVersionId: null },
+					{ ...agent, agentId: 'agent-3', skillVersionId: 'skill_a-gone' },
 				],
 				hiddenAgents: 1,
 			});
@@ -70,15 +71,19 @@ describe('AgentSkillUsage', () => {
 				pins: [
 					{ ...agent, agentId: 'agent-1', version: 2 },
 					{ ...agent, agentId: 'agent-2', version: null },
+					{ ...agent, agentId: 'agent-3', version: null },
 				],
 				hiddenAgents: 1,
 			});
-			expect(skillRuntime.findVersionNumbers).toHaveBeenCalledWith(['skill_a-v2'], TX_CTX);
+			expect(skillRuntime.findVersionNumbers).toHaveBeenCalledWith(
+				['skill_a-v2', 'skill_a-gone'],
+				TX_CTX,
+			);
 		});
 	});
 
 	describe('assertRenameKeepsNamesApart', () => {
-		function givenFollower(otherName: string) {
+		function givenFollower(otherName: string | undefined) {
 			agentSkills.findFollowingAgents.mockResolvedValue([{ id: 'agent-1', name: 'Sales bot' }]);
 			agentSkills.findDependencies.mockResolvedValue(
 				new Map([
@@ -139,6 +144,14 @@ describe('AgentSkillUsage', () => {
 				],
 				TX_CTX,
 			);
+		});
+
+		it('allows a rename when the other skill has no saved version', async () => {
+			givenFollower(undefined);
+
+			await expect(
+				service.assertRenameKeepsNamesApart('skill_a', 'Brand voice', 'pricing', TX_CTX),
+			).resolves.toBeUndefined();
 		});
 
 		it('allows a rename that clashes on no agent', async () => {

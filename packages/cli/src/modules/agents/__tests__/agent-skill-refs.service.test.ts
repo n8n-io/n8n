@@ -689,6 +689,19 @@ describe('AgentSkillRefsService attach check', () => {
 		);
 	});
 
+	it('restores no refs for a version without skills', async () => {
+		agentSkills.findPins.mockResolvedValue([]);
+
+		await service.restoreDraftRefs(
+			{ id: 'agent-1' },
+			{ versionId: 'agent-version-1' },
+			undefined,
+			TX_CTX,
+		);
+
+		expect(agentSkills.replaceDependencies).toHaveBeenCalledWith('agent-1', [], TX_CTX);
+	});
+
 	describe('isAttachable', () => {
 		const agent = { id: 'agent-1', projectId: PROJECT };
 
@@ -786,6 +799,29 @@ describe('AgentSkillRefsService attach check', () => {
 				UserError,
 				'Skill "Tone" (skill_new) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.',
 			);
+		});
+
+		it('names a rejected skill by its id when it has no saved version', async () => {
+			givenSkills([{ id: 'skill_new', where: { agentId: 'agent-2' }, name: 'Tone' }]);
+			skillRuntime.runtimeNames.mockResolvedValue(() => undefined);
+
+			await expectError(
+				service.checkRefs(agent, [{ id: 'skill_new' }]),
+				UserError,
+				'Skill "skill_new" (skill_new) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.',
+			);
+		});
+
+		it('finds no clash for skills without a saved version', async () => {
+			givenSkills([
+				{ id: 'skill_old', where: { projectId: PROJECT }, name: 'Tone' },
+				{ id: 'skill_new', name: 'Tone' },
+			]);
+			skillRuntime.runtimeNames.mockResolvedValue(() => undefined);
+
+			await expect(
+				service.checkRefs(agent, [{ id: 'skill_old' }, { id: 'skill_new' }]),
+			).resolves.toEqual([{ id: 'skill_old' }, { id: 'skill_new' }]);
 		});
 
 		it('rejects a new ref whose name clashes with a skill of the agent', async () => {

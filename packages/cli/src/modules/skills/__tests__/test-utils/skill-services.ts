@@ -1,5 +1,5 @@
 import type { ProjectScopeService } from '@n8n/backend-services';
-import type { OperationContext, TransactionRunner } from '@n8n/db';
+import type { OperationContext, TransactionRunner, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { SkillFile } from '../../database/entities/skill-file.entity';
@@ -11,6 +11,7 @@ import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import type { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
 import { SkillService } from '../../services/skill.service';
 import type { SkillsTelemetry } from '../../services/skills-telemetry.service';
+import type { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import type { ResolvedSkillRow } from '../../utils/skill-content';
 import { skillContentHash } from '../../utils/skill-content-hash';
 
@@ -80,6 +81,8 @@ export function createSkillServices() {
 	const txRunner = mock<TransactionRunner>();
 	const projectScope = mock<ProjectScopeService>();
 	const telemetry = mock<SkillsTelemetry>();
+	const users = mock<UserRepository>();
+	const assistantGate = mock<AssistantSkillsFlagGate>();
 	const access = new SkillAccessService(skills, projectScope, skillUsage);
 	const runtime = new SkillRuntimeService(skills, projectScope, access);
 	const service = new SkillService(
@@ -87,14 +90,25 @@ export function createSkillServices() {
 		skills,
 		txRunner,
 		projectScope,
-		mock(),
+		users,
 		skillUsage,
 		access,
 		runtime,
 		telemetry,
-		mock(),
+		assistantGate,
 	);
-	return { skills, skillUsage, txRunner, projectScope, telemetry, access, runtime, service };
+	return {
+		skills,
+		skillUsage,
+		txRunner,
+		projectScope,
+		telemetry,
+		users,
+		assistantGate,
+		access,
+		runtime,
+		service,
+	};
 }
 
 /** The mock answers that most skills tests start from. */

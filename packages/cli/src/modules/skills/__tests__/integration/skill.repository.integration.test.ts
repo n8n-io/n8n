@@ -23,6 +23,7 @@ import {
 } from '../../database/repositories/skill.repository';
 import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillService } from '../../services/skill.service';
+import * as fixtures from '../../testing';
 import { PostHogClient } from '@/posthog';
 
 import { createOwner, createUser } from '@test-integration/db/users';
@@ -714,6 +715,37 @@ describe('SkillRepository', () => {
 				await skills.lockForEdit([id], ctx);
 				await skills.lockForPublish([id], ctx);
 			});
+		});
+	});
+
+	describe('test fixtures', () => {
+		it('create an instance skill and its next version with the default content', async () => {
+			const { id, versionId } = await fixtures.createSkill();
+			const next = await fixtures.createSkillVersion(id);
+
+			expect(id).toMatch(/^skill_/);
+			expect(next.version).toBe(2);
+			expect(next.versionId).not.toBe(versionId);
+			expect(await fixtures.findSkill(id)).toEqual({
+				id,
+				projectId: null,
+				agentId: null,
+				source: 'ui',
+				availableToAssistant: false,
+				createdById: null,
+			});
+			expect(await fixtures.findLatestSkillVersion(id)).toMatchObject({
+				id: next.versionId,
+				version: 2,
+				name: 'Brand voice',
+				files: [],
+			});
+			expect(await fixtures.findSkillIds()).toEqual([id]);
+		});
+
+		it('answer null for a skill that does not exist', async () => {
+			expect(await fixtures.findSkill('skill_gone')).toBeNull();
+			expect(await fixtures.findLatestSkillVersion('skill_gone')).toBeNull();
 		});
 	});
 });

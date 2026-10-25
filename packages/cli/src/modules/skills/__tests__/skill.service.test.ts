@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
+import type { ListSkillsQueryDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -23,8 +24,17 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 }));
 
 describe('SkillService', () => {
-	const { skills, skillUsage, txRunner, projectScope, access, telemetry, service } =
-		createSkillServices();
+	const {
+		skills,
+		skillUsage,
+		txRunner,
+		projectScope,
+		access,
+		telemetry,
+		users,
+		assistantGate,
+		service,
+	} = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => resetSkillMocks({ skills, skillUsage, txRunner }));
@@ -719,8 +729,196 @@ describe('SkillService', () => {
 			expect(skills.deleteSkill).not.toHaveBeenCalled();
 		});
 
+		it('names the skill by its id when it has no saved version', async () => {
+			skills.findByIds.mockResolvedValue([skillRow('skill_a')]);
+			skillUsage.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 1 });
+
+			await expectError(
+				service.delete(user, 'skill_a'),
+				ConflictError,
+				'Skill "skill_a" is used by 1 agent in other projects and cannot be deleted.',
+			);
+		});
+
 		it('throws NotFoundError for a missing skill', async () => {
 			await expect(service.delete(user, 'skill_gone')).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('read models', () => {
+		const date = new Date('2026-01-01T00:00:00.000Z');
+		const listed = (
+			id: string,
+			target: Partial<Pick<Skill, 'projectId' | 'agentId'>>,
+			createdById: string | null = null,
+		) =>
+			Object.assign(skillRow(id, target), {
+				createdById,
+				source: 'ui',
+				availableToAssistant: false,
+				createdAt: date,
+				updatedAt: date,
+			});
+		const summary = (name: string) => ({ name, description: `${name} description`, version: 1 });
+
+		beforeEach(() => {
+			projectScope.getProjectIds.mockResolvedValue(null);
+			skillUsage.findAgents.mockResolvedValue(new Map());
+			skillUsage.countUsingAgents.mockResolvedValue(new Map());
+			skills.findProjects.mockResolvedValue(new Map());
+		});
+
+		it('lists each skill with its project, agent and creator, and leaves out one without a version', async () => {
+			skills.findVisiblePage.mockResolvedValue({
+				count: 5,
+				skills: [
+					listed('skill_project', { projectId: PROJECT }, 'user-1'),
+					listed('skill_lost_project', { projectId: 'project-gone' }),
+					listed('skill_agent', { agentId: 'agent-1' }),
+					listed('skill_lost_agent', { agentId: 'agent-gone' }),
+					listed('skill_unsaved', {}),
+				],
+			});
+			skillUsage.findAgents.mockResolvedValue(
+				new Map([['agent-1', { name: 'Support bot', projectId: PROJECT }]]),
+			);
+			skills.findLatestSummaries.mockResolvedValue(
+				new Map([
+					['skill_project', summary('Project')],
+					['skill_lost_project', summary('Lost project')],
+					['skill_agent', summary('Agent')],
+					['skill_lost_agent', summary('Lost agent')],
+				]),
+			);
+			skillUsage.countUsingAgents.mockResolvedValue(new Map([['skill_project', 2]]));
+			skills.findProjects.mockResolvedValue(
+				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const }]]),
+			);
+			users.findManyByIds.mockResolvedValue([
+				{ id: 'user-1', email: null, firstName: null, lastName: null } as unknown as User,
+			]);
+
+			const { count, data } = await service.list(user, {} as ListSkillsQueryDto);
+
+			expect(count).toBe(5);
+			expect(users.findManyByIds).toHaveBeenCalledWith(['user-1']);
+			expect(skills.findProjects).toHaveBeenCalledWith([PROJECT, 'project-gone', PROJECT]);
+			expect(
+				data.map(
+					({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						agentName,
+						createdBy,
+						usedByAgents,
+					}) => ({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						agentName,
+						createdBy,
+						usedByAgents,
+					}),
+				),
+			).toEqual([
+				{
+					id: 'skill_project',
+					scope: 'project',
+					projectId: PROJECT,
+					projectName: 'Marketing',
+					projectType: 'team',
+					agentName: null,
+					createdBy: { id: 'user-1', email: null, firstName: null, lastName: null },
+					usedByAgents: 2,
+				},
+				{
+					id: 'skill_lost_project',
+					scope: 'project',
+					projectId: 'project-gone',
+					projectName: null,
+					projectType: null,
+					agentName: null,
+					createdBy: null,
+					usedByAgents: 0,
+				},
+				{
+					id: 'skill_agent',
+					scope: 'agent',
+					projectId: PROJECT,
+					projectName: 'Marketing',
+					projectType: 'team',
+					agentName: 'Support bot',
+					createdBy: null,
+					usedByAgents: 0,
+				},
+				{
+					id: 'skill_lost_agent',
+					scope: 'agent',
+					projectId: null,
+					projectName: null,
+					projectType: null,
+					agentName: null,
+					createdBy: null,
+					usedByAgents: 0,
+				},
+			]);
+		});
+
+		it('get throws NotFoundError for a skill without a saved version', async () => {
+			vi.spyOn(access, 'requireAccess').mockResolvedValue(listed('skill_a', {}));
+			skills.findLatestSummaries.mockResolvedValue(new Map([['skill_a', summary('A')]]));
+
+			await expect(service.get(user, 'skill_a')).rejects.toThrow(NotFoundError);
+		});
+
+		it('create throws NotFoundError when the new skill is gone before the read', async () => {
+			vi.spyOn(access, 'resolveCreateTarget').mockResolvedValue({
+				projectId: PROJECT,
+				agentId: null,
+			});
+
+			await expect(
+				service.create(user, {
+					scope: 'project',
+					projectId: PROJECT,
+					skill: { name: 'Brand voice', description: 'Write in our voice', instructions: 'Hi.' },
+				}),
+			).rejects.toThrow(NotFoundError);
+			expect(telemetry.created).toHaveBeenCalled();
+		});
+	});
+
+	describe('update', () => {
+		it('reports a new version under the skill it read when only the availability changes', async () => {
+			const skill = skillRow('skill_a', { projectId: PROJECT });
+			assistantGate.isEnabled.mockResolvedValue(true);
+			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);
+			projectScope.getProjectIds.mockResolvedValue(null);
+			const setAvailability = vi
+				.spyOn(service, 'setAssistantAvailability')
+				.mockResolvedValue(undefined);
+			const content = toAgentSkill(versionRow(skill, 2));
+			vi.spyOn(service, 'saveTrusted').mockResolvedValue({
+				created: true,
+				versionId: 'skill_a-v2',
+				version: 2,
+				skill: content,
+				followingAgentIds: [],
+			});
+
+			await service.update(user, 'skill_a', {
+				availableToAssistant: true,
+				instructions: 'New.',
+				baseSkillHash: getSkillHash(content),
+			});
+
+			expect(setAvailability).toHaveBeenCalledWith('skill_a', true, skill, TX_CTX);
+			expect(telemetry.updated).toHaveBeenCalledWith('user-1', skill, 'ui', 2, false);
 		});
 	});
 

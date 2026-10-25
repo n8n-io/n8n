@@ -151,7 +151,8 @@ function renderModal({
 					template: `<textarea :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />`,
 				},
 				N8nButton: {
-					template: '<button v-bind="$attrs" :disabled="disabled"><slot /></button>',
+					template:
+						'<button v-bind="$attrs" :disabled="disabled"><slot name="icon" /><slot /></button>',
 					props: ['variant', 'disabled'],
 				},
 				N8nCallout: { template: '<div v-bind="$attrs"><slot /></div>' },
@@ -565,6 +566,21 @@ describe('AgentSkillModal', () => {
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
 
 		await waitFor(() => expect(getByTestId('agent-modal-title-input')).toHaveFocus());
+	});
+
+	it('offers to remove an inline skill of an agent without skill refs', async () => {
+		const onRemove = vi.fn();
+		const { getByTestId } = renderModal({
+			skill: SAVED_SKILL,
+			skillId: 's1',
+			skillRefsEnabled: false,
+			onRemove,
+		});
+
+		expect(getByTestId('agent-skill-remove')).toHaveTextContent('agents.builder.skills.remove');
+		await fireEvent.click(getByTestId('agent-skill-remove'));
+
+		expect(onRemove).toHaveBeenCalledWith('s1');
 	});
 
 	it('stays open with the edits and the name error when the save is refused', async () => {
