@@ -1594,7 +1594,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			params.agentId.value,
 			channel.value,
 		);
-		// A new system session starts in the project of the query. An existing one keeps its own.
 		const url =
 			channel.value === 'system'
 				? `${baseUrl}?projectId=${encodeURIComponent(params.projectId.value)}`
