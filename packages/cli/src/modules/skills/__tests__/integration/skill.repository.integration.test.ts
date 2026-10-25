@@ -16,10 +16,13 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
-import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
-import { SkillRepository, type SkillVisibility } from '../database/repositories/skill.repository';
-import { SkillRuntimeService } from '../services/skill-runtime.service';
-import { SkillService } from '../services/skill.service';
+import { skillContentHash, type SkillContent } from '../../utils/skill-content-hash';
+import {
+	SkillRepository,
+	type SkillVisibility,
+} from '../../database/repositories/skill.repository';
+import { SkillRuntimeService } from '../../services/skill-runtime.service';
+import { SkillService } from '../../services/skill.service';
 import { PostHogClient } from '@/posthog';
 
 import { createOwner, createUser } from '@test-integration/db/users';

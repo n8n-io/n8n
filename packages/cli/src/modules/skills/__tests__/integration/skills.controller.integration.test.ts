@@ -13,9 +13,9 @@ import { randomUUID } from 'node:crypto';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { SkillsGate } from '../services/skills-gate';
-import { SkillRepository } from '../database/repositories/skill.repository';
-import { SkillService } from '../services/skill.service';
+import { SkillsGate } from '../../services/skills-gate';
+import { SkillRepository } from '../../database/repositories/skill.repository';
+import { SkillService } from '../../services/skill.service';
 import { PostHogClient } from '@/posthog';
 
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';

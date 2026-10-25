@@ -27,7 +27,7 @@ skills/
   errors/              SkillNameTakenError
   utils/               shared types, content helpers, hashes, name rules
   sources/             (Skill Sync) source clients and their registry
-  __tests__/           unit tests, *.integration.test.ts files, test-utils/
+  __tests__/           unit tests, integration/, test-utils/
 ```
 
 Put a file in the folder of its role. Keep the n8n file infixes: `.service.ts`, `.controller.ts`, `.repository.ts`, `.entity.ts`, `.contracts.ts` and `.error.ts`.
@@ -122,5 +122,5 @@ Add a contract only where the implementation varies or a caller cannot import th
 ## Tests
 
 - Unit tests mock the repository and the `SkillUsageProxy`. They need no agents code. `__tests__/test-utils/skill-services.ts` builds the three services over mocks.
-- Integration tests of this module are `*.integration.test.ts` files in `__tests__/`.
+- Integration tests of this module are `*.integration.test.ts` files in `__tests__/integration/`.
 - Tests outside the module use the fixtures in `testing.ts` to create skills and versions, read them back, and clear the tables. They never import the repository or the entities.
