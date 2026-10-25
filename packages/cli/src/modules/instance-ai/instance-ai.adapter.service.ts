@@ -253,7 +253,7 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import type { TemporaryWorkflowMarkers } from './turn-setup/assistant-turn-runtime';
+import type { TemporaryWorkflowMarkers } from './temporary-workflow-markers';
 import {
 	buildToolAgentRequest,
 	declaredToolArguments,
@@ -1888,10 +1888,6 @@ export class InstanceAiAdapterService {
 					},
 				);
 
-				// Thread state is not part of the transaction. A failed write leaves the
-				// workflow unmarked, so the run does not archive it.
-				if (options?.markAsAiTemporary && markers) await markers.mark(saved.id);
-
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.
 				const nodes = sanitizeCredentialReferencesForSave(json.nodes);
@@ -1906,6 +1902,10 @@ export class InstanceAiAdapterService {
 
 				let updated: WorkflowEntity;
 				try {
+					// Thread state is not part of the transaction above. Marking here puts a
+					// failed write on the cleanup path, so the shell does not stay behind.
+					if (options?.markAsAiTemporary && markers) await markers.mark(saved.id);
+
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
 					// oxlint-disable-next-line typescript/no-deprecated

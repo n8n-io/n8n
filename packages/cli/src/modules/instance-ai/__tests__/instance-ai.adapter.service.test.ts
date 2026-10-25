@@ -1980,10 +1980,10 @@ import type {
 	OrchestrationContext,
 } from '@n8n/instance-ai';
 
-import type { TemporaryWorkflowMarkers } from '../turn-setup/assistant-turn-runtime';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
+import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -4826,6 +4826,24 @@ describe('createWorkflowAdapter', () => {
 
 			expect(markers.mark).toHaveBeenCalledWith('wf-new');
 			expect(mockAiBuilderTemporaryWorkflowRepository.mark).not.toHaveBeenCalled();
+		});
+
+		it('archives the shell when the store cannot mark it', async () => {
+			const markers = createMarkers();
+			const markError = new Error('thread write failed');
+			markers.mark.mockRejectedValueOnce(markError);
+			const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests({
+				temporaryWorkflowMarkers: markers,
+			});
+
+			await expect(
+				adapter.createFromWorkflowJSON(minimalWorkflowJSON, { markAsAiTemporary: true }),
+			).rejects.toBe(markError);
+
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+			expect(mockWorkflowService.archive).toHaveBeenCalledWith(mockUser, 'wf-new', {
+				skipArchived: true,
+			});
 		});
 
 		it('clears the marker in the store when promoting the main workflow', async () => {

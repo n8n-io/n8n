@@ -1,9 +1,7 @@
 import { patchThread } from '@n8n/instance-ai';
 
-import type {
-	AssistantTurnMemory,
-	TemporaryWorkflowMarkers,
-} from '../turn-setup/assistant-turn-runtime';
+import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
+import type { AssistantTurnMemory } from '../turn-setup/assistant-turn-runtime';
 
 /** Thread metadata key with the ids of the thread's temporary workflows. */
 export const TEMPORARY_WORKFLOWS_METADATA_KEY = 'assistantTemporaryWorkflowIds';
