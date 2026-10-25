@@ -12,7 +12,8 @@ import {
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import type { INodeUi } from '@/Interface';
-import { useThread } from '../../instanceAi.store';
+import type { ConfirmationSubmit } from '../../confirmationTransport';
+import { useOptionalThread } from '../../instanceAi.store';
 import type { TerminalState, WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
 import { useWorkflowSetupApply } from './useWorkflowSetupApply';
@@ -57,10 +58,12 @@ interface ProvideOptions {
 	projectId: Ref<string | undefined>;
 	workflowId: Ref<string | undefined>;
 	credentialFlow: Ref<InstanceAiCredentialFlow | undefined>;
+	/** Sends the answer through the caller, such as the Assistant agent chat. Defaults to the thread. */
+	submit?: () => ConfirmationSubmit | undefined;
 }
 
 export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetupContext {
-	const thread = useThread();
+	const thread = useOptionalThread();
 	const { hydrateCredentialTestResults } = useCredentialTestInBackground();
 
 	hydrateCredentialTestResults(
@@ -77,6 +80,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	const applyMachine = useWorkflowSetupApply({
 		requestId: opts.requestId,
 		thread,
+		submit: opts.submit,
 	});
 
 	const currentStepIndex = ref(0);

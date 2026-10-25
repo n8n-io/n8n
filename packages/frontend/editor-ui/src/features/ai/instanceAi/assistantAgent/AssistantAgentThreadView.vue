@@ -13,6 +13,7 @@ import { countAttachedNodes } from '../utils/buildNodesAttachment';
 import {
 	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
 	ASSISTANT_AGENT_ID,
+	ASSISTANT_AGENT_PROJECT_ID,
 	ASSISTANT_AGENT_THREAD_ID,
 	consumePendingAssistantAgentMessage,
 } from './assistantAgentThreads';
@@ -22,6 +23,7 @@ import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 const props = defineProps<{ threadId: string; projectId: string }>();
 
 provide(ASSISTANT_AGENT_THREAD_ID, props.threadId);
+provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 
 const telemetry = useTelemetry();
 const rootStore = useRootStore();

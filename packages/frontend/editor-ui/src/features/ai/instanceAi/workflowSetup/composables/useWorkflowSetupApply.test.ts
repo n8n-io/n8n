@@ -240,4 +240,40 @@ describe('useWorkflowSetupApply', () => {
 		expect(h.applyMachine.terminalState.value).toBeNull();
 		expect(h.thread.resolveConfirmation).not.toHaveBeenCalled();
 	});
+
+	describe('with a submit callback', () => {
+		function setupSubmitHarness() {
+			const submit = vi.fn();
+			const applyMachine = useWorkflowSetupApply({
+				requestId: ref('req-1'),
+				thread: undefined,
+				submit: () => submit,
+			});
+			return { submit, applyMachine };
+		}
+
+		it('sends the apply through the callback and settles at once', async () => {
+			const { submit, applyMachine } = setupSubmitHarness();
+
+			const result = await applyMachine.apply({
+				nodeCredentials: { Slack: { slackApi: 'cred-1' } },
+			});
+
+			expect(submit).toHaveBeenCalledWith({
+				kind: 'setupWorkflowApply',
+				nodeCredentials: { Slack: { slackApi: 'cred-1' } },
+			});
+			expect(result).toBeUndefined();
+			expect(applyMachine.terminalState.value).toBe('applied');
+		});
+
+		it('sends the deferral through the callback', async () => {
+			const { submit, applyMachine } = setupSubmitHarness();
+
+			await applyMachine.defer();
+
+			expect(submit).toHaveBeenCalledWith({ kind: 'approval', approved: false });
+			expect(applyMachine.terminalState.value).toBe('deferred');
+		});
+	});
 });
