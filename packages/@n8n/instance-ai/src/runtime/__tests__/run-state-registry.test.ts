@@ -433,6 +433,20 @@ describe('RunStateRegistry', () => {
 			expect(status.backgroundTasks.map((t) => t.taskId)).toEqual(['task-1', 'task-3']);
 		});
 
+		it('includes detachedFromTurn only for tasks detached from their turn', () => {
+			const tasks: BackgroundTaskStatusSnapshot[] = [
+				createBackgroundTask({ taskId: 'task-1' }),
+				createBackgroundTask({ taskId: 'task-2', detachedFromTurn: true }),
+				createBackgroundTask({ taskId: 'task-3', detachedFromTurn: false }),
+			];
+
+			const status = registry.getThreadStatus('thread-1', tasks);
+
+			expect(status.backgroundTasks[0]).not.toHaveProperty('detachedFromTurn');
+			expect(status.backgroundTasks[1]).toHaveProperty('detachedFromTurn', true);
+			expect(status.backgroundTasks[2]).not.toHaveProperty('detachedFromTurn');
+		});
+
 		it('maps background task fields correctly, stripping threadId', () => {
 			const task = createBackgroundTask({
 				taskId: 'task-1',

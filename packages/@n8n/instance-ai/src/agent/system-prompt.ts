@@ -1,7 +1,8 @@
 import { DateTime } from 'luxon';
 
-import { getBrowserUsePrompt } from './browser-use-prompt';
+import { CONNECT_INSTRUCTIONS, getBrowserUsePrompt } from './browser-use-prompt';
 import { COMMUNICATION_STYLE_SECTION } from './communication-style.prompt';
+import { ASK_USER_TOOL_ID, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 import {
 	SCOPE_GROUNDING_GUARDRAIL,
 	SECRET_ASK_GUARDRAIL,
@@ -26,6 +27,8 @@ interface SystemPromptOptions {
 	conversationHistoryEnabled?: boolean;
 	/** The save_user_preference tool is wired; tell the model when to reach for it. */
 	preferenceSavingEnabled?: boolean;
+	/** The start-cloud-browser-task tool is wired; tell the model when and how to delegate to it. */
+	cloudBrowserEnabled?: boolean;
 	/** Setup panel v2 flag: `workflow_builder_workflows(action="setup")` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
 }
@@ -175,6 +178,39 @@ function getPreferenceSavingSection(): string {
 When the user's own words describe a lasting rule, choice, or thing to avoid for future work, not only for the current task, call \`save_user_preference\` and save it. Do not save a one-off instruction for the current task, and do not save casual chat. Do not tell the user you saved a preference until the tool returns a success. Tell them they can edit or undo it from the card in the chat. If the tool refuses the text as too long, shorten it to the limit the result names and call it once more. On any other refusal, tell the user why nothing was saved and do not call it again in this turn.`;
 }
 
+/** Which browser to use when the user's own browser is offered too. */
+function getBrowserSelectionGuidance(browserUseState?: BrowserUseState): string {
+	if (!browserUseState || browserUseState.status === 'unavailable') return '';
+
+	const intro = `
+The Browser Use section is about the user's own browser. When it says the user must connect their browser, that applies only to their browser, never to the cloud browser.`;
+
+	if (browserUseState.status === 'connected') {
+		return `${intro}
+- **The user's browser is connected**, so ask which browser to use before the first browser task in this conversation. Ask with \`${ASK_USER_TOOL_ID}\`: one single-choice question with \`required: true\`, "Which browser should I use?", and exactly these two options: "Your browser: runs directly in Chrome. The chat is paused while the Assistant completes the task." and "Cloud browser: runs in a virtual browser. You can keep chatting while the Assistant completes the task.". Do not ask when the user already said which, when this conversation already has the answer, or when a saved preference names one. The current request wins over a saved preference.`;
+	}
+	return `${intro}
+- **The user's browser is not connected**, so use the cloud browser and do not ask. With the first browser task in this conversation, tell the user in one sentence that the task runs in a cloud browser, and how they can connect their own browser instead. ${CONNECT_INSTRUCTIONS} Give the user these exact steps. Skip this sentence when the user asked for the cloud browser, because they already chose it.`;
+}
+
+function getCloudBrowserSection(browserUseState?: BrowserUseState): string {
+	return `
+## Cloud Browser
+
+Use \`${ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK}\` when the user asks you to look something up or do something on a website, and no node, API or web search covers it. Each task runs in the background in its own cloud browser, so you and the user can keep working. It needs no extension and no connection.
+${getBrowserSelectionGuidance(browserUseState)}
+
+- **Write a complete goal.** The browser agent cannot see this conversation. Say which site to use, what to find or do, and what to report back. Add \`startUrl\` when you know the page.
+- **Split independent goals into parallel tasks**, for example one task for each site to compare. Keep steps that depend on each other in one task.
+- **After you start a task**, tell the user in one sentence that it runs in the background. Continue with work that does not depend on it, or end your turn. Do not wait for it and do not poll. The result arrives as a follow-up message when the task ends.
+- **When a result arrives** in a \`<cloud-browser-task-completed>\` block, it has one \`<task>\` for each task that ended. Tell the user what the task was about and what it found, in a few sentences, then continue any work that waited for it.
+- **When a task did not finish**, its \`outcome\` says why. \`denied\`: the user denied an approval that the task needed. \`cancelled\`: the user or n8n stopped the task. \`unreported\`: the browser agent answered without confirming its result, so its summary is its last message. Pass on what it found and say it is unconfirmed. Tell the user what happened. Do not start the task again unless the user asks.
+- **Tasks that still run** are listed in a \`<running-tasks>\` block in the latest message. Blocks in earlier messages are out of date. A task that is not listed in the latest message has ended, and with no such block, none is running. Never tell the user a task is still running when it is not listed.
+- **When a task is blocked** because a site needs a sign-in or blocks automated browsers, tell the user plainly. The browser agent cannot sign in for them.
+- **Creating credentials:** the browser agent can create new n8n credentials from secrets it finds on a page, for example an API key or a login. It cannot update an existing credential. The user approves each one. Pass each one in \`credentialsToCreate\` with its type (find it with \`workflow_builder_credentials(action="search-types")\`) and a name. Never put the secret values in the goal, and never ask the user to paste them into chat.
+- The browser agent asks the user for site approvals itself. Do not ask for them before you start a task.`;
+}
+
 function getLicenseLimitationsSection(licenseHints?: string[]): string {
 	if (!licenseHints?.length) return '';
 
@@ -256,6 +292,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			workspaceRoot,
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
+			cloudBrowserEnabled,
 			setupPanelEnabled,
 		} = options;
 
@@ -300,6 +337,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
 ${getBrowserUsePrompt({ state: browserUseState })}
+${cloudBrowserEnabled ? getCloudBrowserSection(browserUseState) : ''}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}
 ${getLimitedModeSection(parameterValuesHidden)}

@@ -1,0 +1,155 @@
+import {
+	CloudBrowserTaskStorage,
+	type CloudBrowserTaskRecord,
+} from '../cloud-browser-task-storage';
+import type { PatchableThreadMemory, ThreadRecord } from '../thread-patch';
+
+const THREAD_ID = 'thread-1';
+
+/** A thread memory that keeps one thread, so every storage call goes through the real patch. */
+function makeMemory(metadata: Record<string, unknown> = {}) {
+	let saves = 0;
+	let thread: ThreadRecord = {
+		id: THREAD_ID,
+		resourceId: 'user-1',
+		metadata,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	};
+	const memory: PatchableThreadMemory = {
+		getThread: async (threadId: string) => (threadId === THREAD_ID ? thread : null),
+		saveThread: async (next: ThreadRecord) => {
+			saves++;
+			thread = next;
+			return thread;
+		},
+	};
+	return { memory, metadata: () => thread.metadata ?? {}, saves: () => saves };
+}
+
+function makeRecord(overrides: Partial<CloudBrowserTaskRecord> = {}): CloudBrowserTaskRecord {
+	return {
+		taskId: 'task-1',
+		agentId: 'agent-1',
+		runId: 'run-1',
+		title: 'Find the price',
+		status: 'running',
+		startedAt: '2026-10-22T10:00:00.000Z',
+		...overrides,
+	};
+}
+
+describe('CloudBrowserTaskStorage', () => {
+	it('adds a task and lists it', async () => {
+		const { memory } = makeMemory();
+		const storage = new CloudBrowserTaskStorage(memory);
+
+		await storage.add(THREAD_ID, makeRecord());
+
+		expect(await storage.list(THREAD_ID)).toEqual([makeRecord()]);
+	});
+
+	it('keeps the other metadata of the thread', async () => {
+		const { memory, metadata } = makeMemory({ other: 'value' });
+		const storage = new CloudBrowserTaskStorage(memory);
+
+		await storage.add(THREAD_ID, makeRecord());
+
+		expect(metadata()).toMatchObject({ other: 'value' });
+	});
+
+	it('removes a task', async () => {
+		const { memory } = makeMemory();
+		const storage = new CloudBrowserTaskStorage(memory);
+		await storage.add(THREAD_ID, makeRecord());
+		await storage.add(THREAD_ID, makeRecord({ taskId: 'task-2' }));
+
+		await storage.remove(THREAD_ID, 'task-1');
+
+		expect((await storage.list(THREAD_ID)).map((task) => task.taskId)).toEqual(['task-2']);
+	});
+
+	it('marks a task finished with its outcome and summary', async () => {
+		const { memory } = makeMemory();
+		const storage = new CloudBrowserTaskStorage(memory);
+		await storage.add(THREAD_ID, makeRecord());
+
+		await storage.markFinished(THREAD_ID, 'task-1', { outcome: 'succeeded', summary: '$20' });
+
+		expect(await storage.list(THREAD_ID)).toEqual([
+			{
+				...makeRecord(),
+				status: 'finished',
+				outcome: 'succeeded',
+				summary: '$20',
+				finishedAt: expect.any(String),
+			},
+		]);
+	});
+
+	it('does not create a record when it marks an unknown task finished', async () => {
+		const { memory } = makeMemory();
+		const storage = new CloudBrowserTaskStorage(memory);
+
+		await storage.markFinished(THREAD_ID, 'task-1', { outcome: 'failed', summary: 'Stopped' });
+
+		expect(await storage.list(THREAD_ID)).toEqual([]);
+	});
+
+	describe('claimUndelivered', () => {
+		it('takes each finished task once, oldest first, and leaves running tasks', async () => {
+			const { memory } = makeMemory();
+			const storage = new CloudBrowserTaskStorage(memory);
+			await storage.add(
+				THREAD_ID,
+				makeRecord({ taskId: 'newer', startedAt: '2026-10-22T11:00:00.000Z' }),
+			);
+			await storage.add(
+				THREAD_ID,
+				makeRecord({ taskId: 'older', startedAt: '2026-10-22T09:00:00.000Z' }),
+			);
+			await storage.add(THREAD_ID, makeRecord({ taskId: 'running' }));
+			await storage.markFinished(THREAD_ID, 'newer', { outcome: 'succeeded', summary: 'A' });
+			await storage.markFinished(THREAD_ID, 'older', { outcome: 'blocked', summary: 'B' });
+
+			const claimed = await storage.claimUndelivered(THREAD_ID);
+
+			expect(claimed.map((task) => task.taskId)).toEqual(['older', 'newer']);
+			expect(await storage.claimUndelivered(THREAD_ID)).toEqual([]);
+			expect((await storage.list(THREAD_ID)).map((task) => task.taskId)).toEqual(['running']);
+		});
+
+		it('does not write the thread when nothing is finished, or when it releases no tasks', async () => {
+			const { memory, saves } = makeMemory();
+			const storage = new CloudBrowserTaskStorage(memory);
+			await storage.add(THREAD_ID, makeRecord());
+			const savesBefore = saves();
+
+			expect(await storage.claimUndelivered(THREAD_ID)).toEqual([]);
+			await storage.releaseClaim(THREAD_ID, []);
+
+			expect(saves()).toBe(savesBefore);
+		});
+
+		it('lets the next delivery claim the tasks again after a release', async () => {
+			const { memory } = makeMemory();
+			const storage = new CloudBrowserTaskStorage(memory);
+			await storage.add(THREAD_ID, makeRecord());
+			await storage.markFinished(THREAD_ID, 'task-1', { outcome: 'succeeded', summary: '$20' });
+			const claimed = await storage.claimUndelivered(THREAD_ID);
+
+			await storage.releaseClaim(THREAD_ID, claimed);
+
+			expect(await storage.claimUndelivered(THREAD_ID)).toEqual(claimed);
+		});
+	});
+
+	it('ignores a stored record that does not match the schema', async () => {
+		const { memory } = makeMemory({
+			instanceAiCloudBrowserTasks: { 'task-1': makeRecord(), broken: { taskId: 'broken' } },
+		});
+		const storage = new CloudBrowserTaskStorage(memory);
+
+		expect(await storage.list(THREAD_ID)).toEqual([makeRecord()]);
+	});
+});

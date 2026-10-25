@@ -1959,6 +1959,88 @@ describe('agent-run-reducer', () => {
 		});
 	});
 
+	describe('detached agents', () => {
+		function spawnDetached(state: AgentRunState) {
+			reduceEvent(state, {
+				type: 'agent-spawned',
+				runId: 'run-1',
+				agentId: 'browser-1',
+				detachedFromTurn: true,
+				payload: { parentId: 'root', role: 'cloud-browser', tools: [], detachedFromTurn: true },
+			});
+		}
+
+		function completeDetached(state: AgentRunState) {
+			reduceEvent(state, {
+				...makeAgentCompleted('run-1', 'browser-1', 'done'),
+				detachedFromTurn: true,
+			});
+		}
+
+		it.each(['error', 'cancelled'] as const)(
+			'keeps a detached agent running when its run ends as %s, and takes its later events',
+			(status) => {
+				const state = stateWithRun('run-1', 'root');
+				spawnDetached(state);
+				reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+				reduceEvent(state, makeRunFinish('run-1', 'root', status));
+
+				expect(state.agentsById['sub-1'].status).toBe(status);
+				expect(state.agentsById['browser-1'].status).toBe('active');
+
+				// Every event the detached agent publishes carries the flag.
+				reduceEvent(state, {
+					...makeToolCall('run-1', 'browser-1', 'tc-1', 'browser_navigate'),
+					detachedFromTurn: true,
+				});
+				completeDetached(state);
+
+				expect(state.agentsById['browser-1'].toolCalls.map((tc) => tc.toolCallId)).toEqual([
+					'tc-1',
+				]);
+				expect(state.agentsById['browser-1'].status).toBe('completed');
+			},
+		);
+
+		it.each(['error', 'cancelled'] as const)(
+			'keeps a detached agent running after a tree whose run ended as %s is saved and restored',
+			(status) => {
+				const state = stateWithRun('run-1', 'root');
+				spawnDetached(state);
+				reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+				reduceEvent(state, makeRunFinish('run-1', 'root', status));
+				const restored = stateFromAgentTree(deepCopy(toAgentTree(state)))!;
+
+				expect(restored.agentsById['sub-1'].status).toBe(status);
+				expect(restored.agentsById['browser-1'].status).toBe('active');
+
+				completeDetached(restored);
+
+				expect(restored.agentsById['browser-1'].status).toBe('completed');
+			},
+		);
+
+		it('drops the events of a non-detached agent after its run ended with an error', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'error'));
+
+			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'browser_navigate'));
+
+			expect(state.agentsById['sub-1'].toolCalls).toEqual([]);
+		});
+
+		it('closes a detached agent with its own agent-completed', () => {
+			const state = stateWithRun('run-1', 'root');
+			spawnDetached(state);
+			reduceEvent(state, makeAgentCompleted('run-1', 'browser-1', 'done'));
+
+			reduceEvent(state, makeToolCall('run-1', 'browser-1', 'tc-1', 'browser_navigate'));
+
+			expect(state.agentsById['browser-1'].toolCalls).toEqual([]);
+		});
+	});
+
 	describe('stateFromAgentTree', () => {
 		function buildSnapshotTree() {
 			const state = stateWithRun('run-1', 'root');

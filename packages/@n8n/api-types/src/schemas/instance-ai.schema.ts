@@ -314,6 +314,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'planner',
 	'eval-setup',
 	'agent-builder',
+	'cloud-browser',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -473,6 +474,10 @@ export const agentSpawnedPayloadSchema = z.object({
 	role: z.string().describe('Free-form role description'),
 	tools: z.array(z.string()).describe('Tool names the sub-agent received'),
 	taskId: z.string().optional().describe('Background task ID (only for background agents)'),
+	detachedFromTurn: z
+		.boolean()
+		.optional()
+		.describe('The agent keeps working after its turn has ended'),
 	// Display metadata — enriched identity for the UI
 	kind: instanceAiAgentKindSchema.optional().describe('Agent kind for card dispatch'),
 	activity: agentActivitySchema.optional().describe('Current activity for the Agent card'),
@@ -1284,6 +1289,8 @@ const eventBase = {
 	/** Epoch ms stamped once at publish — replays (SSE reconnect, history
 	 *  folds) use it to reconstruct real timing instead of "now". */
 	ts: z.number().optional(),
+	/** Set on events of an agent that outlives the turn that started it, such as a cloud browser task. */
+	detachedFromTurn: z.boolean().optional(),
 };
 
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
@@ -2019,6 +2026,8 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
+	/** The agent outlives the run that started it, so the run's end does not end it. */
+	detachedFromTurn?: boolean;
 	/** Agent kind for card dispatch (builder, data-table, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Current activity for the Agent card. */
@@ -2253,6 +2262,8 @@ export interface InstanceAiThreadStatusResponse {
 		runId?: string;
 		/** The messageGroupId this task was spawned under. */
 		messageGroupId?: string;
+		/** The task keeps running after its turn has ended, and the turn does not stay live for it. */
+		detachedFromTurn?: boolean;
 	}>;
 	/** In-flight observational-memory jobs (observer/reflector). Used by eval harnesses. */
 	memoryTasks?: InstanceAiMemoryTaskSnapshot[];

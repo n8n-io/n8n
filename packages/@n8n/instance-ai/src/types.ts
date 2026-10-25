@@ -55,6 +55,7 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { AgentContextInput } from './tools/agent-context.tool';
+import type { StartCloudBrowserTask } from './tools/orchestration/start-cloud-browser-task.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
@@ -2288,6 +2289,8 @@ export interface OrchestrationContext {
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
+	/** Start a browser task in the background. Set only when this run can use the cloud browser. */
+	startCloudBrowserTask?: StartCloudBrowserTask;
 	/** Persist and inspect dependency-aware planned tasks for this thread. */
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
