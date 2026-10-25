@@ -137,8 +137,14 @@ describe('EngineV2Webhooks.assertSupported on a resume', () => {
 		});
 	};
 
-	it('lets the waiting node answer with lastNode', () => {
-		expect(() => assertResume('lastNode')).not.toThrow();
+	it('lets the waiting node answer on receipt', () => {
+		expect(() => assertResume('onReceived')).not.toThrow();
+	});
+
+	it('refuses lastNode, since the data plane answers the end of a run only to its start', () => {
+		expect(() => assertResume('lastNode')).toThrow(
+			'Engine v2 cannot answer a resume request with the last node yet. Set the waiting node to respond immediately.',
+		);
 	});
 
 	it('skips the trigger checks, so a waiting Form node can resume', () => {

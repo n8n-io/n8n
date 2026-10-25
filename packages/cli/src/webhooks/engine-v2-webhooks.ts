@@ -143,14 +143,21 @@ export class EngineV2Webhooks {
 
 	/**
 	 * On engine v2 a Respond to Webhook node answers the request that started the
-	 * run, and so does the next form page. With either mode, a resume request
-	 * would wait for an answer that goes elsewhere.
+	 * run, and so does the next form page. The end of the run is also answered
+	 * only to that request. With any of these modes, a resume request would wait
+	 * for an answer that goes elsewhere.
 	 */
 	private assertResumeResponseSupported(responseMode: WebhookResponseMode): void {
 		// TODO(CET-476): answer these modes once the data plane can answer a resume request.
 		if (responseMode === 'responseNode' || responseMode === 'formPage') {
 			throw new UserError(
 				'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
+			);
+		}
+
+		if (responseMode === 'lastNode') {
+			throw new UserError(
+				'Engine v2 cannot answer a resume request with the last node yet. Set the waiting node to respond immediately.',
 			);
 		}
 

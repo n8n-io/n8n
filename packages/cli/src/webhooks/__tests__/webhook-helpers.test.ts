@@ -3399,6 +3399,12 @@ describe('executeWebhook on engine v2', () => {
 					'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
 			},
 			{
+				name: 'a resume answered with the last node',
+				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'lastNode' },
+				message:
+					'Engine v2 cannot answer a resume request with the last node yet. Set the waiting node to respond immediately.',
+			},
+			{
 				name: 'a resume answered by the next form page',
 				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'formPage' },
 				message:
