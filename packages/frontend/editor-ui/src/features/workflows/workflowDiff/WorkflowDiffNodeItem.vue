@@ -29,8 +29,8 @@ const itemId = useId();
 		:label="nodeName ?? ''"
 		:close-on-select="false"
 		:class="{
-			[$style.active]: isActive,
-			[$style.compact]: isCompact,
+			[$style.active]: isActive === true,
+			[$style.compact]: isCompact === true,
 		}"
 		@select="emit('select')"
 	>
