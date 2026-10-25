@@ -58,8 +58,8 @@ const cases = [
 		name: 'no-reka-ui-dialog',
 		rule: NoRekaUiDialogRule,
 		messageId: 'noRekaUiDialog',
-		code: "import { DialogRoot } from 'reka-ui';",
-		names: ['DialogRoot'],
+		code: "import { DialogRoot, AlertDialogContent } from 'reka-ui';",
+		names: ['DialogRoot', 'AlertDialogContent'],
 		allowed: `${root}/components/N8nAlertDialog/AlertDialog.vue`,
 	},
 	{

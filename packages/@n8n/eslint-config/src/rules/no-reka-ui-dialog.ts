@@ -2,7 +2,7 @@ import { designSystemComponentPath } from './design-system-component-path.js';
 import { createRekaUiImportBanRule } from './reka-ui-import-ban.factory.js';
 
 export const NoRekaUiDialogRule = createRekaUiImportBanRule({
-	prefix: 'Dialog',
+	prefix: ['Dialog', 'AlertDialog'],
 	allowedPath: designSystemComponentPath('components/N8nDialog', 'components/N8nAlertDialog'),
 	messageId: 'noRekaUiDialog',
 	description:
