@@ -56,17 +56,17 @@ describe('FolderImporter', () => {
 			folder('a', 'b'),
 			folder('b', null),
 		]);
-		await importer.applyMoves(context('follow-package'), plan);
+		await importer.applyUpdates(context('follow-package'), plan);
 
 		expect(plan.conflicts).toEqual([]);
-		expect(toFolderSummaries(plan).map(({ status }) => status)).toEqual(['moved', 'moved']);
+		expect(toFolderSummaries(plan).map(({ status }) => status)).toEqual(['updated', 'updated']);
 		expect(folderService.updateFolder.mock.calls).toEqual([
 			['b', 'project-1', { parentFolderId: PROJECT_ROOT }],
 			['a', 'project-1', { parentFolderId: 'b' }],
 		]);
 	});
 
-	it('creates new folders in apply and leaves the moves to applyMoves', async () => {
+	it('creates new folders in apply and leaves the moves to applyUpdates', async () => {
 		const folderService = mock<FolderService>();
 		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', null)]);
 		const importer = new FolderImporter(folderService);
@@ -82,12 +82,68 @@ describe('FolderImporter', () => {
 		);
 		expect(folderService.updateFolder).not.toHaveBeenCalled();
 
-		await importer.applyMoves(ctx, plan);
+		await importer.applyUpdates(ctx, plan);
 
 		expect(folderService.createFolder).toHaveBeenCalledOnce();
 		expect(folderService.updateFolder).toHaveBeenCalledExactlyOnceWith('a', 'project-1', {
 			parentFolderId: 'new',
 		});
+	});
+
+	it('renames a folder, and moves it too, under follow-package placement', async () => {
+		const folderService = mock<FolderService>();
+		folderService.getFoldersByIds.mockResolvedValue([
+			existingFolder('a', 'project-1', null),
+			existingFolder('b', 'project-1', null),
+		]);
+		const importer = new FolderImporter(folderService);
+		const ctx = context('follow-package');
+
+		const plan = await importer.plan(ctx, [
+			{ ...folder('a', null), name: 'Invoices' },
+			{ ...folder('b', 'a'), name: 'Archive' },
+		]);
+		await importer.applyUpdates(ctx, plan);
+
+		expect(toFolderSummaries(plan)).toEqual([
+			expect.objectContaining({ sourceFolderId: 'a', status: 'updated', renamed: true }),
+			expect.objectContaining({
+				sourceFolderId: 'b',
+				status: 'updated',
+				moved: true,
+				renamed: true,
+			}),
+		]);
+		expect(toFolderSummaries(plan)[0]).not.toHaveProperty('moved');
+		expect(folderService.updateFolder.mock.calls).toEqual([
+			['a', 'project-1', { name: 'Invoices' }],
+			['b', 'project-1', { name: 'Archive', parentFolderId: 'a' }],
+		]);
+	});
+
+	it('keeps the existing name of a folder by default', async () => {
+		const folderService = mock<FolderService>();
+		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', null)]);
+		const importer = new FolderImporter(folderService);
+
+		const plan = await importer.plan(context(), [{ ...folder('a', null), name: 'Invoices' }]);
+		await importer.applyUpdates(context(), plan);
+
+		expect(plan.items).toEqual([expect.objectContaining({ action: 'skip' })]);
+		expect(folderService.updateFolder).not.toHaveBeenCalled();
+	});
+
+	it('keeps the existing name of a folder outside the selection', async () => {
+		const folderService = mock<FolderService>();
+		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', null)]);
+		const importer = new FolderImporter(folderService);
+		const ctx = context('follow-package', { movableFolderIds: new Set() });
+
+		const plan = await importer.plan(ctx, [{ ...folder('a', null), name: 'Invoices' }]);
+		await importer.applyUpdates(ctx, plan);
+
+		expect(plan.items).toEqual([expect.objectContaining({ action: 'skip' })]);
+		expect(folderService.updateFolder).not.toHaveBeenCalled();
 	});
 
 	it('still reports a folder that belongs to another project', async () => {
@@ -115,7 +171,7 @@ describe('FolderImporter', () => {
 
 		const plan = await importer.plan(ctx, [folder('new', null), folder('a', 'new')]);
 		await importer.apply(ctx, plan);
-		await importer.applyMoves(ctx, plan);
+		await importer.applyUpdates(ctx, plan);
 
 		expect(plan.conflicts).toEqual([]);
 		expect(plan.items.find(({ sourceFolderId }) => sourceFolderId === 'a')).toMatchObject({
@@ -137,7 +193,7 @@ describe('FolderImporter', () => {
 			[folder('new', null), folder('a', 'new')],
 		);
 
-		expect(plan.items.some(({ action }) => action === 'move')).toBe(false);
+		expect(plan.items.some(({ action }) => action === 'update')).toBe(false);
 		expect(plan.conflicts).toContainEqual(
 			expect.objectContaining({ kind: 'fail-policy', sourceFolderId: 'a' }),
 		);

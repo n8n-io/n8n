@@ -7,6 +7,7 @@ import {
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
+	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
 	getPersonalProject,
@@ -1775,6 +1776,194 @@ describe('Apply a project selection', () => {
 			expect(await listApplyChanges(project.id)).toEqual([]);
 		},
 	);
+});
+
+describe('Apply moves and renames within a project', () => {
+	const connect = async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		await service.clone(environments.apply.id);
+		const promote = async () =>
+			await service.promote(environments.promote.id, owner, {
+				canExportVariableValues: true,
+				commitMessage: 'Export',
+			});
+		return { environments, promote };
+	};
+	const placeOf = async (workflowId: string) =>
+		await Container.get(WorkflowRepository).findOneOrFail({
+			where: { id: workflowId },
+			relations: { parentFolder: true },
+		});
+	const folderOf = async (folderId: string) =>
+		await Container.get(FolderRepository).findOneOrFail({
+			where: { id: folderId },
+			relations: { parentFolder: true },
+		});
+
+	it('moves a published workflow to its branch folder and keeps it published', async () => {
+		const { promote } = await connect();
+		const project = await createTeamProject('Orders', owner);
+		const folder = await createFolder(project, { name: 'Live' });
+		const published = await createActiveWorkflow({ name: 'Process order' }, project);
+		const repository = Container.get(WorkflowRepository);
+		await repository.update(published.id, { parentFolder: folder });
+		await promote();
+		await repository.update(published.id, { parentFolder: null });
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [published.id],
+		});
+
+		assert(result.status === 'applied');
+		expect(result.counts.workflows).toMatchObject({ updated: 1, moved: 1 });
+		expect(result.counts.workflows.publishing.failed).toBe(0);
+		const applied = await placeOf(published.id);
+		expect(applied.parentFolder?.id).toBe(folder.id);
+		expect(applied.activeVersionId).not.toBeNull();
+	});
+
+	it('moves an archived workflow to its branch folder and keeps it archived', async () => {
+		const { environments, promote } = await connect();
+		const {
+			project,
+			workflows: [archived],
+		} = await setupProjectWithWorkflows('Orders', ['Old order']);
+		const folder = await createFolder(project, { name: 'Old' });
+		const repository = Container.get(WorkflowRepository);
+		await repository.update(archived.id, { parentFolder: folder, isArchived: true });
+		await promote();
+		await repository.update(archived.id, { parentFolder: null });
+
+		const result = await service.apply(environments.apply.id, owner);
+
+		assert(result.status === 'applied');
+		expect(result.counts.workflows.moved).toBe(1);
+		const applied = await placeOf(archived.id);
+		expect(applied.parentFolder?.id).toBe(folder.id);
+		expect(applied.isArchived).toBe(true);
+	});
+
+	it('moves a workflow that uses a credential and keeps the credential', async () => {
+		const { promote } = await connect();
+		const project = await createTeamProject('Orders', owner);
+		const credential = await saveCredential(
+			{ name: 'Header credential', type: 'httpHeaderAuth', data: {} },
+			{ project, role: 'credential:owner' },
+		);
+		const folder = await createFolder(project, { name: 'Calls' });
+		const workflow = await createWorkflow(
+			{
+				name: 'Call API',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { url: 'https://example.com' },
+						credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
+					},
+				],
+				connections: {},
+				parentFolder: folder,
+			},
+			project,
+		);
+		await promote();
+		await Container.get(WorkflowRepository).update(workflow.id, { parentFolder: null });
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [workflow.id],
+		});
+
+		assert(result.status === 'applied');
+		expect(result.counts.credentials).toEqual({ matched: 1, stubbed: 0 });
+		const applied = await placeOf(workflow.id);
+		expect(applied.parentFolder?.id).toBe(folder.id);
+		expect(applied.nodes[0].credentials?.httpHeaderAuth?.id).toBe(credential.id);
+		expect(await Container.get(CredentialsRepository).count()).toBe(1);
+	});
+
+	it('swaps two folders back and renames one on instance Apply', async () => {
+		const { environments, promote } = await connect();
+		const {
+			project,
+			workflows: [inside],
+		} = await setupProjectWithWorkflows('Orders', ['Inside']);
+		// The branch holds A at the root, B under A, and the workflow in B.
+		const a = await createFolder(project, { name: 'A' });
+		const b = await createFolder(project, { name: 'B', parentFolder: a });
+		await Container.get(WorkflowRepository).update(inside.id, { parentFolder: b });
+		await promote();
+		// Here the two folders swapped places, and A has another name.
+		const folders = Container.get(FolderRepository);
+		await folders.update(b.id, { parentFolder: null });
+		await folders.update(a.id, { parentFolder: b, name: 'Local A' });
+
+		const result = await service.apply(environments.apply.id, owner);
+
+		assert(result.status === 'applied');
+		expect(result.counts.folders).toMatchObject({ updated: 2, moved: 2, renamed: 1, removed: 0 });
+		expect(await folderOf(a.id)).toMatchObject({ name: 'A', parentFolder: null });
+		expect((await folderOf(b.id)).parentFolder?.id).toBe(a.id);
+		expect((await placeOf(inside.id)).parentFolder?.id).toBe(b.id);
+	});
+
+	it('renames only the folders that hold a selected workflow on project Apply', async () => {
+		const { promote } = await connect();
+		const {
+			project,
+			workflows: [report, old],
+		} = await setupProjectWithWorkflows('Orders', ['Report', 'Old order']);
+		const reports = await createFolder(project, { name: 'Reports' });
+		const archive = await createFolder(project, { name: 'Archive' });
+		const repository = Container.get(WorkflowRepository);
+		await repository.update(report.id, { parentFolder: reports });
+		await repository.update(old.id, { parentFolder: archive });
+		await promote();
+		const folders = Container.get(FolderRepository);
+		await folders.update(reports.id, { name: 'Local reports' });
+		await folders.update(archive.id, { name: 'Local archive' });
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [report.id],
+		});
+
+		assert(result.status === 'applied');
+		expect(result.counts.folders).toMatchObject({ updated: 1, moved: 0, renamed: 1 });
+		expect((await folderOf(reports.id)).name).toBe('Reports');
+		expect((await folderOf(archive.id)).name).toBe('Local archive');
+	});
+
+	it('only offers the source fix when the branch project does not exist here yet', async () => {
+		const { environments, promote } = await connect();
+		const {
+			project: archive,
+			workflows: [moved],
+		} = await setupProjectWithWorkflows('Archive', ['Old order']);
+		const { project: orders } = await setupProjectWithWorkflows('Orders', []);
+		const promoted = await promote();
+		// The workflow left Archive, and Archive is gone from this instance.
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: moved.id, role: 'workflow:owner' },
+			{ projectId: orders.id },
+		);
+		await projectService.deleteProject(owner, archive.id);
+
+		await expect(service.apply(environments.apply.id, owner)).rejects.toMatchObject({
+			httpStatusCode: 409,
+			message: expect.stringContaining(
+				`workflow "${moved.name}" (${moved.id}) is in project "Orders" here and in project "Archive" on the branch, and project "Archive" does not exist on this instance yet. Move them back on the source instance, then promote again.`,
+			),
+		});
+		const check = await service.checkApplyBlockers(orders.id, promoted.git.commitSha);
+		expect(check.movedWorkflows).toEqual([
+			expect.objectContaining({ id: moved.id, projectExists: false }),
+		]);
+	});
 });
 
 describe('Check Apply blockers', () => {

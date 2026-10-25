@@ -67,9 +67,16 @@ export const applyPackageCountsSchema = z.object({
 	projects: z.object({ created: count(), updated: count(), skipped: count(), deleted: count() }),
 	folders: z.object({
 		created: count(),
+		updated: count().openapi({
+			description: 'Existing folders that Apply moved or renamed to match the branch.',
+		}),
 		skipped: count(),
 		moved: count().openapi({
-			description: 'Existing folders that Apply moved under another parent of their project.',
+			description:
+				'Updated folders that Apply moved under another parent of their project. Included in `updated`.',
+		}),
+		renamed: count().openapi({
+			description: 'Updated folders that Apply gave the name on the branch. Included in `updated`.',
 		}),
 		removed: count(),
 	}),

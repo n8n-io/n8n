@@ -75,7 +75,16 @@ export interface ExportPackageResult {
 
 export interface ImportPackageCounts {
 	projects: { created: number; updated: number; skipped: number; deleted: number };
-	folders: { created: number; skipped: number; moved: number; removed: number };
+	folders: {
+		created: number;
+		updated: number;
+		skipped: number;
+		/** Part of `updated`: folders that Apply moved under another parent of their project. */
+		moved: number;
+		/** Part of `updated`: folders that Apply gave the name on the branch. */
+		renamed: number;
+		removed: number;
+	};
 	workflows: {
 		created: number;
 		updated: number;

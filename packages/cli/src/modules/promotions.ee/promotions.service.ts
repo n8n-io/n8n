@@ -1342,7 +1342,9 @@ export class PromotionsService {
 				deleted: projectReconciliation.deletedProjectIds.length,
 			},
 			folders: {
-				...tally(importResult.folders, ['created', 'skipped', 'moved'] as const),
+				...tally(importResult.folders, ['created', 'updated', 'skipped'] as const),
+				moved: importResult.folders.filter(({ moved }) => moved).length,
+				renamed: importResult.folders.filter(({ renamed }) => renamed).length,
 				removed: importResult.removedFolders.length,
 			},
 			workflows: {

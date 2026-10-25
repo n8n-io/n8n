@@ -1507,7 +1507,9 @@ describe('PromotionsService', () => {
 					{ status: 'created' },
 					{ status: 'skipped' },
 					{ status: 'created' },
-					{ status: 'moved' },
+					{ status: 'updated', moved: true },
+					{ status: 'updated', moved: true, renamed: true },
+					{ status: 'updated', renamed: true },
 				],
 				workflows: [
 					{ status: 'created', publishing: { state: 'published' } },
@@ -1715,7 +1717,7 @@ describe('PromotionsService', () => {
 				environmentId: ENVIRONMENT_ID,
 				counts: {
 					projects: { created: 1, updated: 1, skipped: 0, deleted: 0 },
-					folders: { created: 2, skipped: 1, moved: 1, removed: 2 },
+					folders: { created: 2, updated: 3, skipped: 1, moved: 2, renamed: 2, removed: 2 },
 					workflows: {
 						created: 2,
 						updated: 1,

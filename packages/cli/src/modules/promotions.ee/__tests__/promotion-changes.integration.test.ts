@@ -1046,8 +1046,8 @@ describe('resources in the preview', () => {
 		});
 		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		await promoteBaseline(environments.promote.id, owner);
-		// Apply keeps the local folder and credential names. The credential stays, but no local
-		// workflow uses it, so the local export does not hold it.
+		// Apply keeps the local credential name, but gives the folder the name on the branch. The
+		// credential stays, but no local workflow uses it, so the local export does not hold it.
 		await Container.get(FolderRepository).update(folder.id, { name: 'Local invoices' });
 		await Container.get(CredentialsRepository).update(credential.id, { name: 'Local billing API' });
 		await Container.get(WorkflowRepository).delete(charge.id);
@@ -1059,6 +1059,12 @@ describe('resources in the preview', () => {
 
 		expect(body.data.resources).toEqual([
 			expect.objectContaining({ key: `project:${project.id}`, change: 'unchanged' }),
+			expect.objectContaining({
+				key: `folder:${folder.id}`,
+				name: 'Invoices',
+				previousName: 'Local invoices',
+				change: 'modified',
+			}),
 			expect.objectContaining({ key: `workflow:${charge.id}`, change: 'added' }),
 			expect.objectContaining({
 				key: `credential:${credential.id}`,

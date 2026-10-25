@@ -9942,6 +9942,7 @@
 	"promotions.applied.moved": "Moved within their projects: {workflows} and {folders}.",
 	"promotions.applied.moved.workflows": "{count} updated workflow | {count} updated workflows",
 	"promotions.applied.moved.folders": "{count} folder | {count} folders",
+	"promotions.applied.renamed": "Renamed: {folders}.",
 	"promotions.applied.projectRemoved": "Apply removed this project from the instance.",
 	"promotions.bindings.projectSetup.beforeSave": "Saving creates the project {projectName}. It stays even if this item can't be saved.",
 	"promotions.bindings.projectSetup.retained": "Created project {projectName}. It stays when you close this dialog.",

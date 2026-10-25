@@ -2536,7 +2536,7 @@ describe('Promotions in Public API', () => {
 					warnings,
 					counts: {
 						projects: { created: 0, updated: 0, skipped: 0, deleted: 0 },
-						folders: { created: 0, skipped: 0, moved: 0, removed: 0 },
+						folders: { created: 0, updated: 0, skipped: 0, moved: 0, renamed: 0, removed: 0 },
 						workflows: {
 							created: 0,
 							updated: 0,
@@ -2723,7 +2723,7 @@ describe('Promotions in Public API', () => {
 					warnings,
 					counts: {
 						projects: { created: 0, updated: 0, skipped: 0, deleted: 0 },
-						folders: { created: 0, skipped: 0, moved: 0, removed: 0 },
+						folders: { created: 0, updated: 0, skipped: 0, moved: 0, renamed: 0, removed: 0 },
 						workflows: {
 							created: 0,
 							updated: 0,

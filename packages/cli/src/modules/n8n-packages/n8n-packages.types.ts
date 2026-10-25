@@ -551,8 +551,12 @@ export interface ImportedFolderSummary {
 	localId: string;
 	name: string;
 	parentFolderId: string | null;
-	/** `moved` only under `placementPolicy=follow-package`, which the public import never sets. */
-	status: 'created' | 'skipped' | 'moved';
+	/** `updated` only under `placementPolicy=follow-package`, which the public import never sets. */
+	status: 'created' | 'skipped' | 'updated';
+	/** Set when the update moved the folder to another parent. */
+	moved?: true;
+	/** Set when the update gave the folder the name in the package. */
+	renamed?: true;
 }
 
 /**

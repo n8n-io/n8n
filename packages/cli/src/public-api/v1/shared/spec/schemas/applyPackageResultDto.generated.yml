@@ -48,20 +48,30 @@ oneOf:
               created:
                 type: integer
                 minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+                description: Existing folders that Apply moved or renamed to match the branch.
               skipped:
                 type: integer
                 minimum: 0
               moved:
                 type: integer
                 minimum: 0
-                description: Existing folders that Apply moved under another parent of their project.
+                description: Updated folders that Apply moved under another parent of their project. Included in `updated`.
+              renamed:
+                type: integer
+                minimum: 0
+                description: Updated folders that Apply gave the name on the branch. Included in `updated`.
               removed:
                 type: integer
                 minimum: 0
             required:
               - created
+              - updated
               - skipped
               - moved
+              - renamed
               - removed
           workflows:
             type: object

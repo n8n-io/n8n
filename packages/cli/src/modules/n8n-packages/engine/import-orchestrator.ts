@@ -501,9 +501,9 @@ export class ImportOrchestrator {
 			credentialPlan,
 		);
 
-		// After the workflow writes: a failed write then leaves the existing folders where they were.
+		// After the workflow writes: a failed write then leaves the existing folders as they were.
 		// Before the removals, which plan with the folders in their new places.
-		await this.folderImporter.applyMoves(folderContext, folderPlan);
+		await this.folderImporter.applyUpdates(folderContext, folderPlan);
 
 		// Removal trails every write: the package's own content is in place first, so a failure
 		// earlier leaves the target with more than the package asked for rather than less. It sits

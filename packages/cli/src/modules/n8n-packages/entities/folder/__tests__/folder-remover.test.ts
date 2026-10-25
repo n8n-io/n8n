@@ -130,10 +130,11 @@ describe('FolderRemover.plan', () => {
 
 	describe('with planned moves', () => {
 		const moveTo = (id: string, targetParentFolderId: string | null): FolderPlanItem => ({
-			action: 'move',
+			action: 'update',
 			sourceFolderId: id,
 			name: id,
 			targetParentFolderId,
+			moved: true,
 		});
 
 		it('removes a target-only folder that a package folder moves out of', async () => {
@@ -146,6 +147,26 @@ describe('FolderRemover.plan', () => {
 			});
 
 			expect(plan.removals.map(({ id }) => id)).toEqual(['T']);
+		});
+
+		it('keeps a target-only folder that a renamed package folder still sits in', async () => {
+			const { remover } = makeRemover([folder('T'), folder('FA', 'T')]);
+
+			const plan = await remover.plan(context, {
+				packageFolderIds: ['FA'],
+				occupiedFolderIds: [],
+				folderItems: [
+					{
+						action: 'update',
+						sourceFolderId: 'FA',
+						name: 'New',
+						targetParentFolderId: 'T',
+						renamed: true,
+					},
+				],
+			});
+
+			expect(plan.removals).toEqual([]);
 		});
 
 		it('keeps a target-only folder that a package folder moves into', async () => {

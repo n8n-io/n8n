@@ -18,13 +18,17 @@ export interface FolderImportContext extends ImportContext {
 	movableFolderIds?: ReadonlySet<string>;
 }
 
-export type FolderPlannedAction = 'create' | 'skip' | 'move';
+export type FolderPlannedAction = 'create' | 'skip' | 'update';
 
 export interface FolderPlanItem {
 	action: FolderPlannedAction;
 	sourceFolderId: string;
 	name: string;
 	targetParentFolderId: string | null;
+	/** On `update`: the folder moves to `targetParentFolderId`. */
+	moved?: true;
+	/** On `update`: the folder takes `name`. */
+	renamed?: true;
 }
 
 export interface FolderImportPlan {

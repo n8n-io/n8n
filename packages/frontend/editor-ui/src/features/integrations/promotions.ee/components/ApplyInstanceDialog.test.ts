@@ -81,12 +81,12 @@ describe('ApplyInstanceDialog', () => {
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 	});
 
-	it('says how many workflows and folders the apply moved within their projects', async () => {
+	it('says how many workflows and folders the apply moved and how many folders it renamed', async () => {
 		api.applyPromotion.mockResolvedValue({
 			...applied,
 			counts: {
 				...applied.counts,
-				folders: { ...applied.counts.folders, moved: 2 },
+				folders: { ...applied.counts.folders, updated: 2, moved: 2, renamed: 1 },
 				workflows: {
 					...applied.counts.workflows,
 					moved: 1,
@@ -102,10 +102,34 @@ describe('ApplyInstanceDialog', () => {
 			expect(mockShowMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: expect.stringMatching(
-						/Moved within their projects: 1 updated workflow and 2 folders\.$/,
+						/Moved within their projects: 1 updated workflow and 2 folders\. Renamed: 1 folder\.$/,
 					),
 				}),
 			),
+		);
+	});
+
+	it('says how many folders the apply renamed when it moved nothing', async () => {
+		api.applyPromotion.mockResolvedValue({
+			...applied,
+			counts: {
+				...applied.counts,
+				folders: { ...applied.counts.folders, updated: 1, renamed: 1 },
+			},
+		});
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.not.stringContaining('Moved within'),
+				}),
+			),
+		);
+		expect(mockShowMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ message: expect.stringMatching(/ Renamed: 1 folder\.$/) }),
 		);
 	});
 

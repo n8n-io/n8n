@@ -65,26 +65,40 @@ const warningNodes = (warning: PromoteWarning, reviewNotRecorded: string) =>
 	);
 
 /**
- * Appends how many workflows and folders an Apply moved within their projects, so prod does not
- * change without notice. Moved workflows are part of the updated count.
+ * Appends how many workflows and folders an Apply moved within their projects, and how many
+ * folders it renamed, so prod does not change without notice. Moved workflows are part of the
+ * updated count.
  */
-export function withMovedNote(
+export function withMoveAndRenameNote(
 	i18n: I18nClass,
 	message: string,
 	{ workflows, folders }: AppliedResult['counts'],
 ): string {
-	if (workflows.moved + folders.moved === 0) return message;
-	const note = i18n.baseText('promotions.applied.moved', {
-		interpolate: {
-			workflows: i18n.baseText('promotions.applied.moved.workflows', {
-				adjustToNumber: workflows.moved,
-				interpolate: { count: String(workflows.moved) },
+	const folderCount = (count: number) =>
+		i18n.baseText('promotions.applied.moved.folders', {
+			adjustToNumber: count,
+			interpolate: { count: String(count) },
+		});
+	const notes = [message];
+	if (workflows.moved + folders.moved > 0) {
+		notes.push(
+			i18n.baseText('promotions.applied.moved', {
+				interpolate: {
+					workflows: i18n.baseText('promotions.applied.moved.workflows', {
+						adjustToNumber: workflows.moved,
+						interpolate: { count: String(workflows.moved) },
+					}),
+					folders: folderCount(folders.moved),
+				},
 			}),
-			folders: i18n.baseText('promotions.applied.moved.folders', {
-				adjustToNumber: folders.moved,
-				interpolate: { count: String(folders.moved) },
+		);
+	}
+	if (folders.renamed > 0) {
+		notes.push(
+			i18n.baseText('promotions.applied.renamed', {
+				interpolate: { folders: folderCount(folders.renamed) },
 			}),
-		},
-	});
-	return `${message} ${note}`;
+		);
+	}
+	return notes.join(' ');
 }
