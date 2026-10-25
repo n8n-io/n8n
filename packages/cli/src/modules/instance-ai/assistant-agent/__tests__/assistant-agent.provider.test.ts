@@ -371,6 +371,31 @@ describe('AssistantAgentProvider', () => {
 				expect(archiveIfAiTemporary).not.toHaveBeenCalled();
 			});
 
+			it('drops the marker of a workflow that it cannot archive', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+				archiveIfAiTemporary.mockResolvedValueOnce(false);
+				const turn = turnWithMarkedWorkflows();
+
+				const handle = await provider.prepareTurn(turn);
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				// The store patches through the memory's own `patchThread`, which the type leaves out.
+				const { patchThread } = turn.memory as unknown as {
+					patchThread: ReturnType<typeof vi.fn>;
+				};
+				expect(patchThread).toHaveBeenCalledTimes(1);
+				const [{ update }] = patchThread.mock.calls[0] as [
+					{ update: (thread: unknown) => unknown },
+				];
+				expect(
+					update({
+						id: 'thread-1',
+						resourceId: 'system-chat:user-1',
+						metadata: { assistantTemporaryWorkflowIds: ['wf-1', 'wf-2'] },
+					}),
+				).toEqual({ metadata: { assistantTemporaryWorkflowIds: ['wf-2'] } });
+			});
+
 			it('continues with the next workflow when one archive fails', async () => {
 				const { provider, archiveIfAiTemporary } = setup();
 				archiveIfAiTemporary.mockRejectedValueOnce(new Error('gone'));

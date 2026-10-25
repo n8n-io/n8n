@@ -361,7 +361,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		}
 		for (const workflowId of workflowIds) {
 			try {
-				await environment.context.workflowService.archiveIfAiTemporary(workflowId);
+				const archived = await environment.context.workflowService.archiveIfAiTemporary(workflowId);
+				// A marked workflow that is not archived was deleted or is out of reach.
+				// Thread metadata has no foreign key to drop it, so drop the marker here.
+				if (!archived) await markers.unmark(workflowId);
 			} catch (error) {
 				this.logger.warn('Failed to archive a temporary n8n Assistant workflow', {
 					threadId,
