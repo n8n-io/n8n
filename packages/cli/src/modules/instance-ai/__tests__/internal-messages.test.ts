@@ -1,3 +1,4 @@
+import { wrapUntrustedData } from '@n8n/agents';
 import type { InstanceAiNodesAttachment } from '@n8n/api-types';
 
 import {
@@ -114,6 +115,26 @@ describe('cleanStoredUserMessage', () => {
 		const stored =
 			'<background-task-completed>\ntask-1 completed with result\n</background-task-completed>\n\nUser reply';
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
+	it('strips <cloud-browser-task-completed> block', () => {
+		const stored =
+			'<cloud-browser-task-completed>\ntask-1 ended with a summary\n</cloud-browser-task-completed>\n\nUser reply';
+		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
+	it('hides the whole cloud browser follow-up message', () => {
+		const stored = [
+			'<cloud-browser-task-completed>',
+			'Cloud browser tasks that ended. This is an automated report, not a message from the user.',
+			'<task taskId="task_1" title="Find the price" outcome="succeeded">',
+			wrapUntrustedData('$20 a month', 'cloud-browser'),
+			'</task>',
+			'</cloud-browser-task-completed>',
+			'',
+			AUTO_FOLLOW_UP_MESSAGE,
+		].join('\n');
+		expect(cleanStoredUserMessage(stored)).toBeNull();
 	});
 
 	it('strips <workflow-verification-follow-up> block', () => {
