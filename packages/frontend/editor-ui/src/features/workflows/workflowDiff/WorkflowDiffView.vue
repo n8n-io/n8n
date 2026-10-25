@@ -212,12 +212,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 						</template>
 						<template #content>
 							<div :class="$style.dropdownContent">
-								<N8nSegmentControl
-									v-model="activeTab"
-									:options="tabs"
-									:class="$style.tabs"
-									class="mb-xs"
-								>
+								<N8nSegmentControl v-model="activeTab" :options="tabs" :class="$style.tabs">
 									<template #option="{ label, data: optionData }">
 										{{ label }}
 										<span v-if="optionData?.count" class="ml-4xs"> ({{ optionData.count }}) </span>
@@ -273,7 +268,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 											:text="i18n.baseText('workflowDiff.noChanges')"
 										/>
 									</ul>
-									<ul v-if="activeTab === 'settings'">
+									<ul v-if="activeTab === 'settings'" :class="$style.settings">
 										<template v-if="settingsDiff.length > 0">
 											<li v-for="setting in settingsDiff" :key="setting.name">
 												<N8nText color="text-dark" size="medium" tag="div" bold>{{
@@ -404,11 +399,15 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 }
 
 .changes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+
 	> li {
 		display: flex;
 		align-items: flex-start;
 		gap: var(--spacing--2xs);
-		padding: 10px 0 var(--spacing--3xs) var(--spacing--2xs);
+		padding-left: var(--spacing--2xs);
 	}
 }
 
@@ -436,8 +435,11 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 }
 
 .dropdownContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 	min-width: 320px;
-	padding: 0 12px;
+	padding: var(--spacing--3xs);
 
 	ul {
 		list-style: none;
@@ -448,9 +450,16 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 		overflow-y: auto;
 	}
 
+	.settings {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing--xs);
+		padding: var(--spacing--2xs);
+	}
+
 	.noNumberDiff {
 		min-height: 41px;
-		margin: 0 12px 10px 0;
+		margin: 0;
 		overflow: hidden;
 		:global(.blob-num) {
 			display: none;
