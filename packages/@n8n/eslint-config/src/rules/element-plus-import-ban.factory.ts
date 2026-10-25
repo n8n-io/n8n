@@ -54,14 +54,6 @@ const matchesComponentPath = (source: string, segment: string): boolean => {
 	return next === undefined || next === '/';
 };
 
-/**
- * Element Plus import bans visit imports and templates the same way.
- * A fix to that visit belongs here, not in each rule file.
- *
- * Add a ban with a thin rule file, then enable the rule in `frontend.ts`.
- * List the named exports, the deep component path, and the template tags.
- * Leave `allowedPath` unset when the component must disappear everywhere.
- */
 export function createElementPlusImportBanRule<const TMessageId extends string>(
 	config: ElementPlusImportBanConfig<TMessageId>,
 ) {
