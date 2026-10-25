@@ -39,6 +39,7 @@ import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import {
 	getUserFacingErrorCode,
 	getUserFacingErrorMessage,
+	isAttachmentRejectedByProviderError,
 	isMaskedStreamFailure,
 } from '../user-facing-errors';
 import { AssistantAgentFactory } from '../turn-setup/assistant-agent.factory';
@@ -303,7 +304,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	/**
 	 * The text and code that the chat shows for a turn error. A masked stream
 	 * failure is shown as a credit error when the balance is used up, because a
-	 * credit stop at the model call can arrive in that form.
+	 * credit stop at the model call can arrive in that form. A refused file stays
+	 * in the thread history, because the runtime saves the turn input first.
 	 */
 	private async formatTurnError(user: User, error: unknown): Promise<FormattedTurnError> {
 		let shown = error;
@@ -315,7 +317,12 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			}
 		}
 		const code = getUserFacingErrorCode(shown);
-		return { message: getUserFacingErrorMessage(shown), ...(code ? { code } : {}) };
+		const message = getUserFacingErrorMessage(
+			shown,
+			undefined,
+			isAttachmentRejectedByProviderError(shown) ? { attachmentRemoved: false } : {},
+		);
+		return { message, ...(code ? { code } : {}) };
 	}
 
 	/** Claims the turn's model usage against the Assistant credits. Best effort. */
