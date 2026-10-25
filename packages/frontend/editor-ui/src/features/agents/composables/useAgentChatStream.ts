@@ -83,8 +83,9 @@ export interface UseAgentChatStreamParams {
 	newSession?: Ref<boolean>;
 	/**
 	 * `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'`
-	 * talks to the published n8n Chat channel. See `capabilities` for the
-	 * differences between channels.
+	 * talks to the published n8n Chat channel; `'system'` talks to a system
+	 * agent, such as the n8n Assistant. See `capabilities` for the differences
+	 * between channels.
 	 */
 	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
@@ -136,9 +137,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * that fallback.
 	 */
 	const capabilities = computed(() => ({
-		previewHistory: channel.value !== 'n8n-chat',
-		/** n8n Chat has no session detail view to link a background job's trace to. */
-		traceLinks: channel.value !== 'n8n-chat',
+		previewHistory: channel.value === 'chat',
+		/** Only the builder chat has a session detail view to link a background job's trace to. */
+		traceLinks: channel.value === 'chat',
 	}));
 
 	const messages = ref<ChatMessage[]>([]);
@@ -1587,12 +1588,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		clientContext?: Record<string, unknown>,
 	) {
 		const target = targetKey();
-		const url = agentChatBaseUrl(
+		const baseUrl = agentChatBaseUrl(
 			rootStore.restApiContext,
 			params.projectId.value,
 			params.agentId.value,
 			channel.value,
 		);
+		// A new system session starts in the project of the query. An existing one keeps its own.
+		const url =
+			channel.value === 'system'
+				? `${baseUrl}?projectId=${encodeURIComponent(params.projectId.value)}`
+				: baseUrl;
 		const body: Record<string, unknown> = { message };
 		const sessionId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		const newSession = params.newSession?.value === true && sessionId !== acknowledgedSessionId;
