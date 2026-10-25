@@ -157,6 +157,25 @@ describe('workspace tool', () => {
 			});
 		});
 
+		it('stores a grant when the user always allows it, and skips the next approval', async () => {
+			const context = createMockContext();
+			context.grantSessionToolApproval = vi.fn(async () => {});
+			const tool = createWorkspaceTool(context);
+			const input = { action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] };
+
+			await executeTool(tool, input, {
+				resumeData: { approved: true, scope: 'session' },
+			} as never);
+
+			expect(context.grantSessionToolApproval).toHaveBeenCalledWith('workspace:tag-workflow');
+
+			context.sessionApprovedToolKeys = new Set(['workspace:tag-workflow']);
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend } as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
 		it('should suspend for confirmation when permission requires approval', async () => {
 			const context = createMockContext();
 			const suspend = vi.fn();
