@@ -974,6 +974,44 @@ describe('Telegram node', () => {
 			);
 		});
 
+		it('should materialize line breaks in HTML when Preserve Line Breaks is on', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '@channel';
+					case 'richFormat':
+						return 'html';
+					case 'richMessageText':
+						return 'string1\nstring2\n\nstring3';
+					case 'additionalFields':
+						return { preserveLineBreaks: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 101 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '@channel',
+					rich_message: { html: 'string1<br>\nstring2<br><br>\n\nstring3' },
+				},
+				{},
+			);
+		});
+
 		it('should send the rich message text unchanged when Preserve Line Breaks is off', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
 				switch (p) {
