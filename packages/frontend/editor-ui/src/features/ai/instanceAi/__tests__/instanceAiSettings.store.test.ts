@@ -87,6 +87,7 @@ function makeModuleSettings(
 		sandboxUnavailableReason: null,
 		runDebugEnabled: false,
 		workflowSuggestionsEnabled: false,
+		assistantAgentEnabled: false,
 		...overrides,
 	};
 }

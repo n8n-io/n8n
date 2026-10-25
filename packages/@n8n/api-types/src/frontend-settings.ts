@@ -411,7 +411,7 @@ export type FrontendModuleSettings = {
 		runDebugEnabled: boolean;
 		workflowSuggestionsEnabled: boolean;
 		/** Whether new threads can run on the n8n Assistant agent of the agents runtime. */
-		assistantAgentEnabled?: boolean;
+		assistantAgentEnabled: boolean;
 	};
 
 	/**
