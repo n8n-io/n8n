@@ -1,8 +1,15 @@
-import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
+import { ESLintUtils, TSESTree, type TSESLint } from '@typescript-eslint/utils';
 
 const ELEMENT_PLUS = 'element-plus';
 
 type TemplateElement = TSESTree.Node & { rawName?: string };
+
+type VueParserServices = {
+	defineTemplateBodyVisitor?: (
+		templateBodyVisitor: { VElement?: (node: TemplateElement) => void },
+		scriptVisitor: TSESLint.RuleListener,
+	) => TSESLint.RuleListener;
+};
 
 type ElementPlusImportBanConfig<TMessageId extends string> = {
 	/** Named exports from `element-plus`, for example `ElDialog`. Match is exact. */
@@ -37,14 +44,6 @@ const matchesComponentPath = (source: string, segment: string): boolean => {
 	return next === undefined || next === '/';
 };
 
-/**
- * Element Plus import bans visit imports and templates the same way.
- * A fix to that visit belongs here, not in each rule file.
- *
- * Add a ban with a thin rule file, then enable the rule in `frontend.ts`.
- * List the named exports, the deep component path, and the template tags.
- * Leave `allowedPath` unset when the component must disappear everywhere.
- */
 export function createElementPlusImportBanRule<const TMessageId extends string>(
 	config: ElementPlusImportBanConfig<TMessageId>,
 ) {
@@ -82,7 +81,7 @@ export function createElementPlusImportBanRule<const TMessageId extends string>(
 				});
 			};
 
-			return {
+			const scriptVisitor: TSESLint.RuleListener = {
 				ImportDeclaration(node) {
 					const source = node.source.value;
 					if (isBannedComponentModule(source)) {
@@ -111,12 +110,24 @@ export function createElementPlusImportBanRule<const TMessageId extends string>(
 						if (names.has(name)) report(specifier, name);
 					}
 				},
-				// vue-eslint-parser visits template elements.
-				VElement(node: TemplateElement) {
-					const name = node.rawName;
-					if (name !== undefined && templateNames.has(name)) report(node, name);
-				},
 			};
+
+			// ESLint does not walk templateBody. The Vue parser visits those nodes.
+			const services = context.sourceCode.parserServices as unknown as VueParserServices;
+			const defineTemplateBodyVisitor = services.defineTemplateBodyVisitor;
+			if (templateNames.size === 0 || defineTemplateBodyVisitor === undefined) {
+				return scriptVisitor;
+			}
+
+			return defineTemplateBodyVisitor(
+				{
+					VElement(node) {
+						const name = node.rawName;
+						if (name !== undefined && templateNames.has(name)) report(node, name);
+					},
+				},
+				scriptVisitor,
+			);
 		},
 	});
 }
