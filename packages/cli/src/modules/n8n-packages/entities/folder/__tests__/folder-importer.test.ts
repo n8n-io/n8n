@@ -6,7 +6,7 @@ import type { FolderService } from '@/services/folder.service';
 
 import type { PlacementPolicy } from '../../../n8n-packages.types';
 import type { FolderImportContext, PreparedFolder } from '../folder-import.types';
-import { FolderImporter } from '../folder-importer';
+import { FolderImporter, toFolderSummaries } from '../folder-importer';
 
 const context = (
 	placementPolicy?: PlacementPolicy,
@@ -56,14 +56,38 @@ describe('FolderImporter', () => {
 			folder('a', 'b'),
 			folder('b', null),
 		]);
-		const summaries = await importer.apply(context('follow-package'), plan);
+		await importer.applyMoves(context('follow-package'), plan);
 
 		expect(plan.conflicts).toEqual([]);
-		expect(summaries.map(({ status }) => status)).toEqual(['moved', 'moved']);
+		expect(toFolderSummaries(plan).map(({ status }) => status)).toEqual(['moved', 'moved']);
 		expect(folderService.updateFolder.mock.calls).toEqual([
 			['b', 'project-1', { parentFolderId: PROJECT_ROOT }],
 			['a', 'project-1', { parentFolderId: 'b' }],
 		]);
+	});
+
+	it('creates new folders in apply and leaves the moves to applyMoves', async () => {
+		const folderService = mock<FolderService>();
+		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', null)]);
+		const importer = new FolderImporter(folderService);
+		const ctx = context('follow-package');
+
+		const plan = await importer.plan(ctx, [folder('new', null), folder('a', 'new')]);
+		await importer.apply(ctx, plan);
+
+		expect(folderService.createFolder).toHaveBeenCalledExactlyOnceWith(
+			{ name: 'new', parentFolderId: undefined },
+			'project-1',
+			'new',
+		);
+		expect(folderService.updateFolder).not.toHaveBeenCalled();
+
+		await importer.applyMoves(ctx, plan);
+
+		expect(folderService.createFolder).toHaveBeenCalledOnce();
+		expect(folderService.updateFolder).toHaveBeenCalledExactlyOnceWith('a', 'project-1', {
+			parentFolderId: 'new',
+		});
 	});
 
 	it('still reports a folder that belongs to another project', async () => {
@@ -91,6 +115,7 @@ describe('FolderImporter', () => {
 
 		const plan = await importer.plan(ctx, [folder('new', null), folder('a', 'new')]);
 		await importer.apply(ctx, plan);
+		await importer.applyMoves(ctx, plan);
 
 		expect(plan.conflicts).toEqual([]);
 		expect(plan.items.find(({ sourceFolderId }) => sourceFolderId === 'a')).toMatchObject({

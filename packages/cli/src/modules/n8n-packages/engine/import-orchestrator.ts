@@ -30,7 +30,7 @@ import type {
 	PreparedFolder,
 } from '../entities/folder/folder-import.types';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
-import { FolderImporter } from '../entities/folder/folder-importer';
+import { FolderImporter, toFolderSummaries } from '../entities/folder/folder-importer';
 import type { FolderRemovalPlan } from '../entities/folder/folder-removal.types';
 import { FolderRemover } from '../entities/folder/folder-remover';
 import { TagImporter } from '../entities/tag/tag-importer';
@@ -447,7 +447,7 @@ export class ImportOrchestrator {
 		// Tags go first because the workflow write attaches them by id.
 		await this.tagImporter.apply(context, tagPlan);
 
-		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
+		await this.folderImporter.apply(folderContext, folderPlan);
 
 		const credentialBindResult = await this.credentialImporter.apply(
 			context,
@@ -501,6 +501,10 @@ export class ImportOrchestrator {
 			credentialPlan,
 		);
 
+		// After the workflow writes: a failed write then leaves the existing folders where they were.
+		// Before the removals, which plan with the folders in their new places.
+		await this.folderImporter.applyMoves(folderContext, folderPlan);
+
 		// Removal trails every write: the package's own content is in place first, so a failure
 		// earlier leaves the target with more than the package asked for rather than less. It sits
 		// after the variables above only because nothing here reads them.
@@ -514,7 +518,7 @@ export class ImportOrchestrator {
 			),
 			removedWorkflows,
 			removedFolders,
-			folderSummaries,
+			folderSummaries: toFolderSummaries(folderPlan),
 			bindings,
 			credentialResult: { ...credentialBindResult, updated: credentialsUpdated },
 			dataTablePlan,

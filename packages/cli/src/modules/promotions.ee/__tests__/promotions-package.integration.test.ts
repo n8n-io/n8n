@@ -73,6 +73,7 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
@@ -1522,6 +1523,38 @@ describe('Apply a project selection', () => {
 			await service.applyProjectSelection(project.id, owner, { workflowIds: [workflows[1].id] }),
 		).toMatchObject({ status: 'applied', counts: { folders: { moved: 1 } } });
 		expect(await parentOfX()).toBe(outer.id);
+	});
+
+	it('leaves the folders where they were when a workflow write fails', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		await service.clone(environments.apply.id);
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Inside']);
+		const folders = Container.get(FolderRepository);
+		// The branch holds folder X under Y, with the workflow in X. Here X sits at the root.
+		const outer = await createFolder(project, { name: 'Y' });
+		const inner = await createFolder(project, { name: 'X', parentFolder: outer });
+		await Container.get(WorkflowRepository).update(workflows[0].id, { parentFolder: inner });
+		await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export nested folders',
+		});
+		await folders.update(inner.id, { parentFolder: null });
+		const write = vi
+			.spyOn(Container.get(WorkflowService), 'update')
+			.mockRejectedValueOnce(new Error('Workflow write failed'));
+
+		try {
+			await expect(
+				service.applyProjectSelection(project.id, owner, { workflowIds: [workflows[0].id] }),
+			).rejects.toThrow('Workflow write failed');
+		} finally {
+			write.mockRestore();
+		}
+
+		const x = await folders.findOne({ where: { id: inner.id }, relations: { parentFolder: true } });
+		expect(x?.parentFolder ?? null).toBeNull();
 	});
 
 	it('moves a selected workflow to the project root when the branch holds it there', async () => {

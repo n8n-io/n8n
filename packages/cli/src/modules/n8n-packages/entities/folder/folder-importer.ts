@@ -107,35 +107,29 @@ export class FolderImporter {
 		return { items, conflicts };
 	}
 
-	async apply(
-		context: FolderImportContext,
-		plan: FolderImportPlan,
-	): Promise<ImportedFolderSummary[]> {
-		const summaries: ImportedFolderSummary[] = [];
-
+	/**
+	 * Creates the new folders, so the workflow writes can put workflows in them. Moves wait for
+	 * {@link applyMoves}, so a failed workflow write leaves the existing folders where they were.
+	 */
+	async apply(context: FolderImportContext, plan: FolderImportPlan): Promise<void> {
 		for (const item of plan.items) {
-			if (item.action === 'skip') {
-				summaries.push(toSummary(item, 'skipped'));
-				continue;
-			}
-
-			if (item.action === 'move') {
-				await this.folderService.updateFolder(item.sourceFolderId, context.projectId, {
-					parentFolderId: item.targetParentFolderId ?? PROJECT_ROOT,
-				});
-				summaries.push(toSummary(item, 'moved'));
-				continue;
-			}
-
+			if (item.action !== 'create') continue;
 			await this.folderService.createFolder(
 				{ name: item.name, parentFolderId: item.targetParentFolderId ?? undefined },
 				context.projectId,
 				item.sourceFolderId,
 			);
-			summaries.push(toSummary(item, 'created'));
 		}
+	}
 
-		return summaries;
+	/** Parents first, as planned, so a folder never moves under one of its own descendants. */
+	async applyMoves(context: FolderImportContext, plan: FolderImportPlan): Promise<void> {
+		for (const item of plan.items) {
+			if (item.action !== 'move') continue;
+			await this.folderService.updateFolder(item.sourceFolderId, context.projectId, {
+				parentFolderId: item.targetParentFolderId ?? PROJECT_ROOT,
+			});
+		}
 	}
 
 	private async findExisting(folderIds: string[]): Promise<Map<string, ExistingFolder>> {
@@ -153,17 +147,21 @@ export class FolderImporter {
 	}
 }
 
-function toSummary(
-	item: FolderPlanItem,
-	status: ImportedFolderSummary['status'],
-): ImportedFolderSummary {
-	return {
+const SUMMARY_STATUS = {
+	create: 'created',
+	skip: 'skipped',
+	move: 'moved',
+} as const satisfies Record<FolderPlanItem['action'], ImportedFolderSummary['status']>;
+
+/** The outcome of every planned folder, once {@link FolderImporter.apply} and the moves ran. */
+export function toFolderSummaries(plan: FolderImportPlan): ImportedFolderSummary[] {
+	return plan.items.map((item) => ({
 		sourceFolderId: item.sourceFolderId,
 		localId: item.sourceFolderId,
 		name: item.name,
 		parentFolderId: item.targetParentFolderId,
-		status,
-	};
+		status: SUMMARY_STATUS[item.action],
+	}));
 }
 
 /**
