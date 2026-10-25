@@ -31,13 +31,6 @@ const formatReplacement = (replacement: string | readonly string[]): string =>
 		.map((name) => `\`${name}\``)
 		.join(' or ');
 
-/**
- * Reka UI import bans visit imports the same way. A fix to that visit
- * belongs here, not in each rule file.
- *
- * Add a ban with a thin rule file: pick the export prefix, the wrapper
- * path, and the design-system component that replaces it.
- */
 export function createRekaUiImportBanRule<const TMessageId extends string>(
 	config: RekaUiImportBanConfig<TMessageId>,
 ) {
