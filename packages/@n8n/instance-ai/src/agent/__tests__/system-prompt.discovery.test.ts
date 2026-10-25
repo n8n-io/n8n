@@ -11,6 +11,7 @@
  */
 
 import { createCredentialsTool } from '../../tools/credentials.tool';
+import { ALWAYS_LOADED_TOOL_NAMES, DOMAIN_TOOL_IDS } from '../../tools/tool-ids';
 import type { BrowserUseState } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
@@ -145,6 +146,18 @@ describe('getSystemPrompt — browser discoverability', () => {
 			const prompt = getSystemPrompt({ browserUseState: { status: 'disconnected' } });
 
 			expect(prompt).not.toContain('Browser Automation rules');
+		});
+	});
+
+	describe('the tool search example', () => {
+		// Every run registers `workspace` and defers it. A plan tool is left out when
+		// the runtime has no scheduler, so the example would point at a missing tool.
+		it('names a tool that every run can find with search_tools', () => {
+			const prompt = getSystemPrompt({ toolSearchEnabled: true });
+
+			expect(prompt).toContain(`search "folders" for \`${DOMAIN_TOOL_IDS.WORKSPACE}\``);
+			expect(ALWAYS_LOADED_TOOL_NAMES.has(DOMAIN_TOOL_IDS.WORKSPACE)).toBe(false);
+			expect(prompt).not.toContain('search "create tasks"');
 		});
 	});
 });
