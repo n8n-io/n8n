@@ -59,6 +59,26 @@ describe('convertToDateTime', () => {
 		expect(convertToDateTime('nonsense')).toBeUndefined();
 	});
 
+	it.each(['America/New_York', 'UTC', 'Asia/Seoul'])(
+		'keeps the previous rollover normalization for invalid date-only strings in %s',
+		(zone) => {
+			const originalZone = Settings.defaultZone;
+			Settings.defaultZone = zone;
+			try {
+				// These used to go through new Date(), which normalizes
+				// "2023-02-29" to March 1 and "2023-06-31" to July 1.
+				const rolled = convertToDateTime('2023-02-29');
+				expect(rolled?.isValid).toBe(true);
+				expect(rolled?.toMillis()).toBe(new Date('2023-02-29').getTime());
+				expect(convertToDateTime('2023-06-31')?.toMillis()).toBe(
+					new Date('2023-06-31').getTime(),
+				);
+			} finally {
+				Settings.defaultZone = originalZone;
+			}
+		},
+	);
+
 	it('passes Date and DateTime values through unchanged', () => {
 		const fromDate = convertToDateTime(new Date(2023, 5, 16, 12, 30));
 		expect(fromDate?.toISODate()).toBe('2023-06-16');
