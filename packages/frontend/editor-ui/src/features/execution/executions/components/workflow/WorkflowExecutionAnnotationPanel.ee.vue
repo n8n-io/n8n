@@ -52,6 +52,7 @@ function onEllipsisButtonBlur(event: FocusEvent) {
 		:items="[]"
 		placement="bottom-end"
 		width="250px"
+		:extra-popper-class="$style.menu"
 	>
 		<template #trigger>
 			<N8nButton
@@ -125,6 +126,11 @@ function onEllipsisButtonBlur(event: FocusEvent) {
 
 .badge {
 	border: 0;
+}
+
+.menu {
+	width: var(--n8n--dropdown-menu-width);
+	min-width: var(--n8n--dropdown-menu-width);
 }
 
 .container {
