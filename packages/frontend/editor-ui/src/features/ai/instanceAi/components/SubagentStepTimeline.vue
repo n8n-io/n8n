@@ -142,7 +142,12 @@ const steps = computed((): TimelineStep[] => {
 			</ToolCallStep>
 
 			<template v-else-if="step.type === 'text'">
-				<N8nAiActivityStepGroup v-if="step.isLongText" :nested="false" size="small">
+				<N8nAiActivityStepGroup
+					v-if="step.isLongText"
+					:nested="false"
+					:announce-label="false"
+					size="small"
+				>
 					<template #prefix>
 						<N8nIcon :icon="step.icon" size="small" />
 					</template>

@@ -135,6 +135,26 @@ describe('SubagentStepTimeline', () => {
 		expect(queryByText('Thinking')).not.toBeInTheDocument();
 	});
 
+	it('keeps streamed long-text labels outside a polite live region', async () => {
+		const { getByText, rerender } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({
+					timeline: [{ type: 'text', content: 'Generating code\n```js\nconst value = 1;\n```' }],
+				}),
+			},
+		});
+
+		expect(getByText('Generating code')).toHaveAttribute('aria-live', 'off');
+
+		await rerender({
+			agentNode: makeAgentNode({
+				timeline: [{ type: 'text', content: 'Generating code now\n```js\nconst value = 2;\n```' }],
+			}),
+		});
+
+		expect(getByText('Generating code now')).toHaveAttribute('aria-live', 'off');
+	});
+
 	it('opens long text with Enter and restores its short label with Space', async () => {
 		const user = userEvent.setup();
 		const { getByRole, container } = renderComponent({
