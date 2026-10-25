@@ -4,22 +4,26 @@
  * composable wiring lives there) — this surface only translates the shared
  * `resolve` event into instance AI's own confirm transport
  * (`thread.confirmAction` + `thread.resolveConfirmation`, with the
- * MAX_CONFIRM_ATTEMPTS retry semantics this surface has always had).
+ * MAX_CONFIRM_ATTEMPTS retry semantics this surface has always had), or into
+ * the `submit` callback of the Assistant agent chat.
  */
 import { computed, ref } from 'vue';
 
 import ChannelSetupCard from '@/features/ai/shared/components/ChannelSetupCard.vue';
 
-import { useThread } from '../instanceAi.store';
+import type { ConfirmationSubmit } from '../confirmationTransport';
+import { useOptionalThread } from '../instanceAi.store';
 
 const props = defineProps<{
 	requestId: string;
 	integrationType: string;
 	agentId: string;
 	projectId: string;
+	/** Sends the answer through the caller, such as the Assistant agent chat. Defaults to the thread. */
+	submit?: ConfirmationSubmit;
 }>();
 
-const thread = useThread();
+const thread = useOptionalThread();
 
 const MAX_CONFIRM_ATTEMPTS = 2;
 
@@ -30,13 +34,18 @@ const submitted = ref(false);
 // another path (e.g. a concurrent confirmation), independent of this
 // adapter's own `submitted` guard below.
 const isResolvedOrSubmitted = computed(
-	() => submitted.value || thread.resolvedConfirmationIds.has(props.requestId),
+	() => submitted.value || thread?.resolvedConfirmationIds.has(props.requestId) === true,
 );
 
 async function onResolve({ approved }: { approved: boolean }) {
 	if (isResolvedOrSubmitted.value) return;
 	submitted.value = true;
 
+	if (props.submit) {
+		props.submit({ kind: 'approval', approved });
+		return;
+	}
+	if (!thread) return;
 	const resolution = approved ? 'approved' : 'deferred';
 	for (let attempt = 0; attempt < MAX_CONFIRM_ATTEMPTS; attempt++) {
 		if (await thread.confirmAction(props.requestId, { kind: 'approval', approved })) break;

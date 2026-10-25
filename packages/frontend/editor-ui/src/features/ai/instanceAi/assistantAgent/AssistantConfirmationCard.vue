@@ -36,10 +36,14 @@ import {
 	type ConfirmationInputs,
 } from '../confirmationTelemetry';
 import DomainAccessApproval from '../components/DomainAccessApproval.vue';
+import GatewayResourceDecision from '../components/GatewayResourceDecision.vue';
+import InstanceAiChannelSetup from '../components/InstanceAiChannelSetup.vue';
+import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import InstanceAiMcpConnectCard from '../components/InstanceAiMcpConnectCard.vue';
 import InstanceAiQuestions, { type QuestionAnswer } from '../components/InstanceAiQuestions.vue';
+import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
+import { ASSISTANT_AGENT_PROJECT_ID, ASSISTANT_AGENT_THREAD_ID } from './assistantAgentThreads';
 import type { AssistantConfirmationInput } from './assistantConfirmation';
-import { ASSISTANT_AGENT_THREAD_ID } from './assistantAgentThreads';
 
 const props = defineProps<{
 	input: AssistantConfirmationInput;
@@ -69,23 +73,26 @@ function reopen() {
 	attempt.value += 1;
 }
 
+// A payload without a project uses the project of the thread.
+const threadProjectId = inject(ASSISTANT_AGENT_PROJECT_ID, undefined);
+const projectId = computed(() => props.input.projectId ?? threadProjectId);
+
 /** The same order as the current Assistant confirmation panel. */
 const variant = computed(() => {
 	const { input } = props;
 	if (input.inputType === 'questions' && input.questions?.length) return 'questions';
-	// Cards that need the current Assistant thread. They come to this chat later.
-	if (
-		input.setupRequests?.length ||
-		input.credentialRequests?.length ||
-		(input.inputType === 'resource-decision' && input.resourceDecision) ||
-		input.channelConfig
-	) {
-		return 'unsupported';
-	}
+	// The Assistant agent has no plan tools, so a plan review never reaches this chat.
+	if (input.inputType === 'plan-review') return 'unsupported';
 	if (input.mcpConnectRequest) return 'mcp-connect';
+	if (input.setupRequests?.length) return 'workflow-setup';
+	if (input.credentialRequests?.length) return 'credential-setup';
 	if (input.inputType === 'text') return 'text';
 	if (input.inputType === 'continue') return 'continue';
 	if (input.testListener) return 'test-listener';
+	if (input.inputType === 'resource-decision' && input.resourceDecision) {
+		return 'resource-decision';
+	}
+	if (input.channelConfig) return 'channel-config';
 	if (input.domainAccess) return 'domain-access';
 	if (input.webSearch) return 'web-search';
 	if (input.credentialDestination) return 'credential-destination';
@@ -319,6 +326,43 @@ function onApprovalSelect(key: string) {
 			:read-only="isInactive"
 			data-test-id="assistant-agent-mcp-connect"
 			@resolve="onMcpConnectResolve"
+		/>
+		<!-- The setup cards keep their own submitted state. -->
+		<InstanceAiWorkflowSetup
+			v-else-if="variant === 'workflow-setup' && input.setupRequests"
+			:request-id="input.requestId"
+			:setup-requests="input.setupRequests"
+			:project-id="projectId"
+			:credential-flow="input.credentialFlow"
+			:workflow-id="input.workflowId"
+			:submit="submit"
+		/>
+		<InstanceAiCredentialSetup
+			v-else-if="variant === 'credential-setup' && input.credentialRequests"
+			:request-id="input.requestId"
+			:credential-requests="input.credentialRequests"
+			:message="input.message"
+			:project-id="projectId"
+			:credential-flow="input.credentialFlow"
+			:require-user-selection="input.requireUserSelection"
+			:submit="submit"
+		/>
+		<GatewayResourceDecision
+			v-else-if="variant === 'resource-decision' && input.resourceDecision"
+			data-test-id="assistant-agent-resource-decision"
+			:request-id="input.requestId"
+			:resource="input.resourceDecision.resource"
+			:description="input.resourceDecision.description"
+			:options="input.resourceDecision.options"
+			:submit="submit"
+		/>
+		<InstanceAiChannelSetup
+			v-else-if="variant === 'channel-config' && input.channelConfig"
+			:request-id="input.requestId"
+			:integration-type="input.channelConfig.integrationType"
+			:agent-id="input.channelConfig.agentId"
+			:project-id="projectId ?? ''"
+			:submit="submit"
 		/>
 		<N8nCard
 			v-else-if="variant === 'test-listener' && input.testListener"

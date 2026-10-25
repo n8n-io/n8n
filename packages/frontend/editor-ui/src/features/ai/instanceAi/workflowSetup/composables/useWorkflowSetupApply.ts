@@ -2,6 +2,7 @@ import { ref, watch, onUnmounted, type Ref } from 'vue';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { isRecord } from '@n8n/utils/is-record';
+import type { ConfirmationSubmit } from '../../confirmationTransport';
 import type { ThreadRuntime } from '../../instanceAi.store';
 import type { TerminalState, WorkflowSetupApplyPayload } from '../workflowSetup.types';
 
@@ -12,7 +13,14 @@ type WaitForToolResult = Record<string, unknown> | null | typeof WAIT_CANCELLED;
 
 export function useWorkflowSetupApply(deps: {
 	requestId: Ref<string>;
-	thread: ThreadRuntime;
+	/** The current Assistant thread. The Assistant agent chat has none and passes `submit`. */
+	thread: ThreadRuntime | undefined;
+	/**
+	 * Sends the answer through the caller instead of the thread. The caller
+	 * resumes the tool, and the tool's result shows in the chat, so the card
+	 * settles as soon as it sends.
+	 */
+	submit?: () => ConfirmationSubmit | undefined;
 }): {
 	terminalState: Ref<TerminalState | null>;
 	apply: (payload: WorkflowSetupApplyPayload) => Promise<Record<string, unknown> | undefined>;
@@ -55,7 +63,7 @@ export function useWorkflowSetupApply(deps: {
 
 		const promise = new Promise<WaitForToolResult>((resolve) => {
 			resolveWait = resolve;
-			const existing = deps.thread.findToolCallByRequestId(requestId);
+			const existing = deps.thread?.findToolCallByRequestId(requestId);
 			if (existing?.result !== undefined) {
 				finish(isRecord(existing.result) ? existing.result : null);
 				return;
@@ -64,7 +72,7 @@ export function useWorkflowSetupApply(deps: {
 			stopWatch = watch(
 				() => {
 					const tc: InstanceAiToolCallState | undefined =
-						deps.thread.findToolCallByRequestId(requestId);
+						deps.thread?.findToolCallByRequestId(requestId);
 					return tc?.result;
 				},
 				(result) => {
@@ -88,7 +96,19 @@ export function useWorkflowSetupApply(deps: {
 		if (terminalState.value === 'applying') return;
 		terminalState.value = 'applying';
 
-		const postSuccess = await deps.thread.confirmAction(deps.requestId.value, {
+		const submit = deps.submit?.();
+		if (submit) {
+			submit({ kind: 'setupWorkflowApply', ...payload });
+			terminalState.value = 'applied';
+			return;
+		}
+		if (!deps.thread) {
+			terminalState.value = null;
+			return;
+		}
+		const thread = deps.thread;
+
+		const postSuccess = await thread.confirmAction(deps.requestId.value, {
 			kind: 'setupWorkflowApply',
 			...payload,
 		});
@@ -118,7 +138,7 @@ export function useWorkflowSetupApply(deps: {
 
 		if (result.success === true) {
 			terminalState.value = result.partial === true ? 'partial' : 'applied';
-			deps.thread.resolveConfirmation(deps.requestId.value, 'approved');
+			thread.resolveConfirmation(deps.requestId.value, 'approved');
 			return result;
 		}
 
@@ -131,6 +151,17 @@ export function useWorkflowSetupApply(deps: {
 	async function defer(): Promise<void> {
 		if (terminalState.value === 'applying') return;
 		terminalState.value = 'applying';
+
+		const submit = deps.submit?.();
+		if (submit) {
+			submit({ kind: 'approval', approved: false });
+			terminalState.value = 'deferred';
+			return;
+		}
+		if (!deps.thread) {
+			terminalState.value = null;
+			return;
+		}
 
 		const success = await deps.thread.confirmAction(deps.requestId.value, {
 			kind: 'approval',
