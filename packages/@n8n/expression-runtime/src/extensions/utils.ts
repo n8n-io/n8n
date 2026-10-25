@@ -13,9 +13,13 @@ export const convertToDateTime = (value: string | Date | DateTime): DateTime | u
 	let converted: DateTime | undefined;
 
 	if (typeof value === 'string') {
-		converted = ISO_DATE_ONLY_REGEXP.test(value)
-			? DateTime.fromISO(value)
-			: DateTime.fromJSDate(new Date(value));
+		const isDateOnly = ISO_DATE_ONLY_REGEXP.test(value);
+		converted = isDateOnly ? DateTime.fromISO(value) : DateTime.fromJSDate(new Date(value));
+		if (converted.invalidReason !== null && isDateOnly) {
+			// Keep the previous new Date() rollover normalization for invalid
+			// date-only strings (e.g. "2023-02-29" becomes March 1).
+			converted = DateTime.fromJSDate(new Date(value));
+		}
 		if (converted.invalidReason !== null) {
 			return;
 		}
