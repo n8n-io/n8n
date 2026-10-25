@@ -51,24 +51,24 @@ packages:
   - '!packages/quality/testing/playwright/fixtures/community-packages/packages/**'
 
 catalog:
-  '@ai-sdk/alibaba': ^2.0.32
-  '@ai-sdk/amazon-bedrock': ^5.0.31
-  '@ai-sdk/anthropic': ^4.0.32
-  '@ai-sdk/azure': ^4.0.21
-  '@ai-sdk/cohere': ^4.0.12
-  '@ai-sdk/deepseek': ^3.0.13
-  '@ai-sdk/gateway': ^4.0.52
-  '@ai-sdk/google': ^4.0.24
-  '@ai-sdk/google-vertex': ^5.0.47
-  '@ai-sdk/groq': ^4.0.13
-  '@ai-sdk/minimax': ^3.0.15
-  '@ai-sdk/mistral': ^4.0.14
-  '@ai-sdk/moonshotai': ^3.0.35
-  '@ai-sdk/openai': ^4.0.20
-  '@ai-sdk/openai-compatible': ^3.0.44
-  '@ai-sdk/otel': ^1.0.66
-  '@ai-sdk/provider-utils': ^5.0.27
-  '@ai-sdk/xai': ^4.0.18
+  '@ai-sdk/alibaba': ^2.0.75
+  '@ai-sdk/amazon-bedrock': ^5.0.123
+  '@ai-sdk/anthropic': ^4.0.87
+  '@ai-sdk/azure': ^4.0.109
+  '@ai-sdk/cohere': ^4.0.68
+  '@ai-sdk/deepseek': ^3.0.72
+  '@ai-sdk/gateway': ^4.0.123
+  '@ai-sdk/google': ^4.0.104
+  '@ai-sdk/google-vertex': ^5.0.121
+  '@ai-sdk/groq': ^4.0.69
+  '@ai-sdk/minimax': ^3.0.64
+  '@ai-sdk/mistral': ^4.0.71
+  '@ai-sdk/moonshotai': ^3.0.76
+  '@ai-sdk/openai': ^4.0.101
+  '@ai-sdk/openai-compatible': ^3.0.77
+  '@ai-sdk/otel': ^1.0.150
+  '@ai-sdk/provider-utils': ^5.0.67
+  '@ai-sdk/xai': ^4.0.59
   '@asteasolutions/zod-to-openapi': 7.3.4
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
@@ -189,7 +189,7 @@ catalog:
   '@vitest/coverage-istanbul': 5.0.1
   '@vitest/coverage-v8': 5.0.1
   agent-browser: 0.26.0
-  ai: ^7.0.66
+  ai: ^7.0.150
   axios: 1.20.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
