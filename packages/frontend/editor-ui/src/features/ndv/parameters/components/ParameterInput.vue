@@ -2257,7 +2257,14 @@ onUpdated(async () => {
 }
 
 .switch-input {
+	// A drag replaces this switch with a 32px input. Keep that box height
+	// so the fields below stay under the pointer.
+	display: inline-flex;
+	align-items: center;
+	box-sizing: border-box;
+	height: var(--height--md);
 	margin: var(--spacing--5xs) 0 var(--spacing--2xs) 0;
+	vertical-align: middle;
 }
 
 .parameter-value-container {
