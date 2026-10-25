@@ -4,10 +4,11 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
-import type { SkillUsageProxy } from '../services/skill-usage-proxy.service';
+import { SkillUsageProxy } from '../services/skill-usage-proxy.service';
 import type { Skill } from '../database/entities/skill.entity';
 import type { SkillRepository } from '../database/repositories/skill.repository';
 import { SkillsTelemetry } from '../services/skills-telemetry.service';
+import { FakeSkillUsage } from '../testing';
 
 function skill(id: string, target: Partial<Pick<Skill, 'projectId' | 'agentId'>> = {}): Skill {
 	return mock<Skill>({ id, projectId: target.projectId ?? null, agentId: target.agentId ?? null });
@@ -16,7 +17,9 @@ function skill(id: string, target: Partial<Pick<Skill, 'projectId' | 'agentId'>>
 describe('SkillsTelemetry', () => {
 	const telemetry = mock<Telemetry>();
 	const repository = mock<SkillRepository>();
-	const skillUsage = mock<SkillUsageProxy>();
+	const usage = new FakeSkillUsage();
+	const skillUsage = new SkillUsageProxy();
+	skillUsage.register(usage);
 	const service = new SkillsTelemetry(telemetry, repository, mockLogger(), skillUsage);
 	const skills = [
 		skill('skill_instance'),
@@ -24,18 +27,14 @@ describe('SkillsTelemetry', () => {
 		skill('skill_agent', { agentId: 'agent-1' }),
 	];
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.resetAllMocks();
+		await usage.seed({
+			agents: [{ key: 'agent-1', name: 'Support bot', project: 'project-2' }],
+			skills: [],
+		});
 		repository.findByIds.mockImplementation(async (ids) =>
 			skills.filter((s) => ids.includes(s.id)),
-		);
-		skillUsage.findAgents.mockImplementation(
-			async (ids) =>
-				new Map(
-					ids
-						.filter((id) => id === 'agent-1')
-						.map((id) => [id, { name: 'Support bot', projectId: 'project-2' }] as const),
-				),
 		);
 	});
 

@@ -8,12 +8,13 @@ import type { Skill } from '../../database/entities/skill.entity';
 import type { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillAccessService } from '../../services/skill-access.service';
 import { SkillRuntimeService } from '../../services/skill-runtime.service';
-import type { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
+import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
 import { SkillService } from '../../services/skill.service';
 import type { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import type { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import type { ResolvedSkillRow } from '../../utils/skill-content';
 import { skillContentHash } from '../../utils/skill-content-hash';
+import { FakeSkillUsage } from '../../testing';
 
 export const PROJECT = 'project-1';
 
@@ -74,10 +75,15 @@ export function versionRow(
 	};
 }
 
-/** The three skills services, real, over mocked repository, agents and transactions. */
+/**
+ * The three skills services, real, over a mocked repository and transactions. The agents
+ * side is `FakeSkillUsage` behind a real `SkillUsageProxy`: seed it with `usage.seed`.
+ */
 export function createSkillServices() {
 	const skills = mock<SkillRepository>();
-	const skillUsage = mock<SkillUsageProxy>();
+	const usage = new FakeSkillUsage();
+	const skillUsage = new SkillUsageProxy();
+	skillUsage.register(usage);
 	const txRunner = mock<TransactionRunner>();
 	const projectScope = mock<ProjectScopeService>();
 	const telemetry = mock<SkillsTelemetry>();
@@ -99,6 +105,7 @@ export function createSkillServices() {
 	);
 	return {
 		skills,
+		usage,
 		skillUsage,
 		txRunner,
 		projectScope,
@@ -111,19 +118,19 @@ export function createSkillServices() {
 	};
 }
 
-/** The mock answers that most skills tests start from. */
-export function resetSkillMocks({
+/** The mock answers that most skills tests start from, and no agents. */
+export async function resetSkillMocks({
 	skills,
-	skillUsage,
+	usage,
 	txRunner,
-}: Pick<ReturnType<typeof createSkillServices>, 'skills' | 'skillUsage' | 'txRunner'>) {
+}: Pick<ReturnType<typeof createSkillServices>, 'skills' | 'usage' | 'txRunner'>) {
+	vi.restoreAllMocks();
 	vi.resetAllMocks();
+	await usage.seed({ agents: [], skills: [] });
 	txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 	skills.findLatestSaved.mockResolvedValue(new Map());
 	skills.findLatestNamesInTarget.mockResolvedValue([]);
 	skills.findLatestSummaries.mockResolvedValue(new Map());
 	skills.findVersionsByIds.mockResolvedValue(new Map());
 	skills.findByIds.mockResolvedValue([]);
-	skillUsage.markFollowersChanged.mockResolvedValue([]);
-	skillUsage.findUsingAgentIds.mockResolvedValue([]);
 }

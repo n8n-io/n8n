@@ -22,10 +22,10 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 }));
 
 describe('SkillAccessService', () => {
-	const { skills, skillUsage, txRunner, projectScope, access } = createSkillServices();
+	const { skills, usage, txRunner, projectScope, access } = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
-	beforeEach(() => resetSkillMocks({ skills, skillUsage, txRunner }));
+	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner }));
 
 	describe('canAccess for update', () => {
 		it('checks projectSkill:update on the project of a project skill', async () => {
@@ -41,14 +41,14 @@ describe('SkillAccessService', () => {
 
 		it('checks projectSkill:update on the project of the agent of an agent skill', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
-			skillUsage.findAgents.mockResolvedValue(
-				new Map([['agent-1', { name: 'Support bot', projectId: PROJECT }]]),
-			);
+			await usage.seed({
+				agents: [{ key: 'agent-1', name: 'Support bot', project: PROJECT }],
+				skills: [],
+			});
 
 			expect(
 				await access.canAccess(user, skillRow('skill_a', { agentId: 'agent-1' }), 'update'),
 			).toBe(true);
-			expect(skillUsage.findAgents).toHaveBeenCalledWith(['agent-1'], {});
 			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:update'], false, {
 				projectId: PROJECT,
 			});
@@ -77,7 +77,6 @@ describe('SkillAccessService', () => {
 
 		it('needs skill:read for an agent skill whose agent is gone', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(false);
-			skillUsage.findAgents.mockResolvedValue(new Map());
 
 			expect(await access.canAccess(user, skillRow('skill_a', { agentId: 'gone' }), 'read')).toBe(
 				false,

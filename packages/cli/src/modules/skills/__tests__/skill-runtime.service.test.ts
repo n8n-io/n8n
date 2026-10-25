@@ -25,10 +25,10 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 }));
 
 describe('SkillRuntimeService', () => {
-	const { skills, skillUsage, txRunner, projectScope, runtime } = createSkillServices();
+	const { skills, usage, txRunner, projectScope, runtime } = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
-	beforeEach(() => resetSkillMocks({ skills, skillUsage, txRunner }));
+	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner }));
 
 	describe('Assistant reads', () => {
 		const context: AssistantSkillContext = { user, projectId: 'project-1' };
