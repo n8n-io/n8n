@@ -689,11 +689,12 @@ export class PromotionsService {
 			if (!project) throw new UnexpectedError(`Package inventory has no project "${id}"`);
 			return project;
 		};
+		type Move = Omit<CrossProjectMove, 'projectExists'>;
 		const toMove = (
 			{ id, name }: { id: string; name: string },
 			branchProjectId: string,
 			instanceProject: { id: string; name: string } | undefined,
-		): CrossProjectMove[] =>
+		): Move[] =>
 			instanceProject &&
 			instanceProject.id !== branchProjectId &&
 			(projectId === undefined || projectId === branchProjectId || projectId === instanceProject.id)
@@ -706,7 +707,7 @@ export class PromotionsService {
 						},
 					]
 				: [];
-		const byId = (a: CrossProjectMove, b: CrossProjectMove) => a.id.localeCompare(b.id);
+		const byId = (a: Move, b: Move) => a.id.localeCompare(b.id);
 
 		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
 			inventory.workflows.map(({ id }) => id),
@@ -717,17 +718,21 @@ export class PromotionsService {
 			).map(({ id, homeProject }) => [id, homeProject]),
 		);
 
-		return {
-			workflows: inventory.workflows
-				.flatMap((workflow) => toMove(workflow, workflow.projectId, owners.get(workflow.id)))
-				.sort(byId),
-			folders: inventory.folders
-				.filter((entry) => projectId === undefined || entry.projectId === projectId)
-				.flatMap(({ folder, projectId: branchProjectId }) =>
-					toMove(folder, branchProjectId, homes.get(folder.id)),
-				)
-				.sort(byId),
-		};
+		const workflows = inventory.workflows
+			.flatMap((workflow) => toMove(workflow, workflow.projectId, owners.get(workflow.id)))
+			.sort(byId);
+		const folders = inventory.folders
+			.filter((entry) => projectId === undefined || entry.projectId === projectId)
+			.flatMap(({ folder, projectId: branchProjectId }) =>
+				toMove(folder, branchProjectId, homes.get(folder.id)),
+			)
+			.sort(byId);
+		if (workflows.length === 0 && folders.length === 0) return { workflows: [], folders: [] };
+
+		// Instance-wide Apply creates missing projects, but only after this check refuses the move.
+		const existing = new Set(await this.projectRepository.findTeamProjectIds());
+		const withExists = (move: Move) => ({ ...move, projectExists: existing.has(move.project.id) });
+		return { workflows: workflows.map(withExists), folders: folders.map(withExists) };
 	}
 
 	/**
@@ -1402,14 +1407,21 @@ async function isDirectory(folder: string): Promise<boolean> {
 type CrossProjectMove = ApplyCheckResult['movedWorkflows'][number];
 type CrossProjectMoves = { workflows: CrossProjectMove[]; folders: CrossProjectMove[] };
 
-/** Names each item and both of its projects, so the user knows what to move and where. */
+/**
+ * Names each item and both of its projects, so the user knows what to move and where. An item
+ * can't move here to a branch project that does not exist here yet, so then only the source fix
+ * is offered.
+ */
 function describeCrossProjectMoves({ workflows, folders }: CrossProjectMoves): string {
 	const describe =
 		(type: 'workflow' | 'folder') =>
-		({ id, name, project, instanceProject }: CrossProjectMove) =>
-			`${type} "${name}" (${id}) is in project "${instanceProject.name}" here and in project "${project.name}" on the branch`;
+		({ id, name, project, projectExists, instanceProject }: CrossProjectMove) =>
+			`${type} "${name}" (${id}) is in project "${instanceProject.name}" here and in project "${project.name}" on the branch${projectExists ? '' : `, and project "${project.name}" does not exist on this instance yet`}`;
 	const moved = [...workflows.map(describe('workflow')), ...folders.map(describe('folder'))];
-	return `Apply can't move workflows or folders between projects: ${moved.join('; ')}. Move them on this instance to match the branch, or move them back on the source instance and promote again.`;
+	const remedy = [...workflows, ...folders].every(({ projectExists }) => projectExists)
+		? 'Move them on this instance to match the branch, or move them back on the source instance and promote again.'
+		: 'Move them back on the source instance, then promote again.';
+	return `Apply can't move workflows or folders between projects: ${moved.join('; ')}. ${remedy}`;
 }
 
 /**
@@ -1431,19 +1443,33 @@ function readBranchWorkflowPlacements(
 			`"${manifestPath}" on the branch is not readable, so promote can't check it for workflows that moved to a personal project. Fix the file on the branch, then promote again.`,
 		);
 	}
-	const projects = (Array.isArray(manifest.projects) ? manifest.projects : []).filter(
-		isManifestRef,
-	);
+	const projects = readManifestRefs(manifest.projects ?? [], 'projects', manifestPath);
 
-	return manifest.workflows.filter(isManifestRef).map(({ id, name, target }) => ({
-		id,
-		name,
-		projectName:
-			projects.find((project) => target.startsWith(`${project.target}/`))?.name ?? 'unknown',
-	}));
+	return readManifestRefs(manifest.workflows, 'workflows', manifestPath).map(
+		({ id, name, target }) => ({
+			id,
+			name,
+			projectName:
+				projects.find((project) => target.startsWith(`${project.target}/`))?.name ?? 'unknown',
+		}),
+	);
 }
 
-function isManifestRef(value: unknown): value is { id: string; name: string; target: string } {
+type ManifestRef = { id: string; name: string; target: string };
+
+/** Refuses the whole list on one broken entry, because skipping it could hide a workflow. */
+function readManifestRefs(list: unknown, key: string, manifestPath: string): ManifestRef[] {
+	const entries: unknown[] = Array.isArray(list) ? list : [list];
+	return entries.map((entry, index) => {
+		if (isManifestRef(entry)) return entry;
+		const id = isRecord(entry) && typeof entry.id === 'string' ? ` (id "${entry.id}")` : '';
+		throw new BadRequestError(
+			`Entry ${index + 1} of "${key}" in "${manifestPath}" on the branch is not readable${id}, so promote can't check it for workflows that moved to a personal project. Fix the file on the branch, then promote again.`,
+		);
+	});
+}
+
+function isManifestRef(value: unknown): value is ManifestRef {
 	return (
 		isRecord(value) &&
 		typeof value.id === 'string' &&

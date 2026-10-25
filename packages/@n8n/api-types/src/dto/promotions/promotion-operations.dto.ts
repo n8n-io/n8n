@@ -208,6 +208,11 @@ const crossProjectMoveSchema = z.object({
 	name: z.string(),
 	/** The project that holds the item on the branch. */
 	project: promotionBindingProjectSchema,
+	/**
+	 * False when the branch project does not exist on this instance yet. Then the item can only move
+	 * back on the source instance.
+	 */
+	projectExists: z.boolean(),
 	/** The project that holds the item on this instance. */
 	instanceProject: promotionBindingProjectSchema,
 });

@@ -150,12 +150,17 @@ const blockerRows = computed<BlockerRow[]>(() => {
 			type: 'workflow' as const,
 			usedBy: [],
 			status: status('moved'),
-			detail: i18n.baseText('promotions.preview.blockers.movedWorkflow', {
-				interpolate: {
-					project: workflow.project.name,
-					instanceProject: workflow.instanceProject.name,
+			detail: i18n.baseText(
+				workflow.projectExists
+					? 'promotions.preview.blockers.movedWorkflow'
+					: 'promotions.preview.blockers.movedWorkflow.newProject',
+				{
+					interpolate: {
+						project: workflow.project.name,
+						instanceProject: workflow.instanceProject.name,
+					},
 				},
-			}),
+			),
 		})),
 		...movedFolders.map((folder) => ({
 			key: `moved:folder:${folder.id}`,
@@ -164,12 +169,17 @@ const blockerRows = computed<BlockerRow[]>(() => {
 			type: 'folder' as const,
 			usedBy: [],
 			status: status('moved'),
-			detail: i18n.baseText('promotions.preview.blockers.movedFolder', {
-				interpolate: {
-					project: folder.project.name,
-					instanceProject: folder.instanceProject.name,
+			detail: i18n.baseText(
+				folder.projectExists
+					? 'promotions.preview.blockers.movedFolder'
+					: 'promotions.preview.blockers.movedFolder.newProject',
+				{
+					interpolate: {
+						project: folder.project.name,
+						instanceProject: folder.instanceProject.name,
+					},
 				},
-			}),
+			),
 		})),
 	];
 });

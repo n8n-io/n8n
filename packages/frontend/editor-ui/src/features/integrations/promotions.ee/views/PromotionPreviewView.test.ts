@@ -527,6 +527,7 @@ describe('PromotionPreviewView', () => {
 					id: 'f1',
 					name: 'Payments',
 					project: { id: 'p1', name: 'Billing' },
+					projectExists: true,
 					instanceProject: { id: 'p2', name: 'Ops' },
 				},
 			],
@@ -538,6 +539,31 @@ describe('PromotionPreviewView', () => {
 		expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
 			'Apply is disabled. The folder "Payments" is in a different project on the branch',
 		);
+	});
+
+	it('should offer only the source fix when the branch project of a moved workflow does not exist here', async () => {
+		vi.mocked(api.getApplyBlockers).mockResolvedValue({
+			...check(),
+			movedWorkflows: [
+				{
+					id: 'w2',
+					name: 'Payment reminders',
+					project: { id: 'p3', name: 'Archive' },
+					projectExists: false,
+					instanceProject: { id: 'p1', name: 'Billing' },
+				},
+			],
+		});
+
+		const { getByTestId, getByRole } = await renderApply();
+		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		const row = within(getByTestId('promotion-preview-blockers-table')).getByRole('row', {
+			name: /Payment reminders/,
+		});
+
+		expect(row).toHaveTextContent('Archive, which does not exist on this instance yet');
+		expect(row).toHaveTextContent('Move it back on the source instance, then promote again.');
+		expect(row).not.toHaveTextContent('Move it on this instance');
 	});
 
 	it('should apply a workflow that the branch holds in another folder of the project', async () => {

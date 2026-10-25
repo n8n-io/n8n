@@ -1809,6 +1809,7 @@ describe('Check Apply blockers', () => {
 				id: moved.id,
 				name: moved.name,
 				project: { id: billing.id, name: billing.name },
+				projectExists: true,
 				instanceProject: { id: orders.id, name: orders.name },
 			},
 		]);

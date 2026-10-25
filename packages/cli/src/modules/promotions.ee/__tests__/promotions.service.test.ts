@@ -349,6 +349,41 @@ describe('PromotionsService', () => {
 				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			});
 
+			it.each([
+				{
+					title: 'a workflow entry without a target',
+					broken: { ...manifest, workflows: [manifest.workflows[0], { id: 'w9', name: 'Lost' }] },
+					expected:
+						'Entry 2 of "workflows" in "n8n/manifest.json" on the branch is not readable (id "w9")',
+				},
+				{
+					title: 'a workflow entry that is not an object',
+					broken: { ...manifest, workflows: ['w9'] },
+					expected: 'Entry 1 of "workflows" in "n8n/manifest.json" on the branch is not readable,',
+				},
+				{
+					title: 'a project entry without a name',
+					broken: { ...manifest, projects: [{ id: 'p-billing', target: 'projects/billing' }] },
+					expected:
+						'Entry 1 of "projects" in "n8n/manifest.json" on the branch is not readable (id "p-billing")',
+				},
+			])('refuses a promote when the branch manifest has $title', async ({ broken, expected }) => {
+				gitService.readFilesAtCommit.mockResolvedValue(
+					new Map([['n8n/manifest.json', JSON.stringify(broken)]]),
+				);
+
+				await expect(
+					service.promote(ENVIRONMENT_ID, actor, {
+						canExportVariableValues: true,
+						commitMessage: 'sync projects',
+					}),
+				).rejects.toMatchObject({
+					httpStatusCode: 400,
+					message: expect.stringContaining(expected),
+				});
+				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			});
+
 			it('skips the check on an empty remote or a branch without a package', async () => {
 				gitService.listBranchTree.mockResolvedValue({
 					commitSha: 'a'.repeat(40),
@@ -1558,6 +1593,33 @@ describe('PromotionsService', () => {
 				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 			});
 
+			it('offers only the source fix when the branch project does not exist here yet', async () => {
+				const gamma = { id: 'p3', name: 'Gamma', path: 'projects/gamma' };
+				inventoryReader.read.mockResolvedValue({
+					projects: [alpha, gamma],
+					workflows: [mock<InventoryWorkflow>({ id: 'wa1', name: 'Invoices', projectId: 'p3' })],
+					folders: [],
+					credentials: [],
+					variables: [],
+					dataTables: [],
+				});
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([['wa1', mock<Project>({ id: 'p1', name: 'Alpha' })]]),
+				);
+
+				const refusal = service.apply(ENVIRONMENT_ID, actor);
+
+				await expect(refusal).rejects.toMatchObject({
+					httpStatusCode: 409,
+					message: expect.stringContaining(
+						'workflow "Invoices" (wa1) is in project "Alpha" here and in project "Gamma" on the branch, and project "Gamma" does not exist on this instance yet. Move them back on the source instance, then promote again.',
+					),
+				});
+				await expect(refusal).rejects.not.toMatchObject({
+					message: expect.stringContaining('Move them on this instance'),
+				});
+			});
+
 			it('refuses a folder that the branch holds in another project, and names it', async () => {
 				inventoryReader.read.mockResolvedValue({
 					projects: [alpha, beta],
@@ -2093,7 +2155,6 @@ describe('PromotionsService', () => {
 								selection: { selectedProjectId: 'p1', selectedWorkflowIds: ['w1'] },
 							});
 							expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
-							expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
 							expect(projectService.deleteProject).not.toHaveBeenCalled();
 						},
 					);
@@ -2131,7 +2192,6 @@ describe('PromotionsService', () => {
 							},
 						);
 						expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
-						expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
 						expect(projectService.deleteProject).not.toHaveBeenCalled();
 						expect(result).toMatchObject({
 							status: 'applied',
