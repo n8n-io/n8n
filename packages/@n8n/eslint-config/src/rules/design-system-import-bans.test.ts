@@ -26,8 +26,8 @@ const cases = [
 		name: 'no-element-plus-menu',
 		rule: NoElementPlusMenuRule,
 		messageId: 'noElementPlusMenu',
-		code: "import { ElMenu, ElSubMenu } from 'element-plus';",
-		names: ['ElMenu', 'ElSubMenu'],
+		code: "import { ElMenu, ElSubMenu, ElMenuItem } from 'element-plus';",
+		names: ['ElMenu', 'ElSubMenu', 'ElMenuItem'],
 		allowed: `${root}/components/N8nNavigationDropdown/NavigationDropdown.vue`,
 	},
 	{
