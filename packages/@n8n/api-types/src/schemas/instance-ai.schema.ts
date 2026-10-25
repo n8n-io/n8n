@@ -126,6 +126,23 @@ export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
 	return `workflows:update:${workflowId}`;
 }
 
+/**
+ * Builds the thread-level "always allow" grant key for a gated action on one
+ * workflow, such as `publish` or `unarchive`. Scoped per workflow, so approving
+ * one workflow never approves the same action on another.
+ */
+export function buildWorkflowActionSessionGrantKey(action: string, workflowId: string): string {
+	return `workflows:${action}:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for a workspace action, such
+ * as `tag-workflow` or `create-folder`.
+ */
+export function buildWorkspaceSessionGrantKey(action: string): string {
+	return `workspace:${action}`;
+}
+
 /** Builds the thread-level grant for using a credential with one exact service origin. */
 export function buildCredentialDestinationGrantKey(workflowId: string, origin: string): string {
 	return `credential-destination:${encodeURIComponent(workflowId)}:${encodeURIComponent(origin)}`;

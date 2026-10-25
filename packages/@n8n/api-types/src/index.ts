@@ -410,6 +410,8 @@ export {
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildWorkflowActionSessionGrantKey,
+	buildWorkspaceSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,

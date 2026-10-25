@@ -6,6 +6,7 @@ import {
 	folderNameSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
+	buildWorkspaceSessionGrantKey,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -137,6 +138,21 @@ type Input = z.infer<ReturnType<typeof buildInputSchema>>;
 // ── Suspend/resume helpers ──────────────────────────────────────────────────
 
 type ResumeData = z.infer<typeof resumeSchema> | undefined;
+
+function hasSessionGrant(context: InstanceAiContext, grantKey: string): boolean {
+	return context.sessionApprovedToolKeys?.has(grantKey) === true;
+}
+
+/** "Always allow" stores a thread grant, so later calls with the same key skip the approval. */
+async function persistSessionGrantIfRequested(
+	context: InstanceAiContext,
+	resumeData: ResumeData,
+	grantKey: string,
+): Promise<void> {
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(grantKey);
+	}
+}
 interface WorkspaceToolContext {
 	resumeData: ResumeData;
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
@@ -175,7 +191,9 @@ async function handleTagWorkflow(
 		return { appliedTags: [], denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.tagWorkflow !== 'always_allow';
+	const grantKey = buildWorkspaceSessionGrantKey('tag-workflow');
+	const needsApproval =
+		context.permissions?.tagWorkflow !== 'always_allow' && !hasSessionGrant(context, grantKey);
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -191,6 +209,8 @@ async function handleTagWorkflow(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { appliedTags: [], denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, resumeData, grantKey);
 
 	// State 3: Approved or always_allow — execute
 	const appliedTags = await context.workspaceService!.tagWorkflow(input.workflowId, input.tags);
@@ -217,7 +237,10 @@ async function handleCleanupTestExecutions(
 		};
 	}
 
-	const needsApproval = context.permissions?.cleanupTestExecutions !== 'always_allow';
+	const grantKey = buildWorkspaceSessionGrantKey('cleanup-test-executions');
+	const needsApproval =
+		context.permissions?.cleanupTestExecutions !== 'always_allow' &&
+		!hasSessionGrant(context, grantKey);
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -234,6 +257,8 @@ async function handleCleanupTestExecutions(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { deletedCount: 0, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, resumeData, grantKey);
 
 	// State 3: Approved or always_allow — execute
 	const result = await context.workspaceService!.cleanupTestExecutions(input.workflowId, {
@@ -277,7 +302,9 @@ async function handleCreateFolder(
 		};
 	}
 
-	const needsApproval = context.permissions?.createFolder !== 'always_allow';
+	const grantKey = buildWorkspaceSessionGrantKey('create-folder');
+	const needsApproval =
+		context.permissions?.createFolder !== 'always_allow' && !hasSessionGrant(context, grantKey);
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -299,6 +326,8 @@ async function handleCreateFolder(
 			reason: 'User denied the action',
 		};
 	}
+
+	await persistSessionGrantIfRequested(context, resumeData, grantKey);
 
 	// State 3: Approved or always_allow — execute
 	const folder = await context.workspaceService!.createFolder!(
@@ -357,7 +386,10 @@ async function handleMoveWorkflowToFolder(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.moveWorkflowToFolder !== 'always_allow';
+	const grantKey = buildWorkspaceSessionGrantKey('move-workflow-to-folder');
+	const needsApproval =
+		context.permissions?.moveWorkflowToFolder !== 'always_allow' &&
+		!hasSessionGrant(context, grantKey);
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -373,6 +405,8 @@ async function handleMoveWorkflowToFolder(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, resumeData, grantKey);
 
 	// State 3: Approved or always_allow — execute
 	await context.workspaceService!.moveWorkflowToFolder!(input.workflowId, input.folderId);
