@@ -1966,7 +1966,7 @@ describe('agent-run-reducer', () => {
 				runId: 'run-1',
 				agentId: 'browser-1',
 				detachedFromTurn: true,
-				payload: { parentId: 'root', role: 'cloud-browser', tools: [], detachedFromTurn: true },
+				payload: { parentId: 'root', role: 'cloud-browser', tools: [] },
 			});
 		}
 
@@ -1999,6 +1999,25 @@ describe('agent-run-reducer', () => {
 					'tc-1',
 				]);
 				expect(state.agentsById['browser-1'].status).toBe('completed');
+			},
+		);
+
+		it.each(['error', 'cancelled'] as const)(
+			"keeps a detached agent's tool call loading when its run ends as %s",
+			(status) => {
+				const state = stateWithRun('run-1', 'root');
+				spawnDetached(state);
+				reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+				reduceEvent(state, {
+					...makeToolCall('run-1', 'browser-1', 'tc-browser', 'browser_navigate'),
+					detachedFromTurn: true,
+				});
+				reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-sub', 'search_nodes'));
+
+				reduceEvent(state, makeRunFinish('run-1', 'root', status));
+
+				expect(state.toolCallsById['tc-browser'].isLoading).toBe(true);
+				expect(state.toolCallsById['tc-sub'].isLoading).toBe(false);
 			},
 		);
 

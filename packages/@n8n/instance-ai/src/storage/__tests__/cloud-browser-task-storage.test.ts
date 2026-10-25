@@ -2,11 +2,14 @@ import {
 	CloudBrowserTaskStorage,
 	type CloudBrowserTaskRecord,
 } from '../cloud-browser-task-storage';
-import type { PatchableThreadMemory, ThreadRecord } from '../thread-patch';
+import type { PatchableThreadMemory, ThreadPatch, ThreadRecord } from '../thread-patch';
 
 const THREAD_ID = 'thread-1';
 
-/** A thread memory that keeps one thread, so every storage call goes through the real patch. */
+/**
+ * A thread memory that keeps one thread. Like the real memory, it runs one patch at a time, and
+ * each patch waits between its read and its write, so patches that were not serialized would mix.
+ */
 function makeMemory(metadata: Record<string, unknown> = {}) {
 	let saves = 0;
 	let thread: ThreadRecord = {
@@ -16,12 +19,29 @@ function makeMemory(metadata: Record<string, unknown> = {}) {
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	};
+	let queue: Promise<unknown> = Promise.resolve();
 	const memory: PatchableThreadMemory = {
 		getThread: async (threadId: string) => (threadId === THREAD_ID ? thread : null),
-		saveThread: async (next: ThreadRecord) => {
-			saves++;
-			thread = next;
-			return thread;
+		patchThread: async ({
+			threadId,
+			update,
+		}: {
+			threadId: string;
+			update: (current: ThreadRecord) => ThreadPatch | null | undefined;
+		}) => {
+			const run = queue.then(async () => {
+				if (threadId !== THREAD_ID) return null;
+				const current = { ...thread, metadata: { ...(thread.metadata ?? {}) } };
+				// Stands in for the database round trip between the read and the write.
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				const patch = update(current);
+				if (!patch) return thread;
+				saves++;
+				thread = { ...thread, metadata: patch.metadata ?? thread.metadata };
+				return thread;
+			});
+			queue = run.catch(() => undefined);
+			return await run;
 		},
 	};
 	return { memory, metadata: () => thread.metadata ?? {}, saves: () => saves };
@@ -129,6 +149,20 @@ describe('CloudBrowserTaskStorage', () => {
 			await storage.releaseClaim(THREAD_ID, []);
 
 			expect(saves()).toBe(savesBefore);
+		});
+
+		it('gives each finished task to only one of two claims that run at once', async () => {
+			const { memory } = makeMemory();
+			const storage = new CloudBrowserTaskStorage(memory);
+			await storage.add(THREAD_ID, makeRecord());
+			await storage.markFinished(THREAD_ID, 'task-1', { outcome: 'succeeded', summary: '$20' });
+
+			const [first, second] = await Promise.all([
+				storage.claimUndelivered(THREAD_ID),
+				storage.claimUndelivered(THREAD_ID),
+			]);
+
+			expect([...first, ...second].map((task) => task.taskId)).toEqual(['task-1']);
 		});
 
 		it('lets the next delivery claim the tasks again after a release', async () => {

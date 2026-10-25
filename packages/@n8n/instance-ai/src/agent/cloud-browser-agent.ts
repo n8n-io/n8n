@@ -248,7 +248,7 @@ export async function runCloudBrowserAgent(
 				threadId: options.threadId,
 				runId: options.runId,
 				agentId: options.agentId,
-				eventBus: options.eventBus,
+				eventBus: detachedEventBus(options.eventBus),
 				signal: options.abortSignal,
 				logger: options.logger,
 				onActivity: options.onActivity,
@@ -301,6 +301,17 @@ export async function runCloudBrowserAgent(
 		...baseResult,
 		outcome: 'failed',
 		summary: lastMessage ? `${reason} Its last message: ${lastMessage}` : reason,
+	};
+}
+
+/**
+ * The agent outlives the turn that started it, so each event it publishes says so. Without the
+ * flag, the durable event log and the client drop its events once that turn has ended.
+ */
+function detachedEventBus(eventBus: InstanceAiEventBus): InstanceAiEventBus {
+	return {
+		publish: (threadId, event) => eventBus.publish(threadId, { ...event, detachedFromTurn: true }),
+		subscribe: (threadId, handler) => eventBus.subscribe(threadId, handler),
 	};
 }
 

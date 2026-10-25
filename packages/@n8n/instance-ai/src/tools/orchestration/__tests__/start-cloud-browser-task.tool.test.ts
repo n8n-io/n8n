@@ -33,6 +33,7 @@ describe('start-cloud-browser-task tool', () => {
 			['a title longer than 60 characters', { ...task, title: 'x'.repeat(61) }],
 			['an empty goal', { ...task, goal: '' }],
 			['a start URL that is not a URL', { ...task, startUrl: 'example.com' }],
+			['a start URL that is not a website', { ...task, startUrl: 'ftp://example.com' }],
 		])('rejects %s', (_, input) => {
 			expect(cloudBrowserTaskInputSchema.safeParse(input).success).toBe(false);
 		});

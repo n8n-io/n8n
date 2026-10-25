@@ -2,13 +2,23 @@
  * start-cloud-browser-task — starts a browser task that runs in the background in a cloud browser.
  *
  * The host owns the task: its browser session, the sub-agent that drives it, and its billing.
- * The orchestrator gets the result when the task ends, through the same path as every other
- * background task. This tool is a thin wrapper: it validates the input and calls the host.
+ * When the task ends, the host sends its result to the orchestrator in a follow-up message. This
+ * tool is a thin wrapper: it validates the input and calls the host.
  */
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
+
+/** The browser only opens websites. Zod still runs this check after a failed `.url()`. */
+function isWebUrl(value: string): boolean {
+	try {
+		const { protocol } = new URL(value);
+		return protocol === 'http:' || protocol === 'https:';
+	} catch {
+		return false;
+	}
+}
 
 export const cloudBrowserTaskInputSchema = z.object({
 	title: z
@@ -28,6 +38,7 @@ export const cloudBrowserTaskInputSchema = z.object({
 	startUrl: z
 		.string()
 		.url()
+		.refine(isWebUrl, 'The start URL must use http or https.')
 		.optional()
 		.describe('The page to open first. Leave it out when you do not know the URL.'),
 	credentialsToCreate: z

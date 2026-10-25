@@ -649,10 +649,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				(status === 'cancelled' || status === 'interrupted') &&
 				(!state.currentRunId || state.currentRunId === event.runId);
 			if (status !== 'completed') {
+				const detachedToolCallIds = new Set<string>();
 				for (const agent of Object.values(state.agentsById)) {
-					// An agent detached from its turn outlives the run that started it. Its own
-					// `agent-completed` ends it.
-					if (agent.detachedFromTurn) continue;
+					// An agent detached from its turn outlives the run that started it, and so do its tool
+					// calls. Its own events end them.
+					if (agent.detachedFromTurn) {
+						for (const tc of agent.toolCalls) detachedToolCallIds.add(tc.toolCallId);
+						continue;
+					}
 					if (agent.status === 'active' && (agent.runId === event.runId || cancelGroup)) {
 						agent.status = status === 'error' ? 'error' : 'cancelled';
 						if (agent.runId && isSafeObjectKey(agent.runId))
@@ -660,6 +664,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					}
 				}
 				for (const tc of Object.values(state.toolCallsById)) {
+					if (detachedToolCallIds.has(tc.toolCallId)) continue;
 					if (tc.runId === event.runId || cancelGroup) tc.isLoading = false;
 				}
 			}

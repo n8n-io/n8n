@@ -228,6 +228,27 @@ describe('runCloudBrowserAgent', () => {
 		});
 	});
 
+	it('flags every event the agent publishes as detached from its turn', async () => {
+		vi.mocked(executeResumableStream).mockResolvedValue(streamResult());
+		const options = makeOptions();
+
+		await runCloudBrowserAgent(options);
+
+		const { eventBus } = vi.mocked(executeResumableStream).mock.calls[0][0].context;
+		const event = {
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { toolCallId: 'call-1', toolName: 'browser_click', args: {} },
+		} as const;
+		eventBus.publish('thread-1', event);
+
+		expect(options.eventBus.publish).toHaveBeenCalledWith('thread-1', {
+			...event,
+			detachedFromTurn: true,
+		});
+	});
+
 	it("passes the user's answer to the resume as resume data", async () => {
 		vi.mocked(executeResumableStream).mockResolvedValue(streamResult());
 		const options = makeOptions();

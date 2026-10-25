@@ -474,10 +474,6 @@ export const agentSpawnedPayloadSchema = z.object({
 	role: z.string().describe('Free-form role description'),
 	tools: z.array(z.string()).describe('Tool names the sub-agent received'),
 	taskId: z.string().optional().describe('Background task ID (only for background agents)'),
-	detachedFromTurn: z
-		.boolean()
-		.optional()
-		.describe('The agent keeps working after its turn has ended'),
 	// Display metadata — enriched identity for the UI
 	kind: instanceAiAgentKindSchema.optional().describe('Agent kind for card dispatch'),
 	activity: agentActivitySchema.optional().describe('Current activity for the Agent card'),
