@@ -89,7 +89,7 @@ const menuItems = computed<Array<DropdownMenuItemProps<MenuAction>>>(() => {
 					? 'inbox.selfHealing.action.continueWithAssistant'
 					: 'inbox.selfHealing.action.assistant',
 			),
-			icon: { type: 'icon', value: 'message-circle' },
+			icon: { type: 'icon', value: 'message-circle-plus' },
 			disabled: !props.canChat,
 			divided: isFixReady.value,
 		},
@@ -404,6 +404,13 @@ function onTabChange(tab: string) {
 @container assistant-detail (max-width: 44rem) {
 	.tabRow {
 		flex-wrap: wrap;
+	}
+
+	/* A full row above the tabs keeps the active-tab indicator on the row border. */
+	.actions {
+		order: -1;
+		width: 100%;
+		justify-content: flex-end;
 	}
 
 	.detailBody {
