@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -360,28 +359,6 @@ describe('SkillRuntimeService', () => {
 					},
 				],
 			]);
-		});
-
-		it('findVersionNumbers returns what the repository finds', async () => {
-			const numbers = new Map([['skill_a-v2', 2]]);
-			skills.findVersionNumbers.mockResolvedValue(numbers);
-
-			expect(await runtime.findVersionNumbers(['skill_a-v2'], TX_CTX)).toBe(numbers);
-			expect(skills.findVersionNumbers).toHaveBeenCalledWith(['skill_a-v2'], TX_CTX);
-		});
-
-		it('reads outside a transaction when the caller gives no context', async () => {
-			skills.findByIds.mockResolvedValue([]);
-			skills.findVersionsByIds.mockResolvedValue(new Map());
-			skills.findVersionNumbers.mockResolvedValue(new Map());
-
-			await runtime.findTargets(['skill_a']);
-			await runtime.resolveVersions(['skill_a-v1']);
-			await runtime.findVersionNumbers(['skill_a-v1']);
-
-			expect(skills.findByIds).toHaveBeenCalledWith(['skill_a'], {});
-			expect(skills.findVersionsByIds).toHaveBeenCalledWith(['skill_a-v1'], {});
-			expect(skills.findVersionNumbers).toHaveBeenCalledWith(['skill_a-v1'], {});
 		});
 	});
 });

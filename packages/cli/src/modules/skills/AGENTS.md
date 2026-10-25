@@ -121,7 +121,20 @@ Add a contract only where the implementation varies or a caller cannot import th
 
 ## Tests
 
-- Unit tests mock the repository and the `SkillUsageProxy`. They need no agents code. `__tests__/test-utils/skill-services.ts` builds the three services over mocks.
-- Integration tests of this module are `*.integration.test.ts` files in `__tests__/integration/`.
+Pick the test by what the behavior depends on:
+
+| The behavior depends on | Test | Where |
+| -- | -- | -- |
+| Only its inputs: a name, scope, move or delete rule | Decision table with `it.each`, no mocks | `services/skill.policy.ts`, `__tests__/skill.policy.test.ts` |
+| The order of reads, locks and writes in a service | Unit test over `createSkillServices` | `__tests__/skill.service*.test.ts` |
+| A query, a transaction or a lock | Integration test on `testDb` | `__tests__/integration/*.integration.test.ts` |
+| The agents module | `FakeSkillUsage`, which passes the `SkillUsage` contract cases | `testing/` |
+| An entry point (REST, MCP, n8n Assistant) | Success, refused, and skills off | the entry point's own tests |
+
+If a decision sits between repository reads, move it into a pure function first and test that function with a table.
+
+- `__tests__/test-utils/skill-services.ts` builds the three services over a mocked repository and transactions. The agents side is `FakeSkillUsage` behind a real `SkillUsageProxy`: seed agents, drafts and publishes with `usage.seed`, and do not mock its answers.
+- `describeSkillUsageContract` in `testing/` holds the cases that every `SkillUsage` passes. `__tests__/skill-usage.fake.test.ts` runs them on the fake, and `agents/__tests__/agent-skill-usage.integration.test.ts` runs them on the database. When the contract changes, change the cases first.
+- `__tests__/integration/skills-off.integration.test.ts` loads the skills module without the agents module, so the gates are off with nothing stubbed.
 - Tests outside the module use the fixtures in `testing/` to create skills and versions, read them back, and clear the tables. They never import the repository or the entities.
-- `FakeSkillUsage` in `testing/` is the in-memory `SkillUsage`. `describeSkillUsageContract` holds the cases that the fake and `AgentSkillUsage` both pass: `__tests__/skill-usage.fake.test.ts` runs them on the fake, and `agents/__tests__/agent-skill-usage.integration.test.ts` runs them on the database. When the contract changes, change the cases first.
+- AI tools report a refused write through `toSkillToolRefusal`, so MCP and n8n Assistant tell the model the same thing.
