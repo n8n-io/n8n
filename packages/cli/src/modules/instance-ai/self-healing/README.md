@@ -284,6 +284,8 @@ results that have a suggestion. Reviewer filtering applies to Inbox lists, count
 Each action resolves its suggestion from the result and returns the updated review.
 Send the editor client ID in `push-ref` for Apply actions.
 Read the returned review state before navigating. A competing action can close the suggestion first.
+The first successful action closes the result. Later Apply, approval, and dismissal requests return
+a conflict and do not save or publish again. An outdated suggestion returns `outdated`.
 Apply saves the proposed fix without publishing; the UI opens the editor when `reviewState` is `applied`.
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
 check the current workflow before writing. If Apply fails, keep the review open and show the error.
@@ -297,7 +299,7 @@ Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
 returns an error. `publishError` describes that request only. The response includes the workflow
 ID and the suggestion's recorded applied version. Open the normal editor for publication status
-and recovery. Repeating a review action does not save or publish again.
+and recovery.
 
 Continuation applies a suggestion to the workflow draft, or dismisses a result without one.
 It opens the destination only when the result becomes `applied` or `dismissed`.

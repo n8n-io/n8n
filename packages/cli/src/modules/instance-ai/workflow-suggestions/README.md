@@ -32,7 +32,7 @@ Call the matching method on `WorkflowSuggestionActionsService` with the acting u
 | `apply()`             | Save the reviewed fix once without publication. The caller decides whether to open the editor. |
 | `discard()`           | Close a pending suggestion without changing the workflow.                                      |
 
-Use **Approve and publish** as the action label. Only `fix_ready` permits Apply. All actions require current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication runs credential checks and enterprise review guards.
+Use **Approve and publish** as the action label. Apply accepts `fix_ready` and `needs_you` suggestions. Approve and publish accepts only `fix_ready`. All actions require current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication runs credential checks and enterprise review guards.
 
 Apply calls `WorkflowService.prepareUpdate()` for normal save validation and preparation. Inside a transaction, it locks the workflow and rechecks the baseline and edit access. `savePreparedUpdate()` saves the workflow and required history. The action records the applied version, closes the suggestion, and adds human activity before commit. `finishUpdate()` runs after-save hooks and events after commit.
 
@@ -44,7 +44,7 @@ Approve and publish calls the normal publisher with the saved version and checks
 
 After either Apply action, the caller must check `closedReason` before opening the editor or showing success. Open the editor only when it is `applied`. If it is `outdated`, keep the review open and explain that the workflow has changed. If the save fails, keep the review open and show the error.
 
-Only the request that applies the fix can start publication. Repeated actions return the recorded result without another save or publish request. After a failed request or lost response, use the editor to check publication status and publish the saved fix if needed. Proposal reads do not retry publication.
+Only the request that applies the fix can start publication. Repeated actions return the recorded result without another save or publish request. A caller that must not report another request's closure passes `rejectClosedByReview`. Apply then returns a conflict for an applied or discarded suggestion. An outdated suggestion still returns its closure. After a failed request or lost response, use the editor to check publication status and publish the saved fix if needed. Proposal reads do not retry publication.
 
 `discard()` commits the suggestion closure and activity in its own transaction.
 

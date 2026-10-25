@@ -137,6 +137,34 @@ it.each([
 	},
 );
 
+it.each([
+	{ withSuggestion: true, reviewState: 'applied' },
+	{ withSuggestion: false, reviewState: 'dismissed' },
+] as const)(
+	'does not start chat when another reviewer already closed the result as $reviewState',
+	async ({ withSuggestion, reviewState }) => {
+		const detail = result({
+			outcome: 'needs_you',
+			suggestion: withSuggestion ? suggestion({ resultKind: 'needs_you' }) : null,
+		});
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
+		vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(
+			new ResponseError('This result is already closed.', { httpStatusCode: 409 }),
+		);
+		const view = renderComponent();
+		await waitAllPromises();
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ ...detail, reviewState }));
+		view.getByTestId('chat').click();
+		await waitAllPromises();
+
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', reviewState);
+		expect(onItemChange).toHaveBeenCalledOnce();
+		expect(showError).toHaveBeenCalledOnce();
+		expect(startChat).not.toHaveBeenCalled();
+		expect(push).not.toHaveBeenCalled();
+	},
+);
+
 it.each(['editor', 'chat'] as const)(
 	'does not continue to %s when Apply finds an outdated suggestion',
 	async (destination) => {
