@@ -321,6 +321,18 @@ describe('AssistantAgentProvider', () => {
 				});
 			});
 
+			it('tells the user to start a new chat when the provider refuses a file', async () => {
+				const { provider } = setup();
+				const handle = await provider.prepareTurn(startTurn());
+
+				const formatted = await handle.formatError?.(
+					new Error('messages.0.content.1.image: image exceeds 10 MB maximum'),
+				);
+
+				expect(formatted?.message.toLowerCase()).toContain('new chat');
+				expect(formatted?.message.toLowerCase()).not.toContain('left it out');
+			});
+
 			it('shows a masked stream failure as a credit error when the credits are used up', async () => {
 				const { provider, turnEnvironment } = setup();
 				turnEnvironment.assertAssistantCreditsAvailable.mockRejectedValue(
