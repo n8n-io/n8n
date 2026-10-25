@@ -24,6 +24,7 @@ describe('public API', () => {
 			'getSkillHash',
 			'renameIntroducesClash',
 			'skillNameTakenToolMessage',
+			'toSkillToolRefusal',
 			'withTrimmedName',
 		]);
 		// The import loads every skills service, which takes seconds under a full test run.

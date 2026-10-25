@@ -11,6 +11,7 @@ export type {
 	SkillTelemetrySource,
 } from './services/skills-telemetry.service';
 export { SkillNameTakenError, skillNameTakenToolMessage } from './errors/skill-name-taken.error';
+export { toSkillToolRefusal, type SkillToolRefusal } from './errors/skill-tool-refusal';
 export {
 	findIntroducedNameClashes,
 	findNameClashGroups,
