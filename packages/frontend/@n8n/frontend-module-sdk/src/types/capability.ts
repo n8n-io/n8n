@@ -36,11 +36,16 @@ export interface McpExposeAllOffer {
 
 export type SelfHealingChatInput = Pick<
 	SelfHealingResultDetail,
-	'resultId' | 'projectId' | 'workflowId' | 'report' | 'outcome' | 'reviewState' | 'execution'
+	'resultId' | 'workflowId' | 'report' | 'outcome' | 'reviewState' | 'execution'
 >;
 
 export interface SelfHealingChatHandoff {
 	available: ComputedRef<boolean>;
-	/** Opens a chat and sends the report through the normal Assistant handoff. */
-	start(input: SelfHealingChatInput): Promise<void>;
+	/**
+	 * Returns the current user's personal project, or null if it cannot load.
+	 * A reviewer can lack read access to the result's project.
+	 */
+	resolveProjectId(): Promise<string | null>;
+	/** Opens a chat in the project and sends the report through the normal Assistant handoff. */
+	start(projectId: string, input: SelfHealingChatInput): Promise<void>;
 }

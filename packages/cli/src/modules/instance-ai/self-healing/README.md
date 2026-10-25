@@ -290,7 +290,7 @@ Apply saves the proposed fix without publishing; the UI opens the editor when `r
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
 check the current workflow before writing. If Apply fails, keep the review open and show the error.
 
-Both Discard and Dismiss buttons call `POST /:resultId/dismiss`.
+The Discard and close button calls `POST /:resultId/dismiss`.
 Dismissal discards an attached pending suggestion. Fix-ready results derive their discarded state
 from the suggestion. Needs attention results also record dismissal in the same transaction.
 Dismissal leaves automatically closed Could not fix results unchanged and returns `closed`.
@@ -306,6 +306,8 @@ It opens the destination only when the result becomes `applied` or `dismissed`.
 For the Assistant, pass `report` to the normal Assistant handoff. Build a workflow attachment
 from `workflowId`. Include `execution.id` only when `execution.status` is `available`.
 The normal handoff opens a new chat in the clicking user's personal project.
+Do not use the result's `projectId`. A reviewer can lack read access to that project.
+Load the personal project before the review action. If it cannot load, keep the result open.
 Normal chat ownership and tool permissions apply. Do not copy the background conversation or grants.
 
 ## Availability

@@ -17,7 +17,7 @@ import { computed } from 'vue';
 
 import SelfHealingResultActivity from './SelfHealingResultActivity.vue';
 import SelfHealingResultMetadata from './SelfHealingResultMetadata.vue';
-import type { SelfHealingResultAction } from './selfHealingResults.api';
+import type { SelfHealingPublishAccess, SelfHealingResultAction } from './selfHealingResults.api';
 
 type DetailTab = 'activity' | 'changes';
 type MenuAction = Exclude<SelfHealingResultAction, 'dismiss'>;
@@ -27,7 +27,7 @@ const props = defineProps<{
 	workflowName: string;
 	tab: DetailTab;
 	pendingAction: SelfHealingResultAction | null;
-	canPublish: boolean;
+	publishAccess: SelfHealingPublishAccess;
 	canChat: boolean;
 }>();
 const emit = defineEmits<{
@@ -69,7 +69,7 @@ const statusLabel = computed(() => {
 });
 
 const statusClass = computed(() => {
-	if (!isOpen.value) return props.detail.reviewState === 'applied' ? 'applied' : 'closed';
+	if (!isOpen.value) return 'closed';
 	return isFixReady.value ? 'fixReady' : 'needsAttention';
 });
 
@@ -110,7 +110,7 @@ const menuItems = computed<Array<DropdownMenuItemProps<MenuAction>>>(() => {
 			id: 'approve-and-publish',
 			label: i18n.baseText('inbox.selfHealing.action.applyAndPublish'),
 			icon: { type: 'icon', value: 'check' },
-			disabled: !props.canPublish,
+			disabled: props.publishAccess !== 'allowed',
 		},
 		...continuation,
 	];
@@ -118,7 +118,7 @@ const menuItems = computed<Array<DropdownMenuItemProps<MenuAction>>>(() => {
 
 const menuNotes = computed(() => [
 	...(hasSuggestion.value ? [i18n.baseText('inbox.selfHealing.action.continueSavesDraft')] : []),
-	...(isFixReady.value && !props.canPublish
+	...(isFixReady.value && props.publishAccess === 'denied'
 		? [i18n.baseText('inbox.selfHealing.action.publishUnavailable')]
 		: []),
 	...(props.canChat ? [] : [i18n.baseText('inbox.selfHealing.action.chatUnavailable')]),
@@ -302,10 +302,6 @@ function onTabChange(tab: string) {
 
 .needsAttention {
 	background-color: var(--color--yellow-500);
-}
-
-.applied {
-	background-color: var(--color--green-500);
 }
 
 .closed {

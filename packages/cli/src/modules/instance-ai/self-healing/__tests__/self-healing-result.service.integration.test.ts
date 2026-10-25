@@ -40,6 +40,7 @@ import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createUser } from '@test-integration/db/users';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
+import { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import { InstanceAiService } from '../../instance-ai.service';
 import { WorkflowSuggestionActivity } from '../../workflow-suggestions/database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../../workflow-suggestions/database/workflow-suggestion.repository';
@@ -66,7 +67,7 @@ const runtime = mockInstance(InstanceAiService);
 
 const testServer = setupTestServer({
 	modules: ['instance-ai'],
-	endpointGroups: [],
+	endpointGroups: ['instance-ai'],
 	setupTimeout: 30_000,
 });
 
@@ -1360,6 +1361,48 @@ it.each(['apply', 'dismiss'] as const)(
 		await agent.get(url).expect(200);
 		await agent.post(`${url}/approve-and-publish`).expect(403);
 		await agent.post(`${url}/${action}`).expect(200);
+	},
+);
+
+it.each([
+	{ outcome: 'fix_ready', action: 'apply', reviewState: 'applied' },
+	{ outcome: 'needs_you', action: 'dismiss', reviewState: 'dismissed' },
+] as const)(
+	'lets a reviewer without project access continue $reviewState in their personal project',
+	async ({ outcome, action, reviewState }) => {
+		testServer.license.enable('feat:advancedPermissions');
+		vi.spyOn(Container.get(InstanceAiSettingsService), 'isInstanceAiEnabled').mockReturnValue(true);
+		const { user, original, project, result, url } = await fixture(
+			outcome,
+			outcome === 'fix_ready',
+		);
+		const editor = await createUser();
+		await addReviewer(result.configurationId, editor.id);
+		const team = await createTeamProject(undefined, user);
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);
+		await linkUserToProject(editor, team, role.slug);
+		await Container.get(SharedWorkflowRepository).save({
+			workflowId: original.id,
+			projectId: team.id,
+			role: 'workflow:editor',
+		});
+		const editorProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			editor.id,
+		);
+		const agent = testServer.authAgentFor(editor);
+		const openChat = async (projectId: string) =>
+			await agent.post('/instance-ai/threads').send({
+				threadId: randomUUID(),
+				projectId,
+				source: 'self_healing_result',
+				origin: 'internal',
+			});
+
+		const response = await agent.post(`${url}/${action}`).expect(200);
+
+		expect(response.body.data).toMatchObject({ reviewState, projectId: project.id });
+		expect((await openChat(project.id)).status).toBe(403);
+		expect((await openChat(editorProject.id)).status).toBe(200);
 	},
 );
 

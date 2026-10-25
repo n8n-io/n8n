@@ -51,7 +51,7 @@ function renderContent(
 			workflowName: 'Daily report',
 			tab: 'activity',
 			pendingAction: null,
-			canPublish: true,
+			publishAccess: 'allowed',
 			canChat: true,
 			...props,
 		},
@@ -119,7 +119,7 @@ describe('SelfHealingResultContent', () => {
 	});
 
 	it('disables publishing and explains why when publication is not allowed', async () => {
-		renderContent({ canPublish: false });
+		renderContent({ publishAccess: 'denied' });
 
 		const menu = await openMenu('Review');
 
@@ -130,6 +130,17 @@ describe('SelfHealingResultContent', () => {
 			within(menu).getByRole('menuitem', { name: 'Continue with editor' }),
 		).not.toHaveAttribute('data-disabled');
 		expect(menu).toHaveTextContent('Publish permission is required to apply and publish.');
+	});
+
+	it('disables publishing without a permission note while access is unknown', async () => {
+		renderContent({ publishAccess: 'unknown' });
+
+		const menu = await openMenu('Review');
+
+		expect(within(menu).getByRole('menuitem', { name: 'Apply and publish' })).toHaveAttribute(
+			'data-disabled',
+		);
+		expect(menu).not.toHaveTextContent('Publish permission is required');
 	});
 
 	it('disables every decision while a decision is pending', () => {
@@ -226,6 +237,15 @@ describe('SelfHealingResultContent', () => {
 		);
 	});
 
+	it.each([
+		{ reviewState: 'applied', label: 'Applied' },
+		{ reviewState: 'dismissed', label: 'Closed' },
+	] as const)('uses the closed status color for $reviewState results', ({ reviewState, label }) => {
+		const { getByRole } = renderContent({ detail: result({ reviewState }) });
+
+		expect(getByRole('img', { name: label }).className).toMatch(/closed/);
+	});
+
 	it('does not claim that applied changes are published', () => {
 		const { getByTestId, queryByTestId } = renderContent({
 			detail: result({ reviewState: 'applied' }),
@@ -241,7 +261,7 @@ describe('SelfHealingResultContent', () => {
 		(reviewState) => {
 			const { getByTestId, queryByTestId, queryByRole } = renderContent({
 				detail: result({ reviewState }),
-				canPublish: false,
+				publishAccess: 'denied',
 				canChat: false,
 			});
 

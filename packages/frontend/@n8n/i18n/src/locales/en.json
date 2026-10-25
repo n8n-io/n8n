@@ -51,6 +51,7 @@
 	"inbox.selfHealing.action.openEditorError": "Couldn't open the workflow. Try opening it again.",
 	"inbox.selfHealing.action.publishError": "The fix was saved, but publication could not be confirmed. Check the workflow's publication status.",
 	"inbox.selfHealing.action.chatError": "Couldn't open chat",
+	"inbox.selfHealing.action.chatProjectError": "Couldn't load your personal project. The result is still open.",
 	"inbox.selfHealing.action.chatUnavailable": "Assistant is unavailable. You can still continue in the editor.",
 	"inbox.selfHealing.action.publishUnavailable": "Publish permission is required to apply and publish.",
 	"inbox.selfHealing.changes.original": "Original",

@@ -21,8 +21,11 @@ Continuation applies a suggestion to the workflow draft, or dismisses a result
 without one. It does not publish. The first successful action closes the result.
 The frontend then updates the Inbox and opens the destination.
 Chat uses the normal frontend Assistant handoff to create a private thread in the
-result's project. It sends the full report and workflow attachment to start an
-Assistant run. If changes were applied, the message says they are already in the draft.
+reviewer's personal project. A reviewer can lack read access to the result's
+project. The frontend loads the personal project before it closes the result.
+If the project cannot load, the result stays open. The handoff sends the full
+report and workflow attachment to start an Assistant run. If changes were
+applied, the message says they are already in the draft.
 Navigation failure does not reopen the result or undo saved changes.
 After a lost response, the frontend refreshes the result and shows an error.
 The user can retry the action if the result is still open.

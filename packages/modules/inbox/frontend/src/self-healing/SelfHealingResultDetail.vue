@@ -17,6 +17,7 @@ import { useSelfHealingResultStore } from './selfHealingResult.store';
 import {
 	fetchSelfHealingResult,
 	reviewSelfHealingResult,
+	type SelfHealingPublishAccess,
 	type SelfHealingResultAction,
 	type SelfHealingReviewAction,
 	type SelfHealingSelection,
@@ -45,7 +46,10 @@ const workflowName = computed(
 		detail.value?.suggestion?.payload.original.name ??
 		props.selection.workflowId,
 );
-const canPublish = computed(() => workflow.value?.scopes.includes('workflow:publish') ?? false);
+const publishAccess = computed<SelfHealingPublishAccess>(() => {
+	if (!workflow.value) return 'unknown';
+	return workflow.value.scopes.includes('workflow:publish') ? 'allowed' : 'denied';
+});
 const errorKind = computed(() => {
 	if (error.value instanceof ResponseError) {
 		if (error.value.httpStatusCode === 404) return 'notFound';
@@ -105,7 +109,10 @@ async function onAction(action: SelfHealingResultAction) {
 	if (before?.reviewState !== 'open' || pendingAction.value || !store.isSelected(props.selection))
 		return;
 
-	if (action === 'approve-and-publish' && (!canPublish.value || before.outcome !== 'fix_ready'))
+	if (
+		action === 'approve-and-publish' &&
+		(publishAccess.value !== 'allowed' || before.outcome !== 'fix_ready')
+	)
 		return;
 	if (action === 'chat' && !chat?.available.value) return;
 
@@ -123,6 +130,21 @@ async function onAction(action: SelfHealingResultAction) {
 
 	pendingAction.value = action;
 	try {
+		let chatProjectId: string | null | undefined;
+		if (action === 'chat') {
+			// Load the chat project before closing, so a failed lookup leaves the result open.
+			chatProjectId = await chat?.resolveProjectId();
+			if (!isSelected(target.id)) return;
+			if (!chatProjectId) {
+				showMessage({
+					type: 'error',
+					title: i18n.baseText('inbox.selfHealing.action.chatError'),
+					message: i18n.baseText('inbox.selfHealing.action.chatProjectError'),
+				});
+				return;
+			}
+		}
+
 		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
 
 		store.acceptResult(result);
@@ -133,9 +155,9 @@ async function onAction(action: SelfHealingResultAction) {
 		if (isContinuation && result.reviewState !== (before.suggestion ? 'applied' : 'dismissed'))
 			return;
 
-		if (action === 'chat') {
+		if (chatProjectId) {
 			try {
-				await chat?.start(result);
+				await chat?.start(chatProjectId, result);
 			} catch (cause) {
 				showError(cause, i18n.baseText('inbox.selfHealing.action.chatError'));
 			}
@@ -196,7 +218,7 @@ async function onAction(action: SelfHealingResultAction) {
 				:workflow-name="workflowName"
 				:tab="tab"
 				:pending-action="pendingAction"
-				:can-publish="canPublish"
+				:publish-access="publishAccess"
 				:can-chat="chat?.available.value ?? false"
 				@update:tab="emit('update:tab', $event)"
 				@action="onAction"

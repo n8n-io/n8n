@@ -2,14 +2,14 @@ import type { SelfHealingChatHandoff, SelfHealingChatInput } from '@n8n/frontend
 import { useI18n } from '@n8n/i18n';
 
 import { useInstanceAiReady } from './useInstanceAiAvailability';
-import { useInstanceAiHandoff } from './useInstanceAiHandoff';
+import { ensurePersonalProjectId, useInstanceAiHandoff } from './useInstanceAiHandoff';
 
 export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
 	const available = useInstanceAiReady();
 	const { startThread } = useInstanceAiHandoff();
 	const i18n = useI18n();
 
-	async function start(result: SelfHealingChatInput): Promise<void> {
+	async function start(projectId: string, result: SelfHealingChatInput): Promise<void> {
 		if (!available.value) return;
 
 		const messageParts = [i18n.baseText('inbox.selfHealing.chat.prompt')];
@@ -20,7 +20,7 @@ export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
 
 		const message = messageParts.join('\n\n');
 		await startThread(
-			result.projectId,
+			projectId,
 			message,
 			{ kind: 'prefill', prefillType: 'handoff_self_healing_report' },
 			{
@@ -38,5 +38,5 @@ export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
 		);
 	}
 
-	return { available, start };
+	return { available, resolveProjectId: ensurePersonalProjectId, start };
 }

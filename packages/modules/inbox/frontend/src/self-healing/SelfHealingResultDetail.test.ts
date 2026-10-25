@@ -15,10 +15,11 @@ import * as api from './selfHealingResults.api';
 import { result, resultSelection, suggestion } from './selfHealingResults.test.utils';
 
 vi.mock('./selfHealingResults.api');
-const { push, showError, showMessage, startChat } = vi.hoisted(() => ({
+const { push, showError, showMessage, resolveChatProject, startChat } = vi.hoisted(() => ({
 	push: vi.fn(),
 	showError: vi.fn(),
 	showMessage: vi.fn(),
+	resolveChatProject: vi.fn(),
 	startChat: vi.fn(),
 }));
 vi.mock('vue-router', async (importOriginal) => ({
@@ -39,8 +40,8 @@ const renderComponent = createComponentRenderer(SelfHealingResultDetail, {
 	global: {
 		stubs: {
 			SelfHealingResultContent: {
-				props: ['detail', 'pendingAction', 'canPublish'],
-				template: `<div data-test-id="result-content" :data-state="detail.reviewState" :data-pending="pendingAction">
+				props: ['detail', 'pendingAction', 'publishAccess'],
+				template: `<div data-test-id="result-content" :data-state="detail.reviewState" :data-pending="pendingAction" :data-publish-access="publishAccess">
 <span>{{ detail.report }}</span>
 <button v-for="action in ['editor', 'approve-and-publish', 'dismiss', 'chat']" :key="action" :data-test-id="action" @click="$emit('action', action)" />
 <slot name="notice" />
@@ -62,9 +63,11 @@ function appliedResult(
 beforeEach(() => {
 	vi.resetAllMocks();
 	selectedId = resultSelection.id;
+	resolveChatProject.mockResolvedValue('personal-project');
 	startChat.mockResolvedValue(undefined);
 	capabilityRegistry.provide(capabilities.createSelfHealingChatHandoff, () => ({
 		available: computed(() => true),
+		resolveProjectId: resolveChatProject,
 		start: startChat,
 	}));
 	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result());
@@ -125,7 +128,10 @@ it.each([
 			}),
 		);
 		if (destination === 'chat') {
-			expect(startChat).toHaveBeenCalledExactlyOnceWith(closedResult);
+			expect(resolveChatProject.mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(api.reviewSelfHealingResult).mock.invocationCallOrder[0],
+			);
+			expect(startChat).toHaveBeenCalledExactlyOnceWith('personal-project', closedResult);
 			expect(push).not.toHaveBeenCalled();
 		} else {
 			expect(push).toHaveBeenCalledExactlyOnceWith({
@@ -136,6 +142,56 @@ it.each([
 		}
 	},
 );
+
+it.each([true, false])(
+	'keeps the result open when the chat project cannot load with suggestion=%s',
+	async (withSuggestion) => {
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
+			result({
+				outcome: 'needs_you',
+				suggestion: withSuggestion ? suggestion({ resultKind: 'needs_you' }) : null,
+			}),
+		);
+		resolveChatProject.mockResolvedValueOnce(null);
+		const view = renderComponent();
+		await waitAllPromises();
+		view.getByTestId('chat').click();
+		await waitAllPromises();
+
+		expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'open');
+		expect(showMessage).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ type: 'error', title: "Couldn't open chat" }),
+		);
+		expect(onItemChange).not.toHaveBeenCalled();
+		expect(startChat).not.toHaveBeenCalled();
+
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(
+			result({ outcome: 'needs_you', reviewState: withSuggestion ? 'applied' : 'dismissed' }),
+		);
+		view.getByTestId('chat').click();
+		await waitAllPromises();
+		expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
+		expect(startChat).toHaveBeenCalledOnce();
+	},
+);
+
+it('does not close the result when the selection changes while the chat project loads', async () => {
+	const projectLookup = createDeferredPromise<string | null>();
+	resolveChatProject.mockReturnValue(projectLookup.promise);
+	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome: 'needs_you' }));
+	const view = renderComponent();
+	await waitAllPromises();
+	view.getByTestId('chat').click();
+	selectedId = null;
+	projectLookup.resolve('personal-project');
+	await waitAllPromises();
+
+	expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
+	expect(startChat).not.toHaveBeenCalled();
+	expect(showMessage).not.toHaveBeenCalled();
+	expect(onItemChange).not.toHaveBeenCalled();
+});
 
 it.each([
 	{ withSuggestion: true, reviewState: 'applied' },
@@ -403,6 +459,21 @@ it.each([
 		expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
 	},
 );
+
+it('treats publish access as unknown until workflow permissions load', async () => {
+	vi.mocked(api.fetchResultWorkflow).mockRejectedValueOnce(new Error('Offline'));
+	const view = renderComponent();
+	await waitAllPromises();
+
+	expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'unknown');
+	view.getByTestId('approve-and-publish').click();
+	await waitAllPromises();
+	expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
+
+	view.getByRole('button', { name: 'Retry' }).click();
+	await waitAllPromises();
+	expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'allowed');
+});
 
 it.each(['discarded', 'dismissed'] as const)(
 	'refreshes a %s result after a lost dismissal response',
