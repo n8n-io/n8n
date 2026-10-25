@@ -300,6 +300,30 @@ describe('ScheduleTrigger', () => {
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
+		it.each([
+			{ field: 'days', daysInterval: 1, triggerAtHour: 3 },
+			{ field: 'cronExpression', expression: '0 15 3 * * *' },
+		])(
+			'should emit a $field schedule at 03:xx once on the DST fall-back night',
+			async (interval) => {
+				vi.setSystemTime(new Date('2026-10-24T12:00:00Z'));
+				const { emit } = await testTriggerNode(ScheduleTrigger, {
+					timezone,
+					node: { parameters: { rule: { interval: [interval] } } },
+					workflowStaticData: {},
+				});
+
+				vi.advanceTimersByTime(24 * HOUR);
+
+				expect(emit).toHaveBeenCalledTimes(1);
+				expect(emit.mock.calls[0][0][0][0].json).toMatchObject({
+					'Day of month': '25',
+					Hour: '03',
+					Timezone: 'Europe/Berlin (UTC+01:00)',
+				});
+			},
+		);
+
 		it('should throw on invalid cron expressions', async () => {
 			await expect(
 				testTriggerNode(ScheduleTrigger, {

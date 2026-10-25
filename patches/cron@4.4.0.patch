@@ -1,0 +1,71 @@
+diff --git a/dist/time.d.ts b/dist/time.d.ts
+index 3d3fb3f9312c6193c71c146a5881538feac96542..38b8e066ccb3286497fcc8906f2e835fdb3a8858 100644
+--- a/dist/time.d.ts
++++ b/dist/time.d.ts
+@@ -26,6 +26,9 @@ export declare class CronTime {
+         error?: CronError;
+     };
+     private _getWeekDay;
++    private _matchesDay;
++    private _matchesMinute;
++    private _firstMatchBetween;
+     sendAt(): DateTime;
+     sendAt(i: number): DateTime[];
+     getTimeout(): number;
+diff --git a/dist/time.js b/dist/time.js
+index 7bc00d74fed06b0df2b58822c4db79499415b050..c3ac56caa700e12283a2d24b4a5771b9253d6e52 100644
+--- a/dist/time.js
++++ b/dist/time.js
+@@ -57,6 +57,36 @@ class CronTime {
+     _getWeekDay(date) {
+         return date.weekday === 7 ? 0 : date.weekday;
+     }
++    _matchesDay(date) {
++        return !((!(date.day in this.dayOfMonth) &&
++            Object.keys(this.dayOfMonth).length !== 31 &&
++            !(this._getWeekDay(date) in this.dayOfWeek &&
++                Object.keys(this.dayOfWeek).length !== 7)) ||
++            (!(this._getWeekDay(date) in this.dayOfWeek) &&
++                Object.keys(this.dayOfWeek).length !== 7 &&
++                !(date.day in this.dayOfMonth &&
++                    Object.keys(this.dayOfMonth).length !== 31)));
++    }
++    _matchesMinute(date) {
++        return (date.month in this.month &&
++            this._matchesDay(date) &&
++            date.hour in this.hour &&
++            date.minute in this.minute);
++    }
++    _firstMatchBetween(from, to) {
++        let date = from;
++        while (date < to) {
++            if (!this._matchesMinute(date)) {
++                date = date.plus({ seconds: 60 - date.second });
++                continue;
++            }
++            if (date.second in this.second) {
++                return date;
++            }
++            date = date.plus({ seconds: 1 });
++        }
++        return null;
++    }
+     sendAt(i) {
+         let date = this.realDate && this.source instanceof luxon_1.DateTime
+             ? this.source
+@@ -191,13 +221,13 @@ class CronTime {
+         if ((hourTestDate.hour === date.hour ||
+             twoHourTestDate.hour === hourTestDate.hour) &&
+             hourTestDate > start) {
+-            date = hourTestDate;
++            date = this._firstMatchBetween(hourTestDate, date) ?? date;
+         }
+         const halfHourTestDate = date.minus({ minute: 30 });
+         if ((halfHourTestDate.minute === date.minute ||
+             hourTestDate.minute === halfHourTestDate.minute) &&
+             halfHourTestDate > start) {
+-            date = halfHourTestDate;
++            date = this._firstMatchBetween(halfHourTestDate, date) ?? date;
+         }
+         return date;
+     }

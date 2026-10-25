@@ -272,6 +272,67 @@ describe('ScheduledTaskManager', () => {
 		expect(scheduledTaskManager.hasGroup(workflow)).toBe(true);
 	});
 
+	describe('on a DST fall-back night', () => {
+		const firedAt = () =>
+			onTick.mock.calls.map(([scheduledTime]) => (scheduledTime as Date).toISOString());
+
+		it.each([
+			{
+				timezone: 'Europe/Berlin',
+				expression: '58 0 3 * * *',
+				start: '2026-10-24T12:00:00Z',
+				expected: ['2026-10-25T02:00:58.000Z', '2026-10-26T02:00:58.000Z'],
+			},
+			{
+				timezone: 'Europe/Berlin',
+				expression: '0 15 3 * * *',
+				start: '2026-10-24T12:00:00Z',
+				expected: ['2026-10-25T02:15:00.000Z', '2026-10-26T02:15:00.000Z'],
+			},
+			{
+				timezone: 'Europe/Berlin',
+				expression: '0 45 2 * * *',
+				start: '2026-10-24T12:00:00Z',
+				expected: ['2026-10-25T00:45:00.000Z', '2026-10-26T01:45:00.000Z'],
+			},
+			{
+				timezone: 'America/New_York',
+				expression: '0 30 2 * * *',
+				start: '2026-10-31T12:00:00Z',
+				expected: ['2026-11-01T07:30:00.000Z', '2026-11-02T07:30:00.000Z'],
+			},
+		])(
+			'should fire $expression in $timezone once a day',
+			({ timezone, expression, start, expected }) => {
+				vi.setSystemTime(new Date(start));
+
+				scheduledTaskManager.register(cronContext({ timezone, expression }), onTick);
+				vi.advanceTimersByTime(48 * 60 * 60 * 1000);
+
+				expect(firedAt()).toEqual(expected);
+			},
+		);
+
+		it('should keep firing a half-hourly cron in both occurrences of the repeated hour', () => {
+			vi.setSystemTime(new Date('2026-10-24T23:50:00Z'));
+
+			scheduledTaskManager.register(
+				cronContext({ timezone: 'Europe/Berlin', expression: '0 */30 * * * *' }),
+				onTick,
+			);
+			vi.advanceTimersByTime(3 * 60 * 60 * 1000);
+
+			expect(firedAt()).toEqual([
+				'2026-10-25T00:00:00.000Z',
+				'2026-10-25T00:30:00.000Z',
+				'2026-10-25T01:00:00.000Z',
+				'2026-10-25T01:30:00.000Z',
+				'2026-10-25T02:00:00.000Z',
+				'2026-10-25T02:30:00.000Z',
+			]);
+		});
+	});
+
 	it('should not set up log interval when activeInterval is 0', () => {
 		const configWithZeroInterval = mock<CronLoggingConfig>({ activeInterval: 0 });
 		const manager = makeManager(true, configWithZeroInterval);
