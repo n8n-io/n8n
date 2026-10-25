@@ -77,6 +77,7 @@ describe('InstanceAiSkillsService', () => {
 			expect(closed.disabledTools).toEqual([
 				'workflow_builder_complete_checkpoint',
 				'workflow_builder_create_tasks',
+				'workflow_builder_task_control',
 			]);
 		});
 
@@ -90,6 +91,7 @@ describe('InstanceAiSkillsService', () => {
 			expect(skills.disabledTools).toEqual([
 				'workflow_builder_complete_checkpoint',
 				'workflow_builder_create_tasks',
+				'workflow_builder_task_control',
 			]);
 		});
 	});

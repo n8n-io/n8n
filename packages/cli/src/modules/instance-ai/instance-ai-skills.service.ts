@@ -71,10 +71,14 @@ const SKILL_GATES: ReadonlyArray<{
 	},
 ];
 
-/** Tools that only work with a planned-task scheduler: the plan and its checkpoints. */
+/**
+ * Tools that only work with a planned-task scheduler: the plan, its checkpoints,
+ * and task control, which cancels and corrects the tasks of a plan.
+ */
 const PLANNED_TASK_TOOL_NAMES = [
 	WORKFLOW_BUILDER_TOOL_NAMES.CREATE_TASKS,
 	WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT,
+	WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL,
 ];
 
 /** Loads the active skills of Instance AI: the prompt-profile skills that the gates leave on. */
