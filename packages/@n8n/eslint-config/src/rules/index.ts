@@ -21,7 +21,23 @@ import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
 import { NoDynamicRegExpRule } from './no-dynamic-regexp.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
+import { NoElementPlusMenuRule } from './no-element-plus-menu.js';
+import { NoRekaUiCheckboxRule } from './no-reka-ui-checkbox.js';
+import { NoRekaUiComboboxRule } from './no-reka-ui-combobox.js';
+import { NoRekaUiDateRangePickerRule } from './no-reka-ui-date-range-picker.js';
+import { NoRekaUiDialogRule } from './no-reka-ui-dialog.js';
+import { NoRekaUiEditableRule } from './no-reka-ui-editable.js';
+import { NoRekaUiNumberFieldRule } from './no-reka-ui-number-field.js';
 import { NoRekaUiPaginationRule } from './no-reka-ui-pagination.js';
+import { NoRekaUiPopoverRule } from './no-reka-ui-popover.js';
+import { NoRekaUiRadioGroupRule } from './no-reka-ui-radio-group.js';
+import { NoRekaUiScrollAreaRule } from './no-reka-ui-scroll-area.js';
+import { NoRekaUiSelectRule } from './no-reka-ui-select.js';
+import { NoRekaUiSwitchRule } from './no-reka-ui-switch.js';
+import { NoRekaUiTagsInputRule } from './no-reka-ui-tags-input.js';
+import { NoRekaUiToggleRule } from './no-reka-ui-toggle.js';
+import { NoRekaUiTooltipRule } from './no-reka-ui-tooltip.js';
+import { NoRekaUiTreeRule } from './no-reka-ui-tree.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
 import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
@@ -56,7 +72,23 @@ export const rules = {
 	'no-application-error': NoApplicationErrorRule,
 	'no-dynamic-regexp': NoDynamicRegExpRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
+	'no-element-plus-menu': NoElementPlusMenuRule,
+	'no-reka-ui-checkbox': NoRekaUiCheckboxRule,
+	'no-reka-ui-combobox': NoRekaUiComboboxRule,
+	'no-reka-ui-date-range-picker': NoRekaUiDateRangePickerRule,
+	'no-reka-ui-dialog': NoRekaUiDialogRule,
+	'no-reka-ui-editable': NoRekaUiEditableRule,
+	'no-reka-ui-number-field': NoRekaUiNumberFieldRule,
 	'no-reka-ui-pagination': NoRekaUiPaginationRule,
+	'no-reka-ui-popover': NoRekaUiPopoverRule,
+	'no-reka-ui-radio-group': NoRekaUiRadioGroupRule,
+	'no-reka-ui-scroll-area': NoRekaUiScrollAreaRule,
+	'no-reka-ui-select': NoRekaUiSelectRule,
+	'no-reka-ui-switch': NoRekaUiSwitchRule,
+	'no-reka-ui-tags-input': NoRekaUiTagsInputRule,
+	'no-reka-ui-toggle': NoRekaUiToggleRule,
+	'no-reka-ui-tooltip': NoRekaUiTooltipRule,
+	'no-reka-ui-tree': NoRekaUiTreeRule,
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
 	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
 	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
