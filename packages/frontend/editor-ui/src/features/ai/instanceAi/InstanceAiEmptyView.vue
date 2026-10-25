@@ -123,6 +123,11 @@ import {
 	discardPendingN8nChatMessage,
 	stashPendingN8nChatMessage,
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
+import {
+	discardPendingAssistantAgentMessage,
+	rememberAssistantAgentThread,
+	stashPendingAssistantAgentMessage,
+} from './assistantAgent/assistantAgentThreads';
 import { base64ToFile } from '@/app/utils/fileUtils';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -817,6 +822,11 @@ async function handleSubmit(
 		return;
 	}
 
+	if (settingsStore.isAssistantAgentEnabled) {
+		await startAssistantAgentThread(message, attachments, restoreDraft, acceptDraft);
+		return;
+	}
+
 	const threadId = uuidv4();
 	isStartingThread.value = true;
 	// The composer clears on submit, but this view stays up until the send is
@@ -893,6 +903,41 @@ async function handleSubmit(
 		toast.showError(error, i18n.baseText('generic.error'));
 	} finally {
 		isStartingThread.value = false;
+	}
+}
+
+/**
+ * Starts a thread on the Assistant agent of the agents runtime. The thread view
+ * sends the first message, so this view only hands it over and navigates.
+ */
+async function startAssistantAgentThread(
+	message: string,
+	attachments: InstanceAiAttachment[] | undefined,
+	restoreDraft: () => boolean,
+	acceptDraft: () => void,
+) {
+	const projectId = selectedProject.value;
+	if (!projectId) return;
+	const fileAttachments = (attachments ?? []).filter(
+		(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
+	);
+	const pendingMessage = {
+		threadId: uuidv4(),
+		text: message,
+		files: fileAttachments.map((attachment) =>
+			base64ToFile(attachment.data, attachment.fileName, attachment.mimeType),
+		),
+		references: (attachments ?? []).filter((attachment) => attachment.type !== 'file'),
+	};
+	stashPendingAssistantAgentMessage(pendingMessage);
+	rememberAssistantAgentThread(pendingMessage.threadId, projectId);
+	acceptDraft();
+	const failure = await router.push({
+		name: INSTANCE_AI_THREAD_VIEW,
+		params: { threadId: pendingMessage.threadId },
+	});
+	if (failure && discardPendingAssistantAgentMessage(pendingMessage)) {
+		restoreDraftAfterFailedSubmit(restoreDraft);
 	}
 }
 

@@ -11,6 +11,10 @@ import { flushPromises } from '@vue/test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import {
+	consumePendingAssistantAgentMessage,
+	knownAssistantThreadRuntime,
+} from '../assistantAgent/assistantAgentThreads';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -1558,6 +1562,52 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-proactive-starter')).toHaveTextContent('starter');
 		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+	});
+
+	describe('Assistant agent threads', () => {
+		beforeEach(() => {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': { ...defaultModuleSettings, assistantAgentEnabled: true },
+			};
+		});
+
+		it('opens a new Assistant agent thread with its first message, without a current Assistant thread', async () => {
+			pushMock.mockResolvedValue(undefined);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(pushMock).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: 'thread-placeholder' },
+			});
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+			expect(acceptDraftMock).toHaveBeenCalledOnce();
+			expect(
+				knownAssistantThreadRuntime('thread-placeholder', {
+					assistantAgentEnabled: true,
+					isAssistantThread: () => false,
+				}),
+			).toEqual({ kind: 'assistant-agent', projectId: PERSONAL_PROJECT_ID });
+
+			const pendingMessage = consumePendingAssistantAgentMessage('thread-placeholder');
+			expect(pendingMessage?.text).toBe('hello');
+			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['context.txt']);
+			expect(pendingMessage?.references).toEqual([]);
+		});
+
+		it('drops the first message and restores the draft when the navigation fails', async () => {
+			pushMock.mockResolvedValueOnce(new Error('navigation aborted'));
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
+		});
 	});
 
 	it('does not create a runtime before the first send', () => {
