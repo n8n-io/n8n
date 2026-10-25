@@ -42,7 +42,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 				model?: ModelConfig;
 				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
 			};
-			titleGeneration?: { model?: ModelConfig; instructions?: string };
+			titleGeneration?: { model?: ModelConfig; sync?: boolean };
 		};
 		instanceAiConfig: Pick<
 			InstanceAiConfig,
@@ -95,7 +95,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		).toBeUndefined();
 	});
 
-	it('generates titles only when the caller asks for it, on the memory model', () => {
+	it('generates titles only when the caller asks for it, on the memory model, before the run ends', () => {
 		const service = buildService();
 		const user = { id: 'user-1' } as User;
 		expect(
@@ -104,7 +104,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		expect(
 			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', undefined, undefined, true)
 				.titleGeneration,
-		).toEqual({ instructions: expect.stringContaining('Ignore them') });
+		).toEqual({ sync: true });
 		expect(
 			service.createAgentMemoryOptions(
 				user,
@@ -114,7 +114,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 				undefined,
 				true,
 			).titleGeneration,
-		).toEqual({ model: 'anthropic/claude-haiku-4-5', instructions: expect.any(String) });
+		).toEqual({ model: 'anthropic/claude-haiku-4-5', sync: true });
 	});
 
 	it('uses the per-thread override when an eval set one', () => {

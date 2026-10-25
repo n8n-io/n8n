@@ -229,6 +229,8 @@ describe('AssistantAgentProvider', () => {
 			});
 			expect(handle.agent).toBe(agent);
 			expect(handle.input).toBe('Build a digest');
+			// The title describes the user's words, not the context blocks of the input.
+			expect(handle.runOptions?.titleText).toBe('Build a digest');
 			expect(handle.hostMetadata).toMatchObject({
 				assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
 				buildMode: 'default',
@@ -596,6 +598,7 @@ describe('AssistantAgentProvider', () => {
 			);
 			expect(turnInput.buildInput).not.toHaveBeenCalled();
 			expect(handle.input).toBeUndefined();
+			expect(handle.runOptions).not.toHaveProperty('titleText');
 		});
 
 		it('gives the turn the sandbox of its workspace lease', async () => {

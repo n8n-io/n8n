@@ -306,3 +306,67 @@ describe('generateThreadTitle persistence', () => {
 		expect(thread?.metadata).toEqual({ markers: [], source: 'chat', emoji: '🌧️' });
 	});
 });
+
+describe('generateThreadTitle title text', () => {
+	const contextInput = [
+		{
+			id: 'm1',
+			role: 'user',
+			content: [
+				{
+					type: 'text',
+					text: '<thread-context>Workflows: Morning digest, Lead sync. Today is Monday.</thread-context>\n\nhey',
+				},
+			],
+			createdAt: new Date(),
+		} as never,
+	];
+
+	async function titleWith(titleText: string) {
+		const memory = new InMemoryMemory();
+		await generateThreadTitle({
+			memory,
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+			titleConfig: { model: MODEL_ID },
+			agentModel: MODEL_ID,
+			turnDelta: contextInput,
+			titleText,
+		});
+		return await memory.getThread(THREAD_ID);
+	}
+
+	beforeEach(() => {
+		mockGenerateText.mockReset();
+		mockGetModelCost.mockReset();
+		mockGetModelCost.mockResolvedValue(undefined);
+		mockGenerateText.mockResolvedValue({
+			text: 'Berlin rain alert',
+			usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+		});
+	});
+
+	it('titles the text that the host gives, not the turn input', async () => {
+		const thread = await titleWith('Build a daily Berlin rain alert workflow');
+
+		expect(thread?.title).toBe('Berlin rain alert');
+		const [{ messages }] = mockGenerateText.mock.calls[0] as [
+			{ messages: Array<{ content: string }> },
+		];
+		expect(messages[0].content).toContain('Build a daily Berlin rain alert workflow');
+		expect(messages[0].content).not.toContain('thread-context');
+	});
+
+	it('waits for a later turn when the text that the host gives is trivial', async () => {
+		const thread = await titleWith('hey');
+
+		expect(mockGenerateText).not.toHaveBeenCalled();
+		expect(thread?.title ?? null).toBeNull();
+	});
+
+	it('generates no title for an empty text from the host', async () => {
+		await titleWith('');
+
+		expect(mockGenerateText).not.toHaveBeenCalled();
+	});
+});

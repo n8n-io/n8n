@@ -216,6 +216,15 @@ ${trimmed}
 	return { title, emoji, usage };
 }
 
+function firstUserText(turnDelta: AgentDbMessage[]): string | undefined {
+	const userMessage = turnDelta.find((m) => 'role' in m && m.role === 'user');
+	if (!userMessage || !('content' in userMessage)) return undefined;
+	return (userMessage.content as Array<{ type: string; text?: string }>)
+		.filter((c) => c.type === 'text' && c.text)
+		.map((c) => c.text!)
+		.join(' ');
+}
+
 /**
  * Generate a title and emoji for a thread if it doesn't already have one.
  *
@@ -235,6 +244,8 @@ export async function generateThreadTitle(opts: {
 	telemetry?: BuiltTelemetry;
 	/** Messages from the current turn, used to find the first user message. */
 	turnDelta: AgentDbMessage[];
+	/** Replaces the first user message of the turn as the text to title. See `ExecutionOptions.titleText`. */
+	titleText?: string;
 	executionCounter?: AgentExecutionCounter;
 	/**
 	 * Host callback that receives the priced title-generation usage so it can
@@ -248,13 +259,7 @@ export async function generateThreadTitle(opts: {
 		const thread = await opts.memory.getThread(opts.threadId);
 		if (thread?.title) return;
 
-		const userMessage = opts.turnDelta.find((m) => 'role' in m && m.role === 'user');
-		if (!userMessage || !('content' in userMessage)) return;
-
-		const userText = (userMessage.content as Array<{ type: string; text?: string }>)
-			.filter((c) => c.type === 'text' && c.text)
-			.map((c) => c.text!)
-			.join(' ');
+		const userText = opts.titleText ?? firstUserText(opts.turnDelta);
 		if (!userText) return;
 
 		const titleModelId = opts.titleConfig.model ?? opts.agentModel;

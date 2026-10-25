@@ -221,6 +221,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				recoverUsageOnAbort: true,
 				...modelStreamStallOptions(this.aiConfig),
 				providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+				// The input carries context blocks before the user's words, so title the words only.
+				...(turn.type === 'start' ? { titleText: turn.message } : {}),
 			},
 			onChunk: (chunk) => {
 				// The SDK stores the input when it receives it, so the first chunk means it is accepted.
