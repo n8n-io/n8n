@@ -155,7 +155,7 @@ describe('getSystemPrompt — browser discoverability', () => {
 		it('names a tool that every run can find with search_tools', () => {
 			const prompt = getSystemPrompt({ toolSearchEnabled: true });
 
-			expect(prompt).toContain(`search "folders" for \`${DOMAIN_TOOL_IDS.WORKSPACE}\``);
+			expect(prompt).toContain(`search "folders" for the \`${DOMAIN_TOOL_IDS.WORKSPACE}\` tool`);
 			expect(ALWAYS_LOADED_TOOL_NAMES.has(DOMAIN_TOOL_IDS.WORKSPACE)).toBe(false);
 			expect(prompt).not.toContain('search "create tasks"');
 		});
