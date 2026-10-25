@@ -11,6 +11,8 @@ import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 defineProps<{
 	nodeType?: SimplifiedNodeType | VersionNode | null;
 	nodeName?: string;
+	isActive?: boolean;
+	isCompact?: boolean;
 	badgeType?: NodeDiffStatus;
 }>();
 
@@ -22,11 +24,14 @@ const itemId = useId();
 </script>
 
 <template>
-	<!-- The list stays open so the user can select another change. -->
 	<N8nDropdownMenuItem
 		:id="itemId"
 		:label="nodeName ?? ''"
 		:close-on-select="false"
+		:class="{
+			[$style.active]: isActive,
+			[$style.compact]: isCompact,
+		}"
 		@select="emit('select')"
 	>
 		<template #item-leading="{ ui }">
@@ -35,3 +40,14 @@ const itemId = useId();
 		</template>
 	</N8nDropdownMenuItem>
 </template>
+
+<style module lang="scss">
+.active {
+	background-color: var(--background--hover);
+}
+
+.compact {
+	min-height: 0;
+	padding: var(--spacing--5xs) 0;
+}
+</style>
