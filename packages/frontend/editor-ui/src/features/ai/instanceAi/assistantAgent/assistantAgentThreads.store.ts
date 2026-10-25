@@ -11,7 +11,11 @@ import {
 	listSystemAgentThreads,
 } from '@/features/agents/composables/useAgentApi';
 
-import { ASSISTANT_AGENT_ID, rememberAssistantAgentThread } from './assistantAgentThreads';
+import {
+	ASSISTANT_AGENT_ID,
+	forgetAssistantAgentThread,
+	rememberAssistantAgentThread,
+} from './assistantAgentThreads';
 
 /** How many Assistant agent threads the sidebar's recent chats load. */
 export const ASSISTANT_AGENT_RECENT_THREADS_LIMIT = 10;
@@ -48,8 +52,13 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		[...threadsById.value.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
 	);
 
+	// A response that a delete overtook can still hold the deleted thread.
 	function remember(threads: SystemAgentThreadSummary[]): void {
-		for (const thread of threads) rememberAssistantAgentThread(thread.id, thread.projectId);
+		for (const thread of threads) {
+			if (!deletedThreadIds.value.has(thread.id)) {
+				rememberAssistantAgentThread(thread.id, thread.projectId);
+			}
+		}
 	}
 
 	// A response of an older call never replaces a newer one.
@@ -72,17 +81,19 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 	}
 
 	/** Adds a thread that the recent list does not hold, for example one opened by URL. */
+	function addOpenedThread(thread: SystemAgentThreadSummary): void {
+		if (threadsById.value.has(thread.id) || deletedThreadIds.value.has(thread.id)) return;
+		remember([thread]);
+		openedThreads.value.push(thread);
+	}
+
+	/** Loads and adds a thread that the store does not hold yet. */
 	async function loadThread(threadId: string): Promise<void> {
 		if (threadsById.value.has(threadId)) return;
 		try {
-			const thread = await getSystemAgentThread(
-				rootStore.restApiContext,
-				ASSISTANT_AGENT_ID,
-				threadId,
+			addOpenedThread(
+				await getSystemAgentThread(rootStore.restApiContext, ASSISTANT_AGENT_ID, threadId),
 			);
-			if (threadsById.value.has(thread.id)) return;
-			remember([thread]);
-			openedThreads.value.push(thread);
 		} catch (error) {
 			console.error('Failed to load Assistant agent thread', error);
 		}
@@ -98,6 +109,7 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		recentThreads.value = recentThreads.value.filter((t) => t.id !== thread.id);
 		openedThreads.value = openedThreads.value.filter((t) => t.id !== thread.id);
 		deletedThreadIds.value.add(thread.id);
+		forgetAssistantAgentThread(thread.id);
 		return true;
 	}
 
@@ -109,6 +121,7 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		deletedThreadIds,
 		remember,
 		fetchRecent,
+		addOpenedThread,
 		loadThread,
 		deleteThread,
 	};

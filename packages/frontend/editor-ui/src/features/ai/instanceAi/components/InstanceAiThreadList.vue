@@ -97,8 +97,12 @@ const searchesAgentThreads = computed(
 const includesAssistantAgentThreads = computed(
 	() => instanceAiSettingsStore.isAssistantAgentEnabled && !isScoped.value,
 );
+// The recent-only list reads the store, so only the paged list pages through them.
+const pagesAssistantAgentThreads = computed(
+	() => includesAssistantAgentThreads.value && !isRecentOnly.value,
+);
 const usesMergedHistory = computed(
-	() => searchesAgentThreads.value || includesAssistantAgentThreads.value,
+	() => searchesAgentThreads.value || pagesAssistantAgentThreads.value,
 );
 
 const {
@@ -112,7 +116,7 @@ const {
 	loadMore,
 } = useMergedChatHistory({
 	enabled: () => searchesAgentThreads.value,
-	assistantAgentEnabled: () => includesAssistantAgentThreads.value,
+	assistantAgentEnabled: () => pagesAssistantAgentThreads.value,
 });
 
 const menuOpen = ref(false);
@@ -363,8 +367,9 @@ function handleMenuSelect(itemId: string) {
 }
 
 async function handleDeleteAssistantAgentThread(thread: SystemAgentThreadSummary) {
-	const wasActive = thread.id === activeThreadId.value;
-	if ((await assistantAgentThreadsStore.deleteThread(thread)) && wasActive) {
+	const deleted = await assistantAgentThreadsStore.deleteThread(thread);
+	// Read the open thread after the request: the user can open another one meanwhile.
+	if (deleted && thread.id === activeThreadId.value) {
 		void router.push({ name: INSTANCE_AI_VIEW });
 	}
 }

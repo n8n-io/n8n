@@ -30,6 +30,11 @@ export function rememberAssistantAgentThread(threadId: string, projectId: string
 	knownAgentThreads.set(threadId, projectId);
 }
 
+/** Drops a deleted thread, so its URL runs the lookup and opens as a missing thread. */
+export function forgetAssistantAgentThread(threadId: string): void {
+	knownAgentThreads.delete(threadId);
+}
+
 /** The runtime of a thread when it is known without a request, else `undefined`. */
 export function knownAssistantThreadRuntime(
 	threadId: string,

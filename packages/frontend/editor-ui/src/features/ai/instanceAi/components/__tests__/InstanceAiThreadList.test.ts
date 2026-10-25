@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { nextTick } from 'vue';
@@ -11,7 +12,7 @@ import InstanceAiThreadList from '../InstanceAiThreadList.vue';
 import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { useAssistantAgentThreadsStore } from '../../assistantAgent/assistantAgentThreads.store';
-import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
+import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '../../constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const routerPush = vi.fn();
@@ -386,6 +387,43 @@ describe('InstanceAiThreadList', () => {
 					params: { threadId: 'aa1' },
 				});
 			});
+		});
+
+		it('shows its recent threads from the store in the recent-only list, without a paged request', async () => {
+			n8nChatFlag.value = true;
+			mockedStore(useAssistantAgentThreadsStore).recentThreads = [agentRuntimeThread];
+
+			const { findAllByTestId } = await renderList();
+
+			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			expect(agentRow).toHaveTextContent('Agent runtime chat');
+			expect(listSystemAgentThreadsMock).not.toHaveBeenCalled();
+		});
+
+		it('leaves the open thread after deleting it, unless another thread opened meanwhile', async () => {
+			const agentStore = mockedStore(useAssistantAgentThreadsStore);
+			const finishDeletes: Array<(deleted: boolean) => void> = [];
+			agentStore.deleteThread.mockImplementation(
+				async () => await new Promise<boolean>((resolve) => finishDeletes.push(resolve)),
+			);
+
+			const { findAllByTestId, rerender } = await renderList({
+				props: { activeThreadId: 'aa1' },
+			});
+			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			await userEvent.click(within(agentRow).getByTestId('thread-actions'));
+			finishDeletes[0](true);
+			await vi.waitFor(() => {
+				expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
+			});
+
+			routerPush.mockClear();
+			await userEvent.click(within(agentRow).getByTestId('thread-actions'));
+			await rerender({ activeThreadId: 'b' });
+			finishDeletes[1](true);
+			await flushPromises();
+
+			expect(routerPush).not.toHaveBeenCalled();
 		});
 
 		it('leaves its threads out for a host that scopes the list', async () => {

@@ -27,11 +27,11 @@ const thread = (id: string, updatedAt: string): SystemAgentThreadSummary => ({
 	projectId: `project-${id}`,
 });
 
-const isAgentThread = (threadId: string) =>
+const runtimeOf = (threadId: string) =>
 	knownAssistantThreadRuntime(threadId, {
 		assistantAgentEnabled: true,
 		isAssistantThread: () => false,
-	})?.kind === 'assistant-agent';
+	});
 
 describe('useAssistantAgentThreadsStore', () => {
 	beforeEach(() => {
@@ -59,8 +59,14 @@ describe('useAssistantAgentThreadsStore', () => {
 			limit: 10,
 		});
 		expect(store.knownThreads.map(({ id }) => id)).toEqual(['recent-new', 'opened-old']);
-		expect(isAgentThread('recent-new')).toBe(true);
-		expect(isAgentThread('opened-old')).toBe(true);
+		expect(runtimeOf('recent-new')).toEqual({
+			kind: 'assistant-agent',
+			projectId: 'project-recent-new',
+		});
+		expect(runtimeOf('opened-old')).toEqual({
+			kind: 'assistant-agent',
+			projectId: 'project-opened-old',
+		});
 	});
 
 	it('deletes a thread and keeps it out of the lists', async () => {
@@ -76,6 +82,40 @@ describe('useAssistantAgentThreadsStore', () => {
 		expect(deleteSystemAgentThread).toHaveBeenCalledWith(expect.anything(), 'assistant', 't1');
 		expect(store.knownThreads).toEqual([]);
 		expect(store.deletedThreadIds.has('t1')).toBe(true);
+		// Its URL now runs the lookup, and opens as a missing thread.
+		expect(runtimeOf('t1')).toBeUndefined();
+	});
+
+	it('does not bring back a thread whose load a delete overtook', async () => {
+		let finishLoad!: (summary: SystemAgentThreadSummary) => void;
+		vi.mocked(getSystemAgentThread).mockReturnValue(
+			new Promise((resolve) => {
+				finishLoad = resolve;
+			}),
+		);
+		const store = useAssistantAgentThreadsStore();
+
+		const loading = store.loadThread('overtaken');
+		await store.deleteThread(thread('overtaken', '2026-01-02T00:00:00.000Z'));
+		finishLoad(thread('overtaken', '2026-01-02T00:00:00.000Z'));
+		await loading;
+
+		expect(store.knownThreads).toEqual([]);
+		expect(runtimeOf('overtaken')).toBeUndefined();
+	});
+
+	it('adds a thread that the route view looked up, so the thread view does not load it again', async () => {
+		const store = useAssistantAgentThreadsStore();
+
+		store.addOpenedThread(thread('looked-up', '2026-01-01T00:00:00.000Z'));
+		await store.loadThread('looked-up');
+
+		expect(getSystemAgentThread).not.toHaveBeenCalled();
+		expect(store.knownThreads.map(({ id }) => id)).toEqual(['looked-up']);
+		expect(runtimeOf('looked-up')).toEqual({
+			kind: 'assistant-agent',
+			projectId: 'project-looked-up',
+		});
 	});
 
 	it('keeps the thread and shows the error when the delete fails', async () => {
