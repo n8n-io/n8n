@@ -21,8 +21,6 @@ import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
 import { NoDynamicRegExpRule } from './no-dynamic-regexp.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
-import { NoElementPlusDropdownRule } from './no-element-plus-dropdown.js';
-import { NoRekaUiDropdownRule } from './no-reka-ui-dropdown.js';
 import { NoRekaUiPaginationRule } from './no-reka-ui-pagination.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
 import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
@@ -58,8 +56,6 @@ export const rules = {
 	'no-application-error': NoApplicationErrorRule,
 	'no-dynamic-regexp': NoDynamicRegExpRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
-	'no-element-plus-dropdown': NoElementPlusDropdownRule,
-	'no-reka-ui-dropdown': NoRekaUiDropdownRule,
 	'no-reka-ui-pagination': NoRekaUiPaginationRule,
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
 	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
