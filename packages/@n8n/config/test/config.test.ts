@@ -248,69 +248,6 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 		},
-<<<<<<< HEAD
-=======
-		chatTrigger: {
-			disablePublicChat: false,
-		},
-		compressionNode: {
-			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
-			maxZipEntries: 5000,
-		},
-		mcpClient: {
-			cacheTtl: 300000,
-			cacheMaxSize: 500,
-		},
-		mcpServer: {
-			sessionIdleTtl: 3600000,
-			sessionSweepInterval: 300000,
-		},
-		chatHub: {
-			executionContextTtl: 3600,
-			maxBufferedChunks: 1000,
-			streamStateTtl: 300,
-		},
-		instanceAi: {
-			model: 'anthropic/claude-opus-4-8',
-			modelUrl: '',
-			modelApiKey: '',
-			mcpServers: '',
-			localGatewayDisabled: false,
-			browserUseEnabled: true,
-			observerMessageTokens: 30_000,
-			reflectorObservationTokens: 40_000,
-			subAgentMaxSteps: 100,
-			sandboxEnabled: false,
-			sandboxProvider: 'n8n-sandbox',
-			sandboxImage: 'daytonaio/sandbox:0.5.0',
-			sandboxSnapshot: '',
-			daytonaApiUrl: '',
-			daytonaApiKey: '',
-			n8nSandboxServiceUrl: '',
-			n8nSandboxServiceApiKey: '',
-			sandboxTimeout: 300000,
-			sandboxNamePrefix: '',
-			sandboxEphemeral: false,
-			sandboxAutoStopMinutes: 15,
-			sandboxAutoArchiveMinutes: 60,
-			sandboxAutoDeleteMinutes: 10_080,
-			daytonaTokenRefreshSkewMs: 300_000,
-			builderSandboxTtlMs: 900_000,
-			braveSearchApiKey: '',
-			searxngUrl: '',
-			gatewayApiKey: '',
-			threadTtlDays: 90,
-			pruneInterval: 3_600_000,
-			snapshotRetention: 86_400_000,
-			confirmationTimeout: 86_400_000,
-			outputRedactionEnabled: true,
-			outputRedactionSecrets: true,
-			outputRedactionPii: 'credit-card',
-			outputRedactionPlaceholder: '[REDACTED]',
-			runDebugEnabled: false,
-			thinkingEnabled: true,
-		},
->>>>>>> c3ce96110 (fix(MCP Server Trigger Node): Evict idle sessions to prevent memory leak (#33201))
 		queue: {
 			health: {
 				active: false,
@@ -486,6 +423,10 @@ describe('GlobalConfig', () => {
 		externalFrontendHooksUrls: '',
 		ai: {
 			enabled: false,
+		},
+		mcpServer: {
+			sessionIdleTtl: 3600000,
+			sessionSweepInterval: 300000,
 		},
 	};
 

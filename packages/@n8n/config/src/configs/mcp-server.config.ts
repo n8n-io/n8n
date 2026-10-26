@@ -1,7 +1,8 @@
-import { Time } from '@n8n/constants';
+import z from 'zod';
 
 import { Config, Env } from '../decorators';
-import { positiveIntSchema } from '../schemas';
+
+const positiveIntSchema = z.number({ coerce: true }).int().positive();
 
 /** Configuration for the MCP Server Trigger node. */
 @Config
@@ -13,12 +14,12 @@ export class McpServerConfig {
 	 * leaking sessions. Default: 1 hour.
 	 */
 	@Env('N8N_MCP_SERVER_SESSION_IDLE_TTL_MS', positiveIntSchema)
-	sessionIdleTtl: number = Time.hours.toMilliseconds;
+	sessionIdleTtl: number = 60 * 60 * 1000;
 
 	/**
 	 * Interval in milliseconds between sweeps that evict idle sessions.
 	 * Default: 5 minutes.
 	 */
 	@Env('N8N_MCP_SERVER_SESSION_SWEEP_INTERVAL_MS', positiveIntSchema)
-	sessionSweepInterval: number = 5 * Time.minutes.toMilliseconds;
+	sessionSweepInterval: number = 5 * 60 * 1000;
 }

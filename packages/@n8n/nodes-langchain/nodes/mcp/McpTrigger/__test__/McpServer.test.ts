@@ -529,4 +529,115 @@ describe('McpServer', () => {
 			expect(mockDeleteResponse.status).toHaveBeenCalledWith(405);
 		});
 	});
+
+	describe('idle session eviction', () => {
+		const idleTtlMs = 60 * 60 * 1000;
+		const internals = mcpServerManager as unknown as {
+			lastActivityAt: Record<string, number>;
+			resolveFunctions: Record<string, CallableFunction>;
+			tools: Record<string, Tool[]>;
+			runSweep: (now: number) => Promise<void>;
+		};
+
+		const addStreamableSession = (lastActivityAt: number) => {
+			mcpServerManager.transports[sessionId] = mockStreamableTransport;
+			mcpServerManager.servers[sessionId] = mockServer;
+			internals.tools[sessionId] = [mockTool];
+			internals.lastActivityAt[sessionId] = lastActivityAt;
+		};
+
+		beforeEach(() => {
+			mcpServerManager.transports = {};
+			mcpServerManager.servers = {};
+			internals.tools = {};
+			internals.lastActivityAt = {};
+			internals.resolveFunctions = {};
+			mockStreamableTransport.handleRequest.mockResolvedValue(undefined);
+		});
+
+		it('should evict a Streamable HTTP session idle longer than the TTL', async () => {
+			addStreamableSession(0);
+
+			await internals.runSweep(idleTtlMs);
+
+			expect(mcpServerManager.transports[sessionId]).toBeUndefined();
+			expect(mcpServerManager.servers[sessionId]).toBeUndefined();
+			expect(internals.tools[sessionId]).toBeUndefined();
+			expect(internals.lastActivityAt[sessionId]).toBeUndefined();
+			expect(mockServer.close).toHaveBeenCalled();
+		});
+
+		it('should keep a session that was active within the TTL', async () => {
+			addStreamableSession(1);
+
+			await internals.runSweep(idleTtlMs);
+
+			expect(mcpServerManager.transports[sessionId]).toBe(mockStreamableTransport);
+			expect(mockServer.close).not.toHaveBeenCalled();
+		});
+
+		it('should keep an idle session with a tool call in progress', async () => {
+			addStreamableSession(0);
+			internals.resolveFunctions[`${sessionId}_1`] = jest.fn();
+
+			await internals.runSweep(idleTtlMs);
+
+			expect(mcpServerManager.transports[sessionId]).toBe(mockStreamableTransport);
+			expect(mockServer.close).not.toHaveBeenCalled();
+		});
+
+		it('should release the session even if closing the server fails', async () => {
+			addStreamableSession(0);
+			mockServer.close.mockRejectedValueOnce(new Error('close failed'));
+
+			await internals.runSweep(idleTtlMs);
+
+			expect(mcpServerManager.transports[sessionId]).toBeUndefined();
+		});
+
+		it('should start tracking a Streamable HTTP session when it is initialized', async () => {
+			jest
+				.mocked(FlushingStreamableHTTPTransport)
+				.mockImplementationOnce((options: StreamableHTTPServerTransportOptions) => {
+					queueMicrotask(() => {
+						void options.onsessioninitialized?.(sessionId);
+					});
+					return mockStreamableTransport;
+				});
+
+			await mcpServerManager.createServerWithStreamableHTTPTransport(
+				'mcpServer',
+				mockResponse,
+				mock<Request>({ path: '/mcp', body: {} }),
+			);
+			await new Promise(process.nextTick);
+
+			expect(internals.lastActivityAt[sessionId]).toEqual(expect.any(Number));
+		});
+
+		it('should refresh the activity of a tracked session on a request', async () => {
+			addStreamableSession(0);
+			mockStreamableTransport.handleRequest.mockImplementationOnce(async () => {
+				internals.resolveFunctions[sessionId]();
+			});
+			const request = mock<Request>({ headers: { 'mcp-session-id': sessionId }, path: '/mcp' });
+			request.rawBody = Buffer.from(JSON.stringify({ jsonrpc: '2.0', method: 'tools/list' }));
+
+			await mcpServerManager.handlePostMessage(request, mockResponse, [mockTool]);
+
+			expect(internals.lastActivityAt[sessionId]).toBeGreaterThan(0);
+		});
+
+		it('should not track SSE sessions', async () => {
+			mcpServerManager.transports[sessionId] = mockTransport;
+			mockTransport.handleRequest.mockImplementationOnce(async () => {
+				internals.resolveFunctions[sessionId]();
+			});
+			mockRequest.rawBody = Buffer.from(JSON.stringify({ jsonrpc: '2.0', method: 'tools/list' }));
+
+			await mcpServerManager.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+
+			expect(internals.lastActivityAt[sessionId]).toBeUndefined();
+		});
+	});
 });
