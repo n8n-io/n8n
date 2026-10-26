@@ -22,6 +22,8 @@ export interface ResolvedDependenciesResult {
 	dependencies: ResolvedDependency[];
 	/** Number of dependencies the user does not have access to view */
 	inaccessibleCount: number;
+	/** Counts by type for existing dependencies the user cannot view. Omitted when none exist. */
+	inaccessibleCounts?: Partial<Record<DependencyType, number>>;
 }
 
 export type DependenciesBatchResponse = Record<string, ResolvedDependenciesResult>;

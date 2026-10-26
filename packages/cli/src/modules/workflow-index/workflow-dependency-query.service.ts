@@ -2,6 +2,7 @@ import type {
 	DependenciesBatchResponse,
 	DependencyCountsBatchResponse,
 	DependencyResourceType,
+	DependencyType,
 	ResolvedDependency,
 } from '@n8n/api-types';
 import {
@@ -435,6 +436,11 @@ export class WorkflowDependencyQueryService {
 		for (const resourceId of resourceIds) {
 			const dependencies: ResolvedDependency[] = [];
 			let inaccessibleCount = 0;
+			const inaccessibleCounts: Partial<Record<DependencyType, number>> = {};
+			const countInaccessible = (type: DependencyType) => {
+				inaccessibleCount++;
+				inaccessibleCounts[type] = (inaccessibleCounts[type] ?? 0) + 1;
+			};
 
 			for (const id of maps.agentUsageMap.get(resourceId) ?? []) {
 				if (!existing.existingAgentIds.has(id)) continue;
@@ -447,7 +453,7 @@ export class WorkflowDependencyQueryService {
 						projectId: agent.projectId,
 					});
 				} else {
-					inaccessibleCount++;
+					countInaccessible('agentUsage');
 				}
 			}
 
@@ -466,7 +472,7 @@ export class WorkflowDependencyQueryService {
 					} else if (type === 'credentialId' && unavailableName !== undefined) {
 						dependencies.push({ id, name: unavailableName, type, unavailable: true });
 					} else {
-						inaccessibleCount++;
+						countInaccessible(type);
 					}
 				}
 			};
@@ -486,7 +492,7 @@ export class WorkflowDependencyQueryService {
 							projectId: workflow.projectId,
 						});
 					} else {
-						inaccessibleCount++;
+						countInaccessible(type);
 					}
 				}
 			};
@@ -508,11 +514,15 @@ export class WorkflowDependencyQueryService {
 				if (dt) {
 					dependencies.push({ id, name: dt.name, type: 'dataTableId', projectId: dt.projectId });
 				} else {
-					inaccessibleCount++;
+					countInaccessible('dataTableId');
 				}
 			}
 
-			result[resourceId] = { dependencies, inaccessibleCount };
+			result[resourceId] = {
+				dependencies,
+				inaccessibleCount,
+				...(inaccessibleCount > 0 ? { inaccessibleCounts } : {}),
+			};
 		}
 
 		return result;

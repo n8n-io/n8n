@@ -39,15 +39,11 @@ const props = defineProps<{
 const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
-const { fetchDependencies, fetchDependencyCounts, getDependencies, getDependencyCounts } =
-	useDependencies();
+const { fetchDependencies, getDependencies } = useDependencies();
 const unpublishing = ref(false);
 
 onMounted(async () => {
-	await Promise.all([
-		fetchDependencies([props.data.workflowId], 'workflow'),
-		fetchDependencyCounts([props.data.workflowId], 'workflow'),
-	]);
+	await fetchDependencies([props.data.workflowId], 'workflow');
 });
 
 const hrefFor = (dep: ResolvedDependency): string | undefined => {
@@ -68,12 +64,10 @@ const affectedDependencies = computed(() => {
 	);
 });
 
-// The counts include dependents the user cannot see; the details list does not.
+// The details response excludes deleted resources from both visible and hidden counts.
 const hiddenAffectedCount = computed(() => {
-	const counts = getDependencyCounts(props.data.workflowId, 'workflow');
-	if (!counts) return 0;
-	const total = AFFECTED_TYPES.reduce((sum, type) => sum + counts[type], 0);
-	return total - affectedDependencies.value.length;
+	const counts = getDependencies(props.data.workflowId, 'workflow')?.inaccessibleCounts;
+	return AFFECTED_TYPES.reduce((sum, type) => sum + (counts?.[type] ?? 0), 0);
 });
 
 const affectedCount = computed(() => affectedDependencies.value.length + hiddenAffectedCount.value);

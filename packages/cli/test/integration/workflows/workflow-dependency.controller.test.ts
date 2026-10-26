@@ -480,6 +480,7 @@ describe('POST /workflow-dependencies/details', () => {
 		expect(resp.body.data[credential.id]).toEqual({
 			dependencies: [],
 			inaccessibleCount: 1,
+			inaccessibleCounts: { agentUsage: 1 },
 		});
 	});
 
@@ -507,6 +508,7 @@ describe('POST /workflow-dependencies/details', () => {
 		const result = resp.body.data[memberWorkflow.id];
 		expect(result.dependencies).toHaveLength(1);
 		expect(result.inaccessibleCount).toBe(1);
+		expect(result.inaccessibleCounts).toEqual({ workflowCall: 1 });
 
 		expect(result.dependencies[0]).toMatchObject({
 			id: memberSubWorkflow.id,

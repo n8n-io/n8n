@@ -1,13 +1,14 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import type { ResolvedDependency } from '@n8n/api-types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { VIEWS, WORKFLOW_HISTORY_VERSION_UNPUBLISH } from '@/app/constants';
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import * as workflowDependenciesApi from '@/app/api/workflow-dependencies';
-import WorkflowHistoryVersionUnpublishModal from './WorkflowHistoryVersionUnpublishModal.vue';
+import WorkflowHistoryVersionUnpublishModal, {
+	type WorkflowHistoryVersionUnpublishModalEventBusEvents,
+} from './WorkflowHistoryVersionUnpublishModal.vue';
 
 vi.mock('@/app/api/workflow-dependencies');
 
@@ -26,7 +27,12 @@ const ModalStub = {
 };
 
 const renderModal = (workflowId: string, workflowName = 'Example workflow') => {
-	const data = { workflowId, workflowName, versionName: 'v3', eventBus: createEventBus() };
+	const data = {
+		workflowId,
+		workflowName,
+		versionName: 'v3',
+		eventBus: createEventBus<WorkflowHistoryVersionUnpublishModalEventBusEvents>(),
+	};
 	return createComponentRenderer(WorkflowHistoryVersionUnpublishModal)({
 		props: {
 			modalName: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
@@ -93,8 +99,8 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 			.toHaveTextContent(
 				'Unpublishing “Example workflow” will prevent it from running in this instance until you publish it again.',
 			);
-		expect(getByRole('button', { name: 'Cancel', exact: true })).toBeInTheDocument();
-		expect(getByRole('button', { name: 'Unpublish', exact: true })).toBeInTheDocument();
+		expect(getByRole('button', { name: /^Cancel$/ })).toBeInTheDocument();
+		expect(getByRole('button', { name: /^Unpublish$/ })).toBeInTheDocument();
 
 		if (dependencyMessage) {
 			expect.soft(container).toHaveTextContent(dependencyMessage);
@@ -122,6 +128,7 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 					{ type: 'agentUsage', id: 'agent-1', name: 'Support agent', projectId: 'proj-1' },
 				],
 				inaccessibleCount: 4,
+				inaccessibleCounts: { credentialId: 2, workflowParent: 1, agentUsage: 1 },
 			},
 		});
 		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({
@@ -159,7 +166,11 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 
 	it('counts affected resources when none are accessible', async () => {
 		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
-			'wf-hidden': { dependencies: [], inaccessibleCount: 2 },
+			'wf-hidden': {
+				dependencies: [],
+				inaccessibleCount: 2,
+				inaccessibleCounts: { agentUsage: 1, credentialId: 1 },
+			},
 		});
 		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({
 			'wf-hidden': { ...noCounts, agentUsage: 1, credentialId: 1 },
@@ -177,6 +188,48 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 		expect(queryByRole('list')).not.toBeInTheDocument();
 	});
 
+	it.each([
+		{ visibleCount: 0, hiddenCredentialCount: 0 },
+		{ visibleCount: 0, hiddenCredentialCount: 1 },
+		{ visibleCount: 1, hiddenCredentialCount: 1 },
+	])(
+		'ignores deleted dependents with $visibleCount visible dependents and $hiddenCredentialCount hidden credentials',
+		async ({ visibleCount, hiddenCredentialCount }) => {
+			const workflowId = `wf-stale-${visibleCount}-${hiddenCredentialCount}`;
+			vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
+				[workflowId]: {
+					dependencies:
+						visibleCount > 0
+							? [{ type: 'workflowParent', id: 'parent-1', name: 'Order intake' }]
+							: [],
+					inaccessibleCount: hiddenCredentialCount,
+					inaccessibleCounts: { credentialId: hiddenCredentialCount },
+				},
+			});
+			vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({
+				[workflowId]: {
+					...noCounts,
+					workflowParent: visibleCount + 1,
+					credentialId: hiddenCredentialCount,
+				},
+			});
+
+			const { queryByText, queryByTestId, getByText } = renderModal(workflowId);
+			await flushPromises();
+
+			expect(queryByText(/not accessible to you/)).not.toBeInTheDocument();
+			if (visibleCount === 0) {
+				expect(queryByText(/resources? uses? this workflow/)).not.toBeInTheDocument();
+				expect(queryByTestId('workflow-unpublish-affected-resources')).not.toBeInTheDocument();
+			} else {
+				expect(
+					getByText('1 resource uses this workflow and may be affected by unpublishing it.'),
+				).toBeInTheDocument();
+				expect(getByText('Order intake')).toBeInTheDocument();
+			}
+		},
+	);
+
 	it('shows only the generic warning when nothing runs the published version', async () => {
 		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({
 			'wf-2': {
@@ -189,9 +242,7 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 		});
 
 		const { queryByTestId, getByText } = renderModal('wf-2');
-		await waitFor(() =>
-			expect(workflowDependenciesApi.getResourceDependencyCounts).toHaveBeenCalled(),
-		);
+		await flushPromises();
 
 		expect(
 			getByText(
