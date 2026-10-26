@@ -964,6 +964,7 @@ export class AgentRuntimeReconstructionService {
 				return await resolveNodeTool(ref, {
 					executor: this.ephemeralNodeExecutor,
 					projectId: runIdentity.projectId,
+					agentId: runIdentity.agentId,
 					instrumentToolAdditionalData,
 				});
 			}

@@ -8,6 +8,7 @@ import type { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 import type { NonEmptyViolations } from '@/policy/policy-violation.error';
 
+import { AgentFileBridge } from '../../agent-file-bridge.service';
 import { resolveNodeTool } from '../node-tool-factory';
 
 const violation = (overrides: Partial<PolicyViolation> = {}): PolicyViolation => ({
@@ -349,5 +350,56 @@ describe('resolveNodeTool → eval instrumentation', () => {
 		const request = executeInline.mock.calls[0][0] as Record<string, unknown>;
 		expect(request.nodeName).toBeUndefined();
 		expect(request.configureAdditionalData).toBeUndefined();
+	});
+});
+
+describe('resolveNodeTool → binary output', () => {
+	const binaryItem = {
+		json: { id: 'drive-1' },
+		binary: { data: { id: 'fs:y', data: 'fs', mimeType: 'application/pdf' } },
+	};
+	const file = { fileId: 'aid-2', fileName: 'data', mimeType: 'application/pdf', sizeBytes: 3 };
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	async function runTool(toolCtx: object) {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [binaryItem] });
+		const adoptFromItems = vi.fn().mockResolvedValue({
+			items: [{ json: { id: 'drive-1' }, binary: { data: 'aid-2' } }],
+			files: [file],
+		});
+		Container.set(AgentFileBridge, { adoptFromItems } as unknown as AgentFileBridge);
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+			agentId: 'agent-1',
+		});
+		const output = await tool.handler!({}, toolCtx as never);
+		return { output, adoptFromItems, tool };
+	}
+
+	it('adopts binary output as agent files and lists them as metadata', async () => {
+		const { output, adoptFromItems, tool } = await runTool({ persistence: { threadId: 't1' } });
+
+		expect(adoptFromItems).toHaveBeenCalledWith([binaryItem], {
+			agentId: 'agent-1',
+			projectId: 'p1',
+			threadId: 't1',
+		});
+		expect(output).toEqual({
+			status: 'success',
+			data: [{ json: { id: 'drive-1' }, binary: { data: 'aid-2' } }],
+			files: [file],
+		});
+		expect(tool.toModelOutput).toBeUndefined();
+	});
+
+	it('returns the result as it is when the run has no thread', async () => {
+		const { output, adoptFromItems } = await runTool({});
+
+		expect(adoptFromItems).not.toHaveBeenCalled();
+		expect(output).toEqual({ status: 'success', data: [binaryItem] });
 	});
 });
