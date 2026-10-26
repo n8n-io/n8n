@@ -474,7 +474,7 @@ describe('WorkflowImporter.plan', () => {
 	});
 	describe('placement of a matched workflow', () => {
 		const options = {
-			workflowConflictPolicy: 'new-version',
+			conflictPolicy: 'new-version',
 			workflowIdPolicy: 'source',
 			workflowPublishingPolicy: 'preserve-published-state',
 			missingNodeTypeMode: 'fail',
