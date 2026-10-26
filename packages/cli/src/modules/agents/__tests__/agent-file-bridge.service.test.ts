@@ -73,11 +73,45 @@ describe('AgentFileBridge', () => {
 		attachmentService.storeInbound.mockRejectedValue(new Error('storage down'));
 
 		const result = await bridge.adoptFromItems(
-			[{ json: { prompt: 'cat' }, binary: { data: pngBinary } }],
+			[{ json: { prompt: 'cat', id: pngBinary.id }, binary: { data: pngBinary } }],
 			scope,
 		);
 
-		expect(result).toEqual({ items: [{ json: { prompt: 'cat' }, binary: {} }], files: [] });
+		expect(result).toEqual({
+			items: [{ json: { prompt: 'cat', id: pngBinary.id }, binary: {} }],
+			files: [],
+		});
 		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	describe('binary IDs in json', () => {
+		it('replaces a json value that equals the binary ID with the file ID', async () => {
+			const json = { ...pngBinary, data: undefined };
+
+			const result = await bridge.adoptFromItems([{ json, binary: { data: pngBinary } }], scope);
+
+			expect(result.items[0].json).toEqual({ ...json, id: 'aid-1' });
+			expect(json.id).toBe(pngBinary.id);
+		});
+
+		it('replaces a nested value', async () => {
+			const result = await bridge.adoptFromItems(
+				[{ json: { images: [{ ref: { id: pngBinary.id } }] }, binary: { data: pngBinary } }],
+				scope,
+			);
+
+			expect(result.items[0].json).toEqual({ images: [{ ref: { id: 'aid-1' } }] });
+		});
+
+		it('keeps a string that only contains the binary ID', async () => {
+			const text = `see ${pngBinary.id}`;
+
+			const result = await bridge.adoptFromItems(
+				[{ json: { text }, binary: { data: pngBinary } }],
+				scope,
+			);
+
+			expect(result.items[0].json).toEqual({ text });
+		});
 	});
 });

@@ -1,7 +1,9 @@
 import type { AgentToolOutputFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { BinaryDataService } from 'n8n-core';
+import { deepCopy } from 'n8n-workflow';
 import type { IBinaryData, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -55,6 +57,7 @@ export class AgentFileBridge {
 			}
 
 			const fileIds: IDataObject = {};
+			const fileIdsByBinaryId = new Map<string, string>();
 			for (const [key, binary] of Object.entries(item.binary)) {
 				let file = binary.id ? stored.get(binary.id) : undefined;
 				if (!file) {
@@ -64,8 +67,12 @@ export class AgentFileBridge {
 					files.push(file);
 				}
 				fileIds[key] = file.fileId;
+				if (binary.id) fileIdsByBinaryId.set(binary.id, file.fileId);
 			}
-			adopted.push({ json: item.json, binary: fileIds });
+			// Some nodes copy the binary metadata into `json`. Replace the internal storage ID there too, so it does not go to the model.
+			const json = fileIdsByBinaryId.size ? deepCopy(item.json) : item.json;
+			replaceBinaryIds(json, fileIdsByBinaryId);
+			adopted.push({ json, binary: fileIds });
 		}
 
 		return { items: adopted, files };
@@ -98,5 +105,15 @@ export class AgentFileBridge {
 			this.logger.warn('Failed to store agent tool output file', { fileName, error });
 			return undefined;
 		}
+	}
+}
+
+/** Replace in place each string that is equal to a binary ID with the file ID of that binary. */
+function replaceBinaryIds(target: unknown, fileIdsByBinaryId: ReadonlyMap<string, string>): void {
+	if (!fileIdsByBinaryId.size || (!isRecord(target) && !Array.isArray(target))) return;
+	for (const [key, value] of Object.entries(target)) {
+		const fileId = typeof value === 'string' ? fileIdsByBinaryId.get(value) : undefined;
+		if (fileId) Reflect.set(target, key, fileId);
+		else replaceBinaryIds(value, fileIdsByBinaryId);
 	}
 }
