@@ -8703,6 +8703,83 @@ describe('createCredentialAdapter', () => {
 				expect.objectContaining({ data: { apiKey: 'secret' } }),
 			);
 		});
+
+		describe('eval bypass', () => {
+			const headerAuthCredential = {
+				id: 'cred-1',
+				name: 'Acme API header',
+				type: 'httpHeaderAuth',
+			};
+
+			/** A bypassed credential, with `hasConnectionTest` answering `testable` for its type. */
+			const bypassedAdapter = (
+				storedCredential: { id: string; name: string; type: string },
+				testable: boolean,
+			) => {
+				const decryptForUse = vi.fn().mockResolvedValue({ name: 'Authorization', value: 'x' });
+				const test = vi.fn().mockResolvedValue({
+					status: 'Error',
+					message: 'No testing function found for this credential.',
+				});
+				const hasConnectionTest = vi.fn().mockReturnValue(testable);
+				const { service, mockUser } = createNodeAdapterServiceForTests([], {
+					credentialsFinderService: {
+						findCredentialForUser: vi.fn().mockResolvedValue(storedCredential),
+					},
+					credentialsService: { decryptForUse, test, hasConnectionTest },
+				});
+				const { credentialService } = service.createContext(mockUser, {
+					shouldBypassCredentialTest: () => true,
+				});
+				return { credentialService, decryptForUse, test, hasConnectionTest };
+			};
+
+			// A synthetic pass on a type production cannot test tells the agent a credential
+			// was verified when a user would have been told it cannot be.
+			it('returns the real test result for a type with no connection test', async () => {
+				const { credentialService, test, hasConnectionTest } = bypassedAdapter(
+					headerAuthCredential,
+					false,
+				);
+
+				await expect(credentialService.test('cred-1')).resolves.toEqual({
+					success: false,
+					message: 'No testing function found for this credential.',
+				});
+				expect(hasConnectionTest).toHaveBeenCalledWith('httpHeaderAuth');
+				expect(test).toHaveBeenCalled();
+			});
+
+			it('resolves as passing without contacting the provider for a type with a connection test', async () => {
+				const { credentialService, decryptForUse, test } = bypassedAdapter(
+					{ id: 'cred-1', name: 'Slack account', type: 'slackApi' },
+					true,
+				);
+
+				await expect(credentialService.test('cred-1')).resolves.toEqual({
+					success: true,
+					message: 'Connection tested successfully',
+				});
+				expect(decryptForUse).not.toHaveBeenCalled();
+				expect(test).not.toHaveBeenCalled();
+			});
+
+			it('does not ask about testability when the thread bypasses nothing', async () => {
+				const decryptForUse = vi.fn().mockResolvedValue({});
+				const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+				const hasConnectionTest = vi.fn();
+				const { credentialService } = createNodeAdapterServiceForTests([], {
+					credentialsFinderService: {
+						findCredentialForUser: vi.fn().mockResolvedValue(headerAuthCredential),
+					},
+					credentialsService: { decryptForUse, test, hasConnectionTest },
+				});
+
+				await credentialService.test('cred-1');
+
+				expect(hasConnectionTest).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('getCredentialFillState', () => {

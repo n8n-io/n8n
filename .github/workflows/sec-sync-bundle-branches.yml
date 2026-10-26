@@ -98,13 +98,11 @@ jobs:
           sparse-checkout: .github/scripts/slack
           sparse-checkout-cone-mode: false
           persist-credentials: false
-      # A run link only: conflicted paths, commit subjects and PR titles all hint at the
-      # vulnerability, and Slack reaches a wider audience than the private repo.
       - name: Notify Slack
         env:
           SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           node .github/scripts/slack/notify.mjs \
-            --channel '#alerts-security' \
+            --channel '#alerts-build' \
             --text "<${RUN_URL}|Bundle branch maintenance failed>: a branch could not be synced with its base, or its PRs could not be retargeted. Nothing was rewritten; see the run for which one and why."

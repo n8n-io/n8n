@@ -277,10 +277,9 @@ also emit `tool-error` if its resume path throws.
 
 | Field | Type | When used |
 |-------|------|-----------|
-| `inputType` | `'approval'` \| `'text'` \| `'questions'` \| `'plan-review'` | Controls which UI component renders. Default: `approval` |
+| `inputType` | `'approval'` \| `'text'` \| `'questions'` | Controls which UI component renders. Default: `approval` |
 | `questions` | `[{id, question, type, options?}]` | Structured Q&A wizard (`inputType=questions`) |
-| `tasks` | `TaskList` | Plan approval checklist (`inputType=plan-review`) |
-| `introMessage` | string | Intro text shown above questions or plan review |
+| `introMessage` | string | Intro text shown above questions |
 | `credentialRequests` | array | Credential setup requests |
 | `credentialFlow` | `{stage: 'generic' \| 'finalize'}` | Controls credential picker UX |
 | `setupRequests` | `WorkflowSetupNode[]` | Per-node setup cards for workflow credential/parameter config |
@@ -418,9 +417,12 @@ menu read this frame instead of deriving an answer of their own.
 An empty `preferences` array says that the turn applied none. No frame at all says that
 the code path did not run.
 
-`injectedThisTurn` is false when the block text has not changed, so the turn sent no new
-block. The thread history travels with every request, so an earlier block still reaches
-the model, and `carriedFromRunId` names the run that sent it.
+`injectedThisTurn` is false when the turn sent no new block. This happens in three cases:
+
+- The block text has not changed. The thread history travels with every request, so an
+  earlier block still reaches the model.
+- No preferences apply, and no earlier block needs to be cleared.
+- The preference read failed. The payload is then empty.
 
 The schema defines this event. CONTEXT-139 publishes it.
 
@@ -638,7 +640,6 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
 ├── 🔧 workflow_builder_credentials → [slack-bot, weather-api]
-├── 📋 workflow_builder_create_tasks: build → verify
 ├── 🔧 agent_builder_build_agent → agent-123
 │
 ├── 🤖 Agent Builder
@@ -729,7 +730,7 @@ creating duplicate messages.
 | `status` | `message` | Transient status indicator |
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |
 | `thread-title-updated` | `title` | Thread title changed |
-| `preferences-applied` | `preferences`, `renderedLength`, `injectedThisTurn`, `carriedFromRunId?` | Which saved preferences the turn carried |
+| `preferences-applied` | `preferences`, `renderedLength`, `injectedThisTurn` | Which saved preferences the turn carried |
 | `preference-card` | `toolCallId`, `preferenceId`, `state` (`edited` or `undone`), `content?`, `scope?`, `projectId?` | A saved preference was edited or undone from the chat card |
 | `tool-input-start` | `toolCallId`, `toolName` | Tool arguments began streaming |
 | `text-block` | `text` (`responseId` is on the event) | Completed text segment, coalesced |

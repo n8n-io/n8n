@@ -1127,7 +1127,7 @@ describe('useContextMenu', () => {
 			);
 		});
 
-		it('keeps replace, rename, open, deactivate and copy available but blocks running, pinning and duplicating', () => {
+		it('keeps replace, rename, open and copy available but blocks running, deactivating, pinning and duplicating', () => {
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'node-right-click', nodeId: restrictedNode.id });
 
@@ -1136,7 +1136,7 @@ describe('useContextMenu', () => {
 			expect(byId.rename?.disabled).toBe(false);
 			expect(byId.open).toBeDefined();
 			expect(byId.open?.disabled).toBeFalsy();
-			expect(byId.toggle_activation?.disabled).toBe(false);
+			expect(byId.toggle_activation?.disabled).toBe(true);
 			expect(byId.execute?.disabled).toBe(true);
 			expect(byId.toggle_pin?.disabled).toBe(true);
 			expect(byId.copy?.disabled).toBeFalsy();
@@ -1148,6 +1148,7 @@ describe('useContextMenu', () => {
 			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, restrictedNode.id] });
 
 			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.toggle_activation?.disabled).toBe(true);
 			expect(byId.toggle_pin?.disabled).toBe(true);
 			expect(byId.copy?.disabled).toBeFalsy();
 			expect(byId.duplicate?.disabled).toBe(true);

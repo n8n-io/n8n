@@ -194,23 +194,21 @@ describe('instanceAiEventSchema', () => {
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
 	});
 
-	it('parses a turn that reused an earlier block, naming the run that sent it', () => {
-		const event = {
-			type: 'preferences-applied',
-			runId: 'run-2',
-			agentId: 'agent-1',
-			payload: {
-				preferences: [{ id: 'pref-1', scope: 'instance' }],
-				renderedLength: 240,
-				injectedThisTurn: false,
-				carriedFromRunId: 'run-1',
-			},
+	it('parses an older stored event that still names a carrying run', () => {
+		// Events written before the field was removed stay in the durable log.
+		const payload = {
+			preferences: [{ id: 'pref-1', scope: 'instance' }],
+			renderedLength: 240,
+			injectedThisTurn: false,
 		};
+		const event = { type: 'preferences-applied', runId: 'run-2', agentId: 'agent-1', payload };
 
-		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+		expect(
+			instanceAiEventSchema.parse({ ...event, payload: { ...payload, carriedFromRunId: 'run-1' } }),
+		).toEqual(event);
 	});
 
-	it('parses a reused block with no carrying run named', () => {
+	it('parses a turn that reused an earlier block', () => {
 		const event = {
 			type: 'preferences-applied',
 			runId: 'run-2',
@@ -234,24 +232,6 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
-	});
-
-	it('refuses a turn that claims both a fresh injection and a carrying run', () => {
-		// The pair says the block was sent now and also comes from an earlier run. A client
-		// cannot discriminate on `injectedThisTurn` if both can be true at once.
-		const result = instanceAiEventSchema.safeParse({
-			type: 'preferences-applied',
-			runId: 'run-2',
-			agentId: 'agent-1',
-			payload: {
-				preferences: [{ id: 'pref-1', scope: 'user' }],
-				renderedLength: 240,
-				injectedThisTurn: true,
-				carriedFromRunId: 'run-1',
-			},
-		});
-
-		expect(result.success).toBe(false);
 	});
 
 	it('keeps preferences-applied durable, so a reload still reports the turn', () => {
@@ -598,15 +578,6 @@ describe('isDisplayableConfirmationRequest', () => {
 		expect(
 			isDisplayableConfirmationRequest(
 				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					planItems: [{ id: 'task-1', title: 'Task', kind: 'delegate', spec: 'Do it', deps: [] }],
-				}),
-			),
-		).toBe(true);
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
 					inputType: 'resource-decision',
 					message: '',
 					resourceDecision: {
@@ -695,57 +666,16 @@ describe('isDisplayableConfirmationRequest', () => {
 		).toBe(false);
 	});
 
-	it('does not treat lightweight task lists as displayable plan reviews', () => {
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					tasks: {
-						tasks: [{ id: 'task-1', description: 'Do it', status: 'todo' }],
-					},
-				}),
-			),
-		).toBe(false);
-	});
-
-	it('recognizes only renderable task args for plan reviews', () => {
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					args: {
-						tasks: [{ id: 'task-1', title: 'Task', kind: 'delegate', spec: 'Do it', deps: [] }],
-					},
-				}),
-			),
-		).toBe(true);
-
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					args: {
-						tasks: [{ id: 'task-1', description: 'Do it', status: 'todo' }],
-					},
-				}),
-			),
-		).toBe(false);
-	});
-
 	it('keeps the input type switch exhaustive', () => {
 		const handled = {
 			approval: true,
 			text: true,
 			questions: true,
-			'plan-review': true,
 			'resource-decision': true,
 			continue: true,
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
-		expect(Object.keys(handled)).toHaveLength(6);
+		expect(Object.keys(handled)).toHaveLength(5);
 	});
 });
 
@@ -949,12 +879,62 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(errorOf(result)).toContain('carries no body');
 	});
 
-	it('rejects a custom tool, which a seed cannot carry a body for', () => {
+	const toolBody = (name: string) => ({
+		code: `export default new Tool("${name}");`,
+		descriptor: {
+			name,
+			description: 'Look up an order',
+			systemInstruction: null,
+			inputSchema: null,
+			outputSchema: null,
+			hasSuspend: false,
+			hasResume: false,
+			hasToMessage: false,
+			requireApproval: false,
+			providerOptions: null,
+		},
+	});
+
+	it('accepts a custom tool reference backed by its body', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] },
+				tools: { my_tool: toolBody('my_tool') },
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('keeps the untrusted-output marker of a custom tool body', () => {
+		const body = toolBody('my_tool');
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] },
+				tools: {
+					my_tool: { ...body, descriptor: { ...body.descriptor, outputTrust: 'untrusted' } },
+				},
+			}),
+		);
+		expect(result.success && result.data.tools?.my_tool.descriptor.outputTrust).toBe('untrusted');
+	});
+
+	it('rejects a custom tool reference with no body', () => {
 		const result = instanceAiEvalSeedAgentSchema.safeParse(
 			agent({ config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] } }),
 		);
 		expect(result.success).toBe(false);
-		expect(errorOf(result)).toContain('custom tool');
+		expect(errorOf(result)).toContain('references custom tool');
+	});
+
+	it('rejects a custom tool body stored under a different name', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] },
+				tools: { my_tool: toolBody('other_tool') },
+			}),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('stored under its own name');
 	});
 
 	it('rejects declared tasks, which a seed cannot carry bodies for', () => {
@@ -1496,6 +1476,33 @@ describe('findSeedFolderIssues', () => {
 		expect(issues).toEqual([
 			expect.stringContaining('Seed workflow "odwSignal1Wf" is placed in folder "nopeFolder001"'),
 		]);
+	});
+});
+
+describe('InstanceAiEvalRestoreThreadRequest workflow node groups', () => {
+	const request = (nodeGroups: unknown) => ({
+		threadId: '11111111-1111-4111-8111-111111111111',
+		messages: [],
+		workflows: [{ id: 'wf-1', name: 'Grouped', nodes: [], connections: {}, nodeGroups }],
+	});
+
+	it('accepts seed workflow node groups', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse(
+			request([{ id: 'group-1', name: 'Notify', nodeIds: ['node-1'] }]),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a malformed node group', () => {
+		expect(
+			InstanceAiEvalRestoreThreadRequest.safeParse(request([{ id: 'group-1', nodeIds: 'node-1' }]))
+				.success,
+		).toBe(false);
+		expect(
+			InstanceAiEvalRestoreThreadRequest.safeParse(
+				request([{ id: 'group-1', name: '', nodeIds: ['node-1'] }]),
+			).success,
+		).toBe(false);
 	});
 });
 
