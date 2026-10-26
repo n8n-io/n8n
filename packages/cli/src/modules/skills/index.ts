@@ -19,6 +19,7 @@ export {
 } from './utils/skill-names';
 export { getSkillHash } from './utils/skill-hash';
 export {
+	toSkillUpdate,
 	withTrimmedName,
 	type AssistantSkillContent,
 	type AssistantSkillContext,

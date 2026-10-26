@@ -24,7 +24,7 @@ skills/
   database/
     entities/          Skill, SkillVersion, SkillFile
     repositories/      SkillRepository
-  errors/              SkillNameTakenError, SkillParseError
+  errors/              SkillNameTakenError, SkillParseError, SkillSyncedError
   utils/               shared types, content helpers, hashes, name rules
   sources/             (Skill Sync) source clients and their registry
   __tests__/           unit tests, integration/, test-utils/
@@ -81,6 +81,7 @@ These rules keep the module ready to move to `packages/modules/skills/backend`, 
 Split services by capability, never by caller.
 
 - `SkillService`: list, get, create, update and delete. A user action takes the `User` and checks access through `SkillAccessService`. The writes `createTrusted`, `saveTrusted` and `moveTrusted` check no access. A caller that checked access itself uses them inside its own transaction. After a trusted write commits, the caller calls `trackCreated` or `trackUpdated`.
+  A synced skill (`skill.source` is a synced source, such as `github`) is read-only. `saveTrusted` refuses a content change to it with `SkillSyncedError`, unless the caller passes `allowSynced`. Only Skill Sync passes it, with content that it fetched from the source. A `SkillUpdate` holds partial `SkillContent`, so Skill Sync can also replace the frontmatter. It sends `baseContentHash`. An editor sends `baseSkillHash`.
 - `SkillAccessService`: the project of a skill, access to one skill or to a list, and the checks for edit, move and the create target.
 - `SkillRuntimeService`: what a draft runs, runtime names, the publish snapshot, the targets and versions that agents read, and the reads of n8n Assistant. Agent reads have no permission check. The agents module checked access at attach time. The n8n Assistant reads check the project scopes of the session and access to each skill.
 

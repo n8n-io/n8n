@@ -480,7 +480,7 @@ describe('AgentSkillsService', () => {
 					name: skill.name,
 					description: skill.description,
 					instructions: 'New instructions.',
-					references: [],
+					files: [],
 					baseSkillHash: getAgentSkillHash(skill),
 				},
 				'user-1',
@@ -665,7 +665,7 @@ describe('AgentSkillsService', () => {
 
 			expect(skillService.saveTrusted).toHaveBeenCalledWith(
 				'skill_a',
-				expect.objectContaining({ references: [] }),
+				expect.objectContaining({ files: [] }),
 				'user-1',
 				{},
 			);

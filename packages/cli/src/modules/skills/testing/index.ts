@@ -11,6 +11,7 @@ import type { SkillContent } from '../utils/skill-content-hash';
 export { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 export { toSkillContent } from '../utils/skill-content';
 export { FakeSkillUsage } from './skill-usage.fake';
+export { SkillSyncedError } from '../errors/skill-synced.error';
 export {
 	describeSkillUsageContract,
 	type SeededSkillUsageWorld,

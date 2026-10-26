@@ -13,6 +13,7 @@ import {
 	resetSkillMocks,
 } from './test-utils/skill-services';
 import type { Skill } from '../database/entities/skill.entity';
+import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
 import { getSkillHash } from '../utils/skill-hash';
 
@@ -205,7 +206,7 @@ describe('SkillService', () => {
 				{
 					baseSkillHash,
 					instructions: 'new',
-					references: [{ path: 'references/a.md', content: 'a' }],
+					files: [{ path: 'references/a.md', content: 'a' }],
 				},
 				user.id,
 			);
@@ -279,39 +280,14 @@ describe('SkillService', () => {
 			expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
 		});
 
-		it('removes references set to an empty list', async () => {
+		it('removes files set to an empty list', async () => {
 			const baseSkillHash = givenLatest(
 				versionRow(skill, 2, {}, [{ path: 'references/a.md', content: 'a' }]),
 			);
 
-			const result = await service.saveTrusted(
-				'skill_a',
-				{ baseSkillHash, references: [] },
-				user.id,
-			);
+			const result = await service.saveTrusted('skill_a', { baseSkillHash, files: [] }, user.id);
 
 			expect(result.skill).not.toHaveProperty('references');
-		});
-
-		it('ignores allowed tools in the update', async () => {
-			const baseSkillHash = givenLatest(
-				versionRow(skill, 2, { frontmatter: { 'allowed-tools': 'Read' } }),
-			);
-
-			const result = await service.saveTrusted(
-				'skill_a',
-				{ baseSkillHash, instructions: 'new', allowedTools: ['Bash'] },
-				user.id,
-			);
-
-			expect(result.skill).not.toHaveProperty('allowedTools');
-			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
-				'skill_a',
-				3,
-				expect.objectContaining({ frontmatter: { 'allowed-tools': 'Read' } }),
-				user.id,
-				TX_CTX,
-			);
 		});
 
 		it('keeps frontmatter keys the editor does not know', async () => {
@@ -343,6 +319,104 @@ describe('SkillService', () => {
 			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
 		});
 
+		describe('a synced skill', () => {
+			const synced = mock<Skill>({
+				id: 'skill_a',
+				projectId: PROJECT,
+				agentId: null,
+				source: 'github',
+			});
+
+			it.each([
+				{ case: 'new instructions', update: { instructions: 'new' } },
+				{ case: 'a rename', update: { name: 'Tone' } },
+				{
+					case: 'a new reference',
+					update: { files: [{ path: 'references/a.md', content: 'a' }] },
+				},
+				{ case: 'new frontmatter', update: { frontmatter: { license: 'MIT' } } },
+			])('refuses $case from every caller but Skill Sync', async ({ update }) => {
+				const baseSkillHash = givenLatest(versionRow(synced, 2));
+
+				await expectError(
+					service.saveTrusted('skill_a', { baseSkillHash, ...update }, user.id),
+					SkillSyncedError,
+					'"Brand voice" is synced from GitHub, so it is read-only in n8n. Change it in GitHub.',
+				);
+				expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+			});
+
+			it('lets a save with unchanged content pass', async () => {
+				const baseSkillHash = givenLatest(versionRow(synced, 2));
+
+				const result = await service.saveTrusted(
+					'skill_a',
+					{ baseSkillHash, instructions: 'Use short sentences.' },
+					user.id,
+				);
+
+				expect(result).toMatchObject({ version: 2, created: false });
+			});
+
+			it('stores the full content from Skill Sync, frontmatter included, as the next version', async () => {
+				const latest = versionRow(synced, 2, { frontmatter: { 'allowed-tools': 'Read' } });
+				givenLatest(latest);
+				const fetched = {
+					name: 'Brand voice',
+					description: 'Write in our voice',
+					instructions: 'Use short sentences.',
+					frontmatter: { 'allowed-tools': 'Read Bash' },
+					files: [],
+				};
+
+				const result = await service.saveTrusted(
+					'skill_a',
+					{ ...fetched, baseContentHash: latest.version.contentHash },
+					user.id,
+					{},
+					{ allowSynced: true },
+				);
+
+				expect(result).toMatchObject({ version: 3, created: true });
+				expect(skills.insertSavedVersion).toHaveBeenCalledWith(
+					'skill_a',
+					3,
+					fetched,
+					user.id,
+					TX_CTX,
+				);
+			});
+
+			it('refuses content from Skill Sync that starts from an older version', async () => {
+				givenLatest(versionRow(synced, 2));
+
+				await expect(
+					service.saveTrusted(
+						'skill_a',
+						{ instructions: 'new', baseContentHash: 'hash-of-v1' },
+						user.id,
+						{},
+						{ allowSynced: true },
+					),
+				).rejects.toThrow(ConflictError);
+				expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+			});
+		});
+
+		it('keeps the stored frontmatter when the update leaves it out', async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2, { frontmatter: { license: 'MIT' } }));
+
+			await service.saveTrusted('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
+
+			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
+				'skill_a',
+				3,
+				expect.objectContaining({ instructions: 'new', frontmatter: { license: 'MIT' } }),
+				user.id,
+				TX_CTX,
+			);
+		});
+
 		it('refuses blank instructions', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
@@ -361,7 +435,7 @@ describe('SkillService', () => {
 				{ baseSkillHash, instructions: 'new' },
 				user.id,
 				{},
-				'push-ref-1',
+				{ pushRef: 'push-ref-1' },
 			);
 
 			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);

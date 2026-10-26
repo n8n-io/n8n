@@ -24,6 +24,7 @@ import {
 	SkillService,
 	type SkillTelemetryMethod,
 	type SkillTelemetrySource,
+	toSkillUpdate,
 	withTrimmedName,
 } from '@/modules/skills';
 
@@ -304,13 +305,15 @@ export class AgentSkillsService {
 			}
 			return await this.skillService.saveTrusted(
 				skillId,
-				{
-					name: updated.name,
-					description: updated.description,
-					instructions: updated.instructions,
-					references: updated.references ?? [],
-					baseSkillHash: getAgentSkillHash(existing),
-				},
+				toSkillUpdate(
+					{
+						name: updated.name,
+						description: updated.description,
+						instructions: updated.instructions,
+						references: updated.references ?? [],
+					},
+					getAgentSkillHash(existing),
+				),
 				context.user.id,
 				ctx,
 			);

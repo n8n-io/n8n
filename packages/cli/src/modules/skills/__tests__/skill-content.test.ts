@@ -1,4 +1,4 @@
-import { toAgentSkill, toSkillContent } from '../utils/skill-content';
+import { toAgentSkill, toSkillContent, toSkillUpdate } from '../utils/skill-content';
 
 import { skillRow, versionRow } from './test-utils/skill-services';
 
@@ -35,5 +35,33 @@ describe('skill content', () => {
 			description: 'Write in our voice',
 			instructions: 'Use short sentences.',
 		});
+	});
+});
+
+describe('toSkillUpdate', () => {
+	it.each([
+		{ case: 'no changes', changes: {}, expected: { baseSkillHash: 'h' } },
+		{
+			case: 'new instructions',
+			changes: { instructions: 'new' },
+			expected: { baseSkillHash: 'h', instructions: 'new' },
+		},
+		{
+			case: 'references, as files',
+			changes: { references: [{ path: 'references/a.md', content: 'a' }] },
+			expected: { baseSkillHash: 'h', files: [{ path: 'references/a.md', content: 'a' }] },
+		},
+		{
+			case: 'no references, which removes the files',
+			changes: { references: [] },
+			expected: { baseSkillHash: 'h', files: [] },
+		},
+		{
+			case: 'allowed tools, which skills ignore',
+			changes: { instructions: 'new', allowedTools: ['Bash'] },
+			expected: { baseSkillHash: 'h', instructions: 'new' },
+		},
+	])('$case', ({ changes, expected }) => {
+		expect(toSkillUpdate(changes, 'h')).toEqual(expected);
 	});
 });
