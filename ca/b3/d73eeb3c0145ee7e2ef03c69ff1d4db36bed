@@ -1,0 +1,21 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_484fd5f0b32dff::t_0f1fa5186532df 9032
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryGuidanceModal.vue
+  s_484fd5f0b32dff::t_415941905c2e1a 74-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cab3d73eeb3c0145ee7e2ef03c69ff1d4db36bed",
+  "prompts": {},
+  "sessions": {
+    "s_484fd5f0b32dff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa5af04d-5811-4cf4-beb7-7158f76d1662",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

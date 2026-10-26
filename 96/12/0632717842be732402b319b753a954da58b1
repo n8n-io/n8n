@@ -1,0 +1,292 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_e4b4d59605d361::t_04beb858d7fff3 5
+  s_e4b4d59605d361::t_7875249c314e8b 47,226-231
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_e4b4d59605d361::t_7cc3ec638fd3cf 2,95-112
+  s_e4b4d59605d361::t_8f780f0e527aad 113-114
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-origin.ts
+  s_e4b4d59605d361::t_4b742f457786c0 1,10,23,27-36
+  s_e4b4d59605d361::t_8839e7fb735305 13-14,16
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_e4b4d59605d361::t_8839e7fb735305 3617
+  s_e4b4d59605d361::t_77c15ec7e573d9 3585,3600,3624,3630,3633-3642
+  s_e4b4d59605d361::t_a18727811f4444 11,3570-3575,3578-3584,3586-3599,3601-3614,3616,3618-3622,3625-3629,3631-3632,3643-3653
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-integration.ts
+  s_e4b4d59605d361::t_04beb858d7fff3 2
+  s_e4b4d59605d361::t_7875249c314e8b 26,112-117
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_e4b4d59605d361::t_7875249c314e8b 46,220-225
+  s_e4b4d59605d361::t_04beb858d7fff3 1
+packages/cli/src/modules/agents/integrations/integration-origin-support.ts
+  s_e4b4d59605d361::t_accc5d46c1cf3e 7,23-28,34,41,45-46
+packages/cli/src/modules/agents/integrations/integration-origin.ts
+  s_e4b4d59605d361::t_7cc3ec638fd3cf 37-68
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_e4b4d59605d361::t_7875249c314e8b 34-39,428-436
+  s_e4b4d59605d361::t_e38b07f90fac1b 437
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-origin.ts
+  s_e4b4d59605d361::t_4b742f457786c0 1-2,9,20-27
+  s_e4b4d59605d361::t_7875249c314e8b 12
+  s_e4b4d59605d361::t_29f999ede251d3 28
+packages/cli/test/integration/database/repositories/agent-message.repository.test.ts
+  s_e4b4d59605d361::t_9178f09a8250a4 1-74
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_e4b4d59605d361::t_7cc3ec638fd3cf 39,68,938,1000,1006,1014-1025,1027-1028
+  s_e4b4d59605d361::t_ebac21a1d57ba2 14,69
+  s_e4b4d59605d361::t_7c36107a7a4e54 1001-1005
+  s_e4b4d59605d361::t_4f29a5b0f35c67 1026,1029-1030
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-origin.ts
+  s_e4b4d59605d361::t_4b742f457786c0 1,10,13-14,16,27-33
+  s_e4b4d59605d361::t_ae99de4e0389e8 34-35
+packages/cli/src/modules/agents/integrations/__tests__/integration-origin.test.ts
+  s_e4b4d59605d361::t_5bfce54dd6d9f7 1,7-13,24-25,55,70,133,165-167,169-171,173,175-180,182,285-431
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_38d78cd106326f::t_33a42c40a2a2b1 28,326-327,329-332
+  s_38d78cd106326f::t_757448800a5418 78,310,328,333-336
+  s_38d78cd106326f::t_840a926ab76fe8 85-92
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_38d78cd106326f::t_1db66a5bc83123 121-128
+packages/@n8n/api-types/src/agents/types.ts
+  s_38d78cd106326f::t_bb526ae0b1aba1 284-290,292-306,308-311
+  s_38d78cd106326f::t_d75c02a0cca1fe 291
+  s_a87ab30323b2bf::t_edb22a9c824741 249-262,280-283,312-322,324-333
+  s_a87ab30323b2bf::t_7a59f06f38d149 334
+  s_a87ab30323b2bf::t_d6eacc220220c4 263-279,323
+  s_a87ab30323b2bf::t_5e1c916f702dc8 307
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_38d78cd106326f::t_f59b0a453fc445 1-5,7-11,30-39,41-45,47,49-78,80,87-110,112-116,133-136,138-141,143-144,146,148-150,189,282-310
+  s_38d78cd106326f::t_a4e103e25842f9 142,145
+  s_38d78cd106326f::t_dba274b3e25264 117-124,126-127,129-132
+  s_38d78cd106326f::t_d54fcc7f5de9f5 125
+  s_a87ab30323b2bf::t_9be631d76d10b0 81-86
+  s_a87ab30323b2bf::t_edb22a9c824741 151-158,194-199,201-203,205-215
+  s_a87ab30323b2bf::t_881226048af396 159-184,185,186-193
+  s_a87ab30323b2bf::t_424ab7f1a66ab1 6,12-29,40,46,48,79,111,128,137,147,219-221,223-233,235-236,238,244,250,252-255,273-275,277
+  s_a87ab30323b2bf::t_1fce0e4bb86569 222,234,237,239-243,245-249,251,256-272,276,278-279,282
+  s_a87ab30323b2bf::t_d6664eff881006 280-281,283-284
+  s_a87ab30323b2bf::t_5a8b3e2bacf70b 200
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_38d78cd106326f::t_b139e0daa32d8c 9039-9057
+  s_a87ab30323b2bf::t_edb22a9c824741 9060-9062,9064-9067
+  s_a87ab30323b2bf::t_142029f5a23791 9063
+  s_a87ab30323b2bf::t_5e1c916f702dc8 9058-9059
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryEntriesPanel.test.ts
+  s_38d78cd106326f::t_f8bb002711746e 1-7,9-11,13-15,17,19-70,72-105,115-139,208-209,213-222,245-272,370
+  s_38d78cd106326f::t_649445e09b31f9 106-114,243
+  s_38d78cd106326f::t_f0ae6420c9654f 210-212,223-242
+  s_6ed1267be3207d::t_07e4c06c744d36 244
+  s_38d78cd106326f::t_840a926ab76fe8 140-156
+  s_38d78cd106326f::t_fedb76c180ce78 157-184
+  s_38d78cd106326f::t_dba274b3e25264 185-207
+  s_a87ab30323b2bf::t_93e50a729966df 283-286,288-289,291-294,297,328,339
+  s_a87ab30323b2bf::t_edb22a9c824741 8,12,16,71,273,275-282,295,298-300,302-303,305,311,314-316,318-327,329-335,337,340-343,346,368
+  s_a87ab30323b2bf::t_8a538ad10f1c4b 369
+  s_a87ab30323b2bf::t_edf44d3f96cf22 274,287,290,296,301,304,306-310,312,336,347-350
+  s_a87ab30323b2bf::t_424ab7f1a66ab1 18,313,317,338
+  s_a87ab30323b2bf::t_1fce0e4bb86569 344-345,351-367
+packages/cli/src/modules/agents/agent-memory.controller.ts
+  s_38d78cd106326f::t_9d4a25fd69433f 1-20,33-47
+  s_a87ab30323b2bf::t_edb22a9c824741 24-32
+  s_a87ab30323b2bf::t_8d0b4d8c0b44be 33-34
+  s_a87ab30323b2bf::t_424ab7f1a66ab1 21
+packages/cli/src/modules/agents/utils/memory-entry-source.ts
+  s_38d78cd106326f::t_675e3a512640f8 1-14,16,23-50,53-70,74-82
+  s_38d78cd106326f::t_19abf960018cc5 15,20-22,71-73
+  s_38d78cd106326f::t_96f73430c38a00 51-52
+  s_a87ab30323b2bf::t_edb22a9c824741 17-19
+packages/@n8n/api-types/src/agents/dto.ts
+  s_38d78cd106326f::t_bb526ae0b1aba1 135-137,144-145
+  s_a87ab30323b2bf::t_edb22a9c824741 20,22-24,141-143
+  s_a87ab30323b2bf::t_d6eacc220220c4 21,140
+  s_a87ab30323b2bf::t_424ab7f1a66ab1 133-134
+  s_a87ab30323b2bf::t_5e1c916f702dc8 138-139
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_38d78cd106326f::t_22b152c9bcbb2f 1,3,5-7,12-47,53-93,124-130,132-157,363
+  s_38d78cd106326f::t_0fe800c2434d9b 123,131
+  s_a87ab30323b2bf::t_edb22a9c824741 2,4,8-11,48-52,158-233,235,237-258,263-264,272-281,289-316,327-340,342-361
+  s_a87ab30323b2bf::t_869ff5e47e5061 362
+  s_a87ab30323b2bf::t_5dbc02649689c8 236,265-271,282-288
+  s_a87ab30323b2bf::t_f0794d92135231 234,317-326,341
+  s_a87ab30323b2bf::t_fff39944afaba9 259-262
+  s_a87ab30323b2bf::t_1fce0e4bb86569 94-122
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_38d78cd106326f::t_757567cc29683f 19,404-407,409,410-413,427-441
+  s_38d78cd106326f::t_48127104e59bcd 442
+  s_a87ab30323b2bf::t_edb22a9c824741 20,45,399-403,414-426
+  s_a87ab30323b2bf::t_5e1c916f702dc8 408
+packages/cli/src/modules/agents/agents.module.ts
+  s_38d78cd106326f::t_8dd010b1420753 33
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryEntriesPanel.vue
+  s_38d78cd106326f::t_5e40536675472b 1-2,5,13-16,18,25,28-43,45-49,51,71,75-79,97,102-104,106,109,112-115,117,119-121,138-139,146-172,175-181,182-183,185-191,193-217,222-228,233-234,244-246,288,302,308,313,355-357,383-431
+  s_38d78cd106326f::t_d79fdafe841274 173
+  s_38d78cd106326f::t_22eddb6aeed6c0 111
+  s_38d78cd106326f::t_b267f6f0419224 50
+  s_38d78cd106326f::t_757448800a5418 52-53,247-287,289-290,309-313,315-321,323-348,351-354,358-364,377-382
+  s_38d78cd106326f::t_fedb76c180ce78 72-74,96,105,174,232,349
+  s_38d78cd106326f::t_ba3f2307b72118 80-82,98-99,110,118
+  s_a87ab30323b2bf::t_edb22a9c824741 2,11,19-24,26-27,44,54-55,59-60,64-70,122-133,135-137,140-145,184,192,218-221,229-231,235-239,241-243,291,307-308,314,365-366,369-370
+  s_a87ab30323b2bf::t_bcb2b439d7b011 108
+  s_a87ab30323b2bf::t_4e3c09d2754a2e 371
+  s_a87ab30323b2bf::t_a466d792082914 376
+  s_a87ab30323b2bf::t_3239835c3543c6 4,10,56-58,61-63,240
+  s_a87ab30323b2bf::t_638c126245c9c0 88-89,134
+  s_a87ab30323b2bf::t_424ab7f1a66ab1 3,12,17,292-298,300-306,367-368,372-374
+  s_a87ab30323b2bf::t_1fce0e4bb86569 6-9,87,90-95,100,107,299,375
+  s_a87ab30323b2bf::t_50858edb31b20e 83-86
+  s_a87ab30323b2bf::t_8654d58ad9d608 101,116
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_38d78cd106326f::t_88dce19e810fdc 60-69,167
+  s_38d78cd106326f::t_9d4a25fd69433f 2-4,6-11,13,25-26,32-34,36-59,73-81,83-87,89-90,94-95,103-104,106-109,152-161,163-166,168-170,176-179,181-191,195-199,206-207
+  s_38d78cd106326f::t_ba3f2307b72118 70-72
+  s_38d78cd106326f::t_dba274b3e25264 200-205
+  s_a87ab30323b2bf::t_edb22a9c824741 5,27-28,30-31,92,96-102,110-120,192-194
+  s_a87ab30323b2bf::t_24a487e6db93c9 20-23,29,162,171-175
+  s_a87ab30323b2bf::t_5dbc02649689c8 180
+  s_a87ab30323b2bf::t_424ab7f1a66ab1 35,82,88,91,122-125,127-128,130-131,134-136,138-139,141-142,145,150
+  s_a87ab30323b2bf::t_1fce0e4bb86569 1,12-19,121,132,137,140,143-144,146-149
+  s_a87ab30323b2bf::t_38d8d5496dafcc 151
+  s_a87ab30323b2bf::t_a8c46c779cd070 93,105,126,129,133
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_38d78cd106326f::t_1a55ccf981a59c 72-76,78,94-95,118-119,124-126,130
+  s_38d78cd106326f::t_485566e6da5528 128-129,131
+  s_38d78cd106326f::t_0fe800c2434d9b 120-123,127
+  s_a87ab30323b2bf::t_edb22a9c824741 10,12,15-20,26-34,36-45,47-55,77,79-89,92-109,199-206,209,216-219,224-240,259-260,262-263,265-272,274-276,282-290
+  s_a87ab30323b2bf::t_a1476b20180c43 25,35,46,220-223,241-253,257-258,261,264,273,277-279
+  s_a87ab30323b2bf::t_5dbc02649689c8 254-256
+  s_a87ab30323b2bf::t_4d21441b819906 280-281
+  s_a87ab30323b2bf::t_010ed5d26e4e3f 21-24,207-208,210-215
+  s_a87ab30323b2bf::t_38322073fff8de 113-117
+  s_a87ab30323b2bf::t_424ab7f1a66ab1 112,118-119
+packages/cli/src/modules/agents/__tests__/agent-memory.controller.test.ts
+  s_38d78cd106326f::t_f59b0a453fc445 1-18,20-37,49-57
+  s_a87ab30323b2bf::t_edb22a9c824741 19,41-48
+  s_a87ab30323b2bf::t_2b5029a15bfd61 49-50
+  s_a87ab30323b2bf::t_424ab7f1a66ab1 38
+packages/cli/src/modules/agents/utils/__tests__/memory-entry-source.test.ts
+  s_38d78cd106326f::t_f59b0a453fc445 1-28,51-134
+  s_38d78cd106326f::t_96f73430c38a00 29-50
+docs/generated/sqlite-schema/README.md
+  s_38d78cd106326f::t_47244f9c589e6d 238
+  s_38d78cd106326f::t_de9fe2efedb5c9 239-240
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_38d78cd106326f::t_4c6e72e4c50199 212
+  s_38d78cd106326f::t_e4d93c9cca23f7 351,353,355-356
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_38d78cd106326f::t_8a76481f24685a 85
+packages/@n8n/agents/src/runtime/memory/memory-lifecycle.ts
+  s_38d78cd106326f::t_8a76481f24685a 1
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_38d78cd106326f::t_159f98c8100ba0 25
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_38d78cd106326f::t_967fa0a0e1c39c 9,36-37,39
+packages/cli/src/modules/agents/utils/memory-source-filter.ts
+  s_a87ab30323b2bf::t_edb22a9c824741 1-2,4-26,28-29,31,43-57,60-92,94-97,99-101,106-123,154-183,186-196,200-221,224-231,233-240
+  s_a87ab30323b2bf::t_a1476b20180c43 222-223
+  s_a87ab30323b2bf::t_24a487e6db93c9 27,124-152
+  s_a87ab30323b2bf::t_439c21e18c87b7 153
+  s_a87ab30323b2bf::t_ed263325ec9997 3,30,32-42,58-59,93,98,102-105,184-185,197-199
+  s_a87ab30323b2bf::t_0170bcdc5dfa28 232
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemorySourceFilter.test.ts
+  s_a87ab30323b2bf::t_edb22a9c824741 1-2,5-28,30-37,48-49,51-54,56-63,69-72,75,79-94
+  s_a87ab30323b2bf::t_14a02bc1732bd6 3-4,38-40,42,44-47,50,73-74,76-78
+  s_a87ab30323b2bf::t_2ff6d52cba5e0a 41,43
+  s_a87ab30323b2bf::t_8826b216615be6 29,55,64-67
+  s_a87ab30323b2bf::t_aa32cb09c4f84e 68
+packages/cli/src/modules/agents/utils/__tests__/memory-source-filter.test.ts
+  s_a87ab30323b2bf::t_edb22a9c824741 1-9,11-27,33-34,36-52,54-59,61-72,81-86,89,91-99,104-106,112-114
+  s_a87ab30323b2bf::t_881226048af396 10,73-80,100-103
+  s_a87ab30323b2bf::t_444f43d3bf5d74 60,87-88,90,107-111
+  s_a87ab30323b2bf::t_7964a27794bd25 28-32,35,53
+packages/frontend/editor-ui/src/features/agents/components/AgentMemorySourceFilter.vue
+  s_a87ab30323b2bf::t_edb22a9c824741 1-95,97-103,105-111,121-122,127-129,131-190
+  s_a87ab30323b2bf::t_8826b216615be6 130
+  s_a87ab30323b2bf::t_142029f5a23791 96,104,112-120,123-126
+packages/frontend/editor-ui/src/features/agents/composables/useAgentMemorySourceLabels.ts
+  s_a87ab30323b2bf::t_edb22a9c824741 2-6,12-16,19-36,38-44,46-52
+  s_a87ab30323b2bf::t_142029f5a23791 1,7-11,17-18,37,45
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_a87ab30323b2bf::t_1fce0e4bb86569 84,88,91,94,97,99,103-104,106,108,142,146,159,172,176,190,195,200,264,267-268,271,274,276-277,279,283-284,286,288,313,316-317,329,415,418-419,422,425,427-428,430,434-435,437,439,477,480,490,493,503,506,516,519,534,539,544,549,613,617,620,623,626,628,632-633,635,637,650-653,658,663,666-667,676,679,698,701-702,711,714,733,736-737,749,835,839,842,845,848,850,854-855,857,859,882,885-886,898,930,946-947,1010,1014,1017,1020,1023,1025,1029-1030,1032,1034
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 8450
+packages/cli/src/modules/knowledge/vector-stores/embedding-credential.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 3,47-73
+packages/@n8n/agents/src/sdk/__tests__/memory-worker-model-fetch.test.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 1-46
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory-defaults.test.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 5-10,80-98
+  s_a87ab30323b2bf::t_ea808006d73fb6 99-100
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 42,280,561-566,576,578-579,597,606,635-638,644-649,660
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_a87ab30323b2bf::t_424ab7f1a66ab1 851
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 225,446,513-525,560
+packages/cli/src/modules/agents/agent-memory-query-embedder.ts
+  s_a87ab30323b2bf::t_424ab7f1a66ab1 1-2,4-5,8-9,11-14,16-31,33-34,36-42,45,53,55-58,68,76,89-90
+  s_a87ab30323b2bf::t_1fce0e4bb86569 3,6-7,10,15,32,35,43-44,46-52,54,59-67,69-75,77-88
+packages/cli/src/modules/agents/__tests__/agent-memory-query-embedder.test.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 1-106
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 33-34,65-68,119-121,125,129,134,138-155,157-159,164-166,172,174,177-178,180,392,417-421,437-443,461,573,576-587,742,1095,1199,1237
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 424,466
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 75-91,180-182,733,750,778,990
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 142-144,703
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 1343,1352,1364-1382,1450-1479,1557-1564
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 13,55-56,75
+packages/@n8n/agents/src/sdk/memory.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 19,33-34,57-62,84
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 16,149-150,174,311-312,345
+packages/@n8n/agents/src/sdk/agent.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 1110-1113
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_a87ab30323b2bf::t_1fce0e4bb86569 31-34,195-199,204-205,211-213,216-228
+packages/cli/src/modules/knowledge/vector-stores/__tests__/embedding-credential.test.ts
+  s_a87ab30323b2bf::t_f57a69bcf273a8 104
+  s_a87ab30323b2bf::t_1fce0e4bb86569 2,5-8,63-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96120632717842be732402b319b753a954da58b1",
+  "prompts": {},
+  "sessions": {
+    "s_38d78cd106326f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72f82e0e-bc8a-42f7-9266-687432dab6a9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_6ed1267be3207d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c99a7bb3-9db4-4c6e-afda-b88bccd884df",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e4b4d59605d361": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3d22b93-1b6d-4d71-b1eb-adbe2d413cff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
