@@ -1,10 +1,11 @@
 import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, ref, type Ref } from 'vue';
 
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
@@ -37,6 +38,18 @@ const {
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
+
+// The test view has no layout, so the tests set the width of the thread area.
+const { threadArea } = vi.hoisted(() => ({
+	threadArea: { width: undefined as Ref<number> | undefined },
+}));
+vi.mock('@vueuse/core', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@vueuse/core')>();
+	const { ref: vueRef } = await import('vue');
+	const width = vueRef(0);
+	threadArea.width = width;
+	return { ...actual, useElementSize: () => ({ width, height: vueRef(0) }) };
+});
 
 // The chat state that the stub panel exposes, as the real panel does.
 const chatMessages = ref<ChatMessage[]>([]);
@@ -78,7 +91,16 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 });
 
 vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
-	default: defineComponent({ setup: () => () => h('div') }),
+	default: defineComponent({
+		emits: ['togglePreview'],
+		setup:
+			(_props, { emit }) =>
+			() =>
+				h('button', {
+					'data-test-id': 'tab-bar-preview-toggle',
+					onClick: () => emit('togglePreview'),
+				}),
+	}),
 }));
 
 vi.mock('../../components/InstanceAiArtifactsPanel.vue', () => ({
@@ -133,6 +155,7 @@ describe('AssistantAgentThreadView', () => {
 		routerPush.mockReset();
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
+		if (threadArea.width) threadArea.width.value = 0;
 	});
 
 	it('opens the chat of the Assistant agent on the system channel', async () => {
@@ -321,22 +344,100 @@ describe('AssistantAgentThreadView', () => {
 		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
 	});
 
-	it('shows and hides the artifacts panel from the header', async () => {
-		const { getByTestId, queryByTestId } = renderView({
-			props: { threadId: 'thread-1', projectId: 'project-1' },
+	describe('artifacts panel', () => {
+		const userMessage: ChatMessage = { id: 'u1', role: 'user', content: 'Build a digest' };
+
+		async function renderLoadedView(width: number, messages: ChatMessage[] = [userMessage]) {
+			if (threadArea.width) threadArea.width.value = width;
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			chatMessages.value = messages;
+			await flushPromises();
+			return result;
+		}
+
+		it('offers the panel while the thread loads, and not for an empty thread', async () => {
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			expect(queryByTestId('assistant-agent-artifacts-panel-toggle')).toBeInTheDocument();
+
+			isLoadingHistory.value = false;
+			await flushPromises();
+			expect(queryByTestId('assistant-agent-artifacts-panel-toggle')).not.toBeInTheDocument();
 		});
-		await flushPromises();
-		expect(queryByTestId('assistant-agent-artifacts-panel-toggle')).not.toBeInTheDocument();
 
-		chatMessages.value = [{ id: 'u1', role: 'user', content: 'Build a digest' }];
-		await flushPromises();
-		// The test view has no width, so the panel shows over the chat only when asked for.
-		expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+		it('shows the panel over a narrow chat only when asked for', async () => {
+			const { getByTestId, queryByTestId } = await renderLoadedView(600);
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
 
-		await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
-		expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
+			await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+			expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
 
-		await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
-		expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+			await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+		});
+
+		it('closes the panel over a narrow chat on a click outside it', async () => {
+			const { getByTestId, queryByTestId } = await renderLoadedView(600);
+			await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+
+			await userEvent.click(getByTestId('agent-chat-panel-stub'));
+
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+		});
+
+		it('keeps the panel beside a wide chat until the user hides it', async () => {
+			const { getByTestId, queryByTestId } = await renderLoadedView(1200);
+			expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
+
+			// A click outside the panel does not close it in a wide view.
+			await userEvent.click(getByTestId('agent-chat-panel-stub'));
+			expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
+
+			await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+		});
+
+		it('shows a hidden panel again when the view becomes wide again', async () => {
+			const { getByTestId, queryByTestId } = await renderLoadedView(1200);
+			await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+
+			threadArea.width!.value = 600;
+			await flushPromises();
+			threadArea.width!.value = 1200;
+			await flushPromises();
+
+			expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
+		});
+
+		it('does not bring back the panel over a narrow chat when the preview closes', async () => {
+			const { getByTestId, queryByTestId } = await renderLoadedView(600);
+			await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+
+			chatMessages.value = [userMessage, buildMessage('tc-1')];
+			await flushPromises();
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+
+			await fireEvent.click(getByTestId('tab-bar-preview-toggle'));
+			expect(getByTestId('assistant-agent-preview-panel')).not.toBeVisible();
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+		});
+
+		it('opens the preview again from the header', async () => {
+			const { getByTestId } = await renderLoadedView(1200);
+			chatMessages.value = [userMessage, buildMessage('tc-1')];
+			await flushPromises();
+			await fireEvent.click(getByTestId('tab-bar-preview-toggle'));
+			expect(getByTestId('assistant-agent-preview-panel')).not.toBeVisible();
+
+			await fireEvent.click(getByTestId('assistant-agent-preview-toggle'));
+
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-1' });
+		});
 	});
 });

@@ -12,7 +12,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { useElementSize, useLocalStorage } from '@vueuse/core';
+import { onClickOutside, useElementSize, useLocalStorage } from '@vueuse/core';
 import { TabsRoot } from 'reka-ui';
 import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -197,8 +197,9 @@ const isArtifactsPanelInLayout = computed(
 );
 const isArtifactsPanelDismissed = ref(false);
 const isArtifactsPanelRevealed = ref(false);
+// A loading thread shows the panel too, so its loading state shows in place.
 const canShowArtifactsPanel = computed(
-	() => thread.messages.length > 0 || preview.openTabs.value.length > 0,
+	() => thread.messages.length > 0 || preview.openTabs.value.length > 0 || thread.isHydratingThread,
 );
 const showArtifactsPanel = computed(
 	() =>
@@ -208,9 +209,35 @@ const showArtifactsPanel = computed(
 			? !isArtifactsPanelDismissed.value
 			: isArtifactsPanelRevealed.value),
 );
-watch(isArtifactsPanelInLayout, () => {
+// The same resets as the Assistant runtime view.
+watch(isArtifactsPanelInLayout, (isInLayout) => {
 	isArtifactsPanelRevealed.value = false;
+	if (isInLayout) isArtifactsPanelDismissed.value = false;
 });
+watch(canShowArtifactsPanel, (canShow) => {
+	if (canShow) return;
+	isArtifactsPanelRevealed.value = false;
+	isArtifactsPanelDismissed.value = false;
+});
+// The preview replaces the panel, so closing the preview does not bring back a panel over the chat.
+watch(
+	preview.isPreviewVisible,
+	(visible) => {
+		if (visible) isArtifactsPanelRevealed.value = false;
+	},
+	{ flush: 'sync' },
+);
+
+// A click outside the panel over the chat closes it.
+const artifactsPanelSlot = useTemplateRef<HTMLElement>('artifactsPanelSlot');
+onClickOutside(
+	artifactsPanelSlot,
+	() => {
+		if (isArtifactsPanelInLayout.value) return;
+		isArtifactsPanelRevealed.value = false;
+	},
+	{ ignore: ['[data-test-id="assistant-agent-artifacts-panel-toggle"]', '.n8n-tooltip'] },
+);
 
 const artifactsPanelToggleLabel = computed(() =>
 	i18n.baseText(
@@ -334,6 +361,7 @@ function handlePreviewResize({ width }: { width: number }): void {
 
 				<div
 					v-if="showArtifactsPanel"
+					ref="artifactsPanelSlot"
 					:class="[
 						$style.artifactsPanelSlot,
 						{ [$style.artifactsPanelSlotOverlay]: !isArtifactsPanelInLayout },
