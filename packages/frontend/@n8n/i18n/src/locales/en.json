@@ -6360,7 +6360,7 @@
 	"settings.security.rateLimits.edit": "Edit API key rate limits",
 	"settings.security.rateLimits.dialog.enable.title": "Enable API key rate limits",
 	"settings.security.rateLimits.dialog.edit.title": "Edit API key rate limits",
-	"settings.security.rateLimits.dialog.description": "Limits how many requests each API key can make. Requests over the limit get a 429 response until it resets.",
+	"settings.security.rateLimits.dialog.description": "Limits how many Public API requests each API key can make. Requests over the limit get a 429 response until it resets.",
 	"settings.security.rateLimits.dialog.read": "Read",
 	"settings.security.rateLimits.dialog.write": "Write",
 	"settings.security.rateLimits.dialog.requestsPer": "requests per",

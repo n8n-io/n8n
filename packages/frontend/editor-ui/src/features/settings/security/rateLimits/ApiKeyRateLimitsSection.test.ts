@@ -118,7 +118,7 @@ describe('ApiKeyRateLimitsSection', () => {
 
 		expect(
 			screen.getByText(
-				'Limits how many requests each API key can make. Requests over the limit get a 429 response until it resets.',
+				'Limits how many Public API requests each API key can make. Requests over the limit get a 429 response until it resets.',
 			),
 		).toBeInTheDocument();
 	});
