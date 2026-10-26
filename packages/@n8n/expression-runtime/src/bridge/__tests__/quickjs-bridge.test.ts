@@ -164,46 +164,85 @@ describe('QuickJsBridge workflow data', () => {
 		return bridge;
 	}
 
+	/** Runs a full GC. A WeakRef keeps its target alive until the current job ends. */
+	async function collectGarbage(): Promise<void> {
+		setFlagsFromString('--expose_gc');
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		(runInNewContext('gc') as () => void)();
+	}
+
+	/**
+	 * Replaces `vm.newFunction`. `call` counts from 1. Not vi.spyOn: a spy
+	 * records its arguments, and those hold the data.
+	 */
+	function overrideNewFunction(
+		bridge: QuickJsBridge,
+		override: (
+			call: number,
+			build: () => import('quickjs-emscripten').QuickJSHandle,
+		) => import('quickjs-emscripten').QuickJSHandle,
+	): void {
+		const vm = bridge['vm']!;
+		const newFunction = vm.newFunction.bind(vm);
+		let calls = 0;
+		vm.newFunction = ((...args: Parameters<typeof newFunction>) =>
+			override(++calls, () => newFunction(...args))) as typeof vm.newFunction;
+	}
+
 	afterEach(async () => {
 		await Promise.all(bridges.splice(0).map(async (bridge) => await bridge.dispose()));
 	});
 
 	it('should free the data of a finished call while the bridge is alive', async () => {
-		setFlagsFromString('--expose_gc');
-		const gc = runInNewContext('gc') as unknown as () => void;
-
 		const bridge = await newBridge();
 		let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
 		const dataRef = new WeakRef(data);
 		expect(bridge.execute('return this.$json.value', data)).toBe(42);
 		data = undefined;
 
-		await new Promise((resolve) => setTimeout(resolve, 10));
-		gc();
+		await collectGarbage();
 
 		expect(dataRef.deref()).toBeUndefined();
 	});
 
-	it('should free the data of a call whose callbacks fail to build', async () => {
-		setFlagsFromString('--expose_gc');
-		const gc = runInNewContext('gc') as unknown as () => void;
+	it.each([2, 3])(
+		'should free the data of a call whose callback %i fails to build',
+		async (failingCall) => {
+			const bridge = await newBridge();
+			overrideNewFunction(bridge, (call, build) => {
+				if (call === failingCall) throw new Error('newFunction failed');
+				return build();
+			});
+			let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
+			const dataRef = new WeakRef(data);
+			expect(() => bridge.execute('return 1', data!)).toThrow('newFunction failed');
+			data = undefined;
 
+			await collectGarbage();
+
+			expect(dataRef.deref()).toBeUndefined();
+		},
+	);
+
+	it('should free the data of a call whose callback fails to dispose', async () => {
 		const bridge = await newBridge();
-		const vm = bridge['vm']!;
-		// Not vi.spyOn: a spy records its arguments, and those hold the data.
-		const newFunction = vm.newFunction.bind(vm);
-		let calls = 0;
-		vm.newFunction = ((...args: Parameters<typeof newFunction>) => {
-			if (++calls === 2) throw new Error('newFunction failed');
-			return newFunction(...args);
-		}) as typeof vm.newFunction;
+		overrideNewFunction(bridge, (call, build) => {
+			const handle = build();
+			if (call === 3) {
+				const dispose = handle.dispose.bind(handle);
+				handle.dispose = () => {
+					dispose();
+					throw new Error('dispose failed');
+				};
+			}
+			return handle;
+		});
 		let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
 		const dataRef = new WeakRef(data);
-		expect(() => bridge.execute('return 1', data!)).toThrow('newFunction failed');
+		expect(() => bridge.execute('return 1', data!)).toThrow('dispose failed');
 		data = undefined;
 
-		await new Promise((resolve) => setTimeout(resolve, 10));
-		gc();
+		await collectGarbage();
 
 		expect(dataRef.deref()).toBeUndefined();
 	});
