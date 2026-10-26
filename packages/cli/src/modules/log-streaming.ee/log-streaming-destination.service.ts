@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
 import type { DeleteResult } from '@n8n/typeorm';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import pLimit from 'p-limit';
 
 import type { EventMessageTypes } from '@/eventbus';
 import type { EventMessageConfirmSource } from '@/eventbus/event-message-classes/event-message-confirm';
@@ -28,6 +29,9 @@ import { MessageEventBusDestination } from './destinations/message-event-bus-des
 @Service()
 export class LogStreamingDestinationService {
 	private destinations: { [key: string]: MessageEventBusDestination } = {};
+
+	// Keep database writes and local activation in the same order.
+	private readonly destinationMutationMutex = pLimit(1);
 
 	private isListening = false;
 
@@ -98,21 +102,30 @@ export class LogStreamingDestinationService {
 	async createDestination(
 		destination: MessageEventBusDestination,
 	): Promise<MessageEventBusDestination> {
-		// Insert before activation so a duplicate ID leaves the active destination unchanged.
-		try {
-			const created = await this.eventDestinationsRepository.createIfNew(
-				destination.getId(),
-				destination.serialize(),
-			);
-			if (!created) {
-				throw new ForbiddenError('User is missing a scope required to perform this action');
-			}
-		} catch (error) {
-			await destination.close();
-			throw error;
-		}
+		return await this.destinationMutationMutex(async () => {
+			const id = destination.getId();
+			const settings = destination.serialize();
+			let created = false;
+			try {
+				// Insert before activation so a duplicate ID leaves the active destination unchanged.
+				created = await this.eventDestinationsRepository.createIfNew(id, settings);
+				if (!created) {
+					throw new ForbiddenError('User is missing a scope required to perform this action');
+				}
 
-		return await this.activateDestination(destination);
+				return await this.activateDestination(destination);
+			} catch (error) {
+				if (created) {
+					try {
+						await this.eventDestinationsRepository.deleteIfUnchanged(id, settings);
+					} catch (rollbackError) {
+						this.logger.error('Failed to roll back destination creation', { error: rollbackError });
+					}
+				}
+				await this.closeFailedDestination(destination);
+				throw error;
+			}
+		});
 	}
 
 	/**
@@ -122,9 +135,24 @@ export class LogStreamingDestinationService {
 		destination: MessageEventBusDestination,
 		notifyInstances: boolean = true,
 	): Promise<MessageEventBusDestination> {
-		await this.saveDestinationToDb(destination);
+		return await this.destinationMutationMutex(async () => {
+			try {
+				await this.saveDestinationToDb(destination);
 
-		return await this.activateDestination(destination, notifyInstances);
+				return await this.activateDestination(destination, notifyInstances);
+			} catch (error) {
+				await this.closeFailedDestination(destination);
+				throw error;
+			}
+		});
+	}
+
+	private async closeFailedDestination(destination: MessageEventBusDestination): Promise<void> {
+		try {
+			await destination.close();
+		} catch (error) {
+			this.logger.warn('Failed to close destination after save failed', { error });
+		}
 	}
 
 	private async activateDestination(
@@ -150,20 +178,22 @@ export class LogStreamingDestinationService {
 	 * Remove a destination from the local map and delete from database
 	 */
 	async removeDestination(id: string, notifyInstances: boolean = true): Promise<DeleteResult> {
-		// Close and remove from local map
-		if (this.destinations[id]) {
-			await this.destinations[id].close();
-			delete this.destinations[id];
-			this.logger.debug(`Removed destination ${id}`);
-		}
+		return await this.destinationMutationMutex(async () => {
+			// Close and remove from local map
+			if (this.destinations[id]) {
+				await this.destinations[id].close();
+				delete this.destinations[id];
+				this.logger.debug(`Removed destination ${id}`);
+			}
 
-		// Notify other instances to reload destinations
-		if (notifyInstances) {
-			void this.publisher.publishCommand({ command: 'restart-event-bus' });
-		}
+			// Notify other instances to reload destinations
+			if (notifyInstances) {
+				void this.publisher.publishCommand({ command: 'restart-event-bus' });
+			}
 
-		// Delete from database
-		return await this.deleteDestinationFromDb(id);
+			// Delete from database
+			return await this.deleteDestinationFromDb(id);
+		});
 	}
 
 	/**
@@ -291,9 +321,11 @@ export class LogStreamingDestinationService {
 	 */
 	@OnPubSubEvent('restart-event-bus')
 	async restart() {
-		this.logger.debug('Restarting log streaming destination service...');
-		await this.close();
-		await this.loadDestinationsFromDb();
-		await this.initialize();
+		await this.destinationMutationMutex(async () => {
+			this.logger.debug('Restarting log streaming destination service...');
+			await this.close();
+			await this.loadDestinationsFromDb();
+			await this.initialize();
+		});
 	}
 }

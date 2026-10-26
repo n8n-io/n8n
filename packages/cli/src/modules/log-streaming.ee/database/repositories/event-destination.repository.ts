@@ -20,4 +20,18 @@ export class EventDestinationsRepository extends Repository<EventDestinations> {
 			throw error;
 		}
 	}
+
+	async deleteIfUnchanged(
+		id: string,
+		destination: MessageEventBusDestinationOptions,
+	): Promise<boolean> {
+		const result = await this.createQueryBuilder()
+			.delete()
+			.where({ id })
+			.andWhere('CAST(destination AS TEXT) = :destination', {
+				destination: JSON.stringify(destination),
+			})
+			.execute();
+		return (result.affected ?? 0) > 0;
+	}
 }

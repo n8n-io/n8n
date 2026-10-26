@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ForbiddenError } from '@n8n/errors';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -167,6 +168,7 @@ describe('LogStreamingDestinationService', () => {
 			expect(replacement.close).toHaveBeenCalledOnce();
 			expect(await service.findDestination('webhook-1')).toEqual([original.serialize()]);
 			expect(eventDestinationsRepository.upsert).not.toHaveBeenCalled();
+			expect(eventDestinationsRepository.deleteIfUnchanged).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
@@ -179,7 +181,104 @@ describe('LogStreamingDestinationService', () => {
 
 			expect(destination.close).toHaveBeenCalledOnce();
 			expect(await service.findDestination('webhook-1')).toEqual([]);
+			expect(eventDestinationsRepository.deleteIfUnchanged).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('closes the new destination and rolls back its insert when activation fails', async () => {
+			const original = createMockDestination({ id: 'webhook-1' });
+			await service.addDestination(original);
+			vi.clearAllMocks();
+			const error = new Error('Could not close the active destination');
+			vi.mocked(original.close).mockRejectedValueOnce(error);
+			const destination = createMockDestination({
+				id: 'webhook-1',
+				type: MessageEventBusDestinationTypeNames.syslog,
+			});
+			eventDestinationsRepository.createIfNew.mockResolvedValueOnce(true);
+
+			await expect(service.createDestination(destination)).rejects.toThrow(error);
+
+			expect(destination.close).toHaveBeenCalledOnce();
+			expect(eventDestinationsRepository.deleteIfUnchanged).toHaveBeenCalledWith(
+				'webhook-1',
+				destination.serialize(),
+			);
+			expect(await service.findDestination('webhook-1')).toEqual([original.serialize()]);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('keeps a concurrent update after a create-only save finishes', async () => {
+			const destination = createMockDestination({ id: 'webhook-1' });
+			const replacement = createMockDestination({
+				id: 'webhook-1',
+				type: MessageEventBusDestinationTypeNames.syslog,
+			});
+			const insertStarted = createDeferredPromise();
+			const insertFinished = createDeferredPromise<boolean>();
+			eventDestinationsRepository.createIfNew.mockImplementationOnce(async () => {
+				insertStarted.resolve();
+				return await insertFinished.promise;
+			});
+
+			const creating = service.createDestination(destination);
+			await insertStarted.promise;
+			const updating = service.addDestination(replacement);
+			await new Promise(setImmediate);
+			const updatedBeforeCreationFinished =
+				eventDestinationsRepository.upsert.mock.calls.length > 0;
+			insertFinished.resolve(true);
+			await Promise.all([creating, updating]);
+
+			expect(updatedBeforeCreationFinished).toBe(false);
+			expect(await service.findDestination('webhook-1')).toEqual([replacement.serialize()]);
+			expect(destination.close).toHaveBeenCalledOnce();
+			expect(replacement.close).not.toHaveBeenCalled();
+		});
+
+		it.each(['remove', 'restart'] as const)(
+			'finishes creation before a concurrent %s',
+			async (operation) => {
+				const destination = createMockDestination({ id: 'webhook-1' });
+				const insertStarted = createDeferredPromise();
+				const insertFinished = createDeferredPromise<boolean>();
+				eventDestinationsRepository.createIfNew.mockImplementationOnce(async () => {
+					insertStarted.resolve();
+					return await insertFinished.promise;
+				});
+				if (operation === 'restart') {
+					eventDestinationsRepository.find.mockResolvedValueOnce([]);
+				}
+
+				const creating = service.createDestination(destination);
+				await insertStarted.promise;
+				const removing =
+					operation === 'remove' ? service.removeDestination('webhook-1') : service.restart();
+				await new Promise(setImmediate);
+				insertFinished.resolve(true);
+				await Promise.all([creating, removing]);
+
+				expect(await service.findDestination('webhook-1')).toEqual([]);
+				expect(destination.close).toHaveBeenCalledOnce();
+			},
+		);
+
+		it('still closes the new destination if rollback fails', async () => {
+			const original = createMockDestination({ id: 'webhook-1' });
+			await service.addDestination(original);
+			const error = new Error('Could not close the active destination');
+			vi.mocked(original.close).mockRejectedValueOnce(error);
+			const destination = createMockDestination({ id: 'webhook-1' });
+			eventDestinationsRepository.createIfNew.mockResolvedValueOnce(true);
+			const rollbackError = new Error('Database unavailable');
+			eventDestinationsRepository.deleteIfUnchanged.mockRejectedValueOnce(rollbackError);
+
+			await expect(service.createDestination(destination)).rejects.toThrow(error);
+
+			expect(destination.close).toHaveBeenCalledOnce();
+			expect(logger.error).toHaveBeenCalledWith('Failed to roll back destination creation', {
+				error: rollbackError,
+			});
 		});
 	});
 
@@ -223,8 +322,25 @@ describe('LogStreamingDestinationService', () => {
 			await expect(service.addDestination(replacement)).rejects.toThrow(error);
 
 			expect(original.close).not.toHaveBeenCalled();
+			expect(replacement.close).toHaveBeenCalledOnce();
 			expect(await service.findDestination('webhook-1')).toEqual([original.serialize()]);
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('keeps the database error if closing the new destination also fails', async () => {
+			const destination = createMockDestination({ id: 'webhook-1' });
+			const error = new Error('Database unavailable');
+			const closeError = new Error('Could not close the new destination');
+			eventDestinationsRepository.upsert.mockRejectedValueOnce(error);
+			vi.mocked(destination.close).mockRejectedValueOnce(closeError);
+
+			await expect(service.addDestination(destination)).rejects.toThrow(error);
+
+			expect(destination.close).toHaveBeenCalledOnce();
+			expect(await service.findDestination('webhook-1')).toEqual([]);
+			expect(logger.warn).toHaveBeenCalledWith('Failed to close destination after save failed', {
+				error: closeError,
+			});
 		});
 
 		// Uses a real destination (not a mock) so the actual serialize() output is what
