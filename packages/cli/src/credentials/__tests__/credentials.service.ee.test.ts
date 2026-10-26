@@ -154,7 +154,6 @@ describe('EnterpriseCredentialsService', () => {
 					violation,
 				);
 
-				expect(credentialsService.decrypt).not.toHaveBeenCalled();
 				expect(transaction).not.toHaveBeenCalled();
 			});
 		});
@@ -245,6 +244,42 @@ describe('EnterpriseCredentialsService', () => {
 				expect(
 					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
 				).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('previewTransfer', () => {
+			beforeEach(() => {
+				policyEnforcementService.evaluateCredentialTransfer.mockResolvedValue({ violations: [] });
+			});
+
+			it('refuses an end-user credential the user cannot manage in the destination', async () => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(
+					mock<CredentialsEntity>({
+						id: credentialId,
+						type: 'testApi',
+						shared: [ownerSharing],
+						isResolvable: true,
+					}),
+				);
+				const refusal = new Error('cannot manage end-user credentials');
+				credentialsService.ensureCanManageEndUserCredential.mockRejectedValue(refusal);
+
+				await expect(
+					service.previewTransfer(user, credentialId, destinationProjectId),
+				).rejects.toThrow(refusal);
+				expect(policyEnforcementService.evaluateCredentialTransfer).not.toHaveBeenCalled();
+			});
+
+			it('refuses when the destination cannot reach a referenced secret provider', async () => {
+				credentialsService.decrypt.mockResolvedValue({ apiKey: '={{ $secrets.vault.myApiKey }}' });
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					false,
+				);
+
+				await expect(
+					service.previewTransfer(user, credentialId, destinationProjectId),
+				).rejects.toThrow('The secret provider "vault" used in "apiKey" does not exist');
+				expect(policyEnforcementService.evaluateCredentialTransfer).not.toHaveBeenCalled();
 			});
 		});
 

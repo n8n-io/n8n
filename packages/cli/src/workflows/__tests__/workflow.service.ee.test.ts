@@ -18,6 +18,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
 import type { NodeTypes } from '@/node-types';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -1149,7 +1150,7 @@ describe('EnterpriseWorkflowService', () => {
 
 		beforeEach(() => {
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
-			workflowRepository.find.mockResolvedValue(workflows);
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue(workflows);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
 			policyEnforcementService.hasChecksFor.mockReturnValue(true);
 			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
@@ -1170,9 +1171,9 @@ describe('EnterpriseWorkflowService', () => {
 		it('loads the fields the policy check reads', async () => {
 			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
 
-			expect(workflowRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({ select: expect.arrayContaining(['name', 'nodes']) }),
-			);
+			expect(workflowRepository.findInFoldersForTransfer).toHaveBeenCalledWith(['folder-1'], {
+				withNodes: true,
+			});
 		});
 
 		it('skips the nodes and the check when no check is registered', async () => {
@@ -1180,9 +1181,9 @@ describe('EnterpriseWorkflowService', () => {
 
 			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
 
-			expect(workflowRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({ select: expect.not.arrayContaining(['nodes']) }),
-			);
+			expect(workflowRepository.findInFoldersForTransfer).toHaveBeenCalledWith(['folder-1'], {
+				withNodes: false,
+			});
 			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
 			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
 		});
@@ -1212,6 +1213,88 @@ describe('EnterpriseWorkflowService', () => {
 			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 			expect(transferOwnershipSpy).not.toHaveBeenCalled();
 			expect(moveFoldersSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('previewFolderTransfer()', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const sourceProject = mock<Project>({ id: 'proj-source' });
+		const destinationProject = mock<Project>({ id: 'proj-dest' });
+
+		const makeWorkflow = (id: string, owner = sourceProject) =>
+			mock<WorkflowEntity>({
+				id,
+				name: `Workflow ${id}`,
+				nodes: [],
+				activeVersion: null,
+				shared: [mock<SharedWorkflow>({ role: 'workflow:owner', project: owner })],
+			});
+
+		const preview = async () =>
+			await service.previewFolderTransfer(user, 'proj-source', 'folder-1', 'proj-dest');
+
+		beforeEach(() => {
+			folderRepository.findOneOrFailFolderInProject.mockResolvedValue(mock());
+			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
+			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
+			policyEnforcementService.hasChecksFor.mockReturnValue(true);
+			policyEnforcementService.evaluateWorkflowTransfer.mockResolvedValue({ violations: [] });
+		});
+
+		describe('when no check is registered', () => {
+			beforeEach(() => {
+				policyEnforcementService.hasChecksFor.mockReturnValue(false);
+			});
+
+			it('returns an empty preview without the nodes and without evaluating', async () => {
+				workflowRepository.findInFoldersForTransfer.mockResolvedValue([makeWorkflow('wf-1')]);
+
+				await expect(preview()).resolves.toEqual({
+					restricted: [],
+					workflowsToUnpublish: [],
+					checkFailed: false,
+				});
+				expect(workflowRepository.findInFoldersForTransfer).toHaveBeenCalledWith(['folder-1'], {
+					withNodes: false,
+				});
+				expect(policyEnforcementService.evaluateWorkflowTransfer).not.toHaveBeenCalled();
+			});
+
+			it('still refuses a folder whose workflows the destination already owns', async () => {
+				workflowRepository.findInFoldersForTransfer.mockResolvedValue([
+					makeWorkflow('wf-1', destinationProject),
+				]);
+
+				await expect(preview()).rejects.toThrow(TransferWorkflowError);
+			});
+		});
+
+		it('evaluates at most five workflows at once', async () => {
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue(
+				Array.from({ length: 12 }, (_, index) => makeWorkflow(`wf-${index}`)),
+			);
+			let inFlight = 0;
+			let maxInFlight = 0;
+			policyEnforcementService.evaluateWorkflowTransfer.mockImplementation(async () => {
+				maxInFlight = Math.max(maxInFlight, ++inFlight);
+				await new Promise((resolve) => setImmediate(resolve));
+				inFlight--;
+				return { violations: [] };
+			});
+
+			await preview();
+
+			expect(policyEnforcementService.evaluateWorkflowTransfer).toHaveBeenCalledTimes(12);
+			expect(maxInFlight).toBe(5);
+		});
+
+		it('refuses a folder whose workflows the destination already owns, as the move does', async () => {
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue([
+				makeWorkflow('wf-1', destinationProject),
+			]);
+
+			await expect(preview()).rejects.toThrow(TransferWorkflowError);
+			expect(policyEnforcementService.evaluateWorkflowTransfer).not.toHaveBeenCalled();
 		});
 	});
 
