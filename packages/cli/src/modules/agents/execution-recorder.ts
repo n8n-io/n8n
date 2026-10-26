@@ -322,11 +322,12 @@ export class ExecutionRecorder {
 				timestamp: this.startTime,
 				signal: {
 					...(backgroundJobSignal.isFinal ? { isFinal: true } : {}),
-					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status }) => ({
+					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status, files }) => ({
 						id,
 						title: scrubSecretsInText(title),
 						kind,
 						status,
+						...(files?.length ? { files } : {}),
 					})),
 				},
 			});
