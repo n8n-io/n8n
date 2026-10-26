@@ -1186,7 +1186,13 @@ export class QuickJsBridge implements RuntimeBridge {
 			);
 		} catch (error) {
 			// A live handle keeps the data. It also makes JS_FreeRuntime abort.
-			for (const handle of handles) handle.dispose();
+			for (const handle of handles) {
+				try {
+					handle.dispose();
+				} catch {
+					// Throw the build error, not a dispose error.
+				}
+			}
 			throw error;
 		}
 

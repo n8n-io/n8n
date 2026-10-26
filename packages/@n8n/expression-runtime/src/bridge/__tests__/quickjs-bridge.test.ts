@@ -189,6 +189,18 @@ describe('QuickJsBridge workflow data', () => {
 			override(++calls, () => newFunction(...args))) as typeof vm.newFunction;
 	}
 
+	/** Makes `handle.dispose()` free the handle and then throw. */
+	function failDispose(
+		handle: import('quickjs-emscripten').QuickJSHandle,
+	): import('quickjs-emscripten').QuickJSHandle {
+		const dispose = handle.dispose.bind(handle);
+		handle.dispose = () => {
+			dispose();
+			throw new Error('dispose failed');
+		};
+		return handle;
+	}
+
 	afterEach(async () => {
 		await Promise.all(bridges.splice(0).map(async (bridge) => await bridge.dispose()));
 	});
@@ -224,19 +236,21 @@ describe('QuickJsBridge workflow data', () => {
 		},
 	);
 
-	it('should free the data of a call whose callback fails to dispose', async () => {
+	it('should keep the build error when a built callback fails to dispose', async () => {
 		const bridge = await newBridge();
 		overrideNewFunction(bridge, (call, build) => {
-			const handle = build();
-			if (call === 3) {
-				const dispose = handle.dispose.bind(handle);
-				handle.dispose = () => {
-					dispose();
-					throw new Error('dispose failed');
-				};
-			}
-			return handle;
+			if (call === 3) throw new Error('newFunction failed');
+			return call === 1 ? failDispose(build()) : build();
 		});
+
+		expect(() => bridge.execute('return 1', { $json: { value: 42 } })).toThrow(
+			'newFunction failed',
+		);
+	});
+
+	it('should free the data of a call whose callback fails to dispose', async () => {
+		const bridge = await newBridge();
+		overrideNewFunction(bridge, (call, build) => (call === 3 ? failDispose(build()) : build()));
 		let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
 		const dataRef = new WeakRef(data);
 		expect(() => bridge.execute('return 1', data!)).toThrow('dispose failed');
