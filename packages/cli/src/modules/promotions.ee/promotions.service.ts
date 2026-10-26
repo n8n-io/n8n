@@ -21,7 +21,7 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
@@ -62,6 +62,12 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
 import { projectHolding } from './branch-placement';
+import {
+	crossProjectMoves,
+	describeCrossProjectMoves,
+	foldersInScope,
+	type CrossProjectMoves,
+} from './cross-project-moves';
 import {
 	GIT_DEFAULT_COMMIT_EMAIL,
 	GIT_DEFAULT_COMMIT_NAME,
@@ -688,74 +694,30 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Workflows and folders that the package holds under one project and this instance holds under
-	 * another. Apply cannot move them between projects. With `projectId`, workflows count when they
-	 * move into or out of that project, and folders only when the package holds them under it: the
-	 * import of that project never touches a folder that the package holds elsewhere.
+	 * Loads what the move check needs: who holds each package workflow and folder here, and which
+	 * branch projects exist here.
 	 */
 	private async findCrossProjectMoves(
 		inventory: PackageDirectoryInventory,
 		projectId?: string,
 	): Promise<CrossProjectMoves> {
-		// The import of a project reads only the folders the package holds under it.
-		const folderEntries = inventory.folders.filter(
-			(entry) => projectId === undefined || entry.projectId === projectId,
-		);
 		const [owners, folders, existingProjects] = await Promise.all([
 			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
 				inventory.workflows.map(({ id }) => id),
 			),
-			this.folderService.getFoldersByIds(folderEntries.map(({ folder }) => folder.id)),
+			this.folderService.getFoldersByIds(
+				foldersInScope(inventory.folders, projectId).map(({ folder }) => folder.id),
+			),
 			// Instance-wide Apply creates missing projects, but only after this check refuses a move.
 			this.projectRepository.findTypesByIds(inventory.projects.map(({ id }) => id)),
 		]);
-		const homes = new Map(folders.map(({ id, homeProject }) => [id, homeProject]));
-		const existing = new Set(existingProjects.map(({ id }) => id));
-		// The refusal message leaves out these names: a personal project's name holds its owner's
-		// email, and the message reaches the UI and telemetry.
-		const personalProjectIds = new Set(
-			[...owners.values(), ...homes.values()]
-				.filter(({ type }) => type !== 'team')
-				.map(({ id }) => id),
-		);
-		const branchProjects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
-		const branchProjectOf = (id: string) => {
-			const project = branchProjects.get(id);
-			// The reader requires a project file for every project directory.
-			if (!project) throw new UnexpectedError(`Package inventory has no project "${id}"`);
-			return project;
-		};
-		const toMove = (
-			{ id, name }: { id: string; name: string },
-			branchProjectId: string,
-			instanceProject: { id: string; name: string } | undefined,
-		): CrossProjectMove[] =>
-			instanceProject &&
-			instanceProject.id !== branchProjectId &&
-			(projectId === undefined || projectId === branchProjectId || projectId === instanceProject.id)
-				? [
-						{
-							id,
-							name,
-							project: branchProjectOf(branchProjectId),
-							projectExists: existing.has(branchProjectId),
-							instanceProject: { id: instanceProject.id, name: instanceProject.name },
-						},
-					]
-				: [];
-		const byId = (a: CrossProjectMove, b: CrossProjectMove) => a.id.localeCompare(b.id);
-
-		return {
-			workflows: inventory.workflows
-				.flatMap((workflow) => toMove(workflow, workflow.projectId, owners.get(workflow.id)))
-				.sort(byId),
-			folders: folderEntries
-				.flatMap(({ folder, projectId: branchProjectId }) =>
-					toMove(folder, branchProjectId, homes.get(folder.id)),
-				)
-				.sort(byId),
-			personalProjectIds,
-		};
+		return crossProjectMoves({
+			inventory,
+			owners,
+			folderHomes: new Map(folders.map(({ id, homeProject }) => [id, homeProject])),
+			existingProjectIds: new Set(existingProjects.map(({ id }) => id)),
+			projectId,
+		});
 	}
 
 	/**
@@ -1197,17 +1159,42 @@ export class PromotionsService {
 	 * A workflow on the branch that a personal project owns now is not exported, because personal
 	 * projects stay out of scope. The promote would drop it from the branch, and Apply would then
 	 * delete it on the destination. Refuse until the workflow moves back to its team project.
-	 *
-	 * This reads the manifest at the remote branch head, not the checkout on disk, which can be
-	 * behind the remote. It does not apply the import limits, which a promote never needed.
 	 */
 	private async assertNoWorkflowsMovedOutOfTeamProjects(
 		input: PromotionOperationInput,
 		branchName: string,
 		credentials: PromotionGitCredentials,
 	): Promise<void> {
+		const manifest = await this.readRemoteManifest(input, branchName, credentials);
+		if (manifest === null) return;
+		const workflows = readBranchWorkflowPlacements(manifest, BRANCH_MANIFEST_PATH);
+		if (workflows.length === 0) return;
+
+		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+			workflows.map(({ id }) => id),
+		);
+		const moved = workflows.filter(({ id }) => {
+			const owner = owners.get(id);
+			return owner !== undefined && owner.type !== 'team';
+		});
+		if (moved.length > 0) {
+			throw new BadRequestError(describeWorkflowsMovedToPersonalProjects(moved));
+		}
+	}
+
+	/**
+	 * The branch manifest at the remote head, not the checkout on disk, which can be behind the
+	 * remote. It does not apply the import limits, which a promote never needed. `null` when the
+	 * branch holds nothing to check: the remote doesn't hold the branch (the push creates it), the
+	 * remote is empty, or the branch has no package. Any other read failure throws, so a transient
+	 * error never skips the check.
+	 */
+	private async readRemoteManifest(
+		input: PromotionOperationInput,
+		branchName: string,
+		credentials: PromotionGitCredentials,
+	): Promise<string | null> {
 		const paths = this.workingDirectory.paths(input.environmentId);
-		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
 		const operation = {
 			remoteUrl: repositoryUrl(input),
 			credentials,
@@ -1217,44 +1204,24 @@ export class PromotionsService {
 		};
 		let head: { commitSha: string | null; lsTreeOutput: string };
 		try {
-			head = await this.gitService.listBranchTree({ ...operation, pathspecs: [manifestPath] });
+			head = await this.gitService.listBranchTree({
+				...operation,
+				pathspecs: [BRANCH_MANIFEST_PATH],
+			});
 		} catch (error) {
-			// A branch the remote doesn't hold has no workflow to drop, and the push creates it. Any
-			// other read failure stops the promote, so a transient error never skips this check.
 			if (await this.gitService.hasRemoteBranch(operation)) throw error;
-			return;
+			return null;
 		}
-		// An empty remote, or a branch without a package: nothing on the branch can be dropped.
-		if (head.commitSha === null || head.lsTreeOutput === '') return;
+		if (head.commitSha === null || head.lsTreeOutput === '') return null;
 
 		const files = await this.gitService.readFilesAtCommit({
 			paths,
 			branchName,
 			environmentId: input.environmentId,
 			commitSha: head.commitSha,
-			filePaths: [manifestPath],
+			filePaths: [BRANCH_MANIFEST_PATH],
 		});
-		const workflows = readBranchWorkflowPlacements(files.get(manifestPath), manifestPath);
-		if (workflows.length === 0) return;
-
-		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
-			workflows.map(({ id }) => id),
-		);
-		// The message leaves out the personal project's name: it holds the owner's email, and error
-		// messages reach the UI and telemetry.
-		const moved = workflows.flatMap(({ id, name, projectName }) => {
-			const owner = owners.get(id);
-			return owner !== undefined && owner.type !== 'team'
-				? [
-						`"${name}" (${id}) is in a personal project here and in team project "${projectName}" on the branch`,
-					]
-				: [];
-		});
-		if (moved.length > 0) {
-			throw new BadRequestError(
-				`A promotion does not include personal projects, so these workflows would be deleted on the destination: ${moved.join('; ')}. Move them back to the team project the branch holds them in, then promote again.`,
-			);
-		}
+		return files.get(BRANCH_MANIFEST_PATH) ?? '';
 	}
 
 	/**
@@ -1428,35 +1395,17 @@ async function isDirectory(folder: string): Promise<boolean> {
 	}
 }
 
-type CrossProjectMove = ApplyCheckResult['movedWorkflows'][number];
-type CrossProjectMoves = {
-	workflows: CrossProjectMove[];
-	folders: CrossProjectMove[];
-	/** Instance projects that are personal. The refusal message names none of them. */
-	personalProjectIds: ReadonlySet<string>;
-};
+const BRANCH_MANIFEST_PATH = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
 
-/**
- * Names each item and both of its projects, so the user knows what to move and where. An item
- * can't move here to a branch project that does not exist here yet, so then only the source fix
- * is offered.
- */
-function describeCrossProjectMoves({
-	workflows,
-	folders,
-	personalProjectIds,
-}: CrossProjectMoves): string {
-	const here = ({ id, name }: CrossProjectMove['instanceProject']) =>
-		personalProjectIds.has(id) ? 'a personal project' : `project "${name}"`;
-	const describe =
-		(type: 'workflow' | 'folder') =>
-		({ id, name, project, projectExists, instanceProject }: CrossProjectMove) =>
-			`${type} "${name}" (${id}) is in ${here(instanceProject)} here and in project "${project.name}" on the branch${projectExists ? '' : `, and project "${project.name}" does not exist on this instance yet`}`;
-	const moved = [...workflows.map(describe('workflow')), ...folders.map(describe('folder'))];
-	const remedy = [...workflows, ...folders].every(({ projectExists }) => projectExists)
-		? 'Move them on this instance to match the branch, or move them back on the source instance and promote again.'
-		: 'Move them back on the source instance, then promote again.';
-	return `Apply can't move workflows or folders between projects: ${moved.join('; ')}. ${remedy}`;
+/** Leaves out the personal project's name: it holds the owner's email, and error text reaches the UI and telemetry. */
+function describeWorkflowsMovedToPersonalProjects(
+	moved: Array<{ id: string; name: string; projectName: string }>,
+): string {
+	const items = moved.map(
+		({ id, name, projectName }) =>
+			`"${name}" (${id}) is in a personal project here and in team project "${projectName}" on the branch`,
+	);
+	return `A promotion does not include personal projects, so these workflows would be deleted on the destination: ${items.join('; ')}. Move them back to the team project the branch holds them in, then promote again.`;
 }
 
 /** The parts of `manifest.json` that promote checks. The export leaves out an empty list. */
