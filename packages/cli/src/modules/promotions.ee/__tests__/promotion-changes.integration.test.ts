@@ -13,6 +13,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
 	FolderRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	TagRepository,
 	type User,
@@ -269,7 +270,43 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 		{ workflowId: modified.id, role: 'workflow:owner' },
 		{ projectId: otherProject.id },
 	);
-	const movedOut = (await agent.get(endpoint).expect(200)).body.data.changes;
+	const movedOutPreview = (await agent.get(endpoint).expect(200)).body.data;
+	// Promote refuses a workflow that moved to another project, so the preview names that project.
+	expect(movedOutPreview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			change: 'deleted',
+			movedToProject: { id: otherProject.id, name: otherProject.name },
+		}),
+	);
+	// The other side of the same move: the branch still holds the workflow in the first project.
+	const movedInPreview = (
+		await agent.get(`/promotions/${otherProject.id}/changes/promote`).expect(200)
+	).body.data;
+	expect(movedInPreview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			change: 'added',
+			movedFromProject: { id: project.id, name: project.name },
+		}),
+	);
+	// A personal project's name holds its owner's email, so the preview leaves it out.
+	const personal = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: modified.id, role: 'workflow:owner' },
+		{ projectId: personal.id },
+	);
+	expect((await agent.get(endpoint).expect(200)).body.data.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			movedToProject: { id: personal.id },
+		}),
+	);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: modified.id, role: 'workflow:owner' },
+		{ projectId: otherProject.id },
+	);
+	const movedOut = movedOutPreview.changes;
 	expect(movedOut).toHaveLength(2);
 	expect(movedOut).toContainEqual(
 		expect.objectContaining({
@@ -278,6 +315,38 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 			status: 'deleted',
 			version: null,
 			updatedAt: null,
+		}),
+	);
+}, 30_000);
+
+it('marks a workflow that moved into a project that has no files on the branch yet', async () => {
+	const owner = await createOwner();
+	const billing = await createTeamProject('Billing', owner);
+	const workflow = await createWorkflow({ name: 'Invoices', nodes: [], connections: {} }, billing);
+	const environments = await createInstanceEnvironments();
+	await Container.get(PromotionsService).promote(environments.promote.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	// Created after the promote, so the branch holds nothing for it.
+	const later = await createTeamProject('Later', owner);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: workflow.id, role: 'workflow:owner' },
+		{ projectId: later.id },
+	);
+	const branch = await Container.get(PromotionsService).readBranchPackage(later.id, 'promote');
+	expect(branch.files).toEqual([]);
+	expect(branch.hasManifest).toBe(true);
+
+	const preview = (
+		await server.authAgentFor(owner).get(`/promotions/${later.id}/changes/promote`).expect(200)
+	).body.data;
+
+	expect(preview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${workflow.id}`,
+			change: 'added',
+			movedFromProject: { id: billing.id, name: billing.name },
 		}),
 	);
 }, 30_000);
@@ -1026,8 +1095,8 @@ describe('resources in the preview', () => {
 		});
 		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		await promoteBaseline(environments.promote.id, owner);
-		// Apply keeps the local folder and credential names. The credential stays, but no local
-		// workflow uses it, so the local export does not hold it.
+		// Apply keeps the local credential name, but gives the folder the name on the branch. The
+		// credential stays, but no local workflow uses it, so the local export does not hold it.
 		await Container.get(FolderRepository).update(folder.id, { name: 'Local invoices' });
 		await Container.get(CredentialsRepository).update(credential.id, { name: 'Local billing API' });
 		await Container.get(WorkflowRepository).delete(charge.id);
@@ -1039,6 +1108,12 @@ describe('resources in the preview', () => {
 
 		expect(body.data.resources).toEqual([
 			expect.objectContaining({ key: `project:${project.id}`, change: 'unchanged' }),
+			expect.objectContaining({
+				key: `folder:${folder.id}`,
+				name: 'Invoices',
+				previousName: 'Local invoices',
+				change: 'modified',
+			}),
 			expect.objectContaining({ key: `workflow:${charge.id}`, change: 'added' }),
 			expect.objectContaining({
 				key: `credential:${credential.id}`,

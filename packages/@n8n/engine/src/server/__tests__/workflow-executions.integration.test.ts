@@ -581,6 +581,65 @@ describe('POST /api/workflow-executions (integration)', () => {
 	});
 });
 
+describe('POST /api/workflow-executions/search/latest (integration)', () => {
+	const findLatest = (body: object) =>
+		request(url).post('/api/workflow-executions/search/latest').set(authHeader()).send(body);
+	async function start(workflowId: string) {
+		const body = startBody({ workflowId });
+		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
+		return body.executionId;
+	}
+
+	it('requires authentication', async () => {
+		await request(url)
+			.post('/api/workflow-executions/search/latest')
+			.send({ workflowIds: 'all' })
+			.expect(401);
+	});
+
+	it.each([
+		{},
+		{ workflowIds: [] },
+		{ workflowIds: 'all', status: [] },
+		{ workflowIds: 'all', limit: 1 },
+		{ workflowIds: 'all', before: sampleCursor },
+		{ workflowIds: 'all', includeTotal: true },
+		{ workflowIds: 'all', unknown: true },
+	])('rejects an invalid body %#', async (body) => {
+		await findLatest(body).expect(400);
+	});
+
+	it('returns the newest matching execution with its steps', async () => {
+		const workflowId = generateId();
+		await start(workflowId);
+		const newest = await start(workflowId);
+		await start(generateId());
+
+		const response = await findLatest({ workflowIds: [workflowId], status: ['queued'] }).expect(
+			200,
+		);
+
+		expect(response.body).toMatchObject({
+			id: newest,
+			workflowId,
+			status: 'queued',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			steps: [],
+		});
+	});
+
+	it('returns 404 not_found when nothing matches', async () => {
+		const workflowId = generateId();
+		await start(workflowId);
+
+		const response = await findLatest({ workflowIds: [workflowId], status: ['completed'] });
+
+		expect(response.status).toBe(404);
+		expect((response.body as { error: string }).error).toBe('not_found');
+	});
+});
+
 describe('GET /api/workflow-executions/:id (integration)', () => {
 	async function createExecution(): Promise<string> {
 		const response = await request(url)
@@ -771,7 +830,7 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 				nodeId: 'b',
 				iteration: 0,
 				status: 'waiting',
-				waitDeclaration: { acceptsResumeRequest: true },
+				waitDeclaration: { resumeBinding: 'execution' },
 			}),
 		);
 

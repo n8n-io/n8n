@@ -585,6 +585,46 @@ Use the workflow SDK.`,
 		});
 	});
 
+	it('accepts path-only reference metadata until the file is requested', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'deferred',
+				name: 'Deferred',
+				description: 'Load later.',
+				instructions: 'See the guide.',
+				linkedFiles: {
+					references: [{ path: 'references/guide.md' }],
+					templates: [],
+					scripts: [],
+					assets: [],
+					examples: [],
+					other: [],
+				},
+			},
+		]);
+		source.loadFile = vi.fn(async (skillId, filePath) => ({
+			skillId,
+			filePath,
+			content: 'Guide.',
+			bytes: 6,
+			sha256: 'guide-hash',
+		}));
+		const tool = createSkillLoadTool(source);
+		const activation = await tool.handler?.(
+			{ skillId: 'deferred' },
+			{ loadSkill: source.loadSkill },
+		);
+		if (!isZodSchema(tool.outputSchema)) throw new Error('Expected Zod output schema');
+		expect(tool.outputSchema.safeParse(activation).success).toBe(true);
+		expect(activation).toMatchObject({
+			linkedFiles: { references: [{ path: 'references/guide.md' }] },
+		});
+		expect(source.loadFile).not.toHaveBeenCalled();
+		const file = await tool.handler?.({ skillId: 'deferred', filePath: 'references/guide.md' }, {});
+		expect(tool.outputSchema.safeParse(file).success).toBe(true);
+		expect(file).toMatchObject({ content: 'Guide.', bytes: 6, sha256: 'guide-hash' });
+	});
+
 	it('prepares the runtime skill source before load_skill reads the registry', async () => {
 		const source = createRuntimeSkillSource([
 			{
@@ -970,7 +1010,7 @@ describe('reference skills', () => {
 		expect(agents).toContain('- "models": "Load before choosing a model."');
 	});
 
-	it('records references with descriptions in the activation result', async () => {
+	it('returns the activation acknowledgement, version, and reference paths', async () => {
 		writeBuilderWithReferences();
 		const source = loadRuntimeSkillSourceFromDirectory(root);
 		const loadTool = createSkillLoadTool(source);
@@ -983,6 +1023,8 @@ describe('reference skills', () => {
 		expect(result).toMatchObject({
 			success: true,
 			skillId: 'builder',
+			hash: source.registry.skills.find((skill) => skill.id === 'builder')?.hash,
+			content: 'The skill instructions are active. Follow them for this task.',
 			references: [{ skillId: 'models', description: 'Load before choosing a model.' }],
 			linkedFiles: { references: [expect.objectContaining({ path: 'references/notes.md' })] },
 		});

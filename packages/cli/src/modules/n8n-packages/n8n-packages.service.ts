@@ -45,11 +45,13 @@ import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
+	CredentialConflictPolicy,
 	CredentialExportPolicy,
 	DataTableSchemaConflictPolicy,
 	ExportDependencyPolicy,
 	ExportVersionPolicy,
 	OverwriteDeletionPolicy,
+	LayoutConflictPolicy,
 	TagConflictPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
@@ -65,6 +67,7 @@ import {
 	type ImportSelection,
 	type ImportSelectionRequest,
 	type PackageImportSource,
+	type PromotionLayoutProperties,
 	type ResolvedImportPackageRequest,
 	type ResolvedImportRequest,
 	createBindings,
@@ -96,8 +99,9 @@ type DirectoryProjectPackage =
  * A cherry-pick import acts only on its selection, so most policies are fixed here. Deletion mode is
  * left to the caller (`overwriteDeletionPolicy`): promotion passes `hard-delete` for diff convergence,
  * while the public selection import defaults to the safe `archive`. The caller also sets
- * `dataTableSchemaConflictPolicy`, which defaults to `fail`, and `tagConflictPolicy`, which defaults
- * to `skip`.
+ * `dataTableSchemaConflictPolicy`, which defaults to `fail`, `tagConflictPolicy`, which defaults to
+ * `skip`, `credentialConflictPolicy`, which defaults to `keep-existing`, and `layoutConflictPolicy`,
+ * which defaults to `fail`.
  */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
@@ -106,7 +110,6 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
-	credentialConflictPolicy: 'keep-existing',
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: 'create',
 	variableMissingMode: 'must-preexist',
@@ -125,6 +128,8 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'workflowIdPolicy'
 	| 'dataTableSchemaConflictPolicy'
 	| 'tagConflictPolicy'
+	| 'credentialConflictPolicy'
+	| 'layoutConflictPolicy'
 >;
 
 @Service()
@@ -523,7 +528,7 @@ export class N8nPackagesService {
 	}
 
 	async importPackageFromDirectory(
-		request: ImportRequest,
+		request: ImportRequest & PromotionLayoutProperties,
 		source: { sourceDir: string },
 	): Promise<ImportResult> {
 		const opened = await this.readDirectoryProjectPackage(source);
@@ -631,6 +636,9 @@ export class N8nPackagesService {
 			dataTableSchemaConflictPolicy:
 				request.dataTableSchemaConflictPolicy ?? DataTableSchemaConflictPolicy.Fail,
 			tagConflictPolicy: request.tagConflictPolicy ?? TagConflictPolicy.Skip,
+			credentialConflictPolicy:
+				request.credentialConflictPolicy ?? CredentialConflictPolicy.KeepExisting,
+			layoutConflictPolicy: request.layoutConflictPolicy ?? LayoutConflictPolicy.Fail,
 			selection,
 		};
 
@@ -644,7 +652,7 @@ export class N8nPackagesService {
 	}
 
 	private async dispatchImport(
-		request: ImportRequest,
+		request: ImportRequest & PromotionLayoutProperties,
 		reader: PackageReader,
 		manifest: PackageManifest,
 		importSource: PackageImportSource,

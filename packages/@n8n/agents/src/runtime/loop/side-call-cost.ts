@@ -6,8 +6,8 @@ import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
  * Compute the estimated USD cost of a side-call model turn (title
  * generation, observation-log observer/reflector, episodic-memory model
  * call) from models.dev pricing. Returns `undefined` when the catalog is
- * unavailable or the model has no pricing, so callers can skip the increment
- * instead of billing zero. `promptCaching` only affects Anthropic cache-write
+ * unavailable or the model has no pricing, so callers can leave the cost out
+ * instead of reporting zero. `promptCaching` only affects Anthropic cache-write
  * pricing; it is a no-op for non-Anthropic side-call models.
  */
 export async function computeSideCallCost(
