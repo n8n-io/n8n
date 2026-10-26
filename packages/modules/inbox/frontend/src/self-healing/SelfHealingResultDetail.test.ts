@@ -597,46 +597,56 @@ it('treats publish access as unknown until workflow permissions load', async () 
 	expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'allowed');
 });
 
-it.each([
-	{ reviewState: 'discarded', errors: 1 },
-	{ reviewState: 'dismissed', errors: 0 },
-] as const)(
-	'refreshes a $reviewState result after a lost dismissal response',
-	async ({ reviewState, errors }) => {
+const dismissals = [
+	{ outcome: 'fix_ready', reviewState: 'discarded' },
+	{ outcome: 'needs_you', reviewState: 'dismissed' },
+] as const;
+
+it.each(dismissals)(
+	'refreshes a $outcome result as $reviewState after a lost dismissal response',
+	async ({ outcome, reviewState }) => {
 		vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome }));
 		const view = renderComponent();
 		await waitAllPromises();
-		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ reviewState }));
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome, reviewState }));
 		view.getByTestId('dismiss').click();
 		await waitAllPromises();
 
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', reviewState);
+		expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 		expect(onItemChange).toHaveBeenCalledOnce();
-		expect(showError).toHaveBeenCalledTimes(errors);
+		expect(showError).not.toHaveBeenCalled();
 		expect(startChat).not.toHaveBeenCalled();
 		expect(push).not.toHaveBeenCalled();
 	},
 );
 
-it('dismisses the result once without opening the editor or chat', async () => {
-	vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(result({ reviewState: 'dismissed' }));
-	const view = renderComponent();
-	await waitAllPromises();
-	view.getByTestId('dismiss').click();
-	await waitAllPromises();
+it.each(dismissals)(
+	'dismisses a $outcome result once as $reviewState without opening the editor or chat',
+	async ({ outcome, reviewState }) => {
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome }));
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(result({ outcome, reviewState }));
+		const view = renderComponent();
+		await waitAllPromises();
+		view.getByTestId('dismiss').click();
+		await waitAllPromises();
 
-	expect(api.reviewSelfHealingResult).toHaveBeenCalledExactlyOnceWith(
-		useRootStore().restApiContext,
-		resultSelection,
-		'dismiss',
-	);
-	expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'dismissed');
-	expect(onItemChange).toHaveBeenCalledExactlyOnceWith(
-		expect.objectContaining({ id: resultSelection.id, state: 'closed' }),
-	);
-	expect(push).not.toHaveBeenCalled();
-	expect(startChat).not.toHaveBeenCalled();
-	expect(resolveChatProject).not.toHaveBeenCalled();
-});
+		expect(api.reviewSelfHealingResult).toHaveBeenCalledExactlyOnceWith(
+			useRootStore().restApiContext,
+			resultSelection,
+			'dismiss',
+		);
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', reviewState);
+		expect(onItemChange).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ id: resultSelection.id, state: 'closed' }),
+		);
+		expect(showError).not.toHaveBeenCalled();
+		expect(push).not.toHaveBeenCalled();
+		expect(startChat).not.toHaveBeenCalled();
+		expect(resolveChatProject).not.toHaveBeenCalled();
+	},
+);
 
 it.each(['busy', 'failed', 'unavailable'] as const)(
 	'keeps the closed result and offers a chat-only retry when the chat start is %s',
@@ -732,14 +742,14 @@ it('scopes a pending action to its result', async () => {
 		'dismiss',
 	);
 
-	firstAction.resolve(result({ reviewState: 'dismissed' }));
+	firstAction.resolve(result({ reviewState: 'discarded' }));
 	await waitAllPromises();
 	expect(view.getByTestId('result-content')).toHaveAttribute('data-pending', 'dismiss');
 
 	await changeSelection(view, resultSelection);
 	expect(view.getByTestId('result-content')).not.toHaveAttribute('data-pending');
 
-	secondAction.resolve(result({ resultId: secondSelection.id, reviewState: 'dismissed' }));
+	secondAction.resolve(result({ resultId: secondSelection.id, reviewState: 'discarded' }));
 	await waitAllPromises();
 	expect(api.reviewSelfHealingResult).toHaveBeenCalledTimes(2);
 });

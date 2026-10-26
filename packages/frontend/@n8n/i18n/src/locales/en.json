@@ -73,7 +73,7 @@
 	"inbox.selfHealing.usage.completionTokens": "Output tokens",
 	"inbox.selfHealing.usage.totalTokens": "Total tokens",
 	"inbox.selfHealing.chat.prompt": "Continue from this investigation report. Help me resolve the remaining issues.",
-	"inbox.selfHealing.chat.appliedContext": "The suggested changes have already been applied to the workflow draft. They have not been published.",
+	"inbox.selfHealing.chat.appliedContext": "The suggested changes have already been applied to the workflow.",
 	"inbox.selfHealing.chatRetry.busy": "The result is closed. Another Assistant chat is still opening, so this chat did not start. Try again.",
 	"inbox.selfHealing.chatRetry.failed": "The result is closed, but the Assistant chat did not open. Try again.",
 	"inbox.selfHealing.chatRetry.unavailable": "The result is closed, but Assistant is unavailable. Try again when Assistant is available.",

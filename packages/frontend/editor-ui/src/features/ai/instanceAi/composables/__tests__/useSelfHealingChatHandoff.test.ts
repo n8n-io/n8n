@@ -96,12 +96,14 @@ it('starts the normal chat handoff with the full report and execution attachment
 	);
 });
 
-it('tells the Assistant when the suggested changes are already in the draft', async () => {
+it('tells the Assistant that the suggested changes are applied without a publication state', async () => {
 	await createHandoff().start('personal-project', { ...result, reviewState: 'applied' });
 
-	expect(mocks.startThread.mock.calls[0]?.[1]).toBe(
-		`Continue from this investigation report. Help me resolve the remaining issues.\n\nThe suggested changes have already been applied to the workflow draft. They have not been published.\n\n${result.report}`,
+	const message = mocks.startThread.mock.calls[0]?.[1];
+	expect(message).toBe(
+		`Continue from this investigation report. Help me resolve the remaining issues.\n\nThe suggested changes have already been applied to the workflow.\n\n${result.report}`,
 	);
+	expect(message).not.toMatch(/publish/i);
 });
 
 it('omits an unavailable execution from the workflow attachment', async () => {

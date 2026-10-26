@@ -188,7 +188,10 @@ async function onAction(action: SelfHealingResultAction) {
 		responseLost: boolean,
 	) {
 		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
-		if (!isSelected(target.id) || result.reviewState !== closedState) return false;
+		const closed =
+			result.reviewState === closedState ||
+			(action === 'dismiss' && result.reviewState === 'discarded');
+		if (!isSelected(target.id) || !closed) return false;
 
 		if (chatProjectId) {
 			const request = { target, projectId: chatProjectId, result };
