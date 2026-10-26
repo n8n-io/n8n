@@ -64,7 +64,8 @@ Both ways obey these rules:
 - **The headers follow a redirect**, also across origins. A trace id is not a credential. On
   the MCP path, n8n first checks each hop against the credential allowlist and the egress
   filter.
-- **A failure never stops the request.** The request goes out without the headers.
+- **A failure never stops the request.** The request goes out without the headers, and n8n
+  logs a warning.
 
 ### Execution identity
 

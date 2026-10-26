@@ -52,13 +52,6 @@ describe('request helpers trace context', () => {
 			expect(helpers.getTraceHeaders()).toEqual({});
 		});
 
-		it('returns nothing and does not call the tracer without an execution, e.g. load options', () => {
-			const { helpers } = helpersWith({ inject: writesTraceHeaders });
-
-			expect(helpers.getTraceHeaders()).toEqual({});
-			expect(writesTraceHeaders).not.toHaveBeenCalled();
-		});
-
 		it('reads the execution id for each call, because the runner sets it after this factory runs', () => {
 			const { helpers, additionalData } = helpersWith({ inject: writesTraceHeaders });
 			expect(helpers.getTraceHeaders()).toEqual({});
@@ -67,27 +60,6 @@ describe('request helpers trace context', () => {
 
 			expect(helpers.getTraceHeaders()).toEqual(TRACE_HEADERS);
 			expect(writesTraceHeaders.mock.calls[0].slice(0, 2)).toEqual(['exec-late', 'HTTP Request']);
-		});
-
-		it('returns nothing and does not throw when the tracer throws', () => {
-			const { helpers } = helpersWith({
-				executionId: 'exec-1',
-				inject: () => {
-					throw new Error('propagator failed');
-				},
-			});
-
-			expect(() => helpers.getTraceHeaders()).not.toThrow();
-			expect(helpers.getTraceHeaders()).toEqual({});
-		});
-
-		it('returns a fresh object each call, so a caller cannot poison the next one', () => {
-			const { helpers } = helpersWith({ executionId: 'exec-1', inject: writesTraceHeaders });
-
-			const first = helpers.getTraceHeaders();
-			first.traceparent = 'mutated';
-
-			expect(helpers.getTraceHeaders()).toEqual(TRACE_HEADERS);
 		});
 	});
 

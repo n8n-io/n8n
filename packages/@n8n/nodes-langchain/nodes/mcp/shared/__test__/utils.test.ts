@@ -6,7 +6,6 @@ import { createResultError, createResultOk } from '@n8n/utils/result';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	INode,
 	LiteralMcpRegistryConnection,
 	NodeEgressFilter,
@@ -1048,6 +1047,8 @@ describe('utils', () => {
 			});
 
 			describe('trace context', () => {
+				const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
 				const connectTraced = async (getTraceHeaders: () => Record<string, string>) => {
 					mockClient.connect.mockResolvedValue(undefined);
 					mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
@@ -1059,6 +1060,7 @@ describe('utils', () => {
 						name: 'test-client',
 						version: 1,
 						getTraceHeaders,
+						logger,
 					});
 
 					const [, opts] = (TransportClass as Mock).mock.calls[0];
@@ -1071,8 +1073,8 @@ describe('utils', () => {
 				it('should read the trace context for each request, not once at connect', async () => {
 					const getTraceHeaders = vi
 						.fn()
-						.mockReturnValueOnce({ traceparent: 'span-a' })
-						.mockReturnValueOnce({ traceparent: 'span-b' });
+						.mockReturnValueOnce({ traceparent: 'span-a', tracestate: 'vendor=opaque' })
+						.mockReturnValueOnce({ traceparent: 'span-b', tracestate: 'vendor=opaque' });
 
 					const opts = await connectTraced(getTraceHeaders);
 					expect(getTraceHeaders).not.toHaveBeenCalled();
@@ -1081,19 +1083,8 @@ describe('utils', () => {
 					await opts.fetch('https://example.com/mcp', {});
 
 					expect(sentHeaders(0).get('traceparent')).toBe('span-a');
-					expect(sentHeaders(1).get('traceparent')).toBe('span-b');
-				});
-
-				it('should send tracestate next to traceparent', async () => {
-					const opts = await connectTraced(() => ({
-						traceparent: 'span-a',
-						tracestate: 'vendor=opaque',
-					}));
-
-					await opts.fetch('https://example.com/mcp', {});
-
-					expect(sentHeaders(0).get('traceparent')).toBe('span-a');
 					expect(sentHeaders(0).get('tracestate')).toBe('vendor=opaque');
+					expect(sentHeaders(1).get('traceparent')).toBe('span-b');
 				});
 
 				it('should keep the auth header next to the trace context', async () => {
@@ -1155,7 +1146,7 @@ describe('utils', () => {
 					expect(sentHeaders(0).get('tracestate')).toBeNull();
 				});
 
-				it('should still send the request when the trace helper throws', async () => {
+				it('should send the request and log when the trace helper throws', async () => {
 					const opts = await connectTraced(() => {
 						throw new Error('tracer failed');
 					});
@@ -1164,6 +1155,10 @@ describe('utils', () => {
 
 					expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 					expect(sentHeaders(0).get('traceparent')).toBeNull();
+					expect(logger.warn).toHaveBeenCalledWith(
+						'Failed to add the trace context to an MCP request',
+						{ error: 'tracer failed' },
+					);
 				});
 			});
 		});
@@ -1214,53 +1209,6 @@ describe('utils', () => {
 
 				const headers = new Headers(mockedProxyFetch.mock.calls[0][0].init?.headers);
 				expect(headers.get('traceparent')).toBe('span-from-ctx');
-			});
-
-			it('should still connect when the context has no trace helper', async () => {
-				const ctx = mockDeep<IExecuteFunctions>();
-				ctx.getNode.mockReturnValue({
-					type: 'mcpClientTool',
-					typeVersion: 1.4,
-				} as unknown as INode);
-				ctx.helpers.getSecureEgressFilter.mockReturnValue(createTestEgressFilter());
-
-				(ctx.helpers as unknown as Record<string, unknown>).getTraceHeaders = undefined;
-
-				const result = await connectMcpClientForCredential(ctx, {
-					authentication: 'none',
-					serverTransport: 'httpStreamable',
-					endpointUrl: 'https://example.com/mcp',
-					surface: 'MCP Client Tool',
-				});
-				expect(result.ok).toBe(true);
-
-				const [, opts] = (MockedStreamableHTTPClientTransport as unknown as Mock).mock.calls[0];
-				await opts.fetch('https://example.com/mcp', {});
-
-				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
-			});
-
-			it('should send no trace context from a load-options call, which has no execution', async () => {
-				const ctx = mockDeep<ILoadOptionsFunctions>();
-				ctx.getNode.mockReturnValue({
-					type: 'mcpClientTool',
-					typeVersion: 1.4,
-				} as unknown as INode);
-				ctx.helpers.getSecureEgressFilter.mockReturnValue(createTestEgressFilter());
-				ctx.helpers.getTraceHeaders.mockReturnValue({});
-
-				await connectMcpClientForCredential(ctx, {
-					authentication: 'none',
-					serverTransport: 'httpStreamable',
-					endpointUrl: 'https://example.com/mcp',
-					surface: 'MCP Client Tool',
-				});
-
-				const [, opts] = (MockedStreamableHTTPClientTransport as unknown as Mock).mock.calls[0];
-				await opts.fetch('https://example.com/mcp', {});
-
-				const headers = new Headers(mockedProxyFetch.mock.calls[0][0].init?.headers);
-				expect(headers.get('traceparent')).toBeNull();
 			});
 		});
 

@@ -71,11 +71,7 @@ export const getRequestHelperFunctions = (
 		if (!otel?.injectTraceHeaders || !executionId) return {};
 
 		const headers: Record<string, string> = {};
-		try {
-			otel.injectTraceHeaders(executionId, node.name, headers);
-		} catch {
-			return {};
-		}
+		otel.injectTraceHeaders(executionId, node.name, headers);
 		return headers;
 	};
 
