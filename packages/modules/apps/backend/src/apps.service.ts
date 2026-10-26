@@ -114,7 +114,7 @@ export class AppsService {
 	private assertValidNamespace(namespace: string) {
 		if (!this.hosts.origin(namespace)) {
 			throw new BadRequestError(
-				'The app namespace is too long for this instance. Choose a shorter namespace.',
+				'This namespace produces an invalid app URL for this instance. Choose another namespace.',
 			);
 		}
 	}

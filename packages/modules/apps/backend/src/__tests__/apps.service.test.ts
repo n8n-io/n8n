@@ -191,17 +191,18 @@ describe('AppsService', () => {
 	});
 
 	it.each([
-		{ host: 'test.app.n8n.cloud', length: 58 },
-		{ host: 'foo--bar.app.n8n.cloud', length: 54 },
+		{ host: 'test.app.n8n.cloud', namespace: 'a'.repeat(58) },
+		{ host: 'foo--bar.app.n8n.cloud', namespace: 'a'.repeat(54) },
+		{ host: 'test.app.n8n.cloud', namespace: 'xn' },
 	])(
-		'rejects oversized namespaces before writing for Cloud host $host',
-		async ({ host, length }) => {
+		'rejects namespace "$namespace" before writing for Cloud host $host',
+		async ({ host, namespace }) => {
 			const { service, appRepository } = createService({ deploymentType: 'cloud', host });
 			const appId = '11111111-1111-4111-8111-111111111111';
-			const dto = CreateAppDto.parse({ name: 'App', namespace: 'a'.repeat(length) });
+			const dto = CreateAppDto.parse({ name: 'App', namespace });
 			appRepository.projectExists.mockResolvedValue(true);
 			const message =
-				'The app namespace is too long for this instance. Choose a shorter namespace.';
+				'This namespace produces an invalid app URL for this instance. Choose another namespace.';
 
 			await expect(service.createApp('project-1', dto)).rejects.toThrow(message);
 			await expect(

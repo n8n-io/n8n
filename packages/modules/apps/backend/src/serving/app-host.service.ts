@@ -67,8 +67,9 @@ export class AppHostService {
 		if (label.length > 63 || label.length + this.baseUrl.hostname.length + 1 > FQDN_MAX_LENGTH)
 			return null;
 		const url = new URL(this.baseUrl);
-		url.hostname = `${label}.${url.hostname}`;
-		return url.origin;
+		const hostname = `${label}.${this.baseUrl.hostname}`;
+		url.hostname = hostname;
+		return url.hostname === hostname ? url.origin : null;
 	}
 
 	callbackUrl(app: { id: string; namespace: string }): string {
