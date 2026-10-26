@@ -26,9 +26,9 @@ describe('N8nApprovalCard', () => {
 		});
 	});
 	it.each([false, true])(
-		'keeps description-only content visible when collapsed=%s',
-		(defaultCollapsed) => {
-			const { getByRole, getByText } = render(N8nApprovalCard, {
+		'shows description-only content after expansion when collapsed=%s',
+		async (defaultCollapsed) => {
+			const { getByRole, getByText, queryByRole } = render(N8nApprovalCard, {
 				props: {
 					title: 'Review action',
 					description: 'Action details',
@@ -36,6 +36,10 @@ describe('N8nApprovalCard', () => {
 					defaultCollapsed,
 				},
 			});
+			if (defaultCollapsed) {
+				expect(queryByRole('region', { name: 'Details' })).toBeNull();
+				await userEvent.click(getByRole('button', { name: 'Review action' }));
+			}
 			const region = getByRole('region', { name: 'Details' });
 			expect(region).toBeVisible();
 			expect(region).toHaveAttribute('tabindex', '0');
@@ -45,12 +49,12 @@ describe('N8nApprovalCard', () => {
 		},
 	);
 
-	it('keeps description and header slots visible with collapsed arguments', () => {
-		const { getByText, queryByTestId } = render(N8nApprovalCard, {
+	it('keeps the title visible and hides details when collapsed', () => {
+		const { getByText, queryByText, queryByTestId } = render(N8nApprovalCard, {
 			props: { title: 'Review action', args: { value: 1 }, defaultCollapsed: true },
-			slots: { description: 'Action details', 'header-label': 'Tool action' },
+			slots: { description: 'Action details', title: 'Tool action' },
 		});
-		expect(getByText('Action details')).toBeVisible();
+		expect(queryByText('Action details')).toBeNull();
 		expect(getByText('Tool action')).toBeVisible();
 		expect(queryByTestId('approval-card-args')).toBeNull();
 	});
@@ -74,14 +78,17 @@ describe('N8nApprovalCard', () => {
 	});
 
 	it.each([false, true])('toggles arguments with defaultCollapsed=%s', async (defaultCollapsed) => {
-		const { getByRole, getByTestId, queryByTestId, getByText, emitted } = render(N8nApprovalCard, {
-			props: {
-				title: 'Approval required',
-				description: 'Run the tool',
-				args: { query: 'Example' },
-				defaultCollapsed,
+		const { getByRole, getByTestId, queryByTestId, getByText, queryByText, emitted } = render(
+			N8nApprovalCard,
+			{
+				props: {
+					title: 'Approval required',
+					description: 'Run the tool',
+					args: { query: 'Example' },
+					defaultCollapsed,
+				},
 			},
-		});
+		);
 		const trigger = getByRole('button', { name: 'Approval required' });
 		expect(trigger).toHaveAttribute('aria-expanded', String(!defaultCollapsed));
 		if (defaultCollapsed) expect(queryByTestId('approval-card-args')).toBeNull();
@@ -97,7 +104,8 @@ describe('N8nApprovalCard', () => {
 		expect(trigger).toHaveAttribute('aria-expanded', String(defaultCollapsed));
 		if (defaultCollapsed) expect(getByTestId('approval-card-args')).toBeVisible();
 		else expect(queryByTestId('approval-card-args')).toBeNull();
-		expect(getByText('Run the tool')).toBeVisible();
+		if (defaultCollapsed) expect(getByText('Run the tool')).toBeVisible();
+		else expect(queryByText('Run the tool')).toBeNull();
 		await userEvent.click(getByRole('button', { name: 'Allow once' }));
 		expect(emitted('select')).toEqual([['allow-once']]);
 	});
