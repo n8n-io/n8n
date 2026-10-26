@@ -4,10 +4,10 @@ import { useI18n } from '@n8n/i18n';
 import {
 	exceedsAllEndpointsLimit,
 	formatGroupSummary,
-	fromDraft,
+	parseInputs,
 	getRowError,
-	isDraftEmpty,
-	toDraft,
+	hasNoLimits,
+	toInputs,
 } from './rateLimits';
 
 const settings: PublicApiRateLimitSettings = {
@@ -25,23 +25,23 @@ const settings: PublicApiRateLimitSettings = {
 describe('rateLimits', () => {
 	const i18n = useI18n();
 
-	describe('toDraft and fromDraft', () => {
+	describe('toInputs and parseInputs', () => {
 		it('shows a limit of 0 as an empty field', () => {
-			expect(toDraft(settings).endpointWrite).toEqual({ limit: '', window: '60' });
+			expect(toInputs(settings).endpointWrite).toEqual({ limit: '', window: '60' });
 		});
 
 		it('keeps the stored window when an empty limit has an invalid window', () => {
-			const draft = toDraft(settings);
-			draft.globalRead = { limit: '', window: 'abc' };
+			const inputs = toInputs(settings);
+			inputs.globalRead = { limit: '', window: 'abc' };
 
-			expect(fromDraft(draft, settings).globalReadWindowSeconds).toBe(60);
+			expect(parseInputs(inputs, settings).globalReadWindowSeconds).toBe(60);
 		});
 
 		it('turns an empty limit back into 0 and keeps the other values', () => {
-			const draft = toDraft(settings);
-			draft.globalRead = { limit: '', window: '30' };
+			const inputs = toInputs(settings);
+			inputs.globalRead = { limit: '', window: '30' };
 
-			expect(fromDraft(draft, settings)).toEqual({
+			expect(parseInputs(inputs, settings)).toEqual({
 				...settings,
 				globalReadLimit: 0,
 				globalReadWindowSeconds: 30,
@@ -64,16 +64,16 @@ describe('rateLimits', () => {
 		});
 	});
 
-	it('finds a draft with no limits', () => {
-		const draft = toDraft({
+	it('finds inputs with no limits', () => {
+		const inputs = toInputs({
 			...settings,
 			globalReadLimit: 0,
 			globalWriteLimit: 0,
 			endpointReadLimit: 0,
 		});
 
-		expect(isDraftEmpty(draft)).toBe(true);
-		expect(isDraftEmpty(toDraft(settings))).toBe(false);
+		expect(hasNoLimits(inputs)).toBe(true);
+		expect(hasNoLimits(toInputs(settings))).toBe(false);
 	});
 
 	describe('exceedsAllEndpointsLimit', () => {
@@ -86,17 +86,17 @@ describe('rateLimits', () => {
 		])(
 			'is $exceeds for $endpoint.limit per $endpoint.window s against 100 per 60 s',
 			({ endpoint, exceeds }) => {
-				const draft = toDraft(settings);
-				draft.endpointRead = endpoint;
+				const inputs = toInputs(settings);
+				inputs.endpointRead = endpoint;
 
-				expect(exceedsAllEndpointsLimit(draft, 'endpointRead')).toBe(exceeds);
+				expect(exceedsAllEndpointsLimit(inputs, 'endpointRead')).toBe(exceeds);
 			},
 		);
 
 		it('is false when one of the two limits is not set', () => {
-			const draft = toDraft({ ...settings, globalReadLimit: 0 });
+			const inputs = toInputs({ ...settings, globalReadLimit: 0 });
 
-			expect(exceedsAllEndpointsLimit(draft, 'endpointRead')).toBe(false);
+			expect(exceedsAllEndpointsLimit(inputs, 'endpointRead')).toBe(false);
 		});
 	});
 

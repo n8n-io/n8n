@@ -17,8 +17,8 @@ export type RateLimitGroup = (typeof RATE_LIMIT_GROUP_KEYS)[number];
 type LimitField = `${RateLimitRowKey}Limit`;
 type WindowField = `${RateLimitRowKey}WindowSeconds`;
 
-/** The dialog keeps raw text, so that an invalid value stays visible until it is fixed. */
-export type RateLimitDraft = Record<RateLimitRowKey, { limit: string; window: string }>;
+/** Text from the dialog inputs, so that an invalid value stays visible until it is fixed. */
+export type RateLimitInputs = Record<RateLimitRowKey, { limit: string; window: string }>;
 
 export type RateLimitRowError = 'limit' | 'window';
 
@@ -37,7 +37,12 @@ const windowField = (key: RateLimitRowKey): WindowField => `${key}WindowSeconds`
 
 const parseLimit = (limit: string) => (limit.trim() === '' ? 0 : Number(limit.trim()));
 
-export function toDraft(settings: Omit<PublicApiRateLimitSettings, 'enabled'>): RateLimitDraft {
+const parseWindow = (window: string) => {
+	const value = window.trim();
+	return WHOLE_NUMBER.test(value) && Number(value) >= 1 ? Number(value) : undefined;
+};
+
+export function toInputs(settings: Omit<PublicApiRateLimitSettings, 'enabled'>): RateLimitInputs {
 	const row = (key: RateLimitRowKey) => {
 		const limit = settings[limitField(key)];
 		return { limit: limit === 0 ? '' : String(limit), window: String(settings[windowField(key)]) };
@@ -50,32 +55,29 @@ export function toDraft(settings: Omit<PublicApiRateLimitSettings, 'enabled'>): 
 	};
 }
 
-/** Call only with a draft that has no row errors. The API needs a valid window on every row. */
-export function fromDraft(
-	draft: RateLimitDraft,
-	base: PublicApiRateLimitSettings,
+/** Call only with inputs that have no row errors. A row with no limit keeps its stored window. */
+export function parseInputs(
+	inputs: RateLimitInputs,
+	stored: PublicApiRateLimitSettings,
 ): PublicApiRateLimitSettings {
-	const settings = { ...base };
+	const settings = { ...stored };
 	for (const key of RATE_LIMIT_ROW_KEYS) {
-		const window = draft[key].window.trim();
-		settings[limitField(key)] = parseLimit(draft[key].limit);
-		if (WHOLE_NUMBER.test(window) && Number(window) >= 1) {
-			settings[windowField(key)] = Number(window);
-		}
+		settings[limitField(key)] = parseLimit(inputs[key].limit);
+		settings[windowField(key)] = parseWindow(inputs[key].window) ?? stored[windowField(key)];
 	}
 	return settings;
 }
 
-export function getRowError(row: RateLimitDraft[RateLimitRowKey]): RateLimitRowError | undefined {
+export function getRowError(row: RateLimitInputs[RateLimitRowKey]): RateLimitRowError | undefined {
 	const limit = row.limit.trim();
 	if (limit !== '' && !WHOLE_NUMBER.test(limit)) return 'limit';
 	if (parseLimit(limit) === 0) return undefined;
-	if (!WHOLE_NUMBER.test(row.window.trim()) || Number(row.window) < 1) return 'window';
+	if (parseWindow(row.window) === undefined) return 'window';
 	return undefined;
 }
 
-export function isDraftEmpty(draft: RateLimitDraft): boolean {
-	return RATE_LIMIT_ROW_KEYS.every((key) => parseLimit(draft[key].limit) === 0);
+export function hasNoLimits(inputs: RateLimitInputs): boolean {
+	return RATE_LIMIT_ROW_KEYS.every((key) => parseLimit(inputs[key].limit) === 0);
 }
 
 /**
@@ -83,11 +85,11 @@ export function isDraftEmpty(draft: RateLimitDraft): boolean {
  * is not longer. A longer window lets the endpoint count grow across several all-endpoints windows.
  */
 export function exceedsAllEndpointsLimit(
-	draft: RateLimitDraft,
+	inputs: RateLimitInputs,
 	key: 'endpointRead' | 'endpointWrite',
 ): boolean {
-	const endpoint = draft[key];
-	const global = draft[key === 'endpointRead' ? 'globalRead' : 'globalWrite'];
+	const endpoint = inputs[key];
+	const global = inputs[key === 'endpointRead' ? 'globalRead' : 'globalWrite'];
 	if (getRowError(endpoint) !== undefined || getRowError(global) !== undefined) return false;
 
 	const endpointLimit = parseLimit(endpoint.limit);

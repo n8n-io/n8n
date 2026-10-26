@@ -22,11 +22,11 @@ import {
 	RATE_LIMIT_GROUP_KEYS,
 	RATE_LIMIT_ROW_KEYS,
 	exceedsAllEndpointsLimit,
-	fromDraft,
+	parseInputs,
 	getRowError,
-	isDraftEmpty,
-	toDraft,
-	type RateLimitDraft,
+	hasNoLimits,
+	toInputs,
+	type RateLimitInputs,
 	type RateLimitGroup,
 	type RateLimitRowKey,
 } from './rateLimits';
@@ -47,7 +47,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const draft = ref<RateLimitDraft>(toDraft(props.settings));
+const inputs = ref<RateLimitInputs>(toInputs(props.settings));
 const touchedRows = ref(new Set<RateLimitRowKey>());
 const submitted = ref(false);
 
@@ -55,7 +55,7 @@ watch(
 	() => props.open,
 	(open) => {
 		if (!open) return;
-		draft.value = toDraft(props.settings);
+		inputs.value = toInputs(props.settings);
 		touchedRows.value = new Set();
 		submitted.value = false;
 	},
@@ -69,7 +69,7 @@ const isWindowLocked = (key: RateLimitRowKey) =>
 
 function rowErrorText(key: RateLimitRowKey) {
 	if (!submitted.value && !touchedRows.value.has(key)) return undefined;
-	const error = getRowError(draft.value[key]);
+	const error = getRowError(inputs.value[key]);
 	return error && i18n.baseText(`settings.security.rateLimits.dialog.error.${error}`);
 }
 
@@ -83,18 +83,19 @@ function fieldLabel(field: 'limit' | 'window', group: RateLimitGroup, kind: 'rea
 }
 
 const rowWarning = (key: RateLimitRowKey) =>
-	(key === 'endpointRead' || key === 'endpointWrite') && exceedsAllEndpointsLimit(draft.value, key);
+	(key === 'endpointRead' || key === 'endpointWrite') &&
+	exceedsAllEndpointsLimit(inputs.value, key);
 
-const defaultDraft = computed(() => toDraft(props.defaults));
+const defaultInputs = computed(() => toInputs(props.defaults));
 
 const canReset = (key: RateLimitRowKey) =>
-	(!isLimitLocked(key) && draft.value[key].limit !== defaultDraft.value[key].limit) ||
-	(!isWindowLocked(key) && draft.value[key].window !== defaultDraft.value[key].window);
+	(!isLimitLocked(key) && inputs.value[key].limit !== defaultInputs.value[key].limit) ||
+	(!isWindowLocked(key) && inputs.value[key].window !== defaultInputs.value[key].window);
 
 const hasErrors = computed(() =>
-	RATE_LIMIT_ROW_KEYS.some((key) => getRowError(draft.value[key]) !== undefined),
+	RATE_LIMIT_ROW_KEYS.some((key) => getRowError(inputs.value[key]) !== undefined),
 );
-const isEmpty = computed(() => isDraftEmpty(draft.value));
+const isEmpty = computed(() => hasNoLimits(inputs.value));
 const showFixMessage = computed(() => submitted.value && hasErrors.value);
 const isEnabledLocked = computed(() => props.envManagedFields.includes('enabled'));
 const canDisable = computed(() => props.mode === 'edit' && !isEnabledLocked.value);
@@ -118,10 +119,12 @@ const primaryLabel = computed(() => {
 const isPrimaryDisabled = computed(() => !canDisable.value && isEmpty.value && !hasErrors.value);
 
 function resetText(key: RateLimitRowKey) {
-	const limit = Number(isLimitLocked(key) ? draft.value[key].limit : defaultDraft.value[key].limit);
+	const limit = Number(
+		isLimitLocked(key) ? inputs.value[key].limit : defaultInputs.value[key].limit,
+	);
 	if (!limit) return i18n.baseText('settings.security.rateLimits.dialog.noLimit');
 	const window = Number(
-		isWindowLocked(key) ? draft.value[key].window : defaultDraft.value[key].window,
+		isWindowLocked(key) ? inputs.value[key].window : defaultInputs.value[key].window,
 	);
 	return i18n.baseText('settings.security.rateLimits.dialog.defaultValue', {
 		interpolate: { limit: limit.toLocaleString(), window: window.toLocaleString() },
@@ -129,8 +132,8 @@ function resetText(key: RateLimitRowKey) {
 }
 
 function resetRow(key: RateLimitRowKey) {
-	if (!isLimitLocked(key)) draft.value[key].limit = defaultDraft.value[key].limit;
-	if (!isWindowLocked(key)) draft.value[key].window = defaultDraft.value[key].window;
+	if (!isLimitLocked(key)) inputs.value[key].limit = defaultInputs.value[key].limit;
+	if (!isWindowLocked(key)) inputs.value[key].window = defaultInputs.value[key].window;
 }
 
 function resetAll() {
@@ -140,7 +143,7 @@ function resetAll() {
 function save() {
 	submitted.value = true;
 	if (hasErrors.value) return;
-	emit('save', { ...fromDraft(draft.value, props.settings), enabled: !isEmpty.value });
+	emit('save', { ...parseInputs(inputs.value, props.settings), enabled: !isEmpty.value });
 }
 </script>
 
@@ -180,7 +183,7 @@ function save() {
 									:content="i18n.baseText('settings.security.rateLimits.envLocked.field')"
 								>
 									<N8nInput
-										v-model="draft[rows[kind]].limit"
+										v-model="inputs[rows[kind]].limit"
 										size="medium"
 										inputmode="numeric"
 										:placeholder="i18n.baseText('settings.security.rateLimits.dialog.noLimit')"
@@ -200,7 +203,7 @@ function save() {
 									:content="i18n.baseText('settings.security.rateLimits.envLocked.field')"
 								>
 									<N8nInput
-										v-model="draft[rows[kind]].window"
+										v-model="inputs[rows[kind]].window"
 										size="medium"
 										inputmode="numeric"
 										:aria-label="fieldLabel('window', group, kind)"
