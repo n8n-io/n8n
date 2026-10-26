@@ -92,6 +92,7 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 			getThread: vi.fn(async () => null),
 			getThreadProjectId: vi.fn(async () => 'project-1'),
 		}),
+		resourceId: 'user-1',
 		eventBus: mock<AssistantTurnRuntime['eventBus']>(),
 		turnState: {
 			getBuildMode: vi.fn(() => 'progressive' as const),
@@ -100,6 +101,7 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 			setPromptConfiguration: vi.fn(),
 			setSetupPanelEnabled: vi.fn(),
 			getBrowserUseAvailable: vi.fn(() => undefined),
+			getObserverThresholdTokens: vi.fn(() => undefined),
 		},
 		sessionGrants: {
 			load: vi.fn(async () => new Set(['tool:run'])),
