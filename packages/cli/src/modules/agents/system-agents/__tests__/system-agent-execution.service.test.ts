@@ -25,6 +25,7 @@ import type {
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import { ExecutionRecorder, type TimelineEvent } from '../../execution-recorder';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
+import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
 import type {
 	AgentExecutionRepository,
 	AgentExecutionUsageRow,
@@ -105,6 +106,11 @@ function setup(
 	const chatExecutionService = mock<AgentChatExecutionService>();
 	const agentRepository = mock<AgentRepository>();
 	const attachmentService = mock<AgentChatAttachmentService>();
+	const agentMemory = mock<N8nMemoryImpl>();
+	const n8nMemory = mock<N8nMemory>();
+	n8nMemory.getImplementation.mockReturnValue(agentMemory);
+	const agentCheckpointStore = mock<ReturnType<N8NCheckpointStorage['getStorage']>>();
+	checkpointStorage.getStorage.mockReturnValue(agentCheckpointStore);
 
 	const onChunk = vi.fn();
 	const onSettled = vi.fn(async () => {});
@@ -156,6 +162,7 @@ function setup(
 		attachmentService,
 		// The real service, so the status tests check the real reads and precedence.
 		new AgentConversationStateService(executionRepository, checkpointStorage),
+		n8nMemory,
 	);
 
 	return {
@@ -177,6 +184,9 @@ function setup(
 		agentRepository,
 		registry,
 		attachmentService,
+		n8nMemory,
+		agentMemory,
+		agentCheckpointStore,
 	};
 }
 
@@ -492,7 +502,17 @@ describe('SystemAgentExecutionService', () => {
 
 	describe('consume', () => {
 		it('prepares the turn and runs the provider handle on the Agents runtime', async () => {
-			const { service, provider, handle, turnExecutionService, prepared } = setup([textChunk]);
+			const {
+				service,
+				provider,
+				handle,
+				turnExecutionService,
+				prepared,
+				n8nMemory,
+				agentMemory,
+				checkpointStorage,
+				agentCheckpointStore,
+			} = setup([textChunk]);
 			const signal = new AbortController().signal;
 
 			await service.consume(claimFor({ runId: 'run-1' }), user, signal, vi.fn());
@@ -507,8 +527,12 @@ describe('SystemAgentExecutionService', () => {
 					message: 'Build me a workflow',
 					attachments: [],
 					options: { runId: 'run-1' },
+					memory: agentMemory,
+					checkpointStore: agentCheckpointStore,
 				}),
 			);
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith(AGENT_ID);
+			expect(checkpointStorage.getStorage).toHaveBeenCalledWith(AGENT_ID);
 			expect(turnExecutionService.execute).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agentInstance: handle.agent,
@@ -917,7 +941,8 @@ describe('SystemAgentExecutionService', () => {
 
 	describe('resume', () => {
 		it('finds the suspended tool call in the checkpoint and prepares a resume turn', async () => {
-			const { service, provider, checkpointStorage, prepared } = setup([textChunk]);
+			const { service, provider, checkpointStorage, prepared, agentMemory, agentCheckpointStore } =
+				setup([textChunk]);
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
 
 			const result = await service.resume({
@@ -939,6 +964,8 @@ describe('SystemAgentExecutionService', () => {
 					toolCallId: 'tc-1',
 					checkpointHostMetadata: { turnOptions: { runId: 'host-run-1' } },
 					resumeData: { approved: true },
+					memory: agentMemory,
+					checkpointStore: agentCheckpointStore,
 				}),
 			);
 			expect(prepared[0]).toMatchObject({

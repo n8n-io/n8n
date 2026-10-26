@@ -1,7 +1,9 @@
 import type {
 	Agent as RuntimeAgent,
+	CheckpointStore,
 	ExecutionOptions,
 	JSONObject,
+	ObservationLogObserverMemory,
 	ResumeOptions,
 	RunOptions,
 	SideCallUsageReport,
@@ -32,6 +34,17 @@ interface SystemAgentTurnBase<TLease> {
 	abortSignal: AbortSignal;
 	/** The lease from the provider's workspace source. It is not set when the provider has no source. */
 	workspace?: TLease;
+	/**
+	 * The memory of the agent in the Agents tables. Give it to the agent the
+	 * provider builds, so the turn's messages, title and observations are stored
+	 * with the thread.
+	 */
+	memory: ObservationLogObserverMemory;
+	/**
+	 * The checkpoint store of the agent. Give it to the agent the provider
+	 * builds: the runtime resumes a suspended turn only from this store.
+	 */
+	checkpointStore: CheckpointStore;
 	/**
 	 * Send a custom event to the chat during this turn. The runtime streams it
 	 * as a `host-event` SSE event and records it with the turn, so history
