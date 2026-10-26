@@ -14,8 +14,17 @@ import type { WorkflowReviewVersionSnapshot } from '@n8n/api-types';
  * `workflow-diff` renders plain workflow snapshots with the editor canvas.
  * `promotion-changes` lists what a promotion review changes. It loads the changes itself, so
  * the module needs no knowledge of the promotion types.
+ * `project-header` is the overview/project page header with the project tabs, which a
+ * resource list page renders above its list.
+ * `resources-list-layout` is the shared resource list page (search, sort, pagination, empty
+ * state). It takes the props and slots of the shell's `ResourcesListLayout`.
  */
-export type ModuleComponentSlot = 'project-filter' | 'workflow-diff' | 'promotion-changes';
+export type ModuleComponentSlot =
+	| 'project-filter'
+	| 'workflow-diff'
+	| 'promotion-changes'
+	| 'project-header'
+	| 'resources-list-layout';
 
 /**
  * The `v-model` value of the `project-filter` slot. `null` means "all projects".

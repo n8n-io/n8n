@@ -226,6 +226,7 @@ packages/frontend/editor-ui/src/features/credentials/quickConnect/ @n8n-io/nodes
 packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.api.ts @n8n-io/nodes
 packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.store.ts @n8n-io/nodes
 packages/frontend/editor-ui/src/features/agents/channels/ @n8n-io/nodes
+packages/modules/apps/                                  @n8n-io/nodes
 
 # AI
 

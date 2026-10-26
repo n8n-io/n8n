@@ -1,3 +1,5 @@
+import type { Scope } from '@n8n/permissions';
+
 /**
  * A typed key for a capability. `declareCapability()` is the only way to make
  * one, and the token is the only way to read or write its slot in the registry.
@@ -19,6 +21,13 @@ export interface CapabilityToken<T> {
 export interface ModalOpeners {
 	openModal(name: string): void;
 	openModalWithData(payload: { name: string; data: Record<string, unknown> }): void;
+}
+
+export interface ProjectPermissions {
+	/** The user's global scopes plus their scopes in the project. Reads reactive state, so call it in a `computed`. */
+	scopesFor(projectId: string): Scope[];
+	/** Whether the instance blocks writes (source control read-only branch). Reads reactive state. */
+	isReadOnly(): boolean;
 }
 
 export interface McpExposeAllOffer {

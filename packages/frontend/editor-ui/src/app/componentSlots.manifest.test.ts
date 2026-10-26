@@ -15,11 +15,14 @@ describe('registerComponentSlots', () => {
 		expect(componentRegistry.get('project-filter')).toBeUndefined();
 	});
 
-	it('registers the project-filter slot', () => {
-		registerComponentSlots();
+	it.each(['project-filter', 'project-header', 'resources-list-layout'] as const)(
+		'registers the %s slot',
+		(slot) => {
+			registerComponentSlots();
 
-		expect(componentRegistry.get('project-filter')).toBeDefined();
-	});
+			expect(componentRegistry.get(slot)).toBeDefined();
+		},
+	);
 
 	it('registers the host lazily, so the projects feature stays out of the boot chunk', () => {
 		registerComponentSlots();
