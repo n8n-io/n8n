@@ -12141,3 +12141,95 @@ describe('Tool builder — ending the turn', () => {
 		expect(() => tool.build()).toThrow('cannot combine .endsTurnWhen() with .toModelOutput()');
 	});
 });
+
+describe('AgentRuntime — tool output files', () => {
+	const bytes = new Uint8Array([1, 2, 3]);
+
+	const readTool: BuiltTool = {
+		name: 'read',
+		description: 'Read a file',
+		inputSchema: z.object({ fileId: z.string() }),
+		handler: async (input: unknown) => {
+			const { fileId } = input as { fileId: string };
+			return {
+				type: 'content',
+				value: [
+					{ type: 'text', text: fileId },
+					{ type: 'file', mediaType: 'image/png', fileRef: { id: fileId } },
+				],
+			};
+		},
+	};
+
+	function filePartsOfCall(callIndex: number) {
+		const messages: aiModule.ModelMessage[] = generateText.mock.calls[callIndex][0].messages ?? [];
+		return messages.flatMap((message) => {
+			if (!Array.isArray(message.content)) return [];
+			return message.content.flatMap((part) => {
+				if (part.type !== 'tool-result' || part.output.type !== 'content') return [];
+				return part.output.value.filter((value) => value.type === 'file');
+			});
+		});
+	}
+
+	it('sends the bytes of ten reads to the next model call only', async () => {
+		const load = vi.fn().mockResolvedValue(bytes);
+		const runtime = new AgentRuntime({
+			name: 'tool-file-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Test',
+			tools: [readTool],
+			fileStore: { load },
+		});
+		for (let i = 0; i < 10; i++) {
+			generateText.mockResolvedValueOnce(
+				makeGenerateWithToolCall(`call-${i}`, 'read', { fileId: `file-${i}` }),
+			);
+		}
+		generateText.mockResolvedValueOnce(makeGenerateSuccess());
+
+		const result = await runtime.generate('Read the files', { maxIterations: 20 });
+
+		expect(result.error).toBeUndefined();
+		expect(generateText).toHaveBeenCalledTimes(11);
+		expect(filePartsOfCall(0)).toHaveLength(0);
+		for (let i = 1; i <= 10; i++) {
+			expect(filePartsOfCall(i)).toEqual([
+				{ type: 'file', data: { type: 'data', data: bytes }, mediaType: 'image/png' },
+			]);
+		}
+		expect(load).toHaveBeenCalledTimes(10);
+		const lastCall: aiModule.ModelMessage[] = generateText.mock.calls[10][0].messages ?? [];
+		expect(JSON.stringify(lastCall)).toContain('file-0) was shown in an earlier step');
+	});
+
+	it('sends a text file as text', async () => {
+		const runtime = new AgentRuntime({
+			name: 'tool-file-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Test',
+			tools: [
+				{
+					...readTool,
+					handler: async () => ({
+						type: 'content',
+						value: [{ type: 'file', mediaType: 'text/csv', fileRef: { id: 'file-1' } }],
+					}),
+				},
+			],
+			// Text needs no provider support for files.
+			fileStore: {
+				load: vi.fn().mockResolvedValue(new TextEncoder().encode('a,b')),
+				isMediaTypeSupported: () => false,
+			},
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('call-1', 'read', { fileId: 'file-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		await runtime.generate('Read the file', { maxIterations: 5 });
+
+		const messages: aiModule.ModelMessage[] = generateText.mock.calls[1][0].messages ?? [];
+		expect(JSON.stringify(messages)).toContain('"text":"a,b"');
+	});
+});

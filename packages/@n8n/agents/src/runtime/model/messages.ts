@@ -24,6 +24,7 @@ import type {
 	Message,
 	MessageContent,
 } from '../../types/sdk/message';
+import { isFileRefPart, isTextMediaType, toolOutputFileParts } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 
 // Used across all message roles; AssistantContent omits user images and tool approval responses.
@@ -273,6 +274,37 @@ function toAiContent(
 	return base;
 }
 
+function fileDataToText(data: NonNullable<ContentFile['data']>): string {
+	if (typeof data === 'string') return Buffer.from(data, 'base64').toString('utf8');
+	return new TextDecoder().decode(data);
+}
+
+/**
+ * Map file parts with a `fileRef` in a tool output to AI SDK parts. A loaded
+ * text file becomes text, other loaded files become file parts, and a part
+ * without data becomes its text metadata.
+ */
+function toModelContentOutput(output: ContentToolResultOutput): ContentToolResultOutput {
+	if (toolOutputFileParts(output).length === 0) return output;
+	return {
+		...output,
+		value: output.value.map((part) => {
+			const candidate: unknown = part;
+			if (!isFileRefPart(candidate)) return part;
+			if (candidate.data === undefined) return { type: 'text', text: fileMetadataText(candidate) };
+			if (isTextMediaType(candidate.mediaType)) {
+				return { type: 'text', text: fileDataToText(candidate.data) };
+			}
+			return {
+				type: 'file',
+				data: { type: 'data', data: candidate.data },
+				mediaType: candidate.mediaType ?? 'application/octet-stream',
+				...(candidate.fileRef.fileName ? { filename: candidate.fileRef.fileName } : {}),
+			};
+		}),
+	};
+}
+
 /** Build an AI SDK ToolResultPart from a resolved/rejected ContentToolCall. */
 function toolCallToResultPart(
 	block: ContentToolCall & { state: 'resolved' | 'rejected' },
@@ -285,7 +317,7 @@ function toolCallToResultPart(
 			toolName: block.toolName,
 			...(block.resultProviderOptions && { providerOptions: block.resultProviderOptions }),
 			output: isContentToolResultOutput(block.output)
-				? block.output
+				? toModelContentOutput(block.output)
 				: { type: 'json', value: block.output },
 		};
 	}

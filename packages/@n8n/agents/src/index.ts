@@ -307,7 +307,7 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
-export { stripHydratedFileData } from './types/sdk/message';
+export { isTextMediaType, stripHydratedFileData } from './types/sdk/message';
 export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {

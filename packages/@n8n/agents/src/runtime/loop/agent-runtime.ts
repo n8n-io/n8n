@@ -11,7 +11,7 @@ import {
 } from './checkpoint-data';
 import { incrementMessageCount, incrementTokenCountFromUsage } from './execution-counter';
 import { GenerateSink } from './generate-sink';
-import { hydrateFileParts } from './hydrate-file-parts';
+import { hydrateFileParts, loadToolOutputFiles, stubToolOutputFiles } from './hydrate-file-parts';
 import type {
 	ModelCallContext,
 	ModelTurnResult,
@@ -1015,11 +1015,16 @@ export class AgentRuntime {
 	): Promise<ToolBatchSettlement<T>> {
 		this.assertNotAborted(ctx.abortScope);
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
+		await loadToolOutputFiles(ctx.list.turnDelta(), this.config.fileStore, {
+			threadId: ctx.options?.persistence?.threadId,
+		});
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
 		for (const update of this.activeSkills?.takeUpdates() ?? []) {
 			await sink.emitMessage?.(update);
 		}
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
+		// The model got the tool output files. Later calls get a short text.
+		if (turn) stubToolOutputFiles(ctx.list.turnDelta());
 		// A guardrail refused the call. Usage from any discarded empty attempt
 		// is already folded in; end the run without a new model turn.
 		if (!turn) {

@@ -1,5 +1,16 @@
+import { isRecord } from '@n8n/utils/is-record';
+import { toJsonValue } from '@n8n/utils/json/to-json-value';
+
 import type { BuiltFileStore } from '../../types/sdk/file-store';
-import type { AgentDbMessage, ContentFile } from '../../types/sdk/message';
+import {
+	isFileRefPart,
+	isTextMediaType,
+	toolOutputFileParts,
+	type AgentDbMessage,
+	type ContentFile,
+	type ContentFileWithRef,
+	type ContentToolCall,
+} from '../../types/sdk/message';
 
 /** Only the newest file parts are hydrated; older ones stay reference-only. */
 export const MAX_HYDRATED_FILE_PARTS = 20;
@@ -60,5 +71,70 @@ export async function hydrateFileParts(
 		} catch {
 			// Leave the block reference-only; the model sees its text metadata.
 		}
+	}
+}
+
+function resolvedToolCalls(
+	messages: readonly AgentDbMessage[],
+): Array<Extract<ContentToolCall, { state: 'resolved' }>> {
+	return messages.flatMap((message) =>
+		'content' in message && Array.isArray(message.content)
+			? message.content.filter(
+					(block): block is Extract<ContentToolCall, { state: 'resolved' }> =>
+						block.type === 'tool-call' && block.state === 'resolved',
+				)
+			: [],
+	);
+}
+
+/**
+ * Load the bytes of file parts in tool outputs, such as the result of a tool
+ * that reads a file for the model. The model gets these bytes in the next
+ * model call only: after that call, {@link stubToolOutputFiles} replaces the
+ * parts with a short text. Pass only the messages of the current turn, so
+ * files from older turns are not loaded again.
+ */
+export async function loadToolOutputFiles(
+	messages: readonly AgentDbMessage[],
+	fileStore: BuiltFileStore | undefined,
+	scope?: { threadId?: string },
+): Promise<void> {
+	if (!fileStore) return;
+	let budget = MAX_HYDRATED_FILE_BYTES;
+	const parts = resolvedToolCalls(messages).flatMap((block) => toolOutputFileParts(block.output));
+	for (const part of parts) {
+		if (part.data !== undefined) continue;
+		const supported =
+			isTextMediaType(part.mediaType) || (fileStore.isMediaTypeSupported?.(part.mediaType) ?? true);
+		if (!supported) continue;
+		try {
+			const data = await fileStore.load(part.fileRef, scope);
+			if (!data || data.byteLength > budget) continue;
+			part.data = data;
+			budget -= data.byteLength;
+		} catch {
+			// Leave the part without data; the model sees its text metadata.
+		}
+	}
+}
+
+function sentFileStub(part: ContentFileWithRef): string {
+	const name = part.fileRef.fileName ?? 'file';
+	return `[File "${name}" (fileId: ${part.fileRef.id}) was shown in an earlier step and is no longer attached. Read it again to see its content.]`;
+}
+
+/**
+ * Replace the file parts in tool outputs with a short text after a model call
+ * got them, so later model calls do not send the bytes again.
+ */
+export function stubToolOutputFiles(messages: readonly AgentDbMessage[]): void {
+	for (const block of resolvedToolCalls(messages)) {
+		const output = block.output;
+		if (toolOutputFileParts(output).length === 0) continue;
+		if (!isRecord(output) || !Array.isArray(output.value)) continue;
+		const value = output.value.map((part: unknown) =>
+			isFileRefPart(part) ? { type: 'text', text: sentFileStub(part) } : part,
+		);
+		block.output = toJsonValue({ ...output, value });
 	}
 }
