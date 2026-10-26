@@ -223,12 +223,12 @@ export class AgentTestRunService {
 	}
 
 	/**
-	 * A draft is unpublished config, so running it needs `agent:read` on top of
-	 * the `agent:execute` the routes check. A chat-only member reaches published
-	 * agents through n8n Chat instead.
+	 * A draft is unpublished, editable config, so running it is an editor action
+	 * and needs `agent:update` on top of the `agent:execute` the routes check.
+	 * Viewers and chat-only members reach published agents through n8n Chat.
 	 */
 	private async assertCanRunDraft(user: User, projectId: string): Promise<void> {
-		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
+		if (!(await userHasScopes(user, ['agent:update'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to run the draft of this agent.');
 		}
 	}

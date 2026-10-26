@@ -244,17 +244,38 @@ async function getWorkflowRunner(): Promise<WorkflowRunner> {
 }
 
 /**
- * The access grants `filterToolsForUser` verified when it built a runtime's
- * tool list. Its presence implies at least one node/workflow tool was kept,
- * which always requires `workflow:execute` on the project. Cached runtimes
- * re-check these grants periodically so access revoked after the build stops
- * being honored (see `AgentRuntimeCacheService`).
+ * The access grants verified when a runtime's tools and draft integrations
+ * were filtered for a user. Cached runtimes re-check these grants
+ * periodically so access revoked after the build stops being honored (see
+ * `AgentRuntimeCacheService`).
  */
 export interface UserToolAccessSnapshot {
 	/** Credential ids that passed a `credential:read` check. */
 	credentialIds: string[];
 	/** Workflow ids that passed a `workflow:execute` check. */
 	workflowIds: string[];
+	/** Draft integration credential ids that passed the agent-usable check. */
+	integrationCredentialIds?: string[];
+	/**
+	 * False when no node/workflow tool was kept. Kept tools always require
+	 * `workflow:execute` on the project, integrations do not.
+	 */
+	requiresWorkflowExecute?: boolean;
+}
+
+/** Add the kept draft integration credentials to the snapshot so cached runtimes re-check them. */
+function withIntegrationCredentials(
+	snapshot: UserToolAccessSnapshot | undefined,
+	integrations: AgentIntegrationConfig[],
+): UserToolAccessSnapshot | undefined {
+	const integrationCredentialIds = integrations
+		.filter(isCredentialAgentIntegration)
+		.map((integration) => integration.credentialId);
+	if (integrationCredentialIds.length === 0) return snapshot;
+	return {
+		...(snapshot ?? { credentialIds: [], workflowIds: [], requiresWorkflowExecute: false }),
+		integrationCredentialIds,
+	};
 }
 
 /**
@@ -357,6 +378,10 @@ export class AgentRuntimeReconstructionService {
 			credentialIntegrations = await raceWithAbort(
 				async () => await this.filterIntegrationsForUser(integrations, agentEntity.projectId, user),
 				abortSignal,
+			);
+			userToolAccessSnapshot = withIntegrationCredentials(
+				userToolAccessSnapshot,
+				credentialIntegrations,
 			);
 		}
 
@@ -549,7 +574,13 @@ export class AgentRuntimeReconstructionService {
 		projectId: string,
 		user: User,
 	): Promise<boolean> {
-		if (!(await userHasScopes(user, ['workflow:execute'], false, { projectId }))) return false;
+		const requiresExecute = snapshot.requiresWorkflowExecute !== false;
+		if (
+			requiresExecute &&
+			!(await userHasScopes(user, ['workflow:execute'], false, { projectId }))
+		) {
+			return false;
+		}
 
 		const credentials = await Promise.all(
 			snapshot.credentialIds.map(
@@ -558,9 +589,13 @@ export class AgentRuntimeReconstructionService {
 			),
 		);
 		if (credentials.some((credential) => credential === null)) return false;
-		if (snapshot.credentialIds.length > 0) {
+		const agentCredentialIds = [
+			...snapshot.credentialIds,
+			...(snapshot.integrationCredentialIds ?? []),
+		];
+		if (agentCredentialIds.length > 0) {
 			const usableIds = await this.loadAgentUsableCredentialIds(projectId, user);
-			if (!snapshot.credentialIds.every((id) => usableIds.has(id))) return false;
+			if (!agentCredentialIds.every((id) => usableIds.has(id))) return false;
 		}
 
 		const workflows = await Promise.all(

@@ -689,6 +689,50 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			expect(integrationsPassedToDescriptors()).toEqual([slackIntegration('cred-1')]);
 		});
 
+		it('records the kept integration credential so cached runtimes re-check it', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1' },
+			] as never);
+			const { service } = makeService({ credentialsService });
+			setupN8nChatToolDependencies();
+
+			const result = await service.reconstructFromAgentEntity(
+				makeEntityWithIntegrations(),
+				mock<CredentialProvider>(),
+				'test',
+				undefined,
+				testUser,
+			);
+
+			expect(result.userToolAccessSnapshot).toEqual({
+				credentialIds: [],
+				workflowIds: [],
+				integrationCredentialIds: ['cred-1'],
+				requiresWorkflowExecute: false,
+			});
+		});
+
+		it('refuses a cached runtime whose integration credential is no longer usable', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const { service } = makeService({ credentialsService });
+
+			await expect(
+				service.userStillHasToolAccess(
+					{
+						credentialIds: [],
+						workflowIds: [],
+						integrationCredentialIds: ['cred-1'],
+						requiresWorkflowExecute: false,
+					},
+					projectId,
+					testUser,
+				),
+			).resolves.toBe(false);
+			expect(userHasScopes).not.toHaveBeenCalled();
+		});
+
 		it('keeps every integration of a published run', async () => {
 			const credentialsService = mock<CredentialsService>();
 			const { service } = makeService({ credentialsService });
