@@ -33,6 +33,7 @@ import { onTestFinished, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialTypes } from '@/credential-types';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
@@ -44,7 +45,6 @@ import {
 	executeWorkflowNode,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
@@ -53,13 +53,11 @@ import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
-import { PACKAGE_SUBFOLDER } from '../constants';
 import type { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionChangesController } from '../promotion-changes.controller';
-import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
@@ -70,11 +68,16 @@ Container.set(
 	new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder: instanceFolder })),
 );
 mockInstance(ActiveWorkflowManager);
-beforeAll(async () => await testModules.loadModules(['agents']));
+// The Apply preview plans the import, which checks node and credential types.
+mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
+beforeAll(async () => {
+	await testModules.loadModules(['agents']);
+	await initNodeTypes();
+});
 const server = setupTestServer({
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
-	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin'],
+	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin', 'feat:folders'],
 });
 
 let remoteFolder: string;
@@ -611,13 +614,8 @@ it('lists what applying the branch changes on this instance, named and archived 
 	await Container.get(VariablesRepository).delete(variable.id);
 	await Container.get(VariablesService).updateCache();
 
-	const readFromGit = vi.spyOn(Container.get(PromotionsGitService), 'readFilesAtCommit');
 	const response = await agent.get(applyEndpoint).expect(200);
 	expect(response.body.data.commitSha).toBe(baseline);
-	expect(readFromGit.mock.calls.flatMap(([{ filePaths }]) => filePaths)).toEqual([
-		`${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
-	]);
-	readFromGit.mockRestore();
 	expect(response.body.data.changes).toHaveLength(5);
 	expect(response.body.data.changes).toEqual(
 		expect.arrayContaining([
@@ -954,6 +952,62 @@ describe('resources in the preview', () => {
 				change: 'unchanged',
 				selectable: true,
 			}),
+		]);
+	}, 30_000);
+
+	it('shows on Apply the import conflicts that stop it, and each move between projects once', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Releases', owner);
+		const elsewhere = await createTeamProject('Elsewhere', owner);
+		const shared = await createWorkflow({ name: 'Shared', nodes: [], connections: {} }, project);
+		const custom = await createWorkflow(
+			{
+				name: 'Uses a custom node',
+				nodes: [
+					{
+						id: 'custom',
+						name: 'Custom',
+						type: 'n8n-nodes-custom.notInstalled',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			},
+			project,
+		);
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		await promoteBaseline(environments.promote.id, owner);
+		// This instance moves a workflow to another project, which Apply of the branch cannot undo.
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: shared.id },
+			{ projectId: elsewhere.id },
+		);
+
+		const preview = (
+			await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/apply`).expect(200)
+		).body.data;
+
+		const releases = { id: project.id, name: 'Releases' };
+		expect(preview.check.preflight.conflicts).toEqual([
+			{
+				kind: 'workflow',
+				code: 'missing-node-type',
+				reason: 'n8n-nodes-custom.notInstalled@1',
+				consumers: [
+					{ project: releases, workflows: [{ id: custom.id, name: 'Uses a custom node' }] },
+				],
+			},
+		]);
+		expect(preview.check.movedWorkflows).toEqual([
+			{
+				id: shared.id,
+				name: 'Shared',
+				project: releases,
+				projectExists: true,
+				instanceProject: { id: elsewhere.id, name: 'Elsewhere' },
+			},
 		]);
 	}, 30_000);
 

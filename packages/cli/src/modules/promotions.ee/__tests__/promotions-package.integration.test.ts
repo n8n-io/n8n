@@ -5,7 +5,7 @@ import {
 	type ContinueApplyPackageDto,
 	type PromotionProviderType,
 } from '@n8n/api-types';
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState } from '@n8n/backend-common';
 import {
 	createActiveWorkflow,
 	createTeamProject,
@@ -54,8 +54,6 @@ import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
-import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
@@ -89,6 +87,8 @@ import { PromotionRunRepository } from '../database/repositories/promotion-run.r
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
+import { ApplyPreviewService } from '../apply-preview.service';
+import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
@@ -202,6 +202,7 @@ beforeEach(async () => {
 		Container.get(FolderService),
 		packagesService,
 		Container.get(PromotionBindingPreflightService),
+		Container.get(ApplyPreviewService),
 		Container.get(PackageDirectoryInventoryReader),
 		Container.get(PackageImportConfig),
 		Container.get(PromotionRunRepository),
@@ -480,14 +481,10 @@ async function listApplyChanges(projectId: string) {
 	const changeService = new PromotionChangeService(
 		service,
 		packagesService,
+		Container.get(ApplyPreviewService),
 		Container.get(WorkflowRepository),
 		Container.get(SharedWorkflowRepository),
-		Container.get(VariablesRepository),
-		Container.get(CredentialsRepository),
-		Container.get(TagImporter),
-		Container.get(DataTableService),
-		Container.get(DataTableSerializer),
-		Container.get(ModuleRegistry),
+		Container.get(LocalPackageEntities),
 		Container.get(PromotionEnvironmentResolver),
 		Container.get(PromotionReviewGateService),
 		mockLogger(),
@@ -2620,7 +2617,7 @@ describe('Apply data table changes', () => {
 				}),
 			]);
 			const [conflict] = result.preflight.conflicts;
-			assert(conflict.kind === 'data-table');
+			assert(conflict.code === 'destructive-change');
 			const { changes } = conflict;
 			const removeExtra = {
 				kind: 'remove-column',

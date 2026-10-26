@@ -67,14 +67,13 @@ import {
 	crossProjectMoves,
 	describeCrossProjectMoves,
 	describePromotedMoves,
-	foldersInScope,
-	type CrossProjectMoves,
 } from './cross-project-moves';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
 import {
 	buildInstancePromotionCommitMessage,
 	buildSelectionPromotionCommitMessage,
 } from './promotion-commit-message';
+import { ApplyPreviewService } from './apply-preview.service';
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
@@ -155,6 +154,7 @@ export class PromotionsService {
 		private readonly folderService: FolderService,
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly bindingPreflight: PromotionBindingPreflightService,
+		private readonly applyPreviewService: ApplyPreviewService,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly packageImportConfig: PackageImportConfig,
 		private readonly runRepository: PromotionRunRepository,
@@ -722,52 +722,14 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Loads what the move check needs: who holds each package workflow and folder here, and which
-	 * branch projects exist here.
-	 */
-	private async findCrossProjectMoves(
-		inventory: PackageDirectoryInventory,
-		projectId?: string,
-	): Promise<CrossProjectMoves> {
-		const [owners, folders, existingProjects] = await Promise.all([
-			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
-				inventory.workflows.map(({ id }) => id),
-			),
-			this.folderService.getFoldersByIds(
-				foldersInScope(inventory.folders, projectId).map(({ folder }) => folder.id),
-			),
-			// Instance-wide Apply creates missing projects, but only after this check refuses a move.
-			this.projectRepository.findTypesByIds(inventory.projects.map(({ id }) => id)),
-		]);
-		return crossProjectMoves({
-			inventory,
-			owners,
-			folderHomes: new Map(folders.map(({ id, homeProject }) => [id, homeProject])),
-			existingProjectIds: new Set(existingProjects.map(({ id }) => id)),
-			projectId,
-		});
-	}
-
-	/**
 	 * Runs the Apply preflight for every workflow that the Apply preview of the project can list.
 	 * It reads the package at the preview's commit and writes nothing. Moved workflows are
 	 * returned instead of rejected.
 	 */
 	async checkApplyBlockers(projectId: string, commitSha: string): Promise<ApplyCheckResult> {
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
-		await this.assertCheckoutReady(input, 'checking Apply blockers');
-
 		const branchName = checkoutBranchName(input.config);
-		const files = await this.gitService.readTreeAtCommit({
-			remoteUrl: repositoryUrl(input),
-			credentials: await this.credentialsFor(input),
-			paths: this.workingDirectory.paths(input.environmentId),
-			branchName,
-			environmentId: input.environmentId,
-			commitSha,
-			directory: PACKAGE_SUBFOLDER,
-			limits: this.packageImportConfig,
-		});
+		const files = await this.readApplyPackageAtCommit(projectId, commitSha);
 		if (files.size === 0) {
 			throw new BadRequestError(
 				'The remote branch has no exported package to import. Promote to it first.',
@@ -782,7 +744,7 @@ export class PromotionsService {
 			},
 		});
 
-		const moves = await this.findCrossProjectMoves(inventory, projectId);
+		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory, projectId);
 		// Only workflows on the branch import. Deletions and moves need no bindings.
 		const preflight = await this.bindingPreflight.checkInventory({
 			inventory,
@@ -801,6 +763,28 @@ export class PromotionsService {
 			movedWorkflows: moves.workflows,
 			movedFolders: moves.folders,
 		};
+	}
+
+	/**
+	 * Reads the package files at a commit of the Apply branch, keyed by their path in the package.
+	 * Empty when the commit holds no package.
+	 */
+	async readApplyPackageAtCommit(
+		projectId: string,
+		commitSha: string,
+	): Promise<Map<string, Buffer>> {
+		const input = await this.resolver.resolveForProject(projectId, 'apply');
+		await this.assertCheckoutReady(input, 'reading the Apply branch');
+		return await this.gitService.readTreeAtCommit({
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName: checkoutBranchName(input.config),
+			environmentId: input.environmentId,
+			commitSha,
+			directory: PACKAGE_SUBFOLDER,
+			limits: this.packageImportConfig,
+		});
 	}
 
 	private async applySelectionFromSource(
@@ -849,7 +833,7 @@ export class PromotionsService {
 
 		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
-		const moves = await this.findCrossProjectMoves(inventory, projectId);
+		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory, projectId);
 		const selection = await this.classifyApplySelection(
 			inventory,
 			projectId,
@@ -976,7 +960,7 @@ export class PromotionsService {
 		const inventory = await this.inventoryReader.read(
 			new DirectoryPackageReader(packageFolder, this.packageImportConfig),
 		);
-		const moves = await this.findCrossProjectMoves(inventory);
+		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
 		if (moves.workflows.length > 0 || moves.folders.length > 0) {
 			throw new ConflictError(describeCrossProjectMoves(moves));
 		}

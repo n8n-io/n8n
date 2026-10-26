@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { promotionChangesSchema } from './promotable-resource.dto';
 import {
+	promotionApplyCheckSchema,
 	promotionBindingProjectSchema,
 	promotionDataTableChangeSchema,
 	promotionInstanceProjectSchema,
@@ -95,6 +96,13 @@ export const promotionPreviewSchema = promotionChangesSchema.extend({
 	resources: z.array(promotionResourceSchema),
 	dependencies: z.array(promotionResourceDependencySchema),
 	blocker: promotionBlockerSchema.optional(),
+	/** Apply only: what stops the Apply of each workflow, from the same plan as the resources. */
+	check: promotionApplyCheckSchema.optional(),
+	/**
+	 * Apply only: a hash of the resources and the check. Apply compares it with a fresh preview
+	 * and stops when the instance changed after the preview was loaded.
+	 */
+	revision: z.string().optional(),
 });
 
 export type PromotionPreview = z.infer<typeof promotionPreviewSchema>;

@@ -95,26 +95,49 @@ type HardConflict = Exclude<
 >;
 
 const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
-	const detail = i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`);
+	const row = {
+		key: `conflict:${index}`,
+		status: status('conflict'),
+		detail: i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`),
+	};
 	if (conflict.kind === 'project') {
 		return {
-			key: `conflict:${index}`,
+			...row,
 			icon: resourceIcon('project'),
 			name: conflict.project.name,
 			type: 'project',
-			usedBy: conflict.workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name })),
-			status: status('conflict'),
-			detail,
+			usedBy:
+				'workflows' in conflict
+					? conflict.workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name }))
+					: [],
+		};
+	}
+	if (conflict.kind === 'workflow') {
+		const workflows = usedBy(conflict.consumers);
+		return {
+			...row,
+			icon: resourceIcon('workflow'),
+			name: workflows.map(({ name }) => name).join(', '),
+			type: 'workflow',
+			usedBy: workflows,
+		};
+	}
+	if (conflict.kind === 'data-table' || conflict.kind === 'tag') {
+		const type = conflict.kind === 'tag' ? 'tag' : 'dataTable';
+		return {
+			...row,
+			icon: resourceIcon(type),
+			name: conflict.name ?? conflict.id ?? '',
+			type,
+			usedBy: usedBy(conflict.consumers),
 		};
 	}
 	return {
-		key: `conflict:${index}`,
+		...row,
 		icon: resourceIcon(conflict.kind),
 		name: conflict.name,
 		type: conflict.kind,
 		usedBy: usedBy(conflict.consumers),
-		status: status('conflict'),
-		detail,
 	};
 };
 
