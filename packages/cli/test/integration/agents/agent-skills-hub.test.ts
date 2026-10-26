@@ -17,8 +17,6 @@ import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
-import { AgentVersionInitializer } from '@/modules/agents/agent-version-initializer';
-import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
@@ -147,29 +145,6 @@ describe('Agent skills in the skills hub', () => {
 			Object.entries(skillsRecord).map(([id, skill]) => [id, skill.instructions]),
 		);
 	}
-
-	it('captures an existing draft once with skill pins and no publication', async () => {
-		const skillId = await createSkill(body('Initial skill'));
-		const agent = await createAgent([skillId]);
-		const history = Container.get(AgentHistoryRepository);
-		await history.delete({ agentId: agent.id });
-		const initializer = Container.get(AgentVersionInitializer);
-
-		await initializer.run();
-		await initializer.run();
-
-		const versions = await history.findBy({ agentId: agent.id });
-		expect(versions).toHaveLength(1);
-		expect(versions[0]).toMatchObject({
-			versionId: agent.versionId,
-			author: 'Unknown',
-			publishedById: null,
-			skills: null,
-		});
-		const definition = await skillRefs.readVersion(versions[0], {});
-		expect(definition.skills).toEqual({ [skillId]: body('Initial skill') });
-		expect((await reload(agent)).activeVersionId).toBeNull();
-	});
 
 	it('lists the skills of a draft and of its published version in the same attach order', async () => {
 		const zeta = await createSkill(body('Zeta'));

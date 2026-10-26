@@ -18,8 +18,6 @@ import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeo
 import { randomUUID } from 'node:crypto';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { AgentHistory } from '../entities/agent-history.entity';
-
 import {
 	Agent,
 	isProjectAgent,
@@ -81,24 +79,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
 		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
-	}
-
-	/**
-	 * Find Agent IDs whose current draft do not have history snapshot
-	 * (used for backfill after updating versioning logic)
-	 */
-	async findMissingVersionIds(take: number, afterId?: string): Promise<string[]> {
-		const query = this.createQueryBuilder('agent')
-			.leftJoin(AgentHistory, 'history', 'history.versionId = agent.versionId')
-			.where(projectScopeSql)
-			.andWhere('history.versionId IS NULL')
-			.select(['agent.id'])
-			.orderBy('agent.id', 'ASC')
-			.take(take);
-
-		if (afterId) query.andWhere('agent.id > :afterId', { afterId });
-
-		return (await query.getMany()).map(({ id }) => id);
 	}
 
 	async lockForVersionCapture(id: string, ctx: OperationContext): Promise<Agent | null> {
