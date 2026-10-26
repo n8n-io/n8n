@@ -56,7 +56,6 @@ const variant = computed(() => {
 	if (input.inputType === 'questions' && input.questions?.length) return 'questions';
 	// Cards that need the current Assistant thread. They come to this chat later.
 	if (
-		input.inputType === 'plan-review' ||
 		input.setupRequests?.length ||
 		input.credentialRequests?.length ||
 		(input.inputType === 'resource-decision' && input.resourceDecision) ||

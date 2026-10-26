@@ -242,7 +242,6 @@ describe('AssistantConfirmationCard', () => {
 	it.each<[string, Record<string, unknown>]>([
 		['workflow setup', { setupRequests: [{ id: 'x' }] }],
 		['credential setup', { credentialRequests: [{ credentialType: 'slackApi' }] }],
-		['plan review', { inputType: 'plan-review' }],
 		['channel setup', { channelConfig: { integrationType: 'slack', agentId: 'agent-1' } }],
 	])('shows a %s card as not available yet, without actions', (_name, fields) => {
 		const input = { requestId: 'req-u', message: 'Set up Slack', ...fields };
