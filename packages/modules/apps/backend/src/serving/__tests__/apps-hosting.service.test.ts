@@ -4,9 +4,7 @@ import type { Request, RequestHandler, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { AppHostService } from '../app-host.service';
-import { AppServingService } from '../app-serving.service';
 import { AppsHostingService } from '../apps-hosting.service';
-import { AppAuthService } from '../../auth/app-auth.service';
 
 function setup(owned = true) {
 	const hosts = mock<AppHostService>({
@@ -57,19 +55,8 @@ describe('AppsHostingService', () => {
 		expect(next).not.toHaveBeenCalled();
 	});
 
-	it('terminates apps requests while the surface is not ready', () => {
-		const { service, req, res } = setup();
-		const next = vi.fn();
-		void service.dispatch(req, res, next);
-		expect(next).not.toHaveBeenCalled();
-		expect(res.sendStatus).toHaveBeenCalledWith(503);
-	});
-
 	it('never falls through to main routes when the apps router exits', () => {
 		const { service, req, res } = setup();
-		Container.set(AppAuthService, mock<AppAuthService>());
-		Container.set(AppServingService, mock<AppServingService>());
-		service.finishSetup();
 		const router = service.router as typeof service.router & { handle: RequestHandler };
 		vi.spyOn(router, 'handle').mockImplementation((_req, _res, next) => next());
 		const next = vi.fn();

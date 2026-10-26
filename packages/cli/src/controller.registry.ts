@@ -42,26 +42,16 @@ export class ControllerRegistry {
 		private readonly rateLimitService: RateLimitService,
 	) {}
 
-	activate(
-		app: Pick<Router, 'use'>,
-		options: { surface?: 'main' | 'apps'; customAuthMiddleware?: RequestHandler } = {},
-	) {
-		if (options.surface === 'apps' && !options.customAuthMiddleware) {
-			throw new UnexpectedError('Apps controllers require app authentication middleware');
-		}
+	activate(app: Pick<Router, 'use'>, options: { surface?: 'main' | 'apps' } = {}) {
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
 			if (metadata.isPublicApi) continue;
 			if ((metadata.surface ?? 'main') !== (options.surface ?? 'main')) continue;
-			this.activateController(app, controllerClass, options.customAuthMiddleware);
+			this.activateController(app, controllerClass);
 		}
 	}
 
-	private activateController(
-		app: Pick<Router, 'use'>,
-		controllerClass: Controller,
-		customAuthMiddleware?: RequestHandler,
-	) {
+	private activateController(app: Pick<Router, 'use'>, controllerClass: Controller) {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
@@ -85,12 +75,7 @@ export class ControllerRegistry {
 						`Router is undefined for path "${routerConfig.path}" in controller "${controllerClass.name}"`,
 					);
 				}
-				const middlewares = this.buildMiddlewares(
-					routerConfig,
-					controllerMiddlewares,
-					undefined,
-					customAuthMiddleware,
-				);
+				const middlewares = this.buildMiddlewares(routerConfig, controllerMiddlewares);
 				router.use(routerConfig.path, ...middlewares, routerConfig.router);
 			}
 		}
@@ -149,12 +134,7 @@ export class ControllerRegistry {
 			const bodyArgIdx = route.args.findIndex((arg) => arg?.type === 'body');
 			const bodyArgType = bodyArgIdx !== -1 ? (argTypes[bodyArgIdx] as ZodClass) : undefined;
 
-			const middlewares = this.buildMiddlewares(
-				route,
-				controllerMiddlewares,
-				bodyArgType,
-				customAuthMiddleware,
-			);
+			const middlewares = this.buildMiddlewares(route, controllerMiddlewares, bodyArgType);
 			const finalHandler = route.usesTemplates
 				? async (req: Request, res: Response) => {
 						try {
@@ -204,7 +184,6 @@ export class ControllerRegistry {
 		},
 		controllerMiddlewares: RequestHandler[],
 		bodyDtoClass?: ZodClass,
-		customAuthMiddleware?: RequestHandler,
 	): RequestHandler[] {
 		const middlewares: RequestHandler[] = [];
 
@@ -228,9 +207,7 @@ export class ControllerRegistry {
 			);
 		}
 
-		if (!route.skipAuth && customAuthMiddleware) {
-			middlewares.push(customAuthMiddleware);
-		} else if (!route.skipAuth) {
+		if (!route.skipAuth) {
 			middlewares.push(
 				this.authService.createAuthMiddleware({
 					allowSkipMFA: route.allowSkipMFA ?? false,

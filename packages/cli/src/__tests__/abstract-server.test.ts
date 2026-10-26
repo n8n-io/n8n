@@ -10,7 +10,6 @@ import { mock } from 'vitest-mock-extended';
 import { AbstractServer } from '@/abstract-server';
 import { ControllerRegistry } from '@/controller.registry';
 import { ExternalHooks } from '@/external-hooks';
-import { bodyParser, rawBodyReader } from '@/middlewares';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks';
@@ -117,7 +116,7 @@ describe('AbstractServer', () => {
 
 	describe('apps startup', () => {
 		const router = mock<express.Router>();
-		const hosting = mock<AppsHostingService>({ router, authenticate: vi.fn() });
+		const hosting = mock<AppsHostingService>({ router });
 		const controllers = mock<ControllerRegistry>();
 
 		beforeEach(() => {
@@ -126,31 +125,21 @@ describe('AbstractServer', () => {
 			Container.set(WaitingForms, mock<WaitingForms>());
 		});
 
-		it('activates apps controllers with app authentication before hosting becomes ready', async () => {
+		it('activates apps controllers on the apps router', async () => {
 			moduleRegistry.eligibleModules.push('apps');
 			moduleRegistry.isActive.mockReturnValue(true);
 
 			await testServer.init();
 
 			expect(mockApp.use).toHaveBeenNthCalledWith(1, hosting.dispatch);
-			expect(hosting.finishSetup).not.toHaveBeenCalled();
 
 			await testServer.start();
 
 			expect(moduleRegistry.isActive).toHaveBeenCalledWith('apps');
-			expect(router.use).toHaveBeenCalledExactlyOnceWith(
-				expect.any(Function),
-				expect.any(Function),
-				rawBodyReader,
-				bodyParser,
-			);
+			expect(router.use).not.toHaveBeenCalled();
 			expect(controllers.activate).toHaveBeenCalledExactlyOnceWith(router, {
 				surface: 'apps',
-				customAuthMiddleware: hosting.authenticate,
 			});
-			expect(router.use).toHaveBeenCalledBefore(controllers.activate);
-			expect(hosting.finishSetup).toHaveBeenCalledOnce();
-			expect(controllers.activate).toHaveBeenCalledBefore(hosting.finishSetup);
 		});
 
 		it('reserves configured app hosts without activating an inactive module', async () => {
@@ -163,7 +152,6 @@ describe('AbstractServer', () => {
 			expect(moduleRegistry.isActive).toHaveBeenCalledWith('apps');
 			expect(router.use).not.toHaveBeenCalled();
 			expect(controllers.activate).not.toHaveBeenCalled();
-			expect(hosting.finishSetup).not.toHaveBeenCalled();
 		});
 	});
 

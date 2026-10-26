@@ -2,12 +2,17 @@ import { Config, Env } from '@n8n/config';
 import { z } from 'zod';
 
 const positiveInteger = z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER);
+const rateLimit = z.coerce.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 
 @Config
 export class AppsConfig {
 	/** Parent URL for app subdomains, for example https://apps.example.com. Include the public scheme and optional port. Set this value when you enable the apps module. */
 	@Env('N8N_APPS_BASE_URL')
 	baseUrl: string = '';
+
+	/** Maximum app file requests per IP address per minute across all app hosts in each main process. This limit includes pages and assets in production. Set to 0 to disable it. */
+	@Env('N8N_APPS_SERVE_RATE_LIMIT', rateLimit)
+	rateLimitServe: number = 1200;
 
 	/** Maximum decoded app bundle bytes to cache in each main process. Bundles larger than this limit are served without retaining them in the cache. */
 	@Env('N8N_APPS_BUNDLE_CACHE_MAX_BYTES', positiveInteger)

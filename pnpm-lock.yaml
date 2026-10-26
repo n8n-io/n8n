@@ -437,6 +437,12 @@ catalogs:
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
+    '@types/compression':
+      specifier: ^1.7.5
+      version: 1.7.5
+    '@types/cookie-parser':
+      specifier: ^1.4.8
+      version: 1.4.8
     '@types/estree':
       specifier: ^1.0.8
       version: 1.0.8
@@ -560,9 +566,15 @@ catalogs:
     citty:
       specifier: ^0.1.6
       version: 0.1.6
+    compression:
+      specifier: 1.8.2
+      version: 1.8.2
     consola:
       specifier: ^3.4.2
       version: 3.4.2
+    cookie-parser:
+      specifier: 1.4.7
+      version: 1.4.7
     cron:
       specifier: 4.4.0
       version: 4.4.0
@@ -4888,13 +4900,13 @@ importers:
         specifier: 0.14.0
         version: 0.14.0
       compression:
-        specifier: 1.8.2
+        specifier: 'catalog:'
         version: 1.8.2(supports-color@8.1.1)
       convict:
         specifier: 6.2.5
         version: 6.2.5
       cookie-parser:
-        specifier: 1.4.7
+        specifier: 'catalog:'
         version: 1.4.7
       cron:
         specifier: 'catalog:'
@@ -5153,13 +5165,13 @@ importers:
         specifier: ^2.4.2
         version: 2.4.2
       '@types/compression':
-        specifier: ^1.7.5
+        specifier: 'catalog:'
         version: 1.7.5
       '@types/convict':
         specifier: ^6.1.1
         version: 6.1.1
       '@types/cookie-parser':
-        specifier: ^1.4.8
+        specifier: 'catalog:'
         version: 1.4.8(@types/express@5.0.1)
       '@types/express':
         specifier: 'catalog:'
@@ -6986,6 +6998,12 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
+      compression:
+        specifier: 'catalog:'
+        version: 1.8.2(supports-color@8.1.1)
+      cookie-parser:
+        specifier: 'catalog:'
+        version: 1.4.7
       express:
         specifier: 'catalog:'
         version: 5.1.0(supports-color@8.1.1)
@@ -7014,6 +7032,12 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@types/compression':
+        specifier: 'catalog:'
+        version: 1.7.5
+      '@types/cookie-parser':
+        specifier: 'catalog:'
+        version: 1.4.8(@types/express@5.0.1)
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1

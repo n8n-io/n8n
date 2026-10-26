@@ -8,7 +8,6 @@ import compression from 'compression';
 import express from 'express';
 import { readFile } from 'fs/promises';
 import type { IncomingMessage, Server } from 'http';
-import cookieParser from 'cookie-parser';
 import isbot from 'isbot';
 import { SLACK_HITL_WEBHOOK_SUFFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
 
@@ -264,12 +263,9 @@ export abstract class AbstractServer {
 	async start(): Promise<void> {
 		if (this.appsHosting && Container.get(ModuleRegistry).isActive('apps')) {
 			const { ControllerRegistry } = await import('./controller.registry.js');
-			this.appsHosting.router.use(compression(), cookieParser(), rawBodyReader, bodyParser);
 			Container.get(ControllerRegistry).activate(this.appsHosting.router, {
 				surface: 'apps',
-				customAuthMiddleware: this.appsHosting.authenticate,
 			});
-			this.appsHosting.finishSetup();
 		}
 		if (!inTest) {
 			await this.setupErrorHandlers();

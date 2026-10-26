@@ -92,9 +92,13 @@ describe('ControllerRegistry', () => {
 	});
 
 	describe('controller surfaces', () => {
+		const rejectUnauthenticated = vi.fn<express.RequestHandler>((_req, res) => {
+			res.sendStatus(401);
+		});
+
 		@RootLevelController('/apps-only', { surface: 'apps' })
 		class AppsOnlyController {
-			@Get('/')
+			@Get('/', { skipAuth: true, middlewares: [rejectUnauthenticated] })
 			read() {
 				return { ok: true };
 			}
@@ -113,11 +117,11 @@ describe('ControllerRegistry', () => {
 			expect(target.use.mock.calls.map(([prefix]) => prefix)).not.toContain('/apps-only');
 		});
 
-		it('uses custom authentication to reject unauthenticated apps requests', async () => {
+		it('uses route middleware to reject unauthenticated apps requests', async () => {
 			const target = express();
 			const use = vi.spyOn(target, 'use');
 			const read = vi.spyOn(Container.get(AppsOnlyController), 'read');
-			const rejectUnauthenticated = vi.fn<express.RequestHandler>((_req, res) => {
+			rejectUnauthenticated.mockImplementation((_req, res) => {
 				res.sendStatus(401);
 			});
 			authService.createAuthMiddleware.mockClear();
@@ -128,7 +132,7 @@ describe('ControllerRegistry', () => {
 				metadata,
 				lastActiveAtService,
 				new RateLimitService(),
-			).activate(target, { surface: 'apps', customAuthMiddleware: rejectUnauthenticated });
+			).activate(target, { surface: 'apps' });
 
 			await request(target).get('/apps-only').expect(401);
 
