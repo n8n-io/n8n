@@ -1,0 +1,27 @@
+.github/WORKFLOWS.md
+  s_0636228609e6f6::t_8f0057e901ade6 415,444-445
+  s_0636228609e6f6::t_5c539698fc488d 446
+.github/workflows/release-publish-post-release.yml
+  s_0636228609e6f6::t_8f0057e901ade6 113-128
+.github/workflows/util-publish-api-schema.yml
+  s_0636228609e6f6::t_bdffe4401c2d0d 100-102
+  s_0636228609e6f6::t_8f0057e901ade6 3-4,6-12,16-24,34-36,39-52,56,59-61
+  s_0636228609e6f6::t_875427a837f880 108
+  s_0636228609e6f6::t_bd642d293b6744 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7b0176c5e68ebb32eff6bed8e3d01445ece19d4",
+  "prompts": {},
+  "sessions": {
+    "s_0636228609e6f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86d6be62-09bc-43af-a121-ac7a4e0dc159",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
