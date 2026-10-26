@@ -112,22 +112,11 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 };
 
 const BASE_CONFIG_HASH_RULE =
-	'Requires baseConfigHash: the configHash from the latest agent-context with type "config" result, ' +
-	'or from the latest builder result that returned one (agent_builder_write_config, agent_builder_patch_config, agent_builder_create_skills, ' +
-	'agent_builder_create_tasks, agent_builder_finish_setup, agent_builder_configure_channel, agent_builder_verify_mcp_server with credentialApplied: true, ' +
-	'or a stale failure), whichever came last. ';
+	'Pass baseConfigHash as the Config freshness rules of the agent-builder skill say. ' +
+	'Results that need an action carry `nextStep`: follow it.';
 
 const BASE_CONFIG_HASH_FIELD_DESCRIPTION =
-	'Latest configHash from agent-context with type "config" or from the latest builder result that ' +
-	'returned one; null only if no config exists';
-
-const CONFIG_WRITE_RESULT_RULE =
-	'Returns { ok: true, configMutated: true, agentId, configHash } on success. The result also carries ' +
-	'`config` when the saved config differs from what you sent (for example applied defaults or kept ' +
-	'omitted fields); treat that `config` as the current state. On failure returns { ok: false, stage, ' +
-	'errors } and nothing is saved, so on a parse, patch, or schema error fix the payload and retry with ' +
-	'the same baseConfigHash. On stage: "stale", the result carries the current config and configHash: ' +
-	're-apply your change to it and retry once. ';
+	'configHash of your latest config read or write; null only when no config exists';
 
 /**
  * Models sometimes still send a structured argument as a JSON string. Parse it
@@ -211,6 +200,33 @@ const AGENT_LOCKED_BY_EDITOR_ERROR: ConfigValidationError = {
 };
 
 type EditorLockFailure = { ok: false; errors: ConfigValidationError[] };
+
+/**
+ * What the model must do with a config write result. Stale and locked failures
+ * carry their own instructions in the error message.
+ */
+function configWriteNextStep(result: Record<string, unknown>): string | undefined {
+	if (result.ok === true) {
+		return result.config === undefined
+			? undefined
+			: 'The saved config differs from what you sent. Treat `config` as the current state.';
+	}
+	if (result.ok !== false || result.stage === 'stale' || result.stage === 'locked')
+		return undefined;
+	const errors = Array.isArray(result.errors) ? result.errors : [];
+	const locked = errors.some(
+		(error) => isRecord(error) && error.message === AGENT_LOCKED_BY_EDITOR_ERROR.message,
+	);
+	return locked
+		? undefined
+		: 'Nothing was saved. Fix the payload and retry with the same baseConfigHash.';
+}
+
+function withConfigWriteNextStep(result: unknown): unknown {
+	if (!isRecord(result)) return result;
+	const nextStep = configWriteNextStep(result);
+	return nextStep ? { ...result, nextStep } : result;
+}
 
 const STALE_SKILL_ERROR_MESSAGE =
 	'Skill changed. Call agent-context with type "skill", then retry with its skill and skillHash.';
@@ -1071,19 +1087,16 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.PATCH_CONFIG)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.PATCH_CONFIG))
 			.description(
-				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
-					'Pass the patch operations as an array of objects, not as a JSON string. ' +
-					BASE_CONFIG_HASH_RULE +
-					'Supported ops: add, remove, replace, move, copy, test. ' +
-					CONFIG_WRITE_RESULT_RULE +
-					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "locked", stop and tell the user to close ' +
-					'their editing session in the n8n builder.',
+				'Apply RFC 6902 JSON Patch operations to the agent config. Pass `operations` as an ' +
+					'array, not as a JSON string. ' +
+					BASE_CONFIG_HASH_RULE,
 			)
+			.toModelOutput(withConfigWriteNextStep)
 			.input(
 				z.object({
 					operations: z
 						.preprocess(parseJsonStringInput, z.array(jsonPatchOperationSchema))
-						.describe('RFC 6902 JSON Patch operations'),
+						.describe('RFC 6902 operations'),
 					baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
 				}),
 			)
@@ -1113,21 +1126,20 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.WRITE_CONFIG)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.WRITE_CONFIG))
 			.description(
-				'Create or update the agent configuration. Pass the config as an object, not as a JSON string. ' +
-					'Send only the top-level fields you set or change: every top-level field you omit ' +
-					'(including model and credential) keeps its stored value, and a field you send replaces ' +
-					'the stored field whole. A fresh agent with no stored config needs name, model, and instructions. ' +
-					BASE_CONFIG_HASH_RULE +
-					CONFIG_WRITE_RESULT_RULE +
-					'Failure errors carry path, message, expected, and received fields.',
+				'Create or update the agent config. Pass `config` as an object, not as a JSON string, ' +
+					'with only the top-level fields you set or change. An omitted field (including model ' +
+					'and credential) keeps its stored value. A sent field replaces the stored field whole. ' +
+					'A fresh agent needs name, model, and instructions. ' +
+					BASE_CONFIG_HASH_RULE,
 			)
+			.toModelOutput(withConfigWriteNextStep)
 			.input(
 				z.preprocess(
 					renameLegacyWriteConfigKey,
 					z.object({
 						config: z
 							.preprocess(parseJsonStringInput, z.record(z.unknown()))
-							.describe('Agent configuration object with the top-level fields to set'),
+							.describe('Top-level fields to set'),
 						baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
 					}),
 				),

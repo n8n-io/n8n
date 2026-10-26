@@ -287,6 +287,66 @@ describe('AgentsBuilderToolsService', () => {
 				.json.find((tool) => tool.name === name)!;
 		}
 
+		describe.each([BUILDER_TOOLS.WRITE_CONFIG, BUILDER_TOOLS.PATCH_CONFIG])(
+			'%s model output',
+			(toolName) => {
+				function modelView(result: Record<string, unknown>) {
+					const tool = getJsonTool(makeService().service, toolName);
+					return tool.toModelOutput!(result) as Record<string, unknown>;
+				}
+
+				it('adds no next step to a plain save', () => {
+					expect(modelView({ ok: true, configHash: 'h' })).not.toHaveProperty('nextStep');
+				});
+
+				it('tells the model to treat a returned config as the current state', () => {
+					const view = modelView({ ok: true, configHash: 'h', config: baseConfig });
+
+					expect(view.nextStep).toContain('current state');
+				});
+
+				it.each(['parse', 'patch', 'schema', undefined])(
+					'tells the model that nothing was saved after a %s failure',
+					(stage) => {
+						const view = modelView({ ok: false, stage, errors: [{ message: 'bad' }] });
+
+						expect(view.nextStep).toContain('Nothing was saved');
+						expect(view.nextStep).toContain('same baseConfigHash');
+					},
+				);
+
+				it('leaves stale and locked failures to their error messages', () => {
+					expect(modelView({ ok: false, stage: 'stale', errors: [] })).not.toHaveProperty(
+						'nextStep',
+					);
+					expect(modelView({ ok: false, stage: 'locked', errors: [] })).not.toHaveProperty(
+						'nextStep',
+					);
+				});
+
+				it('leaves a lock failure without a stage to its error message', async () => {
+					const { service, collaborationService } = makeService();
+					collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+					const tool = getJsonTool(service, toolName);
+
+					const result = await tool.handler!(
+						{ config: {}, operations: [], baseConfigHash: null },
+						ctx,
+					);
+
+					expect(tool.toModelOutput!(result)).not.toHaveProperty('nextStep');
+				});
+
+				it('names baseConfigHash and points to the agent-builder freshness rules', () => {
+					const tool = getJsonTool(makeService().service, toolName);
+
+					expect(tool.description).toContain('baseConfigHash');
+					expect(tool.description).toContain('Config freshness');
+					expect(tool.description).toContain('nextStep');
+				});
+			},
+		);
+
 		it('leaves context reads to host tools instead of duplicate read tools', () => {
 			const { service } = makeService();
 
