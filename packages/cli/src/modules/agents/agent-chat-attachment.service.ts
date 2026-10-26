@@ -245,13 +245,27 @@ export class AgentChatAttachmentService {
 		return await this.repository.findByIdForSystemAgent(attachmentId, scope, {});
 	}
 
-	/** Return metadata only when the caller can read the session. */
+	/**
+	 * Return metadata only when the caller can read the session. A file of a
+	 * sub-agent session belongs to the agent of the root thread, so give
+	 * `threadId` to check the read grants of that session instead.
+	 */
 	async getForAgent(
 		attachmentId: string,
-		scope: { agentId: string; projectId: string; userId: string },
+		scope: { agentId: string; projectId: string; userId: string; threadId?: string },
 	): Promise<AgentChatAttachment | null> {
 		const attachment = await this.repository.findByIdForAgent(attachmentId, scope, {});
-		if (!attachment) return null;
+		if (!attachment) {
+			if (!scope.threadId) return null;
+			const session = await this.threadRepository.findOneBy({ id: scope.threadId });
+			if (!session || !threadBelongsTo(session, scope.projectId, scope.agentId, scope.userId)) {
+				return null;
+			}
+			return await this.getReadable(attachmentId, {
+				projectId: scope.projectId,
+				threadId: scope.threadId,
+			});
+		}
 		const thread = await this.threadRepository.findOneBy({ id: attachment.threadId });
 		if (thread) {
 			return threadBelongsTo(thread, scope.projectId, scope.agentId, scope.userId)

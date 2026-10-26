@@ -78,6 +78,33 @@ describe('AgentChatAttachmentService', () => {
 		expect(await service.getForAgent('att-1', { ...scope, userId: 'user-2' })).toEqual(attachment);
 	});
 
+	it('checks the read grants of a sub-agent session for a file of the root agent', async () => {
+		const scope = { agentId: 'agent-2', projectId: 'project-1', userId: 'user-1' };
+		const attachment = mock<AgentChatAttachment>({ id: 'att-1', createdByThreadId: 'root' });
+		repository.findByIdForAgent.mockResolvedValue(null);
+		repository.findByIdInThread.mockResolvedValue(attachment);
+		const session = mock<AgentExecutionThread>({
+			agentId: 'agent-2',
+			projectId: 'project-1',
+			accessScope: 'user',
+			ownerId: 'user-1',
+		});
+		threadRepository.findOneBy.mockResolvedValue(session);
+
+		expect(await service.getForAgent('att-1', scope)).toBeNull();
+		grantRepository.isGranted.mockResolvedValue(false);
+		expect(await service.getForAgent('att-1', { ...scope, threadId: 'child' })).toBeNull();
+		grantRepository.isGranted.mockResolvedValue(true);
+		expect(await service.getForAgent('att-1', { ...scope, threadId: 'child' })).toEqual(attachment);
+		expect(repository.findByIdInThread).toHaveBeenCalledWith('att-1', {
+			projectId: 'project-1',
+			threadId: 'root',
+		});
+		expect(
+			await service.getForAgent('att-1', { ...scope, userId: 'user-2', threadId: 'child' }),
+		).toBeNull();
+	});
+
 	describe('storeInbound', () => {
 		it('stores bytes via BinaryDataService and persists a scoped row', async () => {
 			binaryDataService.store.mockResolvedValue({

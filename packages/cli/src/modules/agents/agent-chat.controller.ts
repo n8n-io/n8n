@@ -1020,6 +1020,7 @@ export class AgentChatController {
 			agentId,
 			projectId,
 			userId: req.user.id,
+			...(typeof req.query.threadId === 'string' ? { threadId: req.query.threadId } : {}),
 		});
 		if (!attachment) throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		if (attachment.source === N8N_CHAT_PRODUCTION_SOURCE) {

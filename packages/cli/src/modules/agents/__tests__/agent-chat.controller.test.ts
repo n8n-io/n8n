@@ -1206,6 +1206,7 @@ describe('AgentChatController attachment download', () => {
 
 		const req = {
 			params: { projectId: 'p1', agentId: 'agent-1', attachmentId: 'att-1' },
+			query: {},
 			user: { id: 'user-1' },
 		} as never;
 		const res = { setHeader: vi.fn() } as never;
@@ -1213,6 +1214,26 @@ describe('AgentChatController attachment download', () => {
 		await expect(controller.getChatAttachment(req, res)).rejects.toThrow(NotFoundError);
 		// Headers must not be written for a failed stream open.
 		expect((res as { setHeader: ReturnType<typeof vi.fn> }).setHeader).not.toHaveBeenCalled();
+	});
+
+	it('passes the session thread so a sub-agent session can read granted files', async () => {
+		const { controller, agentsService, agentChatAttachmentService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-2' } as never);
+		agentChatAttachmentService.getForAgent.mockResolvedValue(null);
+
+		const req = {
+			params: { projectId: 'p1', agentId: 'agent-2', attachmentId: 'att-1' },
+			query: { threadId: 'child' },
+			user: { id: 'user-1' },
+		} as never;
+
+		await expect(controller.getChatAttachment(req, {} as never)).rejects.toThrow(NotFoundError);
+		expect(agentChatAttachmentService.getForAgent).toHaveBeenCalledWith('att-1', {
+			agentId: 'agent-2',
+			projectId: 'p1',
+			userId: 'user-1',
+			threadId: 'child',
+		});
 	});
 
 	describe('over a real connection', () => {
@@ -1249,6 +1270,7 @@ describe('AgentChatController attachment download', () => {
 				res.once('close', () => responseClosed.resolve());
 				const req = {
 					params: { projectId: 'p1', agentId: 'agent-1', attachmentId: 'att-1' },
+					query: {},
 					user: { id: 'user-1' },
 				} as never;
 				handled.push(controller.getChatAttachment(req, res));
