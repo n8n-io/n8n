@@ -830,6 +830,16 @@ describe('MemoryGuardService', () => {
 			]);
 		});
 
+		it('should keep the action during a hold below the fast sampling level', async () => {
+			Object.assign(memoryGuardConfig, { resumeLevel: 0.55, holdLevel: 0.6 });
+			utilization = 0.62;
+
+			await sample(3);
+
+			expect(journal.record).toHaveBeenCalledWith('hold');
+			expect(journal.reset).not.toHaveBeenCalled();
+		});
+
 		it('should reset the journal on a clean shutdown', () => {
 			guard.shutdown();
 

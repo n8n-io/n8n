@@ -176,7 +176,8 @@ export class MemoryGuardService {
 	private evaluate(usage: MemoryUsage) {
 		const { utilization } = usage;
 		this.lastUtilization = utilization;
-		if (utilization < FAST_SAMPLING_LEVEL) this.journal.reset();
+		// A hold level set below the fast sampling level must not clear the action during the hold.
+		if (utilization < Math.min(FAST_SAMPLING_LEVEL, this.config.resumeLevel)) this.journal.reset();
 		this.holdStreak = utilization >= this.config.holdLevel ? this.holdStreak + 1 : 0;
 		this.stopStreak = utilization >= this.config.stopLevel ? this.stopStreak + 1 : 0;
 		const isCritical = utilization >= this.config.criticalLevel;

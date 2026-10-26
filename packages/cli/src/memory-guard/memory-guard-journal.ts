@@ -20,7 +20,7 @@ export function removeMemoryGuardJournal() {
 }
 
 interface JournalState {
-	/** The strongest action since memory was last below the fast sampling level. */
+	/** The strongest action since memory was last low. */
 	action: GuardAction;
 	/** Crashes so far, by the action at the time of each crash. */
 	crashes: Record<GuardAction, number>;

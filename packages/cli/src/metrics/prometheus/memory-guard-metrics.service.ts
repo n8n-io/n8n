@@ -66,7 +66,7 @@ export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCol
 		// An OOM kill resets the counters above, so the guard reports the crash totals of its journal.
 		const crashes = new promClient.Counter({
 			name: `${prefix}memory_guard_crashes_total`,
-			help: 'Total number of crashed sessions, by the strongest memory guard action since memory was last below 70% (none, hold, stop). Kept across restarts.',
+			help: 'Total number of crashed sessions, by the strongest memory guard action since memory was last low (none, hold, stop). Kept across restarts.',
 			labelNames: ['last_action'],
 		});
 		this.eventService.on('memory-guard-crashes-counted', ({ crashes: totals }) => {
