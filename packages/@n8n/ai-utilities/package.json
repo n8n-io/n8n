@@ -167,6 +167,7 @@
     "oxlint-tsgolint": "catalog:"
   },
   "dependencies": {
+    "@ai-sdk/provider": "catalog:",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
     "@langchain/core": "catalog:",
