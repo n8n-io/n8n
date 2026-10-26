@@ -14,6 +14,7 @@ packages/modules/apps/frontend/src/components/AppView.test.ts
   s_b6d332c56aa1c5::t_eb14a578e2fb61 1-82,84,86-103
 packages/modules/apps/frontend/src/components/AppView.vue
   s_b6d332c56aa1c5::t_bee6b82588c5ec 1-2,4-23,25-28,29,31-32,35-36,38-130
+  s_b6d332c56aa1c5::t_9b7acedb203afd 3,24,30,33-34,37
 packages/modules/apps/frontend/src/apps.api.test.ts
   s_b6d332c56aa1c5::t_58db7add7c9f23 34-38
   s_b6d332c56aa1c5::t_bd8ca9ade0e73c 3,31-33
@@ -29,6 +30,7 @@ packages/modules/apps/frontend/src/apps.permissions.ts
   s_b6d332c56aa1c5::t_bd8ca9ade0e73c 10
 packages/modules/apps/frontend/src/views/AppsListView.vue
   s_b6d332c56aa1c5::t_c43c38e7db48ff 12,15,20,97-103
+  s_b6d332c56aa1c5::t_11e971322c13be 152
 packages/modules/apps/frontend/src/components/AppActions.test.ts
   s_b6d332c56aa1c5::t_d848f5024728f6 1-102
 packages/modules/apps/frontend/src/index.ts
