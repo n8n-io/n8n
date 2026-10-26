@@ -28,3 +28,12 @@ export async function addReviewer(configurationId: number, userId: string) {
 	const repository = Container.get(SelfHealingConfigurationRepository);
 	await repository.manager.insert(SelfHealingConfigurationReviewer, { configurationId, userId });
 }
+
+export async function replaceReviewers(configurationId: number, userIds: string[]) {
+	const { manager } = Container.get(SelfHealingConfigurationRepository);
+	await manager.delete(SelfHealingConfigurationReviewer, { configurationId });
+	await manager.insert(
+		SelfHealingConfigurationReviewer,
+		userIds.map((userId) => ({ configurationId, userId })),
+	);
+}

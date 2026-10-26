@@ -56,7 +56,7 @@ import { SelfHealingResultService } from '../self-healing-result.service';
 import { SelfHealingConfigurationService } from '../self-healing-configuration.service';
 import { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
-import { createConfiguration, addReviewer } from './support/configuration';
+import { createConfiguration, addReviewer, replaceReviewers } from './support/configuration';
 
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
@@ -1562,16 +1562,7 @@ describe('configuration lifecycle', () => {
 		const { user, project, original, input, result } = await fixture('could_not_fix');
 		const configurations = Container.get(SelfHealingConfigurationService);
 		const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
-		await configurations.save(
-			user,
-			project.id,
-			{
-				scope: 'all',
-				workflowIds: [],
-				reviewerIds: [reviewer.id],
-			},
-			result.configurationId,
-		);
+		await replaceReviewers(result.configurationId, [reviewer.id]);
 		await Container.get(UserRepository).delete(reviewer.id);
 		const nextExecution = await createExecution(
 			{ status: 'error', mode: 'trigger', workflowVersionId: original.versionId },
@@ -1614,16 +1605,7 @@ describe('configuration lifecycle', () => {
 		const { user, project, original, input } = await prepareFixture();
 		const configurations = Container.get(SelfHealingConfigurationService);
 		const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
-		await configurations.save(
-			user,
-			project.id,
-			{
-				scope: 'all',
-				workflowIds: [],
-				reviewerIds: [reviewer.id],
-			},
-			input.configurationId,
-		);
+		await replaceReviewers(input.configurationId, [reviewer.id]);
 		const references = Container.get(SelfHealingExecutionReferenceService);
 		const validateFailure = references.validateFailure.bind(references);
 		vi.spyOn(references, 'validateFailure').mockImplementationOnce(async (...args) => {
@@ -1649,16 +1631,7 @@ describe('configuration lifecycle', () => {
 			);
 			const configurations = Container.get(SelfHealingConfigurationService);
 			const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
-			await configurations.save(
-				user,
-				project.id,
-				{
-					scope: 'all',
-					workflowIds: [],
-					reviewerIds: [reviewer.id],
-				},
-				investigation.configurationId,
-			);
+			await replaceReviewers(investigation.configurationId, [reviewer.id]);
 			if (withSuggestion) {
 				const prepare = suggestionService.prepareSuggestion.bind(suggestionService);
 				vi.spyOn(suggestionService, 'prepareSuggestion').mockImplementationOnce(async (...args) => {

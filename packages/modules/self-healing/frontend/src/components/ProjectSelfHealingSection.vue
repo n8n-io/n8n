@@ -5,6 +5,7 @@ import {
 	N8nAvatar,
 	N8nButton,
 	N8nDataTableServer,
+	N8nEmptyState,
 	N8nIconButton,
 	N8nSwitch,
 	N8nText,
@@ -14,14 +15,21 @@ import {
 } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
+import {
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+	SELF_HEALING_CONFIGURATION_VIEW,
+	type SelfHealingLocation,
+} from '@n8n/frontend-constants/self-healing';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useSelfHealingStore } from '../self-healing.store';
 
-const props = defineProps<{ projectId: string }>();
+const props = withDefaults(defineProps<{ projectId: string; variant?: SelfHealingLocation }>(), {
+	variant: 'projectSettings',
+});
+const isPersonalTab = computed(() => props.variant === 'personalTab');
 const store = useSelfHealingStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -44,12 +52,16 @@ const headers = computed<Array<TableHeader<SelfHealingConfigurationDto>>>(() => 
 		width: 240,
 		disableSort: true,
 	},
-	{
-		title: i18n.baseText('selfHealing.config.peopleToNotify'),
-		key: 'reviewerIds',
-		width: 200,
-		disableSort: true,
-	},
+	...(isPersonalTab.value
+		? []
+		: [
+				{
+					title: i18n.baseText('selfHealing.config.peopleToNotify'),
+					key: 'reviewerIds' as const,
+					width: 200,
+					disableSort: true,
+				},
+			]),
 	{
 		title: i18n.baseText('selfHealing.config.lastActivity'),
 		key: 'lastActivity',
@@ -106,7 +118,9 @@ watch(() => props.projectId, load, { immediate: true });
 
 function edit(id: number | 'new') {
 	void router.push({
-		name: SELF_HEALING_CONFIGURATION_VIEW,
+		name: isPersonalTab.value
+			? PERSONAL_SELF_HEALING_CONFIGURATION_VIEW
+			: SELF_HEALING_CONFIGURATION_VIEW,
 		params: { projectId: props.projectId, configurationId: String(id) },
 	});
 }
@@ -167,13 +181,21 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 
 <template>
 	<fieldset id="self-healing" ref="sectionRef" data-test-id="project-self-healing">
-		<h3>
+		<h3 v-if="!isPersonalTab">
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
 		</h3>
 		<p v-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{
 			i18n.baseText('selfHealing.config.retry')
 		}}</N8nButton>
+		<N8nEmptyState
+			v-else-if="!configurations.length && isPersonalTab"
+			:icon="{ type: 'icon', value: 'life-buoy' }"
+			:heading="i18n.baseText('selfHealing.config.emptyHeading')"
+			:description="i18n.baseText('selfHealing.config.emptyDescription')"
+			:button-text="i18n.baseText('selfHealing.config.create')"
+			@click:button="edit('new')"
+		/>
 		<N8nText
 			v-else-if="!configurations.length"
 			size="small"
@@ -240,7 +262,8 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 						@action="onAction(item, $event)"
 					>
 						<N8nIconButton
-							icon="ellipsis"
+							icon="ellipsis-12"
+							icon-size="small"
 							variant="ghost"
 							size="small"
 							:disabled="isUpdating"
@@ -251,6 +274,7 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 			</N8nDataTableServer>
 		</div>
 		<N8nButton
+			v-if="!isPersonalTab || configurations.length"
 			variant="outline"
 			size="large"
 			icon="plus"
