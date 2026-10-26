@@ -21,6 +21,7 @@ const detail: SkillDetail = {
 	createdBy: null,
 	latestVersion: 2,
 	usedByAgents: 0,
+	availableToAssistant: true,
 	canEdit: true,
 	canDelete: true,
 	createdAt: '2026-10-01T00:00:00.000Z',
