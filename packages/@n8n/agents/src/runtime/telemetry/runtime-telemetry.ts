@@ -1,6 +1,8 @@
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { TelemetryOptions } from 'ai';
 
+import { getGenAiProviderName } from './model-request-tracing';
 import { buildAiSdkTelemetry } from './telemetry-options';
 import { Telemetry } from '../../sdk/telemetry';
 import type {
@@ -121,9 +123,14 @@ function buildGenAiRootAttributes(
 ): Record<string, AttributeValue> {
 	const modelId = t.metadata?.model_id;
 	const threadId = t.metadata?.thread_id;
+	const agentId = t.metadata?.agent_id;
+	const providerName =
+		typeof modelId === 'string' ? getGenAiProviderName(getProviderPrefix(modelId)) : undefined;
 	return {
 		'gen_ai.operation.name': 'invoke_agent',
 		'gen_ai.agent.name': config.name,
+		...(typeof agentId === 'string' ? { 'gen_ai.agent.id': agentId } : {}),
+		...(providerName ? { 'gen_ai.provider.name': providerName } : {}),
 		...(typeof modelId === 'string' ? { 'gen_ai.request.model': modelId } : {}),
 		...(typeof threadId === 'string' ? { 'gen_ai.conversation.id': threadId } : {}),
 	};

@@ -160,6 +160,7 @@ describe('generateSimulationFixtures', () => {
 	it('forwards the fallback model config to the LLM call', async () => {
 		setupAgentMock(JSON.stringify({ A: [{ json: { ok: true } }] }));
 		const fallbackModelConfig = {
+			kind: 'endpoint' as const,
 			id: 'anthropic/claude-opus-4-8' as const,
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',

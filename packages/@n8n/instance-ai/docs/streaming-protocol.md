@@ -277,10 +277,9 @@ also emit `tool-error` if its resume path throws.
 
 | Field | Type | When used |
 |-------|------|-----------|
-| `inputType` | `'approval'` \| `'text'` \| `'questions'` \| `'plan-review'` | Controls which UI component renders. Default: `approval` |
+| `inputType` | `'approval'` \| `'text'` \| `'questions'` | Controls which UI component renders. Default: `approval` |
 | `questions` | `[{id, question, type, options?}]` | Structured Q&A wizard (`inputType=questions`) |
-| `tasks` | `TaskList` | Plan approval checklist (`inputType=plan-review`) |
-| `introMessage` | string | Intro text shown above questions or plan review |
+| `introMessage` | string | Intro text shown above questions |
 | `credentialRequests` | array | Credential setup requests |
 | `credentialFlow` | `{stage: 'generic' \| 'finalize'}` | Controls credential picker UX |
 | `setupRequests` | `WorkflowSetupNode[]` | Per-node setup cards for workflow credential/parameter config |
@@ -638,7 +637,6 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
 ├── 🔧 workflow_builder_credentials → [slack-bot, weather-api]
-├── 📋 workflow_builder_create_tasks: build → verify
 ├── 🔧 agent_builder_build_agent → agent-123
 │
 ├── 🤖 Agent Builder

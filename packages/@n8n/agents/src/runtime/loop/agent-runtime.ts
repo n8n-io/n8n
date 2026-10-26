@@ -51,7 +51,7 @@ import type {
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { createFilteredLogger } from '../logger';
@@ -1126,28 +1126,30 @@ export class AgentRuntime {
 			if (guardrails && guardCtx) await guardrails.after(guardCtx, turn.usage);
 			return turn;
 		};
+		const retryModel = async () => {
+			this.assertNotAborted(ctx.abortScope);
+			return await callModel();
+		};
 
 		let turn = await callModel();
 		// Retry empty stop turns. Charge each attempt before checking for cancellation.
 		for (let retry = 0; turn && retry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn); retry++) {
-			this.recordTurnUsage(ctx, sink, state, turn);
-			this.assertNotAborted(ctx.abortScope);
-			turn = await callModel();
+			[, turn] = await Promise.all([this.recordTurnUsage(ctx, sink, state, turn), retryModel()]);
 		}
 		if (!turn) return undefined;
-		this.recordTurnUsage(ctx, sink, state, turn);
+		await this.recordTurnUsage(ctx, sink, state, turn);
 		return turn;
 	}
 
-	private recordTurnUsage<T>(
+	private async recordTurnUsage<T>(
 		ctx: PreparedLoopContext,
 		sink: RunOutputSink<T>,
 		state: LoopState,
 		turn: ModelTurnResult,
-	): void {
+	): Promise<void> {
 		state.totalUsage = mergeUsage(state.totalUsage, withPromptSizeBreakdown(turn.usage));
 		incrementTokenCountFromUsage(ctx.options?.executionCounter, turn.usage);
-		sink.reportUsage(state.totalUsage);
+		await sink.reportUsage(state.totalUsage);
 	}
 
 	private async finishToolBatch<T>(
@@ -1430,7 +1432,7 @@ export class AgentRuntime {
 	private async ensureModelCost(): Promise<ModelCost | undefined> {
 		if (this.modelCost) return this.modelCost;
 		try {
-			this.modelCost = await getModelCost(this.modelIdString);
+			this.modelCost = await getModelCost(getCatalogModelId(this.config.model));
 		} catch {
 			// Catalog unavailable — proceed without cost data, will retry next call
 		}

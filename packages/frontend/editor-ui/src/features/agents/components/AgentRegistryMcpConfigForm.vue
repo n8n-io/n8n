@@ -5,7 +5,7 @@ import type { McpToolPermissions } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 
 import { MODAL_CONFIRM } from '@/app/constants';
-import { useMessage } from '@/app/composables/useMessage';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import McpConnectionStatusCallout from '@/features/shared/toolsConnection/McpConnectionStatusCallout.vue';
 import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolPermissionsEditor from '@/features/shared/toolsConnection/McpToolPermissionsEditor.vue';
@@ -30,7 +30,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const message = useMessage();
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const modalData = computed(() => props.data);
 const config = useAgentRegistryMcpConfig(modalData, () => emit('credential-deleted'));
 const item = config.item;
@@ -124,20 +124,19 @@ function confirm(): boolean {
 
 async function remove(): Promise<boolean> {
 	if (!props.data.onRemove) return false;
-	const confirmed = await message.confirm(
-		i18n.baseText('tools.connection.settings.removeConfirm.description', {
+	const confirmed = await openAgentConfirmationModal({
+		title: i18n.baseText('tools.connection.settings.removeConfirm.title', {
+			interpolate: { name: title.value },
+		}),
+		description: i18n.baseText('tools.connection.settings.removeConfirm.description', {
 			interpolate: { item: 'tool', service: title.value },
 		}),
-		{
-			title: i18n.baseText('tools.connection.settings.removeConfirm.title', {
-				interpolate: { name: title.value },
-			}),
-			confirmButtonText: i18n.baseText('tools.connection.settings.removeConfirm.confirmButton', {
-				interpolate: { item: 'tool' },
-			}),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-		},
-	);
+		isDestructive: true,
+		confirmButtonText: i18n.baseText('tools.connection.settings.removeConfirm.confirmButton', {
+			interpolate: { item: 'tool' },
+		}),
+		cancelButtonText: i18n.baseText('generic.cancel'),
+	});
 	if (confirmed !== MODAL_CONFIRM) return false;
 	props.data.onRemove();
 	return true;

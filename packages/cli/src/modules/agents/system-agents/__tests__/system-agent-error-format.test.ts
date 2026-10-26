@@ -5,6 +5,7 @@ import type { TransactionRunner, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
+import type { AgentKnowledgeUsageTracker } from '../../agent-knowledge-usage-tracker';
 import type { AgentExecutionService } from '../../agent-execution.service';
 import type {
 	AgentMessageQueueService,
@@ -107,6 +108,7 @@ function setup(
 		mock<AgentMessageQueueService>(),
 		mock<AgentMessageSteeringService>(),
 		toolApprovalService,
+		mock<AgentKnowledgeUsageTracker>(),
 	);
 
 	const registry = new SystemAgentRegistry();
