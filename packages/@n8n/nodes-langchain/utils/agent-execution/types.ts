@@ -140,6 +140,8 @@ export type HitlMetadata = {
 	toolName: string;
 	/** Original input for the gated tool */
 	originalInput: IDataObject;
+	/** Whether the gated tool comes from an MCP server. */
+	isMcpTool?: boolean;
 };
 
 /**
@@ -190,6 +192,8 @@ export interface ToolMetadata extends Record<string, unknown> {
 	originalSchema?: ZodType;
 	/** Whether this tool came from a toolkit (vs. a standalone tool node) */
 	isFromToolkit?: boolean;
+	/** Whether this toolkit tool comes from an MCP server. */
+	isMcpTool?: boolean;
 	/** Text the agent appends to its final reply when this tool was called during the run */
 	attribution?: string;
 }
@@ -211,12 +215,8 @@ export function isThinkingBlock(block: unknown): block is ThinkingContentBlock {
 }
 
 /**
- * Internal key used to stash the original user-supplied `tool` argument on the
- * engine request input before the routing key is injected. The MCP Client Tool
- * reads it back in `runToolCall` and restores the user's value after stripping
- * internal metadata but before schema filtering, so a schema parameter that
- * happens to be named `tool` still receives the value the LLM originally
- * supplied.
+ * Internal key used to stash user arguments that collide with engine metadata.
+ * MCP schemas must not declare this key.
  */
 export const INTERNAL_TOOL_ARG_STASH_KEY = '_n8nOriginalToolArg';
 

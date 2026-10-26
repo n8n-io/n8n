@@ -1,7 +1,7 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { EngineResponse, EngineRequest, IDataObject, ExecuteNodeResult } from 'n8n-workflow';
 
-import type { RequestResponseMetadata } from './types';
+import { INTERNAL_TOOL_ARG_STASH_KEY, type RequestResponseMetadata } from './types';
 
 /**
  * HITL metadata type (extracted from RequestResponseMetadata for convenience)
@@ -133,10 +133,21 @@ export function processHitlResponses(
 		if (approved === true) {
 			hasApprovedHitlTools = true;
 
-			const input =
+			const input: IDataObject =
 				typeof hitl.originalInput === 'object'
-					? { tool: hitl.toolName, ...hitl.originalInput }
-					: { tool: hitl.toolName, input: hitl.originalInput };
+					? { ...hitl.originalInput }
+					: { input: hitl.originalInput };
+			if (hitl.isMcpTool && hitl.originalInput !== null && typeof hitl.originalInput === 'object') {
+				const stashedArguments: IDataObject = {};
+				if ('tool' in hitl.originalInput) stashedArguments.tool = hitl.originalInput.tool;
+				if ('toolCallId' in hitl.originalInput) {
+					stashedArguments.toolCallId = hitl.originalInput.toolCallId;
+				}
+				if (Object.keys(stashedArguments).length > 0) {
+					input[INTERNAL_TOOL_ARG_STASH_KEY] = stashedArguments;
+				}
+			}
+			input.tool = hitl.toolName;
 
 			pendingGatedToolActions.push({
 				actionType: 'ExecutionNodeAction' as const,

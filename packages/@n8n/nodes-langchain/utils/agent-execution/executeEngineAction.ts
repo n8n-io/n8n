@@ -31,10 +31,11 @@ export async function executeEngineAction(
 
 	try {
 		// `input.tool` is a toolkit-dispatch marker added by createEngineRequests; strip before invoking.
-		const originalToolArg = action.input[INTERNAL_TOOL_ARG_STASH_KEY];
+		const stashedArguments = action.input[INTERNAL_TOOL_ARG_STASH_KEY] as IDataObject | undefined;
 		const toolArguments = omit(action.input, ['tool', INTERNAL_TOOL_ARG_STASH_KEY]);
-		if (originalToolArg !== undefined) {
-			toolArguments.tool = originalToolArg;
+		if (stashedArguments) {
+			if ('tool' in stashedArguments) toolArguments.tool = stashedArguments.tool;
+			if ('toolCallId' in stashedArguments) toolArguments.toolCallId = stashedArguments.toolCallId;
 		}
 		const output = await tool.invoke(toolArguments);
 		return {

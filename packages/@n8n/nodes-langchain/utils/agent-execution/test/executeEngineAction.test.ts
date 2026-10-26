@@ -32,11 +32,11 @@ describe('executeEngineAction', () => {
 	it('restores the user `tool` argument and removes internal metadata', async () => {
 		const invoke = await execute({
 			tool: 'mcp_tool',
-			[INTERNAL_TOOL_ARG_STASH_KEY]: 'user-value',
+			[INTERNAL_TOOL_ARG_STASH_KEY]: { tool: 'user-value' },
 			query: 'hello',
 		});
 
-		expect(invoke).toHaveBeenCalledWith({ tool: 'user-value', query: 'hello' });
+		expect(invoke.mock.calls[0][0]).toEqual({ tool: 'user-value', query: 'hello' });
 		expect(invoke.mock.calls[0][0]).not.toHaveProperty(INTERNAL_TOOL_ARG_STASH_KEY);
 	});
 
@@ -47,13 +47,13 @@ describe('executeEngineAction', () => {
 			query: 'hello',
 		});
 
-		expect(invoke).toHaveBeenCalledWith({ query: 'hello' });
+		expect(invoke.mock.calls[0][0]).toEqual({ query: 'hello' });
 		expect(invoke.mock.calls[0][0]).not.toHaveProperty(INTERNAL_TOOL_ARG_STASH_KEY);
 	});
 
 	it('preserves arguments when no stash key is present', async () => {
 		const invoke = await execute({ tool: 'mcp_tool', query: 'hello' });
 
-		expect(invoke).toHaveBeenCalledWith({ query: 'hello' });
+		expect(invoke.mock.calls[0][0]).toEqual({ query: 'hello' });
 	});
 });

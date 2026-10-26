@@ -1000,6 +1000,7 @@ describe('createEngineRequests', () => {
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
 					isFromToolkit: true,
+					isMcpTool: true,
 				}),
 			];
 
@@ -1017,7 +1018,36 @@ describe('createEngineRequests', () => {
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
 				extra: 123,
-				_n8nOriginalToolArg: 'user-value',
+				_n8nOriginalToolArg: { tool: 'user-value' },
+			});
+		});
+
+		it('stashes user `toolCallId` arguments before the engine overwrites them', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const result = createEngineRequests(
+				[
+					{
+						tool: 'MCP_Client_search',
+						toolInput: { toolCallId: 'user-id', query: 'test' },
+						toolCallId: 'call_123',
+					},
+				],
+				0,
+				tools,
+			);
+
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				toolCallId: 'user-id',
+				query: 'test',
+				_n8nOriginalToolArg: { toolCallId: 'user-id' },
 			});
 		});
 
@@ -1026,6 +1056,7 @@ describe('createEngineRequests', () => {
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
 					isFromToolkit: true,
+					isMcpTool: true,
 				}),
 			];
 
@@ -1052,6 +1083,7 @@ describe('createEngineRequests', () => {
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
 					isFromToolkit: true,
+					isMcpTool: true,
 				}),
 			];
 
@@ -1068,7 +1100,7 @@ describe('createEngineRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
-				_n8nOriginalToolArg: 'user',
+				_n8nOriginalToolArg: { tool: 'user' },
 				extra: 1,
 			});
 		});
@@ -1078,6 +1110,7 @@ describe('createEngineRequests', () => {
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
 					isFromToolkit: true,
+					isMcpTool: true,
 				}),
 			];
 
@@ -1094,7 +1127,7 @@ describe('createEngineRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
-				_n8nOriginalToolArg: 'REAL',
+				_n8nOriginalToolArg: { tool: 'REAL' },
 			});
 			expect(JSON.stringify(result)).not.toContain('INJECTED');
 		});
@@ -1104,6 +1137,7 @@ describe('createEngineRequests', () => {
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
 					isFromToolkit: true,
+					isMcpTool: true,
 				}),
 			];
 
@@ -1130,6 +1164,7 @@ describe('createEngineRequests', () => {
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
 					isFromToolkit: true,
+					isMcpTool: true,
 				}),
 			];
 
@@ -1146,7 +1181,7 @@ describe('createEngineRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
-				_n8nOriginalToolArg: value,
+				_n8nOriginalToolArg: { tool: value },
 			});
 		});
 
@@ -1181,6 +1216,7 @@ describe('createEngineRequests', () => {
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
 					isFromToolkit: true,
+					isMcpTool: true,
 				}),
 			];
 
@@ -1198,7 +1234,7 @@ describe('createEngineRequests', () => {
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
 				extra: 1,
-				_n8nOriginalToolArg: { nested: 'value' },
+				_n8nOriginalToolArg: { tool: { nested: 'value' } },
 			});
 		});
 
@@ -1207,10 +1243,12 @@ describe('createEngineRequests', () => {
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
 					isFromToolkit: true,
+					isMcpTool: true,
 				}),
 				createMockTool('MCP_Client_other', {
 					sourceNodeName: 'MCP_Client',
 					isFromToolkit: true,
+					isMcpTool: true,
 				}),
 			];
 
@@ -1233,7 +1271,7 @@ describe('createEngineRequests', () => {
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
 				extra: 'one',
-				_n8nOriginalToolArg: 'a',
+				_n8nOriginalToolArg: { tool: 'a' },
 			});
 			expect(result[1].input).toEqual({
 				tool: 'MCP_Client_other',

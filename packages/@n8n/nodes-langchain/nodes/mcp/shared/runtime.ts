@@ -107,6 +107,14 @@ async function connectAndGetTools(
 			includeTools: config.toolFilter.includeTools,
 			excludeTools: config.toolFilter.excludeTools,
 		});
+		for (const tool of mcpTools) {
+			if (Object.hasOwn(tool.inputSchema.properties ?? {}, INTERNAL_TOOL_ARG_STASH_KEY)) {
+				throw new NodeOperationError(
+					ctx.getNode(),
+					`MCP tool "${tool.name}" uses a reserved input name.`,
+				);
+			}
+		}
 		return { client: client.result, mcpTools, error: null };
 	} catch (error) {
 		await client.result.close();
@@ -250,11 +258,14 @@ async function runToolCall(opts: {
 		const {
 			tool: _routingKey,
 			toolCallId: _toolCallId,
-			[INTERNAL_TOOL_ARG_STASH_KEY]: originalToolArg,
+			[INTERNAL_TOOL_ARG_STASH_KEY]: stashedArguments,
 			...toolArguments
 		} = item.json;
-		if (originalToolArg !== undefined) {
-			toolArguments.tool = originalToolArg;
+		if (stashedArguments && typeof stashedArguments === 'object') {
+			if ('tool' in stashedArguments) toolArguments.tool = stashedArguments.tool;
+			if ('toolCallId' in stashedArguments) {
+				toolArguments.toolCallId = stashedArguments.toolCallId;
+			}
 		}
 		const schema: JSONSchema7 = tool.inputSchema;
 		const sanitizedToolArguments: IDataObject =

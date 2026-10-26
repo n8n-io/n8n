@@ -110,6 +110,28 @@ describe('processHitlResponses', () => {
 			expect(action.metadata?.parentNodeName).toBe('HITL Node');
 		});
 
+		it('keeps MCP routing fields when approved input contains colliding arguments', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					createHitlActionResponse(true, {
+						...hitlMetadata,
+						isMcpTool: true,
+						originalInput: { tool: 'user-tool', toolCallId: 'user-id', query: 'test' },
+					}),
+				],
+				metadata: {},
+			};
+
+			const result = processHitlResponses(response, 0);
+
+			expect(result.pendingGatedToolRequest?.actions[0].input).toEqual({
+				tool: 'my_tool',
+				_n8nOriginalToolArg: { tool: 'user-tool', toolCallId: 'user-id' },
+				toolCallId: 'user-id',
+				query: 'test',
+			});
+		});
+
 		it('removes approved HITL response from processed responses', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [createHitlActionResponse(true, hitlMetadata)],

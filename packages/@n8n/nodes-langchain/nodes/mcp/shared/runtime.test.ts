@@ -231,6 +231,27 @@ describe('runtime', () => {
 			expect(closeSpy).toHaveBeenCalled();
 		});
 
+		it('rejects the reserved stash key in an MCP tool schema', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						...sampleTool,
+						inputSchema: {
+							type: 'object',
+							properties: { _n8nOriginalToolArg: { type: 'string' } },
+						},
+					},
+				],
+			});
+			const closeSpy = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			await expect(buildMcpToolkit(createSupplyDataCtx(), 0, baseConfig)).rejects.toThrow(
+				'uses a reserved input name',
+			);
+			expect(closeSpy).toHaveBeenCalled();
+		});
+
 		it('returns a StructuredToolkit with prefixed tool names and a working closeFunction', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
@@ -523,7 +544,7 @@ describe('runtime', () => {
 					{
 						json: {
 							tool: buildMcpToolName('MCP', 'search'),
-							_n8nOriginalToolArg: 'user-value',
+							_n8nOriginalToolArg: { tool: 'user-value' },
 							toolCallId: 'abc',
 							extra: 'data',
 						},
@@ -601,7 +622,7 @@ describe('runtime', () => {
 					{
 						json: {
 							tool: buildMcpToolName('MCP', 'search'),
-							_n8nOriginalToolArg: 'user-value',
+							_n8nOriginalToolArg: { tool: 'user-value' },
 							extra: 'data',
 						},
 					},
@@ -616,7 +637,7 @@ describe('runtime', () => {
 				);
 			});
 
-			it('always strips toolCallId', async () => {
+			it('strips engine toolCallId when additional properties are allowed', async () => {
 				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 					tools: [
@@ -626,7 +647,7 @@ describe('runtime', () => {
 							inputSchema: {
 								type: 'object' as const,
 								properties: { extra: { type: 'string' } },
-								additionalProperties: false,
+								additionalProperties: true,
 							},
 						},
 					],
@@ -650,6 +671,49 @@ describe('runtime', () => {
 
 				expect(callTool).toHaveBeenCalledWith(
 					{ name: 'search', arguments: { extra: 'data' } },
+					expect.anything(),
+					expect.anything(),
+				);
+			});
+
+			it('restores a user toolCallId when it is declared in the MCP schema', async () => {
+				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+					tools: [
+						{
+							name: 'search',
+							description: '',
+							inputSchema: {
+								type: 'object' as const,
+								properties: {
+									toolCallId: { type: 'string' },
+									extra: { type: 'string' },
+								},
+								additionalProperties: true,
+							},
+						},
+					],
+				});
+				const callTool = vi
+					.spyOn(Client.prototype, 'callTool')
+					.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+				vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+				const ctx = createExecuteCtx([
+					{
+						json: {
+							tool: buildMcpToolName('MCP', 'search'),
+							toolCallId: 'engine-id',
+							_n8nOriginalToolArg: { toolCallId: 'user-id' },
+							extra: 'data',
+						},
+					},
+				]);
+
+				await executeMcpTool(ctx, () => baseConfig);
+
+				expect(callTool).toHaveBeenCalledWith(
+					{ name: 'search', arguments: { toolCallId: 'user-id', extra: 'data' } },
 					expect.anything(),
 					expect.anything(),
 				);
@@ -683,7 +747,7 @@ describe('runtime', () => {
 					{
 						json: {
 							tool: buildMcpToolName('MCP', 'search'),
-							_n8nOriginalToolArg: 'user-value',
+							_n8nOriginalToolArg: { tool: 'user-value' },
 							extra: 'data',
 						},
 					},

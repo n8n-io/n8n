@@ -38,6 +38,7 @@ export function extractHitlMetadata(
 		gatedToolNodeName: metadata.gatedToolNodeName,
 		toolName,
 		originalInput: toolInput.toolParameters as IDataObject,
+		isMcpTool: metadata.isMcpTool,
 	};
 }
 
@@ -250,8 +251,13 @@ export function createEngineRequests(
 			if (metadata.isFromToolkit) {
 				input = { ...input };
 				delete input[INTERNAL_TOOL_ARG_STASH_KEY];
-				if ('tool' in input) {
-					input[INTERNAL_TOOL_ARG_STASH_KEY] = input.tool;
+				if (metadata.isMcpTool) {
+					const stashedArguments: IDataObject = {};
+					if ('tool' in input) stashedArguments.tool = input.tool;
+					if ('toolCallId' in input) stashedArguments.toolCallId = input.toolCallId;
+					if (Object.keys(stashedArguments).length > 0) {
+						input[INTERNAL_TOOL_ARG_STASH_KEY] = stashedArguments;
+					}
 				}
 				input.tool = toolCall.tool;
 			}
