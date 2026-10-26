@@ -32,7 +32,7 @@ describe('BrowserUseServer', () => {
 			sockets.add(socket);
 			socket.on('close', () => sockets.delete(socket));
 		});
-		new BrowserUseServer(sessionService).setup(server, app);
+		new BrowserUseServer(sessionService).setup(server, app, () => true);
 		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 		port = (server.address() as AddressInfo).port;
 	});

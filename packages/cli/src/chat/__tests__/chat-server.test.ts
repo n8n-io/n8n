@@ -1,6 +1,7 @@
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server as HttpServer, IncomingMessage } from 'http';
+import type { Socket } from 'node:net';
 import { mock, mockReset } from 'vitest-mock-extended';
 import type { WebSocket, WebSocketServer } from 'ws';
 
@@ -36,12 +37,24 @@ describe('ChatServer', () => {
 	});
 
 	it('attaches upgrade listener to HTTP server', () => {
-		chatServer.setup(mockHttpServer, mockApp);
+		chatServer.setup(mockHttpServer, mockApp, () => true);
 		expect(mockHttpServer.on).toHaveBeenCalledWith('upgrade', expect.any(Function));
 	});
 
+	it('rejects upgrades outside the selected HTTP surface', () => {
+		chatServer.setup(mockHttpServer, mockApp, () => false);
+		const socket = mock<Socket>();
+		mockHttpServer.on.mock.calls[0][1](
+			mock<ChatRequest>({ url: '/chat' }),
+			socket,
+			Buffer.alloc(0),
+		);
+		expect(socket.destroy).toHaveBeenCalledOnce();
+		expect(mockWsServer.handleUpgrade).not.toHaveBeenCalled();
+	});
+
 	it('handles WebSocket upgrade for /chat path', () => {
-		chatServer.setup(mockHttpServer, mockApp);
+		chatServer.setup(mockHttpServer, mockApp, () => true);
 
 		const req = {
 			url: 'http://localhost:5678/chat?sessionId=123&executionId=456',
@@ -62,7 +75,7 @@ describe('ChatServer', () => {
 	});
 
 	it('calls attachToApp after WebSocket upgrade', () => {
-		chatServer.setup(mockHttpServer, mockApp);
+		chatServer.setup(mockHttpServer, mockApp, () => true);
 
 		const req = {
 			url: 'http://localhost:5678/chat?sessionId=123&executionId=456',

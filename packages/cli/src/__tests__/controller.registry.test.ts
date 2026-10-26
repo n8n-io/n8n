@@ -91,6 +91,45 @@ describe('ControllerRegistry', () => {
 		});
 	});
 
+	describe('controller surfaces', () => {
+		@RootLevelController('/apps-only', { surface: 'apps' })
+		class AppsOnlyController {
+			@Get('/')
+			read() {
+				return { ok: true };
+			}
+		}
+
+		it('keeps apps controllers off the main surface', () => {
+			const target = mock<express.Application>();
+			new ControllerRegistry(
+				license,
+				authService,
+				globalConfig,
+				metadata,
+				lastActiveAtService,
+				new RateLimitService(),
+			).activate(target);
+			expect(target.use.mock.calls.map(([prefix]) => prefix)).not.toContain('/apps-only');
+		});
+
+		it('registers only apps controllers with the supplied authentication middleware', () => {
+			const target = mock<express.Application>();
+			authService.createAuthMiddleware.mockClear();
+			new ControllerRegistry(
+				license,
+				authService,
+				globalConfig,
+				metadata,
+				lastActiveAtService,
+				new RateLimitService(),
+			).activate(target, { surface: 'apps', customAuthMiddleware: authMiddleware });
+			expect(target.use.mock.calls.map(([prefix]) => prefix)).toEqual(['/apps-only']);
+			expect(authService.createAuthMiddleware).not.toHaveBeenCalled();
+			expect(Container.get(AppsOnlyController)).toBeDefined();
+		});
+	});
+
 	describe('Body-based keyed rate limiting', () => {
 		class TestBodyDto extends Z.class({
 			email: z.string().max(20),

@@ -6,7 +6,7 @@ import { Container, Service } from '@n8n/di';
 import { toMb } from '@n8n/utils/number/bytes';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
-import type { Server } from 'http';
+import type { IncomingMessage, Server } from 'http';
 import pick from 'lodash/pick';
 import { InstanceSettings } from 'n8n-core';
 import { parse as parseUrl } from 'url';
@@ -67,10 +67,19 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	/** Sets up the main express app to upgrade websocket connections */
-	setupPushServer(restEndpoint: string, server: Server, app: Application) {
+	setupPushServer(
+		restEndpoint: string,
+		server: Server,
+		app: Application,
+		allowsUpgrade: (req: IncomingMessage) => boolean,
+	) {
 		if (this.useWebSockets) {
 			const wsServer = new WSServer({ noServer: true });
 			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
+				if (!allowsUpgrade(request)) {
+					socket.destroy();
+					return;
+				}
 				if (parseUrl(request.url).pathname === `/${restEndpoint}/push`) {
 					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
 						request.ws = ws;

@@ -1,7 +1,7 @@
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Application, Request, Response } from 'express';
-import { ServerResponse, type Server as HttpServer } from 'http';
+import { ServerResponse, type IncomingMessage, type Server as HttpServer } from 'http';
 import { Server as WSServer } from 'ws';
 
 import {
@@ -21,8 +21,16 @@ export class BrowserUseServer {
 
 	constructor(private readonly sessionService: InstanceAiBrowserSessionService) {}
 
-	setup(server: HttpServer, app: Application): void {
+	setup(
+		server: HttpServer,
+		app: Application,
+		allowsUpgrade: (req: IncomingMessage) => boolean,
+	): void {
 		server.on('upgrade', (req: BrowserUseUpgradeRequest, socket, head) => {
+			if (!allowsUpgrade(req)) {
+				socket.destroy();
+				return;
+			}
 			const pathname = URL.parse(req.url ?? '', 'http://localhost')?.pathname;
 			if (!pathname?.startsWith(`${BROWSER_USE_WS_NAMESPACE}/`)) return;
 			this.wsServer.handleUpgrade(req, socket, head, (ws) => {

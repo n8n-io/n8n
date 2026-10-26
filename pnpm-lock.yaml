@@ -6980,12 +6980,27 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../../../@n8n/errors
+      '@n8n/inbound-auth':
+        specifier: workspace:*
+        version: link:../../../@n8n/inbound-auth
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../../../@n8n/permissions
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
+      express:
+        specifier: 'catalog:'
+        version: 5.1.0(supports-color@8.1.1)
+      lru-cache:
+        specifier: 'catalog:'
+        version: 11.5.1
+      mime-types:
+        specifier: 'catalog:'
+        version: 3.0.2
       n8n-core:
         specifier: workspace:*
         version: link:../../../core
@@ -7008,6 +7023,9 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
+      '@types/mime-types':
+        specifier: 'catalog:'
+        version: 3.0.1
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
