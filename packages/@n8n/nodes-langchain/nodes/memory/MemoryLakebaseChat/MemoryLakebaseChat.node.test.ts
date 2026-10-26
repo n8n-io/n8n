@@ -126,8 +126,13 @@ describe('MemoryLakebaseChat', () => {
 			});
 		});
 
-		it('should be listed in the node picker', () => {
+		it('should be listed in the node picker with its docs page', () => {
 			expect(description.hidden).toBeUndefined();
+			expect(description.codex?.resources?.primaryDocumentation).toEqual([
+				{
+					url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorylakebasechat/',
+				},
+			]);
 		});
 
 		it('should pin the authentication to OAuth2 through a hidden parameter', () => {

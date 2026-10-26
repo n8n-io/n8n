@@ -274,7 +274,9 @@ describe('Databricks', () => {
 				expect(result?.toolAttribution).toBe(expected);
 			},
 		);
+	});
 
+	describe('Lakebase -> resource switch', () => {
 		it('should list Lakebase in the resource dropdown', () => {
 			const { description } = new Databricks();
 			const resource = description.properties.find((property) => property.name === 'resource');
@@ -284,36 +286,27 @@ describe('Databricks', () => {
 			);
 		});
 
-		it('should surface the Lakebase operation and locators when the resource is selected', () => {
-			const { description } = new Databricks();
+		it.each([
+			['lakebase', 'getAll', true],
+			['job', 'run', false],
+		])(
+			'should scope the Lakebase operations and locators to the lakebase resource (%s)',
+			(resource, operation, expected) => {
+				const { description } = new Databricks();
 
-			const result = NodeHelpers.getNodeParameters(
-				description.properties,
-				{ resource: 'lakebase' },
-				true,
-				false,
-				node,
-				description,
-			);
+				const result = NodeHelpers.getNodeParameters(
+					description.properties,
+					{ resource },
+					true,
+					false,
+					node,
+					description,
+				);
 
-			expect(result?.operation).toBe('getAll');
-			expect(result).toHaveProperty('lakebaseProject');
-		});
-
-		it('should keep the Lakebase locators scoped to the lakebase resource', () => {
-			const { description } = new Databricks();
-
-			const result = NodeHelpers.getNodeParameters(
-				description.properties,
-				{ resource: 'job', operation: 'run' },
-				true,
-				false,
-				node,
-				description,
-			);
-
-			expect(result).not.toHaveProperty('lakebaseProject');
-		});
+				expect(result?.operation).toBe(operation);
+				expect(Object.hasOwn(result ?? {}, 'lakebaseProject')).toBe(expected);
+			},
+		);
 	});
 
 	describe('Model Serving -> Query Endpoint', () => {
