@@ -1150,7 +1150,7 @@ export type RelayEventMap = {
 		executionId: string;
 		workflowId: string;
 		mode: WorkflowExecuteMode;
-		trigger: 'threshold' | 'critical' | 'hold-limit';
+		reason: 'threshold' | 'critical' | 'hold-limit';
 		runningNodeType: string | undefined;
 		largestDataNodeType: string | undefined;
 		estimatedBytes: number;

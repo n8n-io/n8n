@@ -287,12 +287,12 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('memory guard events', () => {
-		it('should track on `memory-guard-execution-stopped` event', () => {
+		it('should track on `memory-guard-execution-stopped` event and send it at once', () => {
 			const event: RelayEventMap['memory-guard-execution-stopped'] = {
 				executionId: 'execution123',
 				workflowId: 'workflow123',
 				mode: 'webhook',
-				trigger: 'critical',
+				reason: 'critical',
 				runningNodeType: 'n8n-nodes-base.httpRequest',
 				largestDataNodeType: 'n8n-nodes-base.code',
 				estimatedBytes: 300,
@@ -309,7 +309,7 @@ describe('TelemetryEventRelay', () => {
 				{
 					workflow_id: 'workflow123',
 					execution_mode: 'webhook',
-					trigger: 'critical',
+					reason: 'critical',
 					running_node_type: 'n8n-nodes-base.httpRequest',
 					largest_data_node_type: 'n8n-nodes-base.code',
 					estimated_bytes: 300,
@@ -319,6 +319,7 @@ describe('TelemetryEventRelay', () => {
 					workflow_deactivation_started: false,
 				},
 			);
+			expect(telemetry.flushQueue).toHaveBeenCalled();
 		});
 	});
 

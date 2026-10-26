@@ -760,7 +760,7 @@ describe('MemoryGuardService', () => {
 				executionId: 'large',
 				workflowId: 'workflow-large',
 				mode: 'webhook',
-				trigger: 'critical',
+				reason: 'critical',
 				runningNodeType: 'n8n-nodes-base.httpRequest',
 				largestDataNodeType: 'n8n-nodes-base.code',
 				estimatedBytes: 300 * MB,
@@ -828,6 +828,12 @@ describe('MemoryGuardService', () => {
 			expect(reports).toEqual([
 				['memory-guard-crashes-counted', { crashes: { none: 3, hold: 1, stop: 2 } }],
 			]);
+		});
+
+		it('should reset the journal on a clean shutdown', () => {
+			guard.shutdown();
+
+			expect(journal.reset).toHaveBeenCalled();
 		});
 
 		it('should reset the journal only when memory falls below the fast sampling level', async () => {

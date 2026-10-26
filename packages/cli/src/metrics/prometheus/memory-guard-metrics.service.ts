@@ -9,7 +9,7 @@ import type { PrometheusMetricsCollector } from './base';
  * Collects Prometheus metrics for the memory guard, from its events on `EventService`.
  * Active when the memory guard runs, which is in regular mode only.
  *
- * Labels are bounded (trigger, freed, last_action): no workflow or instance label.
+ * Labels are bounded (reason, freed, last_action): no workflow or instance label.
  */
 @Service()
 export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCollector {
@@ -50,12 +50,12 @@ export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCol
 
 		const stops = new promClient.Counter({
 			name: `${prefix}memory_guard_stops_total`,
-			help: 'Total number of executions that the memory guard stopped, by trigger (threshold, critical, hold_limit) and whether the stop freed memory.',
-			labelNames: ['trigger', 'freed'],
+			help: 'Total number of executions that the memory guard stopped, by reason (threshold, critical, hold_limit) and whether the stop freed memory.',
+			labelNames: ['reason', 'freed'],
 		});
 		// A series that first appears at 1 has no earlier sample, so `increase()` would miss that stop.
-		for (const trigger of ['threshold', 'critical', 'hold_limit']) {
-			for (const freed of ['true', 'false']) stops.inc({ trigger, freed }, 0);
+		for (const reason of ['threshold', 'critical', 'hold_limit']) {
+			for (const freed of ['true', 'false']) stops.inc({ reason, freed }, 0);
 		}
 
 		const deactivations = new promClient.Counter({
@@ -88,7 +88,7 @@ export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCol
 		this.eventService.on('memory-guard-workflow-deactivated', () => deactivations.inc());
 
 		this.eventService.on('memory-guard-execution-stopped', (event) => {
-			stops.inc({ trigger: event.trigger.replace('-', '_'), freed: String(event.freedMemory) });
+			stops.inc({ reason: event.reason.replace('-', '_'), freed: String(event.freedMemory) });
 		});
 	}
 }

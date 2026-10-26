@@ -2115,7 +2115,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION, {
 			workflow_id: event.workflowId,
 			execution_mode: event.mode,
-			trigger: event.trigger,
+			reason: event.reason,
 			running_node_type: event.runningNodeType,
 			largest_data_node_type: event.largestDataNodeType,
 			estimated_bytes: event.estimatedBytes,
@@ -2124,6 +2124,8 @@ export class TelemetryEventRelay extends EventRelay {
 			freed_memory: event.freedMemory,
 			workflow_deactivation_started: event.workflowDeactivationStarted,
 		});
+		// An OOM kill can follow a stop within the flush interval, so send the event now.
+		void this.telemetry.flushQueue();
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {

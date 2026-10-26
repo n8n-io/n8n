@@ -141,6 +141,8 @@ export class MemoryGuardService {
 		// Held executions stay held, so that they stay `new` and run again after a restart.
 		this.isShutDown = true;
 		clearTimeout(this.timer);
+		// A clean exit is no crash, so a crash before the next guard starts must not count by this action.
+		this.journal.reset();
 	}
 
 	private scheduleNext(delayMs: number) {
@@ -407,7 +409,7 @@ export class MemoryGuardService {
 			executionId: target.rootId,
 			workflowId: target.workflow.id,
 			mode: target.mode,
-			trigger,
+			reason: trigger,
 			runningNodeType: target.runningNodeType,
 			largestDataNodeType: target.largestDataNodeType,
 			estimatedBytes: target.estimatedBytes,

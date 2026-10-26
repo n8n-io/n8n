@@ -313,16 +313,18 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	private async initMemoryGuard() {
-		const isQueueMode = this.globalConfig.executions.mode === 'queue';
-		if (!this.globalConfig.memoryGuard.enabled || isQueueMode) {
-			if (this.globalConfig.memoryGuard.enabled) {
-				this.logger.warn('Memory guard supports only regular mode, so it stays off');
-			}
-			const { removeMemoryGuardJournal } = await import('@/memory-guard/memory-guard-journal.js');
-			removeMemoryGuardJournal();
+		const { enabled } = this.globalConfig.memoryGuard;
+		if (enabled && this.globalConfig.executions.mode === 'regular') {
+			await this.startMemoryGuard();
 			return;
 		}
 
+		if (enabled) this.logger.warn('Memory guard supports only regular mode, so it stays off');
+		const { removeMemoryGuardJournal } = await import('@/memory-guard/memory-guard-journal.js');
+		removeMemoryGuardJournal();
+	}
+
+	private async startMemoryGuard() {
 		// Importing the tracker registers its lifecycle handlers. Resolve it now, so
 		// that a wiring error stops startup instead of the first execution.
 		const { RunDataTracker } = await import('@/memory-guard/run-data-tracker.js');

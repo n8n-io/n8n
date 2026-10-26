@@ -76,25 +76,25 @@ describe('PrometheusMemoryGuardMetricsService', () => {
 	it('should start every stop series at 0', async () => {
 		service.init();
 
-		for (const trigger of ['threshold', 'critical', 'hold_limit']) {
+		for (const reason of ['threshold', 'critical', 'hold_limit']) {
 			for (const freed of ['true', 'false']) {
-				expect(await value('n8n_memory_guard_stops_total', { trigger, freed })).toBe(0);
+				expect(await value('n8n_memory_guard_stops_total', { reason, freed })).toBe(0);
 			}
 		}
 	});
 
-	it('should count stops by trigger and result, and deactivations', async () => {
+	it('should count stops by reason and result, and deactivations', async () => {
 		service.init();
 
 		eventService.emit('memory-guard-execution-stopped', {
 			...stopEvent,
-			trigger: 'hold-limit',
+			reason: 'hold-limit',
 			freedMemory: true,
 			workflowDeactivationStarted: true,
 		});
 		eventService.emit('memory-guard-execution-stopped', {
 			...stopEvent,
-			trigger: 'critical',
+			reason: 'critical',
 			freedMemory: false,
 			workflowDeactivationStarted: false,
 		});
@@ -103,10 +103,10 @@ describe('PrometheusMemoryGuardMetricsService', () => {
 		eventService.emit('memory-guard-workflow-deactivated', { workflowId: 'workflow-1' });
 
 		expect(
-			await value('n8n_memory_guard_stops_total', { trigger: 'hold_limit', freed: 'true' }),
+			await value('n8n_memory_guard_stops_total', { reason: 'hold_limit', freed: 'true' }),
 		).toBe(1);
 		expect(
-			await value('n8n_memory_guard_stops_total', { trigger: 'critical', freed: 'false' }),
+			await value('n8n_memory_guard_stops_total', { reason: 'critical', freed: 'false' }),
 		).toBe(1);
 		expect(await value('n8n_memory_guard_deactivations_total')).toBe(1);
 	});

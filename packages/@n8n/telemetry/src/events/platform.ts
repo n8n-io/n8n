@@ -30,7 +30,7 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			workflow_id: z.string(),
 			execution_mode: z.string().describe('Mode of the stopped execution, for example webhook'),
-			trigger: z
+			reason: z
 				.enum(['threshold', 'critical', 'hold-limit'])
 				.describe(
 					'Why the guard stopped: memory stayed above the stop level, memory reached the critical level, or a held execution waited too long',
